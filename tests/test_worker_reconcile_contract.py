@@ -47,7 +47,8 @@ def test_reconcile_reads_the_zones_edit_node_widened_after_delegation(tmp_path: 
     assert delta["contract_changed"]   # the zones are the leaf's own contract
 
 
-def test_paths_merged_in_from_the_integration_branch_are_not_the_workers(tmp_path: Path) -> None:
+@pytest.mark.parametrize("remote", ["stale", "diverged"])
+def test_paths_merged_in_from_the_integration_branch_are_not_the_workers(tmp_path: Path, remote: str) -> None:
     repo, rec, wt = _linked(tmp_path)
     before = git(repo, "rev-parse", "dev")
     commit_file(wt, "docs/own.md", "# own\n", "worker strays")
@@ -55,8 +56,14 @@ def test_paths_merged_in_from_the_integration_branch_are_not_the_workers(tmp_pat
     git(wt, "merge", "-q", "--no-edit", "dev")
     # A remote-tracking ref behind the local branch that was merged: the local one still counts.
     git(repo, "update-ref", "refs/remotes/origin/dev", before)
+    if remote == "diverged":   # the remote went its own way too, and that was merged as well
+        git(repo, "checkout", "-q", "--detach", before)
+        commit_file(repo, "other/remote.txt", "remote\n", "the remote moves on")
+        git(repo, "update-ref", "refs/remotes/origin/dev", "HEAD")
+        git(repo, "checkout", "-q", "dev")
+        git(wt, "merge", "-q", "--no-edit", "origin/dev")
     _r, delta = ops.reconcile(repo, rec.worker_id)
-    assert "other/merged.txt" not in delta["changed"]
+    assert not {"other/merged.txt", "other/remote.txt"} & set(delta["changed"])
     assert delta["outside_touch_zones"] == ["docs/own.md"]
     # Past a checkpoint after the merge, deleting the merged file is the worker's
     # own change: the stale remote base, which never had the file, must not hide it.
@@ -66,6 +73,16 @@ def test_paths_merged_in_from_the_integration_branch_are_not_the_workers(tmp_pat
     _r, delta = ops.reconcile(repo, rec.worker_id)
     assert delta["changed"] == ["other/merged.txt"]
     assert delta["outside_touch_zones"] == ["docs/own.md", "other/merged.txt"] and delta["needs_reconcile"]
+
+
+def test_an_edit_folded_into_a_merge_commit_is_the_workers(tmp_path: Path) -> None:
+    repo, rec, wt = _linked(tmp_path)
+    commit_file(repo, "other/merged.txt", "dev\n", "dev moves on")
+    git(wt, "merge", "-q", "--no-commit", "dev")
+    commit_file(wt, "docs/folded.md", "# folded\n", "merge dev, with an edit of its own")
+    _r, delta = ops.reconcile(repo, rec.worker_id)
+    assert delta["changed"] == ["docs/folded.md"]
+    assert delta["outside_touch_zones"] == ["docs/folded.md"]
 
 
 def test_the_integration_branch_moving_is_not_a_contract_change(tmp_path: Path) -> None:

@@ -6,7 +6,8 @@ the zone and nothing else: the source-side deletion escaped ``worker
 reconcile``, the review packet, and the finish-time implementation check.
 This module parses ``--name-status -z`` with rename and copy detection forced
 on and returns **both** sides of every ``R`` / ``C`` record, so the three
-callers agree on what a branch changed.
+callers agree on what a branch changed. :func:`branch_commit_paths` reads the
+same records from ``git log``, for what a branch's own commits changed.
 
 ``-z`` is what makes the parse exact: a path with whitespace, a tab, or a
 quote is one NUL-terminated field, never something to unquote.
@@ -51,3 +52,16 @@ def diff_paths(repo_root: Path, *diff_args: str) -> list[str] | None:
     if out is None:
         return None
     return sorted(parse_name_status(out))
+
+
+def branch_commit_paths(repo_root: Path, rev_range: str) -> set[str] | None:
+    """Paths the branch's own commits in ``rev_range`` changed, or ``None`` when git cannot answer.
+
+    ``--first-parent`` walks the branch's own line, so commits a merge brought
+    in are not walked; ``--cc`` lists a merge's path only where the result
+    differs from every parent (a conflict resolution, an edit folded into the
+    merge), so what it only brought in from the other side is left out.
+    """
+    out = git_stdout(["log", "--first-parent", "--cc", "--format=", "--name-status", "-z",
+                      "--find-renames", "--find-copies", rev_range], repo_root)
+    return None if out is None else parse_name_status(out)

@@ -15,9 +15,9 @@ import yaml
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.finish_implementation_check import _clean, zone_matches
-from specy_road.git_changed_paths import diff_paths
+from specy_road.git_changed_paths import branch_commit_paths, diff_paths
 from specy_road.git_subprocess import git_text
-from specy_road.git_workflow_config import WORKER_LOGS_REL, resolve_integration_defaults
+from specy_road.git_workflow_config import WORKER_LOGS_REL
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import git_root, project_prefix, rebase_to_project
 from specy_road.worker_process import branch_mismatch
@@ -46,31 +46,19 @@ def _target(repo_root: Path, node_id: str):
     return t
 
 
-def _integration_base(repo_root: Path, worktree: Path) -> str | None:
-    """Where the worktree's HEAD last took in the integration branch: the newest of its merge bases with
-    the remote-tracking and the local ref, or ``None`` when they diverged and neither is newest.
-
-    Only the newest counts: an older base (a stale remote-tracking ref) lacks what a later merge brought,
-    so the worker deleting a merged file would match it and vanish.
-    """
-    ib, remote, _warn = resolve_integration_defaults(repo_root, explicit_base=None, explicit_remote=None)
-    refs = (f"refs/remotes/{remote}/{ib}", f"refs/heads/{ib}")
-    bases = {b for r in refs if (b := git_text(["merge-base", r, "HEAD"], worktree))}
-    newest = (git_text(["merge-base", "--independent", *bases], worktree) or "").split() if bases else []
-    return newest[0] if len(newest) == 1 else None
-
-
-def _changed_since(worktree: Path, since_sha: str | None, base: str | None = None) -> list[str]:
+def _changed_since(worktree: Path, since_sha: str | None) -> list[str]:
     if not since_sha:
         return []
     # Both sides of a rename or copy: a `git mv` into the zone is also a
     # deletion outside it.
     changed = set(diff_paths(worktree, since_sha) or [])
-    # A path the tree matches the integration branch on, at the point it was
-    # last merged in, came through that merge and is not the worker's change.
-    own = diff_paths(worktree, base) if base else None
-    if own is not None:
-        changed &= set(own)
+    # Only what the branch's own commits or the uncommitted tree changed: a
+    # path that arrived through a merge alone, from whichever integration ref,
+    # is not the worker's change; a later edit or deletion of it is.
+    committed = branch_commit_paths(worktree, f"{since_sha}..HEAD")
+    uncommitted = diff_paths(worktree, "HEAD")
+    if committed is not None and uncommitted is not None:
+        changed &= committed | set(uncommitted)
     # Named from the git root over the whole repo, as `git diff` names them: the
     # worktree may be a nested project root, where plain ls-files is directory-relative.
     untracked = git_text(["ls-files", "--others", "--exclude-standard", "--full-name", "--", ":(top)"], worktree) or ""
@@ -143,8 +131,7 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
     t = _target(repo_root, rec.node_id)
     since = (rec.checkpoint or {}).get("git_head") or t.base
     wt = Path(rec.worktree)
-    base = _integration_base(repo_root, wt)
-    changed = _changed_since(wt, since, base)
+    changed = _changed_since(wt, since)
     # The claim row as it is now (edit-node keeps it in step with the node),
     # not the zones the worker was delegated with.
     zones = [z for z in (_clean(z) for z in t.touch_zones) if z]
@@ -152,7 +139,7 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
     # last checkpoint: a hand-off moves the checkpoint past earlier commits,
     # and what they touched is still on the branch.
     origin = rec.started_head or since
-    on_branch = _changed_since(wt, origin, base) if origin != since else changed
+    on_branch = _changed_since(wt, origin) if origin != since else changed
     # Toolkit bookkeeping is never a breach: the leaf's brief, summary and
     # review files, and the registry row the claim lives in. Paths are named
     # from the git root; zones are matched as the review packet matches them,
