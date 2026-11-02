@@ -133,6 +133,35 @@ none of them.
 declares `cheap` instead of the one priced model; a leaf with `executor_eligibility: senior` still gets
 a `senior` executor.
 
+## Human decisions ledger (`roadmap/decisions.yaml`)
+
+Open questions for a person live in **`roadmap/decisions.yaml`** beside `registry.yaml`. The file is
+schema-validated (`schemas/decisions.schema.json`, copied by `init project` / `specy-road refresh-schemas`).
+Each **open** entry carries:
+
+| Field | Meaning |
+|---|---|
+| `id` | Stable handle (for example `D1`); cite it in chat, never ask with a bare id alone |
+| `node` | Roadmap leaf the decision belongs to |
+| `kind` | `decision` or `human-action` |
+| `summary` | Plain-words what this is |
+| `why_now` | Why now and what it blocks |
+| `options[]` | Each option's `label` and `effect` |
+| `recommendation` / `recommendation_reason` | What you recommend and why |
+| `default_if_unanswered` | What the agent applies if the human does not answer |
+| `asked` | ISO date when opened |
+| `needed_by` | Optional ISO date by which an answer is needed |
+
+**CLI:** `specy-road decisions add|list|close`. `list` prints every open entry ordered by `needed_by`
+(entries without a deadline sort last). `close` records the answer in the ledger only after the same
+answer appears on the node's planning sheet as a decision line (`D1: chose option A`, optional list
+marker or checkbox in front).
+
+**Coordinator turn discipline:** at the start of each turn, run `specy-road decisions list` (as with
+`worker sync`). Search the ledger and planning-sheet decision blocks before asking anything new. Ask at
+most four questions at once, each in the self-contained shape above. End any turn that still has open
+entries with one **Decisions waiting on you** block listing all of them below your status.
+
 ## Hand-off files: `work/reviews/<NODE_ID>/`
 
 Plain files work across every harness, including IDE chats that cannot see each other. Each file is Markdown whose YAML front matter is the machine-readable part.

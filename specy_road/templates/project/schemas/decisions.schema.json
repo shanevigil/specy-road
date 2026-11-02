@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specy-road.local/schemas/decisions.schema.json",
+  "title": "specy-road open human decisions ledger",
+  "type": "object",
+  "required": ["version", "entries"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "option": {
+      "type": "object",
+      "required": ["label", "effect"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": "string", "minLength": 1 },
+        "effect": { "type": "string", "minLength": 1 }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "required": [
+        "id",
+        "node",
+        "kind",
+        "summary",
+        "why_now",
+        "options",
+        "recommendation",
+        "recommendation_reason",
+        "default_if_unanswered",
+        "asked",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._-]*$"
+        },
+        "node": {
+          "type": "string",
+          "pattern": "^M[0-9]+(\\.[0-9]+)*$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["decision", "human-action"]
+        },
+        "summary": { "type": "string", "minLength": 1 },
+        "why_now": { "type": "string", "minLength": 1 },
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/option" }
+        },
+        "recommendation": { "type": "string", "minLength": 1 },
+        "recommendation_reason": { "type": "string", "minLength": 1 },
+        "default_if_unanswered": { "type": "string", "minLength": 1 },
+        "asked": {
+          "type": "string",
+          "description": "ISO 8601 date or datetime when the question was opened"
+        },
+        "needed_by": {
+          "type": "string",
+          "description": "Optional ISO 8601 date by which a human answer is needed"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "closed"]
+        },
+        "answer": { "type": "string", "minLength": 1 },
+        "closed": {
+          "type": "string",
+          "description": "ISO 8601 date or datetime when the entry was closed"
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "closed" } }, "required": ["status"] },
+          "then": { "required": ["answer", "closed"] }
+        },
+        {
+          "if": { "properties": { "status": { "const": "open" } }, "required": ["status"] },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["answer"] },
+                { "required": ["closed"] }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
