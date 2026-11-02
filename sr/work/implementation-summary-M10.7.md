@@ -8,7 +8,7 @@ Each output specy-road writes into a model's context now carries a budget with a
 
 - **A1 — review packet diff cap.** `review-packet --max-diff-lines N` (default 1500). Past the cap the packet inlines the first changed files whole (in `git diff` order, as many as fit under N lines), lists every remaining path with its `+`/`-` counts from `git diff --numstat`, and names the full diff it wrote to `work/reviews/<NODE_ID>/DIFF.patch` beside `PACKET.md`. `0` means no cap and no `DIFF.patch`: every packet build first removes any `DIFF.patch` an earlier capped run left in the review directory, and only a capped build writes a new one (review round 2, `gpt-6.1-sol`, required change). A packet under the cap takes the unchanged code path and is byte-identical to before (tested by comparing the default against `--max-diff-lines 0`).
 - **A2 — brief size line.** The brief header gains one line: `_Size: N bytes. Largest sections: `## 4. …` n B; …_`, where N is the brief's own total (the line counts itself; a fixed-point loop settles the digit count) and the sections are the brief's numbered `## N.` sections, not the `## Intent` headings of inlined sheets. `specy-road brief` warns on stderr past 65536 bytes, naming the three largest sections. The warning is printed only by the `brief` command's `main`; `render_brief` stays pure for the packet and prompt callers.
-- **A3 — `grind-session --plan --json --fields KEY,...`.** Prints only those top-level plan keys (`event` and `ts`, the JSONL envelope, stay). An unknown key, or an empty list, is an argparse error naming the valid keys; `--fields` without `--plan --json` is an argparse error too. `PLAN_FIELDS` in `session_plan_render.py` is the single list, and a test pins it to the full dict's keys.
+- **A3 — `grind-session --plan --json --fields KEY,...`.** Prints exactly those top-level plan keys, with no `event`/`ts` envelope (round 5); unfiltered `--plan --json` keeps the envelope. An unknown key, or an empty list, is an argparse error naming the valid keys; `--fields` without `--plan --json` is an argparse error too. `PLAN_FIELDS` in `session_plan_render.py` is the single list, and a test pins it to the full dict's keys.
 - **A4 — grouped validate warnings.** The no-acceptance warning and the `|`-joined-criterion warning are each one line counting the nodes and listing every id, followed by one fix hint with `<NODE_ID>` as placeholder. The per-leaf cap (`_WARN_CAP`) now applies only to `warn_unauthored`, which was already grouped. The grouped line keeps the phrase `has no acceptance criteria` because two tests outside this leaf's touch zones assert it (`tests/test_review_round6_policy.py`, `tests/test_validate_strict.py`); both pass unchanged.
 - **A5 — docs.** `docs/dev-workflow.md`: the diff cap, `DIFF.patch` and the brief size line. `docs/grind-session.md`: `--fields` (the file sits exactly at its 500-line cap, so the example JSON's `waves` array was compacted to one line to pay for the new sentences). `cli_usage.py` mentions all three flags/lines.
 
@@ -21,7 +21,7 @@ Touch zones as listed by the PM, plus `tests/test_project_layouts.py`, which the
 - `specy_road/bundled_scripts/generate_brief.py` — calls `with_size_line` and `print_size_warning`; docstring folded by one line to stay under the cap.
 - `specy_road/bundled_scripts/session_plan_render.py` — `PLAN_FIELDS`; `session_plan_to_dict(plan, fields=None)`.
 - `specy_road/bundled_scripts/grind_session_args.py` — `--fields`, `_plan_fields` validation.
-- `specy_road/bundled_scripts/grind_session.py` — `_emit_plan(..., fields)`.
+- `specy_road/bundled_scripts/grind_session.py` — `_emit_plan(..., fields)`: with `fields` it prints the filtered dict directly instead of through the event emitter.
 - `specy_road/cli_usage.py`, `docs/dev-workflow.md`, `docs/grind-session.md`.
 - `tests/test_project_layouts.py` — `test_the_brief_is_identical_across_layouts` also strips the `_Size:` line (asserting each brief has exactly one) before comparing, since A2's total counts the nested-only `Project root` line and so legitimately differs by layout (review round 1, `cursor-grok-4.6-high`, required change).
 - Tests: `tests/test_review_packet.py`, `tests/test_generate_brief.py`, `tests/test_session_plan.py`, `tests/test_validate_acceptance_coverage.py` (the last one's three assertions on the old per-leaf wording were updated to the grouped format A4 specifies; `test_the_warning_is_capped` became `test_the_warning_is_one_line_per_class_with_one_hint`).
@@ -51,7 +51,11 @@ The approvals at `818b62e` could not land because of conflicts with M9.5 (`989bb
 - `cli_usage.py`: the review-packet entry lists the "test integrity" section and the `--max-diff-lines` / `DIFF.patch` option, and M9.5's `integrity <NODE_ID>` command entry is kept.
 - `tests/test_review_packet.py` `test_packet_test_integrity_section_is_stable_and_lists_findings` also builds the weakened-test packet with `max_diff_lines=1` and asserts that its integrity block equals the uncapped one (the `assert-loss` finding included) and that its diff is capped.
 
-Verified at `68d160c`: `tests/test_review_packet.py`, `tests/test_integrity.py`, the root-help tests that print `USAGE_TEXT` (`tests/test_cli.py`, `tests/test_cli_version.py`, `tests/test_cli_query_commands.py`) and the other touch-zone tests: 157 passed. `specy-road file-limits` exits 1 on `docs/brainstorming.md` (406/400). That file is identical on `origin/WIP/improvements-0-3-1` and outside this leaf's zones; this leaf's files pass. The full suite was left to the coordinator, as instructed.
+Verified at `68d160c`: `tests/test_review_packet.py`, `tests/test_integrity.py`, the root-help tests that print `USAGE_TEXT` (`tests/test_cli.py`, `tests/test_cli_version.py`, `tests/test_cli_query_commands.py`) and the other touch-zone tests: 157 passed. `specy-road file-limits` exits 1 on `docs/brainstorming.md` (406/400). That file is identical on `origin/WIP/improvements-0-3-1` and outside this leaf's zones; this leaf's files pass. The full suite was left to the coordinator, as instructed. A second merge, `09b42e6`, picked up the upstream fix `9b82c16`, and `file-limits` passes from there on.
+
+## Round 5: `--fields` without the envelope
+
+Review round 4 (`gpt-6.1-sol`, block on A3) found that `--plan --json --fields ready` still printed `event` and `ts`, which A3 does not allow. `5e26b7c` changes `grind_session._emit_plan`: when `--fields` is given it prints `json.dumps(session_plan_to_dict(plan, fields))`, so the output has exactly the selected keys. Without `--fields`, output still goes through `EventEmitter.emit("plan", ...)` and is unchanged (`tests/test_grind_session.py` asserts `event == "plan"` there). `test_plan_json_fields_prints_only_those_keys` now expects `{"ready"}`, and the `docs/grind-session.md` sentence and the `--fields` help text say "no `event` or `ts`". Verified at `5e26b7c`: `tests/test_session_plan.py` 15 passed and `specy-road file-limits` OK.
 
 ## Added
 
@@ -67,6 +71,7 @@ Verified at `68d160c`: `tests/test_review_packet.py`, `tests/test_integrity.py`,
 - `grind_session_args._plan_fields` — `--fields` parsing and validation.
 
 ### Branches or guards
+- `_emit_plan`: `as_json and fields` prints the bare filtered dict — A3 allows only the selected keys; the unfiltered branch keeps the emitter envelope.
 - `_diff`: `max_diff_lines and diff.count("\n") > max_diff_lines` — the cap path; `0` falls through unchanged.
 - `_diff`: unconditional `DIFF.patch` `unlink(missing_ok=True)` at the start — a patch from an earlier capped run must not outlive an uncapped (`0`), under-cap or empty-diff packet that does not name it; the capped path writes it afresh.
 - `_capped_diff`: numstat row count must equal chunk count, else paths come from the `diff --git` headers with `?` counts — a safe fallback for an unexpected numstat shape.
@@ -87,7 +92,7 @@ Verified at `68d160c`: `tests/test_review_packet.py`, `tests/test_integrity.py`,
 - `test_main_prints_the_size_warning_on_stderr` — A2 stderr.
 - `test_to_dict_fields_keeps_only_those_keys_and_plan_fields_names_them_all` — A3 filter and `PLAN_FIELDS` parity.
 - `test_fields_flag_parses_and_rejects_unknown_keys` — A3 parsing, unknown key error naming valid keys, flag without `--plan --json`.
-- `test_plan_json_fields_prints_only_those_keys` — A3 end to end through `run_session`.
+- `test_plan_json_fields_prints_only_those_keys` — A3 end to end through `run_session`; asserts the keys are exactly `{"ready"}` (round 5).
 - `test_the_warning_is_one_line_per_class_with_one_hint` — A4 (replaces the per-leaf cap test).
 - `test_packet_test_integrity_section_is_stable_and_lists_findings` (M9.5's, extended at the merge) — a capped packet keeps the same integrity block.
 - `test_the_brief_is_identical_across_layouts` (changed, not added) — strips the layout-dependent `_Size:` line on both briefs, after asserting each has exactly one; the rest stays byte-identical.
