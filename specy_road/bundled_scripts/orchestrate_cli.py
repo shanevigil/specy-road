@@ -4,7 +4,8 @@
 Prints the ref the roster was read from, then, per parallel batch, which roster
 model should coordinate, execute, and review each ready leaf, with the reason
 for each pick, and names every leaf the roster cannot staff under the current
-policy. Exit 1 when any ready leaf
+policy. Ready means what pickup and `grind-session --plan` mean, so leaves
+pickup skips are listed apart, not assigned. Exit 1 when any ready leaf
 is unstaffable, so a coordinator script stops before dispatching. Assigns
 only: dispatch is `specy-road prompt`.
 """
@@ -46,6 +47,8 @@ def render(plan: OrchestrationPlan) -> list[str]:
         lines.append(f"blocked (not assigned): {', '.join(plan.blocked)}")
     if plan.active:
         lines.append(f"active claims (not reassigned): {', '.join(plan.active)}")
+    if plan.unauthored:
+        lines.append(f"unauthored (not assigned; pickup skips them): {', '.join(plan.unauthored)}")
     return lines
 
 
