@@ -31,7 +31,7 @@ SECTION_CAP = 50   # paths listed in the prompt and packet sections; the rest ar
 class Impact:
     tests: tuple[str, ...] = ()
     all_tests: bool = False   # a conftest.py changed: every test is at risk
-    not_analysed: int = 0     # changed files that are not Python
+    not_analysed: int = 0     # changed files that are not Python, plus .py files at ref that do not parse
 
     def lines(self) -> list[str]:
         """What ``specy-road impact`` prints."""
@@ -57,7 +57,8 @@ def impact_for_diff(root: Path, base: str, ref: str) -> Impact | None:
     if files is None:
         return None
     targets = {p for p in changed if p.endswith(".py")}
-    return Impact(tests_importing(files, targets), not_analysed=len(changed) - len(targets))
+    tests, unparsed = tests_importing(files, targets)
+    return Impact(tests, not_analysed=len(changed) - len(targets) + unparsed)
 
 
 def impact_for_zones(root: Path, ref: str, zones: list[str]) -> Impact | None:
@@ -68,11 +69,16 @@ def impact_for_zones(root: Path, ref: str, zones: list[str]) -> Impact | None:
     prefix = project_prefix(root)
     zs = [z.strip().strip("/") for z in zones if isinstance(z, str) and z.strip()]
     targets = {p for p in files if any(zone_matches(z, rebase_to_project(p, prefix) or p) for z in zs)}
-    return Impact(tests_importing(files, targets))
+    tests, unparsed = tests_importing(files, targets)
+    return Impact(tests, not_analysed=unparsed)
 
 
-def python_sources(root: Path, ref: str) -> dict[str, str] | None:
-    """``{git-root path: source}`` for every ``.py`` blob at ``ref``."""
+def python_sources(root: Path, ref: str) -> dict[str, bytes] | None:
+    """``{git-root path: source bytes}`` for every ``.py`` blob at ``ref``.
+
+    Bytes, not text: ``ast.parse`` then honours a coding cookie or BOM the way
+    Python does, where a fixed UTF-8 decode would garble a Latin-1 source.
+    """
     out = git_stdout(["ls-tree", "-r", "--full-tree", "-z", ref], root)
     if out is None:
         return None
@@ -88,7 +94,7 @@ def python_sources(root: Path, ref: str) -> dict[str, str] | None:
     return {p: texts[sha] for p, sha in blobs.items()}
 
 
-def _read_blobs(root: Path, shas: list[str]) -> dict[str, str] | None:
+def _read_blobs(root: Path, shas: list[str]) -> dict[str, bytes] | None:
     """Blob contents by id, through one ``git cat-file --batch``."""
     if not shas:
         return {}
@@ -103,13 +109,14 @@ def _read_blobs(root: Path, shas: list[str]) -> dict[str, str] | None:
     for sha in shas:
         eol = data.index(b"\n", pos)
         size = int(data[pos:eol].split()[2])
-        texts[sha] = data[eol + 1:eol + 1 + size].decode("utf-8", errors="replace")
+        texts[sha] = data[eol + 1:eol + 1 + size]
         pos = eol + 1 + size + 1
     return texts
 
 
-def tests_importing(files: dict[str, str], targets: set[str]) -> tuple[str, ...]:
-    """Sorted test files in ``files`` that import a ``targets`` file, through any chain of imports.
+def tests_importing(files: dict[str, bytes], targets: set[str]) -> tuple[tuple[str, ...], int]:
+    """Sorted test files in ``files`` that import a ``targets`` file, through any chain of
+    imports, and how many of ``files`` do not parse (their imports are unknown).
 
     A target missing from ``files`` (deleted at ``ref``) keeps its module names,
     so a test that still imports it is listed.
@@ -121,8 +128,11 @@ def tests_importing(files: dict[str, str], targets: set[str]) -> tuple[str, ...]
         for name in module_names(p, inits):
             by_name.setdefault(name, set()).add(p)
     importers: dict[str, set[str]] = {}
+    unparsed = 0
     for p in sorted(files):
-        for name in imported_names(files[p], _package(p)):
+        names = imported_names(files[p], _package(p))
+        unparsed += names is None
+        for name in names or ():
             for dep in by_name.get(name, ()):
                 importers.setdefault(dep, set()).add(p)
     seen: set[str] = set()
@@ -132,7 +142,7 @@ def tests_importing(files: dict[str, str], targets: set[str]) -> tuple[str, ...]
             if p not in seen:
                 seen.add(p)
                 stack.append(p)
-    return tuple(sorted(p for p in seen if is_test_file(p)))
+    return tuple(sorted(p for p in seen if is_test_file(p))), unparsed
 
 
 def module_names(path: str, inits: set[str]) -> set[str]:
@@ -161,12 +171,15 @@ def _package(path: str) -> list[str]:
     return path.split("/")[:-1]
 
 
-def imported_names(source: str, package: list[str]) -> set[str]:
-    """Every module name ``source`` imports, with each parent package (they run on import too)."""
+def imported_names(source: bytes | str, package: list[str]) -> set[str] | None:
+    """Every module name ``source`` imports, with each parent package (they run on import too).
+
+    ``None`` when ``source`` does not parse.
+    """
     try:
         tree = ast.parse(source)
     except (SyntaxError, ValueError):
-        return set()
+        return None
     mods: list[list[str]] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):

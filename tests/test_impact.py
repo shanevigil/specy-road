@@ -31,20 +31,21 @@ _FILES = {
 }
 
 
-def _commit_all(repo: Path, files: dict[str, str], msg: str) -> str:
+def _commit_all(repo: Path, files: dict[str, str | bytes], msg: str) -> str:
     for rel, text in files.items():
         (repo / rel).parent.mkdir(parents=True, exist_ok=True)
-        (repo / rel).write_text(text, encoding="utf-8")
+        (repo / rel).write_bytes(text if isinstance(text, bytes) else text.encode("utf-8"))
     git(repo, "add", *files)
     git(repo, "commit", "-qm", msg)
     return git(repo, "rev-parse", "HEAD")
 
 
-def _repo(tmp_path: Path, *, namespace: bool = False) -> Path:
-    """Leaf ``T1`` (touch zone ``src``) on ``feature``, with the fixture merged in from ``dev``."""
+def _repo(tmp_path: Path, *, namespace: bool = False, extra: dict[str, str | bytes] | None = None) -> Path:
+    """Leaf ``T1`` (touch zone ``src``) on ``feature``, with the fixture (and ``extra``) merged in from ``dev``."""
     repo = make_repo(tmp_path, roadmap=True)
     on_dev(repo)
     files = {k: v for k, v in _FILES.items() if not (namespace and k == "src/pkg/__init__.py")}
+    files.update(extra or {})
     _commit_all(repo, files, "fixture")
     merge_dev(repo)
     return repo
@@ -87,6 +88,28 @@ def test_deleted_module_still_lists_its_importers(tmp_path: Path, capsys) -> Non
     git(repo, "rm", "-q", "src/pkg/util.py")
     git(repo, "commit", "-qm", "delete util")
     assert _cli(repo, capsys) == "tests/test_util.py\n"
+
+
+# Valid Python only when read with its declared encoding: as UTF-8, "café" is not an identifier.
+_LATIN1_TEST = "# coding: latin-1\nimport pkg.core\ncafé = pkg.core.VALUE\n\n\ndef test_cafe():\n    assert café\n"
+
+
+def test_coding_cookie_source_is_parsed_with_its_declared_encoding(tmp_path: Path, capsys) -> None:
+    repo = _repo(tmp_path, extra={"tests/test_latin.py": _LATIN1_TEST.encode("latin-1")})
+    assert _cli(repo, capsys, "--zones") == (
+        "tests/core_test.py\ntests/test_api.py\ntests/test_latin.py\ntests/test_util.py\n"
+    )
+    _commit_all(repo, {"src/pkg/core.py": "VALUE = 2\n"}, "change core")
+    assert _cli(repo, capsys) == "tests/core_test.py\ntests/test_api.py\ntests/test_latin.py\n"
+
+
+def test_unparsable_python_counts_as_not_analysed(tmp_path: Path, capsys) -> None:
+    repo = _repo(tmp_path, extra={"src/pkg/broken.py": "def (:\n"})
+    assert _cli(repo, capsys, "--zones") == (
+        "tests/core_test.py\ntests/test_api.py\ntests/test_util.py\nnot analysed: 1 files\n"
+    )
+    _commit_all(repo, {"src/pkg/core.py": "VALUE = 2\n", "README.md": "# changed\n"}, "change core")
+    assert _cli(repo, capsys) == "tests/core_test.py\ntests/test_api.py\nnot analysed: 2 files\n"
 
 
 def _many_tests(n: int) -> dict[str, str]:

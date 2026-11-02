@@ -16,7 +16,8 @@ body. Keep section bodies focused; link to PRs for detail.
 - `specy-road impact <NODE_ID>` lists, sorted, the Python test files that
   import (at any depth, through the repository's own modules) a module changed
   between the merge base and `--ref`; `ALL` when a `conftest.py` changed, and a
-  `not analysed: <n> files` line for changed files that are not Python.
+  `not analysed: <n> files` line for changed files that are not Python and
+  `.py` files that do not parse.
   `--zones` starts from the modules under the touch zones instead. The executor
   prompt written at pickup and `review-packet` each gain a **Tests at risk**
   section (the `--zones` list and the diff list, at most 50 paths). Advisory.
