@@ -11,20 +11,3 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: ship-skills-once-and-meter-every-file-each-harness-injects
-    node_id: M8.4
-    branch: feature/rm-ship-skills-once-and-meter-every-file-each-harness-injects
-    touch_zones:
-      - specy_road/specyrd_init.py
-      - specy_road/bundled_scripts/refresh_stubs.py
-      - specy_road/bundled_scripts/upgrade.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - specy_road/templates/specyrd/
-      - docs/install-and-usage.md
-      - tests/
-      - specy_road/agents_md_block.py
-      - specy_road/specyrd_skills.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-02T15:27:24+00:00'

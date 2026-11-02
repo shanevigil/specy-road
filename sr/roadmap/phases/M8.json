@@ -113,7 +113,7 @@
       "parent_id": "M8",
       "planning_dir": "planning/M8.4_ship-skills-once-and-meter-every-file-each-harness-injects_13ff1345-ca8e-4dd7-bf51-59dccbd9ecec.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Ship skills once and meter every file each harness injects",
       "touch_zones": [
         "specy_road/specyrd_init.py",
