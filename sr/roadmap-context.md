@@ -59,7 +59,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M5.5` A replayable context regression set for the sandbox runbook `context-regression-set` — task — **Complete**
   - `M5.6` Pilot the context-feedback question in the sandbox before shipping it `context-feedback-pilot` — task — **Not Started**
   - `M5.7` Measure the managed section on and off across the sandbox apps `managed-section-ablation` — task — **Not Started**
-  - `M5.8` Further Markdown mention forms for the stale-command check found in M5.2 review `further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` — task — **Not Started**
+  - `M5.8` Further Markdown mention forms for the stale-command check found in M5.2 review `further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` — task — **Complete**
 - `M6` 0.3.1-rc2 release `release-0-3-1-rc2` — phase — **Not Started**
   - `M6.1` Close out the triage note, changelog and what's-new for rc2 `rc2-closeout-docs` — task — **Not Started**
   - `M6.2` Pre-release checks and the 0.3.1-rc2 cut `rc2-cut` — task — **Not Started**
@@ -101,6 +101,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.13` A project setting decides whether agent logs are tracked in git `a-project-setting-decides` — task — **Not Started**
   - `M10.14` edit-node keeps an active claim's touch zones in step with the node `claim-zones-follow-edit-node` — task — **Complete**
 
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+
 ## Claimed and in flight
 
 Do not pick these up.
@@ -109,6 +115,10 @@ Do not pick these up.
 - `M10.1` on `feature/rm-record-phase-timestamps-in` since 2026-10-30
 - `M10.4` on `feature/rm-pin-harness-discovery-mode` since 2026-10-30
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
+- `M4.1` on `feature/rm-promote-judgement` since 2026-10-31
+- `M4.15` on `feature/rm-session-overlap-warnings-name-the-other-worktree-and-its-edit-state` since 2026-10-31
+- `M4.18` on `feature/rm-further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review` since 2026-10-31
+- `M9.1` on `feature/rm-land-check-on-merge-commit` since 2026-10-31
 - `M9.5` on `feature/rm-integrity-report` since 2026-10-29
 
 ## Reaching the detail behind this
