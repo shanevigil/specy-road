@@ -259,6 +259,20 @@ def test_a_custom_reviewer_command_under_review_delegate_is_checked_and_filed(tm
     assert delegate(repo, "M1.1", "gem", sleep=lambda s: None)["outcome"] == "recorded"
 
 
+@pytest.mark.parametrize("harness", ["codex", "cursor"])
+def test_a_plain_text_wrapper_on_a_codex_or_cursor_entry_is_filed_from_its_final_message(tmp_path: Path, capsys,
+                                                                                          harness: str) -> None:
+    """The roster shape of a wrapper script as `channels.cli` (`codex exec … "<prompt>"`, `agent -p --output-format
+    text`): no event stream, so the final message's JSON object is the answer."""
+    repo, spec = delegate_repo(tmp_path, GENERIC.replace("harness: generic", f"harness: {harness}"))
+    set_steps(repo, spec, {**verdict_step(repo, model="gem"), "plain": True})
+    assert run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli",
+                    "--repo-root", str(repo)) == 0
+    assert rf.load_review(rf.review_path(repo, "M1.1", "gem"), ["A1", "A2"]).ok
+    run = json.loads((rf.reviews_dir(repo, "M1.1") / "RUN-gem.json").read_text())
+    assert run["source"] == "prompt-cli" and run["state"] == "complete" and not run["events"]   # M11.72's record
+
+
 # --- A1: Antigravity (agy, a generic harness) gets --json-schema from the adapter -------------------------------------
 
 def test_agy_reviewer_commands_get_the_schema_and_read_only_flags(tmp_path: Path) -> None:
