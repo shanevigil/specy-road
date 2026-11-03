@@ -65,7 +65,23 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _guard_argv(argv: list[str]) -> list[str]:
+    """Drop ``orchestration guard`` prefixes from argv forwarded by :mod:`specy_road.cli`."""
+    if len(argv) >= 2 and argv[0] == "orchestration" and argv[1] == "guard":
+        return argv[2:]
+    if argv and argv[0] == "guard":
+        return argv[1:]
+    if not argv or argv[0].startswith("-"):
+        return argv
+    print("usage: specy-road orchestration guard --format …", file=sys.stderr)
+    raise SystemExit(2)
+
+
 def main(argv: list[str] | None = None) -> None:
-    argv = list(sys.argv[1:] if argv is None else argv)
+    argv = _guard_argv(list(sys.argv[1:] if argv is None else argv))
     ns = build_parser().parse_args(argv)
     raise SystemExit(ns.func(ns))
+
+
+if __name__ == "__main__":
+    main()

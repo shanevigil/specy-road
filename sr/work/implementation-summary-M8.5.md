@@ -47,7 +47,7 @@ Reverted (acceptance does not need this leaf to edit the worker adapters; other 
 - `orchestration_role_env.py` — `harness_env` sets `SPECY_ROAD_ORCHESTRATION_ROLE` on executor and reviewer launches.
 - `orchestration_guard_adapters.py` — per-harness hook JSON for executor and reviewer roles.
 - `bundled_scripts/orchestration_guard_cli.py` — `specy-road orchestration guard` CLI entry.
-- `cli.py` — in-process dispatch for `specy-road orchestration guard`.
+- `cli.py` — `_FORWARDED` dispatches `orchestration` to `orchestration_guard_cli.py`.
 - `specyrd_hooks.py` — merge hook JSON and install optional `pre-push`.
 - `specyrd_init.py` / `specyrd_cli.py` — `--install-orchestration-hooks`, `--install-pre-push-hook`.
 - `templates/specyrd/hooks/` — `README.md`, `pre-push`, and one JSON file per harness (`claude-code/settings.json`, `codex/hooks.json`, `cursor/hooks.json`).

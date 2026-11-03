@@ -169,6 +169,25 @@ def test_claude_launch_template_pins_env_switches() -> None:
     assert not missing, missing
 
 
+def _avoid_list_gaps(rel: str, text: str, family: str) -> list[str]:
+    if "## Orchestration: harness features to avoid" not in text:
+        return [f"{rel}: heading"]
+    fam = family.lower()
+    if "anthropic" in fam or "claude" in fam:
+        if "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1" not in text:
+            return [f"{rel}: claude memory switch"]
+        return []
+    if "openai" in fam or "gpt" in fam:
+        return [] if "--disable memories" in text else [f"{rel}: codex --disable"]
+    if "cursor" in fam or "composer" in fam:
+        if "--plan" not in text or "persist" not in text:
+            return [f"{rel}: cursor persist/plan"]
+        return []
+    if "memory off" not in text or "--plan" not in text or "worktree" not in text:
+        return [f"{rel}: generic exact switches"]
+    return []
+
+
 def test_every_shipped_profile_lists_orchestration_avoid() -> None:
     from specy_road.model_profiles import list_profiles
 
@@ -179,22 +198,7 @@ def test_every_shipped_profile_lists_orchestration_avoid() -> None:
             continue
         text = prof.path.read_text(encoding="utf-8")
         rel = str(prof.path.relative_to(root))
-        if "## Orchestration: harness features to avoid" not in text:
-            missing.append(f"{rel}: heading")
-            continue
-        family = str(prof.data.get("family") or "").lower()
-        if "anthropic" in family or "claude" in family:
-            if "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1" not in text:
-                missing.append(f"{rel}: claude memory switch")
-        elif "openai" in family or "gpt" in family:
-            if "--disable memories" not in text:
-                missing.append(f"{rel}: codex --disable")
-        elif "cursor" in family or "composer" in family:
-            if "--plan" not in text or "persist" not in text:
-                missing.append(f"{rel}: cursor persist/plan")
-        else:
-            if "memory off" not in text or "--plan" not in text or "worktree" not in text:
-                missing.append(f"{rel}: generic exact switches")
+        missing.extend(_avoid_list_gaps(rel, text, str(prof.data.get("family") or "")))
     assert not missing, missing
 
 

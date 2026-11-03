@@ -69,6 +69,7 @@ _FORWARDED = {
     "review": "review_cli.py",
     "ready": "review_cli.py",
     "worker": "worker_cli.py",
+    "orchestration": "orchestration_guard_cli.py",
     "decisions": "decisions_cli.py",
     "branches": "branches_cli.py",
 }
@@ -371,13 +372,6 @@ def main(argv: list[str] | None = None) -> None:
         _run_init_cli(rest)
     elif cmd == "gui":
         _cmd_gui(rest)
-    elif cmd == "orchestration":
-        if not rest or rest[0] != "guard":
-            print("usage: specy-road orchestration guard --format …", file=sys.stderr)
-            raise SystemExit(2)
-        from specy_road.bundled_scripts.orchestration_guard_cli import main as orchestration_guard_main
-
-        orchestration_guard_main(rest[1:])
     else:
         _unknown_command(cmd)
 
