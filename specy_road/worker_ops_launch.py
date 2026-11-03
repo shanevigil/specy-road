@@ -15,7 +15,7 @@ from typing import Any
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text, run
-from specy_road.orchestrate_plan import ANY, is_available, may_handle, node_eligibility, node_sensitivity
+from specy_road.orchestrate_plan import ANY, is_available, may_handle, node_eligibility, node_sensitivity, unavailability_reason
 from specy_road.orchestration_config import roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_files import reviews_dir, reviews_root
@@ -68,7 +68,8 @@ def _check_eligible(entry: dict[str, Any], node: dict[str, Any], model: str) -> 
     if "executor" not in (entry.get("roles") or []):
         raise WorkerError(f"{model!r} does not have the executor role in the roster")
     if not is_available(entry):
-        raise WorkerError(f"{model!r} is unavailable until {entry.get('unavailable_until')}")
+        why = unavailability_reason(entry) or "availability"
+        raise WorkerError(f"{model!r} is unavailable ({why})")
     sens = node_sensitivity(node)
     if not may_handle(entry, sens):
         raise WorkerError(f"{node['id']} is {sens!r}; {model!r} may not process it (`orchestrate plan`)")

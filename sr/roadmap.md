@@ -133,7 +133,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.24` | Executors and reviewers in a worktree can write and check the right places | task | Agentic-led | Complete |
 | `M11.25` | finish-this-task says what merge mode will push before it pushes | task | Agentic-led | Complete |
 | `M11.26` | A model profile can match harness model ids that carry an effort suffix | task | Agentic-led | Complete |
-| `M11.27` | Small CLI fixes from field use | task | Agentic-led | Not Started |
+| `M11.27` | Small CLI fixes from field use | task | Agentic-led | Complete |
 | `M11.28` | A light chore mode for work outside the roadmap | task | Mixed | Not Started |
 | `M11.29` | doctor warns when the running specy-road is older than the project's stubs | task | Agentic-led | Complete |
 | `M11.30` | Leaf worktrees get the project's environment set up | task | Agentic-led | Not Started |
@@ -145,7 +145,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.36` | A resumed reviewer session may approve a delta it was shown | task | Agentic-led | Not Started |
 | `M11.37` | review-packet warns when the brief or summary names a file not committed at the reviewed commit | task | Agentic-led | Complete |
 | `M11.38` | handoff status says who can still supply a missing approval | task | Agentic-led | Complete |
-| `M11.39` | A roster entry can be marked unavailable without deleting it | task | Agentic-led | Not Started |
+| `M11.39` | A roster entry can be marked unavailable without deleting it | task | Agentic-led | Complete |
 | `M11.40` | worker reconcile works on merged leaves and separates untracked files | task | Agentic-led | Not Started |
 | `M11.41` | The two review-gate settings cannot silently disagree | task | Agentic-led | Complete |
 | `M11.42` | session end finds the session the same agent started | task | Agentic-led | Complete |
@@ -173,13 +173,13 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.64` | abort-task-pickup treats untracked files the way pickup does | task | Agentic-led | Not Started |
 | `M11.65` | why-blocked reports touch-zone holds from the plan | task | Agentic-led | Not Started |
 | `M11.66` | specy-road --version identifies the code when run from a checkout | task | Agentic-led | Not Started |
-| `M11.67` | Worker usage prices Cursor runs from the roster's price table | task | Agentic-led | Not Started |
+| `M11.67` | Worker usage prices Cursor runs from the roster's price table | task | Agentic-led | Complete |
 | `M11.68` | A re-delegated executor starts from the blocking review findings | task | Agentic-led | Not Started |
 | `M11.69` | A leaf that adds a schema key can be gated and finished | task | Agentic-led | Not Started |
 | `M11.70` | Touch zones are checked when they are written | task | Agentic-led | Not Started |
 | `M11.71` | Review loops escalate on their own and criteria are written with bounds | task | Agentic-led | Complete |
-| `M11.72` | A reviewer run that ends without a record is reported as a failure | task | Agentic-led | Not Started |
+| `M11.72` | A reviewer run that ends without a record is reported as a failure | task | Agentic-led | Complete |
 | `M11.73` | specy-road ready warns when the leaf no longer merges cleanly | task | Agentic-led | Not Started |
-| `M11.74` | Pickup and finish in one checkout take a shared lock in order | task | Agentic-led | Not Started |
+| `M11.74` | Pickup and finish in one checkout take a shared lock in order | task | Agentic-led | Complete |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

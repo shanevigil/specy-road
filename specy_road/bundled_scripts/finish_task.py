@@ -52,6 +52,7 @@ from specy_road.on_complete_session import (
 )
 from specy_road.runtime_paths import resolve_repo_root
 from specy_road.bundled_scripts.repo_ops import current_branch, git_run
+from specy_road.repo_lock import pickup_finish_lock
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
 #: so the name exists at import. Resolving the real root here would make
@@ -303,6 +304,11 @@ def main(argv: list[str] | None = None) -> None:
     global ROOT
     args = parse_finish_args(argv if argv is not None else sys.argv[1:])
     ROOT = resolve_repo_root(args)
+    with pickup_finish_lock(ROOT, operation="finish-this-task"):
+        _finish_locked(args)
+
+
+def _finish_locked(args) -> None:
     branch = current_branch(ROOT)
     if not branch.startswith("feature/rm-"):
         print(
