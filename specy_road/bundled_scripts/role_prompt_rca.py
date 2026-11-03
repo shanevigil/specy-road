@@ -106,14 +106,15 @@ def reviewer_precondition(node_id: str, t, packet: Path, prefix: str) -> list[st
     ]
 
 
-def precondition(role: str, node_id: str, t, packet: Path, prefix: str = "") -> list[str]:
+def precondition(role: str, node_id: str, t, packet: Path, prefix: str = "", forced: bool = False) -> list[str]:
+    """``forced``: an ``rca`` prompt a coordinator started with ``--force``, so the leaf is not ``escalated``."""
     branch = t.entry.get("branch") if t.entry else None
     if role == "reviewer":
         return reviewer_precondition(node_id, t, packet, prefix)
     if role == "executor":
         missing = (f"`{prefix}work/brief-{node_id}.md` does not exist, or the branch "
                    f"`{branch or 'feature/rm-<codename>'}` is not checked out")
-    elif role == "rca":
+    elif role == "rca" and not forced:
         missing = f"`specy-road handoff status {node_id}` does not report `escalated`"
     else:
         missing = f"the registry claim for `{node_id}` does not exist"

@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
+from tests.helpers import script_subprocess_env
 from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
 
 from specy_road.bundled_scripts import review_cli
@@ -204,7 +206,75 @@ def test_bare_reviewer_launch_tracks_a_session_only_when_asked(tmp_path: Path) -
     assert ClaudeCode().reviewer_launch(prompt, "m", tmp_path, session=("s1", True)).argv[4:6] == ["--resume", "s1"]
 
 
+USAGE_LIMIT = "You've hit your usage limit for Opus. Try again after 11pm."
+
+
+def test_handoff_policy_line_names_a_usage_limit_reviewer_failure(tmp_path: Path, capsys) -> None:
+    repo, spec = _repo(tmp_path)
+    _steps(repo, spec, {"error": USAGE_LIMIT, "exit": 1})
+    assert _delegate(repo, "--retries", "0") == 1
+    st = _status(repo, capsys)
+    assert st["policy_met"] is False
+    assert "reviewer failure (opus):" in st["policy"] and "usage limit" in st["policy"].lower()
+    events = st["review_runs"][0]["events"]
+    assert events[-1]["type"] == "reviewer-failure" and "usage limit" in events[-1]["error"].lower()
+
+
+def test_successful_delegate_run_has_no_reviewer_failure_event(tmp_path: Path, capsys) -> None:
+    repo, spec = _repo(tmp_path)
+    _steps(repo, spec, _files_record(repo))
+    assert _delegate(repo) == 0
+    run = _status(repo, capsys)["review_runs"][0]
+    assert run["state"] == "complete" and not run.get("events")
+
+
+def test_prompt_cli_channel_records_usage_limit_and_shows_it_on_the_gate_line(tmp_path: Path, capsys, monkeypatch) -> None:
+    from specy_road.bundled_scripts import role_prompt
+    from tests.test_models_and_prompt import run_main
+
+    script = tmp_path / "fake_cli.py"
+    script.write_text(
+        "import sys\nprint(sys.argv[1])\nprint(\"You've hit your usage limit\", file=sys.stderr)\nraise SystemExit(1)\n"
+    )
+    cli = f"{sys.executable} {{prompt}}"
+    repo = make_review_repo(tmp_path, orchestration=_roster(cli.replace("{prompt}", script.as_posix() + " {prompt}")))
+    (reviews_dir(repo, "M1.1")).mkdir(parents=True, exist_ok=True)
+    (reviews_dir(repo, "M1.1") / "PACKET.md").write_text("# Review packet\n\n**Commit under review:** HEAD\n")
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+                    "--repo-root", str(repo)) == 1
+    run = load_run(repo, "M1.1", "opus")
+    assert run["source"] == "prompt-cli" and run["state"] == "incomplete"
+    assert run["events"][-1]["type"] == "reviewer-failure" and "usage limit" in run["events"][-1]["error"].lower()
+    st = _status(repo, capsys)
+    assert "reviewer failure (opus):" in st["policy"] and "usage limit" in st["policy"].lower()
+
+
 def test_capacity_error_reads_provider_wording() -> None:
     assert capacity_error(["ok", CAPACITY])
     assert capacity_error(["429 Too Many Requests"]) and capacity_error(["You've hit your usage limit"])
     assert capacity_error(["RESOURCE_EXHAUSTED"]) and not capacity_error(["SyntaxError: bad input"])
+
+
+def test_prompt_cli_exception_closes_the_run_incomplete(tmp_path: Path, monkeypatch) -> None:
+    from specy_road.bundled_scripts import role_prompt
+
+    repo, _spec = _repo(tmp_path)
+
+    def boom(*_a, **_k):
+        raise RuntimeError("harness exploded")
+
+    monkeypatch.setattr(role_prompt, "run_cli_channel", boom)
+    with pytest.raises(RuntimeError, match="harness exploded"):
+        role_prompt.main(["M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+                          "--repo-root", str(repo)])
+    run = load_run(repo, "M1.1", "opus")
+    assert run["state"] == "incomplete" and run["ended_at"]
+    assert run["events"][-1]["type"] == "reviewer-failure"
+    assert "interrupted: harness exploded" in run["events"][-1]["error"]
+
+
+def test_review_cli_module_main_prints_usage() -> None:
+    done = subprocess.run([sys.executable, "-m", "specy_road.bundled_scripts.review_cli", "-h"],
+                          capture_output=True, text=True, env=script_subprocess_env())
+    assert done.returncode == 0
+    assert "usage:" in done.stdout.lower()

@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+import subprocess
+from pathlib import Path
+
 import yaml
 import pytest
 
 from specy_road.bundled_scripts import do_next_task as dnt
+
+
+def _git_init(root: Path) -> None:
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
 from specy_road.bundled_scripts.registration_pickup_commit import (
     REGISTRATION_COMMIT_CI_SKIP_SUFFIX,
     registration_commit_message,
@@ -28,6 +35,7 @@ def _pickup_test_node() -> dict:
 
 def test_pickup_git_order_after_sync(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     """brief → register commit on integration → checkout -b feature (push mocked out)."""
+    _git_init(tmp_path)
     calls: list[list[str]] = []
 
     def fake_git(_root, *args: str) -> None:
@@ -80,6 +88,7 @@ def test_pickup_git_order_after_sync(monkeypatch: pytest.MonkeyPatch, tmp_path) 
 
 def test_pickup_git_order_pushes_by_default(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     """Default: add → commit (with CI skip suffix) → push integration → checkout -b feature."""
+    _git_init(tmp_path)
     calls: list[list[str]] = []
 
     def fake_git(_root, *args: str) -> None:
@@ -127,6 +136,7 @@ def test_pickup_registers_leaf_claim_only(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path,
 ) -> None:
+    _git_init(tmp_path)
     calls: list[list[str]] = []
 
     def fake_git(_root, *args: str) -> None:
@@ -185,6 +195,7 @@ def test_pickup_rejects_non_leaf_when_available_returns_parent(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Non-leaf from _available triggers assert_leaf_target before git."""
+    _git_init(tmp_path)
 
     def fake_git(*_args: str) -> None:  # pragma: no cover
         pytest.fail(
@@ -263,6 +274,7 @@ def test_registration_commit_message_ci_skip_toggle() -> None:
 
 
 def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    _git_init(tmp_path)
     calls: list[list[str]] = []
 
     def fake_git(_root, *args: str) -> None:

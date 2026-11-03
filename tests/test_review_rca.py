@@ -111,10 +111,11 @@ def test_rca_prompt_refuses_when_not_escalated_and_for_a_party(tmp_path: Path) -
     assert "'opus' implemented or reviewed M1.1" in err
 
 
-def _rca(repo: Path, *, primary: str = "specification", round_: int = 3, rewrite: bool = True) -> Path:
+def _rca(repo: Path, *, primary: str = "specification", round_: int = 3, rewrite: bool = True,
+         trigger: dict | None = None) -> Path:
     data = {
         "node_id": "M1.1", "model": "sol", "date": "2026-10-29",
-        "trigger": {"rule": "same_acceptance", "acceptance_ids": ["A1"], "round": round_},
+        "trigger": trigger or {"rule": "same_acceptance", "acceptance_ids": ["A1"], "round": round_},
         "classification": {"primary": primary, "confidence": 0.8},
         "evidence": [{"kind": "finding", "ref": "round 2/opus", "supports": "primary",
                       "note": "each round names a new input class"}],
@@ -227,3 +228,92 @@ def test_reviewer_prompt_says_the_loop_is_escalated_until_an_rca_exists(tmp_path
     _rca(repo)
     text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="reviewer", model="sol")
     assert err is None and "## Loop escalated" not in text
+
+
+FAMILY_ROSTER = ROSTER + "  - {id: sonnet, family: anthropic, roles: [reviewer]}\n"
+
+
+def _family_round(repo: Path, n: int, model: str, verdict: str = "block", fails: str = "A1") -> None:
+    """One more commit; ``model`` files ``verdict``, failing only ``fails`` when it blocks."""
+    commit_file(repo, f"src/f{n}.py", f"f = {n}\n", f"fix {n}")
+    blocks = verdict == "block"
+    text = review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict=verdict,
+                       a1="fail" if blocks and fails == "A1" else "pass")
+    notes = repo.parent / "notes.md"
+    notes.write_text(text.replace("A2: pass", "A2: fail") if blocks and fails == "A2" else text)
+    assert _run("review", "record", "M1.1", "--model", model, "--verdict", verdict,
+                "--file", str(notes), "--repo-root", str(repo)) == 0
+
+
+def test_one_family_blocking_three_rounds_escalates_across_ids_and_models(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=FAMILY_ROSTER)
+    _family_round(repo, 1, "opus", fails="A1")
+    _family_round(repo, 2, "sonnet", fails="A2")
+    assert _status(repo, capsys)[1]["state"] == "blocked"
+    _family_round(repo, 3, "opus", fails="A2")   # A1, A2, A2: no id fails in all three rounds
+    code, st = _status(repo, capsys)
+    assert (code, st["state"]) == (1, "escalated")
+    esc = st["escalation"]
+    assert (esc["rule"], esc["family"], esc["acceptance_ids"], esc["round"]) == ("same_family", "anthropic", [], 3)
+    assert "anthropic reviewers blocked the last 3 rounds they reviewed" in esc["describe"]
+    text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="rca", model="sol")
+    assert err is None and "trigger: {rule: same_family, acceptance_ids: [], round: 3}" in text
+    _rca(repo, trigger={"rule": "same_family", "acceptance_ids": [], "round": 3})
+    code, st = _status(repo, capsys)
+    assert (code, st["state"]) == (1, "blocked") and not any("RCA" in p for p in st["problems"])
+
+
+def test_a_family_approval_resets_its_count_and_families_count_apart(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=FAMILY_ROSTER)
+    _family_round(repo, 1, "opus", fails="A1")
+    _family_round(repo, 2, "sonnet", fails="A2")
+    _family_round(repo, 3, "opus", verdict="approve")
+    _family_round(repo, 4, "sol", fails="A2")   # three blocks in a row, but from two families
+    code, st = _status(repo, capsys)
+    assert (code, st["state"], st["escalation"]) == (1, "blocked", None)
+
+
+def test_force_starts_an_rca_with_a_recorded_reason(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ROSTER)
+    _block_round(repo, 1)
+    reason = "each round names a new input class"
+    text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="rca", model="sol", force_reason=reason)
+    assert err is None
+    assert f"a coordinator forced an analysis, giving the reason {reason!r} (forced, round 1)" in text
+    assert f'trigger: {{rule: forced, acceptance_ids: [], round: 1, reason: "{reason}"}}' in text
+    assert "does not report `escalated`" not in text and "the registry claim for `M1.1` does not exist" in text
+    err = role_prompt.build_prompt(repo, "M1.1", role="rca", model="opus", force_reason=reason)[2]
+    assert "'opus' implemented or reviewed M1.1" in err
+    out = tmp_path / "prompt.md"
+    with pytest.raises(SystemExit) as e:
+        role_prompt.main(["M1.1", "--role", "rca", "--model", "sol", "--force", "--reason", reason,
+                          "-o", str(out), "--repo-root", str(repo)])
+    assert e.value.code == 0 and "rule: forced" in out.read_text()
+    trigger = {"rule": "forced", "acceptance_ids": [], "round": 1}
+    _rca(repo, round_=1, trigger=trigger)   # the reason is required
+    assert any("RCA-1.md: invalid" in p and "reason" in p for p in _status(repo, capsys)[1]["problems"])
+    _rca(repo, round_=1, trigger={**trigger, "reason": reason})
+    code, st = _status(repo, capsys)
+    assert (code, st["state"]) == (1, "blocked") and not any("RCA" in p for p in st["problems"])
+    err = role_prompt.build_prompt(repo, "M1.1", role="rca", model="sol", force_reason=reason)[2]
+    assert "no review round since the last root-cause analysis" in err
+
+
+@pytest.mark.parametrize("args", [["--role", "rca", "--force"], ["--role", "rca", "--reason", "why"],
+                                  ["--role", "rca", "--force", "--reason", " "],
+                                  ["--role", "reviewer", "--force", "--reason", "why"]])
+def test_force_needs_the_rca_role_and_a_reason(tmp_path: Path, args: list[str]) -> None:
+    with pytest.raises(SystemExit) as e:
+        role_prompt.main(["M1.1", "--model", "sol", *args, "--repo-root", str(tmp_path)])
+    assert e.value.code == 2
+
+
+def test_an_active_escalation_wins_over_force(tmp_path: Path, capsys) -> None:
+    repo = _escalated_repo(tmp_path)
+    capsys.readouterr()
+    text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="rca", model="sol", force_reason="why")
+    assert err is None and "rule: same_acceptance" in text and "rule: forced" not in text
+    assert "--force is ignored" in capsys.readouterr().err
+    _rca(repo, trigger={"rule": "forced", "acceptance_ids": [], "round": 3, "reason": "why"})
+    st = _status(repo, capsys)[1]
+    assert st["state"] == "escalated" and any("trigger.rule is 'forced'" in p for p in st["problems"])

@@ -63,6 +63,7 @@ from specy_road.planning_scaffold_check import warn_scaffold_at_pickup
 from specy_road.runtime_paths import resolve_repo_root
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch, git_run, sync_integration_branch
+from specy_road.repo_lock import pickup_finish_lock
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
 #: so the name exists at import. Resolving the real root here would make
@@ -352,6 +353,11 @@ def main(argv: list[str] | None = None) -> None:
     args = parse_do_next_task_args(argv)
     include_ci_skip = not args.no_ci_skip_in_message
     ROOT = resolve_repo_root(args)
+    with pickup_finish_lock(ROOT, operation="do-next-available-task"):
+        _run_pickup(args, include_ci_skip=include_ci_skip)
+
+
+def _run_pickup(args, *, include_ci_skip: bool) -> None:
     refuse_linked_worktree(ROOT, local=args.local, worktree=args.worktree)
     base, remote, gw_warns = resolve_integration_defaults(
         ROOT,

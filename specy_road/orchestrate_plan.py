@@ -16,8 +16,10 @@ Rules, in the order they apply:
   not see it.
 * **Eligibility (§3.1).** A leaf's ``executor_eligibility`` (default ``any``)
   names a roster ``class`` tag; only executors carrying that tag qualify.
-* **Availability (§3.7).** A roster entry with ``unavailable_until`` on or
-  after today is skipped; substitutions already model who stands in.
+* **Availability (§3.7).** A roster entry with ``available: false``, or with
+  ``paused_until`` (or legacy ``unavailable_until``) still in force, is skipped;
+  ``roadmap/orchestration.local.yaml`` can set those fields without a push.
+  Substitutions already model who stands in.
 * **Cost (§3.7).** Among capable executors (profile executor score ≥ 3, or no
   profile), the roster ``class`` ranks first (``cheap``, then untagged or other
   tags, then ``senior``), then list price, then ``billing_route`` (a
@@ -36,7 +38,7 @@ config) is a one-function decision.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -72,10 +74,59 @@ def may_handle(entry: dict[str, Any], sensitivity: str) -> bool:
     return sensitivity in entry_may_process(entry)
 
 
-def is_available(entry: dict[str, Any], today: date | None = None) -> bool:
-    """False while ``unavailable_until`` (inclusive) has not passed."""
-    until = entry.get("unavailable_until")
-    return not until or str(until) < (today or date.today()).isoformat()
+def _pause_boundary(entry: dict[str, Any]) -> str | None:
+    return entry.get("paused_until") or entry.get("unavailable_until")
+
+
+def _as_utc(now: datetime | date | None) -> datetime:
+    if now is None:
+        return datetime.now(timezone.utc)
+    if isinstance(now, date) and not isinstance(now, datetime):
+        return datetime.combine(now, datetime.min.time(), tzinfo=timezone.utc)
+    if now.tzinfo is None:
+        return now.replace(tzinfo=timezone.utc)
+    return now.astimezone(timezone.utc)
+
+
+def _pause_active(entry: dict[str, Any], now: datetime | date | None = None) -> bool:
+    """True while a date (inclusive through that day) or datetime pause has not passed."""
+    raw = _pause_boundary(entry)
+    if not raw:
+        return False
+    s = str(raw)
+    current = _as_utc(now)
+    if len(s) == 10:
+        return s >= current.date().isoformat()
+    try:
+        until = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if until.tzinfo is None:
+        until = until.replace(tzinfo=timezone.utc)
+    return current < until.astimezone(timezone.utc)
+
+
+def is_available(entry: dict[str, Any], now: datetime | date | None = None) -> bool:
+    """False when ``available: false`` or a pause is still in force."""
+    if entry.get("available") is False:
+        return False
+    return not _pause_active(entry, now)
+
+
+def unavailability_reason(entry: dict[str, Any], now: datetime | date | None = None) -> str | None:
+    """Why :func:`is_available` is false, for delegate and prompt refusals."""
+    if entry.get("available") is False:
+        return "available: false"
+    if _pause_active(entry, now):
+        if entry.get("paused_until"):
+            return f"paused until {entry['paused_until']}"
+        if entry.get("unavailable_until"):
+            return f"unavailable until {entry['unavailable_until']}"
+    return None
+
+
+def unavailable_prompt_error(model: str, entry: dict[str, Any]) -> str:
+    return f"{model!r} is unavailable ({unavailability_reason(entry) or 'availability'})"
 
 
 @dataclass
