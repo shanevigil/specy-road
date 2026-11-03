@@ -2,9 +2,10 @@
 
 An evaluation of reviewer effectiveness found approving reviewers re-running only the executor's own
 tests, reading loose acceptance text in the leaf's favour, and naming real defects in their notes as
-"advisory" or "non-blocking" while approving. :data:`PROBE_RULES_LINES` goes into every reviewer prompt;
-:func:`check_record` is the record check for ``specy-road review record``, which also refuses an approve whose
-findings or notes name a defect with neither a ``required_changes`` entry nor a :data:`NOT_A_DEFECT` line.
+"advisory" or "non-blocking", or describing a crash or lost data, while approving. :data:`PROBE_RULES_LINES`
+goes into every reviewer prompt; :func:`check_record` is the record check for ``specy-road review record``,
+which also refuses an approve whose findings or notes name a defect or describe a concrete failure with neither
+a ``required_changes`` entry nor a :data:`NOT_A_DEFECT` line.
 """
 
 from __future__ import annotations
@@ -30,14 +31,34 @@ PROBE_RULES_LINES = [
     "minor; do not read a loose criterion in the leaf's favour.",
     "4. List every defect your notes or findings describe under `required_changes` (and block), or explain on "
     f"that same line why it is not one, starting `{NOT_A_DEFECT}`. `review record` refuses an approve whose "
-    "findings or notes call something advisory, non-blocking, minor, a nit, a bug or a defect without that "
-    "line; text you quote in backticks or on a `>` line is not checked.",
+    "findings or notes call something advisory, non-blocking, minor, a nit, a bug or a defect, or describe a "
+    "concrete failure (it crashes, hangs, drops or loses data, returns a wrong result), without that line; text "
+    "you quote in backticks or on a `>` line is not checked.",
     "",
 ]
-# Words a reviewer uses for a defect it lets through. `defect` and `bug` count unless negated ("no defect").
-_DEFECT = re.compile(r"\b(advisory|non-?blocking|not\s+blocking|nit(?:pick)?s?|minor|cosmetic|residual|latent|"
-                     r"optional\s+fix|weak\s+assertions?|bugs?|defects?)\b", re.I)
-_NEGATED = re.compile(r"\b(?:no|none|nothing|not\s+an?|without|zero|never)\s+(?:[\w'-]+\s+){0,3}$", re.I)
+# Words a reviewer uses for a defect it lets through, and wording that describes a concrete failure.
+# Each counts unless negated ("no defect", "never crashes"); bare "fails" or "drops" usually describe intended
+# behaviour (a refusal, a filter), so only a drop or loss of something a user keeps counts.
+_KEPT = (r"(?:data|records?|reviews?|work|changes?|commits?|files?|messages?|events?|entr(?:y|ies)|input|output|"
+         r"results?|state|edits?)")
+_DEFECT = re.compile(
+    r"\b(advisory|non-?blocking|not\s+blocking|nit(?:pick)?s?|minor|cosmetic|residual|latent|optional\s+fix|"
+    r"weak\s+assertions?|bugs?|defects?|crash(?:es|ed|ing)?|hangs?|hung|deadlocks?|corrupt(?:s|ed|ion|ing)?|"
+    r"data\s+loss|leaks?|leaking|infinite\s+loop|race\s+condition|(?:unhandled|uncaught)\s+(?:exception|error)s?|"
+    r"traceback|incorrect(?:ly)?|"
+    r"(?:drops?|dropped|dropping|loses?|losing|overwrites?|overwrote|overwriting)\s+"
+    rf"(?:(?:the|a|an|its|their|this|that|any|every|all|some|user's)\s+)?(?:[\w'-]+\s+)?{_KEPT}|"
+    r"(?:is|are|was|were|gets?|got)\s+(?:silently\s+)?(?:lost|dropped|corrupted|overwritten)|"
+    r"silently\s+(?:drop|ignore|accept|lose|skip|swallow|fail|pass)\w*|"
+    r"(?:returns?|gives?|prints?|reports?|writes?)\s+(?:the\s+|a\s+)?wrong|"
+    r"wrong\s+(?:result|answer|value|output|path|commit|exit)s?)\b", re.I)
+# A negation only negates when nothing but qualifiers stand between it and the word: "no other correctness
+# defect" is negated, "no workaround for this bug" is not.
+_QUALIFIER = (r"(?:other|more|new|real|known|actual|obvious|remaining|further|such|open|proven|significant|serious|"
+              r"blocking|correctness|regression|boundary|functional|visible|user-visible|outstanding|additional|"
+              r"reachable|concrete|demonstrated|longer)")
+_NEGATED = re.compile(r"\b(?:no|none|nothing|not(?:\s+an?)?|\w+n't|cannot|without|zero|never|rather\s+than|"
+                      rf"instead\s+of)\s+(?:{_QUALIFIER}\s+){{0,3}}$", re.I)
 _CODE_SPAN = re.compile(r"`[^`]*`")
 
 

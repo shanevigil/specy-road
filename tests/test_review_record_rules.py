@@ -70,6 +70,36 @@ def test_record_refuses_an_approve_whose_notes_name_a_defect(tmp_path: Path, cap
     assert not review_path(repo, "M1.1", "opus").exists()
 
 
+def test_record_refuses_an_approve_whose_finding_describes_a_crash(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    finding = "The command crashes on empty input and drops the review."
+    assert _record(repo, findings={"correctness": [finding]}) == 1
+    assert 'findings.correctness[0] says "crashes"' in capsys.readouterr().err
+    assert not review_path(repo, "M1.1", "opus").exists()
+
+
+def test_record_refuses_an_approve_where_no_workaround_does_not_negate_the_bug(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, notes="A1 pass.\nThere is no workaround for this bug: empty input loses the review.\n") == 1
+    assert 'notes line 2 says "bug"' in capsys.readouterr().err
+    assert not review_path(repo, "M1.1", "opus").exists()
+
+
+def test_record_names_every_offending_finding_and_line(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    findings = {"correctness": ["Checked the lock order.", "A queued message is lost when the wrapper dies."],
+                "regression": ["The sync silently drops unreadable events."]}
+    notes = "No other correctness defect proved.\nIt hangs on a closed pipe.\nNo crash on empty input.\n"
+    assert _record(repo, findings=findings, notes=notes) == 1
+    err = capsys.readouterr().err
+    for where in ('findings.correctness[1] says "is lost"', 'findings.regression[0] says "silently drops"',
+                  'notes line 2 says "hangs"'):
+        assert where in err
+    assert "findings.correctness[0]" not in err and "notes line 1" not in err and "notes line 3" not in err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
 def test_record_files_an_approve_with_no_findings(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     assert _record(repo, notes="No defect found; no bugs.\n") == 0
@@ -99,6 +129,15 @@ def test_record_files_a_block_that_lists_the_defect(tmp_path: Path, capsys) -> N
     ("> refuses an approve whose notes name a defect", None),
     ("## Defects", None),
     ("Advisory: x. Not a defect because no caller reaches it.", None),
+    ("The command crashes on empty input and drops the review.", "crashes"),
+    ("There is no workaround for this bug.", "bug"),
+    ("There is no test for this bug.", "bug"),
+    ("It overwrites the user's edits.", "overwrites the user's edits"),
+    ("`ops.delegate` returns the wrong commit.", "returns the wrong"),
+    ("It no longer crashes; it doesn't drop data; no known bug.", None),
+    ("Malformed values are treated as missing rather than crashing the gate.", None),
+    ("Default drops a leaf that still has a placeholder; one parametrize case dropped.", None),
+    ("The test fails without the fix and raises ReviewTargetError on an unknown node.", None),
 ])
 def test_defect_word(line: str, word: str | None) -> None:
     assert defect_word(line) == word
