@@ -209,7 +209,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.64_abort-untracked-like-pickup_099973ff-86a7-4fbb-9882-6231169d204b.md",
       "sibling_order": 64,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "abort-task-pickup treats untracked files the way pickup does",
       "touch_zones": [
         "specy_road/bundled_scripts/abort_task_pickup.py",

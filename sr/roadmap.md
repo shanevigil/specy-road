@@ -170,7 +170,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.61` | The context meter counts Claude rules, auto memory, Cursor nested AGENTS.md and Copilot path instructions | task | Agentic-led | Complete |
 | `M11.62` | Headless runs report usage limits and denied actions instead of looking like success | task | Agentic-led | Not Started |
 | `M11.63` | do-next-available-task refuses a second claim in a checkout that already holds one | task | Agentic-led | Not Started |
-| `M11.64` | abort-task-pickup treats untracked files the way pickup does | task | Agentic-led | Not Started |
+| `M11.64` | abort-task-pickup treats untracked files the way pickup does | task | Agentic-led | Complete |
 | `M11.65` | why-blocked reports touch-zone holds from the plan | task | Agentic-led | Not Started |
 | `M11.66` | specy-road --version identifies the code when run from a checkout | task | Agentic-led | Not Started |
 | `M11.67` | Worker usage prices Cursor runs from the roster's price table | task | Agentic-led | Complete |
