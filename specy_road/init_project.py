@@ -9,7 +9,7 @@ from pathlib import Path
 
 from specy_road.agents_md_block import apply_agents_md_block
 from specy_road.managed_block import UNCHANGED
-from specy_road.model_profiles import PROFILES_REL
+from specy_road.model_profiles import PROFILES_REL, load_profile
 from specy_road.runtime_paths import (
     git_root,
     prefix_within,
@@ -26,29 +26,44 @@ _PROFILES_ALWAYS = frozenset({"README.md", "harness-facts.yaml"})
 class InitProfilesSelection:
     mode: str  # all | none | subset
     tokens: frozenset[str] = frozenset()
+    profile_rels: frozenset[str] = frozenset()
 
 
 def bundled_profiles_template_dir() -> Path:
     return project_template_root() / PROFILES_REL
 
 
-def index_bundled_profile_names(src_dir: Path) -> tuple[frozenset[str], frozenset[str], dict[str, str]]:
-    """Family directory names, profile ``api_id`` stems, and ``api_id`` → path under ``model-profiles/``."""
+def index_bundled_profile_names(
+    src_dir: Path,
+) -> tuple[frozenset[str], frozenset[str], dict[str, tuple[str, ...]]]:
+    """Family directory names, file stems and front-matter ``api_id`` values, and token → rels.
+
+    A token matches the same names ``Profile.api_id`` / ``Profile.for_id`` use (front-matter
+    ``api_id``, else the file stem) plus the file stem itself. One ``api_id`` can name several files.
+    """
     families: set[str] = set()
-    api_ids: set[str] = set()
-    rel_by_api: dict[str, str] = {}
-    for src in src_dir.rglob("*.md"):
-        if src.name == "README.md":
-            continue
+    rels_by_token: dict[str, list[str]] = {}
+
+    def add(token: str, rel: str) -> None:
+        bucket = rels_by_token.setdefault(token, [])
+        if rel not in bucket:
+            bucket.append(rel)
+
+    for src in sorted(p for p in src_dir.rglob("*.md") if p.name != "README.md"):
         rel_in = src.relative_to(src_dir).as_posix()
         parts = Path(rel_in).parts
         if len(parts) < 2:
             continue
         families.add(parts[0])
-        api_id = Path(rel_in).stem
-        api_ids.add(api_id)
-        rel_by_api[api_id] = rel_in
-    return frozenset(families), frozenset(api_ids), rel_by_api
+        add(parts[0], rel_in)
+        add(Path(rel_in).stem, rel_in)
+        add(load_profile(src).api_id, rel_in)
+    family_set = frozenset(families)
+    return (
+        family_set,
+        frozenset(k for k in rels_by_token if k not in family_set),
+        {k: tuple(v) for k, v in rels_by_token.items()},
+    )
 
 
 def parse_init_profiles_spec(spec: str) -> InitProfilesSelection:
@@ -60,17 +75,24 @@ def parse_init_profiles_spec(spec: str) -> InitProfilesSelection:
         return InitProfilesSelection("none")
     tokens = frozenset(t.strip() for t in raw.split(",") if t.strip())
     if not tokens:
-        raise ValueError("--profiles needs all, none, or a comma-separated list of family or api_id names")
+        raise ValueError(
+            "--profiles needs all, none, or a comma-separated list of family directory names "
+            "(for example anthropic-claude), file stems, or front-matter api_id values"
+        )
     return InitProfilesSelection("subset", tokens)
 
 
-def validate_init_profiles_selection(selection: InitProfilesSelection, src_dir: Path) -> None:
+def validate_init_profiles_selection(
+    selection: InitProfilesSelection, src_dir: Path
+) -> InitProfilesSelection:
     if selection.mode != "subset":
-        return
-    families, api_ids, _ = index_bundled_profile_names(src_dir)
-    unknown = selection.tokens - families - api_ids
+        return selection
+    families, names, rels_by_token = index_bundled_profile_names(src_dir)
+    unknown = selection.tokens - families - names
     if unknown:
         raise ValueError(f"unknown profile name(s): {', '.join(sorted(unknown))}")
+    rels = frozenset(r for t in selection.tokens for r in rels_by_token[t])
+    return InitProfilesSelection(selection.mode, selection.tokens, rels)
 
 
 def include_template_profiles_file(rel: Path, selection: InitProfilesSelection) -> bool:
@@ -85,12 +107,7 @@ def include_template_profiles_file(rel: Path, selection: InitProfilesSelection) 
         return True
     if selection.mode == "none":
         return False
-    if rel_in.suffix != ".md":
-        return False
-    parts = rel_in.parts
-    if len(parts) < 2:
-        return False
-    return parts[0] in selection.tokens or rel_in.stem in selection.tokens
+    return rel_in.as_posix() in selection.profile_rels
 
 
 def project_template_root() -> Path:
@@ -143,7 +160,7 @@ def run_init_project(  # noqa: C901 — baseline 2026-10-28; simplify, then drop
         profile_selection = parse_init_profiles_spec(profiles)
         profiles_src = bundled_profiles_template_dir()
         if profiles_src.is_dir():
-            validate_init_profiles_selection(profile_selection, profiles_src)
+            profile_selection = validate_init_profiles_selection(profile_selection, profiles_src)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1

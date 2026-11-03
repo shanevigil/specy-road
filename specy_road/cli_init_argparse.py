@@ -45,8 +45,9 @@ def build_specy_road_init_parser() -> argparse.ArgumentParser:
         metavar="SPEC",
         help=(
             "Which model profiles to scaffold: all (default), none, or a comma-separated list of "
-            "family directory or api_id names. Always includes model-profiles/README.md and "
-            "harness-facts.yaml."
+            "family directory names (for example anthropic-claude), file stems, or front-matter "
+            "api_id values. Roster family values (anthropic, openai, …) are not accepted. Always "
+            "includes model-profiles/README.md and harness-facts.yaml."
         ),
     )
     pg = sub.add_parser(

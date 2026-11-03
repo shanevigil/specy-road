@@ -95,6 +95,29 @@ def test_refresh_profiles_only_adds_one_missing_profile(tmp_path: Path, capsys) 
     assert not (repo / "model-profiles" / "anthropic-claude").exists()
 
 
+def test_init_project_profiles_api_id_that_differs_from_stem(tmp_path: Path) -> None:
+    assert run_init_project(tmp_path, profiles="deepseek-flash") == 0
+    names = {
+        p.name
+        for p in _model_profiles_paths(tmp_path)
+        if p.suffix == ".md" and p.name != "README.md"
+    }
+    assert names == {"deepseek-v4.1-flash-1017.md", "deepseek-v4.1-flash-20260910.md"}
+
+
+def test_refresh_profiles_only_adds_every_match_for_shared_api_id(tmp_path: Path) -> None:
+    from specy_road.bundled_scripts import refresh_profiles as rp
+
+    repo = tmp_path / "r"
+    repo.mkdir()
+    written, kept = rp.refresh_profiles(repo, only="deepseek-flash")
+    assert kept == []
+    assert {Path(w).name for w in written} == {
+        "deepseek-v4.1-flash-1017.md",
+        "deepseek-v4.1-flash-20260910.md",
+    }
+
+
 def test_refresh_profiles_without_only_still_adds_every_missing(tmp_path: Path) -> None:
     from specy_road.bundled_scripts import refresh_profiles as rp
 

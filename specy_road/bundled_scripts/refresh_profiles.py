@@ -60,17 +60,17 @@ def refresh_profiles(
     dst_dir = repo_root / PROFILES_REL
     _contained(repo_root, dst_dir)
     forced = {Path(f).as_posix() for f in force or []}
-    only_rel: str | None = None
+    only_rels: set[str] | None = None
     if only is not None:
-        _families, api_ids, rel_by_api = index_bundled_profile_names(src_dir)
-        if only not in api_ids:
+        families, names, rels_by_token = index_bundled_profile_names(src_dir)
+        if only not in names or only in families:
             raise ValueError(f"unknown api_id {only!r}")
-        only_rel = rel_by_api[only]
+        only_rels = set(rels_by_token[only])
     written: list[str] = []
     kept: list[str] = []
     for src in sorted(p for p in src_dir.rglob("*.md")):
         rel_in = src.relative_to(src_dir).as_posix()
-        if only_rel is not None and rel_in != only_rel:
+        if only_rels is not None and rel_in not in only_rels:
             continue
         rel = f"{PROFILES_REL.as_posix()}/{rel_in}"
         dst = dst_dir / rel_in
@@ -196,7 +196,7 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--only",
         metavar="API_ID",
-        help="Add only the named profile (by api_id) when it is missing; default adds every missing profile.",
+        help="Add missing profile(s) whose front-matter api_id or file stem matches; default adds every missing profile.",
     )
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--check", action="store_true",
