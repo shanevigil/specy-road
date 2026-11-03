@@ -33,6 +33,7 @@ class Launch:
     stdin: str | None = None        # prompt text piped in, when the CLI reads it that way
     session_id: str | None = None   # chosen up front, when the harness lets the caller pick
     launch_mode: str = "full"       # the profile's access.launch_mode, checked against what the harness reports
+    env: dict[str, str] | None = None   # set in the harness's environment on top of the wrapper's (Codex: CODEX_HOME)
 
 
 @dataclass(frozen=True)

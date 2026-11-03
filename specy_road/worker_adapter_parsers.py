@@ -11,8 +11,11 @@ from __future__ import annotations
 import json
 import re
 import shlex
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+
+from specy_road.claude_code_limits import NONE, TIMED, classify_limit
 
 
 def _text(prompt_path: Path) -> str:
@@ -190,3 +193,48 @@ def usage_text(u: dict[str, Any]) -> str:
     cost = "$?" if u.get("cost_usd") is None else f"${u['cost_usd']:.4f}" + (" est." if u.get("cost_is_estimate") else "")
     return (f"in {n('input_tokens')} ({n('cached_input_tokens')} cached), out {n('output_tokens')}, "
             f"reasoning {n('reasoning_tokens')}, {cost}")
+
+
+#: Codex names a limit's reset in free text (harness-facts quota): "try again in 2 days 3 hours 5 minutes", or
+#: "try again at 3:05 PM", with a date before the clock when it is not today; the clock is the machine's local time.
+_TRY_IN = re.compile(r"try again in\s+((?:\d+\s*[a-z]+[\s,]*(?:and\s+)?)+)", re.IGNORECASE)
+_UNIT = re.compile(r"(\d+)\s*(days?|d|hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)\b", re.IGNORECASE)
+_TRY_AT = re.compile(r"try again (?:at|after)\s+(?:([a-z]{3})[a-z]*\.? (\d{1,2})(?:st|nd|rd|th)?,? (\d{4}),? )?"
+                     r"(\d{1,2}):(\d{2})\s*([ap])\.?m\.?", re.IGNORECASE)
+_MONTHS = {m: i for i, m in enumerate(("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"), 1)}
+
+
+def _try_again(text: str, now: datetime) -> datetime | None:
+    """The UTC instant a "try again in <duration>" or "try again at <time>" message names, or ``None``."""
+    if m := _TRY_IN.search(text):
+        secs = sum(int(n) * {"d": 86400, "h": 3600, "m": 60, "s": 1}[u[0].lower()] for n, u in _UNIT.findall(m.group(1)))
+        return now + timedelta(seconds=secs) if secs else None
+    if not (m := _TRY_AT.search(text)):
+        return None
+    mon, day, year, hh, mm, ap = m.groups()
+    local = now.astimezone()
+    try:
+        at = local.replace(hour=int(hh) % 12 + (12 if ap.lower() == "p" else 0), minute=int(mm), second=0, microsecond=0)
+        if year:
+            at = at.replace(year=int(year), month=_MONTHS[mon.lower()], day=int(day))
+        elif at <= local:   # a bare clock time is its next occurrence
+            at += timedelta(days=1)
+    except (KeyError, ValueError):
+        return None
+    return at.astimezone(timezone.utc)
+
+
+def limit_detail(text: str, *, failed: bool, now: datetime | None = None) -> dict[str, Any] | None:
+    """``{"reset_at": UTC ISO time or None, "evidence": text}`` when a turn's text says a usage limit stopped it.
+
+    Read from the text, never the exit code. A failed turn needs limit wording (:func:`classify_limit`); a
+    successful one needs a stated reset time as well (Claude reports some limits as subtype success, exit 0), so
+    a reply that only mentions rate limits is not read as one. Codex's "try again" time is read when Claude's
+    "resets" wording is absent.
+    """
+    now = now or datetime.now(timezone.utc)
+    verdict = classify_limit(text, now=now)
+    if verdict.kind == NONE or not (failed or verdict.kind == TIMED):
+        return None
+    reset = verdict.reset_at if verdict.kind == TIMED else _try_again(text, now)
+    return {"reset_at": reset.isoformat() if reset else None, "evidence": _snip(verdict.evidence or text, 300)}

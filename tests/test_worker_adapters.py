@@ -169,12 +169,12 @@ def test_run_marks_completed_when_ready_exists_and_failed_on_nonzero_exit(tmp_pa
     wr.run(repo, rec.worker_id, wa.adapter_for("codex").launch(prompt, repo, "sol", cli))
     rec = ws.load_record(repo, rec.worker_id)
     assert rec.state == "completed" and rec.provider_session_id == "t-9"
-    prompt2, cli2 = _fake(tmp_path, [{"type": "error", "message": "quota"}], fail=True)
+    prompt2, cli2 = _fake(tmp_path, [{"type": "error", "message": "boom"}], fail=True)   # limit wording pauses (M8.2)
     rec2 = ws.create_record(repo, "M1.2", "codex", "sol", repo)
     assert wr.run(repo, rec2.worker_id, wa.adapter_for("codex").launch(prompt2, repo, "sol", cli2)) == 1
     rec2 = ws.load_record(repo, rec2.worker_id)
     assert rec2.state == "failed"
-    assert [e.type for e in ws.events_since(repo, rec2.worker_id)][-3:] == ["error", "usage", "error"]   # nulls: no usage
+    assert [e.type for e in ws.events_since(repo, rec2.worker_id)][-4:] == ["error", "usage", "post_run_check", "error"]   # nulls: no usage
 
 
 def test_run_reports_a_missing_binary_as_failed(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

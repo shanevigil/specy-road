@@ -5,13 +5,22 @@ Split from :mod:`specy_road.worker_adapters` for the file limit; callers reach i
 
 from __future__ import annotations
 
+import json
 import uuid
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 from specy_road.worker_adapter_base import STDIN_INSTRUCTION, Adapter, Capabilities, Launch, Parsed, _bare, _model_flag
-from specy_road.worker_adapter_parsers import _init_detail, _json, _snip, _text, usage_fields
+from specy_road.worker_adapter_parsers import _init_detail, _json, _snip, _text, limit_detail, usage_fields
+
+#: The executor's tools, listed rather than left to the mode: since 2.1.302 ``claude -p`` silently denies a tool
+#: nothing approved, and ``acceptEdits`` approves no shell command beyond the read-only and filesystem sets.
+EXECUTOR_TOOLS = "Read,Edit,Write,Glob,Grep,Bash"
+#: An executor's permissions, the same on launch and resume: the mode, the allow-list, and no prompts (anything
+#: still unresolved is denied and Claude is told not to retry; the denial shows in the stream, see ``parse_events``).
+#: ``--allowedTools`` takes several values, so a single-value flag follows it before the instruction.
+EXECUTOR_PERMISSIONS = ("--allowedTools", EXECUTOR_TOOLS, "--permission-prompts", "none", "--permission-mode", "acceptEdits")
 
 
 class ClaudeCode(Adapter):
@@ -29,7 +38,7 @@ class ClaudeCode(Adapter):
             return replace(custom, launch_mode=launch_mode)   # left as written; only the check uses the mode
         return Launch(["claude", "-p", *_bare(launch_mode), "--output-format", "stream-json", "--verbose",
                        "--session-id", sid, *_model_flag("--model", model), *self.effort_flag(effort),
-                       *self._add_dir(worktree, repo_root, node_id), "--permission-mode", "acceptEdits", STDIN_INSTRUCTION],
+                       *self._add_dir(worktree, repo_root, node_id), *EXECUTOR_PERMISSIONS, STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=sid, launch_mode=launch_mode)
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
@@ -40,7 +49,7 @@ class ClaudeCode(Adapter):
             return replace(custom, launch_mode=launch_mode)
         return Launch(["claude", "-p", *_bare(launch_mode), "--resume", session_id, "--output-format", "stream-json",
                        "--verbose", *self.effort_flag(effort), *self._add_dir(worktree, repo_root, node_id),
-                       "--permission-mode", "acceptEdits", STDIN_INSTRUCTION],
+                       *EXECUTOR_PERMISSIONS, STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=session_id, launch_mode=launch_mode)
 
     def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,
@@ -84,12 +93,35 @@ class ClaudeCode(Adapter):
         return None
 
     def parse_events(self, line: str, launch: Launch) -> list[Parsed]:
-        out = super().parse_events(line, launch)
+        out = [*super().parse_events(line, launch), *self._turn_signals(_json(line))]
         inferred = (out[0].detail or {}).get("inferred_mode") if out and out[0].type == "started" else None
         if inferred and inferred != launch.launch_mode:
             out.append(Parsed("error", f"claude started in {inferred} mode but the profile's launch_mode is "
                                        f"{launch.launch_mode}", out[0].session_id,
                               {"inferred_mode": inferred, "launch_mode": launch.launch_mode}))
+        return out
+
+    @staticmethod
+    def _turn_signals(d: dict[str, Any] | None) -> list[Parsed]:
+        """What the post-run check reads from a line (worker_turn_check): a ``system/api_retry``, each entry of a
+        result's ``permission_denials``, and a usage limit in the result's text (code.claude.com/docs/en/headless)."""
+        if not d:
+            return []
+        sid = d.get("session_id")
+        if d.get("type") == "system" and d.get("subtype") == "api_retry":
+            keys = ("attempt", "max_retries", "retry_delay_ms", "error_status", "error")
+            return [Parsed("api_retry", f"api retry {d.get('attempt')}/{d.get('max_retries')}: {d.get('error')} "
+                                        f"(next in {d.get('retry_delay_ms')} ms)", sid, {k: d.get(k) for k in keys})]
+        if d.get("type") != "result":
+            return []
+        out = [Parsed("permission_denied", f"denied {p.get('tool_name')}: {_snip(json.dumps(p.get('tool_input')), 160)}",
+                      sid, {k: p.get(k) for k in ("tool_name", "tool_input", "tool_use_id")})
+               for p in d.get("permission_denials") or [] if isinstance(p, dict)]
+        limit = limit_detail(str(d.get("result") or d.get("api_error") or ""),
+                             failed=bool(d.get("is_error")) or d.get("subtype") != "success")
+        if limit:
+            out.append(Parsed("usage_limited", f"usage limit; resets {limit['reset_at'] or 'at an unstated time'}",
+                              sid, {**limit, "source": "claude-code result"}))
         return out
 
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:
