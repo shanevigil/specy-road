@@ -186,16 +186,56 @@ faster.
 roster entry with `harness: claude-code` and no `channels.cli`, therefore runs
 
 ```text
-claude -p "<instruction>" --bare --model <api_id> [--effort <level>] --permission-mode acceptEdits \
-  --allowedTools Read,Edit,Bash --add-dir <work/reviews/NODE_ID> < <prompt file>
+claude -p "<instruction>" --bare --session-id <uuid> --output-format stream-json --verbose \
+  --model <api_id> [--effort <level>] --permission-mode acceptEdits --allowedTools Read,Edit,Bash \
+  --disallowedTools "Bash(git commit *)" "Bash(git push *)" "Bash(gh *)" \
+  --json-schema '<review output schema>' --add-dir <work/reviews/NODE_ID> < <prompt file>
 ```
 
 `--add-dir` lets the reviewer write its notes into the hand-off directory, which
 is in the main checkout even when the reviewer runs in a worktree. Bare mode
 never reads OAuth credentials or the keychain, so it needs `ANTHROPIC_API_KEY`
 (or an `apiKeyHelper`) instead of a subscription login; the command prints a
-note saying so. A `channels.cli` is run as written, and other harnesses use
-their profile's `access.cli` as before.
+note saying so. Bare mode also fires no hook, so no hook can stop a commit or
+push: `--disallowedTools` denies them, and `gh`, beside the allowed tools. A
+`codex` or `cursor` entry without `channels.cli` runs its adapter's read-only
+reviewer command instead (next section). A `channels.cli` is run as written, and
+other harnesses use their profile's `access.cli` as before.
+
+## Reviewer output and the read-only check
+
+The reviewer prompt ends with the review output schema: the review-record
+schema without the fields `review record` fills (`family`, `independence`,
+`notes_sha256`, `signature`, `launch_mode`), plus `notes`, the Markdown notes.
+The reviewer ends its reply with one JSON object matching it. Each default
+reviewer command passes the harness's structured-output flag where there is one:
+
+| Harness | Reviewer command | Where the JSON comes from |
+|---|---|---|
+| Claude Code | `--bare`, `--disallowedTools` as above, `--json-schema '<schema>'` | the `result` event's `structured_output`, else its text |
+| Codex | `codex exec --json -c sandbox_mode=read-only -c approval_policy=never --output-schema <file> -o <OUTPUT-<model>.json> -` | the `-o` file; a resume (which documents neither flag) its last `agent_message` |
+| Cursor | `agent -p --output-format stream-json --mode ask --trust` (no `--force`) | the `result` event's text |
+| anything else (`channels.cli`, `generic`) | as written | the last JSON object in the output; Antigravity (`agy`) has no adapter yet, so its `--json-schema` is the entry's own command's to pass |
+
+The schema file is `work/reviews/<NODE_ID>/review-output.schema.json`. After the
+run (`prompt --channel cli` on a default command, or `review delegate`)
+specy-road decides the outcome:
+
+- **review failure** — the run wrote something besides its notes: a changed or
+  untracked file in the checkout it ran in (outside the project's `work/`), a
+  moved `HEAD`, or a `REVIEW-<model>.md` it filed itself, which is put back as
+  it was. Nothing is filed.
+- **rerun request** — the output has no JSON object, does not match the schema,
+  or `review record` refuses it (another commit, an approve with a failing
+  item). Nothing is filed; it is never recorded as a verdict.
+- **recorded** — the notes go to `notes-<model>.md` and `review record` files
+  `REVIEW-<model>.md` from them, with the launch mode, family and `history/`
+  copy an interactive filing gets.
+
+Paths git ignores, other than the model's own record, are not inspected. A
+prompt specy-road does not read back (`paste`, `subagent`, a roster
+`channels.cli` through `prompt --channel cli`) asks for the same object and
+still has the reviewer file it with `review record`.
 
 The reviewer prompt asks the reviewer to say how it was started:
 `specy-road review record … --launch-mode full|bare|explicit` stores
@@ -216,10 +256,10 @@ bare`) and in `--json` as each review's `launch_mode`.
 `specy-road review delegate <NODE_ID> --model <roster id>` runs one rostered reviewer the way `worker delegate` runs an executor, but waits for it: a reviewer has one turn to take, and the command's answer is whether it filed a record.
 
 1. It builds the reviewer prompt (`specy-road prompt --role reviewer`, so the packet must exist: run `review-packet` first) and writes it to `work/prompt-<NODE_ID>-reviewer-<model>.md`. The model needs the reviewer role or an active substitution, as for `review record`.
-2. It runs the roster entry's `preflight`, then launches the entry's harness in this checkout's git root (`--worktree` names another). A `claude-code` entry without `channels.cli` runs bare, as above, with `--session-id <uuid>` and `--output-format stream-json` added; any other entry runs its `channels.cli` (with `{session}` or `{session_flag}` for a session id) or its harness's default command, which for Codex is `codex exec` with a `workspace-write` sandbox: the hand-off directory must lie inside it, so run a Codex reviewer from the main checkout.
+2. It runs the roster entry's `preflight`, then launches the entry's harness in this checkout's git root (`--worktree` names another). A `claude-code` entry without `channels.cli` runs bare, as above, with `--session-id <uuid>` and `--output-format stream-json` added; a `codex` or `cursor` entry without `channels.cli` runs its read-only reviewer command (above); any other entry runs its `channels.cli` (with `{session}` or `{session_flag}` for a session id).
 3. It records the run in `work/reviews/<NODE_ID>/RUN-<model>.json`: the commit under review, the harness's native session id, one entry per attempt (exit, whether it was a capacity error, the error text) and the final `state`. Raw output goes to `RUN-<model>.log` beside it.
 4. When an attempt fails with a provider capacity or rate-limit error (`429`, `529`, `overloaded`, `rate limit`, `usage limit`, `quota`, `RESOURCE_EXHAUSTED`, …), it waits `--backoff` seconds (default 30, doubled each time) and tries again, at most `--retries` times (default 3). A retry resumes the session the harness reported, with a short continue prompt; when none was reported, it launches afresh. Any other failure is not retried.
-5. The run is `complete` when a valid `REVIEW-<model>.md` for the commit under review exists afterwards, and the command exits 0; otherwise it is `incomplete`, with the reason (the capacity error after the last attempt, the harness's exit, no record filed, an invalid record, or a record for another commit), and the command exits 1. Exit 2: the harness cannot resume.
+5. It files the record from the run's final JSON (above) and stores the outcome as `outcome`: `recorded`, `rerun` or `review_failure`. The run is `complete` when a valid `REVIEW-<model>.md` for the commit under review exists afterwards, and the command exits 0; otherwise it is `incomplete`, with the reason (the capacity error after the last attempt, the harness's exit, a review failure, a rerun request, an invalid record, or a record for another commit), and the command exits 1. Exit 2: the harness cannot resume.
 
 `--resume` continues the recorded session with the continue prompt instead of starting a fresh one. It is refused when the run file has no session, names another harness, or was for another commit: a session that reviewed an earlier commit starts a fresh review instead. `--json` prints the run record.
 

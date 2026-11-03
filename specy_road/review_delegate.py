@@ -4,9 +4,12 @@ The reviewer prompt is :func:`build_prompt`'s (``prompt --role reviewer``), so
 the reviewer keeps the packet-only, edit-nothing rules. The roster entry's
 harness runs it through the worker adapters: a ``claude-code`` entry without
 ``channels.cli`` runs bare (:meth:`ClaudeCode.reviewer_launch`) with a session
-id chosen up front, any other runs its adapter's command. Unlike a worker, the
+id chosen up front, a ``codex`` or ``cursor`` one its adapter's read-only
+reviewer command, any other its ``channels.cli``. Unlike a worker, the
 command waits for the turn: a reviewer has one job, and its outcome is whether
-a valid ``REVIEW-<model>.md`` for the commit under review exists afterwards.
+a valid ``REVIEW-<model>.md`` for the commit under review exists afterwards,
+filed by specy-road from the run's final JSON (:func:`file_review`): a run that
+wrote anything else is a review failure, one with no valid JSON a rerun request.
 
 ``work/reviews/<NODE_ID>/RUN-<model>.json`` records the run: the commit it was
 for, the native session id (``--resume`` continues that session), each attempt
@@ -38,6 +41,7 @@ from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_files import list_reviews, reviews_dir
+from specy_road.review_record_write import file_review, final_output, output_path, run_text, snapshot, write_schema
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worker_adapters import ClaudeCode, Launch, Unsupported, adapter_for
@@ -50,8 +54,9 @@ DEFAULT_BACKOFF = 30.0
 #: ``overloaded_error``, OpenAI 429 / usage limit, Google ``RESOURCE_EXHAUSTED``).
 CAPACITY = re.compile(r"rate[ _-]?limit|usage limit|\b429\b|\b529\b|overloaded|capacity|too many requests"
                       r"|quota|resource[ _-]?exhausted", re.IGNORECASE)
-RESUME_PROMPT = ("Continue the review from where you stopped. If you already filed your verdict with "
-                 "`specy-road review record`, say so and stop.\n")
+RESUME_PROMPT = ("Continue the review from where you stopped. End your reply with the one JSON object the review "
+                 "prompt's last section describes, repeated in full if you already gave it: specy-road files the "
+                 "record from it.\n")
 
 
 class DelegateError(Exception):
@@ -122,17 +127,19 @@ class _Harness:
         self.api_id = None if (api or "").strip().lower() in ("", "unknown") else api
         self.effort = prof.effort("reviewer") if prof is not None else None
         self.mode = prof.launch_mode() if prof is not None else "full"
-        self.repo_root, self.node_id, self.cwd = repo_root, node_id, cwd
-        self.bare = self.harness == "claude-code" and not self.cli
+        self.repo_root, self.node_id, self.cwd, self.model = repo_root, node_id, cwd, str(entry.get("id"))
+        self.default = self.harness != "generic" and not self.cli   # the adapter's own read-only reviewer command
+        self.launch_mode = "bare" if self.default and isinstance(self.adapter, ClaudeCode) else self.mode
         self.can_resume = self.adapter.caps.resume
 
     def launch(self, prompt: Path, session: str | None) -> Launch:
         """A fresh turn, or a resume of ``session`` (an id the harness reported)."""
-        if self.bare:
-            sid = session or str(uuid.uuid4())
-            assert isinstance(self.adapter, ClaudeCode)
-            return self.adapter.reviewer_launch(prompt, self.api_id, reviews_dir(self.repo_root, self.node_id),
-                                                self.effort, session=(sid, session is not None))
+        if self.default:
+            sid = session or (str(uuid.uuid4()) if isinstance(self.adapter, ClaudeCode) else None)
+            reviews = reviews_dir(self.repo_root, self.node_id)
+            return self.adapter.reviewer_launch(prompt, self.api_id, reviews, self.effort,
+                                                session=(sid, session is not None) if sid else None,
+                                                schema=write_schema(reviews), output=output_path(reviews, self.model))
         kw = {"node_id": self.node_id, "repo_root": self.repo_root, "launch_mode": self.mode, "effort": self.effort}
         if session is not None:
             return self.adapter.resume(session, prompt, self.cwd, self.api_id, self.cli, **kw)
@@ -252,15 +259,20 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
     _preflight(entry, cwd)
     prompts = (_prompt_file(repo_root, node_id, model, text),
                _prompt_file(repo_root, node_id, model, RESUME_PROMPT, "-resume"))
-    path = run_path(repo_root, node_id, model)
+    path, reviews = run_path(repo_root, node_id, model), reviews_dir(repo_root, node_id)
     run = {"node_id": node_id, "model": model, "harness": h.harness, "ref": t.ref, "commit": t.commit,
            "state": "running", "session_id": session, "resumed": resume, "started_at": _now(), "ended_at": None,
            "attempts": [], "reason": None, "log": str(path.with_suffix(".log"))}
     _save(path, run)
+    output_path(reviews, model).unlink(missing_ok=True)   # a stale answer never stands in for this run's
+    before = snapshot(cwd, repo_root, reviews, model)
     try:
         reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
-        ok, why = valid_record(repo_root, t, model)
-        run.update(state="complete" if ok else "incomplete",
+        filed = file_review(repo_root, node_id, model, reviews, before=before, after=snapshot(cwd, repo_root, reviews, model),
+                            output=final_output(h.adapter, run_text(path.with_suffix(".log")), output_path(reviews, model)),
+                            ref=ref, launch_mode=h.launch_mode)
+        ok, why = valid_record(repo_root, t, model) if filed.state == "recorded" else (False, filed.reason)
+        run.update(state="complete" if ok else "incomplete", outcome=filed.state,
                    reason=None if ok else "; ".join(x for x in (reason, why) if x))
     except BaseException as e:   # an interrupt or a launch refusal still closes the record
         run.update(state="incomplete", reason=f"interrupted: {e or type(e).__name__}")

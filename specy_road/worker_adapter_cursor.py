@@ -6,6 +6,7 @@ Split from :mod:`specy_road.worker_adapters` for the file limit; callers reach i
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from specy_road.worker_adapter_base import Adapter, Capabilities, Launch, Parsed, _model_flag
 from specy_road.worker_adapter_parsers import _json, _snip, _text, usage_fields
@@ -37,6 +38,22 @@ class Cursor(Adapter):
         return Launch(["agent", "-p", "--resume", session_id, "--output-format", "stream-json", "--force", "--trust",
                        "--workspace", str(worktree), *self._add_dir(worktree, repo_root, node_id), _text(prompt_path)],
                       session_id=session_id)
+
+    def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,
+                        session: tuple[str, bool] | None = None, *, schema: Path | None = None,
+                        output: Path | None = None) -> Launch:
+        """A reviewer's turn in ``--mode ask`` (read-only Q&A) with ``--trust`` and without ``--force``, which
+        would force-allow every command not denied. ``agent -p`` has no structured-output flag, so ``schema`` and
+        ``output`` are unused and the result event's text is parsed as the final JSON; ``session`` is
+        ``(id, resume)``, and only a resume can name the id."""
+        resume = ["--resume", session[0]] if session and session[1] else []
+        return Launch(["agent", "-p", *resume, "--output-format", "stream-json", "--mode", "ask", "--trust",
+                       *_model_flag("--model", model), _text(prompt_path)],
+                      session_id=session[0] if resume else None)
+
+    def final_message(self, line: str) -> Any:
+        d = _json(line)
+        return d.get("result") if d and d.get("type") == "result" and not d.get("is_error") else None
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)

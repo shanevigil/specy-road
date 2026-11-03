@@ -1,4 +1,7 @@
-"""``specy-road review delegate``: a rostered reviewer run on a fake claude-code harness (M11.7)."""
+"""``specy-road review delegate``: a rostered reviewer run on a fake claude-code harness (M11.7).
+
+The fake answers as a launched reviewer does since M8.3: a final JSON object specy-road files as the record.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
+from tests.review_repo_helpers import commit_file, git, make_review_repo, review_output
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_delegate import capacity_error, delegate, load_run
@@ -27,11 +30,12 @@ sid = sys.argv[-1]
 print(json.dumps({"type": "system", "subtype": "init", "session_id": sid, "model": "fake"}), flush=True)
 if step.get("write"):
     open(step["write"]["path"], "w").write(step["write"]["text"])
+answer = json.dumps(step["answer"]) if "answer" in step else step.get("raw", "filed")
 if step.get("error"):
     print(json.dumps({"type": "result", "subtype": "error_during_execution", "is_error": True,
                       "result": step["error"], "session_id": sid}), flush=True)
 else:
-    print(json.dumps({"type": "result", "subtype": "success", "result": "filed", "session_id": sid}), flush=True)
+    print(json.dumps({"type": "result", "subtype": "success", "result": answer, "session_id": sid}), flush=True)
 sys.exit(step.get("exit", 0))
 '''
 
@@ -62,10 +66,9 @@ def _calls(spec: Path) -> list[list[str]]:
 
 
 def _files_record(repo: Path, verdict: str = "approve") -> dict:
-    """A step that files a valid REVIEW-opus.md for the commit under review."""
-    text = review_text(git(repo, "rev-parse", "HEAD"), model="opus", verdict=verdict,
-                       a1="pass" if verdict == "approve" else "fail")
-    return {"write": {"path": str(reviews_dir(repo, "M1.1") / "REVIEW-opus.md"), "text": text}}
+    """A step whose final JSON specy-road files as a valid REVIEW-opus.md for the commit under review."""
+    return {"answer": review_output(git(repo, "rev-parse", "HEAD"), model="opus", verdict=verdict,
+                                    a1="pass" if verdict == "approve" else "fail")}
 
 
 def _run(*args: str) -> int:
@@ -149,8 +152,10 @@ def test_a_clean_exit_without_a_record_is_incomplete(tmp_path: Path) -> None:
     repo, spec = _repo(tmp_path)
     _steps(repo, spec, {})
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
-    assert run["state"] == "incomplete" and run["reason"] == "no REVIEW-opus.md was filed"
+    assert run["state"] == "incomplete" and run["outcome"] == "rerun"
+    assert run["reason"] == "rerun requested: the reviewer's output ends with no JSON object"
     assert len(run["attempts"]) == 1                                  # not a capacity error: no retry
+    assert not (reviews_dir(repo, "M1.1") / "REVIEW-opus.md").exists()
 
 
 def test_resume_continues_the_recorded_session(tmp_path: Path, capsys) -> None:

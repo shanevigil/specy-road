@@ -5,12 +5,14 @@ Split from :mod:`specy_road.worker_adapters` for the file limit; callers reach i
 
 from __future__ import annotations
 
+import json
 import uuid
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from specy_road.worker_adapter_base import STDIN_INSTRUCTION, Adapter, Capabilities, Launch, Parsed, _bare, _model_flag
+from specy_road.worker_adapter_base import (REVIEWER_DISALLOWED, STDIN_INSTRUCTION, Adapter, Capabilities, Launch, Parsed,
+                                         _bare, _model_flag)
 from specy_road.worker_adapter_parsers import _init_detail, _json, _snip, _text, usage_fields
 
 
@@ -44,16 +46,29 @@ class ClaudeCode(Adapter):
                       stdin=_text(prompt_path), session_id=session_id, launch_mode=launch_mode)
 
     def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,
-                        session: tuple[str, bool] | None = None) -> Launch:
+                        session: tuple[str, bool] | None = None, *, schema: Path | None = None,
+                        output: Path | None = None) -> Launch:
         """A fresh-session reviewer's turn: ``--bare``, so the branch under review runs none of its hooks and
         connects none of its MCP servers, and ``--add-dir`` for the hand-off directory. The instruction goes
         right after ``-p``: ``--add-dir`` takes several values and would swallow it. ``session`` is
-        ``(id, resume)`` for ``review delegate``: the session flag, and stream-json so the id can be read back."""
+        ``(id, resume)`` for ``review delegate``: the session flag, and stream-json so the id can be read back.
+        Bare mode fires no hook, so ``--disallowedTools`` denies commits, pushes and ``gh`` beside the allowed
+        tools; ``schema`` (the review output schema file) goes inline as ``--json-schema``. ``output`` is unused:
+        the result event carries the final answer."""
         tracked = [*self.session_flag(*session), "--output-format", "stream-json", "--verbose"] if session else []
+        structured = ["--json-schema", json.dumps(json.loads(schema.read_text(encoding="utf-8")))] if schema else []
         return Launch(["claude", "-p", STDIN_INSTRUCTION, "--bare", *tracked, *_model_flag("--model", model),
                        *self.effort_flag(effort), "--permission-mode", "acceptEdits",
-                       "--allowedTools", "Read,Edit,Bash", "--add-dir", str(reviews)],
+                       "--allowedTools", "Read,Edit,Bash", "--disallowedTools", *REVIEWER_DISALLOWED, *structured,
+                       "--add-dir", str(reviews)],
                       stdin=_text(prompt_path), session_id=session[0] if session else None, launch_mode="bare")
+
+    def final_message(self, line: str) -> Any:
+        d = _json(line)
+        if not d or d.get("type") != "result":
+            return None
+        structured = d.get("structured_output")   # set when --json-schema validated the answer
+        return structured if isinstance(structured, dict) else d.get("result")
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)

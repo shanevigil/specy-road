@@ -7,8 +7,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
-from specy_road.worker_adapter_base import CODEX_POLICY, Adapter, Capabilities, Launch, Parsed, _model_flag
+from specy_road.worker_adapter_base import (CODEX_POLICY, CODEX_REVIEW_POLICY, Adapter, Capabilities, Launch, Parsed,
+                                         _model_flag)
 from specy_road.worker_adapter_parsers import _json, _snip, _text, usage_fields
 
 
@@ -37,6 +39,27 @@ class Codex(Adapter):
         # -C (the wrapper runs it in the worktree) nor a documented --add-dir, so the policy goes in as config overrides.
         return Launch(["codex", "exec", "resume", "--json", *self.effort_flag(effort), *CODEX_POLICY, session_id, "-"],
                       stdin=_text(prompt_path), session_id=session_id)
+
+    def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,
+                        session: tuple[str, bool] | None = None, *, schema: Path | None = None,
+                        output: Path | None = None) -> Launch:
+        """A reviewer's turn in the read-only sandbox: it writes nothing, so it needs no writable root, and the
+        verdict comes back as the final message, shaped by ``--output-schema`` and written to ``-o``. Both flags
+        are documented for ``codex exec`` only, so a resume (``session`` is ``(id, True)``) leaves them out and
+        its last ``agent_message`` is parsed instead; a fresh turn cannot choose its thread id."""
+        if session and session[1]:
+            return Launch(["codex", "exec", "resume", "--json", *self.effort_flag(effort), *CODEX_REVIEW_POLICY,
+                           session[0], "-"], stdin=_text(prompt_path), session_id=session[0])
+        return Launch(["codex", "exec", "--json", *_model_flag("-m", model), *self.effort_flag(effort),
+                       *CODEX_REVIEW_POLICY, *(["--output-schema", str(schema)] if schema else []),
+                       *(["-o", str(output)] if output else []), "-"], stdin=_text(prompt_path))
+
+    def final_message(self, line: str) -> Any:
+        d = _json(line)
+        item = (d or {}).get("item") or {}
+        if (d or {}).get("type") != "item.completed" or item.get("type") != "agent_message":
+            return None
+        return item.get("text")
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)

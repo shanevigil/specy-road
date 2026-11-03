@@ -57,6 +57,10 @@ STDIN_INSTRUCTION = "The task is the text on standard input. Follow it exactly; 
 EFFORT_FLAGS = {"claude-code": lambda lv: ["--effort", lv], "codex": lambda lv: ["-c", f"model_reasoning_effort={lv}"]}
 # `codex exec` has no --ask-for-approval (codex-cli 0.165): set both as config, which exec and resume take.
 CODEX_POLICY = ("-c", "sandbox_mode=workspace-write", "-c", "approval_policy=never")
+# A reviewer's turn writes nothing: specy-road files its record from the final JSON (review_record_write).
+CODEX_REVIEW_POLICY = ("-c", "sandbox_mode=read-only", "-c", "approval_policy=never")
+#: Claude Code's reviewer runs --bare, so no hook fires to stop these; the deny list does.
+REVIEWER_DISALLOWED = ("Bash(git commit *)", "Bash(git push *)", "Bash(gh *)")
 REVIEWS_DIR = "{reviews_dir}"   # a custom command's writable root (module docstring)
 
 
@@ -113,6 +117,19 @@ class Adapter:
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
                effort: str | None = None) -> Launch:
         raise Unsupported(f"{self.harness}: resume is not supported")
+
+    def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,
+                        session: tuple[str, bool] | None = None, *, schema: Path | None = None,
+                        output: Path | None = None) -> Launch:
+        """The harness's own read-only reviewer command; ``session`` is ``(id, resume)``, ``schema`` the review
+        output schema file and ``output`` where a harness that can writes its final message. A ``generic`` entry
+        has none: it runs its ``channels.cli`` and its final message is parsed as plain JSON."""
+        raise Unsupported(f"{self.harness}: no default reviewer command; set the roster's channels.cli")
+
+    def final_message(self, line: str) -> Any:
+        """The reviewer's final answer when ``line`` carries one (a dict for harness-validated structured output,
+        else the message text); ``None`` otherwise, and always for ``generic``, whose whole output is the message."""
+        return None
 
     def parse(self, line: str) -> Parsed | None:
         raw = line.strip()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -234,7 +235,8 @@ def _claude_code_reviewer_repo(tmp_path: Path, channels: str = "") -> Path:
     return repo
 
 
-def _fake_run(monkeypatch) -> list[dict]:
+def _fake_run(monkeypatch, answer: list[str] | None = None) -> list[dict]:
+    """Record each launch instead of running it; a default reviewer turn "prints" ``answer``'s lines."""
     from types import SimpleNamespace
 
     from specy_road.bundled_scripts import role_prompt
@@ -242,15 +244,25 @@ def _fake_run(monkeypatch) -> list[dict]:
     calls: list[dict] = []
     monkeypatch.setattr(role_prompt, "subprocess", SimpleNamespace(
         run=lambda cmd, **kw: calls.append({"cmd": cmd, **kw}) or SimpleNamespace(returncode=0)))
+
+    def logged(launch, adapter, cwd, log) -> int:
+        calls.append({"cmd": launch.argv, "input": launch.stdin, "cwd": cwd})
+        log.write_text("[review prompt] now claude\n" + "\n".join(answer or []) + "\n", encoding="utf-8")
+        return 0
+    monkeypatch.setattr(role_prompt, "run_logged", logged)
     return calls
 
 
 def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, capsys, monkeypatch) -> None:
     from specy_road.bundled_scripts import role_prompt
+    from specy_road.worker_adapters import STDIN_INSTRUCTION
+    from tests.review_repo_helpers import git, review_output
     from tests.test_models_and_prompt import run_main
 
     repo = _claude_code_reviewer_repo(tmp_path)
-    calls = _fake_run(monkeypatch)
+    answer = review_output(git(repo, "rev-parse", "HEAD"), model="opus")
+    calls = _fake_run(monkeypatch, [json.dumps({"type": "result", "subtype": "success", "result": "done",
+                                                "structured_output": answer})])
     assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
                     "--repo-root", str(repo)) == 0
     (call,) = calls
@@ -261,10 +273,24 @@ def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, cap
     assert argv[argv.index("--model") + 1] == "claude-opus-5-5" and argv[argv.index("--effort") + 1] == level
     # Nothing re-enables the repository's settings, hooks or MCP servers that --bare turns off.
     assert not {"--settings", "--setting-sources", "--mcp-config", "--plugin-dir"} & set(argv)
+    # M8.3 A4: bare fires no hook, so the deny list sits beside the allowed tools; the whole argv is pinned.
+    schema = json.loads(argv[argv.index("--json-schema") + 1])
+    assert schema["title"] == "specy-road reviewer output" and "notes" in schema["required"]
+    assert argv == ["claude", "-p", STDIN_INSTRUCTION, "--bare", "--session-id", argv[5], "--output-format",
+                    "stream-json", "--verbose", "--model", "claude-opus-5-5", "--effort", level,
+                    "--permission-mode", "acceptEdits", "--allowedTools", "Read,Edit,Bash",
+                    "--disallowedTools", "Bash(git commit *)", "Bash(git push *)", "Bash(gh *)",
+                    "--json-schema", argv[argv.index("--json-schema") + 1],
+                    "--add-dir", str(rf.reviews_dir(repo, "M1.1"))]
     prompt = repo / "work" / "prompt-M1.1-reviewer-opus.md"
     assert call["input"] == prompt.read_text() and call["cwd"] == repo
+    assert "**specy-road files your record.**" in call["input"]
     err = capsys.readouterr().err
-    assert "--bare" in err and "ANTHROPIC_API_KEY" in err
+    assert "--bare" in err and "ANTHROPIC_API_KEY" in err and "recorded: " in err
+    # M8.3 A1: specy-road filed the record from the structured output, launch mode included.
+    rec = rf.load_review(rf.review_path(repo, "M1.1", "opus"), ["A1", "A2"])
+    assert rec.ok and rec.data["launch_mode"] == "bare" and rec.data["family"] == "anthropic"
+    assert "## Findings" in rec.body and len(rf.list_review_history(repo, "M1.1")) == 1
 
 
 def test_claude_code_reviewer_with_channels_cli_runs_it_as_written(tmp_path: Path, capsys, monkeypatch) -> None:
