@@ -45,6 +45,7 @@ BLOCK_ANCHOR = "## Role rankings"
 WORKFLOW_WORDS = (
     "plan", "memory", "task", "todo", "worktree", "branch", "commit", "push", "pr",
     "background", "delegate", "cloud", "schedule", "review", "resume", "fork", "autopilot",
+    "goal", "loop", "queue", "persist", "gist", "fleet", "teleport", "remote", "spawn",
 )
 VERSION_FILE = "version.txt"
 #: ``access:`` and its block mapping: every following line that is blank or indented.
