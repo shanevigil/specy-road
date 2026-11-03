@@ -193,3 +193,15 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
+  - codename: resumed-delta-approval
+    node_id: M11.36
+    branch: feature/rm-resumed-delta-approval
+    touch_zones:
+      - specy_road/review_gate.py
+      - specy_road/bundled_scripts/review_packet.py
+      - specy_road/bundled_scripts/role_prompt.py
+      - docs/orchestration-review.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
