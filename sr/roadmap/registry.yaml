@@ -74,17 +74,3 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: pr-mode-registry-conflict
-    node_id: M11.52
-    branch: feature/rm-pr-mode-registry-conflict
-    touch_zones:
-      - specy_road/bundled_scripts/finish_task.py
-      - specy_road/finish_modes.py
-      - specy_road/review_gate_ready.py
-      - tests/
-      - docs/git-workflow.md
-      - specy_road/finish_pr_merge.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T09:21:03+00:00'

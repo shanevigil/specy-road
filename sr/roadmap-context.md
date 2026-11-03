@@ -158,7 +158,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.49` The review packet takes touch zones from the reviewed commit and treats lockfiles as generated `packet-zones-at-commit` — task — **Complete**
   - `M11.50` finish keeps a committed implementation summary in history `finish-keeps-summary` — task — **Complete**
   - `M11.51` Dashboard saves never overwrite newer disk edits, and the read API is documented `dashboard-safe-saves` — task — **Not Started**
-  - `M11.52` PR mode predicts and resolves the registry conflict `pr-mode-registry-conflict` — task — **Not Started**
+  - `M11.52` PR mode predicts and resolves the registry conflict `pr-mode-registry-conflict` — task — **Complete**
   - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Complete**
   - `M11.54` The test suite and land check run in parallel `parallel-test-suite` — task — **Complete**
   - `M11.55` Executors split modules to meet file limits instead of deleting documentation `file-limit-split-not-delete` — task — **Complete**
@@ -169,6 +169,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.62` Headless runs report usage limits and denied actions instead of looking like success `headless-limits-denials` — task — **Not Started**
   - `M11.60` The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names `harness-facts-nov-refresh` — task — **Complete**
   - `M11.61` The context meter counts Claude rules, auto memory, Cursor nested AGENTS.md and Copilot path instructions `meter-claude-rules-and-nested` — task — **Complete**
+
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
 
 ## Archived (not in the live roadmap)
 
@@ -182,8 +188,10 @@ Do not pick these up.
 
 - `M11.38` on `feature/rm-handoff-eligible-reviewers` since 2026-11-02
 - `M11.41` on `feature/rm-gate-config-agree` since 2026-11-02
+- `M11.43` on `feature/rm-init-project-reports-writes` since 2026-11-03
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.59` on `feature/rm-split-worker-modules` since 2026-11-02
+- `M8.6` on `feature/rm-candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic` since 2026-11-03
 
 ## Reaching the detail behind this
 
