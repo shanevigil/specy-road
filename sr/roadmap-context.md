@@ -179,7 +179,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.70` Touch zones are checked when they are written `zones-checked-at-authoring` — task — **Not Started**
   - `M11.71` Review loops escalate on their own and criteria are written with bounds `review-loops-escalate` — task — **Complete**
   - `M11.72` A reviewer run that ends without a record is reported as a failure `reviewer-failure-visible` — task — **Complete**
-  - `M11.73` specy-road ready warns when the leaf no longer merges cleanly `ready-warns-integration-conflict` — task — **Not Started**
+  - `M11.73` specy-road ready warns when the leaf no longer merges cleanly `ready-warns-integration-conflict` — task — **Complete**
   - `M11.74` Pickup and finish in one checkout take a shared lock in order `pickup-finish-shared-lock` — task — **Complete**
 
 ## Dependencies that were removed
@@ -211,7 +211,6 @@ Do not pick these up.
 - `M11.68` on `feature/rm-rework-findings-in-prompt` since 2026-11-03
 - `M11.69` on `feature/rm-branch-schema-for-gate-and-finish` since 2026-11-03
 - `M11.70` on `feature/rm-zones-checked-at-authoring` since 2026-11-03
-- `M11.73` on `feature/rm-ready-warns-integration-conflict` since 2026-11-03
 - `M8.2` on `feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
