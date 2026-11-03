@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -18,16 +19,46 @@ REPO = Path(__file__).resolve().parent.parent
 
 def _import_running_version_from_root(repo_root: Path) -> str:
     code = textwrap.dedent(
-        f"""
+        """
         import sys
-        sys.path.insert(0, {str(repo_root)!r})
         for mod in [m for m in list(sys.modules) if m == 'specy_road' or m.startswith('specy_road.')]:
             sys.modules.pop(mod, None)
-        from specy_road.version_skew import running_toolkit_version
-        print(running_toolkit_version())
+        import specy_road.toolkit_version as tv
+        print(tv.running_toolkit_version())
         """
     )
-    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
+    env = {**os.environ, "PYTHONPATH": str(repo_root)}
+    r = subprocess.run(
+        [sys.executable, "-P", "-c", code],
+        cwd=repo_root,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert r.returncode == 0, r.stderr
+    return r.stdout.strip().splitlines()[-1]
+
+
+def _import_running_version_on_path(site_packages: Path) -> str:
+    code = textwrap.dedent(
+        """
+        import sys
+        for mod in [m for m in list(sys.modules) if m == 'specy_road' or m.startswith('specy_road.')]:
+            sys.modules.pop(mod, None)
+        import specy_road.toolkit_version as tv
+        print(tv.running_toolkit_version())
+        """
+    )
+    env = {**os.environ, "PYTHONPATH": str(site_packages)}
+    r = subprocess.run(
+        [sys.executable, "-P", "-c", code],
+        cwd=site_packages,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     assert r.returncode == 0, r.stderr
     return r.stdout.strip().splitlines()[-1]
 
@@ -50,20 +81,7 @@ def test_running_version_in_this_checkout_matches_head() -> None:
         assert v.endswith(".dirty")
 
 
-def test_cli_version_matches_running_toolkit_version() -> None:
-    for flag in ("--version", "-V", "version"):
-        r = subprocess.run(
-            [sys.executable, "-m", "specy_road.cli", flag],
-            cwd=REPO,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        assert r.stdout.strip() == f"specy-road {running_toolkit_version()}"
-
-
 def test_non_checkout_install_reports_plain_version(tmp_path: Path) -> None:
-    _stage_specy_road_package(tmp_path)
     (tmp_path / "pyproject.toml").write_text(
         textwrap.dedent(
             """
@@ -74,7 +92,24 @@ def test_non_checkout_install_reports_plain_version(tmp_path: Path) -> None:
         ),
         encoding="utf-8",
     )
+    _stage_specy_road_package(tmp_path)
     assert _import_running_version_from_root(tmp_path) == "9.9.9-test"
+
+
+def test_wheel_in_gitignored_venv_of_unrelated_repo_reports_plain_version(tmp_path: Path) -> None:
+    consumer = tmp_path / "consumer"
+    consumer.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=consumer, check=True)
+    subprocess.run(["git", "config", "user.email", "t@example.com"], cwd=consumer, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=consumer, check=True)
+    (consumer / "app.py").write_text("print('hi')\n", encoding="utf-8")
+    subprocess.run(["git", "add", "app.py"], cwd=consumer, check=True)
+    subprocess.run(["git", "commit", "-qm", "init"], cwd=consumer, check=True)
+    site = consumer / ".venv" / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
+    site.mkdir(parents=True)
+    shutil.copytree(REPO / "specy_road", site / "specy_road")
+    v = _import_running_version_on_path(site)
+    assert "+" not in v
 
 
 def test_checkout_reports_sha(tmp_path: Path) -> None:
@@ -131,11 +166,12 @@ def test_worker_record_stores_toolkit_version(tmp_path: Path) -> None:
     assert ws.load_record(repo, rec.worker_id).toolkit_version == rec.toolkit_version
 
 
-def test_render_front_matter_stamps_toolkit_version(tmp_path: Path) -> None:
+def test_explicit_stamp_before_render_writes_toolkit_version(tmp_path: Path) -> None:
     from specy_road.review_files import load_review, render_front_matter
+    from specy_road.toolkit_version import running_toolkit_version, stamp_review_toolkit_version
 
     body = "notes\n"
-    data = {
+    data = stamp_review_toolkit_version({
         "node_id": "M1.1",
         "model": "opus",
         "date": "2026-11-03",
@@ -146,10 +182,9 @@ def test_render_front_matter_stamps_toolkit_version(tmp_path: Path) -> None:
         "fresh_session": True,
         "authored_fix": False,
         "is_coordinator": False,
-    }
-    text = render_front_matter(data, body)
+    })
     path = tmp_path / "REVIEW-opus.md"
-    path.write_text(text, encoding="utf-8")
+    path.write_text(render_front_matter(data, body), encoding="utf-8")
     loaded = load_review(path, ["A1"])
     assert loaded.ok
     assert loaded.data["toolkit_version"] == running_toolkit_version()

@@ -32,9 +32,10 @@ from specy_road.red_green import cmd_red_green
 from specy_road.review_files import (
     HUMAN, REVIEW_LAUNCH_MODES, archive_review, executor_blocked_display_lines, latest_ready, list_ready,
     list_reviews, load_review, node_ids_with_reviews, non_gating_verify_problems, render_front_matter,
-    review_path, reviews_root, round_span, stamp_review_toolkit_version, write_review,
+    review_path, reviews_root, round_span, write_review,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
+from specy_road.toolkit_version import stamp_review_toolkit_version
 from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states
 from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
 from specy_road.review_gate_ready import add_ready_parser
@@ -395,6 +396,5 @@ def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     ns = build_parser().parse_args(argv)
     raise SystemExit(ns.func(ns))
-
 if __name__ == "__main__":
     main()

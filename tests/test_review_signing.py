@@ -43,8 +43,7 @@ def _record(repo: Path, model: str, **kw) -> dict:
     data = load_review(p).data
     data["notes_sha256"] = rs.notes_digest("notes\n")   # as `review record` writes it; a signature must cover the notes
     data.update(kw)
-    from specy_road.review_files import render_front_matter, stamp_review_toolkit_version
-    data = stamp_review_toolkit_version(data)
+    from specy_road.review_files import render_front_matter
     p.write_text(render_front_matter(data, "notes\n"))
     return data
 
@@ -78,6 +77,8 @@ def test_gate_requires_a_verifying_signature_when_policy_says_so(tmp_path: Path)
     g = evaluate_gate(repo, NODE, git(repo, "rev-parse", "HEAD"))
     assert not g.passed and "signature missing" in g.ineligible[0][1]
     data = _record(repo, "opus")
+    from specy_road.toolkit_version import stamp_review_toolkit_version
+    data = stamp_review_toolkit_version(data)
     data["signature"] = rs.sign(data, key)
     from specy_road.review_files import render_front_matter
     review_path(repo, "M1.1", "opus").write_text(render_front_matter(data, "notes\n"))
@@ -87,6 +88,37 @@ def test_gate_requires_a_verifying_signature_when_policy_says_so(tmp_path: Path)
     review_path(repo, "M1.1", "opus").write_text(render_front_matter(data, "notes\n"))
     g = evaluate_gate(repo, NODE, git(repo, "rev-parse", "HEAD"))
     assert not g.passed and "does not verify" in g.ineligible[0][1]
+
+
+def test_rerender_signed_record_without_toolkit_version_keeps_signature(tmp_path: Path) -> None:
+    key, pub = _key(tmp_path, "opus")
+    repo = make_review_repo(tmp_path, orchestration=_roster(pub, signed=False))
+    from specy_road.review_files import render_front_matter
+
+    data = {
+        "node_id": "M1.1",
+        "model": "opus",
+        "date": "2026-10-26",
+        "verdict": "approve",
+        "commit": git(repo, "rev-parse", "HEAD"),
+        "acceptance": {"A1": "pass", "A2": "n/a"},
+        "findings": {"correctness": [], "regression": [], "boundary": [], "test_integrity": []},
+        "fresh_session": True,
+        "authored_fix": False,
+        "is_coordinator": False,
+        rs.NOTES_KEY: rs.notes_digest("notes\n"),
+    }
+    data["signature"] = rs.sign(data, key)
+    path = review_path(repo, "M1.1", "opus")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(render_front_matter(data, "notes\n"))
+    loaded = load_review(path, ["A1", "A2"])
+    assert loaded.ok and "toolkit_version" not in loaded.data
+    assert rs.verify(loaded.data, loaded.data["signature"], pub, "opus")[0]
+    path.write_text(render_front_matter(loaded.data, loaded.body))
+    again = load_review(path, ["A1", "A2"])
+    assert again.ok and "toolkit_version" not in again.data
+    assert rs.verify(again.data, again.data["signature"], pub, "opus")[0]
 
 
 def test_a_signature_is_checked_even_with_the_policy_off(tmp_path: Path) -> None:

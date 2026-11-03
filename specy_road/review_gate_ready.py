@@ -17,9 +17,9 @@ from specy_road.git_subprocess import commits_behind, git_text, merge_conflicts
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.orchestration_config import effective_config, roster_entry
 from specy_road.review_files import (
-    HUMAN, READY_PREFIX, load_ready, render_front_matter, review_path, reviews_dir, stamp_review_toolkit_version,
-    write_review,
+    HUMAN, READY_PREFIX, load_ready, render_front_matter, review_path, reviews_dir, write_review,
 )
+from specy_road.toolkit_version import stamp_review_toolkit_version
 from specy_road.review_policy_ref import policy_source
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
 from specy_road.review_target import ReviewTargetError, full_sha, resolve_target

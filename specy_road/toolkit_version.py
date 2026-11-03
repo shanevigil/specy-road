@@ -2,16 +2,32 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from specy_road import __version__
-from specy_road.git_subprocess import head_sha, working_tree_clean
+from specy_road.git_subprocess import head_sha, run, working_tree_clean
 from specy_road.runtime_paths import git_root, specy_road_package_dir
+
+
+def _toolkit_git_root() -> Path | None:
+    """The git root when this install is the toolkit's own checkout, not a wheel in another repo."""
+    pkg = specy_road_package_dir()
+    root = git_root(pkg)
+    if root is None or pkg.parent.resolve() != root.resolve():
+        return None
+    try:
+        init_rel = (pkg / "__init__.py").relative_to(root).as_posix()
+    except ValueError:
+        return None
+    if not run(["ls-files", "--error-unmatch", init_rel], root).ok:
+        return None
+    return root
 
 
 def running_toolkit_version() -> str:
     """Semver from :data:`specy_road.__version__`, plus checkout identity when applicable."""
-    root = git_root(specy_road_package_dir())
+    root = _toolkit_git_root()
     if root is None:
         return __version__
     sha = head_sha(root)
