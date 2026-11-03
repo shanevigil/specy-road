@@ -145,6 +145,8 @@ Not run:
 
 - `prior_approvals`: the model's latest record on a commit is its verdict there; each record drops earlier kept approvals of the same commit, so a later block rescinds and a later approval restores (A2, round 4).
 
+- `prior_approvals` (round 5): resolves each model's latest record per commit, then decides recursively whether it counts (`counting`, memoised, cycle-safe). A `delta_from` approval counts only while its basis counts and the delta qualifies, so a basis that stops counting drops every delta that depends on it (A2 as rewritten from RCA-4).
+
 ### Mocks
 - none
 
@@ -159,6 +161,7 @@ Not run:
 - `test_an_earlier_approval_missing_an_acceptance_result_is_no_delta_basis`: an incomplete historical approval yields no delta basis and no delta packet, and a delta approval built on it does not count (A2, round 3).
 - `test_the_gate_refuses_a_delta_approval_while_review_packet_full_is_current`: at gate level, a delta approval counts, stops counting after `review-packet --full`, and counts again once the packet is rebuilt without it (A2, round 3).
 - `test_a_later_block_rescinds_an_approval_as_delta_basis_and_a_later_approval_restores_it`: at gate level, approve P then block P leaves no basis and the `delta_from: P` approval does not count; approving P again restores both (A2, round 4).
+- `test_a_delta_approval_stops_counting_when_its_basis_does_and_comes_back_with_it`: P approve, C1 delta from P, block P, C2. C1 is no basis and a `delta_from: C1` approval of C2 does not count; approving P again restores the chain (A2, round 5).
 - `test_policy_off_forces_full_review`: with `delta_review: false`, no delta packet and no delta approval (A2, A3).
 - `test_the_prompt_hands_each_reviewer_its_own_packet`: per-reviewer delivery and the delta packet's contents (A1).
 - `test_review_packet_full_stops_delta_packets`: `--full` forces the full packet and removes a stale delta packet (A2).
@@ -169,3 +172,11 @@ Not run:
 - Fix for Sol's block: per-commit effective verdict in `prior_approvals`.
 - The new test fails on the round-3 `review_gate.py` and passes now.
 - Targeted run: `tests/test_delta_review.py`, `tests/test_review_gate.py`, `tests/test_review_packet.py` and `tests/test_models_and_prompt.py`, 76 passed.
+
+## Round 5
+
+- Merged `origin/WIP/improvements-0-3-1`, bringing in A2 as rewritten from RCA-4.
+- Fixed only the open item: a delta approval stops counting when its basis does.
+- The new test fails on the round-4 `review_gate.py` and passes now.
+- `delta_basis` still picks the latest-filed counting approval, so after P is re-approved the basis is P. The chain through C1 counts again at the gate.
+- Targeted run: `tests/test_delta_review.py`, `tests/test_review_gate.py`, `tests/test_review_packet.py` and `tests/test_models_and_prompt.py`, 77 passed.
