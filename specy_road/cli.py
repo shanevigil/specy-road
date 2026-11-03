@@ -22,8 +22,8 @@ from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, git
 _PKG_DIR = Path(__file__).resolve().parent
 _PM_GANTT_INDEX = _PKG_DIR / "pm_gantt_static" / "index.html"
 _VERSION = re.compile(r"^(\d+(?:\.\d+)*)(?:(a|b|rc)(\d+))?$", re.IGNORECASE)
-_AGENTS_WRITTEN = re.compile(r"Written by specy-road (\S+);")
-_MINIMUM_LINE = re.compile(r"\*\*Minimum specy-road version:\*\* (\S+)\.")
+_AGENTS_WRITTEN = re.compile(r"Written by specy-road (\S+)")
+_MINIMUM_LINE = re.compile(r"\(minimum (\S+)\)")
 _PRE = {"a": 0, "b": 1, "rc": 2}
 
 

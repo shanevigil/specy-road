@@ -24,12 +24,9 @@ def _write_agents_block(root: Path, *, written_by: str | None = None, minimum: s
     lines = render_agents_lines()
     block = render_block(lines, style=HTML_COMMENT)
     if written_by is not None:
-        block = block.replace(f"Written by specy-road {__version__};", f"Written by specy-road {written_by};")
+        block = block.replace(f"Written by specy-road {__version__}", f"Written by specy-road {written_by}", 1)
     if minimum is not None:
-        block = block.replace(
-            f"**Minimum specy-road version:** {__version__}.",
-            f"**Minimum specy-road version:** {minimum}.",
-        )
+        block = block.replace(f"(minimum {__version__})", f"(minimum {minimum})")
     (root / AGENTS_MD).write_text(f"# Agents\n\n{block}\n", encoding="utf-8")
 
 
