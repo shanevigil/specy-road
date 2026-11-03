@@ -63,9 +63,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M6` 0.3.1-rc2 release `release-0-3-1-rc2` — phase — **In Progress**
   - `M6.1` Close out the triage note, changelog and what's-new for rc2 `rc2-closeout-docs` — task — **Complete**
   - `M6.2` Pre-release checks and the 0.3.1-rc2 cut `rc2-cut` — task — **Complete**
-- `M7` Keeping current: recurring research `keeping-current-recurring-research` — phase — **Not Started**
+- `M7` Keeping current: recurring research `keeping-current-recurring-research` — phase — **In Progress**
   - `M7.1` A research register tracks deep-research topics with a refresh cadence `a-research-register-tracks-deep-research-topics-with-a-refresh-cadence` — task — **Complete**
-  - `M7.2` Run the harness-capabilities research and fold its findings `run-the-harness-capabilities-research-and-fold-its-findings` — task — **Not Started**
+  - `M7.2` Run the harness-capabilities research and fold its findings `run-the-harness-capabilities-research-and-fold-its-findings` — task — **Complete**
 - `M8` Harness compatibility `harness-compatibility` — phase — **Not Started**
   - `M8.1` Harness facts fixture drives model-profiles and executor templates, with a classified diff on version bumps `harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps` — task — **Complete**
   - `M8.2` Worker adapters harden the launch and run a deterministic post-run check `worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` — task — **Not Started**

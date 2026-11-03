@@ -31,6 +31,7 @@
         "family": { "$ref": "#/$defs/id", "description": "Vendor family; reviewer independence is judged by family (e.g. anthropic, openai, human)." },
         "profile": { "type": "string", "minLength": 1, "description": "Repo-relative path to this model's profile (model-profiles/<family>/<api_id>.md)." },
         "harness": { "enum": ["claude-code", "codex", "cursor", "generic"], "description": "Which vendor harness `specy-road worker delegate` runs this model on (generic runs the profile's access.cli). Distinct from the model: a Claude model under Cursor's agent is a cursor worker." },
+        "harness_model": { "$ref": "#/$defs/id", "description": "Model id the harness CLI expects when it differs from id (e.g. claude-opus-5-5 for id claude-opus-5.5); the default commands pass it as --model / -m, before the profile's api_id and the id." },
         "billing_route": { "type": "string", "minLength": 1, "description": "Label for whose quota a worker on this entry draws (e.g. claude_subscription, chatgpt_oauth, api_key). Recorded on the worker; never used to authenticate." },
         "roles": {
           "type": "array",
@@ -42,6 +43,7 @@
           "additionalProperties": false,
           "properties": {
             "cli": { "type": "string", "minLength": 1, "description": "Headless invocation; {prompt} is replaced with the prompt file path." },
+            "cli_resume": { "type": "string", "minLength": 1, "pattern": "\\{session(_flag)?\\}", "description": "Command worker message and resume run instead of cli, with the launch's permissions: names {session} (or {session_flag} on claude-code) and {prompt}, e.g. codex exec resume --json ... {session} - < {prompt}." },
             "paste": { "type": "string", "minLength": 1, "description": "Name of the IDE chat a prompt file is pasted into." },
             "subagent": { "type": "boolean" }
           }
@@ -55,7 +57,9 @@
         "subagent_family_lock": { "$ref": "#/$defs/id", "description": "When set, this model may spawn only sub-agents of this family." },
         "class": { "$ref": "#/$defs/id", "description": "Executor class tag a leaf's executor_eligibility can name (e.g. senior, cheap)." },
         "public_key": { "type": "string", "minLength": 1, "pattern": "^(ssh-|ecdsa-|sk-)[^ ]+ [A-Za-z0-9+/=]+", "description": "OpenSSH public key line this reviewer signs records with; required for its reviews to count when policy.signed_reviews is true." },
-        "unavailable_until": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Capacity outage: orchestrate plan and prompt skip this model through this date (inclusive)." },
+        "unavailable_until": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Legacy capacity pause through this date (inclusive); prefer paused_until." },
+        "available": { "type": "boolean", "description": "When false, orchestrate plan and delegate skip this entry until it is true again." },
+        "paused_until": { "type": "string", "minLength": 10, "description": "Skip through this calendar date (YYYY-MM-DD, inclusive) or datetime (ISO 8601) without removing the roster entry." },
         "preflight": { "type": "string", "minLength": 1, "description": "Command that must succeed before a prompt is sent to this model." }
       }
     },
@@ -99,9 +103,18 @@
           "minimum": 1,
           "description": "A leaf's review loop is escalated for root-cause analysis after this many review rounds since its last analysis. Default 5."
         },
+        "stall_after_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "A running worker with no harness stdout for this many seconds is flagged stalled by `worker sync` and `worker list`, with one stalled event per silence. Default 600."
+        },
         "milestone_full_review": {
           "type": "boolean",
           "description": "When true, a milestone (a node with leaf children) is not set to Complete when its last leaf finishes until a full review of its combined change (the first leaf's branch point to the integration tip) passes the review gate at that tip; `review-packet <MILESTONE_ID>` builds the packet and `mark-implementation-reviewed <MILESTONE_ID>` closes it. Default true."
+        },
+        "integrity_gate": {
+          "type": "boolean",
+          "description": "When true, each `specy-road integrity` finding for the commit under review is a review-gate problem unless its exact line is in the node's planned_test_changes as committed on the integration branch. Default false."
         },
         "delta_review": {
           "type": "boolean",
@@ -110,10 +123,6 @@
         "reviewer_resumed_delta": {
           "type": "boolean",
           "description": "When true, reviewer_fresh_session is waived for a record naming delta_from: the reviewer that approved delta_from may be resumed in that same session to review the delta since and file fresh_session: false. Such an approval still counts only under the delta_review rules; a resumed full review, and any other record with fresh_session: false, is still refused. Default false."
-        },
-        "integrity_gate": {
-          "type": "boolean",
-          "description": "When true, each `specy-road integrity` finding for the commit under review is a review-gate problem unless its exact line is in the node's planned_test_changes as committed on the integration branch. Default false."
         },
         "red_green": {
           "type": "boolean",

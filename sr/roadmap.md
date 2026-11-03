@@ -63,9 +63,9 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M6` | 0.3.1-rc2 release | phase | — | In Progress |
 | `M6.1` | Close out the triage note, changelog and what's-new for rc2 | task | Agentic-led | Complete |
 | `M6.2` | Pre-release checks and the 0.3.1-rc2 cut | task | Human-led | Complete |
-| `M7` | Keeping current: recurring research | phase | — | Not Started |
+| `M7` | Keeping current: recurring research | phase | — | In Progress |
 | `M7.1` | A research register tracks deep-research topics with a refresh cadence | task | Agentic-led | Complete |
-| `M7.2` | Run the harness-capabilities research and fold its findings | task | Human-led | Not Started |
+| `M7.2` | Run the harness-capabilities research and fold its findings | task | Human-led | Complete |
 | `M8` | Harness compatibility | phase | — | Not Started |
 | `M8.1` | Harness facts fixture drives model-profiles and executor templates, with a classified diff on version bumps | task | Agentic-led | Complete |
 | `M8.2` | Worker adapters harden the launch and run a deterministic post-run check | task | Agentic-led | Not Started |
