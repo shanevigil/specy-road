@@ -162,7 +162,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.53` | A worktree-based flow can claim leaves without pushing from the worktree | task | Agentic-led | Not Started |
 | `M11.54` | The test suite and land check run in parallel | task | Agentic-led | Not Started |
 | `M11.55` | Executors split modules to meet file limits instead of deleting documentation | task | Agentic-led | Not Started |
-| `M11.56` | Delegate creates the reviews directory before a harness is told to allow it | task | Agentic-led | Not Started |
+| `M11.56` | Delegate creates the reviews directory before a harness is told to allow it | task | Agentic-led | Complete |
 | `M11.57` | A completed worker on a finished leaf does not hold a max_workers slot | task | Agentic-led | Not Started |
 | `M11.58` | The coordinator records the session's routing preferences where the next session can read them | task | Agentic-led | Not Started |
 | `M11.59` | Split worker_ops and worker_adapters so parallel leaves stop colliding | task | Agentic-led | Not Started |

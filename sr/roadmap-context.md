@@ -162,7 +162,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Not Started**
   - `M11.54` The test suite and land check run in parallel `parallel-test-suite` — task — **Not Started**
   - `M11.55` Executors split modules to meet file limits instead of deleting documentation `file-limit-split-not-delete` — task — **Not Started**
-  - `M11.56` Delegate creates the reviews directory before a harness is told to allow it `reviews-dir-before-launch` — task — **Not Started**
+  - `M11.56` Delegate creates the reviews directory before a harness is told to allow it `reviews-dir-before-launch` — task — **Complete**
   - `M11.57` A completed worker on a finished leaf does not hold a max_workers slot `completed-worker-frees-slot` — task — **Not Started**
   - `M11.58` The coordinator records the session's routing preferences where the next session can read them `session-routing-preferences` — task — **Not Started**
   - `M11.59` Split worker_ops and worker_adapters so parallel leaves stop colliding `split-worker-modules` — task — **Not Started**
@@ -187,7 +187,7 @@ Do not pick these up.
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.53` on `feature/rm-pickup-into-worktree` since 2026-11-02
 - `M11.54` on `feature/rm-parallel-test-suite` since 2026-11-02
-- `M11.56` on `feature/rm-reviews-dir-before-launch` since 2026-11-02
+- `M11.55` on `feature/rm-file-limit-split-not-delete` since 2026-11-02
 
 ## Reaching the detail behind this
 
