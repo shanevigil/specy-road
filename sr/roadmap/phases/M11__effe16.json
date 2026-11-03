@@ -387,6 +387,28 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "The executor prompt says that when a change would push a file over a file-limits cap, the executor moves the new or related code into a new module (and records the new file in the implementation summary for the zone update), and never deletes or shortens unrelated docstrings, comments or user-facing text to fit",
+        "The reviewer prompt asks the reviewer to check the diff for removed docstrings, comments or messages unrelated to the leaf and to require their restoration; tests cover both prompt sentences"
+      ],
+      "codename": "file-limit-split-not-delete",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.55",
+      "node_key": "1bdf3541-c94d-40be-a77f-26a514d6ae9f",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.55_file-limit-split-not-delete_1bdf3541-c94d-40be-a77f-26a514d6ae9f.md",
+      "sibling_order": 55,
+      "status": "Not Started",
+      "title": "Executors split modules to meet file limits instead of deleting documentation",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/templates/",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }

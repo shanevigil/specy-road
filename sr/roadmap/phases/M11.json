@@ -435,7 +435,8 @@
         "specy_road/review_gate.py",
         "specy_road/review_files.py",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/review_bookkeeping.py"
       ],
       "type": "task"
     },

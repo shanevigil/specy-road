@@ -246,7 +246,8 @@
         "specy_road/templates/",
         "README.md",
         "docs/install-and-usage.md",
-        "tests/"
+        "tests/",
+        "specy_road/version_skew.py"
       ],
       "type": "task"
     },
