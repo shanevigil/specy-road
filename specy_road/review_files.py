@@ -14,7 +14,10 @@ machine-readable part:
 Beside them, ``RCA-<round>.md`` is a root-cause analysis of a stalled review
 loop (``schemas/rca-record.schema.json``).
 
-Plain files work across harnesses: the executor writes READY, reviewers write REVIEW, the coordinator polls the directory.
+Plain files work across every harness, including IDE chats that cannot see
+each other: the executor writes READY, reviewers write REVIEW beside it, and the
+coordinator polls the directory. Both schemas ship in the wheel, like
+``archive.schema.json``, so adopters get fixes by upgrading.
 """
 
 from __future__ import annotations
@@ -29,10 +32,8 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
-from specy_road.git_changed_paths import diff_paths
-from specy_road.git_subprocess import git_code, git_text
-from specy_road.runtime_paths import project_prefix, rebase_to_project, specy_road_package_dir
-from specy_road.review_target import same_commit
+from specy_road.git_subprocess import git_text
+from specy_road.runtime_paths import specy_road_package_dir
 
 REVIEWS_REL = Path("work") / "reviews"
 READY_PREFIX = "READY-"
@@ -40,7 +41,8 @@ REVIEW_PREFIX = "REVIEW-"
 RCA_PREFIX = "RCA-"
 HISTORY_DIRNAME = "history"
 PACKET_NAME = "PACKET.md"
-#: The interactive approver; only this model may attest ``is_coordinator: true``.
+#: The interactive approver. A solo maintainer both coordinates and reviews, so
+#: only this model may attest ``is_coordinator: true``.
 HUMAN = "human"
 #: How a reviewer's harness was started (``review record --launch-mode``): ``full`` loads the
 #: repository's hooks and MCP servers, ``bare`` none (Claude Code ``--bare``), ``explicit`` only what the command names.
@@ -61,7 +63,8 @@ class ReviewFile:
 
 
 def _main_checkout(top: Path) -> Path | None:
-    """Main worktree for a linked checkout, from ``.git`` / ``commondir`` (no git subprocess)."""
+    """The main worktree of the linked worktree at ``top``, from ``.git`` and ``commondir``: git is never run,
+    so a process git refuses to serve (a sandbox, an ownership check) finds what every other command does."""
     try:
         line = (top / ".git").read_text(encoding="utf-8").strip() if (top / ".git").is_file() else ""
     except OSError:
@@ -76,7 +79,9 @@ def _main_checkout(top: Path) -> Path | None:
 
 
 def reviews_root(repo_root: Path) -> Path:
-    """``work/reviews`` in the main worktree so linked worktrees share one hand-off directory."""
+    """``work/reviews`` in the **main** worktree, whichever linked worktree asks: the one resolver, since
+    it is gitignored and each worktree would have its own empty copy. A project nested below the git root
+    (``sr/``) or a fixture inside another checkout keeps its own ``work/``, at the same place."""
     here = Path(repo_root).resolve()
     top = next((p for p in (here, *here.parents) if (p / ".git").exists()), None)   # git's own discovery
     main = _main_checkout(top) if top else None
@@ -85,32 +90,6 @@ def reviews_root(repo_root: Path) -> Path:
 
 def reviews_dir(repo_root: Path, node_id: str) -> Path:
     return reviews_root(repo_root) / node_id
-
-
-def only_planning_or_review_bookkeeping_since(
-    repo_root: Path, node: dict[str, Any], approved: str, commit: str | None,
-) -> bool:
-    if not commit or same_commit(repo_root, approved, commit):
-        return True
-    if git_code(["merge-base", "--is-ancestor", approved, commit], repo_root)[0] != 0:
-        return False
-    if git_text(["rev-list", "--merges", f"{approved}..{commit}"], repo_root):
-        return False
-    paths = diff_paths(repo_root, f"{approved}..{commit}")
-    if paths is None:
-        return False
-    pd = (node.get("planning_dir") or "").strip().strip("/")
-    if not pd:
-        return False
-    prefix = project_prefix(repo_root)
-    summary = f"work/implementation-summary-{node['id']}.md"
-    handoffs = f"{REVIEWS_REL.as_posix()}/{node['id']}"
-    for p in paths:
-        rel = rebase_to_project(p, prefix)
-        names = {p, rel} if rel is not None else {p}
-        if not any(n in (pd, summary) or n == handoffs or n.startswith(f"{handoffs}/") for n in names):
-            return False
-    return True
 
 
 def review_path(repo_root: Path, node_id: str, model: str) -> Path:
@@ -155,7 +134,15 @@ def _split_front_matter(text: str) -> tuple[str | None, str]:
 
 
 def _scalars_to_str(data: dict[str, Any], root: Any) -> None:
-    """Undo YAML typing for schema string fields; SHAs are taken from raw scalar text."""
+    """Undo YAML's typing of values the schemas want as strings.
+
+    An unquoted ``2026-10-26`` loads as a date. A SHA is worse: YAML 1.1 reads
+    ``1234567`` as an int, ``0123456`` as octal and ``0x1234567`` as hex, so
+    converting the loaded value back would yield a different string — or a
+    different, valid-looking SHA. ``commit`` and ``base`` are therefore taken
+    from the parsed node's raw scalar text (``root`` is ``yaml.compose``'s
+    result), which no other line of the file can impersonate.
+    """
     for key, value in list(data.items()):
         if isinstance(value, date):
             data[key] = value.isoformat()
@@ -201,7 +188,12 @@ def ready_semantic_errors(data: dict[str, Any], acceptance_ids: list[str] | None
 
 def load_ready(path: Path, node_id: str | None = None, branch: str | None = None,
                acceptance_ids: list[str] | None = None) -> ReviewFile:
-    """Parse one READY file; bind to ``node_id`` / ``branch`` when given (misfiled hand-offs are invalid)."""
+    """Parse one READY file; with ``node_id`` / ``branch``, bind it to that provenance.
+
+    A file under ``work/reviews/M1.1/`` whose front matter names another node
+    or branch is a misfiled hand-off, not this node's: it is invalid here, so
+    it never feeds the packet, ``handoff status`` or a worker's completion.
+    """
     data, body, errs = _read(path)
     if not errs:
         errs = _schema_errors(data, "handoff.schema.json")
@@ -230,6 +222,8 @@ def review_semantic_errors(data: dict[str, Any], acceptance_ids: list[str] | Non
             errs.append("verdict: approve with required_changes listed; use block")
     if acceptance_ids is not None:
         missing = [a for a in acceptance_ids if a not in results]
+        # An `n/a` on an id the brief lacks (a criterion moved to another leaf and
+        # still named in the summary) carries no judgment; a pass or fail on one does.
         unknown = sorted(k for k in set(results) - set(acceptance_ids) if results[k] != "n/a")
         if missing:
             errs.append(f"acceptance: no result for {', '.join(missing)}")
@@ -296,7 +290,12 @@ def list_review_history(repo_root: Path, node_id: str) -> list[ReviewFile]:
 
 
 def round_span(repo_root: Path, node_id: str) -> dict[str, Any]:
-    """Distinct reviewed commits and elapsed time from the first filed review to the latest."""
+    """Review rounds (distinct reviewed commits) and the time from the first filed review to the latest.
+
+    Read from ``history/`` (each copy is written once, so its mtime is its filing
+    time) plus each ``REVIEW-*.md`` with no copy there: ``REVIEW-human.md``, or one
+    written by hand.
+    """
     seen, times = set(), []
     for r, in_history in ([(r, True) for r in list_review_history(repo_root, node_id)]
                           + [(r, False) for r in list_reviews(repo_root, node_id)]):

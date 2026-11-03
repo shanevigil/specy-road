@@ -72,6 +72,16 @@ def test_ours_merge_stales_approval(tmp_path: Path) -> None:
     assert not g.bookkeeping_carry
 
 
+def test_unresolved_commit_leaves_approval_stale(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _review(repo)
+    g = evaluate_gate(repo, NODE, None)
+    assert not g.passed
+    assert len(g.stale) == 1
+    assert not g.bookkeeping_carry
+    assert "still count" not in g.summary()
+
+
 def test_handoff_status_reports_bookkeeping_carry(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     _review(repo)
