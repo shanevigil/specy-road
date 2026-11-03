@@ -63,7 +63,8 @@ Not changed, though they are now stale, because they are outside M8.2's zones:
 
 - `pytest -n 8` over the whole suite: 3321 passed, 2 skipped.
 - `tests/test_worker_turn_check.py`: 8 new tests. Fake `claude` / `codex` / `agent` binaries on PATH record the argv, environment and stdin the wrapper really ran them with, and replay the streams in `tests/fixtures/worker_turn_check/streams.json`.
-- `ruff check specy_road tests scripts` (C901), `specy-road file-limits`, `scripts/check_test_private_imports.py`: clean.
+- `ruff check` (C901) over every changed or added Python file, `specy-road file-limits`, `scripts/check_test_private_imports.py`: clean.
+- `ruff check specy_road tests scripts` exits 1, but only for `uncommitted_refs_section` in `specy_road/bundled_scripts/review_packet_uncommitted_refs.py` (12 > 10). That file is untouched here, so the failure is on the base.
 - `scripts/check_clones.py` reports two new pairs. Both are in files this leaf does not touch (`abort_task_pickup`/`pm_sync`, `planning_sheet_bootstrap`/`planning_scaffold_check`), so they were already on the base.
 - `tests/test_worker_faults.py::test_output_clears_a_stall_shorter_than_the_write_window` failed once under `-n 8` load and passed alone and in the full run. It is timing-sensitive, not affected by this change.
 
