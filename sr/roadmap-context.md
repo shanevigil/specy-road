@@ -146,7 +146,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.37` review-packet warns when the brief or summary names a file not committed at the reviewed commit `packet-uncommitted-refs` — task — **Complete**
   - `M11.38` handoff status says who can still supply a missing approval `handoff-eligible-reviewers` — task — **Complete**
   - `M11.39` A roster entry can be marked unavailable without deleting it `roster-availability` — task — **Complete**
-  - `M11.40` worker reconcile works on merged leaves and separates untracked files `reconcile-merged-and-untracked` — task — **Not Started**
+  - `M11.40` worker reconcile works on merged leaves and separates untracked files `reconcile-merged-and-untracked` — task — **Complete**
   - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Complete**
   - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Complete**
   - `M11.43` init project reports exactly what it writes `init-project-reports-writes` — task — **Complete**

@@ -102,15 +102,3 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: reconcile-merged-and-untracked
-    node_id: M11.40
-    branch: feature/rm-reconcile-merged-and-untracked
-    touch_zones:
-      - specy_road/worker_reconcile.py
-      - specy_road/worker_ops.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T19:34:37+00:00'

@@ -16,7 +16,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.40_reconcile-merged-and-untracked_14933e19-770a-4026-8ef6-14d1aa315567.md",
       "sibling_order": 40,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "worker reconcile works on merged leaves and separates untracked files",
       "touch_zones": [
         "specy_road/worker_reconcile.py",
