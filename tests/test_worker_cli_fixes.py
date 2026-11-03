@@ -248,6 +248,7 @@ def test_nested_reconcile_reports_a_git_root_summary_but_not_the_projects(tmp_pa
     (top / "work").mkdir()
     (top / "work" / "implementation-summary-M1.1.md").write_text("wrong place\n")
     (project / "work" / "implementation-summary-M1.1.md").write_text("right place\n")
+    git(top, "add", "work/implementation-summary-M1.1.md", "sr/work/implementation-summary-M1.1.md")   # tracked: a breach, not a warning
     _rec, delta = ops.reconcile(project, rec.worker_id)
     assert "work/implementation-summary-M1.1.md" in delta["outside_touch_zones"]
     assert "sr/work/implementation-summary-M1.1.md" in delta["changed"]
@@ -262,11 +263,13 @@ def test_nested_reconcile_matches_zones_by_the_project_relative_name(tmp_path: P
     wait_for_worker(project, rec.worker_id)
     (project / "src").mkdir()
     (project / "src" / "new.py").write_text("ok\n")   # sr/src/new.py: inside zone src
+    git(top, "add", "sr/src/new.py")   # tracked: untracked files are only a warning (M11.40)
     _rec, delta = ops.reconcile(project, rec.worker_id)
     assert "sr/src/new.py" in delta["changed"]
     assert delta["outside_touch_zones"] == [] and not delta["needs_reconcile"]
     (top / "other").mkdir()
     (top / "other" / "x.py").write_text("stray\n")   # git root, under no zone
+    git(top, "add", "other/x.py")
     _rec, delta = ops.reconcile(project, rec.worker_id)
     assert delta["outside_touch_zones"] == ["other/x.py"] and delta["needs_reconcile"]
 
