@@ -180,6 +180,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.71` | Review loops escalate on their own and criteria are written with bounds | task | Agentic-led | Complete |
 | `M11.72` | A reviewer run that ends without a record is reported as a failure | task | Agentic-led | Complete |
 | `M11.73` | specy-road ready warns when the leaf no longer merges cleanly | task | Agentic-led | Not Started |
-| `M11.74` | Pickup and finish in one checkout take a shared lock in order | task | Agentic-led | Not Started |
+| `M11.74` | Pickup and finish in one checkout take a shared lock in order | task | Agentic-led | Complete |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

@@ -143,19 +143,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: pickup-finish-shared-lock
-    node_id: M11.74
-    branch: feature/rm-pickup-finish-shared-lock
-    touch_zones:
-      - specy_road/bundled_scripts/do_next_task.py
-      - specy_road/bundled_scripts/finish_task.py
-      - specy_road/bundled_scripts/abort_task_pickup.py
-      - specy_road/repo_lock.py
-      - docs/git-workflow.md
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: version-shows-checkout-sha
     node_id: M11.66
     branch: feature/rm-version-shows-checkout-sha
