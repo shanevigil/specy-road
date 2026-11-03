@@ -152,7 +152,9 @@ def _run_init_cli(rest: list[str]) -> None:
     ns = p.parse_args(rest)
     if ns.init_cmd == "project":
         raise SystemExit(
-            run_init_project(ns.path, dry_run=ns.dry_run, force=ns.force)
+            run_init_project(
+                ns.path, dry_run=ns.dry_run, force=ns.force, profiles=ns.profiles
+            )
         )
     assert ns.init_cmd == "gui"
     if not ns.install_gui and not ns.reinstall_gui and not ns.build_gui:

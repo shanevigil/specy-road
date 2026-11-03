@@ -150,7 +150,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.41` | The two review-gate settings cannot silently disagree | task | Agentic-led | Not Started |
 | `M11.42` | session end finds the session the same agent started | task | Agentic-led | Complete |
 | `M11.43` | init project reports exactly what it writes | task | Agentic-led | Not Started |
-| `M11.44` | init project can install only the model profiles a project uses | task | Agentic-led | Not Started |
+| `M11.44` | init project can install only the model profiles a project uses | task | Agentic-led | Complete |
 | `M11.45` | The stale-command warning fires only on command-shaped mentions | task | Agentic-led | Complete |
 | `M11.46` | Placeholder leaves neither fail validate --strict nor pad briefs | task | Agentic-led | Not Started |
 | `M11.47` | validate checks git-root touch zones in a nested project | task | Agentic-led | Complete |
