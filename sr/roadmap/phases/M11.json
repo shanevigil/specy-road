@@ -425,7 +425,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.16_sheet-edits-keep-approvals_4bc4501a-7a1b-446d-876f-6b22b3902a6a.md",
       "sibling_order": 16,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A commit that changes only planning or bookkeeping files keeps existing approvals",
       "touch_zones": [
         "specy_road/review_gate.py",

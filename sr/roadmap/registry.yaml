@@ -53,15 +53,3 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: sheet-edits-keep-approvals
-    node_id: M11.16
-    branch: feature/rm-sheet-edits-keep-approvals
-    touch_zones:
-      - specy_road/review_gate.py
-      - specy_road/review_files.py
-      - docs/orchestration-review.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T06:38:13+00:00'
