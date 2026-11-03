@@ -37,6 +37,7 @@ from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified
     new_token,
     pid_alive,
     pid_verified,
+    process_alive,
     ready_fingerprints,
     start_token,
 )
@@ -51,10 +52,41 @@ from specy_road.worker_state import (
     load_record,
     mutate,
     record_path,
+    require_writer,
     set_state,
     workers_dir,
     workers_lock,
 )
+
+
+def queue_worker_message(repo_root: Path, rec: WorkerRecord, text: str) -> WorkerRecord:
+    if not rec.provider_session_id:
+        raise WorkerError(f"{rec.worker_id} has no native session id yet; nothing to queue for")
+    with workers_lock(repo_root):
+        rec = load_record(repo_root, rec.worker_id)
+        require_writer(rec)
+        mutate(repo_root, rec, lambda r: setattr(r, "queued_message", text))
+    append_event(repo_root, load_record(repo_root, rec.worker_id), "message_queued", source="orchestrator",
+                 authority="orchestrator", summary=f"queued: {' '.join(text.split())[:300]}")
+    return load_record(repo_root, rec.worker_id)
+
+
+def deliver_queued_message(repo_root: Path, worker_id: str, *, offline: bool = False) -> WorkerRecord | None:
+    with workers_lock(repo_root):
+        rec = load_record(repo_root, worker_id)
+        text = rec.queued_message
+        if not text or rec.state == "terminated":
+            return None
+        mutate(repo_root, rec, lambda r: setattr(r, "queued_message", None))
+    rec = load_record(repo_root, worker_id)
+    from specy_road.worker_ops import _send  # noqa: PLC0415 — ops imports spawn from this module
+
+    try:
+        return _send(repo_root, rec, text, "message", offline)
+    except WorkerError as e:
+        mutate(repo_root, rec, lambda r: setattr(r, "queued_message", text))
+        append_event(repo_root, rec, "error", source="system", summary=f"queued message not delivered: {e}")
+        raise
 
 
 #: ``last_output_at`` is written at most this often: each write is a mutate under the workers lock.
@@ -339,6 +371,14 @@ def _exit_state(repo_root: Path, rec: WorkerRecord, state: str) -> None:
         mutate(repo_root, rec, fn)
         if state == "failed":   # the slot lease follows the record: idle and completed keep it
             release_lease(repo_root, rec.worker_id)
+    _deliver_queued(repo_root, rec.worker_id)
+
+
+def _deliver_queued(repo_root: Path, worker_id: str) -> None:
+    try:
+        deliver_queued_message(repo_root, worker_id)
+    except WorkerError:
+        pass   # the failure is on the record; the coordinator sees it on the next sync
 
 
 def main(argv: list[str] | None = None) -> None:

@@ -1,13 +1,6 @@
 #!/usr/bin/env python3
-"""CLI for ``specy-road worker …``: launch, watch, steer, hand off and reconcile workers.
-
-A worker is one leaf being implemented by one session on one vendor harness,
-started by the coordinator and remembered under ``work/.workers/``
-(``docs/orchestration-workers.md``). Every command returns at once (``sync
---wait`` waits in the foreground, never past its own call); the worker runs
-detached. ``sync`` is what a coordinator calls at the start of each turn.
-Exit codes: 0 done, 1 refused or failed, 2 the harness does not support the
-operation (declared, never emulated) or ``sync --wait`` timed out.
+"""CLI for ``specy-road worker …`` (``docs/orchestration-workers.md``). Commands return at once except ``sync --wait``.
+Exit codes: 0 done, 1 refused or failed, 2 unsupported or ``sync --wait`` timed out.
 """
 
 from __future__ import annotations
@@ -19,8 +12,8 @@ from pathlib import Path
 from typing import Any
 
 from specy_road import worker_ops as ops
-from specy_road.bundled_scripts.worker_cli_render import (_line, _row, _sync_event_lines, timeline, timeline_lines,
-                                                       usage, usage_lines)
+from specy_road.bundled_scripts.worker_cli_render import (_line, _row, _sync_event_lines, sync_worker_header,
+                                                       timeline, timeline_lines, usage, usage_lines)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload
 from specy_road.worker_adapters import ADAPTERS, Unsupported
@@ -143,8 +136,7 @@ def cmd_sync(ns: argparse.Namespace) -> int:
     delta = ops.sync(root, ack=ns.ack)
     lines = []
     for w in delta:
-        flags = f" [{', '.join(w['flags'])}]" if w["flags"] else ""
-        lines.append(f"{w['worker_id']} {w['node_id']} {w['state']} lease={w['lease']} epoch={w['epoch']}{flags}")
+        lines += sync_worker_header(w, load_record(root, w["worker_id"]).queued_message)
         lines += [f"  ! gap: event(s) #{a}" + (f"–#{b}" if b > a else "") + " missing from the log (lost or unreadable)"
                   for a, b in w["gaps"]]
         # The whole log, not the delta: the final message may have been acked before the exit event.
@@ -180,9 +172,13 @@ def cmd_message(ns: argparse.Namespace) -> int:
         if old is None:
             raise WorkerError(f"cannot read --file {ns.file}: {e}") from None
         return _replay(ns, ns.op_id, old)
-    return _mutate(ns, "message", lambda root: _row(ops.message(root, ns.worker_id, text, offline=ns.offline)),
-                   lambda o: [f"{o['worker_id']}: message sent; resumed (pid {o['pid']})"],
-                   inputs={"text": text, **({"offline": True} if ns.offline else {})})
+    return _mutate(ns, "message", lambda root: _row(ops.message(root, ns.worker_id, text, offline=ns.offline,
+                                                                 no_queue=ns.no_queue)),
+                   lambda o: ([f"{o['worker_id']}: message queued for the next turn"]
+                              if o.get("queued_message") else
+                              [f"{o['worker_id']}: message sent; resumed (pid {o['pid']})"]),
+                   inputs={"text": text, **({"offline": True} if ns.offline else {}),
+                           **({"no_queue": True} if ns.no_queue else {})})
 
 
 def cmd_resume(ns: argparse.Namespace) -> int:
@@ -347,6 +343,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp = ws.add_parser("message", help="Send a follow-up prompt (resumes the native session)"); _w(sp)
     g = sp.add_mutually_exclusive_group(required=True)
     g.add_argument("--file", metavar="PATH"); g.add_argument("--text", metavar="TEXT")
+    sp.add_argument("--no-queue", action="store_true",
+                    help="Refuse while a turn is still running instead of queueing for the next turn")
     _offline_arg(sp); sp.set_defaults(func=cmd_message)
     sp = ws.add_parser("resume", help="Resume a stopped worker with a continue prompt"); _w(sp); _offline_arg(sp)
     sp.set_defaults(func=cmd_resume)
