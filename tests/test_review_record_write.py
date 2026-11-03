@@ -44,6 +44,21 @@ def test_a_run_that_writes_anything_but_its_notes_is_a_review_failure_and_files_
     assert not _record(repo).exists()                                 # the verdict in its output is not filed
 
 
+def test_a_same_length_rewrite_with_its_mtime_put_back_is_a_review_failure(tmp_path: Path) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    target = repo / "src" / "a.py"
+    text = target.read_text()
+    forged = text[::-1] if text[::-1] != text else text.upper()
+    assert len(forged) == len(text) and forged != text
+    set_steps(repo, spec, {**verdict_step(repo), "write": {"path": str(target), "text": forged, "keep_mtime": True}})
+    before = target.stat()
+    run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
+    after = target.stat()
+    assert (after.st_size, after.st_mtime_ns) == (before.st_size, before.st_mtime_ns)   # only the bytes differ
+    assert run["outcome"] == "review_failure" and run["reason"].startswith("review failure: the reviewer run wrote src/a.py;")
+    assert not _record(repo).exists()
+
+
 def test_the_reviewers_own_notes_are_the_one_write_allowed(tmp_path: Path) -> None:
     repo, spec = delegate_repo(tmp_path)
     notes = rf.reviews_dir(repo, "M1.1") / "notes-opus.md"
@@ -122,11 +137,27 @@ def test_output_review_record_refuses_is_a_rerun_request(tmp_path: Path) -> None
     assert "Re-review the current commit" in run["reason"] and not _record(repo).exists()
 
 
-def test_the_last_json_object_of_a_message_is_the_answer() -> None:
+def test_the_final_complete_json_object_of_a_message_is_the_answer() -> None:
     assert json_object({"a": 1}) == {"a": 1}
     assert json_object('Done.\n```json\n{"a": {"b": 1}}\n```\n') == {"a": {"b": 1}}
-    assert json_object('{"draft": 1} then {"final": 2}') == {"final": 2}
+    assert json_object('{"draft": 1}\nthen\n{"final": 2}') == {"final": 2}
+    assert json_object('{"final": 2}\ntokens used\n1,234') == {"final": 2}   # a harness trailer may follow
     assert json_object("no object here") is None and json_object(None) is None
+    assert json_object('{"final": 2}\n{"verdict": ') is None                 # a later object was cut off
+    assert json_object('{"final": 2}\n{"x": {"y": 1}') is None               # not its complete inner object
+    assert json_object('see {"final": 2}') is None                           # the answer starts its own line
+
+
+def test_a_valid_object_followed_by_truncated_json_is_a_rerun_request_and_files_nothing(tmp_path: Path) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    valid = json.dumps(verdict_step(repo)["answer"])
+    set_steps(repo, spec, {"raw": valid + '\n{"verdict": "approve", "commit": '})
+    run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
+    assert run["state"] == "incomplete" and run["outcome"] == "rerun"
+    assert run["reason"] == "rerun requested: the reviewer's output ends with no JSON object"
+    assert not _record(repo).exists()
+    set_steps(repo, spec, {"raw": valid})                                     # the same object alone is filed
+    assert delegate(repo, "M1.1", "opus", sleep=lambda s: None)["outcome"] == "recorded"
 
 
 # --- A1: the prompt asks for the object; the schema is the record's -----------------------------------------------

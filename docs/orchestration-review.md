@@ -230,7 +230,7 @@ reviewer command passes the harness's structured-output flag where there is one:
 | Codex | `codex exec --json -c sandbox_mode=read-only -c approval_policy=never --output-schema <file> -o <OUTPUT-<model>.json> -` | the `-o` file; a resume (which documents neither flag) its last `agent_message` |
 | Cursor | `agent -p --output-format stream-json --mode ask --trust` (no `--force`) | the `result` event's text |
 | Antigravity (`agy`, a `generic` entry) | its `channels.cli` or `access.cli`, with `--json-schema <schema file>`, `--output-format json`, `--sandbox` and `--print-timeout 30m` added after `agy` where absent; `--dangerously-skip-permissions` is refused | the envelope's `structured_output` |
-| anything else (`channels.cli`, `generic`) | as written | the last JSON object in the output (a JSON envelope's `structured_output`) |
+| anything else (`channels.cli`, `generic`) | as written | the output's last complete JSON object, which must start a line with no later `{` after it (a JSON envelope's `structured_output`) |
 
 The schema file is `work/reviews/<NODE_ID>/review-output.schema.json`. After the
 run (`prompt --channel cli` or `review delegate`, default or custom command)
@@ -241,9 +241,12 @@ specy-road decides the outcome:
   its `.tmp`, `RUN-<model>.log`, `OUTPUT-<model>.json`, the schema file and
   `.review-run.lock`): any file of the checkout it ran in, git-ignored and
   `work/` files included, any file of the leaf's hand-off directory, or a ref
-  (`HEAD`, a branch, a stash). A `REVIEW-<model>.md` it filed itself is put
-  back as it was. Nothing is filed.
-- **rerun request** — the output has no JSON object, does not match the schema,
+  (`HEAD`, a branch, a stash). Files are compared by content (SHA-256) as well
+  as size and mtime, so a same-length rewrite with its mtime put back counts. A
+  `REVIEW-<model>.md` it filed itself is put back as it was. Nothing is filed.
+- **rerun request** — the output has no JSON object, its last object does not
+  start a line, a later object was begun and left malformed or truncated (an
+  earlier complete object never stands in for it), it does not match the schema,
   or `review record` refuses it (another commit, an approve with a failing
   item). Nothing is filed; it is never recorded as a verdict.
 - **recorded** — the notes go to `notes-<model>.md` and `review record` files

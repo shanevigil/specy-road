@@ -4,12 +4,13 @@ A reviewer started by specy-road (``prompt --channel cli`` or ``review delegate`
 reply with one JSON object shaped by :func:`output_schema`, the review-record schema less the fields
 ``review record`` fills, plus ``notes``. Claude Code validates it with ``--json-schema``, Codex with
 ``--output-schema`` (and writes it to ``-o``), Antigravity's ``agy`` with ``--json-schema``
-(:func:`~specy_road.worker_adapter_base.reviewer_cli`); on any other harness the last JSON object of the final
-message is taken (:func:`json_object`), and a JSON envelope's ``structured_output`` is the answer.
+(:func:`~specy_road.worker_adapter_base.reviewer_cli`); on any other harness the final message's last complete
+JSON object is taken, provided it starts a line and no later object was begun (:func:`json_object`), and a JSON
+envelope's ``structured_output`` is the answer.
 :func:`file_review` then decides the run's outcome:
 
 * ``review_failure`` — the run wrote something besides its notes and the run's own runtime files
-  (:func:`runtime_files`): any file of the checkout it ran in, git-ignored and ``work/`` files included, any
+  (:func:`runtime_files`), compared by content as well as size and mtime: any file of the checkout it ran in, git-ignored and ``work/`` files included, any
   file of the leaf's hand-off directory, or a ref (``HEAD``, a branch, a stash). A ``REVIEW-<model>.md`` it
   filed itself is put back as it was, so the gate never counts it. Nothing is filed;
 * ``rerun`` — the output is missing, is not a JSON object, does not match the schema, or ``review record``
@@ -28,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import io
 import json
 import os
@@ -109,9 +111,21 @@ def _own_records(reviews: Path, model: str) -> list[Path]:
     return live + (sorted(hist.glob(f"*-{model}.md")) if hist.is_dir() else [])
 
 
+def _content(path: str, is_link: bool) -> str:
+    """SHA-256 of the file's bytes (a symlink's target text): a same-length rewrite with its mtime put back
+    still differs. ``unreadable`` when it cannot be read (removed mid-walk, no permission)."""
+    try:
+        if is_link:
+            return hashlib.sha256(os.readlink(path).encode()).hexdigest()
+        with open(path, "rb") as f:
+            return hashlib.file_digest(f, "sha256").hexdigest()
+    except OSError:
+        return "unreadable"
+
+
 def _walk(base: Path, state: dict[str, Any]) -> None:
-    """``(size, mtime)`` of every file under ``base``, ignored ones included; ``.git`` and nested checkouts
-    (a directory holding ``.git``) are other repositories' and are skipped."""
+    """``(size, mtime, content digest)`` of every file under ``base``, ignored ones included; ``.git`` and nested
+    checkouts (a directory holding ``.git``) are other repositories' and are skipped."""
     stack = [str(base)]
     while stack:
         try:
@@ -128,7 +142,7 @@ def _walk(base: Path, state: dict[str, Any]) -> None:
                 st = e.stat(follow_symlinks=False)
             except OSError:
                 continue
-            state[e.path] = (st.st_size, st.st_mtime_ns)
+            state[e.path] = (st.st_size, st.st_mtime_ns, _content(e.path, e.is_symlink()))
 
 
 @dataclass
@@ -227,21 +241,27 @@ def final_output(adapter: Any, text: str, output_file: Path | None = None) -> An
 
 
 def json_object(value: Any) -> dict[str, Any] | None:
-    """``value`` if it is a dict, else the last top-level JSON object in its text (a fenced block counts)."""
+    """``value`` if it is a dict, else the final JSON object of its text, or ``None``. The final object is the last
+    complete top-level one; it must start a line (prose and a ```` ```json ```` fence may precede it) and nothing
+    after it may open another (``{``): a truncated or malformed later object is a rerun request, never the earlier
+    one's verdict. Other trailing text (a closing fence, a harness's status lines) is permitted."""
     if isinstance(value, dict):
         return value
     if not isinstance(value, str):
         return None
-    dec, last = json.JSONDecoder(), None
+    dec, last, start, end = json.JSONDecoder(), None, 0, 0
     i = value.find("{")
     while i != -1:
         try:
-            obj, end = dec.raw_decode(value, i)
+            obj, stop = dec.raw_decode(value, i)
         except ValueError:
             i = value.find("{", i + 1)
             continue
-        last = obj if isinstance(obj, dict) else last
-        i = value.find("{", end)
+        if isinstance(obj, dict):
+            last, start, end = obj, i, stop
+        i = value.find("{", stop)
+    if last is None or "{" in value[end:] or value[value.rfind("\n", 0, start) + 1:start].strip():
+        return None
     return last
 
 

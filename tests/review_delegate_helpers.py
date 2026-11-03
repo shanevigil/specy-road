@@ -27,7 +27,11 @@ step = spec["steps"][min(len(calls), len(spec["steps"])) - 1]
 sid = sys.argv[-1]
 print(json.dumps({"type": "system", "subtype": "init", "session_id": sid, "model": "fake"}), flush=True)
 if step.get("write"):
-    open(step["write"]["path"], "w").write(step["write"]["text"])
+    w = step["write"]
+    kept = os.stat(w["path"]) if w.get("keep_mtime") else None   # an overwrite that puts the times back
+    open(w["path"], "w").write(w["text"])
+    if kept:
+        os.utime(w["path"], ns=(kept.st_atime_ns, kept.st_mtime_ns))
 answer = json.dumps(step["answer"]) if "answer" in step else step.get("raw", "filed")
 if step.get("plain"):   # a harness that prints only its final message
     print(answer, flush=True)
