@@ -127,3 +127,19 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
+  - codename: risk-tiered-review
+    node_id: M11.79
+    branch: feature/rm-risk-tiered-review
+    touch_zones:
+      - specy_road/orchestration_config.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - sr/schemas/orchestration.schema.json
+      - specy_road/review_gate.py
+      - specy_road/review_eligible.py
+      - specy_road/bundled_scripts/orchestrate_cli.py
+      - specy_road/orchestrate_plan.py
+      - docs/orchestration-review.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
