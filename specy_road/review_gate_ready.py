@@ -21,7 +21,7 @@ from specy_road.review_files import (
 )
 from specy_road.review_policy_ref import policy_source
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
-from specy_road.review_target import ReviewTargetError, resolve_target
+from specy_road.review_target import ReviewTargetError, full_sha, resolve_target
 from specy_road.runtime_paths import add_repo_root_arg, project_prefix, rebase_to_project, resolve_repo_root
 
 
@@ -109,6 +109,31 @@ def trial_merge_or_exit(repo_root: Path) -> None:
     print(f"  Run `git merge {tm.base_ref}`, resolve, commit, and have the result reviewed.", file=sys.stderr)
     raise SystemExit(1)
 
+
+def policy_source_line(root: Path) -> str:
+    """The packet's ``Policy source`` line: where the gate reads its policy from."""
+    ref, err = policy_source(root)
+    if err:
+        return f"- **Policy source:** _{err}_ (the gate fails closed)"
+    if ref is None:
+        return "- **Policy source:** _the working tree (not a git checkout)_"
+    return f"- **Policy source:** `{ref}` @ `{full_sha(root, ref) or '?'}`"
+
+
+def trial_merge_lines(root: Path, ref: str | None, integration_ref: str | None) -> list[str]:
+    """Whether the branch tip still merges into the integration branch; a code conflict stops review."""
+    tm = trial_merge(root, ref, integration_ref)
+    if tm is None:
+        return ["- **Trial merge:** _git could not answer_"]
+    ahead = f"`{tm.base_ref}` is {tm.behind} commit(s) ahead"
+    if not tm.conflicts:
+        return [f"- **Trial merge:** {ahead}; merges cleanly" if tm.behind else
+                f"- **Trial merge:** up to date with `{tm.base_ref}`"]
+    names = ", ".join(f"`{p}`" for p in tm.conflicts)
+    if tm.problem() is None:
+        return [f"- **Trial merge:** {ahead}; conflicts on bookkeeping only ({names}), which does not block"]
+    return [f"- **Trial merge:** {ahead}; **conflicts on {names}**", "",
+            f"**Stop: {tm.problem()}.** Reviewing this commit is wasted work: the merge makes it stale.", ""]
 
 
 def parse_check(spec: str) -> tuple[str, int]:

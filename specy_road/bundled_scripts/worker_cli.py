@@ -68,7 +68,7 @@ def _with_op(ns: argparse.Namespace, root: Path, kind: str, fn, inputs: dict[str
     op = getattr(ns, "op_id", None)
     if op:
         if inputs is None:
-            inputs = {k: getattr(ns, k) for k in ("model", "harness", "worktree", "text", "note", "session")
+            inputs = {k: getattr(ns, k) for k in ("model", "harness", "worktree", "text", "note", "session", "offline")
                       if getattr(ns, k, None)}
         old = begin_op(root, op, kind, _target_of(ns), inputs)
         if old is not None:
@@ -90,7 +90,7 @@ def cmd_delegate(ns: argparse.Namespace) -> int:
 
     def go():
         rec, created = ops.delegate(root, ns.node_id, ns.model, harness=ns.harness,
-                                    worktree=Path(ns.worktree) if ns.worktree else None)
+                                    worktree=Path(ns.worktree) if ns.worktree else None, offline=ns.offline)
         state.update(worker_id=rec.worker_id, created=created, state=rec.state, worktree=rec.worktree,
                      harness=rec.harness, model=rec.model, pid=rec.pid)
         return dict(state)
@@ -180,13 +180,13 @@ def cmd_message(ns: argparse.Namespace) -> int:
         if old is None:
             raise WorkerError(f"cannot read --file {ns.file}: {e}") from None
         return _replay(ns, ns.op_id, old)
-    return _mutate(ns, "message", lambda root: _row(ops.message(root, ns.worker_id, text)),
+    return _mutate(ns, "message", lambda root: _row(ops.message(root, ns.worker_id, text, offline=ns.offline)),
                    lambda o: [f"{o['worker_id']}: message sent; resumed (pid {o['pid']})"],
-                   inputs={"text": text})
+                   inputs={"text": text, **({"offline": True} if ns.offline else {})})
 
 
 def cmd_resume(ns: argparse.Namespace) -> int:
-    return _mutate(ns, "resume", lambda root: _row(ops.resume(root, ns.worker_id)),
+    return _mutate(ns, "resume", lambda root: _row(ops.resume(root, ns.worker_id, offline=ns.offline)),
                    lambda o: [f"{o['worker_id']}: resumed (pid {o['pid']})"])
 
 
@@ -296,6 +296,11 @@ def cmd_hook(ns: argparse.Namespace) -> int:
     return 0
 
 
+def _offline_arg(sp: argparse.ArgumentParser) -> None:
+    sp.add_argument("--offline", action="store_true",
+                    help="Count this checkout's workers only and push no lease (when the integration remote is unreachable)")
+
+
 def _w(sp: argparse.ArgumentParser, *, op: bool = True) -> None:
     sp.add_argument("worker_id", metavar="W")
     sp.add_argument("--json", action="store_true")
@@ -315,6 +320,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--model", required=True, help="Roster id (executor role)")
     sp.add_argument("--harness", choices=HARNESSES, help="Override the roster entry's harness")
     sp.add_argument("--worktree", help="Run in this checkout (default: this one if it has the claim's branch, else a linked worktree)")
+    _offline_arg(sp)
     sp.add_argument("--json", action="store_true")
     sp.add_argument("--op-id", metavar="ID")
     add_repo_root_arg(sp)
@@ -341,8 +347,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp = ws.add_parser("message", help="Send a follow-up prompt (resumes the native session)"); _w(sp)
     g = sp.add_mutually_exclusive_group(required=True)
     g.add_argument("--file", metavar="PATH"); g.add_argument("--text", metavar="TEXT")
-    sp.set_defaults(func=cmd_message)
-    sp = ws.add_parser("resume", help="Resume a stopped worker with a continue prompt"); _w(sp); sp.set_defaults(func=cmd_resume)
+    _offline_arg(sp); sp.set_defaults(func=cmd_message)
+    sp = ws.add_parser("resume", help="Resume a stopped worker with a continue prompt"); _w(sp); _offline_arg(sp)
+    sp.set_defaults(func=cmd_resume)
     sp = ws.add_parser("interrupt", help="Stop the current turn (declared unsupported by the CLI adapters)"); _w(sp, op=False)
     sp.set_defaults(func=cmd_interrupt)
     sp = ws.add_parser("terminate", help="SIGTERM the worker and close its record"); _w(sp); sp.set_defaults(func=cmd_terminate)

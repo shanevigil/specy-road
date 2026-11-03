@@ -40,7 +40,8 @@ from specy_road.review_gate_ready import add_ready_parser
 from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
-from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
+from specy_road.review_target import (ReviewTarget, ReviewTargetError, milestone_open_problem, milestone_status,
+                                      resolve_target, same_commit)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.session_presence import list_sessions
 from specy_road.worker_state import list_records
@@ -67,17 +68,13 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
     ready = latest_ready(root, node_id, branch, aids)
     ready_commit = ready.data["commit"] if ready else None
     # A current READY's blocked_on outranks reviewer blocks and escalation (A3).
-    blocked_lines = (
-        executor_blocked_display_lines(ready) if same_commit(root, ready_commit, t.commit) else []
-    )
-    tm = trial_merge(root, t.ref, t.base_ref)
-    merge_problem = [tm.problem()] if tm and tm.problem() else []
+    blocked_lines = executor_blocked_display_lines(ready) if same_commit(root, ready_commit, t.commit) else []
     loop = loop_state(root, node_id)
     escalated = loop.escalation is not None and not gate.passed
-    if blocked_lines:
-        state = "executor_blocked"
-    else:
-        state = "escalated" if escalated else _state(root, t, gate, ready_commit)
+    state = "executor_blocked" if blocked_lines else "escalated" if escalated else _state(root, t, gate, ready_commit)
+    state, hints = milestone_status(t, state)
+    tm = trial_merge(root, t.ref, t.base_ref)
+    merge_problem = ([tm.problem()] if tm and tm.problem() else []) + hints
     return {
         "node_id": node_id,
         "state": state,
@@ -244,9 +241,9 @@ def _relabel_independence(root: Path, gate: GateResult) -> None:
 
 
 def _check_record(ns: argparse.Namespace, root: Path, t: ReviewTarget) -> tuple[dict | None, str | None]:
-    if ns.model == HUMAN:
-        return None, ("a human review is filed only by the interactive approve in "
-                      "specy-road mark-implementation-reviewed, so an agent cannot file one")
+    if ns.model == HUMAN or milestone_open_problem(t):   # a milestone with an open leaf takes no record yet
+        return None, milestone_open_problem(t) or ("a human review is filed only by the interactive approve in "
+                                                   "specy-road mark-implementation-reviewed, so an agent cannot file one")
     rec = load_review(Path(ns.file), acceptance_ids(t.node))
     if not rec.ok:
         return None, f"{ns.file}: " + "; ".join(rec.errors)
@@ -346,6 +343,8 @@ def cmd_review_list(ns: argparse.Namespace) -> int:
         print(f"gate at {t.ref} @ {(gate.commit or '?')[:12]}: {gate.summary()}")
         for p in gate.problems():
             print(f"  - {p}")
+        for line in milestone_status(t, "approved" if gate.passed else "waiting")[1]:
+            print(line)
     if loop.escalation and (t is None or not gate.passed):
         print(_escalation_line(ns.node_id, loop.escalation.describe()).strip())
     return 0

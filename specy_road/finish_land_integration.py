@@ -200,22 +200,99 @@ def integration_commits_ahead_of_remote(
     return int(out.strip())
 
 
+def _ref_sha(repo: Path, ref: str) -> str | None:
+    ok, sha = git_ok(["rev-parse", "--verify", "--quiet", ref], repo)
+    return sha if ok else None
+
+
+def _is_ancestor(repo: Path, ancestor: str, descendant: str) -> bool:
+    ok, _ = git_ok(["merge-base", "--is-ancestor", ancestor, descendant], repo)
+    return ok
+
+
+def _rev_list_count(
+    repo: Path, tips: list[str], exclude: list[str] | None = None,
+) -> int:
+    """Count commits reachable from ``tips``, optionally excluding ``exclude``.
+
+    ``exclude is None`` counts the entire reachable set (no remote-tracking
+    baseline). Shared ancestry across ``tips`` is counted once.
+    """
+    args = ["rev-list", "--count", *tips]
+    if exclude is not None:
+        args += ["--not", *exclude]
+    code, out = git_code(args, repo)
+    if code != 0 or not out.strip().isdigit():
+        return 0
+    return int(out.strip())
+
+
+def _integration_tip_after_ff(
+    repo: Path, *, remote: str, integration_branch: str,
+) -> str | None:
+    """Integration ``HEAD`` after the landing's ``merge --ff-only`` to the tracking ref."""
+    local = _ref_sha(repo, f"refs/heads/{integration_branch}")
+    tracked = _ref_sha(repo, f"refs/remotes/{remote}/{integration_branch}")
+    if local and tracked:
+        if _is_ancestor(repo, local, tracked):
+            return tracked
+        if _is_ancestor(repo, tracked, local):
+            return local
+        return local
+    return local or tracked
+
+
+def _feature_merge_adds_commit(repo: Path, integration_tip: str, feature_branch: str) -> bool:
+    ok, _ = git_ok(["merge-base", "--is-ancestor", feature_branch, integration_tip], repo)
+    return not ok
+
+
+def merge_push_disclosure_counts(
+    repo: Path, *, remote: str, integration_branch: str, feature_branch: str,
+) -> tuple[int, int]:
+    """Return ``(total_commits_on_push, not_from_leaf)`` for merge-mode disclosure.
+
+    ``total`` is every commit newly reachable on the pushed integration ref:
+    local integration history, feature-only commits, and the landing merge
+    commit, with shared ancestry counted once. ``not_from_leaf`` is the subset
+    not reachable from ``feature_branch``.
+    """
+    integration_tip = _integration_tip_after_ff(
+        repo, remote=remote, integration_branch=integration_branch,
+    )
+    if integration_tip is None:
+        return 0, 0
+    tracked = _ref_sha(repo, f"refs/remotes/{remote}/{integration_branch}")
+    baseline = [tracked] if tracked is not None else None
+    not_from_exclude = [*(baseline or []), feature_branch]
+    not_from_leaf = _rev_list_count(repo, [integration_tip], exclude=not_from_exclude)
+    total = _rev_list_count(
+        repo, [integration_tip, feature_branch], exclude=baseline,
+    )
+    if _feature_merge_adds_commit(repo, integration_tip, feature_branch):
+        total += 1
+    return total, not_from_leaf
+
+
 def print_merge_push_notice(
     repo: Path, *, remote: str, integration_branch: str, feature_branch: str,
 ) -> None:
     """Tell the operator what merge mode will push before it runs."""
     git_code(["fetch", remote], repo)
-    ahead = integration_commits_ahead_of_remote(repo, remote=remote, integration_branch=integration_branch)
+    total, not_from_leaf = merge_push_disclosure_counts(
+        repo,
+        remote=remote,
+        integration_branch=integration_branch,
+        feature_branch=feature_branch,
+    )
     print(
         f"\nMerge mode will merge {feature_branch!r} into {integration_branch!r} "
         f"and push {remote}/{integration_branch}."
     )
-    if ahead is None:
-        return
-    word = "commit" if ahead == 1 else "commits"
+    total_word = "commit" if total == 1 else "commits"
     print(
-        f"  {ahead} local {word} on {integration_branch} are not on {remote}/{integration_branch} yet "
-        f"(in addition to this leaf's merge)."
+        f"  The push will carry {total} {total_word} "
+        f"({not_from_leaf} not from {feature_branch!r})."
     )
 
 
