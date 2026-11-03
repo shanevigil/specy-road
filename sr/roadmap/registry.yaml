@@ -119,6 +119,7 @@ entries:
       - docs/orchestration-review.md
       - tests/
       - specy_road/bundled_scripts/review_cli.py
+      - specy_road/review_record_rules.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending

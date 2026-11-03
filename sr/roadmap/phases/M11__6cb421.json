@@ -483,7 +483,8 @@
         "specy_road/bundled_scripts/role_prompt.py",
         "docs/orchestration-review.md",
         "tests/",
-        "specy_road/bundled_scripts/review_cli.py"
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_record_rules.py"
       ],
       "type": "task"
     }
