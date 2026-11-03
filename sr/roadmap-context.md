@@ -167,7 +167,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.58` The coordinator records the session's routing preferences where the next session can read them `session-routing-preferences` — task — **Not Started**
   - `M11.59` Split worker_ops and worker_adapters so parallel leaves stop colliding `split-worker-modules` — task — **Not Started**
   - `M11.62` Headless runs report usage limits and denied actions instead of looking like success `headless-limits-denials` — task — **Not Started**
-  - `M11.60` The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names `harness-facts-nov-refresh` — task — **Not Started**
+  - `M11.60` The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names `harness-facts-nov-refresh` — task — **Complete**
   - `M11.61` The context meter counts Claude rules, auto memory, Cursor nested AGENTS.md and Copilot path instructions `meter-claude-rules-and-nested` — task — **Complete**
 
 ## Archived (not in the live roadmap)
@@ -185,7 +185,6 @@ Do not pick these up.
 - `M11.46` on `feature/rm-placeholder-leaves-strict-brief` since 2026-11-02
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.59` on `feature/rm-split-worker-modules` since 2026-11-02
-- `M11.60` on `feature/rm-harness-facts-nov-refresh` since 2026-11-02
 
 ## Reaching the detail behind this
 

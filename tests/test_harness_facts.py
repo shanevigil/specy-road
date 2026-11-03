@@ -297,8 +297,8 @@ def test_capture_cli_fails_on_unassigned_and_accept_stores_a_passing_one(tmp_pat
     monkeypatch.setattr(hf, "bundled_captures_dir", lambda: accepted)
     hf.write_capture(accepted / "codex", _capture("codex-cli 0.165.0"))
     bad, good = tmp_path / "bad", tmp_path / "good"
-    hf.write_capture(bad, _capture("codex-cli 0.166.0", HELP + "  --auto-push   New\n"))
-    hf.write_capture(good, _capture("codex-cli 0.166.0", HELP + "  --colour   New\n"))
+    hf.write_capture(bad, _capture("codex-cli 0.167.0", HELP + "  --auto-push   New\n"))
+    hf.write_capture(good, _capture("codex-cli 0.167.0", HELP + "  --colour   New\n"))
     assert run_main("--capture", "codex", "--from", str(bad), "--accept") == 1
     assert "UNASSIGNED --auto-push: contains 'push'" in capsys.readouterr().err
     assert "0.165.0" in (accepted / "codex" / hf.VERSION_FILE).read_text()
