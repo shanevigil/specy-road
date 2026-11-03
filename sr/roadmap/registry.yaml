@@ -95,3 +95,14 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
+  - codename: terra-executor-pilot
+    node_id: M10.20
+    branch: feature/rm-terra-executor-pilot
+    touch_zones:
+      - sr/research/
+      - sr/roadmap/orchestration.yaml
+      - specy_road/templates/project/model-profiles/openai-gpt/
+      - docs/orchestration-models.md
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
