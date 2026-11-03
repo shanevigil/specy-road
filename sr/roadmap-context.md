@@ -126,7 +126,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.16` A commit that changes only planning or bookkeeping files keeps existing approvals `sheet-edits-keep-approvals` — task — **Not Started**
   - `M11.17` edit-node names every chunk file it changes, and relocation is loud `edit-node-names-chunks` — task — **Complete**
   - `M11.18` Registry overlap warnings show only what concerns the command at hand `quieter-overlap-warnings` — task — **Not Started**
-  - `M11.19` Pickup never stashes work/ around the registry commit `pickup-no-work-stash` — task — **Not Started**
+  - `M11.19` Pickup never stashes work/ around the registry commit `pickup-no-work-stash` — task — **Complete**
   - `M11.20` orchestrate plan and validate say where the roster is read from `roster-source-explained` — task — **Not Started**
   - `M11.22` Worker worktrees can include nested sibling repositories `nested-repo-worktrees` — task — **Not Started**
   - `M11.23` A custom launch command's permissions carry through resume `resume-keeps-permissions` — task — **Not Started**
@@ -143,6 +143,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.34` Open human decisions live in one tracked ledger and every question is self-contained `decision-ledger` — task — **Not Started**
   - `M11.35` A roster entry maps to the harness's own model id, and a failed start says why `roster-harness-model-id` — task — **Not Started**
 
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+
 ## Archived (not in the live roadmap)
 
 This work was completed and moved out of the graph. It is deliberately excluded from IDE indexing; reach it with `specy-road search <QUERY> --scope archived`.
@@ -154,6 +160,11 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M11.13` on `feature/rm-milestone-full-review` since 2026-11-02
+- `M11.18` on `feature/rm-quieter-overlap-warnings` since 2026-11-02
+- `M11.25` on `feature/rm-merge-push-disclosure` since 2026-11-02
+- `M11.26` on `feature/rm-profile-aliases` since 2026-11-02
+- `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
+- `M11.34` on `feature/rm-decision-ledger` since 2026-11-02
 - `M11.4` on `feature/rm-max-workers-global` since 2026-11-02
 - `M11.8` on `feature/rm-delta-review-packet` since 2026-11-02
 
