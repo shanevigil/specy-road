@@ -482,7 +482,8 @@
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt.py",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/review_cli.py"
       ],
       "type": "task"
     }
