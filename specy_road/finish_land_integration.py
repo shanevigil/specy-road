@@ -20,6 +20,10 @@ delegate``'s layout: the coordinator's checkout on ``main``, the leaf in
 ``work/.worktrees/<codename>``), ``git checkout`` of it here is impossible, so
 the merge runs in that worktree instead -- only when it has no uncommitted
 changes to tracked files, so another checkout's work is never touched.
+
+Each ``nested_repos`` repository holding the feature branch is merged and
+pushed first (:mod:`specy_road.nested_repos`); a failure there returns before
+the main repository moves.
 """
 
 from __future__ import annotations
@@ -32,6 +36,7 @@ from specy_road.finish_land_deterministic import (
     merge_feature_deterministically,
 )
 from specy_road.git_subprocess import git_code, git_ok
+from specy_road.nested_repos import land_nested_branches
 
 
 def _ref_exists_local(repo: Path, ref: str) -> bool:
@@ -348,6 +353,11 @@ def land_merge_feature_into_integration(
     problem = integration_worktree_problem(repo, integration_branch)
     if problem is not None:
         return False, problem
+    # nested_repos: each nested branch lands first, so a failure there stops
+    # the landing before the main repository moves.
+    ok, err = land_nested_branches(repo, feature_branch)
+    if not ok:
+        return False, err
     check = resolve_land_check_cmd(repo, cli=land_check_cmd)
     holder = integration_worktree(repo, integration_branch)
     if holder is not None:

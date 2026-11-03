@@ -58,6 +58,7 @@ from specy_road.git_workflow_config import (
     resolve_prefer_agentic,
 )
 from specy_road.milestone_subtree import filter_available_under_parent
+from specy_road.nested_repos import announce_nested_worktrees
 from specy_road.on_complete_pickup import print_pickup_footer, prompt_on_complete
 from specy_road.planning_scaffold_check import warn_scaffold_at_pickup
 from specy_road.runtime_paths import resolve_repo_root
@@ -275,6 +276,7 @@ def _finalize_pickup(
     leaf_root, work_dir = ROOT, ROOT / "work"
     if worktree:   # the leaf's agent runs in the worktree, so its brief, prompt and session go there
         leaf_root, work_dir = worktree_work_dir(ROOT, worktree, brief_path)
+        announce_nested_worktrees(ROOT, leaf_root, branch, node.get("touch_zones"))   # nested_repos
         brief_path = work_dir / brief_path.name
         print(f"worktree: {worktree} has {branch}; this checkout stays on {base}")
     prompt_path = _write_session_and_prompt(

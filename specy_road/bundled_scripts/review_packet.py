@@ -11,7 +11,7 @@ Writes ``work/reviews/<NODE_ID>/PACKET.md`` (and ``-o``'s path too) with, in ord
    ``--base``), with paths outside the touch zones called out: the claim row's
    zones plus the node's as committed at the reviewed commit;
 5. the Python test files that import a changed module (``specy-road impact``);
-6. ``git diff <base>...<ref>``, with a warning when it is empty; past
+6. ``git diff <base>...<ref>``, with a warning when it is empty, then each ``nested_repos`` repository's; past
    ``--max-diff-lines`` (default 1500) or ``--max-diff-bytes`` (default 200000)
    the first files that fit both are inlined whole, the rest are listed with
    their ``+``/``-`` counts and diff bytes, and the full diff is written to
@@ -38,6 +38,7 @@ from datetime import date
 from pathlib import Path
 
 from specy_road.bundled_scripts.generate_brief import index, render_brief
+from specy_road.bundled_scripts.review_packet_nested import nested_diff_section
 from specy_road.bundled_scripts.review_packet_uncommitted_refs import uncommitted_refs_section
 from specy_road.finish_implementation_check import in_zones
 from specy_road.git_changed_paths import diff_paths
@@ -357,8 +358,7 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
         changed,
         test_integrity_section(root, t),
         tests_at_risk_section(root, t),
-        _diff(root, t, paths, max_diff_lines, max_diff_bytes, f"DIFF-{prior.data['model']}.patch" if prior else
-              DIFF_NAME),
+        _diff(root, t, paths, max_diff_lines, max_diff_bytes, f"DIFF-{prior.data['model']}.patch" if prior else DIFF_NAME) + nested_diff_section(root, t, max_diff_lines),
         ["## Verifier output", ""] + _ready_verify(root, t) + _run_verify(root, verify_cmds, t),
     ]
     return "\n".join("\n".join(p) for p in parts).rstrip() + "\n"

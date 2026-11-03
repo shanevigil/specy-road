@@ -15,6 +15,7 @@ from typing import Any
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text, run
+from specy_road.nested_repos import NestedRepoError, add_nested_worktrees, in_nested, nested_prefixes
 from specy_road.orchestrate_plan import ANY, is_available, may_handle, node_eligibility, node_sensitivity, unavailability_reason
 from specy_road.orchestration_config import harness_model, roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
@@ -197,15 +198,23 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
                    text: str, worktree: Path | None, offline: bool = False) -> WorkerRecord:
     branch = str(t.entry["branch"])
     wt = _worktree_for(repo_root, branch, str(t.node.get("codename") or node_id), worktree)
+    prefix = project_prefix(repo_root)
+    if wt != git_root(repo_root):   # the leaf's own worktree: its nested repos (nested_repos) go inside it
+        try:
+            add_nested_worktrees(repo_root, wt / prefix, branch, t.touch_zones)
+        except NestedRepoError as e:
+            raise WorkerError(str(e)) from None
     # The worker edits this tree: uncommitted work in it could be overwritten, and
     # `reconcile` could not tell the worker's edits from it. Only the leaf's own
-    # untracked bookkeeping is exempt (pickup leaves the brief there untracked).
+    # untracked bookkeeping is exempt (pickup leaves the brief there untracked),
+    # and a nested repository's directory, which is its own repository.
     entries = status_entries(wt)
     if entries is None:
         raise WorkerError(f"cannot read `git status` in {wt}, so its uncommitted changes are unknown; "
                           "repair that checkout, then delegate again")
-    prefix = project_prefix(repo_root)
-    dirty = sorted(p for xy, p in entries if not (xy == "??" and _bookkeeping(p, node_id, prefix)))
+    nested = nested_prefixes(repo_root)
+    dirty = sorted(p for xy, p in entries
+                   if not (xy == "??" and (_bookkeeping(p, node_id, prefix) or in_nested(p, nested))))
     if dirty:
         raise WorkerError(f"{wt} has uncommitted changes the worker could overwrite: {', '.join(dirty)}; "
                           "commit or stash them, then delegate again")

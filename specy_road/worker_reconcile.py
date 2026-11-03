@@ -19,6 +19,7 @@ from specy_road.finish_implementation_check import _clean, zone_matches
 from specy_road.git_changed_paths import branch_commit_paths, diff_paths
 from specy_road.git_subprocess import git_text, head_sha
 from specy_road.git_workflow_config import WORKER_LOGS_REL
+from specy_road.nested_repos import in_nested, nested_changes, nested_prefixes
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_target import ReviewTarget, ReviewTargetError, _registry_entry, resolve_target
 from specy_road.runtime_paths import git_root, project_prefix, rebase_to_project
@@ -143,6 +144,12 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
     since = (rec.checkpoint or {}).get("git_head") or t.base or rec.started_head
     wt = Path(rec.worktree)
     changed, untracked = _changed_since(wt, since), (_untracked(wt) if since else [])
+    prefix = project_prefix(repo_root)
+    # nested_repos: each nested repository is diffed in its own worktree, since
+    # its branch point; its directory is not an untracked file of this one.
+    nested_changed, nested_untracked = nested_changes(repo_root, wt / prefix)
+    nested = nested_prefixes(repo_root)
+    untracked = sorted([p for p in untracked if not in_nested(p, nested)] + nested_untracked)
     # The claim row as it is now (edit-node keeps it in step with the node),
     # not the zones the worker was delegated with.
     zones = [z for z in (_clean(z) for z in t.touch_zones) if z]
@@ -155,12 +162,11 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
     # review files, and the registry row the claim lives in. Paths are named
     # from the git root; zones are matched as the review packet matches them,
     # by the project-relative name inside the project, the git-root name outside.
-    prefix = project_prefix(repo_root)
     def _outside(paths):
         return [p for p in paths if zones and not (
             _bookkeeping(p, rec.node_id, prefix) or rebase_to_project(p, prefix) == "roadmap/registry.yaml"
             or any(zone_matches(z, rebase_to_project(p, prefix) or p) for z in zones))]
-    outside = _outside(sorted(set(changed) | set(on_branch)))
+    outside = _outside(sorted(set(changed) | set(on_branch) | set(nested_changed)))
     # An untracked file is in no commit the leaf lands (a project's own tests may
     # write reports): outside the zones it is a warning, not a breach.
     untracked_outside = _outside(untracked)
@@ -182,12 +188,15 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
         add_flag(repo_root, rec, FLAG_RECONCILE)
     else:
         clear_flag(repo_root, rec, FLAG_RECONCILE)
-    delta = {"since": since, "changed": changed, "outside_touch_zones": outside, "untracked": untracked,
+    delta = {"since": since, "changed": changed, "nested_changed": nested_changed,
+             "outside_touch_zones": outside, "untracked": untracked,
              "untracked_outside_touch_zones": untracked_outside, "claimed": t.entry is not None,
              "contract_changed": contract_changed, "branch_mismatch": off_branch, "epoch": rec.instruction_epoch,
              "needs_reconcile": FLAG_RECONCILE in rec.flags}
     append_event(repo_root, rec, "reconcile", source="orchestrator", authority="orchestrator",
-                 summary=(f"{len(changed)} path(s) changed, {len(outside)} outside touch zones"
+                 summary=(f"{len(changed)} path(s) changed, "
+                          + (f"{len(nested_changed)} in nested repos, " if nested_changed else "")
+                          + f"{len(outside)} outside touch zones"
                           + (f"; {len(untracked_outside)} untracked outside them" if untracked_outside else "")
                           + ("; contract changed" if contract_changed else "") + (f"; {off_branch}" if off_branch else "")),
                  detail=delta)
@@ -218,6 +227,8 @@ def reconcile_lines(o: dict[str, Any]) -> list[str]:
         return [f"{o['worker_id']}: needs_reconcile dismissed ({d['dismissed']})"]
     lines = [f"{o['worker_id']}: {len(d['changed'])} path(s) changed since {(d['since'] or '?')[:12]}, "
              f"{len(d['untracked'])} untracked; needs_reconcile={d['needs_reconcile']}"]
+    if d.get("nested_changed"):   # absent from an event recorded before nested_repos
+        lines.append(f"  nested repos: {len(d['nested_changed'])} path(s) changed since their branch point")
     if not d["claimed"]:
         lines.append("  no registry claim (the leaf merged?): judged against the roadmap node's touch zones")
     lines += [f"  OUTSIDE touch zones: {p}" for p in d["outside_touch_zones"]]

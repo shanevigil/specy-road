@@ -117,7 +117,10 @@ def implementation_paths(
         return None
     # The same reading review-packet applies; matches are reported project-relative.
     prefix = project_prefix(repo_root)
-    return [rebase_to_project(p, prefix) or p for p in paths if in_zones(cleaned, p, prefix)]
+    from specy_road.nested_repos import nested_zone_paths   # noqa: PLC0415 — nested_repos imports this module
+    # A leaf whose work lives in a nested repository (nested_repos) implemented it there.
+    return [rebase_to_project(p, prefix) or p for p in paths if in_zones(cleaned, p, prefix)] + \
+        nested_zone_paths(repo_root, cleaned)
 
 
 def implementation_gate_error(
