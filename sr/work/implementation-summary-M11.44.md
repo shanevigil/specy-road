@@ -21,6 +21,7 @@ Adopters can limit which shipped model profiles `init project` copies, and `refr
 ## Verification
 
 - `pytest tests/test_init_profiles_subset.py`
+- `pytest tests/test_harness_facts.py`
 - `pytest tests/test_models_and_prompt.py::test_refresh_profiles_adds_missing_and_keeps_edited`
 - `specy-road file-limits`
 
@@ -37,5 +38,5 @@ Adopters can limit which shipped model profiles `init project` copies, and `refr
 - `refresh_profiles(..., only=)` — restrict missing-profile copy to matching stem/api_id rels (all matches).
 - `--profiles` on init project parser; `--only` on refresh-profiles parser; `--only` mutual exclusion guard in `main`.
 - `specy_road/cli.py` passes `profiles=ns.profiles` into `run_init_project`.
-- `tests/test_init_profiles_subset.py` — default, none, one profile, CLI wiring, refresh `--only` vs full refresh, api_id that differs from stem (`deepseek-flash`).
+- `tests/test_init_profiles_subset.py` — default, none, one profile, CLI wiring, refresh `--only` vs full refresh, api_id that differs from stem (`deepseek-flash`). Default and full-refresh cases derive the expected files from the bundled templates (not a fixed count).
 - `docs/orchestration-models.md` — documents `--profiles` accepted names (family directory, stem, front-matter api_id) and `--only`.

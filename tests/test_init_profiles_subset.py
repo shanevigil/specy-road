@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.init_project import run_init_project
+from specy_road.init_project import bundled_profiles_template_dir, run_init_project
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -27,13 +27,27 @@ def _model_profiles_paths(root: Path) -> list[Path]:
     return sorted(p for p in mp.rglob("*") if p.is_file())
 
 
+def _bundled_profile_md_rels() -> set[str]:
+    src = bundled_profiles_template_dir()
+    return {
+        p.relative_to(src).as_posix()
+        for p in src.rglob("*.md")
+        if p.name != "README.md"
+    }
+
+
 def test_init_project_default_installs_all_profiles(tmp_path: Path) -> None:
     assert run_init_project(tmp_path) == 0
     paths = _model_profiles_paths(tmp_path)
     assert (tmp_path / "model-profiles" / "harness-facts.yaml").is_file()
     assert (tmp_path / "model-profiles" / "harness-captures").is_dir()
-    profile_mds = [p for p in paths if p.suffix == ".md" and p.name != "README.md"]
-    assert len(profile_mds) == 16
+    dst = tmp_path / "model-profiles"
+    installed = {
+        p.relative_to(dst).as_posix()
+        for p in paths
+        if p.suffix == ".md" and p.name != "README.md"
+    }
+    assert installed == _bundled_profile_md_rels()
 
 
 def test_init_project_profiles_none_installs_readme_and_harness_facts_only(tmp_path: Path) -> None:
@@ -123,5 +137,10 @@ def test_refresh_profiles_without_only_still_adds_every_missing(tmp_path: Path) 
 
     repo = tmp_path / "r"
     repo.mkdir()
+    src = bundled_profiles_template_dir()
+    expected = [
+        f"model-profiles/{p.relative_to(src).as_posix()}"
+        for p in sorted(src.rglob("*.md"))
+    ]
     written, kept = rp.refresh_profiles(repo)
-    assert len(written) == 17 and kept == []
+    assert written == expected and kept == []
