@@ -2,6 +2,24 @@
 
 Branch `feature/rm-max-workers-global`, base `be6a6a63`. WIP was merged in at `2e0f5d12` and `9a6dc334` to widen the touch zones; the second merge added `specy_road/bundled_scripts/worker_cli.py`.
 
+## Round 9 (gpt-6.1-sol R1: checkout-id initialisation could replace an id already returned)
+
+WIP was merged first (`590d0a7b`). The older gpt-5.6-sol-high record predates the amended A1 and no longer counts. `--offline` and the failed-state locking are unchanged.
+
+- **The race:** round 6's repair set an empty or invalid file aside with `os.rename`, then linked a new id in. Caller B could read the file while it was empty, then stall. A then initialised it and returned A's id. When B continued, it renamed A's now-valid file aside, and in the gap caller C created a different id. A's leases then carried an id that was no longer this checkout's, so a local worker counted as foreign and its resume was refused at `max_workers: 1`.
+- **Fix by design** (`worker_lease.checkout_id`): a file holding a valid id is only ever read; no code path renames, removes or rewrites it. Only an absent, empty or invalid file is initialised, and only under the workers lock after reading it again there. The new uuid goes to a unique temporary file, installed with `os.link` when the target is absent (which fails if it now exists), or with `os.replace` over an invalid one. That replace is safe because every initialisation holds the lock, so no valid id can appear meanwhile, and no lease can ever have been pushed under an invalid id. After any `OSError` the file is read again and a valid id there is used; otherwise the call refuses. The rename-aside, restore and retry loop are gone.
+- **Lock caveat:** the workers lock lives in the project's `work/.workers/`, which the main checkout and its linked worktrees share. Two different project roots inside one git repository would hold different locks; for them, the absent-file case is still protected by `os.link`, but two simultaneous invalid-file repairs are not serialised.
+- **Regression** (`tests/test_worker_lease_races.py`): `test_three_callers_initialising_an_empty_id_agree_and_a_leased_worker_resumes_in_its_slot`.
+  - Setup: the id file is empty and `max_workers` is 1. B reads the empty file and stalls; `Path.read_text` is wrapped for thread B only. A, the main thread, initialises the file and returns. Then B continues.
+  - The gap: `os.rename` is wrapped to run C to completion whenever a valid id is set aside, which is the old code's gap. If no gap opens, C runs last.
+  - Assertions: A, B and C get the same id, the file and its inode are unchanged, and a worker leased under that id resumes in its own slot with its lease the only one on the remote.
+  - Checked both ways: with `worker_lease.py` at the round-8 commit it fails (B and C get a different id from A); with the fix it passes.
+- **Docs:** the checkout-id sentences now say a valid id is only read, and describe the locked initialisation (398 lines).
+- **Verification:**
+  - `.conda/bin/pytest tests/test_worker_max_workers_global.py tests/test_worker_lease_races.py tests/test_lean_gates.py -q -p no:cacheprovider` gave 42 passed, 2 skipped.
+  - `.conda/bin/ruff check` passed on `worker_lease.py` and `tests/test_worker_lease_races.py`.
+  - `.conda/bin/specy-road file-limits` passed.
+
 ## Round 8 (gpt-6.1-sol block on A1: failed-state cleanup raced a resume)
 
 WIP was merged first (`53a47d35`). `--offline` is unchanged from round 7.
