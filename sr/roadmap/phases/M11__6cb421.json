@@ -424,12 +424,13 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.73_ready-warns-integration-conflict_a245310c-1353-4fd3-89d4-be6cc19241ef.md",
       "sibling_order": 73,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "specy-road ready warns when the leaf no longer merges cleanly",
       "touch_zones": [
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/review_gate.py",
-        "tests/"
+        "tests/",
+        "specy_road/review_ready_merge.py"
       ],
       "type": "task"
     },

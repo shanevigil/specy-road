@@ -168,13 +168,3 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: ready-warns-integration-conflict
-    node_id: M11.73
-    branch: feature/rm-ready-warns-integration-conflict
-    touch_zones:
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_gate.py
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
