@@ -475,7 +475,8 @@
         "specy_road/bundled_scripts/validate_roadmap.py",
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
         "tests/",
-        "specy_road/bundled_scripts/validate_registry_overlap.py"
+        "specy_road/bundled_scripts/validate_registry_overlap.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py"
       ],
       "type": "task"
     }
