@@ -248,6 +248,10 @@ def test_approval_through_mark_implementation_reviewed_releases_the_rollup(tmp_p
     assert "roadmap.md" in git(root, "show", "--name-only", "--format=", "HEAD")
     assert _cli(["handoff", "status", "M2", "--repo-root", str(root)]) == 0
     assert "M2: complete_no_claim" in capsys.readouterr().out
+    assert _effective_rollup(root, "M2") == "Complete"  # the closure commit must not reopen the hold
+    commit_file(root, "src/later.py", "print('later')\n", "later work on integration")
+    assert _effective_rollup(root, "M2") == "Complete"
+    assert _statuses(root)["M2"] == "Complete"
 
 
 def test_mark_implementation_reviewed_refuses_a_leaf_id_and_an_open_milestone(tmp_path: Path, capsys) -> None:

@@ -74,6 +74,8 @@ def milestone_review_hold(repo_root: Path, nodes: list[dict], node_id: str) -> s
     integration tip), and only once every leaf is Complete there: an approval
     recorded before the last leaf landed never releases the hold. A target
     that cannot be resolved holds too, since the review cannot have happened.
+    A milestone whose authored status is already Complete has been closed;
+    later integration commits (including the closure commit) do not reopen it.
     """
     from specy_road.orchestration_config import effective_config
     from specy_road.review_gate import evaluate_gate, review_required
@@ -87,6 +89,8 @@ def milestone_review_hold(repo_root: Path, nodes: list[dict], node_id: str) -> s
     if not config["policy"].get("milestone_full_review", True):
         return None
     node = next(n for n in nodes if n.get("id") == node_id)
+    if node.get("status") == "Complete":
+        return None
     try:
         target = resolve_target(repo_root, node_id, nodes=nodes)
     except ReviewTargetError as e:
@@ -103,8 +107,10 @@ def demote_pending_milestone_rollups(repo_root: Path, nodes: list[dict]) -> None
     """Keep a held milestone's computed rollup non-Complete on the public loader.
 
     ``compute_rollup_status`` is still leaf-based (dependency satisfaction).
-    When the target cannot be resolved the leaf rollup is left unchanged: a
-    graph without git must not look held.
+    A recorded closure (authored ``status`` Complete) is left Complete: the
+    status commit and later integration work must not reopen it. When the
+    target cannot be resolved the leaf rollup is left unchanged: a graph
+    without git must not look held.
     """
     for n in nodes:
         nid = n.get("id")

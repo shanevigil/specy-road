@@ -51,6 +51,17 @@ Merged `origin/WIP/improvements-0-3-1` (M11.8 delta review and M11.25). Kept bot
 
 R1: `unfinished_leaves_at` used `chunk.relative_to(repo_root)` while `find_chunk_path` returns a resolved path; on macOS `TemporaryDirectory()` passes an unresolved `/var/...` root and `load_roadmap` raised `ValueError`. Chunk paths are now relative to `repo_root.resolve()` (same idea as `prefix_within`). Regression: `test_load_roadmap_holds_rollup_when_repo_root_is_not_resolved` uses `TemporaryDirectory` and asserts the public loader returns `In Progress`.
 
+## Review round 6 (Sol's block, 2026-11-02)
+
+R1: `mark-implementation-reviewed` evaluates the gate at tip C, then commits authored Complete as C2. The next `load_roadmap` re-evaluated the gate at C2, found the C approval stale, and demoted `rollup_status` back to In Progress. `milestone_review_hold` now returns None when the node's authored status is already Complete, so the closure commit and later integration work do not reopen it. `test_approval_through_mark_implementation_reviewed_releases_the_rollup` reads `load_roadmap` after the public close and after a later integration commit.
+
+Effective rollup after a recorded closure (authored Complete, leaves Complete):
+
+- `compute_rollup_status` / `annotate_rollup_status`: leaf-based Complete.
+- `load_roadmap` → `demote_pending_milestone_rollups`: does not demote (hold is None).
+- Readers of that annotation (`export`/`roadmap.md`, digest, brief, search, PM GUI `_apply_rollup_on_wire`): Complete.
+- Leaf-based callers (`do_next_available`, archive, `_leaf_annotated`): Complete from the leaves.
+
 ## Verification
 
 - `python -m pytest -q tests/test_milestone_full_review.py tests/test_finish_ancestor_rollup.py tests/test_roadmap_load.py tests/test_review_packet.py tests/test_review_cli.py tests/test_review_gate.py tests/test_mark_implementation_reviewed_gate.py tests/test_orchestration_config.py -p no:cacheprovider` → 117 passed.
@@ -69,6 +80,7 @@ R1: `unfinished_leaves_at` used `chunk.relative_to(repo_root)` while `find_chunk
 - `milestone_open_problem(t)` (review_target): the one message for an unfinished milestone, used by the CLI state, the packet and `review record`, round 2 change 3.
 - `milestone_close_problem(repo_root, t)` (review_target) and its call in `_close_milestone`: open leaves, wrong branch, divergent `HEAD`, round 2 change 2.
 - Open-leaves guard in `milestone_review_hold` before the gate: round 2 change 1.
+- Authored-Complete early return in `milestone_review_hold`: Sol round 6, closure survives its own commit.
 - `leaves_open` state in `milestone_status` and the record refusal in `_check_record`: round 2 change 3.
 - `held` parameter on `rolled_up_stale_ancestor_ids`: the hold point, ends the walk at a held milestone so ancestors above it wait, A1.
 - `milestone_review_hold(repo_root, nodes, node_id)`, `milestone_review_next_steps(node_id)`, `_print_hold(repo_root, nodes)` (finish_ancestor_rollup): decide, explain and open the hand-off directory for a hold.
@@ -90,7 +102,7 @@ R1: `unfinished_leaves_at` used `chunk.relative_to(repo_root)` while `find_chunk
   - `test_rollup_is_held_until_the_milestone_full_review_passes`: rollup held, then released by a record, A1/A3.
   - `test_policy_off_restores_the_plain_rollup`: A2/A3.
   - `test_handoff_status_and_review_list_show_a_milestone_awaiting_its_full_review`: A2.
-  - `test_approval_through_mark_implementation_reviewed_releases_the_rollup`: `--yes` refuses without a record, then closes with trailers and regenerated files, A3.
+  - `test_approval_through_mark_implementation_reviewed_releases_the_rollup`: `--yes` refuses without a record, then closes with trailers and regenerated files; effective rollup stays Complete after the closure commit and a later integration commit, A3 / Sol round 6.
   - `test_mark_implementation_reviewed_refuses_a_leaf_id_and_an_open_milestone`: guard rails.
   - `test_an_approval_before_the_last_leaf_lands_never_releases_the_hold`: Sol's regression, round 2 change 1.
   - `test_an_unfinished_milestone_is_not_awaiting_its_full_review`: `leaves_open`, packet and record refusals, round 2 change 3.
