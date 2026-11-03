@@ -37,7 +37,7 @@ from specy_road.review_files import (
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
 from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states, gate_policy_summary
 from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
-from specy_road.review_gate_ready import add_ready_parser
+from specy_road.review_ready_merge import add_ready_parser
 from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
