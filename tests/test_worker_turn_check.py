@@ -319,3 +319,21 @@ def test_a_turn_whose_record_was_terminated_still_gets_the_check_and_stays_termi
     assert after.state == "terminated" and after.limit_reset_at is None and tc.FLAG_POST_RUN in after.flags
     assert _findings(repo, rec.worker_id) == {"porcelain", "usage_limit"}
     assert not _events(repo, rec.worker_id, "completion")   # the terminated path writes no exit record, as before
+
+
+def test_pre_turn_work_outside_the_zones_that_the_turn_restores_or_deletes_is_a_finding(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sol (third review): a path dirty at the turn's start that is gone from porcelain at its end (a tracked edit
+    restored, an untracked file deleted) is pre-turn work lost, not a clean turn."""
+    repo = make_review_repo(tmp_path)
+    (repo / "docs/x.md").write_text("the human's edit\n")    # tracked, outside the src zone
+    (repo / "docs/notes.md").write_text("the human's notes\n")   # untracked, outside the zone
+    _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_clean"],
+             run=["git checkout -q -- docs/x.md", "rm docs/notes.md"])
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(_prompt(tmp_path), repo, "m", None)) == 0
+    [check] = _events(repo, rec.worker_id, "post_run_check")
+    assert [f["paths"] for f in check.detail["findings"] if f["kind"] == "porcelain"] == [["docs/notes.md", "docs/x.md"]]
+    assert "gone during the turn" in check.summary
+    after = ws.load_record(repo, rec.worker_id)
+    assert after.state == "idle" and tc.FLAG_POST_RUN in after.flags

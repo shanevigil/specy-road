@@ -169,9 +169,12 @@ def git_findings(repo_root: Path, rec: WorkerRecord, before: GitState) -> list[d
                                                 "worktree of the repository)"})
     if after.dirty is None:
         out.append({"kind": "porcelain", "summary": "git status could not be read after the turn"})
-    elif extra := sorted(p for p, held in after.dirty.items() if (before.dirty or {}).get(p) != held and not expected(p)):
-        out.append({"kind": "porcelain", "paths": extra,
-                    "summary": "uncommitted after the turn (new or changed): " + ", ".join(extra[:10])})
+    else:   # every path dirty at either end: new, changed, or gone (deleted, restored or committed) during the turn
+        start = before.dirty or {}
+        if extra := sorted(p for p in start.keys() | after.dirty.keys()
+                           if start.get(p) != after.dirty.get(p) and not expected(p)):
+            out.append({"kind": "porcelain", "paths": extra,
+                        "summary": "dirty paths new, changed or gone during the turn: " + ", ".join(extra[:10])})
     return out
 
 
