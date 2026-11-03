@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
+from tests.helpers import script_subprocess_env
 from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
 
 from specy_road.bundled_scripts import review_cli
@@ -251,3 +253,10 @@ def test_capacity_error_reads_provider_wording() -> None:
     assert capacity_error(["ok", CAPACITY])
     assert capacity_error(["429 Too Many Requests"]) and capacity_error(["You've hit your usage limit"])
     assert capacity_error(["RESOURCE_EXHAUSTED"]) and not capacity_error(["SyntaxError: bad input"])
+
+
+def test_review_cli_module_main_prints_usage() -> None:
+    done = subprocess.run([sys.executable, "-m", "specy_road.bundled_scripts.review_cli", "-h"],
+                          capture_output=True, text=True, env=script_subprocess_env())
+    assert done.returncode == 0
+    assert "usage:" in done.stdout.lower()

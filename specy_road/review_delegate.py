@@ -28,7 +28,6 @@ import sys
 import time
 import uuid
 from collections.abc import Callable
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -37,7 +36,7 @@ from specy_road.git_subprocess import git_text
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_files import reviews_dir
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
-from specy_road.reviewer_run_failure import (capacity_error, close_run, gate_policy_summary,
+from specy_road.reviewer_run_failure import (_now, _read_json, _save, capacity_error, close_run, gate_policy_summary,
                                              record_reviewer_failure_event, run_path as _run_path, valid_record)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worker_adapters import ClaudeCode, Launch, Unsupported, adapter_for
@@ -54,31 +53,12 @@ class DelegateError(Exception):
     """A refusal, with the sentence the CLI prints."""
 
 
-def _now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
 def run_path(repo_root: Path, node_id: str, model: str) -> Path:
     return _run_path(repo_root, node_id, model)
 
 
 def load_run(repo_root: Path, node_id: str, model: str) -> dict[str, Any] | None:
     return _read_json(run_path(repo_root, node_id, model))
-
-
-def _read_json(path: Path) -> dict[str, Any] | None:
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
-    return data if isinstance(data, dict) else None
-
-
-def _save(path: Path, run: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps(run, indent=2) + "\n", encoding="utf-8")
-    tmp.replace(path)
 
 
 def _entry(repo_root: Path, model: str) -> dict[str, Any]:

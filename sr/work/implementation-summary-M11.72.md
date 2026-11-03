@@ -30,4 +30,5 @@ Reviewer runs through `review delegate` or `prompt --role reviewer --channel cli
 - `test_handoff_policy_line_names_a_usage_limit_reviewer_failure` — delegate usage limit on policy line and event
 - `test_successful_delegate_run_has_no_reviewer_failure_event` — complete delegate run has no failure events
 - `test_prompt_cli_channel_records_usage_limit_and_shows_it_on_the_gate_line` — prompt cli path and handoff line
+- `test_review_cli_module_main_prints_usage` — `python -m specy_road.bundled_scripts.review_cli -h` prints usage (the shipped CLI path)
 - none (mocks)

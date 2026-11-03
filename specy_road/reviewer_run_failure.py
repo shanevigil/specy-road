@@ -13,6 +13,8 @@ from specy_road.review_files import list_reviews, reviews_dir
 from specy_road.review_target import ReviewTarget, same_commit
 
 RUN_PREFIX = "RUN-"
+#: What a provider says when it is out of capacity or the account is throttled (Anthropic 429/529
+#: ``overloaded_error``, OpenAI 429 / usage limit, Google ``RESOURCE_EXHAUSTED``).
 CAPACITY = re.compile(r"rate[ _-]?limit|usage limit|\b429\b|\b529\b|overloaded|capacity|too many requests"
                       r"|quota|resource[ _-]?exhausted", re.IGNORECASE)
 

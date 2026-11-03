@@ -236,17 +236,13 @@ def run_bare_reviewer(prof: Profile | None, prompt_path: Path, root: Path, model
     try:
         if transcript is None:
             return subprocess.run(launch.argv, input=launch.stdin, text=True, cwd=root, check=False).returncode
-        try:
-            result = subprocess.run(launch.argv, input=launch.stdin, cwd=root, check=False,
-                                    capture_output=True, text=True)
-        except TypeError:
-            result = None
-        if result is not None and hasattr(result, "stdout"):
-            for line in (result.stdout or "").splitlines():
-                sys.stderr.write(line + "\n")
-                transcript.append(line)
-            return result.returncode
-        return subprocess.run(launch.argv, input=launch.stdin, text=True, cwd=root, check=False).returncode
+        result = subprocess.run(launch.argv, input=launch.stdin, cwd=root, check=False,
+                                capture_output=True, text=True)
+        combined = (result.stdout or "") + (result.stderr or "")
+        for line in combined.splitlines():
+            sys.stderr.write(line + "\n")
+            transcript.append(line)
+        return result.returncode
     except OSError as e:   # e.g. no `claude` on PATH
         print(f"error: could not launch claude: {e.strerror}", file=sys.stderr)
         if transcript is not None:
@@ -289,17 +285,12 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
         cmd = substitute_prompt(cli, prompt_path, effort=effort)
         if transcript is None:
             return subprocess.run(cmd, shell=True, cwd=root, check=False).returncode
-        try:
-            result = subprocess.run(cmd, shell=True, cwd=root, check=False, capture_output=True, text=True)
-        except TypeError:
-            result = None
-        if result is not None and hasattr(result, "stdout"):
-            combined = (result.stdout or "") + (result.stderr or "")
-            for line in combined.splitlines():
-                sys.stderr.write(line + "\n")
-                transcript.append(line)
-            return result.returncode
-        return subprocess.run(cmd, shell=True, cwd=root, check=False).returncode
+        result = subprocess.run(cmd, shell=True, cwd=root, check=False, capture_output=True, text=True)
+        combined = (result.stdout or "") + (result.stderr or "")
+        for line in combined.splitlines():
+            sys.stderr.write(line + "\n")
+            transcript.append(line)
+        return result.returncode
     except OSError as e:   # E2BIG: "<prompt>" puts the whole text on the command line
         print(f"error: could not launch the cli: {e.strerror}; if the prompt is too long for a command line, "
               'use {prompt} (its file path) instead of "<prompt>"', file=sys.stderr)
