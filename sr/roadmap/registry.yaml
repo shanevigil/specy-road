@@ -180,3 +180,16 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
+  - codename: roster-harness-model-id
+    node_id: M11.35
+    branch: feature/rm-roster-harness-model-id
+    touch_zones:
+      - specy_road/orchestration_config.py
+      - specy_road/worker_adapters.py
+      - specy_road/worker_runner.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - docs/orchestration-models.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
