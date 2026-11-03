@@ -173,7 +173,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.64` | abort-task-pickup treats untracked files the way pickup does | task | Agentic-led | Not Started |
 | `M11.65` | why-blocked reports touch-zone holds from the plan | task | Agentic-led | Not Started |
 | `M11.66` | specy-road --version identifies the code when run from a checkout | task | Agentic-led | Not Started |
-| `M11.67` | Worker usage prices Cursor runs from the roster's price table | task | Agentic-led | Not Started |
+| `M11.67` | Worker usage prices Cursor runs from the roster's price table | task | Agentic-led | Complete |
 | `M11.68` | A re-delegated executor starts from the blocking review findings | task | Agentic-led | Not Started |
 | `M11.69` | A leaf that adds a schema key can be gated and finished | task | Agentic-led | Not Started |
 | `M11.70` | Touch zones are checked when they are written | task | Agentic-led | Not Started |

@@ -157,17 +157,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: cursor-usage-cost
-    node_id: M11.67
-    branch: feature/rm-cursor-usage-cost
-    touch_zones:
-      - specy_road/worker_adapter_parsers.py
-      - specy_road/worker_adapter_cursor.py
-      - specy_road/cli_usage.py
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: pickup-finish-shared-lock
     node_id: M11.74
     branch: feature/rm-pickup-finish-shared-lock
