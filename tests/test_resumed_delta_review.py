@@ -1,12 +1,15 @@
-"""``policy.reviewer_resumed_delta``: resumed sessions may approve an eligible delta (M11.36)."""
+"""``policy.reviewer_resumed_delta``: a resumed reviewer session may approve an eligible delta (M11.36)."""
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+
+import pytest
 
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
 
-from specy_road.bundled_scripts.review_cli import _node_status
+from specy_road.bundled_scripts import review_cli
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.review_files import archive_review, reviews_dir
 from specy_road.review_gate import evaluate_gate
@@ -17,8 +20,10 @@ roster:
   - {id: sol, family: openai, roles: [reviewer]}
 policy: {reviewers_required: 2, reviewers_distinct_families: true%s}
 """
+ON = ", reviewer_resumed_delta: true"
 TEST_FILE = "src/tests/test_a.py"
 TEST_SRC = "def test_a():\n    assert 1\n"
+ONLY = "policy requires a fresh reviewer session (fresh_session: true), the only reason it does not count"
 
 
 def _repo(tmp_path: Path, policy: str = "") -> tuple[Path, str]:
@@ -39,51 +44,109 @@ def _file(repo: Path, model: str, commit: str, *, fresh: bool = True, delta_from
     archive_review(repo, "M1.1", model, text)
 
 
-def _fix(repo: Path) -> str:
-    commit_file(repo, TEST_FILE, TEST_SRC + "\n\ndef test_b():\n    assert 2\n", "fix")
-    return git(repo, "rev-parse", "HEAD")
+def _fix(repo: Path, rel: str = TEST_FILE) -> str:
+    return commit_file(repo, rel, TEST_SRC + "\n\ndef test_b():\n    assert 2\n", "fix")
 
 
-def _why(repo: Path, model: str) -> str:
+def _why(repo: Path, model: str = "opus") -> str:
     gate = evaluate_gate(repo, NODE, git(repo, "rev-parse", "HEAD"))
     return next(why for r, why in gate.ineligible if r.data["model"] == model)
 
 
+def _status_problems(repo: Path, capsys) -> list[str]:
+    capsys.readouterr()
+    with pytest.raises(SystemExit):
+        review_cli.main(["handoff", "status", "M1.1", "--json", "--repo-root", str(repo)])
+    return json.loads(capsys.readouterr().out)["nodes"][0]["problems"]
+
+
 def test_resumed_delta_approval_counts_when_policy_allows(tmp_path: Path) -> None:
-    repo, approved = _repo(tmp_path, ", reviewer_resumed_delta: true")
+    repo, approved = _repo(tmp_path, ON)
     head = _fix(repo)
     _file(repo, "opus", head, fresh=False, delta_from=approved)
-    gate = evaluate_gate(repo, NODE, head)
-    assert [a.model for a in gate.approvals] == ["opus"]
+    assert [a.model for a in evaluate_gate(repo, NODE, head).approvals] == ["opus"]
     _file(repo, "sol", head)
     assert evaluate_gate(repo, NODE, head).passed
 
 
-def test_resumed_delta_refused_when_policy_off(tmp_path: Path) -> None:
+def test_resumed_delta_approval_still_meets_the_delta_rules(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path, ON)
+    head = _fix(repo, "src/app.py")   # not a documentation or test file: no delta
+    _file(repo, "opus", head, fresh=False, delta_from=approved)
+    assert evaluate_gate(repo, NODE, head).approvals == []
+    assert "src/app.py is not a documentation or test file; a full review is needed" in _why(repo)
+
+
+def test_resumed_delta_refused_when_policy_off(tmp_path: Path, capsys) -> None:
     repo, approved = _repo(tmp_path)
     head = _fix(repo)
     _file(repo, "opus", head, fresh=False, delta_from=approved)
-    why = _why(repo, "opus")
-    assert "fresh reviewer session" in why and "reviewer_resumed_delta" in why
-    st = _node_status(repo, "M1.1")
-    assert any("reviewer_resumed_delta" in p for p in st["problems"])
+    assert evaluate_gate(repo, NODE, head).approvals == []
+    note = f"{ONLY}; with policy.reviewer_resumed_delta: true this resumed delta approval would count"
+    assert _why(repo) == note
+    assert f"REVIEW-opus.md: does not count — {note}" in _status_problems(repo, capsys)
 
 
-def test_resumed_full_review_still_needs_fresh_session(tmp_path: Path) -> None:
-    repo, _approved = _repo(tmp_path, ", reviewer_resumed_delta: true")
+def test_policy_off_says_when_the_delta_would_not_qualify_anyway(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)
+    head = _fix(repo, "src/app.py")
+    _file(repo, "opus", head, fresh=False, delta_from=approved)
+    assert _why(repo).startswith(f"{ONLY}; with policy.reviewer_resumed_delta: true it would still not count: "
+                                 f"a delta review from {approved}, but src/app.py is not a documentation or test file")
+
+
+def test_resumed_full_review_still_needs_fresh_session(tmp_path: Path, capsys) -> None:
+    repo, approved = _repo(tmp_path, ON)
     head = _fix(repo)
     _file(repo, "opus", head, fresh=False)
-    why = _why(repo, "opus")
-    assert "fresh reviewer session" in why and "delta_from" in why
     assert evaluate_gate(repo, NODE, head).approvals == []
+    note = f"{ONLY}; a resumed delta approval naming delta_from: {approved} would count"
+    assert _why(repo) == note
+    assert f"REVIEW-opus.md: does not count — {note}" in _status_problems(repo, capsys)
 
 
-def test_delta_prompt_mentions_resumed_session_when_policy_on(tmp_path: Path) -> None:
-    repo, approved = _repo(tmp_path, ", reviewer_resumed_delta: true")
+def test_resumed_full_review_names_the_key_when_policy_off(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)
+    head = _fix(repo)
+    _file(repo, "opus", head, fresh=False)
+    assert _why(repo) == (f"{ONLY}; a resumed delta approval naming delta_from: {approved} would count "
+                          "with policy.reviewer_resumed_delta: true")
+
+
+def test_resumed_review_without_an_earlier_approval_needs_a_fresh_full_review(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ROSTER % ON)
+    _file(repo, "opus", git(repo, "rev-parse", "HEAD"), fresh=False)
+    assert _why(repo) == (f"{ONLY}; a resumed delta approval would not count either (no earlier approval): "
+                          "a fresh full review is needed")
+
+
+def test_another_failing_check_is_not_reported_as_fresh_session_only(tmp_path: Path) -> None:
+    repo, _approved = _repo(tmp_path, ", reviewer_reruns_required: true")
+    head = _fix(repo)
+    _file(repo, "opus", head, fresh=False)
+    assert _why(repo) == ("policy requires a fresh reviewer session (fresh_session: true); "
+                          "approved without re-running a command (policy.reviewer_reruns_required)")
+
+
+def test_resumed_delta_approval_is_a_basis_for_the_next_delta(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path, ON)
+    second = _fix(repo)
+    _file(repo, "opus", second, fresh=False, delta_from=approved)
+    third = commit_file(repo, "src/tests/test_c.py", "def test_c():\n    assert 3\n", "fix again")
+    _file(repo, "opus", third, fresh=False, delta_from=second)
+    assert [a.model for a in evaluate_gate(repo, NODE, third).approvals] == ["opus"]
+
+
+@pytest.mark.parametrize("policy, said", [
+    (ON, "You may read it in the session that approved"),
+    ("", "Read it in a fresh session (`fresh_session: true`); a resumed session counts only when"),
+])
+def test_delta_packet_says_whether_a_resumed_session_may_approve(tmp_path: Path, policy: str, said: str) -> None:
+    repo, approved = _repo(tmp_path, policy)
     _fix(repo)
     (reviews_dir(repo, "M1.1") / "PACKET.md").write_text(
-        f"**Commit under review:** `{git(repo, 'rev-parse', 'HEAD')}`\n", encoding="utf-8"
-    )
+        f"**Commit under review:** `{git(repo, 'rev-parse', 'HEAD')}`\n", encoding="utf-8")
     text, _, err = build_prompt(repo, "M1.1", role="reviewer", model="opus")
     assert err is None
-    assert "fresh_session: false" in text and approved[:7] in text
+    assert "## Delta review" in text and said in text and f'delta_from: "{approved}"' in text
+    assert ("set `fresh_session: false`" in text) == bool(policy)

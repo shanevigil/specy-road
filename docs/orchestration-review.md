@@ -93,13 +93,27 @@ model's vote, so `reviewers_distinct_families` still needs approvals from both
 families at the current commit. A block is never affected. Like
 `fresh_session`, `delta_from` is self-attested; a signature covers it.
 
-With `policy.reviewer_resumed_delta: true` (default false), an approval naming
-`delta_from` may count with `fresh_session: false` when the reviewer resumed the
-session that read its delta packet; any other approval still needs
-`fresh_session: true` under `reviewer_fresh_session`. When the gate refuses a
-record only for `fresh_session`, `handoff status` quotes the reason and says
-whether enabling `reviewer_resumed_delta` would allow a resumed delta approval
-(or that the policy applies only to approvals naming `delta_from`).
+With `policy.reviewer_resumed_delta: true` (**default false**), a reviewer that
+approved a commit may be resumed for the next fix round instead of starting a
+fresh session: its record sets `fresh_session: false` and names `delta_from`
+(the commit it approved; with `commit`, that names the delta it read). The key
+relaxes only `reviewer_fresh_session`, and only for an approval naming
+`delta_from`; such an approval still counts only under the delta rule above.
+A resumed full review (no `delta_from`) is still refused, and so is every resumed
+approval while the key is off. The delta packet says which applies.
+
+When a record is refused only for `fresh_session`, `handoff status` says so and
+whether a resumed delta approval would count:
+
+- `… the only reason it does not count; with policy.reviewer_resumed_delta: true this resumed delta approval would count`
+  (it names `delta_from` and the delta qualifies; the key is off);
+- `…; with policy.reviewer_resumed_delta: true it would still not count: a delta review from <sha>, but …`;
+- `…; a resumed delta approval naming delta_from: <sha> would count` (a resumed
+  full review whose round qualifies for a delta; `with policy.reviewer_resumed_delta: true`
+  is added while the key is off);
+- `…; a resumed delta approval would not count either (<why>): a fresh full review is needed`.
+
+A record that fails another check too lists `fresh_session` first, then that check.
 
 Full fresh review comes back two ways. `specy-road review-packet <NODE_ID>
 --full` stamps `PACKET.md`; while that packet is the one for the commit under
