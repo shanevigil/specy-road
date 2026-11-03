@@ -181,6 +181,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.72` A reviewer run that ends without a record is reported as a failure `reviewer-failure-visible` — task — **Complete**
   - `M11.73` specy-road ready warns when the leaf no longer merges cleanly `ready-warns-integration-conflict` — task — **Complete**
   - `M11.74` Pickup and finish in one checkout take a shared lock in order `pickup-finish-shared-lock` — task — **Complete**
+  - `M11.75` Reviewer prompt asks for independent probes, not the executor's own checks `reviewer-probe-rules` — task — **Not Started**
+  - `M11.76` Every roster model reaches its profile notes `profile-alias-coverage` — task — **Not Started**
+  - `M11.77` A completed reviewer run does not report a missing record `run-record-no-false-failure` — task — **Complete**
 
 ## Dependencies that were removed
 
@@ -203,6 +206,8 @@ Do not pick these up.
 - `M11.57` on `feature/rm-completed-worker-frees-slot` since 2026-11-03
 - `M11.62` on `feature/rm-headless-limits-denials` since 2026-11-03
 - `M11.66` on `feature/rm-version-shows-checkout-sha` since 2026-11-03
+- `M11.75` on `feature/rm-reviewer-probe-rules` since 2026-11-03
+- `M11.76` on `feature/rm-profile-alias-coverage` since 2026-11-03
 - `M8.2` on `feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 

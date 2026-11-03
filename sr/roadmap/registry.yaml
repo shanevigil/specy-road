@@ -132,14 +132,3 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: run-record-no-false-failure
-    node_id: M11.77
-    branch: feature/rm-run-record-no-false-failure
-    touch_zones:
-      - specy_road/reviewer_run_failure.py
-      - specy_road/review_delegate.py
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T18:03:33+00:00'

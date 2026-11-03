@@ -34,7 +34,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.77_run-record-no-false-failure_ceeb3342-6ba7-40f0-8563-6a6831182c26.md",
       "sibling_order": 77,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A completed reviewer run does not report a missing record",
       "touch_zones": [
         "specy_road/reviewer_run_failure.py",
