@@ -129,7 +129,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.19` Pickup never stashes work/ around the registry commit `pickup-no-work-stash` — task — **Complete**
   - `M11.20` orchestrate plan and validate say where the roster is read from `roster-source-explained` — task — **Complete**
   - `M11.22` Worker worktrees can include nested sibling repositories `nested-repo-worktrees` — task — **Not Started**
-  - `M11.23` A custom launch command's permissions carry through resume `resume-keeps-permissions` — task — **Not Started**
+  - `M11.23` A custom launch command's permissions carry through resume `resume-keeps-permissions` — task — **Complete**
   - `M11.24` Executors and reviewers in a worktree can write and check the right places `worktree-handoff-writable` — task — **Complete**
   - `M11.25` finish-this-task says what merge mode will push before it pushes `merge-push-disclosure` — task — **Complete**
   - `M11.26` A model profile can match harness model ids that carry an effort suffix `profile-aliases` — task — **Complete**
@@ -170,6 +170,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.60` The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names `harness-facts-nov-refresh` — task — **Complete**
   - `M11.61` The context meter counts Claude rules, auto memory, Cursor nested AGENTS.md and Copilot path instructions `meter-claude-rules-and-nested` — task — **Complete**
 
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+
 ## Archived (not in the live roadmap)
 
 This work was completed and moved out of the graph. It is deliberately excluded from IDE indexing; reach it with `specy-road search <QUERY> --scope archived`.
@@ -184,6 +190,8 @@ Do not pick these up.
 - `M11.43` on `feature/rm-init-project-reports-writes` since 2026-11-03
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.52` on `feature/rm-pr-mode-registry-conflict` since 2026-11-03
+- `M11.57` on `feature/rm-completed-worker-frees-slot` since 2026-11-03
+- `M8.2` on `feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 - `M8.6` on `feature/rm-candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic` since 2026-11-03
 
