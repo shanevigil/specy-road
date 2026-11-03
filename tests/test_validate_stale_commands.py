@@ -68,7 +68,6 @@ def test_validate_warns_for_each_unregistered_command_and_still_passes(tmp_path:
 
     assert lines == [
         warning("sr/AGENTS.md", at(agents, "grind"), "specy-road grind", "use `specy-road grind-session`."),
-        warning("sr/AGENTS.md", at(agents, "Then specy-road frob."), "specy-road frob", "see `specy-road --help`."),
         warning("sr/AGENTS.md", at(agents, "- specy-road frob --flag"), "specy-road frob", "see `specy-road --help`."),
         warning("sr/AGENTS.md", at(agents, "does-not-exist"), "specy-road does-not-exist", "see `specy-road --help`."),
         warning("sr/AGENTS.md", at(agents, "nope"), "specy-road nope", "see `specy-road --help`."),
@@ -80,11 +79,11 @@ def test_validate_warns_for_each_unregistered_command_and_still_passes(tmp_path:
     ]
 
 
-def test_a_noun_phrase_is_quiet_and_a_command_is_not() -> None:
+def test_open_line_mentions_warn_only_in_command_shaped_contexts() -> None:
     assert unregistered_commands("Run specy-road project now.") == ["specy-road project"]
     assert unregistered_commands("other specy-road formats (templates...)") == []
     assert unregistered_commands("the specy-road toolkit is") == []
-    assert unregistered_commands("Then specy-road frob.") == ["specy-road frob"]
+    assert unregistered_commands("Then specy-road frob.") == []
     assert unregistered_commands("specy-road frob M1.2") == ["specy-road frob"]
     assert unregistered_commands("- the specy-road frob") == []
     assert unregistered_commands("- Use the specy-road frob") == []
@@ -93,7 +92,7 @@ def test_a_noun_phrase_is_quiet_and_a_command_is_not() -> None:
     assert unregistered_commands(
         "- **Adoption prompts** are kept aligned with other specy-road formats that ..."
     ) == []
-    assert unregistered_commands("# Please specy-road frob") == ["specy-road frob"]
+    assert unregistered_commands("# Please specy-road frob") == []
     assert unregistered_commands("## the specy-road frob --x") == ["specy-road frob"]
     assert unregistered_commands("# Please specy-road frob --flag") == ["specy-road frob"]
     assert unregistered_commands("Use the specy-road frob --flag.") == ["specy-road frob"]
@@ -108,11 +107,11 @@ def test_a_noun_phrase_is_quiet_and_a_command_is_not() -> None:
     assert unregistered_commands("````\n```\nthe specy-road frob\n````") == ["specy-road frob"]
     assert unregistered_commands("```\n~~~\nthe specy-road frob\n```") == ["specy-road frob"]
     assert unregistered_commands("```\n```bash\nspecy-road frob\n```") == ["specy-road frob"]
-    assert unregistered_commands("the 2 specy-road frob") == ["specy-road frob"]
+    assert unregistered_commands("the 2 specy-road frob") == []
     assert unregistered_commands("the **specy-road toolkit** is") == []
     assert unregistered_commands("Run __specy-road frob__ now.") == ["specy-road frob"]
     assert unregistered_commands("- __specy-road frob__") == ["specy-road frob"]
-    assert unregistered_commands("the specy-road frob @agent") == ["specy-road frob"]
+    assert unregistered_commands("the specy-road frob @agent") == []
     assert unregistered_commands("```the specy-road frob```") == ["specy-road frob"]
     assert unregistered_commands("Use the specy-road frob (command).") == ["specy-road frob"]
     for quiet in (
@@ -134,6 +133,9 @@ def test_a_noun_phrase_is_quiet_and_a_command_is_not() -> None:
         "other specy-road formats that accept `--strict`",
         "specy-road frob_extra",
         "Run specy-road do_next",
+        "trying specy-road here",
+        "when specy-road runs it",
+        "nothing specy-road surprises me",
     ):
         assert unregistered_commands(quiet) == [], quiet
     for warn in (
@@ -148,12 +150,11 @@ def test_a_noun_phrase_is_quiet_and_a_command_is_not() -> None:
         "Use the specy-road frob `path/to/file`.",
         "Use the specy-road frob `--flag`.",
         "Use the specy-road frob `command`.",
-        "specy-road frob_",
     ):
         assert unregistered_commands(warn) == ["specy-road frob"], warn
     assert unregistered_commands("foo_specy-road frob") == []
     assert unregistered_commands("specy-road validate --strict") == []
-    assert unregistered_commands("specy-road frob; specy-road frob") == ["specy-road frob", "specy-road frob"]
+    assert unregistered_commands("specy-road frob; specy-road frob") == []
 
 
 def test_command_token_in_an_inline_span() -> None:
@@ -200,7 +201,7 @@ def test_each_replaced_name_is_unregistered_and_its_replacement_is_not(old: str,
 
 
 def test_each_occurrence_warns_with_its_line(tmp_path: Path, capsys) -> None:
-    (tmp_path / "AGENTS.md").write_text("specy-road frob\nspecy-road frob\n", encoding="utf-8")
+    (tmp_path / "AGENTS.md").write_text("Run specy-road frob\nRun specy-road frob\n", encoding="utf-8")
     warn_unregistered_commands(tmp_path)
     lines = [ln for ln in capsys.readouterr().err.splitlines() if "tells agents to run" in ln]
     assert len(lines) == 2

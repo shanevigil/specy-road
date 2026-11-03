@@ -105,16 +105,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: stale-command-prose
-    node_id: M11.45
-    branch: feature/rm-stale-command-prose
-    touch_zones:
-      - specy_road/bundled_scripts/validate_stale_commands.py
-      - tests/
-      - docs/install-and-usage.md
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: claimed-leaf-status
     node_id: M11.48
     branch: feature/rm-claimed-leaf-status

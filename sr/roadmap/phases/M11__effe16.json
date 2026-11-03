@@ -158,7 +158,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.45_stale-command-prose_80d33104-b5d7-4a24-be20-0544c89042c9.md",
       "sibling_order": 45,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The stale-command warning fires only on command-shaped mentions",
       "touch_zones": [
         "specy_road/bundled_scripts/validate_stale_commands.py",
