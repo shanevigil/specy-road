@@ -115,3 +115,12 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
+  - codename: abort-untracked-like-pickup
+    node_id: M11.64
+    branch: feature/rm-abort-untracked-like-pickup
+    touch_zones:
+      - specy_road/bundled_scripts/abort_task_pickup.py
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
