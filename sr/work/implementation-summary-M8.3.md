@@ -79,6 +79,10 @@ Required change → what changed:
   - Red/green: with the `git index` entry removed, the three index-only cases fail and the `git status` case still passes.
 - **Still not inspected:** other `.git` metadata (`config`, `hooks/`, `info/exclude`, objects). A reviewer that writes a hook is not caught.
 
+## Round 5 (Codex Sol's block at `fca22fea`)
+
+- **"Remove the new mock call-count assertion at `tests/test_review_record_write.py:260`; select the reviewer launch by its observable argv."** `test_prompt_channel_cli_runs_a_cursor_reviewer_read_only_and_files_its_answer` no longer unpacks exactly one recorded call (`(call,) = calls`). It selects the launch whose argv starts `agent -p` and keeps the exit code, the full argv prefix, the no-`--force` check, the prompt text and the filed-record assertions. Verification: `pytest -n 4 tests/test_review_record_write.py`, 28 passed; file limits OK.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
