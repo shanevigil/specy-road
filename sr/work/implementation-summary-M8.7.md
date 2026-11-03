@@ -7,7 +7,11 @@ machine (Claude Code 2.1.312, Codex CLI 0.165.0, Cursor agent 2026.10.22-27dcf5f
 
 - **A1:** Ran the harness-capabilities runtime checklist in scratch repo
   `/tmp/m87-scratch-MvkgPX` (with sibling worktrees and `specy-road init project`).
-  Results with dates are in
+  Follow-up after `REVIEW-gpt-6.1-sol.md`: one Claude session in each of
+  `/private/tmp/m87-wt-sibling` and `/private/tmp/m87-wt2` at the same time, and
+  one sentinel prompt each through `claude`, `agent`, and `codex`, recorded
+  next to the context-meter prediction. Results with commands, directories,
+  and the 2026-11-02 timestamps are in
   `docs/design-notes/M8.7-runtime-verification-harness-facts.md`.
 - **A2:** Replaced every `unverified` label in
   `specy_road/templates/project/model-profiles/harness-facts.yaml` with `runtime`
