@@ -48,7 +48,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.35_roster-harness-model-id_f2ed72a7-5b45-4457-8649-e65c6fe42b0e.md",
       "sibling_order": 35,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A roster entry maps to the harness's own model id, and a failed start says why",
       "touch_zones": [
         "specy_road/orchestration_config.py",

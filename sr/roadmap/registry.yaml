@@ -140,27 +140,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: roster-harness-model-id
-    node_id: M11.35
-    branch: feature/rm-roster-harness-model-id
-    touch_zones:
-      - specy_road/orchestration_config.py
-      - specy_road/worker_adapters.py
-      - specy_road/worker_runner.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - docs/orchestration-models.md
-      - tests/
-      - specy_road/worker_ops_launch.py
-      - specy_road/worker_adapter_claude.py
-      - specy_road/worker_adapter_codex.py
-      - specy_road/worker_adapter_cursor.py
-      - specy_road/review_delegate.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - specy_road/worker_exit.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T17:42:07+00:00'
   - codename: rework-findings-in-prompt
     node_id: M11.68
     branch: feature/rm-rework-findings-in-prompt
