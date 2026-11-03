@@ -76,3 +76,15 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: split-worker-modules
+    node_id: M11.59
+    branch: feature/rm-split-worker-modules
+    touch_zones:
+      - specy_road/worker_ops.py
+      - specy_road/worker_adapters.py
+      - specy_road/worker_ops_
+      - specy_road/worker_adapter_
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
