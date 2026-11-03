@@ -212,7 +212,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
     set_state(repo_root, rec, "running", pid=os.getpid())
     if resumed:
         append_event(repo_root, rec, "resumed", source="broker", summary="resumed with a new prompt")
-    env = harness_env(os.environ, "executor", harness_pythonpath=harness_pythonpath)
+    env = harness_env(os.environ, "executor", harness_pythonpath=harness_pythonpath, harness=rec.harness)
     with log.open("a", encoding="utf-8") as raw:
         try:
             proc = subprocess.Popen(  # noqa: S603 — the adapter's documented command

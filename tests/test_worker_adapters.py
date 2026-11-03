@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import make_review_repo
+from tests.review_repo_helpers import make_review_repo, shipped_anthropic_opus_cli_yaml_line
 from tests.test_models_and_prompt import commit_profile, make_profile_repo, run_main
 from tests.test_worker_cli import run_worker_cli
 
@@ -367,7 +367,7 @@ def test_prompt_cli_channel_substitutes_the_roles_effort_or_notes_its_absence(tm
     repo = make_profile_repo(tmp_path)
     _harness(repo)
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
-    prof_path.write_text(prof_path.read_text().replace('  cli: claude -p "<prompt>"', "  cli: echo {effort} {prompt}"))
+    prof_path.write_text(prof_path.read_text().replace(shipped_anthropic_opus_cli_yaml_line(), "  cli: echo {effort} {prompt}"))
     commit_profile(repo)
     assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli",
                 "--repo-root", str(repo)) == 0

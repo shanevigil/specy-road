@@ -15,8 +15,8 @@ Added with `specy-road edit-node M8.5 --add touch_zones=…` (kept because accep
 - `specy_road/orchestration_role_guard.py` — reviewer vs executor denials the hooks invoke.
 - `specy_road/specyrd_cli.py` — `--install-orchestration-hooks` and `--install-pre-push-hook` (A1, A3).
 - `specy_road/specyrd_hooks.py` — merges hook snippets and installs the optional pre-push script.
-- `specy_road/orchestration_role_env.py` — harness env copies `SPECY_ROAD_ORCHESTRATION_ROLE` (split out of `worker_runner.py` at the 400-line cap).
-- `specy_road/worker_runner.py` — executor launch exports `executor`.
+- `specy_road/orchestration_role_env.py` — harness env copies `SPECY_ROAD_ORCHESTRATION_ROLE` and Claude avoid-list env for `claude-code` executors.
+- `specy_road/worker_runner.py` — executor launch calls `harness_env(..., harness=rec.harness)`.
 - `specy_road/review_delegate.py` — reviewer launch exports `reviewer`.
 
 `edit-node` also wrote `roadmap/phases/M8.json` and `roadmap/registry.yaml` (committed as it named). Those are the zone/claim update, not acceptance files; they are not added as zones (they overlap every other M8 / registry claim).
@@ -30,16 +30,16 @@ Reverted (acceptance does not need this leaf to edit the worker adapters; other 
 ## Acceptance
 
 - **A1:** One shipped hook file per harness (`claude-code/settings.json`, `codex/hooks.json`, `cursor/hooks.json`). Init merges that one file; command is `specy-road orchestration guard --format …`. `worker_runner.run` exports `SPECY_ROAD_ORCHESTRATION_ROLE=executor`; `review delegate` exports `reviewer`. `--print-config --config-role` still emits a single-role snippet. Claude exit 2 + `onFailure: block`; Cursor `failClosed`. Git classification uses `tool_call_guard`'s git unwrap (`git -C`, `VAR=` wrappers); `gh --repo o/r pr create`, `claude --cloud` / `codex exec --cloud` / `agent -w` deny.
-- **A2:** Every profile lists exact switches. Claude `executor_template` and Anthropic `access.cli` prefix `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`. Generic profiles name memory off, `--plan`, and worktree/cloud switches. Codex `--disable` on the GPT launch template.
+- **A2:** Every profile lists exact switches. Claude: `worker delegate` on `claude-code` exports `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` and `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` via `harness_env`; profiles and `harness-facts.yaml` / `access.cli` also prefix those env vars for `prompt --channel cli` and generic workers. Codex: profiles and template/`access.cli` name `--disable` flags; codex `worker delegate` argv is **M8.2** (this leaf does not edit `worker_adapter_codex.py`).
 - **A3:** Shipped `pre-push` script; `specyrd init --install-pre-push-hook`; recipe in `docs/orchestration-workers.md`; original `## Working alongside sessions and the gate` paragraph restored beside it.
 - **A4:** Claude `onFailure: block`; Codex README documents trust / `--dangerously-bypass-hook-trust`; `test_codex_hook_in_fresh_worktree_denies_reviewer_commit` installs the shipped Codex hook in a linked worktree and denies reviewer `git commit`.
-- **A5:** Avoid lists name Claude env switches, Codex `--disable` flags, and Cursor persist/`/goal`/cloud (no switch). `test_codex_launch_template_pins_disable_flags` pins the Codex argv.
+- **A5:** Claude executor launch applies the env switches (`harness_env` + `test_harness_env_exports_claude_avoid_switches_for_executor`). Codex: `test_codex_launch_template_pins_disable_flags` pins template and GPT `access.cli` only; codex worker `--disable` argv comes with M8.2. Cursor persist/`/goal`/cloud (no switch).
 
 ## Verification
 
+- `pytest -n auto -p no:cacheprovider tests` → exit 0 (Opus block: README re-render + test pins)
+- `specy-road refresh-profiles --check --repo-root specy_road/templates/project` → exit 0
 - `specy-road file-limits` → exit 0
-- `pytest tests/test_orchestration_guard_hooks.py` → exit 0
-- `pytest tests/test_worker_adapters.py::test_default_commands_follow_the_documented_cli_flags` → exit 0
 
 ## Added
 
@@ -57,12 +57,12 @@ Reverted (acceptance does not need this leaf to edit the worker adapters; other 
 ### Helpers
 
 - `_maybe_install_specyrd_hooks` in `specyrd_init.py` — calls the hook installer when the init flags are set.
-- `harness_env` in `orchestration_role_env.py` — copies the parent env, drops wrapper PYTHONPATH / effort leak, sets the role.
+- `harness_env` in `orchestration_role_env.py` — copies the parent env, drops wrapper PYTHONPATH / effort leak, sets the role; for `claude-code` executors sets Claude avoid-list env vars.
 
 ### Branches / guards
 
 - `decide_role` / `classify_for_role` — deny commit (reviewer), push, `gh pr`, executor worktree/cloud commands. Cloud/worktree patterns do not use `\\b` immediately before `--` or `-w`. `_WORKTREE` has no unanchored `-w`.
-- `harness_env` — executor and reviewer launches export `SPECY_ROAD_ORCHESTRATION_ROLE`.
+- `harness_env` — executor and reviewer launches export `SPECY_ROAD_ORCHESTRATION_ROLE`; `claude-code` executors also get `CLAUDE_CODE_DISABLE_AUTO_MEMORY` / `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS`.
 - One env-based hook per harness file; Claude `onFailure: "block"` and exit 2; Cursor `failClosed: true`.
 - Optional git `pre-push` refuses a toplevel under `work/.worktrees/`.
 
@@ -76,7 +76,8 @@ Reverted (acceptance does not need this leaf to edit the worker adapters; other 
 - `test_installed_hook_denies_through_launch_without_injected_role` — installed command string, clean env, real executor `worker_runner.run` and `review delegate` launch paths.
 - `test_orchestration_hook_adapters_block_like_their_harness` — each adapter's deny exit/JSON.
 - `test_claude_print_config_has_on_failure_block` — A4 `onFailure: block`.
-- `test_codex_launch_template_pins_disable_flags` — A5 Codex `--disable` on template and GPT `access.cli`.
+- `test_codex_launch_template_pins_disable_flags` — A5 Codex `--disable` on template and GPT `access.cli` (codex worker argv: M8.2).
+- `test_harness_env_exports_claude_avoid_switches_for_executor` — A2/A5 Claude env on `worker delegate`.
 - `test_every_shipped_profile_lists_orchestration_avoid` — A2 heading and exact switches per family.
 - `test_claude_launch_template_pins_env_switches` — A2 Claude env prefix on template and Anthropic `access.cli`.
 - `test_specyrd_init_installs_one_claude_orchestration_hook` — A1 one hook; executor commit allowed, reviewer denied.

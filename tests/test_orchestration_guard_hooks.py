@@ -138,6 +138,7 @@ def test_claude_print_config_has_on_failure_block() -> None:
 
 
 def test_codex_launch_template_pins_disable_flags() -> None:
+    """Template and GPT access.cli pin Codex --disable switches; codex worker argv is M8.2."""
     facts = (REPO / "specy_road" / "templates" / "project" / "model-profiles" / "harness-facts.yaml").read_text(
         encoding="utf-8"
     )
@@ -153,6 +154,19 @@ def test_codex_launch_template_pins_disable_flags() -> None:
         if "--disable memories" not in cli or "--disable multi_agent" not in cli or "--disable goals" not in cli:
             missing.append(path.name)
     assert not missing, missing
+
+
+def test_harness_env_exports_claude_avoid_switches_for_executor() -> None:
+    from specy_road.orchestration_role_env import harness_env
+
+    env = harness_env({}, "executor", harness="claude-code")
+    assert env["SPECY_ROAD_ORCHESTRATION_ROLE"] == "executor"
+    assert env["CLAUDE_CODE_DISABLE_AUTO_MEMORY"] == "1"
+    assert env["CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"] == "1"
+    rev = harness_env({}, "reviewer", harness="claude-code")
+    assert "CLAUDE_CODE_DISABLE_AUTO_MEMORY" not in rev
+    codex = harness_env({}, "executor", harness="codex")
+    assert "CLAUDE_CODE_DISABLE_AUTO_MEMORY" not in codex
 
 
 def test_claude_launch_template_pins_env_switches() -> None:
