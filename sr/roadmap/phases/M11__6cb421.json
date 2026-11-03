@@ -1,0 +1,28 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "specy_road/worker_ops.py and specy_road/worker_adapters.py (each at the 400-line cap) are split by responsibility into smaller modules (for example delegate/launch, message/resume, slot and lease checks; and one module per harness adapter plus a shared base), each well under the cap, with every name other modules or tests import still importable from its old module path",
+        "Behaviour is unchanged: the full suite passes with no test edited except import lines, specy-road integrity reports no removed or weakened tests, and every docstring and comment moves with its code; the implementation summary maps each moved function to its new module"
+      ],
+      "codename": "split-worker-modules",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.59",
+      "node_key": "6cb421f0-05d8-4db3-b111-58b8708a3f53",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.59_split-worker-modules_6cb421f0-05d8-4db3-b111-58b8708a3f53.md",
+      "sibling_order": 59,
+      "status": "Not Started",
+      "title": "Split worker_ops and worker_adapters so parallel leaves stop colliding",
+      "touch_zones": [
+        "specy_road/worker_ops.py",
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_ops_",
+        "specy_road/worker_adapter_",
+        "tests/"
+      ],
+      "type": "task"
+    }
+  ]
+}
