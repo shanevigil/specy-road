@@ -19,7 +19,7 @@ Ship Cursor effort-suffixed model ids as profile `aliases`, add a GPT-5.6 Sol pr
 
 ## Verification
 
-- `pytest tests/test_models_and_prompt.py tests/test_model_profile_aliases.py`
+- `pytest tests/test_harness_facts.py tests/test_model_profile_aliases.py tests/test_models_and_prompt.py`
 - `specy-road file-limits`
 
 ## Added
@@ -27,7 +27,8 @@ Ship Cursor effort-suffixed model ids as profile `aliases`, add a GPT-5.6 Sol pr
 - `unmatched_roster_ids` in `model_profiles.py` — collect `entry["id"]` when `resolve` returns no profile; skip `family: human` (no profile can match a person)
 - `_roster_rows` return type in `models_cli.py` — four-tuple including unmatched ids
 - `unmatched_roster_ids` JSON field and text section in `models_cli.cmd_list` — A2 reporting
-- `specy_road/templates/project/model-profiles/openai-gpt/gpt-5.6-sol.md` — GPT-5.6 Sol profile and Cursor aliases
+- `specy_road/templates/project/model-profiles/openai-gpt/gpt-5.6-sol.md` — GPT-5.6 Sol profile and Cursor aliases; `access.cli` rendered from harness-facts.yaml (OpenAI GPT → Codex executor template)
+- `refresh-profiles --render` on `specy_road/templates/project` and `sr/` — keep shipped `access.cli` and the sr README harness block matching the fixture
 - `aliases` front matter on shipped Grok 4.7, Grok 4.6, Composer 2.5 profiles — A1
 - README roster row for GPT-5.6 Sol — discoverability
 - `tests/test_model_profile_aliases.py` — alias match and unmatched roster id list
