@@ -77,7 +77,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.39_roster-availability_effe1668-f68c-4ff8-be70-61296b3cf696.md",
       "sibling_order": 39,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A roster entry can be marked unavailable without deleting it",
       "touch_zones": [
         "specy_road/orchestration_config.py",
