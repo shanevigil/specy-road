@@ -66,6 +66,7 @@ entries:
       - specy_road/review_files.py
       - docs/orchestration-review.md
       - tests/
+      - specy_road/review_bookkeeping.py
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
