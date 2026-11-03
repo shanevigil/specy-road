@@ -468,7 +468,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.38_handoff-eligible-reviewers_35380c40-e3ba-4d90-913d-342ecd12d964.md",
       "sibling_order": 38,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "handoff status says who can still supply a missing approval",
       "touch_zones": [
         "specy_road/review_gate.py",

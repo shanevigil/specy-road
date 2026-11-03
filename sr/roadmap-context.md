@@ -144,7 +144,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.35` A roster entry maps to the harness's own model id, and a failed start says why `roster-harness-model-id` — task — **Not Started**
   - `M11.36` A resumed reviewer session may approve a delta it was shown `resumed-delta-approval` — task — **Not Started**
   - `M11.37` review-packet warns when the brief or summary names a file not committed at the reviewed commit `packet-uncommitted-refs` — task — **Complete**
-  - `M11.38` handoff status says who can still supply a missing approval `handoff-eligible-reviewers` — task — **Not Started**
+  - `M11.38` handoff status says who can still supply a missing approval `handoff-eligible-reviewers` — task — **Complete**
   - `M11.39` A roster entry can be marked unavailable without deleting it `roster-availability` — task — **Not Started**
   - `M11.40` worker reconcile works on merged leaves and separates untracked files `reconcile-merged-and-untracked` — task — **Not Started**
   - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Not Started**
@@ -169,6 +169,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.62` Headless runs report usage limits and denied actions instead of looking like success `headless-limits-denials` — task — **Not Started**
   - `M11.60` The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names `harness-facts-nov-refresh` — task — **Not Started**
   - `M11.61` The context meter counts Claude rules, auto memory, Cursor nested AGENTS.md and Copilot path instructions `meter-claude-rules-and-nested` — task — **Not Started**
+
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
 
 ## Archived (not in the live roadmap)
 

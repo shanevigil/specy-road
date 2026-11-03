@@ -92,14 +92,3 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: handoff-eligible-reviewers
-    node_id: M11.38
-    branch: feature/rm-handoff-eligible-reviewers
-    touch_zones:
-      - specy_road/review_gate.py
-      - specy_road/bundled_scripts/review_cli.py
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T07:46:15+00:00'
