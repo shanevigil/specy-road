@@ -12,7 +12,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.76_profile-alias-coverage_9025e735-d94d-4074-92de-191f5457d561.md",
       "sibling_order": 76,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Every roster model reaches its profile notes",
       "touch_zones": [
         "specy_road/model_profiles.py",
