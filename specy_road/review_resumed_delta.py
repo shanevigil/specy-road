@@ -43,6 +43,10 @@ def fresh_only_note(repo_root: Path, config: dict[str, Any], node: dict[str, Any
     model, policy, base = review.data["model"], config["policy"], review.data.get("delta_from")
     priors = prior_approvals(repo_root, config, node, model, commit, today)
     head = f"{FRESH_SESSION}, the only reason it does not count"
+    if review.data["verdict"] != "approve":   # the delta rules gate approvals only; a waived block always counts
+        return (f"{head}; with {RESUMED_KEY}: true this resumed block would count" if base else
+                f"{head}; a resumed block counts only when it names delta_from"
+                + ("" if policy.get("reviewer_resumed_delta") else f" and {RESUMED_KEY} is on"))
     if base:   # naming delta_from with fresh_session false is refused only while the key is off
         why = _delta_why(repo_root, node, priors, review, commit, policy)
         return (f"{head}; with {RESUMED_KEY}: true this resumed delta approval would count" if why is None else

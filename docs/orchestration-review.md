@@ -100,7 +100,11 @@ fresh session: its record sets `fresh_session: false` and names `delta_from`
 relaxes only `reviewer_fresh_session`, and only for an approval naming
 `delta_from`; such an approval still counts only under the delta rule above.
 A resumed full review (no `delta_from`) is still refused, and so is every resumed
-approval while the key is off. The delta packet says which applies.
+approval while the key is off. A resumed block naming `delta_from` counts while
+the key is on (a block is never held to the delta rule). The delta packet says
+which applies, and with the key on `specy-road prompt --role reviewer` tells a
+reviewer reading its own delta packet that, if it is the resumed session that
+approved the delta's base, it sets `fresh_session: false`.
 
 When a record is refused only for `fresh_session`, `handoff status` says so and
 whether a resumed delta approval would count:
@@ -111,7 +115,9 @@ whether a resumed delta approval would count:
 - `…; a resumed delta approval naming delta_from: <sha> would count` (a resumed
   full review whose round qualifies for a delta; `with policy.reviewer_resumed_delta: true`
   is added while the key is off);
-- `…; a resumed delta approval would not count either (<why>): a fresh full review is needed`.
+- `…; a resumed delta approval would not count either (<why>): a fresh full review is needed`;
+- for a block: `…; with policy.reviewer_resumed_delta: true this resumed block would count`
+  (it names `delta_from`), else `…; a resumed block counts only when it names delta_from`.
 
 A record that fails another check too lists `fresh_session` first, then that check.
 

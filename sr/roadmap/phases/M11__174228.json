@@ -434,7 +434,12 @@
         "specy_road/bundled_scripts/review_packet.py",
         "specy_road/bundled_scripts/role_prompt.py",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/review_resumed_delta.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "sr/schemas/orchestration.schema.json",
+        "specy_road/bundled_scripts/role_prompt_rca.py"
       ],
       "type": "task"
     },

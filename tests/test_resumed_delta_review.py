@@ -33,8 +33,9 @@ def _repo(tmp_path: Path, policy: str = "") -> tuple[Path, str]:
     return repo, approved
 
 
-def _file(repo: Path, model: str, commit: str, *, fresh: bool = True, delta_from: str | None = None) -> None:
-    text = review_text(commit, model=model, fresh=fresh)
+def _file(repo: Path, model: str, commit: str, *, fresh: bool = True, delta_from: str | None = None,
+          verdict: str = "approve") -> None:
+    text = review_text(commit, model=model, fresh=fresh, verdict=verdict)
     text = text.replace("notes\n", f"{model} notes on {commit[:7]}\n")
     if delta_from:
         text = text.replace("---\n", f"---\ndelta_from: '{delta_from}'\n", 1)
@@ -150,3 +151,30 @@ def test_delta_packet_says_whether_a_resumed_session_may_approve(tmp_path: Path,
     assert err is None
     assert "## Delta review" in text and said in text and f'delta_from: "{approved}"' in text
     assert ("set `fresh_session: false`" in text) == bool(policy)
+    resumed = "If you are the session that approved the commit this delta starts from, resumed for this round"
+    assert (resumed in text) == bool(policy) and ("This is a fresh session;" in text) != bool(policy)
+
+
+def test_full_packet_prompt_still_says_fresh_session_when_policy_on(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ROSTER % ON)
+    (reviews_dir(repo, "M1.1")).mkdir(parents=True, exist_ok=True)
+    (reviews_dir(repo, "M1.1") / "PACKET.md").write_text("full packet\n", encoding="utf-8")
+    text, _, err = build_prompt(repo, "M1.1", role="reviewer", model="opus")
+    assert err is None and "This is a fresh session;" in text and "resumed for this round" not in text
+
+
+def test_resumed_delta_block_counts_when_policy_allows(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path, ON)
+    head = _fix(repo)
+    _file(repo, "opus", head, fresh=False, delta_from=approved, verdict="block")
+    assert [b.model for b in evaluate_gate(repo, NODE, head).blocks] == ["opus"]
+
+
+def test_resumed_block_reasons(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)
+    head = _fix(repo)
+    _file(repo, "opus", head, fresh=False, delta_from=approved, verdict="block")
+    assert _why(repo) == f"{ONLY}; with policy.reviewer_resumed_delta: true this resumed block would count"
+    _file(repo, "opus", head, fresh=False, verdict="block")
+    assert _why(repo) == (f"{ONLY}; a resumed block counts only when it names delta_from "
+                          "and policy.reviewer_resumed_delta is on")
