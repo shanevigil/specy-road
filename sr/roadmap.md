@@ -172,7 +172,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.63` | do-next-available-task refuses a second claim in a checkout that already holds one | task | Agentic-led | Complete |
 | `M11.64` | abort-task-pickup treats untracked files the way pickup does | task | Agentic-led | Complete |
 | `M11.65` | why-blocked reports touch-zone holds from the plan | task | Agentic-led | Complete |
-| `M11.66` | specy-road --version identifies the code when run from a checkout | task | Agentic-led | Not Started |
+| `M11.66` | specy-road --version identifies the code when run from a checkout | task | Agentic-led | Complete |
 | `M11.67` | Worker usage prices Cursor runs from the roster's price table | task | Agentic-led | Complete |
 | `M11.68` | A re-delegated executor starts from the blocking review findings | task | Agentic-led | Complete |
 | `M11.69` | A leaf that adds a schema key can be gated and finished | task | Agentic-led | Complete |
@@ -187,5 +187,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.78` | Review lessons: escaped defect classes feed every reviewer prompt | task | Agentic-led | Not Started |
 | `M11.79` | Leaves that touch high-risk zones need a stronger reviewer | task | Agentic-led | Not Started |
 | `M11.80` | Executors and reviewers run tests with a bounded worker count | task | Agentic-led | Not Started |
+| `M11.82` | The integration branch passes ruff again and the land check runs it | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

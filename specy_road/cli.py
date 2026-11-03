@@ -352,9 +352,9 @@ def main(argv: list[str] | None = None) -> None:
         print(USAGE_TEXT)
         raise SystemExit(0)
     if argv[0] in ("--version", "-V", "version"):
-        from specy_road import __version__
+        from specy_road.toolkit_version import running_toolkit_version
 
-        print(f"specy-road {__version__}")
+        print(f"specy-road {running_toolkit_version()}")
         raise SystemExit(0)
     cmd, *rest = argv
     _maybe_warn_running_version_older(cmd, rest)

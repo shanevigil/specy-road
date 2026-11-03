@@ -258,14 +258,20 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.66_version-shows-checkout-sha_84185e5e-d8cc-487d-a0a5-103e757360f3.md",
       "sibling_order": 66,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "specy-road --version identifies the code when run from a checkout",
       "touch_zones": [
         "specy_road/cli.py",
         "specy_road/version_skew.py",
         "specy_road/worker_runner.py",
         "specy_road/review_files.py",
-        "tests/"
+        "tests/",
+        "specy_road/schemas/review-record.schema.json",
+        "specy_road/schemas/worker-record.schema.json",
+        "specy_road/toolkit_version.py",
+        "specy_road/worker_state.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_gate_ready.py"
       ],
       "type": "task"
     },
