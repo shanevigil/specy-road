@@ -110,6 +110,9 @@ def _semantic_error(raw: dict[str, Any]) -> str | None:
                 f"substitutions/{i}/use: {sub.get('use')!r} must be a roster entry, "
                 "so its family comes from the roster and not from the review file"
             )
+    for i, item in enumerate((raw.get("policy") or {}).get("strong_review") or []):
+        if missing := [m for m in item.get("require_one_of") or [] if m not in ids]:
+            return f"policy/strong_review/{i}/require_one_of: {', '.join(map(repr, missing))} must be roster entries"
     return _date_error(raw)
 
 

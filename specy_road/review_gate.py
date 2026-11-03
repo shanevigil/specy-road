@@ -23,12 +23,12 @@ cannot lower its own bar. Which branch that is comes from the committed
 ``git-workflow.yaml`` on the remote's default branch (at HEAD only in a repo
 with no remote), and a branch that cannot be found fails closed (:func:`policy_source`).
 
-The gate passes when no counted record blocks and the counted approvals reach
-``reviewers_required`` — counted by distinct family when
-``reviewers_distinct_families`` is set. With ``policy.integrity_gate`` on, each
-test-integrity finding the node did not declare in ``planned_test_changes`` on
-the integration branch is a problem too (:mod:`specy_road.integrity_gate`).
-An approval naming ``delta_from`` (a delta review) must also meet :func:`delta_problem`.
+The gate passes when no counted record blocks and the counted approvals reach ``reviewers_required`` — counted by
+distinct family when ``reviewers_distinct_families`` is set. With ``policy.integrity_gate`` on, each test-integrity
+finding the node did not declare in ``planned_test_changes`` on the integration branch is a problem too
+(:mod:`specy_road.integrity_gate`). Each ``policy.strong_review`` item the leaf's touch zones meet needs one counted
+approval from its ``require_one_of`` (:mod:`specy_road.review_strong`). An approval naming ``delta_from`` (a delta
+review) must also meet :func:`delta_problem`.
 """
 
 from __future__ import annotations
@@ -58,9 +58,9 @@ from specy_road.review_bookkeeping import CARRY_NOTE, count_at_later_commit, onl
 from specy_road.review_files import (HUMAN, PACKET_NAME, ReviewFile, executor_blocked_gate_problems, latest_ready,
                                      list_review_history, list_reviews, review_semantic_errors, reviews_dir,
                                      verifier_gate_problems)
-from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.review_policy_ref import committed_yaml as _committed_yaml, policy_source
 from specy_road.review_resumed_delta import FRESH_SESSION, fresh_only_note, fresh_session_problem
+from specy_road.review_strong import human_closes_strong, strong_problem, touch_zones, unmet_strong
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
 from specy_road.runtime_paths import project_prefix, rebase_to_project
 
@@ -118,6 +118,7 @@ class GateResult:
     verifier_problems: list[str] = field(default_factory=list)
     config_error: str | None = None
     bookkeeping_carry: bool = False; config: dict[str, Any] = field(default_factory=dict)
+    strong_unmet: list[tuple[int, dict[str, Any]]] = field(default_factory=list)   # unmet policy.strong_review items
 
     @property
     def approval_count(self) -> int:
@@ -126,7 +127,7 @@ class GateResult:
     @property
     def passed(self) -> bool:
         return (self.config_error is None and self.commit is not None and not self.blocks
-                and not self.verifier_problems and self.approval_count >= self.required)
+                and not self.verifier_problems and not self.strong_unmet and self.approval_count >= self.required)
 
     def summary(self) -> str:
         unit = "distinct-family approvals" if self.distinct_families else "approvals"
@@ -150,7 +151,7 @@ class GateResult:
         if self.approval_count < self.required:
             unit = "distinct-family approvals" if self.distinct_families else "approvals"
             out.append(f"need {self.required} {unit} at this commit, have {self.approval_count}")
-        out.extend(self.verifier_problems)
+        out.extend(self.verifier_problems + [strong_problem(i, item) for i, item in self.strong_unmet])
         return out
 
 
@@ -232,10 +233,8 @@ def delta_problem(repo_root: Path, node: dict[str, Any], approved: str, commit: 
     paths = diff_paths(repo_root, f"{approved}..{commit}")
     if paths is None or len(paths) > DELTA_MAX_FILES:
         return f"the delta touches {'?' if paths is None else len(paths)} files (at most {DELTA_MAX_FILES})"
-    entry = next((e for e in read_registry(registry_path(repo_root)).get("entries") or []
-                  if e.get("node_id") == node["id"]), None) or {}
-    zones = [z.strip().strip("/") for z in entry.get("touch_zones") or node.get("touch_zones") or []
-             if isinstance(z, str) and z.strip()]
+    claimed, own = touch_zones(repo_root, node)
+    zones = claimed or own
     prefix, summary = project_prefix(repo_root), f"work/implementation-summary-{node['id']}.md"
     for p in paths:
         if not is_doc_or_test(p):
@@ -343,6 +342,7 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
     if ready is not None and same_commit(repo_root, ready.data["commit"], result.commit):
         result.verifier_problems += executor_blocked_gate_problems(ready)
     result.verifier_problems += integrity_gate_problems(repo_root, policy, node["id"], result.commit, ref)
+    result.strong_unmet = unmet_strong(repo_root, node, policy, result.approvals)
     return result
 
 
@@ -353,9 +353,9 @@ def human_approval_completes(repo_root: Path, gate: GateResult, node: dict[str, 
     True only when ``human`` is a rostered reviewer that may process the node's
     sensitivity, nothing blocks, the config loads, the human's family is the one
     approval still missing, and — under ``signed_reviews`` — a key was given and
-    the roster has its public key.
+    the roster has its public key. An unmet ``strong_review`` item must list the human.
     """
-    if gate.config_error or gate.commit is None or gate.blocks or gate.verifier_problems:
+    if gate.config_error or gate.commit is None or gate.blocks or gate.verifier_problems or not human_closes_strong(gate):
         return False
     config = gate.config
     if not is_rostered_reviewer(config, HUMAN) or not may_handle(roster_entry(config, HUMAN), node_sensitivity(node)):

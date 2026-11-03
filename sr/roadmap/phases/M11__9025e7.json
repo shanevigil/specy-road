@@ -93,7 +93,8 @@
         "specy_road/bundled_scripts/orchestrate_cli.py",
         "specy_road/orchestrate_plan.py",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/review_strong.py"
       ],
       "type": "task"
     },
