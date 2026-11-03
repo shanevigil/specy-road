@@ -1,9 +1,32 @@
 #!/usr/bin/env python3
-"""Generate a deterministic work-packet brief for a roadmap node (``specy-road brief``).
+"""Generate a comprehensive work-packet brief for a roadmap node.
 
-Inlines node metadata, planning sheets, cited ``shared/`` contracts, dependencies,
-dependency intent, touch-zone instructions, and optional history. Same inputs =>
-byte-identical output.
+F-004: ``specy-road brief`` is a deterministic agent-handoff document that
+inlines all the context an implementer needs (no separate file-opening):
+
+* node metadata (id, codename, title, status, rollup, touch zones; in the
+  nested layout the project root, with the summary and hand-off paths from
+  the git root), then its
+  ``goal`` and ``acceptance`` criteria numbered ``A1..An`` (review records
+  cite those ids — see ``brief_acceptance``)
+* ancestor context chain (program -> phase -> milestone -> task)
+* every ancestor planning sheet body, in chain order, then this node's
+* the shared contracts this node cites — every ``shared/…`` path named in the
+  ``## References`` section of its own planning sheet or an ancestor's, plus
+  ``shared/README.md`` as the index. Everything else under ``shared/`` is
+  listed as a path rather than inlined, so a brief's size tracks the task and
+  not the repository. ``--all-contracts`` inlines the lot.
+* dependency list (resolved from node_key UUIDs to display ids)
+* **dependency context: each effective dependency's ``## Intent`` block
+  inlined verbatim** (so PMs do not have to paraphrase upstream work in
+  this task's own planning sheet — see ``brief_dependency_context``)
+* an explicit touch-zone instruction for the implementing agent; the header
+  states the brief's size and largest sections (``brief_acceptance``)
+
+Determinism: same chunks + same planning files + same shared/*.md set =>
+byte-identical output. No timestamps, no host info.
+
+Output: stdout by default; ``-o PATH`` writes to a file.
 """
 
 from __future__ import annotations
@@ -21,6 +44,7 @@ from specy_road.bundled_scripts.planning_artifacts import (
     normalize_planning_dir,
     planning_artifact_paths,
 )
+from specy_road.bundled_scripts.registry_claim_status import brief_status_own_line, leaf_claim_entry
 from specy_road.bundled_scripts.roadmap_gui_lib import registry_by_node_id
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
@@ -52,40 +76,9 @@ def ancestors(nid: str, by_id: dict[str, dict]) -> list[dict]:
     return list(reversed(out))
 
 
-def leaf_claim_entry(
-    node_id: str, *, leaf_ids: set[str], by_reg: dict[str, dict]
-) -> dict | None:
-    if node_id not in leaf_ids:
-        return None
-    entry = by_reg.get(node_id)
-    br = entry.get("branch") if entry else None
-    return entry if isinstance(br, str) and br.strip() else None
-
-
-def list_nodes_status_label(node: dict, claim: dict | None) -> str:
-    raw = str(node.get("status", ""))
-    return f"{raw} (claimed)" if claim else raw
-
-
-def list_nodes_json_row(node: dict, chunk_rel: str | None, claim: dict | None) -> dict:
-    row = {**node, "chunk": chunk_rel, "claimed": bool(claim)}
-    if claim:
-        row["branch"] = claim["branch"]
-    return row
-
-
-def brief_status_own_line(node: dict, claim: dict | None) -> str:
-    status = node.get("status")
-    if not claim:
-        return str(status)
-    line = f"{status} — claim `{claim.get('branch', '')}`"
-    owner = claim.get("owner")
-    if isinstance(owner, str) and owner.strip():
-        line += f" (owner: {owner.strip()})"
-    return line
-
-
+# ---------------------------------------------------------------------------
 # Section renderers
+# ---------------------------------------------------------------------------
 
 
 def _section_header(node_id: str, title: str, codename: str | None) -> list[str]:
@@ -100,6 +93,7 @@ def _section_header(node_id: str, title: str, codename: str | None) -> list[str]
 
 
 def _project_root_line(nid: str, prefix: str) -> list[str]:
+    """Nested layout only: a worker runs at the git root, where ``work/`` is not the project's."""
     if not prefix:
         return []
     return [f"- **Project root:** `{prefix}` under the git root. Work from the git root; from there this "
@@ -129,6 +123,7 @@ def _section_metadata(node: dict, prefix: str = "", claim: dict | None = None) -
 
 
 def _section_ancestor_chain(chain: list[dict]) -> list[str]:
+    """Render the ancestor chain as a 1-line bullet per ancestor."""
     if len(chain) <= 1:
         return ["## 2. Ancestor context chain", "", "_(no ancestors — this is a root node)_", ""]
     lines = ["## 2. Ancestor context chain", ""]
@@ -145,6 +140,7 @@ def _section_ancestor_chain(chain: list[dict]) -> list[str]:
 def _inline_planning(
     node: dict, root: Path, by_id: dict[str, dict]
 ) -> list[str]:
+    """Section 3: inline every relevant planning sheet body verbatim."""
     nid = node["id"]
     out = ["## 3. Planning context (inlined)", ""]
     anc = ancestor_planning_paths(nid, by_id, root)
@@ -184,6 +180,12 @@ def _inline_planning(
 def _chain_sheet_paths(
     node: dict, root: Path, by_id: dict[str, dict]
 ) -> list[Path]:
+    """Every planning sheet governing this node: ancestors first, then its own.
+
+    Deliberately a second, small resolution rather than a refactor of
+    ``_inline_planning``: section 3's byte-for-byte output is worth more than
+    the eight lines saved by sharing one traversal.
+    """
     paths = [p for _rel, p in ancestor_planning_paths(node["id"], by_id, root)]
     pd = node.get("planning_dir")
     if isinstance(pd, str) and pd.strip():
@@ -205,6 +207,8 @@ def _contract_body(root: Path, rel: str) -> list[str]:
 
 
 def _uncited_listing(root: Path, uncited: list[str]) -> list[str]:
+    """Name what was left out, so an omission is visible rather than silent."""
+    # One stat per contract: the total and the per-line size are the same number.
     sizes = [(rel, (root / rel).stat().st_size) for rel in uncited]
     out = [
         f"**Not inlined** — {len(uncited)} "
@@ -222,6 +226,11 @@ def _uncited_listing(root: Path, uncited: list[str]) -> list[str]:
 def _inline_shared_contracts(
     root: Path, cited: list[str], *, inline_all: bool = False
 ) -> list[str]:
+    """Section 4: inline the contracts this node cites, list the rest.
+
+    ``shared/README.md`` is always inlined — it is the index that makes the
+    listed paths navigable, and it is what the documented load order asks for.
+    """
     out = ["## 4. Shared contracts (cited)", ""]
     if not (root / contract_citations.SHARED_DIR).is_dir():
         return [*out, "_(no `shared/` directory in this repo)_", ""]
@@ -267,6 +276,7 @@ def _section_dependencies(node: dict, by_id: dict[str, dict]) -> list[str]:
 
 
 def _section_touch_zone_instruction(node: dict) -> list[str]:
+    """F-009: explicit instruction to the implementing agent."""
     tz = node.get("touch_zones") or []
     out = ["## 7. Touch zones — implementing agent instruction", ""]
     if tz:
@@ -305,6 +315,11 @@ def _section_rollup_semantics() -> list[str]:
     ]
 
 
+# ---------------------------------------------------------------------------
+# Top-level render
+# ---------------------------------------------------------------------------
+
+
 def render_brief(
     node_id: str,
     by_id: dict[str, dict],
@@ -315,12 +330,10 @@ def render_brief(
 ) -> str:
     root = repo_root or default_user_repo_root()
     n = by_id[node_id]
-    nodes = list(by_id.values())
-    reg = read_registry(registry_path(root))
     claim = leaf_claim_entry(
         node_id,
-        leaf_ids=structural_leaf_ids(nodes),
-        by_reg=registry_by_node_id(reg),
+        leaf_ids=structural_leaf_ids(list(by_id.values())),
+        by_reg=registry_by_node_id(read_registry(registry_path(root))),
     )
     chain = ancestors(node_id, by_id) + [n]
     cited = contract_citations.cited_contracts(

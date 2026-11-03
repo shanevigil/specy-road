@@ -16,7 +16,7 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import (
 )
 from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
 from specy_road.bundled_scripts.planning_sheet_bootstrap import plan_planning_sheet_for_new_node
-from specy_road.bundled_scripts.generate_brief import (
+from specy_road.bundled_scripts.registry_claim_status import (
     leaf_claim_entry,
     list_nodes_json_row,
     list_nodes_status_label,
@@ -55,6 +55,11 @@ def unknown_node_msg(node_id: str) -> str:
 
 
 def _refuse_if_milestone_locked(root: Path, node_id: str) -> None:
+    """Print the lock error and raise SystemExit(1) if ``node_id`` is locked.
+
+    Centralizes the cmd_add / cmd_edit / cmd_set_gate_status pre-mutation
+    guard so the lock contract has one place to maintain.
+    """
     from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 
     nodes = load_roadmap(root)["nodes"]
@@ -111,8 +116,7 @@ def cmd_list(args: object) -> None:
     root = repo_root(args)
     chunk_map = build_node_chunk_map(root)
     nodes = load_roadmap(root)["nodes"]
-    reg = read_registry(registry_path(root))
-    by_reg = registry_by_node_id(reg)
+    by_reg = registry_by_node_id(read_registry(registry_path(root)))
     leaf_ids = structural_leaf_ids(nodes)
     wanted = {s.lower() for s in (getattr(args, "status", None) or [])}
     rows = []
@@ -239,7 +243,13 @@ def append_node_to_chunk(
     root: Path, chunk_arg: str | None, node: dict, *, validate: bool = True,
     max_words: int | None = None,
 ) -> Path:
-    """Append ``node`` to a chunk; auto-route on overflow."""
+    """Append ``node`` to a chunk (``chunk_arg`` is a hint); auto-route on overflow.
+
+    Atomic: the planning sheet is staged with the chunk and manifest so a
+    validation failure rolls all three back. ``validate=False`` skips the
+    post-write check so a batch can validate once after every node is written.
+    ``max_words`` caps auto-derived codenames on this write.
+    """
     from specy_road.bundled_scripts.roadmap_chunk_router import write_with_routing
 
     heal_before_mutation(root)
@@ -257,6 +267,11 @@ def append_node_to_chunk(
 def _planning_rename_plan(
     root: Path, old_rel: object, new_rel: object
 ) -> tuple[Path, Path] | None:
+    """Resolve a ``planning_dir`` change into a ``(src, dst)`` move, or ``None``.
+
+    Same guards the eager rename applied: both sides must be normalizable
+    planning paths, the source must exist, and the destination must be free.
+    """
     if not isinstance(old_rel, str) or not isinstance(new_rel, str):
         return None
     if not old_rel.strip() or not new_rel.strip():
@@ -297,6 +312,8 @@ def edit_node_set_pairs(
     node = nodes[idx]
     if not isinstance(node, dict):
         raise ValueError("corrupt node entry")
+    # One load feeds both sets: merged_ids() re-read the whole graph to build
+    # the ids, and the node_keys comprehension re-read it again on the next line.
     merged = load_roadmap(root)["nodes"]
     ids = {n["id"] for n in merged}
     nkeys = {
@@ -304,6 +321,9 @@ def edit_node_set_pairs(
         for n in merged
         if isinstance(n.get("node_key"), str) and n["node_key"]
     }
+    # Archived node_keys are resolvable too — `validate` accepts them, and
+    # every dependency write sends the FULL set. Without this, one archived
+    # dependency would make a node's dependencies permanently uneditable.
     nkeys |= _archived_node_keys_quiet(root)
     planning_dir_before = node.get("planning_dir")
     for k, v in pairs:
