@@ -298,7 +298,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.68_rework-findings-in-prompt_4baf83c6-0d3d-423b-93ee-2d8037b65166.md",
       "sibling_order": 68,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A re-delegated executor starts from the blocking review findings",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt.py",

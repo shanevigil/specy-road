@@ -174,7 +174,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.65` why-blocked reports touch-zone holds from the plan `why-blocked-plan-holds` — task — **Complete**
   - `M11.66` specy-road --version identifies the code when run from a checkout `version-shows-checkout-sha` — task — **Not Started**
   - `M11.67` Worker usage prices Cursor runs from the roster's price table `cursor-usage-cost` — task — **Complete**
-  - `M11.68` A re-delegated executor starts from the blocking review findings `rework-findings-in-prompt` — task — **Not Started**
+  - `M11.68` A re-delegated executor starts from the blocking review findings `rework-findings-in-prompt` — task — **Complete**
   - `M11.69` A leaf that adds a schema key can be gated and finished `branch-schema-for-gate-and-finish` — task — **Complete**
   - `M11.70` Touch zones are checked when they are written `zones-checked-at-authoring` — task — **Complete**
   - `M11.71` Review loops escalate on their own and criteria are written with bounds `review-loops-escalate` — task — **Complete**
@@ -204,7 +204,6 @@ Do not pick these up.
 - `M11.62` on `feature/rm-headless-limits-denials` since 2026-11-03
 - `M11.63` on `feature/rm-pickup-second-claim-guard` since 2026-11-03
 - `M11.66` on `feature/rm-version-shows-checkout-sha` since 2026-11-03
-- `M11.68` on `feature/rm-rework-findings-in-prompt` since 2026-11-03
 - `M8.2` on `feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
