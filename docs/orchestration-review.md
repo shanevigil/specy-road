@@ -49,6 +49,17 @@ it as an `error:` and exits 1, both naming the two settings and the fix: set
 for you; whether a project reviews is its own decision, and a project that does
 not can delete `roadmap/orchestration.yaml`.
 
+## What a reviewer probes
+
+An evaluation of reviewer effectiveness on the 0.3.1 line found that the approving reviewer had usually seen the issues the second reviewer blocked on, and excused them: it re-ran only the executor's own tests, read loose acceptance text in the leaf's favour, and filed real defects as "advisory" or "non-blocking". So every reviewer prompt (`specy-road prompt --role reviewer`, and `review delegate`) tells the reviewer to:
+
+1. run the tests that import each changed module, not only the executor's selection;
+2. try at least one input per changed public function that the diff's tests do not use, and report it under `commands_rerun`;
+3. fail an acceptance item whose observed behaviour differs from its text, even when the difference looks minor;
+4. list every defect its notes or findings describe under `required_changes`, or explain on that line why it is not one, starting `not a defect because`.
+
+`specy-road review record` enforces the fourth rule on an approve, which may not carry `required_changes`. It refuses, writing nothing, when a `findings` entry or a line of the notes calls something advisory, non-blocking (or not blocking), minor, a nit, cosmetic, residual, latent, an optional fix, a weak assertion, a bug or a defect, unless that line says `not a defect because`. Negated mentions ("no defect", "none blocking") don't count, and neither do headings, `>` quotes, code spans or fenced code, so a reviewer can quote acceptance text or test output. The message names each entry or line, for example `findings.correctness[1] says "Advisory"` or `notes line 3 says "Non-blocking"`. A block with the defect under `required_changes` is filed as before. The rules and the check live in `specy_road/review_record_rules.py`.
+
 ## Delta review of small fix rounds
 
 A new commit makes every record stale, so each fix round normally needs fresh

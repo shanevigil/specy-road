@@ -77,6 +77,7 @@ from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_gate import delta_basis
 from specy_road.review_resumed_delta import resumed_delta_on
+from specy_road.review_record_rules import PROBE_RULES_LINES
 from specy_road.review_rca import escalated_note, loop_state, rca_evidence, rca_preamble, rca_trigger
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
 from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_repo_root
@@ -158,7 +159,7 @@ def reviewer_lines(root: Path, node_id: str, model: str, t: ReviewTarget, ref: s
         return [], None, err
     # reviewer_packet writes PACKET-<model>.md only for a delta round (and removes a stale one first)
     resumed = (reviews_dir(root, node_id) / f"PACKET-{model}.md").is_file() and resumed_delta_on(root)
-    return (reviewer_preamble(node_id, model, ref, resumed_delta=resumed) + REMOVED_TEXT_LINES
+    return (reviewer_preamble(node_id, model, ref, resumed_delta=resumed) + REMOVED_TEXT_LINES + PROBE_RULES_LINES
             + LAUNCH_MODE_LINES + escalated_note(loop, node_id)), packet, ""
 
 
