@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from pathlib import Path
 
 from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
 
@@ -22,6 +23,20 @@ def test_render_brief_m02_contains_title() -> None:
     assert "## 6. Dependency context (intent of upstream work)" in text
     assert "## 7. Touch zones — implementing agent instruction" in text
     assert "## 8. Rollup semantics (reference)" in text
+
+
+def test_render_brief_shows_registry_claim_next_to_status(tmp_path: Path) -> None:
+    from tests.test_roadmap_crud import _write_registry_claim, crud_fixture_repo
+
+    crud_fixture_repo(tmp_path)
+    _write_registry_claim(tmp_path, "M99.1", "one", "feature/rm-one", "Pat Example")
+    nodes = gb.load_nodes(tmp_path)
+    by_id = gb.index(nodes)
+    text = gb.render_brief("M99.1", by_id, repo_root=tmp_path, include_history=False)
+    assert (
+        "**Status (own):** Not Started — claim `feature/rm-one` (owner: Pat Example)"
+        in text
+    )
 
 
 def test_render_brief_dependencies_use_display_ids_not_raw_node_keys() -> None:

@@ -348,6 +348,19 @@ Resolve these **before** developers reach them:
 2. Record the outcome in the node’s `decision` block and, if needed, an ADR under `docs/adr/` and updates under `shared/`.
 3. Set the task status to `Complete`, then validate, export and digest.
 
+## Node status vs registry claim (one leaf, `on_complete: pr`)
+
+**Node `status`** lives in roadmap JSON; an active **registry claim** lives in `roadmap/registry.yaml` (`feature/rm-*`, `owner`, touch zones). Pickup adds the row on the integration branch; the chunk often stays **Not Started** until finish or a PM edit. The dashboard and **`list-nodes`** / **`brief`** show the claim beside that status.
+
+With **`on_complete: pr`** (default):
+
+1. **Pickup** — `do-next-available-task` registers on the integration branch, then **`feature/rm-<codename>`**.
+2. **Implement** — Commits on the feature branch; **`list-nodes`** shows **`(claimed)`**.
+3. **Finish** — On the feature branch, `finish-this-task` sets **`Complete`** and removes the registry row in that commit. Under **`pr`**, the integration branch still has the old status and **still lists the registry row**.
+4. **PR merge** — Reconciles **`Complete`** and drops the row. Until then, **leave the integration-branch row alone**; do not **`abort-task-pickup`** (it deletes the feature branch with the work).
+
+See [git-workflow.md](git-workflow.md) ("What `pr` leaves behind") and [dev-workflow.md](dev-workflow.md).
+
 ## Monitoring execution (not approving PRs)
 
 - `**roadmap/registry.yaml`** — Who claimed what and which areas of the repo are “in use.” Stale entries may mean a blocked branch; check with the developer.
