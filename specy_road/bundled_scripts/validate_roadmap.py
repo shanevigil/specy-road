@@ -40,7 +40,7 @@ from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.init_project import project_template_root
 from specy_road.orchestration_config import load_orchestration_config, orchestration_yaml_path
-from specy_road.orchestration_pinned import roster_source
+from specy_road.orchestration_pinned import roster_report
 from specy_road.planning_scaffold_check import notice_complete_scaffold
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, git_root
 from specy_road.specyrd_init import _load_manifest, warn_if_skills_mirrored
@@ -193,19 +193,31 @@ def validate_git_workflow_contract(root: Path) -> None:
 def validate_orchestration_contract(root: Path) -> None:
     """Validate ``roadmap/orchestration.yaml`` if present.
 
-    A missing file is not a warning (``validate`` prints :data:`NO_ORCHESTRATION_NOTICE`):
+    No roster anywhere is not a warning (``validate`` prints :data:`NO_ORCHESTRATION_NOTICE`):
     it means the default review policy (one reviewer, any family), the
     scaffolded starter's policy, which ``--generate-orchestration`` writes as an editable file.
-    A file that is not what routing reads (absent on the integration branch,
-    or different there) is, as ``orchestrate plan`` says.
+    A roster routing does not read (edited, added or deleted in the working tree without a commit,
+    or added, deleted or changed on an unpushed local integration branch) is, as ``orchestrate plan`` says.
     """
     _data, err = load_orchestration_config(root)
     if err:
         print(err, file=sys.stderr)
         raise SystemExit(1)
-    _ref, drift = roster_source(root)
-    if drift:
-        print(f"warning: {drift}", file=sys.stderr)
+    report = roster_report(root)
+    if report.drift and not report.none_anywhere:   # no roster at all: the notice, not a warning
+        print(f"warning: {report.drift}", file=sys.stderr)
+
+
+def no_orchestration_notice(root: Path) -> str | None:
+    """:data:`NO_ORCHESTRATION_NOTICE`, plus where the roster is read from when routing finds none there either.
+
+    ``None`` when the integration ref has a roster: routing uses it, not the default policy, and the
+    working-tree deletion is the warning :func:`validate_orchestration_contract` printed.
+    """
+    report = roster_report(root)
+    if report.on_ref:
+        return None
+    return NO_ORCHESTRATION_NOTICE + (f"\nnotice: {report.drift}" if report.none_anywhere else "")
 
 
 NO_ORCHESTRATION_NOTICE = (
@@ -334,8 +346,8 @@ def main() -> None:
         notice_complete_scaffold(root, load_roadmap(root)["nodes"], show_all=args.all)
         if args.generate_orchestration:
             generate_orchestration(root)
-        elif not orchestration_yaml_path(root).is_file():
-            print(NO_ORCHESTRATION_NOTICE)   # stdout: a notice, which --strict does not count
+        elif not orchestration_yaml_path(root).is_file() and (notice := no_orchestration_notice(root)):
+            print(notice)   # stdout: a notice, which --strict does not count
         print_injected_context(root)
     if args.strict and stderr.lines:
         sys.stdout.flush()  # the OK line first, then why it does not count

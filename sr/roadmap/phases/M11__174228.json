@@ -35,7 +35,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.20_roster-source-explained_54602ab6-9a86-4d1b-81cb-30bc13a9bc61.md",
       "sibling_order": 20,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "orchestrate plan and validate say where the roster is read from",
       "touch_zones": [
         "specy_road/orchestration_pinned.py",

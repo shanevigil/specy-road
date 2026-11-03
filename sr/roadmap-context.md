@@ -127,7 +127,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.17` edit-node names every chunk file it changes, and relocation is loud `edit-node-names-chunks` — task — **Complete**
   - `M11.18` Registry overlap warnings show only what concerns the command at hand `quieter-overlap-warnings` — task — **Complete**
   - `M11.19` Pickup never stashes work/ around the registry commit `pickup-no-work-stash` — task — **Complete**
-  - `M11.20` orchestrate plan and validate say where the roster is read from `roster-source-explained` — task — **Not Started**
+  - `M11.20` orchestrate plan and validate say where the roster is read from `roster-source-explained` — task — **Complete**
   - `M11.22` Worker worktrees can include nested sibling repositories `nested-repo-worktrees` — task — **Not Started**
   - `M11.23` A custom launch command's permissions carry through resume `resume-keeps-permissions` — task — **Not Started**
   - `M11.24` Executors and reviewers in a worktree can write and check the right places `worktree-handoff-writable` — task — **Complete**
@@ -179,7 +179,6 @@ Do not pick these up.
 
 - `M11.14` on `feature/rm-queue-worker-message` since 2026-11-02
 - `M11.16` on `feature/rm-sheet-edits-keep-approvals` since 2026-11-02
-- `M11.20` on `feature/rm-roster-source-explained` since 2026-11-02
 - `M11.37` on `feature/rm-packet-uncommitted-refs` since 2026-11-02
 - `M11.44` on `feature/rm-init-profiles-subset` since 2026-11-02
 - `M11.50` on `feature/rm-finish-keeps-summary` since 2026-11-02
