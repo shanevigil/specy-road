@@ -43,6 +43,7 @@ from specy_road.bundled_scripts.do_next_task_virtual_complete import (
     virtual_complete_from_registry as _virtual_complete_from_registry,
 )
 from specy_road.bundled_scripts.do_next_finished_unmerged import finished_unmerged_ids
+from specy_road.bundled_scripts.do_next_task_held_claim import refuse_second_claim
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.do_next_milestone_pickup import (
     exit_no_leaves_under_parent as _exit_no_leaves_under_parent,
@@ -362,6 +363,7 @@ def main(argv: list[str] | None = None) -> None:
 
     parent_filter = _resolve_milestone_parent_filter(ROOT / "work", args)
     _validate_or_exit()
+    refuse_second_claim(ROOT, allow=args.allow_second_claim)
     if args.local:
         print("local pickup: no fetch, no push (see the footer)", file=sys.stderr)
     else:
