@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import shutil
 from pathlib import Path
 
@@ -117,6 +118,54 @@ def test_get_content_and_hash_come_from_one_snapshot(
     )
     assert r.status_code == 409, r.text
     assert target.read_bytes() == b"edited on disk mid-request\n"
+
+
+@pytest.mark.parametrize(("route", "rel"), ROUTES)
+def test_put_hash_is_of_its_own_write_not_a_later_edit(
+    dogfood_copy: Path, route: str, rel: str,
+) -> None:
+    """An edit landing between the save's write and its response must not become the base."""
+    target = (dogfood_copy / rel).resolve()
+    external = b"external edit right after the dashboard save\n"
+    real_write_text, real_write_bytes = Path.write_text, Path.write_bytes
+    fired: list[bool] = []
+
+    def external_edit_after(self: Path, result: object) -> object:
+        if self.resolve() == target and not fired:
+            fired.append(True)
+            real_write_bytes(target, external)
+        return result
+
+    client = _client()
+    got = client.get(route, params={"path": rel}).json()
+    saved = got["content"] + "dashboard save\n"
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(
+            Path, "write_text",
+            lambda self, *a, **k: external_edit_after(self, real_write_text(self, *a, **k)),
+        )
+        mp.setattr(
+            Path, "write_bytes",
+            lambda self, data: external_edit_after(self, real_write_bytes(self, data)),
+        )
+        first = client.put(
+            route,
+            params={"path": rel},
+            json={"content": saved},
+            headers=_headers(client, got["content_hash"]),
+        )
+    assert fired
+    assert first.status_code == 200, first.text
+    written = saved.replace("\n", os.linesep).encode("utf-8")
+    assert first.json()["content_hash"] == hashlib.sha256(written).hexdigest()
+    autosave = client.put(
+        route,
+        params={"path": rel},
+        json={"content": saved + "next keystroke\n"},
+        headers=_headers(client, first.json()["content_hash"]),
+    )
+    assert autosave.status_code == 409, autosave.text
+    assert target.read_bytes() == external
 
 
 def test_read_only_serves_reads_and_refuses_writes(dogfood_copy: Path) -> None:

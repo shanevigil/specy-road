@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 from typing import Any
 
@@ -36,19 +37,24 @@ from specy_road.pm_gui_concurrency import require_pm_gui_write_header
 BASE_CONTENT_HASH_HEADER = "X-Base-Content-Hash"
 
 
-def content_hash(p: Path) -> str | None:
-    """sha256 of the file's bytes on disk, or None when it does not exist."""
-    if not p.is_file():
-        return None
-    return hashlib.sha256(p.read_bytes()).hexdigest()
-
-
 def read_snapshot(p: Path) -> tuple[str, str]:
     """Text and hash of *p* from one read, so they always describe the same version."""
     data = p.read_bytes()
     # Same newline translation as ``read_text`` gave the editors before.
     text = data.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
     return text, hashlib.sha256(data).hexdigest()
+
+
+def write_snapshot(p: Path, content: str) -> str:
+    """Write *content* and return the hash of exactly the bytes written.
+
+    Hashing what this request wrote, not a later read, keeps an edit made by
+    another writer right after the save from becoming the client's base.
+    """
+    # Same encoding and newline translation as ``write_text`` gave before.
+    data = content.replace("\n", os.linesep).encode("utf-8")
+    p.write_bytes(data)
+    return hashlib.sha256(data).hexdigest()
 
 
 def require_unchanged_since(p: Path, base_hash: str | None) -> None:
@@ -179,7 +185,7 @@ def api_planning_put(
     )
     try:
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(body.content, encoding="utf-8")
+        written = write_snapshot(p, body.content)
         run_validate_raise(root)
     except ValueError as e:
         if had_file and previous is not None:
@@ -187,7 +193,7 @@ def api_planning_put(
         elif p.is_file():
             p.unlink()
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return {"ok": "true", "path": path, "content_hash": content_hash(p)}
+    return {"ok": "true", "path": path, "content_hash": written}
 
 
 def register_planning_routes(api: APIRouter) -> None:

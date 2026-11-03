@@ -26,9 +26,9 @@ from specy_road.gui_app_helpers import (
 )
 from specy_road.gui_app_routes_planning import (
     BASE_CONTENT_HASH_HEADER,
-    content_hash,
     read_snapshot,
     require_unchanged_since,
+    write_snapshot,
 )
 from specy_road.pm_gui_concurrency import require_pm_gui_write_header
 from specy_road.gui_app_models import (
@@ -145,14 +145,14 @@ def _api_workspace_file_put(
         previous = None
     try:
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(body.content, encoding="utf-8")
+        written = write_snapshot(p, body.content)
     except OSError as e:
         if had_file and previous is not None:
             p.write_text(previous, encoding="utf-8")
         elif p.is_file() and not had_file:
             p.unlink()
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return {"ok": "true", "path": path, "content_hash": content_hash(p)}
+    return {"ok": "true", "path": path, "content_hash": written}
 
 
 def register_workspace_routes(api: APIRouter) -> None:
