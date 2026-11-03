@@ -132,10 +132,10 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.23` | A custom launch command's permissions carry through resume | task | Agentic-led | Not Started |
 | `M11.24` | Executors and reviewers in a worktree can write and check the right places | task | Agentic-led | Complete |
 | `M11.25` | finish-this-task says what merge mode will push before it pushes | task | Agentic-led | Complete |
-| `M11.26` | A model profile can match harness model ids that carry an effort suffix | task | Agentic-led | Not Started |
+| `M11.26` | A model profile can match harness model ids that carry an effort suffix | task | Agentic-led | Complete |
 | `M11.27` | Small CLI fixes from field use | task | Agentic-led | Not Started |
 | `M11.28` | A light chore mode for work outside the roadmap | task | Mixed | Not Started |
-| `M11.29` | doctor warns when the running specy-road is older than the project's stubs | task | Agentic-led | Not Started |
+| `M11.29` | doctor warns when the running specy-road is older than the project's stubs | task | Agentic-led | Complete |
 | `M11.30` | Leaf worktrees get the project's environment set up | task | Agentic-led | Not Started |
 | `M11.31` | A safe command to retire a leaf worktree | task | Agentic-led | Not Started |
 | `M11.32` | Unpushed nested-repo commits are reported | task | Agentic-led | Not Started |
@@ -151,16 +151,20 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.42` | session end finds the session the same agent started | task | Agentic-led | Complete |
 | `M11.43` | init project reports exactly what it writes | task | Agentic-led | Not Started |
 | `M11.44` | init project can install only the model profiles a project uses | task | Agentic-led | Not Started |
-| `M11.45` | The stale-command warning fires only on command-shaped mentions | task | Agentic-led | Not Started |
+| `M11.45` | The stale-command warning fires only on command-shaped mentions | task | Agentic-led | Complete |
 | `M11.46` | Placeholder leaves neither fail validate --strict nor pad briefs | task | Agentic-led | Not Started |
-| `M11.47` | validate checks git-root touch zones in a nested project | task | Agentic-led | Not Started |
-| `M11.48` | A claimed leaf reads as claimed in list-nodes and brief | task | Agentic-led | Not Started |
+| `M11.47` | validate checks git-root touch zones in a nested project | task | Agentic-led | Complete |
+| `M11.48` | A claimed leaf reads as claimed in list-nodes and brief | task | Agentic-led | Complete |
 | `M11.49` | The review packet takes touch zones from the reviewed commit and treats lockfiles as generated | task | Agentic-led | Not Started |
 | `M11.50` | finish keeps a committed implementation summary in history | task | Agentic-led | Not Started |
 | `M11.51` | Dashboard saves never overwrite newer disk edits, and the read API is documented | task | Agentic-led | Not Started |
 | `M11.52` | PR mode predicts and resolves the registry conflict | task | Agentic-led | Not Started |
-| `M11.53` | A worktree-based flow can claim leaves without pushing from the worktree | task | Agentic-led | Not Started |
+| `M11.53` | A worktree-based flow can claim leaves without pushing from the worktree | task | Agentic-led | Complete |
 | `M11.54` | The test suite and land check run in parallel | task | Agentic-led | Not Started |
 | `M11.55` | Executors split modules to meet file limits instead of deleting documentation | task | Agentic-led | Not Started |
+| `M11.56` | Delegate creates the reviews directory before a harness is told to allow it | task | Agentic-led | Complete |
+| `M11.57` | A completed worker on a finished leaf does not hold a max_workers slot | task | Agentic-led | Not Started |
+| `M11.58` | The coordinator records the session's routing preferences where the next session can read them | task | Agentic-led | Not Started |
+| `M11.59` | Split worker_ops and worker_adapters so parallel leaves stop colliding | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

@@ -132,10 +132,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.23` A custom launch command's permissions carry through resume `resume-keeps-permissions` — task — **Not Started**
   - `M11.24` Executors and reviewers in a worktree can write and check the right places `worktree-handoff-writable` — task — **Complete**
   - `M11.25` finish-this-task says what merge mode will push before it pushes `merge-push-disclosure` — task — **Complete**
-  - `M11.26` A model profile can match harness model ids that carry an effort suffix `profile-aliases` — task — **Not Started**
+  - `M11.26` A model profile can match harness model ids that carry an effort suffix `profile-aliases` — task — **Complete**
   - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Not Started**
   - `M11.28` A light chore mode for work outside the roadmap `chore-mode` — task — **Not Started**
-  - `M11.29` doctor warns when the running specy-road is older than the project's stubs `doctor-version-skew` — task — **Not Started**
+  - `M11.29` doctor warns when the running specy-road is older than the project's stubs `doctor-version-skew` — task — **Complete**
   - `M11.30` Leaf worktrees get the project's environment set up `worktree-env-setup` — task — **Not Started**
   - `M11.31` A safe command to retire a leaf worktree `worktree-prune` — task — **Not Started**
   - `M11.32` Unpushed nested-repo commits are reported `nested-unpushed-report` — task — **Not Started**
@@ -151,17 +151,21 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Complete**
   - `M11.43` init project reports exactly what it writes `init-project-reports-writes` — task — **Not Started**
   - `M11.44` init project can install only the model profiles a project uses `init-profiles-subset` — task — **Not Started**
-  - `M11.45` The stale-command warning fires only on command-shaped mentions `stale-command-prose` — task — **Not Started**
+  - `M11.45` The stale-command warning fires only on command-shaped mentions `stale-command-prose` — task — **Complete**
   - `M11.46` Placeholder leaves neither fail validate --strict nor pad briefs `placeholder-leaves-strict-brief` — task — **Not Started**
-  - `M11.47` validate checks git-root touch zones in a nested project `validate-zones-git-root` — task — **Not Started**
-  - `M11.48` A claimed leaf reads as claimed in list-nodes and brief `claimed-leaf-status` — task — **Not Started**
+  - `M11.47` validate checks git-root touch zones in a nested project `validate-zones-git-root` — task — **Complete**
+  - `M11.48` A claimed leaf reads as claimed in list-nodes and brief `claimed-leaf-status` — task — **Complete**
   - `M11.49` The review packet takes touch zones from the reviewed commit and treats lockfiles as generated `packet-zones-at-commit` — task — **Not Started**
   - `M11.50` finish keeps a committed implementation summary in history `finish-keeps-summary` — task — **Not Started**
   - `M11.51` Dashboard saves never overwrite newer disk edits, and the read API is documented `dashboard-safe-saves` — task — **Not Started**
   - `M11.52` PR mode predicts and resolves the registry conflict `pr-mode-registry-conflict` — task — **Not Started**
-  - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Not Started**
+  - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Complete**
   - `M11.54` The test suite and land check run in parallel `parallel-test-suite` — task — **Not Started**
   - `M11.55` Executors split modules to meet file limits instead of deleting documentation `file-limit-split-not-delete` — task — **Not Started**
+  - `M11.56` Delegate creates the reviews directory before a harness is told to allow it `reviews-dir-before-launch` — task — **Complete**
+  - `M11.57` A completed worker on a finished leaf does not hold a max_workers slot `completed-worker-frees-slot` — task — **Not Started**
+  - `M11.58` The coordinator records the session's routing preferences where the next session can read them `session-routing-preferences` — task — **Not Started**
+  - `M11.59` Split worker_ops and worker_adapters so parallel leaves stop colliding `split-worker-modules` — task — **Not Started**
 
 ## Archived (not in the live roadmap)
 
@@ -176,10 +180,12 @@ Do not pick these up.
 - `M11.14` on `feature/rm-queue-worker-message` since 2026-11-02
 - `M11.16` on `feature/rm-sheet-edits-keep-approvals` since 2026-11-02
 - `M11.20` on `feature/rm-roster-source-explained` since 2026-11-02
-- `M11.26` on `feature/rm-profile-aliases` since 2026-11-02
-- `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
 - `M11.37` on `feature/rm-packet-uncommitted-refs` since 2026-11-02
+- `M11.44` on `feature/rm-init-profiles-subset` since 2026-11-02
+- `M11.50` on `feature/rm-finish-keeps-summary` since 2026-11-02
+- `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.54` on `feature/rm-parallel-test-suite` since 2026-11-02
+- `M11.55` on `feature/rm-file-limit-split-not-delete` since 2026-11-02
 
 ## Reaching the detail behind this
 

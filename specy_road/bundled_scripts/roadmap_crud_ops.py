@@ -16,6 +16,11 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import (
 )
 from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
 from specy_road.bundled_scripts.planning_sheet_bootstrap import plan_planning_sheet_for_new_node
+from specy_road.bundled_scripts.registry_claim_status import (
+    leaf_claim_entry,
+    list_nodes_json_row,
+    list_nodes_status_label,
+)
 from specy_road.bundled_scripts.registry_claim_zones import claim_zones_following
 from specy_road.bundled_scripts.roadmap_crud_prepare import ensure_codename_for_new_node, heal_before_mutation, next_sibling_order
 from specy_road.bundled_scripts.roadmap_crud_chunk_report import (
@@ -29,9 +34,12 @@ from specy_road.bundled_scripts.roadmap_crud_chunk_report import (
 from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_PATTERN, ID_PATTERN, apply_set, merge_set_pairs
 from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
 from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
+from specy_road.bundled_scripts.roadmap_gui_lib import registry_by_node_id
 from specy_road.bundled_scripts.roadmap_load import load_roadmap, validate_roadmap_line_limits
 from specy_road.bundled_scripts.validate_registry_overlap import authoring_overlap_for_node
 from specy_road.bundled_scripts.validate_roadmap import validate_at
+from specy_road.milestone_subtree import structural_leaf_ids
+from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.runtime_paths import default_user_repo_root
 from specy_road.node_kinds import is_gate
 
@@ -107,19 +115,25 @@ def cmd_list(args: object) -> None:
     """List nodes with status, rollup, and chunk path."""
     root = repo_root(args)
     chunk_map = build_node_chunk_map(root)
+    nodes = load_roadmap(root)["nodes"]
+    by_reg = registry_by_node_id(read_registry(registry_path(root)))
+    leaf_ids = structural_leaf_ids(nodes)
     wanted = {s.lower() for s in (getattr(args, "status", None) or [])}
     rows = []
-    for n in sorted(load_roadmap(root)["nodes"], key=lambda x: natural_id_sort_key(x["id"])):
+    for n in sorted(nodes, key=lambda x: natural_id_sort_key(x["id"])):
         rollup = str(n.get("rollup_status") or n.get("status", ""))
         if not wanted or rollup.lower() in wanted:
             ch = chunk_map.get(n["id"])
-            rows.append((n, rollup, ch.relative_to(root).as_posix() if ch else None))
+            claim = leaf_claim_entry(n["id"], leaf_ids=leaf_ids, by_reg=by_reg)
+            rows.append((n, rollup, ch.relative_to(root).as_posix() if ch else None, claim))
     if getattr(args, "as_json", False):
-        print(json.dumps([{**n, "chunk": rel} for n, _, rel in rows], indent=2, ensure_ascii=False))
+        payload = [list_nodes_json_row(n, rel, claim) for n, _, rel, claim in rows]
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
         return
     print(f"{'ID':12}  {'TYPE':10}  {'STATUS':12}  {'ROLLUP':12}  TITLE  [CHUNK]")
-    for n, rollup, rel in rows:
-        print(f"{n['id']:12}  {n.get('type', ''):10}  {str(n.get('status', '')):12}  "
+    for n, rollup, rel, claim in rows:
+        status = list_nodes_status_label(n, claim)
+        print(f"{n['id']:12}  {n.get('type', ''):10}  {status:12}  "
               f"{rollup:12}  {str(n.get('title', ''))[:60]}  [{rel or '(unknown)'}]")
 
 

@@ -86,6 +86,7 @@ count as one family.
 | Claude Fable 5.1 | `anthropic` | [claude-fable-5-1](anthropic-claude/claude-fable-5-1.md) | latest | 1M / 128K | 10.00 / 50.00 (0.25) | unknown | 4 / 5 / 4 | Claude |
 | Claude Fable 5 | `anthropic` | [claude-fable-5](anthropic-claude/claude-fable-5.md) | previous, legacy | 1M / 128K | 10.00 / 50.00 (1.00) | unknown | 3 / 4 / 3 | Claude |
 | GPT-6.1 Sol | `openai` | [gpt-6.1-sol](openai-gpt/gpt-6.1-sol.md) | latest | 1.05M / 128K | 2.00 / 10.00 (0.10) | 12 / 60 (ultrafast) | 4 / 5 / 4 | both |
+| GPT-5.6 Sol | `openai` | [gpt-5.6-sol](openai-gpt/gpt-5.6-sol.md) | previous | 1M / unknown | 4.00 / 20.00 (unknown) | unknown | 4 / 4 / 4 | Cursor |
 | GPT-6 Sol | `openai` | [gpt-6-sol](openai-gpt/gpt-6-sol.md) | previous | 1.05M / 128K | 2.00 / 10.00 (0.20) | 4 / 20 | 3 / 3 / 3 | both |
 | Gemini 4 Argon | `google` | [gemini-4-argon](google-gemini/gemini-4-argon.md) | latest | 1M / 64K sync | 2.00 / 10.00 (0.10) until 2026-11-30, then 4 / 20 | unknown | 4 / 5 / 3 | both |
 | Gemini 3.8 Flash | `google` | [gemini-3.8-flash](google-gemini/gemini-3.8-flash.md) | previous | 1M / 64K | 0.75 / 3.75 until 2026-12-31 | unknown | 2 / 3 / 2 | both |

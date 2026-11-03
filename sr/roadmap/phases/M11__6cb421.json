@@ -1,0 +1,84 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "specy_road/worker_ops.py and specy_road/worker_adapters.py (each at the 400-line cap) are split by responsibility into smaller modules (for example delegate/launch, message/resume, slot and lease checks; and one module per harness adapter plus a shared base), each well under the cap, with every name other modules or tests import still importable from its old module path",
+        "Behaviour is unchanged: the full suite passes with no test edited except import lines, specy-road integrity reports no removed or weakened tests, and every docstring and comment moves with its code; the implementation summary maps each moved function to its new module"
+      ],
+      "codename": "split-worker-modules",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.59",
+      "node_key": "6cb421f0-05d8-4db3-b111-58b8708a3f53",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.59_split-worker-modules_6cb421f0-05d8-4db3-b111-58b8708a3f53.md",
+      "sibling_order": 59,
+      "status": "Not Started",
+      "title": "Split worker_ops and worker_adapters so parallel leaves stop colliding",
+      "touch_zones": [
+        "specy_road/worker_ops.py",
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_ops_",
+        "specy_road/worker_adapter_",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A roster entry can set harness_model (the id the harness CLI expects, for example claude-opus-5-5 for roster id claude-opus-5.5); the default adapters pass it to --model, falling back to the roster id; validate warns when a Claude Code entry's id contains a dot and no harness_model is set",
+        "When a worker exits non-zero before its first stream event, its error event summary includes the harness's last error line from the log (for example an HTTP 404 for an unknown model), not only a pointer to the log; tests cover the mapping, the fallback and the early-failure summary"
+      ],
+      "codename": "roster-harness-model-id",
+      "dependencies": [
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.35",
+      "node_key": "f2ed72a7-5b45-4457-8649-e65c6fe42b0e",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.35_roster-harness-model-id_f2ed72a7-5b45-4457-8649-e65c6fe42b0e.md",
+      "sibling_order": 35,
+      "status": "Not Started",
+      "title": "A roster entry maps to the harness's own model id, and a failed start says why",
+      "touch_zones": [
+        "specy_road/orchestration_config.py",
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_runner.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "docs/orchestration-models.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A roster entry can set available: false or paused_until: <date or datetime>, read from a local untracked roadmap/orchestration.local.yaml overlay (so availability changes need no push) as well as the shared roster; orchestrate plan skips unavailable entries for every role, and worker delegate and review delegate refuse them with the reason",
+        "Past review records by an unavailable entry still count at their commit; tests cover available: false, a paused_until in the past and future, and the overlay"
+      ],
+      "codename": "roster-availability",
+      "dependencies": [
+        "35380c40-e3ba-4d90-913d-342ecd12d964",
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.39",
+      "node_key": "effe1668-f68c-4ff8-be70-61296b3cf696",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.39_roster-availability_effe1668-f68c-4ff8-be70-61296b3cf696.md",
+      "sibling_order": 39,
+      "status": "Not Started",
+      "title": "A roster entry can be marked unavailable without deleting it",
+      "touch_zones": [
+        "specy_road/orchestration_config.py",
+        "specy_road/orchestrate_plan.py",
+        "specy_road/worker_ops.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "docs/orchestration.md",
+        "tests/"
+      ],
+      "type": "task"
+    }
+  ]
+}

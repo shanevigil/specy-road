@@ -1,6 +1,6 @@
 ## specy-road (coordination rules for every agent)
 
-Written by specy-road {{SPECYRD_VERSION}}; `specy-road refresh-stubs` rewrites only this section. The rest of this file is the project's own.
+Written by specy-road {{SPECYRD_VERSION}} (minimum {{SPECYRD_VERSION}}); `specy-road refresh-stubs` rewrites only this section. The rest is the project's own.
 
 **Precedence.** These rules on the registry, branches, review, and a shared working tree are a floor: project rules may add to them, never relax them. If a project rule conflicts with one here, stop
 and ask a human which applies; do not pick one.

@@ -44,8 +44,12 @@ from specy_road.bundled_scripts.planning_artifacts import (
     normalize_planning_dir,
     planning_artifact_paths,
 )
+from specy_road.bundled_scripts.registry_claim_status import brief_status_own_line, leaf_claim_entry
+from specy_road.bundled_scripts.roadmap_gui_lib import registry_by_node_id
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
+from specy_road.milestone_subtree import structural_leaf_ids
+from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix
 
 
@@ -97,7 +101,7 @@ def _project_root_line(nid: str, prefix: str) -> list[str]:
             f"hand-offs go in `{prefix}work/reviews/{nid}/` of the main checkout — never in the git root's `work/`."]
 
 
-def _section_metadata(node: dict, prefix: str = "") -> list[str]:
+def _section_metadata(node: dict, prefix: str = "", claim: dict | None = None) -> list[str]:
     nid = node["id"]
     rollup = node.get("rollup_status") or node.get("status")
     tz = node.get("touch_zones") or []
@@ -109,7 +113,7 @@ def _section_metadata(node: dict, prefix: str = "") -> list[str]:
         f"- **Title:** {node.get('title', '')}",
         f"- **Codename:** `{node.get('codename') or '—'}`",
         f"- **Type:** {node.get('type', '')}",
-        f"- **Status (own):** {node.get('status')}",
+        f"- **Status (own):** {brief_status_own_line(node, claim)}",
         f"- **Status (rollup):** {rollup}",
         f"- **Execution (milestone hint):** {node.get('execution_milestone') or '—'}",
         f"- **Touch zones:** {tz_str}",
@@ -326,6 +330,11 @@ def render_brief(
 ) -> str:
     root = repo_root or default_user_repo_root()
     n = by_id[node_id]
+    claim = leaf_claim_entry(
+        node_id,
+        leaf_ids=structural_leaf_ids(list(by_id.values())),
+        by_reg=registry_by_node_id(read_registry(registry_path(root))),
+    )
     chain = ancestors(node_id, by_id) + [n]
     cited = contract_citations.cited_contracts(
         _chain_sheet_paths(n, root, by_id), root
@@ -333,7 +342,7 @@ def render_brief(
 
     parts: list[list[str]] = [
         _section_header(node_id, n.get("title", ""), n.get("codename")),
-        _section_metadata(n, project_prefix(root)),
+        _section_metadata(n, project_prefix(root), claim),
         _section_ancestor_chain(chain),
         _inline_planning(n, root, by_id),
         _inline_shared_contracts(root, cited, inline_all=all_contracts),

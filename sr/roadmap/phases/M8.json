@@ -44,12 +44,12 @@
       "acceptance": [
         "Claude Code launches pass an explicit permission mode and allowed tools, no permission prompts, and the retry watchdog with a capped usage-limit wait; a worker stopped by a usage limit enters a paused-by-limit state that worker resume picks up after the reset",
         "Codex launches use exec --json with the workspace-write sandbox, both memory switches off and a per-profile CODEX_HOME; Cursor launches create the chat first and pass --force --trust and never -w",
-        "After every turn the adapter checks the event stream for permission denials, failed turns and api retries, and the git state (HEAD, branch, stash list, porcelain) for anything beyond the expected files; a finding flags the worker and is shown by worker sync, regardless of exit code",
-        "docs/orchestration-workers.md gives a complete hands-off Claude Code executor example: a settings file with allow and deny lists and the channels.cli line that uses it with --permission-mode dontAsk --settings <file>; a test checks that the example settings file parses and that its deny list covers git push"
+        "After every turn the adapter checks the event stream for permission denials, failed turns and api retries, and the git state (HEAD, branch, stash list, porcelain) for anything beyond the expected files; a finding flags the worker and is shown by worker sync, regardless of exit code"
       ],
       "codename": "worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check",
       "dependencies": [
-        "d78a68ac-55a4-449c-9b00-97d0840a6afe"
+        "d78a68ac-55a4-449c-9b00-97d0840a6afe",
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M8.2",

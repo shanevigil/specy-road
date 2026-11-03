@@ -1,33 +1,5 @@
 version: 1
 entries:
-  - codename: profile-aliases
-    node_id: M11.26
-    branch: feature/rm-profile-aliases
-    touch_zones:
-      - specy_road/model_profiles.py
-      - specy_road/templates/project/model-profiles/
-      - specy_road/templates/project/schemas/
-      - docs/orchestration-models.md
-      - tests/
-      - specy_road/bundled_scripts/models_cli.py
-      - model-profiles/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: doctor-version-skew
-    node_id: M11.29
-    branch: feature/rm-doctor-version-skew
-    touch_zones:
-      - specy_road/bundled_scripts/doctor.py
-      - specy_road/cli.py
-      - specy_road/templates/
-      - README.md
-      - docs/install-and-usage.md
-      - tests/
-      - specy_road/version_skew.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: queue-worker-message
     node_id: M11.14
     branch: feature/rm-queue-worker-message
@@ -89,6 +61,8 @@ entries:
       - docs/contributor-guide.md
       - CLAUDE.md
       - tests/
+      - requirements-ci.txt
+      - requirements-ci.in
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
@@ -101,6 +75,43 @@ entries:
       - specy_road/bundled_scripts/refresh_profiles.py
       - tests/
       - docs/orchestration-models.md
+      - specy_road/cli.py
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: finish-keeps-summary
+    node_id: M11.50
+    branch: feature/rm-finish-keeps-summary
+    touch_zones:
+      - specy_road/finish_work_artifacts.py
+      - specy_road/bundled_scripts/finish_task.py
+      - tests/
+      - docs/git-workflow.md
+      - docs/dev-workflow.md
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: dashboard-safe-saves
+    node_id: M11.51
+    branch: feature/rm-dashboard-safe-saves
+    touch_zones:
+      - specy_road/gui_app_routes_planning.py
+      - specy_road/gui_app_routes_workspace.py
+      - specy_road/gui_app.py
+      - specy_road/cli.py
+      - gui/pm-gantt/src/api.ts
+      - tests/
+      - docs/pm-gui.md
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: file-limit-split-not-delete
+    node_id: M11.55
+    branch: feature/rm-file-limit-split-not-delete
+    touch_zones:
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/templates/
+      - tests/
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending

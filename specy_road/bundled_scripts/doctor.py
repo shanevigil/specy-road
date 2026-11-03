@@ -45,6 +45,7 @@ from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_text
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.version_skew import warn_if_running_version_older
 
 TOOLKIT_STASH = re.compile(r"^On [^:]+: specy-road: ")
 # commit-tree needs an identity, and a CI runner may have none configured.
@@ -352,6 +353,7 @@ def _context(ns: argparse.Namespace) -> _Ctx | None:
 
 
 def cmd_doctor(ns: argparse.Namespace) -> int:
+    warn_if_running_version_older(resolve_repo_root(ns))
     ctx = _context(ns)
     if ctx is None:
         return 1
@@ -375,9 +377,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="specy-road doctor",
         description=(
             "After git fetch --prune, list feature/rm-* branches (local and remote) whose leaf is "
-            "Complete or that nothing claims — merged by ancestry or patch content, leaf Complete, "
-            "or claim gone — worktrees whose branch is gone or merged, other detached worktrees, "
-            "registry rows with no branch or a Complete leaf, and stashes specy-road pushed. Dry-run unless --fix."
+            "Complete or that nothing claims — merged by ancestry or patch content, leaf Complete, or claim gone — worktrees whose branch is gone or merged, other detached worktrees, registry rows with no branch or a Complete leaf, and stashes specy-road pushed. Dry-run unless --fix."
         ),
     )
     p.add_argument("--fix", action="store_true",

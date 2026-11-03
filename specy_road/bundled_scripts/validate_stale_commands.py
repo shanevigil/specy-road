@@ -19,11 +19,9 @@ _MENTION = re.compile(
     r"(?:[*_]+)?(specy-road|specyrd)(?:[*_]+)?[ \t]+"
     r"(?:[*_]+)?([a-z][a-z0-9-]*)[*_]*(?!\w)"
 )
-_PLAIN_WORD = re.compile(r"[A-Za-z]+(?:[-'][A-Za-z]+)*")
 _PUNCT_ONLY = re.compile(r"^[\(\)\[\]\{\}.,;:!?…\"'`—–-]+$")
 _LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+")
-# The product name is a noun phrase when one of these words is the token
-# immediately before it, with only whitespace between ("the specy-road toolkit").
+# Article before the product name after a run verb ("run the specy-road frob").
 _NOUN_PHRASE = frozenset(
     {"the", "a", "an", "this", "that", "these", "those", "other", "any", "all",
      "every", "each", "its", "our", "your", "their", "own", "of", "with", "in",
@@ -55,16 +53,6 @@ def _run_verb(line: str, start: int) -> bool:
     return immediate in _RUN_VERB or (
         earlier in _RUN_VERB and immediate in _NOUN_PHRASE
     )
-
-
-def _noun_phrase(line: str, start: int) -> bool:
-    before = line[:start].rstrip("*_").rstrip(" \t")
-    if not before:
-        return False
-    split_at = len(before)
-    while split_at > 0 and not before[split_at - 1].isspace():
-        split_at -= 1
-    return before[split_at:].strip("*_").lower() in _NOUN_PHRASE
 
 
 def _product_before_span(line: str, span_start: int) -> tuple[int, str] | None:
@@ -143,18 +131,6 @@ def _looks_like_node_id(raw: str) -> bool:
     return bool(re.match(r"M\d", word))
 
 
-def _doc_ref_span_after(line: str, mention_end: int) -> bool:
-    pos = mention_end
-    while pos < len(line) and line[pos] in " \t":
-        pos += 1
-    if pos >= len(line) or line[pos] != "`":
-        return False
-    for span_start, span_end, content in _code_spans(line):
-        if span_start == pos:
-            return _looks_like_node_id(content.strip())
-    return False
-
-
 def _first_meaningful_follower(line: str, start: int) -> str:
     resolved = _mention_at(line, start)
     if resolved is None:
@@ -188,28 +164,12 @@ def _mandatory_follower(line: str, start: int) -> bool:
     return bool(re.search(r"\d", word))
 
 
-def _plain_follower(line: str, start: int) -> bool:
-    raw = _first_meaningful_follower(line, start)
-    if not raw:
-        return True
-    return _PLAIN_WORD.fullmatch(_strip_prose_punctuation(raw)) is not None
-
-
 def _reports(line: str, start: int) -> bool:
-    if (
+    return (
         _command_led_list_item(line, start)
         or _run_verb(line, start)
         or _mandatory_follower(line, start)
-    ):
-        return True
-    if _noun_phrase(line, start):
-        resolved = _mention_at(line, start)
-        if resolved and (
-            _plain_follower(line, start)
-            or _doc_ref_span_after(line, resolved[2])
-        ):
-            return False
-    return True
+    )
 
 
 def _backtick_run(line: str, index: int) -> int:
@@ -339,8 +299,8 @@ def unregistered_commands(text: str) -> list[str]:
 
     Line-based, best-effort scanning (same-line inline code spans only; multi-line spans
     out of scope). A one-line span immediately after the product name whose content is
-    one command-shaped token is that token (``specy-road `frob` --flag``). Mandatory
-    contexts beat the noun-phrase exclusion; see ``docs/install-and-usage.md``.
+    one command-shaped token is that token (``specy-road `frob` --flag``). Open-line
+    mentions warn only in mandatory contexts; see ``docs/install-and-usage.md``.
     """
     return [
         mention for _, mention in _occurrences(list(enumerate(text.splitlines(), 1)))
