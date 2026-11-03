@@ -10,7 +10,8 @@ inlines all the context an implementer needs (no separate file-opening):
   ``goal`` and ``acceptance`` criteria numbered ``A1..An`` (review records
   cite those ids — see ``brief_acceptance``)
 * ancestor context chain (program -> phase -> milestone -> task)
-* every ancestor planning sheet body, in chain order, then this node's
+* every ancestor planning sheet body, in chain order, then this node's; an
+  ancestor ``## Intent`` still left as a placeholder becomes one line
 * the shared contracts this node cites — every ``shared/…`` path named in the
   ``## References`` section of its own planning sheet or an ancestor's, plus
   ``shared/README.md`` as the index. Everything else under ``shared/`` is
@@ -19,7 +20,8 @@ inlines all the context an implementer needs (no separate file-opening):
 * dependency list (resolved from node_key UUIDs to display ids)
 * **dependency context: each effective dependency's ``## Intent`` block
   inlined verbatim** (so PMs do not have to paraphrase upstream work in
-  this task's own planning sheet — see ``brief_dependency_context``)
+  this task's own planning sheet — see ``brief_dependency_context``; one
+  line instead while that ``## Intent`` is still a placeholder)
 * an explicit touch-zone instruction for the implementing agent; the header
   states the brief's size and largest sections (``brief_acceptance``)
 
@@ -35,7 +37,10 @@ import argparse
 from pathlib import Path
 
 from specy_road.bundled_scripts.brief_acceptance import print_size_warning, render_goal_and_acceptance, with_size_line
-from specy_road.bundled_scripts.brief_dependency_context import render_dependency_context_section
+from specy_road.bundled_scripts.brief_dependency_context import (
+    render_dependency_context_section,
+    without_placeholder_intent,
+)
 
 from specy_road import contract_citations
 from specy_road.text_sections import read_text_safely as _read_text_safely
@@ -137,6 +142,17 @@ def _section_ancestor_chain(chain: list[dict]) -> list[str]:
     return lines
 
 
+def _sheet_owners(chain: list[dict]) -> dict[str, dict]:
+    """Normalised ``planning_dir`` -> node, so an inlined ancestor sheet can name its node."""
+    out: dict[str, dict] = {}
+    for a in chain:
+        try:
+            out[normalize_planning_dir(str(a.get("planning_dir") or ""))] = a
+        except ValueError:
+            continue
+    return out
+
+
 def _inline_planning(
     node: dict, root: Path, by_id: dict[str, dict]
 ) -> list[str]:
@@ -144,12 +160,14 @@ def _inline_planning(
     nid = node["id"]
     out = ["## 3. Planning context (inlined)", ""]
     anc = ancestor_planning_paths(nid, by_id, root)
+    owners = _sheet_owners(ancestors(nid, by_id))
     for rel, p in anc:
         text, ok = _read_text_safely(p)
         out.append(f"### Ancestor planning sheet: `{rel}`")
         out.append("")
         if ok:
-            out.append(text.rstrip())
+            owner = owners.get(rel)
+            out.append((without_placeholder_intent(text, owner) if owner else text).rstrip())
         else:
             out.append(f"_(not present on disk: `{rel}`)_")
         out.append("")

@@ -24,6 +24,11 @@ Design notes (intent-only by default):
   byte-stable across runs and machines.
 - Graceful fallbacks for deps without ``planning_dir`` and for sheets that
   exist but do not yet declare an Intent block.
+- An ``## Intent`` that is still scaffold-planning's or brainstorm promote's
+  placeholder becomes one line saying the sheet is not written yet, here and
+  in the ancestor sheets ``generate_brief`` inlines
+  (:func:`without_placeholder_intent`): the template text tells an
+  implementer nothing and only pads the brief.
 """
 
 from __future__ import annotations
@@ -31,11 +36,16 @@ from __future__ import annotations
 from pathlib import Path
 
 from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path, split_frontmatter
-from specy_road.bundled_scripts.planning_sheet_bootstrap import feature_sheet_level2_titles, gate_sheet_level2_titles
+from specy_road.bundled_scripts.planning_sheet_bootstrap import (
+    PROMOTE_PLACEHOLDER,
+    _scaffold_bodies,
+    feature_sheet_level2_titles,
+    gate_sheet_level2_titles,
+)
 from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys
 from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
 
-from specy_road.text_sections import find_section, normalize_heading, read_text_safely
+from specy_road.text_sections import LEVEL2_RE, find_section, normalize_heading, read_text_safely
 from specy_road.archive_index import iter_archived_summaries
 from specy_road.node_kinds import is_gate
 
@@ -79,6 +89,42 @@ def extract_intent_block(planning_text: str, node_type: str | None) -> str | Non
     _frontmatter, body = split_frontmatter(planning_text)
     wanted = {normalize_heading(t) for t in _intent_titles_for(node_type)}
     return find_section(body, wanted)
+
+
+def is_placeholder_intent(body: str) -> bool:
+    """Whether an ``## Intent`` body is still scaffold-planning's or brainstorm promote's placeholder.
+
+    The same two placeholders pickup's unauthored check looks for
+    (``planning_sheet_bootstrap.placeholder_sheet``), matched on collapsed
+    whitespace the same way.
+    """
+    flat = " ".join(body.split())
+    scaffold = _scaffold_bodies().get("Intent")
+    return PROMOTE_PLACEHOLDER in flat or bool(scaffold and scaffold in flat)
+
+
+def unwritten_sheet_line(node: dict) -> str:
+    """The one line a brief prints in place of a placeholder ``## Intent``."""
+    return (f"_`{node.get('id') or '(unknown id)'}` ({node.get('title') or 'no title'}): "
+            "its planning sheet is not written yet._")
+
+
+def without_placeholder_intent(text: str, node: dict) -> str:
+    """``text`` with its ``## Intent`` body swapped for :func:`unwritten_sheet_line` while it is a placeholder.
+
+    For a whole sheet the brief inlines (an ancestor's); the other sections stay as written.
+    """
+    lines = text.splitlines()
+    wanted = normalize_heading(_intent_titles_for(None)[0])
+    heads = [i for i, ln in enumerate(lines) if LEVEL2_RE.match(ln)]
+    start = next((i for i in heads if normalize_heading(LEVEL2_RE.match(lines[i])["title"]) == wanted), None)
+    if start is None:
+        return text
+    end = next((i for i in heads if i > start), len(lines))
+    if not is_placeholder_intent("\n".join(lines[start + 1:end])):
+        return text
+    tail = ["", *lines[end:]] if end < len(lines) else []
+    return "\n".join([*lines[:start + 1], "", unwritten_sheet_line(node), *tail])
 
 
 # ---------------------------------------------------------------------------
@@ -161,6 +207,10 @@ def _render_one_dep(repo_root: Path, dep: dict) -> list[str]:
         out.append("")
         return out
     intent = extract_intent_block(text, dep.get("type"))
+    if intent and not is_gate(dep.get("type")) and is_placeholder_intent(intent):
+        out.append(unwritten_sheet_line(dep))
+        out.append("")
+        return out
     if intent:
         out.append("**Intent (from this dependency's planning sheet):**")
         out.append("")

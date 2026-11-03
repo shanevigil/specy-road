@@ -161,7 +161,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.46_placeholder-leaves-strict-brief_cd4aa744-037f-4091-8f8d-ab621409316c.md",
       "sibling_order": 46,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Placeholder leaves neither fail validate --strict nor pad briefs",
       "touch_zones": [
         "specy_road/templates/project/roadmap/phases/M1.json",

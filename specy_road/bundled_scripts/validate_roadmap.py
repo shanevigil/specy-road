@@ -244,13 +244,15 @@ def validate_at(
     require_registry: bool = True,
     auto_heal: bool = True,
     show_all: bool = False,
+    strict_authoring: bool = False,
 ) -> None:
     """Validate roadmap + registry under ``root`` (repo root containing ``roadmap/``).
 
     F-006/F-008: self-heal pass runs first (silent fixes for missing
     codenames, deprecated fields). Pass ``auto_heal=False`` to disable,
     e.g. in a read-only CI drift check. ``show_all`` lists every unauthored
-    leaf instead of the first ten.
+    leaf instead of the first ten; ``strict_authoring`` reports them as
+    warnings rather than a notice.
     """
     reg_path = registry_path(root)
     if require_registry and not reg_path.is_file():
@@ -295,6 +297,7 @@ def validate_at(
         repo_root=root,
         show_all=show_all,
         overlap_scope=current_authoring_overlap_scope(),
+        strict_authoring=strict_authoring,
     )
 
 
@@ -318,8 +321,11 @@ def main() -> None:
         "--strict",
         action="store_true",
         help="Exit 1 when validation passes with warnings (or self-heal notes), "
-        "e.g. as a CI gate once an upgrade window closes.",
+        "e.g. as a CI gate once an upgrade window closes. Open leaves pickup skips as "
+        "unauthored (placeholder sheet, no acceptance) are a notice, not counted.",
     )
+    parser.add_argument("--strict-authoring", action="store_true",
+                        help="--strict, and count the unauthored-leaf notice as warnings too.")
     parser.add_argument(
         "--all",
         action="store_true",
@@ -342,6 +348,7 @@ def main() -> None:
             no_overlap_warn=args.no_overlap_warn,
             require_registry=True,
             show_all=args.all,
+            strict_authoring=args.strict_authoring,
         )
         notice_complete_scaffold(root, load_roadmap(root)["nodes"], show_all=args.all)
         if args.generate_orchestration:
@@ -349,7 +356,7 @@ def main() -> None:
         elif not orchestration_yaml_path(root).is_file() and (notice := no_orchestration_notice(root)):
             print(notice)   # stdout: a notice, which --strict does not count
         print_injected_context(root)
-    if args.strict and stderr.lines:
+    if (args.strict or args.strict_authoring) and stderr.lines:
         sys.stdout.flush()  # the OK line first, then why it does not count
         print(
             f"FAILED (--strict): validation passed with {stderr.lines} line(s) of warnings above.",

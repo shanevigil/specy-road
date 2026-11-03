@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Collection
 
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.node_kinds import is_pickable
@@ -60,17 +61,19 @@ def render_goal_and_acceptance(node: dict) -> list[str]:
     return out
 
 
-def warn_acceptance_missing(nodes: list[dict], gate_on: bool) -> None:
+def warn_acceptance_missing(nodes: list[dict], gate_on: bool, *, skip: Collection[str] = ()) -> None:
     """Warn (stderr only) on open actionable leaves without ``acceptance`` while the gate is on.
 
     Their review records need no per-criterion result, so a review attests
     nothing criterion by criterion. Without the gate the field is optional.
+    ``skip`` names leaves another notice already reports (``validate``'s
+    unauthored block).
     """
     if not gate_on:
         return
     leaves = structural_leaf_ids(nodes)
     bare = [n["id"] for n in nodes
-            if n.get("id") in leaves and is_pickable(n)
+            if n.get("id") in leaves and is_pickable(n) and n["id"] not in skip
             and n.get("status") != "Complete" and not _acceptance(n)]
     if not bare:
         return
@@ -99,24 +102,27 @@ def warn_acceptance_merged(nodes: list[dict]) -> None:
           file=sys.stderr)
 
 
-def warn_unauthored(unauthored: dict[str, str], *, show_all: bool = False) -> None:
-    """Warn (stderr only), in one block, on the leaves pickup skips as unauthored.
+def warn_unauthored(unauthored: dict[str, str], *, show_all: bool = False, as_notice: bool = False) -> None:
+    """Warn on stderr, in one block, on the leaves pickup skips as unauthored.
 
     ``unauthored`` maps node id to ``planning_sheet_bootstrap.placeholder_sheet``'s
     reason. Capped like the acceptance warning; ``show_all`` (``validate --all``)
-    lists every one.
+    lists every one. ``as_notice`` prints the block as a stdout notice instead,
+    which ``validate --strict`` does not count: planning roadmap-first leaves
+    such leaves open on purpose (``--strict-authoring`` counts them again).
     """
     if not unauthored:
         return
+    out = sys.stdout if as_notice else sys.stderr
     items = list(unauthored.items())
     shown = items if show_all else items[:_WARN_CAP]
-    print(f"warning: {len(items)} open leaf/leaves have a placeholder planning sheet and no acceptance criteria; "
-          "do-next-available-task and grind-session skip them until the sheet is written or acceptance is set "
-          "(--allow-unauthored picks them anyway):", file=sys.stderr)
+    print(f"{'notice' if as_notice else 'warning'}: {len(items)} open leaf/leaves have a placeholder planning sheet "
+          "and no acceptance criteria; do-next-available-task and grind-session skip them until the sheet is "
+          "written or acceptance is set (--allow-unauthored picks them anyway):", file=out)
     for nid, reason in shown:
-        print(f"  {nid}: {reason}", file=sys.stderr)
+        print(f"  {nid}: {reason}", file=out)
     if len(items) > len(shown):
-        print(f"  … and {len(items) - len(shown)} more (specy-road validate --all lists every one)", file=sys.stderr)
+        print(f"  … and {len(items) - len(shown)} more (specy-road validate --all lists every one)", file=out)
 
 
 def section_sizes(text: str) -> list[tuple[str, int]]:
