@@ -40,22 +40,44 @@ def test_models_list_names_unmatched_roster_ids_and_alias_in_json(tmp_path: Path
     assert rows["sol"]["profile"] is None
 
 
-def test_validate_warns_for_an_unmatched_roster_id_and_names_the_closest_profile(tmp_path: Path, capsys) -> None:
-    """M11.76: an executor/reviewer roster id no profile matches is a validate warning; a matched one is not."""
+CLOSEST = "closest profile is model-profiles/anthropic-claude/claude-opus-5-5.md (api_id claude-opus-5-5)"
+
+
+def _gap(mid: str) -> str:
+    return f"roster entry {mid!r} in roadmap/orchestration.yaml matches no model profile by api_id, file name or alias"
+
+
+def _validate_roster(tmp_path: Path, capsys, extra: str):
     repo = make_profile_repo(tmp_path)
-    (repo / "roadmap" / "orchestration.yaml").write_text(
-        ROSTER + "  - {id: claude-opus-5-5-high, family: anthropic, harness: cursor, roles: [reviewer]}\n"
-                 "  - {id: claude-opus-5.5, family: anthropic, roles: [executor]}\n"
-                 "  - {id: claude-opus-5.5-chair, family: anthropic, roles: [coordinator]}\n")
+    (repo / "roadmap" / "orchestration.yaml").write_text(ROSTER + extra)
     capsys.readouterr()
     validate_at(repo, no_overlap_warn=True)
-    err = capsys.readouterr().err
-    closest = "closest profile is model-profiles/anthropic-claude/claude-opus-5-5.md (api_id claude-opus-5-5)"
-    assert ("roster entry 'claude-opus-5.5' in roadmap/orchestration.yaml matches no model profile "
-            "by api_id, file name or alias") in err
-    assert closest in err and "roster entry 'sol' in roadmap/orchestration.yaml matches no model profile" in err
+    return capsys.readouterr()
+
+
+def test_validate_warns_for_an_unmatched_launchable_roster_id_and_names_the_closest_profile(
+        tmp_path: Path, capsys) -> None:
+    """M11.76: an executor/reviewer id with a harness or channels.cli and no profile is a stderr warning."""
+    cap = _validate_roster(tmp_path, capsys,
+                           "  - {id: claude-opus-5-5-high, family: anthropic, harness: cursor, roles: [reviewer]}\n"
+                           "  - {id: claude-opus-5.5, family: anthropic, harness: claude-code, roles: [executor]}\n"
+                           "  - id: claude-opus-5.5-rev\n    family: anthropic\n    roles: [reviewer]\n"
+                           "    channels: {cli: 'review.sh \"<prompt>\"'}\n"
+                           "  - {id: claude-opus-5.5-chair, family: anthropic, harness: cursor, roles: [coordinator]}\n")
+    for mid in ("claude-opus-5.5", "claude-opus-5.5-rev"):
+        assert f"warning: {_gap(mid)}" in cap.err and _gap(mid) not in cap.out
+    assert CLOSEST in cap.err
     for matched in ("'opus'", "'claude-opus-5-5-high'", "'human'", "'claude-opus-5.5-chair'"):
-        assert f"roster entry {matched}" not in err
+        assert f"roster entry {matched}" not in cap.err + cap.out
+
+
+def test_validate_notes_an_unmatched_roster_id_nothing_can_launch_on_stdout(tmp_path: Path, capsys) -> None:
+    """M11.76: an entry with neither harness nor channels.cli (the starter's placeholder) is a stdout
+    notice that --strict does not count, still naming the closest profile."""
+    cap = _validate_roster(tmp_path, capsys, "  - {id: claude-opus-5.5, family: anthropic, roles: [executor]}\n")
+    for mid in ("claude-opus-5.5", "sol"):
+        assert f"notice: {_gap(mid)}" in cap.out and _gap(mid) not in cap.err
+    assert CLOSEST in cap.out
 
 
 def test_shipped_profiles_alias_every_cursor_id_that_extends_their_api_id() -> None:

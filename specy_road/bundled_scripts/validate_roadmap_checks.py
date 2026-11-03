@@ -384,8 +384,8 @@ def run_validation(
         raise SystemExit(1)
 
     warn_stale_parent_status(nodes)
-    for msg in roster_profile_gaps(r):
-        print(f"warning: {msg}", file=sys.stderr)
+    for launchable, msg in roster_profile_gaps(r):   # unlaunchable: a stdout notice --strict does not count
+        print(f"{'warning' if launchable else 'notice'}: {msg}", file=sys.stderr if launchable else sys.stdout)
     warn_touch_zones_match_nothing(nodes, r, git_root=git_root(r) or r)
     warn_untracked_zones(nodes, r)
     warn_authoring_gaps(nodes, r, gate, show_all=show_all, strict_authoring=strict_authoring)
