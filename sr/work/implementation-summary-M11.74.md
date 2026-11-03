@@ -8,7 +8,9 @@ Serialize `do-next-available-task`, `finish-this-task`, and `abort-task-pickup` 
 
 Added `specy_road/repo_lock.py` with a FIFO ticket queue and exclusive holder file under `<git-common-dir>/specy-road/repo-lock/`. Each command acquires the lock before any git write, prints the holder pid and operation while waiting, times out after two hours, and clears holders or queue tickets whose pid no longer exists.
 
-Wrapped the git-mutating bodies of the three bundled entrypoints in `pickup_finish_lock`. Documented the behaviour in `docs/git-workflow.md` beside the concurrent-lanes registry merge note.
+Wrapped the three bundled entrypoints in `pickup_finish_lock` immediately after `resolve_repo_root`, before HEAD, cleanliness, or worktree preflight. Documented the behaviour in `docs/git-workflow.md` beside the concurrent-lanes registry merge note.
+
+Review (cursor-grok-4.6-high) required finish/abort to match pickup's lock placement, and existing pickup/abort `main()` tests to `git init` their `tmp_path` so `lock_root` can resolve `--git-common-dir`. No non-git fallback was added.
 
 ## Touch zones (confirmed)
 
@@ -36,7 +38,8 @@ No additional paths were required.
 - `lock_root` in `repo_lock.py` — resolves `<git-common-dir>/specy-road/repo-lock/` and ensures queue directory exists.
 - `RepoLockTimeout` in `repo_lock.py` — non-zero exit when the wait exceeds `DEFAULT_TIMEOUT_S`.
 - `_run_pickup` in `do_next_task.py` — pickup body run under the repository lock after `ROOT` is resolved.
-- `_finish_locked` in `finish_task.py` — finish body run under the repository lock after branch validation.
-- `_abort_locked` in `abort_task_pickup.py` — abort git mutations run under the lock after preflight checks.
+- `_finish_locked` in `finish_task.py` — finish body (including `current_branch` and context) run under the repository lock taken in `main` after `resolve_repo_root`.
+- `_abort_locked` in `abort_task_pickup.py` — abort preflight and git mutations run under the lock taken in `main` after `resolve_repo_root`.
+- `_git_init` in `tests/test_do_next_task_pickup.py`, `tests/test_abort_task_pickup.py`, and `tests/test_finish_task_commands.py` — `git init` the `tmp_path` fixtures that call `main()`, so `lock_root` can resolve `--git-common-dir`.
 - `test_two_concurrent_callers_serialize` in `tests/test_repo_lock.py` — two processes cannot increment a shared counter concurrently while holding the lock.
 - `test_stale_holder_from_killed_process_is_cleared` in `tests/test_repo_lock.py` — dead holder pid and orphan ticket are cleared so the next caller acquires.

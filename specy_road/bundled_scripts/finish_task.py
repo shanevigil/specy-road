@@ -304,6 +304,11 @@ def main(argv: list[str] | None = None) -> None:
     global ROOT
     args = parse_finish_args(argv if argv is not None else sys.argv[1:])
     ROOT = resolve_repo_root(args)
+    with pickup_finish_lock(ROOT, operation="finish-this-task"):
+        _finish_locked(args)
+
+
+def _finish_locked(args) -> None:
     branch = current_branch(ROOT)
     if not branch.startswith("feature/rm-"):
         print(
@@ -314,11 +319,6 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(1)
 
     ctx = _resolve_main_context(args, branch)
-    with pickup_finish_lock(ROOT, operation="finish-this-task"):
-        _finish_locked(args, branch, ctx)
-
-
-def _finish_locked(args, branch: str, ctx: dict) -> None:
     codename, reg, nodes = ctx["codename"], ctx["reg"], ctx["nodes"]
     node, node_id = ctx["node"], ctx["node_id"]
     work_dir, sess_path, on_mode = ctx["work_dir"], ctx["sess_path"], ctx["on_mode"]

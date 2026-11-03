@@ -329,7 +329,11 @@ def main(argv: list[str] | None = None) -> None:
     global ROOT
     args = _parse_args(argv if argv is not None else sys.argv[1:])
     ROOT = resolve_repo_root(args)
+    with pickup_finish_lock(ROOT, operation="abort-task-pickup"):
+        _abort_locked(args)
 
+
+def _abort_locked(args) -> None:
     base, remote, gw_warns = resolve_integration_defaults(
         ROOT,
         explicit_base=args.base,
@@ -351,18 +355,6 @@ def main(argv: list[str] | None = None) -> None:
     _assert_working_tree_clean(_pickup_artifact_rel_paths(node_id))
     _exit_if_base_checked_out_elsewhere(base, branch)
 
-    with pickup_finish_lock(ROOT, operation="abort-task-pickup"):
-        _abort_locked(args, base, remote, branch, codename, node_id)
-
-
-def _abort_locked(
-    args,
-    base: str,
-    remote: str,
-    branch: str,
-    codename: str,
-    node_id: str,
-) -> None:
     git_run(ROOT, "fetch", remote)
     local_claim = all(
         _only_own_registration_ahead(remote, base, codename, ref) for ref in ("HEAD", base)
