@@ -209,7 +209,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.48_claimed-leaf-status_04cf2d19-1c5e-4dfa-b624-ec26031e09fd.md",
       "sibling_order": 48,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A claimed leaf reads as claimed in list-nodes and brief",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_ops.py",

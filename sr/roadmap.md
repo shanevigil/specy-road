@@ -154,7 +154,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.45` | The stale-command warning fires only on command-shaped mentions | task | Agentic-led | Complete |
 | `M11.46` | Placeholder leaves neither fail validate --strict nor pad briefs | task | Agentic-led | Not Started |
 | `M11.47` | validate checks git-root touch zones in a nested project | task | Agentic-led | Complete |
-| `M11.48` | A claimed leaf reads as claimed in list-nodes and brief | task | Agentic-led | Not Started |
+| `M11.48` | A claimed leaf reads as claimed in list-nodes and brief | task | Agentic-led | Complete |
 | `M11.49` | The review packet takes touch zones from the reviewed commit and treats lockfiles as generated | task | Agentic-led | Not Started |
 | `M11.50` | finish keeps a committed implementation summary in history | task | Agentic-led | Not Started |
 | `M11.51` | Dashboard saves never overwrite newer disk edits, and the read API is documented | task | Agentic-led | Not Started |

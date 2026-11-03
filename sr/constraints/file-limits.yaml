@@ -8,8 +8,16 @@ applies_to_globs:
   - "tests/**/*.py"
   - "docs/**/*.md"
 
-# Advisory LLM review: brief assembly, shared/ catalog, and provider clients in one script.
+# Claim annotation in list-nodes and brief. The helpers live in
+# registry_claim_status.py; these two files keep their original comments
+# and pick up a few import/call-site lines past the 400 cap.
 override_limits:
+  - name: claimed_leaf_status_call_sites
+    file_globs:
+      - "specy_road/bundled_scripts/generate_brief.py"
+      - "specy_road/bundled_scripts/roadmap_crud_ops.py"
+    max_lines_per_file: 450
+  # Advisory LLM review: brief assembly, shared/ catalog, and provider clients in one script.
   - name: review_node_advisory_llm
     file_globs:
       - "specy_road/bundled_scripts/review_node.py"
