@@ -3,7 +3,9 @@
 
 An agent announces itself before its first edit (``start``), renews on long
 work (``touch``), and withdraws when done (``end``); ``end <id>`` retires a
-record the same user left behind (a closed terminal's). ``list`` is what the
+record the same user left behind (a closed terminal's). ``end`` with no id,
+when the derived id has no record (a harness that runs each command in a new
+POSIX session), ends this user's only live session. ``list`` is what the
 others read; ``handoff status`` shows the same. ``check`` is the commit guard:
 exit 1 when the staged paths (or ``--path`` ones) overlap another live
 session's, so a pre-commit hook can refuse a commit that would land on
@@ -24,8 +26,10 @@ from specy_road.session_presence import (
     current_user,
     default_agent_id,
     end_session,
+    env_agent_id,
     list_sessions,
     load_session,
+    own_live_sessions,
     session_path,
     start_session,
     warn_lines,
@@ -50,6 +54,8 @@ def cmd_start(ns: argparse.Namespace) -> int:
         print(f"error: {e}", file=sys.stderr)
         return 1
     print(f"session {s.agent}: {len(s.paths)} path(s), until {s.expires} ({s.path})")
+    # A harness may run each command in a new POSIX session; exporting the id keeps `end` on this record.
+    print(f"export SPECY_ROAD_AGENT_ID={s.agent}")
     for line in overlap_warning_lines(root, conflicts(root, s.paths, exclude=s.agent), what="your paths"):
         print(line, file=sys.stderr)
     return 0
@@ -60,8 +66,30 @@ def cmd_end(ns: argparse.Namespace) -> int:
     if ns.session_id:
         return _retire(root, ns.session_id)
     agent = _agent(ns)
-    print(f"session {agent}: {'ended' if end_session(root, agent) else 'no record'}")
-    return 0
+    if end_session(root, agent):
+        print(f"session {agent}: ended")
+        return 0
+    if ns.agent or env_agent_id():
+        print(f"session {agent}: no record")
+        return 0
+    return _end_own(root, agent)
+
+
+def _end_own(root: Path, derived: str) -> int:
+    """The derived id has no record (``start`` ran in another POSIX session): end this user's only live one."""
+    mine = own_live_sessions(root)
+    if not mine:
+        print(f"session {derived}: no record")
+        return 0
+    if len(mine) == 1:
+        end_session(root, mine[0].agent)
+        print(f"session {mine[0].agent}: ended (no record for {derived}; it was your only live session here)")
+        return 0
+    print(f"error: no record for {derived}, and you have {len(mine)} live sessions here; "
+          "end one with `specy-road session end <id>`:", file=sys.stderr)
+    for s in mine:
+        print(f"  {s.agent:<28} {s.branch or '-':<32} paths: {', '.join(s.paths) or '-'}", file=sys.stderr)
+    return 1
 
 
 def _retire(root: Path, agent: str) -> int:
