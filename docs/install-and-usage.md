@@ -10,7 +10,7 @@
 - New project: `specy-road init project`, set `integration_branch` / `remote` in `roadmap/git-workflow.yaml`, then `specy-road validate` and `specy-road export`.
 - After `pip install -U specy-road`: `specy-road upgrade --prune` (runs `refresh-schemas`, `refresh-profiles`, copies missing load-order docs, `refresh-stubs`, then `validate`; `--dry-run` first); never `init project --force` for that.
 - Add `--repo-root /path/to/consumer/repo` to every command run from outside the consumer repo.
-- Dev loop: `specy-road do-next-available-task` → implement → review → `finish-this-task`.
+- Dev loop: `specy-road do-next-available-task` → implement → `review-packet` + `mark-implementation-reviewed` → `specy-road finish-this-task --on-complete merge|pr`.
 
 **Read further for:**
 - prerequisites, PyPI, TestPyPI RCs, `uv pip`, source checkout → "Requirements", "Install", "Install from source (toolkit contributors)"

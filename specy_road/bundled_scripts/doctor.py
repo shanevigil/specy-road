@@ -1,8 +1,30 @@
 #!/usr/bin/env python3
-"""``specy-road doctor``: list leftover branches, worktrees, registry rows and stashes.
+"""``specy-road doctor``: list what the task loop left behind; remove it with ``--fix``.
 
-Dry-run by default; ``--fix`` removes what it lists (with prompts). Merged means
-ancestry first, then patch-equivalence (cherry / squash). See ``--help``.
+Four kinds, each its own section:
+
+- ``feature/rm-*`` branches, local and on the remote, whose leaf is Complete on the integration
+  branch (registry row or not), or that nothing claims: no registry row (in this checkout or on
+  the integration branch) and not an open milestone rollup — the same "live" test ``branches
+  prune`` uses. Each row says why: merged, its leaf Complete, or only that its claim is gone; an
+  unmerged one also says how many commits the integration branch lacks.
+- linked worktrees whose directory is missing, whose branch is gone (detached at a commit the
+  integration branch contains or whose patch it has, the same test as a branch: how ``finish
+  --delete-branch`` leaves a delegate worktree) or is merged, whether or not the branch itself is
+  listed (a claimed branch whose leaf is not Complete stays), and every other detached worktree
+  (a review recipe's). ``--fix`` leaves a detached one with uncommitted changes, or with commits
+  no branch holds.
+- registry rows on the integration branch whose branch is in neither this clone nor the remote
+  (advisory, as in ``registry-prune``: another clone's claim looks the same until its branch is
+  pushed), or whose leaf is Complete.
+- stashes the toolkit pushed (``specy-road: …``; pickup and review used to stash ``work/``, and
+  a failed restore left the entry behind).
+
+Merged is ancestry first. When ancestry fails, patch content decides: every
+commit has an equivalent upstream (``git cherry``: a rebase), or the branch's
+whole diff does (a squash). A rewritten landing is therefore still merged.
+
+Nothing changes without ``--fix``, and ``--fix`` asks once per kind.
 """
 
 from __future__ import annotations
@@ -23,6 +45,7 @@ from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_text
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.version_skew import warn_if_running_version_older
 
 TOOLKIT_STASH = re.compile(r"^On [^:]+: specy-road: ")
 # commit-tree needs an identity, and a CI runner may have none configured.
@@ -330,8 +353,6 @@ def _context(ns: argparse.Namespace) -> _Ctx | None:
 
 
 def cmd_doctor(ns: argparse.Namespace) -> int:
-    from specy_road.cli import warn_if_running_version_older
-
     warn_if_running_version_older(resolve_repo_root(ns))
     ctx = _context(ns)
     if ctx is None:
@@ -354,7 +375,10 @@ def cmd_doctor(ns: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="specy-road doctor",
-        description="List stale feature/rm-* branches, worktrees, registry rows and toolkit stashes; --fix removes them.",
+        description=(
+            "After git fetch --prune, list feature/rm-* branches (local and remote) whose leaf is "
+            "Complete or that nothing claims — merged by ancestry or patch content, leaf Complete, or claim gone — worktrees whose branch is gone or merged, other detached worktrees, registry rows with no branch or a Complete leaf, and stashes specy-road pushed. Dry-run unless --fix."
+        ),
     )
     p.add_argument("--fix", action="store_true",
                    help="Remove what is listed, asking once per kind, and report each action.")
