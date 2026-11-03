@@ -1,6 +1,14 @@
 # Implementation summary: M8.2 — Worker adapters harden the launch and run a deterministic post-run check
 
-Base: `a54c409b` (origin/WIP/improvements-0-3-1 after the M8.2 touch-zone updates). Code commit: `4e6a6acb`.
+Base: `a54c409b` (origin/WIP/improvements-0-3-1 after the M8.2 touch-zone updates). Code commit: `4e6a6acb`. Zone commit: `55c44ecd`. Review fixes: `da6f33a4`.
+
+## Round 2: fixes for review gpt-6.1-sol (block)
+
+- **R1.** In `worker_runner._finish`, a detected usage limit now takes precedence over a fresh READY. A turn that exits 0 with a valid READY at HEAD and a timed limit ends in `paused_by_limit`, so `limit_gate` applies. Its `completion` event still records `"ready": true`. New regression: `test_a_limit_wins_over_a_fresh_ready_written_in_the_same_turn`, which goes through `worker_runner.run` and `worker_ops_message.resume`.
+- **R2.** `GitState.dirty` now maps each dirty path to its content (`_content`: a sha256 of the file, a link's target, or `-` when gone). The porcelain finding covers paths that are new **or whose content changed** during the turn, so a resumed turn that edits a file already dirty outside the expected set stays a finding and keeps the worker flagged. New regression: `test_a_further_edit_to_an_already_dirty_file_outside_the_zones_keeps_the_worker_flagged`.
+  - **Not a finding:** a dirty path the turn leaves untouched. The check judges what this turn did, so an outside path the turn did not change does not count.
+- **Red-green.** Both regressions fail against `55c44ecd` (`completed` instead of `paused_by_limit`; one `post_run_check` instead of two) and pass on the fix.
+- **Docs.** `docs/orchestration-workers.md` says both, in place; still 400 lines.
 
 ## What changed, per acceptance item
 
@@ -62,7 +70,7 @@ Not changed, though they are now stale, because they are outside M8.2's zones:
 ## Verification
 
 - `pytest -n 8` over the whole suite: 3321 passed, 2 skipped.
-- `tests/test_worker_turn_check.py`: 8 new tests. Fake `claude` / `codex` / `agent` binaries on PATH record the argv, environment and stdin the wrapper really ran them with, and replay the streams in `tests/fixtures/worker_turn_check/streams.json`.
+- `tests/test_worker_turn_check.py`: 8 new tests (10 after round 2). Fake `claude` / `codex` / `agent` binaries on PATH record the argv, environment and stdin the wrapper really ran them with, and replay the streams in `tests/fixtures/worker_turn_check/streams.json`.
 - `ruff check` (C901) over every changed or added Python file, `specy-road file-limits`, `scripts/check_test_private_imports.py`: clean.
 - `ruff check specy_road tests scripts` exits 1, but only for `uncommitted_refs_section` in `specy_road/bundled_scripts/review_packet_uncommitted_refs.py` (12 > 10). That file is untouched here, so the failure is on the base.
 - `scripts/check_clones.py` reports two new pairs. Both are in files this leaf does not touch (`abort_task_pickup`/`pm_sync`, `planning_sheet_bootstrap`/`planning_scaffold_check`), so they were already on the base.
@@ -81,6 +89,10 @@ Not changed, though they are now stale, because they are outside M8.2's zones:
 - `worker_turn_check.py` (module): the post-run check and the paused state in one place; the runner and state modules were at the line cap.
 - `PAUSED_BY_LIMIT`, `FLAG_POST_RUN`, `LIMIT_WAIT_CAP_SECONDS` (constants): the state, flag and watchdog cap that A1/A3 name; M11.62 reuses the first two.
 - `GitState` / `git_state()`: the HEAD, branch, stash list and porcelain snapshot that A3 compares.
+- `_content()` (round 2, R2): a dirty path's content digest, so a further edit to an already-dirty file is seen.
+- `PAUSED_BY_LIMIT if paused else …` ordering in `_finish` (round 2, R1): a limit wins over a fresh READY.
+- Fake-harness `write` option in `tests/test_worker_turn_check.py` (round 2): lets a turn write its READY, for the R1 regression.
+- `test_a_limit_wins_over_a_fresh_ready_written_in_the_same_turn`, `test_a_further_edit_to_an_already_dirty_file_outside_the_zones_keeps_the_worker_flagged` (round 2): the reviewer's two regressions.
 - `TurnWatch` (`observe`, `_watchdog`, `stream_findings`): reads each parsed event for A3's stream findings, and is A1's retry watchdog.
 - `TurnWatch.failed` cleared by `turn_completed`: a launch-mode mismatch or a mid-turn Codex `error` followed by a completed turn is not a failed turn.
 - `TurnWatch.pending`: `rate_limit` retries that end the turn with no completed turn count as a limit.
