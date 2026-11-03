@@ -141,7 +141,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.32` Unpushed nested-repo commits are reported `nested-unpushed-report` — task — **Not Started**
   - `M11.33` A reviewer whose harness routes models dynamically does not count as an independent family by default `dynamic-routing-reviewers` — task — **Not Started**
   - `M11.34` Open human decisions live in one tracked ledger and every question is self-contained `decision-ledger` — task — **Complete**
-  - `M11.35` A roster entry maps to the harness's own model id, and a failed start says why `roster-harness-model-id` — task — **Not Started**
+  - `M11.35` A roster entry maps to the harness's own model id, and a failed start says why `roster-harness-model-id` — task — **Complete**
   - `M11.36` A resumed reviewer session may approve a delta it was shown `resumed-delta-approval` — task — **Complete**
   - `M11.37` review-packet warns when the brief or summary names a file not committed at the reviewed commit `packet-uncommitted-refs` — task — **Complete**
   - `M11.38` handoff status says who can still supply a missing approval `handoff-eligible-reviewers` — task — **Complete**
@@ -184,6 +184,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.75` Reviewer prompt asks for independent probes, not the executor's own checks `reviewer-probe-rules` — task — **Not Started**
   - `M11.76` Every roster model reaches its profile notes `profile-alias-coverage` — task — **Not Started**
   - `M11.77` A completed reviewer run does not report a missing record `run-record-no-false-failure` — task — **Not Started**
+  - `M11.78` Review lessons: escaped defect classes feed every reviewer prompt `review-lessons` — task — **Not Started**
+  - `M11.79` Leaves that touch high-risk zones need a stronger reviewer `risk-tiered-review` — task — **Not Started**
+  - `M11.80` Executors and reviewers run tests with a bounded worker count `test-worker-cap` — task — **Not Started**
 
 ## Dependencies that were removed
 
@@ -201,7 +204,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M11.35` on `feature/rm-roster-harness-model-id` since 2026-11-03
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.62` on `feature/rm-headless-limits-denials` since 2026-11-03
 - `M11.66` on `feature/rm-version-shows-checkout-sha` since 2026-11-03

@@ -29,6 +29,7 @@ from specy_road.orchestration_role_env import harness_env
 from specy_road.runtime_paths import project_prefix
 from specy_road.worker_adapter_parsers import USAGE_FIELDS, usage_text
 from specy_road.worker_adapters import Launch, adapter_for
+from specy_road.worker_exit import exit_event
 from specy_road.worker_lease import release_lease
 from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified re-exported for existing callers
     argv_too_long,
@@ -38,7 +39,7 @@ from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified
     ready_fingerprints,
     start_token,
 )
-from specy_road.worker_runner_ready import all_ready_fingerprints, completion_summary, fresh_ready
+from specy_road.worker_runner_ready import all_ready_fingerprints, fresh_ready
 from specy_road.worker_state import (
     FLAG_STALLED,
     WorkerError,
@@ -214,6 +215,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
         append_event(repo_root, rec, "resumed", source="broker", summary="resumed with a new prompt")
     env = harness_env(os.environ, "executor", harness_pythonpath=harness_pythonpath, harness=rec.harness)
     with log.open("a", encoding="utf-8") as raw:
+        log_start = raw.tell()   # this turn's part of the log starts here (the harness writes stderr into it)
         try:
             proc = subprocess.Popen(  # noqa: S603 — the adapter's documented command
                 launch.argv, cwd=rec.worktree, env=env,
@@ -257,7 +259,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
                 raw.write(f"[wrapper] could not record a line: {e}\n")
         code = proc.wait()
-    return _finish(repo_root, rec, code, before, before_all, usage_logged)
+    return _finish(repo_root, rec, code, before, before_all, usage_logged, log_start)
 
 
 def _output_seen(repo_root: Path, rec: WorkerRecord, marked: float | None, now: float) -> float | None:
@@ -316,22 +318,16 @@ def _append_usage(repo_root: Path, rec: WorkerRecord, usage: dict) -> None:
 
 
 def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], before_all: list[str],
-            usage_logged: bool) -> int:
+            usage_logged: bool, log_start: int = 0) -> int:
     rec = load_record(repo_root, rec.worker_id)   # the record may have moved on (handoff, terminate)
     if rec.state == "terminated":
         return code
     if not usage_logged:   # one usage event per turn: a harness that reported none gets nulls, not zeros
         _append_usage(repo_root, rec, {})
     ready = fresh_ready(repo_root, rec, before)
-    if code == 0:
-        summary = completion_summary(repo_root, rec, before_all, ready)
-        append_event(repo_root, rec, "completion", source="worker",
-                     summary=summary, detail={"exit": 0, "ready": ready})
-        _exit_state(repo_root, rec, "completed" if ready else "idle")
-    else:
-        append_event(repo_root, rec, "error", source="worker", summary=f"exit {code}; see {log_path(repo_root, rec.worker_id).name}",
-                     detail={"exit": code, "ready": ready})
-        _exit_state(repo_root, rec, "failed")
+    exit_event(repo_root, rec, code, ready, before_all=before_all, log=log_path(repo_root, rec.worker_id),
+               log_start=log_start)
+    _exit_state(repo_root, rec, ("completed" if ready else "idle") if code == 0 else "failed")
     return code
 
 
