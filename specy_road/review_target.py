@@ -221,9 +221,16 @@ def unfinished_leaves_at(repo_root: Path, nodes: list[dict[str, Any]], node_id: 
     return out
 
 
-def resolve_target(repo_root: Path, node_id: str, ref: str | None = None) -> ReviewTarget:
-    """Build the target for ``node_id``; raises :class:`ReviewTargetError`."""
-    nodes = load_roadmap(repo_root)["nodes"]
+def resolve_target(
+    repo_root: Path, node_id: str, ref: str | None = None, *, nodes: list[dict[str, Any]] | None = None
+) -> ReviewTarget:
+    """Build the target for ``node_id``; raises :class:`ReviewTargetError`.
+
+    ``nodes`` is the already-loaded graph when the caller has one: the public
+    loader applies the milestone-review hold, so a nested ``load_roadmap``
+    here would recurse.
+    """
+    nodes = list(nodes) if nodes is not None else load_roadmap(repo_root)["nodes"]
     node = next((n for n in nodes if n.get("id") == node_id), None)
     if node is None:
         raise ReviewTargetError(f"unknown node id: {node_id}")

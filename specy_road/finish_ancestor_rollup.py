@@ -15,9 +15,10 @@ once the rollup branch is proven merged (see
 
 With ``policy.milestone_full_review`` on (the default, read like the rest of
 the review policy) a milestone — a node with leaf children — is **held** when
-its last leaf finishes: it keeps its authored status until a full review of
-its combined change passes the review gate at the integration tip, and the
-ancestors above it wait with it. ``specy-road mark-implementation-reviewed
+its last leaf finishes: it keeps its authored status, and the public loader's
+computed ``rollup_status`` stays non-Complete, until a full review of its
+combined change passes the review gate at the integration tip. Ancestors
+above it wait with it. ``specy-road mark-implementation-reviewed
 <MILESTONE_ID>`` then closes it through :func:`complete_reviewed_milestone`.
 """
 
@@ -26,6 +27,8 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable
 from pathlib import Path
+
+UNRESOLVABLE_HOLD = "its full review cannot be evaluated"
 
 
 def rolled_up_stale_ancestor_ids(
@@ -85,15 +88,31 @@ def milestone_review_hold(repo_root: Path, nodes: list[dict], node_id: str) -> s
         return None
     node = next(n for n in nodes if n.get("id") == node_id)
     try:
-        target = resolve_target(repo_root, node_id)
+        target = resolve_target(repo_root, node_id, nodes=nodes)
     except ReviewTargetError as e:
-        return f"its full review cannot be evaluated ({e})"
+        return f"{UNRESOLVABLE_HOLD} ({e})"
     if target.unfinished_leaves:   # a review of the tip before the last leaf landed covers less than the milestone
         return f"its leaves {', '.join(target.unfinished_leaves)} have not landed on {target.ref}"
     gate = evaluate_gate(repo_root, node, target.commit)
     if gate.passed:
         return None
     return f"its full review is not approved at {target.ref} ({gate.summary()})"
+
+
+def demote_pending_milestone_rollups(repo_root: Path, nodes: list[dict]) -> None:
+    """Keep a held milestone's computed rollup non-Complete on the public loader.
+
+    ``compute_rollup_status`` is still leaf-based (dependency satisfaction).
+    When the target cannot be resolved the leaf rollup is left unchanged: a
+    graph without git must not look held.
+    """
+    for n in nodes:
+        nid = n.get("id")
+        if n.get("rollup_status") != "Complete" or not isinstance(nid, str):
+            continue
+        why = milestone_review_hold(repo_root, nodes, nid)
+        if why and not why.startswith(UNRESOLVABLE_HOLD):
+            n["rollup_status"] = "In Progress"
 
 
 def milestone_review_next_steps(node_id: str) -> str:
@@ -138,6 +157,19 @@ def _set_complete(root: Path, node_id: str) -> list[str]:
     return [str(c.relative_to(root)) for c in touched if c is not None]
 
 
+def _leaf_annotated(root: Path) -> list[dict]:
+    """``load_roadmap`` then restore leaf-based rollup for the authored-status walk."""
+    from specy_road.bundled_scripts.roadmap_load import compute_rollup_status, load_roadmap
+
+    nodes = load_roadmap(root)["nodes"]
+    leaf = compute_rollup_status(nodes)
+    for n in nodes:
+        nid = n.get("id")
+        if isinstance(nid, str) and nid in leaf:
+            n["rollup_status"] = leaf[nid]
+    return nodes
+
+
 def complete_rolled_up_ancestors(repo_root: Path, node_id: str) -> list[str]:
     """Set stale rolled-up ancestors of ``node_id`` to Complete.
 
@@ -146,12 +178,10 @@ def complete_rolled_up_ancestors(repo_root: Path, node_id: str) -> list[str]:
     validated; an ancestor that cannot be flipped is reported with the manual
     command rather than aborting a finish that has already succeeded.
     """
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
-
     changed: list[str] = []
     root = repo_root.resolve()
     try:
-        nodes = load_roadmap(root)["nodes"]
+        nodes = _leaf_annotated(root)
     except (KeyError, OSError, SystemExit, TypeError, ValueError):
         # load_roadmap reports a broken graph by exiting. This pass is status
         # hygiene layered on a finish that already succeeded, and the
@@ -174,14 +204,14 @@ def complete_reviewed_milestone(repo_root: Path, node_id: str) -> list[str]:
     it is still open: the review covered a change that is not finished.
     Returns the repo-relative chunk paths that changed.
     """
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.bundled_scripts.roadmap_load import compute_rollup_status
 
     root = repo_root.resolve()
-    nodes = load_roadmap(root)["nodes"]
+    nodes = _leaf_annotated(root)
     node = next((n for n in nodes if n.get("id") == node_id), None)
     if node is None:
         raise ValueError(f"unknown node id: {node_id}")
-    if node.get("rollup_status") != "Complete":
+    if compute_rollup_status(nodes).get(node_id) != "Complete":
         raise ValueError(f"{node_id} still has unfinished leaves ({node.get('rollup_status')}); "
                          "its full review closes it only after the last one lands")
     changed = _set_complete(root, node_id) if node.get("status") != "Complete" else []

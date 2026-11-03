@@ -292,7 +292,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 def _close_milestone(args: argparse.Namespace, node_id: str) -> None:
     """Pass the milestone's gate at the integration tip, then commit its Complete status."""
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.bundled_scripts.roadmap_load import compute_rollup_status, load_roadmap
 
     nodes = load_roadmap(ROOT)["nodes"]
     node = next((n for n in nodes if n.get("id") == node_id), None)
@@ -303,8 +303,9 @@ def _close_milestone(args: argparse.Namespace, node_id: str) -> None:
         print(f"error: {node_id} is not a milestone (no leaf children); a leaf is marked reviewed from its "
               "feature branch, without a node id.", file=sys.stderr)
         raise SystemExit(1)
-    if node.get("rollup_status") != "Complete":
-        print(f"error: {node_id} still has unfinished leaves ({node.get('rollup_status')}); its full review "
+    leaf_rollup = compute_rollup_status(nodes).get(node_id)
+    if leaf_rollup != "Complete":
+        print(f"error: {node_id} still has unfinished leaves ({leaf_rollup}); its full review "
               "closes it only after the last one lands.", file=sys.stderr)
         raise SystemExit(1)
     target = resolve_target_or_exit(ROOT, node_id)

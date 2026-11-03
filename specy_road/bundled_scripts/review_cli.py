@@ -68,9 +68,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
     ready = latest_ready(root, node_id, branch, aids)
     ready_commit = ready.data["commit"] if ready else None
     # A current READY's blocked_on outranks reviewer blocks and escalation (A3).
-    blocked_lines = (
-        executor_blocked_display_lines(ready) if same_commit(root, ready_commit, t.commit) else []
-    )
+    blocked_lines = executor_blocked_display_lines(ready) if same_commit(root, ready_commit, t.commit) else []
     loop = loop_state(root, node_id)
     escalated = loop.escalation is not None and not gate.passed
     state = "executor_blocked" if blocked_lines else "escalated" if escalated else _state(root, t, gate, ready_commit)

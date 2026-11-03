@@ -22,6 +22,7 @@ from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.bundled_scripts import review_cli
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.review_files import reviews_dir
 from specy_road.review_target import resolve_target
@@ -45,6 +46,10 @@ def _chunk(root: Path) -> Path:
 
 def _statuses(root: Path) -> dict[str, str]:
     return {n["id"]: n["status"] for n in load_json_chunk(_chunk(root))}
+
+
+def _effective_rollup(root: Path, nid: str) -> str:
+    return next(n["rollup_status"] for n in load_roadmap(root)["nodes"] if n["id"] == nid)
 
 
 def _set_status(root: Path, nid: str, status: str) -> None:
@@ -182,6 +187,21 @@ def test_policy_off_restores_the_plain_rollup(tmp_path: Path, capsys) -> None:
     assert complete_rolled_up_ancestors(root, "M2.2") == ["roadmap/phases/M2.json"]
     assert _statuses(root)["M2"] == "Complete"
     assert "[hold]" not in capsys.readouterr().out
+
+
+def test_effective_rollup_is_held_until_approval_and_complete_when_policy_is_off(tmp_path: Path) -> None:
+    """Sol R1: consumers of load_roadmap must not see Complete while the full review is pending."""
+    root = make_milestone_repo(tmp_path)
+    complete_rolled_up_ancestors(root, "M2.2")
+    assert _statuses(root)["M2"] == "Not Started"
+    assert _effective_rollup(root, "M2") == "In Progress"
+    _review(root)
+    complete_rolled_up_ancestors(root, "M2.2")
+    assert _statuses(root)["M2"] == "Complete"
+    assert _effective_rollup(root, "M2") == "Complete"
+    off = make_milestone_repo(tmp_path / "off", orchestration=POLICY_OFF)
+    complete_rolled_up_ancestors(off, "M2.2")
+    assert _effective_rollup(off, "M2") == "Complete"
 
 
 def test_handoff_status_and_review_list_show_a_milestone_awaiting_its_full_review(tmp_path: Path, capsys) -> None:
