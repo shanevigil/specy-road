@@ -429,7 +429,8 @@
       "touch_zones": [
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/review_gate.py",
-        "tests/"
+        "tests/",
+        "specy_road/review_ready_merge.py"
       ],
       "type": "task"
     },

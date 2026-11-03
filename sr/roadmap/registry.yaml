@@ -211,6 +211,7 @@ entries:
       - specy_road/bundled_scripts/review_cli.py
       - specy_road/review_gate.py
       - tests/
+      - specy_road/review_ready_merge.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
