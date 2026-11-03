@@ -7,7 +7,13 @@
 - **Coordinator discipline (A2):** `specyrd-orchestrate.md`, `coordinator_decision_lines()` in `decisions.py` (included from `role_prompt.py` for coordinator prompts), and a **Human decisions ledger** section in `docs/orchestration.md`.
 - **Tests (A3):** `tests/test_decisions.py` covers add, list ordering, close vs decision-block, date/schema rejection, coordinator/skill text, and the documented `search --kind planning` command. Tests drive the public CLI (`decisions_cli.main` / `search_cli.main`), not patched internals.
 
-Merged `origin/WIP/improvements-0-3-1` into this branch before the review fixes (`23b4ce39`).
+Merged `origin/WIP/improvements-0-3-1` into this branch before the review fixes (`23b4ce39`). Roadmap JSON was not edited for RCA-3.
+
+## RCA-3 (round 3 R1, in_scope_must_fix)
+
+| Item | Change | Commit | Test |
+|---|---|---|---|
+| **R1** | Strip CommonMark fences from the **whole** planning sheet, then select the first level-2 section whose heading normalises to `decisions and notes` or `decisions`. A heading that exists only inside a fence is not the decision block. | `0109ad49` | `test_close_requires_decision_block_record` (extended: ` ```markdown ` fence whose body is `## Decisions and notes` plus `D1: blue` — close fails, entry stays open) |
 
 ## Review required changes (gpt-6.1-sol, second block)
 
@@ -36,6 +42,7 @@ Final list matches the brief: `specy_road/decisions.py`, `specy_road/bundled_scr
 
 ## Added
 
+- `recorded_on_sheet` strips fences on the whole sheet before `find_section` — a fenced `## Decisions and notes` is not the decision block (RCA-3 R1).
 - `Draft202012Validator.FORMAT_CHECKER` on the ledger validator — calendar-valid `format: date` at schema time (second R2).
 - `_unfenced_lines` now reuses `_fence_marker` / `_fence_closes` / `_opening_is_code_span` — CommonMark backtick and tilde fences (second R1).
 - `require_iso_date` — boundary check so malformed `asked`/`needed_by` never write (first R2).
