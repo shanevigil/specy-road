@@ -434,7 +434,8 @@
     {
       "acceptance": [
         "A worker in state completed (or idle) whose leaf is Complete on the integration branch, or no longer claimed, no longer counts toward policy.max_workers; a completed worker on an unfinished leaf still holds its slot so it can be resumed for a fix round",
-        "When delegate refuses at the limit, the message lists running and held-but-idle workers separately (for example '2 running, 1 completed: w-0001; worker terminate frees it'); tests cover a finished-leaf worker freeing its slot, an unfinished one holding it, and the message"
+        "When delegate refuses at the limit, the message lists running and held-but-idle workers separately (for example '2 running, 1 completed: w-0001; worker terminate frees it'); tests cover a finished-leaf worker freeing its slot, an unfinished one holding it, and the message",
+        "finish-this-task terminates the finished leaf's own idle or completed workers (recording an event), and worker list and sync mark any held worker as orphaned when its leaf is Complete, its claim is gone or its worktree no longer exists; worker terminate --orphaned ends all of them in one step and prints what it ended; tests cover finish cleanup, each orphan cause and the bulk command"
       ],
       "codename": "completed-worker-frees-slot",
       "dependencies": [],
