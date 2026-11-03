@@ -4,6 +4,8 @@ family: Cursor Composer
 track: none
 model: Composer 2.5
 api_id: composer-2.5   # Cursor CLI slug, listed by `agent --list-models` on 2026.10.22 (2026-10-28)
+aliases:
+  - composer-2.5-fast
 checkpoint: unknown
 alias_moves: unknown
 version_rank: latest

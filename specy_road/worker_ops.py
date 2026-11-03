@@ -19,7 +19,7 @@ from specy_road.git_subprocess import git_text, run
 from specy_road.orchestrate_plan import ANY, is_available, may_handle, node_eligibility, node_sensitivity
 from specy_road.orchestration_config import DEFAULT_POLICY, roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
-from specy_road.review_files import reviews_root
+from specy_road.review_files import reviews_dir, reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import git_root, project_prefix
 from specy_road.worker_adapter_parsers import effort_note
@@ -262,6 +262,7 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     prompt.write_text(text, encoding="utf-8")
     _brief_into(wt, repo_root, node_id, t)
     cli, api_id, mode, effort = _cli_for(repo_root, entry, harness)
+    reviews_dir(repo_root, node_id).mkdir(parents=True, exist_ok=True)   # a harness may refuse an --add-dir that is missing
     launch = adapter_for(harness).launch(prompt, wt, api_id, cli, node_id=node_id, repo_root=repo_root,
                                          launch_mode=mode, effort=effort)
     rec = create_record(repo_root, node_id, harness, model, wt, branch=branch,
@@ -320,6 +321,7 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: boo
     prompt = repo_root / "work" / f"prompt-{rec.worker_id}-{kind}-{n}.md"
     prompt.parent.mkdir(parents=True, exist_ok=True)   # a linked worktree may have no work/ yet
     prompt.write_text(text, encoding="utf-8")
+    reviews_dir(repo_root, rec.node_id).mkdir(parents=True, exist_ok=True)   # as delegate: before the argv names it
     launch = adapter.resume(sid, prompt, Path(rec.worktree), api_id, cli,
                             node_id=rec.node_id, repo_root=repo_root, launch_mode=mode, effort=effort)
     acquire_lease(repo_root, rec, new=rec.state == "failed", offline=offline)   # a failed worker's was released

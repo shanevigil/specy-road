@@ -1,46 +1,5 @@
 version: 1
 entries:
-  - codename: profile-aliases
-    node_id: M11.26
-    branch: feature/rm-profile-aliases
-    touch_zones:
-      - specy_road/model_profiles.py
-      - specy_road/templates/project/model-profiles/
-      - specy_road/templates/project/schemas/
-      - docs/orchestration-models.md
-      - tests/
-      - specy_road/bundled_scripts/models_cli.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: doctor-version-skew
-    node_id: M11.29
-    branch: feature/rm-doctor-version-skew
-    touch_zones:
-      - specy_road/bundled_scripts/doctor.py
-      - specy_road/cli.py
-      - specy_road/templates/
-      - README.md
-      - docs/install-and-usage.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: decision-ledger
-    node_id: M11.34
-    branch: feature/rm-decision-ledger
-    touch_zones:
-      - specy_road/decisions.py
-      - specy_road/bundled_scripts/decisions_cli.py
-      - specy_road/cli.py
-      - specy_road/templates/project/schemas/
-      - specy_road/templates/specyrd/commands/specyrd-orchestrate.md
-      - specy_road/bundled_scripts/role_prompt.py
-      - docs/orchestration.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: queue-worker-message
     node_id: M11.14
     branch: feature/rm-queue-worker-message
@@ -49,6 +8,121 @@ entries:
       - specy_road/worker_runner.py
       - specy_road/bundled_scripts/worker_cli.py
       - docs/orchestration-workers.md
+      - tests/
+      - specy_road/bundled_scripts/worker_cli_render.py
+      - specy_road/schemas/worker-event.schema.json
+      - specy_road/schemas/worker-record.schema.json
+      - specy_road/worker_state.py
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: sheet-edits-keep-approvals
+    node_id: M11.16
+    branch: feature/rm-sheet-edits-keep-approvals
+    touch_zones:
+      - specy_road/review_gate.py
+      - specy_road/review_files.py
+      - docs/orchestration-review.md
+      - tests/
+      - specy_road/review_bookkeeping.py
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: packet-uncommitted-refs
+    node_id: M11.37
+    branch: feature/rm-packet-uncommitted-refs
+    touch_zones:
+      - specy_road/bundled_scripts/review_packet.py
+      - tests/
+      - specy_road/bundled_scripts/review_packet_uncommitted_refs.py
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: roster-source-explained
+    node_id: M11.20
+    branch: feature/rm-roster-source-explained
+    touch_zones:
+      - specy_road/orchestration_pinned.py
+      - specy_road/orchestrate_plan.py
+      - specy_road/bundled_scripts/validate_roadmap.py
+      - docs/orchestration.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: parallel-test-suite
+    node_id: M11.54
+    branch: feature/rm-parallel-test-suite
+    touch_zones:
+      - pyproject.toml
+      - .github/workflows/validate.yml
+      - sr/roadmap/git-workflow.yaml
+      - docs/git-workflow.md
+      - docs/contributor-guide.md
+      - CLAUDE.md
+      - tests/
+      - requirements-ci.txt
+      - requirements-ci.in
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: init-profiles-subset
+    node_id: M11.44
+    branch: feature/rm-init-profiles-subset
+    touch_zones:
+      - specy_road/init_project.py
+      - specy_road/cli_init_argparse.py
+      - specy_road/bundled_scripts/refresh_profiles.py
+      - tests/
+      - docs/orchestration-models.md
+      - specy_road/cli.py
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: finish-keeps-summary
+    node_id: M11.50
+    branch: feature/rm-finish-keeps-summary
+    touch_zones:
+      - specy_road/finish_work_artifacts.py
+      - specy_road/bundled_scripts/finish_task.py
+      - tests/
+      - docs/git-workflow.md
+      - docs/dev-workflow.md
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: pickup-into-worktree
+    node_id: M11.53
+    branch: feature/rm-pickup-into-worktree
+    touch_zones:
+      - specy_road/bundled_scripts/do_next_task.py
+      - specy_road/bundled_scripts/do_next_task_args.py
+      - specy_road/bundled_scripts/do_next_task_pickup_helpers.py
+      - tests/
+      - docs/git-workflow.md
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: dashboard-safe-saves
+    node_id: M11.51
+    branch: feature/rm-dashboard-safe-saves
+    touch_zones:
+      - specy_road/gui_app_routes_planning.py
+      - specy_road/gui_app_routes_workspace.py
+      - specy_road/gui_app.py
+      - specy_road/cli.py
+      - gui/pm-gantt/src/api.ts
+      - tests/
+      - docs/pm-gui.md
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: file-limit-split-not-delete
+    node_id: M11.55
+    branch: feature/rm-file-limit-split-not-delete
+    touch_zones:
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/templates/
       - tests/
     started: '2026-11-02'
     owner: savigil

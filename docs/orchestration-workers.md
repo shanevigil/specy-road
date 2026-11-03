@@ -108,9 +108,10 @@ roster:
     # `--resume <id>` on resume. A command that names {session} or
     # {session_flag} serves launch AND `message` / `resume` (the same line, run
     # again with the recorded id); one without either is used for launch only,
-    # and resumes run the default command with the default's permissions. No
-    # channels.cli: the default command (Claude: --session-id on launch,
-    # --resume on resume).
+    # and resumes run the default command with the default's permissions.
+    # {reviews_dir} is the main checkout's work/reviews/<ID>, for your harness's
+    # writable-root flag (`--add-dir {reviews_dir}`), so a worktree executor can
+    # write READY there. No channels.cli: the default command.
     # channels:
     #   (a placeholder must be a whole argument, bare or in one pair of quotes —
     #   `--session-id={session}` and `"prefix <prompt>"` are refused; `< {prompt}` feeds the file on stdin)
@@ -342,10 +343,10 @@ session, which is the case the hook exists for.
 
 | Harness | Launch | Session id | Resume (`message`) | Interrupt / steer | Handoff command |
 |---|---|---|---|---|---|
-| `claude-code` | `claude -p --output-format stream-json --verbose --session-id <uuid> --model … --permission-mode acceptEdits` (prompt on stdin: a brief can exceed Linux's 128 KiB per-argument limit). In a **linked** worktree the default also passes `--add-dir` pointing at the main checkout's `work/reviews/<ID>/` so the executor can write its READY hand-off under `acceptEdits`. | chosen up front | `claude -p --resume <id> …` | unsupported | `claude --resume <id>` |
-| `codex` | `codex exec --json -m … -c sandbox_mode=workspace-write -c approval_policy=never -C <worktree> -` (prompt on stdin). The harness runs in the worktree; write READY under the main checkout's `work/reviews/<ID>/` (same path `reviews_root` resolves to from any linked worktree). | `thread.started` | `codex exec resume --json -c sandbox_mode=workspace-write -c approval_policy=never <id> -` (same policy, run in the worktree, prompt on stdin) | unsupported | `codex resume <id>` |
-| `cursor` | `agent -p --output-format stream-json --force --trust --model … --workspace <worktree> "<prompt>"`. The agent's workspace is the linked worktree; READY still belongs in the main checkout's `work/reviews/<ID>/` (open or copy that path explicitly if the harness cannot reach it). | first event | `agent -p --resume <id> … --force --trust …` (print-mode resume with a new prompt is undocumented; verify on your install; the prompt is an argument, so a launch whose arguments exceed **100 KiB** is refused with the reason and the record marked `failed`) | unsupported | `agent --resume <id>` |
-| `generic` | `channels.cli` / profile `access.cli` with `{prompt}` (the prompt file path) or `<prompt>` (the prompt text, as the shipped profiles write it; the same 100 KiB argument limit applies) | none | unsupported | unsupported | none |
+| `claude-code` | `claude -p --output-format stream-json --verbose --session-id <uuid> --model … --permission-mode acceptEdits` (prompt on stdin: a brief can exceed Linux's 128 KiB per-argument limit). In a **linked** worktree the default also passes `--add-dir` pointing at the main checkout's `work/reviews/<ID>/` so the executor can write its READY hand-off under `acceptEdits` (launch and resume). | chosen up front | `claude -p --resume <id> …` | unsupported | `claude --resume <id>` |
+| `codex` | `codex exec --json -m … -c sandbox_mode=workspace-write -c approval_policy=never -C <worktree> -` (prompt on stdin). In a **linked** worktree it also passes `--add-dir` with the main checkout's `work/reviews/<ID>/` (a writable root beside the workspace, from `codex exec --help`, codex-cli 0.165.0). | `thread.started` | `codex exec resume --json -c sandbox_mode=workspace-write -c approval_policy=never <id> -` (same policy, run in the worktree, prompt on stdin; no `--add-dir`: the captured help documents none for `exec resume`, so a resumed turn may not reach the hand-off directory) | unsupported | `codex resume <id>` |
+| `cursor` | `agent -p --output-format stream-json --force --trust --model … --workspace <worktree> "<prompt>"`. In a **linked** worktree it also passes `--add-dir` with the main checkout's `work/reviews/<ID>/` (an extra workspace root, from `agent --help`, 2026.10.22), on launch and resume. | first event | `agent -p --resume <id> … --force --trust …` (print-mode resume with a new prompt is undocumented; verify on your install; the prompt is an argument, so a launch whose arguments exceed **100 KiB** is refused with the reason and the record marked `failed`) | unsupported | `agent --resume <id>` |
+| `generic` | `channels.cli` / profile `access.cli` with `{prompt}` (the prompt file path) or `<prompt>` (the prompt text, as the shipped profiles write it; the same 100 KiB argument limit applies); `{reviews_dir}` as for any `channels.cli` | none | unsupported | unsupported | none |
 
 Whatever the harness, the wrapper's own command line carries only the repo
 root, the worker id, a token and the path of a mode-0600 launch file under

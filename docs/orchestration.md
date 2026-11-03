@@ -133,6 +133,44 @@ none of them.
 declares `cheap` instead of the one priced model; a leaf with `executor_eligibility: senior` still gets
 a `senior` executor.
 
+## Human decisions ledger (`roadmap/decisions.yaml`)
+
+Open questions for a person live in **`roadmap/decisions.yaml`** beside `registry.yaml`. The file is
+schema-validated (`schemas/decisions.schema.json`, copied by `init project` / `specy-road refresh-schemas`).
+Each **open** entry carries:
+
+| Field | Meaning |
+|---|---|
+| `id` | Stable handle (for example `D1`); cite it in chat, never ask with a bare id alone |
+| `node` | Roadmap leaf the decision belongs to |
+| `kind` | `decision` or `human-action` |
+| `summary` | Plain-words what this is |
+| `why_now` | Why now and what it blocks |
+| `options[]` | Each option's `label` and `effect` |
+| `recommendation` / `recommendation_reason` | What you recommend and why |
+| `default_if_unanswered` | What the agent applies if the human does not answer |
+| `asked` | ISO date when opened |
+| `needed_by` | Optional ISO date by which an answer is needed |
+
+**CLI:** `specy-road decisions add|list|close`. Schema validation runs before `add` writes the file
+and before `list` prints it. `list` prints every open entry, those with `needed_by` first in ascending
+date order and those without a deadline last. `close` records the answer and the closed time only
+after the same line appears in the planning-sheet **decision block** (optional list marker or
+checkbox in front). That block is the first level-2 section whose heading normalises to
+`decisions and notes` or `decisions`, chosen only after CommonMark fences (a backtick or tilde run of
+at least 3, closed by a later run of the same character at least that long) are removed from the
+whole sheet. A heading or matching line that exists only inside a fence does not count, and neither
+does a matching line in another section. Indented code, HTML comments, and blockquotes are left as
+written. `asked` and `needed_by` are calendar dates `YYYY-MM-DD`; `add` rejects any other string
+before writing, and `list` rejects a file whose date is not a real calendar day (for example
+`2026-99-99` or `2026-02-30`). Datetimes are out of scope for those two fields.
+
+**Coordinator turn discipline:** at the start of each turn, run `specy-road decisions list` (as with
+`worker sync`). Search the ledger and planning-sheet decision blocks
+(`specy-road search "<topic>" --kind planning`) before asking anything new. Ask at
+most four questions at once, each in the self-contained shape above. End any turn that still has open
+entries with one **Decisions waiting on you** block listing all of them below your status.
+
 ## Hand-off files: `work/reviews/<NODE_ID>/`
 
 Plain files work across every harness, including IDE chats that cannot see each other. Each file is Markdown whose YAML front matter is the machine-readable part.

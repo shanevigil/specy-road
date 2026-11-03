@@ -4,6 +4,15 @@ family: SpaceXAI Grok
 track: none
 model: Grok 4.6
 api_id: grok-4.6
+aliases:
+  - cursor-grok-4.6-low
+  - cursor-grok-4.6-low-fast
+  - cursor-grok-4.6-medium
+  - cursor-grok-4.6-medium-fast
+  - cursor-grok-4.6-high
+  - cursor-grok-4.6-high-fast
+  - cursor-grok-4.6-xhigh
+  - cursor-grok-4.6-xhigh-fast
 checkpoint: same-as-api_id
 alias_moves: unknown
 version_rank: previous

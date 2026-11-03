@@ -53,6 +53,21 @@ pip install specy-road
 #   pip install "specy-road[review]"    # LLM review (`specy-road review-node`)
 ```
 
+On a maintainer laptop, prefer an isolated CLI install so a repo virtualenv
+does not shadow it:
+
+```bash
+pipx install specy-road
+# or: uv tool install specy-road
+which specy-road
+specy-road --version
+```
+
+If those disagree, or `specy-road --version` is older than your project's
+`.specyrd/manifest.json` / `AGENTS.md` minimum, an earlier `specy-road` on
+`PATH` is usually the cause — reinstall with `pipx` / `uv tool` and check
+`which` again.
+
 Release candidates (`X.Y.ZrcN`) publish to **TestPyPI** and need a different
 command — including one extra flag for `uv pip`. See
 [docs/install-and-usage.md](docs/install-and-usage.md#install-a-release-candidate-testpypi).

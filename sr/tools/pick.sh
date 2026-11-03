@@ -11,5 +11,6 @@ rm -f "sr/work/brief-$ID.md"
 git checkout -q WIP/improvements-0-3-1
 case "$B" in feature/rm-*) ;; *) echo "$ID: pickup failed (on $B)"; exit 3;; esac
 git worktree add -q "sr/work/.worktrees/$WT" "$B" || exit 4
+mkdir -p "sr/work/reviews/$ID"   # workaround: cursor --add-dir needs it to exist (M11.56)
 $S worker delegate "$ID" --model "$M" --harness "$H" --worktree "sr/work/.worktrees/$WT" 2>&1 | tail -1
 $S worker list 2>&1 | awk -v id="$ID" '$2==id{print "worker:", $1}'

@@ -380,7 +380,11 @@
         "specy_road/worker_runner.py",
         "specy_road/bundled_scripts/worker_cli.py",
         "docs/orchestration-workers.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/worker_cli_render.py",
+        "specy_road/schemas/worker-event.schema.json",
+        "specy_road/schemas/worker-record.schema.json",
+        "specy_road/worker_state.py"
       ],
       "type": "task"
     },
@@ -431,7 +435,8 @@
         "specy_road/review_gate.py",
         "specy_road/review_files.py",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/review_bookkeeping.py"
       ],
       "type": "task"
     },
