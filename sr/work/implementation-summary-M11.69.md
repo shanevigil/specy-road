@@ -68,6 +68,7 @@ record value never reaches git as an option (a `-`-leading revision is refused).
   positive tests fail and the three fallback tests pass.
 - `specy-road file-limits` — OK (`review_files.py` 400, `git_workflow_config.py` 395).
 - `python -m pytest -n auto -q` — 3384 passed, 2 skipped.
+- Merged `origin/WIP/improvements-0-3-1` at `042423f0` (Codex reviewer roster entries) cleanly; it touched none of this leaf's files or the bundled schemas, and the leaf's tests (8 passed) and `specy-road file-limits` pass after it.
 - `ruff check specy_road tests scripts` reports two C901 findings that exist
   at the base commit (`orchestration_config.load_availability_overlay`,
   `review_packet_uncommitted_refs.py:82`); neither function was touched.
