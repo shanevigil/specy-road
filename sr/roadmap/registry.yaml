@@ -124,3 +124,13 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
+  - codename: why-blocked-plan-holds
+    node_id: M11.65
+    branch: feature/rm-why-blocked-plan-holds
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_query_cli.py
+      - specy_road/bundled_scripts/session_plan.py
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
