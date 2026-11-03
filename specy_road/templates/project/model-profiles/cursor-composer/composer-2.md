@@ -26,6 +26,18 @@ role_fit:
   executor:    { score: 3, reason: 'Still selectable in Cursor; superseded by 2.5 on the same base', sources: [S1, S3] }
   reviewer:    { score: 1, reason: 'No review data', sources: [S1] }
 ---
+## Orchestration: harness features to avoid
+
+When this model runs as a roster **executor** on `cursor`:
+
+| Feature | Switch |
+|---|---|
+| `agent persist` | no switch: never invoked |
+| `/goal` | no switch: never invoked |
+| cloud handoff | no switch: never invoked; denied where a permission token exists |
+
+Orchestration guard hooks deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`. Never pass `--plan` (plan mode).
+
 ## Strengths
 - Built on Kimi K2.5 with Cursor RL post-training; documented in a Composer 2 technical report (not read) [S3] (confidence: low)
 ## Failure modes
