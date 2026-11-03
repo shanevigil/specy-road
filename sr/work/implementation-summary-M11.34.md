@@ -9,7 +9,14 @@
 
 Merged `origin/WIP/improvements-0-3-1` into this branch before the review fixes (`23b4ce39`).
 
-## Review required changes (gpt-6.1-sol block)
+## Review required changes (gpt-6.1-sol, second block)
+
+| Item | Change | Commit | Test |
+|---|---|---|---|
+| **R1** | Close skips every CommonMark fenced example (backtick and tilde, matching fence lengths) by reusing `_fence_marker` / `_fence_closes` / `_opening_is_code_span` from `validate_stale_commands`. | `a9314c04` | `test_close_requires_decision_block_record` (extended: `~~~text` fence and a 4-backtick fence that a 3-backtick line does not close) |
+| **R2** | Ledger schema validation uses `Draft202012Validator.FORMAT_CHECKER` so `format: date` rejects calendar-impossible values, not only regex/add parsing. | `a9314c04` | `test_list_rejects_malformed_asked_in_ledger` (extended: quoted `"2026-02-30"`) |
+
+## Review required changes (gpt-6.1-sol, first block)
 
 | Item | Change | Commit | Test |
 |---|---|---|---|
@@ -24,19 +31,19 @@ Final list matches the brief: `specy_road/decisions.py`, `specy_road/bundled_scr
 
 ## Verification
 
-- `pytest tests/test_decisions.py -q` (9 passed)
+- `pytest tests/test_decisions.py -q` (10 passed)
 - `specy-road file-limits`
-- `specy-road search contract --kind planning --repo-root tests/fixtures/specy_road_dogfood`
 
 ## Added
 
-- `require_iso_date` — boundary check so malformed `asked`/`needed_by` never write (R2).
-- `_unfenced_lines` — skip fenced examples in the decision block (R1).
-- `cmd_add` `ValueError` guard — CLI prints date/schema errors instead of traceback (R2).
-- `_DECISION_HEADINGS` — match `## Decisions and notes` / `## Decisions` (R1).
-- `test_close_requires_decision_block_record` — public CLI close vs Intent / fence / block (R1).
-- `test_add_rejects_malformed_dates` — public CLI add with invalid dates (R2).
-- `test_list_rejects_malformed_asked_in_ledger` — public CLI list schema-rejects a bad file (R2).
+- `Draft202012Validator.FORMAT_CHECKER` on the ledger validator — calendar-valid `format: date` at schema time (second R2).
+- `_unfenced_lines` now reuses `_fence_marker` / `_fence_closes` / `_opening_is_code_span` — CommonMark backtick and tilde fences (second R1).
+- `require_iso_date` — boundary check so malformed `asked`/`needed_by` never write (first R2).
+- `cmd_add` `ValueError` guard — CLI prints date/schema errors instead of traceback (first R2).
+- `_DECISION_HEADINGS` — match `## Decisions and notes` / `## Decisions` (first R1).
+- `test_close_requires_decision_block_record` — public CLI close vs Intent / backtick / tilde / unmatched-length fence / block (R1).
+- `test_add_rejects_malformed_dates` — public CLI add with invalid dates (first R2).
+- `test_list_rejects_malformed_asked_in_ledger` — public CLI list schema-rejects `not-a-date` and quoted `"2026-02-30"` (R2).
 - `test_coordinator_prompt_and_skill_name_kind_and_shape` — both instruction surfaces (R3, R4).
 - `test_documented_search_kind_planning` — documented `--kind planning` command (R3).
 - none — mocks.
