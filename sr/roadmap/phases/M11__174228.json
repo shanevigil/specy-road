@@ -430,7 +430,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.36_resumed-delta-approval_17d67a22-2e77-4f9f-9627-a051cdc2c225.md",
       "sibling_order": 36,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A resumed reviewer session may approve a delta it was shown",
       "touch_zones": [
         "specy_road/review_gate.py",
