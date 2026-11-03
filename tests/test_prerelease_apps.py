@@ -113,3 +113,31 @@ def test_abort_of_a_local_pickup_drops_the_claim_without_pushing(tmp_path: Path)
     assert _git(app, "rev-parse", "HEAD") == pushed
     assert _git(app, "branch", "--list", "feature/rm-*") == ""
     assert notes.read_text() == "lane plan\n"
+
+
+def test_local_abort_keeps_an_untracked_file_the_advanced_base_tracks(tmp_path: Path) -> None:
+    """M11.64 review: untracked files no longer block abort, so its reset must not overwrite one."""
+    remote, app, other = tmp_path / "remote.git", tmp_path / "app", tmp_path / "other"
+    _git(tmp_path, "init", "-q", "--bare", str(remote))
+    _scaffold(app)
+    _git(app, "config", "user.email", "t@example.com")
+    _git(app, "config", "user.name", "T")
+    _git(app, "checkout", "-q", "-b", "main")
+    _git(app, "add", "-A")
+    _git(app, "commit", "-q", "-m", "init")
+    _git(app, "remote", "add", "origin", str(remote))
+    _git(app, "push", "-q", "-u", "origin", "main")
+    assert _cli(app, "do-next-available-task", "--local").returncode == 0
+    claimed = _git(app, "branch", "--show-current")
+    _git(tmp_path, "clone", "-q", str(remote), str(other))   # a teammate adds notes.md to the remote base
+    (other / "notes.md").write_text("theirs\n")
+    _git(other, "add", "notes.md")
+    _git(other, "-c", "user.email=p@example.com", "-c", "user.name=P", "commit", "-q", "-m", "notes")
+    _git(other, "push", "-q", "origin", "main")
+    (app / "notes.md").write_text("mine\n")   # untracked here: does not block the check
+
+    r = _cli(app, "abort-task-pickup")
+
+    assert r.returncode == 1, r.stdout
+    assert "could not reset 'main' to origin/main" in r.stderr and f"`git checkout {claimed}`" in r.stderr
+    assert (app / "notes.md").read_text() == "mine\n"

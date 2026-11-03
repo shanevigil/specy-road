@@ -46,11 +46,11 @@ def _tracked_changes() -> list[str]:
 
     Pickup refuses on nothing under ``work/``, so it leaves its brief there
     untracked and a coordinator's notes may sit beside it. Untracked files
-    survive the checkout abort makes (git refuses a checkout that would
-    overwrite one, see :func:`_checkout_base`), so none of them block. A
-    tracked change does, under ``work/`` too: the checkout would carry it to
-    the integration branch or stop on it, and the reset of a ``--local`` claim
-    would discard it.
+    survive the checkout abort makes: git refuses a checkout, or the ``reset
+    --keep`` of a ``--local`` claim, that would overwrite one (see
+    :func:`_git_keeping_untracked`), so none of them block. A tracked change
+    does, under ``work/`` too: the checkout would carry it to the integration
+    branch or stop on it.
     """
     out = git_capture(ROOT, "status", "--porcelain", "--untracked-files=no")
     return [f"{line[3:]} ({_why_blocking(line[:2])})" for line in out.splitlines() if line.strip()]
@@ -69,14 +69,18 @@ def _assert_no_tracked_changes(base: str) -> None:
     raise SystemExit(1)
 
 
-def _checkout_base(base: str) -> None:
+def _git_keeping_untracked(what: str, *args: str, retry: str = "retry abort-task-pickup") -> None:
+    """Run a git step that refuses rather than overwrite an untracked file; exit 1 cleanly if it does."""
     try:
-        git_run(ROOT, "checkout", base)
+        git_run(ROOT, *args)
     except subprocess.CalledProcessError:
-        print(f"error: could not check out '{base}'; git's message above names the paths.", file=sys.stderr)
-        print("  An untracked file there would be overwritten: move it aside, then retry abort-task-pickup.",
-              file=sys.stderr)
+        print(f"error: could not {what}; git's message above names the paths.", file=sys.stderr)
+        print(f"  An untracked file there would be overwritten: move it aside, then {retry}.", file=sys.stderr)
         raise SystemExit(1) from None
+
+
+def _checkout_base(base: str) -> None:
+    _git_keeping_untracked(f"check out '{base}'", "checkout", base)
 
 
 def _save_registry(doc: dict) -> None:
@@ -274,9 +278,12 @@ def _only_own_registration_ahead(remote: str, base: str, codename: str, ref: str
     )
 
 
-def _drop_local_registration(remote: str, base: str) -> None:
+def _drop_local_registration(remote: str, base: str, branch: str) -> None:
     _checkout_base(base)
-    git_run(ROOT, "reset", "--hard", f"{remote}/{base}")
+    # --keep, not --hard: --hard silently overwrites an untracked file at a path
+    # the advanced remote base now tracks. The tree has no tracked changes here.
+    _git_keeping_untracked(f"reset '{base}' to {remote}/{base}", "reset", "--keep", f"{remote}/{base}",
+                           retry=f"`git checkout {branch}` and retry abort-task-pickup")
     print(
         f"[ok] the claim was never pushed (--local pickup): dropped its registration "
         f"commit from local {base}; nothing pushed"
@@ -351,7 +358,7 @@ def _abort_locked(args) -> None:
         _only_own_registration_ahead(remote, base, codename, ref) for ref in ("HEAD", base)
     )
     if local_claim:
-        _drop_local_registration(remote, base)
+        _drop_local_registration(remote, base, branch)
     else:
         ahead = _count_commits_ahead_of_remote_base(remote, base)
         _exit_if_unpushed_commits_without_force(remote, base, ahead, args.force)

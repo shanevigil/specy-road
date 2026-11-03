@@ -16,7 +16,7 @@ Now (`specy_road/bundled_scripts/abort_task_pickup.py`):
   files never block** (anywhere — they survive the branch switch abort makes;
   this accepts everything pickup accepts). **Tracked changes block**, staged or
   unstaged, including under `work/`: the checkout would carry them to the
-  integration branch or stop on them, and the `--local` reset would discard them.
+  integration branch or stop on them.
 - The refusal names each blocking path with why: `src/app.py (unstaged edit)`,
   `x (staged edit, unstaged edit)`, `y (unmerged (conflict))`, and says which
   branch abort checks out. It suggests commit or discard, never stash.
@@ -26,6 +26,11 @@ Now (`specy_road/bundled_scripts/abort_task_pickup.py`):
   printed above it, names the paths) instead of a `CalledProcessError` traceback.
   It replaces the bare `git checkout <base>` in `_sync_integration_branch_ff` and
   `_drop_local_registration`.
+- A `--local` abort drops the claim with `git reset --keep <remote>/<base>`, not
+  `--hard`: `--hard` silently overwrote an untracked file at a path the advanced
+  remote base now tracks (review round 1). `--keep` refuses instead, and the
+  refusal gets the same clean exit 1 + hint, which also says to check the
+  feature branch out again before retrying (abort has already switched to the base).
 
 Order of operations is unchanged: the check still runs before any git state
 changes (before fetch and the base-held-elsewhere check).
@@ -35,8 +40,8 @@ changes (before fetch and the base-held-elsewhere check).
 A1 says "refuses only on tracked changes". Pickup's own rule (`except_work=True`
 in `repo_ops`) ignores *all* of `work/`, tracked or not, but refuses untracked
 files outside `work/`. I followed A1: untracked files outside `work/` are also
-accepted (git protects them on checkout), and a tracked change under `work/`
-still blocks (abort's checkout/reset would carry or discard it, and abort then
+accepted (git protects them on checkout and `reset --keep`), and a tracked change under `work/`
+still blocks (abort's checkout would carry it, and abort then
 deletes this leaf's brief). If the maintainer wants pickup's rule verbatim
 instead, that is a one-line pathspec change in `_tracked_changes`.
 
@@ -44,7 +49,7 @@ instead, that is a one-line pathspec change in `_tracked_changes`.
 
 Confirmed as listed: `specy_road/bundled_scripts/abort_task_pickup.py`, `tests/`
 (`tests/test_abort_task_pickup.py`, `tests/test_prerelease_apps.py`). No new
-module; the file went from 372 to 363 lines.
+module; the file went from 372 to 368 lines.
 
 ## Verification
 
@@ -62,6 +67,12 @@ module; the file went from 372 to 363 lines.
 
 - Merged WIP (new Codex reviewer entries, FIFO pickup/finish lock). `specy_road/bundled_scripts/abort_task_pickup.py` auto-merged: WIP's `pickup_finish_lock` now wraps `_abort_locked`, which runs my `_assert_no_tracked_changes(base)`, so the check runs under the lock, still before any git state changes. `tests/test_abort_task_pickup.py` conflicted: kept WIP's `Path` import, `_git_init` helper and its `_git_init` calls; kept my tests in place of WIP's edits to the removed `_dirty_entries` tests (WIP only added `_git_init` to them) and dropped the `_dirty_entries` mock it re-added; added `_git_init` to `test_refused_checkout_of_the_base_exits_with_a_message`, which ran without a repo and the lock now needs git-common-dir. No behaviour change for this leaf; touched tests (plus `tests/test_repo_lock*.py`) 48 passed, 2 skipped; file-limits OK; private-imports gate 0 new.
 
+## Review round 1 (Opus reviewer block at 3bf54839)
+
+- Required change 1: `_drop_local_registration` now runs `git reset --keep <remote>/<base>` through `_git_keeping_untracked`, the helper `_checkout_base` now also uses, so a refused reset exits 1 with git's message plus a hint (move the file aside, `git checkout <feature branch>`, retry). The `_tracked_changes` docstring no longer claims only checkout protects untracked files.
+- Required change 2: `tests/test_prerelease_apps.py::test_local_abort_keeps_an_untracked_file_the_advanced_base_tracks`, a real `--local` pickup; a second clone pushes `notes.md` to the remote base; the user's untracked `notes.md` makes abort exit 1 and keeps its content. Red-green: with `reset --hard` it exits 0 (file overwritten); with `--keep` it passes.
+- Verification: touched tests plus `tests/test_repo_lock*.py` 49 passed, 2 skipped; `specy-road file-limits` OK; private-imports gate 0 new.
+
 ## Added
 
 - `_STAGED` / `_UNSTAGED` maps: porcelain status letters to the reason shown per blocking path (A1 "names … why").
@@ -69,6 +80,9 @@ module; the file went from 372 to 363 lines.
 - `_tracked_changes()`: the new clean-tree rule, tracked changes only (replaces `_dirty_entries`, `_OTHER_BOOKKEEPING` and `_pickup_artifact_rel_paths`, now unneeded and removed).
 - `_assert_no_tracked_changes(base)`: the refusal, naming paths, reasons and the branch abort would check out; no stash advice (replaces `_assert_working_tree_clean`).
 - `_checkout_base(base)` guard: clean exit 1 when git refuses the checkout over an untracked file the base tracks, which can now reach that point.
+- `_git_keeping_untracked(what, *args, retry=...)` (review round 1): runs a git step that refuses rather than overwrite an untracked file, with the clean exit 1 + hint; used by `_checkout_base` and the `--local` `reset --keep`.
+- `branch` parameter on `_drop_local_registration` (review round 1): so the reset refusal can say which branch to check out before retrying.
+- `test_local_abort_keeps_an_untracked_file_the_advanced_base_tracks` (review round 1): e2e, an untracked file at a path the advanced remote base tracks survives a `--local` abort (refused, content unchanged).
 - Test helpers `_git`, `_repo(tmp_path)` (a real git repo with one tracked file, so the rule runs against real `git status`) and `_refusal` (runs `main`, asserts exit 1, returns stderr). All new tests go through `main()` and public names only, because `tests/test_lean_gates.py` fails on new private references and its baseline may not be widened.
 - `_PastTheCheck` test exception: raised from a mocked `git_run` at `fetch` to prove `main` got past the clean-tree check without touching a remote.
 - `test_abort_refuses_tracked_change_naming_path_and_why`: tracked change refuses, names `src/app.py (unstaged edit)`, then `(staged edit, unstaged edit)`; no stash advice.
