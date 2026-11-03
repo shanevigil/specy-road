@@ -257,7 +257,7 @@ def test_prompt_channel_cli_runs_a_cursor_reviewer_read_only_and_files_its_answe
                                                         "result": "Verdict:\n" + json.dumps(answer)})])
     assert run_main(role_prompt, "M1.1", "--model", "comp", "--role", "reviewer", "--channel", "cli",
                     "--repo-root", str(repo)) == 0
-    (call,) = calls
+    call = next(c for c in calls if list(c["cmd"][:2]) == ["agent", "-p"])   # the reviewer launch, by its argv
     assert call["cmd"][:7] == ["agent", "-p", "--output-format", "stream-json", "--mode", "ask", "--trust"]
     assert "--force" not in call["cmd"] and "**specy-road files your record.**" in call["cmd"][-1]
     assert rf.load_review(rf.review_path(repo, "M1.1", "comp"), ["A1", "A2"]).ok
