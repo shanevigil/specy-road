@@ -143,7 +143,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.34` | Open human decisions live in one tracked ledger and every question is self-contained | task | Agentic-led | Complete |
 | `M11.35` | A roster entry maps to the harness's own model id, and a failed start says why | task | Agentic-led | Not Started |
 | `M11.36` | A resumed reviewer session may approve a delta it was shown | task | Agentic-led | Not Started |
-| `M11.37` | review-packet warns when the brief or summary names a file not committed at the reviewed commit | task | Agentic-led | Not Started |
+| `M11.37` | review-packet warns when the brief or summary names a file not committed at the reviewed commit | task | Agentic-led | Complete |
 | `M11.38` | handoff status says who can still supply a missing approval | task | Agentic-led | Not Started |
 | `M11.39` | A roster entry can be marked unavailable without deleting it | task | Agentic-led | Not Started |
 | `M11.40` | worker reconcile works on merged leaves and separates untracked files | task | Agentic-led | Not Started |

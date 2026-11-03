@@ -5,16 +5,18 @@ Writes ``work/reviews/<NODE_ID>/PACKET.md`` (and ``-o``'s path too) with, in ord
 
 1. the brief (goal, numbered acceptance, planning, contracts);
 2. the implementation summary (``work/implementation-summary-<NODE_ID>.md``);
-3. every changed path since the merge base (with the integration branch, or
+3. a warning when the brief, a planning sheet or the summary names a path not
+   in the tree at the reviewed commit;
+4. every changed path since the merge base (with the integration branch, or
    ``--base``), with paths outside the node's touch zones called out;
-4. the Python test files that import a changed module (``specy-road impact``);
-5. ``git diff <base>...<ref>``, with a warning when it is empty; past
+5. the Python test files that import a changed module (``specy-road impact``);
+6. ``git diff <base>...<ref>``, with a warning when it is empty; past
    ``--max-diff-lines`` (default 1500) or ``--max-diff-bytes`` (default 200000)
    the first files that fit both are inlined whole, the rest are listed with
    their ``+``/``-`` counts and diff bytes, and the full diff is written to
    ``work/reviews/<NODE_ID>/DIFF.patch`` (``0`` = no cap); a generated file is
    never inlined, only listed;
-6. verifier output — the newest valid READY file's ``verify`` tails, plus any
+7. verifier output — the newest valid READY file's ``verify`` tails, plus any
    ``--verify-cmd`` run now.
 
 A reviewer is handed this file and nothing else (proposal §3.2). The commit it
@@ -34,6 +36,7 @@ from datetime import date
 from pathlib import Path
 
 from specy_road.bundled_scripts.generate_brief import index, render_brief
+from specy_road.bundled_scripts.review_packet_uncommitted_refs import uncommitted_refs_section
 from specy_road.finish_implementation_check import in_zones
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_stdout, git_text, head_sha
@@ -330,13 +333,15 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
     if base or prior:
         t = _with_base(root, t, prior.data["commit"] if prior else str(base))
     milestone_packet_or_exit(t)
-    brief = render_brief(node_id, index(t.nodes), repo_root=root, include_history=False)
+    by_id = index(t.nodes)
+    brief = render_brief(node_id, by_id, repo_root=root, include_history=False)
     paths, changed = changed_paths_section(root, t)
     brief_lines = brief.rstrip().splitlines()
     parts = [
         _header(root, t, integration_ref) + (_delta_section(prior) if prior else [FULL_MARK, ""] if full else []),
         ["---", ""] + brief_lines[:1] + ["", RENDERED] + brief_lines[1:] + ["", "---", ""],
         _summary(root, t),
+        uncommitted_refs_section(root, t, brief, t.node, by_id, _computed(t)),
         changed,
         test_integrity_section(root, t),
         tests_at_risk_section(root, t),

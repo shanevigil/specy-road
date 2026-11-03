@@ -12,16 +12,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: packet-uncommitted-refs
-    node_id: M11.37
-    branch: feature/rm-packet-uncommitted-refs
-    touch_zones:
-      - specy_road/bundled_scripts/review_packet.py
-      - tests/
-      - specy_road/bundled_scripts/review_packet_uncommitted_refs.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: init-profiles-subset
     node_id: M11.44
     branch: feature/rm-init-profiles-subset
