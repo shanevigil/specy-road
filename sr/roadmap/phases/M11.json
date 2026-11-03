@@ -373,7 +373,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.14_queue-worker-message_41e44d38-974f-486c-9eef-5ff224c74ff0.md",
       "sibling_order": 14,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "worker message queues a follow-up for a worker whose turn is still running",
       "touch_zones": [
         "specy_road/worker_ops.py",
