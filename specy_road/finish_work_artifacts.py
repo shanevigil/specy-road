@@ -85,6 +85,16 @@ def _archive_tracked_summary(root_r: Path, node_id: str) -> list[str]:
     if not src.is_file():
         return []
     dst_rel = archived_implementation_summary_rel(node_id)
+    ignored = subprocess.run(
+        ["git", "check-ignore", "-q", "--", dst_rel], cwd=root_r, check=False,
+    )
+    if ignored.returncode == 0:
+        print(
+            f"[warn] .gitignore covers {dst_rel}; not archiving the summary. "
+            "Add '!work/done/' after the rule that ignores it.",
+            file=sys.stderr,
+        )
+        return []
     dst = root_r / dst_rel
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(str(src), str(dst))
