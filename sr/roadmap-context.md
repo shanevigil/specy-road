@@ -174,7 +174,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.65` why-blocked reports touch-zone holds from the plan `why-blocked-plan-holds` — task — **Not Started**
   - `M11.66` specy-road --version identifies the code when run from a checkout `version-shows-checkout-sha` — task — **Not Started**
   - `M11.67` Worker usage prices Cursor runs from the roster's price table `cursor-usage-cost` — task — **Complete**
-  - `M11.68` A re-delegated executor starts from the blocking review findings `rework-findings-in-prompt` — task — **Not Started**
+  - `M11.68` A re-delegated executor starts from the blocking review findings `rework-findings-in-prompt` — task — **Complete**
   - `M11.69` A leaf that adds a schema key can be gated and finished `branch-schema-for-gate-and-finish` — task — **Not Started**
   - `M11.70` Touch zones are checked when they are written `zones-checked-at-authoring` — task — **Not Started**
   - `M11.71` Review loops escalate on their own and criteria are written with bounds `review-loops-escalate` — task — **Complete**
@@ -208,7 +208,6 @@ Do not pick these up.
 - `M11.64` on `feature/rm-abort-untracked-like-pickup` since 2026-11-03
 - `M11.65` on `feature/rm-why-blocked-plan-holds` since 2026-11-03
 - `M11.66` on `feature/rm-version-shows-checkout-sha` since 2026-11-03
-- `M11.68` on `feature/rm-rework-findings-in-prompt` since 2026-11-03
 - `M11.69` on `feature/rm-branch-schema-for-gate-and-finish` since 2026-11-03
 - `M11.70` on `feature/rm-zones-checked-at-authoring` since 2026-11-03
 - `M11.73` on `feature/rm-ready-warns-integration-conflict` since 2026-11-03
