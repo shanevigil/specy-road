@@ -160,7 +160,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.51` | Dashboard saves never overwrite newer disk edits, and the read API is documented | task | Agentic-led | Not Started |
 | `M11.52` | PR mode predicts and resolves the registry conflict | task | Agentic-led | Not Started |
 | `M11.53` | A worktree-based flow can claim leaves without pushing from the worktree | task | Agentic-led | Complete |
-| `M11.54` | The test suite and land check run in parallel | task | Agentic-led | Not Started |
+| `M11.54` | The test suite and land check run in parallel | task | Agentic-led | Complete |
 | `M11.55` | Executors split modules to meet file limits instead of deleting documentation | task | Agentic-led | Complete |
 | `M11.56` | Delegate creates the reviews directory before a harness is told to allow it | task | Agentic-led | Complete |
 | `M11.57` | A completed worker on a finished leaf does not hold a max_workers slot | task | Agentic-led | Not Started |

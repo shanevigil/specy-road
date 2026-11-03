@@ -22,22 +22,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: parallel-test-suite
-    node_id: M11.54
-    branch: feature/rm-parallel-test-suite
-    touch_zones:
-      - pyproject.toml
-      - .github/workflows/validate.yml
-      - sr/roadmap/git-workflow.yaml
-      - docs/git-workflow.md
-      - docs/contributor-guide.md
-      - CLAUDE.md
-      - tests/
-      - requirements-ci.txt
-      - requirements-ci.in
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: init-profiles-subset
     node_id: M11.44
     branch: feature/rm-init-profiles-subset

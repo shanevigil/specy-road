@@ -22,6 +22,9 @@ cleanup_work_artifacts_on_finish: true
 # mode, because pr never merges between cycles and the next pickup cannot see the
 # work the last one finished. See docs/git-workflow.md and docs/grind-session.md.
 on_complete: merge
+# Full suite on the merge commit before push. cwd is the project root (sr/),
+# so this path reaches git-root tests/ (see docs/git-workflow.md).
+land_check_cmd: python -m pytest -n auto -p no:cacheprovider ../tests
 # Optional grind-session bounds for a Claude CLI implement hook. CLI flags win.
 # grind_session_max_limit_waits: 3             # waits per leaf before stopping
 # grind_session_max_limit_wait_hours: 6        # ceiling on any one wait

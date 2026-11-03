@@ -145,4 +145,4 @@ jobs:
       - name: Lean-code gate - private imports in tests (vs constraints/test-private-imports-baseline.txt)
         run: python scripts/check_test_private_imports.py
       - name: Tests
-        run: pytest
+        run: pytest -n auto
