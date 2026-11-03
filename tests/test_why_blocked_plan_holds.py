@@ -16,10 +16,19 @@ from specy_road.bundled_scripts.session_plan_git import gather_session_plan
 from specy_road.bundled_scripts.session_plan_render import zone_overlaps
 from tests.review_repo_helpers import git
 from tests.test_orchestrate_plan import plan_repo
-from tests.test_session_plan_touch_zones import _leaf
 
 # plan_repo's M1.1 is ready with touch zone `src`.
 M1_1_KEY = "11111111-1111-5111-8111-111111111111"
+
+
+def leaf(n: int, codename: str, zones: list[str], deps: list[str] | None = None) -> dict:
+    """A ready task leaf ``M1.<n>`` beside plan_repo's M1.1."""
+    return {
+        "id": f"M1.{n}", "node_key": f"1{n}000000-0000-4000-8000-00000000000{n}",
+        "type": "task", "title": f"M1.{n}", "status": "Not Started",
+        "codename": codename, "dependencies": list(deps or []), "parent_id": None,
+        "sibling_order": n, "touch_zones": zones,
+    }
 
 
 @pytest.fixture
@@ -29,9 +38,9 @@ def repo(tmp_path: Path) -> Path:
     chunk = repo / "roadmap" / "phases" / "M1.json"
     data = json.loads(chunk.read_text())
     data["nodes"] += [
-        {**_leaf(2, ["src/a.py"]), "codename": "held"},
-        {**_leaf(3, ["lib/c.py"]), "codename": "after", "dependencies": [M1_1_KEY]},
-        {**_leaf(4, ["docs/d.md"]), "codename": "free"},
+        leaf(2, "held", ["src/a.py"]),
+        leaf(3, "after", ["lib/c.py"], [M1_1_KEY]),
+        leaf(4, "free", ["docs/d.md"]),
     ]
     chunk.write_text(json.dumps(data))
     git(repo, "commit", "-qam", "held, dependent and free leaves")

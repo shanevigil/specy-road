@@ -42,6 +42,7 @@ the `plan_hold` docstring.
 
 - `python -m pytest -q tests/test_why_blocked_plan_holds.py tests/test_cli_query_commands.py tests/test_roadmap_explain.py tests/test_session_plan_touch_zones.py` — 40 passed.
 - `specy-road file-limits` — OK (`roadmap_query_cli.py` is 212 lines).
+- `python scripts/check_test_private_imports.py` — 0 new private references.
 - Red-green: with `roadmap_query_cli.py` reverted to the base, all 5 new tests fail; restored, they pass.
 - `python -m pytest -n auto -q -p no:cacheprovider` — full suite: 3324 passed, 2 skipped.
 
@@ -53,6 +54,8 @@ the `plan_hold` docstring.
 - Branch in `cmd_why_blocked`: compute the hold only when `exp.state == "ready"` — other states are already explained and need no git/plan work.
 - `hold` parameter on `_render_explanation` (default `None`) — appends the hold lines; existing callers unchanged.
 - `plan_hold` key in `--json` output — machine-readable form of the same answer.
+- `tests/test_why_blocked_plan_holds.py` `leaf` builder — the extra task leaves for the fixture, built locally rather than importing another test module's private `_leaf` (review fix, gpt-6.1-sol).
+- `_why` test helper — runs `why-blocked` in-process and returns its exit code and stdout for the five tests.
 - `tests/test_why_blocked_plan_holds.py` `repo` fixture — a git repo (via `plan_repo`) with a zone-held leaf, a dependency-blocked leaf and a free leaf.
 - `test_zone_hold_names_the_holder_and_zones_and_says_pickup_ignores_it` — A1 zone hold, text output and exit 0, and that the plan itself holds the leaf.
 - `test_zone_hold_in_json` — A1 zone hold in JSON, matched against `zone_overlaps`.
