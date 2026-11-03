@@ -175,6 +175,17 @@ def test_worker_runner_reports_invalid_and_missing_ready(tmp_path: Path) -> None
     assert ws.events_since(repo, rec2.worker_id)[-1].summary == "exit 0; READY file missing"
 
 
+def test_exit_zero_with_a_broken_roadmap_still_completes_idle(tmp_path: Path) -> None:
+    repo, script = _repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    (repo / "roadmap" / "manifest.json").write_text("{not json", encoding="utf-8")
+    wr.run(repo, rec.worker_id, _launch(tmp_path, script, repo, "broken-roadmap"))
+    last = ws.events_since(repo, rec.worker_id)[-1]
+    assert last.type == "completion"
+    assert last.summary == "exit 0; READY file missing"
+    assert ws.load_record(repo, rec.worker_id).state == "idle"
+
+
 def test_worker_list_and_sync_show_worktree(tmp_path: Path, capsys) -> None:
     script = tmp_path / "fake.py"
     script.write_text(FAKE)
