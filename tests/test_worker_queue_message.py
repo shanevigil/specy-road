@@ -80,6 +80,35 @@ def test_message_while_running_queues_and_delivers(tmp_path: Path, capsys) -> No
     assert prompt.is_file()
 
 
+def test_two_cli_messages_during_a_live_turn_are_appended_and_delivered(tmp_path: Path, capsys) -> None:
+    repo = _slow_repo(tmp_path)
+    rec, _ = ops.delegate(repo, "M1.1", "opus")
+    for _ in range(100):
+        if ws.load_record(repo, rec.worker_id).pid is not None:
+            break
+        time.sleep(0.05)
+    else:
+        raise AssertionError("worker never started")
+    assert run_worker_cli("worker", "message", rec.worker_id, "--text", "first follow-up", "--repo-root", str(repo)) == 0
+    assert "message queued for the next turn" in capsys.readouterr().out
+    assert run_worker_cli("worker", "message", rec.worker_id, "--text", "second follow-up", "--repo-root", str(repo)) == 0
+    assert "message queued for the next turn" in capsys.readouterr().out
+    assert ws.load_record(repo, rec.worker_id).queued_message == "first follow-up\n\nsecond follow-up"
+    summaries = [e.summary for e in ws.events_since(repo, rec.worker_id) if e.type == "message_queued"]
+    assert any(s.startswith("queued: first follow-up") for s in summaries)
+    assert any(s.startswith("appended: second follow-up") for s in summaries)
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        if [e.type for e in ws.events_since(repo, rec.worker_id)].count("completion") >= 2:
+            break
+        time.sleep(0.1)
+    else:
+        raise AssertionError("queued messages were not delivered as a second turn")
+    delivered = "first follow-up\n\nsecond follow-up"
+    prompt = next(p for p in (repo / "work").glob(f"prompt-{rec.worker_id}-message-*.md") if p.read_text() == delivered)
+    assert prompt.is_file()
+
+
 def test_no_queue_refuses_a_live_turn(tmp_path: Path, monkeypatch) -> None:
     repo, _ = _repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)

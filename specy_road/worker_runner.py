@@ -64,9 +64,11 @@ def queue_worker_message(repo_root: Path, rec: WorkerRecord, text: str) -> Worke
     with workers_lock(repo_root):
         rec = load_record(repo_root, rec.worker_id)
         require_writer(rec)
-        mutate(repo_root, rec, lambda r: setattr(r, "queued_message", text))
+        prior = rec.queued_message
+        mutate(repo_root, rec, lambda r: setattr(r, "queued_message", f"{prior}\n\n{text}" if prior else text))
+    verb = "appended" if prior else "queued"
     append_event(repo_root, load_record(repo_root, rec.worker_id), "message_queued", source="orchestrator",
-                 authority="orchestrator", summary=f"queued: {' '.join(text.split())[:300]}")
+                 authority="orchestrator", summary=f"{verb}: {' '.join(text.split())[:300]}")
     return load_record(repo_root, rec.worker_id)
 
 

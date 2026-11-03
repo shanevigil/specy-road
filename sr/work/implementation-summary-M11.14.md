@@ -2,7 +2,7 @@
 
 ## What changed
 
-- **`worker message` while a turn is running** stores the text on `WorkerRecord.queued_message` (under the workers lock), logs `message_queued`, and returns without spawning. **`--no-queue`** restores the previous “cannot steer a live turn” refusal (including the stalled hint). **`resume()`** always passes `no_queue=True` into `_send`, so a live process is still refused.
+- **`worker message` while a turn is running** stores the text on `WorkerRecord.queued_message` (under the workers lock), logs `message_queued`, and returns without spawning. A second message during the same turn is appended, separated by a blank line; the event summary says `appended`. **`--no-queue`** restores the previous “cannot steer a live turn” refusal (including the stalled hint). **`resume()`** always passes `no_queue=True` into `_send`, so a live process is still refused.
 - **After each turn**, the wrapper calls `deliver_queued_message`, which holds `workers_lock` across `_send` (same scope as `message()`), so liveness and spawn are one transition; on `WorkerError` it re-queues only when the refreshed record is not `terminated`.
 - **`worker terminate`** clears `queued_message` and notes `dropped queued follow-up` on the `terminated` event.
 - **`worker list` / `sync`** show queued text (`_line`, `sync_worker_header`); JSON sync payloads include `queued_message` when set.
@@ -22,7 +22,8 @@ Listed in the brief, plus **`specy_road/bundled_scripts/worker_cli_render.py`**,
 - `WorkerRecord.queued_message` — holds a follow-up until delivery or terminate.
 - `_send(..., no_queue=)` branch — refuses a live turn when `no_queue`, else delegates to `queue_worker_message`.
 - `resume()` → `_send(..., no_queue=True)` — keeps the live-process refusal; only `message` queues.
-- `queue_worker_message` in `worker_runner.py` — writes the queue under lock and appends `message_queued`.
+- `queue_worker_message` in `worker_runner.py` — writes the queue under lock (appends to an existing follow-up with a blank line) and logs `message_queued` (`queued:` or `appended:`).
+- `test_two_cli_messages_during_a_live_turn_are_appended_and_delivered` — two CLI messages during one live turn are delivered in order.
 - `deliver_queued_message` in `worker_runner.py` — pops the queue and resumes via `_send` under `workers_lock`; re-queues on `WorkerError` only if not terminated.
 - `test_deliver_and_message_launch_one_turn` — concurrent `deliver_queued_message` and `message` launch one turn.
 - `_deliver_queued` in `worker_runner.py` — invoked from `_exit_state` after each turn.
