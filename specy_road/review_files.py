@@ -40,8 +40,7 @@ REVIEW_PREFIX = "REVIEW-"
 RCA_PREFIX = "RCA-"
 HISTORY_DIRNAME = "history"
 PACKET_NAME = "PACKET.md"
-#: The interactive approver. A solo maintainer both coordinates and reviews, so
-#: only this model may attest ``is_coordinator: true``.
+#: The interactive approver; only this model may attest ``is_coordinator: true``.
 HUMAN = "human"
 #: How a reviewer's harness was started (``review record --launch-mode``): ``full`` loads the
 #: repository's hooks and MCP servers, ``bare`` none (Claude Code ``--bare``), ``explicit`` only what the command names.
@@ -94,6 +93,8 @@ def only_planning_or_review_bookkeeping_since(
     if not commit or same_commit(repo_root, approved, commit):
         return True
     if git_code(["merge-base", "--is-ancestor", approved, commit], repo_root)[0] != 0:
+        return False
+    if git_text(["rev-list", "--merges", f"{approved}..{commit}"], repo_root):
         return False
     paths = diff_paths(repo_root, f"{approved}..{commit}")
     if paths is None:

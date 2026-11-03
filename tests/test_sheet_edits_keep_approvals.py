@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
-from tests.test_review_cli import ONE_AI, _run, _status
+from tests.test_review_cli import ONE_AI, _status
 
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
@@ -53,6 +53,19 @@ def test_mixed_delta_stales_approval(tmp_path: Path) -> None:
     _review(repo)
     commit_file(repo, NODE["planning_dir"], "# M1.1 Thing\n\n## Intent\n\nAlso.\n\n## References\n", "sheet")
     commit_file(repo, "src/b.py", "x\n", "code")
+    g = _gate(repo)
+    assert not g.passed
+    assert len(g.stale) == 1
+    assert not g.bookkeeping_carry
+
+
+def test_ours_merge_stales_approval(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _review(repo)
+    git(repo, "checkout", "-q", "-b", "other")
+    commit_file(repo, "other.txt", "x\n", "other")
+    git(repo, "checkout", "-q", "feature/rm-thing")
+    git(repo, "merge", "-q", "-s", "ours", "--no-edit", "other")
     g = _gate(repo)
     assert not g.passed
     assert len(g.stale) == 1
