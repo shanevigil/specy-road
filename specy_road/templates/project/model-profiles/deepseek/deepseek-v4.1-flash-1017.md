@@ -26,6 +26,14 @@ role_fit:
   executor:    { score: 4, reason: 'Low price plus vendor-reported DeepSWE v1.1 77.0 and Terminal-Bench 4.0 42.3 suit cheap first-pass execution', sources: [S1, S3] }
   reviewer:    { score: 3, reason: 'Useful reasoning capacity, but weaker independent broad scores and no dedicated review calibration make it better as an executor under a stronger reviewer', sources: [S1, S8] }
 ---
+## Orchestration: harness features to avoid
+
+| Feature | Switch |
+|---|---|
+| memory off | Claude `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`; Codex `--disable memories`; Cursor persist: no switch (never invoked) |
+| plan mode | never pass `--plan` |
+| worktree or cloud | never pass `--worktree` / `--cloud`; Cursor cloud handoff: never invoked |
+
 ## Strengths
 - The 2026-10-17 update raises vendor-reported Terminal-Bench 4.0 from 31.2 to 42.3, DeepSWE v1.1 from 74.2 to 77.0, ProgramBench from 20.3 to 29.1, and Automation-Bench from 54.8 to 60.5 [S1] (confidence: high)
 - Supports 1,048,576 context tokens and 393,216 max output tokens, which is large for a low-cost executor [S2] (confidence: high)

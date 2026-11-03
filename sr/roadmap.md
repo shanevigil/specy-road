@@ -71,7 +71,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M8.2` | Worker adapters harden the launch and run a deterministic post-run check | task | Agentic-led | Not Started |
 | `M8.3` | Reviewer runs are read-only and specy-road writes the review record from structured output | task | Agentic-led | Not Started |
 | `M8.4` | Ship skills once and meter every file each harness injects | task | Agentic-led | Complete |
-| `M8.5` | Guard hooks per harness and avoid lists in every model profile | task | Agentic-led | Not Started |
+| `M8.5` | Guard hooks per harness and avoid lists in every model profile | task | Agentic-led | Complete |
 | `M8.6` | Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic | task | Agentic-led | Complete |
 | `M8.7` | Runtime verification of the harness facts against installed binaries | task | Agentic-led | Complete |
 | `M9` | Regression prevention | phase | — | In Progress |
@@ -133,7 +133,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.24` | Executors and reviewers in a worktree can write and check the right places | task | Agentic-led | Complete |
 | `M11.25` | finish-this-task says what merge mode will push before it pushes | task | Agentic-led | Complete |
 | `M11.26` | A model profile can match harness model ids that carry an effort suffix | task | Agentic-led | Complete |
-| `M11.27` | Small CLI fixes from field use | task | Agentic-led | Not Started |
+| `M11.27` | Small CLI fixes from field use | task | Agentic-led | Complete |
 | `M11.28` | A light chore mode for work outside the roadmap | task | Mixed | Not Started |
 | `M11.29` | doctor warns when the running specy-road is older than the project's stubs | task | Agentic-led | Complete |
 | `M11.30` | Leaf worktrees get the project's environment set up | task | Agentic-led | Not Started |

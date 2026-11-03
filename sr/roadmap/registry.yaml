@@ -116,33 +116,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: guard-hooks-per-harness-and-avoid-lists-in-every-model-profile
-    node_id: M8.5
-    branch: feature/rm-guard-hooks-per-harness-and-avoid-lists-in-every-model-profile
-    touch_zones:
-      - specy_road/templates/specyrd/hooks/
-      - specy_road/specyrd_init.py
-      - specy_road/templates/project/model-profiles/
-      - docs/orchestration-models.md
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
-  - codename: small-cli-fixes
-    node_id: M11.27
-    branch: feature/rm-small-cli-fixes
-    touch_zones:
-      - specy_road/bundled_scripts/session_cli.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/bundled_scripts/worker_cli_render.py
-      - specy_road/worker_adapters.py
-      - specy_road/worker_ops.py
-      - tests/
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/worker_runner.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: version-shows-checkout-sha
     node_id: M11.66
     branch: feature/rm-version-shows-checkout-sha
@@ -188,6 +161,55 @@ entries:
       - specy_road/review_gate.py
       - specy_road/bundled_scripts/worker_cli.py
       - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: session-routing-preferences
+    node_id: M11.58
+    branch: feature/rm-session-routing-preferences
+    touch_zones:
+      - specy_road/decisions.py
+      - specy_road/bundled_scripts/decisions_cli.py
+      - specy_road/templates/project/schemas/
+      - specy_road/templates/specyrd/commands/specyrd-orchestrate.md
+      - specy_road/bundled_scripts/role_prompt.py
+      - docs/orchestration.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: headless-limits-denials
+    node_id: M11.62
+    branch: feature/rm-headless-limits-denials
+    touch_zones:
+      - specy_road/worker_adapters.py
+      - specy_road/worker_adapter_parsers.py
+      - specy_road/worker_runner.py
+      - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: branch-schema-for-gate-and-finish
+    node_id: M11.69
+    branch: feature/rm-branch-schema-for-gate-and-finish
+    touch_zones:
+      - specy_road/review_files.py
+      - specy_road/review_gate.py
+      - specy_road/orchestration_config.py
+      - specy_road/git_workflow_config.py
+      - specy_road/bundled_scripts/finish_task.py
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: ready-warns-integration-conflict
+    node_id: M11.73
+    branch: feature/rm-ready-warns-integration-conflict
+    touch_zones:
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/review_gate.py
       - tests/
     started: '2026-11-03'
     owner: savigil
