@@ -130,7 +130,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.20` | orchestrate plan and validate say where the roster is read from | task | Agentic-led | Not Started |
 | `M11.22` | Worker worktrees can include nested sibling repositories | task | Mixed | Not Started |
 | `M11.23` | A custom launch command's permissions carry through resume | task | Agentic-led | Not Started |
-| `M11.24` | Executors and reviewers in a worktree can write and check the right places | task | Agentic-led | Not Started |
+| `M11.24` | Executors and reviewers in a worktree can write and check the right places | task | Agentic-led | Complete |
 | `M11.25` | finish-this-task says what merge mode will push before it pushes | task | Agentic-led | Complete |
 | `M11.26` | A model profile can match harness model ids that carry an effort suffix | task | Agentic-led | Not Started |
 | `M11.27` | Small CLI fixes from field use | task | Agentic-led | Not Started |
@@ -140,7 +140,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.31` | A safe command to retire a leaf worktree | task | Agentic-led | Not Started |
 | `M11.32` | Unpushed nested-repo commits are reported | task | Agentic-led | Not Started |
 | `M11.33` | A reviewer whose harness routes models dynamically does not count as an independent family by default | task | Agentic-led | Not Started |
-| `M11.34` | Open human decisions live in one tracked ledger and every question is self-contained | task | Agentic-led | Not Started |
+| `M11.34` | Open human decisions live in one tracked ledger and every question is self-contained | task | Agentic-led | Complete |
 | `M11.35` | A roster entry maps to the harness's own model id, and a failed start says why | task | Agentic-led | Not Started |
 | `M11.36` | A resumed reviewer session may approve a delta it was shown | task | Agentic-led | Not Started |
 | `M11.37` | review-packet warns when the brief or summary names a file not committed at the reviewed commit | task | Agentic-led | Not Started |
@@ -148,7 +148,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.39` | A roster entry can be marked unavailable without deleting it | task | Agentic-led | Not Started |
 | `M11.40` | worker reconcile works on merged leaves and separates untracked files | task | Agentic-led | Not Started |
 | `M11.41` | The two review-gate settings cannot silently disagree | task | Agentic-led | Not Started |
-| `M11.42` | session end finds the session the same agent started | task | Agentic-led | Not Started |
+| `M11.42` | session end finds the session the same agent started | task | Agentic-led | Complete |
 | `M11.43` | init project reports exactly what it writes | task | Agentic-led | Not Started |
 | `M11.44` | init project can install only the model profiles a project uses | task | Agentic-led | Not Started |
 | `M11.45` | The stale-command warning fires only on command-shaped mentions | task | Agentic-led | Not Started |
@@ -160,5 +160,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.51` | Dashboard saves never overwrite newer disk edits, and the read API is documented | task | Agentic-led | Not Started |
 | `M11.52` | PR mode predicts and resolves the registry conflict | task | Agentic-led | Not Started |
 | `M11.53` | A worktree-based flow can claim leaves without pushing from the worktree | task | Agentic-led | Not Started |
+| `M11.54` | The test suite and land check run in parallel | task | Agentic-led | Not Started |
+| `M11.55` | Executors split modules to meet file limits instead of deleting documentation | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

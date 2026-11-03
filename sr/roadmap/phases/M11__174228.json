@@ -111,7 +111,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.24_worktree-handoff-writable_5021c591-ae29-4b76-b422-66c0a4d51c13.md",
       "sibling_order": 24,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Executors and reviewers in a worktree can write and check the right places",
       "touch_zones": [
         "specy_road/worker_adapters.py",
@@ -166,7 +166,8 @@
         "specy_road/templates/project/schemas/",
         "docs/orchestration-models.md",
         "tests/",
-        "specy_road/bundled_scripts/models_cli.py"
+        "specy_road/bundled_scripts/models_cli.py",
+        "model-profiles/"
       ],
       "type": "task"
     },
@@ -245,7 +246,8 @@
         "specy_road/templates/",
         "README.md",
         "docs/install-and-usage.md",
-        "tests/"
+        "tests/",
+        "specy_road/version_skew.py"
       ],
       "type": "task"
     },
@@ -369,7 +371,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.34_decision-ledger_bc3055ab-39c6-4972-b8a7-bf83e135d26a.md",
       "sibling_order": 34,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Open human decisions live in one tracked ledger and every question is self-contained",
       "touch_zones": [
         "specy_road/decisions.py",

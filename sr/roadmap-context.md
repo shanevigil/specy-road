@@ -130,7 +130,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.20` orchestrate plan and validate say where the roster is read from `roster-source-explained` — task — **Not Started**
   - `M11.22` Worker worktrees can include nested sibling repositories `nested-repo-worktrees` — task — **Not Started**
   - `M11.23` A custom launch command's permissions carry through resume `resume-keeps-permissions` — task — **Not Started**
-  - `M11.24` Executors and reviewers in a worktree can write and check the right places `worktree-handoff-writable` — task — **Not Started**
+  - `M11.24` Executors and reviewers in a worktree can write and check the right places `worktree-handoff-writable` — task — **Complete**
   - `M11.25` finish-this-task says what merge mode will push before it pushes `merge-push-disclosure` — task — **Complete**
   - `M11.26` A model profile can match harness model ids that carry an effort suffix `profile-aliases` — task — **Not Started**
   - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Not Started**
@@ -140,7 +140,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.31` A safe command to retire a leaf worktree `worktree-prune` — task — **Not Started**
   - `M11.32` Unpushed nested-repo commits are reported `nested-unpushed-report` — task — **Not Started**
   - `M11.33` A reviewer whose harness routes models dynamically does not count as an independent family by default `dynamic-routing-reviewers` — task — **Not Started**
-  - `M11.34` Open human decisions live in one tracked ledger and every question is self-contained `decision-ledger` — task — **Not Started**
+  - `M11.34` Open human decisions live in one tracked ledger and every question is self-contained `decision-ledger` — task — **Complete**
   - `M11.35` A roster entry maps to the harness's own model id, and a failed start says why `roster-harness-model-id` — task — **Not Started**
   - `M11.36` A resumed reviewer session may approve a delta it was shown `resumed-delta-approval` — task — **Not Started**
   - `M11.37` review-packet warns when the brief or summary names a file not committed at the reviewed commit `packet-uncommitted-refs` — task — **Not Started**
@@ -148,7 +148,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.39` A roster entry can be marked unavailable without deleting it `roster-availability` — task — **Not Started**
   - `M11.40` worker reconcile works on merged leaves and separates untracked files `reconcile-merged-and-untracked` — task — **Not Started**
   - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Not Started**
-  - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Not Started**
+  - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Complete**
   - `M11.43` init project reports exactly what it writes `init-project-reports-writes` — task — **Not Started**
   - `M11.44` init project can install only the model profiles a project uses `init-profiles-subset` — task — **Not Started**
   - `M11.45` The stale-command warning fires only on command-shaped mentions `stale-command-prose` — task — **Not Started**
@@ -160,6 +160,8 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.51` Dashboard saves never overwrite newer disk edits, and the read API is documented `dashboard-safe-saves` — task — **Not Started**
   - `M11.52` PR mode predicts and resolves the registry conflict `pr-mode-registry-conflict` — task — **Not Started**
   - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Not Started**
+  - `M11.54` The test suite and land check run in parallel `parallel-test-suite` — task — **Not Started**
+  - `M11.55` Executors split modules to meet file limits instead of deleting documentation `file-limit-split-not-delete` — task — **Not Started**
 
 ## Archived (not in the live roadmap)
 
@@ -171,9 +173,13 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
+- `M11.14` on `feature/rm-queue-worker-message` since 2026-11-02
+- `M11.16` on `feature/rm-sheet-edits-keep-approvals` since 2026-11-02
+- `M11.20` on `feature/rm-roster-source-explained` since 2026-11-02
 - `M11.26` on `feature/rm-profile-aliases` since 2026-11-02
 - `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
-- `M11.34` on `feature/rm-decision-ledger` since 2026-11-02
+- `M11.37` on `feature/rm-packet-uncommitted-refs` since 2026-11-02
+- `M11.54` on `feature/rm-parallel-test-suite` since 2026-11-02
 
 ## Reaching the detail behind this
 

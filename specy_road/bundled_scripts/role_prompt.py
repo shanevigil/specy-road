@@ -54,6 +54,7 @@ from specy_road.bundled_scripts.role_prompt_rca import (
     profile_lines,
     reviewer_preamble,
 )
+from specy_road.decisions import coordinator_decision_lines
 from specy_road.model_profiles import ROLES, Profile
 from specy_road.orchestrate_plan import (
     ANY,
@@ -196,6 +197,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
         lines += rca_preamble(root, node_id, model, loop.escalation) + [DATA_LINE, ""]
     else:
         lines += coordinator_preamble(node_id)
+        lines += coordinator_decision_lines()
     lines += profile_lines(prof, role, zones)
     if role == "reviewer":
         packet, err = reviewer_packet(root, node_id, model, t, ref)

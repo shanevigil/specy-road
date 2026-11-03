@@ -86,7 +86,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.42_session-end-default_b19b342c-cefe-4632-89e0-e937fb48710e.md",
       "sibling_order": 42,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "session end finds the session the same agent started",
       "touch_zones": [
         "specy_road/session_presence.py",
@@ -358,6 +358,55 @@
         "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
         "tests/",
         "docs/git-workflow.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "pytest-xdist is in the development dependencies and CI runs the suite with pytest -n auto; the full suite passes both with -n auto and serially, and any test that depends on shared state or run order is fixed rather than marked to run serially",
+        "docs/git-workflow.md's land_check_cmd section recommends a parallel test command for projects whose suite is parallel-safe, says what makes a suite parallel-safe, and shows an example; the contributor guide and the common-commands section of CLAUDE.md use pytest -n auto",
+        "The toolkit's own roadmap/git-workflow.yaml under sr/ sets land_check_cmd to the parallel suite, so finish runs it on the merge commit before pushing"
+      ],
+      "codename": "parallel-test-suite",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.54",
+      "node_key": "265cc066-599d-49d8-bd04-9d5258af8e50",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.54_parallel-test-suite_265cc066-599d-49d8-bd04-9d5258af8e50.md",
+      "sibling_order": 54,
+      "status": "Not Started",
+      "title": "The test suite and land check run in parallel",
+      "touch_zones": [
+        "pyproject.toml",
+        ".github/workflows/validate.yml",
+        "sr/roadmap/git-workflow.yaml",
+        "docs/git-workflow.md",
+        "docs/contributor-guide.md",
+        "CLAUDE.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The executor prompt says that when a change would push a file over a file-limits cap, the executor moves the new or related code into a new module (and records the new file in the implementation summary for the zone update), and never deletes or shortens unrelated docstrings, comments or user-facing text to fit",
+        "The reviewer prompt asks the reviewer to check the diff for removed docstrings, comments or messages unrelated to the leaf and to require their restoration; tests cover both prompt sentences"
+      ],
+      "codename": "file-limit-split-not-delete",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.55",
+      "node_key": "1bdf3541-c94d-40be-a77f-26a514d6ae9f",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.55_file-limit-split-not-delete_1bdf3541-c94d-40be-a77f-26a514d6ae9f.md",
+      "sibling_order": 55,
+      "status": "Not Started",
+      "title": "Executors split modules to meet file limits instead of deleting documentation",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/templates/",
+        "tests/"
       ],
       "type": "task"
     }
