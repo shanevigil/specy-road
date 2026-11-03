@@ -90,7 +90,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.43_init-project-reports-writes_12cd9d17-8a37-4149-b7eb-2acdc740c4ff.md",
       "sibling_order": 43,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "init project reports exactly what it writes",
       "touch_zones": [
         "specy_road/init_project.py",

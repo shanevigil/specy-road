@@ -26,18 +26,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: init-project-reports-writes
-    node_id: M11.43
-    branch: feature/rm-init-project-reports-writes
-    touch_zones:
-      - specy_road/init_project.py
-      - specy_road/agent_ignores.py
-      - specy_road/templates/project/.gitignore
-      - tests/
-      - docs/pm-workflow.md
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: pr-mode-registry-conflict
     node_id: M11.52
     branch: feature/rm-pr-mode-registry-conflict
