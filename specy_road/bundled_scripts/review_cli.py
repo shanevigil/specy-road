@@ -35,7 +35,7 @@ from specy_road.review_files import (
     review_path, reviews_root, round_span, write_review,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
-from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states
+from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states, gate_policy_summary
 from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
 from specy_road.review_gate_ready import add_ready_parser
 from specy_road.review_pre_existing import cmd_check_pre_existing
@@ -96,7 +96,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         ],
         "review_rounds": round_span(root, node_id),
         "review_runs": (runs := run_states(root, node_id, gate.commit)),
-        "policy": gate.summary(), "reviewer_eligibility": reviewer_eligibility(root, t.node, gate, branch),
+        "policy": gate_policy_summary(gate, runs), "reviewer_eligibility": reviewer_eligibility(root, t.node, gate, branch),
         "policy_met": gate.passed,
         "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
                         "blocking": tm.code_conflicts} if tm and tm.conflicts else None,

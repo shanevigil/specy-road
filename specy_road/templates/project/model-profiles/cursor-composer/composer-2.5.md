@@ -28,6 +28,18 @@ role_fit:
   executor:    { score: 4, reason: '$0.50/$2.50 with vendor-reported gains on long-running tasks; third parties report SWE-Bench Multilingual parity with Opus 4.7 and GPT-5.5', sources: [S1, S4] }
   reviewer:    { score: 2, reason: 'Trained for doing, not judging; no review data', sources: [S1] }
 ---
+## Orchestration: harness features to avoid
+
+When this model runs as a roster **executor** on `cursor`:
+
+| Feature | Switch |
+|---|---|
+| `agent persist` | no switch: never invoked |
+| `/goal` | no switch: never invoked |
+| cloud handoff | no switch: never invoked; denied where a permission token exists |
+
+Orchestration guard hooks deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`. Never pass `--plan` (plan mode).
+
 ## Strengths
 - Lowest price in this roster: $0.50 input / $2.50 output; Fast variant $3/$15 with the same intelligence (vendor) [S1] (confidence: high)
 - Vendor reports better sustained work on long tasks and more reliable instruction following than Composer 2, and says these are "not well captured by existing benchmarks" [S1] (confidence: low)

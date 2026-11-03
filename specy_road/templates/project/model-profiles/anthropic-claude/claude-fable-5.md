@@ -14,7 +14,7 @@ supersedes: none
 access:
   context_tokens: 1000000
   output_tokens: 128000
-  cli: claude -p "<prompt>"
+  cli: CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude -p "<prompt>"
   cli_verified_from: S4
   subagents: unknown No model-specific data found
   effort_controls: 'effort parameter, default high; levels low, medium, high, xhigh, max [S12]'
@@ -27,6 +27,17 @@ role_fit:
   executor:    { score: 4, reason: 'AA Agentic Index 51.0 vs 58.0 for Fable 5.1', sources: [S6] }
   reviewer:    { score: 3, reason: 'Same model lineage as Fable 5.1 and Mythos; no independent review value against them', sources: [S1] }
 ---
+## Orchestration: harness features to avoid
+
+When this model runs as a roster **executor** on `claude-code`, `worker delegate` exports in the process environment (via `harness_env`, not only `access.cli` / `specy-road prompt --channel cli`):
+
+| Feature | Switch |
+|---|---|
+| auto memory (shared by every worktree of a repository) | `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` |
+| background tasks and `/loop` wakeups | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` |
+
+Orchestration guard hooks (optional, `specyrd init --install-orchestration-hooks`) deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`.
+
 ## Strengths
 - Led ARC-AGI-1 among listed models in August 2026 (aggregator reading) [S7] (confidence: low)
 ## Failure modes

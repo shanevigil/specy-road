@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import subprocess
+from pathlib import Path
+
 import pytest
 import yaml
 
@@ -10,6 +13,10 @@ from tests.review_repo_helpers import diverge, git, make_review_repo
 from specy_road.bundled_scripts import finish_task as ft
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road import feature_rm_registry as frm
+
+
+def _git_init(root: Path) -> None:
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
 
 
 def _write_registry(tmp_path, reg: dict) -> None:
@@ -125,6 +132,7 @@ def test_finish_blocks_when_implementation_review_pending(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    _git_init(tmp_path)
     reg = {
         "version": 1,
         "entries": [

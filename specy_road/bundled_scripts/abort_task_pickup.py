@@ -21,6 +21,7 @@ from specy_road.on_complete_session import (
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
 from specy_road.bundled_scripts.repo_ops import current_branch, git_capture, git_run
+from specy_road.repo_lock import pickup_finish_lock
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
 #: so the name exists at import. Resolving the real root here would make
@@ -328,7 +329,11 @@ def main(argv: list[str] | None = None) -> None:
     global ROOT
     args = _parse_args(argv if argv is not None else sys.argv[1:])
     ROOT = resolve_repo_root(args)
+    with pickup_finish_lock(ROOT, operation="abort-task-pickup"):
+        _abort_locked(args)
 
+
+def _abort_locked(args) -> None:
     base, remote, gw_warns = resolve_integration_defaults(
         ROOT,
         explicit_base=args.base,

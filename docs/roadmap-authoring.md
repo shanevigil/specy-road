@@ -281,8 +281,9 @@ These belong in the node's **planning sheet**, not in the node JSON — see the 
 | Constraints | Security, logging, performance, UX rules that bind the work. |
 | Dependencies | Prior sub-task, stub, or merged milestone required first. **Reference by codename or display id** — do not paraphrase the prerequisite's intent here; `specy-road brief` inlines each effective dependency's `## Intent` under section 6. |
 
-Worth adding when they apply: an observable **success signal**, and any
-**forbidden patterns** (e.g. "do not call the live service — use the stub").
+Worth adding when they apply: an observable **success signal**, and any **forbidden patterns** (e.g. "do not call the live service — use the stub").
+
+**Acceptance criteria checklist.** Reviewers judge each `acceptance` criterion as written, round after round, so bound it before pickup: (1) **state what is out of scope**: the inputs, paths, callers or platforms the leaf does not cover, rather than leaving them open; (2) **bound concurrency and input classes**: name the ones it handles (for example one writer at a time, ASCII names, files already on disk) and say that the rest are out of scope; (3) **name the observable check**: the test, command or output a reviewer reads to decide pass or fail. A criterion without these lets each review round find a new input class or a narrower race on it; that loop escalates in `specy-road handoff status`, and its root-cause analysis comes back as `specification`. The feature-sheet template's `## Tasks / checklist` points here.
 
 **Contract traceability:** Each `agentic` task should map to at least one contract doc under `shared/`, `docs/`, `specs/`, or `adr/`. If it cannot, the contract write-up may be missing — flag before writing the task.
 
@@ -290,8 +291,7 @@ Worth adding when they apply: an observable **success signal**, and any
 
 **Do not paraphrase upstream dependencies in this task's planning sheet.** `specy-road brief` carries `## 6. Dependency context (intent of upstream work)` with each effective dependency's `## Intent` block (or the gate equivalent) inlined verbatim. Restating that prose in `## Intent` or `## Approach` here just creates drift. Say *what must exist* (cited by codename or display id) under `## References`, and reserve your sheet's `## Intent` for **this** task's own outcome. Add a one-line clarification under `## Approach` only when something specific to *this* task is not covered by the dep's own intent (an integration seam, a contract version, a sequencing constraint), citing the dep by display id.
 
-**Example (JSON node excerpt).** The detail lives in the sheet at
-`planning_dir`; the node stays small. The dependency is M1.1's `node_key`:
+**Example (JSON node excerpt).** The detail lives in the sheet at `planning_dir`; the node stays small. The dependency is M1.1's `node_key`:
 
 ```json
 {
