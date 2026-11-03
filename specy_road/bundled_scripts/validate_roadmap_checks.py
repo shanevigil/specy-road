@@ -11,7 +11,7 @@ from jsonschema import Draft202012Validator
 from specy_road.bundled_scripts.planning_artifacts import collect_planning_artifact_errors
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 from specy_road.review_gate import review_required
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import default_user_repo_root, git_root
 
 from specy_road.bundled_scripts.brief_acceptance import warn_acceptance_merged, warn_acceptance_missing, warn_unauthored
 from specy_road.bundled_scripts.planning_sheet_bootstrap import unauthored_leaves
@@ -359,7 +359,7 @@ def run_validation(
     _validate_registry_entries(registry, id_set, id_to_type, gate=gate)
 
     warn_stale_parent_status(nodes)
-    warn_touch_zones_match_nothing(nodes, r)
+    warn_touch_zones_match_nothing(nodes, r, git_root=git_root(r) or r)
     warn_acceptance_missing(nodes, gate)
     warn_acceptance_merged(nodes)
     warn_unauthored(unauthored_leaves(r, nodes), show_all=show_all)
