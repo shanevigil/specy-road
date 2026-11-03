@@ -12,7 +12,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.19_pickup-no-work-stash_174228c2-0ffe-4dc5-80b6-2556bd0ec707.md",
       "sibling_order": 19,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Pickup never stashes work/ around the registry commit",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
@@ -134,7 +134,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.25_merge-push-disclosure_4e0d89c4-53ac-4c00-9c0d-92b843fd43c2.md",
       "sibling_order": 25,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "finish-this-task says what merge mode will push before it pushes",
       "touch_zones": [
         "specy_road/finish_land_integration.py",
@@ -166,14 +166,17 @@
         "specy_road/templates/project/schemas/",
         "docs/orchestration-models.md",
         "tests/",
-        "specy_road/bundled_scripts/models_cli.py"
+        "specy_road/bundled_scripts/models_cli.py",
+        "model-profiles/"
       ],
       "type": "task"
     },
     {
       "acceptance": [
         "worker delegate reports a custom channels.cli that uses a text-only output mode (for example agent -p --output-format text, or no output format), which keeps only the last message, and suggests the stream-json form; a test covers the report",
-        "prompt prints its 'Wrote <path>' line on stderr, so redirecting stdout never captures it in place of the prompt; a test covers it"
+        "prompt prints its 'Wrote <path>' line on stderr, so redirecting stdout never captures it in place of the prompt; a test covers it",
+        "finish-this-task prints each validate warning at most once per run; a test finishes a leaf while another open leaf lacks acceptance and counts that warning's lines",
+        "validate's missing-planning_dir error lists every node without one and names specy-road scaffold-planning <ID> as the fix; a test covers two such nodes"
       ],
       "codename": "small-cli-fixes",
       "dependencies": [],
@@ -355,7 +358,7 @@
     },
     {
       "acceptance": [
-        "specy-road decisions add|list|close keeps open human decisions in a tracked roadmap/decisions.yaml (schema-validated): id, node, kind (decision | human-action), plain-words summary, why now and what it blocks, options with their effect, the recommendation and its reason, the default the agent applies if unanswered, asked date and optional needed-by date; list orders by needed-by and shows every open entry; close records the answer and requires it to be written to the node's planning sheet decision block",
+        "specy-road decisions add|list|close keeps open human decisions in one tracked roadmap/decisions.yaml. Schema validation runs before add writes the file and before list prints it. Each open entry has id, node, kind (exactly decision or human-action), a plain-words summary, why now and what it blocks, at least one option with its effect, the recommendation and its reason, the default the agent applies if unanswered, asked, and status open. needed_by is optional. asked and needed_by are calendar dates written YYYY-MM-DD that datetime.date.fromisoformat accepts. add rejects any other string before writing. list exits non-zero when schema validation rejects the file, including a YYYY-MM-DD that is not a real calendar day, such as 2026-99-99 or 2026-02-30. Datetimes, times, and time zones are out of scope. list prints every open entry, entries with needed_by first in ascending date order, entries without needed_by last. close records the answer and the closed time only when the node's planning sheet has a matching decision line (optional list marker or checkbox in front). The decision block is the body of the first level-2 section whose heading normalises to decisions and notes or decisions, taken only after CommonMark fences are removed from the whole sheet. A fence opens on a backtick or tilde run of length at least 3 and closes on a later run of the same character at least that long. Lines inside a fence do not count, and a decision heading that appears only inside a fence is not the decision block. A matching line that appears only in another section does not count. Indented code blocks, HTML comments, and blockquotes are out of scope and need not be stripped. (rewritten from RCA-3, maintainer-approved 2026-11-02)",
         "The orchestrate skill and the coordinator prompt tell the agent to read decisions list each turn (as with worker sync), to search the ledger and planning-sheet decision blocks before asking anything, to ask at most four at once in the self-contained shape with no bare ids, and to end any turn that has open entries with one 'Decisions waiting on you' block listing all of them below the status",
         "docs/orchestration.md describes the ledger and the question shape; tests cover add, list ordering, close requiring the sheet record, and schema validation"
       ],
@@ -449,7 +452,8 @@
       "title": "review-packet warns when the brief or summary names a file not committed at the reviewed commit",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/review_packet_uncommitted_refs.py"
       ],
       "type": "task"
     },

@@ -1,12 +1,11 @@
 #!/bin/sh
 # claude-review.sh <effort> <prompt text>: one fallback reviewer turn on Claude Code (Opus), used
 # sparingly when the Codex reviewer is unavailable. The prompt goes right after -p because
-# --add-dir and --allowedTools take several values and would swallow it. --bare: the branch under
-# review runs none of its hooks or MCP servers here (needs ANTHROPIC_API_KEY, not the subscription
-# login); the reviewer records it with `review record --launch-mode bare`.
+# --add-dir and --allowedTools take several values and would swallow it. Runs on the subscription
+# login (--bare would need ANTHROPIC_API_KEY), so the launch mode is full.
 effort=$1 prompt=$2
 PATH=/Users/savigil/WORKSPACE/specy-road/sr/tools:/Users/savigil/WORKSPACE/specy-road/.conda/bin:$PATH
 export PATH
-exec claude -p "$prompt" --bare --model claude-opus-5-5 --effort "$effort" --permission-mode acceptEdits \
+exec claude -p "$prompt" --model claude-opus-5-5 --effort "$effort" --permission-mode acceptEdits \
   --allowedTools "Read,Grep,Glob,Write,Edit,Bash" \
   --add-dir /Users/savigil/WORKSPACE/specy-road/sr/work/reviews </dev/null

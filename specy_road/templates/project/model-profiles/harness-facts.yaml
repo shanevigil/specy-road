@@ -6,7 +6,7 @@
 #
 # Labels: documented = a vendor page or repository doc says so (the source names it);
 # runtime = observed by running the binary (the source names the capture or run);
-# unverified = no cited source yet. M8.7 replaces unverified labels with runtime results.
+# unverified = no cited source yet. M8.7 replaced unverified labels with runtime results or documented still-unknown rows.
 # Sources under harness-captures/ are the accepted --version/--help captures next to
 # this file; docs/... paths are the specy-road toolkit's own docs.
 #
@@ -56,8 +56,9 @@ harnesses:
       source: docs/optional-ai-tooling-patterns.md (sandbox run 2026-10-28)
     git_actions:
       - action: commits when asked, with an attribution trailer by default
-        switch: unknown (attribution setting not checked)
-        label: unverified
+        switch: unknown (attribution CLI setting not checked; Co-Authored-By trailer observed at runtime)
+        label: runtime
+        source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (claude 2.1.312, nested/sub commit 2026-11-02)
       - action: --worktree / -w creates its own git worktree
         switch: never pass -w/--worktree; specy-road creates the worktree
         label: runtime
@@ -146,7 +147,8 @@ harnesses:
       source: docs/install-and-usage.md (validate context lines)
     skill_dirs:
       value: [.agents/skills]
-      label: unverified
+      label: runtime
+      source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (codex-cli 0.165.0 loads .agents/skills at exec start, 2026-11-02)
     hooks:
       value: PreToolUse on Bash in .codex/hooks.json (or [hooks] in .codex/config.toml); exit 2 denies; project hooks load only when .codex/ is trusted, and an untrusted hook is skipped silently
       label: documented
@@ -174,7 +176,8 @@ harnesses:
       source: docs/design-notes/harness-compatibility-triage.md
     quota:
       value: unknown; one failure exit is documented, so the event stream (turn.failed) is read, not the exit code
-      label: unverified
+      label: runtime
+      source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (turn.failed with exit 0 on model error, codex-cli 0.165.0, 2026-11-02)
     capture_commands:
       version.txt: [codex, --version]
       help.txt: [codex, --help]
@@ -282,8 +285,9 @@ harnesses:
       label: documented
       source: docs/orchestration-models.md (Cursor model ids carry vendor and effort)
     quota:
-      value: unknown
-      label: unverified
+      value: unknown (no usage-limit event observed on this account during M8.7 runs)
+      label: documented
+      source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (still unknown, agent 2026.10.22, 2026-11-02)
     capture_commands:
       version.txt: [agent, --version]
       help.txt: [agent, --help]
@@ -316,7 +320,8 @@ harnesses:
     binary: access.cli
     version:
       value: none of its own; the version is that of whatever binary access.cli names
-      label: unverified
+      label: documented
+      source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (by definition; not one binary, 2026-11-02)
     headless_command:
       value: the roster channels.cli, else the profile's access.cli, with {prompt} (the prompt file path) or <prompt> (the prompt text) substituted
       label: documented
@@ -332,14 +337,17 @@ harnesses:
       source: docs/orchestration-workers.md (harness table); specy_road/worker_adapters.py (Adapter.caps)
     permission_example:
       value: whatever the command's own flags grant; specy-road adds none
-      label: unverified
+      label: documented
+      source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (still unknown per access.cli; not exercised, 2026-11-02)
     instruction_files:
       value: [AGENTS.md]
       size_guidance: unknown
-      label: unverified
+      label: documented
+      source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (specy-road init convention; not verified per generic binary, 2026-11-02)
     skill_dirs:
       value: [.agents/skills]
-      label: unverified
+      label: documented
+      source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (init layout; per-binary load still unknown, 2026-11-02)
     hooks:
       value: no hook of its own; the session guard's generic contract reads a JSON object with a command field on stdin and exits 2 to deny, for any harness that can call it
       label: documented
@@ -347,10 +355,12 @@ harnesses:
     git_actions:
       - action: unknown; depends on the binary access.cli names
         switch: unknown
-        label: unverified
+        label: documented
+        source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (still unknown per access.cli, 2026-11-02)
     model_families:
       value: []
-      label: unverified
+      label: documented
+      source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (roster contract; empty list by design, 2026-11-02)
     quota:
       value: unknown; no usage is reported (every usage field is null)
       label: documented

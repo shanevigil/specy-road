@@ -1,55 +1,5 @@
 version: 1
 entries:
-  - codename: max-workers-global
-    node_id: M11.4
-    branch: feature/rm-max-workers-global
-    touch_zones:
-      - specy_road/worker_ops.py
-      - specy_road/worker_state.py
-      - specy_road/orchestration_config.py
-      - docs/orchestration-workers.md
-      - tests/
-      - specy_road/worker_lease.py
-      - specy_road/worker_runner.py
-      - specy_road/worker_process.py
-      - specy_road/worker_reconcile.py
-      - specy_road/bundled_scripts/worker_cli.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: delta-review-packet
-    node_id: M11.8
-    branch: feature/rm-delta-review-packet
-    touch_zones:
-      - specy_road/bundled_scripts/review_packet.py
-      - specy_road/review_gate.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/schemas/review-record.schema.json
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/orchestration_config.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: milestone-full-review
-    node_id: M11.13
-    branch: feature/rm-milestone-full-review
-    touch_zones:
-      - specy_road/bundled_scripts/review_packet.py
-      - specy_road/review_gate.py
-      - specy_road/finish_ancestor_rollup.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - sr/schemas/
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/review_target.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/bundled_scripts/mark_implementation_reviewed.py
-      - specy_road/orchestration_config.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: profile-aliases
     node_id: M11.26
     branch: feature/rm-profile-aliases
@@ -60,6 +10,7 @@ entries:
       - docs/orchestration-models.md
       - tests/
       - specy_road/bundled_scripts/models_cli.py
+      - model-profiles/
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
@@ -72,18 +23,6 @@ entries:
       - specy_road/templates/
       - README.md
       - docs/install-and-usage.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: merge-push-disclosure
-    node_id: M11.25
-    branch: feature/rm-merge-push-disclosure
-    touch_zones:
-      - specy_road/finish_land_integration.py
-      - specy_road/bundled_scripts/finish_task.py
-      - specy_road/finish_modes.py
-      - docs/git-workflow.md
       - tests/
     started: '2026-11-02'
     owner: savigil
@@ -103,34 +42,87 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: quieter-overlap-warnings
-    node_id: M11.18
-    branch: feature/rm-quieter-overlap-warnings
+  - codename: queue-worker-message
+    node_id: M11.14
+    branch: feature/rm-queue-worker-message
     touch_zones:
+      - specy_road/worker_ops.py
+      - specy_road/worker_runner.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - docs/orchestration-workers.md
+      - tests/
+      - specy_road/bundled_scripts/worker_cli_render.py
+      - specy_road/schemas/worker-event.schema.json
+      - specy_road/schemas/worker-record.schema.json
+      - specy_road/worker_state.py
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: sheet-edits-keep-approvals
+    node_id: M11.16
+    branch: feature/rm-sheet-edits-keep-approvals
+    touch_zones:
+      - specy_road/review_gate.py
+      - specy_road/review_files.py
+      - docs/orchestration-review.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: packet-uncommitted-refs
+    node_id: M11.37
+    branch: feature/rm-packet-uncommitted-refs
+    touch_zones:
+      - specy_road/bundled_scripts/review_packet.py
+      - tests/
+      - specy_road/bundled_scripts/review_packet_uncommitted_refs.py
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: session-end-default
+    node_id: M11.42
+    branch: feature/rm-session-end-default
+    touch_zones:
+      - specy_road/session_presence.py
+      - specy_road/bundled_scripts/session_cli.py
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: worktree-handoff-writable
+    node_id: M11.24
+    branch: feature/rm-worktree-handoff-writable
+    touch_zones:
+      - specy_road/worker_adapters.py
+      - specy_road/bundled_scripts/role_prompt_rca.py
+      - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: roster-source-explained
+    node_id: M11.20
+    branch: feature/rm-roster-source-explained
+    touch_zones:
+      - specy_road/orchestration_pinned.py
+      - specy_road/orchestrate_plan.py
       - specy_road/bundled_scripts/validate_roadmap.py
-      - specy_road/bundled_scripts/roadmap_crud_ops.py
+      - docs/orchestration.md
       - tests/
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: pickup-no-work-stash
-    node_id: M11.19
-    branch: feature/rm-pickup-no-work-stash
+  - codename: parallel-test-suite
+    node_id: M11.54
+    branch: feature/rm-parallel-test-suite
     touch_zones:
-      - specy_road/bundled_scripts/do_next_task_pickup_helpers.py
-      - specy_road/bundled_scripts/do_next_task.py
-      - specy_road/worker_reconcile.py
+      - pyproject.toml
+      - .github/workflows/validate.yml
+      - sr/roadmap/git-workflow.yaml
+      - docs/git-workflow.md
+      - docs/contributor-guide.md
+      - CLAUDE.md
       - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: runtime-verification-of-the-harness-facts-against-installed-binaries
-    node_id: M8.7
-    branch: feature/rm-runtime-verification-of-the-harness-facts-against-installed-binaries
-    touch_zones:
-      - research/
-      - specy_road/templates/project/model-profiles/
-      - docs/
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending

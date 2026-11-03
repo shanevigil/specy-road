@@ -32,6 +32,56 @@ commit.
 `finish-this-task` checks the gate again at the current commit, so work
 committed after approval cannot ship on the earlier reviews.
 
+## Delta review of small fix rounds
+
+A new commit makes every record stale, so each fix round normally needs fresh
+full reviews. With `policy.delta_review` (in `roadmap/orchestration.yaml`, read
+from the integration branch like the rest of the policy; **default true**), a
+reviewer whose last counting approval was of an earlier commit of the branch may
+review the next round from a **delta packet** when the change since that commit
+(`git diff <approved>..<commit>`) meets all of:
+
+- every changed path is a documentation file (`.md`, `.rst`, `.txt`, `.adoc`) or a
+  test file (under a `tests`, `test` or `__tests__` directory, or named `test_*.py`,
+  `*_test.*`, `*.test.*` or `*.spec.*`);
+- it touches at most three files (both sides of a rename count); there is no line limit;
+- the `specy-road integrity` report for that change has no findings (no removed or
+  skipped tests, no lost asserts, nothing else it reports);
+- every path is inside the leaf's touch zones; the leaf's own
+  `work/implementation-summary-<NODE_ID>.md` counts as inside.
+
+Otherwise the round gets the full packet. `specy-road prompt <NODE_ID> --role
+reviewer --model <id>` applies the rule for that reviewer: when it holds it
+writes `work/reviews/<NODE_ID>/PACKET-<model>.md` and hands that reviewer that
+packet instead of `PACKET.md`. It has the usual sections computed over the
+change since the approved commit (the **Base** line names it), the whole diff
+inlined, and a **Delta review** section with that reviewer's notes on the
+approved commit. Every other reviewer gets `PACKET.md` as before.
+
+The reviewer then adds `delta_from: "<approved commit>"` to its record's front
+matter. The gate counts an approval naming `delta_from` only when a counting
+approval of that commit by the same model is on file (`history/` keeps every
+filing), and only while the change since still meets the rule above under the
+current policy. An earlier approval counts only if it would have counted at its
+own commit:
+- it has a result for every acceptance id in the brief;
+- it passes the roster, session and signature checks;
+- if it names `delta_from` itself, its own delta qualifies and its basis still counts under this same rule.
+
+The reviewer's latest record on a commit is its verdict there. A later block on that commit takes the approval back, and with it every delta approval that depends on it; a later eligible approval of the commit restores them.
+
+A delta approval the gate rejected is therefore never the start of a later delta. Otherwise `handoff status` lists it as `does not count — a delta
+review from <sha>, …; a full review is needed`. A delta approval is still one
+model's vote, so `reviewers_distinct_families` still needs approvals from both
+families at the current commit. A block is never affected. Like
+`fresh_session`, `delta_from` is self-attested; a signature covers it.
+
+Full fresh review comes back two ways. `specy-road review-packet <NODE_ID>
+--full` stamps `PACKET.md`; while that packet is the one for the commit under
+review, no delta packet is built and no `delta_from` approval counts. Rebuilding
+the packet without `--full`, or a new commit, lifts the stamp. `delta_review:
+false` turns the rule off everywhere.
+
 **Under the default policy** the interactive menu's **approve** files
 `REVIEW-human.md` and closes the gate in one step; a human approval is offered
 only when it would complete the policy. **`--yes` never creates a review:** it
@@ -80,9 +130,22 @@ process does not hold. Still self-attested: the session flags inside a signed re
 | `stale` | The branch moved past the READY commit. |
 | `escalated` | The review loop is not converging (see below) and no RCA record covers it; the trigger is named. |
 | `complete_no_claim` | The node is Complete and its claim is released; its records are listed, not evaluated (`--ref` evaluates them). |
+| `leaves_open` | A milestone with a leaf not yet Complete at the integration tip; its full review has not started (below). |
+| `awaiting_full_review` | A milestone whose leaves are all finished waits for its full review at the integration tip (below); `approved` once the gate is met there. |
 | `unclaimed`, `error` | No open claim names a commit, so the gate cannot be evaluated and the records are only listed (pass `--ref`); `error`: the node or `--ref` does not resolve. |
 
 Below each node it lists every problem to fix. Given one `<NODE_ID>`, the exit status is for a polling script: `0` the policy is met (`approved`) or the node is `complete_no_claim`; `1` it is not met (`waiting`, `in-review`, `blocked`, `executor_blocked`, `stale`, `escalated`); `2` it cannot be determined (`unclaimed`, `error`, or `--ref` without a node). The sweep with no `<NODE_ID>` only reports and exits 0. **Review-loop escalation:** a round is one reviewed commit in `history/`; when the last `escalate_same_acceptance_blocks` rounds all block on one acceptance id, or after `escalate_review_rounds` rounds, an unapproved leaf is `escalated` with its trigger named (`review list` prints it too, and reviewer prompts say so). `specy-road prompt <NODE_ID> --role rca --model <id>` (a rostered reviewer that neither implemented nor reviewed the leaf) then builds a root-cause prompt from the brief, every round's records side by side and the diffs between them; the analyst writes `RCA-<round>.md` beside the reviews with a classification (specification, implementation, test, reviewer, environment, hard problem), cited evidence, the cheapest corrective action and, for a specification cause, a proposed acceptance rewrite for a human to approve. A valid record resolves the trigger and counting restarts; an invalid one is listed as a problem. Design: [design-notes/review-loop-rca.md](design-notes/review-loop-rca.md).
+
+## Milestone full review
+
+Leaf reviews are leaf-sized, so a regression that only shows across two leaves of one milestone can pass both. With `policy.milestone_full_review: true` in `roadmap/orchestration.yaml` (the default, read from the integration branch like the rest of the policy) a milestone, meaning any node with leaf children, gets one full review of its combined change before it is marked Complete:
+
+- **The hold.** When `finish-this-task` closes the last leaf under a milestone, it leaves the milestone's own status as authored instead of setting it Complete, prints `[hold] <MILESTONE_ID> rolled up to Complete but …` with the reason and the next commands, and opens `work/reviews/<MILESTONE_ID>/` so `handoff status` lists it. The public loader's computed `rollup_status` stays `In Progress` until the review is approved, so `roadmap.md`, the brief and the PM GUI agree with `list-nodes`. Every ancestor above the held milestone waits with it. The hold is released only by a gate met at an integration tip where every leaf under the milestone is Complete: at the last leaf's own finish that leaf has not landed yet, so the reason is `its leaves <ids> have not landed on <integration ref>`, and an approval recorded against the tip before the last leaf landed never counts, since that tip is not the combined change. The hold applies only while `require_implementation_review_before_finish` is on; a milestone owned by the milestone-rollup state machine (`milestone_execution`) is left to that machine as before.
+- **The packet.** Once the branch has landed, `specy-road review-packet <MILESTONE_ID>` builds the packet for the integration tip; while a leaf is not Complete at that tip it refuses, as `review record <MILESTONE_ID>` does, naming the leaves. A milestone has no registry claim, so its commit under review is the tip of the integration branch (remote-tracking ref first, else local) and its base is the first parent of the oldest `chore(rm-<codename>): register as in-progress` commit of any leaf under it that the tip reaches: the point the first leaf branched from, so the diff is every leaf's change together. `--base <ref>` overrides it, and the command refuses with that hint when no leaf registration is reachable (leaves landed without pickup). The header names the leaves covered, and the implementation summary section says the leaf summaries were reviewed with their leaves. `--ref` reviews another commit instead of the tip.
+- **The records.** Reviewers file `specy-road review record <MILESTONE_ID> --model <id> --verdict approve|block --file <notes.md>` against that commit, with an empty `acceptance` map (a milestone has no acceptance ids of its own). The gate is the leaf gate at that commit, so `reviewers_required` and `reviewers_distinct_families` apply unchanged, and a new commit on the integration branch makes the records stale as for a leaf.
+- **The release.** `specy-road mark-implementation-reviewed <MILESTONE_ID>` must run on the integration branch checkout with `HEAD` at the commit under review (the remote-tracking tip when there is one): before it reads a record, prompts, or writes anything it refuses on another branch, on a local integration branch behind or ahead of that tip (pull or push first), or while a leaf is not Complete there. It then evaluates the gate at that commit (the interactive human approval and `--yes` behave as for a leaf) and on success sets the milestone and the stale ancestors above it Complete, regenerates the exported files, and commits them as `roadmap: <MILESTONE_ID> full review approved; status -> Complete` with the `Reviewed-by` trailers. That authored Complete is the recorded closure: later integration commits, including the closure commit itself, do not reopen the hold, so `load_roadmap` keeps `rollup_status` Complete. `handoff status <MILESTONE_ID>` shows `leaves_open` (exit 1) while a leaf is not Complete at the tip, `awaiting_full_review` (exit 1) until the gate is met, `approved` with the release command once it is, and `complete_no_claim` afterwards; `review list <MILESTONE_ID>` prints the same next step under the gate line.
+
+With `milestone_full_review: false` the last leaf's finish sets the milestone Complete at once, as before, and the computed rollup is Complete as soon as every leaf is.
 
 ## The hand-off directory in a worktree
 
