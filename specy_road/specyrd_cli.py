@@ -89,6 +89,19 @@ def _prompt_role() -> str | None:
     return "both"
 
 
+def _add_hook_install_args(init: argparse.Action) -> None:
+    init.add_argument(
+        "--install-orchestration-hooks",
+        action="store_true",
+        help="Merge orchestration guard hook snippets into the harness config for --ai claude-code, codex or cursor.",
+    )
+    init.add_argument(
+        "--install-pre-push-hook",
+        action="store_true",
+        help="Install .git/hooks/pre-push to refuse pushes from work/.worktrees/ linked worktrees.",
+    )
+
+
 def _add_specyrd_init_subparser(sub: argparse.Action) -> None:
     init = sub.add_parser(
         "init",
@@ -161,6 +174,7 @@ def _add_specyrd_init_subparser(sub: argparse.Action) -> None:
         metavar="LIST",
         help="Comma-separated optional installs: review, gui (pip install specy-road[...]).",
     )
+    _add_hook_install_args(init)
     init.add_argument(
         "--no-prompt",
         action="store_true",
@@ -230,6 +244,8 @@ def main(argv: list[str] | None = None) -> None:  # noqa: C901 — baseline 2026
             role=role,
             write_claude_md=(args.agent == "claude-code"),
             gui_settings_stub=("gui" in extras),
+            install_guard_hooks=args.install_orchestration_hooks,
+            install_pre_push=args.install_pre_push_hook,
         )
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)

@@ -67,8 +67,9 @@ class Codex(Adapter):
         # Same policy as the launch, prompt on stdin again (128 KiB argv cap). `exec resume` takes neither --sandbox,
         # -C (the wrapper runs it in the worktree) nor a documented --add-dir, so the policy goes in as config overrides.
         home = session_home(session_id) or profile_home(model)   # where the launch left the thread
-        return Launch(["codex", "exec", "resume", "--json", *self.effort_flag(effort), *CODEX_POLICY, *CODEX_MEMORY_OFF,
-                       session_id, "-"], stdin=_text(prompt_path), session_id=session_id, env={"CODEX_HOME": str(home)})
+        return Launch(["codex", "exec", "resume", "--json", *_model_flag("-m", model), *self.effort_flag(effort),
+                       *CODEX_POLICY, *CODEX_MEMORY_OFF, session_id, "-"],
+                      stdin=_text(prompt_path), session_id=session_id, env={"CODEX_HOME": str(home)})
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)

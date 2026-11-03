@@ -68,7 +68,8 @@ class Cursor(Adapter):
         if custom:
             return custom
         return Launch(["agent", "-p", "--resume", session_id, "--output-format", "stream-json", "--force", "--trust",
-                       "--workspace", str(worktree), *self._add_dir(worktree, repo_root, node_id), _text(prompt_path)],
+                       *_model_flag("--model", model), "--workspace", str(worktree), *self._add_dir(worktree, repo_root, node_id),
+                       _text(prompt_path)],
                       session_id=session_id)
 
     def parse(self, line: str) -> Parsed | None:
@@ -90,7 +91,7 @@ class Cursor(Adapter):
             ok = not d.get("is_error")
             summary = f"{d.get('subtype')}: {_snip(text)}" if ok else _snip(text) or f"{d.get('subtype')}: error"
             detail = {"message": text} if text else None
-            # Token counts only, when the line carries them: no cost field is documented for agent -p.
+            # Token counts only on the line; cost comes from the roster profile when rates are known.
             return Parsed("turn_completed" if ok else "error", summary, sid, detail,
                           usage_fields(d.get("usage"), num_turns=d.get("num_turns")))
         return None

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import NODE, git, make_review_repo
+from tests.review_repo_helpers import NODE, git, make_review_repo, shipped_anthropic_opus_cli_yaml_line
 
 from specy_road import model_profiles as mp
 from specy_road.bundled_scripts import models_cli, role_prompt
@@ -292,7 +292,7 @@ def test_prompt_without_profile_still_writes(tmp_path: Path, capsys) -> None:
 def test_prompt_cli_channel_runs_profile_cli(tmp_path: Path, capsys, monkeypatch) -> None:
     repo = make_profile_repo(tmp_path)
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
-    text = prof_path.read_text().replace('  cli: claude -p "<prompt>"', "  cli: cat {prompt} | head -1")
+    text = prof_path.read_text().replace(shipped_anthropic_opus_cli_yaml_line(), "  cli: cat {prompt} | head -1")
     assert text != prof_path.read_text()
     prof_path.write_text(text)
     commit_profile(repo)
@@ -305,7 +305,7 @@ def test_prompt_cli_channel_runs_profile_cli(tmp_path: Path, capsys, monkeypatch
 def test_prompt_cli_channel_refuses_without_placeholder(tmp_path: Path, capsys) -> None:
     repo = make_profile_repo(tmp_path)
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
-    prof_path.write_text(prof_path.read_text().replace('  cli: claude -p "<prompt>"', "  cli: echo hi"))
+    prof_path.write_text(prof_path.read_text().replace(shipped_anthropic_opus_cli_yaml_line(), "  cli: echo hi"))
     commit_profile(repo)
     assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
                 "--repo-root", str(repo)) == 1
@@ -316,7 +316,8 @@ def test_prompt_cli_channel_accepts_the_profiles_prompt_form(tmp_path: Path, cap
     """Shipped profiles write ``claude -p "<prompt>"``: the text goes in, quoted (and is not logged)."""
     repo = make_profile_repo(tmp_path)
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
-    prof_path.write_text(prof_path.read_text().replace('  cli: claude -p "<prompt>"', '  cli: printf %s "<prompt>" | wc -c'))
+    prof_path.write_text(prof_path.read_text().replace(shipped_anthropic_opus_cli_yaml_line(),
+                                                       '  cli: printf %s "<prompt>" | wc -c'))
     commit_profile(repo)
     assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
                 "--repo-root", str(repo)) == 0
@@ -396,5 +397,4 @@ def test_shipped_claude_profiles_set_default_effort_and_coordinator_one_below() 
 def test_models_show_prints_effort_by_role(tmp_path: Path, capsys) -> None:
     repo = make_profile_repo(tmp_path)
     assert run_main(models_cli, "models", "show", "opus", "--repo-root", str(repo)) == 0
-    assert "- effort_by_role: coordinator=low (low), executor=medium (medium), reviewer=medium (medium)" \
-        in capsys.readouterr().out
+    assert "- effort_by_role: coordinator=low (low), executor=medium (medium), reviewer=medium (medium)" in capsys.readouterr().out
