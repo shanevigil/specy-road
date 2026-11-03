@@ -51,7 +51,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M4.16` Review rounds and elapsed time per leaf, and doctor lists detached worktrees `review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees` — task — **Complete**
   - `M4.17` Review-loop escalation: a root-cause analysis runs when reviews keep blocking `review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking` — task — **Complete**
   - `M4.18` Further TS/JS syntax forms for the function cap found in M4.12 review `further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review` — task — **Complete**
-- `M5` Agent context and outcomes `context-and-outcomes` — phase — **Complete**
+- `M5` Agent context and outcomes `context-and-outcomes` — phase — **In Progress**
   - `M5.1` Every managed AGENTS.md rule carries its provenance in the template `rule-provenance` — task — **Complete**
   - `M5.2` validate flags specy-road commands that do not exist in the consumer's agent files `stale-command-check` — task — **Complete**
   - `M5.3` validate reports always-injected context per harness against documented limits `context-budget-meter` — task — **Complete**
@@ -60,7 +60,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M5.6` Pilot the context-feedback question in the sandbox before shipping it `context-feedback-pilot` — task — **Complete**
   - `M5.7` Measure the managed section on and off across the sandbox apps `managed-section-ablation` — task — **Complete**
   - `M5.8` Further Markdown mention forms for the stale-command check found in M5.2 review `further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` — task — **Complete**
-- `M6` 0.3.1-rc2 release `release-0-3-1-rc2` — phase — **Complete**
+- `M6` 0.3.1-rc2 release `release-0-3-1-rc2` — phase — **In Progress**
   - `M6.1` Close out the triage note, changelog and what's-new for rc2 `rc2-closeout-docs` — task — **Complete**
   - `M6.2` Pre-release checks and the 0.3.1-rc2 cut `rc2-cut` — task — **Complete**
 - `M7` Keeping current: recurring research `keeping-current-recurring-research` — phase — **Not Started**
@@ -74,7 +74,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M8.5` Guard hooks per harness and avoid lists in every model profile `guard-hooks-per-harness-and-avoid-lists-in-every-model-profile` — task — **Not Started**
   - `M8.7` Runtime verification of the harness facts against installed binaries `runtime-verification-of-the-harness-facts-against-installed-binaries` — task — **Not Started**
   - `M8.6` Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic `candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic` — task — **Not Started**
-- `M9` Regression prevention `regression-prevention` — phase — **Complete**
+- `M9` Regression prevention `regression-prevention` — phase — **In Progress**
   - `M9.1` finish-this-task runs a configured land check on the merge commit before it pushes `land-check-on-merge-commit` — task — **Complete**
   - `M9.2` pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree `fixture-pollution-guard` — task — **Complete**
   - `M9.3` Finish, the packet and a finish re-run are tested in a nested layout whose leaf also changes a file outside the project `layout-with-outside-change` — task — **Complete**
@@ -125,7 +125,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.15` Pickup and finish agree on unwritten planning sheets `pickup-refuses-scaffold-sheet` — task — **Complete**
   - `M11.16` A commit that changes only planning or bookkeeping files keeps existing approvals `sheet-edits-keep-approvals` — task — **Not Started**
   - `M11.17` edit-node names every chunk file it changes, and relocation is loud `edit-node-names-chunks` — task — **Complete**
-  - `M11.18` Registry overlap warnings show only what concerns the command at hand `quieter-overlap-warnings` — task — **Not Started**
+  - `M11.18` Registry overlap warnings show only what concerns the command at hand `quieter-overlap-warnings` — task — **Complete**
   - `M11.19` Pickup never stashes work/ around the registry commit `pickup-no-work-stash` — task — **Not Started**
   - `M11.20` orchestrate plan and validate say where the roster is read from `roster-source-explained` — task — **Not Started**
   - `M11.22` Worker worktrees can include nested sibling repositories `nested-repo-worktrees` — task — **Not Started**
@@ -150,6 +150,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Not Started**
   - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Not Started**
 
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+
 ## Archived (not in the live roadmap)
 
 This work was completed and moved out of the graph. It is deliberately excluded from IDE indexing; reach it with `specy-road search <QUERY> --scope archived`.
@@ -161,7 +167,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M11.13` on `feature/rm-milestone-full-review` since 2026-11-02
-- `M11.18` on `feature/rm-quieter-overlap-warnings` since 2026-11-02
 - `M11.19` on `feature/rm-pickup-no-work-stash` since 2026-11-02
 - `M11.25` on `feature/rm-merge-push-disclosure` since 2026-11-02
 - `M11.26` on `feature/rm-profile-aliases` since 2026-11-02

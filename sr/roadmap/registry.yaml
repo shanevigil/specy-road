@@ -88,19 +88,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: quieter-overlap-warnings
-    node_id: M11.18
-    branch: feature/rm-quieter-overlap-warnings
-    touch_zones:
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - specy_road/bundled_scripts/roadmap_crud_ops.py
-      - tests/
-      - specy_road/bundled_scripts/validate_registry_overlap.py
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T03:23:02+00:00'
   - codename: pickup-no-work-stash
     node_id: M11.19
     branch: feature/rm-pickup-no-work-stash

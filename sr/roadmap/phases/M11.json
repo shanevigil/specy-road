@@ -469,7 +469,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.18_quieter-overlap-warnings_bc246e83-fbbc-4125-b4a1-41e415bf6a70.md",
       "sibling_order": 18,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Registry overlap warnings show only what concerns the command at hand",
       "touch_zones": [
         "specy_road/bundled_scripts/validate_roadmap.py",
