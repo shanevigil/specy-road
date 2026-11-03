@@ -93,5 +93,9 @@ entries:
       exits) and excludes index-only changes
     default_if_unanswered: hold M8.2 until answered
     asked: '2026-11-03'
-    status: open
+    status: closed
     needed_by: '2026-11-03'
+    answer: 'approve: A3 replaced with the RCA-8 bounded text (one post_run_check
+      per turn; defined turn kinds, stream and git findings; index-only changes out
+      of scope) (maintainer, 2026-11-03)'
+    closed: '2026-11-03T23:30:15+00:00'
