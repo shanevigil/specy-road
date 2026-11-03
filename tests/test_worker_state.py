@@ -276,12 +276,12 @@ def test_a_leafs_own_worker_logs_neither_breach_zones_nor_block_redelegation(tmp
     own = f"work/worker-logs/M1.1/{rec.worker_id}.events.jsonl"
     assert (repo / own).is_file()
     _rec, delta = ops.reconcile(repo, rec.worker_id)
-    assert own in delta["changed"] and own not in delta["outside_touch_zones"]
+    assert own in delta["untracked"] and own not in delta["untracked_outside_touch_zones"]
     other = repo / "work" / "worker-logs" / "M1.2" / "w-0009.events.jsonl"   # another leaf's: not bookkeeping
     other.parent.mkdir(parents=True)
     other.write_text("{}\n")
     _rec, delta = ops.reconcile(repo, rec.worker_id)
-    assert "work/worker-logs/M1.2/w-0009.events.jsonl" in delta["outside_touch_zones"]
+    assert "work/worker-logs/M1.2/w-0009.events.jsonl" in delta["untracked_outside_touch_zones"]
     ops.terminate(repo, rec.worker_id)
     with pytest.raises(ws.WorkerError, match=r"uncommitted changes .*worker-logs/M1\.2/"):
         ops.delegate(repo, "M1.1", "opus")

@@ -220,7 +220,7 @@ def test_reconcile_flags_a_touch_zone_breach(tmp_path: Path, capsys) -> None:
     assert json.loads(capsys.readouterr().out)["delta"]["needs_reconcile"] is False
     (repo / "README.md").write_text("outside\n")
     (repo / "work" / "notes.md").write_text("under work/, but not the leaf's bookkeeping\n")
-    git(repo, "add", "-f", "work/notes.md")
+    git(repo, "add", "-f", "work/notes.md", "README.md")   # tracked: an untracked file is only a warning (M11.40)
     git(repo, "commit", "-qm", "worker notes")
     assert run_worker_cli("worker", "reconcile", "w-0001", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out

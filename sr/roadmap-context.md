@@ -146,7 +146,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.37` review-packet warns when the brief or summary names a file not committed at the reviewed commit `packet-uncommitted-refs` — task — **Complete**
   - `M11.38` handoff status says who can still supply a missing approval `handoff-eligible-reviewers` — task — **Complete**
   - `M11.39` A roster entry can be marked unavailable without deleting it `roster-availability` — task — **Complete**
-  - `M11.40` worker reconcile works on merged leaves and separates untracked files `reconcile-merged-and-untracked` — task — **Not Started**
+  - `M11.40` worker reconcile works on merged leaves and separates untracked files `reconcile-merged-and-untracked` — task — **Complete**
   - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Complete**
   - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Complete**
   - `M11.43` init project reports exactly what it writes `init-project-reports-writes` — task — **Complete**
@@ -157,7 +157,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.48` A claimed leaf reads as claimed in list-nodes and brief `claimed-leaf-status` — task — **Complete**
   - `M11.49` The review packet takes touch zones from the reviewed commit and treats lockfiles as generated `packet-zones-at-commit` — task — **Complete**
   - `M11.50` finish keeps a committed implementation summary in history `finish-keeps-summary` — task — **Complete**
-  - `M11.51` Dashboard saves never overwrite newer disk edits, and the read API is documented `dashboard-safe-saves` — task — **Not Started**
+  - `M11.51` Dashboard saves never overwrite newer disk edits, and the read API is documented `dashboard-safe-saves` — task — **Complete**
   - `M11.52` PR mode predicts and resolves the registry conflict `pr-mode-registry-conflict` — task — **Complete**
   - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Complete**
   - `M11.54` The test suite and land check run in parallel `parallel-test-suite` — task — **Complete**
@@ -186,8 +186,8 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.77` A completed reviewer run does not report a missing record `run-record-no-false-failure` — task — **Complete**
   - `M11.78` Review lessons: escaped defect classes feed every reviewer prompt `review-lessons` — task — **Complete**
   - `M11.79` Leaves that touch high-risk zones need a stronger reviewer `risk-tiered-review` — task — **Not Started**
-  - `M11.80` Executors and reviewers run tests with a bounded worker count `test-worker-cap` — task — **Not Started**
-  - `M11.82` The integration branch passes ruff again and the land check runs it `wip-ruff-clean` — task — **Not Started**
+  - `M11.80` Executors and reviewers run tests with a bounded worker count `test-worker-cap` — task — **Complete**
+  - `M11.82` The integration branch passes ruff again and the land check runs it `wip-ruff-clean` — task — **Complete**
 
 ## Dependencies that were removed
 
@@ -205,8 +205,7 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M11.40` on `feature/rm-reconcile-merged-and-untracked` since 2026-11-03
-- `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
+- `M11.22` on `feature/rm-nested-repo-worktrees` since 2026-11-03
 - `M11.62` on `feature/rm-headless-limits-denials` since 2026-11-03
 - `M11.75` on `feature/rm-reviewer-probe-rules` since 2026-11-03
 - `M11.79` on `feature/rm-risk-tiered-review` since 2026-11-03

@@ -146,7 +146,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.37` | review-packet warns when the brief or summary names a file not committed at the reviewed commit | task | Agentic-led | Complete |
 | `M11.38` | handoff status says who can still supply a missing approval | task | Agentic-led | Complete |
 | `M11.39` | A roster entry can be marked unavailable without deleting it | task | Agentic-led | Complete |
-| `M11.40` | worker reconcile works on merged leaves and separates untracked files | task | Agentic-led | Not Started |
+| `M11.40` | worker reconcile works on merged leaves and separates untracked files | task | Agentic-led | Complete |
 | `M11.41` | The two review-gate settings cannot silently disagree | task | Agentic-led | Complete |
 | `M11.42` | session end finds the session the same agent started | task | Agentic-led | Complete |
 | `M11.43` | init project reports exactly what it writes | task | Agentic-led | Complete |
@@ -157,7 +157,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.48` | A claimed leaf reads as claimed in list-nodes and brief | task | Agentic-led | Complete |
 | `M11.49` | The review packet takes touch zones from the reviewed commit and treats lockfiles as generated | task | Agentic-led | Complete |
 | `M11.50` | finish keeps a committed implementation summary in history | task | Agentic-led | Complete |
-| `M11.51` | Dashboard saves never overwrite newer disk edits, and the read API is documented | task | Agentic-led | Not Started |
+| `M11.51` | Dashboard saves never overwrite newer disk edits, and the read API is documented | task | Agentic-led | Complete |
 | `M11.52` | PR mode predicts and resolves the registry conflict | task | Agentic-led | Complete |
 | `M11.53` | A worktree-based flow can claim leaves without pushing from the worktree | task | Agentic-led | Complete |
 | `M11.54` | The test suite and land check run in parallel | task | Agentic-led | Complete |
@@ -186,7 +186,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.77` | A completed reviewer run does not report a missing record | task | Agentic-led | Complete |
 | `M11.78` | Review lessons: escaped defect classes feed every reviewer prompt | task | Agentic-led | Complete |
 | `M11.79` | Leaves that touch high-risk zones need a stronger reviewer | task | Agentic-led | Not Started |
-| `M11.80` | Executors and reviewers run tests with a bounded worker count | task | Agentic-led | Not Started |
-| `M11.82` | The integration branch passes ruff again and the land check runs it | task | Agentic-led | Not Started |
+| `M11.80` | Executors and reviewers run tests with a bounded worker count | task | Agentic-led | Complete |
+| `M11.82` | The integration branch passes ruff again and the land check runs it | task | Agentic-led | Complete |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

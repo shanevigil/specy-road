@@ -22,8 +22,9 @@ inlines all the context an implementer needs (no separate file-opening):
   inlined verbatim** (so PMs do not have to paraphrase upstream work in
   this task's own planning sheet — see ``brief_dependency_context``; one
   line instead while that ``## Intent`` is still a placeholder)
-* an explicit touch-zone instruction for the implementing agent; the header
-  states the brief's size and largest sections (``brief_acceptance``)
+* an explicit touch-zone instruction for the implementing agent, then how to
+  run the leaf's tests (``verify_cmd``, :mod:`specy_road.verify_cmd_config`); the
+  header states the brief's size and largest sections (``brief_acceptance``)
 
 Determinism: same chunks + same planning files + same shared/*.md set =>
 byte-identical output. No timestamps, no host info.
@@ -57,6 +58,7 @@ from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix
+from specy_road.verify_cmd_config import verify_cmd_lines
 
 
 def load_nodes(root: Path | None = None) -> list[dict]:
@@ -295,7 +297,7 @@ def _section_dependencies(node: dict, by_id: dict[str, dict]) -> list[str]:
 
 
 def _section_touch_zone_instruction(node: dict, root: Path) -> list[str]:
-    """F-009: explicit instruction to the implementing agent, then the zones' call sites."""
+    """F-009: explicit instruction to the implementing agent, then the zones' call sites and how to run tests."""
     tz = node.get("touch_zones") or []
     out = ["## 7. Touch zones — implementing agent instruction", ""]
     if tz:
@@ -319,7 +321,7 @@ def _section_touch_zone_instruction(node: dict, root: Path) -> list[str]:
             "ancestor paths), and include it in your implementation summary."
         )
     out.append("")
-    return out
+    return out + verify_cmd_lines(root)
 
 
 def _section_rollup_semantics() -> list[str]:

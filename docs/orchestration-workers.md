@@ -235,6 +235,8 @@ stop. A `completion` event says it stopped and whether READY exists; it is
 
 **Killing by pattern.** An executor clearing its own stray test run with `pkill -f "pytest -q"` also ended the coordinator's and other leaves' pytest runs (SIGTERM, no failure reported), since sessions share the machine. The executor prompt forbids kills by name or pattern and allows stopping only a process the executor started, by the pid it recorded.
 
+**Parallel tests.** Concurrent executors and reviewers share the machine's CPU, and each one running the full suite with one test worker per core (`pytest -n auto`) oversubscribes it: with several of them the load average runs well past the core count, the landing suite takes several times as long, and a reviewer's run can outlast its harness's background-task limit and be killed. Set **`verify_cmd`** in `roadmap/git-workflow.yaml` to the leaf-level test command with a small worker count (for example `python -m pytest -n 4 -p no:cacheprovider`): executor briefs and reviewer prompts give it as the command to run the leaf's tests, with the test paths appended. Keep the full parallel suite in **`land_check_cmd`**, which runs once per landing on the merge commit ([git-workflow.md](git-workflow.md)). Without `verify_cmd` the prompts only say to cap parallel test workers when other workers share the machine.
+
 | Command | Does |
 |---|---|
 | `list [--all]`, `status W`, `events W [--since N]`, `open W` | Read. `open` prints the worktree, the log, and the native resume command. `list` marks each orphaned worker `orphaned: <why>` (`orphaned` in `--json`, `null` otherwise). |

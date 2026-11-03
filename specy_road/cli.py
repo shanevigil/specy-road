@@ -263,6 +263,11 @@ def _cmd_gui(rest: list[str]) -> None:
     p = argparse.ArgumentParser(prog="specy-road gui")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8765)
+    p.add_argument(
+        "--read-only",
+        action="store_true",
+        help="Serve every GET route and refuse every write route with 403.",
+    )
     add_repo_root_arg(p)
     ns = p.parse_args(rest)
     uvicorn_spec = importlib.util.find_spec("uvicorn")
@@ -290,6 +295,8 @@ def _cmd_gui(rest: list[str]) -> None:
     env = os.environ.copy()
     if ns.repo_root is not None:
         env["SPECY_ROAD_REPO_ROOT"] = str(ns.repo_root.resolve())
+    if ns.read_only:
+        env["SPECY_ROAD_GUI_READ_ONLY"] = "1"
     host, port_s = ns.host, str(ns.port)
     if ns.host == "0.0.0.0":
         display_host = "127.0.0.1"

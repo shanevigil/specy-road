@@ -132,7 +132,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.80_test-worker-cap_090fe219-a5b0-4737-b9d8-d44749f0bb10.md",
       "sibling_order": 80,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Executors and reviewers run tests with a bounded worker count",
       "touch_zones": [
         "specy_road/git_workflow_config.py",
@@ -141,7 +141,8 @@
         "specy_road/bundled_scripts/generate_brief.py",
         "docs/git-workflow.md",
         "docs/orchestration-workers.md",
-        "tests/"
+        "tests/",
+        "specy_road/verify_cmd_config.py"
       ],
       "type": "task"
     },
@@ -158,7 +159,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.82_wip-ruff-clean_29461e62-7961-4fc1-bdc9-901d25cd57d5.md",
       "sibling_order": 81,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The integration branch passes ruff again and the land check runs it",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet_uncommitted_refs.py",

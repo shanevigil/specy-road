@@ -1,20 +1,5 @@
 version: 1
 entries:
-  - codename: dashboard-safe-saves
-    node_id: M11.51
-    branch: feature/rm-dashboard-safe-saves
-    touch_zones:
-      - specy_road/gui_app_routes_planning.py
-      - specy_road/gui_app_routes_workspace.py
-      - specy_road/gui_app.py
-      - specy_road/cli.py
-      - gui/pm-gantt/src/api.ts
-      - tests/
-      - docs/pm-gui.md
-      - specy_road/pm_gantt_static/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
     node_id: M8.3
     branch: feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
@@ -81,17 +66,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: reconcile-merged-and-untracked
-    node_id: M11.40
-    branch: feature/rm-reconcile-merged-and-untracked
-    touch_zones:
-      - specy_road/worker_reconcile.py
-      - specy_road/worker_ops.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: risk-tiered-review
     node_id: M11.79
     branch: feature/rm-risk-tiered-review
@@ -108,30 +82,18 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: test-worker-cap
-    node_id: M11.80
-    branch: feature/rm-test-worker-cap
+  - codename: nested-repo-worktrees
+    node_id: M11.22
+    branch: feature/rm-nested-repo-worktrees
     touch_zones:
       - specy_road/git_workflow_config.py
+      - specy_road/worker_ops.py
+      - specy_road/worker_reconcile.py
+      - specy_road/finish_land_integration.py
       - specy_road/templates/project/schemas/git-workflow.schema.json
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/bundled_scripts/generate_brief.py
-      - docs/git-workflow.md
-      - docs/orchestration-workers.md
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
-  - codename: wip-ruff-clean
-    node_id: M11.82
-    branch: feature/rm-wip-ruff-clean
-    touch_zones:
-      - specy_road/bundled_scripts/review_packet_uncommitted_refs.py
-      - specy_road/orchestration_config.py
-      - specy_road/orchestration_local_overlay.py
-      - sr/roadmap/git-workflow.yaml
       - docs/git-workflow.md
       - tests/
+      - specy_road/bundled_scripts/review_packet.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
