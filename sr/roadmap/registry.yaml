@@ -147,3 +147,14 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: validate-zones-git-root
+    node_id: M11.47
+    branch: feature/rm-validate-zones-git-root
+    touch_zones:
+      - specy_road/bundled_scripts/validate_touch_zones.py
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
+      - tests/
+      - docs/roadmap-authoring.md
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
