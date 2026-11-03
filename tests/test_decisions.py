@@ -146,6 +146,22 @@ def test_close_requires_decision_block_record(tmp_path: Path, capsys) -> None:
     assert read_decisions(repo / "roadmap" / "decisions.yaml")["entries"][0]["status"] == "open"
 
     (repo / SHEET).write_text(
+        "# M1.1 Thing\n\n## Decisions and notes\n\n~~~text\nD1: blue\n~~~\n",
+        encoding="utf-8",
+    )
+    assert _run(["decisions", "close", "D1", "--answer", "blue", "--repo-root", str(repo)]) == 1
+    assert "planning sheet decision block has no line" in capsys.readouterr().err
+    assert read_decisions(repo / "roadmap" / "decisions.yaml")["entries"][0]["status"] == "open"
+
+    (repo / SHEET).write_text(
+        "# M1.1 Thing\n\n## Decisions and notes\n\n````\nD1: blue\n```\nD1: blue\n````\n",
+        encoding="utf-8",
+    )
+    assert _run(["decisions", "close", "D1", "--answer", "blue", "--repo-root", str(repo)]) == 1
+    assert "planning sheet decision block has no line" in capsys.readouterr().err
+    assert read_decisions(repo / "roadmap" / "decisions.yaml")["entries"][0]["status"] == "open"
+
+    (repo / SHEET).write_text(
         "# M1.1 Thing\n\n## Intent\n\nD1: blue\n\n## Decisions and notes\n\n- D1: blue\n",
         encoding="utf-8",
     )
@@ -163,7 +179,8 @@ def test_add_rejects_malformed_dates(tmp_path: Path, capsys, flag: str, value: s
     assert not (repo / "roadmap" / "decisions.yaml").is_file()
 
 
-def test_list_rejects_malformed_asked_in_ledger(tmp_path: Path, capsys) -> None:
+@pytest.mark.parametrize("asked_yaml", ["not-a-date", '"2026-02-30"'])
+def test_list_rejects_malformed_asked_in_ledger(tmp_path: Path, capsys, asked_yaml: str) -> None:
     repo = _decisions_repo(tmp_path)
     (repo / "roadmap" / "decisions.yaml").write_text(
         "version: 1\n"
@@ -179,7 +196,7 @@ def test_list_rejects_malformed_asked_in_ledger(tmp_path: Path, capsys) -> None:
         "    recommendation: a\n"
         "    recommendation_reason: r\n"
         "    default_if_unanswered: a\n"
-        "    asked: not-a-date\n"
+        f"    asked: {asked_yaml}\n"
         "    status: open\n",
         encoding="utf-8",
     )

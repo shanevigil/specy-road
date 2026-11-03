@@ -60,7 +60,8 @@ def schema_path_for_write(project_root: Path) -> Path:
 
 @cache
 def _validator(schema_path: Path) -> Draft202012Validator:
-    return Draft202012Validator(json.loads(schema_path.read_text(encoding="utf-8")))
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    return Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
 
 
 def schema_errors(doc: dict[str, Any], schema_path: Path | None = None) -> list[str]:
@@ -118,15 +119,29 @@ def next_decision_id(doc: dict[str, Any]) -> str:
 
 
 def _unfenced_lines(text: str) -> list[str]:
-    """Lines outside fenced code blocks (`` ``` ``), so examples cannot close an entry."""
-    in_fence = False
+    """Lines outside CommonMark fenced code blocks, so examples cannot close an entry.
+
+    Reuses the fence opener/closer in ``validate_stale_commands`` (backtick and
+    tilde runs, matching lengths).
+    """
+    from specy_road.bundled_scripts.validate_stale_commands import (
+        _fence_closes,
+        _fence_marker,
+        _opening_is_code_span,
+    )
+
+    open_fence: tuple[str, int] | None = None
     out: list[str] = []
     for line in text.splitlines():
-        if line.lstrip().startswith("```"):
-            in_fence = not in_fence
+        if open_fence is not None:
+            if _fence_closes(line, open_fence):
+                open_fence = None
             continue
-        if not in_fence:
-            out.append(line)
+        marker = _fence_marker(line)
+        if marker is not None and not _opening_is_code_span(line):
+            open_fence = (marker[0], marker[1])
+            continue
+        out.append(line)
     return out
 
 
