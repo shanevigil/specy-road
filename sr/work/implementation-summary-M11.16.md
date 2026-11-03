@@ -7,7 +7,8 @@ When `git diff <reviewed>..<HEAD>` touches only this leaf's planning sheet,
 `work/reviews/<NODE_ID>/`, `evaluate_gate` still counts review records filed at
 the earlier commit. `GateResult.summary()` and `handoff status` report that
 carry in the policy line. Any other path in the range keeps today's stale
-behaviour.
+behaviour. A merge in `approved..commit` (`git rev-list --merges` non-empty)
+is new work even when the tree equals the first parent (`git merge -s ours`).
 
 ## Touch zones (confirmed)
 
@@ -24,6 +25,8 @@ behaviour.
 ## Added
 
 - `only_planning_or_review_bookkeeping_since` in `review_files.py` — path set check for approved..commit
+- merge-commit guard in that helper — `git rev-list --merges` non-empty returns False
 - `GateResult.bookkeeping_carry` — drives the policy-line carry message
 - `evaluate_gate` branch — skips stale when the bookkeeping-only delta holds
 - `tests/test_sheet_edits_keep_approvals.py` — sheet-only, summary-only, mixed, and handoff status cases
+- `test_ours_merge_stales_approval` — approve then `git merge -s ours` leaves the record stale
