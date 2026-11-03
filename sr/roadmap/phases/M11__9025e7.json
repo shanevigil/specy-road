@@ -56,7 +56,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.78_review-lessons_bc1266c1-cff7-45ce-99ef-8baff6f93b90.md",
       "sibling_order": 78,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Review lessons: escaped defect classes feed every reviewer prompt",
       "touch_zones": [
         "specy_road/review_lessons.py",
