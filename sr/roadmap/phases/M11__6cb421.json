@@ -321,7 +321,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.69_branch-schema-for-gate-and-finish_8aa58292-b00a-47d6-9d63-54a57e47d440.md",
       "sibling_order": 69,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A leaf that adds a schema key can be gated and finished",
       "touch_zones": [
         "specy_road/review_files.py",

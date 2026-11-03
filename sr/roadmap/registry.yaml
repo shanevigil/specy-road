@@ -191,23 +191,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: branch-schema-for-gate-and-finish
-    node_id: M11.69
-    branch: feature/rm-branch-schema-for-gate-and-finish
-    touch_zones:
-      - specy_road/review_files.py
-      - specy_road/review_gate.py
-      - specy_road/orchestration_config.py
-      - specy_road/git_workflow_config.py
-      - specy_road/bundled_scripts/finish_task.py
-      - tests/
-      - specy_road/schema_revision.py
-      - specy_road/worker_state.py
-      - specy_road/worker_schema.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T15:51:29+00:00'
   - codename: ready-warns-integration-conflict
     node_id: M11.73
     branch: feature/rm-ready-warns-integration-conflict
