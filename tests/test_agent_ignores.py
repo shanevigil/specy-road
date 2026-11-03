@@ -116,6 +116,22 @@ def test_nested_layout_prefixes_the_gitignore_block_too(tmp_path: Path) -> None:
     text = (tmp_path / GITIGNORE).read_text(encoding="utf-8")
 
     assert "sr/.specyrd/cache/" in text
+    assert "sr/roadmap/orchestration.local.yaml" in text
+
+
+@pytest.mark.parametrize("prefix", ["", "sr/"])
+def test_orchestration_local_overlay_is_gitignored(tmp_path: Path, prefix: str) -> None:
+    """Per-checkout availability overlay must not be committable (flat or nested)."""
+    subprocess.run(["git", "-C", str(tmp_path), "init", "-q"], check=True, capture_output=True)
+    apply_agent_ignores(tmp_path, prefix)
+    overlay = tmp_path / prefix / "roadmap" / "orchestration.local.yaml"
+    overlay.parent.mkdir(parents=True, exist_ok=True)
+    overlay.write_text("roster: []\n", encoding="utf-8")
+    rel = f"{prefix}roadmap/orchestration.local.yaml"
+    assert subprocess.run(
+        ["git", "-C", str(tmp_path), "check-ignore", "-q", rel],
+        check=False,
+    ).returncode == 0
 
 
 def test_embedded_layout_is_byte_identical_to_before(tmp_path: Path) -> None:

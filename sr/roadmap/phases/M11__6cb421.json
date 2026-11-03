@@ -90,7 +90,8 @@
         "specy_road/worker_ops_launch.py",
         "specy_road/bundled_scripts/role_prompt.py",
         "specy_road/templates/project/.gitignore",
-        "specy_road/review_eligible.py"
+        "specy_road/review_eligible.py",
+        "specy_road/agent_ignores.py"
       ],
       "type": "task"
     },

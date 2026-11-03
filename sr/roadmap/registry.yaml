@@ -169,6 +169,7 @@ entries:
       - specy_road/bundled_scripts/role_prompt.py
       - specy_road/templates/project/.gitignore
       - specy_road/review_eligible.py
+      - specy_road/agent_ignores.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending

@@ -41,5 +41,5 @@
 # on `specy-road export --check` and `specy-road digest --check`.
 #
 # Per-checkout capacity pauses (available / paused_until) without pushing the
-# shared roster; merged at runtime with roadmap/orchestration.yaml.
-roadmap/orchestration.local.yaml
+# shared roster; merged at runtime with roadmap/orchestration.yaml. The ignore
+# rule lives in agent_ignores.GITIGNORE_LINES (managed block below).
