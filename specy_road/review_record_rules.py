@@ -2,10 +2,10 @@
 
 An evaluation of reviewer effectiveness found approving reviewers re-running only the executor's own
 tests, reading loose acceptance text in the leaf's favour, and naming real defects in their notes as
-"advisory" or "non-blocking", or describing a crash or lost data, while approving. :data:`PROBE_RULES_LINES`
-goes into every reviewer prompt; :func:`check_record` is the record check for ``specy-road review record``,
-which also refuses an approve whose findings or notes name a defect or describe a concrete failure with neither
-a ``required_changes`` entry nor a :data:`NOT_A_DEFECT` line.
+"advisory" or "non-blocking", or describing a crash, lost data or refused valid input, while approving.
+:data:`PROBE_RULES_LINES` goes into every reviewer prompt; :func:`check_record` is the record check for
+``specy-road review record``, which also refuses an approve with a findings entry, or notes that name a
+defect or describe a concrete failure, with neither a ``required_changes`` entry nor a :data:`NOT_A_DEFECT` line.
 """
 
 from __future__ import annotations
@@ -30,10 +30,12 @@ PROBE_RULES_LINES = [
     "3. Fail an acceptance item whose observed behaviour differs from its text, even when the difference looks "
     "minor; do not read a loose criterion in the leaf's favour.",
     "4. List every defect your notes or findings describe under `required_changes` (and block), or explain on "
-    f"that same line why it is not one, starting `{NOT_A_DEFECT}`. `review record` refuses an approve whose "
-    "findings or notes call something advisory, non-blocking, minor, a nit, a bug or a defect, or describe a "
-    "concrete failure (it crashes, hangs, drops or loses data, returns a wrong result), without that line; text "
-    "you quote in backticks or on a `>` line is not checked.",
+    f"that same line why it is not one, starting `{NOT_A_DEFECT}`. On an approve, `review record` treats every "
+    f"`findings` entry as a defect unless it says `{NOT_A_DEFECT}`, so keep observations that are not defects "
+    "in the notes; it also refuses notes that call something advisory, non-blocking, minor, a nit, a bug or a "
+    "defect, or describe a concrete failure (it crashes, hangs, drops or loses data, returns a wrong result, "
+    "rejects valid input, exits non-zero instead of succeeding), without that line. Text you quote in backticks "
+    "or on a `>` line is not checked.",
     "",
 ]
 # Words a reviewer uses for a defect it lets through, and wording that describes a concrete failure.
@@ -51,7 +53,13 @@ _DEFECT = re.compile(
     r"(?:is|are|was|were|gets?|got)\s+(?:silently\s+)?(?:lost|dropped|corrupted|overwritten)|"
     r"silently\s+(?:drop|ignore|accept|lose|skip|swallow|fail|pass)\w*|"
     r"(?:returns?|gives?|prints?|reports?|writes?)\s+(?:the\s+|a\s+)?wrong|"
-    r"wrong\s+(?:result|answer|value|output|path|commit|exit)s?)\b", re.I)
+    r"wrong\s+(?:result|answer|value|output|path|commit|exit)s?|"
+    # valid input refused, and a non-zero exit where success was due: "valid input raises ValueError",
+    # "rejects a valid ledger", "fails on valid input", "exits 1 instead of filing the review"
+    r"valid\s+[\w'-]+\s+(?:raises|fails|errors|crashes|is\s+rejected|is\s+refused)|"
+    r"(?:rejects|refuses)\s+(?:a\s+|an\s+|the\s+)?valid|"
+    r"(?:raises|fails|errors)\s+(?:[\w'-]+\s+){0,2}(?:on|for|with)\s+(?:a\s+|an\s+|the\s+)?valid|"
+    r"exits?\s+(?:with\s+)?(?:code\s+)?(?:[1-9]\d*|non-?zero)(?=[^.;]*\binstead\s+of\b))\b", re.I)
 # A negation only negates when nothing but qualifiers stand between it and the word: "no other correctness
 # defect" is negated, "no workaround for this bug" is not.
 _QUALIFIER = (r"(?:other|more|new|real|known|actual|obvious|remaining|further|such|open|proven|significant|serious|"
@@ -76,13 +84,15 @@ def defect_word(line: str) -> str | None:
 
 def unexplained_defects(data: dict[str, Any], body: str) -> list[str]:
     """``<where> says "<word>"`` for each findings entry and notes line that names a defect without a
-    :data:`NOT_A_DEFECT` line; fenced code in the notes is skipped."""
+    :data:`NOT_A_DEFECT` line; fenced code in the notes is skipped. Every findings entry without that line
+    counts, whatever its wording (``<where> is a finding``): a word list cannot catch every way of describing
+    a defect, and findings are where a reviewer reports one."""
     out = []
     for key, items in (data.get("findings") or {}).items():
         for i, item in enumerate(items or []):
-            word = defect_word(str(item))
-            if word:
-                out.append(f'findings.{key}[{i}] says "{word}"')
+            if NOT_A_DEFECT not in str(item).lower():
+                word = defect_word(str(item))
+                out.append(f'findings.{key}[{i}] ' + (f'says "{word}"' if word else "is a finding"))
     fenced = False
     for n, line in enumerate(body.splitlines(), 1):
         if line.lstrip().startswith(("```", "~~~")):
@@ -103,7 +113,7 @@ def approve_defect_problem(data: dict[str, Any], body: str) -> str | None:
         return None
     return (f"verdict: approve, but {'; '.join(named)} with no required_changes entry and no "
             f"'{NOT_A_DEFECT}' line: list each defect under required_changes and block, or say on that line "
-            f"why it is not one ('{NOT_A_DEFECT} <reason>')")
+            f"why it is not one ('{NOT_A_DEFECT} <reason>'); on an approve every findings entry needs that line")
 
 
 def check_record(ns: argparse.Namespace, root: Path, t: ReviewTarget) -> tuple[dict | None, str | None]:

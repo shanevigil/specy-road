@@ -58,7 +58,7 @@ def test_record_refuses_an_approve_whose_finding_names_a_defect(tmp_path: Path, 
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     assert _record(repo, findings={"correctness": ["Checked the lock order.", "Advisory: x drops an empty y"]}) == 1
     err = capsys.readouterr().err
-    assert 'findings.correctness[1] says "Advisory"' in err and "findings.correctness[0]" not in err
+    assert 'findings.correctness[1] says "Advisory"' in err and 'findings.correctness[0] is a finding' in err
     assert "no required_changes entry and no 'not a defect because' line" in err
     assert not review_path(repo, "M1.1", "opus").exists()
 
@@ -95,7 +95,39 @@ def test_record_names_every_offending_finding_and_line(tmp_path: Path, capsys) -
     for where in ('findings.correctness[1] says "is lost"', 'findings.regression[0] says "silently drops"',
                   'notes line 2 says "hangs"'):
         assert where in err
-    assert "findings.correctness[0]" not in err and "notes line 1" not in err and "notes line 3" not in err
+    assert 'findings.correctness[0] is a finding' in err
+    assert "notes line 1" not in err and "notes line 3" not in err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+SOL_WORDING = "Valid input raises ValueError, so the command exits 1 instead of filing the review."
+
+
+def test_record_refuses_an_approve_whose_finding_says_valid_input_raises(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, findings={"correctness": [SOL_WORDING]}) == 1
+    err = capsys.readouterr().err
+    assert 'findings.correctness[0] says "Valid input raises"' in err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+def test_record_refuses_an_approve_with_any_finding_that_does_not_say_why_it_is_not_a_defect(
+        tmp_path: Path, capsys) -> None:
+    """A word list cannot catch every way of describing a defect, so on an approve every finding needs the line."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, findings={"boundary": ["The second call reads the registry before the first writes it."]}) == 1
+    err = capsys.readouterr().err
+    assert "findings.boundary[0] is a finding" in err and "on an approve every findings entry needs that line" in err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+def test_record_refuses_an_approve_whose_notes_say_valid_input_raises(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, notes=f"A1 pass.\n{SOL_WORDING}\n") == 1
+    assert 'notes line 2 says "Valid input raises"' in capsys.readouterr().err
     assert not review_path(repo, "M1.1", "opus").exists()
     assert not (reviews_dir(repo, "M1.1") / "history").exists()
 
@@ -138,6 +170,11 @@ def test_record_files_a_block_that_lists_the_defect(tmp_path: Path, capsys) -> N
     ("Malformed values are treated as missing rather than crashing the gate.", None),
     ("Default drops a leaf that still has a placeholder; one parametrize case dropped.", None),
     ("The test fails without the fix and raises ReviewTargetError on an unknown node.", None),
+    (SOL_WORDING, "Valid input raises"),
+    ("`decisions list` rejects a valid ledger.", "rejects a valid"),
+    ("It fails on valid input.", "fails on valid"),
+    ("It exits non-zero instead of writing the record.", "exits non-zero"),
+    ("It no longer rejects a valid ledger; it exits 1 on an unknown node.", None),
 ])
 def test_defect_word(line: str, word: str | None) -> None:
     assert defect_word(line) == word
