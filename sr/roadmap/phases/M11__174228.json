@@ -212,7 +212,10 @@
         "specy_road/worker_ops.py",
         "tests/",
         "specy_road/bundled_scripts/role_prompt.py",
-        "specy_road/worker_runner.py"
+        "specy_road/worker_runner.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py",
+        "specy_road/finish_ancestor_rollup.py",
+        "specy_road/worker_runner_ready.py"
       ],
       "type": "task"
     },

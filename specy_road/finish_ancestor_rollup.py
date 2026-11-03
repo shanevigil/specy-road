@@ -143,13 +143,35 @@ def _print_hold(repo_root: Path, nodes: list[dict]) -> Callable[[str], str | Non
 
 
 def _set_complete(root: Path, node_id: str) -> list[str]:
-    """Set ``node_id`` to Complete; the repo-relative chunk paths that changed (empty on failure)."""
-    from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path
-    from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs
+    """Set ``node_id`` to Complete; the repo-relative chunk paths that changed (empty on failure).
 
-    touched = [find_chunk_path(root, node_id)]
+    Writes the chunk like ``finish-this-task`` patches the finished leaf: no
+    nested ``edit-node`` validate, so finish's later validate prints each
+    warning once.
+    """
+    from specy_road.bundled_scripts.roadmap_chunk_utils import (
+        find_chunk_path,
+        load_json_chunk,
+        write_json_chunk,
+    )
+
+    chunk = find_chunk_path(root, node_id)
+    if not chunk or chunk.suffix.lower() != ".json":
+        print(
+            f"[warn] {node_id} rolled up to Complete but could not be "
+            f"updated: chunk file is missing or not .json\n"
+            f"  Run: specy-road edit-node {node_id} --set status=Complete",
+            file=sys.stderr,
+        )
+        return []
     try:
-        edit_node_set_pairs(root, node_id, [("status", "Complete")], validate=False)
+        nodes = load_json_chunk(chunk)
+        for n in nodes:
+            if n.get("id") == node_id:
+                n["status"] = "Complete"
+                write_json_chunk(chunk, nodes)
+                print(f"[ok] {node_id} status -> Complete (all leaf descendants complete)")
+                return [str(chunk.relative_to(root))]
     except (OSError, ValueError) as e:
         print(
             f"[warn] {node_id} rolled up to Complete but could not be "
@@ -158,9 +180,13 @@ def _set_complete(root: Path, node_id: str) -> list[str]:
             file=sys.stderr,
         )
         return []
-    print(f"[ok] {node_id} status -> Complete (all leaf descendants complete)")
-    touched.append(find_chunk_path(root, node_id))
-    return [str(c.relative_to(root)) for c in touched if c is not None]
+    print(
+        f"[warn] {node_id} rolled up to Complete but could not be "
+        f"updated: node not found in {chunk.relative_to(root)}\n"
+        f"  Run: specy-road edit-node {node_id} --set status=Complete",
+        file=sys.stderr,
+    )
+    return []
 
 
 def _leaf_annotated(root: Path) -> list[dict]:
@@ -180,9 +206,11 @@ def complete_rolled_up_ancestors(repo_root: Path, node_id: str) -> list[str]:
     """Set stale rolled-up ancestors of ``node_id`` to Complete.
 
     Returns the repo-relative chunk paths that changed so the caller can fold
-    them into the bookkeeping commit it is already assembling. Each write is
-    validated; an ancestor that cannot be flipped is reported with the manual
-    command rather than aborting a finish that has already succeeded.
+    them into the bookkeeping commit it is already assembling. Status is
+    patched in the chunk without a nested validate (finish's later
+    validate/export/digest run is the one pass); an ancestor that cannot be
+    flipped is reported with the manual command rather than aborting a finish
+    that has already succeeded.
     """
     changed: list[str] = []
     root = repo_root.resolve()

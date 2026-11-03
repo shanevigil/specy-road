@@ -297,7 +297,6 @@ def edit_node_set_pairs(
     *,
     sync_codename: bool = False,
     notify: Callable[[str], None] | None = None,
-    validate: bool = True,
 ) -> NodeChunkWriteReport:
     """Patch whitelisted fields on a node, then save its chunk atomically."""
     heal_paths = heal_and_collect_paths(root)
@@ -350,8 +349,7 @@ def edit_node_set_pairs(
     with authoring_overlap_for_node(node, node_id=node_id):
         with claim_zones_following(root, node_id, zones, notify=notify):
             holding = write_node_update(
-                root, node_id, chunk, nodes, renames=[rename] if rename else None,
-                validate=validate,
+                root, node_id, chunk, nodes, renames=[rename] if rename else None
             )
     holding_rel = repo_rel(root, holding)
     assert holding_rel in report.written
