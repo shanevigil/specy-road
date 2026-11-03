@@ -23,7 +23,10 @@ entries:
       saw).
     default_if_unanswered: hold M11.51 until answered
     asked: '2026-11-02'
-    status: open
+    status: closed
+    answer: 'approve: A1 bounded to one hash check before each write (maintainer,
+      2026-11-03)'
+    closed: '2026-11-03T19:29:31+00:00'
   - id: D2
     node: M1.1
     kind: decision
@@ -64,7 +67,10 @@ entries:
       backlog can drain on Composer executors meanwhile.
     default_if_unanswered: wait (the 23:59 Sol pass runs)
     asked: '2026-11-03'
-    status: open
+    status: closed
+    answer: 'superseded: the maintainer chose a mix of the Opus reviewer and Codex
+      Sol as second reviewers (2026-11-03); Composer was not used as a reviewer'
+    closed: '2026-11-03T19:29:35+00:00'
   - id: D4
     node: M8.2
     kind: decision
