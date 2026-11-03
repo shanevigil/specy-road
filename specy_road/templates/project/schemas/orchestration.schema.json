@@ -42,6 +42,7 @@
           "additionalProperties": false,
           "properties": {
             "cli": { "type": "string", "minLength": 1, "description": "Headless invocation; {prompt} is replaced with the prompt file path." },
+            "cli_resume": { "type": "string", "minLength": 1, "pattern": "\\{session(_flag)?\\}", "description": "Command worker message and resume run instead of cli, with the launch's permissions: names {session} (or {session_flag} on claude-code) and {prompt}, e.g. codex exec resume --json ... {session} - < {prompt}." },
             "paste": { "type": "string", "minLength": 1, "description": "Name of the IDE chat a prompt file is pasted into." },
             "subagent": { "type": "boolean" }
           }

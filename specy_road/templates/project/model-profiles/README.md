@@ -122,6 +122,19 @@ Notes:
 | Composer | `agent -p --force "<prompt>"` (omit `--force` for review-only runs) | yes |
 | DeepSeek 1017 | `claude -p "<prompt>" --output-format json`, via DeepSeek's Claude Code integration | **no: verify before use** |
 
+**Candidate harness profiles** (2026-11-03, vendor documentation only; every
+runtime check is `not run` because neither binary is installed). Both pin Gemini
+4 Argon and run on the `generic` harness. Their `api_id` is the roster id, not
+a vendor model id:
+
+| Profile | Command in the profile | Role |
+|---|---|---|
+| [copilot-gemini-4-argon](github-copilot/copilot-gemini-4-argon.md) | `copilot -p "<prompt>" -s --no-ask-user --no-auto-update --model=gemini-4-argon --allow-tool='shell,write' --deny-tool='shell(git push),…,shell(gh:*),memory'` | one-shot reviewer |
+| [agy-gemini-4-argon-high](google-antigravity/agy-gemini-4-argon-high.md) | `agy -p "<prompt>" --output-format json --print-timeout 60m --model gemini-4-argon-high` | generic; success is the envelope's `status: SUCCESS`, never the exit code |
+
+Each profile's `## Runtime checks` lists what to run once the binary is
+installed.
+
 `cli_verified_from: unverified` in a profile means the same thing: verify the
 command before use. "Yes" means a run quoted a vendor page; a human still has
 not checked it.

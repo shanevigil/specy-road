@@ -11,14 +11,17 @@ later adapters that turn those flags on.
 A roster entry's ``channels.cli`` (``{prompt}`` = prompt file path) replaces the built command for any harness
 while its output is still parsed as that harness's; that is how an adopter widens or narrows permissions, pins
 flags, or points at a wrapper. ``{session_flag}`` is the harness's own session argument, so one command serves
-launch and resume (Claude Code: ``--session-id <id>`` on launch, ``--resume <id>`` on resume); ``{effort}`` is
+launch and resume (Claude Code: ``--session-id <id>`` on launch, ``--resume <id>`` on resume); where the harness's
+resume is its own command (Codex, Cursor), ``channels.cli_resume`` naming ``{session}`` is what message and resume
+run instead, so they keep the launch's permissions; ``{effort}`` is
 its flag for the profile's executor effort (empty on Cursor), which the default commands carry too;
 ``{reviews_dir}`` is the main checkout's ``work/reviews/<ID>``, for the harness's writable-root flag, which the
 default commands pass in a linked worktree. Claude Code's default asks for the narrowest mode that lets it edit
 unattended (``acceptEdits``; ``dontAsk`` is stricter but denies every tool not allow-listed), so a first run may
-stop at a shell permission; Cursor's ``agent -p`` has write and shell tools already and ``--force``
-force-allows every command not explicitly denied, so that default is the widest — read the table in
-``docs/orchestration-workers.md`` before trusting either on a new repo.
+have shell commands denied (under ``-p`` a denial does not stop the run; it is listed in ``permission_denials``);
+Cursor's ``agent -p`` has write and shell tools already and ``--force`` force-allows every command not explicitly
+denied, so that default is the widest — read the table in ``docs/orchestration-workers.md`` before trusting either
+on a new repo.
 
 A reviewer gets its own command (:meth:`Adapter.reviewer_launch`), read-only on every harness that has one:
 Claude Code ``--bare`` with ``--disallowedTools`` for commits, pushes and ``gh``; Codex ``sandbox_mode=read-only``;

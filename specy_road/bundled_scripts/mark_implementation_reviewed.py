@@ -343,12 +343,13 @@ def main(argv: list[str] | None = None) -> None:
 
     if not review_required(ROOT):
         print(
-            "require_implementation_review_before_finish is not enabled in "
-            "roadmap/git-workflow.yaml — nothing to do.",
+            "require_implementation_review_before_finish is not enabled in roadmap/git-workflow.yaml, "
+            "so the review gate is not enforced at finish-this-task — nothing to do.",
             file=sys.stderr,
         )
         print(
-            "When disabled, use specy-road finish-this-task directly after implementation.",
+            "When disabled, use specy-road finish-this-task directly after implementation; it lands "
+            "without reviews. To enforce them, set require_implementation_review_before_finish: true.",
         )
         raise SystemExit(0)
 

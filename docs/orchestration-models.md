@@ -165,6 +165,15 @@ them. `generic` has no binary of its own (it runs the profile's `access.cli`),
 so its record renders no `access.cli`, has no `capture_commands`, and
 `--capture generic` needs `--from`.
 
+Two candidate profiles run other harnesses' CLIs through `generic`:
+`github-copilot/copilot-gemini-4-argon.md` (Copilot CLI, a one-shot reviewer
+that denies `git push`, `git commit`, `gh` and Copilot Memory) and
+`google-antigravity/agy-gemini-4-argon-high.md` (Antigravity `agy`, whose run
+succeeded only when the JSON envelope's `status` is `SUCCESS`: a soft-denied
+tool or a `--print-timeout` expiry still exits 0). Both were written from
+vendor documentation; their `runtime_checks` are `not run`, and neither
+harness has a facts record yet.
+
 Two parts of `model-profiles/` are rendered from it. A hand edit to either is
 drift:
 

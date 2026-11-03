@@ -64,10 +64,20 @@
         "specy_road/worker_runner.py",
         "specy_road/worker_ops.py",
         "specy_road/worker_reconcile.py",
-        "specy_road/worker_adapters/",
         "specy_road/orchestration_config.py",
         "docs/orchestration-workers.md",
-        "tests/"
+        "tests/",
+        "specy_road/worker_adapter_base.py",
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/worker_adapter_codex.py",
+        "specy_road/worker_adapter_cursor.py",
+        "specy_road/worker_adapter_parsers.py",
+        "specy_road/worker_state.py",
+        "specy_road/worker_ops_lifecycle.py",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/schemas/worker-record.schema.json",
+        "specy_road/schemas/worker-event.schema.json",
+        "specy_road/worker_ops_message.py"
       ],
       "type": "task"
     },
@@ -210,7 +220,7 @@
       "parent_id": "M8",
       "planning_dir": "planning/M8.6_candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic_af298d00-74cc-47d6-be84-b809eb6c0d3b.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic",
       "touch_zones": [
         "specy_road/templates/project/model-profiles/",
