@@ -151,7 +151,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Complete**
   - `M11.43` init project reports exactly what it writes `init-project-reports-writes` — task — **Not Started**
   - `M11.44` init project can install only the model profiles a project uses `init-profiles-subset` — task — **Not Started**
-  - `M11.45` The stale-command warning fires only on command-shaped mentions `stale-command-prose` — task — **Not Started**
+  - `M11.45` The stale-command warning fires only on command-shaped mentions `stale-command-prose` — task — **Complete**
   - `M11.46` Placeholder leaves neither fail validate --strict nor pad briefs `placeholder-leaves-strict-brief` — task — **Not Started**
   - `M11.47` validate checks git-root touch zones in a nested project `validate-zones-git-root` — task — **Not Started**
   - `M11.48` A claimed leaf reads as claimed in list-nodes and brief `claimed-leaf-status` — task — **Not Started**
@@ -162,6 +162,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Not Started**
   - `M11.54` The test suite and land check run in parallel `parallel-test-suite` — task — **Not Started**
   - `M11.55` Executors split modules to meet file limits instead of deleting documentation `file-limit-split-not-delete` — task — **Not Started**
+
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
 
 ## Archived (not in the live roadmap)
 
@@ -179,6 +185,7 @@ Do not pick these up.
 - `M11.26` on `feature/rm-profile-aliases` since 2026-11-02
 - `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
 - `M11.37` on `feature/rm-packet-uncommitted-refs` since 2026-11-02
+- `M11.44` on `feature/rm-init-profiles-subset` since 2026-11-02
 - `M11.54` on `feature/rm-parallel-test-suite` since 2026-11-02
 
 ## Reaching the detail behind this
