@@ -12,7 +12,7 @@ The AGENTS.md stub's "When nothing is pickable" bullet now reads: exit `6` is a 
 
 ## Touch zones (final)
 
-- `specy_road/bundled_scripts/do_next_task.py`: one import, one call in `main` (now 396 lines; cap 400).
+- `specy_road/bundled_scripts/do_next_task.py`: one import, one call in `_run_pickup`. After the WIP merge it is 384 lines; cap 400.
 - `specy_road/bundled_scripts/do_next_task_args.py`: `--allow-second-claim`.
 - `specy_road/templates/specyrd/agents-md-block.md`: the exit-6 text and its provenance comment.
 - `tests/test_pickup_second_claim_guard.py`: new.
@@ -23,6 +23,8 @@ The AGENTS.md stub's "When nothing is pickable" bullet now reads: exit `6` is a 
 `sr/AGENTS.md` embeds the stub block. It is outside this leaf's zones, so after this lands it reads as stale until `specy-road refresh-stubs` is run there.
 
 ## Verification
+
+- **Merge of `origin/WIP/improvements-0-3-1` (2026-11-03):** clean. WIP's new `pickup_finish_lock` split `main` into `_run_pickup`, and the guard call moved there with it. WIP's own `do_next_task.py` was exactly 400 lines, so with the guard it came to 402 and failed `specy-road file-limits`. I moved `_validate_or_exit` verbatim into `do_next_task_held_claim.validate_or_exit(repo_root)` to fix that; there is no behaviour change and nothing outside the file referenced it. Post-merge: `tests/test_pickup_second_claim_guard.py` and neighbours → 63 passed; every test file that drives pickup (31 files) → 351 passed; `specy-road file-limits` → OK.
 
 - `python -m pytest tests/test_pickup_second_claim_guard.py -q` → 5 passed.
 - `python -m pytest -q tests/test_agents_md_block.py tests/test_pickup_worktree.py tests/test_grind_session_in_flight.py tests/test_claim_traps.py tests/test_do_next_task_pickup.py` → 50 passed.
@@ -36,7 +38,8 @@ The AGENTS.md stub's "When nothing is pickable" bullet now reads: exit `6` is a 
 - `do_next_task_held_claim.branches_in_other_worktrees`: parses `git worktree list --porcelain` for branches held by worktrees other than this git root, so a `--worktree` coordinator's leaves are not counted as this checkout's.
 - `do_next_task_held_claim.held_claims`: feeds all registry node ids (deduplicated) to the existing `own_in_flight_claims` with a probe that excludes other worktrees' branches. It reuses grind-session's test instead of a second definition of "mine".
 - `do_next_task_held_claim.refuse_second_claim`: the guard itself. It prints the held claim(s) and the way out, and raises `SystemExit(6)`; `allow` short-circuits it.
-- Guard call in `do_next_task.main` after `_validate_or_exit()`: refuses before anything is fetched, committed, pushed or switched.
+- `do_next_task_held_claim.validate_or_exit`: `do_next_task._validate_or_exit` moved verbatim (body, comment and message unchanged; takes `repo_root` instead of the `ROOT` global), so `do_next_task.py` fits its 400-line cap after the WIP merge.
+- Guard call in `do_next_task._run_pickup` (was `main` before the merge) after `_validate_or_exit()`: refuses before anything is fetched, committed, pushed or switched.
 - `--allow-second-claim` flag in `do_next_task_args._add_claim_visibility_args`: the override A1 requires.
 - Test `test_second_pickup_exits_6_naming_the_held_claim_and_claims_nothing`: refusal, exit 6, held claim named, `main`/`origin/main`/registry/branches unchanged.
 - Test `test_allow_second_claim_picks_up_the_next_leaf`: the override.

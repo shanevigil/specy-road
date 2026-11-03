@@ -43,7 +43,7 @@ from specy_road.bundled_scripts.do_next_task_virtual_complete import (
     virtual_complete_from_registry as _virtual_complete_from_registry,
 )
 from specy_road.bundled_scripts.do_next_finished_unmerged import finished_unmerged_ids
-from specy_road.bundled_scripts.do_next_task_held_claim import refuse_second_claim
+from specy_road.bundled_scripts.do_next_task_held_claim import refuse_second_claim, validate_or_exit
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.do_next_milestone_pickup import (
     exit_no_leaves_under_parent as _exit_no_leaves_under_parent,
@@ -61,7 +61,6 @@ from specy_road.milestone_subtree import filter_available_under_parent
 from specy_road.on_complete_pickup import print_pickup_footer, prompt_on_complete
 from specy_road.planning_scaffold_check import warn_scaffold_at_pickup
 from specy_road.runtime_paths import resolve_repo_root
-from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch, git_run, sync_integration_branch
 from specy_road.repo_lock import pickup_finish_lock
 
@@ -169,23 +168,6 @@ def _resync_and_select(
             _exit_no_leaves_under_parent(parent_filter, after_sync=True, integration_branch=base)
         _exit_no_actionable_leaves(nodes, reg, after_sync=True, integration_branch=base)
     return nodes, reg, available, integration_statuses
-
-
-def _validate_or_exit() -> None:
-    """F-006/F-008: run self-healing validate before pickup."""
-    # Skipped when tests monkeypatch load_roadmap and ROOT has no manifest on disk.
-    if not (ROOT / "roadmap" / "manifest.json").is_file():
-        return
-    try:
-        validate_at(ROOT, no_overlap_warn=True, require_registry=True)
-    except SystemExit as e:
-        if e.code not in (0, None):
-            print(
-                "error: roadmap validation failed; fix the issues above, "
-                "then re-run specy-road do-next-available-task.",
-                file=sys.stderr,
-            )
-            raise
 
 
 def _assert_current_branch_equals(base: str) -> None:
@@ -368,7 +350,7 @@ def _run_pickup(args, *, include_ci_skip: bool) -> None:
         print(f"warning: {w}", file=sys.stderr)
 
     parent_filter = _resolve_milestone_parent_filter(ROOT / "work", args)
-    _validate_or_exit()
+    validate_or_exit(ROOT)
     refuse_second_claim(ROOT, allow=args.allow_second_claim)
     if args.local:
         print("local pickup: no fetch, no push (see the footer)", file=sys.stderr)

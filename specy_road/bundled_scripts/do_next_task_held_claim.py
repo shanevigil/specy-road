@@ -12,6 +12,10 @@ coordinator that hands leaves out with ``--worktree`` keeps every leaf's branch
 in the same repository, and each of those belongs to its own worktree. A claim
 whose branch is gone is not held here (another clone's, or a dead row for
 ``registry-prune``), so it never blocks a pickup.
+
+Pickup's validate-before-pickup step lives here too, moved out of
+``do_next_task.py`` for its line cap: it is the other check that refuses before
+pickup changes anything, and it runs just before this one.
 """
 
 from __future__ import annotations
@@ -21,9 +25,27 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.grind_session_events import EXIT_IN_FLIGHT
 from specy_road.bundled_scripts.grind_session_in_flight import InFlightClaim, own_in_flight_claims
+from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.git_subprocess import git_ok, local_branch_exists
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.runtime_paths import git_root
+
+
+def validate_or_exit(repo_root: Path) -> None:
+    """F-006/F-008: run self-healing validate before pickup."""
+    # Skipped when tests monkeypatch load_roadmap and ROOT has no manifest on disk.
+    if not (repo_root / "roadmap" / "manifest.json").is_file():
+        return
+    try:
+        validate_at(repo_root, no_overlap_warn=True, require_registry=True)
+    except SystemExit as e:
+        if e.code not in (0, None):
+            print(
+                "error: roadmap validation failed; fix the issues above, "
+                "then re-run specy-road do-next-available-task.",
+                file=sys.stderr,
+            )
+            raise
 
 
 def branches_in_other_worktrees(repo_root: Path) -> set[str]:
