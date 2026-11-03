@@ -46,7 +46,8 @@
         "specy_road/bundled_scripts/doctor.py",
         "specy_road/git_workflow_config.py",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py"
       ],
       "type": "task"
     },
