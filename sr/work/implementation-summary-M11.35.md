@@ -18,6 +18,7 @@ Branch `feature/rm-roster-harness-model-id`, base `f78c3e03`.
   `completion_summary` unchanged (the pre-M11.27 present/missing strings are not restored) and the non-zero early-failure
   summary from this leaf. The roadmap chunk and `registry.yaml` auto-merged; M11.35's claim row and zones are intact.
 - `5210a439` — `specy-road edit-node M11.35 --add touch_zones=specy_road/worker_exit.py` (round 2's second required change).
+- `05cfac06` — clean merge of `origin/WIP/improvements-0-3-1` (new Codex reviewer entries; WIP's `harness_env` now builds the harness environment in `worker_runner.run` and `review_delegate._turn`, beside this leaf's `log_start` / `exit_event` and `harness_model`, which are unchanged); no fix needed. Re-ran `tests/test_roster_harness_model.py`, `tests/test_worker_adapters.py`, `tests/test_review_delegate.py`, `tests/test_m11_27_small_cli_fixes.py` (56 passed) and `specy-road file-limits` (OK).
 
 ## Final touch zones
 
