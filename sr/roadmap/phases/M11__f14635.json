@@ -366,7 +366,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.51_dashboard-safe-saves_d3ede8ba-aa5e-4c2a-aef0-0b2abcc3efb9.md",
       "sibling_order": 51,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Dashboard saves never overwrite newer disk edits, and the read API is documented",
       "touch_zones": [
         "specy_road/gui_app_routes_planning.py",
