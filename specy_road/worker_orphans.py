@@ -2,13 +2,18 @@
 
 An ``idle`` or ``completed`` worker keeps its leaf and its slot, so a review ``block`` can resume it for a
 fix round. Once its leaf is Complete on the integration branch, or the claim it was delegated under is gone
-from this checkout's registry, no fix round can come: it no longer counts against ``policy.max_workers``,
+from the integration branch's registry, no fix round can come: it no longer counts against ``policy.max_workers``,
 and ``worker list`` / ``sync`` show it orphaned. So does one whose worktree no longer exists; that one keeps
 its slot, since its leaf is still open. ``worker terminate --orphaned`` ends them all, and
 ``finish-this-task`` ends the finished leaf's own idle and completed workers.
 
 Nothing here is stored: the record and event schemas name no such flag, and a cause can come and go
 (a leaf reopened, a claim taken again), so it is judged afresh on every read.
+
+Claims are read where pickup registers them and finish removes them, the integration branch (its local
+branch and its remote-tracking ref), never from the caller's working tree: linked worktrees share the worker
+records, and an older lane's registry snapshot can lack a claim that is still live. A claim is gone only when
+every one of those refs holds a readable registry without it; anything less is ambiguous and the worker is kept.
 """
 
 from __future__ import annotations
@@ -19,12 +24,10 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.git_subprocess import git_text
 from specy_road.git_workflow_config import resolve_integration_defaults
-from specy_road.registry_yaml import read_registry, registry_path
+from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worker_state import WorkerRecord, list_records, workers_lock
 
@@ -32,6 +35,7 @@ from specy_road.worker_state import WorkerRecord, list_records, workers_lock
 HELD_STATES = frozenset({"idle", "completed"})
 RUNNING_STATES = frozenset({"starting", "running"})
 _HINT = "(`specy-road worker terminate --orphaned` ends them)"
+_REF_TIMEOUT = 30.0   # one ``git show`` of a registry blob, as finish reads one
 
 
 class _Leaves:
@@ -41,23 +45,28 @@ class _Leaves:
         self.root = repo_root
 
     @cached_property
+    def refs(self) -> list[tuple[str, str]]:
+        """``(full ref, label)`` for the integration branch's local branch and remote-tracking ref, those that exist."""
+        base, remote, _warnings = resolve_integration_defaults(self.root, explicit_base=None, explicit_remote=None)
+        both = ((f"refs/heads/{base}", base), (f"refs/remotes/{remote}/{base}", f"{remote}/{base}"))
+        return [(full, label) for full, label in both
+                if git_text(["rev-parse", "--verify", "--quiet", full], self.root)]
+
+    @cached_property
     def claims(self) -> set[tuple[str, str]] | None:
-        """``(node_id, branch)`` per registry claim; ``None`` when the registry cannot be read (nothing is gone)."""
-        try:
-            doc = read_registry(registry_path(self.root), missing_ok=False)
-        except (OSError, ValueError, yaml.YAMLError):
+        """``(node_id, branch)`` per claim in any of :attr:`refs`' registries; ``None`` (ambiguous: nothing is gone)
+        when there is no such ref or any of them holds no readable registry."""
+        docs = [read_registry_at_ref(self.root, full, _REF_TIMEOUT) for full, _label in self.refs]
+        if not docs or any(d is None for d in docs):
             return None
-        return {(str(e.get("node_id")), str(e.get("branch"))) for e in (doc.get("entries") or [])
+        return {(str(e.get("node_id")), str(e.get("branch"))) for d in docs for e in (d.get("entries") or [])
                 if isinstance(e, dict)}
 
     @cached_property
     def complete(self) -> dict[str, str]:
         """Node id -> the integration ref (local branch, else remote-tracking) whose graph says Complete."""
-        base, remote, _warnings = resolve_integration_defaults(self.root, explicit_base=None, explicit_remote=None)
         out: dict[str, str] = {}
-        for full, label in ((f"refs/heads/{base}", base), (f"refs/remotes/{remote}/{base}", f"{remote}/{base}")):
-            if not git_text(["rev-parse", "--verify", "--quiet", full], self.root):
-                continue
+        for full, label in self.refs:
             for n in load_roadmap_nodes_at_ref(self.root, full) or []:
                 if str(n.get("status") or "").lower() == "complete":
                     out.setdefault(str(n.get("id")), label)
@@ -69,7 +78,7 @@ def _cause(rec: WorkerRecord, leaves: _Leaves) -> tuple[bool, str] | None:
     if rec.state not in HELD_STATES:
         return None
     if rec.branch and leaves.claims is not None and (rec.node_id, rec.branch) not in leaves.claims:
-        return True, f"no claim on {rec.node_id} for {rec.branch}"
+        return True, f"no claim on {rec.node_id} for {rec.branch} on {' or '.join(lb for _f, lb in leaves.refs)}"
     if ref := leaves.complete.get(rec.node_id):
         return True, f"{rec.node_id} is Complete on {ref}"
     if not Path(rec.worktree).is_dir():
