@@ -64,10 +64,17 @@
         "specy_road/worker_runner.py",
         "specy_road/worker_ops.py",
         "specy_road/worker_reconcile.py",
-        "specy_road/worker_adapters/",
         "specy_road/orchestration_config.py",
         "docs/orchestration-workers.md",
-        "tests/"
+        "tests/",
+        "specy_road/worker_adapter_base.py",
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/worker_adapter_codex.py",
+        "specy_road/worker_adapter_cursor.py",
+        "specy_road/worker_adapter_parsers.py",
+        "specy_road/worker_state.py",
+        "specy_road/worker_ops_lifecycle.py",
+        "specy_road/worker_ops_launch.py"
       ],
       "type": "task"
     },
