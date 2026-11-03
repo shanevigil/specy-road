@@ -8,6 +8,9 @@ Base: `a54c409b` (origin/WIP/improvements-0-3-1 after the M8.2 touch-zone update
   - `worker_runner.py`: WIP's `fresh_ready`, `completion_summary` and `harness_env` sit alongside this branch's `TurnWatch` and `close_turn`. `launch.env` is applied on top of `harness_env`, and `paused_by_limit` still wins over READY.
   - No behaviour change was needed: the leaf's tests and the WIP tests on these modules pass (147 tests).
 
+- **Merge of WIP for M11.69:** the conflict was in `worker_state.py`, where `WorkerRecord` keeps both `limit_reset_at` and M11.69's `unknown_fields`. `unknown_fields` stays last, so `load_record` and `to_dict` still treat `limit_reset_at` as a known field. No behaviour fix was needed: the leaf's tests, `test_schema_revision.py` and file-limits pass.
+  - **Timing failure under load:** `test_spawn_returns_before_the_worker_ends_and_the_record_catches_up` failed once with the load average near 38. Timing a spawned turn in isolation showed this branch costs about 0.3 s more per turn than WIP's own checkout (0.6 s against 0.2–0.3 s): the post-run check's git reads and record writes. The test then passed twice in under 2 s, and passed in the full targeted run.
+
 ## Round 4: fix for review gpt-5.6-sol-medium (block, again)
 
 - **Lost pre-turn work is a finding.** `git_findings` now compares the union of the starting and ending dirty-path keys, excluding expected bookkeeping. Before, it walked only the paths still dirty at the turn's end, so pre-turn work outside the zones that the turn restored or deleted left no finding.
