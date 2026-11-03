@@ -362,7 +362,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.71_review-loops-escalate_773d61e8-07d6-4741-a137-008f3234d01b.md",
       "sibling_order": 71,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Review loops escalate on their own and criteria are written with bounds",
       "touch_zones": [
         "specy_road/review_rca.py",
@@ -371,7 +371,11 @@
         "specy_road/bundled_scripts/role_prompt_rca.py",
         "docs/roadmap-authoring.md",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/planning_sheet_bootstrap.py",
+        "specy_road/templates/planning-node/feature-sheet.md.template",
+        "specy_road/schemas/rca-record.schema.json"
       ],
       "type": "task"
     },
