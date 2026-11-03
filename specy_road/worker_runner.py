@@ -25,7 +25,6 @@ from dataclasses import asdict
 from pathlib import Path
 
 from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
-from specy_road.review_target import same_commit
 from specy_road.runtime_paths import project_prefix
 from specy_road.worker_adapter_parsers import USAGE_FIELDS, usage_text
 from specy_road.worker_adapters import Launch, adapter_for
@@ -33,14 +32,13 @@ from specy_road.worker_exit import exit_event
 from specy_road.worker_lease import release_lease
 from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified re-exported for existing callers
     argv_too_long,
-    branch_mismatch,
-    new_ready,
     new_token,
     pid_alive,
     pid_verified,
     ready_fingerprints,
     start_token,
 )
+from specy_road.worker_runner_ready import all_ready_fingerprints, fresh_ready
 from specy_road.worker_state import (
     FLAG_STALLED,
     WorkerError,
@@ -210,6 +208,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
     log = log_path(repo_root, worker_id)
     # The turn's checkpoint: a completion needs a READY that is not one of these.
     before = ready_fingerprints(repo_root, rec.node_id)
+    before_all = all_ready_fingerprints(repo_root, rec.node_id)
     set_state(repo_root, rec, "running", pid=os.getpid())
     if resumed:
         append_event(repo_root, rec, "resumed", source="broker", summary="resumed with a new prompt")
@@ -263,7 +262,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
                 raw.write(f"[wrapper] could not record a line: {e}\n")
         code = proc.wait()
-    return _finish(repo_root, rec, code, before, usage_logged, log_start)
+    return _finish(repo_root, rec, code, before, before_all, usage_logged, log_start)
 
 
 def _output_seen(repo_root: Path, rec: WorkerRecord, marked: float | None, now: float) -> float | None:
@@ -321,36 +320,16 @@ def _append_usage(repo_root: Path, rec: WorkerRecord, usage: dict) -> None:
                  summary=f"usage: {usage_text(detail)}", detail=detail)
 
 
-def _fresh_ready(repo_root: Path, rec: WorkerRecord, before: list[str]) -> bool:
-    """A READY for this node that appeared or changed during this turn, on the branch actually checked out.
-
-    ``before`` is the fingerprint list taken at turn start (:func:`ready_fingerprints`):
-    an earlier turn's or attempt's READY is in it and does not count, however
-    its mtime reads.
-    """
-    ready = new_ready(repo_root, rec.node_id, before)
-    if ready is None or str(ready.data.get("node_id")) != rec.node_id:
-        return False
-    if rec.branch and str(ready.data.get("branch")) != rec.branch:
-        return False   # another attempt's branch, not this worker's
-    why = branch_mismatch(Path(rec.worktree), rec.branch)
-    if why:
-        append_event(repo_root, rec, "error", source="system", summary=f"READY {ready.path.name} ignored: {why}")
-        return False
-    if not same_commit(Path(rec.worktree), str(ready.data.get("commit") or ""), "HEAD"):
-        return False   # a READY for an older commit on this branch: the turn moved past it
-    return True
-
-
-def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], usage_logged: bool,
-            log_start: int = 0) -> int:
+def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], before_all: list[str],
+            usage_logged: bool, log_start: int = 0) -> int:
     rec = load_record(repo_root, rec.worker_id)   # the record may have moved on (handoff, terminate)
     if rec.state == "terminated":
         return code
     if not usage_logged:   # one usage event per turn: a harness that reported none gets nulls, not zeros
         _append_usage(repo_root, rec, {})
-    ready = _fresh_ready(repo_root, rec, before)
-    exit_event(repo_root, rec, code, ready, log_path(repo_root, rec.worker_id), log_start)
+    ready = fresh_ready(repo_root, rec, before)
+    exit_event(repo_root, rec, code, ready, before_all=before_all, log=log_path(repo_root, rec.worker_id),
+               log_start=log_start)
     _exit_state(repo_root, rec, ("completed" if ready else "idle") if code == 0 else "failed")
     return code
 

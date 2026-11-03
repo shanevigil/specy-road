@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from specy_road.worker_runner_ready import completion_summary
 from specy_road.worker_state import WorkerRecord, append_event, events_since
 
 #: How much of the turn's log tail is read for the reason; a harness that never started prints little.
@@ -36,11 +37,13 @@ def last_error_line(log: Path, start: int = 0) -> str | None:
     return next((s for s in reversed(lines) if _ERRORISH.search(s)), lines[-1] if lines else None)
 
 
-def exit_event(repo_root: Path, rec: WorkerRecord, code: int, ready: bool, log: Path, log_start: int = 0) -> None:
-    """``completion`` on exit 0, else ``error``, with the harness's own reason when it failed before streaming."""
+def exit_event(repo_root: Path, rec: WorkerRecord, code: int, ready: bool, *, before_all: list[str], log: Path,
+               log_start: int = 0) -> None:
+    """``completion`` on exit 0 (READY present, invalid or missing: :func:`completion_summary` against the turn's
+    ``before_all``), else ``error``, with the harness's own reason when it failed before streaming."""
     if code == 0:
         append_event(repo_root, rec, "completion", source="worker",
-                     summary=f"exit 0; READY file {'present' if ready else 'missing'}", detail={"exit": 0, "ready": ready})
+                     summary=completion_summary(repo_root, rec, before_all, ready), detail={"exit": 0, "ready": ready})
         return
     detail: dict = {"exit": code, "ready": ready}
     summary = f"exit {code}; see {log.name}"

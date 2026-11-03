@@ -110,7 +110,8 @@
       ],
       "codename": "headless-limits-denials",
       "dependencies": [
-        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53",
+        "f4d6efe0-4286-44f8-a36e-d30947c401d6"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M11.62",
@@ -450,7 +451,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.74_pickup-finish-shared-lock_b4a57d7e-258e-4f66-9afc-3f4ffe5004cb.md",
       "sibling_order": 74,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Pickup and finish in one checkout take a shared lock in order",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_task.py",
