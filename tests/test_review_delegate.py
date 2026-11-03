@@ -255,6 +255,24 @@ def test_capacity_error_reads_provider_wording() -> None:
     assert capacity_error(["RESOURCE_EXHAUSTED"]) and not capacity_error(["SyntaxError: bad input"])
 
 
+def test_prompt_cli_exception_closes_the_run_incomplete(tmp_path: Path, monkeypatch) -> None:
+    from specy_road.bundled_scripts import role_prompt
+
+    repo, _spec = _repo(tmp_path)
+
+    def boom(*_a, **_k):
+        raise RuntimeError("harness exploded")
+
+    monkeypatch.setattr(role_prompt, "run_cli_channel", boom)
+    with pytest.raises(RuntimeError, match="harness exploded"):
+        role_prompt.main(["M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+                          "--repo-root", str(repo)])
+    run = load_run(repo, "M1.1", "opus")
+    assert run["state"] == "incomplete" and run["ended_at"]
+    assert run["events"][-1]["type"] == "reviewer-failure"
+    assert "interrupted: harness exploded" in run["events"][-1]["error"]
+
+
 def test_review_cli_module_main_prints_usage() -> None:
     done = subprocess.run([sys.executable, "-m", "specy_road.bundled_scripts.review_cli", "-h"],
                           capture_output=True, text=True, env=script_subprocess_env())

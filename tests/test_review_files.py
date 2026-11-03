@@ -235,14 +235,34 @@ def _claude_code_reviewer_repo(tmp_path: Path, channels: str = "") -> Path:
 
 
 def _fake_run(monkeypatch) -> list[dict]:
+    import subprocess as real_sp
     from types import SimpleNamespace
 
     from specy_road.bundled_scripts import role_prompt
 
     calls: list[dict] = []
+
+    def run(cmd, **kw):
+        calls.append({"cmd": cmd, **kw})
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    def popen(cmd, **kw):
+        rec = {"cmd": cmd, **kw, "input": ""}
+
+        class Stdin:
+            def write(self, s):
+                rec["input"] += s
+                return len(s)
+
+            def close(self):
+                pass
+
+        stdin = Stdin() if kw.get("stdin") not in (None, real_sp.DEVNULL) else None
+        calls.append(rec)
+        return SimpleNamespace(stdin=stdin, stdout=iter(()), wait=lambda: 0)
+
     monkeypatch.setattr(role_prompt, "subprocess", SimpleNamespace(
-        run=lambda cmd, **kw: calls.append({"cmd": cmd, **kw}) or SimpleNamespace(
-            returncode=0, stdout="", stderr="")))
+        run=run, Popen=popen, PIPE=real_sp.PIPE, STDOUT=real_sp.STDOUT, DEVNULL=real_sp.DEVNULL))
     return calls
 
 

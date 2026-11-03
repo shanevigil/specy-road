@@ -124,6 +124,16 @@ def gate_policy_summary(gate: Any, runs: list[dict[str, Any]]) -> str:
     return f"{base} — {note}" if not gate.passed and note else base
 
 
+def fail_reviewer_cli_run(path: Path, exc: BaseException) -> None:
+    """Close a prompt-cli RUN left ``running`` when the harness raises (interrupt, crash)."""
+    run = _read_json(path) or {}
+    err = f"interrupted: {exc or type(exc).__name__}"
+    run.update(state="incomplete", reason=err)
+    record_reviewer_failure_event(run, err)
+    run["ended_at"] = _now()
+    _save(path, run)
+
+
 def close_reviewer_cli_run(repo_root: Path, t: ReviewTarget, model: str, path: Path, exit_code: int,
                            output_lines: list[str]) -> None:
     """Finish a reviewer ``prompt --channel cli`` run: compare records and file a reviewer-failure when needed."""

@@ -224,6 +224,27 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
     return "\n".join(lines) + "\n", prof, None
 
 
+def _stream_and_capture(cmd, *, cwd: Path, transcript: list[str], stdin: str | None = None,
+                        shell: bool = False) -> int:
+    """Run ``cmd`` to its end, writing each line to stderr and ``transcript`` as it arrives."""
+    proc = subprocess.Popen(
+        cmd, cwd=cwd, shell=shell, text=True, encoding="utf-8", errors="replace",
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        stdin=subprocess.PIPE if stdin is not None else subprocess.DEVNULL,
+    )
+    if stdin is not None and proc.stdin:
+        try:
+            proc.stdin.write(stdin)
+            proc.stdin.close()
+        except OSError as e:   # the harness quit before reading its prompt
+            sys.stderr.write(f"harness closed stdin early: {e}\n")
+    assert proc.stdout is not None
+    for line in proc.stdout:
+        sys.stderr.write(line)
+        transcript.append(line.rstrip("\n"))
+    return proc.wait()
+
+
 def run_bare_reviewer(prof: Profile | None, prompt_path: Path, root: Path, model: str | None, reviews: Path,
                       level: str | None, transcript: list[str] | None = None) -> int:
     """The default Claude Code reviewer command: bare, with ``--add-dir`` for the hand-off directory."""
@@ -236,13 +257,7 @@ def run_bare_reviewer(prof: Profile | None, prompt_path: Path, root: Path, model
     try:
         if transcript is None:
             return subprocess.run(launch.argv, input=launch.stdin, text=True, cwd=root, check=False).returncode
-        result = subprocess.run(launch.argv, input=launch.stdin, cwd=root, check=False,
-                                capture_output=True, text=True)
-        combined = (result.stdout or "") + (result.stderr or "")
-        for line in combined.splitlines():
-            sys.stderr.write(line + "\n")
-            transcript.append(line)
-        return result.returncode
+        return _stream_and_capture(launch.argv, cwd=root, transcript=transcript, stdin=launch.stdin)
     except OSError as e:   # e.g. no `claude` on PATH
         print(f"error: could not launch claude: {e.strerror}", file=sys.stderr)
         if transcript is not None:
@@ -285,12 +300,7 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
         cmd = substitute_prompt(cli, prompt_path, effort=effort)
         if transcript is None:
             return subprocess.run(cmd, shell=True, cwd=root, check=False).returncode
-        result = subprocess.run(cmd, shell=True, cwd=root, check=False, capture_output=True, text=True)
-        combined = (result.stdout or "") + (result.stderr or "")
-        for line in combined.splitlines():
-            sys.stderr.write(line + "\n")
-            transcript.append(line)
-        return result.returncode
+        return _stream_and_capture(cmd, cwd=root, transcript=transcript, shell=True)
     except OSError as e:   # E2BIG: "<prompt>" puts the whole text on the command line
         print(f"error: could not launch the cli: {e.strerror}; if the prompt is too long for a command line, "
               'use {prompt} (its file path) instead of "<prompt>"', file=sys.stderr)
@@ -341,22 +351,27 @@ def main(argv: list[str] | None = None) -> None:
         print(f"note: no profile for {ns.model!r}; the prompt has no model notes (see `specy-road models list`)", file=sys.stderr)
     if ns.channel != "cli":
         raise SystemExit(0)
+    if ns.role != "reviewer":
+        raise SystemExit(run_cli_channel(prof, out, root, entry.get("preflight"),
+                                         (entry.get("channels") or {}).get("cli"),
+                                         harness=entry.get("harness"), role=ns.role, model=ns.model,
+                                         reviews=reviews_dir(root, ns.node_id)))
+    from specy_road.reviewer_run_failure import close_reviewer_cli_run, fail_reviewer_cli_run, open_reviewer_cli_run
+    try:
+        reviewer_target = resolve_target(root, ns.node_id, ns.ref)
+    except ReviewTargetError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1)
+    reviewer_run = open_reviewer_cli_run(root, reviewer_target, ns.model, entry.get("harness"))
     transcript: list[str] = []
-    reviewer_target = None
-    reviewer_run = None
-    if ns.role == "reviewer":
-        from specy_road.reviewer_run_failure import close_reviewer_cli_run, open_reviewer_cli_run
-        try:
-            reviewer_target = resolve_target(root, ns.node_id, ns.ref)
-        except ReviewTargetError as e:
-            print(f"error: {e}", file=sys.stderr)
-            raise SystemExit(1)
-        reviewer_run = open_reviewer_cli_run(root, reviewer_target, ns.model, entry.get("harness"))
-    rc = run_cli_channel(prof, out, root, entry.get("preflight"), (entry.get("channels") or {}).get("cli"),
-                         harness=entry.get("harness"), role=ns.role, model=ns.model,
-                         reviews=reviews_dir(root, ns.node_id), transcript=transcript if ns.role == "reviewer" else None)
-    if reviewer_target is not None and reviewer_run is not None:
+    try:
+        rc = run_cli_channel(prof, out, root, entry.get("preflight"), (entry.get("channels") or {}).get("cli"),
+                             harness=entry.get("harness"), role=ns.role, model=ns.model,
+                             reviews=reviews_dir(root, ns.node_id), transcript=transcript)
         close_reviewer_cli_run(root, reviewer_target, ns.model, reviewer_run, rc, transcript)
+    except BaseException as e:
+        fail_reviewer_cli_run(reviewer_run, e)
+        raise
     raise SystemExit(rc)
 
 

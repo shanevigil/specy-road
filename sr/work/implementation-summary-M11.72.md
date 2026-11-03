@@ -31,4 +31,7 @@ Reviewer runs through `review delegate` or `prompt --role reviewer --channel cli
 - `test_successful_delegate_run_has_no_reviewer_failure_event` — complete delegate run has no failure events
 - `test_prompt_cli_channel_records_usage_limit_and_shows_it_on_the_gate_line` — prompt cli path and handoff line
 - `test_review_cli_module_main_prints_usage` — `python -m specy_road.bundled_scripts.review_cli -h` prints usage (the shipped CLI path)
+- `_stream_and_capture` — one Popen helper that tees harness lines to stderr and the transcript live
+- `fail_reviewer_cli_run` — prompt-cli RUN closed as `incomplete` with `interrupted: …` on BaseException
+- `test_prompt_cli_exception_closes_the_run_incomplete` — a launch exception leaves the RUN `incomplete` with a reviewer-failure event, not `running`
 - none (mocks)
