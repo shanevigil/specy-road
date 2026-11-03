@@ -43,6 +43,14 @@ def content_hash(p: Path) -> str | None:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
+def read_snapshot(p: Path) -> tuple[str, str]:
+    """Text and hash of *p* from one read, so they always describe the same version."""
+    data = p.read_bytes()
+    # Same newline translation as ``read_text`` gave the editors before.
+    text = data.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
+    return text, hashlib.sha256(data).hexdigest()
+
+
 def require_unchanged_since(p: Path, base_hash: str | None) -> None:
     """409 with the current content when *p* changed on disk since *base_hash*.
 
@@ -51,7 +59,7 @@ def require_unchanged_since(p: Path, base_hash: str | None) -> None:
     """
     if base_hash is None or not base_hash.strip():
         return
-    current = content_hash(p)
+    text, current = read_snapshot(p) if p.is_file() else (None, None)
     if current == base_hash.strip():
         return
     raise HTTPException(
@@ -62,11 +70,7 @@ def require_unchanged_since(p: Path, base_hash: str | None) -> None:
                 "reload it and reapply your edits"
             ),
             "content_hash": current,
-            "current_content": (
-                p.read_text(encoding="utf-8", errors="replace")
-                if current is not None
-                else None
-            ),
+            "current_content": text,
         },
     )
 
@@ -155,8 +159,8 @@ def api_planning_get(path: str = Query(..., description="Repo-relative path")) -
     assert_planning_file_api_path(root, p)
     if not p.is_file():
         raise HTTPException(status_code=404, detail="file not found")
-    text = p.read_text(encoding="utf-8", errors="replace")
-    return {"path": path, "content": text, "content_hash": content_hash(p)}
+    text, digest = read_snapshot(p)
+    return {"path": path, "content": text, "content_hash": digest}
 
 
 def api_planning_put(

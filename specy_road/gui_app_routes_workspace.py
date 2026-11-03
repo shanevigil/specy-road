@@ -27,6 +27,7 @@ from specy_road.gui_app_helpers import (
 from specy_road.gui_app_routes_planning import (
     BASE_CONTENT_HASH_HEADER,
     content_hash,
+    read_snapshot,
     require_unchanged_since,
 )
 from specy_road.pm_gui_concurrency import require_pm_gui_write_header
@@ -111,8 +112,8 @@ def _api_workspace_file_get(
     assert_under_allowed_root(root, p, "shared")
     if not p.is_file():
         raise HTTPException(status_code=404, detail="file not found")
-    text = p.read_text(encoding="utf-8", errors="replace")
-    return {"path": path, "content": text, "content_hash": content_hash(p)}
+    text, digest = read_snapshot(p)
+    return {"path": path, "content": text, "content_hash": digest}
 
 
 def _api_workspace_file_put(

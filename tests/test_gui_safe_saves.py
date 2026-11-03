@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import shutil
 from pathlib import Path
 
@@ -76,6 +77,46 @@ def test_fresh_save_accepted_and_returns_new_hash(
     assert (dogfood_copy / rel).read_text(encoding="utf-8") == new
     again = client.get(route, params={"path": rel}).json()
     assert r.json()["content_hash"] == again["content_hash"] != got["content_hash"]
+
+
+@pytest.mark.parametrize(("route", "rel"), ROUTES)
+def test_get_content_and_hash_come_from_one_snapshot(
+    dogfood_copy: Path, route: str, rel: str,
+) -> None:
+    """An editor writing between the GET's reads must not pair old content with the new hash."""
+    target = (dogfood_copy / rel).resolve()
+    original = target.read_bytes()
+    real_read_text, real_read_bytes = Path.read_text, Path.read_bytes
+    fired: list[bool] = []
+
+    def edit_after_first_read(self: Path, result: object) -> object:
+        if self.resolve() == target and not fired:
+            fired.append(True)
+            target.write_bytes(b"edited on disk mid-request\n")
+        return result
+
+    client = _client()
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(
+            Path, "read_text",
+            lambda self, *a, **k: edit_after_first_read(self, real_read_text(self, *a, **k)),
+        )
+        mp.setattr(
+            Path, "read_bytes",
+            lambda self: edit_after_first_read(self, real_read_bytes(self)),
+        )
+        got = client.get(route, params={"path": rel}).json()
+    assert fired
+    assert got["content_hash"] == hashlib.sha256(original).hexdigest()
+    assert got["content"] == original.decode("utf-8")
+    r = client.put(
+        route,
+        params={"path": rel},
+        json={"content": got["content"] + "dashboard edit\n"},
+        headers=_headers(client, got["content_hash"]),
+    )
+    assert r.status_code == 409, r.text
+    assert target.read_bytes() == b"edited on disk mid-request\n"
 
 
 def test_read_only_serves_reads_and_refuses_writes(dogfood_copy: Path) -> None:
