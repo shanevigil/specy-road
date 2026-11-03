@@ -422,7 +422,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.56_reviews-dir-before-launch_42c62620-e154-432d-b77b-8cfad8be7bbe.md",
       "sibling_order": 56,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Delegate creates the reviews directory before a harness is told to allow it",
       "touch_zones": [
         "specy_road/worker_ops.py",

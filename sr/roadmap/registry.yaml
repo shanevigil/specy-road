@@ -137,14 +137,3 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: reviews-dir-before-launch
-    node_id: M11.56
-    branch: feature/rm-reviews-dir-before-launch
-    touch_zones:
-      - specy_road/worker_ops.py
-      - specy_road/worker_adapters.py
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T05:15:18+00:00'
