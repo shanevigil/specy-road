@@ -11,6 +11,7 @@ from jsonschema import Draft202012Validator
 from specy_road.bundled_scripts.planning_artifacts import collect_planning_artifact_errors
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 from specy_road.review_gate import review_required
+from specy_road.review_gate_agreement import gate_config_mismatch
 from specy_road.runtime_paths import default_user_repo_root, git_root
 
 from specy_road.bundled_scripts.brief_acceptance import warn_acceptance_merged, warn_acceptance_missing, warn_unauthored
@@ -357,6 +358,10 @@ def run_validation(
     id_to_type = {n["id"]: n.get("type") for n in nodes}
     gate = review_required(r)
     _validate_registry_entries(registry, id_set, id_to_type, gate=gate)
+    mismatch = gate_config_mismatch(r, gate_on=gate)
+    if mismatch:
+        print(f"roadmap: error — {mismatch}", file=sys.stderr)
+        raise SystemExit(1)
 
     warn_stale_parent_status(nodes)
     warn_touch_zones_match_nothing(nodes, r, git_root=git_root(r) or r)

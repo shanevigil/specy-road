@@ -32,6 +32,19 @@ commit.
 `finish-this-task` checks the gate again at the current commit, so work
 committed after approval cannot ship on the earlier reviews.
 
+The gate is enforced only while `require_implementation_review_before_finish`
+is on in `roadmap/git-workflow.yaml` (in the working tree or on the integration
+branch); with it off, `mark-implementation-reviewed` has nothing to do and says
+the gate is not enforced at finish. `roadmap/orchestration.yaml` alone does not
+turn it on, so a project whose orchestration file requires reviewers
+(`reviewers_required`, at least 1 whenever the file exists) while that switch is
+off would see `review list` report a gate that finish never checks.
+`specy-road validate` fails on that combination and `specy-road doctor` reports
+it as an `error:` and exits 1, both naming the two settings and the fix: set
+`require_implementation_review_before_finish: true`. Neither turns the switch on
+for you; whether a project reviews is its own decision, and a project that does
+not can delete `roadmap/orchestration.yaml`.
+
 ## Delta review of small fix rounds
 
 A new commit makes every record stale, so each fix round normally needs fresh
