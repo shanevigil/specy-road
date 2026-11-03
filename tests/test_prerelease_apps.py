@@ -104,9 +104,12 @@ def test_abort_of_a_local_pickup_drops_the_claim_without_pushing(tmp_path: Path)
     _git(app, "reset", "-q", "--hard", registration)
 
     (app / "work" / "brief-M9.9.md").write_text("another leaf's brief\n")   # §5 re-check F-R3: not this abort's
+    notes = app / "work" / "coordinator-notes.md"   # untracked: pickup accepts it, so abort does too
+    notes.write_text("lane plan\n")
     r = _cli(app, "abort-task-pickup")
 
     assert r.returncode == 0, r.stderr
     assert _git(remote, "rev-parse", "main") == pushed
     assert _git(app, "rev-parse", "HEAD") == pushed
     assert _git(app, "branch", "--list", "feature/rm-*") == ""
+    assert notes.read_text() == "lane plan\n"
