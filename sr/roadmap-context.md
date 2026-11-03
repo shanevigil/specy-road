@@ -147,7 +147,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.38` handoff status says who can still supply a missing approval `handoff-eligible-reviewers` — task — **Complete**
   - `M11.39` A roster entry can be marked unavailable without deleting it `roster-availability` — task — **Not Started**
   - `M11.40` worker reconcile works on merged leaves and separates untracked files `reconcile-merged-and-untracked` — task — **Not Started**
-  - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Not Started**
+  - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Complete**
   - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Complete**
   - `M11.43` init project reports exactly what it writes `init-project-reports-writes` — task — **Not Started**
   - `M11.44` init project can install only the model profiles a project uses `init-profiles-subset` — task — **Complete**
@@ -180,10 +180,12 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M11.41` on `feature/rm-gate-config-agree` since 2026-11-02
+- `M11.23` on `feature/rm-resume-keeps-permissions` since 2026-11-03
 - `M11.43` on `feature/rm-init-project-reports-writes` since 2026-11-03
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.52` on `feature/rm-pr-mode-registry-conflict` since 2026-11-03
+- `M11.57` on `feature/rm-completed-worker-frees-slot` since 2026-11-03
+- `M8.2` on `feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 - `M8.6` on `feature/rm-candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic` since 2026-11-03
 

@@ -15,20 +15,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: gate-config-agree
-    node_id: M11.41
-    branch: feature/rm-gate-config-agree
-    touch_zones:
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - specy_road/bundled_scripts/doctor.py
-      - specy_road/git_workflow_config.py
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/bundled_scripts/mark_implementation_reviewed.py
-      - specy_road/review_gate_agreement.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic
     node_id: M8.6
     branch: feature/rm-candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic
