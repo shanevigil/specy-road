@@ -203,6 +203,8 @@ entries:
       - tests/
       - specy_road/schemas/review-record.schema.json
       - specy_road/schemas/worker-record.schema.json
+      - specy_road/toolkit_version.py
+      - specy_road/worker_state.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
