@@ -52,6 +52,7 @@ class ReviewTarget:
     base: str | None
     milestone: bool = False   # reviewed as a whole at the integration tip, not as a claimed leaf
     unfinished_leaves: list[str] = field(default_factory=list)   # leaves not Complete at ``commit`` (milestone)
+    committed_zones: list[str] | None = None   # the node's touch_zones at ``commit``; None = not readable there
 
     @property
     def node_id(self) -> str:
@@ -61,6 +62,19 @@ class ReviewTarget:
     def touch_zones(self) -> list[str]:
         entry = self.entry or {}
         return list(entry.get("touch_zones") or self.node.get("touch_zones") or [])
+
+    @property
+    def review_zones(self) -> list[str]:
+        """The zones a review judges against: the claim row's plus the node's as committed at ``commit``.
+
+        Zones added to the node on the feature branch count although the
+        checkout building the packet has not seen that commit; when the node
+        cannot be read there, :attr:`touch_zones` stands.
+        """
+        if self.committed_zones is None:
+            return self.touch_zones
+        claimed = (self.entry or {}).get("touch_zones") or []
+        return list(dict.fromkeys([*claimed, *self.committed_zones]))
 
     @property
     def leaf_ids(self) -> list[str]:
@@ -200,6 +214,27 @@ def milestone_review_base(repo_root: Path, nodes: list[dict[str, Any]], node_id:
     return git_text(["merge-base", "--octopus", *parents], repo_root) or None
 
 
+def node_at(repo_root: Path, node_id: str, commit: str | None) -> dict[str, Any] | None:
+    """``node_id`` as its chunk **at ``commit``** records it; ``None`` when it cannot be read there.
+
+    The chunk is the one holding the node in the working tree, read from git
+    at ``commit``, so a checkout on another branch sees what that commit says.
+    """
+    chunk = find_chunk_path(repo_root, node_id) if commit else None
+    rel = chunk.relative_to(repo_root.resolve()) if chunk else None
+    text = rel is not None and git_stdout(["show", f"{commit}:./{rel.as_posix()}"], repo_root)
+    try:
+        nodes = nodes_from_chunk_doc(json.loads(text)) if text else None
+    except ValueError:
+        nodes = None
+    return next((n for n in nodes or [] if n.get("id") == node_id), None)
+
+
+def _zones_at(repo_root: Path, node_id: str, commit: str | None) -> list[str] | None:
+    node = node_at(repo_root, node_id, commit)
+    return None if node is None else list(node.get("touch_zones") or [])
+
+
 def unfinished_leaves_at(repo_root: Path, nodes: list[dict[str, Any]], node_id: str, commit: str) -> list[str]:
     """Leaves under ``node_id`` whose chunk **at ``commit``** does not say Complete.
 
@@ -207,20 +242,8 @@ def unfinished_leaves_at(repo_root: Path, nodes: list[dict[str, Any]], node_id: 
     says what has landed. A leaf whose chunk cannot be read there counts as
     unfinished: the review must cover the landed change.
     """
-    out = []
-    root = repo_root.resolve()
-    for leaf in leaf_descendants(nodes, node_id):
-        chunk = find_chunk_path(repo_root, leaf["id"])
-        rel = chunk.relative_to(root) if chunk else None
-        text = rel is not None and git_stdout(["show", f"{commit}:./{rel.as_posix()}"], repo_root)
-        try:
-            landed = nodes_from_chunk_doc(json.loads(text)) if text else None
-        except ValueError:
-            landed = None
-        status = next((n.get("status") for n in landed or [] if n.get("id") == leaf["id"]), None)
-        if status != "Complete":
-            out.append(leaf["id"])
-    return out
+    return [leaf["id"] for leaf in leaf_descendants(nodes, node_id)
+            if (node_at(repo_root, leaf["id"], commit) or {}).get("status") != "Complete"]
 
 
 def resolve_target(
@@ -253,13 +276,15 @@ def resolve_target(
             raise ReviewTargetError(f"cannot resolve {use_ref!r} to a commit")
         return ReviewTarget(node, nodes, entry, use_ref, tip, bref,
                             milestone_review_base(repo_root, nodes, node_id, tip), milestone=True,
-                            unfinished_leaves=unfinished_leaves_at(repo_root, nodes, node_id, tip))
+                            unfinished_leaves=unfinished_leaves_at(repo_root, nodes, node_id, tip),
+                            committed_zones=_zones_at(repo_root, node_id, tip))
     use_ref = ref or default_ref(repo_root, entry or {"node_id": node_id}, remote)
     if not full_sha(repo_root, use_ref):
         raise ReviewTargetError(f"cannot resolve {use_ref!r} to a commit")
     base = git_text(["merge-base", bref, use_ref], repo_root) if bref else None
     commit = reviewed_commit(repo_root, use_ref, base)
-    return ReviewTarget(node, nodes, entry, use_ref, commit, bref, base)
+    return ReviewTarget(node, nodes, entry, use_ref, commit, bref, base,
+                        committed_zones=_zones_at(repo_root, node_id, commit))
 
 
 def resolve_target_or_exit(repo_root: Path, node_id: str, ref: str | None = None) -> ReviewTarget:

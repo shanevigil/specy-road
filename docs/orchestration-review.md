@@ -221,6 +221,10 @@ bare`) and in `--json` as each review's `launch_mode`.
 
 `handoff status` lists each run under the node (`RUN-opus.json: incomplete run by opus at <sha>, session <id>: <reason>`, marked `not the commit under review` when it is for an older commit), and in `--json` as `review_runs`, each with `current`. An incomplete run at the commit under review is also a problem naming the command to re-run. A record left from an older commit is never shown as the current verdict: it is listed only as a problem (`reviewed <sha>, not the current commit — re-review`); without a claim each record line says the commit it reviewed (`at <sha>, not evaluated`), and `review list` marks one that is not the commit under review `stale`.
 
+## Changed paths in the review packet
+
+The packet's **Changed paths** section lists every path the diff changes and marks each one outside the touch zones. Those zones, also named in the header, are the claim row's `touch_zones` plus the node's `touch_zones` as committed at the commit under review, read from git. A zone added to the node on the feature branch therefore counts when the packet is built from a checkout on the integration branch. When the node cannot be read at that commit, the claim row's zones (else the node's in the working tree) are used.
+
 ## Test integrity in the review packet
 
 `specy-road review-packet` inserts a **Test integrity** section immediately after **Changed paths**. It lists the same one-line findings as `specy-road integrity <NODE_ID>` (removed tests, removed test files, new skips, lost asserts, pytest-related config edits, new lint suppressions, widened baselines), or `_none_` when there are none. The section is computed from git objects only and is byte-identical for the same base and head commits. Reviewers use it to spot test weakening without running the CLI separately.
@@ -237,7 +241,7 @@ The executor prompt written at pickup has a **Tests at risk** section with the `
 
 The packet's **Diff** section inlines whole files only, within two budgets: `--max-diff-lines` (default 1500) and `--max-diff-bytes` (default 200000), since a rebuilt minified bundle is a few very long lines that the line budget alone lets through. Files are inlined in diff order until one would pass either budget; it and every file after it are listed with their `+`/`-` counts and the bytes of their diff, and the full diff is written to `work/reviews/<NODE_ID>/DIFF.patch`. `0` lifts a budget.
 
-A generated file is never inlined, whatever the budgets: one under `specy_road/pm_gantt_static/` (the packaged PM GUI bundle), or one that a `.gitattributes` line marks `linguist-generated`, read at the commit under review. It is listed the same way and marked `generated`, the packet says generated files are never inlined, and its diff is in `DIFF.patch`. Review the source it is built from instead.
+A generated file is never inlined, whatever the budgets: one under `specy_road/pm_gantt_static/` (the packaged PM GUI bundle), one that a `.gitattributes` line marks `linguist-generated`, read at the commit under review, or a well-known lockfile (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`, `uv.lock`, `Cargo.lock`, `go.sum`, in any directory) with no `linguist-generated` entry there; `linguist-generated=false` opts a lockfile back in. It is listed the same way and marked `generated`, the packet says generated files are never inlined, and its diff is in `DIFF.patch`. A generated file uses up neither budget, so the files after it are still inlined. Review the source it is built from instead.
 
 ## The integrity gate
 
