@@ -3,7 +3,9 @@
 Base `ea837ec1` was a coordinator checkpoint of the first Composer worker's uncommitted edits (not
 reviewed). I kept its policy key, default and module, rewrote the gate and status logic for A2, and
 dropped its prompt-side duplicate of the packet text. `origin/WIP/improvements-0-3-1` is merged in
-(`b13fa665`, no conflicts).
+(`b13fa665`, no conflicts). A second merge of it (`d0295536`, no conflicts) brought in the new Codex reviewer
+entries. It changes no behaviour this leaf depends on: after it, `tests/test_resumed_delta_review.py`,
+`tests/test_delta_review.py` and `tests/test_human_acceptance.py` pass (31), and file-limits is OK.
 
 The second worker's patch (`m1136-main2.patch`, read for reference only) turned up one real gap:
 the reviewer preamble always said "This is a fresh session". That is now fixed (see below). I did not
