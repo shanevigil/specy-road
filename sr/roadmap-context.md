@@ -150,7 +150,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Not Started**
   - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Complete**
   - `M11.43` init project reports exactly what it writes `init-project-reports-writes` — task — **Not Started**
-  - `M11.44` init project can install only the model profiles a project uses `init-profiles-subset` — task — **Not Started**
+  - `M11.44` init project can install only the model profiles a project uses `init-profiles-subset` — task — **Complete**
   - `M11.45` The stale-command warning fires only on command-shaped mentions `stale-command-prose` — task — **Complete**
   - `M11.46` Placeholder leaves neither fail validate --strict nor pad briefs `placeholder-leaves-strict-brief` — task — **Not Started**
   - `M11.47` validate checks git-root touch zones in a nested project `validate-zones-git-root` — task — **Complete**
@@ -167,6 +167,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.58` The coordinator records the session's routing preferences where the next session can read them `session-routing-preferences` — task — **Not Started**
   - `M11.59` Split worker_ops and worker_adapters so parallel leaves stop colliding `split-worker-modules` — task — **Not Started**
 
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+
 ## Archived (not in the live roadmap)
 
 This work was completed and moved out of the graph. It is deliberately excluded from IDE indexing; reach it with `specy-road search <QUERY> --scope archived`.
@@ -181,7 +187,6 @@ Do not pick these up.
 - `M11.16` on `feature/rm-sheet-edits-keep-approvals` since 2026-11-02
 - `M11.20` on `feature/rm-roster-source-explained` since 2026-11-02
 - `M11.37` on `feature/rm-packet-uncommitted-refs` since 2026-11-02
-- `M11.44` on `feature/rm-init-profiles-subset` since 2026-11-02
 - `M11.50` on `feature/rm-finish-keeps-summary` since 2026-11-02
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.54` on `feature/rm-parallel-test-suite` since 2026-11-02

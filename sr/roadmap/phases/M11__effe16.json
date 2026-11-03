@@ -112,7 +112,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.44_init-profiles-subset_27d1e4aa-a2e8-4ad2-8369-f431163cce87.md",
       "sibling_order": 44,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "init project can install only the model profiles a project uses",
       "touch_zones": [
         "specy_road/init_project.py",
