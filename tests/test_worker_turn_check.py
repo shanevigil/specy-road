@@ -337,3 +337,22 @@ def test_pre_turn_work_outside_the_zones_that_the_turn_restores_or_deletes_is_a_
     assert "gone during the turn" in check.summary
     after = ws.load_record(repo, rec.worker_id)
     assert after.state == "idle" and tc.FLAG_POST_RUN in after.flags
+
+
+def test_a_paused_worker_frees_its_slot_once_its_leaf_is_over_like_an_idle_one(tmp_path: Path) -> None:
+    """Merging M11.57: paused_by_limit holds its leaf and slot like idle, so it is a held state there too. Otherwise a
+    worker paused at a limit whose leaf then ended elsewhere would hold a max_workers slot for good."""
+    from specy_road.worker_orphans import end_finished_workers, holding_slots, orphans
+
+    repo = make_review_repo(tmp_path)
+    gone = tmp_path / "removed-worktree"
+    gone.mkdir()
+    live = ws.set_state(repo, ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing"),
+                        tc.PAUSED_BY_LIMIT, pid=None)
+    lost = ws.set_state(repo, ws.create_record(repo, "M1.2", "claude-code", "opus", gone, branch="feature/rm-other"),
+                        tc.PAUSED_BY_LIMIT, pid=None)
+    gone.rmdir()
+    assert orphans(repo) == {lost.worker_id: f"no claim on M1.2 on dev; worktree {lost.worktree} is gone"}
+    assert [r.worker_id for r in holding_slots(repo, ws.list_records(repo))] == [live.worker_id]
+    assert [r.worker_id for r, _why in end_finished_workers(repo, "M1.1")] == [live.worker_id]   # finish ends it
+    assert ws.load_record(repo, live.worker_id).state == "terminated"

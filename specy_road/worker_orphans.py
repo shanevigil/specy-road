@@ -1,7 +1,7 @@
 """Held workers whose leaf is over: they free their ``max_workers`` slot and show as orphaned (M11.57).
 
-An ``idle`` or ``completed`` worker keeps its leaf and its slot, so a review ``block`` can resume it for a
-fix round. Once its leaf is over, no fix round can come: it no longer counts against ``policy.max_workers``,
+An ``idle``, ``completed`` or ``paused_by_limit`` worker keeps its leaf and its slot, so a review ``block`` (or the
+usage limit's reset) can resume it for a fix round. Once its leaf is over, no fix round can come: it no longer counts against ``policy.max_workers``,
 ``worker list`` / ``sync`` show it orphaned, and ``worker terminate --orphaned`` ends it. ``finish-this-task``
 ends the finished leaf's own idle and completed workers.
 
@@ -41,7 +41,7 @@ from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worker_state import WorkerRecord, list_records, workers_lock
 
 #: Not running, still owning the leaf: what a leaf that is over releases.
-HELD_STATES = frozenset({"idle", "completed"})
+HELD_STATES = frozenset({"idle", "completed", "paused_by_limit"})   # paused_by_limit: worker_turn_check (M8.2)
 RUNNING_STATES = frozenset({"starting", "running"})
 _HINT = "(`specy-road worker terminate --orphaned` ends them)"
 _REF_TIMEOUT = 30.0   # one ``git show`` of a registry blob, as finish reads one
