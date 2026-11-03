@@ -164,5 +164,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.55` | Executors split modules to meet file limits instead of deleting documentation | task | Agentic-led | Not Started |
 | `M11.56` | Delegate creates the reviews directory before a harness is told to allow it | task | Agentic-led | Not Started |
 | `M11.57` | A completed worker on a finished leaf does not hold a max_workers slot | task | Agentic-led | Not Started |
+| `M11.58` | The coordinator records the session's routing preferences where the next session can read them | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

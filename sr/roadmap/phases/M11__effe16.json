@@ -458,6 +458,33 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road decisions can record a preference entry (kind preference) that states a routing rule in plain words and optional structured fields: role, preferred roster ids in order, roster ids to avoid with an optional until time, and the leaf kinds it applies to (for example docs or data only); decisions list shows active preferences first and drops expired ones",
+        "The orchestrate skill and coordinator prompt tell the coordinator to read active preferences at the start of each session and before each delegate or review launch, to record a preference whenever the human states one in chat, and to close or update it when the human changes it; orchestrate plan prints the active preferences it did not apply automatically",
+        "docs/orchestration.md explains that preferences are per project and session-durable (they survive a context reset, an account switch or a different agent taking over) and are not roster config; tests cover add, expiry, listing order and the plan notice"
+      ],
+      "codename": "session-routing-preferences",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.58",
+      "node_key": "0f7f80f3-23c0-4824-ac19-58e173360f5d",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.58_session-routing-preferences_0f7f80f3-23c0-4824-ac19-58e173360f5d.md",
+      "sibling_order": 58,
+      "status": "Not Started",
+      "title": "The coordinator records the session's routing preferences where the next session can read them",
+      "touch_zones": [
+        "specy_road/decisions.py",
+        "specy_road/bundled_scripts/decisions_cli.py",
+        "specy_road/templates/project/schemas/",
+        "specy_road/templates/specyrd/commands/specyrd-orchestrate.md",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "docs/orchestration.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
