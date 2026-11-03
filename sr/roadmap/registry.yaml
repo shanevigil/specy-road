@@ -143,20 +143,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: roster-availability
-    node_id: M11.39
-    branch: feature/rm-roster-availability
-    touch_zones:
-      - specy_road/orchestration_config.py
-      - specy_road/orchestrate_plan.py
-      - specy_road/worker_ops.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - docs/orchestration.md
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: pickup-finish-shared-lock
     node_id: M11.74
     branch: feature/rm-pickup-finish-shared-lock

@@ -75,7 +75,7 @@ substitutions: []
 | `policy.stall_after_seconds` | A `running` worker with no stdout for this long is flagged `stalled` by `worker sync` and `worker list`, with one `stalled` event per silence ([orchestration-workers.md](orchestration-workers.md#the-model)). Default `600`. |
 | `substitutions[]` | A recorded decision letting `use` review in place of a usual reviewer: `slot`, `use` (must be a roster id; its family comes from the roster), optional `scope` (non-empty list of node ids; omit for all), `decided` (does not count before this date), and an expiry — `expires_when` (prose), `expires` (date after which it stops counting), or both. |
 
-Roster entries also accept `profile`, `channels`, `may_process`, `subagent_family_lock`, `preflight`, `harness` and `billing_route`; policy also takes `max_workers` (routing, prompts, and `worker delegate` use them), and `escalate_same_acceptance_blocks` (default 3) and `escalate_review_rounds` (default 5), the review-loop escalation thresholds under "The review gate".
+Roster entries also accept `profile`, `channels`, `may_process`, `subagent_family_lock`, `preflight`, `harness`, `billing_route`, `available`, `paused_until`, and legacy `unavailable_until`; policy also takes `max_workers` (routing, prompts, and `worker delegate` use them), and `escalate_same_acceptance_blocks` (default 3) and `escalate_review_rounds` (default 5), the review-loop escalation thresholds under "The review gate".
 
 **Choosing models.** [`model-profiles/`](../specy_road/templates/project/model-profiles/README.md),
 scaffolded into your repo by `init project`, is the canonical guide to filling the roster: it ranks
@@ -100,6 +100,13 @@ policy:
 
 `specy-road validate` fails on a file that is present but invalid, including
 duplicate roster ids and a substitute that is not in the roster.
+
+**Local availability overlay.** `roadmap/orchestration.local.yaml` (gitignored,
+working tree only) can set `available: false` or `paused_until` on roster
+entries by `id` without changing the committed roster. `orchestrate plan`,
+`prompt`, `worker delegate` and `review delegate` read those fields merged onto
+the integration-branch roster; past review records by a paused model still
+count at the commit they reviewed.
 
 **The gate reads this file from the integration branch** — its remote-tracking ref when there is
 one, else the local branch — not from the branch under review, so a feature branch cannot lower its

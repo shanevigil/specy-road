@@ -63,6 +63,7 @@ from specy_road.orchestrate_plan import (
     may_handle,
     node_eligibility,
     node_sensitivity,
+    unavailable_prompt_error,
 )
 from specy_road.worker_adapter_parsers import effort_note
 from specy_road.worker_adapters import ADAPTERS, placeholder_problem, substitute_prompt
@@ -159,7 +160,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
     if need not in (entry.get("roles") or []) and not substitute:
         return "", None, f"{model!r} does not have the {need} role in the roster"
     if not is_available(entry):
-        return "", None, f"{model!r} is marked unavailable until {entry.get('unavailable_until')} in the roster"
+        return "", None, unavailable_prompt_error(model, entry)
     try:
         t = resolve_target(root, node_id, ref)
     except ReviewTargetError as e:

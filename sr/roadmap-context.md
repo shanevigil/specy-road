@@ -145,7 +145,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.36` A resumed reviewer session may approve a delta it was shown `resumed-delta-approval` — task — **Not Started**
   - `M11.37` review-packet warns when the brief or summary names a file not committed at the reviewed commit `packet-uncommitted-refs` — task — **Complete**
   - `M11.38` handoff status says who can still supply a missing approval `handoff-eligible-reviewers` — task — **Complete**
-  - `M11.39` A roster entry can be marked unavailable without deleting it `roster-availability` — task — **Not Started**
+  - `M11.39` A roster entry can be marked unavailable without deleting it `roster-availability` — task — **Complete**
   - `M11.40` worker reconcile works on merged leaves and separates untracked files `reconcile-merged-and-untracked` — task — **Not Started**
   - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Complete**
   - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Complete**
@@ -200,7 +200,6 @@ Do not pick these up.
 
 - `M11.27` on `feature/rm-small-cli-fixes` since 2026-11-03
 - `M11.36` on `feature/rm-resumed-delta-approval` since 2026-11-03
-- `M11.39` on `feature/rm-roster-availability` since 2026-11-03
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.57` on `feature/rm-completed-worker-frees-slot` since 2026-11-03
 - `M11.63` on `feature/rm-pickup-second-claim-guard` since 2026-11-03
