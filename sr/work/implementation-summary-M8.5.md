@@ -16,6 +16,8 @@ Added with `specy-road edit-node M8.5 --add touch_zones=…` (kept because accep
 - `specy_road/specyrd_cli.py` — `--install-orchestration-hooks` and `--install-pre-push-hook` (A1, A3).
 - `specy_road/specyrd_hooks.py` — merges hook snippets and installs the optional pre-push script.
 
+`edit-node` also wrote `roadmap/phases/M8.json` and `roadmap/registry.yaml` (committed as it named). Those are the zone/claim update, not acceptance files; they are not added as zones (they overlap every other M8 / registry claim).
+
 Reverted (acceptance does not need this leaf to edit the worker runner/adapters; other leaves own those files):
 
 - `specy_road/worker_adapter_base.py`, `specy_road/worker_adapter_codex.py` — Codex `--disable` lives on the launch template (`harness-facts.yaml` / profile `access.cli`); A5 pins that argv, not the adapter default.
@@ -41,7 +43,7 @@ Reverted (acceptance does not need this leaf to edit the worker runner/adapters;
 - `orchestration_role_guard.py` — role-based command classification for hook denials.
 - `orchestration_guard_adapters.py` — per-harness hook JSON for executor and reviewer roles.
 - `bundled_scripts/orchestration_guard_cli.py` — `specy-road orchestration guard` CLI entry.
-- `cli.py` — `_FORWARDED` dispatch for `orchestration`.
+- `cli.py` — in-process dispatch for `specy-road orchestration guard`.
 - `specyrd_hooks.py` — merge hook JSON and install optional `pre-push`.
 - `specyrd_init.py` / `specyrd_cli.py` — `--install-orchestration-hooks`, `--install-pre-push-hook`.
 - `templates/specyrd/hooks/` — `README.md`, `pre-push`.
