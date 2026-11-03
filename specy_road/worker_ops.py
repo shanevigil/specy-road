@@ -38,7 +38,7 @@ from specy_road.worker_ops_slots import (  # re-exported
     sweep_stalled,
 )
 from specy_road.worker_process import process_alive, wrapper_gone  # re-exported: tests patch them here
-from specy_road.worker_reconcile import reconcile, sync  # re-exported; the CLI calls ops.reconcile/ops.sync
+from specy_road.worker_reconcile import dismiss, reconcile, sync  # re-exported; the CLI calls ops.reconcile/ops.sync
 from specy_road.worker_runner import spawn  # re-exported: tests patch it here
 from specy_road.worker_state import WorkerError, WorkerRecord  # re-exported
 
