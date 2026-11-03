@@ -102,8 +102,9 @@ the alias is what `worker delegate` passes the harness as the model, since it is
 the id the harness lists; otherwise the profile's `api_id` is, as before.
 
 - `specy-road models list` — the roster as the gate sees it, with each entry's
-  profile, coordinator/executor/reviewer scores, and staleness; profiles no
-  entry uses are listed so you can roster them.
+  profile, coordinator/executor/reviewer scores, and staleness; roster ids that
+  match no profile are listed separately; profiles no entry uses are listed so
+  you can roster them.
 - `specy-road models show <id> [--section <name>]` — one profile's machine
   fields and a body section (default: Prompting rules).
 - `specy-road models stale [--max-age-days N]` — profiles researched too long
