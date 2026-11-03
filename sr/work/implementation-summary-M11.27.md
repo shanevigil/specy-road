@@ -44,7 +44,7 @@ Original PM list plus the three kept files above (`edit-node --add`):
 - `fresh_invalid_ready_reason` catches `Exception` and `SystemExit` from `load_roadmap`/`acceptance_ids` and uses `next(..., None)` — a broken or nodeless graph cannot abort `_finish`; the summary falls back to `READY file missing`.
 - `all_ready_fingerprints` reuses `worker_process._fingerprint` instead of a duplicate.
 - `_set_complete` writes the ancestor chunk directly (no `edit_node_set_pairs`) — A2, so finish's validate is the only pass.
-- `worktree=` in `_line` and `sync_worker_header`; sync passes `rec.worktree` into the header dict — A5 coordinator visibility.
+- `worktree=` in `_line` and `sync_worker_header`; sync sets `w['worktree']` on the delta dict passed to `--json` (not a copy), so `queued_message` and worktree both appear in JSON — A5 coordinator visibility.
 - Per-node `fix: specy-road scaffold-planning <ID>` lines in `validate_required_planning_dirs` — A3.
 - `tests/test_m11_27_small_cli_fixes.py` — acceptance tests for A1–A5.
 - A2 fixture writes `policy.milestone_full_review: false` and asserts a non-empty `complete_rolled_up_ancestors` result before counting the acceptance warning (review finding: the hold skipped the ancestor write).

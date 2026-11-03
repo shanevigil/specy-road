@@ -137,8 +137,8 @@ def cmd_sync(ns: argparse.Namespace) -> int:
     lines = []
     for w in delta:
         rec = load_record(root, w["worker_id"])
-        header = {**w, "worktree": rec.worktree}
-        lines += sync_worker_header(header, rec.queued_message)
+        w["worktree"] = rec.worktree
+        lines += sync_worker_header(w, rec.queued_message)
         lines += [f"  ! gap: event(s) #{a}" + (f"–#{b}" if b > a else "") + " missing from the log (lost or unreadable)"
                   for a, b in w["gaps"]]
         # The whole log, not the delta: the final message may have been acked before the exit event.
