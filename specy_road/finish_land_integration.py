@@ -210,9 +210,18 @@ def _is_ancestor(repo: Path, ancestor: str, descendant: str) -> bool:
     return ok
 
 
-def _rev_list_count(repo: Path, base: str | None, tip: str) -> int:
-    spec = tip if base is None else f"{base}..{tip}"
-    code, out = git_code(["rev-list", "--count", spec], repo)
+def _rev_list_count(
+    repo: Path, tips: list[str], exclude: list[str] | None = None,
+) -> int:
+    """Count commits reachable from ``tips``, optionally excluding ``exclude``.
+
+    ``exclude is None`` counts the entire reachable set (no remote-tracking
+    baseline). Shared ancestry across ``tips`` is counted once.
+    """
+    args = ["rev-list", "--count", *tips]
+    if exclude is not None:
+        args += ["--not", *exclude]
+    code, out = git_code(args, repo)
     if code != 0 or not out.strip().isdigit():
         return 0
     return int(out.strip())
@@ -241,18 +250,27 @@ def _feature_merge_adds_commit(repo: Path, integration_tip: str, feature_branch:
 def merge_push_disclosure_counts(
     repo: Path, *, remote: str, integration_branch: str, feature_branch: str,
 ) -> tuple[int, int]:
-    """Return ``(total_commits_on_push, not_from_leaf)`` for merge-mode disclosure."""
+    """Return ``(total_commits_on_push, not_from_leaf)`` for merge-mode disclosure.
+
+    ``total`` is every commit newly reachable on the pushed integration ref:
+    local integration history, feature-only commits, and the landing merge
+    commit, with shared ancestry counted once. ``not_from_leaf`` is the subset
+    not reachable from ``feature_branch``.
+    """
     integration_tip = _integration_tip_after_ff(
         repo, remote=remote, integration_branch=integration_branch,
     )
     if integration_tip is None:
         return 0, 0
     tracked = _ref_sha(repo, f"refs/remotes/{remote}/{integration_branch}")
-    feature_sha = _ref_sha(repo, feature_branch)
-    not_base = tracked if tracked else (feature_sha or feature_branch)
-    not_from_leaf = _rev_list_count(repo, not_base, integration_tip)
-    merge_adds = _feature_merge_adds_commit(repo, integration_tip, feature_branch)
-    total = not_from_leaf + (1 if merge_adds else 0)
+    baseline = [tracked] if tracked is not None else None
+    not_from_exclude = [*(baseline or []), feature_branch]
+    not_from_leaf = _rev_list_count(repo, [integration_tip], exclude=not_from_exclude)
+    total = _rev_list_count(
+        repo, [integration_tip, feature_branch], exclude=baseline,
+    )
+    if _feature_merge_adds_commit(repo, integration_tip, feature_branch):
+        total += 1
     return total, not_from_leaf
 
 

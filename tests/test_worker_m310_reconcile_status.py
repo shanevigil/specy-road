@@ -177,4 +177,4 @@ def test_finish_help_and_merge_notice(tmp_path: Path, capsys) -> None:
     )
     out = capsys.readouterr().out
     assert "will merge 'feature/rm-thing' into 'dev' and push origin/dev" in out
-    assert "The push will carry 2 commits (1 not from 'feature/rm-thing')." in out
+    assert "The push will carry 4 commits (1 not from 'feature/rm-thing')." in out
