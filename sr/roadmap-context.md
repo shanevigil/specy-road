@@ -161,7 +161,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.52` PR mode predicts and resolves the registry conflict `pr-mode-registry-conflict` — task — **Not Started**
   - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Complete**
   - `M11.54` The test suite and land check run in parallel `parallel-test-suite` — task — **Not Started**
-  - `M11.55` Executors split modules to meet file limits instead of deleting documentation `file-limit-split-not-delete` — task — **Not Started**
+  - `M11.55` Executors split modules to meet file limits instead of deleting documentation `file-limit-split-not-delete` — task — **Complete**
   - `M11.56` Delegate creates the reviews directory before a harness is told to allow it `reviews-dir-before-launch` — task — **Complete**
   - `M11.57` A completed worker on a finished leaf does not hold a max_workers slot `completed-worker-frees-slot` — task — **Not Started**
   - `M11.58` The coordinator records the session's routing preferences where the next session can read them `session-routing-preferences` — task — **Not Started**
@@ -185,7 +185,6 @@ Do not pick these up.
 - `M11.50` on `feature/rm-finish-keeps-summary` since 2026-11-02
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.54` on `feature/rm-parallel-test-suite` since 2026-11-02
-- `M11.55` on `feature/rm-file-limit-split-not-delete` since 2026-11-02
 
 ## Reaching the detail behind this
 
