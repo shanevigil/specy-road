@@ -134,7 +134,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.25_merge-push-disclosure_4e0d89c4-53ac-4c00-9c0d-92b843fd43c2.md",
       "sibling_order": 25,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "finish-this-task says what merge mode will push before it pushes",
       "touch_zones": [
         "specy_road/finish_land_integration.py",
