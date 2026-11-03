@@ -47,7 +47,8 @@
         "specy_road/git_workflow_config.py",
         "docs/orchestration-review.md",
         "tests/",
-        "specy_road/bundled_scripts/mark_implementation_reviewed.py"
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "specy_road/review_gate_agreement.py"
       ],
       "type": "task"
     },

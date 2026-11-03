@@ -25,6 +25,7 @@ entries:
       - docs/orchestration-review.md
       - tests/
       - specy_road/bundled_scripts/mark_implementation_reviewed.py
+      - specy_road/review_gate_agreement.py
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
