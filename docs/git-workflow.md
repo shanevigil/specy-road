@@ -79,6 +79,16 @@ This is what makes **concurrent lanes** against one integration branch safe; see
 [grind-session.md](grind-session.md). Merging by hand still means removing your
 own row yourself.
 
+**Pickup/finish lock in one checkout.** When several agents share the main
+checkout, `specy-road do-next-available-task`, `finish-this-task` and
+`abort-task-pickup` each take one repository lock under
+`.git/specy-road/repo-lock/` (in git's common directory, so every worktree of
+the clone shares it) before they switch branches or commit on the integration
+branch. Waiters queue in arrival order; if the lock is held, the command prints
+who holds it (pid and operation) and waits, with a timeout. A holder whose
+process has exited is cleared automatically so a killed pickup or finish does
+not block the queue forever.
+
 **Land check on the merge commit.** Optional field **`land_check_cmd`** (string):
 a shell command `merge` (and `auto`) runs on the local merge commit before it
 pushes, e.g. the project's full test and lint gate. Each leaf is reviewed on its

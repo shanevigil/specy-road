@@ -133,7 +133,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.24` | Executors and reviewers in a worktree can write and check the right places | task | Agentic-led | Complete |
 | `M11.25` | finish-this-task says what merge mode will push before it pushes | task | Agentic-led | Complete |
 | `M11.26` | A model profile can match harness model ids that carry an effort suffix | task | Agentic-led | Complete |
-| `M11.27` | Small CLI fixes from field use | task | Agentic-led | Not Started |
+| `M11.27` | Small CLI fixes from field use | task | Agentic-led | Complete |
 | `M11.28` | A light chore mode for work outside the roadmap | task | Mixed | Not Started |
 | `M11.29` | doctor warns when the running specy-road is older than the project's stubs | task | Agentic-led | Complete |
 | `M11.30` | Leaf worktrees get the project's environment set up | task | Agentic-led | Not Started |
@@ -180,6 +180,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.71` | Review loops escalate on their own and criteria are written with bounds | task | Agentic-led | Complete |
 | `M11.72` | A reviewer run that ends without a record is reported as a failure | task | Agentic-led | Complete |
 | `M11.73` | specy-road ready warns when the leaf no longer merges cleanly | task | Agentic-led | Not Started |
-| `M11.74` | Pickup and finish in one checkout take a shared lock in order | task | Agentic-led | Not Started |
+| `M11.74` | Pickup and finish in one checkout take a shared lock in order | task | Agentic-led | Complete |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
