@@ -13,6 +13,8 @@ An unresolved `commit` (falsy) leaves records stale, as before this leaf.
 
 The helper lives in `specy_road/review_bookkeeping.py` so `review_files.py` and
 `review_gate.py` keep the comments and docstrings they had before this leaf.
+A path is exempt only by its project-relative name: `rebase_to_project` returning
+`None` means the path is outside the project and is not bookkeeping.
 
 ## Touch zones (confirmed)
 
@@ -37,3 +39,4 @@ The helper lives in `specy_road/review_bookkeeping.py` so `review_files.py` and
 - `tests/test_sheet_edits_keep_approvals.py` — sheet-only, summary-only, mixed, ours-merge, unresolved commit, handoff status
 - `test_ours_merge_stales_approval` — approve then `git merge -s ours` leaves the record stale
 - `test_unresolved_commit_leaves_approval_stale` — `evaluate_gate(..., None)` does not carry
+- `test_nested_sheet_carry_and_git_root_namesake_stales` — nested in-project sheet keeps; git-root same-named path stales
