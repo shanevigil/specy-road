@@ -15,6 +15,7 @@ from tests.test_models_and_prompt import run_main
 
 from specy_road import review_files as rf
 from specy_road.bundled_scripts import role_prompt
+from specy_road.model_profiles import load_profile
 from specy_road.review_delegate import DelegateError, delegate
 from specy_road.review_record_write import (json_object, output_schema, review_run_lock, reviewer_env, snapshot,
                                             written)
@@ -270,6 +271,14 @@ def test_agy_reviewer_commands_get_the_schema_and_read_only_flags(tmp_path: Path
     assert reviewer_cli('wrapper agy -p "<prompt>"', schema) == 'wrapper agy -p "<prompt>"'
     with pytest.raises(Unsupported, match="--dangerously-skip-permissions"):
         reviewer_cli("agy -p x --dangerously-skip-permissions", schema)
+
+
+def test_the_shipped_agy_profile_gets_only_the_flags_it_lacks_as_a_reviewer(tmp_path: Path) -> None:
+    profile = load_profile(Path(rf.__file__).parent / "templates" / "project" / "model-profiles" / "google-antigravity"
+                           / "agy-gemini-4-argon-high.md")
+    schema = tmp_path / "review-output.schema.json"
+    cli = reviewer_cli(profile.cli(), schema)
+    assert cli == profile.cli().replace("agy ", f"agy --json-schema {schema} --sandbox ", 1)   # keeps json and 60m
 
 
 FAKE_AGY = '''#!{python}
