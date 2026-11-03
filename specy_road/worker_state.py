@@ -393,8 +393,8 @@ def record_intervention(repo_root: Path, rec: WorkerRecord, summary: str, *, sou
     """A human direction reached the worker: new epoch, one authoritative event."""
     with workers_lock(repo_root):
         mutate(repo_root, rec, lambda r: setattr(r, "instruction_epoch", r.instruction_epoch + 1))
-        return append_event(repo_root, rec, "intervention", source=source, authority="human_authoritative",
-                            summary=summary, detail=detail)
+        return append_event(repo_root, rec, "intervention", source=source, authority="human_authoritative", summary=summary, detail=detail)
 
+# The operations outbox lives in worker_outbox; re-exported here for callers.
 __all__ = [n for n in dir() if not n.startswith("_")]
 from specy_road.worker_outbox import begin_op, complete_op  # noqa: E402,F401 — re-exported for callers

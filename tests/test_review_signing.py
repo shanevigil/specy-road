@@ -43,7 +43,8 @@ def _record(repo: Path, model: str, **kw) -> dict:
     data = load_review(p).data
     data["notes_sha256"] = rs.notes_digest("notes\n")   # as `review record` writes it; a signature must cover the notes
     data.update(kw)
-    from specy_road.review_files import render_front_matter
+    from specy_road.review_files import render_front_matter, stamp_review_toolkit_version
+    data = stamp_review_toolkit_version(data)
     p.write_text(render_front_matter(data, "notes\n"))
     return data
 

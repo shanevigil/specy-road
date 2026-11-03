@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from specy_road import __version__
 from specy_road.git_subprocess import head_sha, working_tree_clean
 from specy_road.runtime_paths import git_root, specy_road_package_dir
@@ -19,3 +21,9 @@ def running_toolkit_version() -> str:
     if not working_tree_clean(root):
         label = f"{label}.dirty"
     return f"{__version__}+{label}"
+
+
+def stamp_review_toolkit_version(data: dict[str, Any]) -> dict[str, Any]:
+    if "verdict" not in data or data.get("toolkit_version"):
+        return data
+    return {**data, "toolkit_version": running_toolkit_version()}

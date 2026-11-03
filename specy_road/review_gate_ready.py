@@ -17,7 +17,8 @@ from specy_road.git_subprocess import commits_behind, git_text, merge_conflicts
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.orchestration_config import effective_config, roster_entry
 from specy_road.review_files import (
-    HUMAN, READY_PREFIX, load_ready, render_front_matter, review_path, reviews_dir, write_review,
+    HUMAN, READY_PREFIX, load_ready, render_front_matter, review_path, reviews_dir, stamp_review_toolkit_version,
+    write_review,
 )
 from specy_road.review_policy_ref import policy_source
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
@@ -50,6 +51,7 @@ def write_human_approval(repo_root: Path, node: dict[str, Any], commit: str, sig
         "is_coordinator": True,
         NOTES_KEY: notes_digest(body),
     }
+    data = stamp_review_toolkit_version(data)
     if sign_key is not None:
         data["signature"] = sign(data, sign_key)
         config, _err = effective_config(repo_root, policy_source(repo_root)[0])
