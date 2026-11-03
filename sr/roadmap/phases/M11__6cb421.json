@@ -273,7 +273,9 @@
         "specy_road/worker_adapter_parsers.py",
         "specy_road/worker_adapter_cursor.py",
         "specy_road/cli_usage.py",
-        "tests/"
+        "tests/",
+        "specy_road/worker_adapter_base.py",
+        "specy_road/worker_adapter_codex.py"
       ],
       "type": "task"
     },

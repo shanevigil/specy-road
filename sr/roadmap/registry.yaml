@@ -176,6 +176,8 @@ entries:
       - specy_road/worker_adapter_cursor.py
       - specy_road/cli_usage.py
       - tests/
+      - specy_road/worker_adapter_base.py
+      - specy_road/worker_adapter_codex.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending

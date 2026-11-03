@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_worker_adapters import CURSOR_RESULT, RECORDED
+from tests.test_worker_adapters import CODEX_TURN, CURSOR_RESULT, RECORDED
 
 from specy_road import worker_adapters as wa
 from specy_road import worker_state as ws
@@ -39,17 +39,36 @@ roster:
 policy: {}
 """
 
+CODEX_ROSTER = """version: 1
+roster:
+  - {id: human, family: human, roles: [coordinator, reviewer]}
+  - id: priced
+    family: openai
+    harness: codex
+    profile: model-profiles/openai-gpt/gpt-6.1-sol.md
+    roles: [executor]
+policy: {}
+"""
 
-def _cursor_repo(tmp_path: Path) -> Path:
-    repo = make_review_repo(tmp_path, orchestration=CURSOR_ROSTER)
-    for rel in ("cursor-composer/composer-2.5.md", "cursor-composer/composer-2.md"):
+
+def _priced_repo(tmp_path: Path, roster: str, profiles: tuple[str, ...]) -> Path:
+    repo = make_review_repo(tmp_path, orchestration=roster)
+    for rel in profiles:
         dest = repo / "model-profiles" / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(PROFILES / rel, dest)
     git(repo, "checkout", "-q", "dev")
     git(repo, "add", "model-profiles")
-    git(repo, "commit", "-qm", "cursor profiles")
+    git(repo, "commit", "-qm", "priced profiles")
     return repo
+
+
+def _cursor_repo(tmp_path: Path) -> Path:
+    return _priced_repo(tmp_path, CURSOR_ROSTER, ("cursor-composer/composer-2.5.md", "cursor-composer/composer-2.md"))
+
+
+def _codex_repo(tmp_path: Path) -> Path:
+    return _priced_repo(tmp_path, CODEX_ROSTER, ("openai-gpt/gpt-6.1-sol.md",))
 
 
 def _cursor_workspace(tmp_path: Path, layout: str) -> tuple[Path, Path]:
@@ -126,6 +145,23 @@ def test_cursor_resume_parse_events_estimates_cost_for_cached_input(tmp_path: Pa
     assert resumed.argv[resumed.argv.index("--model") + 1] == api_id
     usage = cu.parse_events(json.dumps(CURSOR_RESULT), resumed)[0].usage
     assert usage["cost_usd"] == 0.007156 and usage["cost_is_estimate"] is True
+
+
+def test_codex_parse_events_estimates_cost_for_cached_input_on_launch_and_resume(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = _codex_repo(tmp_path)
+    api_id = _api_id_for(repo, "priced")
+    assert api_id == "gpt-6.1-sol" and api_id != "priced"
+    cx = wa.adapter_for("codex")
+    launch = cx.launch(_prompt(tmp_path), repo, api_id, None)
+    usage = cx.parse_events(json.dumps(CODEX_TURN), launch)[0].usage
+    assert usage["input_tokens"] == 14784 and usage["cached_input_tokens"] == 12288
+    assert usage["cost_usd"] == 0.006271 and usage["cost_is_estimate"] is True
+    monkeypatch.chdir(repo)
+    resumed = cx.resume("t1", _prompt(tmp_path), repo, api_id, None)
+    assert resumed.argv[resumed.argv.index("-m") + 1] == api_id
+    usage = cx.parse_events(json.dumps(CODEX_TURN), resumed)[0].usage
+    assert usage["cost_usd"] == 0.006271 and usage["cost_is_estimate"] is True
 
 
 def test_cursor_parse_events_leaves_cost_null_when_profile_has_no_price(tmp_path: Path) -> None:

@@ -5,20 +5,10 @@ Split from :mod:`specy_road.worker_adapters` for the file limit; callers reach i
 
 from __future__ import annotations
 
-from dataclasses import replace
 from pathlib import Path
 
 from specy_road.worker_adapter_base import Adapter, Capabilities, Launch, Parsed, _model_flag
-from specy_road.worker_adapter_parsers import (
-    _json,
-    _snip,
-    _text,
-    apply_roster_price_estimate,
-    model_from_argv,
-    project_root_from_worktree,
-    usage_fields,
-    worktree_from_argv,
-)
+from specy_road.worker_adapter_parsers import _json, _snip, _text, usage_fields
 
 
 class Cursor(Adapter):
@@ -72,17 +62,6 @@ class Cursor(Adapter):
             return Parsed("turn_completed" if ok else "error", summary, sid, detail,
                           usage_fields(d.get("usage"), num_turns=d.get("num_turns")))
         return None
-
-    def parse_events(self, line: str, launch: Launch) -> list[Parsed]:
-        parsed = self.parse(line)
-        if not parsed or parsed.usage is None or parsed.usage.get("cost_usd") is not None:
-            return [parsed] if parsed else []
-        model = model_from_argv(launch.argv)
-        if not model:
-            return [parsed]
-        usage = apply_roster_price_estimate(
-            parsed.usage, model, project_root_from_worktree(worktree_from_argv(launch.argv)))
-        return [parsed] if usage is parsed.usage else [replace(parsed, usage=usage)]
 
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:
         return ["agent", "--resume", session_id]
