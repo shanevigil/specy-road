@@ -1,12 +1,12 @@
 # Implementation summary — M11.57 `completed-worker-frees-slot`
 
-Base: `8285937a` with `origin/WIP/improvements-0-3-1` merged in (`54aaaff7`, which updated the touch zones). Implementation commit: `c3518c98`.
+Base: `8285937a` with `origin/WIP/improvements-0-3-1` merged in (`54aaaff7`, which updated the touch zones). Implementation commit: `c3518c98`. Fix round 1 (Codex Sol block, F1): `b8516f50`.
 
 ## What changed
 
 - **A1: slot count.** `worker_ops_slots._slot_or_existing` (used by delegate, message and resume) and `worker_lease.acquire_lease` (the recount after a lease push) now count only `holding_slots(...)`. An `idle` or `completed` worker no longer counts when either:
   - its leaf is Complete in the roadmap graph at the integration branch (`refs/heads/<ib>`, else `refs/remotes/<remote>/<ib>`, read with `load_roadmap_nodes_at_ref`), or
-  - the claim it was delegated under (`node_id` and `rec.branch`) is gone from this checkout's registry.
+  - the claim it was delegated under (`node_id` and `rec.branch`) is gone from the integration branch's registry: every one of `refs/heads/<ib>` and `refs/remotes/<remote>/<ib>` that exists holds a readable registry without it (fix round 1).
 
   A completed or idle worker on an unfinished, still-claimed leaf keeps its slot. Running, starting and handed-off workers always count. `worker_lease.sync_leases` now also deletes the lease ref of a worker that stopped counting, and pushes refs only for workers that still count, so other checkouts stop counting it too.
 - **A2: refusal text.** `worker_lease.slot_error` now takes the counted records and keeps its old prefix (`N workers active[ (and … leased by other checkouts …)], policy max_workers is L; `). The rest comes from `worker_orphans.slot_breakdown`, for example `2 running: w-0001, w-0002; 1 completed: w-0003; `specy-road worker terminate w-0003` frees it, or wait for a running one to finish or raise the limit`.
@@ -21,8 +21,8 @@ Base: `8285937a` with `origin/WIP/improvements-0-3-1` merged in (`54aaaff7`, whi
 
 - **Orphan status is not stored.** The `flags` and event `type` enums in `specy_road/schemas/worker-record.schema.json` and `worker-event.schema.json` are outside the touch zones, and a cause can come and go (a leaf reopened, a claim taken again). So orphan status is worked out again on every list, sync, launch and resume. The `terminated` event that finish and `--orphaned` record keeps `_terminate_locked`'s generic summary ("terminated by the coordinator"); the reason is printed to the console instead. `worker_ops_lifecycle.py` is outside the zones, so I did not add a reason parameter there.
 - **"No longer claimed" requires `rec.branch`.** Delegate and adopt always set it. A record without a branch (only hand-made records in tests) is never treated as unclaimed, because there is no claim to compare against.
-- **Unreadable registry.** If the registry is missing or unreadable, `claims` is `None`, so no worker is ever judged unclaimed because of a read failure.
-- **The claim check reads this checkout's registry,** the same one `delegate` requires the claim in. Complete is read from the integration branch refs, not from the working tree.
+- **Claims come from the integration branch (fix round 1).** Pickup registers claims there and finish removes them there. Linked worktrees share the worker records, so the caller's working-tree registry, which may be an older lane's snapshot, is never consulted. A claim present on either ref keeps the worker.
+- **Ambiguous means kept.** If there is no integration ref, or any existing ref's registry can't be read, `claims` is `None` and no worker is judged unclaimed. Complete is read from the same refs.
 - **`worker_reconcile.py` is unchanged.** `sync()` still returns its delta list, so `sync --wait`'s truthiness check keeps working. The orphan lines are added in the CLI from `orphans()`.
 - **Locking in `_end`.** `_end` reads the records before it takes the workers lock, so a finish in a checkout with no workers does not create `work/.workers/`. `tests/test_prerelease_s5.py` caught this: it asserts a clean `git status` after finish.
 
@@ -41,6 +41,8 @@ In the zones but not changed: `specy_road/worker_ops.py`, `specy_road/worker_sta
 - `ruff check` on the changed Python files: clean. A repo-wide `ruff check specy_road` still reports one existing C901 in `review_packet_uncommitted_refs.py`, which this leaf did not touch.
 - `python3 scripts/check_test_private_imports.py`: 0 new. It also reports one stale baseline entry that this change did not cause.
 - Red/green: with `worker_ops_slots.py` restored to the base version, both "frees its slot" tests fail. With the change, they pass.
+- Red/green (fix round 1): with `worker_orphans.py` at `7dea46db` (the blocked version), the two-lane, unreadable-registry and no-integration-branch tests fail; the old lane marks the held worker orphaned. With the fix, they pass.
+- Fix round 1: the same targeted pytest set, 669 passed; `pytest -q tests/test_worker_orphans.py`, 17 passed; file-limits, ruff and the private-imports check are clean.
 
 ## Added
 
@@ -48,7 +50,9 @@ In the zones but not changed: `specy_road/worker_ops.py`, `specy_road/worker_sta
 - `worker_orphans.HELD_STATES` / `RUNNING_STATES`: which states can be freed (idle, completed) and which group as "running" in the refusal.
 - `worker_orphans._HINT`: the one `terminate --orphaned` hint line shared by `list` and `sync`.
 - `worker_orphans._Leaves`: reads registry claims and integration-branch Complete ids lazily, at most once per call, so a check with no held workers costs no git calls.
-- `worker_orphans._Leaves.claims` returns `None` on an unreadable registry: guard so a read failure never frees a slot.
+- `worker_orphans._Leaves.refs` (fix round 1): the existing integration refs (local branch, remote-tracking), shared by `claims` and `complete`.
+- `worker_orphans._Leaves.claims` (rewritten in fix round 1): the union of the claim rows at `refs`, read with the existing `read_registry_at_ref`. Returns `None` when there is no ref or any ref's registry is unreadable, so an ambiguous worker is kept.
+- `worker_orphans._REF_TIMEOUT` (fix round 1): the timeout for one registry `git show`, matching finish's 30 s.
 - `worker_orphans._Leaves.complete`: checks the local integration branch, else the remote-tracking one, so a clone lane whose local branch is stale still sees the landing.
 - `worker_orphans._cause`: one place that decides orphaned or not, why, and whether that frees the slot. The worktree-gone cause does not free it (A1 frees only Complete or unclaimed leaves).
 - The `rec.branch` guard in `_cause`: a record that never recorded a claim is not judged unclaimed.
@@ -64,7 +68,10 @@ In the zones but not changed: `specy_road/worker_ops.py`, `specy_road/worker_sta
 - `worker_ops_slots._slot_or_existing`: an early return when `foreign is None`, then the count through `holding_slots`.
 - `finish_task._end_leaf_workers`: best-effort call after the bookkeeping commit. It prints each terminated worker; a `WorkerError` or `OSError` prints `[warn]` and never fails the finish.
 - `worker_cli.py`: `cmd_list` goes through `list_view`; `cmd_sync` adds `orphaned` to its JSON and lines; the `terminate` parser comes from `add_terminate`.
-- `tests/test_worker_orphans.py`, 12 tests (14 cases):
+- `tests/test_worker_orphans.py`, 15 tests (17 cases):
+  - Fix round 1: two linked worktrees, one predating a live claim and one still showing a claim later removed. Through `worker list --json`, `worker terminate --orphaned` and `worker resume`, neither frees nor ends the held worker while the claim is live on `dev`. Once the claim is removed on `dev`, `terminate --orphaned` from the lane whose snapshot still has it ends the worker.
+  - Fix round 1: an unreadable integration registry keeps the worker.
+  - Fix round 1: no integration branch at all keeps the worker.
   - Complete-on-integration frees the slot (resume succeeds at `max_workers=1`).
   - Claim gone frees the slot.
   - An unfinished leaf holds the slot, and the CLI refusal text is checked.
@@ -77,4 +84,4 @@ In the zones but not changed: `specy_road/worker_ops.py`, `specy_road/worker_sta
   - Single-worker `terminate` still works.
   - `finish-this-task` terminates the leaf's idle and completed workers, leaving a running one and another leaf's worker.
   - With no workers, `end_finished_workers` ends nothing and creates no `work/.workers/`.
-- Test helpers `_worker`, `_claim`, `_complete_on_dev`, `_three`: fixtures for held records, an extra claim, a leaf Complete on `dev`, and the two-orphans-plus-one-kept setup. No mocks were added.
+- Test helpers `_worker`, `_claim`, `_complete_on_dev`, `_three`: fixtures for held records, an extra claim, a leaf Complete on `dev`, and the two-orphans-plus-one-kept setup. In fix round 1, `_claim` now registers on `dev`, as pickup does, and `_on_dev`, `_registry` and `_unclaim` were added for the registry edits on `dev`. No mocks were added.
