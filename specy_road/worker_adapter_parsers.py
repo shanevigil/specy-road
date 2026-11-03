@@ -201,6 +201,80 @@ def _num(v: Any, *, whole: bool = False) -> int | float | None:
     return v
 
 
+def model_from_argv(argv: list[str]) -> str | None:
+    """The ``--model`` / ``-m`` value from a harness launch argv, when present."""
+    for i, w in enumerate(argv):
+        if w in ("--model", "-m") and i + 1 < len(argv):
+            return argv[i + 1]
+        if w.startswith("--model="):
+            return w.split("=", 1)[1]
+    return None
+
+
+def worktree_from_argv(argv: list[str]) -> Path | None:
+    """``--workspace`` or ``-C`` from a harness launch argv, when present."""
+    for i, w in enumerate(argv):
+        if w in ("--workspace", "-C") and i + 1 < len(argv):
+            return Path(argv[i + 1])
+    return None
+
+
+def _mtok_rate(value: Any) -> float | None:
+    if value is None or value == "unknown":
+        return None
+    try:
+        rate = float(value)
+    except (TypeError, ValueError):
+        return None
+    return rate if rate >= 0 else None
+
+
+def mtok_rates(profile_data: dict[str, Any]) -> dict[str, float | None]:
+    """``cost_usd_per_mtok`` rates orchestrate plan reads, for :func:`estimate_usage_cost`."""
+    raw = profile_data.get("cost_usd_per_mtok") or {}
+    if not isinstance(raw, dict):
+        return {}
+    return {k: _mtok_rate(raw.get(k)) for k in ("input", "output", "cached_input")}
+
+
+def estimate_usage_cost(usage: dict[str, Any], rates: dict[str, float | None]) -> float | None:
+    """USD for one turn from token counts and profile list prices; ``None`` when a required rate is missing."""
+    inp, out = usage.get("input_tokens"), usage.get("output_tokens")
+    if inp is None and out is None:
+        return None
+    in_rate, out_rate = rates.get("input"), rates.get("output")
+    if in_rate is None or out_rate is None:
+        return None
+    cached = usage.get("cached_input_tokens") or 0
+    inp, out = inp or 0, out or 0
+    cached_rate = rates.get("cached_input")
+    non_cached = inp - cached if inp >= cached else inp
+    usd = (non_cached * in_rate + cached * (cached_rate if cached_rate is not None else in_rate) + out * out_rate) / 1_000_000
+    return round(usd, 6)
+
+
+def apply_roster_price_estimate(usage: dict[str, Any], model_id: str, repo_root: Path) -> dict[str, Any]:
+    """Fill ``cost_usd`` and ``cost_is_estimate`` from the pinned roster profile when the harness reported none."""
+    if usage.get("cost_usd") is not None or not model_id:
+        return usage
+    from specy_road.orchestration_config import roster_entry  # noqa: PLC0415 — keeps import graph small
+    from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
+
+    config, err = pinned_config(repo_root)
+    if err:
+        return usage
+    entry = roster_entry(config, model_id)
+    if not entry:
+        return usage
+    prof = pinned_profile_for_entry(repo_root, entry)
+    if not prof or not prof.ok:
+        return usage
+    cost = estimate_usage_cost(usage, mtok_rates(prof.data))
+    if cost is None:
+        return usage
+    return {**usage, "cost_usd": cost, "cost_is_estimate": True}
+
+
 def usage_fields(u: Any, *, cost: Any = None, num_turns: Any = None, estimate: bool | None = None) -> dict[str, Any]:
     """A harness's token counts in the vendor-neutral shape of :data:`USAGE_FIELDS`.
 
