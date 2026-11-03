@@ -267,7 +267,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.67_cursor-usage-cost_94746b89-1891-49c5-ad57-6b3526f4a6d9.md",
       "sibling_order": 67,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Worker usage prices Cursor runs from the roster's price table",
       "touch_zones": [
         "specy_road/worker_adapter_parsers.py",

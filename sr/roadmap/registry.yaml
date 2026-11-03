@@ -168,17 +168,3 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: cursor-usage-cost
-    node_id: M11.67
-    branch: feature/rm-cursor-usage-cost
-    touch_zones:
-      - specy_road/worker_adapter_parsers.py
-      - specy_road/worker_adapter_cursor.py
-      - specy_road/cli_usage.py
-      - tests/
-      - specy_road/worker_adapter_base.py
-      - specy_road/worker_adapter_codex.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T11:04:22+00:00'
