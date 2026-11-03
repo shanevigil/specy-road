@@ -120,7 +120,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.10` edit-node can add and remove single list entries `edit-node-add-remove` — task — **Complete**
   - `M11.11` orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route `one-readiness-rule` — task — **Complete**
   - `M11.12` specy-road ready writes a valid READY hand-off `ready-command` — task — **Complete**
-  - `M11.13` A milestone gets one full review of its combined change before it is marked complete `milestone-full-review` — task — **Not Started**
+  - `M11.13` A milestone gets one full review of its combined change before it is marked complete `milestone-full-review` — task — **Complete**
   - `M11.14` worker message queues a follow-up for a worker whose turn is still running `queue-worker-message` — task — **Not Started**
   - `M11.15` Pickup and finish agree on unwritten planning sheets `pickup-refuses-scaffold-sheet` — task — **Complete**
   - `M11.16` A commit that changes only planning or bookkeeping files keeps existing approvals `sheet-edits-keep-approvals` — task — **Not Started**
@@ -171,7 +171,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M11.13` on `feature/rm-milestone-full-review` since 2026-11-02
 - `M11.18` on `feature/rm-quieter-overlap-warnings` since 2026-11-02
 - `M11.26` on `feature/rm-profile-aliases` since 2026-11-02
 - `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02

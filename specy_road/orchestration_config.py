@@ -33,6 +33,7 @@ DEFAULT_POLICY: dict[str, Any] = {
     "escalate_same_acceptance_blocks": 3,
     "escalate_review_rounds": 5,
     "stall_after_seconds": 600,
+    "milestone_full_review": True,
     "delta_review": True,
 }
 DEFAULT_CONFIG: dict[str, Any] = {

@@ -18,8 +18,9 @@ Writes ``work/reviews/<NODE_ID>/PACKET.md`` (and ``-o``'s path too) with, in ord
    ``--verify-cmd`` run now.
 
 A reviewer is handed this file and nothing else (proposal §3.2). The commit it
-describes is printed at the top; a review record must name that commit. With
-``prior``, ``prompt --role reviewer`` builds one reviewer's delta packet; ``--full`` stops that.
+describes is printed at the top; a review record must name that commit. For a
+milestone the diff runs from the first leaf's branch point to the integration tip.
+With ``prior``, ``prompt --role reviewer`` builds one reviewer's delta packet; ``--full`` stops that.
 """
 
 from __future__ import annotations
@@ -39,8 +40,12 @@ from specy_road.git_subprocess import git_stdout, git_text, head_sha
 from specy_road.impact import impact_for_diff, section_lines
 from specy_road.integrity import compare_integrity
 from specy_road.review_files import PACKET_NAME, ReviewFile, latest_ready, reviews_dir
-from specy_road.review_gate import FULL_MARK, policy_source, trial_merge
-from specy_road.review_target import REGISTRY_REL, ReviewTarget, full_sha, resolve_target_or_exit, same_commit
+from specy_road.review_gate import FULL_MARK
+from specy_road.review_gate_ready import policy_source_line, trial_merge_lines
+from specy_road.review_target import (
+    MILESTONE_SUMMARY, REGISTRY_REL, ReviewTarget, full_sha, milestone_packet_or_exit, milestone_packet_lines,
+    resolve_target_or_exit, same_commit,
+)
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix, rebase_to_project
 
 TAIL_LINES = 60
@@ -87,40 +92,19 @@ def _fence(text: str, lang: str = "") -> list[str]:
     return [f"{ticks}{lang}", text.rstrip(), ticks, ""]
 
 
-def _policy_line(root: Path) -> str:
-    ref, err = policy_source(root)
-    if err:
-        return f"- **Policy source:** _{err}_ (the gate fails closed)"
-    if ref is None:
-        return "- **Policy source:** _the working tree (not a git checkout)_"
-    return f"- **Policy source:** `{ref}` @ `{full_sha(root, ref) or '?'}`"
-
-
-def _trial_merge_line(root: Path, ref: str | None, integration_ref: str | None) -> list[str]:
-    """Whether the branch tip still merges into the integration branch; a code conflict stops review."""
-    tm = trial_merge(root, ref, integration_ref)
-    if tm is None:
-        return ["- **Trial merge:** _git could not answer_"]
-    ahead = f"`{tm.base_ref}` is {tm.behind} commit(s) ahead"
-    if not tm.conflicts:
-        return [f"- **Trial merge:** {ahead}; merges cleanly" if tm.behind else
-                f"- **Trial merge:** up to date with `{tm.base_ref}`"]
-    names = ", ".join(f"`{p}`" for p in tm.conflicts)
-    if tm.problem() is None:
-        return [f"- **Trial merge:** {ahead}; conflicts on bookkeeping only ({names}), which does not block"]
-    return [f"- **Trial merge:** {ahead}; **conflicts on {names}**", "",
-            f"**Stop: {tm.problem()}.** Reviewing this commit is wasted work: the merge makes it stale.", ""]
-
-
 def _header(root: Path, t: ReviewTarget, integration_ref: str | None) -> list[str]:
+    base_how = ("first parent of the oldest leaf registration" if t.milestone and t.base_ref == integration_ref
+                else f"merge base with `{t.base_ref or '?'}`")
     return [
         f"# Review packet: `{t.node_id}` — {t.node.get('title', '')}", "",
         f"- **Commit under review:** `{t.commit or 'unknown'}` (`{t.ref}`)",
-        f"- **Base:** `{t.base or 'unknown'}` (merge base with `{t.base_ref or '?'}`)",
+        f"- **Base:** `{t.base or 'unknown'}` ({base_how})",
+        *milestone_packet_lines(t),
         f"- **Touch zones:** {', '.join(f'`{z}`' for z in t.touch_zones) or '_none declared_'}",
-        _policy_line(root),
+        policy_source_line(root),
         f"- **Generated:** {date.today().isoformat()} by review-packet at HEAD `{head_sha(root) or '?'}`",
-        *_trial_merge_line(root, t.ref, integration_ref), "",
+        *trial_merge_lines(root, t.ref, integration_ref),
+        "",
         "Record your verdict with `specy-road review record "
         f"{t.node_id} --model <id> --verdict approve|block --file <notes.md>`. "
         "Your record's `commit` must equal the commit above.", "",
@@ -136,7 +120,7 @@ def _summary(root: Path, t: ReviewTarget) -> list[str]:
     if text is None and (root / rel).is_file():
         text, label = (root / rel).read_text(encoding="utf-8"), ASSERTED_WORKING_TREE
     if text is None:
-        return out + [SUMMARY_MISSING, "", f"_(missing: `{rel}`)_", ""]
+        return out + ([MILESTONE_SUMMARY, ""] if t.milestone else [SUMMARY_MISSING, "", f"_(missing: `{rel}`)_", ""])
     note = [] if _INVENTORY.search(text) else [NO_INVENTORY, ""]
     return out + [label, "", text.rstrip(), ""] + note
 
@@ -345,6 +329,7 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
     integration_ref = t.base_ref   # --base moves the diff range, never the trial merge mark and finish check
     if base or prior:
         t = _with_base(root, t, prior.data["commit"] if prior else str(base))
+    milestone_packet_or_exit(t)
     brief = render_brief(node_id, index(t.nodes), repo_root=root, include_history=False)
     paths, changed = changed_paths_section(root, t)
     brief_lines = brief.rstrip().splitlines()
