@@ -23,7 +23,11 @@ from specy_road.bundled_scripts.do_next_task_self_heal import (
     warn_about_stale_claims_before_pickup as _warn_about_stale_claims_before_pickup,
 )
 from specy_road.bundled_scripts.do_next_task_pickup_helpers import (
+    leaf_worktree_path,
     push_and_branch_with_self_heal as _do_push_and_branch,
+    refuse_linked_worktree,
+    branch_fns,
+    worktree_work_dir,
     register_and_commit as _do_register_and_commit,
     write_brief as _do_write_brief,
     write_session_and_prompt as _do_write_session_and_prompt,
@@ -182,11 +186,6 @@ def _validate_or_exit() -> None:
             raise
 
 
-# ---------------------------------------------------------------------------
-# Git + registry operations
-# ---------------------------------------------------------------------------
-
-
 def _assert_current_branch_equals(base: str) -> None:
     cur = current_branch(ROOT)
     if cur == "HEAD":
@@ -203,14 +202,6 @@ def _assert_current_branch_equals(base: str) -> None:
             file=sys.stderr,
         )
         raise SystemExit(1)
-
-
-def _checkout_new_branch(branch: str) -> None:
-    git_run(ROOT, "checkout", "-b", branch)
-
-
-def _checkout_existing_branch(branch: str) -> None:
-    git_run(ROOT, "checkout", branch)
 
 
 def _register_and_commit(
@@ -242,14 +233,16 @@ def _write_brief(node: dict, nodes: list[dict]) -> Path:
     return _do_write_brief(ROOT / "work", node, nodes)
 
 
-def _push_and_branch_with_self_heal(**kwargs) -> None:
+def _push_and_branch_with_self_heal(worktree: Path | None, base: str, **kwargs) -> None:
+    create, adopt = branch_fns(lambda *a: git_run(ROOT, *a), base, worktree)
     _do_push_and_branch(
         repo_root=ROOT,
         registry_path=registry_path(ROOT),
         git_runner=lambda *a: git_run(ROOT, *a),
         push_integration_branch_fn=_push_integration_branch,
-        checkout_new_branch_fn=_checkout_new_branch,
-        checkout_existing_branch_fn=_checkout_existing_branch,
+        checkout_new_branch_fn=create,
+        checkout_existing_branch_fn=adopt,
+        base=base,
         **kwargs,
     )
 
@@ -258,12 +251,7 @@ def _write_session_and_prompt(**kwargs) -> Path:
     # A plain global reference is already resolved at call time, so a test
     # patching dnt.write_agent_prompt is honoured without going through
     # sys.modules to fetch the same binding.
-    return _do_write_session_and_prompt(
-        work_dir=ROOT / "work",
-        repo_root=ROOT,
-        write_agent_prompt_fn=write_agent_prompt,
-        **kwargs,
-    )
+    return _do_write_session_and_prompt(write_agent_prompt_fn=write_agent_prompt, **kwargs)
 
 
 def _finalize_pickup(
@@ -277,6 +265,7 @@ def _finalize_pickup(
     include_ci_skip: bool,
     on_complete: str,
     owner: str | None = None,
+    worktree: Path | None = None,
 ) -> None:
     node_id = node["id"]
     codename = node["codename"]
@@ -296,16 +285,22 @@ def _finalize_pickup(
     print("registered in roadmap/registry.yaml on integration branch (committed)")
 
     _push_and_branch_with_self_heal(
-        push_registry=push_registry, base=base, remote=remote,
+        worktree, base, push_registry=push_registry, remote=remote,
         branch=branch, node_id=node_id, codename=codename,
     )
+    leaf_root, work_dir = ROOT, ROOT / "work"
+    if worktree:   # the leaf's agent runs in the worktree, so its brief, prompt and session go there
+        leaf_root, work_dir = worktree_work_dir(ROOT, worktree, brief_path)
+        brief_path = work_dir / brief_path.name
+        print(f"worktree: {worktree} has {branch}; this checkout stays on {base}")
     prompt_path = _write_session_and_prompt(
+        work_dir=work_dir, repo_root=leaf_root,
         node=node, nodes=nodes, brief_path=brief_path, on_complete=on_complete,
     )
 
     print_pickup_footer(
         root=ROOT,
-        work_dir=ROOT / "work",
+        work_dir=work_dir,
         brief_path=brief_path,
         prompt_path=prompt_path,
         push_registry=push_registry,
@@ -356,6 +351,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parse_do_next_task_args(argv)
     include_ci_skip = not args.no_ci_skip_in_message
     ROOT = resolve_repo_root(args)
+    refuse_linked_worktree(ROOT, local=args.local, worktree=args.worktree)
     base, remote, gw_warns = resolve_integration_defaults(
         ROOT,
         explicit_base=args.base,
@@ -384,12 +380,13 @@ def main(argv: list[str] | None = None) -> None:
     run_baseline_gate(ROOT, base, cli=args.baseline_cmd, warn_only=args.baseline_warn)
     node = _pick_node(args, nodes, reg, available, integration_statuses)
     branch = f"feature/rm-{node['codename']}"
+    worktree = leaf_worktree_path(ROOT, node["codename"]) if args.worktree else None
     on_complete = prompt_on_complete(ROOT, args.on_complete)
     _finalize_pickup(
         node, nodes, branch,
         base=base, remote=remote, push_registry=not args.local,
         include_ci_skip=include_ci_skip, on_complete=on_complete,
-        owner=args.owner or git_config_user_name(ROOT),
+        owner=args.owner or git_config_user_name(ROOT), worktree=worktree,
     )
 
 
