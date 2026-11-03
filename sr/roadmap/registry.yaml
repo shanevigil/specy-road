@@ -116,18 +116,3 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: reviewer-failure-visible
-    node_id: M11.72
-    branch: feature/rm-reviewer-failure-visible
-    touch_zones:
-      - specy_road/bundled_scripts/review_delegate.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_gate.py
-      - tests/
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/review_delegate.py
-      - specy_road/reviewer_run_failure.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T10:46:06+00:00'

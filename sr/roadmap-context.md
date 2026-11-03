@@ -178,7 +178,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.69` A leaf that adds a schema key can be gated and finished `branch-schema-for-gate-and-finish` — task — **Not Started**
   - `M11.70` Touch zones are checked when they are written `zones-checked-at-authoring` — task — **Not Started**
   - `M11.71` Review loops escalate on their own and criteria are written with bounds `review-loops-escalate` — task — **Complete**
-  - `M11.72` A reviewer run that ends without a record is reported as a failure `reviewer-failure-visible` — task — **Not Started**
+  - `M11.72` A reviewer run that ends without a record is reported as a failure `reviewer-failure-visible` — task — **Complete**
   - `M11.73` specy-road ready warns when the leaf no longer merges cleanly `ready-warns-integration-conflict` — task — **Not Started**
   - `M11.74` Pickup and finish in one checkout take a shared lock in order `pickup-finish-shared-lock` — task — **Not Started**
 
