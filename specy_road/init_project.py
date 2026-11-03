@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from specy_road import __version__
+from specy_road.agent_ignores import apply_and_report
 from specy_road.agents_md_block import apply_agents_md_block
-from specy_road.managed_block import UNCHANGED
+from specy_road.harness_instruction_files import AGENTS_MD
+from specy_road.managed_block import CREATED, UNCHANGED, UPDATED
 from specy_road.model_profiles import PROFILES_REL, load_profile
 from specy_road.runtime_paths import (
     git_root,
@@ -19,6 +23,7 @@ from specy_road.runtime_paths import (
 
 
 _GITIGNORE = Path(".gitignore")
+_MANIFEST = Path(".specyrd") / "manifest.json"
 _PROFILES_ALWAYS = frozenset({"README.md", "harness-facts.yaml"})
 
 
@@ -114,7 +119,7 @@ def project_template_root() -> Path:
     return specy_road_package_dir() / "templates" / "project"
 
 
-def _record_layout(dst: Path) -> str | None:
+def _record_layout(top: Path, prefix: str, written: list[str], *, dry_run: bool) -> None:
     """Note in ``.specyrd/manifest.json`` where the project tree was put.
 
     ``init project sr`` has always scaffolded into a subfolder, but nothing
@@ -122,45 +127,99 @@ def _record_layout(dst: Path) -> str | None:
     it is what makes the nested layout deterministic instead of discovered —
     a repository can hold two roadmaps, and a scan picks one of them silently.
 
-    The ignore blocks are refreshed here too. They are written at the git root
-    but name paths inside the project, so they need this prefix; rewriting them
-    now means the two ``init`` commands can be run in either order without
-    leaving an unprefixed block behind that matches nothing.
+    Appends ``.specyrd/manifest.json (<outcome>)`` to ``written`` when the file
+    would change, comparing the bytes ``_save_manifest`` writes, so a dry run
+    names it exactly when the real run would write it.
     """
-    top = git_root(dst)
-    if top is None:
-        return None
-    prefix = prefix_within(top, dst)
-    from specy_road.agent_ignores import apply_agent_ignores
     from specy_road.specyrd_init import _load_manifest, _save_manifest
 
     manifest = _load_manifest(top)
     manifest["project_root"] = prefix.rstrip("/") or "."
-    _save_manifest(top, manifest)
-    if (top / ".cursorindexingignore").is_file() or (top / ".gitignore").is_file():
-        apply_agent_ignores(top, prefix)
-    return manifest["project_root"]
+    manifest["specyrd_version"] = __version__
+    path = top / _MANIFEST
+    old = path.read_text(encoding="utf-8") if path.is_file() else None
+    if old == json.dumps(manifest, indent=2) + "\n":
+        return
+    if not dry_run:
+        _save_manifest(top, manifest)
+    written.append(f"{_MANIFEST.as_posix()} ({CREATED if old is None else UPDATED})")
 
 
-def run_init_project(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
+def _apply_agents_md(dst: Path, prefix: str, written: list[str], *, dry_run: bool) -> None:
+    """AGENTS.md is a managed block, not a template file: an existing file gets
+    the section inserted, with or without --force.
+
+    A missing file gets its H1 before the block is applied, which makes the
+    block itself report ``updated``; it is reported as created, as the dry run
+    reports it.
+    """
+    new = not (dst / AGENTS_MD).exists()
+    outcome = apply_agents_md_block(dst, dry_run=dry_run)
+    if new and outcome == UPDATED:
+        outcome = CREATED
+    if outcome != UNCHANGED:
+        written.append(f"{prefix}{AGENTS_MD} ({outcome})")
+
+
+def _copy_templates(
+    src: Path,
+    dst: Path,
+    prefix: str,
+    selection: InitProfilesSelection,
+    *,
+    dry_run: bool,
+    force: bool,
+) -> tuple[list[str], list[str]]:
+    """Copy each template file; return ``(written, skipped)`` as git-root-relative paths."""
+    written: list[str] = []
+    skipped: list[str] = []
+    for path in sorted(src.rglob("*")):
+        rel = path.relative_to(src)
+        # .gitignore is written as the git root's managed block (seeded from
+        # this template when missing), never copied: see run_init_project.
+        if path.is_dir() or rel == _GITIGNORE or not include_template_profiles_file(rel, selection):
+            continue
+        out = dst / rel
+        if out.exists() and not force:
+            skipped.append(f"{prefix}{rel.as_posix()}")
+            continue
+        if not dry_run:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, out)
+        written.append(f"{prefix}{rel.as_posix()}")
+    return written, skipped
+
+
+def _profile_selection(profiles: str) -> InitProfilesSelection:
+    """Parse and check ``--profiles``; raises ``ValueError`` naming what is wrong."""
+    selection = parse_init_profiles_spec(profiles)
+    profiles_src = bundled_profiles_template_dir()
+    if profiles_src.is_dir():
+        selection = validate_init_profiles_selection(selection, profiles_src)
+    return selection
+
+
+def run_init_project(
     target: Path | None,
     *,
     dry_run: bool = False,
     force: bool = False,
     profiles: str = "all",
 ) -> int:
-    """Copy bundled templates/project into target. Return exit code."""
+    """Copy bundled templates/project into target. Return exit code.
+
+    Every path the run creates or changes is reported once, with the same
+    text under ``--dry-run`` as for real: the template files, ``AGENTS.md``,
+    both ignore files' managed blocks and ``.specyrd/manifest.json``. Paths are
+    relative to the git root (``sr/roadmap/...`` in the nested layout).
+    """
     dst = project_root(target) if target else project_root()
     src = project_template_root()
     if not src.is_dir():
         print(f"error: missing project template at {src}", file=sys.stderr)
         return 2
-
     try:
-        profile_selection = parse_init_profiles_spec(profiles)
-        profiles_src = bundled_profiles_template_dir()
-        if profiles_src.is_dir():
-            profile_selection = validate_init_profiles_selection(profile_selection, profiles_src)
+        selection = _profile_selection(profiles)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
@@ -176,49 +235,31 @@ def run_init_project(  # noqa: C901 — baseline 2026-10-28; simplify, then drop
         print(msg, file=sys.stderr)
         return 1
 
-    written: list[str] = []
-    skipped: list[str] = []
-    for path in sorted(src.rglob("*")):
-        if path.is_dir():
-            continue
-        rel = path.relative_to(src)
-        if not include_template_profiles_file(rel, profile_selection):
-            continue
-        out = dst / rel
-        # .gitignore is the consumer's even under --force; its managed block is
-        # re-applied by _record_layout below.
-        if out.exists() and (not force or rel == _GITIGNORE):
-            skipped.append(str(rel))
-            continue
-        if dry_run:
-            print(f"would write {out}")
-            written.append(str(rel))
-            continue
-        out.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(path, out)
-        written.append(str(rel))
+    # The ignore files live at the git root (dst itself outside a repository)
+    # and name project paths with the prefix, so a nested project gets no
+    # .gitignore of its own. The template's commented header seeds a missing
+    # one only when the two roots coincide: its comments name unprefixed paths.
+    top = git_root(next(p for p in (dst, *dst.parents) if p.is_dir()))   # dst may not exist yet
+    root = top or dst
+    prefix = prefix_within(top, dst) if top else ""
+    written, skipped = _copy_templates(src, dst, prefix, selection, dry_run=dry_run, force=force)
+    _apply_agents_md(dst, prefix, written, dry_run=dry_run)
+    seed = "" if prefix else (src / _GITIGNORE).read_text(encoding="utf-8")
+    apply_and_report(root, prefix, written, dry_run=dry_run, gitignore_seed=seed)
+    if top is not None:
+        _record_layout(top, prefix, written, dry_run=dry_run)
 
+    verb = "would write" if dry_run else "wrote"
+    for entry in written:
+        print(f"{verb} {entry}")
+    for entry in skipped:
+        print(f"skipped (exists): {entry}")
     if dry_run:
-        outcome = apply_agents_md_block(dst, dry_run=True)
-        if outcome != UNCHANGED:
-            print(f"would write AGENTS.md ({outcome})")
-        print(f"dry-run: {len(written)} file(s) would be written under {dst}")
+        print(f"dry-run: {len(written)} path(s) would be written or changed under {root}")
         if skipped:
             print(f"dry-run: would skip {len(skipped)} existing (no --force)")
         return 0
-
-    # AGENTS.md is a managed block, not a template file: an existing file gets
-    # the section inserted, with or without --force. Every other existing
-    # scaffold file except .gitignore was replaced above when --force was given.
-    outcome = apply_agents_md_block(dst)
-    if outcome != UNCHANGED:
-        written.append(f"AGENTS.md ({outcome})")
-    for rel in written:
-        print(f"wrote {rel}")
-    for rel in skipped:
-        print(f"skipped (exists): {rel}")
-    recorded = _record_layout(dst)
     print(f"Initialized specy-road layout under {dst}")
-    if recorded and recorded != ".":
-        print(f"Recorded project_root={recorded} in .specyrd/manifest.json")
+    if prefix:
+        print(f"Recorded project_root={prefix.rstrip('/')} in .specyrd/manifest.json")
     return 0
