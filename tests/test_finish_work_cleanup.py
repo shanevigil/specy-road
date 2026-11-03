@@ -82,15 +82,30 @@ def test_cleanup_work_artifacts_tracked_paths_returned(tmp_path) -> None:
         check=True,
         capture_output=True,
     )
+    (tmp_path / "work" / "implementation-summary-M1.1.md").write_text(
+        "summary body", encoding="utf-8"
+    )
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "add", "work/implementation-summary-M1.1.md"],
+        check=True,
+        capture_output=True,
+    )
     subprocess.run(
         ["git", "-C", str(tmp_path), "commit", "-m", "init"],
         check=True,
         capture_output=True,
     )
     tracked = cleanup_work_artifacts(tmp_path, "M1.1")
-    assert set(tracked) == {"work/brief-M1.1.md"}
+    assert set(tracked) == {
+        "work/brief-M1.1.md",
+        "work/implementation-summary-M1.1.md",
+        "work/done/implementation-summary-M1.1.md",
+    }
     assert not (tmp_path / "work" / "brief-M1.1.md").is_file()
     assert not (tmp_path / "work" / "prompt-M1.1.md").is_file()
+    assert not (tmp_path / "work" / "implementation-summary-M1.1.md").is_file()
+    done = tmp_path / "work" / "done" / "implementation-summary-M1.1.md"
+    assert done.read_text(encoding="utf-8") == "summary body"
 
 
 def test_cleanup_work_artifacts_on_finish_defaults_true(tmp_path) -> None:
@@ -311,3 +326,61 @@ def test_an_opted_in_completed_worker_goes_through_review_to_finish(tmp_path, mo
     committed = subprocess.run(["git", "-C", str(repo), "show", "--name-only", "--format=%s", "HEAD"],
                                check=True, capture_output=True, text=True).stdout
     assert committed.startswith("chore(rm-thing): complete, deregister") and logs in committed
+    assert (repo / "work" / "done" / "implementation-summary-M1.1.md").read_text(
+        encoding="utf-8"
+    ) == "## Added\n\nnone\n"
+    assert not (repo / "work" / "implementation-summary-M1.1.md").exists()
+    assert "work/done/implementation-summary-M1.1.md" in committed.splitlines()
+
+
+def test_finish_archives_committed_summary_in_bookkeeping_commit(
+    tmp_path, monkeypatch,
+) -> None:
+    """A1: finish moves a tracked summary to work/done/ in the bookkeeping commit."""
+    import pytest
+
+    from tests.helpers import REPO
+    from tests.review_repo_helpers import git, make_review_repo, review_text
+
+    from specy_road.bundled_scripts import finish_task
+    from specy_road.bundled_scripts import mark_implementation_reviewed as mir
+    from specy_road.review_files import reviews_dir
+
+    monkeypatch.setenv("PYTHONPATH", str(REPO))
+    repo = make_review_repo(tmp_path)
+    (repo / "work").mkdir(exist_ok=True)
+    summary_text = "## Summary\n\nShipped.\n"
+    (repo / "work" / "implementation-summary-M1.1.md").write_text(
+        summary_text, encoding="utf-8"
+    )
+    (repo / "work" / "brief-M1.1.md").write_text("# brief\n", encoding="utf-8")
+    (repo / "work" / "prompt-M1.1.md").write_text("# prompt\n", encoding="utf-8")
+    git(repo, "add", "work/implementation-summary-M1.1.md")
+    git(repo, "commit", "-qm", "executor: summary")
+    head = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    (reviews_dir(repo, "M1.1") / "REVIEW-human.md").parent.mkdir(parents=True, exist_ok=True)
+    (reviews_dir(repo, "M1.1") / "REVIEW-human.md").write_text(review_text(head))
+    with pytest.raises(SystemExit) as e:
+        mir.main(["--yes", "--repo-root", str(repo)])
+        raise SystemExit(0)
+    assert (e.value.code or 0) == 0
+    with pytest.raises(SystemExit) as e:
+        finish_task.main(["--repo-root", str(repo)])
+        raise SystemExit(0)
+    assert (e.value.code or 0) == 0
+    done = repo / "work" / "done" / "implementation-summary-M1.1.md"
+    assert done.read_text(encoding="utf-8") == summary_text
+    assert not (repo / "work" / "implementation-summary-M1.1.md").exists()
+    assert not (repo / "work" / "brief-M1.1.md").exists()
+    names = subprocess.run(
+        ["git", "-C", str(repo), "show", "--name-only", "--format=", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.splitlines()
+    assert "work/done/implementation-summary-M1.1.md" in names

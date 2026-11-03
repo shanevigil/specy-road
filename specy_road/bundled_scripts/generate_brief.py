@@ -10,7 +10,8 @@ inlines all the context an implementer needs (no separate file-opening):
   ``goal`` and ``acceptance`` criteria numbered ``A1..An`` (review records
   cite those ids — see ``brief_acceptance``)
 * ancestor context chain (program -> phase -> milestone -> task)
-* every ancestor planning sheet body, in chain order, then this node's
+* every ancestor planning sheet body, in chain order, then this node's; an
+  ancestor ``## Intent`` still left as a placeholder becomes one line
 * the shared contracts this node cites — every ``shared/…`` path named in the
   ``## References`` section of its own planning sheet or an ancestor's, plus
   ``shared/README.md`` as the index. Everything else under ``shared/`` is
@@ -19,7 +20,8 @@ inlines all the context an implementer needs (no separate file-opening):
 * dependency list (resolved from node_key UUIDs to display ids)
 * **dependency context: each effective dependency's ``## Intent`` block
   inlined verbatim** (so PMs do not have to paraphrase upstream work in
-  this task's own planning sheet — see ``brief_dependency_context``)
+  this task's own planning sheet — see ``brief_dependency_context``; one
+  line instead while that ``## Intent`` is still a placeholder)
 * an explicit touch-zone instruction for the implementing agent; the header
   states the brief's size and largest sections (``brief_acceptance``)
 
@@ -34,8 +36,12 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from specy_road.bundled_scripts.brief_call_sites import call_site_lines
 from specy_road.bundled_scripts.brief_acceptance import print_size_warning, render_goal_and_acceptance, with_size_line
-from specy_road.bundled_scripts.brief_dependency_context import render_dependency_context_section
+from specy_road.bundled_scripts.brief_dependency_context import (
+    render_dependency_context_section,
+    without_placeholder_intent,
+)
 
 from specy_road import contract_citations
 from specy_road.text_sections import read_text_safely as _read_text_safely
@@ -44,8 +50,12 @@ from specy_road.bundled_scripts.planning_artifacts import (
     normalize_planning_dir,
     planning_artifact_paths,
 )
+from specy_road.bundled_scripts.registry_claim_status import brief_status_own_line, leaf_claim_entry
+from specy_road.bundled_scripts.roadmap_gui_lib import registry_by_node_id
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
+from specy_road.milestone_subtree import structural_leaf_ids
+from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix
 
 
@@ -97,7 +107,7 @@ def _project_root_line(nid: str, prefix: str) -> list[str]:
             f"hand-offs go in `{prefix}work/reviews/{nid}/` of the main checkout — never in the git root's `work/`."]
 
 
-def _section_metadata(node: dict, prefix: str = "") -> list[str]:
+def _section_metadata(node: dict, prefix: str = "", claim: dict | None = None) -> list[str]:
     nid = node["id"]
     rollup = node.get("rollup_status") or node.get("status")
     tz = node.get("touch_zones") or []
@@ -109,7 +119,7 @@ def _section_metadata(node: dict, prefix: str = "") -> list[str]:
         f"- **Title:** {node.get('title', '')}",
         f"- **Codename:** `{node.get('codename') or '—'}`",
         f"- **Type:** {node.get('type', '')}",
-        f"- **Status (own):** {node.get('status')}",
+        f"- **Status (own):** {brief_status_own_line(node, claim)}",
         f"- **Status (rollup):** {rollup}",
         f"- **Execution (milestone hint):** {node.get('execution_milestone') or '—'}",
         f"- **Touch zones:** {tz_str}",
@@ -133,6 +143,17 @@ def _section_ancestor_chain(chain: list[dict]) -> list[str]:
     return lines
 
 
+def _sheet_owners(chain: list[dict]) -> dict[str, dict]:
+    """Normalised ``planning_dir`` -> node, so an inlined ancestor sheet can name its node."""
+    out: dict[str, dict] = {}
+    for a in chain:
+        try:
+            out[normalize_planning_dir(str(a.get("planning_dir") or ""))] = a
+        except ValueError:
+            continue
+    return out
+
+
 def _inline_planning(
     node: dict, root: Path, by_id: dict[str, dict]
 ) -> list[str]:
@@ -140,12 +161,14 @@ def _inline_planning(
     nid = node["id"]
     out = ["## 3. Planning context (inlined)", ""]
     anc = ancestor_planning_paths(nid, by_id, root)
+    owners = _sheet_owners(ancestors(nid, by_id))
     for rel, p in anc:
         text, ok = _read_text_safely(p)
         out.append(f"### Ancestor planning sheet: `{rel}`")
         out.append("")
         if ok:
-            out.append(text.rstrip())
+            owner = owners.get(rel)
+            out.append((without_placeholder_intent(text, owner) if owner else text).rstrip())
         else:
             out.append(f"_(not present on disk: `{rel}`)_")
         out.append("")
@@ -271,8 +294,8 @@ def _section_dependencies(node: dict, by_id: dict[str, dict]) -> list[str]:
     return out
 
 
-def _section_touch_zone_instruction(node: dict) -> list[str]:
-    """F-009: explicit instruction to the implementing agent."""
+def _section_touch_zone_instruction(node: dict, root: Path) -> list[str]:
+    """F-009: explicit instruction to the implementing agent, then the zones' call sites."""
     tz = node.get("touch_zones") or []
     out = ["## 7. Touch zones — implementing agent instruction", ""]
     if tz:
@@ -287,6 +310,7 @@ def _section_touch_zone_instruction(node: dict) -> list[str]:
             "scanning the codebase. Add or remove zones as appropriate, then "
             "report the final list in your implementation summary."
         )
+        out += ["", *call_site_lines(root, tz)]
     else:
         out.append(
             "**TODO (DEV agent):** the PM did not specify touch zones. "
@@ -326,6 +350,11 @@ def render_brief(
 ) -> str:
     root = repo_root or default_user_repo_root()
     n = by_id[node_id]
+    claim = leaf_claim_entry(
+        node_id,
+        leaf_ids=structural_leaf_ids(list(by_id.values())),
+        by_reg=registry_by_node_id(read_registry(registry_path(root))),
+    )
     chain = ancestors(node_id, by_id) + [n]
     cited = contract_citations.cited_contracts(
         _chain_sheet_paths(n, root, by_id), root
@@ -333,13 +362,13 @@ def render_brief(
 
     parts: list[list[str]] = [
         _section_header(node_id, n.get("title", ""), n.get("codename")),
-        _section_metadata(n, project_prefix(root)),
+        _section_metadata(n, project_prefix(root), claim),
         _section_ancestor_chain(chain),
         _inline_planning(n, root, by_id),
         _inline_shared_contracts(root, cited, inline_all=all_contracts),
         _section_dependencies(n, by_id),
         render_dependency_context_section(n, by_id, root),
-        _section_touch_zone_instruction(n),
+        _section_touch_zone_instruction(n, root),
         _section_rollup_semantics(),
     ]
     if include_history:

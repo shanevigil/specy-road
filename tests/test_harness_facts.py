@@ -83,7 +83,9 @@ def test_the_shipped_profiles_are_already_rendered_from_the_fixture() -> None:
 
 def test_each_executor_template_renders_its_families_cli() -> None:
     facts = hf.load_facts()
-    assert hf.rendered_cli(facts, "Anthropic Claude", "claude-opus-5-5") == 'claude -p "<prompt>"'
+    assert hf.rendered_cli(facts, "Anthropic Claude", "claude-opus-5-5") == (
+        'CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude -p "<prompt>"'
+    )
     assert hf.rendered_cli(facts, "OpenAI GPT", "gpt-6.1-sol").startswith("codex exec --model gpt-6.1-sol ")
     assert hf.rendered_cli(facts, "Cursor Composer", "unknown") == 'agent -p --force "<prompt>"'
     assert hf.rendered_cli(facts, "Google Gemini", "gemini-4-argon") is None
@@ -297,8 +299,8 @@ def test_capture_cli_fails_on_unassigned_and_accept_stores_a_passing_one(tmp_pat
     monkeypatch.setattr(hf, "bundled_captures_dir", lambda: accepted)
     hf.write_capture(accepted / "codex", _capture("codex-cli 0.165.0"))
     bad, good = tmp_path / "bad", tmp_path / "good"
-    hf.write_capture(bad, _capture("codex-cli 0.166.0", HELP + "  --auto-push   New\n"))
-    hf.write_capture(good, _capture("codex-cli 0.166.0", HELP + "  --colour   New\n"))
+    hf.write_capture(bad, _capture("codex-cli 0.167.0", HELP + "  --auto-push   New\n"))
+    hf.write_capture(good, _capture("codex-cli 0.167.0", HELP + "  --colour   New\n"))
     assert run_main("--capture", "codex", "--from", str(bad), "--accept") == 1
     assert "UNASSIGNED --auto-push: contains 'push'" in capsys.readouterr().err
     assert "0.165.0" in (accepted / "codex" / hf.VERSION_FILE).read_text()

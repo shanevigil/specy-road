@@ -11,12 +11,19 @@ profiles, `specy-road models`, `specy-road prompt`, and
 `init project` scaffolds `model-profiles/` into your repo: one schema-2 profile
 per model (limits, prices, headless CLI, role scores, prompting rules, failure
 modes) and a README that ranks models by role and gives each one's roster
-`family`. A roster entry points at its profile with `profile:`, and names
+`family`. Pass `--profiles all` (the default) to copy every shipped profile,
+`--profiles none` for only `README.md` and `harness-facts.yaml`, or a
+comma-separated list of family directory names (for example `anthropic-claude`),
+file stems, or front-matter `api_id` values (always including those two files).
+Roster `family` values (`anthropic`, `openai`, …) are not accepted. A roster
+entry points at its profile with `profile:`, and names
 the `harness` (`claude-code`, `codex`, `cursor`, `generic`) that
 `specy-road worker delegate` launches it on — a Claude model under Cursor's
 agent is a `cursor` worker ([orchestration-workers.md](orchestration-workers.md)). A repo scaffolded
 by an older version gets them with `specy-road refresh-profiles`, which adds
-what is missing and never overwrites your edited copies. The facts come
+what is missing and never overwrites your edited copies (`--only` matches a
+front-matter `api_id` or file stem, and adds every matching missing profile).
+The facts come
 from model-run research no human has verified, so read the README's provenance
 section before copying a CLI line into production.
 
@@ -100,10 +107,28 @@ The roster `id` stays the label review records and the gate count. When the
 `id` is one of the profile's aliases (found that way or named by `profile:`),
 the alias is what `worker delegate` passes the harness as the model, since it is
 the id the harness lists; otherwise the profile's `api_id` is, as before.
+An entry's `harness_model` overrides both: it is the id the harness CLI expects
+when the roster `id` is not one (`claude --model` takes `claude-opus-5-5`, not
+`claude-opus-5.5`), and the default commands pass it as `--model` / `-m` on
+launch and on resume alike. With no profile and no `harness_model`, the roster
+`id` itself is passed. `validate` warns about a `claude-code` entry whose `id`
+has a dot and no `harness_model`. When a worker exits non-zero before its
+first stream event, its `error` event quotes the harness's last error line from
+`work/.workers/<id>.log` (an HTTP 404 for an unknown model, say), not only the
+log's name.
+
+```yaml
+  - id: claude-opus-5.5
+    family: anthropic
+    roles: [executor]
+    harness: claude-code
+    harness_model: claude-opus-5-5
+```
 
 - `specy-road models list` — the roster as the gate sees it, with each entry's
-  profile, coordinator/executor/reviewer scores, and staleness; profiles no
-  entry uses are listed so you can roster them.
+  profile, coordinator/executor/reviewer scores, and staleness; roster ids that
+  match no profile are listed separately; profiles no entry uses are listed so
+  you can roster them.
 - `specy-road models show <id> [--section <name>]` — one profile's machine
   fields and a body section (default: Prompting rules).
 - `specy-road models stale [--max-age-days N]` — profiles researched too long
@@ -142,6 +167,15 @@ the id the harness lists; otherwise the profile's `api_id` is, as before.
   system refuses to launch it (a `<prompt>` too long for a command line) it
   exits 1 with the reason — use `{prompt}` for long prompts.
 
+Each shipped profile includes **`## Orchestration: harness features to avoid`**: the harness
+capability specy-road turns off for executors (memory, background tasks, Codex `--disable …`, Cursor
+`/goal` and persist) and the switch the worker launch or `access.cli` applies. Optional
+**orchestration guard** hooks (`specyrd init --install-orchestration-hooks`, or
+`specy-road orchestration guard --format … --print-config`) deny role-inappropriate git and cloud
+commands; `worker delegate` / `review delegate` export `SPECY_ROAD_ORCHESTRATION_ROLE` so the
+installed command can read the role; pair them with the shared-checkout guard from
+`specy-road session guard --print-config`.
+
 ## Harness facts: what `refresh-profiles` renders
 
 `model-profiles/harness-facts.yaml` holds one record per harness a roster can
@@ -156,6 +190,15 @@ checked stay `unverified` until the runtime verification leaf (M8.7) replaces
 them. `generic` has no binary of its own (it runs the profile's `access.cli`),
 so its record renders no `access.cli`, has no `capture_commands`, and
 `--capture generic` needs `--from`.
+
+Two candidate profiles run other harnesses' CLIs through `generic`:
+`github-copilot/copilot-gemini-4-argon.md` (Copilot CLI, a one-shot reviewer
+that denies `git push`, `git commit`, `gh` and Copilot Memory) and
+`google-antigravity/agy-gemini-4-argon-high.md` (Antigravity `agy`, whose run
+succeeded only when the JSON envelope's `status` is `SUCCESS`: a soft-denied
+tool or a `--print-timeout` expiry still exits 0). Both were written from
+vendor documentation; their `runtime_checks` are `not run`, and neither
+harness has a facts record yet.
 
 Two parts of `model-profiles/` are rendered from it. A hand edit to either is
 drift:

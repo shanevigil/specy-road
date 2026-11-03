@@ -13,7 +13,8 @@ reports. A review record counts only when all of these hold:
   roster, never from the file;
 * that model's roster ``may_process`` includes the node's sensitivity, as
   ``orchestrate plan`` and ``prompt`` require;
-* it attests a fresh session when policy requires one.
+* it attests a fresh session when policy requires one (``reviewer_resumed_delta`` waives
+  that for an approval naming ``delta_from``: :mod:`specy_road.review_resumed_delta`).
 
 Policy is read from ``roadmap/orchestration.yaml`` **as committed on the
 integration branch** (its remote-tracking ref when present), and the gate is on
@@ -53,11 +54,13 @@ from specy_road.review_gate_ready import (  # noqa: F401 — public names re-exp
     write_human_approval)
 from specy_road.review_signing import (  # noqa: F401 — SigningError re-exported
     SigningError, notes_problem, verify)
+from specy_road.review_bookkeeping import CARRY_NOTE, count_at_later_commit, only_planning_or_review_bookkeeping_since
 from specy_road.review_files import (HUMAN, PACKET_NAME, ReviewFile, executor_blocked_gate_problems, latest_ready,
                                      list_review_history, list_reviews, review_semantic_errors, reviews_dir,
                                      verifier_gate_problems)
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.review_policy_ref import committed_yaml as _committed_yaml, policy_source
+from specy_road.review_resumed_delta import FRESH_SESSION, fresh_only_note, fresh_session_problem
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
 from specy_road.runtime_paths import project_prefix, rebase_to_project
 
@@ -114,7 +117,7 @@ class GateResult:
     ineligible: list[tuple[ReviewFile, str]] = field(default_factory=list)
     verifier_problems: list[str] = field(default_factory=list)
     config_error: str | None = None
-    config: dict[str, Any] = field(default_factory=dict)
+    bookkeeping_carry: bool = False; config: dict[str, Any] = field(default_factory=dict)
 
     @property
     def approval_count(self) -> int:
@@ -128,7 +131,7 @@ class GateResult:
     def summary(self) -> str:
         unit = "distinct-family approvals" if self.distinct_families else "approvals"
         state = "met" if self.passed else "not met"
-        return f"{self.approval_count}/{self.required} {unit}, {len(self.blocks)} block(s): {state}"
+        return f"{self.approval_count}/{self.required} {unit}, {len(self.blocks)} block(s): {state}" + (CARRY_NOTE if self.bookkeeping_carry else "")
 
     def problems(self) -> list[str]:
         out = []
@@ -197,15 +200,12 @@ def _eligibility(config: dict[str, Any], node: dict[str, Any], review: ReviewFil
     if not may_handle(entry, node_sensitivity(node)):
         return None, (f"{node_id} is {node_sensitivity(node)!r} and {model!r} may process only "
                       f"{entry_may_process(entry)} (roster may_process)")
-    if config["policy"].get("reviewer_fresh_session", True) and not review.data.get("fresh_session"):
-        return None, "policy requires a fresh reviewer session (fresh_session: true)"
     why = (rerun_problem(config["policy"], review.data) or notes_problem(review.data, review.body)
            or _signature_problem(config, model, review))
-    if why:
-        return None, why
     family = family_of(config, model)
-    if not family:
-        return None, f"no family for {model!r}: add it to the roster"
+    why = why or (None if family else f"no family for {model!r}: add it to the roster")
+    if why := fresh_session_problem(config["policy"], review.data, why):   # exactly FRESH_SESSION when alone
+        return None, why
     return CountedReview(review, family, sub), None
 
 
@@ -326,8 +326,7 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
         if not review.ok:
             result.invalid.append(review)
             continue
-        if not same_commit(repo_root, review.data["commit"], result.commit):
-            result.stale.append(review)
+        if not count_at_later_commit(result, repo_root, node, review):
             continue
         counted, why = _eligibility(config, node, review, today)
         if counted is not None and counted.verdict == "approve" and review.data.get("delta_from"):
@@ -335,7 +334,8 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
             why = _delta_why(repo_root, node, priors, review, result.commit, policy)
             counted = None if why else counted
         if counted is None:
-            result.ineligible.append((review, why or "not eligible"))
+            result.ineligible.append((review, fresh_only_note(repo_root, config, node, review, result.commit, today)
+                                      if why == FRESH_SESSION else why or "not eligible"))
         else:
             _count(result, counted)
     ready = latest_ready(repo_root, node["id"], branch, acceptance_ids(node))

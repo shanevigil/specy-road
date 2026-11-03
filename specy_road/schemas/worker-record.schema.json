@@ -50,6 +50,8 @@
     },
     "attempt": { "type": "integer", "minimum": 1, "description": "Nth worker delegated for this leaf; <node_id>:<attempt> is the idempotency key." },
     "billing_route": { "type": ["string", "null"] },
+    "queued_message": { "type": ["string", "null"], "description": "Follow-up text from ``worker message`` while a turn was still running; delivered as the next turn when the wrapper finishes." },
+    "toolkit_version": { "type": ["string", "null"], "description": "The specy-road build that delegated this worker (``specy-road --version`` from the coordinator checkout)." },
     "last_event_seq": { "type": "integer", "minimum": 0 },
     "created": { "type": "string", "minLength": 1 },
     "updated": { "type": "string", "minLength": 1 }

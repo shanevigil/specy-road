@@ -4,6 +4,15 @@ family: SpaceXAI Grok
 track: none
 model: Grok 4.7
 api_id: grok-4.7
+aliases:
+  - grok-4.7-low
+  - grok-4.7-low-fast
+  - grok-4.7-medium
+  - grok-4.7-medium-fast
+  - grok-4.7-high
+  - grok-4.7-high-fast
+  - grok-4.7-xhigh
+  - grok-4.7-xhigh-fast
 checkpoint: same-as-api_id
 alias_moves: unknown
 version_rank: latest
@@ -26,6 +35,14 @@ role_fit:
   executor:    { score: 4, reason: 'Default model of the Grok Build coding agent at $2/$6; CursorBench 4.0 46.3 percent at xhigh, up from 40.4 percent for Grok 4.6, credible but not the strongest', sources: [S2, S1, S9, S10] }
   reviewer:    { score: 3, reason: 'Vendor reports better self-checking and verification; neither run found independent reviewer calibration data', sources: [S1, S10, S9] }
 ---
+## Orchestration: harness features to avoid
+
+| Feature | Switch |
+|---|---|
+| memory off | Claude `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`; Codex `--disable memories`; Cursor persist: no switch (never invoked) |
+| plan mode | never pass `--plan` |
+| worktree or cloud | never pass `--worktree` / `--cloud`; Cursor cloud handoff: never invoked |
+
 ## Strengths
 - Lowest output price among the frontier general models in the Claude run's roster: $2 input / $6 output per MTok below 200K prompt tokens [S1, S7] (confidence: high)
 - 500,000-token context, low/medium/high/xhigh reasoning, function calling, web and X search, and code execution [S2] (confidence: high)

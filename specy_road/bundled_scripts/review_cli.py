@@ -35,8 +35,10 @@ from specy_road.review_files import (
     review_path, reviews_root, round_span, write_review,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
-from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states
-from specy_road.review_gate_ready import add_ready_parser
+from specy_road.toolkit_version import stamp_review_toolkit_version
+from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states, gate_policy_summary
+from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
+from specy_road.review_ready_merge import add_ready_parser
 from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
@@ -95,7 +97,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         ],
         "review_rounds": round_span(root, node_id),
         "review_runs": (runs := run_states(root, node_id, gate.commit)),
-        "policy": gate.summary(),
+        "policy": gate_policy_summary(gate, runs), "reviewer_eligibility": reviewer_eligibility(root, t.node, gate, branch),
         "policy_met": gate.passed,
         "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
                         "blocking": tm.code_conflicts} if tm and tm.conflicts else None,
@@ -120,7 +122,7 @@ def _render(st: dict[str, Any]) -> list[str]:
                      f"{' [signed]' if r['signed'] else ''}{mode}{extra}")
     lines += [f"  {line}" for line in run_lines(st.get("review_runs") or [])]
     lines.append(f"  {st['review_rounds']['line']}")
-    lines.append(f"  policy: {st['policy']}")
+    lines += [f"  policy: {st['policy']}"] + eligibility_lines(st)   # who can still approve, when not met
     if tm := st.get("trial_merge"):
         kind = "" if tm["blocking"] else " (bookkeeping only, which does not block)"
         lines.append(f"  trial merge with {tm['ref']}: conflicts on {', '.join(tm['conflicts'])}{kind}")
@@ -282,6 +284,7 @@ def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline
     data = {**rec["data"], "commit": gate.commit, NOTES_KEY: notes_digest(rec["body"])}
     if ns.launch_mode:   # before signing: the signature covers it
         data["launch_mode"] = ns.launch_mode
+    data = stamp_review_toolkit_version(data)
     if ns.sign_key:
         if not entry.get("public_key"):
             return _fail(f"--sign-key given, but the roster entry for {ns.model!r} has no public_key; "
@@ -393,7 +396,5 @@ def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     ns = build_parser().parse_args(argv)
     raise SystemExit(ns.func(ns))
-
-
 if __name__ == "__main__":
     main()

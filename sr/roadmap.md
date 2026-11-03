@@ -71,8 +71,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M8.2` | Worker adapters harden the launch and run a deterministic post-run check | task | Agentic-led | Not Started |
 | `M8.3` | Reviewer runs are read-only and specy-road writes the review record from structured output | task | Agentic-led | Not Started |
 | `M8.4` | Ship skills once and meter every file each harness injects | task | Agentic-led | Complete |
-| `M8.5` | Guard hooks per harness and avoid lists in every model profile | task | Agentic-led | Not Started |
-| `M8.6` | Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic | task | Agentic-led | Not Started |
+| `M8.5` | Guard hooks per harness and avoid lists in every model profile | task | Agentic-led | Complete |
+| `M8.6` | Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic | task | Agentic-led | Complete |
 | `M8.7` | Runtime verification of the harness facts against installed binaries | task | Agentic-led | Complete |
 | `M9` | Regression prevention | phase | — | In Progress |
 | `M9.1` | finish-this-task runs a configured land check on the merge commit before it pushes | task | Agentic-led | Complete |
@@ -121,48 +121,72 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.11` | orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route | task | Agentic-led | Complete |
 | `M11.12` | specy-road ready writes a valid READY hand-off | task | Agentic-led | Complete |
 | `M11.13` | A milestone gets one full review of its combined change before it is marked complete | task | Agentic-led | Complete |
-| `M11.14` | worker message queues a follow-up for a worker whose turn is still running | task | Agentic-led | Not Started |
+| `M11.14` | worker message queues a follow-up for a worker whose turn is still running | task | Agentic-led | Complete |
 | `M11.15` | Pickup and finish agree on unwritten planning sheets | task | Agentic-led | Complete |
-| `M11.16` | A commit that changes only planning or bookkeeping files keeps existing approvals | task | Agentic-led | Not Started |
+| `M11.16` | A commit that changes only planning or bookkeeping files keeps existing approvals | task | Agentic-led | Complete |
 | `M11.17` | edit-node names every chunk file it changes, and relocation is loud | task | Agentic-led | Complete |
 | `M11.18` | Registry overlap warnings show only what concerns the command at hand | task | Agentic-led | Complete |
 | `M11.19` | Pickup never stashes work/ around the registry commit | task | Agentic-led | Complete |
-| `M11.20` | orchestrate plan and validate say where the roster is read from | task | Agentic-led | Not Started |
-| `M11.22` | Worker worktrees can include nested sibling repositories | task | Mixed | Not Started |
-| `M11.23` | A custom launch command's permissions carry through resume | task | Agentic-led | Not Started |
+| `M11.20` | orchestrate plan and validate say where the roster is read from | task | Agentic-led | Complete |
+| `M11.22` | Worker worktrees can include nested sibling repositories | task | Agentic-led | Not Started |
+| `M11.23` | A custom launch command's permissions carry through resume | task | Agentic-led | Complete |
 | `M11.24` | Executors and reviewers in a worktree can write and check the right places | task | Agentic-led | Complete |
 | `M11.25` | finish-this-task says what merge mode will push before it pushes | task | Agentic-led | Complete |
-| `M11.26` | A model profile can match harness model ids that carry an effort suffix | task | Agentic-led | Not Started |
-| `M11.27` | Small CLI fixes from field use | task | Agentic-led | Not Started |
+| `M11.26` | A model profile can match harness model ids that carry an effort suffix | task | Agentic-led | Complete |
+| `M11.27` | Small CLI fixes from field use | task | Agentic-led | Complete |
 | `M11.28` | A light chore mode for work outside the roadmap | task | Mixed | Not Started |
-| `M11.29` | doctor warns when the running specy-road is older than the project's stubs | task | Agentic-led | Not Started |
+| `M11.29` | doctor warns when the running specy-road is older than the project's stubs | task | Agentic-led | Complete |
 | `M11.30` | Leaf worktrees get the project's environment set up | task | Agentic-led | Not Started |
 | `M11.31` | A safe command to retire a leaf worktree | task | Agentic-led | Not Started |
 | `M11.32` | Unpushed nested-repo commits are reported | task | Agentic-led | Not Started |
 | `M11.33` | A reviewer whose harness routes models dynamically does not count as an independent family by default | task | Agentic-led | Not Started |
 | `M11.34` | Open human decisions live in one tracked ledger and every question is self-contained | task | Agentic-led | Complete |
-| `M11.35` | A roster entry maps to the harness's own model id, and a failed start says why | task | Agentic-led | Not Started |
-| `M11.36` | A resumed reviewer session may approve a delta it was shown | task | Agentic-led | Not Started |
-| `M11.37` | review-packet warns when the brief or summary names a file not committed at the reviewed commit | task | Agentic-led | Not Started |
-| `M11.38` | handoff status says who can still supply a missing approval | task | Agentic-led | Not Started |
-| `M11.39` | A roster entry can be marked unavailable without deleting it | task | Agentic-led | Not Started |
+| `M11.35` | A roster entry maps to the harness's own model id, and a failed start says why | task | Agentic-led | Complete |
+| `M11.36` | A resumed reviewer session may approve a delta it was shown | task | Agentic-led | Complete |
+| `M11.37` | review-packet warns when the brief or summary names a file not committed at the reviewed commit | task | Agentic-led | Complete |
+| `M11.38` | handoff status says who can still supply a missing approval | task | Agentic-led | Complete |
+| `M11.39` | A roster entry can be marked unavailable without deleting it | task | Agentic-led | Complete |
 | `M11.40` | worker reconcile works on merged leaves and separates untracked files | task | Agentic-led | Not Started |
-| `M11.41` | The two review-gate settings cannot silently disagree | task | Agentic-led | Not Started |
+| `M11.41` | The two review-gate settings cannot silently disagree | task | Agentic-led | Complete |
 | `M11.42` | session end finds the session the same agent started | task | Agentic-led | Complete |
-| `M11.43` | init project reports exactly what it writes | task | Agentic-led | Not Started |
-| `M11.44` | init project can install only the model profiles a project uses | task | Agentic-led | Not Started |
-| `M11.45` | The stale-command warning fires only on command-shaped mentions | task | Agentic-led | Not Started |
-| `M11.46` | Placeholder leaves neither fail validate --strict nor pad briefs | task | Agentic-led | Not Started |
-| `M11.47` | validate checks git-root touch zones in a nested project | task | Agentic-led | Not Started |
-| `M11.48` | A claimed leaf reads as claimed in list-nodes and brief | task | Agentic-led | Not Started |
-| `M11.49` | The review packet takes touch zones from the reviewed commit and treats lockfiles as generated | task | Agentic-led | Not Started |
-| `M11.50` | finish keeps a committed implementation summary in history | task | Agentic-led | Not Started |
+| `M11.43` | init project reports exactly what it writes | task | Agentic-led | Complete |
+| `M11.44` | init project can install only the model profiles a project uses | task | Agentic-led | Complete |
+| `M11.45` | The stale-command warning fires only on command-shaped mentions | task | Agentic-led | Complete |
+| `M11.46` | Placeholder leaves neither fail validate --strict nor pad briefs | task | Agentic-led | Complete |
+| `M11.47` | validate checks git-root touch zones in a nested project | task | Agentic-led | Complete |
+| `M11.48` | A claimed leaf reads as claimed in list-nodes and brief | task | Agentic-led | Complete |
+| `M11.49` | The review packet takes touch zones from the reviewed commit and treats lockfiles as generated | task | Agentic-led | Complete |
+| `M11.50` | finish keeps a committed implementation summary in history | task | Agentic-led | Complete |
 | `M11.51` | Dashboard saves never overwrite newer disk edits, and the read API is documented | task | Agentic-led | Not Started |
-| `M11.52` | PR mode predicts and resolves the registry conflict | task | Agentic-led | Not Started |
-| `M11.53` | A worktree-based flow can claim leaves without pushing from the worktree | task | Agentic-led | Not Started |
-| `M11.54` | The test suite and land check run in parallel | task | Agentic-led | Not Started |
-| `M11.55` | Executors split modules to meet file limits instead of deleting documentation | task | Agentic-led | Not Started |
-| `M11.56` | Delegate creates the reviews directory before a harness is told to allow it | task | Agentic-led | Not Started |
-| `M11.57` | A completed worker on a finished leaf does not hold a max_workers slot | task | Agentic-led | Not Started |
+| `M11.52` | PR mode predicts and resolves the registry conflict | task | Agentic-led | Complete |
+| `M11.53` | A worktree-based flow can claim leaves without pushing from the worktree | task | Agentic-led | Complete |
+| `M11.54` | The test suite and land check run in parallel | task | Agentic-led | Complete |
+| `M11.55` | Executors split modules to meet file limits instead of deleting documentation | task | Agentic-led | Complete |
+| `M11.56` | Delegate creates the reviews directory before a harness is told to allow it | task | Agentic-led | Complete |
+| `M11.57` | A completed worker on a finished leaf does not hold a max_workers slot | task | Agentic-led | Complete |
+| `M11.58` | The coordinator records the session's routing preferences where the next session can read them | task | Agentic-led | Complete |
+| `M11.59` | Split worker_ops and worker_adapters so parallel leaves stop colliding | task | Agentic-led | Complete |
+| `M11.60` | The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names | task | Agentic-led | Complete |
+| `M11.61` | The context meter counts Claude rules, auto memory, Cursor nested AGENTS.md and Copilot path instructions | task | Agentic-led | Complete |
+| `M11.62` | Headless runs report usage limits and denied actions instead of looking like success | task | Agentic-led | Not Started |
+| `M11.63` | do-next-available-task refuses a second claim in a checkout that already holds one | task | Agentic-led | Complete |
+| `M11.64` | abort-task-pickup treats untracked files the way pickup does | task | Agentic-led | Complete |
+| `M11.65` | why-blocked reports touch-zone holds from the plan | task | Agentic-led | Complete |
+| `M11.66` | specy-road --version identifies the code when run from a checkout | task | Agentic-led | Complete |
+| `M11.67` | Worker usage prices Cursor runs from the roster's price table | task | Agentic-led | Complete |
+| `M11.68` | A re-delegated executor starts from the blocking review findings | task | Agentic-led | Complete |
+| `M11.69` | A leaf that adds a schema key can be gated and finished | task | Agentic-led | Complete |
+| `M11.70` | Touch zones are checked when they are written | task | Agentic-led | Complete |
+| `M11.71` | Review loops escalate on their own and criteria are written with bounds | task | Agentic-led | Complete |
+| `M11.72` | A reviewer run that ends without a record is reported as a failure | task | Agentic-led | Complete |
+| `M11.73` | specy-road ready warns when the leaf no longer merges cleanly | task | Agentic-led | Complete |
+| `M11.74` | Pickup and finish in one checkout take a shared lock in order | task | Agentic-led | Complete |
+| `M11.75` | Reviewer prompt asks for independent probes, not the executor's own checks | task | Agentic-led | Not Started |
+| `M11.76` | Every roster model reaches its profile notes | task | Agentic-led | Complete |
+| `M11.77` | A completed reviewer run does not report a missing record | task | Agentic-led | Complete |
+| `M11.78` | Review lessons: escaped defect classes feed every reviewer prompt | task | Agentic-led | Complete |
+| `M11.79` | Leaves that touch high-risk zones need a stronger reviewer | task | Agentic-led | Not Started |
+| `M11.80` | Executors and reviewers run tests with a bounded worker count | task | Agentic-led | Not Started |
+| `M11.82` | The integration branch passes ruff again and the land check runs it | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

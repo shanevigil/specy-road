@@ -5,16 +5,20 @@ Writes ``work/reviews/<NODE_ID>/PACKET.md`` (and ``-o``'s path too) with, in ord
 
 1. the brief (goal, numbered acceptance, planning, contracts);
 2. the implementation summary (``work/implementation-summary-<NODE_ID>.md``);
-3. every changed path since the merge base (with the integration branch, or
-   ``--base``), with paths outside the node's touch zones called out;
-4. the Python test files that import a changed module (``specy-road impact``);
-5. ``git diff <base>...<ref>``, with a warning when it is empty; past
+3. a warning when the brief, a planning sheet or the summary names a path not
+   in the tree at the reviewed commit;
+4. every changed path since the merge base (with the integration branch, or
+   ``--base``), with paths outside the touch zones called out: the claim row's
+   zones plus the node's as committed at the reviewed commit;
+5. the Python test files that import a changed module (``specy-road impact``);
+6. ``git diff <base>...<ref>``, with a warning when it is empty; past
    ``--max-diff-lines`` (default 1500) or ``--max-diff-bytes`` (default 200000)
    the first files that fit both are inlined whole, the rest are listed with
    their ``+``/``-`` counts and diff bytes, and the full diff is written to
-   ``work/reviews/<NODE_ID>/DIFF.patch`` (``0`` = no cap); a generated file is
+   ``work/reviews/<NODE_ID>/DIFF.patch`` (``0`` = no cap); a generated file
+   (a well-known lockfile included, unless ``.gitattributes`` says otherwise) is
    never inlined, only listed;
-6. verifier output — the newest valid READY file's ``verify`` tails, plus any
+7. verifier output — the newest valid READY file's ``verify`` tails, plus any
    ``--verify-cmd`` run now.
 
 A reviewer is handed this file and nothing else (proposal §3.2). The commit it
@@ -34,6 +38,7 @@ from datetime import date
 from pathlib import Path
 
 from specy_road.bundled_scripts.generate_brief import index, render_brief
+from specy_road.bundled_scripts.review_packet_uncommitted_refs import uncommitted_refs_section
 from specy_road.finish_implementation_check import in_zones
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_stdout, git_text, head_sha
@@ -42,6 +47,7 @@ from specy_road.integrity import compare_integrity
 from specy_road.review_files import PACKET_NAME, ReviewFile, latest_ready, reviews_dir
 from specy_road.review_gate import FULL_MARK
 from specy_road.review_gate_ready import policy_source_line, trial_merge_lines
+from specy_road.review_resumed_delta import RESUMED_KEY, resumed_delta_on
 from specy_road.review_target import (
     MILESTONE_SUMMARY, REGISTRY_REL, ReviewTarget, full_sha, milestone_packet_or_exit, milestone_packet_lines,
     resolve_target_or_exit, same_commit,
@@ -53,6 +59,9 @@ MAX_DIFF_LINES = 1500
 MAX_DIFF_BYTES = 200_000   # a minified bundle is a few very long lines; lines alone do not bound it
 # Generated artefacts, git-root relative; with .gitattributes `linguist-generated` paths, listed, never inlined.
 GENERATED_PATHS = ("specy_road/pm_gantt_static/",)   # the packaged PM GUI bundle
+# Lockfiles, by file name in any directory: generated unless a .gitattributes entry
+# sets linguist-generated for them (`linguist-generated=false` opts one back in).
+LOCKFILES = ("package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock", "uv.lock", "Cargo.lock", "go.sum")
 GENERATED_NOTE = "_Generated files are never inlined: review the source they are built from._"
 DIFF_NAME = "DIFF.patch"   # beside PACKET.md when the diff is capped
 # Paths every feature branch touches for bookkeeping; never a touch-zone breach.
@@ -100,7 +109,7 @@ def _header(root: Path, t: ReviewTarget, integration_ref: str | None) -> list[st
         f"- **Commit under review:** `{t.commit or 'unknown'}` (`{t.ref}`)",
         f"- **Base:** `{t.base or 'unknown'}` ({base_how})",
         *milestone_packet_lines(t),
-        f"- **Touch zones:** {', '.join(f'`{z}`' for z in t.touch_zones) or '_none declared_'}",
+        f"- **Touch zones:** {', '.join(f'`{z}`' for z in t.review_zones) or '_none declared_'}",
         policy_source_line(root),
         f"- **Generated:** {date.today().isoformat()} by review-packet at HEAD `{head_sha(root) or '?'}`",
         *trial_merge_lines(root, t.ref, integration_ref),
@@ -135,7 +144,7 @@ def changed_paths_section(root: Path, t: ReviewTarget) -> tuple[list[str], list[
     prefix = project_prefix(root)
     changed = diff_paths(root, f"{t.base}...{t.commit}") or []   # both sides of a rename or copy
     paths = [rebase_to_project(p, prefix) or p for p in changed]
-    zones = [z.strip().strip("/") for z in t.touch_zones if isinstance(z, str) and z.strip()]
+    zones = [z.strip().strip("/") for z in t.review_zones if isinstance(z, str) and z.strip()]
     lines = ["## Changed paths", "", _computed(t), ""]
     outside = []
     policy = [p for p in paths if p in _POLICY_PATHS]
@@ -212,13 +221,16 @@ def _numstat(root: Path, t: ReviewTarget) -> list[tuple[str, str, str]]:
 
 
 def _generated(root: Path, commit: str, paths: list[str]) -> set[str]:
-    """The git-root ``paths`` under GENERATED_PATHS or marked ``linguist-generated`` at ``commit``."""
+    """The git-root ``paths`` under GENERATED_PATHS, marked ``linguist-generated`` at ``commit``, or a
+    LOCKFILES name with no ``linguist-generated`` entry there."""
     out = {p for p in paths if p.startswith(GENERATED_PATHS)}
     top = Path(git_text(["rev-parse", "--show-toplevel"], root) or root)   # check-attr paths are cwd-relative
     attr = ["check-attr", "-z", "linguist-generated", "--", *paths]
     raw = git_stdout(attr[:2] + [f"--source={commit}"] + attr[2:], top) or git_stdout(attr, top) or ""
     f = raw.split("\0")   # path, attribute, value; repeated
-    return out | {f[i] for i in range(0, len(f) - 2, 3) if f[i + 2] in ("set", "true")}
+    value = {f[i]: f[i + 2] for i in range(0, len(f) - 2, 3)}
+    lock = {p for p in paths if p.rsplit("/", 1)[-1] in LOCKFILES and value.get(p, "unspecified") == "unspecified"}
+    return out | lock | {p for p, v in value.items() if v in ("set", "true")}
 
 
 def _budget(cap: int, max_bytes: int) -> str:
@@ -314,11 +326,14 @@ def _run_verify(root: Path, cmds: list[str], t: ReviewTarget) -> list[str]:
     return out
 
 
-def _delta_section(prior: ReviewFile) -> list[str]:
+def _delta_section(root: Path, prior: ReviewFile) -> list[str]:
     sha, model = prior.data["commit"], prior.data["model"]
+    session = (f"You may read it in the session that approved `{sha}`, resumed: then set `fresh_session: false` "
+               f"(`{RESUMED_KEY}` is on). " if resumed_delta_on(root) else "Read it in a fresh session "
+               f"(`fresh_session: true`); a resumed session counts only when `{RESUMED_KEY}` is on. ")
     return ["## Delta review", "", f"`{model}`, you approved `{sha}`. This packet covers only the change since: "
-            "at most three documentation or test files inside the touch zones, with no integrity findings. Add "
-            f"`delta_from: \"{sha}\"` to your record's front matter; the gate counts it only for `{model}`.", "",
+            f"at most three documentation or test files inside the touch zones, with no integrity findings. {session}"
+            f"Add `delta_from: \"{sha}\"` to your record's front matter; the gate counts it only for `{model}`.", "",
             f"### Your notes on `{sha}`", "", prior.body.strip() or "_(none)_", ""]
 
 
@@ -330,13 +345,15 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
     if base or prior:
         t = _with_base(root, t, prior.data["commit"] if prior else str(base))
     milestone_packet_or_exit(t)
-    brief = render_brief(node_id, index(t.nodes), repo_root=root, include_history=False)
+    by_id = index(t.nodes)
+    brief = render_brief(node_id, by_id, repo_root=root, include_history=False)
     paths, changed = changed_paths_section(root, t)
     brief_lines = brief.rstrip().splitlines()
     parts = [
-        _header(root, t, integration_ref) + (_delta_section(prior) if prior else [FULL_MARK, ""] if full else []),
+        _header(root, t, integration_ref) + (_delta_section(root, prior) if prior else [FULL_MARK, ""] if full else []),
         ["---", ""] + brief_lines[:1] + ["", RENDERED] + brief_lines[1:] + ["", "---", ""],
         _summary(root, t),
+        uncommitted_refs_section(root, t, brief, t.node, by_id, _computed(t)),
         changed,
         test_integrity_section(root, t),
         tests_at_risk_section(root, t),

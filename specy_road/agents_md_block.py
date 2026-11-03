@@ -26,17 +26,34 @@ injects into every session, against the limit its vendor documents.
 
 from __future__ import annotations
 
-import os
 import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 from specy_road import __version__
-from specy_road.agent_guide_block import AGENT_GUIDE, strip_provenance
-from specy_road.bundled_scripts.planning_artifacts import split_frontmatter
+from specy_road.agent_guide_block import strip_provenance
 from specy_road.digest import DEFAULT_OUTPUT as DIGEST
 from specy_road.doc_links import link_toolkit_docs
+from specy_road.harness_instruction_files import (
+    AGENTS_MD,
+    CLAUDE_MAX_FILE_BYTES,
+    CLAUDE_MEMORY_BYTES,
+    CLAUDE_MEMORY_LINES,
+    CODEX_CANDIDATES,
+    claude_memory_file,
+    claude_loads,
+    claude_memory_loaded,
+    claude_paths,
+    claude_rules,
+    claude_skipped,
+    codex_paths,
+    copilot_paths,
+    cursor_nested_agents,
+    cursor_paths,
+    inside,
+    machine_local_paths,
+)
 from specy_road.managed_block import (
     HTML_COMMENT,
     UNCHANGED,
@@ -46,30 +63,11 @@ from specy_road.managed_block import (
 )
 from specy_road.runtime_paths import git_root
 
-AGENTS_MD = "AGENTS.md"
-
-#: Codex, per directory from the git root down, takes the first non-empty of
-#: ``AGENTS.override.md`` then ``AGENTS.md`` and truncates the result at
-#: ``project_doc_max_bytes``, 32 KiB by default:
+#: Codex truncates its project instructions at ``project_doc_max_bytes``, 32 KiB by default:
 #: https://developers.openai.com/codex/guides/agents-md
 CODEX_PROJECT_DOC_MAX_BYTES = 32 * 1024
-_CODEX_CANDIDATES = ("AGENTS.override.md", AGENTS_MD)
-#: "target under 200 lines per CLAUDE.md file". Loaded from the working directory and
-#: every ancestor, root-down; within a directory ``CLAUDE.local.md`` follows ``CLAUDE.md``:
-#: https://code.claude.com/docs/en/memory
+#: "target under 200 lines per CLAUDE.md file": https://code.claude.com/docs/en/memory
 CLAUDE_MD_TARGET_LINES = 200
-_CLAUDE_CANDIDATES = (AGENT_GUIDE, f".claude/{AGENT_GUIDE}", "CLAUDE.local.md")
-#: Read only when no candidate above is present. ``~/.claude/CLAUDE.md`` loads too, but
-#: it does not count toward that check: https://code.claude.com/docs/en/memory
-_CLAUDE_AGENTS_FALLBACK = (AGENTS_MD, f".claude/{AGENTS_MD}")
-#: Cursor reads ``AGENTS.md`` and ``CLAUDE.md`` and its project rules under ``.cursor/rules``;
-#: Copilot reads ``AGENTS.md``, ``.claude/CLAUDE.md`` and ``.github/copilot-instructions.md``
-#: (docs/design-notes/harness-compatibility-triage.md, finding 6). Neither documents a
-#: size limit, so both are reported, never warned on.
-_CURSOR_CANDIDATES = (AGENTS_MD, AGENT_GUIDE)
-_CURSOR_RULES = ".cursor/rules"
-_COPILOT_CANDIDATES = (AGENTS_MD, f".claude/{AGENT_GUIDE}")
-_COPILOT_REPO_FILE = ".github/copilot-instructions.md"
 _TEMPLATE = Path(__file__).resolve().parent / "templates" / "specyrd" / "agents-md-block.md"
 _H1 = "# Agents — load order\n"
 
@@ -190,11 +188,6 @@ def _measure(path: Path, rel: str) -> InjectedFile:
     return InjectedFile(rel, len(data.splitlines()), len(data), len(own.splitlines()), len(own))
 
 
-def _dirs_from_root(start: Path) -> list[Path]:
-    """``start`` and every ancestor, filesystem root first."""
-    return list(reversed((start, *start.parents)))
-
-
 def _display(path: Path, top: Path) -> str:
     """Repo-relative inside the checkout; absolute for a file above the git root."""
     try:
@@ -203,133 +196,63 @@ def _display(path: Path, top: Path) -> str:
         return path.resolve().as_posix()
 
 
-def _present(dirs: list[Path], names: tuple[str, ...]) -> list[Path]:
-    return [d / name for d in dirs for name in names if (d / name).is_file()]
-
-
-def _codex_paths(start: Path, top: Path) -> list[Path]:
-    """One non-empty file per directory: ``AGENTS.override.md``, else ``AGENTS.md``."""
-    chosen = []
-    for d in (d for d in _dirs_from_root(start) if d.is_relative_to(top)):
-        for name in _CODEX_CANDIDATES:
-            path = d / name
-            if path.is_file() and path.stat().st_size > 0:
-                chosen.append(path)
-                break
-    return chosen
-
-
-def _inside(path: Path, top: Path) -> bool:
-    """True when ``path`` is inside the git root. Only those files are metered."""
-    return path.resolve().is_relative_to(top)
-
-
-def _user_claude_path() -> Path:
-    """``~/.claude/CLAUDE.md`` on this machine, whether or not the repo sits under it."""
-    return Path.home() / ".claude" / AGENT_GUIDE
-
-
-def _codex_home_file() -> Path | None:
-    """The non-empty Codex-home file Codex reads before the project, or None.
-
-    The Codex home is ``CODEX_HOME`` when set, else ``~/.codex``. Same order as a
-    project directory: ``AGENTS.override.md``, then ``AGENTS.md``.
-    https://developers.openai.com/codex/guides/agents-md
-    """
-    root = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
-    for name in _CODEX_CANDIDATES:
-        path = root / name
-        if path.is_file() and path.stat().st_size > 0:
-            return path
-    return None
-
-
-def _claude_paths(start: Path) -> list[Path]:
-    """Launch-time Claude files, ancestors included.
-
-    A project ``CLAUDE.md``, ``.claude/CLAUDE.md`` or ``CLAUDE.local.md`` suppresses
-    the ``AGENTS.md`` fallback. ``~/.claude/CLAUDE.md`` does not.
-    """
-    dirs = _dirs_from_root(start)
-    claude = _present(dirs, _CLAUDE_CANDIDATES)
-    user = _user_claude_path().resolve()
-    if any(p.resolve() != user for p in claude):
-        return claude
-    return _present(dirs, (*_CLAUDE_CANDIDATES, *_CLAUDE_AGENTS_FALLBACK))
-
-
-def _machine_local_paths(start: Path, top: Path) -> list[Path]:
-    """Instruction files outside the git root. Each is a note, never a warning.
-
-    The ancestor walk and the explicit home candidates can name one file; it is listed once.
-    """
-    discovered = _claude_paths(start)
-    outside = [p for p in discovered if not _inside(p, top)]
-    seen = {p.resolve() for p in discovered}
-    user = _user_claude_path()
-    if user.is_file() and user.resolve() not in seen and not _inside(user, top):
-        outside.append(user)
-    codex = _codex_home_file()
-    if codex is not None and codex.resolve() not in seen and not _inside(codex, top):
-        outside.append(codex)
-    return outside
-
-
-def _always_applied(rule: Path) -> bool:
-    """A Cursor rule whose YAML frontmatter sets ``alwaysApply`` true: the only kind in every session.
-
-    Rules scoped by glob or description load only when they match, so they are not metered;
-    nor is a rule whose frontmatter does not parse.
-    """
-    try:
-        text = rule.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return False
-    return split_frontmatter(text)[0].get("alwaysApply") is True
-
-
-def _cursor_paths(start: Path, top: Path) -> list[Path]:
-    """``AGENTS.md`` and ``CLAUDE.md`` from the git root down, then the always-applied rules."""
-    dirs = [d for d in _dirs_from_root(start) if d.is_relative_to(top)]
-    rules = [p for d in dirs for p in sorted((d / _CURSOR_RULES).rglob("*"))
-             if p.suffix in (".mdc", ".md") and p.is_file() and _always_applied(p)]
-    return _present(dirs, _CURSOR_CANDIDATES) + rules
-
-
-def _copilot_paths(start: Path, top: Path) -> list[Path]:
-    """``AGENTS.md`` and ``.claude/CLAUDE.md`` in the git root and the working directory, then the repo file."""
-    return _present(list(dict.fromkeys((top, start))), _COPILOT_CANDIDATES) + _present([top], (_COPILOT_REPO_FILE,))
-
-
 def _measured(paths: list[Path], top: Path) -> list[InjectedFile]:
     return [_measure(p, _display(p, top)) for p in paths]
+
+
+def _roots(project_root: Path) -> tuple[Path, Path]:
+    root = project_root.resolve()
+    return root, git_root(root) or root
 
 
 def injected_context(project_root: Path) -> dict[str, list[InjectedFile]]:
     """Per harness, the repository files a session started in ``project_root`` injects.
 
-    Only paths inside the git root. Anything outside is :func:`_machine_local_paths`.
+    Only paths inside the git root. Anything outside is :func:`machine_local_paths`.
+    Claude Code's list leaves out a file over its 4 MiB cap, which it never loads.
     """
-    project_root = project_root.resolve()
-    top = git_root(project_root) or project_root
-    found = {"Codex": _codex_paths(project_root, top),
-             "Claude Code": [p for p in _claude_paths(project_root) if _inside(p, top)],
-             "Cursor": _cursor_paths(project_root, top), "Copilot": _copilot_paths(project_root, top)}
+    project_root, top = _roots(project_root)
+    claude = [p for p in (*claude_paths(project_root), *claude_rules(project_root, top)) if inside(p, top)]
+    found = {"Codex": codex_paths(project_root, top),
+             "Claude Code": [p for p in claude if claude_loads(p)],
+             "Cursor": cursor_paths(project_root, top), "Copilot": copilot_paths(project_root, top)}
     return {harness: _measured(paths, top) for harness, paths in found.items()}
 
 
 def _note_suffix(path: Path) -> str:
     """What a machine-local file does beyond being read: a global override hides the global file."""
-    if path.name == _CODEX_CANDIDATES[0]:
+    if path.name == CODEX_CANDIDATES[0]:
         return (f"; a global {path.name}: every Codex session on this machine reads it "
                 f"in place of the {AGENTS_MD} beside it")
     return ""
+
+
+def _not_loaded(path: Path, top: Path) -> str:
+    return (f"{_display(path, top)} is {path.stat().st_size:,} bytes, over Claude Code's "
+            f"{CLAUDE_MAX_FILE_BYTES // (1024 * 1024)} MiB limit, so Claude Code loads none of it")
+
+
+def _print_machine_local(root: Path, top: Path) -> None:
+    """Notes for files outside the git root: user-level files, auto memory, and files too large to load."""
+    local = machine_local_paths(root, top)
+    for path, note in zip(local, _measured(local, top)):
+        print(f"context: note — {note.describe()}, user-level / machine-local; "
+              f"not counted toward this repository's limit{_note_suffix(path)}")
+    if (memory := claude_memory_file(top)) is not None:
+        lines, size = claude_memory_loaded(memory)
+        print(f"context: note — {_measure(memory, _display(memory, top)).describe()}, Claude Code auto memory: "
+              f"it loads the first {CLAUDE_MEMORY_LINES} lines or {CLAUDE_MEMORY_BYTES // 1000} KB "
+              f"({lines} lines, {size:,} bytes here); machine-local, not counted toward this repository's limit")
+    for path in claude_skipped(root, top):
+        if not inside(path, top):
+            print(f"context: note — {_not_loaded(path, top)}; machine-local, not counted")
 
 
 def print_injected_context(project_root: Path) -> None:
     """One line per harness: what every session pays, against the documented limit."""
     meter = injected_context(project_root)
     codex, claude = meter["Codex"], meter["Claude Code"]
+    root, top = _roots(project_root)
     if codex:
         print(f"context: Codex reads {'; '.join(f.describe() for f in codex)} — "
               f"{sum(f.size for f in codex):,} of its {CODEX_PROJECT_DOC_MAX_BYTES:,}-byte "
@@ -341,12 +264,10 @@ def print_injected_context(project_root: Path) -> None:
         if meter[harness]:
             print(f"context: {harness} reads {'; '.join(f.describe() for f in meter[harness])} — "
                   f"{sum(f.size for f in meter[harness]):,} bytes per session; no documented limit")
-    root = project_root.resolve()
-    top = git_root(root) or root
-    local = _machine_local_paths(root, top)
-    for path, note in zip(local, _measured(local, top)):
-        print(f"context: note — {note.describe()}, user-level / machine-local; "
-              f"not counted toward this repository's limit{_note_suffix(path)}")
+        if harness == "Cursor" and (nested := cursor_nested_agents(root, top)):
+            print(f"context: note — Cursor also applies {'; '.join(f.describe() for f in _measured(nested, top))} "
+                  "when the agent edits a file below it; not counted per session")
+    _print_machine_local(root, top)
 
 
 def warn_if_context_over_limits(project_root: Path) -> None:
@@ -370,3 +291,8 @@ def warn_if_context_over_limits(project_root: Path) -> None:
                 "and adherence. Move what only some tasks need into a doc it links to.",
                 file=sys.stderr,
             )
+    root, top = _roots(project_root)
+    for path in claude_skipped(root, top):
+        if inside(path, top):
+            print(f"context: warning — {_not_loaded(path, top)}; its sessions here never see it. "
+                  "Split it, or move what only some tasks need into a doc it links to.", file=sys.stderr)

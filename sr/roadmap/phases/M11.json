@@ -373,7 +373,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.14_queue-worker-message_41e44d38-974f-486c-9eef-5ff224c74ff0.md",
       "sibling_order": 14,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "worker message queues a follow-up for a worker whose turn is still running",
       "touch_zones": [
         "specy_road/worker_ops.py",
@@ -429,7 +429,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.16_sheet-edits-keep-approvals_4bc4501a-7a1b-446d-876f-6b22b3902a6a.md",
       "sibling_order": 16,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A commit that changes only planning or bookkeeping files keeps existing approvals",
       "touch_zones": [
         "specy_road/review_gate.py",

@@ -42,6 +42,7 @@ from specy_road.worker_state import (
     take_checkpoint,
     workers_lock,
 )
+from specy_road.worker_orphans import holding_slots, slot_breakdown
 from specy_road.worker_witness import interventions_path, record_hook_prompt  # noqa: F401 — re-exported
 
 CLOSED_STATES = TERMINAL_STATES
@@ -168,7 +169,8 @@ def _reclaim_locked(repo_root: Path, rec: WorkerRecord, note: str) -> tuple[Work
 # --- the slot lease: one ref per live worker on the integration remote (M11.4) ---------------------------------
 #
 # ``refs/specy-road/leases/<checkout-id>/<worker-id>``, pushed when a turn launches or resumes and deleted when the
-# record goes ``failed`` or ``terminated`` (never on ``idle`` or ``completed``: those still hold their slot). A
+# record goes ``failed`` or ``terminated`` (never on ``idle`` or ``completed``: those still hold their slot
+# until their leaf is over, when ``sync`` releases it, M11.57). A
 # checkout counts its own ``work/.workers/`` records plus every lease ref whose checkout id is not its own, so a
 # clone's workers count wherever their branches happen to exist and whoever owns them. One id per repository:
 # it lives in git's common dir, which linked worktrees share with the main checkout, as they share the records.
@@ -282,10 +284,10 @@ def max_workers(repo_root: Path) -> int:
     return int(config["policy"]["max_workers"])
 
 
-def slot_error(active: int, foreign: list[str], limit: int) -> WorkerError:
+def slot_error(held: list[WorkerRecord], foreign: list[str], limit: int) -> WorkerError:
+    """The refusal at the limit: running and held-but-idle workers named apart, and what frees a held slot."""
     where = f" (and {len(foreign)} leased by other checkouts: {', '.join(foreign)})" if foreign else ""
-    return WorkerError(f"{active} workers active{where}, policy max_workers is {limit}; "
-                       "wait for one to finish or raise the limit")
+    return WorkerError(f"{len(held)} workers active{where}, policy max_workers is {limit}; {slot_breakdown(held)}")
 
 
 def _push_lease(repo_root: Path, remote: str, cid: str, rec: WorkerRecord) -> GitResult:
@@ -322,9 +324,9 @@ def acquire_lease(repo_root: Path, rec: WorkerRecord, *, new: bool, offline: boo
         return
     try:
         limit, foreign = max_workers(repo_root), foreign_leases(repo_root, offline=offline)
-        local = [r for r in list_records(repo_root, active_only=True) if r.worker_id != rec.worker_id]
+        local = holding_slots(repo_root, [r for r in list_records(repo_root, active_only=True) if r.worker_id != rec.worker_id])
         if len(local) + len(foreign) >= limit:
-            raise slot_error(len(local), foreign, limit)
+            raise slot_error(local, foreign, limit)
     except WorkerError:
         if new and not offline:
             release_lease(repo_root, rec.worker_id)
@@ -358,18 +360,12 @@ def release_lease(repo_root: Path, *worker_ids: str) -> None:
         print(f"warning: cannot reach {rm[0]} to release worker leases; `worker sync` retries", file=sys.stderr)
 
 
-def _closed(repo_root: Path, worker_id: str) -> bool:
-    try:
-        return not load_record(repo_root, worker_id).active
-    except WorkerError:
-        return True   # no record: nothing here holds that lease
-
-
 def sync_leases(repo_root: Path) -> tuple[list[str], list[str]]:
     """Make this checkout's lease refs match its active records; ``(released, pushed)`` worker ids.
 
-    A ref whose worker is no longer active here is deleted; an active worker with no ref (registered before leases
-    existed, launched ``--offline``, or whose push failed) gets one, best effort. The remote is read unlocked; each
+    A ref whose worker is no longer active here, or no longer holds a slot (its leaf is over, M11.57), is deleted; a
+    slot-holding worker with no ref (registered before leases existed, launched ``--offline``, or whose push failed)
+    gets one, best effort. The remote is read unlocked; each
     candidate is then rechecked and every delete and push made under the workers lock, so a launch or resume (which
     pushes its lease under the same lock) cannot interleave."""
     rm = _remote(repo_root)
@@ -381,8 +377,9 @@ def sync_leases(repo_root: Path) -> tuple[list[str], list[str]]:
     except WorkerError:
         return [], []   # unreachable, or no usable id: sync still reports; the next sync retries
     with workers_lock(repo_root):
-        stale = sorted(w for w in held if _closed(repo_root, w))
+        counted = holding_slots(repo_root, list_records(repo_root, active_only=True))
+        stale = sorted(held - {r.worker_id for r in counted})   # closed, freed, or no record here: nothing holds it
         release_lease(repo_root, *stale)
-        unleased = [r for r in list_records(repo_root, active_only=True) if r.worker_id not in held]
+        unleased = [r for r in counted if r.worker_id not in held]
         pushed = [r.worker_id for r in unleased if _push_lease(repo_root, rm[0], cid, r).ok]
     return stale, pushed

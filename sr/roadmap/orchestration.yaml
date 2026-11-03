@@ -31,7 +31,7 @@ roster:
     harness: cursor
     billing_route: cursor_subscription
     channels:
-      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/cursor-review.sh grok-4.7-high \"<prompt>\""
+      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/cursor-review.sh grok-4.7-high {prompt}"
   - id: claude-opus-5-5-review
     family: anthropic
     roles: [reviewer]
@@ -44,12 +44,24 @@ roster:
     harness: codex
     channels:
       cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/codex-review.sh gpt-6.1-sol \"<prompt>\""
+  - id: gpt-5.6-sol-medium
+    family: openai
+    roles: [reviewer]
+    harness: codex
+    channels:
+      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/codex-review.sh gpt-5.6-sol \"<prompt>\" medium"
+  - id: gpt-5.6-sol-low
+    family: openai
+    roles: [reviewer]
+    harness: codex
+    channels:
+      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/codex-review.sh gpt-5.6-sol \"<prompt>\" low"
   - id: cursor-grok-4.6-high
     family: xai
     roles: [reviewer]
     harness: cursor
     channels:
-      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/cursor-review.sh cursor-grok-4.6-high \"<prompt>\""
+      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/cursor-review.sh cursor-grok-4.6-high {prompt}"
   - id: composer-2.5
     family: cursor
     roles: [executor]
@@ -60,14 +72,14 @@ roster:
     harness: cursor
     billing_route: cursor_subscription
     channels:
-      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/cursor-review.sh gpt-5.6-sol-high \"<prompt>\""
+      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/cursor-review.sh gpt-5.6-sol-high {prompt}"
 policy:
   reviewers_required: 2
   reviewers_distinct_families: true
   reviewer_fresh_session: true
   signed_reviews: false
   reviewer_reruns_required: true
-  max_workers: 16
+  max_workers: 20
   # Baseline files a leaf may only shrink; `specy-road integrity` reports any it adds lines to.
   ratchet_paths:
     - constraints/clone-baseline.json

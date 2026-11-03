@@ -4,6 +4,23 @@ family: Anthropic Claude
 track: Opus
 model: Claude Opus 5
 api_id: claude-opus-5
+aliases:
+  - claude-opus-5-thinking-high
+  - claude-opus-5-thinking-high-fast
+  - claude-opus-5-low
+  - claude-opus-5-low-fast
+  - claude-opus-5-medium
+  - claude-opus-5-medium-fast
+  - claude-opus-5-high
+  - claude-opus-5-high-fast
+  - claude-opus-5-thinking-low
+  - claude-opus-5-thinking-low-fast
+  - claude-opus-5-thinking-medium
+  - claude-opus-5-thinking-medium-fast
+  - claude-opus-5-thinking-xhigh
+  - claude-opus-5-thinking-xhigh-fast
+  - claude-opus-5-thinking-max
+  - claude-opus-5-thinking-max-fast
 checkpoint: same-as-api_id
 alias_moves: 'no'
 version_rank: previous
@@ -14,7 +31,7 @@ supersedes: none
 access:
   context_tokens: 1000000
   output_tokens: 128000
-  cli: claude -p "<prompt>"
+  cli: CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude -p "<prompt>"
   cli_verified_from: S4
   subagents: 'yes Runs inside Claude Code, which supports subagents and parallel delegation; model-specific subagent data not found [S4]'
   effort_controls: 'low, medium, high, xhigh, max (default high)'
@@ -27,6 +44,17 @@ role_fit:
   executor:    { score: 4, reason: 'Both runs rate it 4 on conflicting CursorBench evidence - a third-party write-up of vendor data shows 70.0 percent at max effort and 62.8 percent at low, while CursorBench 4.0 shows 46.6 percent at Max, 11.2 points below Opus 5.5 at a higher token price', sources: [S2, S9, S1] }
   reviewer:    { score: 4, reason: 'Both runs find high standalone capability but no independent reviewer calibration data; same vendor and lineage as Opus 5.5, so no independent review value against it', sources: [S6, S1, S9] }
 ---
+## Orchestration: harness features to avoid
+
+When this model runs as a roster **executor** on `claude-code`, `worker delegate` exports in the process environment (via `harness_env`, not only `access.cli` / `specy-road prompt --channel cli`):
+
+| Feature | Switch |
+|---|---|
+| auto memory (shared by every worktree of a repository) | `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` |
+| background tasks and `/loop` wakeups | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` |
+
+Orchestration guard hooks (optional, `specyrd init --install-orchestration-hooks`) deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`.
+
 ## Strengths
 - CursorBench (version not stated): 62.8 percent at low effort ($2.55 per task) and 70.0 percent at max effort ($8.23 per task), per Caylent's reading of Anthropic's launch data [S2] (confidence: medium)
 - CursorBench 4.0: 46.6 percent at Max, strong multi-file agent performance though below Opus 5.5 [S9] (confidence: high)

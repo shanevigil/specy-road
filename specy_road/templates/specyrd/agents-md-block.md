@@ -1,6 +1,6 @@
 ## specy-road (coordination rules for every agent)
 
-Written by specy-road {{SPECYRD_VERSION}}; `specy-road refresh-stubs` rewrites only this section. The rest of this file is the project's own.
+Written by specy-road {{SPECYRD_VERSION}} (minimum {{SPECYRD_VERSION}}); `specy-road refresh-stubs` rewrites only this section. The rest is the project's own.
 
 **Precedence.** These rules on the registry, branches, review, and a shared working tree are a floor: project rules may add to them, never relax them. If a project rule conflicts with one here, stop
 and ask a human which applies; do not pick one.
@@ -66,5 +66,5 @@ Focused brief: `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md`. Its `## 
 <!-- prevents: hand-rolled loops that edit the registry directly and drift from what pickup and finish record | enforced: grind-session drives pickup and finish itself | ref: docs/grind-session.md -->
 - **Workers on other harnesses:** `specy-road worker delegate <NODE_ID> --model <roster id>` hands a claimed leaf off at once; `specy-road worker sync` at the start of each turn reports what happened. One writer per worker: `worker handoff` before a human opens its native session, `worker reclaim` after. See `docs/orchestration-workers.md`.
 <!-- prevents: two writers on one worker's branch when a human opens its native session mid-run | enforced: worker handoff and reclaim (bundled_scripts/worker_cli.py) | ref: docs/design-notes/v0-3-1-worker-orchestration.md -->
-- **When nothing is pickable:** exit `3` is a dependency or gate block that needs a human; exit `6` means this clone already holds a claim — finish it, `specy-road abort-task-pickup`, or re-run with `--resume-in-flight`. Ask `specy-road why-blocked <NODE_ID>` or `specy-road list-gates`; see `docs/grind-session.md`.
-<!-- prevents: an unattended loop retrying a block that needs a human, or treating its own open claim as a dependency block | enforced: grind-session exit codes 3 and 6 (bundled_scripts/grind_session_events.py) | ref: docs/grind-session.md -->
+- **When nothing is pickable:** exit `3` is a dependency or gate block that needs a human; exit `6` is a claim this checkout holds — finish it, `abort-task-pickup`, `--resume-in-flight` (grind) or `--allow-second-claim`. Ask `specy-road why-blocked <NODE_ID>` or `specy-road list-gates`; see `docs/grind-session.md`.
+<!-- prevents: an unattended loop retrying a block that needs a human, treating its own open claim as a dependency block, or one checkout claiming a second leaf | enforced: grind-session exit codes 3 and 6 (bundled_scripts/grind_session_events.py); do-next-available-task exit 6 (bundled_scripts/do_next_task_held_claim.py) | ref: docs/grind-session.md -->

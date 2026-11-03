@@ -75,7 +75,7 @@ substitutions: []
 | `policy.stall_after_seconds` | A `running` worker with no stdout for this long is flagged `stalled` by `worker sync` and `worker list`, with one `stalled` event per silence ([orchestration-workers.md](orchestration-workers.md#the-model)). Default `600`. |
 | `substitutions[]` | A recorded decision letting `use` review in place of a usual reviewer: `slot`, `use` (must be a roster id; its family comes from the roster), optional `scope` (non-empty list of node ids; omit for all), `decided` (does not count before this date), and an expiry — `expires_when` (prose), `expires` (date after which it stops counting), or both. |
 
-Roster entries also accept `profile`, `channels`, `may_process`, `subagent_family_lock`, `preflight`, `harness` and `billing_route`; policy also takes `max_workers` (routing, prompts, and `worker delegate` use them), and `escalate_same_acceptance_blocks` (default 3) and `escalate_review_rounds` (default 5), the review-loop escalation thresholds under "The review gate".
+Roster entries also accept `profile`, `channels`, `may_process`, `subagent_family_lock`, `preflight`, `harness`, `billing_route`, `available`, `paused_until`, and legacy `unavailable_until`; policy also takes `max_workers` (routing, prompts, and `worker delegate` use them), and `escalate_same_acceptance_blocks` (default 3) and `escalate_review_rounds` (default 5), the review-loop escalation thresholds under "The review gate".
 
 **Choosing models.** [`model-profiles/`](../specy_road/templates/project/model-profiles/README.md),
 scaffolded into your repo by `init project`, is the canonical guide to filling the roster: it ranks
@@ -101,6 +101,13 @@ policy:
 `specy-road validate` fails on a file that is present but invalid, including
 duplicate roster ids and a substitute that is not in the roster.
 
+**Local availability overlay.** `roadmap/orchestration.local.yaml` (gitignored,
+working tree only) can set `available: false` or `paused_until` on roster
+entries by `id` without changing the committed roster. `orchestrate plan`,
+`prompt`, `worker delegate` and `review delegate` read those fields merged onto
+the integration-branch roster; past review records by a paused model still
+count at the commit they reviewed.
+
 **The gate reads this file from the integration branch** — its remote-tracking ref when there is
 one, else the local branch — not from the branch under review, so a feature branch cannot lower its
 own bar; the gate is also on when either that branch or the working tree sets
@@ -113,7 +120,7 @@ must name itself in its own committed copy, and with remotes only `refs/remotes/
 read. If any of this is missing, unfetched or disagrees, the gate fails closed (on, and nothing passes
 it). Outside this protection: a remote whose default branch the feature author can push to, and anyone who can run git in the
 finishing clone (they can retarget `refs/remotes/<remote>/HEAD`); unsigned, the gate is cooperative attestation. Change policy on the integration branch; an edit on
-a feature branch is ignored by the gate, flagged in the review packet, and, like any commit that touches more than `roadmap/registry.yaml`, makes that branch's reviews stale. Routing reads the roster from the same ref: `orchestrate plan` names it (`roster_ref` in `--json`) and, when the working tree's `roadmap/orchestration.yaml` is absent there or differs, says so (`roster_drift`) in place of the "needs a rostered executor with may_process …" hint, which would send you to a file routing does not read; `validate` warns the same. Commit the roster to the integration branch to clear it.
+a feature branch is ignored by the gate, flagged in the review packet, and, like any commit that touches more than `roadmap/registry.yaml`, makes that branch's reviews stale. Routing reads the roster from the same ref: `orchestrate plan` names it (`roster_ref` in `--json`, `origin/dev` with a remote) and, when the working tree's `roadmap/orchestration.yaml` is absent there, differs, or was deleted while the ref still has it, or the local integration branch has an unpushed commit that adds, deletes or changes it (even when the working tree matches the ref), says so (`roster_drift`) in place of the "needs a rostered executor with may_process …" hint, which would send you to a file routing does not read; `validate` warns the same. With a remote, committing is not enough: commit the roster (or its deletion) to the integration branch and push it, then fetch, to clear it. While the ref has a roster, `validate` does not print its "default policy applies" notice for a missing working-tree file. With no roster on that ref and none in the working tree, both say so and point here: the default roster is one human and no executor, so write one (`specy-road validate --generate-orchestration`), commit and push it.
 
 ## Choosing and prompting models
 
@@ -170,6 +177,20 @@ before writing, and `list` rejects a file whose date is not a real calendar day 
 (`specy-road search "<topic>" --kind planning`) before asking anything new. Ask at
 most four questions at once, each in the self-contained shape above. End any turn that still has open
 entries with one **Decisions waiting on you** block listing all of them below your status.
+
+**Routing preferences (`kind: preference`):** a routing rule the human states in chat (say, which
+executor takes docs-only leaves until a provider resets) is a ledger entry: `decisions add --kind
+preference --summary "<rule>"`, with optional `--role`, `--model` (roster ids, most preferred first),
+`--applies-to` (leaf kinds), `--expires` (date, inclusive, or datetime) and `--why`; ids default to
+`P1`. Preferences are **per project and session-durable**: they live in the tracked ledger, not one
+agent's context, so they survive a context reset, an account switch or a different agent taking over.
+They are **not roster config**: availability and pauses come only from the roster (`available`,
+`paused_until`), and `orchestrate plan` flags a preferred model the roster lacks or marks unavailable.
+`list` shows active preferences first and drops expired ones. `--supersedes <id>` closes the old rule as
+it records the new; `close <id> --answer "<why>"` needs no sheet record. `orchestrate plan` never
+applies them: it prints them (JSON `preferences_not_applied`); the coordinator reads them each session
+and before each delegate or review launch. A project with its own `schemas/decisions.schema.json` runs
+`refresh-schemas` first.
 
 ## Hand-off files: `work/reviews/<NODE_ID>/`
 

@@ -91,7 +91,18 @@ def _is_settled(node: dict) -> bool:
     return False
 
 
-def _missing_zones(nodes: list[dict], root: Path) -> list[tuple[str, list[str]]]:
+def _zone_matches_either_root(project_root: Path, git_root: Path | None, zone: str) -> bool:
+    """Whether ``zone`` exists when read from the project root or the git root."""
+    if _zone_matches(project_root, zone):
+        return True
+    if git_root is not None and git_root != project_root and _zone_matches(git_root, zone):
+        return True
+    return False
+
+
+def _missing_zones(
+    nodes: list[dict], project_root: Path, git_root: Path | None
+) -> list[tuple[str, list[str]]]:
     out: list[tuple[str, list[str]]] = []
     for node in nodes:
         zones = node.get("touch_zones")
@@ -99,14 +110,17 @@ def _missing_zones(nodes: list[dict], root: Path) -> list[tuple[str, list[str]]]
             continue
         missing = [
             z for z in zones
-            if isinstance(z, str) and not _zone_matches(root, z)
+            if isinstance(z, str)
+            and not _zone_matches_either_root(project_root, git_root, z)
         ]
         if missing:
             out.append((str(node.get("id", "?")), missing))
     return out
 
 
-def warn_touch_zones_match_nothing(nodes: list[dict], root: Path) -> None:
+def warn_touch_zones_match_nothing(
+    nodes: list[dict], project_root: Path, *, git_root: Path | None = None
+) -> None:
     """One non-fatal block naming every open node whose zones match nothing.
 
     Reported as a single block rather than a self-contained warning per node.
@@ -116,7 +130,7 @@ def warn_touch_zones_match_nothing(nodes: list[dict], root: Path) -> None:
     nineteen lines in front of an operator on every command. The guidance is
     identical for all of them, so it is printed once, at the end.
     """
-    missing = _missing_zones(nodes, root)
+    missing = _missing_zones(nodes, project_root, git_root)
     if not missing:
         return
     count = len(missing)
@@ -129,8 +143,9 @@ def warn_touch_zones_match_nothing(nodes: list[dict], root: Path) -> None:
     for nid, zones in missing:
         print(f"  {nid}: {', '.join(repr(z) for z in zones)}", file=sys.stderr)
     print(
-        "  Zones are paths or globs relative to the project root, and may name files "
-        "the work will still create.\n"
+        "  Zones are paths or globs relative to the project root or the git root "
+        "(for example ``specy_road/`` beside a nested ``sr/`` project), and may "
+        "name files the work will still create.\n"
         "  Correct only a typo or a path that moved (specy-road edit-node <NODE_ID> "
         "--set touch_zones=<paths>); do not remove zones just to silence this.",
         file=sys.stderr,

@@ -1,175 +1,5 @@
 version: 1
 entries:
-  - codename: profile-aliases
-    node_id: M11.26
-    branch: feature/rm-profile-aliases
-    touch_zones:
-      - specy_road/model_profiles.py
-      - specy_road/templates/project/model-profiles/
-      - specy_road/templates/project/schemas/
-      - docs/orchestration-models.md
-      - tests/
-      - specy_road/bundled_scripts/models_cli.py
-      - model-profiles/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: doctor-version-skew
-    node_id: M11.29
-    branch: feature/rm-doctor-version-skew
-    touch_zones:
-      - specy_road/bundled_scripts/doctor.py
-      - specy_road/cli.py
-      - specy_road/templates/
-      - README.md
-      - docs/install-and-usage.md
-      - tests/
-      - specy_road/version_skew.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: queue-worker-message
-    node_id: M11.14
-    branch: feature/rm-queue-worker-message
-    touch_zones:
-      - specy_road/worker_ops.py
-      - specy_road/worker_runner.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - docs/orchestration-workers.md
-      - tests/
-      - specy_road/bundled_scripts/worker_cli_render.py
-      - specy_road/schemas/worker-event.schema.json
-      - specy_road/schemas/worker-record.schema.json
-      - specy_road/worker_state.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: sheet-edits-keep-approvals
-    node_id: M11.16
-    branch: feature/rm-sheet-edits-keep-approvals
-    touch_zones:
-      - specy_road/review_gate.py
-      - specy_road/review_files.py
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/review_bookkeeping.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: packet-uncommitted-refs
-    node_id: M11.37
-    branch: feature/rm-packet-uncommitted-refs
-    touch_zones:
-      - specy_road/bundled_scripts/review_packet.py
-      - tests/
-      - specy_road/bundled_scripts/review_packet_uncommitted_refs.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: roster-source-explained
-    node_id: M11.20
-    branch: feature/rm-roster-source-explained
-    touch_zones:
-      - specy_road/orchestration_pinned.py
-      - specy_road/orchestrate_plan.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - docs/orchestration.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: parallel-test-suite
-    node_id: M11.54
-    branch: feature/rm-parallel-test-suite
-    touch_zones:
-      - pyproject.toml
-      - .github/workflows/validate.yml
-      - sr/roadmap/git-workflow.yaml
-      - docs/git-workflow.md
-      - docs/contributor-guide.md
-      - CLAUDE.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: init-profiles-subset
-    node_id: M11.44
-    branch: feature/rm-init-profiles-subset
-    touch_zones:
-      - specy_road/init_project.py
-      - specy_road/cli_init_argparse.py
-      - specy_road/bundled_scripts/refresh_profiles.py
-      - tests/
-      - docs/orchestration-models.md
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: stale-command-prose
-    node_id: M11.45
-    branch: feature/rm-stale-command-prose
-    touch_zones:
-      - specy_road/bundled_scripts/validate_stale_commands.py
-      - tests/
-      - docs/install-and-usage.md
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: claimed-leaf-status
-    node_id: M11.48
-    branch: feature/rm-claimed-leaf-status
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_crud_ops.py
-      - specy_road/bundled_scripts/generate_brief.py
-      - tests/
-      - docs/pm-workflow.md
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: finish-keeps-summary
-    node_id: M11.50
-    branch: feature/rm-finish-keeps-summary
-    touch_zones:
-      - specy_road/finish_work_artifacts.py
-      - specy_road/bundled_scripts/finish_task.py
-      - tests/
-      - docs/git-workflow.md
-      - docs/dev-workflow.md
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: reviews-dir-before-launch
-    node_id: M11.56
-    branch: feature/rm-reviews-dir-before-launch
-    touch_zones:
-      - specy_road/worker_ops.py
-      - specy_road/worker_adapters.py
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: validate-zones-git-root
-    node_id: M11.47
-    branch: feature/rm-validate-zones-git-root
-    touch_zones:
-      - specy_road/bundled_scripts/validate_touch_zones.py
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - tests/
-      - docs/roadmap-authoring.md
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: pickup-into-worktree
-    node_id: M11.53
-    branch: feature/rm-pickup-into-worktree
-    touch_zones:
-      - specy_road/bundled_scripts/do_next_task.py
-      - specy_road/bundled_scripts/do_next_task_args.py
-      - specy_road/bundled_scripts/do_next_task_pickup_helpers.py
-      - tests/
-      - docs/git-workflow.md
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: dashboard-safe-saves
     node_id: M11.51
     branch: feature/rm-dashboard-safe-saves
@@ -181,6 +11,125 @@ entries:
       - gui/pm-gantt/src/api.ts
       - tests/
       - docs/pm-gui.md
+      - specy_road/pm_gantt_static/
     started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
+    node_id: M8.3
+    branch: feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
+    touch_zones:
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/review_files.py
+      - specy_road/review_record_write.py
+      - specy_road/templates/specyrd/
+      - docs/pm-llm-review.md
+      - tests/
+      - specy_road/worker_adapters.py
+      - specy_road/worker_adapter_base.py
+      - specy_road/worker_adapter_claude.py
+      - specy_road/worker_adapter_codex.py
+      - specy_road/worker_adapter_cursor.py
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check
+    node_id: M8.2
+    branch: feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check
+    touch_zones:
+      - specy_road/worker_runner.py
+      - specy_road/worker_ops.py
+      - specy_road/worker_reconcile.py
+      - specy_road/orchestration_config.py
+      - docs/orchestration-workers.md
+      - tests/
+      - specy_road/worker_adapter_base.py
+      - specy_road/worker_adapter_claude.py
+      - specy_road/worker_adapter_codex.py
+      - specy_road/worker_adapter_cursor.py
+      - specy_road/worker_adapter_parsers.py
+      - specy_road/worker_state.py
+      - specy_road/worker_ops_lifecycle.py
+      - specy_road/worker_ops_launch.py
+      - specy_road/schemas/worker-record.schema.json
+      - specy_road/schemas/worker-event.schema.json
+      - specy_road/worker_ops_message.py
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: headless-limits-denials
+    node_id: M11.62
+    branch: feature/rm-headless-limits-denials
+    touch_zones:
+      - specy_road/worker_adapters.py
+      - specy_road/worker_adapter_parsers.py
+      - specy_road/worker_runner.py
+      - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: reviewer-probe-rules
+    node_id: M11.75
+    branch: feature/rm-reviewer-probe-rules
+    touch_zones:
+      - specy_road/bundled_scripts/role_prompt.py
+      - docs/orchestration-review.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: reconcile-merged-and-untracked
+    node_id: M11.40
+    branch: feature/rm-reconcile-merged-and-untracked
+    touch_zones:
+      - specy_road/worker_reconcile.py
+      - specy_road/worker_ops.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: risk-tiered-review
+    node_id: M11.79
+    branch: feature/rm-risk-tiered-review
+    touch_zones:
+      - specy_road/orchestration_config.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - sr/schemas/orchestration.schema.json
+      - specy_road/review_gate.py
+      - specy_road/review_eligible.py
+      - specy_road/bundled_scripts/orchestrate_cli.py
+      - specy_road/orchestrate_plan.py
+      - docs/orchestration-review.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: test-worker-cap
+    node_id: M11.80
+    branch: feature/rm-test-worker-cap
+    touch_zones:
+      - specy_road/git_workflow_config.py
+      - specy_road/templates/project/schemas/git-workflow.schema.json
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/bundled_scripts/generate_brief.py
+      - docs/git-workflow.md
+      - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: wip-ruff-clean
+    node_id: M11.82
+    branch: feature/rm-wip-ruff-clean
+    touch_zones:
+      - specy_road/bundled_scripts/review_packet_uncommitted_refs.py
+      - specy_road/orchestration_config.py
+      - specy_road/orchestration_local_overlay.py
+      - sr/roadmap/git-workflow.yaml
+      - docs/git-workflow.md
+      - tests/
+    started: '2026-11-03'
     owner: savigil
     implementation_review: pending

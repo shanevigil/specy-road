@@ -43,7 +43,8 @@
     {
       "acceptance": [
         "The prompt is tracked at research/harness-capabilities.md with its register entry (cadence: each minor release)",
-        "Findings are triaged into roadmap leaves or model-profiles notes; the register records the run date and the nodes fed"
+        "Findings are triaged into roadmap leaves or model-profiles notes; the register records the run date and the nodes fed",
+        "sr/research/harness-capabilities.md records last_run 2026-11-02, notes that that run's OpenAI report cited no sources and was used only as unverified corroboration, and lists the nodes fed: M8.2, M8.3, M8.5, M8.6, M10.20, M11.23, M11.33, M11.35, M11.39, M11.60, M11.61."
       ],
       "codename": "run-the-harness-capabilities-research-and-fold-its-findings",
       "dependencies": [

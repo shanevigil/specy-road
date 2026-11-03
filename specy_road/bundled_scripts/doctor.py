@@ -44,7 +44,9 @@ from specy_road.bundled_scripts.grind_session_cleanup import merged_into
 from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_text
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
+from specy_road.review_gate_agreement import report_gate_mismatch
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.version_skew import warn_if_running_version_older
 
 TOOLKIT_STASH = re.compile(r"^On [^:]+: specy-road: ")
 # commit-tree needs an identity, and a CI runner may have none configured.
@@ -345,20 +347,21 @@ def _context(ns: argparse.Namespace) -> _Ctx | None:
     nodes = load_roadmap_nodes_at_ref(root, target)
     live = live_branches(root, target)
     if nodes is None or live is None:
-        print(f"error: could not read the roadmap at {target}. Not listing anything.",
-              file=sys.stderr)
+        print(f"error: could not read the roadmap at {target}. Not listing anything.", file=sys.stderr)
         return None
     return _Ctx(root, target, remote, base, live, _complete_leaves(nodes))
 
 
 def cmd_doctor(ns: argparse.Namespace) -> int:
+    warn_if_running_version_older(resolve_repo_root(ns))
+    bad_config = report_gate_mismatch(resolve_repo_root(ns))   # an error: exit 1 after the listing
     ctx = _context(ns)
     if ctx is None:
         return 1
     sections = _sections(ctx)
     if not any(found for _k, _h, found in sections):
         print("Nothing to tidy: no stale branch, worktree, registry row or toolkit stash.")
-        return 0
+        return int(bad_config)
     for _kind, heading, found in sections:
         if found:
             print(heading)
@@ -366,8 +369,8 @@ def cmd_doctor(ns: argparse.Namespace) -> int:
                 print(f"  {f.name}  — {f.reason}")
     if not ns.fix:
         print("Nothing removed. Re-run with --fix to remove them (it asks per kind).")
-        return 0
-    return _fix(sections, ns.yes)
+        return int(bad_config)
+    return _fix(sections, ns.yes) or int(bad_config)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -375,13 +378,10 @@ def build_parser() -> argparse.ArgumentParser:
         prog="specy-road doctor",
         description=(
             "After git fetch --prune, list feature/rm-* branches (local and remote) whose leaf is "
-            "Complete or that nothing claims — merged by ancestry or patch content, leaf Complete, "
-            "or claim gone — worktrees whose branch is gone or merged, other detached worktrees, "
-            "registry rows with no branch or a Complete leaf, and stashes specy-road pushed. Dry-run unless --fix."
+            "Complete or that nothing claims — merged by ancestry or patch content, leaf Complete, or claim gone — worktrees whose branch is gone or merged, other detached worktrees, registry rows with no branch or a Complete leaf, and stashes specy-road pushed. Dry-run unless --fix."
         ),
     )
-    p.add_argument("--fix", action="store_true",
-                   help="Remove what is listed, asking once per kind, and report each action.")
+    p.add_argument("--fix", action="store_true", help="Remove what is listed, asking once per kind, and report each action.")
     p.add_argument("--yes", action="store_true", help="With --fix, do not ask.")
     p.add_argument("--base", default=None, metavar="BRANCH",
                    help="Integration branch (default: roadmap/git-workflow.yaml, else main).")

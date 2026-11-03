@@ -25,6 +25,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest>=7.0",
+  "pytest-xdist>=3.0",
   "fastapi>=0.115",
   # Required by starlette.testclient.TestClient (tests/test_gui_app.py); not a transitive install.
   "httpx>=0.27",

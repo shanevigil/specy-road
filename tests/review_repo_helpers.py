@@ -215,12 +215,20 @@ def make_review_repo(tmp_path: Path, *, orchestration: str | None = None) -> Pat
 
 
 def review_text(commit: str, *, model: str = "human", verdict: str = "approve",
-                fresh: bool = True, a1: str = "pass") -> str:
+                fresh: bool = True, a1: str = "pass", **extra) -> str:
     data = {
         "node_id": "M1.1", "model": model, "date": "2026-10-26", "verdict": verdict,
         "commit": commit, "acceptance": {"A1": a1, "A2": "pass"},
         "findings": {"correctness": [], "regression": [], "boundary": [], "test_integrity": []},
         "commands_rerun": [], "required_changes": [] if verdict == "approve" else ["fix"],
         "fresh_session": fresh, "authored_fix": False, "is_coordinator": False,
+        **extra,
     }
     return "---\n" + yaml.safe_dump(data, sort_keys=False) + "---\nnotes\n"
+
+
+def shipped_anthropic_opus_cli_yaml_line() -> str:
+    """The shipped ``access.cli`` YAML line for claude-opus-5-5 (project template)."""
+    path = Path(__file__).resolve().parent.parent / "specy_road" / "templates" / "project" / "model-profiles"
+    text = (path / "anthropic-claude" / "claude-opus-5-5.md").read_text(encoding="utf-8")
+    return next(line for line in text.splitlines() if line.startswith("  cli: "))

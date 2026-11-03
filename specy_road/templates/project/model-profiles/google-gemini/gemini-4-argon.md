@@ -4,6 +4,10 @@ family: Google Gemini
 track: Argon (Gemini 4 frontier tier)
 model: Gemini 4 Argon
 api_id: gemini-4-argon
+aliases:
+  - gemini-4-argon-low
+  - gemini-4-argon-medium
+  - gemini-4-argon-high
 checkpoint: same-as-api_id
 alias_moves: unknown
 version_rank: latest
@@ -26,6 +30,14 @@ role_fit:
   executor:    { score: 5, reason: 'Independent CursorBench 4.0 52.9 percent and Terminal-Bench 4.0 57.58 percent (chatgpt) are stronger evidence than the vendor-only DeepSWE v1.1 77.9 percent (claude); long decode allows outputs past 64K tokens (claude 4, chatgpt 5)', sources: [S11, S10, S7, S1] }
   reviewer:    { score: 3, reason: 'Neither run found a published review evaluation; strong instruction-following and coding scores and a vendor different from Anthropic and OpenAI favor it as a second reviewer (claude 3, chatgpt 4)', sources: [S1, S11, S15] }
 ---
+## Orchestration: harness features to avoid
+
+| Feature | Switch |
+|---|---|
+| memory off | Claude `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`; Codex `--disable memories`; Cursor persist: no switch (never invoked) |
+| plan mode | never pass `--plan` |
+| worktree or cloud | never pass `--worktree` / `--cloud`; Cursor cloud handoff: never invoked |
+
 ## Strengths
 - Unified 1,048,576-token input-output window; long decode up to 1M tokens minus input via background execution, while ordinary synchronous output is handled more conservatively [S1, S8] (confidence: high)
 - CursorBench 4.0: 52.9 percent at High and 52.8 percent at Medium; the small gap suggests Medium is an efficient default for many coding tasks [S11] (confidence: high)

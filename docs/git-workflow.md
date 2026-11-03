@@ -46,13 +46,15 @@ The **PM Gantt** reads **`roadmap/registry.yaml` from the current working tree**
 
 **Default dev CLI path:** `specy-road do-next-available-task` **commits registration to the integration branch first**, then creates `feature/rm-*`. The execution target is always an actionable **leaf**; ancestor nodes are context containers and are never directly claimed by default pickup. **Coordination contract:** with the default CLI (sync + push), that registration is also **on the remote** integration branch so the team shares one source of truth. **`do-next-available-task --local`** is the one exception: it registers and branches without fetching or pushing, so the claim is invisible to peers until that checkout pushes the integration branch — use it offline or for a spike, and push before anyone else could pick the same leaf (see [dev-workflow.md](dev-workflow.md#agents-and-registration)). After **`git pull`** on the integration branch, **HEAD’s `registry.yaml` shows active rows** without relying on overlay. **Overlay** still helps for older flows or unpushed feature-only registration — it merges rows from remote **`feature/rm-*`** refs after **`git fetch`**. The outline **green accent** appears when your **checked-out branch name** matches a row’s **`branch`** field (usually the feature branch for implementers); see [pm-workflow.md](pm-workflow.md#monitoring-in-progress-work-while-on-the-integration-branch) and [design-notes/pm-gantt-registry-checkout.md](design-notes/pm-gantt-registry-checkout.md).
 
+**Worktree flow:** when each leaf gets its own linked worktree and worktrees never push, run **`specy-road do-next-available-task --worktree`** from the **main checkout** on the integration branch. It syncs, registers and pushes the claim there exactly as the default path does, then creates `feature/rm-<codename>` with `git worktree add` at **`work/.worktrees/<codename>`** instead of switching branches, so the main checkout stays on the integration branch. The brief, prompt and `on_complete` session file are written in that worktree's `work/`, where the leaf's agent runs. A directory already at that path is refused before anything is claimed. A pickup run **inside a linked worktree** fails and names `--worktree` from the main checkout, because it would check out and push the integration branch from the worktree. The alternative is **`--local`** inside the worktree: it claims there without fetching or pushing, with the same visibility caveat as above, and still needs that worktree to hold the integration branch.
+
 Optional field **`merge_request_requires_manual_approval`** (boolean) documents that MRs need human approval; the `finish-this-task` CLI may print a reminder.
 
 Optional field **`require_implementation_before_finish`** (boolean, **default true**): `finish-this-task` refuses to close a node when the feature branch changes **no file under that node's declared `touch_zones`**, measured against its merge base with the integration branch. A claim is not an implementation, and a node marked `Complete` with nothing behind it looks exactly like one that shipped — this is the machine-checkable floor under the human review gate below, and unlike that gate it needs nobody in the loop, which is why it defaults on. Every ambiguity resolves toward allowing the finish: a node with **no** declared zones is skipped entirely (zones are optional, F-009), as is any case where git cannot compute the diff. For a leaf that genuinely needs no code change, pass **`--allow-empty-implementation`**; if the work is real but landed outside the zones, fix the zones with `specy-road edit-node <NODE_ID> --set touch_zones=<paths>`.
 
 Optional field **`require_implementation_review_before_finish`** (boolean): when **true**, `finish-this-task` requires a prior **`specy-road mark-implementation-reviewed`**, which needs review records under `work/reviews/<NODE_ID>/` satisfying [`roadmap/orchestration.yaml`](orchestration.md) at the commit under review (the default policy is met by one interactive human approval). New scaffolds default this to **true**; omit or set **false** to use the streamlined single-command flow (`finish-this-task` only). While it is on, `specy-road validate` warns on open actionable leaves with no `acceptance`, since a review of them cannot attest per-criterion results. Schema: [`../specy_road/templates/project/schemas/git-workflow.schema.json`](../specy_road/templates/project/schemas/git-workflow.schema.json).
 
-Optional field **`cleanup_work_artifacts_on_finish`** (boolean): when **true** or omitted (default), `finish-this-task` deletes per-node **`work/brief-`**, **`work/prompt-`**, and **`work/implementation-summary-`** files after validate/export/digest, staging deletions when tracked (a never-committed summary is copied to `work/reviews/<NODE_ID>/` first). Set **false** or pass **`--no-cleanup-work`** to keep them. See [dev-workflow.md](dev-workflow.md).
+Optional field **`cleanup_work_artifacts_on_finish`** (boolean): when **true** or omitted (default), `finish-this-task` deletes per-node **`work/brief-`** and **`work/prompt-`** files after validate/export/digest, staging deletions when tracked. A committed **`work/implementation-summary-<NODE_ID>.md`** is moved to **`work/done/implementation-summary-<NODE_ID>.md`** in the same bookkeeping commit instead of being deleted (a never-committed summary is copied to `work/reviews/<NODE_ID>/` first, then removed from `work/`). Set **false** or pass **`--no-cleanup-work`** to keep the session files. See [dev-workflow.md](dev-workflow.md).
 
 Optional field **`track_worker_logs`** (`"off"`, `"events"` or `"full"`; default **`"off"`** when omitted): whether worker logs travel with the leaf in git. **`"off"`** keeps them in gitignored `work/.workers/` and writes nothing else. **`"events"`** makes the worker wrapper copy each worker's event log, at the end of every turn, to **`work/worker-logs/<NODE_ID>/<worker id>.events.jsonl`** in the worker's own checkout (where the leaf's branch is checked out); **`"full"`** copies the raw output log `<worker id>.log` there too. `finish-this-task` stages that directory in its bookkeeping commit whatever `cleanup_work_artifacts_on_finish` says, and never deletes it. Quote the value: YAML reads a bare `off` as `false`, which is accepted as `"off"`; any other value fails `specy-road validate`. **Size warning:** logs get long. An event log is typically tens of kilobytes per leaf, a raw log under `"full"` can reach megabytes, and both stay in history for good, so opt in per project only when the audit trail is worth that. `work/.workers/` and `work/.worktrees/` stay gitignored in every mode (`init project` and `refresh-stubs` write the rule, and the executor and reviewer clean-tree preconditions and `worker delegate`'s uncommitted-work check leave `work/.workers/`, `work/.sessions/`, `work/.worktrees/` and `work/reviews/` out in any checkout, so a fresh clone starts clean even where the rule is missing), and the toolkit's ignore rules never cover `work/worker-logs/`; if your own `.gitignore` does (for example a blanket `work/*`), finish warns and commits nothing until you add `!work/worker-logs/`.
 
@@ -60,11 +62,11 @@ Optional fields **`grind_session_max_limit_waits`** (integer, default 3), **`gri
 
 Optional field **`on_complete`** (`pr`, `merge`, or `auto`; default **`pr`**): controls how **`specy-road finish-this-task`** lands work after the bookkeeping commit on the feature branch.
 
-- **`pr`** — Print guidance to push (if needed) and open a **pull request** or **merge request** targeting the integration branch. On GitHub this is a **PR**; on GitLab and many other hosts it is an **MR**. They are the same kind of integration review; this doc uses **PR/MR** when the forge is unspecified.
+- **`pr`** — Print guidance to push (if needed) and open a **pull request** or **merge request** targeting the integration branch. On GitHub this is a **PR**; on GitLab and many other hosts it is an **MR**. They are the same kind of integration review; this doc uses **PR/MR** when the forge is unspecified. Before anything is pushed, finish fetches the integration branch and trial-merges its tip into the bookkeeping commit. When the only conflicts are on `roadmap/registry.yaml`, `roadmap.md` and `roadmap-context.md` (the usual case once another lane has claimed a leaf since pickup), it commits that merge on the feature branch, resolved as described below, so the PR/MR opens without a conflict. When any other path conflicts, it names the paths, pushes nothing and exits non-zero; merge the integration branch by hand, resolve, have the result reviewed, then push and open the PR/MR. A milestone rollup finish skips this step.
 - **`merge`** — After bookkeeping, try **`git merge`** of the feature branch into the **integration branch** locally, then **`git push`** the integration branch. Before it merges or pushes, finish prints how many commits that push will carry and how many of them are **not** from the finishing feature branch (for example an extra commit already on the local integration branch). On failure (a source conflict, a non-fast-forward integration branch, a rejected push) it **exits non-zero with the reason and does not fall back to PR/MR hints** — `merge` means merge (F-012). Use **`auto`** if you want the fallback. If the integration branch is checked out in another worktree (the usual layout when the leaf lives in a `worker delegate` worktree), the merge and push run there; finish refuses before the bookkeeping commit if that worktree has uncommitted changes to tracked files, and never touches them.
 - **`auto`** — Try the **`merge`** path first; if landing the merge fails, fall back to the PR/MR guidance (**merge pending**) instead of only failing.
 
-**Bookkeeping is resolved, not merged.** Landing a finish never 3-way-merges
+**Bookkeeping is resolved, not merged.** Landing a finish, or the `pr` mode's merge of the integration tip, never 3-way-merges
 **`roadmap/registry.yaml`**, **`roadmap.md`** or **`roadmap-context.md`**. The
 registry is a keyed collection (one row per active claim) and the other two are
 generated in full, so a line-based merge of any of them can conflict — leaving a
@@ -77,6 +79,16 @@ This is what makes **concurrent lanes** against one integration branch safe; see
 [grind-session.md](grind-session.md). Merging by hand still means removing your
 own row yourself.
 
+**Pickup/finish lock in one checkout.** When several agents share the main
+checkout, `specy-road do-next-available-task`, `finish-this-task` and
+`abort-task-pickup` each take one repository lock under
+`.git/specy-road/repo-lock/` (in git's common directory, so every worktree of
+the clone shares it) before they switch branches or commit on the integration
+branch. Waiters queue in arrival order; if the lock is held, the command prints
+who holds it (pid and operation) and waits, with a timeout. A holder whose
+process has exited is cleared automatically so a killed pickup or finish does
+not block the queue forever.
+
 **Land check on the merge commit.** Optional field **`land_check_cmd`** (string):
 a shell command `merge` (and `auto`) runs on the local merge commit before it
 pushes, e.g. the project's full test and lint gate. Each leaf is reviewed on its
@@ -84,7 +96,12 @@ own branch, but the tree that lands is the merge of it with everything that
 landed since, and nobody ran that. finish therefore creates the merge commit,
 runs the command once at the project root of a detached temporary worktree of
 that commit (`<worktree>/sr` in the nested layout), and pushes only if it exits
-0, so the pushed tip is exactly the commit the check ran on. A non-zero exit
+0, so the pushed tip is exactly the commit the check ran on. The command's
+working directory is that **project root**, not the git root: a nested layout
+whose tests live next to the git root must point `land_check_cmd` at those
+tests (for example
+`python -m pytest -n auto -p no:cacheprovider ../tests`), or pytest collects
+nothing and finish never pushes. A non-zero exit
 pushes nothing, resets the local integration branch to where it was before
 finish ran, and prints the command, its exit code and the last 20 lines of its
 output. A rejected push resets the local branch the same way; the re-run the
@@ -93,6 +110,31 @@ itself is the compare-and-swap. The temporary worktree is always removed.
 **`--land-check-cmd CMD`** overrides the field for one run and
 **`--land-check-cmd ''`** skips it. `pr` never runs it: there CI owns the merge
 result.
+
+For projects whose pytest suite is **parallel-safe**, prefer a parallel land
+check so finish does not spend many minutes on a serial full run under the
+landing lock. A suite is parallel-safe when each test owns its fixtures and
+temp directories, avoids shared mutable module-level state and implicit
+ordering between tests, and does not depend on another test having run first.
+When order or shared state slips in, fix the test rather than marking it to
+run serially under xdist. Install **`pytest-xdist`** in development
+dependencies and point **`land_check_cmd`** at a parallel command that
+collects the suite from the project root (the same suite CI runs, but from
+that cwd). When tests live at the project root:
+
+```yaml
+land_check_cmd: pytest -n auto
+```
+
+When they live at the git root in a nested layout (`project_root: sr`):
+
+```yaml
+land_check_cmd: python -m pytest -n auto -p no:cacheprovider ../tests
+```
+
+Run the suite once with **`pytest -n auto`** and once serially (**`pytest`**
+with no **`-n`**) before adopting that gate; if both pass, the tree is a
+reasonable candidate for a parallel land check.
 
 ### What `pr` leaves behind (read this before re-running pickup)
 
@@ -185,7 +227,7 @@ specy-road registry-prune --remove trash-soft-delete # drop one, commit, push
 ## While working
 
 - Stay within declared **touch zones** unless explicitly expanding scope with team agreement.
-- Prefer **git worktrees** for parallel agents when two items could touch disjoint paths.
+- Prefer **git worktrees** for parallel agents when two items could touch disjoint paths; `do-next-available-task --worktree` claims from the main checkout and creates one per leaf (see the worktree flow above).
 
 ## Merge back
 

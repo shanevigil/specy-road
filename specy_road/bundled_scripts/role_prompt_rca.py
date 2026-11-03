@@ -106,14 +106,15 @@ def reviewer_precondition(node_id: str, t, packet: Path, prefix: str) -> list[st
     ]
 
 
-def precondition(role: str, node_id: str, t, packet: Path, prefix: str = "") -> list[str]:
+def precondition(role: str, node_id: str, t, packet: Path, prefix: str = "", forced: bool = False) -> list[str]:
+    """``forced``: an ``rca`` prompt a coordinator started with ``--force``, so the leaf is not ``escalated``."""
     branch = t.entry.get("branch") if t.entry else None
     if role == "reviewer":
         return reviewer_precondition(node_id, t, packet, prefix)
     if role == "executor":
         missing = (f"`{prefix}work/brief-{node_id}.md` does not exist, or the branch "
                    f"`{branch or 'feature/rm-<codename>'}` is not checked out")
-    elif role == "rca":
+    elif role == "rca" and not forced:
         missing = f"`specy-road handoff status {node_id}` does not report `escalated`"
     else:
         missing = f"the registry claim for `{node_id}` does not exist"
@@ -171,11 +172,16 @@ def executor_preamble(node_id: str, model: str, zones: list[str], family_lock: s
     ]
 
 
-def reviewer_preamble(node_id: str, model: str, ref: str | None = None) -> list[str]:
+def reviewer_preamble(node_id: str, model: str, ref: str | None = None, *, resumed_delta: bool = False) -> list[str]:
+    """``resumed_delta``: the packet is ``model``'s delta packet and ``policy.reviewer_resumed_delta`` is on,
+    so the session that approved the delta's base may be resumed for it (M11.36)."""
+    session = ("If you are the session that approved the commit this delta starts from, resumed for this round, "
+               "set `fresh_session: false` (`policy.reviewer_resumed_delta` is on); otherwise this is a fresh "
+               "session. Either way" if resumed_delta else "This is a fresh session;")
     return [
         "## Your role: reviewer",
         "",
-        f"You review leaf `{node_id}` from the packet below and nothing else. This is a fresh session; "
+        f"You review leaf `{node_id}` from the packet below and nothing else. {session} "
         "you did not write the change, and you are not the coordinator.",
         "",
         "Judge each acceptance item `A#` in the brief as pass, fail, or n/a. An item whose text starts with "

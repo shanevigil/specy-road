@@ -71,9 +71,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M8.2` Worker adapters harden the launch and run a deterministic post-run check `worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` — task — **Not Started**
   - `M8.3` Reviewer runs are read-only and specy-road writes the review record from structured output `reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` — task — **Not Started**
   - `M8.4` Ship skills once and meter every file each harness injects `ship-skills-once-and-meter-every-file-each-harness-injects` — task — **Complete**
-  - `M8.5` Guard hooks per harness and avoid lists in every model profile `guard-hooks-per-harness-and-avoid-lists-in-every-model-profile` — task — **Not Started**
+  - `M8.5` Guard hooks per harness and avoid lists in every model profile `guard-hooks-per-harness-and-avoid-lists-in-every-model-profile` — task — **Complete**
   - `M8.7` Runtime verification of the harness facts against installed binaries `runtime-verification-of-the-harness-facts-against-installed-binaries` — task — **Complete**
-  - `M8.6` Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic `candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic` — task — **Not Started**
+  - `M8.6` Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic `candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic` — task — **Complete**
 - `M9` Regression prevention `regression-prevention` — phase — **In Progress**
   - `M9.1` finish-this-task runs a configured land check on the merge commit before it pushes `land-check-on-merge-commit` — task — **Complete**
   - `M9.2` pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree `fixture-pollution-guard` — task — **Complete**
@@ -121,47 +121,79 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.11` orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route `one-readiness-rule` — task — **Complete**
   - `M11.12` specy-road ready writes a valid READY hand-off `ready-command` — task — **Complete**
   - `M11.13` A milestone gets one full review of its combined change before it is marked complete `milestone-full-review` — task — **Complete**
-  - `M11.14` worker message queues a follow-up for a worker whose turn is still running `queue-worker-message` — task — **Not Started**
+  - `M11.14` worker message queues a follow-up for a worker whose turn is still running `queue-worker-message` — task — **Complete**
   - `M11.15` Pickup and finish agree on unwritten planning sheets `pickup-refuses-scaffold-sheet` — task — **Complete**
-  - `M11.16` A commit that changes only planning or bookkeeping files keeps existing approvals `sheet-edits-keep-approvals` — task — **Not Started**
+  - `M11.16` A commit that changes only planning or bookkeeping files keeps existing approvals `sheet-edits-keep-approvals` — task — **Complete**
   - `M11.17` edit-node names every chunk file it changes, and relocation is loud `edit-node-names-chunks` — task — **Complete**
   - `M11.18` Registry overlap warnings show only what concerns the command at hand `quieter-overlap-warnings` — task — **Complete**
   - `M11.19` Pickup never stashes work/ around the registry commit `pickup-no-work-stash` — task — **Complete**
-  - `M11.20` orchestrate plan and validate say where the roster is read from `roster-source-explained` — task — **Not Started**
+  - `M11.20` orchestrate plan and validate say where the roster is read from `roster-source-explained` — task — **Complete**
   - `M11.22` Worker worktrees can include nested sibling repositories `nested-repo-worktrees` — task — **Not Started**
-  - `M11.23` A custom launch command's permissions carry through resume `resume-keeps-permissions` — task — **Not Started**
+  - `M11.23` A custom launch command's permissions carry through resume `resume-keeps-permissions` — task — **Complete**
   - `M11.24` Executors and reviewers in a worktree can write and check the right places `worktree-handoff-writable` — task — **Complete**
   - `M11.25` finish-this-task says what merge mode will push before it pushes `merge-push-disclosure` — task — **Complete**
-  - `M11.26` A model profile can match harness model ids that carry an effort suffix `profile-aliases` — task — **Not Started**
-  - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Not Started**
+  - `M11.26` A model profile can match harness model ids that carry an effort suffix `profile-aliases` — task — **Complete**
+  - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Complete**
   - `M11.28` A light chore mode for work outside the roadmap `chore-mode` — task — **Not Started**
-  - `M11.29` doctor warns when the running specy-road is older than the project's stubs `doctor-version-skew` — task — **Not Started**
+  - `M11.29` doctor warns when the running specy-road is older than the project's stubs `doctor-version-skew` — task — **Complete**
   - `M11.30` Leaf worktrees get the project's environment set up `worktree-env-setup` — task — **Not Started**
   - `M11.31` A safe command to retire a leaf worktree `worktree-prune` — task — **Not Started**
   - `M11.32` Unpushed nested-repo commits are reported `nested-unpushed-report` — task — **Not Started**
   - `M11.33` A reviewer whose harness routes models dynamically does not count as an independent family by default `dynamic-routing-reviewers` — task — **Not Started**
   - `M11.34` Open human decisions live in one tracked ledger and every question is self-contained `decision-ledger` — task — **Complete**
-  - `M11.35` A roster entry maps to the harness's own model id, and a failed start says why `roster-harness-model-id` — task — **Not Started**
-  - `M11.36` A resumed reviewer session may approve a delta it was shown `resumed-delta-approval` — task — **Not Started**
-  - `M11.37` review-packet warns when the brief or summary names a file not committed at the reviewed commit `packet-uncommitted-refs` — task — **Not Started**
-  - `M11.38` handoff status says who can still supply a missing approval `handoff-eligible-reviewers` — task — **Not Started**
-  - `M11.39` A roster entry can be marked unavailable without deleting it `roster-availability` — task — **Not Started**
+  - `M11.35` A roster entry maps to the harness's own model id, and a failed start says why `roster-harness-model-id` — task — **Complete**
+  - `M11.36` A resumed reviewer session may approve a delta it was shown `resumed-delta-approval` — task — **Complete**
+  - `M11.37` review-packet warns when the brief or summary names a file not committed at the reviewed commit `packet-uncommitted-refs` — task — **Complete**
+  - `M11.38` handoff status says who can still supply a missing approval `handoff-eligible-reviewers` — task — **Complete**
+  - `M11.39` A roster entry can be marked unavailable without deleting it `roster-availability` — task — **Complete**
   - `M11.40` worker reconcile works on merged leaves and separates untracked files `reconcile-merged-and-untracked` — task — **Not Started**
-  - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Not Started**
+  - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Complete**
   - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Complete**
-  - `M11.43` init project reports exactly what it writes `init-project-reports-writes` — task — **Not Started**
-  - `M11.44` init project can install only the model profiles a project uses `init-profiles-subset` — task — **Not Started**
-  - `M11.45` The stale-command warning fires only on command-shaped mentions `stale-command-prose` — task — **Not Started**
-  - `M11.46` Placeholder leaves neither fail validate --strict nor pad briefs `placeholder-leaves-strict-brief` — task — **Not Started**
-  - `M11.47` validate checks git-root touch zones in a nested project `validate-zones-git-root` — task — **Not Started**
-  - `M11.48` A claimed leaf reads as claimed in list-nodes and brief `claimed-leaf-status` — task — **Not Started**
-  - `M11.49` The review packet takes touch zones from the reviewed commit and treats lockfiles as generated `packet-zones-at-commit` — task — **Not Started**
-  - `M11.50` finish keeps a committed implementation summary in history `finish-keeps-summary` — task — **Not Started**
+  - `M11.43` init project reports exactly what it writes `init-project-reports-writes` — task — **Complete**
+  - `M11.44` init project can install only the model profiles a project uses `init-profiles-subset` — task — **Complete**
+  - `M11.45` The stale-command warning fires only on command-shaped mentions `stale-command-prose` — task — **Complete**
+  - `M11.46` Placeholder leaves neither fail validate --strict nor pad briefs `placeholder-leaves-strict-brief` — task — **Complete**
+  - `M11.47` validate checks git-root touch zones in a nested project `validate-zones-git-root` — task — **Complete**
+  - `M11.48` A claimed leaf reads as claimed in list-nodes and brief `claimed-leaf-status` — task — **Complete**
+  - `M11.49` The review packet takes touch zones from the reviewed commit and treats lockfiles as generated `packet-zones-at-commit` — task — **Complete**
+  - `M11.50` finish keeps a committed implementation summary in history `finish-keeps-summary` — task — **Complete**
   - `M11.51` Dashboard saves never overwrite newer disk edits, and the read API is documented `dashboard-safe-saves` — task — **Not Started**
-  - `M11.52` PR mode predicts and resolves the registry conflict `pr-mode-registry-conflict` — task — **Not Started**
-  - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Not Started**
-  - `M11.54` The test suite and land check run in parallel `parallel-test-suite` — task — **Not Started**
-  - `M11.55` Executors split modules to meet file limits instead of deleting documentation `file-limit-split-not-delete` — task — **Not Started**
+  - `M11.52` PR mode predicts and resolves the registry conflict `pr-mode-registry-conflict` — task — **Complete**
+  - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Complete**
+  - `M11.54` The test suite and land check run in parallel `parallel-test-suite` — task — **Complete**
+  - `M11.55` Executors split modules to meet file limits instead of deleting documentation `file-limit-split-not-delete` — task — **Complete**
+  - `M11.56` Delegate creates the reviews directory before a harness is told to allow it `reviews-dir-before-launch` — task — **Complete**
+  - `M11.57` A completed worker on a finished leaf does not hold a max_workers slot `completed-worker-frees-slot` — task — **Complete**
+  - `M11.58` The coordinator records the session's routing preferences where the next session can read them `session-routing-preferences` — task — **Complete**
+  - `M11.59` Split worker_ops and worker_adapters so parallel leaves stop colliding `split-worker-modules` — task — **Complete**
+  - `M11.62` Headless runs report usage limits and denied actions instead of looking like success `headless-limits-denials` — task — **Not Started**
+  - `M11.60` The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names `harness-facts-nov-refresh` — task — **Complete**
+  - `M11.61` The context meter counts Claude rules, auto memory, Cursor nested AGENTS.md and Copilot path instructions `meter-claude-rules-and-nested` — task — **Complete**
+  - `M11.63` do-next-available-task refuses a second claim in a checkout that already holds one `pickup-second-claim-guard` — task — **Complete**
+  - `M11.64` abort-task-pickup treats untracked files the way pickup does `abort-untracked-like-pickup` — task — **Complete**
+  - `M11.65` why-blocked reports touch-zone holds from the plan `why-blocked-plan-holds` — task — **Complete**
+  - `M11.66` specy-road --version identifies the code when run from a checkout `version-shows-checkout-sha` — task — **Complete**
+  - `M11.67` Worker usage prices Cursor runs from the roster's price table `cursor-usage-cost` — task — **Complete**
+  - `M11.68` A re-delegated executor starts from the blocking review findings `rework-findings-in-prompt` — task — **Complete**
+  - `M11.69` A leaf that adds a schema key can be gated and finished `branch-schema-for-gate-and-finish` — task — **Complete**
+  - `M11.70` Touch zones are checked when they are written `zones-checked-at-authoring` — task — **Complete**
+  - `M11.71` Review loops escalate on their own and criteria are written with bounds `review-loops-escalate` — task — **Complete**
+  - `M11.72` A reviewer run that ends without a record is reported as a failure `reviewer-failure-visible` — task — **Complete**
+  - `M11.73` specy-road ready warns when the leaf no longer merges cleanly `ready-warns-integration-conflict` — task — **Complete**
+  - `M11.74` Pickup and finish in one checkout take a shared lock in order `pickup-finish-shared-lock` — task — **Complete**
+  - `M11.75` Reviewer prompt asks for independent probes, not the executor's own checks `reviewer-probe-rules` — task — **Not Started**
+  - `M11.76` Every roster model reaches its profile notes `profile-alias-coverage` — task — **Complete**
+  - `M11.77` A completed reviewer run does not report a missing record `run-record-no-false-failure` — task — **Complete**
+  - `M11.78` Review lessons: escaped defect classes feed every reviewer prompt `review-lessons` — task — **Complete**
+  - `M11.79` Leaves that touch high-risk zones need a stronger reviewer `risk-tiered-review` — task — **Not Started**
+  - `M11.80` Executors and reviewers run tests with a bounded worker count `test-worker-cap` — task — **Not Started**
+  - `M11.82` The integration branch passes ruff again and the land check runs it `wip-ruff-clean` — task — **Not Started**
+
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
 
 ## Archived (not in the live roadmap)
 
@@ -173,13 +205,13 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M11.14` on `feature/rm-queue-worker-message` since 2026-11-02
-- `M11.16` on `feature/rm-sheet-edits-keep-approvals` since 2026-11-02
-- `M11.20` on `feature/rm-roster-source-explained` since 2026-11-02
-- `M11.26` on `feature/rm-profile-aliases` since 2026-11-02
-- `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
-- `M11.37` on `feature/rm-packet-uncommitted-refs` since 2026-11-02
-- `M11.54` on `feature/rm-parallel-test-suite` since 2026-11-02
+- `M11.40` on `feature/rm-reconcile-merged-and-untracked` since 2026-11-03
+- `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
+- `M11.62` on `feature/rm-headless-limits-denials` since 2026-11-03
+- `M11.75` on `feature/rm-reviewer-probe-rules` since 2026-11-03
+- `M11.79` on `feature/rm-risk-tiered-review` since 2026-11-03
+- `M8.2` on `feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` since 2026-11-03
+- `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
 ## Reaching the detail behind this
 

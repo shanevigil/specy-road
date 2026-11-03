@@ -40,7 +40,7 @@ keeps the old warn-and-pick behaviour for that case.
 
 
 def _add_claim_visibility_args(p: argparse.ArgumentParser) -> None:
-    """``--local`` and ``--owner``: who can see a claim, and who holds it (proposal §3.4)."""
+    """``--local``, ``--worktree``, ``--owner`` and ``--allow-second-claim``: who can see a claim, where its branch goes, who holds it."""
     p.add_argument(
         "--local",
         action="store_true",
@@ -52,10 +52,29 @@ def _add_claim_visibility_args(p: argparse.ArgumentParser) -> None:
         ),
     )
     p.add_argument(
+        "--worktree",
+        action="store_true",
+        help=(
+            "Run from the main checkout on the integration branch: register and push the "
+            "claim there as usual, then create the leaf's branch in a linked worktree at "
+            "work/.worktrees/<codename> instead of switching this checkout to it. The "
+            "brief, prompt and session file go in that worktree's work/."
+        ),
+    )
+    p.add_argument(
         "--owner",
         default=None,
         metavar="NAME",
         help="Who holds the claim, written to the registry row (default: git config user.name).",
+    )
+    p.add_argument(
+        "--allow-second-claim",
+        action="store_true",
+        help=(
+            "Claim another leaf although this checkout already holds one. Without it, "
+            "pickup exits 6 naming the held claim when the registry has a row whose "
+            "branch exists here and no other worktree has it checked out."
+        ),
     )
 
 

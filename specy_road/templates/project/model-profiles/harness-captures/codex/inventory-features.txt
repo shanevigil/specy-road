@@ -27,7 +27,7 @@ code_mode_interrupt                      stable             true
 code_mode_only                           under development  false
 code_mode_only_strict_3p_tools           under development  false
 code_mode_prewarm                        under development  false
-code_mode_tool_description_first         under development  false
+code_mode_tool_description_first         removed            false
 code_mode_tool_search                    under development  false
 codex_apps_mcp_2026_07_28                under development  false
 codex_git_commit                         removed            false
@@ -38,6 +38,7 @@ concurrent_reasoning_summaries           under development  false
 content_item_kinds                       stable             true
 context_management                       under development  false
 credential_masking                       under development  false
+critical_path_timing                     under development  false
 current_time_reminder                    under development  false
 cwd_relative_turn_diffs                  under development  false
 daemon_auto_start                        stable             true
@@ -62,6 +63,7 @@ guardian_approval                        stable             true
 guardian_conversation_history_tools      under development  false
 guardian_enhanced_node_repl_transcripts  under development  false
 guardian_ext                             removed            false
+guardian_native_multi_agent_history      under development  false
 guardian_node_repl_transcript_images     under development  false
 guardian_recorded_items                  under development  false
 guardian_reuse_parent_compaction         stable             true
@@ -90,6 +92,7 @@ local_thread_store_compression           under development  false
 local_thread_store_shared_compression    removed            false
 login_shell_package_path                 experimental       false
 mcp_2026_07_28                           under development  false
+mcp_connection_sharing                   under development  false
 mcp_oauth_refresh_coordination           stable             true
 mcp_tool_list_changed                    under development  false
 memories                                 stable             false
@@ -104,8 +107,10 @@ network_proxy                            experimental       false
 non_prefixed_mcp_tool_names              under development  false
 nonfatal_clock_read_errors               under development  false
 omit_app_server_notification_media       under development  false
+omit_skill_descriptions                  under development  false
 output_token_replay                      under development  false
 personality                              removed            false
+plugin_discovery_prefetch                stable             true
 plugin_hooks                             removed            false
 plugin_sharing                           stable             true
 plugins                                  stable             true
@@ -140,6 +145,8 @@ shell_snapshot                           stable             true
 shell_snapshot_v2                        under development  false
 shell_tool                               stable             true
 shell_zsh_fork                           removed            false
+simplified_selection_hints               under development  false
+skill_catalog_deltas                     under development  false
 skill_env_var_dependency_prompt          removed            false
 skill_mcp_dependency_install             stable             true
 skill_search                             stable             true
@@ -171,6 +178,7 @@ unified_exec                             stable             true
 unified_exec_tty                         stable             true
 unified_exec_zsh_fork                    removed            false
 unified_image_budget                     under development  false
+untrusted_as_tool_output                 under development  false
 use_agent_identity                       under development  false
 use_legacy_landlock                      deprecated         false
 use_linux_sandbox_bwrap                  removed            false

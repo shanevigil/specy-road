@@ -10,7 +10,11 @@ review record only when:
   commit makes it stale, so a substantive fix restarts every review. Every
   merge counts as new work, including `git merge -s ours`, whose tree equals
   its first parent's; commits that touch only `roadmap/registry.yaml` are
-  skipped, so claim bookkeeping does not;
+  skipped, so claim bookkeeping does not. When the only paths in
+  `git diff <reviewed>..<commit>` are this leaf's planning sheet,
+  `work/implementation-summary-<NODE_ID>.md`, or files under
+  `work/reviews/<NODE_ID>/`, earlier approvals still count and `handoff status`
+  says so in the policy line;
 - its model is a rostered reviewer, or the substitute in an active substitution that covers this
   node; its family comes from the roster, and its roster `may_process` includes the node's `sensitivity`;
 - no other record from the same model already counts — one vote per model, and
@@ -31,6 +35,19 @@ commit.
 
 `finish-this-task` checks the gate again at the current commit, so work
 committed after approval cannot ship on the earlier reviews.
+
+The gate is enforced only while `require_implementation_review_before_finish`
+is on in `roadmap/git-workflow.yaml` (in the working tree or on the integration
+branch); with it off, `mark-implementation-reviewed` has nothing to do and says
+the gate is not enforced at finish. `roadmap/orchestration.yaml` alone does not
+turn it on, so a project whose orchestration file requires reviewers
+(`reviewers_required`, at least 1 whenever the file exists) while that switch is
+off would see `review list` report a gate that finish never checks.
+`specy-road validate` fails on that combination and `specy-road doctor` reports
+it as an `error:` and exits 1, both naming the two settings and the fix: set
+`require_implementation_review_before_finish: true`. Neither turns the switch on
+for you; whether a project reviews is its own decision, and a project that does
+not can delete `roadmap/orchestration.yaml`.
 
 ## Delta review of small fix rounds
 
@@ -75,6 +92,34 @@ review from <sha>, …; a full review is needed`. A delta approval is still one
 model's vote, so `reviewers_distinct_families` still needs approvals from both
 families at the current commit. A block is never affected. Like
 `fresh_session`, `delta_from` is self-attested; a signature covers it.
+
+With `policy.reviewer_resumed_delta: true` (**default false**), a reviewer that
+approved a commit may be resumed for the next fix round instead of starting a
+fresh session: its record sets `fresh_session: false` and names `delta_from`
+(the commit it approved; with `commit`, that names the delta it read). The key
+relaxes only `reviewer_fresh_session`, and only for an approval naming
+`delta_from`; such an approval still counts only under the delta rule above.
+A resumed full review (no `delta_from`) is still refused, and so is every resumed
+approval while the key is off. A resumed block naming `delta_from` counts while
+the key is on (a block is never held to the delta rule). The delta packet says
+which applies, and with the key on `specy-road prompt --role reviewer` tells a
+reviewer reading its own delta packet that, if it is the resumed session that
+approved the delta's base, it sets `fresh_session: false`.
+
+When a record is refused only for `fresh_session`, `handoff status` says so and
+whether a resumed delta approval would count:
+
+- `… the only reason it does not count; with policy.reviewer_resumed_delta: true this resumed delta approval would count`
+  (it names `delta_from` and the delta qualifies; the key is off);
+- `…; with policy.reviewer_resumed_delta: true it would still not count: a delta review from <sha>, but …`;
+- `…; a resumed delta approval naming delta_from: <sha> would count` (a resumed
+  full review whose round qualifies for a delta; `with policy.reviewer_resumed_delta: true`
+  is added while the key is off);
+- `…; a resumed delta approval would not count either (<why>): a fresh full review is needed`;
+- for a block: `…; with policy.reviewer_resumed_delta: true this resumed block would count`
+  (it names `delta_from`), else `…; a resumed block counts only when it names delta_from`.
+
+A record that fails another check too lists `fresh_session` first, then that check.
 
 Full fresh review comes back two ways. `specy-road review-packet <NODE_ID>
 --full` stamps `PACKET.md`; while that packet is the one for the commit under
@@ -134,7 +179,7 @@ process does not hold. Still self-attested: the session flags inside a signed re
 | `awaiting_full_review` | A milestone whose leaves are all finished waits for its full review at the integration tip (below); `approved` once the gate is met there. |
 | `unclaimed`, `error` | No open claim names a commit, so the gate cannot be evaluated and the records are only listed (pass `--ref`); `error`: the node or `--ref` does not resolve. |
 
-Below each node it lists every problem to fix. Given one `<NODE_ID>`, the exit status is for a polling script: `0` the policy is met (`approved`) or the node is `complete_no_claim`; `1` it is not met (`waiting`, `in-review`, `blocked`, `executor_blocked`, `stale`, `escalated`); `2` it cannot be determined (`unclaimed`, `error`, or `--ref` without a node). The sweep with no `<NODE_ID>` only reports and exits 0. **Review-loop escalation:** a round is one reviewed commit in `history/`; when the last `escalate_same_acceptance_blocks` rounds all block on one acceptance id, or after `escalate_review_rounds` rounds, an unapproved leaf is `escalated` with its trigger named (`review list` prints it too, and reviewer prompts say so). `specy-road prompt <NODE_ID> --role rca --model <id>` (a rostered reviewer that neither implemented nor reviewed the leaf) then builds a root-cause prompt from the brief, every round's records side by side and the diffs between them; the analyst writes `RCA-<round>.md` beside the reviews with a classification (specification, implementation, test, reviewer, environment, hard problem), cited evidence, the cheapest corrective action and, for a specification cause, a proposed acceptance rewrite for a human to approve. A valid record resolves the trigger and counting restarts; an invalid one is listed as a problem. Design: [design-notes/review-loop-rca.md](design-notes/review-loop-rca.md).
+Below each node it lists every problem to fix. Given one `<NODE_ID>`, the exit status is for a polling script: `0` the policy is met (`approved`) or the node is `complete_no_claim`; `1` it is not met (`waiting`, `in-review`, `blocked`, `executor_blocked`, `stale`, `escalated`); `2` it cannot be determined (`unclaimed`, `error`, or `--ref` without a node). The sweep with no `<NODE_ID>` only reports and exits 0. **Review-loop escalation:** a round is one reviewed commit in `history/`; when the last `escalate_same_acceptance_blocks` rounds all block on one acceptance id (`same_acceptance`), when one reviewer family (from the roster) blocked that many of the rounds it reviewed in a row, whatever acceptance ids or models of that family it named (`same_family`; an approval from the family resets its count), or after `escalate_review_rounds` rounds (`review_rounds`), an unapproved leaf is `escalated` with its trigger named (`review list` prints it too, and reviewer prompts say so). `specy-road prompt <NODE_ID> --role rca --model <id>` (a rostered reviewer that neither implemented nor reviewed the leaf) then builds a root-cause prompt from the brief, every round's records side by side and the diffs between them. A coordinator can start one on a leaf that is not escalated with `--force --reason '<why>'` (rule `forced`; it needs a review round since the last analysis, and an active escalation wins over it); the reason is in the prompt and in the record's `trigger.reason`; the analyst writes `RCA-<round>.md` beside the reviews with a classification (specification, implementation, test, reviewer, environment, hard problem), cited evidence, the cheapest corrective action and, for a specification cause, a proposed acceptance rewrite for a human to approve. A valid record resolves the trigger and counting restarts; an invalid one is listed as a problem. Design: [design-notes/review-loop-rca.md](design-notes/review-loop-rca.md).
 
 ## Milestone full review
 
@@ -221,6 +266,16 @@ bare`) and in `--json` as each review's `launch_mode`.
 
 `handoff status` lists each run under the node (`RUN-opus.json: incomplete run by opus at <sha>, session <id>: <reason>`, marked `not the commit under review` when it is for an older commit), and in `--json` as `review_runs`, each with `current`. An incomplete run at the commit under review is also a problem naming the command to re-run. A record left from an older commit is never shown as the current verdict: it is listed only as a problem (`reviewed <sha>, not the current commit — re-review`); without a claim each record line says the commit it reviewed (`at <sha>, not evaluated`), and `review list` marks one that is not the commit under review `stale`.
 
+## Project review lessons
+
+A defect class that escaped one review should be checked by every later one. `constraints/review-lessons.md` lists them (`init project` writes it with a short header): each top-level bullet under `## Lessons` is one entry, a one-line rule, with optional `Example:` and `From:` sub-bullets. Every reviewer prompt (`specy-road prompt --role reviewer`, and so `review delegate`) includes the entries under **Project review lessons**; with no file or no entries it has no such section, and an unreadable file is named in the prompt instead.
+
+`specy-road lessons add --rule "<one-line rule>" [--example "<text>"] [--from <NODE_ID>]` appends an entry at the end of `## Lessons` (creating the file from the bundled header when it is missing); `--from` records the leaf the defect escaped from. Line breaks in the rule or example are folded into one line. `specy-road lessons list` prints the entries in file order, or says the file does not exist. Commit the file like any other project file: a reviewer reads it from the checkout that builds its prompt.
+
+## Changed paths in the review packet
+
+The packet's **Changed paths** section lists every path the diff changes and marks each one outside the touch zones. Those zones, also named in the header, are the claim row's `touch_zones` plus the node's `touch_zones` as committed at the commit under review, read from git. A zone added to the node on the feature branch therefore counts when the packet is built from a checkout on the integration branch. When the node cannot be read at that commit, the claim row's zones (else the node's in the working tree) are used.
+
 ## Test integrity in the review packet
 
 `specy-road review-packet` inserts a **Test integrity** section immediately after **Changed paths**. It lists the same one-line findings as `specy-road integrity <NODE_ID>` (removed tests, removed test files, new skips, lost asserts, pytest-related config edits, new lint suppressions, widened baselines), or `_none_` when there are none. The section is computed from git objects only and is byte-identical for the same base and head commits. Reviewers use it to spot test weakening without running the CLI separately.
@@ -237,7 +292,7 @@ The executor prompt written at pickup has a **Tests at risk** section with the `
 
 The packet's **Diff** section inlines whole files only, within two budgets: `--max-diff-lines` (default 1500) and `--max-diff-bytes` (default 200000), since a rebuilt minified bundle is a few very long lines that the line budget alone lets through. Files are inlined in diff order until one would pass either budget; it and every file after it are listed with their `+`/`-` counts and the bytes of their diff, and the full diff is written to `work/reviews/<NODE_ID>/DIFF.patch`. `0` lifts a budget.
 
-A generated file is never inlined, whatever the budgets: one under `specy_road/pm_gantt_static/` (the packaged PM GUI bundle), or one that a `.gitattributes` line marks `linguist-generated`, read at the commit under review. It is listed the same way and marked `generated`, the packet says generated files are never inlined, and its diff is in `DIFF.patch`. Review the source it is built from instead.
+A generated file is never inlined, whatever the budgets: one under `specy_road/pm_gantt_static/` (the packaged PM GUI bundle), one that a `.gitattributes` line marks `linguist-generated`, read at the commit under review, or a well-known lockfile (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`, `uv.lock`, `Cargo.lock`, `go.sum`, in any directory) with no `linguist-generated` entry there; `linguist-generated=false` opts a lockfile back in. It is listed the same way and marked `generated`, the packet says generated files are never inlined, and its diff is in `DIFF.patch`. A generated file uses up neither budget, so the files after it are still inlined. Review the source it is built from instead.
 
 ## The integrity gate
 
