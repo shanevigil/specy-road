@@ -153,41 +153,57 @@ def _date_error(raw: dict[str, Any]) -> str | None:
     return None
 
 
-def load_availability_overlay(repo_root: Path) -> tuple[dict[str, dict[str, Any]] | None, str | None]:
-    """``roadmap/orchestration.local.yaml``: local roster availability overrides, not committed."""
-    path = orchestration_local_path(repo_root)
-    if not path.is_file():
-        return None, None
+def _overlay_roster(path: Path) -> tuple[list[Any] | None, str | None]:
+    """The overlay file's ``roster`` list (empty when the file or key is), or an error."""
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (yaml.YAMLError, ValueError) as e:
         return None, f"YAML error in {ORCHESTRATION_LOCAL_REL}: {e}"
     if raw is None:
-        return {}, None
+        return [], None
     if not isinstance(raw, dict):
         return None, f"{ORCHESTRATION_LOCAL_REL}: must be a mapping"
     roster = raw.get("roster")
     if roster is None:
-        return {}, None
+        return [], None
     if not isinstance(roster, list):
         return None, f"{ORCHESTRATION_LOCAL_REL}: roster must be a list"
+    return roster, None
+
+
+def _overlay_patch(i: int, entry: Any) -> tuple[dict[str, Any] | None, str | None]:
+    """One overlay roster entry's availability fields (None when it has none), or an error."""
+    if not isinstance(entry, dict):
+        return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i} must be a mapping"
+    if not entry.get("id"):
+        return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i}/id is required"
+    patch = {k: entry[k] for k in AVAILABILITY_OVERLAY_KEYS if k in entry}
+    if not patch:
+        return None, None
+    if "available" in patch and not isinstance(patch["available"], bool):
+        return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i}/available must be true or false"
+    _dates_to_iso({"roster": [patch]})
+    for key in ("paused_until", "unavailable_until"):
+        if err := _paused_until_error(f"{ORCHESTRATION_LOCAL_REL}/roster/{i}/{key}", patch.get(key)):
+            return None, err
+    return patch, None
+
+
+def load_availability_overlay(repo_root: Path) -> tuple[dict[str, dict[str, Any]] | None, str | None]:
+    """``roadmap/orchestration.local.yaml``: local roster availability overrides, not committed."""
+    path = orchestration_local_path(repo_root)
+    if not path.is_file():
+        return None, None
+    roster, err = _overlay_roster(path)
+    if err:
+        return None, err
     out: dict[str, dict[str, Any]] = {}
-    for i, entry in enumerate(roster):
-        if not isinstance(entry, dict):
-            return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i} must be a mapping"
-        rid = entry.get("id")
-        if not rid:
-            return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i}/id is required"
-        patch = {k: entry[k] for k in AVAILABILITY_OVERLAY_KEYS if k in entry}
-        if not patch:
-            continue
-        if "available" in patch and not isinstance(patch["available"], bool):
-            return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i}/available must be true or false"
-        _dates_to_iso({"roster": [patch]})
-        for key in ("paused_until", "unavailable_until"):
-            if err := _paused_until_error(f"{ORCHESTRATION_LOCAL_REL}/roster/{i}/{key}", patch.get(key)):
-                return None, err
-        out[str(rid)] = patch
+    for i, entry in enumerate(roster or []):
+        patch, err = _overlay_patch(i, entry)
+        if err:
+            return None, err
+        if patch:
+            out[str(entry["id"])] = patch
     return out, None
 
 

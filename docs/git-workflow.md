@@ -132,6 +132,15 @@ When they live at the git root in a nested layout (`project_root: sr`):
 land_check_cmd: python -m pytest -n auto -p no:cacheprovider ../tests
 ```
 
+When CI also enforces a linter, put it in the same command ahead of the tests.
+Reviewers lint only the leaf's own files, so two leaves that each pass can still
+land a tree CI rejects on promotion; the land check is the one place the merged
+tree is checked before it is pushed:
+
+```yaml
+land_check_cmd: python -m ruff check ../src ../tests && python -m pytest -n auto -p no:cacheprovider ../tests
+```
+
 Run the suite once with **`pytest -n auto`** and once serially (**`pytest`**
 with no **`-n`**) before adopting that gate; if both pass, the tree is a
 reasonable candidate for a parallel land check.

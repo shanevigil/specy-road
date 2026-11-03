@@ -158,7 +158,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.82_wip-ruff-clean_29461e62-7961-4fc1-bdc9-901d25cd57d5.md",
       "sibling_order": 81,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The integration branch passes ruff again and the land check runs it",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet_uncommitted_refs.py",
