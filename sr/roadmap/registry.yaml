@@ -35,7 +35,8 @@ entries:
       - specy_road/bundled_scripts/roadmap_load.py
     started: '2026-11-02'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-03T02:48:27+00:00'
   - codename: profile-aliases
     node_id: M11.26
     branch: feature/rm-profile-aliases
