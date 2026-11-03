@@ -180,3 +180,15 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
+  - codename: rework-findings-in-prompt
+    node_id: M11.68
+    branch: feature/rm-rework-findings-in-prompt
+    touch_zones:
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/review_gate.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
