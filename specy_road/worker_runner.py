@@ -225,6 +225,8 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             )
         except OSError as e:
             _append_usage(repo_root, rec, {})   # the turn ends here too: nothing reported, so nulls
+            watch.failed = f"cannot start {launch.argv[0]}: {e}"   # a failed turn: the post-run check runs here too
+            close_turn(repo_root, rec, watch)   # (M8.2); the record still ends `failed` below
             append_event(repo_root, rec, "error", source="system", summary=f"cannot start {launch.argv[0]}: {e}",
                          detail={"exit": 127})   # the wrapper's exit record: this error ends the turn
             mirror_logs(repo_root, rec)
@@ -324,6 +326,7 @@ def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], be
             usage_logged: bool, watch: TurnWatch) -> int:
     rec = load_record(repo_root, rec.worker_id)   # the record may have moved on (handoff, terminate)
     if rec.state == "terminated":
+        close_turn(repo_root, rec, watch, pause=False)   # the check still runs; a terminated worker is not paused
         return code
     if not usage_logged:   # one usage event per turn: a harness that reported none gets nulls, not zeros
         _append_usage(repo_root, rec, {})

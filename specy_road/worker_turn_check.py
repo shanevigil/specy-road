@@ -175,9 +175,13 @@ def git_findings(repo_root: Path, rec: WorkerRecord, before: GitState) -> list[d
     return out
 
 
-def close_turn(repo_root: Path, rec: WorkerRecord, watch: TurnWatch) -> bool:
+def close_turn(repo_root: Path, rec: WorkerRecord, watch: TurnWatch, *, pause: bool = True) -> bool:
     """Record the turn's findings and flag (or clear) the worker; ``True`` when a usage limit stopped the turn,
-    which then has ``limit_reset_at`` set for the wrapper to move it to :data:`PAUSED_BY_LIMIT`."""
+    which then has ``limit_reset_at`` set for the wrapper to move it to :data:`PAUSED_BY_LIMIT`.
+
+    Every started turn ends here, a harness that could not start and a record already ``terminated``
+    included. ``pause=False`` (the terminated record) still records a limit as a finding, but sets no
+    ``limit_reset_at``: a terminated worker stays terminated."""
     try:
         found = watch.stream_findings() + git_findings(repo_root, rec, watch.before)
     except Exception as e:  # noqa: BLE001 — the check must never cost the turn its exit record
@@ -192,9 +196,9 @@ def close_turn(repo_root: Path, rec: WorkerRecord, watch: TurnWatch) -> bool:
         add_flag(repo_root, rec, FLAG_POST_RUN)
     else:
         clear_flag(repo_root, rec, FLAG_POST_RUN)
-    if limit:
+    if limit and pause:
         mutate(repo_root, rec, lambda r: setattr(r, "limit_reset_at", limit.get("reset_at")))
-    return bool(limit)
+    return bool(limit) and pause
 
 
 def limit_gate(rec: WorkerRecord, now: datetime | None = None) -> None:

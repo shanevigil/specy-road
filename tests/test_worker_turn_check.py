@@ -299,3 +299,23 @@ def test_a_further_edit_to_an_already_dirty_file_outside_the_zones_keeps_the_wor
     checks = _events(repo, rec.worker_id, "post_run_check")
     assert len(checks) == 2 and checks[-1].detail["findings"][0]["paths"] == ["docs/x.md"]
     assert tc.FLAG_POST_RUN in ws.load_record(repo, rec.worker_id).flags
+
+
+def test_a_turn_whose_record_was_terminated_still_gets_the_check_and_stays_terminated(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sol (second review): the terminated return in _finish ran no check. The harness here marks its own record
+    terminated mid-turn (``worker terminate`` would signal this test's process group), leaves a stray file and
+    reports a limit: the finding is recorded and flags the worker, and nothing pauses it."""
+    repo = make_review_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    package_parent = Path(ws.__file__).resolve().parents[1]
+    terminate = (f"{sys.executable} -c \"import sys; sys.path.insert(0, '{package_parent}'); from pathlib import Path; "
+                 f"from specy_road import worker_state as ws; r = Path('{repo}'); "
+                 f"ws.set_state(r, ws.load_record(r, '{rec.worker_id}'), 'terminated')\"")
+    _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_limit_as_success"],
+             run=["echo stray > stray.txt", terminate])
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(_prompt(tmp_path), repo, "m", None)) == 0
+    after = ws.load_record(repo, rec.worker_id)
+    assert after.state == "terminated" and after.limit_reset_at is None and tc.FLAG_POST_RUN in after.flags
+    assert _findings(repo, rec.worker_id) == {"porcelain", "usage_limit"}
+    assert not _events(repo, rec.worker_id, "completion")   # the terminated path writes no exit record, as before

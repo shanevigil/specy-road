@@ -181,10 +181,10 @@ def test_run_reports_a_missing_binary_as_failed(tmp_path: Path, capsys: pytest.C
     repo = make_review_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "generic", "x", repo)
     assert wr.run(repo, rec.worker_id, wa.Launch(["/no/such/binary"])) == 127
-    assert ws.load_record(repo, rec.worker_id).state == "failed"
-    last = ws.events_since(repo, rec.worker_id)[-1]
-    assert "cannot start" in last.summary and last.detail == {"exit": 127}
-    assert [(e.type, set(e.detail.values())) for e in ws.events_since(repo, rec.worker_id)[-2:-1]] == [("usage", {None})]
+    assert (after := ws.load_record(repo, rec.worker_id)).state == "failed" and after.flags == ["post_run_findings"]
+    *_, usage, check, last = ws.events_since(repo, rec.worker_id)   # the post-run check runs on a start failure too (M8.2)
+    assert "cannot start" in last.summary and last.detail == {"exit": 127} and "cannot start" in check.summary
+    assert usage.type == "usage" and set(usage.detail.values()) == {None} and check.type == "post_run_check"
     # The startup failure is the turn's end, so its ack is timed; the harness never launched or spoke.
     assert [d["worker_id"] for d in wrc.sync(repo, ack=True)] == [rec.worker_id]
     capsys.readouterr()
