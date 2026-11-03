@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road import worker_ops as ops
+from specy_road.bundled_scripts.role_prompt_rework import rework_check
 from specy_road.bundled_scripts.worker_cli_render import (_line, _row, _sync_event_lines, sync_worker_header,
                                                        timeline, timeline_lines, usage, usage_lines)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -61,7 +62,7 @@ def _with_op(ns: argparse.Namespace, root: Path, kind: str, fn, inputs: dict[str
     op = getattr(ns, "op_id", None)
     if op:
         if inputs is None:
-            inputs = {k: getattr(ns, k) for k in ("model", "harness", "worktree", "text", "note", "session", "offline")
+            inputs = {k: getattr(ns, k) for k in ("model", "harness", "worktree", "text", "note", "session", "offline", "rework")
                       if getattr(ns, k, None)}
         old = begin_op(root, op, kind, _target_of(ns), inputs)
         if old is not None:
@@ -82,6 +83,8 @@ def cmd_delegate(ns: argparse.Namespace) -> int:
     state: dict[str, Any] = {}
 
     def go():
+        if ns.rework:   # before delegate, which would return an active worker rather than replace it
+            rework_check(root, ns.node_id)
         rec, created = ops.delegate(root, ns.node_id, ns.model, harness=ns.harness,
                                     worktree=Path(ns.worktree) if ns.worktree else None, offline=ns.offline)
         state.update(worker_id=rec.worker_id, created=created, state=rec.state, worktree=rec.worktree,
@@ -318,11 +321,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--model", required=True, help="Roster id (executor role)")
     sp.add_argument("--harness", choices=HARNESSES, help="Override the roster entry's harness")
     sp.add_argument("--worktree", help="Run in this checkout (default: this one if it has the claim's branch, else a linked worktree)")
-    _offline_arg(sp)
-    sp.add_argument("--json", action="store_true")
-    sp.add_argument("--op-id", metavar="ID")
-    add_repo_root_arg(sp)
-    sp.set_defaults(func=cmd_delegate)
+    _offline_arg(sp); sp.add_argument("--rework", action="store_true", help="Take over after blocking reviews or a terminated or failed worker")
+    sp.add_argument("--json", action="store_true"); sp.add_argument("--op-id", metavar="ID")
+    add_repo_root_arg(sp); sp.set_defaults(func=cmd_delegate)
 
     sp = ws.add_parser("list", help="Active workers (--all includes finished)")
     sp.add_argument("--all", action="store_true")

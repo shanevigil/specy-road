@@ -36,6 +36,7 @@ from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
 from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
 from specy_road.bundled_scripts.roadmap_gui_lib import registry_by_node_id
 from specy_road.bundled_scripts.roadmap_load import load_roadmap, validate_roadmap_line_limits
+from specy_road.bundled_scripts.touch_zone_tracked import warn_written_zones
 from specy_road.bundled_scripts.validate_registry_overlap import authoring_overlap_for_node
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.milestone_subtree import structural_leaf_ids
@@ -237,6 +238,7 @@ def cmd_add(args: object) -> None:
         raise SystemExit(1) from e
     assert chunk_path.relative_to(root).as_posix() in report.written
     print_node_chunk_write_report(report, verb="appended node")
+    warn_written_zones(nid, node.get("touch_zones"), root)
 
 
 def append_node_to_chunk(
@@ -379,6 +381,9 @@ def cmd_edit(args: object) -> None:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from None
     print_node_chunk_write_report(report, verb="updated")
+    if any(k == "touch_zones" for k, _ in pairs):
+        edited = next((n for n in load_roadmap(root)["nodes"] if n.get("id") == nid), {})
+        warn_written_zones(nid, edited.get("touch_zones"), root)
 
 
 def cmd_set_gate_status(args: object) -> None:

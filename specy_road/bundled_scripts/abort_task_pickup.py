@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -29,61 +28,59 @@ from specy_road.repo_lock import pickup_finish_lock
 ROOT = Path.cwd()
 
 
-def _pickup_artifact_rel_paths(node_id: str) -> set[str]:
-    """The ``work/`` files pickup created for this node — the ones abort deletes."""
-    return {
-        f"work/brief-{node_id}.md",
-        f"work/prompt-{node_id}.md",
-        f"work/implementation-summary-{node_id}.md",
-        on_complete_session_path(Path("work"), node_id).as_posix(),
-    }
+#: Why a tracked change blocks, by porcelain status letter (index, then worktree).
+_STAGED = {"M": "staged edit", "A": "staged new file", "D": "staged deletion",
+           "R": "staged rename", "C": "staged copy", "T": "staged type change"}
+_UNSTAGED = {"M": "unstaged edit", "D": "unstaged deletion", "T": "unstaged type change"}
 
 
-def _dirty_entries(ignore_untracked: set[str]) -> list[str]:
-    """Porcelain entries that should block the abort.
+def _why_blocking(xy: str) -> str:
+    if "U" in xy or xy in ("AA", "DD"):
+        return "unmerged (conflict)"
+    reasons = [_STAGED.get(xy[0]), _UNSTAGED.get(xy[1])]
+    return ", ".join(r for r in reasons if r) or f"status {xy.strip()}"
 
-    ``do-next-available-task`` writes the brief, the prompt and the session
-    sidecar, and the scaffold deliberately does not gitignore the brief — so a
-    pickup leaves untracked files behind and an immediate abort would refuse on
-    output the toolkit itself just produced. Those specific untracked paths are
-    excluded. A *modified tracked* file still blocks: that is real work, and
-    abort is not the command to throw it away.
+
+def _tracked_changes() -> list[str]:
+    """Tracked changes, each with why it blocks: the only thing abort refuses on.
+
+    Pickup refuses on nothing under ``work/``, so it leaves its brief there
+    untracked and a coordinator's notes may sit beside it. Untracked files
+    survive the checkout abort makes: git refuses a checkout, or the ``reset
+    --keep`` of a ``--local`` claim, that would overwrite one (see
+    :func:`_git_keeping_untracked`), so none of them block. A tracked change
+    does, under ``work/`` too: the checkout would carry it to the integration
+    branch or stop on it.
     """
-    r = subprocess.run(
-        ["git", "status", "--porcelain"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    blocking: list[str] = []
-    for line in (r.stdout or "").splitlines():
-        if not line.strip():
-            continue
-        status, _, path = line[:2], line[2], line[3:]
-        # Another leaf's untracked toolkit bookkeeping survives the checkout and is not
-        # this abort's business (§5 re-check F-R3); anything else untracked still blocks.
-        if status == "??" and (path in ignore_untracked or _OTHER_BOOKKEEPING.match(path)):
-            continue
-        blocking.append(line)
-    return blocking
+    out = git_capture(ROOT, "status", "--porcelain", "--untracked-files=no")
+    return [f"{line[3:]} ({_why_blocking(line[:2])})" for line in out.splitlines() if line.strip()]
 
 
-_OTHER_BOOKKEEPING = re.compile(
-    r"work/((brief|implementation-summary)-[^/]+\.md|prompt-[^/]+\.md|(reviews|\.workers|\.sessions|\.worktrees)/)")
-
-
-def _assert_working_tree_clean(ignore_untracked: set[str] | None = None) -> None:
-    dirty = _dirty_entries(ignore_untracked or set())
-    if not dirty:
+def _assert_no_tracked_changes(base: str) -> None:
+    blocking = _tracked_changes()
+    if not blocking:
         return
-    print(
-        "error: working tree is not clean (commit, stash, or discard changes first).",
-        file=sys.stderr,
-    )
-    for line in dirty:
-        print(f"  {line}", file=sys.stderr)
+    print(f"error: tracked changes block abort-task-pickup: it checks out '{base}', which would "
+          "carry them there or discard them.", file=sys.stderr)
+    for entry in blocking:
+        print(f"  {entry}", file=sys.stderr)
+    print("  Commit or discard them, then retry; untracked files never block (they survive the checkout).",
+          file=sys.stderr)
     raise SystemExit(1)
+
+
+def _git_keeping_untracked(what: str, *args: str, retry: str = "retry abort-task-pickup") -> None:
+    """Run a git step that refuses rather than overwrite an untracked file; exit 1 cleanly if it does."""
+    try:
+        git_run(ROOT, *args)
+    except subprocess.CalledProcessError:
+        print(f"error: could not {what}; git's message above names the paths.", file=sys.stderr)
+        print(f"  An untracked file there would be overwritten: move it aside, then {retry}.", file=sys.stderr)
+        raise SystemExit(1) from None
+
+
+def _checkout_base(base: str) -> None:
+    _git_keeping_untracked(f"check out '{base}'", "checkout", base)
 
 
 def _save_registry(doc: dict) -> None:
@@ -109,7 +106,7 @@ def _log_commits_ahead_of_remote_base(remote: str, base: str) -> str:
 
 
 def _sync_integration_branch_ff(remote: str, base: str) -> None:
-    git_run(ROOT, "checkout", base)
+    _checkout_base(base)
     try:
         git_run(ROOT, "merge", "--ff-only", f"{remote}/{base}")
     except subprocess.CalledProcessError:
@@ -281,9 +278,12 @@ def _only_own_registration_ahead(remote: str, base: str, codename: str, ref: str
     )
 
 
-def _drop_local_registration(remote: str, base: str) -> None:
-    git_run(ROOT, "checkout", base)
-    git_run(ROOT, "reset", "--hard", f"{remote}/{base}")
+def _drop_local_registration(remote: str, base: str, branch: str) -> None:
+    _checkout_base(base)
+    # --keep, not --hard: --hard silently overwrites an untracked file at a path
+    # the advanced remote base now tracks. The tree has no tracked changes here.
+    _git_keeping_untracked(f"reset '{base}' to {remote}/{base}", "reset", "--keep", f"{remote}/{base}",
+                           retry=f"`git checkout {branch}` and retry abort-task-pickup")
     print(
         f"[ok] the claim was never pushed (--local pickup): dropped its registration "
         f"commit from local {base}; nothing pushed"
@@ -344,15 +344,13 @@ def _abort_locked(args) -> None:
 
     branch = _require_feature_rm_branch_or_exit()
 
-    # Resolve the claim first so the cleanliness check knows which work/ files
-    # belong to this pickup. Reads roadmap/registry.yaml only; no git state
-    # changes before the check.
+    # Reads roadmap/registry.yaml only; no git state changes before the check.
     codename, _reg_before, entry, _nodes = resolve_feature_rm_registry_context(
         ROOT,
         branch,
     )
     node_id = entry["node_id"]
-    _assert_working_tree_clean(_pickup_artifact_rel_paths(node_id))
+    _assert_no_tracked_changes(base)
     _exit_if_base_checked_out_elsewhere(base, branch)
 
     git_run(ROOT, "fetch", remote)
@@ -360,7 +358,7 @@ def _abort_locked(args) -> None:
         _only_own_registration_ahead(remote, base, codename, ref) for ref in ("HEAD", base)
     )
     if local_claim:
-        _drop_local_registration(remote, base)
+        _drop_local_registration(remote, base, branch)
     else:
         ahead = _count_commits_ahead_of_remote_base(remote, base)
         _exit_if_unpushed_commits_without_force(remote, base, ahead, args.force)

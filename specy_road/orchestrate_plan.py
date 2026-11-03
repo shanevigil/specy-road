@@ -30,6 +30,11 @@ Rules, in the order they apply:
 * **Independence (§3.2).** The executor's model is not offered as its own
   reviewer, and with ``reviewers_distinct_families`` one reviewer per family.
 
+The human's routing preferences (``kind: preference`` in ``roadmap/decisions.yaml``)
+are never applied here: the plan lists every active one under
+``preferences_not_applied``, noting any preferred model the roster does not have
+or marks unavailable, and the coordinator applies them when it delegates.
+
 The leaf fields are read through :func:`node_sensitivity` and
 :func:`node_eligibility` only, so where they live (node vs. orchestration
 config) is a one-function decision.
@@ -44,6 +49,7 @@ from typing import Any
 
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.session_plan_git import gather_session_plan
+from specy_road.decisions import plan_preferences
 from specy_road.model_profiles import Profile
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry, roster_source
 from specy_road.orchestration_config import active_substitutions
@@ -208,6 +214,8 @@ class OrchestrationPlan:
     unauthored: list[str] = field(default_factory=list)   # ready but for a placeholder sheet; pickup skips them
     roster_ref: str | None = None      # where the roster was read from; None outside git
     roster_drift: str | None = None    # the working-tree roster is absent there or differs
+    preferences_not_applied: list[dict[str, Any]] = field(default_factory=list)   # active, for the coordinator
+    preferences_error: str | None = None   # the ledger could not be read; the plan still stands
 
     @property
     def ok(self) -> bool:
@@ -217,7 +225,9 @@ class OrchestrationPlan:
         return {"under": self.under, "policy": self.policy, "ok": self.ok,
                 "roster_ref": self.roster_ref, "roster_drift": self.roster_drift,
                 "batches": [[a.to_dict() for a in b] for b in self.batches],
-                "blocked": self.blocked, "active": self.active, "unauthored": self.unauthored}
+                "blocked": self.blocked, "active": self.active, "unauthored": self.unauthored,
+                "preferences_not_applied": self.preferences_not_applied,
+                "preferences_error": self.preferences_error}
 
 
 def _usable(c: Candidate, sensitivity: str, today: date | None) -> bool:
@@ -299,6 +309,17 @@ def assign_leaf(node: dict[str, Any], cands: list[Candidate], config: dict[str, 
     return a
 
 
+def preference_notice(pref: dict[str, Any], cands: list[Candidate], today: date | None) -> dict[str, Any]:
+    """The preference plus ``roster_notes``: availability comes from the roster, so the two never disagree."""
+    by_id = {c.id: c for c in cands}
+    notes = []
+    for m in pref.get("models") or []:
+        why = "not in the roster" if m not in by_id else unavailability_reason(by_id[m].entry, today)
+        if why:
+            notes.append(f"{m}: {why}")
+    return {**pref, "roster_notes": notes}
+
+
 def build_orchestration_plan(root: Path, *, under: str | None = None,
                              today: date | None = None) -> tuple[OrchestrationPlan | None, str | None]:
     config, err = pinned_config(root)
@@ -312,6 +333,8 @@ def build_orchestration_plan(root: Path, *, under: str | None = None,
     ref, drift = roster_source(root)
     batches = [[assign_leaf(by_id[nid], cands, config, today, drift) for nid in batch if nid in by_id]
                for batch in sp.parallel_batches]
+    prefs, pref_err = plan_preferences(root, today)
     return OrchestrationPlan(under, dict(config["policy"]), batches,
                              [b.node_id for b in sp.blocked], list(sp.active),
-                             [u.node_id for u in sp.unauthored], ref, drift), None
+                             [u.node_id for u in sp.unauthored], ref, drift,
+                             [preference_notice(p, cands, today) for p in prefs], pref_err), None

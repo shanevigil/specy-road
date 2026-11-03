@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.review_repo_helpers import diverge, git, make_review_repo
 from tests.test_models_and_prompt import make_profile_repo
 
 from specy_road.bundled_scripts import review_cli, role_prompt
@@ -67,6 +67,26 @@ def test_ready_refuses_a_bad_spec_and_an_unregistered_branch(tmp_path: Path, cap
     assert _cli("ready", "M1.1", "--model", "opus", "--verify", "pytest=0", "--repo-root", str(repo)) == 1
     assert "not the registered 'feature/rm-thing'" in capsys.readouterr().err
     assert not reviews_dir(repo, "M1.1").exists()
+
+
+@pytest.mark.parametrize("case", ["clean", "bookkeeping", "code"])
+def test_ready_warns_when_the_trial_merge_handoff_status_makes_conflicts(tmp_path: Path, capsys, case: str) -> None:
+    repo = make_review_repo(tmp_path)
+    path = diverge(repo, case)
+    capsys.readouterr()
+    assert _cli("ready", "M1.1", "--model", "opus", "--verify", "pytest=0", "--repo-root", str(repo)) == 0
+    err = capsys.readouterr().err
+    assert (reviews_dir(repo, "M1.1") / "READY-opus.md").exists()   # a warning, not a refusal
+    st = _status(repo, capsys)
+    if case == "code":
+        assert st["trial_merge"]["blocking"] == [path]
+        assert f"warning: refs/heads/dev is 1 commit(s) ahead and a trial merge conflicts on {path}" in err
+        assert "Before handing off: run `git merge refs/heads/dev`" in err
+    elif case == "bookkeeping":
+        assert err == (f"note: a trial merge with refs/heads/dev conflicts on bookkeeping only ({path}), "
+                       "which does not block review\n")
+    else:
+        assert st["trial_merge"] is None and err == ""
 
 
 def test_handoff_status_still_validates_a_hand_written_ready(tmp_path: Path, capsys) -> None:

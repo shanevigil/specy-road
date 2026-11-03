@@ -119,6 +119,10 @@
           "type": "boolean",
           "description": "When true, a fix round after a reviewer's approval may be reviewed from a delta packet (`work/reviews/<NODE_ID>/PACKET-<model>.md`: the diff since the last commit that reviewer approved, plus its notes on that commit) when every path in that delta is a documentation or test file inside the leaf's touch zones (the leaf's own implementation summary counts as inside), it touches at most three files, and its integrity report has no findings; otherwise the round gets the full packet. An approval naming delta_from counts only for the model whose counting approval of that commit is on file, and only while the delta still qualifies. `review-packet --full` skips delta packets; false forces full review. Default true."
         },
+        "reviewer_resumed_delta": {
+          "type": "boolean",
+          "description": "When true, reviewer_fresh_session is waived for a record naming delta_from: the reviewer that approved delta_from may be resumed in that same session to review the delta since and file fresh_session: false. Such an approval still counts only under the delta_review rules; a resumed full review, and any other record with fresh_session: false, is still refused. Default false."
+        },
         "red_green": {
           "type": "boolean",
           "description": "When true, every Python test function the leaf adds or changes must fail at the merge base (with the head's changed test files overlaid) and pass at head, or pass on both when the node's planned_test_changes on the integration branch lists it as `preserve: <path>::<name>`; `specy-road review red-green` records the outcomes in work/reviews/<NODE_ID>/RED-GREEN.md and the review gate reads them for the commit under review. Default false."

@@ -172,11 +172,16 @@ def executor_preamble(node_id: str, model: str, zones: list[str], family_lock: s
     ]
 
 
-def reviewer_preamble(node_id: str, model: str, ref: str | None = None) -> list[str]:
+def reviewer_preamble(node_id: str, model: str, ref: str | None = None, *, resumed_delta: bool = False) -> list[str]:
+    """``resumed_delta``: the packet is ``model``'s delta packet and ``policy.reviewer_resumed_delta`` is on,
+    so the session that approved the delta's base may be resumed for it (M11.36)."""
+    session = ("If you are the session that approved the commit this delta starts from, resumed for this round, "
+               "set `fresh_session: false` (`policy.reviewer_resumed_delta` is on); otherwise this is a fresh "
+               "session. Either way" if resumed_delta else "This is a fresh session;")
     return [
         "## Your role: reviewer",
         "",
-        f"You review leaf `{node_id}` from the packet below and nothing else. This is a fresh session; "
+        f"You review leaf `{node_id}` from the packet below and nothing else. {session} "
         "you did not write the change, and you are not the coordinator.",
         "",
         "Judge each acceptance item `A#` in the brief as pass, fail, or n/a. An item whose text starts with "
