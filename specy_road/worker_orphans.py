@@ -1,19 +1,22 @@
 """Held workers whose leaf is over: they free their ``max_workers`` slot and show as orphaned (M11.57).
 
 An ``idle`` or ``completed`` worker keeps its leaf and its slot, so a review ``block`` can resume it for a
-fix round. Once its leaf is Complete on the integration branch, or the claim it was delegated under is gone
-from the integration branch's registry, no fix round can come: it no longer counts against ``policy.max_workers``,
-and ``worker list`` / ``sync`` show it orphaned. So does one whose worktree no longer exists; that one keeps
-its slot, since its leaf is still open. ``worker terminate --orphaned`` ends them all, and
-``finish-this-task`` ends the finished leaf's own idle and completed workers.
+fix round. Once its leaf is over, no fix round can come: it no longer counts against ``policy.max_workers``,
+``worker list`` / ``sync`` show it orphaned, and ``worker terminate --orphaned`` ends it. ``finish-this-task``
+ends the finished leaf's own idle and completed workers.
 
-Nothing here is stored: the record and event schemas name no such flag, and a cause can come and go
-(a leaf reopened, a claim taken again), so it is judged afresh on every read.
+One conservative rule decides "over", for the slot count, the orphan marks and the bulk terminate alike: at
+**every** integration ref that exists (the local integration branch and its remote-tracking ref), the leaf has
+no registry claim **and** the leaf is Complete in that same ref's roadmap. Pickup registers claims there and
+finish removes them and marks the leaf Complete there, so both move together when a leaf lands. Anything
+less keeps the worker: no such ref, a registry or graph that cannot be read, a leaf missing from a graph,
+refs that disagree (a stale ``origin/<branch>`` still saying Complete for a leaf reopened since, or a local
+landing not yet pushed), or a claim on the leaf under any branch. The caller's working tree is never read:
+linked worktrees share the records, and an older lane's snapshot is no authority. A worker whose worktree is
+gone is orphaned under the same rule only; the reason then says so too.
 
-Claims are read where pickup registers them and finish removes them, the integration branch (its local
-branch and its remote-tracking ref), never from the caller's working tree: linked worktrees share the worker
-records, and an older lane's registry snapshot can lack a claim that is still live. A claim is gone only when
-every one of those refs holds a readable registry without it; anything less is ambiguous and the worker is kept.
+Nothing here is stored: the record and event schemas name no such flag, and a leaf can be reopened or
+claimed again, so it is judged afresh on every read.
 """
 
 from __future__ import annotations
@@ -31,7 +34,7 @@ from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worker_state import WorkerRecord, list_records, workers_lock
 
-#: Not running, still owning the leaf: what a finished leaf or a lost claim releases.
+#: Not running, still owning the leaf: what a leaf that is over releases.
 HELD_STATES = frozenset({"idle", "completed"})
 RUNNING_STATES = frozenset({"starting", "running"})
 _HINT = "(`specy-road worker terminate --orphaned` ends them)"
@@ -39,7 +42,7 @@ _REF_TIMEOUT = 30.0   # one ``git show`` of a registry blob, as finish reads one
 
 
 class _Leaves:
-    """What held workers are judged against; each is read at most once per call, and only when asked."""
+    """What held workers are judged against; each ref is read at most once per call, and only when asked."""
 
     def __init__(self, repo_root: Path) -> None:
         self.root = repo_root
@@ -53,50 +56,47 @@ class _Leaves:
                 if git_text(["rev-parse", "--verify", "--quiet", full], self.root)]
 
     @cached_property
-    def claims(self) -> set[tuple[str, str]] | None:
-        """``(node_id, branch)`` per claim in any of :attr:`refs`' registries; ``None`` (ambiguous: nothing is gone)
-        when there is no such ref or any of them holds no readable registry."""
-        docs = [read_registry_at_ref(self.root, full, _REF_TIMEOUT) for full, _label in self.refs]
-        if not docs or any(d is None for d in docs):
-            return None
-        return {(str(e.get("node_id")), str(e.get("branch"))) for d in docs for e in (d.get("entries") or [])
-                if isinstance(e, dict)}
-
-    @cached_property
-    def complete(self) -> dict[str, str]:
-        """Node id -> the integration ref (local branch, else remote-tracking) whose graph says Complete."""
-        out: dict[str, str] = {}
+    def views(self) -> list[tuple[str, set[str] | None, dict[str, str] | None]]:
+        """Per ref in :attr:`refs`: ``(label, claimed node ids, node id -> status)``; ``None`` where unreadable."""
+        out = []
         for full, label in self.refs:
-            for n in load_roadmap_nodes_at_ref(self.root, full) or []:
-                if str(n.get("status") or "").lower() == "complete":
-                    out.setdefault(str(n.get("id")), label)
+            reg = read_registry_at_ref(self.root, full, _REF_TIMEOUT)
+            nodes = load_roadmap_nodes_at_ref(self.root, full)
+            claimed = None if reg is None else {str(e.get("node_id")) for e in (reg.get("entries") or [])
+                                                if isinstance(e, dict)}
+            status = None if nodes is None else {str(n.get("id")): str(n.get("status") or "").lower() for n in nodes}
+            out.append((label, claimed, status))
         return out
 
+    def over(self, node_id: str) -> str | None:
+        """The refs' labels when every one of them shows ``node_id`` unclaimed and Complete; ``None`` otherwise."""
+        if not self.views:
+            return None
+        for _label, claimed, status in self.views:
+            if claimed is None or status is None or node_id in claimed or status.get(node_id) != "complete":
+                return None
+        return " and ".join(label for label, _c, _s in self.views)
 
-def _cause(rec: WorkerRecord, leaves: _Leaves) -> tuple[bool, str] | None:
-    """``(frees_its_slot, why)`` for a held worker whose leaf is over or whose worktree is gone, else ``None``."""
-    if rec.state not in HELD_STATES:
+
+def _cause(rec: WorkerRecord, leaves: _Leaves) -> str | None:
+    """Why a held worker is orphaned (and frees its slot), else ``None``: its leaf is over by :meth:`_Leaves.over`."""
+    if rec.state not in HELD_STATES or not (where := leaves.over(rec.node_id)):
         return None
-    if rec.branch and leaves.claims is not None and (rec.node_id, rec.branch) not in leaves.claims:
-        return True, f"no claim on {rec.node_id} for {rec.branch} on {' or '.join(lb for _f, lb in leaves.refs)}"
-    if ref := leaves.complete.get(rec.node_id):
-        return True, f"{rec.node_id} is Complete on {ref}"
-    if not Path(rec.worktree).is_dir():
-        return False, f"worktree {rec.worktree} is gone"
-    return None
+    why = f"{rec.node_id} is Complete and unclaimed on {where}"
+    return why if Path(rec.worktree).is_dir() else f"{why}; worktree {rec.worktree} is gone"
 
 
 def holding_slots(repo_root: Path, records: Iterable[WorkerRecord]) -> list[WorkerRecord]:
     """The active ``records`` that count toward ``policy.max_workers``: all but held workers whose leaf is over."""
     leaves = _Leaves(repo_root)
-    return [r for r in records if r.active and not ((c := _cause(r, leaves)) and c[0])]
+    return [r for r in records if r.active and not _cause(r, leaves)]
 
 
 def orphans(repo_root: Path, records: Iterable[WorkerRecord] | None = None) -> dict[str, str]:
-    """Worker id -> why, for each held worker whose leaf is Complete, whose claim is gone or whose worktree is."""
+    """Worker id -> why, for each held worker whose leaf is over (unclaimed and Complete at every integration ref)."""
     leaves = _Leaves(repo_root)
     recs = list_records(repo_root, active_only=True) if records is None else records
-    return {r.worker_id: c[1] for r in recs if (c := _cause(r, leaves))}
+    return {r.worker_id: why for r in recs if (why := _cause(r, leaves))}
 
 
 def slot_breakdown(held: list[WorkerRecord]) -> str:
@@ -131,7 +131,7 @@ def _end(repo_root: Path, pick: Callable[[WorkerRecord], str | None]) -> list[tu
 def terminate_orphaned(repo_root: Path) -> list[tuple[WorkerRecord, str]]:
     """``worker terminate --orphaned``: end every held worker :func:`orphans` names, with its reason."""
     leaves = _Leaves(repo_root)
-    return _end(repo_root, lambda r: (c := _cause(r, leaves)) and c[1])
+    return _end(repo_root, lambda r: _cause(r, leaves))
 
 
 def end_finished_workers(repo_root: Path, node_id: str) -> list[tuple[WorkerRecord, str]]:

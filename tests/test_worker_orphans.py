@@ -38,7 +38,9 @@ def _worker(repo: Path, node: str, state: str, *, branch: str | None = None, wor
 def _on_dev(repo: Path, rel: str, edit, msg: str) -> None:
     """Commit ``edit(text)`` to ``rel`` on the integration branch; the checkout stays on the leaf's branch."""
     git(repo, "checkout", "-q", "dev")
-    commit_file(repo, rel, edit((repo / rel).read_text(encoding="utf-8")), msg)
+    text = (repo / rel).read_text(encoding="utf-8")
+    if (after := edit(text)) != text:   # an unclaim of a leaf never claimed changes nothing
+        commit_file(repo, rel, after, msg)
     git(repo, "checkout", "-q", BR)
 
 
@@ -63,40 +65,64 @@ def _unclaim(repo: Path, node: str) -> None:
             f"unclaim {node}")
 
 
+def _status_on_dev(repo: Path, node: str, status: str) -> None:
+    """``node``'s status in the integration branch's graph (added to it, keyed per node, when absent)."""
+    def edit(text: str) -> str:
+        doc = json.loads(text)
+        n = next((x for x in doc["nodes"] if x["id"] == node), None)
+        if n is None:
+            n = copy.deepcopy(NODE)
+            digit = node.rsplit(".", 1)[1]
+            n.update(id=node, codename=f"other{digit}", node_key=f"{digit * 8}-{digit * 4}-5{digit * 3}-8{digit * 3}-{digit * 12}")
+            doc["nodes"].append(n)
+        n["status"] = status
+        return json.dumps(doc)
+    _on_dev(repo, "roadmap/phases/M1.json", edit, f"{node} {status}")
+
+
 def _complete_on_dev(repo: Path, node: str) -> None:
-    """``node`` Complete in the integration branch's graph; the checkout stays on the leaf's branch."""
-    git(repo, "checkout", "-q", "dev")
-    path = repo / "roadmap" / "phases" / "M1.json"
-    doc = json.loads(path.read_text(encoding="utf-8"))
-    n = copy.deepcopy(NODE)
-    n.update(id=node, codename="other", node_key="22222222-2222-5222-8222-222222222222", status="Complete")
-    doc["nodes"].append(n)
-    commit_file(repo, "roadmap/phases/M1.json", json.dumps(doc), f"{node} complete")
-    git(repo, "checkout", "-q", BR)
+    _status_on_dev(repo, node, "Complete")
 
 
-# --- A1: what holds a slot ---------------------------------------------------------------------------------------
+def _land(repo: Path, node: str) -> None:
+    """The leaf as a landed finish leaves it on the integration branch: Complete, its claim removed."""
+    _complete_on_dev(repo, node)
+    _unclaim(repo, node)
 
-def test_a_completed_worker_on_a_leaf_complete_on_the_integration_branch_frees_its_slot(tmp_path: Path) -> None:
+
+def _stale_origin(repo: Path, rev: str = "dev") -> None:
+    """``origin/dev`` pinned at ``rev``: a remote-tracking ref last fetched then."""
+    git(repo, "update-ref", "refs/remotes/origin/dev", rev)
+
+
+# --- A1: what holds a slot: only a leaf unclaimed AND Complete at every integration ref frees it ---------------
+
+def test_a_completed_worker_on_a_landed_leaf_frees_its_slot(tmp_path: Path) -> None:
     repo, _ = _repo(tmp_path, max_workers=1)
     mine = _worker(repo, "M1.1", "idle", session="sid-1")
     _claim(repo, "M1.2", OTHER)
     done = _worker(repo, "M1.2", "completed", branch=OTHER)
-    _complete_on_dev(repo, "M1.2")
-    assert orphans(repo) == {done.worker_id: "M1.2 is Complete on dev"}
+    _land(repo, "M1.2")
+    assert orphans(repo) == {done.worker_id: "M1.2 is Complete and unclaimed on dev"}
     assert [r.worker_id for r in holding_slots(repo, ws.list_records(repo))] == [mine.worker_id]
     ops.resume(repo, mine.worker_id)   # the one slot is free: the finished leaf's worker no longer holds it
     assert wait_for_worker(repo, mine.worker_id).state == "idle"
     assert ws.load_record(repo, done.worker_id).state == "completed"   # freed, not closed
 
 
-def test_an_idle_worker_whose_claim_is_gone_frees_its_slot(tmp_path: Path) -> None:
+@pytest.mark.parametrize("half", ["claim gone, not Complete", "Complete, still claimed"])
+def test_either_half_alone_keeps_the_worker(tmp_path: Path, capsys, half: str) -> None:
     repo, _ = _repo(tmp_path, max_workers=1)
     mine = _worker(repo, "M1.1", "idle", session="sid-1")
-    gone = _worker(repo, "M1.2", "idle", branch=OTHER)   # delegated under a claim since removed
-    assert orphans(repo) == {gone.worker_id: f"no claim on M1.2 for {OTHER} on dev"}
-    ops.resume(repo, mine.worker_id)
-    assert wait_for_worker(repo, mine.worker_id).state == "idle"
+    if half.startswith("Complete"):
+        _claim(repo, "M1.2", OTHER)
+        _complete_on_dev(repo, "M1.2")
+    else:
+        _status_on_dev(repo, "M1.2", "In Progress")   # delegated under a claim since removed; the leaf is open
+    held = _worker(repo, "M1.2", "idle", branch=OTHER)
+    assert orphans(repo) == {}
+    assert run_worker_cli("worker", "resume", mine.worker_id, "--repo-root", str(repo)) == 1
+    assert f"1 idle: {held.worker_id}" in capsys.readouterr().err
 
 
 def test_a_completed_worker_on_an_unfinished_leaf_holds_its_slot(tmp_path: Path, capsys) -> None:
@@ -112,26 +138,66 @@ def test_a_completed_worker_on_an_unfinished_leaf_holds_its_slot(tmp_path: Path,
     assert ws.load_record(repo, mine.worker_id).state == "idle"
 
 
-def test_a_running_worker_on_a_finished_leaf_still_holds_its_slot(tmp_path: Path) -> None:
+def test_a_running_worker_on_a_landed_leaf_still_holds_its_slot(tmp_path: Path) -> None:
     repo, _ = _repo(tmp_path)
-    running = _worker(repo, "M1.2", "running", branch=OTHER)   # no claim, but still at work: not this leaf's to free
+    _land(repo, "M1.2")
+    running = _worker(repo, "M1.2", "running", branch=OTHER)   # still at work: not this rule's to free
     assert orphans(repo) == {} and holding_slots(repo, [running]) == [running]
 
 
-def test_a_worker_whose_worktree_is_gone_is_orphaned_but_holds_its_slot(tmp_path: Path) -> None:
+def test_a_gone_worktree_alone_keeps_the_worker(tmp_path: Path) -> None:
     repo, _ = _repo(tmp_path)
     wt = tmp_path / "lane"
     shutil.copytree(repo, wt)
     rec = _worker(repo, "M1.1", "idle", branch=BR, worktree=wt)
     shutil.rmtree(wt)
-    assert orphans(repo) == {rec.worker_id: f"worktree {wt.resolve()} is gone"}
-    assert holding_slots(repo, [rec]) == [rec]   # the leaf is still open
+    assert orphans(repo) == {}   # M1.1 is still claimed and open on dev
+    assert holding_slots(repo, [rec]) == [rec]
+
+
+@pytest.mark.parametrize("stale", ["Complete and unclaimed", "Complete, still claimed"])
+def test_a_reopened_leaf_keeps_its_worker_against_a_stale_complete_integration_ref(
+        tmp_path: Path, capsys, stale: str) -> None:
+    """origin/dev last fetched while the leaf was Complete; dev has since reopened it, claimed. The refs
+    disagree, so the worker keeps its slot, is not orphaned, and survives terminate --orphaned."""
+    repo, _ = _repo(tmp_path, max_workers=1)
+    mine = _worker(repo, "M1.1", "idle", session="sid-1")
+    _claim(repo, "M1.2", OTHER)
+    held = _worker(repo, "M1.2", "completed", branch=OTHER)
+    if stale.startswith("Complete and"):
+        _land(repo, "M1.2")
+        _stale_origin(repo)
+        _claim(repo, "M1.2", OTHER)
+    else:
+        _complete_on_dev(repo, "M1.2")
+        _stale_origin(repo)
+    _status_on_dev(repo, "M1.2", "In Progress")   # reopened on dev
+    assert run_worker_cli("worker", "list", "--json", "--repo-root", str(repo)) == 0
+    assert {w["worker_id"]: w["orphaned"] for w in json.loads(capsys.readouterr().out)["workers"]} == {
+        mine.worker_id: None, held.worker_id: None}
+    assert holding_slots(repo, [held]) == [held]
+    assert run_worker_cli("worker", "resume", mine.worker_id, "--repo-root", str(repo)) == 1
+    assert f"1 completed: {held.worker_id}" in capsys.readouterr().err
+    assert run_worker_cli("worker", "terminate", "--orphaned", "--repo-root", str(repo)) == 0
+    assert "No orphaned workers." in capsys.readouterr().out
+    assert ws.load_record(repo, held.worker_id).state == "completed"
+
+
+def test_a_landing_not_yet_on_the_remote_tracking_ref_keeps_the_worker_until_it_is(tmp_path: Path) -> None:
+    repo, _ = _repo(tmp_path)
+    _claim(repo, "M1.2", OTHER)
+    _stale_origin(repo)   # origin/dev: still claimed, not in its graph
+    rec = _worker(repo, "M1.2", "completed", branch=OTHER)
+    _land(repo, "M1.2")
+    assert orphans(repo) == {} and holding_slots(repo, [rec]) == [rec]
+    _stale_origin(repo)   # pushed and fetched: the refs agree
+    assert orphans(repo) == {rec.worker_id: "M1.2 is Complete and unclaimed on dev and origin/dev"}
 
 
 def test_an_older_lanes_registry_snapshot_neither_frees_nor_keeps_a_worker(tmp_path: Path, capsys) -> None:
     """Two linked worktrees whose registries differ judge a shared worker the same way: by the integration
-    branch's registry. One that predates a live claim must not free or end its worker; one that still holds
-    a claim since removed must not keep it."""
+    branch. One that predates a live claim must not free or end its worker; one that still holds a claim
+    since landed must not keep it."""
     repo, _ = _repo(tmp_path, max_workers=1)
     mine = _worker(repo, "M1.1", "idle", session="sid-1")
     old = tmp_path / "old-lane"
@@ -150,21 +216,23 @@ def test_an_older_lanes_registry_snapshot_neither_frees_nor_keeps_a_worker(tmp_p
         assert f"1 completed: {held.worker_id}" in capsys.readouterr().err
     assert ws.load_record(repo, held.worker_id).state == "completed"
 
-    _unclaim(repo, "M1.2")   # the claim really goes; the new lane's snapshot still shows it
+    _land(repo, "M1.2")   # the leaf really lands; the new lane's snapshot still shows the claim
     assert run_worker_cli("worker", "terminate", "--orphaned", "--repo-root", str(new)) == 0
-    assert f"{held.worker_id}: terminated (no claim on M1.2 for {OTHER} on dev)" in capsys.readouterr().out
+    assert f"{held.worker_id}: terminated (M1.2 is Complete and unclaimed on dev)" in capsys.readouterr().out
     assert ws.load_record(repo, mine.worker_id).state == "idle"
 
 
 def test_an_unreadable_integration_registry_keeps_the_worker(tmp_path: Path) -> None:
     repo, _ = _repo(tmp_path)
-    rec = _worker(repo, "M1.2", "completed", branch=OTHER)   # no claim anywhere readable, yet ambiguous
+    _land(repo, "M1.2")
+    rec = _worker(repo, "M1.2", "completed", branch=OTHER)
     _on_dev(repo, "roadmap/registry.yaml", lambda _text: "entries: [\n", "break the registry")
     assert orphans(repo) == {} and holding_slots(repo, [rec]) == [rec]
 
 
 def test_no_integration_branch_keeps_the_worker(tmp_path: Path) -> None:
     repo, _ = _repo(tmp_path)
+    _land(repo, "M1.2")
     rec = _worker(repo, "M1.2", "completed", branch=OTHER)
     git(repo, "branch", "-q", "-m", "dev", "elsewhere")   # neither dev nor origin/dev: nothing authoritative to read
     assert orphans(repo) == {} and holding_slots(repo, [rec]) == [rec]
@@ -186,24 +254,28 @@ def test_the_refusal_lists_running_and_held_workers_separately(tmp_path: Path) -
 # --- A3: list, sync, terminate --orphaned --------------------------------------------------------------------------
 
 def _three(tmp_path: Path) -> tuple[Path, ws.WorkerRecord, ws.WorkerRecord, ws.WorkerRecord]:
-    """Two orphans (claim gone; worktree gone) and one worker that still owns its open leaf."""
+    """Two orphans on landed leaves (one whose worktree is gone too) and one that still owns its open leaf."""
     repo, _ = _repo(tmp_path)
-    unclaimed = _worker(repo, "M1.2", "completed", branch=OTHER)
+    _land(repo, "M1.2")
+    _land(repo, "M1.3")
+    landed = _worker(repo, "M1.2", "completed", branch=OTHER)
     wt = tmp_path / "lane"
     wt.mkdir()
     git(repo, "worktree", "add", "-q", "-b", "feature/rm-lane", str(wt), "dev")
-    no_tree = _worker(repo, "M1.1", "idle", branch=BR, worktree=wt)
+    no_tree = _worker(repo, "M1.3", "idle", branch="feature/rm-lane", worktree=wt)
     git(repo, "worktree", "remove", "--force", str(wt))
     keep = _worker(repo, "M1.1", "idle", branch=BR)
-    return repo, unclaimed, no_tree, keep
+    return repo, landed, no_tree, keep
 
 
 def test_list_and_sync_mark_orphaned_workers(tmp_path: Path, capsys) -> None:
     repo, unclaimed, no_tree, keep = _three(tmp_path)
     assert run_worker_cli("worker", "list", "--repo-root", str(repo)) == 0
     lines = capsys.readouterr().out.splitlines()
-    assert any(ln.startswith(unclaimed.worker_id) and f"orphaned: no claim on M1.2 for {OTHER} on dev" in ln for ln in lines)
-    assert any(ln.startswith(no_tree.worker_id) and "orphaned: worktree" in ln for ln in lines)
+    assert any(ln.startswith(unclaimed.worker_id) and "orphaned: M1.2 is Complete and unclaimed on dev" in ln
+               for ln in lines)
+    assert any(ln.startswith(no_tree.worker_id) and "orphaned: M1.3 is Complete and unclaimed on dev; worktree" in ln
+               for ln in lines)
     assert any(ln.startswith(keep.worker_id) and "orphaned" not in ln for ln in lines)
     assert "(`specy-road worker terminate --orphaned` ends them)" in lines
     assert run_worker_cli("worker", "list", "--json", "--repo-root", str(repo)) == 0
@@ -214,15 +286,15 @@ def test_list_and_sync_mark_orphaned_workers(tmp_path: Path, capsys) -> None:
     assert set(json.loads(capsys.readouterr().out)["orphaned"]) == {unclaimed.worker_id, no_tree.worker_id}
     assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0   # no new events: orphans still shown
     out = capsys.readouterr().out
-    assert "No new worker events." in out and f"orphaned: {unclaimed.worker_id} (no claim" in out
+    assert "No new worker events." in out and f"orphaned: {unclaimed.worker_id} (M1.2 is Complete" in out
 
 
 def test_terminate_orphaned_ends_every_orphan_in_one_step(tmp_path: Path, capsys) -> None:
     repo, unclaimed, no_tree, keep = _three(tmp_path)
     assert run_worker_cli("worker", "terminate", "--orphaned", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
-    assert f"{unclaimed.worker_id}: terminated (no claim on M1.2 for {OTHER} on dev)" in out
-    assert f"{no_tree.worker_id}: terminated (worktree" in out
+    assert f"{unclaimed.worker_id}: terminated (M1.2 is Complete and unclaimed on dev)" in out
+    assert f"{no_tree.worker_id}: terminated (M1.3 is Complete and unclaimed on dev; worktree" in out
     assert [ws.load_record(repo, r.worker_id).state for r in (unclaimed, no_tree, keep)] == ["terminated", "terminated", "idle"]
     assert ws.events_since(repo, unclaimed.worker_id)[-1].type == "terminated"
     assert run_worker_cli("worker", "terminate", "--orphaned", "--repo-root", str(repo)) == 0
