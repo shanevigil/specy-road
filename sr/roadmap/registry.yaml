@@ -57,23 +57,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: completed-worker-frees-slot
-    node_id: M11.57
-    branch: feature/rm-completed-worker-frees-slot
-    touch_zones:
-      - specy_road/worker_ops.py
-      - specy_road/worker_state.py
-      - specy_road/worker_lease.py
-      - docs/orchestration-workers.md
-      - tests/
-      - specy_road/bundled_scripts/finish_task.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/worker_ops_slots.py
-      - specy_road/worker_orphans.py
-      - specy_road/worker_reconcile.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: version-shows-checkout-sha
     node_id: M11.66
     branch: feature/rm-version-shows-checkout-sha

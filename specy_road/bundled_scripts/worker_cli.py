@@ -19,6 +19,7 @@ from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload
 from specy_road.worker_adapters import ADAPTERS, Unsupported
 from specy_road.worker_hook import HOOKS
+from specy_road.worker_orphans import add_terminate, list_view, with_orphans
 from specy_road.worker_outbox import lookup_op
 from specy_road.worker_reconcile import sync_marks
 from specy_road.worker_runner import log_path
@@ -105,7 +106,7 @@ def cmd_list(ns: argparse.Namespace) -> int:
     recs = list_records(root, active_only=not ns.all)
     if not recs:
         return _emit(ns, {"workers": []}, ["No workers under work/.workers/."])
-    return _emit(ns, {"workers": [_row(r) for r in recs]}, [_line(r, root) for r in recs])
+    return _emit(ns, *list_view(root, recs, _row, _line))   # held workers whose leaf is over are marked orphaned
 
 
 def cmd_status(ns: argparse.Namespace) -> int:
@@ -151,7 +152,7 @@ def cmd_sync(ns: argparse.Namespace) -> int:
         lines = ["No new worker events."]
     elif not ns.ack:
         lines.append("(re-run with --ack once handled)")
-    rc = _emit(ns, {"workers": delta, "acked": ns.ack}, lines)
+    rc = _emit(ns, *with_orphans(root, {"workers": delta, "acked": ns.ack}, lines))   # orphans, events or not
     return 2 if timed_out and not delta else rc
 
 
@@ -353,7 +354,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_resume)
     sp = ws.add_parser("interrupt", help="Stop the current turn (declared unsupported by the CLI adapters)"); _w(sp, op=False)
     sp.set_defaults(func=cmd_interrupt)
-    sp = ws.add_parser("terminate", help="SIGTERM the worker and close its record"); _w(sp); sp.set_defaults(func=cmd_terminate)
+    add_terminate(ws, cmd_terminate, _emit)   # `terminate W`, or `--orphaned` for every held worker whose leaf is over
     sp = ws.add_parser("handoff", help="Lease the worker to a human and print the native resume command"); _w(sp)
     sp.set_defaults(func=cmd_handoff)
     sp = ws.add_parser("reclaim", help="Take the lease back; record what the human did"); _w(sp)
