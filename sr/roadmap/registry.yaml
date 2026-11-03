@@ -85,6 +85,14 @@ entries:
       - specy_road/worker_ops_
       - specy_road/worker_adapter_
       - tests/
+      - specy_road/worker_adapter_base.py
+      - specy_road/worker_adapter_claude.py
+      - specy_road/worker_adapter_codex.py
+      - specy_road/worker_adapter_cursor.py
+      - specy_road/worker_ops_launch.py
+      - specy_road/worker_ops_lifecycle.py
+      - specy_road/worker_ops_message.py
+      - specy_road/worker_ops_slots.py
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending

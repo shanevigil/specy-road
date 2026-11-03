@@ -77,8 +77,12 @@ message; `process_alive` → message and lifecycle; `wrapper_gone` → slots; `_
 
 ## Touch zones
 
-Accurate as listed: every new file matches the `specy_road/worker_ops_` or `specy_road/worker_adapter_` prefix, and
-nothing outside the zones needed a change. `worker_runner` (lazy `from specy_road.worker_ops import _send`) and
+The listed prefixes (`specy_road/worker_ops_`, `specy_road/worker_adapter_`) are not expanded by the zone matcher,
+so the eight new modules were added to `M11.59`'s touch zones by exact path with `specy-road edit-node M11.59 --add
+touch_zones=specy_road/<file>` (`worker_adapter_base.py`, `worker_adapter_claude.py`, `worker_adapter_codex.py`,
+`worker_adapter_cursor.py`, `worker_ops_launch.py`, `worker_ops_lifecycle.py`, `worker_ops_message.py`,
+`worker_ops_slots.py`); the node chunk and registry claim are committed on this branch. Nothing outside the zones
+needed a change. `worker_runner` (lazy `from specy_road.worker_ops import _send`) and
 `worker_reconcile` (lazy `sweep_dead_wrappers`, `sweep_stalled`) keep working through the re-exports. Docs that cite
 `worker_adapters.py:<lines>` (`docs/design-notes/agent-performance-research-triage.md`) or `worker_ops.py:101`
 (`docs/design-notes/lean-code-census.md`) are dated design notes and were left as they are.
