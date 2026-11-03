@@ -183,7 +183,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.74` Pickup and finish in one checkout take a shared lock in order `pickup-finish-shared-lock` — task — **Complete**
   - `M11.75` Reviewer prompt asks for independent probes, not the executor's own checks `reviewer-probe-rules` — task — **Not Started**
   - `M11.76` Every roster model reaches its profile notes `profile-alias-coverage` — task — **Not Started**
-  - `M11.77` A completed reviewer run does not report a missing record `run-record-no-false-failure` — task — **Not Started**
+  - `M11.77` A completed reviewer run does not report a missing record `run-record-no-false-failure` — task — **Complete**
   - `M11.78` Review lessons: escaped defect classes feed every reviewer prompt `review-lessons` — task — **Not Started**
   - `M11.79` Leaves that touch high-risk zones need a stronger reviewer `risk-tiered-review` — task — **Not Started**
   - `M11.80` Executors and reviewers run tests with a bounded worker count `test-worker-cap` — task — **Not Started**
@@ -209,7 +209,6 @@ Do not pick these up.
 - `M11.66` on `feature/rm-version-shows-checkout-sha` since 2026-11-03
 - `M11.75` on `feature/rm-reviewer-probe-rules` since 2026-11-03
 - `M11.76` on `feature/rm-profile-alias-coverage` since 2026-11-03
-- `M11.77` on `feature/rm-run-record-no-false-failure` since 2026-11-03
 - `M8.2` on `feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
