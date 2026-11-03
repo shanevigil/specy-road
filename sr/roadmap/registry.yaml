@@ -41,3 +41,15 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: queue-worker-message
+    node_id: M11.14
+    branch: feature/rm-queue-worker-message
+    touch_zones:
+      - specy_road/worker_ops.py
+      - specy_road/worker_runner.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
