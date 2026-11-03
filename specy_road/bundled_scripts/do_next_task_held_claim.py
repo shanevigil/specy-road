@@ -11,7 +11,10 @@ is present locally, minus branches another worktree has checked out: a
 coordinator that hands leaves out with ``--worktree`` keeps every leaf's branch
 in the same repository, and each of those belongs to its own worktree. A claim
 whose branch is gone is not held here (another clone's, or a dead row for
-``registry-prune``), so it never blocks a pickup.
+``registry-prune``), so it never blocks a pickup. Nor does a claim whose leaf
+is already Complete on its branch: in ``on_complete: pr`` mode finish releases
+the row only on the feature branch, so the integration branch keeps it until
+the PR merges, and the next pickup must not be told to abort finished work.
 
 Pickup's validate-before-pickup step lives here too, moved out of
 ``do_next_task.py`` for its line cap: it is the other check that refuses before
@@ -23,6 +26,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from specy_road.bundled_scripts.do_next_finished_unmerged import node_complete_on_ref
 from specy_road.bundled_scripts.grind_session_events import EXIT_IN_FLIGHT
 from specy_road.bundled_scripts.grind_session_in_flight import InFlightClaim, own_in_flight_claims
 from specy_road.bundled_scripts.validate_roadmap import validate_at
@@ -65,7 +69,7 @@ def branches_in_other_worktrees(repo_root: Path) -> set[str]:
 
 
 def held_claims(repo_root: Path, reg: dict) -> list[InFlightClaim]:
-    """Registry claims whose branch exists locally and no other worktree has checked out."""
+    """Registry claims whose branch exists locally, no other worktree has checked out, and is not finished."""
     elsewhere = branches_in_other_worktrees(repo_root)
     node_ids = dict.fromkeys(e.get("node_id") for e in reg.get("entries") or [] if e.get("node_id"))
 
@@ -73,7 +77,8 @@ def held_claims(repo_root: Path, reg: dict) -> list[InFlightClaim]:
         # Looked up at call time so a test patching local_branch_exists here is honoured.
         return branch not in elsewhere and local_branch_exists(root, branch)
 
-    return own_in_flight_claims(repo_root, reg, list(node_ids), branch_exists=held_here)
+    claims = own_in_flight_claims(repo_root, reg, list(node_ids), branch_exists=held_here)
+    return [c for c in claims if not node_complete_on_ref(repo_root, c.branch, c.node_id)]
 
 
 def refuse_second_claim(repo_root: Path, *, allow: bool) -> None:

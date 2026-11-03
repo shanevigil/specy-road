@@ -13,7 +13,7 @@ import json
 import uuid
 from pathlib import Path
 
-from tests.test_baseline_gate_cli import FEATURE, SHEET, _branches, _git, _pickup, _project
+from tests.test_baseline_gate_cli import FEATURE, SHEET, _branches, _git, _pickup, _project, _run
 
 from specy_road.agents_md_block import render_agents_lines
 from specy_road.bundled_scripts.do_next_task_args import parse_do_next_task_args
@@ -87,6 +87,25 @@ def test_claims_checked_out_in_other_worktrees_are_theirs_not_this_checkouts(tmp
     assert r.returncode == 0, r.stderr
     assert _git(root, "branch", "--show-current") == "main"
     assert _git(root / "work" / ".worktrees" / "leaf-two", "branch", "--show-current") == SECOND
+
+
+def test_a_leaf_finished_in_pr_mode_does_not_block_the_next_pickup(tmp_path: Path) -> None:
+    """``pr`` finish releases the row on the feature branch only; ``main`` keeps it until the PR merges."""
+    root = _two_leaves(tmp_path)
+    assert _run(root, "do-next-available-task", "--on-complete", "pr").returncode == 0
+    (root / "src").mkdir()
+    (root / "src" / "one.txt").write_text("leaf one\n", encoding="utf-8")
+    _git(root, "add", "src/one.txt")
+    _git(root, "commit", "-qm", "leaf one work")
+    fin = _run(root, "finish-this-task", "--on-complete", "pr")
+    assert fin.returncode == 0, fin.stderr
+    _git(root, "checkout", "-q", "main")
+    assert "leaf-one" in _registry(root, "main")
+    r = _run(root, "do-next-available-task", "--on-complete", "pr")
+    assert r.returncode == 0, r.stderr
+    assert "already holds a claim" not in r.stderr
+    assert _git(root, "branch", "--show-current") == SECOND
+    assert "leaf-two" in _registry(root, "origin/main")
 
 
 def test_the_agents_md_stub_describes_pickups_exit_6_and_its_override() -> None:
