@@ -61,6 +61,24 @@ The zones now include `specy_road/review_delegate.py` and `docs/orchestration-re
 - **Cost:** hashing every file twice makes the walk slower on a large checkout, which is one more reason to run reviewers from the leaf's worktree.
 - **WIP merge `cfc98efe`** (M11.36 resumed-delta approval, rework findings, and more). The only conflict was in `role_prompt.py`: M11.36's `reviewer_lines(root, node_id, model, t, ref, loop)`, which returns `(preamble, packet, error)` and adds the resumed-delta preamble, gained this leaf's `read_back` argument and appends `READ_BACK_LINES`/`PASTED_LINES`; `build_prompt` uses M11.36's call form and still ends the packet with `schema_lines()`. The round-3 fixes (content digest, final-object rule, both regressions) are unchanged. `pytest -n 4` over the leaf's test files plus `tests/test_resumed_delta_review.py`, `tests/test_rework_findings_in_prompt.py` and `tests/test_ready_command.py`: 174 passed; file limits OK.
 
+## Round 4 (Codex Sol's block at `c12efa63`; commit `eacd6581`)
+
+Required change → what changed:
+
+- **"Protect the Git index in the post-run write check, and add a public-interface regression proving an index-only write is a review failure and files no verdict."**
+  - **Check:** `review_record_write.snapshot` adds a `git index` entry, the SHA-256 of `git ls-files --stage -v -z`. It covers each entry's mode, blob, stage and assume-unchanged / skip-worktree flag. So `git update-index --assume-unchanged`, `git rm --cached` and `git add` are writes (reported as `wrote git index`), the verdict is not filed, and the run is a review failure.
+  - **Why not the index bytes:** a read-only `git status` rewrites `.git/index` when it refreshes the stat cache, and comparing bytes would fail honest reviews.
+  - **Regressions** in `tests/test_review_record_write_git.py`, split out because `tests/test_review_record_write.py` hit 405 lines:
+    - `specy-road review delegate` with `update-index --assume-unchanged` and with `rm --cached`: each exits 1 with `outcome: review_failure` and no `REVIEW-opus.md`. The first also shows that `git status` sees no change, which is how the write hid.
+    - `specy-road prompt --channel cli` with the same write: exits 1, `review_failure` on stderr, no record.
+    - `git status` against a stale stat cache rewrites the index file's bytes and the review is still recorded.
+  - The fake harness in `tests/review_delegate_helpers.py` gains a `git` step. `docs/orchestration-review.md` names the index among the writes.
+- **Verification:**
+  - `pytest -n 4` over the leaf's test files (`tests/test_review_record_write.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_worker_adapters.py`, `tests/test_models_and_prompt.py`, `tests/test_prerelease_review.py`, `tests/test_review_rca.py`, `tests/test_role_prompt_file_limits.py`, `tests/test_resumed_delta_review.py`): 163 passed. After the split, the two `review_record_write` test files: 32 passed.
+  - File limits OK; private imports 0 new.
+  - Red/green: with the `git index` entry removed, the three index-only cases fail and the `git status` case still passes.
+- **Still not inspected:** other `.git` metadata (`config`, `hooks/`, `info/exclude`, objects). A reviewer that writes a hook is not caught.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
@@ -86,6 +104,7 @@ The zones now include `specy_road/review_delegate.py` and `docs/orchestration-re
 - `review_run_lock`, `ReviewRunBusy`: keep one leaf's reviewer runs from failing each other under the strict check. The `ImportError` branch is Windows; `OSError` means busy.
 - `reviewer_env`: lets an honest Python test re-run write nothing.
 - `run_text`, `final_output`, `json_object`, the envelope unwrap in `file_review`: A1/A3 extraction.
+- `git index` entry in `snapshot` (round 4): Sol's A2 index finding.
 - `_content` (round 3): the content digest in the A2 snapshot. Its `OSError` branch covers a file removed mid-walk or without read permission. `json_object`'s final-object rule (round 3): A3.
 - `file_review`, `Outcome`, `_review_record` (output captured because `review delegate --json` owns stdout): the A1/A2/A3 outcome.
 - `run_logged` (`OSError` for a harness missing from PATH, stdin `OSError` for one that quits early) and `run_and_file` (busy lock reported, exit 1): the `prompt --channel cli` turn.
