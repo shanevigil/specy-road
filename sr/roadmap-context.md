@@ -159,9 +159,17 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.50` finish keeps a committed implementation summary in history `finish-keeps-summary` — task — **Not Started**
   - `M11.51` Dashboard saves never overwrite newer disk edits, and the read API is documented `dashboard-safe-saves` — task — **Not Started**
   - `M11.52` PR mode predicts and resolves the registry conflict `pr-mode-registry-conflict` — task — **Not Started**
-  - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Not Started**
+  - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Complete**
   - `M11.54` The test suite and land check run in parallel `parallel-test-suite` — task — **Not Started**
   - `M11.55` Executors split modules to meet file limits instead of deleting documentation `file-limit-split-not-delete` — task — **Not Started**
+  - `M11.56` Delegate creates the reviews directory before a harness is told to allow it `reviews-dir-before-launch` — task — **Not Started**
+  - `M11.57` A completed worker on a finished leaf does not hold a max_workers slot `completed-worker-frees-slot` — task — **Not Started**
+
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
 
 ## Archived (not in the live roadmap)
 
@@ -179,7 +187,13 @@ Do not pick these up.
 - `M11.26` on `feature/rm-profile-aliases` since 2026-11-02
 - `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
 - `M11.37` on `feature/rm-packet-uncommitted-refs` since 2026-11-02
+- `M11.44` on `feature/rm-init-profiles-subset` since 2026-11-02
+- `M11.45` on `feature/rm-stale-command-prose` since 2026-11-02
+- `M11.47` on `feature/rm-validate-zones-git-root` since 2026-11-02
+- `M11.48` on `feature/rm-claimed-leaf-status` since 2026-11-02
+- `M11.50` on `feature/rm-finish-keeps-summary` since 2026-11-02
 - `M11.54` on `feature/rm-parallel-test-suite` since 2026-11-02
+- `M11.56` on `feature/rm-reviews-dir-before-launch` since 2026-11-02
 
 ## Reaching the detail behind this
 
