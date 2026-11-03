@@ -77,11 +77,31 @@ Required change → what changed:
   - `pytest -n 4` over the leaf's test files (`tests/test_review_record_write.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_worker_adapters.py`, `tests/test_models_and_prompt.py`, `tests/test_prerelease_review.py`, `tests/test_review_rca.py`, `tests/test_role_prompt_file_limits.py`, `tests/test_resumed_delta_review.py`): 163 passed. After the split, the two `review_record_write` test files: 32 passed.
   - File limits OK; private imports 0 new.
   - Red/green: with the `git index` entry removed, the three index-only cases fail and the `git status` case still passes.
-- **Still not inspected:** other `.git` metadata (`config`, `hooks/`, `info/exclude`, objects). A reviewer that writes a hook is not caught.
+- **Still not inspected (round 4):** other `.git` metadata. Round 6 covers it.
 
 ## Round 5 (Codex Sol's block at `fca22fea`)
 
 - **"Remove the new mock call-count assertion at `tests/test_review_record_write.py:260`; select the reviewer launch by its observable argv."** `test_prompt_channel_cli_runs_a_cursor_reviewer_read_only_and_files_its_answer` no longer unpacks exactly one recorded call (`(call,) = calls`). It selects the launch whose argv starts `agent -p` and keeps the exit code, the full argv prefix, the no-`--force` check, the prompt text and the filed-record assertions. Verification: `pytest -n 4 tests/test_review_record_write.py`, 28 passed; file limits OK.
+
+## Round 6 (Codex Sol's block at `07169a5a`; commit `4523789e`)
+
+Required change → what changed:
+
+- **"Protect Git metadata in the post-run write check, including the resolved worktree/common Git directories and the checkout's .git pointer, while keeping the semantic index comparison."**
+  - New `review_record_write._walk_git`, called from `snapshot`. It walks every file of the resolved common Git directory (`rev-parse --path-format=absolute --git-common-dir`: hooks, config, info, objects, refs, logs) and of the worktree's own Git directory (`--git-dir`), content-hashed like the checkout. A linked worktree's `.git` pointer file is digested too.
+  - Skipped: `<common>/worktrees`, other linked worktrees' private directories (other checkouts, as nested checkouts already are), and raw index bytes. This checkout's index is skipped because the semantic `git index` comparison (`ls-files --stage -v`) stands in for it, so a `git status` stat refresh is still not a write. The main checkout's index is skipped when the reviewer is in a linked worktree, since it belongs to that other checkout.
+  - `_walk` takes a `skip` set for this.
+- **"Add a public-interface regression proving a reviewer-created hook is a review_failure and files no verdict."** In `tests/test_review_record_write_git.py`, through `specy-road review delegate`:
+  - a reviewer-created `.git/hooks/pre-commit` in the main checkout exits 1 with `outcome: review_failure`, reason `wrote .git/hooks/pre-commit`, and no record;
+  - with `--worktree <linked worktree>`, a hook written into the common Git directory, and a rewritten worktree `.git` pointer, are each a review failure with no record.
+  - The existing stale-stat `git status` test still records. `test_a_commit_and_an_ignored_cache_count_as_writes_and_other_checkouts_do_not` now also requires the commit's `.git/` metadata among the writes.
+- **Verification:**
+  - `pytest -n 4` over the leaf's test files (`tests/test_review_record_write.py`, `tests/test_review_record_write_git.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_worker_adapters.py`, `tests/test_models_and_prompt.py`, `tests/test_prerelease_review.py`, `tests/test_review_rca.py`, `tests/test_role_prompt_file_limits.py`, `tests/test_resumed_delta_review.py`): 166 passed.
+  - File limits OK; private imports 0 new; ruff's two C901s are WIP's.
+  - Red/green: without the `_walk_git` call, the hook, linked-worktree hook, pointer and commit-metadata tests fail.
+- **Cost and the shared repository:**
+  - On this overloaded machine one snapshot of a toolkit worktree, including its ~5.7k Git files, took about 55s.
+  - The common Git directory is shared by every worktree. Another session's commit or fetch during a review (new objects, logs, refs) now counts as a write, as refs already did. Run reviewers when nothing else commits to the repository.
 
 ## Not verified / open
 
@@ -109,6 +129,7 @@ Required change → what changed:
 - `reviewer_env`: lets an honest Python test re-run write nothing.
 - `run_text`, `final_output`, `json_object`, the envelope unwrap in `file_review`: A1/A3 extraction.
 - `git index` entry in `snapshot` (round 4): Sol's A2 index finding.
+- `_walk_git` and `_walk`'s `skip` (round 6): Git metadata in the A2 snapshot. Its `resolved()` returns `None` when git can't answer.
 - `_content` (round 3): the content digest in the A2 snapshot. Its `OSError` branch covers a file removed mid-walk or without read permission. `json_object`'s final-object rule (round 3): A3.
 - `file_review`, `Outcome`, `_review_record` (output captured because `review delegate --json` owns stdout): the A1/A2/A3 outcome.
 - `run_logged` (`OSError` for a harness missing from PATH, stdin `OSError` for one that quits early) and `run_and_file` (busy lock reported, exit 1): the `prompt --channel cli` turn.
