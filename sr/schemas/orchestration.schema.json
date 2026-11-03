@@ -107,6 +107,10 @@
           "type": "boolean",
           "description": "When true, a fix round after a reviewer's approval may be reviewed from a delta packet (`work/reviews/<NODE_ID>/PACKET-<model>.md`: the diff since the last commit that reviewer approved, plus its notes on that commit) when every path in that delta is a documentation or test file inside the leaf's touch zones (the leaf's own implementation summary counts as inside), it touches at most three files, and its integrity report has no findings; otherwise the round gets the full packet. An approval naming delta_from counts only for the model whose counting approval of that commit is on file, and only while the delta still qualifies. `review-packet --full` skips delta packets; false forces full review. Default true."
         },
+        "reviewer_resumed_delta": {
+          "type": "boolean",
+          "description": "When true, an approval naming delta_from may count with fresh_session: false when the reviewer resumed the session that read its delta packet; full reviews and any approval without delta_from still require fresh_session under reviewer_fresh_session. Default false."
+        },
         "integrity_gate": {
           "type": "boolean",
           "description": "When true, each `specy-road integrity` finding for the commit under review is a review-gate problem unless its exact line is in the node's planned_test_changes as committed on the integration branch. Default false."

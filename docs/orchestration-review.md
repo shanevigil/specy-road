@@ -93,6 +93,14 @@ model's vote, so `reviewers_distinct_families` still needs approvals from both
 families at the current commit. A block is never affected. Like
 `fresh_session`, `delta_from` is self-attested; a signature covers it.
 
+With `policy.reviewer_resumed_delta: true` (default false), an approval naming
+`delta_from` may count with `fresh_session: false` when the reviewer resumed the
+session that read its delta packet; any other approval still needs
+`fresh_session: true` under `reviewer_fresh_session`. When the gate refuses a
+record only for `fresh_session`, `handoff status` quotes the reason and says
+whether enabling `reviewer_resumed_delta` would allow a resumed delta approval
+(or that the policy applies only to approvals naming `delta_from`).
+
 Full fresh review comes back two ways. `specy-road review-packet <NODE_ID>
 --full` stamps `PACKET.md`; while that packet is the one for the commit under
 review, no delta packet is built and no `delta_from` approval counts. Rebuilding

@@ -71,6 +71,7 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_gate import delta_basis
+from specy_road.review_resumed_delta import delta_session_lines
 from specy_road.review_rca import escalated_note, loop_state, rca_evidence, rca_preamble, rca_trigger
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
 from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_repo_root
@@ -142,6 +143,12 @@ def reviewer_packet(root: Path, node_id: str, model: str, t: ReviewTarget,
     return text, ""
 
 
+def _reviewer_prompt_lines(root: Path, node: dict, node_id: str, model: str, ref: str | None,
+                           t: ReviewTarget, loop) -> list[str]:
+    return (reviewer_preamble(node_id, model, ref) + delta_session_lines(root, node, model, t.commit)
+            + REMOVED_TEXT_LINES + LAUNCH_MODE_LINES + escalated_note(loop, node_id))
+
+
 def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
                  ref: str | None = None, context_feedback: bool = False,
                  force_reason: str | None = None) -> tuple[str, Profile | None, str | None]:
@@ -205,7 +212,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
         if context_feedback:
             lines += CONTEXT_FEEDBACK_LINES
     elif role == "reviewer":
-        lines += reviewer_preamble(node_id, model, ref) + REMOVED_TEXT_LINES + LAUNCH_MODE_LINES + escalated_note(loop, node_id)
+        lines += _reviewer_prompt_lines(root, node, node_id, model, ref, t, loop)
     elif role == "rca":
         lines += rca_preamble(root, node_id, model, loop.escalation) + [DATA_LINE, ""]
     else:

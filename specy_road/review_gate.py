@@ -59,9 +59,9 @@ from specy_road.review_files import (HUMAN, PACKET_NAME, ReviewFile, executor_bl
                                      verifier_gate_problems)
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.review_policy_ref import committed_yaml as _committed_yaml, policy_source
+from specy_road.review_resumed_delta import fresh_session_problem
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
 from specy_road.runtime_paths import project_prefix, rebase_to_project
-
 #: A fix round is reviewed from a delta packet only when it changes at most this many files.
 DELTA_MAX_FILES = 3
 _DOC_SUFFIXES = (".md", ".rst", ".txt", ".adoc")
@@ -198,8 +198,8 @@ def _eligibility(config: dict[str, Any], node: dict[str, Any], review: ReviewFil
     if not may_handle(entry, node_sensitivity(node)):
         return None, (f"{node_id} is {node_sensitivity(node)!r} and {model!r} may process only "
                       f"{entry_may_process(entry)} (roster may_process)")
-    if config["policy"].get("reviewer_fresh_session", True) and not review.data.get("fresh_session"):
-        return None, "policy requires a fresh reviewer session (fresh_session: true)"
+    if why := fresh_session_problem(config["policy"], review.data):
+        return None, why
     why = (rerun_problem(config["policy"], review.data) or notes_problem(review.data, review.body)
            or _signature_problem(config, model, review))
     if why:

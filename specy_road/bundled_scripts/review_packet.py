@@ -46,6 +46,7 @@ from specy_road.impact import impact_for_diff, section_lines
 from specy_road.integrity import compare_integrity
 from specy_road.review_files import PACKET_NAME, ReviewFile, latest_ready, reviews_dir
 from specy_road.review_gate import FULL_MARK
+from specy_road.review_resumed_delta import delta_section_lines
 from specy_road.review_gate_ready import policy_source_line, trial_merge_lines
 from specy_road.review_target import (
     MILESTONE_SUMMARY, REGISTRY_REL, ReviewTarget, full_sha, milestone_packet_or_exit, milestone_packet_lines,
@@ -325,14 +326,6 @@ def _run_verify(root: Path, cmds: list[str], t: ReviewTarget) -> list[str]:
     return out
 
 
-def _delta_section(prior: ReviewFile) -> list[str]:
-    sha, model = prior.data["commit"], prior.data["model"]
-    return ["## Delta review", "", f"`{model}`, you approved `{sha}`. This packet covers only the change since: "
-            "at most three documentation or test files inside the touch zones, with no integrity findings. Add "
-            f"`delta_from: \"{sha}\"` to your record's front matter; the gate counts it only for `{model}`.", "",
-            f"### Your notes on `{sha}`", "", prior.body.strip() or "_(none)_", ""]
-
-
 def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list[str],
                  base: str | None = None, max_diff_lines: int = MAX_DIFF_LINES,
                  max_diff_bytes: int = MAX_DIFF_BYTES, prior: ReviewFile | None = None, full: bool = False) -> str:
@@ -346,7 +339,7 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
     paths, changed = changed_paths_section(root, t)
     brief_lines = brief.rstrip().splitlines()
     parts = [
-        _header(root, t, integration_ref) + (_delta_section(prior) if prior else [FULL_MARK, ""] if full else []),
+        _header(root, t, integration_ref) + (delta_section_lines(prior, root) if prior else [FULL_MARK, ""] if full else []),
         ["---", ""] + brief_lines[:1] + ["", RENDERED] + brief_lines[1:] + ["", "---", ""],
         _summary(root, t),
         uncommitted_refs_section(root, t, brief, t.node, by_id, _computed(t)),
