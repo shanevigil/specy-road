@@ -43,6 +43,7 @@ the `plan_hold` docstring.
 - `python -m pytest -q tests/test_why_blocked_plan_holds.py tests/test_cli_query_commands.py tests/test_roadmap_explain.py tests/test_session_plan_touch_zones.py` — 40 passed.
 - `specy-road file-limits` — OK (`roadmap_query_cli.py` is 212 lines).
 - `python scripts/check_test_private_imports.py` — 0 new private references.
+- Merged `origin/WIP/improvements-0-3-1` (merge `1ffdac42`, brings the new Codex reviewer roster entries); clean, nothing this leaf uses changed (only an appended helper in `tests/review_repo_helpers.py`); the four test files above (40 passed), file-limits and the private-import check rerun after it.
 - Red-green: with `roadmap_query_cli.py` reverted to the base, all 5 new tests fail; restored, they pass.
 - `python -m pytest -n auto -q -p no:cacheprovider` — full suite: 3324 passed, 2 skipped.
 
