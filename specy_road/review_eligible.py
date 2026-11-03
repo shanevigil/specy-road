@@ -7,13 +7,14 @@ READY files as ``review_rca.rca_parties`` does:
 
 * not a reviewer role — no ``reviewer`` role and no active substitution covering the node;
 * the node's sensitivity is outside its roster ``may_process``;
-* executor of the leaf — it filed a READY and has no valid review on the leaf;
+* executor of the leaf — it filed a READY before any valid review of its own on the leaf;
 * wrote a fix commit on this leaf — it filed a READY after reviewing the leaf;
 * rejected record — its record at this commit is invalid or does not count, with the gate's reason;
 * same family as an approval already counted, under ``reviewers_distinct_families``;
 * ``signed_reviews`` is on and its roster entry has no ``public_key``.
 
-A model whose approval already counts is listed as counting; one that blocks may still approve on re-review.
+Every exclusion is checked first, so a model whose approval the gate counts is listed as counting only when none
+applies (a READY author never is); one that blocks may still approve on re-review.
 """
 
 from __future__ import annotations
@@ -28,15 +29,20 @@ from specy_road.review_target import same_commit
 
 
 def _writers(repo_root: Path, node_id: str, branch: str | None) -> dict[str, str]:
-    """Model -> why it wrote part of the change: a READY from a model with no valid review on the leaf is the
-    executor's; one from a model that has reviewed the leaf is a fix. A self-review (``authored_fix``) is invalid."""
-    reviewed = {r.data.get("model") for r in list_review_history(repo_root, node_id) + list_reviews(repo_root, node_id)
-                if r.ok}
+    """Model -> why it wrote part of the change: a READY written after the model's first valid review on the leaf
+    is a fix; any other READY is the executor's (an executor that also files an approval stays the executor).
+    Filing times are file mtimes: ``history/`` copies are written once. A self-review (``authored_fix``) is invalid."""
+    first: dict[str, float] = {}
+    for r in list_review_history(repo_root, node_id) + list_reviews(repo_root, node_id):
+        if r.ok and (r.on_disk or r.path).is_file():
+            t = (r.on_disk or r.path).stat().st_mtime
+            first[r.data["model"]] = min(t, first.get(r.data["model"], t))
     out: dict[str, str] = {}
     for r in list_ready(repo_root, node_id, branch):
         agent = str(r.data.get("agent")) if r.ok else None
         if agent and agent not in out:
-            out[agent] = (f"wrote a fix commit on this leaf ({r.path.name})" if agent in reviewed
+            fix = agent in first and r.path.stat().st_mtime > first[agent]
+            out[agent] = (f"wrote a fix commit on this leaf ({r.path.name})" if fix
                           else f"executor of the leaf ({r.path.name})")
     return out
 
@@ -67,9 +73,12 @@ def _roster_reason(config: dict[str, Any], node: dict[str, Any], model: str) -> 
 
 
 def _same_family(gate: Any, model: str, family: str | None) -> str | None:
+    """A counted approval of the family from another model; for a counted model, only an earlier one, since
+    the gate counts the family once."""
     if not gate.distinct_families:
         return None
-    other = next((a for a in gate.approvals if a.family == family and a.model != model), None)
+    mine = next((i for i, a in enumerate(gate.approvals) if a.model == model), len(gate.approvals))
+    other = next((a for a in gate.approvals[:mine] if a.family == family), None)
     return f"same family ({family}) as {other.model}'s approval, which already counts" if other else None
 
 
@@ -90,13 +99,11 @@ def reviewer_eligibility(repo_root: Path, node: dict[str, Any], gate: Any, branc
     rows = []
     for entry in config["roster"]:
         model, family = entry["id"], entry.get("family")
-        why = _roster_reason(config, node, model)
-        if why is None and model in counting:
-            rows.append({"model": model, "family": family, "eligible": True, "reason": "its approval counts"})
-            continue
-        why = why or writers.get(model) or rejected.get(model) or _same_family(gate, model, family)
-        rows.append({"model": model, "family": family, "eligible": why is None,
-                     "reason": why or _eligible_text(gate, node["id"], model)})
+        # Every exclusion first: an author or a second same-family approval never reads as counting.
+        why = (_roster_reason(config, node, model) or writers.get(model) or rejected.get(model)
+               or _same_family(gate, model, family))
+        ok = "its approval counts" if model in counting else _eligible_text(gate, node["id"], model)
+        rows.append({"model": model, "family": family, "eligible": why is None, "reason": why or ok})
     return rows
 
 

@@ -24,20 +24,33 @@ Reasons, checked in this order with the gate's own helpers (`is_rostered_reviewe
 
 - **A1** not a reviewer role (and no active substitution); sensitivity outside `may_process`; under
   `signed_reviews`, no `public_key` on the roster entry;
-- **A1** executor of the leaf: the model filed a READY on the leaf and has no valid review on it;
-- **A1** wrote a fix commit on this leaf: the model filed a READY and has a valid review on the leaf
-  (current or under `history/`), so it reviewed and then fixed. These two come from the leaf's READY
-  files, as `review_rca.rca_parties` already identifies the leaf's executors;
+- **A1** executor of the leaf: the model filed a READY on the leaf before any valid review of its own on it;
+- **A1** wrote a fix commit on this leaf: the model filed a READY after its first valid review on the leaf
+  (current or under `history/`, compared by file mtime), so it reviewed and then fixed. These two come from
+  the leaf's READY files, as `review_rca.rca_parties` already identifies the leaf's executors;
 - **A1** rejected record: its record at this commit is invalid, or is listed by the gate as not counting;
   the gate's reason is quoted;
 - **A1** same family as an approval already counted (only under `reviewers_distinct_families`).
 
-A model whose approval counts is listed as counting; one whose record blocks is listed as able to approve on
-re-review. The gate itself is unchanged: this only explains roster entries.
+Every exclusion is checked before a model is listed as counting, so a READY author is excluded even when the
+gate counts its approval (the gate trusts the record's `authored_fix: false`), and under a distinct-family
+policy only the first counted approval of a family reads as counting; a later one from the same family is
+excluded as same-family. A model whose record blocks is listed as able to approve on re-review. The gate itself
+is unchanged: this only explains roster entries.
+
+### Review fix round (gpt-6.1-sol block)
+
+`reviewer_eligibility` listed a model whose approval the gate counted as eligible before checking the READY-author
+exclusion. All exclusions now run first. Checking every other exclusion against that shortcut found one more:
+a second same-family approval read as counting, so `_same_family` now excludes a counted model when an earlier
+counted approval has its family. `_writers` now tells executor from fix author by filing time rather than by
+whether the model ever reviewed, so an executor that filed an approval is labelled the executor.
 
 - **A2** `tests/test_review_eligible.py` covers the human listed as eligible, an executor and a fix
   author excluded (author-excluded), a same-family reviewer excluded, a rejected record, and the text
-  placement below the policy line plus the empty list once the gate is met.
+  placement below the policy line plus the empty list once the gate is met. Two regressions from the review:
+  a READY author holding a counting approval is excluded with the author reason, and a second same-family
+  counting approval is excluded as same-family.
 
 ## Touch zones
 
@@ -56,19 +69,19 @@ could mention the new lines.
   tests/test_review_delegate.py tests/test_review_evidence.py tests/test_review_hardening.py
   tests/test_review_file_case.py tests/test_review_files.py tests/test_review_rca.py tests/test_review_signing.py
   tests/test_review_round6_evidence.py tests/test_session_presence.py tests/test_worker_cli.py
-  tests/test_worktree_paths_agree.py`: 227 passed
+  tests/test_worktree_paths_agree.py`: 229 passed (after the fix round)
 - `specy-road file-limits`: OK
 - `ruff check` on the changed Python files (C901): passed
 
 ## Added
 
 - `specy_road/review_eligible.py` — new module (the CLI and gate files are at the line cap).
-- `_writers` — maps READY authors to "executor of the leaf" or "wrote a fix commit on this leaf" (a READY after a valid review on the leaf).
+- `_writers` — maps READY authors to "executor of the leaf" or "wrote a fix commit on this leaf" (a READY written after the model's first valid review on the leaf, by mtime).
 - `_rejected` — maps a model to the gate's reason its record at this commit is invalid or does not count, skipping models that already count.
 - `_roster_reason` — role/substitution, `may_process` sensitivity and `signed_reviews`/`public_key` checks, reusing the gate's helpers.
-- `_same_family` — exclusion when a distinct-family policy already counts that family from another model.
+- `_same_family` — exclusion when a distinct-family policy already counts that family from another model (for a counted model, only from an earlier counted approval).
 - `_eligible_text` — wording for an eligible entry: re-review when its record blocks, the interactive command for `human`, `review record` otherwise.
 - `reviewer_eligibility` — one row per roster entry; returns `[]` when the gate is met, the config errs or no commit resolves (guard: nothing to explain then).
 - `eligibility_lines` — text rendering under the policy line.
 - `review_cli._node_status` — new `reviewer_eligibility` key; `_render` — appends `eligibility_lines` after the policy line.
-- Tests (`tests/test_review_eligible.py`, no mocks): `test_human_is_listed_as_able_to_supply_the_missing_approval`, `test_same_family_reviewer_is_excluded`, `test_executor_and_fix_author_are_excluded`, `test_rejected_record_is_excluded_with_the_gates_reason`, `test_text_lists_reviewers_below_the_policy_line_until_the_gate_is_met`; local helpers `_run`, `_review`, `_ready`, `_rows`.
+- Tests (`tests/test_review_eligible.py`, no mocks): `test_human_is_listed_as_able_to_supply_the_missing_approval`, `test_same_family_reviewer_is_excluded`, `test_executor_and_fix_author_are_excluded`, `test_rejected_record_is_excluded_with_the_gates_reason`, `test_ready_author_with_a_counting_approval_is_still_excluded`, `test_second_same_family_approval_is_excluded_not_counting`, `test_text_lists_reviewers_below_the_policy_line_until_the_gate_is_met`; local helpers `_run`, `_review`, `_ready`, `_rows`.

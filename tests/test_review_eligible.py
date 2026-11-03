@@ -77,6 +77,24 @@ def test_executor_and_fix_author_are_excluded(tmp_path: Path, capsys) -> None:
     assert rows["human"]["eligible"] and rows["sonnet"]["eligible"]
 
 
+def test_ready_author_with_a_counting_approval_is_still_excluded(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
+    _ready(repo, "opus")
+    _review(repo, "opus")   # the gate counts it: it trusts the record's authored_fix: false
+    opus = _rows(repo, capsys)["opus"]
+    assert not opus["eligible"] and opus["reason"] == "executor of the leaf (READY-opus.md)"
+
+
+def test_second_same_family_approval_is_excluded_not_counting(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
+    _review(repo, "opus")
+    _review(repo, "sonnet")   # both counted by the gate, one family toward the policy
+    rows = _rows(repo, capsys)
+    assert rows["opus"]["eligible"] and rows["opus"]["reason"] == "its approval counts"
+    assert not rows["sonnet"]["eligible"]
+    assert rows["sonnet"]["reason"] == "same family (anthropic) as opus's approval, which already counts"
+
+
 def test_rejected_record_is_excluded_with_the_gates_reason(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
     _review(repo, "sol", fresh=False)
