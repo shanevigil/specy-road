@@ -92,7 +92,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.3` Replace per-worker polling with a single mailbox flag file and a foreground --wait `replace-per-worker-polling-with` — task — **Complete**
   - `M10.4` Pin harness discovery mode per profile `pin-harness-discovery-mode` — task — **Complete**
   - `M10.5` Per-role effort in model profiles `per-role-effort-in-model` — task — **Complete**
-  - `M10.6` Measure whether lower reviewer effort changes verdicts `measure-whether-lower-reviewer` — task — **Not Started**
+  - `M10.6` Measure whether lower reviewer effort changes verdicts `measure-whether-lower-reviewer` — task — **Complete**
   - `M10.7` Output budgets with --full on packets, briefs and plans `output-budgets-with-full` — task — **Complete**
   - `M10.8` Reviewers launch without repo hooks or MCP `reviewers-launch-without-repo` — task — **Complete**
   - `M10.9` Emit a stalled event when a worker goes silent past a threshold `emit-a-stalled-event` — task — **Complete**
@@ -115,16 +115,16 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.5` Pickup's stale-claim check tests the local branch and never advises deleting a live claim `pickup-claim-heuristic` — task — **Complete**
   - `M11.6` worker reconcile judges a worker against the leaf's current contract `reconcile-current-contract` — task — **Complete**
   - `M11.7` review delegate runs a rostered reviewer like worker delegate runs an executor `review-delegate` — task — **Complete**
-  - `M11.8` An opt-in delta review packet for small fix rounds `delta-review-packet` — task — **Not Started**
+  - `M11.8` An opt-in delta review packet for small fix rounds `delta-review-packet` — task — **Complete**
   - `M11.9` Acceptance items a human must satisfy are marked and handled as such `human-acceptance` — task — **Complete**
   - `M11.10` edit-node can add and remove single list entries `edit-node-add-remove` — task — **Complete**
   - `M11.11` orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route `one-readiness-rule` — task — **Complete**
   - `M11.12` specy-road ready writes a valid READY hand-off `ready-command` — task — **Complete**
   - `M11.13` A milestone gets one full review of its combined change before it is marked complete `milestone-full-review` — task — **Not Started**
   - `M11.14` worker message queues a follow-up for a worker whose turn is still running `queue-worker-message` — task — **Not Started**
-  - `M11.15` Pickup and finish agree on unwritten planning sheets `pickup-refuses-scaffold-sheet` — task — **Not Started**
+  - `M11.15` Pickup and finish agree on unwritten planning sheets `pickup-refuses-scaffold-sheet` — task — **Complete**
   - `M11.16` A commit that changes only planning or bookkeeping files keeps existing approvals `sheet-edits-keep-approvals` — task — **Not Started**
-  - `M11.17` edit-node names every chunk file it changes, and relocation is loud `edit-node-names-chunks` — task — **Not Started**
+  - `M11.17` edit-node names every chunk file it changes, and relocation is loud `edit-node-names-chunks` — task — **Complete**
   - `M11.18` Registry overlap warnings show only what concerns the command at hand `quieter-overlap-warnings` — task — **Not Started**
   - `M11.19` Pickup never stashes work/ around the registry commit `pickup-no-work-stash` — task — **Not Started**
   - `M11.20` orchestrate plan and validate say where the roster is read from `roster-source-explained` — task — **Not Started**
@@ -142,6 +142,13 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.33` A reviewer whose harness routes models dynamically does not count as an independent family by default `dynamic-routing-reviewers` — task — **Not Started**
   - `M11.34` Open human decisions live in one tracked ledger and every question is self-contained `decision-ledger` — task — **Not Started**
   - `M11.35` A roster entry maps to the harness's own model id, and a failed start says why `roster-harness-model-id` — task — **Not Started**
+  - `M11.36` A resumed reviewer session may approve a delta it was shown `resumed-delta-approval` — task — **Not Started**
+  - `M11.37` review-packet warns when the brief or summary names a file not committed at the reviewed commit `packet-uncommitted-refs` — task — **Not Started**
+  - `M11.38` handoff status says who can still supply a missing approval `handoff-eligible-reviewers` — task — **Not Started**
+  - `M11.39` A roster entry can be marked unavailable without deleting it `roster-availability` — task — **Not Started**
+  - `M11.40` worker reconcile works on merged leaves and separates untracked files `reconcile-merged-and-untracked` — task — **Not Started**
+  - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Not Started**
+  - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Not Started**
 
 ## Archived (not in the live roadmap)
 
@@ -153,12 +160,15 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M10.6` on `feature/rm-measure-whether-lower-reviewer` since 2026-11-02
 - `M11.13` on `feature/rm-milestone-full-review` since 2026-11-02
-- `M11.15` on `feature/rm-pickup-refuses-scaffold-sheet` since 2026-11-02
-- `M11.17` on `feature/rm-edit-node-names-chunks` since 2026-11-02
+- `M11.18` on `feature/rm-quieter-overlap-warnings` since 2026-11-02
+- `M11.19` on `feature/rm-pickup-no-work-stash` since 2026-11-02
+- `M11.25` on `feature/rm-merge-push-disclosure` since 2026-11-02
+- `M11.26` on `feature/rm-profile-aliases` since 2026-11-02
+- `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
+- `M11.34` on `feature/rm-decision-ledger` since 2026-11-02
 - `M11.4` on `feature/rm-max-workers-global` since 2026-11-02
-- `M11.8` on `feature/rm-delta-review-packet` since 2026-11-02
+- `M8.7` on `feature/rm-runtime-verification-of-the-harness-facts-against-installed-binaries` since 2026-11-02
 
 ## Reaching the detail behind this
 

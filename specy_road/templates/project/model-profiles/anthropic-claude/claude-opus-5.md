@@ -19,7 +19,7 @@ access:
   subagents: 'yes Runs inside Claude Code, which supports subagents and parallel delegation; model-specific subagent data not found [S4]'
   effort_controls: 'low, medium, high, xhigh, max (default high)'
   effort_map: { minimal: low, low: low, medium: medium, high: high, max: max }
-  effort_by_role: { coordinator: medium, executor: high, reviewer: high }  # executor and reviewer at the documented default, coordinator one level below; M10.6 measures lower reviewer levels
+  effort_by_role: { coordinator: medium, executor: high, reviewer: high }  # executor and reviewer at the documented default, coordinator one level below; reviewer kept, not lowered, by M10.6: docs/design-notes/reviewer-effort-study.md
 cost_usd_per_mtok: { input: 5.00, output: 25.00, cached_input: 0.50, fast_input: 10.00, fast_output: 50.00 }
 data_handling: 'Available on the Claude API, Amazon Bedrock, Google Cloud and Microsoft Foundry [S3]. Commercial and API inputs and outputs are not used for model training by default; standard API retention is generally up to 30 days; zero data retention is available by qualifying agreement; cloud and regional deployment options exist [S13]. A third-party guide reports US-only inference at 1.1x pricing [S5]; not verified on an Anthropic page. No local deployment.'
 role_fit:

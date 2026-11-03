@@ -1,0 +1,224 @@
+"""Delta review (policy.delta_review): a small fix round after an approval, reviewed from the change since."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
+
+from specy_road.bundled_scripts import review_packet as rp
+from specy_road.bundled_scripts.role_prompt import reviewer_packet
+from specy_road.review_files import PACKET_NAME, archive_review, reviews_dir
+from specy_road.review_gate import delta_basis, evaluate_gate, is_doc_or_test
+from specy_road.review_target import resolve_target
+
+ROSTER = """version: 1
+roster:
+  - {id: opus, family: anthropic, roles: [reviewer]}
+  - {id: sonnet, family: anthropic, roles: [reviewer]}
+  - {id: sol, family: openai, roles: [reviewer]}
+policy: {reviewers_required: 2, reviewers_distinct_families: true%s}
+"""
+TEST_FILE = "src/tests/test_a.py"
+TEST_SRC = "def test_a():\n    assert 1\n"
+
+
+def _repo(tmp_path: Path, policy: str = "") -> tuple[Path, str]:
+    """A claimed leaf whose tip ``P`` (returned) has ``src/tests/test_a.py``; opus approved ``P``."""
+    repo = make_review_repo(tmp_path, orchestration=ROSTER % policy)
+    approved = commit_file(repo, TEST_FILE, TEST_SRC, "first round")
+    _file(repo, "opus", approved)
+    return repo, approved
+
+
+def _file(repo: Path, model: str, commit: str, verdict: str = "approve", delta_from: str | None = None,
+          drop: str | None = None) -> None:
+    """File a record as `review record` does: the live REVIEW-<model>.md plus a copy under history/.
+    ``drop`` leaves out that acceptance id's result, so the record is incomplete for the brief."""
+    text = review_text(commit, model=model, verdict=verdict, a1="pass" if verdict == "approve" else "fail")
+    text = text.replace("notes\n", f"{model} notes on {commit[:7]}\n")
+    if drop:
+        text = text.replace(f"  {drop}: pass\n", "")
+    if delta_from:
+        text = text.replace("---\n", f"---\ndelta_from: '{delta_from}'\n", 1)
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"REVIEW-{model}.md").write_text(text)
+    archive_review(repo, "M1.1", model, text)
+
+
+def _fix(repo: Path, files: dict[str, str]) -> str:
+    for rel, text in files.items():
+        commit_file(repo, rel, text, f"fix {rel}")
+    return git(repo, "rev-parse", "HEAD")
+
+
+def _gate(repo: Path):
+    return evaluate_gate(repo, NODE, git(repo, "rev-parse", "HEAD"))
+
+
+def _why(repo: Path, model: str) -> str:
+    return " ".join(why for r, why in _gate(repo).ineligible if r.data["model"] == model)
+
+
+def test_doc_and_test_paths() -> None:
+    for p in ("docs/a.md", "README.rst", "src/tests/helpers.py", "pkg/x_test.go", "test_x.py", "web/a.spec.ts"):
+        assert is_doc_or_test(p), p
+    for p in ("src/a.py", "docs/conf.py", "src/testing.py", "roadmap/orchestration.yaml"):
+        assert not is_doc_or_test(p), p
+
+
+def test_an_eligible_delta_counts_for_the_approving_reviewer_and_both_families_are_still_needed(
+        tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)
+    head = _fix(repo, {TEST_FILE: TEST_SRC + "\n\ndef test_b():\n    assert 2\n", "src/NOTES.md": "# n\n"})
+    assert delta_basis(repo, NODE, "opus", head)[0].data["commit"] == approved
+    _file(repo, "opus", head, delta_from=approved)
+    g = _gate(repo)
+    assert [a.model for a in g.approvals] == ["opus"] and not g.passed   # anthropic only
+    _file(repo, "sol", head)   # a full review from the other family
+    assert _gate(repo).passed
+
+
+def test_a_delta_with_a_source_file_needs_a_full_review(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)
+    head = _fix(repo, {"src/b.py": "x = 1\n"})
+    assert delta_basis(repo, NODE, "opus", head) == (None, "src/b.py is not a documentation or test file")
+    _file(repo, "opus", head, delta_from=approved)
+    assert "src/b.py is not a documentation or test file; a full review is needed" in _why(repo, "opus")
+    assert not _gate(repo).approvals
+
+
+def test_a_delta_over_three_files_needs_a_full_review(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)
+    head = _fix(repo, {f"src/docs/{i}.md": f"# {i}\n" for i in range(4)})
+    assert delta_basis(repo, NODE, "opus", head) == (None, "the delta touches 4 files (at most 3)")
+    _file(repo, "opus", head, delta_from=approved)
+    assert "touches 4 files" in _why(repo, "opus")
+
+
+def test_a_delta_with_an_integrity_finding_needs_a_full_review(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)
+    head = _fix(repo, {TEST_FILE: "def test_a():\n    pass\n"})   # the assert is gone
+    prior, why = delta_basis(repo, NODE, "opus", head)
+    assert prior is None and why.startswith("the delta's integrity report has findings (assert-loss:")
+    _file(repo, "opus", head, delta_from=approved)
+    assert "integrity report has findings" in _why(repo, "opus")
+
+
+def test_a_reviewer_that_did_not_approve_the_earlier_commit_gets_no_delta(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)
+    _file(repo, "sol", approved, verdict="block")
+    head = _fix(repo, {"src/NOTES.md": "# n\n"})
+    assert delta_basis(repo, NODE, "sol", head) == (None, "no earlier approval")
+    _file(repo, "sol", head, delta_from=approved)
+    assert f"a delta review from {approved}, which sol did not approve" in _why(repo, "sol")
+    _file(repo, "sol", head)   # the same verdict from a full review counts
+    assert [a.model for a in _gate(repo).approvals] == ["sol"]
+
+
+def test_an_ineligible_delta_approval_is_no_basis_for_a_later_delta(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)   # a full approval of P
+    c1 = _fix(repo, {"src/b.py": "x = 1\n"})   # a source file: this delta approval never counted
+    _file(repo, "opus", c1, delta_from=approved)
+    c2 = _fix(repo, {"src/NOTES.md": "# n\n"})   # docs only
+    # The basis is P, not C1: from C1 the docs-only change would qualify and hide src/b.py.
+    assert delta_basis(repo, NODE, "opus", c2) == (None, "src/b.py is not a documentation or test file")
+    _file(repo, "opus", c2, delta_from=c1)
+    assert f"a delta review from {c1}, which opus did not approve" in _why(repo, "opus")
+    assert not _gate(repo).approvals
+
+
+def test_an_earlier_approval_missing_an_acceptance_result_is_no_delta_basis(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ROSTER % "")
+    approved = commit_file(repo, TEST_FILE, TEST_SRC, "first round")
+    _file(repo, "opus", approved, drop="A2")   # would not have counted at its own commit
+    head = _fix(repo, {"src/NOTES.md": "# n\n"})
+    assert delta_basis(repo, NODE, "opus", head) == (None, "no earlier approval")
+    rp.main(["M1.1", "--repo-root", str(repo)])
+    packet, _ = reviewer_packet(repo, "M1.1", "opus", resolve_target(repo, "M1.1"))
+    assert packet == (reviews_dir(repo, "M1.1") / PACKET_NAME).read_text()   # no delta packet
+    _file(repo, "opus", head, delta_from=approved)
+    assert f"a delta review from {approved}, which opus did not approve" in _why(repo, "opus")
+    assert not _gate(repo).approvals
+
+
+def test_the_gate_refuses_a_delta_approval_while_review_packet_full_is_current(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)
+    head = _fix(repo, {"src/NOTES.md": "# n\n"})
+    _file(repo, "opus", head, delta_from=approved)
+    assert [a.model for a in _gate(repo).approvals] == ["opus"]
+    rp.main(["M1.1", "--full", "--repo-root", str(repo)])
+    assert f"`review-packet --full` forces a full review of {head}" in _why(repo, "opus")
+    assert not _gate(repo).approvals
+    rp.main(["M1.1", "--repo-root", str(repo)])   # the override is the current packet's, not sticky
+    assert [a.model for a in _gate(repo).approvals] == ["opus"]
+
+
+def test_a_later_block_rescinds_an_approval_as_delta_basis_and_a_later_approval_restores_it(
+        tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)   # opus approves P ...
+    _file(repo, "opus", approved, verdict="block")   # ... then blocks P
+    head = _fix(repo, {"src/NOTES.md": "# n\n"})
+    assert delta_basis(repo, NODE, "opus", head) == (None, "no earlier approval")
+    _file(repo, "opus", head, delta_from=approved)
+    assert f"a delta review from {approved}, which opus did not approve" in _why(repo, "opus")
+    assert not _gate(repo).approvals
+    _file(repo, "opus", approved)   # approves P again: the basis is back
+    assert delta_basis(repo, NODE, "opus", head)[0].data["commit"] == approved
+    _file(repo, "opus", head, delta_from=approved)
+    assert [a.model for a in _gate(repo).approvals] == ["opus"]
+
+
+def test_a_delta_approval_stops_counting_when_its_basis_does_and_comes_back_with_it(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)   # opus approves P
+    c1 = _fix(repo, {"src/NOTES.md": "# n\n"})
+    _file(repo, "opus", c1, delta_from=approved)   # a delta approval of C1 from P
+    _file(repo, "opus", approved, verdict="block")   # P no longer counts, so neither does C1
+    c2 = _fix(repo, {"src/MORE.md": "# m\n"})
+    assert delta_basis(repo, NODE, "opus", c2) == (None, "no earlier approval")   # C1 is no basis
+    _file(repo, "opus", c2, delta_from=c1)
+    assert f"a delta review from {c1}, which opus did not approve" in _why(repo, "opus")
+    assert not _gate(repo).approvals
+    _file(repo, "opus", approved)   # an eligible approval of P again restores the chain
+    assert delta_basis(repo, NODE, "opus", c2)[0] is not None   # the latest filing, P, is the basis now
+    _file(repo, "opus", c2, delta_from=c1)   # and C1 counts again, so a delta from it does too
+    assert [a.model for a in _gate(repo).approvals] == ["opus"]
+
+
+def test_policy_off_forces_full_review(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path, ", delta_review: false")
+    head = _fix(repo, {"src/NOTES.md": "# n\n"})
+    assert delta_basis(repo, NODE, "opus", head) == (None, "policy.delta_review is off")
+    _file(repo, "opus", head, delta_from=approved)
+    assert "policy.delta_review is off" in _why(repo, "opus")
+    rp.main(["M1.1", "--repo-root", str(repo)])
+    t = resolve_target(repo, "M1.1")
+    assert reviewer_packet(repo, "M1.1", "opus", t)[0] == (reviews_dir(repo, "M1.1") / PACKET_NAME).read_text()
+
+
+def test_the_prompt_hands_each_reviewer_its_own_packet(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)
+    head = _fix(repo, {"src/NOTES.md": "# n\n"})
+    rp.main(["M1.1", "--repo-root", str(repo)])
+    t = resolve_target(repo, "M1.1")
+    full = (reviews_dir(repo, "M1.1") / PACKET_NAME).read_text()
+    delta, _ = reviewer_packet(repo, "M1.1", "opus", t)
+    assert delta == (reviews_dir(repo, "M1.1") / "PACKET-opus.md").read_text()
+    assert f"**Commit under review:** `{head}`" in delta and f"**Base:** `{approved}`" in delta
+    assert f'`delta_from: "{approved}"`' in delta and f"opus notes on {approved[:7]}" in delta
+    assert "- `src/NOTES.md`\n" in delta and "+print('a')" not in delta   # only the change since
+    assert "+print('a')" in full and "## Delta review" not in full
+    assert reviewer_packet(repo, "M1.1", "sol", t)[0] == full   # sol approved nothing
+    assert not (reviews_dir(repo, "M1.1") / "PACKET-sol.md").exists()
+
+
+def test_review_packet_full_stops_delta_packets(tmp_path: Path) -> None:
+    repo, _ = _repo(tmp_path)
+    _fix(repo, {"src/NOTES.md": "# n\n"})
+    (reviews_dir(repo, "M1.1") / "PACKET-opus.md").write_text("stale")
+    rp.main(["M1.1", "--full", "--repo-root", str(repo)])
+    full = (reviews_dir(repo, "M1.1") / PACKET_NAME).read_text()
+    assert rp.FULL_MARK in full
+    assert reviewer_packet(repo, "M1.1", "opus", resolve_target(repo, "M1.1"))[0] == full
+    assert not (reviews_dir(repo, "M1.1") / "PACKET-opus.md").exists()
