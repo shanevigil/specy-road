@@ -88,3 +88,17 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: harness-facts-nov-refresh
+    node_id: M11.60
+    branch: feature/rm-harness-facts-nov-refresh
+    touch_zones:
+      - specy_road/templates/project/model-profiles/harness-facts.yaml
+      - specy_road/templates/project/model-profiles/harness-captures/
+      - specy_road/templates/project/model-profiles/README.md
+      - specy_road/harness_facts.py
+      - docs/orchestration-workers.md
+      - docs/design-notes/
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
