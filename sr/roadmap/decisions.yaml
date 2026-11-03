@@ -1,0 +1,42 @@
+version: 1
+entries:
+  - id: D1
+    node: M11.51
+    kind: decision
+    summary: Bound the dashboard's safe-save rule to one hash check before each write
+    why_now: Sol blocked the dashboard safe-save leaf three times, each on a narrower
+      race against editors outside the dashboard; the root-cause analysis (work/reviews/M11.51/RCA-3.md)
+      says the criterion is unbounded. Blocks M11.51 from landing.
+    options:
+      - label: approve
+        effect: 'Replace A1 with the bounded text: GET and successful PUT return the
+          hash of the bytes read or written; a stale X-Base-Content-Hash gets 409
+          and nothing is written; edits after that one check, a second check and file
+          locks against other writers are out of scope. The current commit already
+          meets it; it goes straight to re-review.'
+      - label: reject
+        effect: Keep A1 open-ended; another fix round adds a serialized write with
+          a re-check before an atomic replace, and Sol may still find a narrower window.
+    recommendation: approve
+    recommendation_reason: No file-level check can stop a writer that does not cooperate;
+      the bounded rule covers the real case (the dashboard overwriting edits it never
+      saw).
+    default_if_unanswered: hold M11.51 until answered
+    asked: '2026-11-02'
+    status: open
+  - id: D2
+    node: M1.1
+    kind: decision
+    summary: Version number for promoting the 0.3.1 line to main
+    why_now: Promotion to main needs an exact version from the maintainer (version
+      numbers are human-owned); not needed until after rc3.
+    options:
+      - label: 0.3.1
+        effect: Final release of this line after the release candidates.
+      - label: other
+        effect: Name the exact version.
+    recommendation: 0.3.1
+    recommendation_reason: Matches the rc line (0.3.1rcN).
+    default_if_unanswered: do not promote
+    asked: '2026-11-02'
+    status: open
