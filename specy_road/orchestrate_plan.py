@@ -129,18 +129,6 @@ def unavailable_prompt_error(model: str, entry: dict[str, Any]) -> str:
     return f"{model!r} is unavailable ({unavailability_reason(entry) or 'availability'})"
 
 
-def mark_handoff_unavailability(rows: list[dict[str, Any]], config: dict[str, Any]) -> None:
-    """``handoff status``: models paused locally cannot be delegated for a new review."""
-    by_id = {e["id"]: e for e in config.get("roster") or [] if e.get("id")}
-    for row in rows:
-        entry = by_id.get(row["model"])
-        if entry is None or not row.get("eligible") or is_available(entry):
-            continue
-        why = unavailability_reason(entry) or "availability"
-        row["eligible"] = False
-        row["reason"] = f"unavailable ({why})"
-
-
 @dataclass
 class Candidate:
     entry: dict[str, Any]

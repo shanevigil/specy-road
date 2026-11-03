@@ -44,12 +44,10 @@ def test_paused_until_date_in_future_and_past(tmp_path: Path) -> None:
     assert only_assignment(op.build_orchestration_plan(repo, today=date(2026, 11, 11))[0]).executor == "flash"
 
 
-def test_paused_until_datetime(tmp_path: Path) -> None:
-    entry = op._pause_active({"paused_until": "2026-11-10T12:00:00Z"},
-                             datetime(2026, 11, 10, 11, 0, tzinfo=timezone.utc))
-    assert entry
-    assert not op._pause_active({"paused_until": "2026-11-10T12:00:00Z"},
-                                datetime(2026, 11, 10, 13, 0, tzinfo=timezone.utc))
+def test_paused_until_datetime() -> None:
+    paused = {"paused_until": "2026-11-10T12:00:00Z"}
+    assert not op.is_available(paused, datetime(2026, 11, 10, 11, 0, tzinfo=timezone.utc))
+    assert op.is_available(paused, datetime(2026, 11, 10, 13, 0, tzinfo=timezone.utc))
 
 
 def test_local_overlay_overrides_committed_roster(tmp_path: Path) -> None:

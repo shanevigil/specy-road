@@ -12,7 +12,9 @@ whose review loop is not converging and has no root-cause analysis for it is
 ``review record`` validates one reviewer's notes, fills in the family from the
 roster, labels same-family independence, and files the record as
 ``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``.
-``review list`` prints filed records, RCA, escalation and the gate; both list review rounds and delegate runs (older commits never read as the current verdict).
+``review list`` prints the filed records, any RCA records, the escalation and the gate evaluation, and writes nothing.
+Both commands report the leaf's review rounds (distinct reviewed commits), the time from its first review to the latest,
+and each ``review delegate`` run with its commit; an older commit's record never reads as the current verdict.
 """
 
 from __future__ import annotations
@@ -25,7 +27,6 @@ from typing import Any
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.orchestrate_plan import mark_handoff_unavailability
 from specy_road.orchestration_config import substitute_for
 from specy_road.red_green import cmd_red_green
 from specy_road.review_files import (
@@ -75,8 +76,6 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
     state, hints = milestone_status(t, state)
     tm = trial_merge(root, t.ref, t.base_ref)
     merge_problem = ([tm.problem()] if tm and tm.problem() else []) + hints
-    eligibility = reviewer_eligibility(root, t.node, gate, branch)
-    mark_handoff_unavailability(eligibility, gate.config)
     return {
         "node_id": node_id,
         "state": state,
@@ -97,7 +96,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         ],
         "review_rounds": round_span(root, node_id),
         "review_runs": (runs := run_states(root, node_id, gate.commit)),
-        "policy": gate.summary(), "reviewer_eligibility": eligibility,
+        "policy": gate.summary(), "reviewer_eligibility": reviewer_eligibility(root, t.node, gate, branch),
         "policy_met": gate.passed,
         "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
                         "blocking": tm.code_conflicts} if tm and tm.conflicts else None,
@@ -218,7 +217,8 @@ def cmd_handoff_status(ns: argparse.Namespace) -> int:
             print(f"No hand-offs under {reviews_root(root)}.")
         else:
             print("\n".join(line for st in out for line in _render(st)))
-    # Sweep: exit 0/1/2 for one named node (`state`); 0 when listing all.
+    # A sweep only reports. For one named node a polling script reads the exit:
+    # 0 gate met (or Complete), 1 not met, 2 undeterminable; `state` says which.
     return _EXIT.get(out[0]["state"], 1) if ns.node_id else 0
 
 
