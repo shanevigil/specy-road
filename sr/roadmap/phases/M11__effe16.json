@@ -205,7 +205,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.47_validate-zones-git-root_dd1b37a5-5c3a-4d82-b497-9767bcb480ce.md",
       "sibling_order": 47,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "validate checks git-root touch zones in a nested project",
       "touch_zones": [
         "specy_road/bundled_scripts/validate_touch_zones.py",
