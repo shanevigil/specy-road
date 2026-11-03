@@ -21,12 +21,17 @@ Warn when the running `specy-road` is **older** than the version recorded in the
 
 ## Review required_changes (Codex Sol)
 
-Addressed in `6a99f7a1`:
+Round 1, `6a99f7a1`:
 
-- **R1:** `_MINIMUM_LINE` captures the version before the sentence period. Test: `test_warns_when_the_minimum_is_newer_than_written_by_and_the_manifest` (public CLI `validate --help`; Written-by = running, minimum `99.0.0`, manifest `0.0.1`).
-- **R2:** `_repo_root_from_argv` accepts `--repo-root=PATH`. Test: `test_cli_warns_for_both_repo_root_spellings` (space and equals forms).
-- **R3:** Entry-point tests run `python -m specy_road.cli` against temporary projects; no patches of `_context` or `_run`. Tests: `test_doctor_emits_the_skew_warning`, `test_cli_warns_for_both_repo_root_spellings`.
-- **R4:** `test_silent_when_running_is_newer_than_every_recorded_source` records only an older manifest (no AGENTS.md). Docs no longer claim `specy-road --version` itself warns.
+- **R1:** `_MINIMUM_LINE` captures the version before the sentence period. Test: `test_warns_when_the_minimum_is_newer_than_written_by_and_the_manifest`.
+- **R2:** `_repo_root_from_argv` accepts `--repo-root=PATH`.
+- **R3:** Entry-point tests run `python -m specy_road.cli`; no private patches. Test: `test_doctor_emits_the_skew_warning`.
+- **R4:** `test_silent_when_running_is_newer_than_every_recorded_source`; docs no longer claim `--version` warns.
+
+Round 2, `999cfddb`:
+
+- **R1:** Manifest read in `recorded_toolkit_version` treats missing, empty, invalid JSON, and non-UTF-8 as skip-and-continue to AGENTS.md (same decode/parse failures on AGENTS.md skip to the manifest). Tests: `test_unreadable_manifest_still_warns_from_agents_md` (public CLI `validate --help`), `test_unreadable_agents_md_still_warns_from_the_manifest`.
+- **R2:** Removed `test_cli_warns_for_both_repo_root_spellings`; space and equals `--repo-root` live on `test_warns_when_the_running_version_is_older_than_the_manifest` (`99.0.0` space, `0.3.1rc99` equals).
 
 ## Added
 
@@ -35,5 +40,6 @@ Addressed in `6a99f7a1`:
 - `cmd_doctor` call to `warn_if_running_version_older` — A1 via `specy-road doctor`.
 - **Minimum specy-road version** line (+ provenance comment) in `specy_road/templates/specyrd/agents-md-block.md` — A2 stub text.
 - Maintainer install / PATH prose in `README.md` and `docs/install-and-usage.md` — A3.
-- `tests/test_doctor_version_skew.py` — public CLI coverage of older, equal and newer recorded versions, both `--repo-root` spellings, and a newer AGENTS.md minimum.
+- `_read_text` in `specy_road/cli.py` — nonfatal UTF-8/OSError read of manifest and AGENTS.md for the advisory check.
+- `tests/test_doctor_version_skew.py` — public CLI coverage of older, equal and newer recorded versions, both `--repo-root` spellings, a newer AGENTS.md minimum, and unreadable manifest/AGENTS.md files.
 - Assertion for minimum-version line in `tests/test_agents_md_block.py::test_fresh_init_project_writes_agents_md_with_the_block` — template ships minimum line on init.
