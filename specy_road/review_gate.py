@@ -15,14 +15,9 @@ reports. A review record counts only when all of these hold:
   ``orchestrate plan`` and ``prompt`` require;
 * it attests a fresh session when policy requires one.
 
-Policy is read from ``roadmap/orchestration.yaml`` **as committed on the
-integration branch** (its remote-tracking ref when present), and the gate is on
-when either that branch or the working tree turns it on: a feature branch
-cannot lower its own bar. Which branch that is comes from the committed
-``git-workflow.yaml`` on the remote's default branch (at HEAD only in a repo
-with no remote), and a branch that cannot be found fails closed (:func:`policy_source`).
+Policy is read from ``roadmap/orchestration.yaml`` on the integration branch; the gate is on when that branch or the working tree turns it on. Which branch that is comes from ``git-workflow.yaml`` on the remote default (or HEAD with no remote); a missing branch fails closed (:func:`policy_source`).
 
-The gate passes when no counted record blocks and the counted approvals reach
+The gate passes when no counted record blocks and approvals reach
 ``reviewers_required`` — counted by distinct family when
 ``reviewers_distinct_families`` is set. With ``policy.integrity_gate`` on, each
 test-integrity finding the node did not declare in ``planned_test_changes`` on
@@ -54,8 +49,8 @@ from specy_road.review_gate_ready import (  # noqa: F401 — public names re-exp
 from specy_road.review_signing import (  # noqa: F401 — SigningError re-exported
     SigningError, notes_problem, verify)
 from specy_road.review_files import (HUMAN, PACKET_NAME, ReviewFile, executor_blocked_gate_problems, latest_ready,
-                                     list_review_history, list_reviews, review_semantic_errors, reviews_dir,
-                                     verifier_gate_problems)
+                                     list_review_history, list_reviews, only_planning_or_review_bookkeeping_since,
+                                     review_semantic_errors, reviews_dir, verifier_gate_problems)
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.review_policy_ref import committed_yaml as _committed_yaml, policy_source
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
@@ -113,6 +108,7 @@ class GateResult:
     invalid: list[ReviewFile] = field(default_factory=list)
     ineligible: list[tuple[ReviewFile, str]] = field(default_factory=list)
     verifier_problems: list[str] = field(default_factory=list)
+    bookkeeping_carry: bool = False
     config_error: str | None = None
     config: dict[str, Any] = field(default_factory=dict)
 
@@ -128,7 +124,9 @@ class GateResult:
     def summary(self) -> str:
         unit = "distinct-family approvals" if self.distinct_families else "approvals"
         state = "met" if self.passed else "not met"
-        return f"{self.approval_count}/{self.required} {unit}, {len(self.blocks)} block(s): {state}"
+        carry = ("; approvals still count (only planning or review bookkeeping changed since the reviewed commit)"
+                 if self.bookkeeping_carry else "")
+        return f"{self.approval_count}/{self.required} {unit}, {len(self.blocks)} block(s): {state}{carry}"
 
     def problems(self) -> list[str]:
         out = []
@@ -258,8 +256,7 @@ def _delta_why(repo_root: Path, node: dict[str, Any], priors: list[ReviewFile], 
 
 def prior_approvals(repo_root: Path, config: dict[str, Any], node: dict[str, Any], model: str,
                     commit: str | None, today: date | None = None) -> list[ReviewFile]:
-    """``model``'s counting approvals of other commits, in filing order. Its latest record on a commit is its
-    verdict there; an approval naming ``delta_from`` counts only while that basis counts and the delta qualifies."""
+    """This model's counting approvals on other commits, in filing order (delta chains included)."""
     latest: dict[str, ReviewFile] = {}   # full sha -> the model's latest record on it, in filing order
     for r in list_review_history(repo_root, node["id"]) + list_reviews(repo_root, node["id"]):
         if r.ok and r.data.get("node_id") == node["id"] and r.data["model"] == model and \
@@ -282,8 +279,7 @@ def prior_approvals(repo_root: Path, config: dict[str, Any], node: dict[str, Any
 
 
 def delta_basis(repo_root: Path, node: dict[str, Any], model: str, commit: str | None) -> tuple[ReviewFile | None, str]:
-    """``(model's latest counting approval of an earlier commit, "")`` when the change since may be reviewed
-    from a delta packet, else ``(None, why)``; an unreadable policy fails closed."""
+    """Latest prior approval when a delta packet may suffice, else ``(None, why)``."""
     ref, err = policy_source(repo_root)
     config, err = (None, err) if err else effective_config(repo_root, ref)
     prior = [] if err else prior_approvals(repo_root, config, node, model, commit)
@@ -327,8 +323,12 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
             result.invalid.append(review)
             continue
         if not same_commit(repo_root, review.data["commit"], result.commit):
-            result.stale.append(review)
-            continue
+            if only_planning_or_review_bookkeeping_since(
+                    repo_root, node, review.data["commit"], result.commit):
+                result.bookkeeping_carry = True
+            else:
+                result.stale.append(review)
+                continue
         counted, why = _eligibility(config, node, review, today)
         if counted is not None and counted.verdict == "approve" and review.data.get("delta_from"):
             priors = prior_approvals(repo_root, config, node, review.data["model"], result.commit, today)

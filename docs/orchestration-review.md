@@ -10,7 +10,11 @@ review record only when:
   commit makes it stale, so a substantive fix restarts every review. Every
   merge counts as new work, including `git merge -s ours`, whose tree equals
   its first parent's; commits that touch only `roadmap/registry.yaml` are
-  skipped, so claim bookkeeping does not;
+  skipped, so claim bookkeeping does not. When the only paths in
+  `git diff <reviewed>..<commit>` are this leaf's planning sheet,
+  `work/implementation-summary-<NODE_ID>.md`, or files under
+  `work/reviews/<NODE_ID>/`, earlier approvals still count and `handoff status`
+  says so in the policy line;
 - its model is a rostered reviewer, or the substitute in an active substitution that covers this
   node; its family comes from the roster, and its roster `may_process` includes the node's `sensitivity`;
 - no other record from the same model already counts — one vote per model, and
