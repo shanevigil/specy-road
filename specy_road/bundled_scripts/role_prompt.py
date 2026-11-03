@@ -76,6 +76,7 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_gate import delta_basis
+from specy_road.review_lessons import reviewer_lesson_lines
 from specy_road.review_resumed_delta import resumed_delta_on
 from specy_road.review_rca import escalated_note, loop_state, rca_evidence, rca_preamble, rca_trigger
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
@@ -159,7 +160,7 @@ def reviewer_lines(root: Path, node_id: str, model: str, t: ReviewTarget, ref: s
     # reviewer_packet writes PACKET-<model>.md only for a delta round (and removes a stale one first)
     resumed = (reviews_dir(root, node_id) / f"PACKET-{model}.md").is_file() and resumed_delta_on(root)
     return (reviewer_preamble(node_id, model, ref, resumed_delta=resumed) + REMOVED_TEXT_LINES
-            + LAUNCH_MODE_LINES + escalated_note(loop, node_id)), packet, ""
+            + LAUNCH_MODE_LINES + reviewer_lesson_lines(root) + escalated_note(loop, node_id)), packet, ""
 
 
 def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C901 — baseline 2026-10-28; simplify, then drop this

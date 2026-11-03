@@ -184,7 +184,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.75` | Reviewer prompt asks for independent probes, not the executor's own checks | task | Agentic-led | Not Started |
 | `M11.76` | Every roster model reaches its profile notes | task | Agentic-led | Complete |
 | `M11.77` | A completed reviewer run does not report a missing record | task | Agentic-led | Complete |
-| `M11.78` | Review lessons: escaped defect classes feed every reviewer prompt | task | Agentic-led | Not Started |
+| `M11.78` | Review lessons: escaped defect classes feed every reviewer prompt | task | Agentic-led | Complete |
 | `M11.79` | Leaves that touch high-risk zones need a stronger reviewer | task | Agentic-led | Not Started |
 | `M11.80` | Executors and reviewers run tests with a bounded worker count | task | Agentic-led | Not Started |
 | `M11.82` | The integration branch passes ruff again and the land check runs it | task | Agentic-led | Not Started |
