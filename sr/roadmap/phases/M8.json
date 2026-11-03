@@ -172,7 +172,7 @@
       "parent_id": "M8",
       "planning_dir": "planning/M8.7_runtime-verification-of-the-harness-facts-against-installed-binaries_431d31bb-d8bd-4b7f-8259-66c9c756be94.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Runtime verification of the harness facts against installed binaries",
       "touch_zones": [
         "research/",

@@ -73,7 +73,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M8.4` | Ship skills once and meter every file each harness injects | task | Agentic-led | Complete |
 | `M8.5` | Guard hooks per harness and avoid lists in every model profile | task | Agentic-led | Not Started |
 | `M8.6` | Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic | task | Agentic-led | Not Started |
-| `M8.7` | Runtime verification of the harness facts against installed binaries | task | Agentic-led | Not Started |
+| `M8.7` | Runtime verification of the harness facts against installed binaries | task | Agentic-led | Complete |
 | `M9` | Regression prevention | phase | — | Complete |
 | `M9.1` | finish-this-task runs a configured land check on the merge commit before it pushes | task | Agentic-led | Complete |
 | `M9.2` | pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree | task | Agentic-led | Complete |
