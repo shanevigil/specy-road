@@ -140,7 +140,8 @@
         "specy_road/cli_init_argparse.py",
         "specy_road/bundled_scripts/refresh_profiles.py",
         "tests/",
-        "docs/orchestration-models.md"
+        "docs/orchestration-models.md",
+        "specy_road/cli.py"
       ],
       "type": "task"
     },
