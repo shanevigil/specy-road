@@ -474,7 +474,8 @@
       "touch_zones": [
         "specy_road/bundled_scripts/validate_roadmap.py",
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/validate_registry_overlap.py"
       ],
       "type": "task"
     }

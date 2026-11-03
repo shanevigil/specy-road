@@ -95,6 +95,7 @@ entries:
       - specy_road/bundled_scripts/validate_roadmap.py
       - specy_road/bundled_scripts/roadmap_crud_ops.py
       - tests/
+      - specy_road/bundled_scripts/validate_registry_overlap.py
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
