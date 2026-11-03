@@ -316,6 +316,21 @@ def _validate_registry_entries(
                 raise SystemExit(1)
 
 
+def warn_authoring_gaps(
+    nodes: list[dict], root: Path, gate: bool, *, show_all: bool, strict_authoring: bool
+) -> None:
+    """The missing-acceptance warning and the unauthored-leaf block.
+
+    A leaf pickup skips as unauthored is planning still in progress, so unless
+    ``strict_authoring`` its block is a stdout notice that ``validate --strict``
+    does not count, and the missing-acceptance warning leaves it out rather
+    than name it a second time. With ``strict_authoring`` both stay warnings.
+    """
+    unauthored = unauthored_leaves(root, nodes)
+    warn_acceptance_missing(nodes, gate, skip=() if strict_authoring else unauthored)
+    warn_unauthored(unauthored, show_all=show_all, as_notice=not strict_authoring)
+
+
 def run_validation(
     roadmap: dict,
     registry: dict,
@@ -324,6 +339,7 @@ def run_validation(
     repo_root: Path | None = None,
     show_all: bool = False,
     overlap_scope: AuthoringOverlapScope | None = None,
+    strict_authoring: bool = False,
 ) -> None:
     r = repo_root or default_user_repo_root()
     _validate_roadmap_and_registry_schemas(roadmap, registry, r)
@@ -360,9 +376,8 @@ def run_validation(
 
     warn_stale_parent_status(nodes)
     warn_touch_zones_match_nothing(nodes, r, git_root=git_root(r) or r)
-    warn_acceptance_missing(nodes, gate)
+    warn_authoring_gaps(nodes, r, gate, show_all=show_all, strict_authoring=strict_authoring)
     warn_acceptance_merged(nodes)
-    warn_unauthored(unauthored_leaves(r, nodes), show_all=show_all)
     warn_registry_touch_zone_overlap(
         registry.get("entries") or [],
         no_overlap_warn=no_overlap_warn,

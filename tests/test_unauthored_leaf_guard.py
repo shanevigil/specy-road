@@ -235,8 +235,9 @@ def test_an_unauthored_leaf_keeps_its_dependents_in_the_waves() -> None:
 
 
 def _validate_err(root: Path, capsys, **kw) -> str:
+    """stderr of ``validate_at`` with ``strict_authoring``, which keeps the unauthored block a warning (M11.46)."""
     capsys.readouterr()
-    validate_at(root, no_overlap_warn=True, require_registry=True, **kw)
+    validate_at(root, no_overlap_warn=True, require_registry=True, strict_authoring=True, **kw)
     out = capsys.readouterr()
     assert "OK: roadmap and registry validate." in out.out
     return out.err
@@ -263,6 +264,17 @@ def test_validate_caps_the_block_and_all_lists_every_one(tmp_path: Path, capsys)
     assert "… and" not in every
 
 
+def test_validate_without_strict_authoring_makes_the_block_a_stdout_notice(tmp_path: Path, capsys) -> None:
+    """M11.46: an unauthored leaf is planning in progress; neither block names it on stderr."""
+    root, nodes = unauthored_repo(tmp_path, {"M1": "scaffold", "M2": FILLED})
+    capsys.readouterr()
+    validate_at(root, no_overlap_warn=True, require_registry=True)
+    out, err = capsys.readouterr()
+    assert "notice: 1 open leaf/leaves have a placeholder planning sheet" in out
+    assert f"  M1: {nodes[0]['planning_dir']}" in out
+    assert "M1" not in err
+
+
 def test_validate_is_silent_for_authored_or_closed_leaves(tmp_path: Path, capsys) -> None:
     root, _nodes = unauthored_repo(tmp_path, {"M1": FILLED, "M2": "scaffold", "M3": "scaffold"},
                          M2={"acceptance": ["works"]}, M3={"status": "Complete"})
@@ -286,7 +298,8 @@ def test_validate_notes_complete_leaves_still_on_the_scaffold(
     assert sum("still the scaffold" in line for line in out.splitlines() if line.startswith("notice:")) == 1
     assert f"notice: 2 Complete leaf/leaves have a planning sheet that is still the scaffold{hint}." in out
     assert "still the scaffold" not in err
-    listed = [ln for ln in out.splitlines() if ln.startswith("  M")]
+    # Open M4's unauthored notice is on stdout too (M11.46); list only what follows the Complete notice.
+    listed = [ln for ln in out.split("Complete leaf/leaves", 1)[1].splitlines() if ln.startswith("  M")]
     assert listed == ([f"  M1: {nodes[0]['planning_dir']} still has scaffold-planning's placeholder under ## Intent",
                        f"  M3: {nodes[2]['planning_dir']} still has scaffold-planning's placeholder under ## Intent"]
                       if show_all else [])
