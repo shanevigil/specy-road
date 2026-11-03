@@ -342,7 +342,7 @@ def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], us
     if code == 0:
         append_event(repo_root, rec, "completion", source="worker",
                      summary=f"exit 0; READY file {'present' if ready else 'missing'}", detail={"exit": 0, "ready": ready})
-        _exit_state(repo_root, rec, "completed" if ready else PAUSED_BY_LIMIT if paused else "idle")
+        _exit_state(repo_root, rec, PAUSED_BY_LIMIT if paused else "completed" if ready else "idle")   # a limit wins over READY
     else:
         append_event(repo_root, rec, "error", source="worker", summary=f"exit {code}; see {log_path(repo_root, rec.worker_id).name}",
                      detail={"exit": code, "ready": ready})

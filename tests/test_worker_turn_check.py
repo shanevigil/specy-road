@@ -41,6 +41,8 @@ with open(spec_path + ".calls", "a") as f:
 if sys.argv[1:2] == ["create-chat"]:
     print(spec.get("chat", ""), flush=True)
     sys.exit(spec.get("chat_exit", 0))
+if spec.get("write"):   # a file the turn writes, such as the executor's READY
+    open(spec["write"]["path"], "w").write(spec["write"]["text"])
 for cmd in spec.get("run", []):
     subprocess.run(cmd, shell=True, check=True, capture_output=True)
 for d in spec.get("lines", []):
@@ -138,6 +140,25 @@ def test_a_limit_reported_as_success_pauses_the_worker_and_resume_waits_for_the_
     with pytest.raises(ws.WorkerError):
         tc.limit_gate(rec, now=reset - timedelta(seconds=1))
     assert ws.load_record(repo, rec.worker_id).state == tc.PAUSED_BY_LIMIT   # the refusal changed nothing
+
+
+def test_a_limit_wins_over_a_fresh_ready_written_in_the_same_turn(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sol R1: exit 0, a valid READY for this node at HEAD, and a timed limit: paused, not completed."""
+    repo = make_review_repo(tmp_path)
+    d = ws.reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True)
+    head = git(repo, "rev-parse", "HEAD")
+    ready = {"path": str(d / "READY-opus.md"), "text": f"---\nnode_id: M1.1\nagent: opus\nbranch: feature/rm-thing\n"
+             f"commit: {head}\nbase: {head}\nchanged_paths: []\nverify: []\n---\n"}
+    _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_limit_as_success"], write=ready)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(_prompt(tmp_path), repo, "m", None)) == 0
+    rec = ws.load_record(repo, rec.worker_id)
+    [done] = _events(repo, rec.worker_id, "completion")
+    assert done.detail == {"exit": 0, "ready": True}   # the READY is still on the record's log
+    assert rec.state == tc.PAUSED_BY_LIMIT and rec.limit_reset_at
+    with pytest.raises(ws.WorkerError, match="paused by a usage limit until"):
+        wom.resume(repo, rec.worker_id)
 
 
 def test_the_retry_watchdog_stops_a_harness_retrying_a_rate_limit_past_the_cap(
@@ -262,3 +283,19 @@ def test_limit_text_is_read_from_the_turn_never_the_exit_code() -> None:
     assert [p.type for p in out] == ["error", "usage_limited"] and out[1].detail["source"] == "codex turn.failed"
     claude = wa.adapter_for("claude-code").parse_events(json.dumps(STREAMS["claude_limit_as_success"][1]), wa.Launch(["claude"]))
     assert [p.type for p in claude] == ["turn_completed", "usage_limited"]
+
+
+def test_a_further_edit_to_an_already_dirty_file_outside_the_zones_keeps_the_worker_flagged(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sol R2: the second turn edits docs/x.md (outside the src zone), dirty since the first: still a finding."""
+    repo = make_review_repo(tmp_path)
+    spec = _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_clean"], run=["echo one > docs/x.md"])
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    claude = wa.adapter_for("claude-code")
+    wr.run(repo, rec.worker_id, claude.launch(_prompt(tmp_path), repo, "m", None))
+    assert _events(repo, rec.worker_id, "post_run_check")[-1].detail["findings"][0]["paths"] == ["docs/x.md"]
+    _respec(spec, lines=STREAMS["claude_clean"], run=["echo two > docs/x.md"])
+    wr.run(repo, rec.worker_id, claude.resume("sid", _prompt(tmp_path), repo, "m", None))
+    checks = _events(repo, rec.worker_id, "post_run_check")
+    assert len(checks) == 2 and checks[-1].detail["findings"][0]["paths"] == ["docs/x.md"]
+    assert tc.FLAG_POST_RUN in ws.load_record(repo, rec.worker_id).flags

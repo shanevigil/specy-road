@@ -16,6 +16,8 @@ The paused state lives here and in that one record field; ``worker resume`` and 
 
 from __future__ import annotations
 
+import hashlib
+import os
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -46,7 +48,19 @@ class GitState:
     head: str | None
     branch: str | None
     stash: tuple[str, ...] | None
-    dirty: frozenset[str] | None
+    dirty: dict[str, str] | None   # each modified or untracked path and :func:`_content` of it
+
+
+def _content(worktree: Path, rel: str) -> str:
+    """What a dirty path holds, as the check compares it: the file's digest, a link's target, ``-`` when gone.
+    A path dirty at the turn's start that the turn edits again is a change too, not only a new path."""
+    path = worktree / rel
+    if path.is_symlink():
+        return f"link:{os.readlink(path)}"
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return "-"
 
 
 def git_state(worktree: Path) -> GitState:
@@ -54,7 +68,7 @@ def git_state(worktree: Path) -> GitState:
     entries = status_entries(worktree)
     return GitState(head_sha(worktree), git_text(["branch", "--show-current"], worktree),
                     tuple(stash.out.split()) if stash.ok else None,
-                    frozenset(p for _xy, p in entries) if entries is not None else None)
+                    {p: _content(worktree, p) for _xy, p in entries} if entries is not None else None)
 
 
 def _utcnow() -> datetime:
@@ -155,8 +169,9 @@ def git_findings(repo_root: Path, rec: WorkerRecord, before: GitState) -> list[d
                                                 "worktree of the repository)"})
     if after.dirty is None:
         out.append({"kind": "porcelain", "summary": "git status could not be read after the turn"})
-    elif extra := sorted(p for p in after.dirty - (before.dirty or frozenset()) if not expected(p)):
-        out.append({"kind": "porcelain", "paths": extra, "summary": "uncommitted after the turn: " + ", ".join(extra[:10])})
+    elif extra := sorted(p for p, held in after.dirty.items() if (before.dirty or {}).get(p) != held and not expected(p)):
+        out.append({"kind": "porcelain", "paths": extra,
+                    "summary": "uncommitted after the turn (new or changed): " + ", ".join(extra[:10])})
     return out
 
 
