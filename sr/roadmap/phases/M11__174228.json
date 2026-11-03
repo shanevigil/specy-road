@@ -183,7 +183,8 @@
       "acceptance": [
         "prompt prints its 'Wrote <path>' line on stderr, so redirecting stdout never captures it in place of the prompt; a test covers it",
         "finish-this-task prints each validate warning at most once per run; a test finishes a leaf while another open leaf lacks acceptance and counts that warning's lines",
-        "validate's missing-planning_dir error lists every node without one and names specy-road scaffold-planning <ID> as the fix; a test covers two such nodes"
+        "validate's missing-planning_dir error lists every node without one and names specy-road scaffold-planning <ID> as the fix; a test covers two such nodes",
+        "When a worker finishes and a READY file for its leaf exists but cannot be parsed (for example missing front matter), the completion event says 'READY file invalid: <reason>' with the same reason handoff status gives, instead of 'READY file missing'; a test covers an invalid and a missing READY"
       ],
       "codename": "small-cli-fixes",
       "dependencies": [
@@ -204,7 +205,8 @@
         "specy_road/worker_adapters.py",
         "specy_road/worker_ops.py",
         "tests/",
-        "specy_road/bundled_scripts/role_prompt.py"
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/worker_runner.py"
       ],
       "type": "task"
     },
