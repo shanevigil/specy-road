@@ -26,6 +26,14 @@ role_fit:
   executor:    { score: 3, reason: 'ProgramBench 50.0 vs 70.5 for Opus 5.5 in Meta''s own table', sources: [S3] }
   reviewer:    { score: 3, reason: 'Independent vendor and training lineage; no review data', sources: [S1] }
 ---
+## Orchestration: harness features to avoid
+
+| Feature | Switch |
+|---|---|
+| memory off | Claude `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`; Codex `--disable memories`; Cursor persist: no switch (never invoked) |
+| plan mode | never pass `--plan` |
+| worktree or cloud | never pass `--worktree` / `--cloud`; Cursor cloud handoff: never invoked |
+
 ## Strengths
 - MemoryBench 85.6, top of the five models in Meta's table (vendor-reported) [S3] (confidence: low)\[8\]
 - Artificial Analysis Intelligence Index v4.3 score 52 at max effort (Wonder Full 56) [S4] (confidence: medium)\[9\]
