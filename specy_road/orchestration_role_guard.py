@@ -13,22 +13,23 @@ import re
 import shlex
 from dataclasses import dataclass
 
-from specy_road.tool_call_guard import split_segments
+from specy_road.tool_call_guard import _git_subcommand, _unwrap, split_segments
 
 ROLE_CHOICES = frozenset({"reviewer", "executor"})
 
-_GIT = re.compile(r"\bgit\b")
-_GH = re.compile(r"\bgh\b")
+_GH_VALUE_FLAGS = frozenset({"-R", "--repo"})
 _WORKTREE = re.compile(
     r"(?<![\w-])(?:--worktree|--worktree-base)\b|(?<![\w-])git\s+worktree\b"
-    r"|(?<![\w-])codex\s+(?:exec\s+)?(?:--worktree\b|fork\b|cloud\b)"
-    r"|(?<![\w-])claude\b[^|;&\n]*\b--(?:cloud|worktree)\b"
-    r"|(?<![\w-])agent\b[^|;&\n]*(?:\b-w\b|--worktree\b)"
+    r"|(?<![\w-])codex\s+(?:exec\s+)?(?:--worktree\b|--cloud\b|fork\b|cloud\b)"
+    r"|(?<![\w-])claude\b[^|;&\n]*--(?:cloud|worktree)\b"
+    r"|(?<![\w-])agent\b[^|;&\n]*(?:(?<![\w-])-w(?![\w-])|--worktree\b)"
     r"|(?<![\w-])(?:agent\s+persist|/goal\b|/split-to-prs\b|/autopilot\b)",
     re.IGNORECASE,
 )
 _CLOUD = re.compile(
-    r"(?<![\w-])claude\b[^|;&\n]*\b--cloud\b|(?<![\w-])codex\s+cloud\b|(?<![\w-])ultrareview\b",
+    r"(?<![\w-])claude\b[^|;&\n]*--cloud\b"
+    r"|(?<![\w-])codex\s+(?:exec\s+)?(?:--cloud\b|cloud\b)"
+    r"|(?<![\w-])ultrareview\b",
     re.IGNORECASE,
 )
 
@@ -50,18 +51,10 @@ def _segment_git_sub(segment: str) -> str | None:
         tokens = shlex.split(segment, comments=True)
     except ValueError:
         return None
-    i = 0
-    while i < len(tokens):
-        w = tokens[i].rsplit("/", 1)[-1]
-        if w in ("env", "command", "sudo", "timeout") or w in ("sh", "bash", "zsh"):
-            i += 1
-            continue
-        if w == "git" and i + 1 < len(tokens):
-            return tokens[i + 1].lower()
-        if w != "git" and _GIT.search(segment):
-            return None
-        i += 1
-    return None
+    sub, _rest = _git_subcommand(tokens)
+    if not sub or sub == "!":
+        return None
+    return sub.lower()
 
 
 def _segment_gh_pr(segment: str) -> bool:
@@ -69,9 +62,22 @@ def _segment_gh_pr(segment: str) -> bool:
         tokens = shlex.split(segment, comments=True)
     except ValueError:
         return bool(re.search(r"\bgh\b[^|;&\n]*\bpr\b", segment, re.I))
-    for i, t in enumerate(tokens):
-        if t.rsplit("/", 1)[-1] == "gh" and i + 1 < len(tokens) and tokens[i + 1].lower() == "pr":
-            return True
+    tokens = _unwrap(tokens)
+    i = 0
+    while i < len(tokens):
+        if tokens[i].rsplit("/", 1)[-1] == "gh":
+            j = i + 1
+            while j < len(tokens) and tokens[j].startswith("-"):
+                flag = tokens[j]
+                if "=" in flag:
+                    j += 1
+                elif flag in _GH_VALUE_FLAGS or (flag.startswith("--") and flag != "--"):
+                    j += 2
+                else:
+                    j += 1
+            if j < len(tokens) and tokens[j].lower() == "pr":
+                return True
+        i += 1
     return False
 
 

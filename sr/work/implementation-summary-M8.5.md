@@ -15,18 +15,21 @@ Added with `specy-road edit-node M8.5 --add touch_zones=…` (kept because accep
 - `specy_road/orchestration_role_guard.py` — reviewer vs executor denials the hooks invoke.
 - `specy_road/specyrd_cli.py` — `--install-orchestration-hooks` and `--install-pre-push-hook` (A1, A3).
 - `specy_road/specyrd_hooks.py` — merges hook snippets and installs the optional pre-push script.
+- `specy_road/orchestration_role_env.py` — harness env copies `SPECY_ROAD_ORCHESTRATION_ROLE` (split out of `worker_runner.py` at the 400-line cap).
+- `specy_road/worker_runner.py` — executor launch exports `executor`.
+- `specy_road/review_delegate.py` — reviewer launch exports `reviewer`.
 
 `edit-node` also wrote `roadmap/phases/M8.json` and `roadmap/registry.yaml` (committed as it named). Those are the zone/claim update, not acceptance files; they are not added as zones (they overlap every other M8 / registry claim).
 
-Reverted (acceptance does not need this leaf to edit the worker runner/adapters; other leaves own those files):
+Reverted (acceptance does not need this leaf to edit the worker adapters; other leaves own those files):
 
 - `specy_road/worker_adapter_base.py`, `specy_road/worker_adapter_codex.py` — Codex `--disable` lives on the launch template (`harness-facts.yaml` / profile `access.cli`); A5 pins that argv, not the adapter default.
-- `specy_road/worker_runner.py`, `specy_road/worker_runner_queue.py`, `specy_road/worker_ops_message.py` — Claude env switches are named in profiles; wiring them into `worker_runner.run` is left to the runner leaf.
+- `specy_road/worker_runner_queue.py`, `specy_road/worker_ops_message.py` — not needed for the role env export.
 - `specy_road/specyrd_init_helpers.py` — folded back into in-zone `specyrd_init.py`.
 
 ## Acceptance
 
-- **A1:** One shipped hook file per harness (`claude-code/settings.json`, `codex/hooks.json`, `cursor/hooks.json`). Init merges that one file; command is `specy-road orchestration guard --format …` and reads `$SPECY_ROAD_ORCHESTRATION_ROLE` from the worker environment. `--print-config --config-role` still emits a single-role snippet. Claude exit 2 + `onFailure: block`; Cursor `failClosed`.
+- **A1:** One shipped hook file per harness (`claude-code/settings.json`, `codex/hooks.json`, `cursor/hooks.json`). Init merges that one file; command is `specy-road orchestration guard --format …`. `worker_runner.run` exports `SPECY_ROAD_ORCHESTRATION_ROLE=executor`; `review delegate` exports `reviewer`. `--print-config --config-role` still emits a single-role snippet. Claude exit 2 + `onFailure: block`; Cursor `failClosed`. Git classification uses `tool_call_guard`'s git unwrap (`git -C`, `VAR=` wrappers); `gh --repo o/r pr create`, `claude --cloud` / `codex exec --cloud` / `agent -w` deny.
 - **A2:** Every profile lists exact switches. Claude `executor_template` and Anthropic `access.cli` prefix `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`. Generic profiles name memory off, `--plan`, and worktree/cloud switches. Codex `--disable` on the GPT launch template.
 - **A3:** Shipped `pre-push` script; `specyrd init --install-pre-push-hook`; recipe in `docs/orchestration-workers.md`; original `## Working alongside sessions and the gate` paragraph restored beside it.
 - **A4:** Claude `onFailure: block`; Codex README documents trust / `--dangerously-bypass-hook-trust`; `test_codex_hook_in_fresh_worktree_denies_reviewer_commit` installs the shipped Codex hook in a linked worktree and denies reviewer `git commit`.
@@ -41,6 +44,7 @@ Reverted (acceptance does not need this leaf to edit the worker runner/adapters;
 ## Added
 
 - `orchestration_role_guard.py` — role-based command classification for hook denials.
+- `orchestration_role_env.py` — `harness_env` sets `SPECY_ROAD_ORCHESTRATION_ROLE` on executor and reviewer launches.
 - `orchestration_guard_adapters.py` — per-harness hook JSON for executor and reviewer roles.
 - `bundled_scripts/orchestration_guard_cli.py` — `specy-road orchestration guard` CLI entry.
 - `cli.py` — in-process dispatch for `specy-road orchestration guard`.
@@ -53,10 +57,12 @@ Reverted (acceptance does not need this leaf to edit the worker runner/adapters;
 ### Helpers
 
 - `_maybe_install_specyrd_hooks` in `specyrd_init.py` — calls the hook installer when the init flags are set.
+- `harness_env` in `orchestration_role_env.py` — copies the parent env, drops wrapper PYTHONPATH / effort leak, sets the role.
 
 ### Branches / guards
 
-- `decide_role` / `classify_for_role` — deny commit (reviewer), push, `gh pr`, executor worktree/cloud commands. `_WORKTREE` has no unanchored `-w`.
+- `decide_role` / `classify_for_role` — deny commit (reviewer), push, `gh pr`, executor worktree/cloud commands. Cloud/worktree patterns do not use `\\b` immediately before `--` or `-w`. `_WORKTREE` has no unanchored `-w`.
+- `harness_env` — executor and reviewer launches export `SPECY_ROAD_ORCHESTRATION_ROLE`.
 - One env-based hook per harness file; Claude `onFailure: "block"` and exit 2; Cursor `failClosed: true`.
 - Optional git `pre-push` refuses a toplevel under `work/.worktrees/`.
 
@@ -66,7 +72,8 @@ Reverted (acceptance does not need this leaf to edit the worker runner/adapters;
 
 ### Tests
 
-- `test_orchestration_role_rules` — blocked vs allowed commands per role.
+- `test_orchestration_role_rules` — blocked vs allowed commands per role (`git -C`, `VAR=` git, `gh --repo pr`, `claude --cloud`, `codex exec --cloud`, `agent -w`, `grep -w`).
+- `test_installed_hook_denies_through_launch_without_injected_role` — installed command string, clean env, real executor `worker_runner.run` and `review delegate` launch paths.
 - `test_orchestration_hook_adapters_block_like_their_harness` — each adapter's deny exit/JSON.
 - `test_claude_print_config_has_on_failure_block` — A4 `onFailure: block`.
 - `test_codex_launch_template_pins_disable_flags` — A5 Codex `--disable` on template and GPT `access.cli`.

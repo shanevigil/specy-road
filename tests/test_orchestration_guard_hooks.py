@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -10,14 +12,55 @@ from pathlib import Path
 import pytest
 
 from specy_road import orchestration_role_guard as org
+from specy_road import worker_runner as wr
+from specy_road import worker_state as ws
 from specy_road.orchestration_guard_adapters import ADAPTERS
+from specy_road.review_delegate import delegate
+from specy_road.review_files import reviews_dir
 from specy_road.specyrd_hooks import install_orchestration_hooks, install_pre_push_hook
 from specy_road.specyrd_init import run_init
 from specy_road.tool_call_guard import ADAPTERS as SESSION_ADAPTERS
-from tests.test_hook_adapters import PAYLOADS
+from specy_road.worker_adapters import Launch
 from tests.helpers import script_subprocess_env
+from tests.review_repo_helpers import make_review_repo
+from tests.test_hook_adapters import PAYLOADS
 
 REPO = Path(__file__).resolve().parent.parent
+
+_HOOK_PROBE = """\
+import json, os, shlex, subprocess, sys
+from pathlib import Path
+spec = json.loads(Path(sys.argv[1]).read_text())
+payload = json.dumps({
+    "session_id": "abc", "transcript_path": "/tmp/t.jsonl", "cwd": ".",
+    "permission_mode": "default", "hook_event_name": "PreToolUse",
+    "tool_name": "Bash", "tool_use_id": "toolu_1",
+    "tool_input": {"command": spec["judged"], "description": "x", "timeout": 120000},
+})
+env = os.environ.copy()
+r = subprocess.run(shlex.split(spec["hook_cmd"]), input=payload, capture_output=True,
+                   text=True, env=env, check=False)
+Path(spec["out"]).write_text(json.dumps({
+    "code": r.returncode, "stderr": r.stderr,
+    "role": env.get("SPECY_ROAD_ORCHESTRATION_ROLE"),
+}))
+print(json.dumps({"type": "system", "subtype": "init", "session_id": "s1"}), flush=True)
+print(json.dumps({"type": "result", "subtype": "success", "result": "ok", "session_id": "s1"}), flush=True)
+"""
+
+
+def _put_specy_road_on_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    bindir = tmp_path / "sr-bin"
+    bindir.mkdir()
+    script = bindir / "specy-road"
+    script.write_text(
+        "#!/bin/sh\n"
+        f"export PYTHONPATH={shlex.quote(str(REPO))}\n"
+        f"exec {shlex.quote(sys.executable)} -m specy_road.cli \"$@\"\n",
+        encoding="utf-8",
+    )
+    script.chmod(script.stat().st_mode | 0o111)
+    monkeypatch.setenv("PATH", f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}")
 
 
 def _run_orch(repo: Path, fmt: str, payload: dict, role: str, cmd: str | None = None) -> subprocess.CompletedProcess[str]:
@@ -41,11 +84,19 @@ def _run_orch(repo: Path, fmt: str, payload: dict, role: str, cmd: str | None = 
     ("role", "command", "blocked"),
     [
         ("reviewer", "git commit -m x --only foo.py", True),
+        ("reviewer", "git -C . commit -m x --only foo.py", True),
+        ("reviewer", "GIT_EDITOR=true git commit -m x --only foo.py", True),
         ("reviewer", "git status", False),
         ("reviewer", "gh pr create", True),
+        ("reviewer", "gh --repo o/r pr create", True),
         ("executor", "git commit -m x --only foo.py", False),
         ("executor", "git push origin main", True),
+        ("executor", "gh --repo o/r pr create", True),
         ("executor", "claude -p --worktree foo", True),
+        ("executor", "claude --cloud", True),
+        ("executor", "claude -p --cloud foo", True),
+        ("executor", "codex exec --cloud", True),
+        ("executor", "agent -w foo", True),
         ("executor", "git status", False),
         ("executor", "grep -w foo", False),
     ],
@@ -153,6 +204,40 @@ def _pretool_commands(settings: dict) -> list[str]:
         for hook in matcher.get("hooks", []):
             cmds.append(hook["command"])
     return cmds
+
+
+def test_installed_hook_denies_through_launch_without_injected_role(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("SPECY_ROAD_ORCHESTRATION_ROLE", raising=False)
+    _put_specy_road_on_path(tmp_path, monkeypatch)
+    probe = tmp_path / "hook_probe.py"
+    probe.write_text(_HOOK_PROBE, encoding="utf-8")
+    exec_repo = make_review_repo(tmp_path / "exec")
+    install_orchestration_hooks(exec_repo, "claude-code", dry_run=False)
+    cmd = _pretool_commands(json.loads((exec_repo / ".claude" / "settings.json").read_text(encoding="utf-8")))[0]
+    assert cmd == "specy-road orchestration guard --format claude-code"
+    push_out, push_spec = tmp_path / "push.json", tmp_path / "push_spec.json"
+    push_spec.write_text(json.dumps({"hook_cmd": cmd, "out": str(push_out), "judged": "git push origin main"}))
+    rec = ws.create_record(exec_repo, "M1.1", "claude-code", "opus", exec_repo)
+    wr.run(exec_repo, rec.worker_id, Launch([sys.executable, str(probe), str(push_spec)]))
+    push = json.loads(push_out.read_text(encoding="utf-8"))
+    assert push["role"] == "executor" and push["code"] == 2
+    commit_out, commit_spec = tmp_path / "commit.json", tmp_path / "commit_spec.json"
+    commit_spec.write_text(json.dumps({
+        "hook_cmd": cmd, "out": str(commit_out), "judged": "git commit -m x --only foo.py",
+    }))
+    cli = f"{sys.executable} {probe} {commit_spec} {{prompt}}"
+    roster = (
+        "version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+        f"  - {{id: opus, family: anthropic, roles: [reviewer], harness: claude-code, channels: {{cli: '{cli}'}}}}\n"
+    )
+    rev_repo = make_review_repo(tmp_path / "rev", orchestration=roster)
+    (reviews_dir(rev_repo, "M1.1")).mkdir(parents=True)
+    (reviews_dir(rev_repo, "M1.1") / "PACKET.md").write_text("# Review packet\n")
+    delegate(rev_repo, "M1.1", "opus", retries=0)
+    commit = json.loads(commit_out.read_text(encoding="utf-8"))
+    assert commit["role"] == "reviewer" and commit["code"] == 2
 
 
 def test_specyrd_init_installs_one_claude_orchestration_hook(tmp_path: Path) -> None:

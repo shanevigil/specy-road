@@ -382,7 +382,7 @@ feature in your own setup.
 
 ## Optional: refuse push from a linked worktree
 
-`specyrd init --install-pre-push-hook` installs `specy_road/templates/specyrd/hooks/pre-push` as `.git/hooks/pre-push`; it refuses push when the repo toplevel is under `work/.worktrees/` and allows push from the main checkout.
+`specyrd init --install-pre-push-hook` installs `specy_road/templates/specyrd/hooks/pre-push` as `.git/hooks/pre-push`; it refuses push when the repo toplevel is under `work/.worktrees/` and allows push from the main checkout. `worker delegate` and `review delegate` export `SPECY_ROAD_ORCHESTRATION_ROLE` (`executor` / `reviewer`) into the harness environment so the shipped orchestration hooks apply without pinning the role in the command.
 
 ## Working alongside sessions and the gate
 

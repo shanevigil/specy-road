@@ -155,7 +155,9 @@ capability specy-road turns off for executors (memory, background tasks, Codex `
 `/goal` and persist) and the switch the worker launch or `access.cli` applies. Optional
 **orchestration guard** hooks (`specyrd init --install-orchestration-hooks`, or
 `specy-road orchestration guard --format … --print-config`) deny role-inappropriate git and cloud
-commands; pair them with the shared-checkout guard from `specy-road session guard --print-config`.
+commands; `worker delegate` / `review delegate` export `SPECY_ROAD_ORCHESTRATION_ROLE` so the
+installed command can read the role; pair them with the shared-checkout guard from
+`specy-road session guard --print-config`.
 
 ## Harness facts: what `refresh-profiles` renders
 

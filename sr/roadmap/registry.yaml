@@ -143,6 +143,9 @@ entries:
       - specy_road/orchestration_role_guard.py
       - specy_road/specyrd_cli.py
       - specy_road/specyrd_hooks.py
+      - specy_road/orchestration_role_env.py
+      - specy_road/worker_runner.py
+      - specy_road/review_delegate.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending

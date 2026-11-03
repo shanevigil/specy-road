@@ -1,6 +1,6 @@
 # Orchestration guard hooks (specy-road M8.5)
 
-Checked-in snippets `specyrd init --install-orchestration-hooks` merges into your harness config. Each harness file gets **one** hook. The command is `specy-road orchestration guard --format …`; the role comes from `$SPECY_ROAD_ORCHESTRATION_ROLE` in the worker environment (`executor` or `reviewer`). Do not merge executor and reviewer snippets into the same settings/hooks.json.
+Checked-in snippets `specyrd init --install-orchestration-hooks` merges into your harness config. Each harness file gets **one** hook. The command is `specy-road orchestration guard --format …`; the role comes from `$SPECY_ROAD_ORCHESTRATION_ROLE` in the worker environment (`executor` or `reviewer`). `worker delegate` exports `executor`; `review delegate` exports `reviewer`. Do not merge executor and reviewer snippets into the same settings/hooks.json.
 
 | Harness | File |
 |---|---|
