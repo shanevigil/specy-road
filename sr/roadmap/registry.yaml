@@ -124,6 +124,9 @@ entries:
       - specy_road/bundled_scripts/review_cli.py
       - specy_road/review_gate.py
       - tests/
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/review_delegate.py
+      - specy_road/reviewer_run_failure.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
