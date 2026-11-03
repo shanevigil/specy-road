@@ -166,7 +166,8 @@
         "specy_road/templates/project/schemas/",
         "docs/orchestration-models.md",
         "tests/",
-        "specy_road/bundled_scripts/models_cli.py"
+        "specy_road/bundled_scripts/models_cli.py",
+        "model-profiles/"
       ],
       "type": "task"
     },

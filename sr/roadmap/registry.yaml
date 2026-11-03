@@ -10,6 +10,7 @@ entries:
       - docs/orchestration-models.md
       - tests/
       - specy_road/bundled_scripts/models_cli.py
+      - model-profiles/
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
