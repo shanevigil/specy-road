@@ -164,7 +164,8 @@ entries:
       - tests/
     started: '2026-11-03'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-03T15:58:02+00:00'
   - codename: session-routing-preferences
     node_id: M11.58
     branch: feature/rm-session-routing-preferences
