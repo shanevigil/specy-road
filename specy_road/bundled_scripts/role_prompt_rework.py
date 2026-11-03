@@ -21,7 +21,7 @@ from pathlib import Path
 
 from specy_road.review_files import ReviewFile, list_reviews
 from specy_road.review_target import ReviewTarget, same_commit
-from specy_road.worker_state import WorkerError, WorkerRecord, events_since, list_records
+from specy_road.worker_state import WorkerError, WorkerRecord, active_for_node, events_since, list_records
 
 
 def blocking_reviews(root: Path, node_id: str) -> list[ReviewFile]:
@@ -88,7 +88,7 @@ def rework_lines(root: Path, node_id: str, t: ReviewTarget) -> list[str]:
 def rework_check(root: Path, node_id: str) -> None:
     """``worker delegate --rework``: refuse while the leaf has an active worker (``message`` or ``resume`` it, or
     ``terminate`` it first) or when there is nothing to rework from; else say on stderr what the prompt carries."""
-    active = next((r for r in list_records(root, active_only=True) if r.node_id == node_id), None)
+    active = active_for_node(root, node_id)
     if active is not None:
         raise WorkerError(f"{active.worker_id} is still active on {node_id} ({active.state}): `worker message` or "
                           f"`worker resume` it, or `worker terminate` it, then delegate --rework")

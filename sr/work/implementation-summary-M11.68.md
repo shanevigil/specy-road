@@ -53,6 +53,10 @@ subparser already writes them. `build_prompt` stays at 80 lines because the call
 
 - Merged `origin/WIP/improvements-0-3-1` (`983b03c8`, for the Codex reviewer roster entries) cleanly; it added two lines to `worker_cli.cmd_sync` (402 > 400), so the delegate subparser's `--rework` and `set_defaults` lines were joined with `;` as `build_parser` already does (`_offline_arg(sp); sp.set_defaults(...)`) — no behaviour change, no text removed; the leaf's tests (49 passed) and `specy-road file-limits` pass after the merge.
 
+## Review fix (round 2)
+
+- `rework_check` now calls `worker_state.active_for_node(root, node_id)`, the check `worker_ops_launch.delegate` uses, instead of its own `next(...)` over `list_records(..., active_only=True)` (claude-opus-5-5-review's required change); same inputs and output, so no behaviour change.
+
 ## Verification
 
 - `python -m pytest -q tests/test_rework_findings_in_prompt.py tests/test_worker_cli.py tests/test_models_and_prompt.py tests/test_role_prompt_file_limits.py` → 49 passed
@@ -70,7 +74,7 @@ subparser already writes them. `build_prompt` stays at 80 lines because the call
 - `_fenced`: wraps the carried message in a fence that its own backticks cannot close.
 - `_review_lines`: one blocker's heading (tip or earlier commit), record path and required changes. It falls back to failing acceptance ids when `required_changes` is empty, so a block never renders blank.
 - `rework_lines`: the `## Rework` section with the build-on-existing-commits instruction; `[]` when there is nothing to rework from (A1, A2).
-- `rework_check` (guard): `--rework` refuses an active worker on the leaf or nothing to rework from, and reports what is carried (A1).
+- `rework_check` (guard; its active-worker lookup is `worker_state.active_for_node`): `--rework` refuses an active worker on the leaf or nothing to rework from, and reports what is carried (A1).
 - `build_prompt` branch: the executor prompt appends `rework_lines` after the file-limit lines (A1, A2).
 - `worker delegate --rework` flag and the `if ns.rework` guard inside the op body; `rework` added to the op-id input binding.
 - Test `test_no_blocking_record_and_no_stopped_worker_means_no_rework_section`: the without-records case (A1).
