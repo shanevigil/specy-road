@@ -104,9 +104,17 @@
           "minimum": 1,
           "description": "A running worker with no harness stdout for this many seconds is flagged stalled by `worker sync` and `worker list`, with one stalled event per silence. Default 600."
         },
+        "milestone_full_review": {
+          "type": "boolean",
+          "description": "When true, a milestone (a node with leaf children) is not set to Complete when its last leaf finishes until a full review of its combined change (the first leaf's branch point to the integration tip) passes the review gate at that tip; `review-packet <MILESTONE_ID>` builds the packet and `mark-implementation-reviewed <MILESTONE_ID>` closes it. Default true."
+        },
         "integrity_gate": {
           "type": "boolean",
           "description": "When true, each `specy-road integrity` finding for the commit under review is a review-gate problem unless its exact line is in the node's planned_test_changes as committed on the integration branch. Default false."
+        },
+        "delta_review": {
+          "type": "boolean",
+          "description": "When true, a fix round after a reviewer's approval may be reviewed from a delta packet (`work/reviews/<NODE_ID>/PACKET-<model>.md`: the diff since the last commit that reviewer approved, plus its notes on that commit) when every path in that delta is a documentation or test file inside the leaf's touch zones (the leaf's own implementation summary counts as inside), it touches at most three files, and its integrity report has no findings; otherwise the round gets the full packet. An approval naming delta_from counts only for the model whose counting approval of that commit is on file, and only while the delta still qualifies. `review-packet --full` skips delta packets; false forces full review. Default true."
         },
         "red_green": {
           "type": "boolean",

@@ -12,7 +12,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.19_pickup-no-work-stash_174228c2-0ffe-4dc5-80b6-2556bd0ec707.md",
       "sibling_order": 19,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Pickup never stashes work/ around the registry commit",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
@@ -49,7 +49,8 @@
     {
       "acceptance": [
         "A git-workflow.yaml nested_repos list names separately versioned repositories under the project root; delegate and pickup create matching worktrees (a feature branch for repos the leaf's touch zones cover, detached otherwise) inside the leaf worktree",
-        "worker reconcile diffs the nested repos too, and finish merges the leaf's nested branches; docs describe the layout; tests use a fixture with one nested repo"
+        "worker reconcile diffs the nested repos too, and finish merges the leaf's nested branches; docs describe the layout; tests use a fixture with one nested repo",
+        "review-packet includes the leaf's diffs in each configured nested repo (field: reviewers had to be given a hand-written addendum)"
       ],
       "codename": "nested-repo-worktrees",
       "dependencies": [],
@@ -68,7 +69,8 @@
         "specy_road/finish_land_integration.py",
         "specy_road/templates/project/schemas/git-workflow.schema.json",
         "docs/git-workflow.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/review_packet.py"
       ],
       "type": "task"
     },
@@ -132,7 +134,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.25_merge-push-disclosure_4e0d89c4-53ac-4c00-9c0d-92b843fd43c2.md",
       "sibling_order": 25,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "finish-this-task says what merge mode will push before it pushes",
       "touch_zones": [
         "specy_road/finish_land_integration.py",
@@ -163,13 +165,17 @@
         "specy_road/templates/project/model-profiles/",
         "specy_road/templates/project/schemas/",
         "docs/orchestration-models.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/models_cli.py"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "worker delegate reports a custom channels.cli that uses a text-only output mode (for example agent -p --output-format text, or no output format), which keeps only the last message, and suggests the stream-json form; a test covers the report"
+        "worker delegate reports a custom channels.cli that uses a text-only output mode (for example agent -p --output-format text, or no output format), which keeps only the last message, and suggests the stream-json form; a test covers the report",
+        "prompt prints its 'Wrote <path>' line on stderr, so redirecting stdout never captures it in place of the prompt; a test covers it",
+        "finish-this-task prints each validate warning at most once per run; a test finishes a leaf while another open leaf lacks acceptance and counts that warning's lines",
+        "validate's missing-planning_dir error lists every node without one and names specy-road scaffold-planning <ID> as the fix; a test covers two such nodes"
       ],
       "codename": "small-cli-fixes",
       "dependencies": [],
@@ -187,7 +193,8 @@
         "specy_road/bundled_scripts/worker_cli_render.py",
         "specy_road/worker_adapters.py",
         "specy_road/worker_ops.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/role_prompt.py"
       ],
       "type": "task"
     },
@@ -245,7 +252,8 @@
     {
       "acceptance": [
         "An optional env_setup command in roadmap/git-workflow.yaml runs in a new worktree when delegate or pickup creates it; a failure stops the launch with the command's output",
-        "doctor reports a configured env_setup and whether it succeeds in the main checkout; docs give a uv workspace example (uv sync --all-packages --all-groups --locked) and warn that a plain uv sync in a workspace removes other members' packages; tests cover success, failure and no setting"
+        "doctor reports a configured env_setup and whether it succeeds in the main checkout; docs give a uv workspace example (uv sync --all-packages --all-groups --locked) and warn that a plain uv sync in a workspace removes other members' packages; tests cover success, failure and no setting",
+        "env_setup can also name ignored files to copy from the main checkout into a new worktree (for example .python-version, or .env.example copied to .env), and doctor compares each worktree environment's Python version with the main checkout's and warns on a mismatch (field: a worktree environment was silently built on a different Python because the pin file is ignored)"
       ],
       "codename": "worktree-env-setup",
       "dependencies": [],
@@ -349,7 +357,7 @@
     },
     {
       "acceptance": [
-        "specy-road decisions add|list|close keeps open human decisions in a tracked roadmap/decisions.yaml (schema-validated): id, node, kind (decision | human-action), plain-words summary, why now and what it blocks, options with their effect, the recommendation and its reason, the default the agent applies if unanswered, asked date and optional needed-by date; list orders by needed-by and shows every open entry; close records the answer and requires it to be written to the node's planning sheet decision block",
+        "specy-road decisions add|list|close keeps open human decisions in one tracked roadmap/decisions.yaml. Schema validation runs before add writes the file and before list prints it. Each open entry has id, node, kind (exactly decision or human-action), a plain-words summary, why now and what it blocks, at least one option with its effect, the recommendation and its reason, the default the agent applies if unanswered, asked, and status open. needed_by is optional. asked and needed_by are calendar dates written YYYY-MM-DD that datetime.date.fromisoformat accepts. add rejects any other string before writing. list exits non-zero when schema validation rejects the file, including a YYYY-MM-DD that is not a real calendar day, such as 2026-99-99 or 2026-02-30. Datetimes, times, and time zones are out of scope. list prints every open entry, entries with needed_by first in ascending date order, entries without needed_by last. close records the answer and the closed time only when the node's planning sheet has a matching decision line (optional list marker or checkbox in front). The decision block is the body of the first level-2 section whose heading normalises to decisions and notes or decisions, taken only after CommonMark fences are removed from the whole sheet. A fence opens on a backtick or tilde run of length at least 3 and closes on a later run of the same character at least that long. Lines inside a fence do not count, and a decision heading that appears only inside a fence is not the decision block. A matching line that appears only in another section does not count. Indented code blocks, HTML comments, and blockquotes are out of scope and need not be stripped. (rewritten from RCA-3, maintainer-approved 2026-11-02)",
         "The orchestrate skill and the coordinator prompt tell the agent to read decisions list each turn (as with worker sync), to search the ledger and planning-sheet decision blocks before asking anything, to ask at most four at once in the self-contained shape with no bare ids, and to end any turn that has open entries with one 'Decisions waiting on you' block listing all of them below the status",
         "docs/orchestration.md describes the ledger and the question shape; tests cover add, list ordering, close requiring the sheet record, and schema validation"
       ],
@@ -396,6 +404,76 @@
         "specy_road/worker_runner.py",
         "specy_road/templates/project/schemas/orchestration.schema.json",
         "docs/orchestration-models.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the review policy allows it (a key, off by default), a reviewer that resumes its own earlier session may approve a delta: the record names delta_from (the commit it last approved) and the delta it read, fresh_session may be false, and the approval counts only under M11.8's delta rules; any other resumed approval is still refused by reviewer_fresh_session",
+        "handoff status says when an approval was refused only for fresh_session and whether a resumed delta would be allowed; docs and tests cover allowed, refused (policy off), and a resumed full review"
+      ],
+      "codename": "resumed-delta-approval",
+      "dependencies": [
+        "0aae8208-413d-4d60-b7b8-c83f9c31b522"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.36",
+      "node_key": "17d67a22-2e77-4f9f-9627-a051cdc2c225",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.36_resumed-delta-approval_17d67a22-2e77-4f9f-9627-a051cdc2c225.md",
+      "sibling_order": 36,
+      "status": "Not Started",
+      "title": "A resumed reviewer session may approve a delta it was shown",
+      "touch_zones": [
+        "specy_road/review_gate.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "review-packet lists, in a warning section and on stderr, every repository path named in the brief, the planning sheet or the implementation summary that does not exist at the reviewed commit (untracked or uncommitted), so the coordinator can commit it before a reviewer starts",
+        "Tests cover a named untracked file, a named committed file and a path-like string that is not a repository path"
+      ],
+      "codename": "packet-uncommitted-refs",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.37",
+      "node_key": "f1463500-d122-4d16-b18c-97d36d9dd71f",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.37_packet-uncommitted-refs_f1463500-d122-4d16-b18c-97d36d9dd71f.md",
+      "sibling_order": 37,
+      "status": "Not Started",
+      "title": "review-packet warns when the brief or summary names a file not committed at the reviewed commit",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_packet.py",
+        "tests/",
+        "specy_road/bundled_scripts/review_packet_uncommitted_refs.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the gate is not met, handoff status lists each rostered reviewer (including a human entry) and whether it can supply a counting approval at this commit, and for each excluded one the reason (same family as an approval already counted, wrote a fix commit on this leaf, executor of the leaf, not a reviewer role, or rejected record)",
+        "Tests cover a human reviewer listed as eligible, an author-excluded reviewer and a same-family reviewer"
+      ],
+      "codename": "handoff-eligible-reviewers",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.38",
+      "node_key": "35380c40-e3ba-4d90-913d-342ecd12d964",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.38_handoff-eligible-reviewers_35380c40-e3ba-4d90-913d-342ecd12d964.md",
+      "sibling_order": 38,
+      "status": "Not Started",
+      "title": "handoff status says who can still supply a missing approval",
+      "touch_zones": [
+        "specy_road/review_gate.py",
+        "specy_road/bundled_scripts/review_cli.py",
         "tests/"
       ],
       "type": "task"

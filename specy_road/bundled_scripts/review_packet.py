@@ -18,7 +18,9 @@ Writes ``work/reviews/<NODE_ID>/PACKET.md`` (and ``-o``'s path too) with, in ord
    ``--verify-cmd`` run now.
 
 A reviewer is handed this file and nothing else (proposal §3.2). The commit it
-describes is printed at the top; a review record must name that commit.
+describes is printed at the top; a review record must name that commit. For a
+milestone the diff runs from the first leaf's branch point to the integration tip.
+With ``prior``, ``prompt --role reviewer`` builds one reviewer's delta packet; ``--full`` stops that.
 """
 
 from __future__ import annotations
@@ -37,9 +39,13 @@ from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_stdout, git_text, head_sha
 from specy_road.impact import impact_for_diff, section_lines
 from specy_road.integrity import compare_integrity
-from specy_road.review_files import PACKET_NAME, latest_ready, reviews_dir
-from specy_road.review_gate import policy_source, trial_merge
-from specy_road.review_target import REGISTRY_REL, ReviewTarget, full_sha, resolve_target_or_exit, same_commit
+from specy_road.review_files import PACKET_NAME, ReviewFile, latest_ready, reviews_dir
+from specy_road.review_gate import FULL_MARK
+from specy_road.review_gate_ready import policy_source_line, trial_merge_lines
+from specy_road.review_target import (
+    MILESTONE_SUMMARY, REGISTRY_REL, ReviewTarget, full_sha, milestone_packet_or_exit, milestone_packet_lines,
+    resolve_target_or_exit, same_commit,
+)
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix, rebase_to_project
 
 TAIL_LINES = 60
@@ -78,8 +84,7 @@ def _computed(t: ReviewTarget) -> str:
 
 
 def _tail(text: str, n: int = TAIL_LINES) -> str:
-    lines = text.rstrip().splitlines()
-    return "\n".join(lines[-n:])
+    return "\n".join(text.rstrip().splitlines()[-n:])
 
 
 def _fence(text: str, lang: str = "") -> list[str]:
@@ -87,46 +92,22 @@ def _fence(text: str, lang: str = "") -> list[str]:
     return [f"{ticks}{lang}", text.rstrip(), ticks, ""]
 
 
-def _policy_line(root: Path) -> str:
-    ref, err = policy_source(root)
-    if err:
-        return f"- **Policy source:** _{err}_ (the gate fails closed)"
-    if ref is None:
-        return "- **Policy source:** _the working tree (not a git checkout)_"
-    return f"- **Policy source:** `{ref}` @ `{full_sha(root, ref) or '?'}`"
-
-
-def _trial_merge_line(root: Path, ref: str | None, integration_ref: str | None) -> list[str]:
-    """Whether the branch tip still merges into the integration branch; a code conflict stops review."""
-    tm = trial_merge(root, ref, integration_ref)
-    if tm is None:
-        return ["- **Trial merge:** _git could not answer_"]
-    ahead = f"`{tm.base_ref}` is {tm.behind} commit(s) ahead"
-    if not tm.conflicts:
-        return [f"- **Trial merge:** {ahead}; merges cleanly" if tm.behind else
-                f"- **Trial merge:** up to date with `{tm.base_ref}`"]
-    names = ", ".join(f"`{p}`" for p in tm.conflicts)
-    if tm.problem() is None:
-        return [f"- **Trial merge:** {ahead}; conflicts on bookkeeping only ({names}), which does not block"]
-    return [f"- **Trial merge:** {ahead}; **conflicts on {names}**", "",
-            f"**Stop: {tm.problem()}.** Reviewing this commit is wasted work: the merge makes it stale.", ""]
-
-
 def _header(root: Path, t: ReviewTarget, integration_ref: str | None) -> list[str]:
+    base_how = ("first parent of the oldest leaf registration" if t.milestone and t.base_ref == integration_ref
+                else f"merge base with `{t.base_ref or '?'}`")
     return [
-        f"# Review packet: `{t.node_id}` — {t.node.get('title', '')}",
-        "",
+        f"# Review packet: `{t.node_id}` — {t.node.get('title', '')}", "",
         f"- **Commit under review:** `{t.commit or 'unknown'}` (`{t.ref}`)",
-        f"- **Base:** `{t.base or 'unknown'}` (merge base with `{t.base_ref or '?'}`)",
+        f"- **Base:** `{t.base or 'unknown'}` ({base_how})",
+        *milestone_packet_lines(t),
         f"- **Touch zones:** {', '.join(f'`{z}`' for z in t.touch_zones) or '_none declared_'}",
-        _policy_line(root),
+        policy_source_line(root),
         f"- **Generated:** {date.today().isoformat()} by review-packet at HEAD `{head_sha(root) or '?'}`",
-        *_trial_merge_line(root, t.ref, integration_ref),
+        *trial_merge_lines(root, t.ref, integration_ref),
         "",
         "Record your verdict with `specy-road review record "
         f"{t.node_id} --model <id> --verdict approve|block --file <notes.md>`. "
-        "Your record's `commit` must equal the commit above.",
-        "",
+        "Your record's `commit` must equal the commit above.", "",
     ]
 
 
@@ -139,7 +120,7 @@ def _summary(root: Path, t: ReviewTarget) -> list[str]:
     if text is None and (root / rel).is_file():
         text, label = (root / rel).read_text(encoding="utf-8"), ASSERTED_WORKING_TREE
     if text is None:
-        return out + [SUMMARY_MISSING, "", f"_(missing: `{rel}`)_", ""]
+        return out + ([MILESTONE_SUMMARY, ""] if t.milestone else [SUMMARY_MISSING, "", f"_(missing: `{rel}`)_", ""])
     note = [] if _INVENTORY.search(text) else [NO_INVENTORY, ""]
     return out + [label, "", text.rstrip(), ""] + note
 
@@ -183,18 +164,10 @@ def changed_paths_section(root: Path, t: ReviewTarget) -> tuple[list[str], list[
 
 def test_integrity_section(root: Path, t: ReviewTarget) -> list[str]:
     """Deterministic ``## Test integrity`` block for the review packet."""
-    lines = ["## Test integrity", ""]
     if not t.base or not t.commit:
-        return lines + ["_(cannot compute: no merge base or no commit)_", ""]
-    lines.append(_computed(t))
-    lines.append("")
-    findings = compare_integrity(root, t.base, t.commit)
-    if not findings:
-        lines.append("_none_")
-    else:
-        lines.extend(f.line() for f in findings)
-    lines.append("")
-    return lines
+        return ["## Test integrity", "", "_(cannot compute: no merge base or no commit)_", ""]
+    findings = [f.line() for f in compare_integrity(root, t.base, t.commit)]
+    return ["## Test integrity", "", _computed(t), "", *(findings or ["_none_"]), ""]
 
 
 def tests_at_risk_section(root: Path, t: ReviewTarget) -> list[str]:
@@ -256,7 +229,7 @@ def _budget(cap: int, max_bytes: int) -> str:
 
 
 def _capped_diff(root: Path, t: ReviewTarget, diff: str, rows: list[tuple[str, str, str]], generated: set[str],
-                 cap: int, max_bytes: int) -> list[str]:
+                 cap: int, max_bytes: int, patch_name: str = DIFF_NAME) -> list[str]:
     """Inline the first whole files within both budgets, list the rest and every generated file, write DIFF.patch."""
     chunks = _split_files(diff)
     if len(rows) != len(chunks):   # name each file from its header instead
@@ -272,7 +245,7 @@ def _capped_diff(root: Path, t: ReviewTarget, diff: str, rows: list[tuple[str, s
             listed.append(f"- `{path}` (+{a} -{r}) — not inlined{', generated' if gen else ''} ({b} bytes of diff)")
         else:
             kept, lines, size = kept + [c], lines + n, size + b
-    patch = reviews_dir(root, t.node_id) / DIFF_NAME
+    patch = reviews_dir(root, t.node_id) / patch_name
     patch.parent.mkdir(parents=True, exist_ok=True)
     patch.write_text(diff, encoding="utf-8")
     out = [f"{_budget(cap, max_bytes)} ({diff.count(chr(10))} lines, {len(diff.encode())} bytes in all): the first "
@@ -283,9 +256,9 @@ def _capped_diff(root: Path, t: ReviewTarget, diff: str, rows: list[tuple[str, s
 
 
 def _diff(root: Path, t: ReviewTarget, paths: list[str], max_diff_lines: int = MAX_DIFF_LINES,
-          max_diff_bytes: int = MAX_DIFF_BYTES) -> list[str]:
+          max_diff_bytes: int = MAX_DIFF_BYTES, patch_name: str = DIFF_NAME) -> list[str]:
     out = ["## Diff", ""]
-    (reviews_dir(root, t.node_id) / DIFF_NAME).unlink(missing_ok=True)   # only a capped packet names one
+    (reviews_dir(root, t.node_id) / patch_name).unlink(missing_ok=True)   # only a capped packet names one
     if not t.base or not t.commit:
         return out + ["_(cannot compute)_", ""]
     note = [BOOKKEEPING_NOTE, ""] if REGISTRY_REL in paths else []
@@ -298,7 +271,7 @@ def _diff(root: Path, t: ReviewTarget, paths: list[str], max_diff_lines: int = M
     if generated or (max_diff_lines and diff.count("\n") > max_diff_lines) or \
             (max_diff_bytes and len(diff.encode()) > max_diff_bytes):
         return out + [_computed(t), ""] + note + _capped_diff(root, t, diff, rows, generated, max_diff_lines,
-                                                              max_diff_bytes)
+                                                              max_diff_bytes, patch_name)
     return out + [_computed(t), ""] + note + _fence(diff, "diff")
 
 
@@ -341,24 +314,34 @@ def _run_verify(root: Path, cmds: list[str], t: ReviewTarget) -> list[str]:
     return out
 
 
+def _delta_section(prior: ReviewFile) -> list[str]:
+    sha, model = prior.data["commit"], prior.data["model"]
+    return ["## Delta review", "", f"`{model}`, you approved `{sha}`. This packet covers only the change since: "
+            "at most three documentation or test files inside the touch zones, with no integrity findings. Add "
+            f"`delta_from: \"{sha}\"` to your record's front matter; the gate counts it only for `{model}`.", "",
+            f"### Your notes on `{sha}`", "", prior.body.strip() or "_(none)_", ""]
+
+
 def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list[str],
                  base: str | None = None, max_diff_lines: int = MAX_DIFF_LINES,
-                 max_diff_bytes: int = MAX_DIFF_BYTES) -> str:
+                 max_diff_bytes: int = MAX_DIFF_BYTES, prior: ReviewFile | None = None, full: bool = False) -> str:
     t = resolve_target_or_exit(root, node_id, ref)
     integration_ref = t.base_ref   # --base moves the diff range, never the trial merge mark and finish check
-    if base:
-        t = _with_base(root, t, base)
+    if base or prior:
+        t = _with_base(root, t, prior.data["commit"] if prior else str(base))
+    milestone_packet_or_exit(t)
     brief = render_brief(node_id, index(t.nodes), repo_root=root, include_history=False)
     paths, changed = changed_paths_section(root, t)
     brief_lines = brief.rstrip().splitlines()
     parts = [
-        _header(root, t, integration_ref),
+        _header(root, t, integration_ref) + (_delta_section(prior) if prior else [FULL_MARK, ""] if full else []),
         ["---", ""] + brief_lines[:1] + ["", RENDERED] + brief_lines[1:] + ["", "---", ""],
         _summary(root, t),
         changed,
         test_integrity_section(root, t),
         tests_at_risk_section(root, t),
-        _diff(root, t, paths, max_diff_lines, max_diff_bytes),
+        _diff(root, t, paths, max_diff_lines, max_diff_bytes, f"DIFF-{prior.data['model']}.patch" if prior else
+              DIFF_NAME),
         ["## Verifier output", ""] + _ready_verify(root, t) + _run_verify(root, verify_cmds, t),
     ]
     return "\n".join("\n".join(p) for p in parts).rstrip() + "\n"
@@ -380,14 +363,16 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--max-diff-bytes", type=int, default=MAX_DIFF_BYTES, metavar="N",
                    help=f"Inline at most N bytes of diff too (default {MAX_DIFF_BYTES}), as for --max-diff-lines; "
                         f"0 = no byte cap. With both 0 and no generated file, nothing is listed and no {DIFF_NAME}")
+    p.add_argument("--full", action="store_true", help="Every reviewer reads this full packet: `prompt --role "
+                   "reviewer` builds no delta packet (policy.delta_review) while it is current")
     p.add_argument("-o", "--output", type=Path,
                    help=f"Also write here; work/reviews/<NODE_ID>/{PACKET_NAME} is always written, "
-                        "since `prompt --role reviewer` reads only that path")
+                        "since `prompt --role reviewer` reads that path")
     add_repo_root_arg(p)
     args = p.parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     text = build_packet(root, args.node_id, ref=args.ref, verify_cmds=args.verify_cmd, base=args.base,
-                        max_diff_lines=args.max_diff_lines, max_diff_bytes=args.max_diff_bytes)
+                        max_diff_lines=args.max_diff_lines, max_diff_bytes=args.max_diff_bytes, full=args.full)
     for out in [reviews_dir(root, args.node_id) / PACKET_NAME, *([args.output] if args.output else [])]:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(text, encoding="utf-8")

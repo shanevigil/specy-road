@@ -105,7 +105,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.4_max-workers-global_5c014d93-e0e4-4d94-a066-9a2534c7b870.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "max_workers counts live workers across checkouts and applies to resumes",
       "touch_zones": [
         "specy_road/worker_ops.py",
@@ -198,7 +198,7 @@
     {
       "acceptance": [
         "A review policy setting (on by default) lets a fix round after an approval be reviewed from a delta packet: the diff since the last commit that reviewer approved, plus that reviewer's notes. The delta packet is used only when every changed path in the delta is a documentation or test file, the delta touches at most three files, the integrity report for the delta has no findings (no removed or skipped tests, no lost asserts), and every path is inside the leaf's touch zones; otherwise the round gets a full packet. There is no line-count limit",
-        "A delta approval counts only for a reviewer that approved the earlier commit, and the gate still needs both distinct families; a --full flag and the policy (set to off) force full fresh review",
+        "A delta approval counts only when the same reviewer has a counting approval of the earlier commit named in delta_from. A counting approval of a commit is that reviewer's latest record on it (two spellings of one commit are the same commit) and only when that record is an approve that passes the gate's ordinary eligibility checks: rostered reviewer, any required fresh session and signature, and a result for every acceptance id in the brief. If that approval itself names delta_from, it counts only while its basis is a counting approval under this same rule; once a basis stops counting, every delta approval that depends on it stops counting. A later block by the same reviewer on that commit replaces the approval, and a later eligible approval restores it. The gate still needs both distinct families at the commit under review. The --full flag and the policy set to off force a full fresh review of that commit: no delta packet is built, and no approval that names delta_from counts. A block is not a delta approval. Which diffs may use a delta packet is unchanged: documentation or test files, at most three files, a clean integrity report, paths inside the touch zones, and no line-count limit. (rewritten from RCA-4, maintainer-approved 2026-11-02)",
         "docs/orchestration-review.md documents the rule and the policy key; tests cover an eligible delta, a delta with a source file, a delta over three files, a delta with an integrity finding, a reviewer that did not approve the earlier commit, and the policy off"
       ],
       "codename": "delta-review-packet",
@@ -209,7 +209,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.8_delta-review-packet_0aae8208-413d-4d60-b7b8-c83f9c31b522.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "An opt-in delta review packet for small fix rounds",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet.py",
@@ -341,7 +341,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.13_milestone-full-review_b0b6bb18-c235-4783-b69a-7aadde34b219.md",
       "sibling_order": 13,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A milestone gets one full review of its combined change before it is marked complete",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet.py",
@@ -354,7 +354,9 @@
         "specy_road/review_target.py",
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/bundled_scripts/mark_implementation_reviewed.py",
-        "specy_road/orchestration_config.py"
+        "specy_road/orchestration_config.py",
+        "specy_road/bundled_scripts/roadmap_load.py",
+        "specy_road/review_gate_ready.py"
       ],
       "type": "task"
     },
@@ -378,7 +380,11 @@
         "specy_road/worker_runner.py",
         "specy_road/bundled_scripts/worker_cli.py",
         "docs/orchestration-workers.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/worker_cli_render.py",
+        "specy_road/schemas/worker-event.schema.json",
+        "specy_road/schemas/worker-record.schema.json",
+        "specy_road/worker_state.py"
       ],
       "type": "task"
     },
@@ -469,12 +475,14 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.18_quieter-overlap-warnings_bc246e83-fbbc-4125-b4a1-41e415bf6a70.md",
       "sibling_order": 18,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Registry overlap warnings show only what concerns the command at hand",
       "touch_zones": [
         "specy_road/bundled_scripts/validate_roadmap.py",
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/validate_registry_overlap.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py"
       ],
       "type": "task"
     }

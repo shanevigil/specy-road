@@ -1,55 +1,5 @@
 version: 1
 entries:
-  - codename: max-workers-global
-    node_id: M11.4
-    branch: feature/rm-max-workers-global
-    touch_zones:
-      - specy_road/worker_ops.py
-      - specy_road/worker_state.py
-      - specy_road/orchestration_config.py
-      - docs/orchestration-workers.md
-      - tests/
-      - specy_road/worker_lease.py
-      - specy_road/worker_runner.py
-      - specy_road/worker_process.py
-      - specy_road/worker_reconcile.py
-      - specy_road/bundled_scripts/worker_cli.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: delta-review-packet
-    node_id: M11.8
-    branch: feature/rm-delta-review-packet
-    touch_zones:
-      - specy_road/bundled_scripts/review_packet.py
-      - specy_road/review_gate.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/schemas/review-record.schema.json
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/orchestration_config.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: milestone-full-review
-    node_id: M11.13
-    branch: feature/rm-milestone-full-review
-    touch_zones:
-      - specy_road/bundled_scripts/review_packet.py
-      - specy_road/review_gate.py
-      - specy_road/finish_ancestor_rollup.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - sr/schemas/
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/review_target.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/bundled_scripts/mark_implementation_reviewed.py
-      - specy_road/orchestration_config.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: profile-aliases
     node_id: M11.26
     branch: feature/rm-profile-aliases
@@ -58,6 +8,105 @@ entries:
       - specy_road/templates/project/model-profiles/
       - specy_road/templates/project/schemas/
       - docs/orchestration-models.md
+      - tests/
+      - specy_road/bundled_scripts/models_cli.py
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: doctor-version-skew
+    node_id: M11.29
+    branch: feature/rm-doctor-version-skew
+    touch_zones:
+      - specy_road/bundled_scripts/doctor.py
+      - specy_road/cli.py
+      - specy_road/templates/
+      - README.md
+      - docs/install-and-usage.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: decision-ledger
+    node_id: M11.34
+    branch: feature/rm-decision-ledger
+    touch_zones:
+      - specy_road/decisions.py
+      - specy_road/bundled_scripts/decisions_cli.py
+      - specy_road/cli.py
+      - specy_road/templates/project/schemas/
+      - specy_road/templates/specyrd/commands/specyrd-orchestrate.md
+      - specy_road/bundled_scripts/role_prompt.py
+      - docs/orchestration.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: queue-worker-message
+    node_id: M11.14
+    branch: feature/rm-queue-worker-message
+    touch_zones:
+      - specy_road/worker_ops.py
+      - specy_road/worker_runner.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - docs/orchestration-workers.md
+      - tests/
+      - specy_road/bundled_scripts/worker_cli_render.py
+      - specy_road/schemas/worker-event.schema.json
+      - specy_road/schemas/worker-record.schema.json
+      - specy_road/worker_state.py
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: sheet-edits-keep-approvals
+    node_id: M11.16
+    branch: feature/rm-sheet-edits-keep-approvals
+    touch_zones:
+      - specy_road/review_gate.py
+      - specy_road/review_files.py
+      - docs/orchestration-review.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: packet-uncommitted-refs
+    node_id: M11.37
+    branch: feature/rm-packet-uncommitted-refs
+    touch_zones:
+      - specy_road/bundled_scripts/review_packet.py
+      - tests/
+      - specy_road/bundled_scripts/review_packet_uncommitted_refs.py
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: session-end-default
+    node_id: M11.42
+    branch: feature/rm-session-end-default
+    touch_zones:
+      - specy_road/session_presence.py
+      - specy_road/bundled_scripts/session_cli.py
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: worktree-handoff-writable
+    node_id: M11.24
+    branch: feature/rm-worktree-handoff-writable
+    touch_zones:
+      - specy_road/worker_adapters.py
+      - specy_road/bundled_scripts/role_prompt_rca.py
+      - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: roster-source-explained
+    node_id: M11.20
+    branch: feature/rm-roster-source-explained
+    touch_zones:
+      - specy_road/orchestration_pinned.py
+      - specy_road/orchestrate_plan.py
+      - specy_road/bundled_scripts/validate_roadmap.py
+      - docs/orchestration.md
       - tests/
     started: '2026-11-02'
     owner: savigil
