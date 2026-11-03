@@ -5,17 +5,8 @@ from __future__ import annotations
 import copy
 from pathlib import Path
 
-import pytest
-
 from specy_road import harness_facts as hf
-from specy_road.bundled_scripts import refresh_profiles as rp
-
-
-def run_main(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        rp.main(list(args))
-        raise SystemExit(0)
-    return e.value.code or 0
+from tests.test_harness_facts import run_main
 
 
 def test_the_scope_escape_words_are_watched() -> None:

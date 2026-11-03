@@ -97,7 +97,7 @@ the diff. It needs the nine new words. Add that path to the zones, or to a follo
 - Design-notes index row for that note: keeps `docs/design-notes/README.md` a complete index.
 - `tests/test_harness_facts_workflow_words.py::test_the_scope_escape_words_are_watched`: pins the nine words (A2).
 - `tests/test_harness_facts_workflow_words.py::test_a_capture_that_adds_persist_fails_until_it_is_classified`: the A2 test, through the public `refresh-profiles` CLI.
-- `run_main` helper in the new test module: the same helper as `tests/test_harness_facts.py`, copied so the module stands alone.
+- `run_main` in the new test module: imported from `tests/test_harness_facts.py`, as other tests here import helpers from sibling test modules (for example `from tests.test_grind_session import ...`), rather than duplicated. This was changed after the Sol review.
 - Mocks: `monkeypatch` of `hf.bundled_captures_dir` (a temporary accepted capture) and `hf.load_facts` (a fixture copy without `persist`), the pattern the existing capture tests use.
 - Changed test data: in `test_capture_cli_fails_on_unassigned_and_accept_stores_a_passing_one`, the "new" capture version went from 0.166.0 to 0.167.0. It must differ from the fixture's version so that the "update codex's version" note still prints, and the fixture is now 0.166.0. No assertion was removed or loosened.
 - Guards and branches in code: none.
