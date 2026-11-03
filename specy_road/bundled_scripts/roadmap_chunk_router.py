@@ -182,6 +182,7 @@ def write_node_update(
     *,
     renames: list[tuple[Path, Path]] | None = None,
     max_lines: int | None = None,
+    validate: bool = True,
 ) -> Path:
     """Persist an edited chunk atomically; return the chunk holding ``node_id``.
 
@@ -201,5 +202,5 @@ def write_node_update(
         plan.stage_chunk(chunk_path, nodes_after)
     for src, dst in renames or []:
         plan.stage_rename(src, dst)
-    plan.commit(validate_callback(root))
+    plan.commit(validate_callback(root) if validate else (lambda: None))
     return relocated or chunk_path

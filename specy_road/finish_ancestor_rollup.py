@@ -149,7 +149,7 @@ def _set_complete(root: Path, node_id: str) -> list[str]:
 
     touched = [find_chunk_path(root, node_id)]
     try:
-        edit_node_set_pairs(root, node_id, [("status", "Complete")])
+        edit_node_set_pairs(root, node_id, [("status", "Complete")], validate=False)
     except (OSError, ValueError) as e:
         print(
             f"[warn] {node_id} rolled up to Complete but could not be "

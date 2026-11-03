@@ -316,7 +316,7 @@ def main(argv: list[str] | None = None) -> None:
     out = ns.output or root / "work" / f"prompt-{ns.node_id}-{ns.role}-{ns.model}.md"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(text, encoding="utf-8")
-    print(f"Wrote {out}")
+    print(f"Wrote {out}", file=sys.stderr)
     if prof is None:
         print(f"note: no profile for {ns.model!r}; the prompt has no model notes (see `specy-road models list`)", file=sys.stderr)
     raise SystemExit(run_cli_channel(prof, out, root, entry.get("preflight"), (entry.get("channels") or {}).get("cli"),
