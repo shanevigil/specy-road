@@ -62,7 +62,8 @@ def _slot_or_existing(repo_root: Path, node_id: str, *, own: str | None = None,
     """Under the lock: the leaf's live worker other than ``own``, else ``None`` once a ``max_workers`` slot is free;
     counted are every other active record (linked worktrees share this directory) and ``foreign`` lease refs
     (``None``: not read yet, so only the leaf's own worker is looked for, and nothing is counted). An ``idle`` or
-    ``completed`` record whose leaf is over (unclaimed and Complete at every integration ref, M11.57) is not counted."""
+    ``completed`` record whose leaf is over (unclaimed or Complete at every integration ref, or its worktree gone;
+    M11.57) is not counted."""
     sweep_dead_wrappers(repo_root)   # a dead wrapper on another leaf must not hold a slot
     active = [r for r in list_records(repo_root, active_only=True) if r.worker_id != own]
     if existing := next((r for r in active if r.node_id == node_id), None):

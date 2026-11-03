@@ -5,15 +5,21 @@ fix round. Once its leaf is over, no fix round can come: it no longer counts aga
 ``worker list`` / ``sync`` show it orphaned, and ``worker terminate --orphaned`` ends it. ``finish-this-task``
 ends the finished leaf's own idle and completed workers.
 
-One conservative rule decides "over", for the slot count, the orphan marks and the bulk terminate alike: at
-**every** integration ref that exists (the local integration branch and its remote-tracking ref), the leaf has
-no registry claim **and** the leaf is Complete in that same ref's roadmap. Pickup registers claims there and
-finish removes them and marks the leaf Complete there, so both move together when a leaf lands. Anything
-less keeps the worker: no such ref, a registry or graph that cannot be read, a leaf missing from a graph,
-refs that disagree (a stale ``origin/<branch>`` still saying Complete for a leaf reopened since, or a local
-landing not yet pushed), or a claim on the leaf under any branch. The caller's working tree is never read:
-linked worktrees share the records, and an older lane's snapshot is no authority. A worker whose worktree is
-gone is orphaned under the same rule only; the reason then says so too.
+Three causes decide "over", each on its own, for the slot count, the orphan marks and the bulk terminate
+alike (review round 3: the round-2 rule needed claim-gone AND Complete together, which dropped two of the
+criteria's causes):
+
+- **unclaimed**: at every integration ref that exists (the local integration branch and its remote-tracking
+  ref), the registry is readable and has no claim on the leaf under any branch, whatever the leaf's status
+  (a landed finish, ``registry-prune --remove``, an abandoned leaf);
+- **Complete**: at every such ref, the roadmap is readable and says the leaf is Complete;
+- **worktree gone**: the record's worktree is no longer a directory (local state, not a ref snapshot).
+
+The two ref causes need every existing ref to agree, so a stale snapshot can only keep a worker, never free
+one: a stale ``origin/<branch>`` still saying Complete or unclaimed for a leaf reopened and claimed since, or a
+local landing not yet pushed and fetched, keeps it. With no such ref, or one whose registry (graph) cannot be
+read, the unclaimed (Complete) cause is not judged at all. The caller's working tree is never read: linked
+worktrees share the records, and an older lane's registry snapshot is no authority.
 
 Nothing here is stored: the record and event schemas name no such flag, and a leaf can be reopened or
 claimed again, so it is judged afresh on every read.
@@ -68,22 +74,35 @@ class _Leaves:
             out.append((label, claimed, status))
         return out
 
-    def over(self, node_id: str) -> str | None:
-        """The refs' labels when every one of them shows ``node_id`` unclaimed and Complete; ``None`` otherwise."""
-        if not self.views:
+    def _agreed(self, holds: Callable[[set[str] | None, dict[str, str] | None], bool]) -> str | None:
+        """The refs' labels when there is a ref and every one agrees by ``holds(claimed, status)``; else ``None``."""
+        if not self.views or not all(holds(claimed, status) for _label, claimed, status in self.views):
             return None
-        for _label, claimed, status in self.views:
-            if claimed is None or status is None or node_id in claimed or status.get(node_id) != "complete":
-                return None
         return " and ".join(label for label, _c, _s in self.views)
+
+    def unclaimed(self, node_id: str) -> str | None:
+        """Where ``node_id`` has no claim: every ref, each with a readable registry; else ``None``."""
+        return self._agreed(lambda claimed, _status: claimed is not None and node_id not in claimed)
+
+    def complete(self, node_id: str) -> str | None:
+        """Where ``node_id`` is Complete: every ref, each with a readable graph; else ``None``."""
+        return self._agreed(lambda _claimed, status: status is not None and status.get(node_id) == "complete")
 
 
 def _cause(rec: WorkerRecord, leaves: _Leaves) -> str | None:
-    """Why a held worker is orphaned (and frees its slot), else ``None``: its leaf is over by :meth:`_Leaves.over`."""
-    if rec.state not in HELD_STATES or not (where := leaves.over(rec.node_id)):
+    """Why a held worker is orphaned (and frees its slot), else ``None``: each cause found, ``; ``-joined."""
+    if rec.state not in HELD_STATES:
         return None
-    why = f"{rec.node_id} is Complete and unclaimed on {where}"
-    return why if Path(rec.worktree).is_dir() else f"{why}; worktree {rec.worktree} is gone"
+    why = []
+    # Only a record that names the claim it was delegated under can have lost it (delegate and adopt always
+    # set ``branch``); one without never had a claim to compare, so the claim cause does not apply to it.
+    if rec.branch and (where := leaves.unclaimed(rec.node_id)):
+        why.append(f"no claim on {rec.node_id} on {where}")
+    if where := leaves.complete(rec.node_id):
+        why.append(f"{rec.node_id} is Complete on {where}")
+    if not Path(rec.worktree).is_dir():
+        why.append(f"worktree {rec.worktree} is gone")
+    return "; ".join(why) or None
 
 
 def holding_slots(repo_root: Path, records: Iterable[WorkerRecord]) -> list[WorkerRecord]:
@@ -93,7 +112,8 @@ def holding_slots(repo_root: Path, records: Iterable[WorkerRecord]) -> list[Work
 
 
 def orphans(repo_root: Path, records: Iterable[WorkerRecord] | None = None) -> dict[str, str]:
-    """Worker id -> why, for each held worker whose leaf is over (unclaimed and Complete at every integration ref)."""
+    """Worker id -> why, for each held worker whose leaf is over: unclaimed or Complete at every integration ref,
+    or its worktree gone."""
     leaves = _Leaves(repo_root)
     recs = list_records(repo_root, active_only=True) if records is None else records
     return {r.worker_id: why for r in recs if (why := _cause(r, leaves))}
