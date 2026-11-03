@@ -17,6 +17,7 @@
       "items": { "type": "string", "minLength": 1 },
       "description": "Every path the executor changed, repo-relative."
     },
+    "toolkit_version": { "type": "string", "minLength": 1, "description": "The specy-road build that wrote this hand-off (``specy-road --version``)." },
     "verify": {
       "type": "array",
       "description": "Verifier and test commands the executor ran, with exit status and the tail of their output.",

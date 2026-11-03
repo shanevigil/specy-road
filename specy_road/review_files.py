@@ -34,6 +34,7 @@ from jsonschema import Draft202012Validator
 
 from specy_road.git_subprocess import git_text
 from specy_road.runtime_paths import specy_road_package_dir
+from specy_road.toolkit_version import running_toolkit_version
 
 REVIEWS_REL = Path("work") / "reviews"
 READY_PREFIX = "READY-"
@@ -395,5 +396,5 @@ def node_ids_with_reviews(repo_root: Path) -> list[str]:
 
 
 def render_front_matter(data: dict[str, Any], body: str = "") -> str:
-    head = yaml.safe_dump(data, sort_keys=False, allow_unicode=True).rstrip()
+    head = yaml.safe_dump({**data, "toolkit_version": running_toolkit_version()}, sort_keys=False, allow_unicode=True).rstrip()
     return f"---\n{head}\n---\n{body}"

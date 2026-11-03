@@ -130,10 +130,14 @@ def test_listing_and_latest_ready(tmp_path: Path) -> None:
 
 
 def test_render_front_matter_round_trips(tmp_path: Path) -> None:
+    from specy_road.toolkit_version import running_toolkit_version
+
     src = rf.load_review(_put(tmp_path, "REVIEW-m.md", REVIEW))
     out = _put(tmp_path, "REVIEW-n.md", rf.render_front_matter(src.data, src.body))
     again = rf.load_review(out)
-    assert again.ok and again.data == src.data
+    assert again.ok
+    assert again.data.pop("toolkit_version") == running_toolkit_version()
+    assert again.data == src.data
 
 
 @pytest.mark.parametrize("token, want", [
