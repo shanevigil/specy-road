@@ -1,52 +1,38 @@
 """Harness adapters: how a worker is launched, resumed, read, and handed to a human (slice 7b).
 
-One adapter per harness the roster may name (``claude-code``, ``codex``,
-``cursor``, ``generic``). Each builds the documented one-shot command of its
-CLI (verified against the vendors' docs on 2026-10-27, see
-``docs/design-notes/v0-3-1-worker-orchestration.md`` D2), turns the CLI's
-JSON output lines into worker events, and says which of the lifecycle
-operations it supports. What it does not support is declared, never
-emulated: a one-shot CLI has no interrupt short of killing the process, so
-``interrupt`` is ``False`` and the command says so, rather than a kill being
-dressed up as one. The long-lived protocols (Codex app-server, Cursor ACP)
-are the later adapters that turn those flags on.
+One adapter per harness the roster may name (``claude-code``, ``codex``, ``cursor``, ``generic``). Each builds
+the documented one-shot command of its CLI (verified against the vendors' docs on 2026-10-27, see
+``docs/design-notes/v0-3-1-worker-orchestration.md`` D2), turns the CLI's JSON output lines into worker events,
+and says which of the lifecycle operations it supports. What it does not support is declared, never emulated:
+a one-shot CLI has no interrupt short of killing the process, so ``interrupt`` is ``False`` and the command says
+so, rather than a kill being dressed up as one. The long-lived protocols (Codex app-server, Cursor ACP) are the
+later adapters that turn those flags on.
 
-A roster entry's ``channels.cli`` (``{prompt}`` = prompt file path) replaces
-the built command for any harness while its output is still parsed as that
-harness's; that is how an adopter widens or narrows permissions, pins flags,
-or points at a wrapper. ``{session_flag}`` is the harness's own session
-argument, so one command serves launch and resume (Claude Code:
-``--session-id <id>`` on launch, ``--resume <id>`` on resume); ``{effort}`` is its flag for
-the profile's executor effort (empty on Cursor), which the default commands carry too. Claude Code's
-default asks for the narrowest mode that lets it edit unattended
-(``acceptEdits``; ``dontAsk`` is stricter but denies every tool not
-allow-listed), so a first run may stop at a shell
-permission; Cursor's ``agent -p`` has write and shell tools already and
-``--force`` force-allows every command not explicitly denied, so that default
-is the widest — read the table
-in ``docs/orchestration-workers.md`` before trusting either on a new repo.
+A roster entry's ``channels.cli`` (``{prompt}`` = prompt file path) replaces the built command for any harness
+while its output is still parsed as that harness's; that is how an adopter widens or narrows permissions, pins
+flags, or points at a wrapper. ``{session_flag}`` is the harness's own session argument, so one command serves
+launch and resume (Claude Code: ``--session-id <id>`` on launch, ``--resume <id>`` on resume); ``{effort}`` is
+its flag for the profile's executor effort (empty on Cursor), which the default commands carry too;
+``{reviews_dir}`` is the main checkout's ``work/reviews/<ID>``, for the harness's writable-root flag, which the
+default commands pass in a linked worktree. Claude Code's default asks for the narrowest mode that lets it edit
+unattended (``acceptEdits``; ``dontAsk`` is stricter but denies every tool not allow-listed), so a first run may
+stop at a shell permission; Cursor's ``agent -p`` has write and shell tools already and ``--force``
+force-allows every command not explicitly denied, so that default is the widest — read the table in
+``docs/orchestration-workers.md`` before trusting either on a new repo.
 """
 
 from __future__ import annotations
 
 import json
+import shlex
 import uuid
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
 from specy_road.git_subprocess import git_text
-from specy_road.worker_adapter_parsers import (
-    _SESSION,
-    _init_detail,
-    _json,
-    _snip,
-    _text,
-    _tokens,
-    placeholder_problem,
-    substitute_prompt,
-    usage_fields,
-)
+from specy_road.worker_adapter_parsers import (_SESSION, _init_detail, _json, _snip, _text, _tokens, placeholder_problem,
+                                                substitute_prompt, usage_fields)
 from specy_road.worker_state import HARNESSES
 
 
@@ -82,8 +68,7 @@ class Unsupported(Exception):
     """The adapter declares this operation unsupported for its harness."""
 
 
-#: What a harness is told when the prompt itself travels on stdin: an argv
-#: string is capped at 128 KiB on Linux, and a brief can be longer.
+#: What a harness is told when the prompt itself travels on stdin: an argv string is capped at 128 KiB on Linux.
 STDIN_INSTRUCTION = "The task is the text on standard input. Follow it exactly; it is the whole prompt."
 
 
@@ -91,6 +76,7 @@ STDIN_INSTRUCTION = "The task is the text on standard input. Follow it exactly; 
 EFFORT_FLAGS = {"claude-code": lambda lv: ["--effort", lv], "codex": lambda lv: ["-c", f"model_reasoning_effort={lv}"]}
 # `codex exec` has no --ask-for-approval (codex-cli 0.165): set both as config, which exec and resume take.
 CODEX_POLICY = ("-c", "sandbox_mode=workspace-write", "-c", "approval_policy=never")
+REVIEWS_DIR = "{reviews_dir}"   # a custom command's writable root (module docstring)
 
 
 def _model_flag(flag: str, model: str | None) -> list[str]:
@@ -107,8 +93,20 @@ def linked_worktree(worktree: Path) -> bool:
 
 def _reviews_handoff_dir(repo_root: Path, node_id: str) -> Path:
     from specy_road.review_files import reviews_dir  # noqa: PLC0415 — keeps adapter import graph small
-
     return reviews_dir(repo_root, node_id)
+
+
+def reviews_dir_into(cli: str, repo_root: Path | None, node_id: str | None) -> str:
+    """``{reviews_dir}`` → the quoted hand-off directory, whole words only (as :func:`placeholder_problem` has the
+    others), so a custom command can make it a writable root; run after that check, before :func:`substitute_prompt`."""
+    words = [(s, e) for s, e, _ph, _p in _tokens(cli) if REVIEWS_DIR in cli[s:e]]
+    whole = (REVIEWS_DIR, f'"{REVIEWS_DIR}"', f"'{REVIEWS_DIR}'")
+    if words and (not repo_root or not node_id or any(cli[s:e] not in whole for s, e in words)):
+        raise Unsupported(f"channels.cli: {REVIEWS_DIR} must be a whole argument, bare or in one pair of quotes, "
+                          f"and needs the leaf's id and project root: {cli}")
+    for s, e in reversed(words):
+        cli = cli[:s] + shlex.quote(str(_reviews_handoff_dir(repo_root, node_id))) + cli[e:]
+    return cli
 
 
 def _bare(launch_mode: str) -> list[str]:
@@ -127,6 +125,7 @@ class Adapter:
         if why:
             raise Unsupported(f"generic harness needs a roster channels.cli or profile access.cli: {why}")
         self._session_flag_check(cli, {ph for _s, _e, ph, _p in _tokens(cli)})
+        cli = reviews_dir_into(cli, repo_root, node_id)
         return Launch(["sh", "-c", substitute_prompt(cli, prompt_path, effort=self.effort_flag(effort))])
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
@@ -161,32 +160,37 @@ class Adapter:
             raise Unsupported(f"channels.cli: {{session_flag}} is defined only for claude-code, not {self.harness}; "
                               f"use {{session}} with the harness's own flag: {cli}")
 
+    def _add_dir(self, worktree: Path, repo_root: Path | None, node_id: str | None) -> list[str]:
+        """``--add-dir`` with the hand-off directory, in a linked worktree only: Claude Code, ``codex exec`` and
+        Cursor ``agent`` take it (model-profiles/harness-captures); ``codex exec resume`` documents none."""
+        if not repo_root or not node_id or not linked_worktree(worktree):
+            return []
+        return ["--add-dir", str(_reviews_handoff_dir(repo_root, node_id))]
+
     def _custom(self, cli: str | None, prompt_path: Path, session_id: str | None = None,
-                effort: str | None = None) -> Launch | None:
+                effort: str | None = None, *, node_id: str | None = None, repo_root: Path | None = None) -> Launch | None:
         """The roster's own command, when it has the placeholders this call needs.
 
-        ``{prompt}`` is the prompt file path; ``{session}`` (optional) is the
-        native session id and ``{session_flag}`` the harness's argument for it
-        (:meth:`session_flag`); ``{effort}`` is :meth:`effort_flag`. A resume
-        uses the custom command only when it names a session placeholder, since
+        ``{prompt}`` is the prompt file path; ``{session}`` (optional) is the native session id and ``{session_flag}``
+        the harness's argument for it (:meth:`session_flag`); ``{effort}`` is :meth:`effort_flag`; ``{reviews_dir}`` is
+        :func:`reviews_dir_into`. A resume uses the custom command only when it names a session placeholder, since
         otherwise the default command is the only one that knows the harness's resume flag.
         """
         if not cli:
             return None
         why = placeholder_problem(cli)
         if why:
-            # Never fall back to the vendor default: that would silently
-            # widen (or change) the permissions the adopter wrote down.
+            # Never fall back to the vendor default: that would silently widen (or change) the adopter's permissions.
             raise Unsupported(f"channels.cli / access.cli: {why}: {cli}")
         named = {ph for _s, _e, ph, _p in _tokens(cli)}
         self._session_flag_check(cli, named)
         if session_id is not None and not named & _SESSION:
             return None
-        # On launch a command that names {session} gets a fresh id, and the
-        # record keeps it, so the same command serves `message` / `resume`.
+        # On launch a command naming {session} gets a fresh id the record keeps, so it serves `message` / `resume` too.
         sid = session_id if session_id is not None else (str(uuid.uuid4()) if named & _SESSION else None)
         flag = self.session_flag(sid, session_id is not None) if "{session_flag}" in named else None
         effort_args = self.effort_flag(effort)
+        cli = reviews_dir_into(cli, repo_root, node_id)
         return Launch(["sh", "-c", substitute_prompt(cli, prompt_path, sid, flag, effort_args)], session_id=sid)
 
 
@@ -196,32 +200,27 @@ class ClaudeCode(Adapter):
                         notes="claude -p stream-json; session id chosen up front; resume = `claude -p --resume`; "
                               "no interrupt short of SIGTERM (turn is lost); hand off with `claude --resume`")
 
-    def _add_dir(self, worktree: Path, repo_root: Path | None, node_id: str | None) -> list[str]:
-        if not repo_root or not node_id or not linked_worktree(worktree):
-            return []
-        return ["--add-dir", str(_reviews_handoff_dir(repo_root, node_id))]
-
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
                effort: str | None = None) -> Launch:
         sid = str(uuid.uuid4())
-        custom = self._custom(cli, prompt_path, effort=effort)
+        custom = self._custom(cli, prompt_path, effort=effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return replace(custom, launch_mode=launch_mode)   # left as written; only the check uses the mode
         return Launch(["claude", "-p", *_bare(launch_mode), "--output-format", "stream-json", "--verbose",
                        "--session-id", sid, *_model_flag("--model", model), *self.effort_flag(effort),
-                       "--permission-mode", "acceptEdits", *self._add_dir(worktree, repo_root, node_id), STDIN_INSTRUCTION],
+                       *self._add_dir(worktree, repo_root, node_id), "--permission-mode", "acceptEdits", STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=sid, launch_mode=launch_mode)
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
                effort: str | None = None) -> Launch:
-        custom = self._custom(cli, prompt_path, session_id, effort)
+        custom = self._custom(cli, prompt_path, session_id, effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return replace(custom, launch_mode=launch_mode)
         return Launch(["claude", "-p", *_bare(launch_mode), "--resume", session_id, "--output-format", "stream-json",
-                       "--verbose", *self.effort_flag(effort), "--permission-mode", "acceptEdits",
-                       *self._add_dir(worktree, repo_root, node_id), STDIN_INSTRUCTION],
+                       "--verbose", *self.effort_flag(effort), *self._add_dir(worktree, repo_root, node_id),
+                       "--permission-mode", "acceptEdits", STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=session_id, launch_mode=launch_mode)
 
     def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,
@@ -290,22 +289,20 @@ class Codex(Adapter):
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
                effort: str | None = None) -> Launch:
-        custom = self._custom(cli, prompt_path, effort=effort)
+        custom = self._custom(cli, prompt_path, effort=effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return custom
         return Launch(["codex", "exec", "--json", *_model_flag("-m", model), *self.effort_flag(effort), *CODEX_POLICY,
-                       "-C", str(worktree), "-"], stdin=_text(prompt_path))
+                       "-C", str(worktree), *self._add_dir(worktree, repo_root, node_id), "-"], stdin=_text(prompt_path))
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
                effort: str | None = None) -> Launch:
-        custom = self._custom(cli, prompt_path, session_id, effort)
+        custom = self._custom(cli, prompt_path, session_id, effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return custom
-        # Same sandbox and approval policy as the launch, and the prompt on
-        # stdin again: an argv string is capped at 128 KiB on Linux. `exec
-        # resume` takes neither --sandbox nor -C (the wrapper runs it in the
-        # worktree), so the policy goes in as config overrides.
+        # Same policy as the launch, prompt on stdin again (128 KiB argv cap). `exec resume` takes neither --sandbox,
+        # -C (the wrapper runs it in the worktree) nor a documented --add-dir, so the policy goes in as config overrides.
         return Launch(["codex", "exec", "resume", "--json", *self.effort_flag(effort), *CODEX_POLICY, session_id, "-"],
                       stdin=_text(prompt_path), session_id=session_id)
 
@@ -345,20 +342,22 @@ class Cursor(Adapter):
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
                effort: str | None = None) -> Launch:
-        custom = self._custom(cli, prompt_path, effort=effort)
+        custom = self._custom(cli, prompt_path, effort=effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return custom
         return Launch(["agent", "-p", "--output-format", "stream-json", "--force", "--trust",   # new worktree: untrusted
-                       *_model_flag("--model", model), "--workspace", str(worktree), _text(prompt_path)])
+                       *_model_flag("--model", model), "--workspace", str(worktree), *self._add_dir(worktree, repo_root, node_id),
+                       _text(prompt_path)])
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
                effort: str | None = None) -> Launch:
-        custom = self._custom(cli, prompt_path, session_id, effort)
+        custom = self._custom(cli, prompt_path, session_id, effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return custom
         return Launch(["agent", "-p", "--resume", session_id, "--output-format", "stream-json", "--force", "--trust",
-                       "--workspace", str(worktree), _text(prompt_path)], session_id=session_id)
+                       "--workspace", str(worktree), *self._add_dir(worktree, repo_root, node_id), _text(prompt_path)],
+                      session_id=session_id)
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)

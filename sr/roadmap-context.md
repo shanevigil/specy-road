@@ -130,7 +130,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.20` orchestrate plan and validate say where the roster is read from `roster-source-explained` — task — **Not Started**
   - `M11.22` Worker worktrees can include nested sibling repositories `nested-repo-worktrees` — task — **Not Started**
   - `M11.23` A custom launch command's permissions carry through resume `resume-keeps-permissions` — task — **Not Started**
-  - `M11.24` Executors and reviewers in a worktree can write and check the right places `worktree-handoff-writable` — task — **Not Started**
+  - `M11.24` Executors and reviewers in a worktree can write and check the right places `worktree-handoff-writable` — task — **Complete**
   - `M11.25` finish-this-task says what merge mode will push before it pushes `merge-push-disclosure` — task — **Complete**
   - `M11.26` A model profile can match harness model ids that carry an effort suffix `profile-aliases` — task — **Not Started**
   - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Not Started**
@@ -176,7 +176,6 @@ Do not pick these up.
 - `M11.14` on `feature/rm-queue-worker-message` since 2026-11-02
 - `M11.16` on `feature/rm-sheet-edits-keep-approvals` since 2026-11-02
 - `M11.20` on `feature/rm-roster-source-explained` since 2026-11-02
-- `M11.24` on `feature/rm-worktree-handoff-writable` since 2026-11-02
 - `M11.26` on `feature/rm-profile-aliases` since 2026-11-02
 - `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
 - `M11.37` on `feature/rm-packet-uncommitted-refs` since 2026-11-02
