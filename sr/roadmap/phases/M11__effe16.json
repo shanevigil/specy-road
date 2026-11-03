@@ -274,7 +274,7 @@
     },
     {
       "acceptance": [
-        "GET /api/planning/file and GET /api/workspace/file return a content hash, and PUT to either is refused with 409 and the current content when the file changed on disk since that hash; the UI shows the conflict instead of overwriting; tests cover a stale save refused and a fresh save accepted",
+        "GET /api/planning/file and GET /api/workspace/file, and every successful PUT to them, return the hash of the bytes read or written; a PUT whose X-Base-Content-Hash does not match the file on disk gets 409 with the current content and nothing is written, and the UI shows the conflict instead of overwriting; edits by other writers after that one check, a second check, and file locks against other writers are out of scope; tests cover a stale save refused and a fresh save accepted",
         "specy-road gui --read-only serves every GET route and refuses every write route with 403; a test covers one read and one write",
         "docs/pm-gui.md lists the read-only JSON routes, and an unknown /api/ path returns a JSON 404 instead of the HTML shell; a test covers the 404"
       ],
