@@ -36,6 +36,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from specy_road.bundled_scripts.brief_call_sites import call_site_lines
 from specy_road.bundled_scripts.brief_acceptance import print_size_warning, render_goal_and_acceptance, with_size_line
 from specy_road.bundled_scripts.brief_dependency_context import (
     render_dependency_context_section,
@@ -293,8 +294,8 @@ def _section_dependencies(node: dict, by_id: dict[str, dict]) -> list[str]:
     return out
 
 
-def _section_touch_zone_instruction(node: dict) -> list[str]:
-    """F-009: explicit instruction to the implementing agent."""
+def _section_touch_zone_instruction(node: dict, root: Path) -> list[str]:
+    """F-009: explicit instruction to the implementing agent, then the zones' call sites."""
     tz = node.get("touch_zones") or []
     out = ["## 7. Touch zones — implementing agent instruction", ""]
     if tz:
@@ -309,6 +310,7 @@ def _section_touch_zone_instruction(node: dict) -> list[str]:
             "scanning the codebase. Add or remove zones as appropriate, then "
             "report the final list in your implementation summary."
         )
+        out += ["", *call_site_lines(root, tz)]
     else:
         out.append(
             "**TODO (DEV agent):** the PM did not specify touch zones. "
@@ -366,7 +368,7 @@ def render_brief(
         _inline_shared_contracts(root, cited, inline_all=all_contracts),
         _section_dependencies(n, by_id),
         render_dependency_context_section(n, by_id, root),
-        _section_touch_zone_instruction(n),
+        _section_touch_zone_instruction(n, root),
         _section_rollup_semantics(),
     ]
     if include_history:

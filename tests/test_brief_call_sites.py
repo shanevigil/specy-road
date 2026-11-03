@@ -1,0 +1,100 @@
+"""The brief lists, under the touch zones, the modules that import each zoned file.
+
+One level of the ``specy-road impact`` import graph at ``HEAD``: an importer
+outside the zones is named, since it is where an executor would otherwise stop
+for a file outside its zones; importers inside the zones are counted.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from specy_road.bundled_scripts import brief_call_sites as bcs
+from specy_road.bundled_scripts import generate_brief as gb
+from tests.integrity_repo_helpers import git
+from tests.test_roadmap_crud import crud_fixture_repo
+
+SOURCES = {
+    "pkg/__init__.py": "",
+    "pkg/core.py": "X = 1\n",
+    "pkg/api.py": "from pkg import core\n",
+    "pkg/cli.py": "from .core import X\n",
+    "pkg/deep.py": "import pkg.api\n",   # imports core only through api: not one level
+    "pkg/helper.py": "",
+    "tests/test_core.py": "import pkg.core\nfrom pkg import helper\n",
+}
+
+
+def _repo(root: Path) -> Path:
+    for rel, text in SOURCES.items():
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_text(text, encoding="utf-8")
+    git(root, "init", "-q")
+    git(root, "config", "user.email", "t@e.com")
+    git(root, "config", "user.name", "T")
+    git(root, "add", "-A")
+    git(root, "commit", "-qm", "init")
+    return root
+
+
+def test_direct_importers_are_one_level_and_resolve_relative_imports(tmp_path: Path) -> None:
+    files = {p: t.encode() for p, t in SOURCES.items()}
+
+    found = bcs.direct_importers(files, {"pkg/core.py"})
+
+    assert found == {"pkg/core.py": ["pkg/api.py", "pkg/cli.py", "tests/test_core.py"]}
+
+
+def test_importers_outside_the_zones_are_named_and_inside_counted(tmp_path: Path) -> None:
+    _repo(tmp_path)
+
+    lines = bcs.call_site_lines(tmp_path, ["pkg/core.py", "pkg/helper.py", "tests/"])
+
+    assert lines[0] == "### Call sites (one level)"
+    assert "- `pkg/core.py` ← `pkg/api.py`, `pkg/cli.py`, 1 inside the zones" in lines
+    assert "- 1 zoned file(s) imported only from inside the zones" in lines   # pkg/helper.py
+    assert not any("pkg/deep.py" in ln for ln in lines)
+
+
+def test_a_zone_nobody_imports_says_so(tmp_path: Path) -> None:
+    _repo(tmp_path)
+
+    assert bcs.call_site_lines(tmp_path, ["pkg/deep.py"])[-1] == "_none found (Python imports only)_"
+
+
+def test_outside_git_the_section_says_it_cannot_compute(tmp_path: Path) -> None:
+    assert bcs.call_site_lines(tmp_path, ["pkg/core.py"])[-1] == (
+        "_(cannot compute: git could not read the tree)_"
+    )
+
+
+def test_long_lists_are_capped_and_counted(tmp_path: Path, monkeypatch) -> None:
+    _repo(tmp_path)
+    monkeypatch.setattr(bcs, "IMPORTER_CAP", 1)
+
+    lines = bcs.call_site_lines(tmp_path, ["pkg/core.py"])
+
+    assert "- `pkg/core.py` ← `pkg/api.py`, _… and 2 more_" in lines
+
+
+def test_the_brief_lists_call_sites_under_the_touch_zones(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    _repo(tmp_path)
+    by_id = gb.index(gb.load_nodes(tmp_path))
+    by_id["M99.1"]["touch_zones"] = ["pkg/core.py"]
+
+    text = gb.render_brief("M99.1", by_id, repo_root=tmp_path, include_history=False)
+
+    section = text.split("\n## 7. Touch zones")[1].split("\n## 8.")[0]
+    assert "### Call sites (one level)" in section
+    assert "- `pkg/core.py` ← `pkg/api.py`, `pkg/cli.py`, `tests/test_core.py`" in section
+
+
+def test_a_brief_without_zones_has_no_call_site_list(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    by_id = gb.index(gb.load_nodes(tmp_path))
+    by_id["M99.1"]["touch_zones"] = []
+
+    text = gb.render_brief("M99.1", by_id, repo_root=tmp_path, include_history=False)
+
+    assert "### Call sites" not in text
