@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import copy
 import json
-from datetime import date
+from datetime import date, datetime
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -22,6 +22,8 @@ from specy_road.git_subprocess import git_stdout
 _PACKAGE_DIR = Path(__file__).resolve().parent
 _ORCHESTRATION_SCHEMA = _PACKAGE_DIR / "templates" / "project" / "schemas" / "orchestration.schema.json"
 ORCHESTRATION_REL = Path("roadmap") / "orchestration.yaml"
+ORCHESTRATION_LOCAL_REL = Path("roadmap") / "orchestration.local.yaml"
+AVAILABILITY_OVERLAY_KEYS = frozenset({"available", "paused_until", "unavailable_until"})
 
 DEFAULT_POLICY: dict[str, Any] = {
     "reviewers_required": 1,
@@ -47,6 +49,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
 
 def orchestration_yaml_path(repo_root: Path) -> Path:
     return (repo_root / ORCHESTRATION_REL).resolve()
+
+
+def orchestration_local_path(repo_root: Path) -> Path:
+    return (repo_root / ORCHESTRATION_LOCAL_REL).resolve()
 
 
 @cache
@@ -75,8 +81,13 @@ def _dates_to_iso(raw: dict[str, Any]) -> None:
             if isinstance(sub.get(key), date):
                 sub[key] = sub[key].isoformat()
     for entry in raw.get("roster") or []:
-        if isinstance(entry, dict) and isinstance(entry.get("unavailable_until"), date):
-            entry["unavailable_until"] = entry["unavailable_until"].isoformat()
+        if not isinstance(entry, dict):
+            continue
+        for key in ("unavailable_until", "paused_until"):
+            if isinstance(entry.get(key), date):
+                entry[key] = entry[key].isoformat()
+            elif isinstance(entry.get(key), datetime):
+                entry[key] = entry[key].replace(microsecond=0).isoformat()
 
 
 def _semantic_error(raw: dict[str, Any]) -> str | None:
@@ -94,14 +105,37 @@ def _semantic_error(raw: dict[str, Any]) -> str | None:
     return _date_error(raw)
 
 
+def _paused_until_error(loc: str, val: Any) -> str | None:
+    if val is None:
+        return None
+    s = str(val)
+    if len(s) == 10:
+        try:
+            date.fromisoformat(s)
+        except ValueError:
+            return f"{loc}: {val!r} is not a calendar date (YYYY-MM-DD)"
+        return None
+    try:
+        datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        return f"{loc}: {val!r} is not a date or datetime"
+    return None
+
+
 def _date_error(raw: dict[str, Any]) -> str | None:
     """The schema's ``\\d{4}-\\d{2}-\\d{2}`` admits ``2026-00-00``; these fields are compared as dates."""
     fields = [(f"roster/{i}/unavailable_until", e.get("unavailable_until"))
               for i, e in enumerate(raw.get("roster") or []) if isinstance(e, dict)]
+    fields += [(f"roster/{i}/paused_until", e.get("paused_until"))
+               for i, e in enumerate(raw.get("roster") or []) if isinstance(e, dict)]
     fields += [(f"substitutions/{i}/{k}", s.get(k))
                for i, s in enumerate(raw.get("substitutions") or []) if isinstance(s, dict)
                for k in ("decided", "expires")]
     for loc, val in fields:
+        if loc.endswith("paused_until"):
+            if err := _paused_until_error(loc, val):
+                return err
+            continue
         if val is None:
             continue
         try:
@@ -109,6 +143,60 @@ def _date_error(raw: dict[str, Any]) -> str | None:
         except ValueError:
             return f"{loc}: {val!r} is not a calendar date (YYYY-MM-DD)"
     return None
+
+
+def load_availability_overlay(repo_root: Path) -> tuple[dict[str, dict[str, Any]] | None, str | None]:
+    """``roadmap/orchestration.local.yaml``: local roster availability overrides, not committed."""
+    path = orchestration_local_path(repo_root)
+    if not path.is_file():
+        return None, None
+    try:
+        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (yaml.YAMLError, ValueError) as e:
+        return None, f"YAML error in {ORCHESTRATION_LOCAL_REL}: {e}"
+    if raw is None:
+        return {}, None
+    if not isinstance(raw, dict):
+        return None, f"{ORCHESTRATION_LOCAL_REL}: must be a mapping"
+    roster = raw.get("roster")
+    if roster is None:
+        return {}, None
+    if not isinstance(roster, list):
+        return None, f"{ORCHESTRATION_LOCAL_REL}: roster must be a list"
+    out: dict[str, dict[str, Any]] = {}
+    for i, entry in enumerate(roster):
+        if not isinstance(entry, dict):
+            return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i} must be a mapping"
+        rid = entry.get("id")
+        if not rid:
+            return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i}/id is required"
+        patch = {k: entry[k] for k in AVAILABILITY_OVERLAY_KEYS if k in entry}
+        if not patch:
+            continue
+        if "available" in patch and not isinstance(patch["available"], bool):
+            return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i}/available must be true or false"
+        _dates_to_iso({"roster": [patch]})
+        for key in ("paused_until", "unavailable_until"):
+            if err := _paused_until_error(f"{ORCHESTRATION_LOCAL_REL}/roster/{i}/{key}", patch.get(key)):
+                return None, err
+        out[str(rid)] = patch
+    return out, None
+
+
+def apply_availability_overlay(config: dict[str, Any], overlay: dict[str, dict[str, Any]] | None) -> None:
+    """Merge overlay fields onto committed roster entries by ``id`` (in place)."""
+    if not overlay:
+        return
+    by_id = {str(e.get("id")): e for e in config.get("roster") or [] if e.get("id")}
+    for rid, patch in overlay.items():
+        entry = by_id.get(rid)
+        if entry is None:
+            continue
+        for key, val in patch.items():
+            if val is None:
+                entry.pop(key, None)
+            else:
+                entry[key] = val
 
 
 def parse_orchestration_text(text: str) -> tuple[dict[str, Any] | None, str | None]:
@@ -152,12 +240,19 @@ def effective_config(repo_root: Path, ref: str | None = None) -> tuple[dict[str,
     refuse (the review gate does) instead of silently relaxing.
     """
     data, err = load_orchestration_config(repo_root, ref)
-    if err or data is None:
+    if err:
         return copy.deepcopy(DEFAULT_CONFIG), err
-    out = copy.deepcopy(data)
-    out["policy"] = {**DEFAULT_POLICY, **(data.get("policy") or {})}
-    out.setdefault("roster", [])
-    out.setdefault("substitutions", [])
+    if data is None:
+        out = copy.deepcopy(DEFAULT_CONFIG)
+    else:
+        out = copy.deepcopy(data)
+        out["policy"] = {**DEFAULT_POLICY, **(data.get("policy") or {})}
+        out.setdefault("roster", [])
+        out.setdefault("substitutions", [])
+    overlay, overlay_err = load_availability_overlay(repo_root)
+    if overlay_err:
+        return copy.deepcopy(DEFAULT_CONFIG), overlay_err
+    apply_availability_overlay(out, overlay)
     return out, None
 
 

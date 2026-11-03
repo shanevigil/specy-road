@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "specy-road orchestration guard --format cursor",
+        "timeout": 30,
+        "failClosed": true,
+        "matcher": ""
+      }
+    ]
+  }
+}

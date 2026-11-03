@@ -71,7 +71,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M8.2` | Worker adapters harden the launch and run a deterministic post-run check | task | Agentic-led | Not Started |
 | `M8.3` | Reviewer runs are read-only and specy-road writes the review record from structured output | task | Agentic-led | Not Started |
 | `M8.4` | Ship skills once and meter every file each harness injects | task | Agentic-led | Complete |
-| `M8.5` | Guard hooks per harness and avoid lists in every model profile | task | Agentic-led | Not Started |
+| `M8.5` | Guard hooks per harness and avoid lists in every model profile | task | Agentic-led | Complete |
 | `M8.6` | Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic | task | Agentic-led | Complete |
 | `M8.7` | Runtime verification of the harness facts against installed binaries | task | Agentic-led | Complete |
 | `M9` | Regression prevention | phase | — | In Progress |
@@ -133,7 +133,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.24` | Executors and reviewers in a worktree can write and check the right places | task | Agentic-led | Complete |
 | `M11.25` | finish-this-task says what merge mode will push before it pushes | task | Agentic-led | Complete |
 | `M11.26` | A model profile can match harness model ids that carry an effort suffix | task | Agentic-led | Complete |
-| `M11.27` | Small CLI fixes from field use | task | Agentic-led | Not Started |
+| `M11.27` | Small CLI fixes from field use | task | Agentic-led | Complete |
 | `M11.28` | A light chore mode for work outside the roadmap | task | Mixed | Not Started |
 | `M11.29` | doctor warns when the running specy-road is older than the project's stubs | task | Agentic-led | Complete |
 | `M11.30` | Leaf worktrees get the project's environment set up | task | Agentic-led | Not Started |
@@ -145,7 +145,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.36` | A resumed reviewer session may approve a delta it was shown | task | Agentic-led | Not Started |
 | `M11.37` | review-packet warns when the brief or summary names a file not committed at the reviewed commit | task | Agentic-led | Complete |
 | `M11.38` | handoff status says who can still supply a missing approval | task | Agentic-led | Complete |
-| `M11.39` | A roster entry can be marked unavailable without deleting it | task | Agentic-led | Not Started |
+| `M11.39` | A roster entry can be marked unavailable without deleting it | task | Agentic-led | Complete |
 | `M11.40` | worker reconcile works on merged leaves and separates untracked files | task | Agentic-led | Not Started |
 | `M11.41` | The two review-gate settings cannot silently disagree | task | Agentic-led | Complete |
 | `M11.42` | session end finds the session the same agent started | task | Agentic-led | Complete |
@@ -180,6 +180,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.71` | Review loops escalate on their own and criteria are written with bounds | task | Agentic-led | Complete |
 | `M11.72` | A reviewer run that ends without a record is reported as a failure | task | Agentic-led | Complete |
 | `M11.73` | specy-road ready warns when the leaf no longer merges cleanly | task | Agentic-led | Not Started |
-| `M11.74` | Pickup and finish in one checkout take a shared lock in order | task | Agentic-led | Not Started |
+| `M11.74` | Pickup and finish in one checkout take a shared lock in order | task | Agentic-led | Complete |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
