@@ -156,7 +156,8 @@
       "touch_zones": [
         "specy_road/agents_md_block.py",
         "docs/install-and-usage.md",
-        "tests/"
+        "tests/",
+        "specy_road/harness_instruction_files.py"
       ],
       "type": "task"
     }
