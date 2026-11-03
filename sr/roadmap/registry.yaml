@@ -117,6 +117,7 @@ entries:
       - docs/git-workflow.md
       - docs/orchestration-workers.md
       - tests/
+      - specy_road/verify_cmd_config.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
