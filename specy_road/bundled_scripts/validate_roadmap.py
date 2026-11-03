@@ -197,15 +197,21 @@ def validate_orchestration_contract(root: Path) -> None:
     it means the default review policy (one reviewer, any family), the
     scaffolded starter's policy, which ``--generate-orchestration`` writes as an editable file.
     A file that is not what routing reads (absent on the integration branch,
-    or different there) is, as ``orchestrate plan`` says.
+    or different there or on the local integration branch) is, as ``orchestrate plan`` says.
     """
     _data, err = load_orchestration_config(root)
     if err:
         print(err, file=sys.stderr)
         raise SystemExit(1)
     _ref, drift = roster_source(root)
-    if drift:
+    if drift and orchestration_yaml_path(root).is_file():   # no file at all: the notice, not a warning
         print(f"warning: {drift}", file=sys.stderr)
+
+
+def no_orchestration_notice(root: Path) -> str:
+    """:data:`NO_ORCHESTRATION_NOTICE`, plus where the roster is read from when routing finds none there either."""
+    _ref, drift = roster_source(root)
+    return NO_ORCHESTRATION_NOTICE + (f"\nnotice: {drift}" if drift else "")
 
 
 NO_ORCHESTRATION_NOTICE = (
@@ -335,7 +341,7 @@ def main() -> None:
         if args.generate_orchestration:
             generate_orchestration(root)
         elif not orchestration_yaml_path(root).is_file():
-            print(NO_ORCHESTRATION_NOTICE)   # stdout: a notice, which --strict does not count
+            print(no_orchestration_notice(root))   # stdout: a notice, which --strict does not count
         print_injected_context(root)
     if args.strict and stderr.lines:
         sys.stdout.flush()  # the OK line first, then why it does not count

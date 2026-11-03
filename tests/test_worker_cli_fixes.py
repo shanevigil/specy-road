@@ -102,6 +102,57 @@ def test_a_roster_absent_on_the_integration_branch_is_named(tmp_path: Path, caps
     assert "is not on" in capsys.readouterr().err
 
 
+def _pushed(repo: Path, tmp_path: Path) -> None:
+    """Give ``repo`` an ``origin`` holding its ``dev`` as now, so routing reads ``origin/dev``."""
+    bare = tmp_path / "origin.git"
+    git(tmp_path, "clone", "-q", "--bare", str(repo), str(bare))
+    git(repo, "remote", "add", "origin", str(bare))
+    git(repo, "fetch", "-q", "origin")
+    git(repo, "remote", "set-head", "origin", "dev")
+
+
+def test_a_committed_but_unpushed_roster_says_to_push(tmp_path: Path, capsys) -> None:
+    repo = plan_repo(tmp_path, roster=EXECUTORLESS)
+    _pushed(repo, tmp_path)
+    (repo / "roadmap" / "orchestration.yaml").write_text(ROSTER)
+    git(repo, "commit", "-qam", "roster")   # on the local dev, not on origin/dev
+    plan, _ = op.build_orchestration_plan(repo, today=date(2026, 11, 1))
+    assert plan.roster_ref == "origin/dev"
+    problems = " ".join(only_assignment(plan).problems)
+    assert "differs from origin/dev, where the roster is read from" in problems
+    assert "committed to dev and pushed to origin" in problems and "may_process containing" not in problems
+    validate_orchestration_contract(repo)
+    assert "pushed to origin" in capsys.readouterr().err
+    git(repo, "checkout", "-q", "-b", "feature/x", "origin/dev")   # working tree as pushed; local dev ahead
+    plan, _ = op.build_orchestration_plan(repo, today=date(2026, 11, 1))
+    assert "on the local dev differs from origin/dev" in plan.roster_drift
+    assert "until dev is pushed to origin" in plan.roster_drift
+    git(repo, "push", "-q", "origin", "dev")
+    git(repo, "fetch", "-q", "origin")
+    git(repo, "checkout", "-q", "dev")
+    plan, _ = op.build_orchestration_plan(repo, today=date(2026, 11, 1))
+    assert plan.roster_drift is None and only_assignment(plan).executor
+
+
+def test_no_roster_anywhere_points_at_the_docs_not_the_may_process_hint(
+        tmp_path: Path, monkeypatch, capsys) -> None:
+    from specy_road.bundled_scripts import validate_roadmap
+    repo = plan_repo(tmp_path, roster=None)
+    plan, _ = op.build_orchestration_plan(repo, today=date(2026, 11, 1))
+    assert plan.roster_drift.startswith(f"no roadmap/orchestration.yaml on {plan.roster_ref}, where the roster")
+    assert "nor in the working tree" in plan.roster_drift and "docs/orchestration.md" in plan.roster_drift
+    problems = " ".join(only_assignment(plan).problems)
+    assert "docs/orchestration.md" in problems and "may_process containing" not in problems
+    capsys.readouterr()
+    validate_orchestration_contract(repo)
+    assert capsys.readouterr().err == ""   # no file: a notice on stdout, not a warning
+    assert "docs/orchestration.md" in validate_roadmap.no_orchestration_notice(repo)
+    monkeypatch.setattr("sys.argv", ["validate", "--repo-root", str(repo)])
+    validate_roadmap.main()
+    out = capsys.readouterr().out
+    assert validate_roadmap.NO_ORCHESTRATION_NOTICE in out and "nor in the working tree" in out
+
+
 # --- A3: sync gaps -------------------------------------------------------------
 
 def test_sync_reports_a_gap_in_event_sequence_numbers(tmp_path: Path, capsys) -> None:
