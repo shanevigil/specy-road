@@ -268,8 +268,10 @@ specy-road decides the outcome:
   (`notes-<model>.md`) and the files the run itself keeps (`RUN-<model>.json`,
   its `.tmp`, `RUN-<model>.log`, `OUTPUT-<model>.json`, the schema file and
   `.review-run.lock`): any file of the checkout it ran in, git-ignored and
-  `work/` files included, any file of the leaf's hand-off directory, or a ref
-  (`HEAD`, a branch, a stash). Files are compared by content (SHA-256) as well
+  `work/` files included, any file of the leaf's hand-off directory, a ref
+  (`HEAD`, a branch, a stash), or the Git index's entries (`git add`,
+  `git update-index --assume-unchanged`; compared by `git ls-files --stage -v`,
+  so the stat refresh a read-only `git status` writes is not a write). Files are compared by content (SHA-256) as well
   as size and mtime, so a same-length rewrite with its mtime put back counts. A
   `REVIEW-<model>.md` it filed itself is put back as it was. Nothing is filed.
 - **rerun request** — the output has no JSON object, its last object does not

@@ -1,0 +1,70 @@
+"""M8.3 A2 at the Git metadata boundary: a reviewer run that changes the Git index is a review failure (Sol, c12efa63).
+
+The post-run walk skips ``.git``; the index is compared by ``git ls-files --stage -v`` instead, so an index-only
+write (``update-index --assume-unchanged``, ``rm --cached``) fails the review while the stat refresh a read-only
+``git status`` writes does not. Both public CLIs are exercised: ``review delegate`` and ``prompt --channel cli``.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+
+import pytest
+
+from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
+from tests.review_repo_helpers import git
+from tests.test_models_and_prompt import run_main
+
+from specy_road import review_files as rf
+from specy_road.bundled_scripts import review_cli, role_prompt
+
+#: A generic reviewer whose channels.cli is the fake harness (``{fake}``), printing only its final message.
+GENERIC_GEM = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+               "  - {id: gem, family: google, roles: [reviewer], harness: generic, channels: {cli: '{fake} {prompt}'}}\n")
+
+
+INDEX_ONLY_WRITES = [["update-index", "--assume-unchanged", "src/a.py"], ["rm", "--cached", "-q", "docs/x.md"]]
+
+
+@pytest.mark.parametrize("cmd", INDEX_ONLY_WRITES)
+def test_review_delegate_cli_fails_an_index_only_write_and_files_no_verdict(tmp_path: Path, capsys,
+                                                                             cmd: list[str]) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    clean = git(repo, "status", "--porcelain", "--untracked-files=no")
+    set_steps(repo, spec, {**verdict_step(repo), "git": cmd})
+    with pytest.raises(SystemExit) as e:
+        review_cli.main(["review", "delegate", "M1.1", "--model", "opus", "--backoff", "0", "--json",
+                         "--repo-root", str(repo)])
+    assert e.value.code == 1
+    run = json.loads(capsys.readouterr().out)
+    assert run["outcome"] == "review_failure" and run["reason"].startswith("review failure: the reviewer run wrote git index;")
+    assert not rf.review_path(repo, "M1.1", "opus").exists()
+    if cmd[0] == "update-index":   # the index changed and the worktree did not: git status sees nothing either
+        assert git(repo, "ls-files", "-v", "src/a.py").startswith("h ") and git(
+            repo, "status", "--porcelain", "--untracked-files=no") == clean
+
+
+def test_prompt_channel_cli_fails_an_index_only_write_and_files_no_verdict(tmp_path: Path, capsys) -> None:
+    repo, spec = delegate_repo(tmp_path, GENERIC_GEM)
+    set_steps(repo, spec, {**verdict_step(repo, model="gem"), "plain": True, "git": INDEX_ONLY_WRITES[0]})
+    assert run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli",
+                    "--repo-root", str(repo)) == 1
+    assert "review_failure: review failure: the reviewer run wrote git index;" in capsys.readouterr().err
+    assert not rf.review_path(repo, "M1.1", "gem").exists()
+
+
+def test_a_read_only_git_status_that_refreshes_the_index_is_not_a_write(tmp_path: Path, capsys) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    target = repo / "src" / "a.py"
+    os.utime(target, ns=(target.stat().st_atime_ns, target.stat().st_mtime_ns + 5_000_000_000))   # stale stat cache
+    index = Path(git(repo, "rev-parse", "--git-path", "index"))
+    index = index if index.is_absolute() else repo / index
+    raw = index.read_bytes()
+    set_steps(repo, spec, {**verdict_step(repo), "git": ["status", "--porcelain"]})
+    with pytest.raises(SystemExit) as e:
+        review_cli.main(["review", "delegate", "M1.1", "--model", "opus", "--backoff", "0", "--json",
+                         "--repo-root", str(repo)])
+    assert e.value.code == 0 and json.loads(capsys.readouterr().out)["outcome"] == "recorded"
+    assert index.read_bytes() != raw                                     # git status did rewrite the index file

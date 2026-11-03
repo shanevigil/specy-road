@@ -32,6 +32,9 @@ if step.get("write"):
     open(w["path"], "w").write(w["text"])
     if kept:
         os.utime(w["path"], ns=(kept.st_atime_ns, kept.st_mtime_ns))
+if step.get("git"):   # a git command in the checkout the harness was started in (an index-only write)
+    import subprocess
+    subprocess.run(["git", *step["git"]], check=True, capture_output=True)
 answer = json.dumps(step["answer"]) if "answer" in step else step.get("raw", "filed")
 if step.get("plain"):   # a harness that prints only its final message
     print(answer, flush=True)

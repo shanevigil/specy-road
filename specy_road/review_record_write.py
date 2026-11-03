@@ -11,8 +11,9 @@ envelope's ``structured_output`` is the answer.
 
 * ``review_failure`` — the run wrote something besides its notes and the run's own runtime files
   (:func:`runtime_files`), compared by content as well as size and mtime: any file of the checkout it ran in, git-ignored and ``work/`` files included, any
-  file of the leaf's hand-off directory, or a ref (``HEAD``, a branch, a stash). A ``REVIEW-<model>.md`` it
-  filed itself is put back as it was, so the gate never counts it. Nothing is filed;
+  file of the leaf's hand-off directory, a ref (``HEAD``, a branch, a stash), or the Git index's entries (a
+  ``git add``, ``git update-index --assume-unchanged``; a stat refresh by ``git status`` is not one). A
+  ``REVIEW-<model>.md`` it filed itself is put back as it was, so the gate never counts it. Nothing is filed;
 * ``rerun`` — the output is missing, is not a JSON object, does not match the schema, or ``review record``
   refuses it (a wrong commit, an approve with a failing item): a rerun request, never a verdict;
 * ``recorded`` — the notes went to ``notes-<model>.md`` and ``review record`` filed the record from them, with
@@ -46,7 +47,7 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
-from specy_road.git_subprocess import git_text
+from specy_road.git_subprocess import git_stdout, git_text
 from specy_road.review_files import HISTORY_DIRNAME, REVIEW_PREFIX, render_front_matter, review_path
 from specy_road.runtime_paths import specy_road_package_dir
 
@@ -164,11 +165,16 @@ class Snapshot:
 
 
 def snapshot(cwd: Path, reviews: Path, model: str) -> Snapshot:
-    """Every file of the checkout at ``cwd`` and of the hand-off directory ``reviews``, plus every ref."""
+    """Every file of the checkout at ``cwd`` and of the hand-off directory ``reviews``, plus every ref and the
+    Git index. The walk skips ``.git``, so the index is compared by what it records (``ls-files --stage -v``:
+    each entry's mode, blob, stage and assume-unchanged / skip-worktree flag), not its bytes, which a read-only
+    ``git status`` rewrites when it refreshes the stat cache."""
     top = Path(git_text(["rev-parse", "--show-toplevel"], cwd) or cwd).resolve()
     reviews = reviews.resolve()
+    index = git_stdout(["ls-files", "--stage", "-v", "-z"], top) or ""
     state: dict[str, Any] = {"git refs": (git_text(["rev-parse", "HEAD"], top) or "") + "\n"
-                             + (git_text(["for-each-ref", "--format=%(refname) %(objectname)"], top) or "")}
+                             + (git_text(["for-each-ref", "--format=%(refname) %(objectname)"], top) or ""),
+                             "git index": hashlib.sha256(index.encode()).hexdigest()}
     _walk(top, state)
     if top not in reviews.parents:   # a reviewer in a linked worktree: the hand-off directory is the main checkout's
         _walk(reviews, state)
@@ -176,7 +182,7 @@ def snapshot(cwd: Path, reviews: Path, model: str) -> Snapshot:
 
 
 def written(before: Snapshot, after: Snapshot) -> list[str]:
-    """Each path (or ``git refs``) added, removed or changed between the two snapshots, but the run's own
+    """Each path (or ``git refs``, ``git index``) added, removed or changed between the two snapshots, but the run's own
     :func:`runtime_files`; shown relative to the checkout when it is inside it."""
     keys = set(before.state) | set(after.state)
     changed = (k for k in keys if k not in before.exempt and before.state.get(k) != after.state.get(k))
