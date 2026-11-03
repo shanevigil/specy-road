@@ -237,7 +237,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.49_packet-zones-at-commit_4fc343e1-0baf-4635-a715-a6cf446d552f.md",
       "sibling_order": 49,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The review packet takes touch zones from the reviewed commit and treats lockfiles as generated",
       "touch_zones": [
         "specy_road/review_target.py",

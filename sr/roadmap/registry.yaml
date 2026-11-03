@@ -81,17 +81,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: packet-zones-at-commit
-    node_id: M11.49
-    branch: feature/rm-packet-zones-at-commit
-    touch_zones:
-      - specy_road/review_target.py
-      - specy_road/bundled_scripts/review_packet.py
-      - tests/
-      - docs/orchestration-review.md
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: handoff-eligible-reviewers
     node_id: M11.38
     branch: feature/rm-handoff-eligible-reviewers

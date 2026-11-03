@@ -8,13 +8,15 @@ Writes ``work/reviews/<NODE_ID>/PACKET.md`` (and ``-o``'s path too) with, in ord
 3. a warning when the brief, a planning sheet or the summary names a path not
    in the tree at the reviewed commit;
 4. every changed path since the merge base (with the integration branch, or
-   ``--base``), with paths outside the node's touch zones called out;
+   ``--base``), with paths outside the touch zones called out: the claim row's
+   zones plus the node's as committed at the reviewed commit;
 5. the Python test files that import a changed module (``specy-road impact``);
 6. ``git diff <base>...<ref>``, with a warning when it is empty; past
    ``--max-diff-lines`` (default 1500) or ``--max-diff-bytes`` (default 200000)
    the first files that fit both are inlined whole, the rest are listed with
    their ``+``/``-`` counts and diff bytes, and the full diff is written to
-   ``work/reviews/<NODE_ID>/DIFF.patch`` (``0`` = no cap); a generated file is
+   ``work/reviews/<NODE_ID>/DIFF.patch`` (``0`` = no cap); a generated file
+   (a well-known lockfile included, unless ``.gitattributes`` says otherwise) is
    never inlined, only listed;
 7. verifier output — the newest valid READY file's ``verify`` tails, plus any
    ``--verify-cmd`` run now.
@@ -56,6 +58,9 @@ MAX_DIFF_LINES = 1500
 MAX_DIFF_BYTES = 200_000   # a minified bundle is a few very long lines; lines alone do not bound it
 # Generated artefacts, git-root relative; with .gitattributes `linguist-generated` paths, listed, never inlined.
 GENERATED_PATHS = ("specy_road/pm_gantt_static/",)   # the packaged PM GUI bundle
+# Lockfiles, by file name in any directory: generated unless a .gitattributes entry
+# sets linguist-generated for them (`linguist-generated=false` opts one back in).
+LOCKFILES = ("package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock", "uv.lock", "Cargo.lock", "go.sum")
 GENERATED_NOTE = "_Generated files are never inlined: review the source they are built from._"
 DIFF_NAME = "DIFF.patch"   # beside PACKET.md when the diff is capped
 # Paths every feature branch touches for bookkeeping; never a touch-zone breach.
@@ -103,7 +108,7 @@ def _header(root: Path, t: ReviewTarget, integration_ref: str | None) -> list[st
         f"- **Commit under review:** `{t.commit or 'unknown'}` (`{t.ref}`)",
         f"- **Base:** `{t.base or 'unknown'}` ({base_how})",
         *milestone_packet_lines(t),
-        f"- **Touch zones:** {', '.join(f'`{z}`' for z in t.touch_zones) or '_none declared_'}",
+        f"- **Touch zones:** {', '.join(f'`{z}`' for z in t.review_zones) or '_none declared_'}",
         policy_source_line(root),
         f"- **Generated:** {date.today().isoformat()} by review-packet at HEAD `{head_sha(root) or '?'}`",
         *trial_merge_lines(root, t.ref, integration_ref),
@@ -138,7 +143,7 @@ def changed_paths_section(root: Path, t: ReviewTarget) -> tuple[list[str], list[
     prefix = project_prefix(root)
     changed = diff_paths(root, f"{t.base}...{t.commit}") or []   # both sides of a rename or copy
     paths = [rebase_to_project(p, prefix) or p for p in changed]
-    zones = [z.strip().strip("/") for z in t.touch_zones if isinstance(z, str) and z.strip()]
+    zones = [z.strip().strip("/") for z in t.review_zones if isinstance(z, str) and z.strip()]
     lines = ["## Changed paths", "", _computed(t), ""]
     outside = []
     policy = [p for p in paths if p in _POLICY_PATHS]
@@ -215,13 +220,16 @@ def _numstat(root: Path, t: ReviewTarget) -> list[tuple[str, str, str]]:
 
 
 def _generated(root: Path, commit: str, paths: list[str]) -> set[str]:
-    """The git-root ``paths`` under GENERATED_PATHS or marked ``linguist-generated`` at ``commit``."""
+    """The git-root ``paths`` under GENERATED_PATHS, marked ``linguist-generated`` at ``commit``, or a
+    LOCKFILES name with no ``linguist-generated`` entry there."""
     out = {p for p in paths if p.startswith(GENERATED_PATHS)}
     top = Path(git_text(["rev-parse", "--show-toplevel"], root) or root)   # check-attr paths are cwd-relative
     attr = ["check-attr", "-z", "linguist-generated", "--", *paths]
     raw = git_stdout(attr[:2] + [f"--source={commit}"] + attr[2:], top) or git_stdout(attr, top) or ""
     f = raw.split("\0")   # path, attribute, value; repeated
-    return out | {f[i] for i in range(0, len(f) - 2, 3) if f[i + 2] in ("set", "true")}
+    value = {f[i]: f[i + 2] for i in range(0, len(f) - 2, 3)}
+    lock = {p for p in paths if p.rsplit("/", 1)[-1] in LOCKFILES and value.get(p, "unspecified") == "unspecified"}
+    return out | lock | {p for p, v in value.items() if v in ("set", "true")}
 
 
 def _budget(cap: int, max_bytes: int) -> str:

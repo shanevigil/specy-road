@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -37,6 +38,27 @@ def test_packet_flags_paths_outside_touch_zones(tmp_path: Path) -> None:
     assert "1 path(s) outside the touch zones" in text
     assert f"- `roadmap/registry.yaml`{rp.BOOKKEEPING_MARK}\n" in text
     assert rp.BOOKKEEPING_NOTE in text and "+  implementation_review: approved" in text   # shown, labelled
+
+
+def test_zones_added_to_the_node_on_the_branch_count_from_a_checkout_on_dev(tmp_path: Path) -> None:
+    """A1: the node's touch_zones are read at the reviewed commit and joined to the claim row's."""
+    repo = make_review_repo(tmp_path)
+    chunk = repo / "roadmap" / "phases" / "M1.json"
+    commit_file(repo, "roadmap/phases/M1.json", json.dumps({"nodes": [{**NODE, "touch_zones": ["src", "docs"]}]}),
+                "zones")
+    git(repo, "checkout", "-q", "dev")
+    assert json.loads(chunk.read_text())["nodes"][0]["touch_zones"] == ["src"]   # dev has not seen the edit
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    assert "- `docs/x.md`\n" in text and "outside touch zones" not in text
+    assert "- **Touch zones:** `src`, `docs`" in text
+
+
+def test_zones_fall_back_to_the_claim_when_the_node_is_unreadable_at_the_commit(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    commit_file(repo, "roadmap/phases/M1.json", "not json", "break the chunk")
+    git(repo, "checkout", "-q", "dev")
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    assert "- `docs/x.md`  **← outside touch zones**" in text and "- **Touch zones:** `src`\n" in text
 
 
 def test_packet_reviews_branch_tip_without_switching(tmp_path: Path) -> None:
@@ -252,6 +274,28 @@ def test_a_linguist_generated_path_at_the_reviewed_commit_is_never_inlined(tmp_p
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
     assert "- `src/gen.py` (+1 -0) — not inlined, generated (" in text and "+made = 1" not in text
     assert "+src/gen.py linguist-generated" in text and "the first 3 of 4 changed file(s)" in text
+
+
+def test_a_large_lockfile_sorting_first_is_listed_and_later_files_are_inlined(tmp_path: Path) -> None:
+    """A2: a lockfile with no .gitattributes entry is generated and does not use up the budgets."""
+    repo = make_review_repo(tmp_path)
+    commit_file(repo, "package-lock.json", "".join(f'"dep{i}": "1.0.{i}",\n' for i in range(3000)), "lock")
+    commit_file(repo, "gui/yarn.lock", "dep@1:\n", "nested lock")
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    assert "- `package-lock.json` (+3000 -0) — not inlined, generated (" in text and '"dep0"' not in text
+    assert "- `gui/yarn.lock` (+1 -0) — not inlined, generated (" in text and rp.GENERATED_NOTE in text
+    assert "+print('a')" in text and "+# x" in text and "the first 2 of 4 changed file(s)" in text
+
+
+def test_linguist_generated_false_inlines_a_lockfile(tmp_path: Path) -> None:
+    """A2: a .gitattributes entry at the reviewed commit decides for a lockfile."""
+    repo = make_review_repo(tmp_path)
+    commit_file(repo, ".gitattributes", "uv.lock linguist-generated=false\n", "attrs")
+    commit_file(repo, "uv.lock", "version = 1\n", "lock")
+    commit_file(repo, "Cargo.lock", "version = 3\n", "cargo lock")
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    assert "+version = 1" in text and "- `uv.lock` (" not in text
+    assert "- `Cargo.lock` (+1 -0) — not inlined, generated (" in text and "+version = 3" not in text
 
 
 def test_main_passes_max_diff_bytes_through(tmp_path: Path) -> None:
