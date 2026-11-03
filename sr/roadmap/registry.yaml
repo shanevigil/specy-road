@@ -86,3 +86,16 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
+  - codename: reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
+    node_id: M8.3
+    branch: feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
+    touch_zones:
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/review_files.py
+      - specy_road/review_record_write.py
+      - specy_road/templates/specyrd/
+      - docs/pm-llm-review.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
