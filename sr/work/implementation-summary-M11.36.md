@@ -1,8 +1,17 @@
 # Implementation summary: M11.36 — A resumed reviewer session may approve a delta it was shown
 
-Base `ea837ec1` was a coordinator checkpoint of a terminated worker's uncommitted edits (not reviewed).
-This round keeps its policy key, schemas and module, rewrites the gate and status logic for A2, and
-drops its prompt-side duplicate. The leaf's diff is `fa53b678..HEAD`.
+Base `ea837ec1` was a coordinator checkpoint of the first Composer worker's uncommitted edits (not
+reviewed). I kept its policy key, default and module, rewrote the gate and status logic for A2, and
+dropped its prompt-side duplicate of the packet text. `origin/WIP/improvements-0-3-1` is merged in
+(`b13fa665`, no conflicts).
+
+The second worker's patch (`m1136-main2.patch`, read for reference only) turned up one real gap:
+the reviewer preamble always said "This is a fresh session". That is now fixed (see below). I did not
+take its other changes:
+- a second key name, `reviewer_resumed_delta_approval`;
+- a `GateResult.summary()` suffix;
+- moving `human_approval_completes` and `commit_trailers` into `review_gate_ready.py`, which is out of
+  scope.
 
 ## What changed
 
@@ -23,44 +32,58 @@ drops its prompt-side duplicate. The leaf's diff is `fa53b678..HEAD`.
 
   When another check fails too, the reason lists `fresh_session` first, then that check. `handoff status`
   shows these reasons through the existing `gate.problems()`; `review_cli.py` is unchanged.
+- **Resumed blocks.** With the key on, a resumed block naming `delta_from` counts as a block. The
+  delta rules gate approvals only, so this can only make the gate stricter. When a block is refused
+  only for `fresh_session`, the status note says "block", not "approval".
+- **Reviewer prompt.** `reviewer_preamble` takes `resumed_delta`. When the reviewer reads its own
+  delta packet and the key is on, the line "This is a fresh session" becomes: if you are the resumed
+  session that approved the delta's base, set `fresh_session: false`; otherwise this is a fresh
+  session. The new `role_prompt.reviewer_lines` builds the packet before the preamble, which keeps
+  `build_prompt` under the 80-line function cap.
+- **Schemas.** The checkpoint's description of the key was circular ("resumed the session that read
+  its delta packet"). It now says which session is resumed and what stays refused.
 - **Delta packet.** The **Delta review** section in `review_packet._delta_section` says whether a resumed
   session may approve (key on) or a fresh one is needed (key off).
 - **Docs.** `docs/orchestration-review.md` has a new paragraph after the delta-review section: the key,
   its default, what it waives and what it does not, and the four status messages.
 - **Reverted from the checkpoint.** In `role_prompt.py`, `delta_session_lines` recomputed `delta_basis`
-  and repeated text the appended packet already carries, so `role_prompt.py` is back to base (no net
-  change). The checkpoint's `delta_section_lines` move out of `review_packet.py` is also undone:
+  and repeated text the appended packet already carries, so I removed it. The checkpoint's `delta_section_lines` move out of `review_packet.py` is also undone:
   `_delta_section` stays in place.
 
 ## Touch zones (final list)
 
-Zones named in the brief that this leaf changed: `specy_road/review_gate.py`,
-`specy_road/bundled_scripts/review_packet.py`, `docs/orchestration-review.md`, `tests/`.
-`specy_road/bundled_scripts/role_prompt.py` has no net change.
+These are the brief's zones plus the ones added with `specy-road edit-node M11.36 --add touch_zones=…`
+(committed on this branch, along with the registry claim):
 
-The leaf's diff also contains these paths outside the brief's zones. All of them come from the
-checkpoint commit `ea837ec1`. Please add them to the touch zones:
+- `specy_road/review_gate.py`
+- `specy_road/bundled_scripts/review_packet.py`
+- `specy_road/bundled_scripts/role_prompt.py`
+- `docs/orchestration-review.md`
+- `tests/`
+- `specy_road/review_resumed_delta.py`: a new module, because `review_gate.py` is at its 400-line cap
+- `specy_road/orchestration_config.py`: the key's default in `DEFAULT_POLICY`
+- `specy_road/templates/project/schemas/orchestration.schema.json` and
+  `sr/schemas/orchestration.schema.json`: `policy` has `additionalProperties: false`
+- `specy_road/bundled_scripts/role_prompt_rca.py`: holds `reviewer_preamble`
 
-- `specy_road/review_resumed_delta.py`: a new module. `review_gate.py` is at the 400-line cap. I rewrote
-  this file this round.
-- `specy_road/orchestration_config.py`: one line, `reviewer_resumed_delta: False` in `DEFAULT_POLICY`.
-  Unchanged this round.
-- `specy_road/templates/project/schemas/orchestration.schema.json` and `sr/schemas/orchestration.schema.json`:
-  the `policy` object has `additionalProperties: false`, so the key cannot be set without them.
-  Unchanged this round.
-
-`specy_road/templates/project/roadmap/orchestration.yaml` lists policy keys but does not list this new
-key. It is outside the zones, so I left it alone.
+`specy_road/templates/project/roadmap/orchestration.yaml` lists neither `delta_review` nor this key,
+so I left it alone.
 
 ## Verification
 
-- `pytest tests/test_resumed_delta_review.py`: 11 passed. With `review_gate.py` and `review_packet.py`
-  restored to `fa53b678`, all 11 fail (red-green).
-- `pytest -n auto` (full suite): 3362 passed, 2 skipped.
-- `specy-road file-limits`: OK. `review_gate.py` and `review_packet.py` are each at 400 lines.
+- `pytest tests/test_resumed_delta_review.py`: 14 passed.
+- Red-green, first round: with `review_gate.py` and `review_packet.py` restored to `fa53b678`, all 11
+  of that round's tests fail.
+- Red-green, this round: with the prompt and resumed-delta modules restored to `63839627`, the
+  key-on preamble test and `test_resumed_block_reasons` fail.
+- Every test file that references `role_prompt`, `review_packet`, `orchestration_config`, the
+  orchestration schema, `review_cli`, `review_gate`, `review_resumed_delta` or `handoff` (66 files):
+  857 passed. The full suite before the merge: 3362 passed, 2 skipped.
+- `specy-road file-limits`: OK.
 - `python scripts/check_test_private_imports.py`: 0 new.
-- `ruff check specy_road tests scripts`: one C901 in `review_packet_uncommitted_refs.py`, a file this
-  leaf does not touch. The error is pre-existing. The files this leaf changed pass `ruff check`.
+- `specy-road validate`: OK.
+- `ruff check` on the changed files: clean. `ruff check specy_road tests scripts` still reports a C901
+  in `review_packet_uncommitted_refs.py`, which this leaf does not touch; the error is pre-existing.
 - `scripts/check_clones.py` was not run: `pylint` is not installed in this environment.
 
 ## Added
@@ -80,6 +103,13 @@ key. It is outside the zones, so I left it alone.
   the bare reason.
 - Branch in `review_packet._delta_section`: a resumed-session sentence when the key is on, a
   fresh-session sentence when it is off.
+- Branch in `fresh_only_note` for a block: a block is never held to the delta rules, so the note
+  says whether it would count.
+- `role_prompt_rca.reviewer_preamble(..., resumed_delta=False)`: the session sentence for a resumed
+  delta reviewer.
+- `role_prompt.reviewer_lines(...)`: builds the reviewer's preamble and packet. It detects a delta
+  round by the `PACKET-<model>.md` that `reviewer_packet` writes only for one, and is split out of
+  `build_prompt` to keep that function under its cap.
 - Mocks: none.
 - Tests in `tests/test_resumed_delta_review.py`:
   - `test_resumed_delta_approval_counts_when_policy_allows`: A1, allowed.
@@ -95,5 +125,9 @@ key. It is outside the zones, so I left it alone.
     falsely.
   - `test_resumed_delta_approval_is_a_basis_for_the_next_delta`: A1, `prior_approvals` honours the
     waiver.
-  - `test_delta_packet_says_whether_a_resumed_session_may_approve` (2 params): the packet text with the
-    key on and off.
+  - `test_delta_packet_says_whether_a_resumed_session_may_approve` (2 params): the packet text and the
+    preamble with the key on and off.
+  - `test_full_packet_prompt_still_says_fresh_session_when_policy_on`: a full packet keeps the fresh
+    preamble.
+  - `test_resumed_delta_block_counts_when_policy_allows`: a resumed delta block counts.
+  - `test_resumed_block_reasons`: the A2 block wording, with and without `delta_from`.
