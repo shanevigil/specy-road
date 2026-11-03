@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 
 from specy_road import harness_facts as hf
-from specy_road.init_project import project_template_root
+from specy_road.init_project import index_bundled_profile_names, project_template_root
 from specy_road.model_profiles import PROFILES_REL
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
@@ -46,7 +46,11 @@ def _contained(repo_root: Path, path: Path) -> None:
 
 
 def refresh_profiles(
-    repo_root: Path, *, dry_run: bool = False, force: list[str] | None = None
+    repo_root: Path,
+    *,
+    dry_run: bool = False,
+    force: list[str] | None = None,
+    only: str | None = None,
 ) -> tuple[list[str], list[str]]:
     """``(written, kept)`` repo-relative paths. ``force`` names relative paths to overwrite."""
     src_dir = bundled_profiles_dir()
@@ -56,10 +60,18 @@ def refresh_profiles(
     dst_dir = repo_root / PROFILES_REL
     _contained(repo_root, dst_dir)
     forced = {Path(f).as_posix() for f in force or []}
+    only_rel: str | None = None
+    if only is not None:
+        _families, api_ids, rel_by_api = index_bundled_profile_names(src_dir)
+        if only not in api_ids:
+            raise ValueError(f"unknown api_id {only!r}")
+        only_rel = rel_by_api[only]
     written: list[str] = []
     kept: list[str] = []
     for src in sorted(p for p in src_dir.rglob("*.md")):
         rel_in = src.relative_to(src_dir).as_posix()
+        if only_rel is not None and rel_in != only_rel:
+            continue
         rel = f"{PROFILES_REL.as_posix()}/{rel_in}"
         dst = dst_dir / rel_in
         _contained(repo_root, dst)
@@ -181,6 +193,11 @@ def _parser() -> argparse.ArgumentParser:
         "--force", action="append", default=[], metavar="PATH",
         help="Overwrite this profile (repo-relative, e.g. model-profiles/openai-gpt/gpt-6.1-sol.md); repeatable.",
     )
+    p.add_argument(
+        "--only",
+        metavar="API_ID",
+        help="Add only the named profile (by api_id) when it is missing; default adds every missing profile.",
+    )
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--check", action="store_true",
                       help="Report rendered regions that differ from harness-facts.yaml; exit 1 on drift. Writes nothing.")
@@ -195,7 +212,7 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _copy_missing(root: Path, args: argparse.Namespace) -> None:
-    written, kept = refresh_profiles(root, dry_run=args.dry_run, force=args.force)
+    written, kept = refresh_profiles(root, dry_run=args.dry_run, force=args.force, only=args.only)
     verb = "would write" if args.dry_run else "wrote"
     for rel in written:
         print(f"{verb} {rel}")
@@ -214,6 +231,8 @@ def main(argv: list[str] | None = None) -> None:
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     if (args.from_dir or args.accept) and not args.capture:
         p.error("--from and --accept need --capture")
+    if args.only and (args.capture or args.check or args.render):
+        p.error("--only adds missing profiles; do not combine with --check, --render or --capture")
     root = (args.repo_root or default_user_repo_root()).resolve()
     try:
         if args.capture:

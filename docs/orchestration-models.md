@@ -11,12 +11,16 @@ profiles, `specy-road models`, `specy-road prompt`, and
 `init project` scaffolds `model-profiles/` into your repo: one schema-2 profile
 per model (limits, prices, headless CLI, role scores, prompting rules, failure
 modes) and a README that ranks models by role and gives each one's roster
-`family`. A roster entry points at its profile with `profile:`, and names
+`family`. Pass `--profiles all` (the default) to copy every shipped profile,
+`--profiles none` for only `README.md` and `harness-facts.yaml`, or
+`--profiles <family-or-api_id,...>` for a subset (always including those two
+files). A roster entry points at its profile with `profile:`, and names
 the `harness` (`claude-code`, `codex`, `cursor`, `generic`) that
 `specy-road worker delegate` launches it on — a Claude model under Cursor's
 agent is a `cursor` worker ([orchestration-workers.md](orchestration-workers.md)). A repo scaffolded
 by an older version gets them with `specy-road refresh-profiles`, which adds
-what is missing and never overwrites your edited copies. The facts come
+what is missing and never overwrites your edited copies (`--only <api_id>` adds
+a single missing profile). The facts come
 from model-run research no human has verified, so read the README's provenance
 section before copying a CLI line into production.
 

@@ -39,6 +39,16 @@ def build_specy_road_init_parser() -> argparse.ArgumentParser:
             "path: use refresh-schemas, refresh-profiles and refresh-stubs."
         ),
     )
+    pr.add_argument(
+        "--profiles",
+        default="all",
+        metavar="SPEC",
+        help=(
+            "Which model profiles to scaffold: all (default), none, or a comma-separated list of "
+            "family directory or api_id names. Always includes model-profiles/README.md and "
+            "harness-facts.yaml."
+        ),
+    )
     pg = sub.add_parser(
         "gui",
         help="Install FastAPI/uvicorn (gui-next) and optionally build the Vite SPA",
