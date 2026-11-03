@@ -45,3 +45,5 @@ Original PM list plus the three kept files above (`edit-node --add`):
 - `worktree=` in `_line` and `sync_worker_header`; sync passes `rec.worktree` into the header dict — A5 coordinator visibility.
 - Per-node `fix: specy-road scaffold-planning <ID>` lines in `validate_required_planning_dirs` — A3.
 - `tests/test_m11_27_small_cli_fixes.py` — acceptance tests for A1–A5.
+- A2 fixture writes `policy.milestone_full_review: false` and asserts a non-empty `complete_rolled_up_ancestors` result before counting the acceptance warning (review finding: the hold skipped the ancestor write).
+- A4 test compares the completion reason to `list_ready(...).errors` instead of `review_cli._node_status`.

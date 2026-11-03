@@ -21,7 +21,7 @@ from specy_road.bundled_scripts import role_prompt
 from specy_road.bundled_scripts import validate_roadmap as vr
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
-from specy_road.review_files import reviews_dir
+from specy_road.review_files import list_ready, reviews_dir
 
 
 def test_prompt_wrote_line_is_on_stderr(tmp_path: Path, capsys, monkeypatch) -> None:
@@ -76,6 +76,8 @@ def _rollup_finish_repo(tmp_path: Path) -> Path:
         "require_implementation_review_before_finish: true\n",
         encoding="utf-8",
     )
+    (tmp_path / "roadmap" / "orchestration.yaml").write_text(
+        "version: 1\npolicy: {milestone_full_review: false}\n", encoding="utf-8")
     (tmp_path / "roadmap" / "manifest.json").write_text(
         json.dumps({"version": 1, "includes": ["phases/M70.json"]}), encoding="utf-8"
     )
@@ -146,7 +148,8 @@ def _rollup_finish_repo(tmp_path: Path) -> Path:
 def test_ancestor_rollup_then_validate_prints_each_warning_once(tmp_path: Path, capsys) -> None:
     repo = _rollup_finish_repo(tmp_path)
     capsys.readouterr()
-    complete_rolled_up_ancestors(repo, "M70.1.1")
+    changed = complete_rolled_up_ancestors(repo, "M70.1.1")
+    assert changed
     validate_at(repo, no_overlap_warn=True, require_registry=True)
     err = capsys.readouterr().err
     assert err.count("has no acceptance criteria") == 1
@@ -164,13 +167,8 @@ def test_worker_runner_reports_invalid_and_missing_ready(tmp_path: Path) -> None
     wr.run(repo, rec.worker_id, launch)
     invalid_summary = ws.events_since(repo, rec.worker_id)[-1].summary
     assert invalid_summary.startswith("exit 0; READY file invalid:")
-    from specy_road.bundled_scripts import review_cli
-
-    st = review_cli._node_status(repo, "M1.1")
-    handoff_reason = next(
-        r["errors"][0] for r in st["ready"] if r["file"] == "READY-opus.md" and r["errors"]
-    )
-    assert handoff_reason in invalid_summary
+    invalid = next(r for r in list_ready(repo, "M1.1") if r.path.name == "READY-opus.md" and r.errors)
+    assert "; ".join(invalid.errors) in invalid_summary
 
     rec2 = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
     wr.run(repo, rec2.worker_id, _launch(tmp_path, script, repo, "missing"))
