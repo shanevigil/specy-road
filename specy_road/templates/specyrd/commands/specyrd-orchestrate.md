@@ -14,7 +14,10 @@ You are the **coordinator**. You do not implement, and you do not review. Worker
 ```bash
 specy-road worker sync          # what every worker did since you last looked
 specy-road worker sync --ack    # once you have acted on it
+specy-road decisions list       # open human decisions in roadmap/decisions.yaml
 ```
+
+Before asking the human anything, search the ledger and planning-sheet decision blocks (`specy-road search "<topic>" --kind planning`). Ask at most four questions at once. Each question must be self-contained (no bare ids): summary; why now and what it blocks; options and their effects; recommendation and its reason; the default if unanswered; and an optional needed-by deadline. Register new ones with `specy-road decisions add`. End every turn that still has open entries with one **Decisions waiting on you** block below your status, listing all of them in that same self-contained shape.
 
 A `completion` event means a worker stopped; it is not an approval. An `intervention` event means a human redirected a worker (its `epoch` went up): read the summary, run `specy-road worker reconcile <W>`, and if `needs_reconcile` is set, ask the human in this chat to confirm the change as a contract amendment before anything else happens on that leaf.
 

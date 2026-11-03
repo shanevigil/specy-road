@@ -371,7 +371,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.34_decision-ledger_bc3055ab-39c6-4972-b8a7-bf83e135d26a.md",
       "sibling_order": 34,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Open human decisions live in one tracked ledger and every question is self-contained",
       "touch_zones": [
         "specy_road/decisions.py",
