@@ -39,8 +39,9 @@ def only_planning_or_review_bookkeeping_since(
     handoffs = f"{REVIEWS_REL.as_posix()}/{node['id']}"
     for p in paths:
         rel = rebase_to_project(p, prefix)
-        names = {p, rel} if rel is not None else {p}
-        if not any(n in (pd, summary) or n == handoffs or n.startswith(f"{handoffs}/") for n in names):
+        if rel is None:
+            return False
+        if rel not in (pd, summary) and rel != handoffs and not rel.startswith(f"{handoffs}/"):
             return False
     return True
 

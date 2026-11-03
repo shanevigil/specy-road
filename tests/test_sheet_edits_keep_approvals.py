@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
+from tests.review_repo_helpers import (
+    NODE, commit_file, git, git_root_relative, make_layout_finish_repo, make_review_repo, review_text,
+)
 from tests.test_review_cli import ONE_AI, _status
 
 from specy_road.review_files import reviews_dir
@@ -80,6 +82,29 @@ def test_unresolved_commit_leaves_approval_stale(tmp_path: Path) -> None:
     assert len(g.stale) == 1
     assert not g.bookkeeping_carry
     assert "still count" not in g.summary()
+
+
+def test_nested_sheet_carry_and_git_root_namesake_stales(tmp_path: Path) -> None:
+    git_top, project = make_layout_finish_repo(tmp_path / "keep", "nested")
+    _review(project)
+    commit_file(
+        git_top,
+        git_root_relative(git_top, project, NODE["planning_dir"]),
+        "# M1.1 Thing\n\n## Intent\n\nUpdated.\n\n## References\n",
+        "in-project sheet",
+    )
+    g = evaluate_gate(project, NODE, git(git_top, "rev-parse", "HEAD"))
+    assert g.passed and g.bookkeeping_carry
+    assert not g.stale
+
+    for i, rel in enumerate((NODE["planning_dir"], "work/implementation-summary-M1.1.md")):
+        git_top, project = make_layout_finish_repo(tmp_path / f"stale-{i}", "nested")
+        _review(project)
+        commit_file(git_top, rel, "git-root namesake\n", "git-root namesake")
+        g = evaluate_gate(project, NODE, git(git_top, "rev-parse", "HEAD"))
+        assert not g.passed
+        assert len(g.stale) == 1
+        assert not g.bookkeeping_carry
 
 
 def test_handoff_status_reports_bookkeeping_carry(tmp_path: Path, capsys) -> None:
