@@ -2,6 +2,28 @@
   "nodes": [
     {
       "acceptance": [
+        "The reviewer prompt tells every reviewer to (1) run the tests that import each changed module, not only the executor's selection, (2) try at least one input per changed public function that the diff's tests do not use and report it under commands_rerun, (3) fail an acceptance item whose observed behaviour differs from its text, even when the difference looks minor, and (4) list every defect its notes describe under required_changes or explain why it is not a defect; a test pins the four rules in the rendered prompt",
+        "review record refuses an approve whose notes or findings name a defect without a matching required_changes entry or an explicit 'not a defect because' line, with a message saying which; a test covers the refusal and an approve with no findings"
+      ],
+      "codename": "reviewer-probe-rules",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.75",
+      "node_key": "fad49524-fd80-4585-86c5-6855921d0ed8",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.75_reviewer-probe-rules_fad49524-fd80-4585-86c5-6855921d0ed8.md",
+      "sibling_order": 75,
+      "status": "Not Started",
+      "title": "Reviewer prompt asks for independent probes, not the executor's own checks",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt.py",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
         "validate (or orchestrate plan) warns when a roster entry with a reviewer or executor role matches no model profile by api_id, file name or alias, naming the entry and the closest profile; the shipped profiles carry aliases for the harness ids they document (for example cursor-grok-4.6-high and gpt-5.6-sol-high); a test covers a matched and an unmatched roster id"
       ],
       "codename": "profile-alias-coverage",
@@ -12,7 +34,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.76_profile-alias-coverage_9025e735-d94d-4074-92de-191f5457d561.md",
       "sibling_order": 76,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Every roster model reaches its profile notes",
       "touch_zones": [
         "specy_road/model_profiles.py",
@@ -56,7 +78,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.78_review-lessons_bc1266c1-cff7-45ce-99ef-8baff6f93b90.md",
       "sibling_order": 78,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Review lessons: escaped defect classes feed every reviewer prompt",
       "touch_zones": [
         "specy_road/review_lessons.py",
@@ -119,6 +141,31 @@
         "specy_road/bundled_scripts/generate_brief.py",
         "docs/git-workflow.md",
         "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "ruff check specy_road tests scripts passes on the branch: uncommitted_refs_section and load_availability_overlay are split so each stays under the C901 limit with no behaviour change (the existing tests for the review packet's uncommitted-references section and for orchestration.local.yaml pass unchanged)",
+        "roadmap/git-workflow.yaml land_check_cmd for this repository runs ruff check before pytest (one shell command), and docs/git-workflow.md's land_check_cmd example shows that lint belongs in the land check when CI enforces it; a test is not required for the yaml change"
+      ],
+      "codename": "wip-ruff-clean",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.82",
+      "node_key": "29461e62-7961-4fc1-bdc9-901d25cd57d5",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.82_wip-ruff-clean_29461e62-7961-4fc1-bdc9-901d25cd57d5.md",
+      "sibling_order": 81,
+      "status": "Not Started",
+      "title": "The integration branch passes ruff again and the land check runs it",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_packet_uncommitted_refs.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/orchestration_local_overlay.py",
+        "sr/roadmap/git-workflow.yaml",
+        "docs/git-workflow.md",
         "tests/"
       ],
       "type": "task"

@@ -17,10 +17,13 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field, replace
 from datetime import date
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Callable
 
 import yaml
+
+from specy_road.orchestration_config import load_orchestration_config
 
 PROFILES_REL = Path("model-profiles")
 PROFILE_SCHEMA = 2
@@ -283,3 +286,43 @@ def profile_for_entry(repo_root: Path, entry: dict[str, Any]) -> Profile | None:
         prof = load_profile((repo_root / str(rel)).resolve())
         return prof.for_id(entry.get("id")) or prof
     return next((m for p in list_profiles(repo_root) if (m := p.for_id(entry.get("id")))), None)
+
+
+def closest_profile(model_id: str, profiles: list[Profile]) -> Profile | None:
+    """The profile with a name (``api_id``, file name or alias) most like ``model_id``, ``None`` without any."""
+    def score(p: Profile) -> float:
+        aliases = p.data.get("aliases") if isinstance(p.data.get("aliases"), list) else []
+        names = [str(p.data.get("api_id") or ""), p.path.stem, *map(str, aliases)]
+        return max(SequenceMatcher(None, model_id, n).ratio() for n in names)
+    return max(profiles, key=score, default=None)
+
+
+def _launchable(entry: dict[str, Any]) -> bool:
+    """The entry names a ``harness`` or a ``channels.cli``, so a worker can be started for it."""
+    channels = entry.get("channels")
+    return bool(entry.get("harness") or (isinstance(channels, dict) and channels.get("cli")))
+
+
+def roster_profile_gaps(repo_root: Path) -> list[tuple[bool, str]]:
+    """``(launchable, message)`` per working-tree roster entry with an ``executor`` or ``reviewer``
+    role that :func:`profile_for_entry` matches to no profile, naming the closest one: without a
+    match the profile's model notes never reach that entry's prompts. ``launchable`` is
+    :func:`_launchable`; an entry nothing can launch (the starter's placeholder) is only a notice."""
+    config, err = load_orchestration_config(repo_root)
+    if err or not config:
+        return []
+    entries = [e for e in config.get("roster") or []
+               if {"executor", "reviewer"} & set(e.get("roles") or [])]
+    missing = unmatched_roster_ids(entries, lambda entry: profile_for_entry(repo_root, entry))
+    profiles = list_profiles(repo_root) if missing else []
+    by_id = {e["id"]: e for e in entries}
+    out = []
+    for mid in missing:
+        near = closest_profile(str(mid), profiles)
+        hint = (f"closest profile is {display_rel(repo_root, near.path)} (api_id {near.data.get('api_id')}); "
+                "list the id in its `aliases` or give the entry `profile:`") if near else \
+            f"no profiles under {PROFILES_REL}/; add one or give the entry `profile:`"
+        out.append((_launchable(by_id[mid]),
+                    f"roster entry {mid!r} in roadmap/orchestration.yaml matches no model profile by api_id, "
+                    f"file name or alias, so its model notes never reach its prompts; {hint}"))
+    return out

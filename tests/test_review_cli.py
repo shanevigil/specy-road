@@ -109,6 +109,20 @@ def test_record_refuses_a_stale_commit(tmp_path: Path, capsys) -> None:
     assert not review_path(repo, "M1.1", "opus").exists()
 
 
+def test_record_overwrites_bogus_toolkit_version_in_notes(tmp_path: Path, capsys) -> None:
+    from specy_road.toolkit_version import running_toolkit_version
+
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _ready(repo)
+    notes = _notes(repo, toolkit_version="bogus")
+    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+                "--file", str(notes), "--repo-root", str(repo)) == 0
+    filed = load_review(review_path(repo, "M1.1", "opus"))
+    assert filed.ok
+    assert filed.data["toolkit_version"] == running_toolkit_version()
+    assert filed.data["toolkit_version"] != "bogus"
+
+
 def test_record_refuses_mismatched_flags_and_invalid_notes(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     notes = _notes(repo)

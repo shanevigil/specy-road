@@ -29,7 +29,8 @@ entries:
     kind: decision
     summary: Version number for promoting the 0.3.1 line to main
     why_now: Promotion to main needs an exact version from the maintainer (version
-      numbers are human-owned); not needed until after rc3.
+      numbers are human-owned). Maintainer (2026-11-03): decide at rc4, expected to be
+      the last release candidate (a final feedback round) before the 0.3.1 release.
     options:
       - label: 0.3.1
         effect: Final release of this line after the release candidates.

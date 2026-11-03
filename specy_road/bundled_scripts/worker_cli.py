@@ -355,8 +355,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp = ws.add_parser("interrupt", help="Stop the current turn (declared unsupported by the CLI adapters)"); _w(sp, op=False)
     sp.set_defaults(func=cmd_interrupt)
     add_terminate(ws, cmd_terminate, _emit)   # `terminate W`, or `--orphaned` for every held worker whose leaf is over
-    sp = ws.add_parser("handoff", help="Lease the worker to a human and print the native resume command"); _w(sp)
-    sp.set_defaults(func=cmd_handoff)
+    sp = ws.add_parser("handoff", help="Lease the worker to a human and print the native resume command"); _w(sp); sp.set_defaults(func=cmd_handoff)
     sp = ws.add_parser("reclaim", help="Take the lease back; record what the human did"); _w(sp)
     sp.add_argument("--note", metavar="TEXT"); sp.set_defaults(func=cmd_reclaim)
     sp = ws.add_parser("reconcile", help="Changed paths since the checkpoint vs the leaf's touch zones"); _w(sp)

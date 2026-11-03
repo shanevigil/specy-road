@@ -172,7 +172,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.63` do-next-available-task refuses a second claim in a checkout that already holds one `pickup-second-claim-guard` — task — **Complete**
   - `M11.64` abort-task-pickup treats untracked files the way pickup does `abort-untracked-like-pickup` — task — **Complete**
   - `M11.65` why-blocked reports touch-zone holds from the plan `why-blocked-plan-holds` — task — **Complete**
-  - `M11.66` specy-road --version identifies the code when run from a checkout `version-shows-checkout-sha` — task — **Not Started**
+  - `M11.66` specy-road --version identifies the code when run from a checkout `version-shows-checkout-sha` — task — **Complete**
   - `M11.67` Worker usage prices Cursor runs from the roster's price table `cursor-usage-cost` — task — **Complete**
   - `M11.68` A re-delegated executor starts from the blocking review findings `rework-findings-in-prompt` — task — **Complete**
   - `M11.69` A leaf that adds a schema key can be gated and finished `branch-schema-for-gate-and-finish` — task — **Complete**
@@ -182,11 +182,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.73` specy-road ready warns when the leaf no longer merges cleanly `ready-warns-integration-conflict` — task — **Complete**
   - `M11.74` Pickup and finish in one checkout take a shared lock in order `pickup-finish-shared-lock` — task — **Complete**
   - `M11.75` Reviewer prompt asks for independent probes, not the executor's own checks `reviewer-probe-rules` — task — **Not Started**
-  - `M11.76` Every roster model reaches its profile notes `profile-alias-coverage` — task — **Not Started**
+  - `M11.76` Every roster model reaches its profile notes `profile-alias-coverage` — task — **Complete**
   - `M11.77` A completed reviewer run does not report a missing record `run-record-no-false-failure` — task — **Complete**
-  - `M11.78` Review lessons: escaped defect classes feed every reviewer prompt `review-lessons` — task — **Not Started**
+  - `M11.78` Review lessons: escaped defect classes feed every reviewer prompt `review-lessons` — task — **Complete**
   - `M11.79` Leaves that touch high-risk zones need a stronger reviewer `risk-tiered-review` — task — **Not Started**
   - `M11.80` Executors and reviewers run tests with a bounded worker count `test-worker-cap` — task — **Not Started**
+  - `M11.82` The integration branch passes ruff again and the land check runs it `wip-ruff-clean` — task — **Not Started**
 
 ## Dependencies that were removed
 
@@ -204,11 +205,11 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
+- `M11.40` on `feature/rm-reconcile-merged-and-untracked` since 2026-11-03
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.62` on `feature/rm-headless-limits-denials` since 2026-11-03
-- `M11.66` on `feature/rm-version-shows-checkout-sha` since 2026-11-03
 - `M11.75` on `feature/rm-reviewer-probe-rules` since 2026-11-03
-- `M11.76` on `feature/rm-profile-alias-coverage` since 2026-11-03
+- `M11.79` on `feature/rm-risk-tiered-review` since 2026-11-03
 - `M8.2` on `feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 

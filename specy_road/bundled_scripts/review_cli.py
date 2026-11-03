@@ -35,6 +35,7 @@ from specy_road.review_files import (
     review_path, reviews_root, round_span, write_review,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
+from specy_road.toolkit_version import stamp_review_toolkit_version
 from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states, gate_policy_summary
 from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
 from specy_road.review_ready_merge import add_ready_parser
@@ -283,6 +284,7 @@ def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline
     data = {**rec["data"], "commit": gate.commit, NOTES_KEY: notes_digest(rec["body"])}
     if ns.launch_mode:   # before signing: the signature covers it
         data["launch_mode"] = ns.launch_mode
+    data = stamp_review_toolkit_version(data)
     if ns.sign_key:
         if not entry.get("public_key"):
             return _fail(f"--sign-key given, but the roster entry for {ns.model!r} has no public_key; "
@@ -394,7 +396,5 @@ def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     ns = build_parser().parse_args(argv)
     raise SystemExit(ns.func(ns))
-
-
 if __name__ == "__main__":
     main()

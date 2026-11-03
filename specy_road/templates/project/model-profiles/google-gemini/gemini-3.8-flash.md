@@ -4,6 +4,10 @@ family: Google Gemini
 track: Flash
 model: Gemini 3.8 Flash
 api_id: gemini-3.8-flash
+aliases:
+  - gemini-3.8-flash-low
+  - gemini-3.8-flash-medium
+  - gemini-3.8-flash-high
 checkpoint: same-as-api_id
 alias_moves: unknown
 version_rank: previous

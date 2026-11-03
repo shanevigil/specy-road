@@ -266,6 +266,12 @@ bare`) and in `--json` as each review's `launch_mode`.
 
 `handoff status` lists each run under the node (`RUN-opus.json: incomplete run by opus at <sha>, session <id>: <reason>`, marked `not the commit under review` when it is for an older commit), and in `--json` as `review_runs`, each with `current`. An incomplete run at the commit under review is also a problem naming the command to re-run. A record left from an older commit is never shown as the current verdict: it is listed only as a problem (`reviewed <sha>, not the current commit — re-review`); without a claim each record line says the commit it reviewed (`at <sha>, not evaluated`), and `review list` marks one that is not the commit under review `stale`.
 
+## Project review lessons
+
+A defect class that escaped one review should be checked by every later one. `constraints/review-lessons.md` lists them (`init project` writes it with a short header): each top-level bullet under `## Lessons` is one entry, a one-line rule, with optional `Example:` and `From:` sub-bullets. Every reviewer prompt (`specy-road prompt --role reviewer`, and so `review delegate`) includes the entries under **Project review lessons**; with no file or no entries it has no such section, and an unreadable file is named in the prompt instead.
+
+`specy-road lessons add --rule "<one-line rule>" [--example "<text>"] [--from <NODE_ID>]` appends an entry at the end of `## Lessons` (creating the file from the bundled header when it is missing); `--from` records the leaf the defect escaped from. Line breaks in the rule or example are folded into one line. `specy-road lessons list` prints the entries in file order, or says the file does not exist. Commit the file like any other project file: a reviewer reads it from the checkout that builds its prompt.
+
 ## Changed paths in the review packet
 
 The packet's **Changed paths** section lists every path the diff changes and marks each one outside the touch zones. Those zones, also named in the header, are the claim row's `touch_zones` plus the node's `touch_zones` as committed at the commit under review, read from git. A zone added to the node on the feature branch therefore counts when the packet is built from a checkout on the integration branch. When the node cannot be read at that commit, the claim row's zones (else the node's in the working tree) are used.

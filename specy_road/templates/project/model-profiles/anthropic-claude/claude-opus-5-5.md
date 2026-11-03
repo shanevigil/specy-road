@@ -4,6 +4,17 @@ family: Anthropic Claude
 track: Opus
 model: Claude Opus 5.5
 api_id: claude-opus-5-5
+aliases:
+  - claude-opus-5-5-low
+  - claude-opus-5-5-low-fast
+  - claude-opus-5-5-medium
+  - claude-opus-5-5-medium-fast
+  - claude-opus-5-5-high
+  - claude-opus-5-5-high-fast
+  - claude-opus-5-5-xhigh
+  - claude-opus-5-5-xhigh-fast
+  - claude-opus-5-5-max
+  - claude-opus-5-5-max-fast
 checkpoint: same-as-api_id
 alias_moves: 'no'
 version_rank: latest

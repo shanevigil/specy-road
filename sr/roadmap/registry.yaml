@@ -59,18 +59,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: version-shows-checkout-sha
-    node_id: M11.66
-    branch: feature/rm-version-shows-checkout-sha
-    touch_zones:
-      - specy_road/cli.py
-      - specy_road/version_skew.py
-      - specy_road/worker_runner.py
-      - specy_road/review_files.py
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: headless-limits-denials
     node_id: M11.62
     branch: feature/rm-headless-limits-denials
@@ -93,17 +81,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: profile-alias-coverage
-    node_id: M11.76
-    branch: feature/rm-profile-alias-coverage
-    touch_zones:
-      - specy_road/model_profiles.py
-      - specy_road/templates/project/model-profiles/
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: reconcile-merged-and-untracked
     node_id: M11.40
     branch: feature/rm-reconcile-merged-and-untracked
@@ -115,16 +92,45 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: review-lessons
-    node_id: M11.78
-    branch: feature/rm-review-lessons
+  - codename: risk-tiered-review
+    node_id: M11.79
+    branch: feature/rm-risk-tiered-review
     touch_zones:
-      - specy_road/review_lessons.py
-      - specy_road/bundled_scripts/lessons_cli.py
-      - specy_road/cli.py
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/templates/project/
+      - specy_road/orchestration_config.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - sr/schemas/orchestration.schema.json
+      - specy_road/review_gate.py
+      - specy_road/review_eligible.py
+      - specy_road/bundled_scripts/orchestrate_cli.py
+      - specy_road/orchestrate_plan.py
       - docs/orchestration-review.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: test-worker-cap
+    node_id: M11.80
+    branch: feature/rm-test-worker-cap
+    touch_zones:
+      - specy_road/git_workflow_config.py
+      - specy_road/templates/project/schemas/git-workflow.schema.json
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/bundled_scripts/generate_brief.py
+      - docs/git-workflow.md
+      - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: wip-ruff-clean
+    node_id: M11.82
+    branch: feature/rm-wip-ruff-clean
+    touch_zones:
+      - specy_road/bundled_scripts/review_packet_uncommitted_refs.py
+      - specy_road/orchestration_config.py
+      - specy_road/orchestration_local_overlay.py
+      - sr/roadmap/git-workflow.yaml
+      - docs/git-workflow.md
       - tests/
     started: '2026-11-03'
     owner: savigil

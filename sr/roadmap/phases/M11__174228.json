@@ -56,7 +56,7 @@
       "dependencies": [
         "14933e19-770a-4026-8ef6-14d1aa315567"
       ],
-      "execution_milestone": "Mixed",
+      "execution_milestone": "Agentic-led",
       "id": "M11.22",
       "node_key": "0e58af0e-895f-4a7c-b3c9-e5cb788d598f",
       "parent_id": "M11",
@@ -416,6 +416,41 @@
     },
     {
       "acceptance": [
+        "A roster entry can set harness_model (the id the harness CLI expects, for example claude-opus-5-5 for roster id claude-opus-5.5); the default adapters pass it to --model, falling back to the roster id; validate warns when a Claude Code entry's id contains a dot and no harness_model is set",
+        "When a worker exits non-zero before its first stream event, its error event summary includes the harness's last error line from the log (for example an HTTP 404 for an unknown model), not only a pointer to the log; tests cover the mapping, the fallback and the early-failure summary",
+        "Resume passes the same model flag as the launch on claude-code, codex and cursor (today all three default resume commands drop it, and Codex documents that a resume keeps only the conversation, not flags); tests pin the resume argv with and without harness_model."
+      ],
+      "codename": "roster-harness-model-id",
+      "dependencies": [
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.35",
+      "node_key": "f2ed72a7-5b45-4457-8649-e65c6fe42b0e",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.35_roster-harness-model-id_f2ed72a7-5b45-4457-8649-e65c6fe42b0e.md",
+      "sibling_order": 35,
+      "status": "Complete",
+      "title": "A roster entry maps to the harness's own model id, and a failed start says why",
+      "touch_zones": [
+        "specy_road/orchestration_config.py",
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_runner.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "docs/orchestration-models.md",
+        "tests/",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/worker_adapter_codex.py",
+        "specy_road/worker_adapter_cursor.py",
+        "specy_road/review_delegate.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/worker_exit.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
         "When the review policy allows it (a key, off by default), a reviewer that resumes its own earlier session may approve a delta: the record names delta_from (the commit it last approved) and the delta it read, fresh_session may be false, and the approval counts only under M11.8's delta rules; any other resumed approval is still refused by reviewer_fresh_session",
         "handoff status says when an approval was refused only for fresh_session and whether a resumed delta would be allowed; docs and tests cover allowed, refused (policy off), and a resumed full review"
       ],
@@ -443,51 +478,6 @@
         "specy_road/templates/project/schemas/orchestration.schema.json",
         "sr/schemas/orchestration.schema.json",
         "specy_road/bundled_scripts/role_prompt_rca.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "review-packet lists, in a warning section and on stderr, every repository path named in the brief, the planning sheet or the implementation summary that does not exist at the reviewed commit (untracked or uncommitted), so the coordinator can commit it before a reviewer starts",
-        "Tests cover a named untracked file, a named committed file and a path-like string that is not a repository path"
-      ],
-      "codename": "packet-uncommitted-refs",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M11.37",
-      "node_key": "f1463500-d122-4d16-b18c-97d36d9dd71f",
-      "parent_id": "M11",
-      "planning_dir": "planning/M11.37_packet-uncommitted-refs_f1463500-d122-4d16-b18c-97d36d9dd71f.md",
-      "sibling_order": 37,
-      "status": "Complete",
-      "title": "review-packet warns when the brief or summary names a file not committed at the reviewed commit",
-      "touch_zones": [
-        "specy_road/bundled_scripts/review_packet.py",
-        "tests/",
-        "specy_road/bundled_scripts/review_packet_uncommitted_refs.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "When the gate is not met, handoff status lists each rostered reviewer (including a human entry) and whether it can supply a counting approval at this commit, and for each excluded one the reason (same family as an approval already counted, wrote a fix commit on this leaf, executor of the leaf, not a reviewer role, or rejected record)",
-        "Tests cover a human reviewer listed as eligible, an author-excluded reviewer and a same-family reviewer"
-      ],
-      "codename": "handoff-eligible-reviewers",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M11.38",
-      "node_key": "35380c40-e3ba-4d90-913d-342ecd12d964",
-      "parent_id": "M11",
-      "planning_dir": "planning/M11.38_handoff-eligible-reviewers_35380c40-e3ba-4d90-913d-342ecd12d964.md",
-      "sibling_order": 38,
-      "status": "Complete",
-      "title": "handoff status says who can still supply a missing approval",
-      "touch_zones": [
-        "specy_road/review_gate.py",
-        "specy_road/bundled_scripts/review_cli.py",
-        "tests/",
-        "specy_road/review_eligible.py"
       ],
       "type": "task"
     }
