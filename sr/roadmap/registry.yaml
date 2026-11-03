@@ -118,16 +118,13 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: review-loops-escalate
-    node_id: M11.71
-    branch: feature/rm-review-loops-escalate
+  - codename: reviewer-failure-visible
+    node_id: M11.72
+    branch: feature/rm-reviewer-failure-visible
     touch_zones:
-      - specy_road/review_rca.py
-      - specy_road/review_gate.py
+      - specy_road/bundled_scripts/review_delegate.py
       - specy_road/bundled_scripts/review_cli.py
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - docs/roadmap-authoring.md
-      - docs/orchestration-review.md
+      - specy_road/review_gate.py
       - tests/
     started: '2026-11-03'
     owner: savigil
