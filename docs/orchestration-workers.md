@@ -107,8 +107,10 @@ roster:
     # harness's own argument for it: `--session-id <id>` on launch,
     # `--resume <id>` on resume. A command that names {session} or
     # {session_flag} serves launch AND `message` / `resume` (the same line, run
-    # again with the recorded id); one without either is used for launch only,
-    # and resumes run the default command with the default's permissions.
+    # again with the recorded id). `cli_resume` (it must name {session} or {session_flag}) is what
+    # `message` / `resume` run instead, for Codex and Cursor, whose resume is its own command; a launch
+    # command with neither and no cli_resume makes `delegate` warn, and its resumes run the default
+    # command with the default's permissions. `delegate` also notes a command printing text, not stream-json.
     # {reviews_dir} is the main checkout's work/reviews/<ID>, for your harness's
     # writable-root flag (`--add-dir {reviews_dir}`), so a worktree executor can
     # write READY there. No channels.cli: the default command.
@@ -116,6 +118,12 @@ roster:
     #   (a placeholder must be a whole argument, bare or in one pair of quotes —
     #   `--session-id={session}` and `"prefix <prompt>"` are refused; `< {prompt}` feeds the file on stdin)
     #   cli: "claude -p --output-format stream-json --verbose --permission-mode acceptEdits {session_flag} < {prompt}"
+    # Codex (the launch's own policy, repeated: `exec resume` carries only the conversation):
+    #   cli: "codex exec --json -c sandbox_mode=workspace-write -c sandbox_workspace_write.network_access=true -c approval_policy=never - < {prompt}"
+    #   cli_resume: "codex exec resume --json -c sandbox_mode=workspace-write -c sandbox_workspace_write.network_access=true -c approval_policy=never {session} - < {prompt}"
+    # Cursor (narrower than the default: sandbox on, no --force):
+    #   cli: "agent -p --output-format stream-json --trust --sandbox enabled --add-dir {reviews_dir} \"<prompt>\""
+    #   cli_resume: "agent -p --resume {session} --output-format stream-json --trust --sandbox enabled --add-dir {reviews_dir} \"<prompt>\""
 policy:
   max_workers: 2                    # each worker draws on a plan quota
 ```
@@ -147,17 +155,7 @@ profile's `aliases` so the prompt still carries the model notes
 2026.10.22), so it catches a missing binary, not a lapsed login; `preflight:
 agent status | grep -q "Logged in"` stops on both.
 
-**Claude and `{session}`.** Claude Code refuses `--session-id` for a session
-that already exists ("Session ID … is already in use", exit 1), so a
-`channels.cli` of the form `claude -p … --session-id {session} < {prompt}`
-launches fine and then fails every `message` / `resume`, closing the worker as
-`failed`. Use `{session_flag}` instead: it expands to `--session-id <id>` when
-the worker is launched and to `--resume <id>` on every `message` / `resume`, so
-one command line, with your permission flags, serves the whole leaf (the
-roster example above). It is defined for `claude-code` only; on another
-harness a `{session_flag}` command is refused rather than guessed. `prompt
---channel cli` has no session, so there it expands to nothing. An older
-alternative is a small wrapper that resumes when the session exists:
+**Claude and `{session}`.** Claude Code refuses `--session-id` for a session that already exists ("Session ID … is already in use", exit 1), so a `channels.cli` of the form `claude -p … --session-id {session} < {prompt}` launches fine and then fails every `message` / `resume`, closing the worker as `failed`. Use `{session_flag}` instead: it expands to `--session-id <id>` when the worker is launched and to `--resume <id>` on every `message` / `resume`, so one command line, with your permission flags, serves the whole leaf (the roster example above). It is defined for `claude-code` only; on another harness a `{session_flag}` command is refused rather than guessed. `prompt --channel cli` has no session, so there it expands to nothing. An older alternative is a small wrapper that resumes when the session exists:
 
 ```sh
 #!/bin/sh
@@ -170,21 +168,26 @@ fi
 exec claude "$@" --session-id "$sid" < "$prompt"
 ```
 
-It looks for Claude Code's own transcript of the session (checked on Claude
-Code 2.1.312; re-check after upgrading), and `exec` keeps `claude` itself as
-the worker's harness process.
+It looks for Claude Code's own transcript of the session (checked on Claude Code 2.1.312; re-check after upgrading), and `exec` keeps `claude` itself as the worker's harness process.
 
-**Permissions in the harness's settings file.** The other way to keep a
-worker's permissions across resumes is to leave the command alone and put them
-where every `claude` run in the worktree reads them: `.claude/settings.json`
-(committed, shared) or `.claude/settings.local.json` (yours), with
-`permissions.allow` / `permissions.deny` rules and `permissions.defaultMode`.
-Claude Code reads them from the working directory on launch and on resume
-alike, so the default command and a custom one run under the same rules, and
-a linked worktree sees the committed file once its branch has it. Command-line
-flags still win over the file for that run.
+**Permissions in the harness's settings file.** The other way to keep a worker's permissions across resumes is to leave the command alone and put them where every `claude` run in the worktree reads them: `.claude/settings.json` (committed, shared) or `.claude/settings.local.json` (yours), with `permissions.allow` / `permissions.deny` rules and `permissions.defaultMode`. Claude Code reads them from the working directory on launch and on resume alike, so the default command and a custom one run under the same rules, and a linked worktree sees the committed file once its branch has it. Command-line flags still win over the file for that run.
 
-**Permissions.** The Claude Code default asks for the narrowest mode that lets it edit unattended (`--permission-mode acceptEdits`; `dontAsk` is stricter but denies every tool not allow-listed), so a first worker on a new repo may stop at a shell permission — set `channels.cli` on the roster entry to the command you want (for Claude, a create-or-resume wrapper as above, or `message` breaks). The Cursor default is the opposite: `agent -p` already has write and shell tools, `--force` (alias `--yolo`) force-allows every command that is not explicitly denied, and `--trust` accepts the new worktree as a workspace, so a `cursor` worker runs everything it decides to — a malformed `channels.cli` is an error, never a silent fall-back to that default. Codex runs with `-c sandbox_mode=workspace-write -c approval_policy=never`, as config overrides because `codex exec` and `exec resume` take no `--ask-for-approval` (and `exec resume` no `--sandbox` or `-C`), as the codex-cli 0.166.0 capture under `model-profiles/harness-captures/codex/` shows.
+**A hands-off Claude Code executor.** Keep the rules in one file outside the repository (here `~/.config/specy-road/claude-worker.json`) and pass it with `--settings` on a `{session_flag}` command, so launch and every resume load it. `acceptEdits` lets the worker edit files in its working directory and the `--add-dir` hand-off directory only; the allow list adds the shell commands an executor runs, and the deny list (prefix rules: a trailing ` *` matches any arguments) keeps it off the remote:
+
+```json
+{"permissions": {
+  "allow": ["Bash(git status *)", "Bash(git diff *)", "Bash(git log *)", "Bash(git add *)", "Bash(git commit *)", "Bash(pytest *)", "Bash(specy-road *)"],
+  "deny": ["Bash(git push *)", "Bash(gh pr *)", "Bash(git reset *)", "Bash(git checkout *)", "Bash(git switch *)"]}}
+```
+
+```yaml
+    channels:
+      cli: "claude -p --output-format stream-json --verbose {effort} --permission-mode acceptEdits --settings ~/.config/specy-road/claude-worker.json --add-dir {reviews_dir} {session_flag} < {prompt}"
+```
+
+Do not add a bare `Edit` or `Write` allow rule: in `dontAsk` mode it lets the worker write anywhere on disk, the main checkout included. Relative deny rules such as `Edit(./roadmap/**)` resolve against the worker's own worktree, so they protect only that tree, never the main checkout.
+
+**Permissions.** The Claude Code default asks for the narrowest mode that lets it edit unattended (`--permission-mode acceptEdits`; `dontAsk` is stricter but denies every tool not allow-listed), so a first worker on a new repo may have shell commands denied. Under `-p` a denial does not stop the run: it appears as a `permission_denied` message in the stream and in the result's `permission_denials`, and the turn exits 0, so read those, not the exit code, and set `channels.cli` on the roster entry to the command you want (for Claude, a `{session_flag}` command as above, or `message` breaks). The Cursor default is the opposite: `agent -p` already has write and shell tools, `--force` (alias `--yolo`) force-allows every command that is not explicitly denied, and `--trust` accepts the new worktree as a workspace, so a `cursor` worker runs everything it decides to — a malformed `channels.cli` is an error, never a silent fall-back to that default. Codex runs with `-c sandbox_mode=workspace-write -c approval_policy=never`, as config overrides because `codex exec` and `exec resume` take no `--ask-for-approval` (and `exec resume` no `--sandbox` or `-C`), as the codex-cli 0.166.0 capture under `model-profiles/harness-captures/codex/` shows.
 
 ## The loop
 
@@ -362,9 +365,8 @@ interface, not emulated here.
 None of these is claimed by the test suite; run them before relying on the
 feature in your own setup.
 
-1. **Permission stop.** Delegate a trivial leaf on each harness you use with
-   the default command. Pass: the worker reaches `completion` or stops at a
-   named permission in `<id>.log` that `channels.cli` then resolves.
+1. **Permission denials.** Delegate a trivial leaf on each harness you use with the default command. Pass: the worker reaches
+   `completion`; on Claude Code, any `permission_denied` lines in `<id>.log` (the run does not stop on them) name rules `channels.cli` then resolves.
 2. **Double-open.** Delegate on Claude Code, wait for `idle`, then
    `claude --resume <id>` *without* `handoff` while sending `worker message`.
    Expect interleaving — that is the failure the lease prevents. Pass: with
