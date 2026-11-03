@@ -58,6 +58,10 @@ module; the file went from 372 to 363 lines.
   error (`working tree is not clean ... ?? work/coordinator-notes.md`); with the
   fix it passes.
 
+## Merge of origin/WIP/improvements-0-3-1 (2026-11-03)
+
+- Merged WIP (new Codex reviewer entries, FIFO pickup/finish lock). `specy_road/bundled_scripts/abort_task_pickup.py` auto-merged: WIP's `pickup_finish_lock` now wraps `_abort_locked`, which runs my `_assert_no_tracked_changes(base)`, so the check runs under the lock, still before any git state changes. `tests/test_abort_task_pickup.py` conflicted: kept WIP's `Path` import, `_git_init` helper and its `_git_init` calls; kept my tests in place of WIP's edits to the removed `_dirty_entries` tests (WIP only added `_git_init` to them) and dropped the `_dirty_entries` mock it re-added; added `_git_init` to `test_refused_checkout_of_the_base_exits_with_a_message`, which ran without a repo and the lock now needs git-common-dir. No behaviour change for this leaf; touched tests (plus `tests/test_repo_lock*.py`) 48 passed, 2 skipped; file-limits OK; private-imports gate 0 new.
+
 ## Added
 
 - `_STAGED` / `_UNSTAGED` maps: porcelain status letters to the reason shown per blocking path (A1 "names … why").

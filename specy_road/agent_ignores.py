@@ -77,6 +77,7 @@ GITIGNORE_LINES = [
     *RUNTIME_WORK_DIRS,
     "work/brainstorm-*-prompt.md",
     "work/brainstorm-closed/*-prompt.md",
+    "roadmap/orchestration.local.yaml",
 ]
 
 _GITIGNORE_NOTE = (
@@ -84,7 +85,8 @@ _GITIGNORE_NOTE = (
     "`history`, `search` and `brainstorm`; pickup and finish session files (a\n"
     "PR body re-inlines the brief and summary); review records (a commit would\n"
     "move the branch past the reviewed commit); session, worker and worktree\n"
-    "state; brainstorm prompts. `.specyrd/manifest.json` stays tracked."
+    "state; brainstorm prompts; per-checkout orchestration availability overlay.\n"
+    "`.specyrd/manifest.json` stays tracked."
 )
 
 

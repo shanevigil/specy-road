@@ -9,12 +9,22 @@ from __future__ import annotations
 
 import shlex
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
 from specy_road.git_subprocess import git_text
-from specy_road.worker_adapter_parsers import _SESSION, _snip, _tokens, placeholder_problem, substitute_prompt
+from specy_road.worker_adapter_parsers import (
+    _SESSION,
+    _snip,
+    _tokens,
+    apply_roster_price_estimate,
+    model_from_argv,
+    placeholder_problem,
+    project_root_from_worktree,
+    substitute_prompt,
+    worktree_from_argv,
+)
 
 
 @dataclass(frozen=True)
@@ -123,7 +133,14 @@ class Adapter:
     def parse_events(self, line: str, launch: Launch) -> list[Parsed]:
         """Every event one output line records; ``launch`` is the command that printed it."""
         parsed = self.parse(line)
-        return [parsed] if parsed else []
+        if not parsed or parsed.usage is None or parsed.usage.get("cost_usd") is not None:
+            return [parsed] if parsed else []
+        model = model_from_argv(launch.argv)
+        if not model:
+            return [parsed]
+        usage = apply_roster_price_estimate(
+            parsed.usage, model, project_root_from_worktree(worktree_from_argv(launch.argv)))
+        return [parsed] if usage is parsed.usage else [replace(parsed, usage=usage)]
 
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:
         raise Unsupported(f"{self.harness}: no native session to hand off")

@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import subprocess
+from pathlib import Path
 
 import yaml
 import pytest
 
 from specy_road.bundled_scripts import abort_task_pickup as atp
+
+
+def _git_init(root: Path) -> None:
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
 
 
 def _claimed(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -112,6 +117,7 @@ def test_refused_checkout_of_the_base_exits_with_a_message(
     monkeypatch: pytest.MonkeyPatch, tmp_path, capsys
 ) -> None:
     """An untracked file the base tracks makes git refuse the checkout: a clean exit, not a traceback."""
+    _git_init(tmp_path)
     _claimed(monkeypatch)
     monkeypatch.setattr(atp, "git_capture", lambda *_a, **_k: "")
     monkeypatch.setattr(atp, "_count_commits_ahead_of_remote_base", lambda *_a, **_k: 0)
@@ -128,6 +134,7 @@ def test_refused_checkout_of_the_base_exits_with_a_message(
 def test_abort_refuses_non_feature_branch(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
+    _git_init(tmp_path)
     monkeypatch.setattr(atp, "current_branch", lambda _root: "main")
     monkeypatch.setattr(
         atp,
@@ -141,6 +148,7 @@ def test_abort_refuses_non_feature_branch(
 def test_abort_refuses_ahead_of_remote_without_force(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
+    _git_init(tmp_path)
     # A pushed claim: nothing ahead of origin is a local-only registration.
     monkeypatch.setattr(atp, "git_capture", lambda *_a, **_k: "")
     monkeypatch.setattr(atp, "current_branch", lambda _root: "feature/rm-x")
@@ -166,6 +174,7 @@ def test_abort_refuses_ahead_of_remote_without_force(
 
 
 def test_abort_pickup_git_order(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    _git_init(tmp_path)
     calls: list[list[str]] = []
 
     def fake_git(_root, *args: str) -> None:
@@ -222,6 +231,7 @@ def test_abort_pickup_git_order(monkeypatch: pytest.MonkeyPatch, tmp_path) -> No
 
 
 def test_abort_allows_ahead_with_force(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    _git_init(tmp_path)
     calls: list[str] = []
 
     def fake_git(_root, *args: str) -> None:

@@ -11,7 +11,9 @@ READY files as ``review_rca.rca_parties`` does:
 * wrote a fix commit on this leaf — it filed a READY after reviewing the leaf;
 * rejected record — its record at this commit is invalid or does not count, with the gate's reason;
 * same family as an approval already counted, under ``reviewers_distinct_families``;
-* ``signed_reviews`` is on and its roster entry has no ``public_key``.
+* ``signed_reviews`` is on and its roster entry has no ``public_key``;
+* unavailable — ``available: false`` or a ``paused_until`` / ``unavailable_until`` still in force
+  (skipped when that model's approval already counts at this commit).
 
 Every exclusion is checked first, so a model whose approval the gate counts is listed as counting only when none
 applies (a READY author never is); one that blocks may still approve on re-review.
@@ -22,7 +24,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from specy_road.orchestrate_plan import entry_may_process, may_handle, node_sensitivity
+from specy_road.orchestrate_plan import (
+    entry_may_process,
+    is_available,
+    may_handle,
+    node_sensitivity,
+    unavailability_reason,
+)
 from specy_road.orchestration_config import is_rostered_reviewer, substitute_for
 from specy_road.review_files import HUMAN, list_ready, list_review_history, list_reviews
 from specy_road.review_target import same_commit
@@ -60,7 +68,8 @@ def _rejected(repo_root: Path, gate: Any) -> dict[str, str]:
     return out
 
 
-def _roster_reason(config: dict[str, Any], node: dict[str, Any], model: str) -> str | None:
+def _roster_reason(config: dict[str, Any], node: dict[str, Any], model: str,
+                   counting: set[str] | frozenset[str] = frozenset()) -> str | None:
     """Why the roster itself keeps ``model`` from reviewing ``node``, else ``None``."""
     entry = next(e for e in config["roster"] if e.get("id") == model)
     if not is_rostered_reviewer(config, model) and substitute_for(config, node["id"], model) is None:
@@ -69,6 +78,8 @@ def _roster_reason(config: dict[str, Any], node: dict[str, Any], model: str) -> 
         return f"{node['id']} is {node_sensitivity(node)!r}; it may process only {entry_may_process(entry)}"
     if config["policy"].get("signed_reviews") and not entry.get("public_key"):
         return "policy requires signed reviews and its roster entry has no public_key"
+    if model not in counting and not is_available(entry):
+        return f"unavailable ({unavailability_reason(entry) or 'availability'})"
     return None
 
 
@@ -100,9 +111,11 @@ def reviewer_eligibility(repo_root: Path, node: dict[str, Any], gate: Any, branc
     for entry in config["roster"]:
         model, family = entry["id"], entry.get("family")
         # Every exclusion first: an author or a second same-family approval never reads as counting.
-        why = (_roster_reason(config, node, model) or writers.get(model) or rejected.get(model)
-               or _same_family(gate, model, family))
+        why = (_roster_reason(config, node, model, counting=counting) or writers.get(model)
+               or rejected.get(model) or _same_family(gate, model, family))
         ok = "its approval counts" if model in counting else _eligible_text(gate, node["id"], model)
+        if why is None and model in counting and not is_available(entry):
+            ok = "its approval counts; unavailable for new reviews"
         rows.append({"model": model, "family": family, "eligible": why is None, "reason": why or ok})
     return rows
 
