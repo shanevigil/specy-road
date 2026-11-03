@@ -220,7 +220,12 @@ def test_shipped_planning_templates_cite_nothing_by_themselves(tmp_path: Path) -
     (root / "shared" / "api-contract.md").write_text("contract\n", encoding="utf-8")
     (root / "planning").mkdir()
 
-    templates = Path("specy_road/templates/planning-node")
+    templates = (
+        Path(__file__).resolve().parent.parent
+        / "specy_road"
+        / "templates"
+        / "planning-node"
+    )
     for name in ("feature-sheet.md.template", "gate-sheet.md.template"):
         sheet = root / "planning" / f"{name}.md"
         sheet.write_text(

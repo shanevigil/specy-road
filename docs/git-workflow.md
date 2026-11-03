@@ -84,7 +84,12 @@ own branch, but the tree that lands is the merge of it with everything that
 landed since, and nobody ran that. finish therefore creates the merge commit,
 runs the command once at the project root of a detached temporary worktree of
 that commit (`<worktree>/sr` in the nested layout), and pushes only if it exits
-0, so the pushed tip is exactly the commit the check ran on. A non-zero exit
+0, so the pushed tip is exactly the commit the check ran on. The command's
+working directory is that **project root**, not the git root: a nested layout
+whose tests live next to the git root must point `land_check_cmd` at those
+tests (for example
+`python -m pytest -n auto -p no:cacheprovider ../tests`), or pytest collects
+nothing and finish never pushes. A non-zero exit
 pushes nothing, resets the local integration branch to where it was before
 finish ran, and prints the command, its exit code and the last 20 lines of its
 output. A rejected push resets the local branch the same way; the re-run the
@@ -101,11 +106,18 @@ temp directories, avoids shared mutable module-level state and implicit
 ordering between tests, and does not depend on another test having run first.
 When order or shared state slips in, fix the test rather than marking it to
 run serially under xdist. Install **`pytest-xdist`** in development
-dependencies and point **`land_check_cmd`** at the same command CI uses, for
-example:
+dependencies and point **`land_check_cmd`** at a parallel command that
+collects the suite from the project root (the same suite CI runs, but from
+that cwd). When tests live at the project root:
 
 ```yaml
 land_check_cmd: pytest -n auto
+```
+
+When they live at the git root in a nested layout (`project_root: sr`):
+
+```yaml
+land_check_cmd: python -m pytest -n auto -p no:cacheprovider ../tests
 ```
 
 Run the suite once with **`pytest -n auto`** and once serially (**`pytest`**
