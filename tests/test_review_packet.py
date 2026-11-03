@@ -296,7 +296,7 @@ def test_packet_ignores_path_like_tokens_that_are_not_repository_paths(tmp_path:
         repo,
         NODE["planning_dir"],
         sheet.read_text() + "\nUse branch `feature/rm-thing` and `path/to/nowhere`; "
-        "not `src/a.py::test_ok` or `docs/x.md:12`.\n",
+        "not `src/a.py::test_ok`, `docs/x.md:12` or `docs/x.md#anchor`.\n",
         "path-like noise",
     )
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
@@ -304,6 +304,19 @@ def test_packet_ignores_path_like_tokens_that_are_not_repository_paths(tmp_path:
     err = capsys.readouterr().err
     assert "path/to/nowhere" not in err and "feature/rm-thing" not in err
     assert "src/a.py" not in err and "docs/x.md" not in err
+    assert "docs/x.md#anchor" not in err
+
+
+def test_packet_warns_when_an_untracked_file_lives_outside_the_top_allowlist(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    (repo / "app").mkdir()
+    (repo / "app" / "x.py").write_text("x\n", encoding="utf-8")
+    sheet = repo / NODE["planning_dir"]
+    commit_file(repo, NODE["planning_dir"], sheet.read_text() + "\nTrack `app/x.py`.\n", "cite app")
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    block = _uncommitted_block(text)
+    assert UNCOMMITTED_REF_NOTE in block and "- `app/x.py`" in block
+    assert "warning: `app/x.py` is named in the packet but not at commit" in capsys.readouterr().err
 
 
 def test_packet_accepts_a_git_root_path_named_in_a_nested_layout_brief(tmp_path: Path, capsys) -> None:

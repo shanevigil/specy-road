@@ -23,11 +23,19 @@ _ROOT = frozenset({"README.md", "CHANGELOG.md", "pyproject.toml", "AGENTS.md", "
                    "roadmap-context.md", ".gitignore", ".gitattributes"})
 
 
-def _named_repo_path(token: str) -> str | None:
+def _present(root: Path, commit: str, name: str) -> bool:
+    """True if ``name`` is a tree or blob at ``commit`` or on disk, project or git top."""
+    if _exists_at_commit(root, commit, name):
+        return True
+    top = git_root(root) or root
+    return (root / name).exists() or (top / name).exists()
+
+
+def _named_repo_path(token: str, root: Path, commit: str) -> str | None:
     raw = (token or "").strip().replace("\\", "/")
     if not raw or raw.startswith(("http://", "https://", "git@", "mailto:")):
         return None
-    raw = raw.split()[0].split("?")[0]
+    raw = raw.split()[0].split("?")[0].split("#")[0]
     raw = raw.split("::", 1)[0]          # pytest node id: path::name
     raw = re.sub(r":\d+$", "", raw)      # editor / compiler :line
     while raw.startswith("./") or raw.startswith("../"):
@@ -36,18 +44,23 @@ def _named_repo_path(token: str) -> str | None:
     if not raw or ".." in raw.split("/"):
         return None
     if "/" not in raw:
-        return raw if raw in _ROOT else None
+        if "." not in raw and raw not in _ROOT:
+            return None
+        return raw if raw in _ROOT or _present(root, commit, raw) else None
     head, last = raw.split("/", 1)[0], raw.rsplit("/", 1)[-1]
-    if head in _BRANCH or head not in _TOP or not last or ("." not in last and last not in _ROOT):
+    ext = last.rsplit(".", 1)[-1] if "." in last else ""
+    if head in _BRANCH or not last or (last not in _ROOT and not ext.isalpha()):
         return None
-    return raw
+    if head in _TOP:
+        return raw
+    return raw if _present(root, commit, head) and _present(root, commit, raw) else None
 
 
-def _named_paths(text: str) -> list[str]:
+def _named_paths(text: str, root: Path, commit: str) -> list[str]:
     seen: set[str] = set()
     out: list[str] = []
     for token in _LINK.findall(text) + _CODE.findall(text):
-        rel = _named_repo_path(token)
+        rel = _named_repo_path(token, root, commit)
         if rel is not None and rel not in seen:
             seen.add(rel)
             out.append(rel)
@@ -59,7 +72,7 @@ def _show(root: Path, commit: str, rel: str) -> str | None:
 
 
 def _exists_at_commit(root: Path, commit: str, rel: str) -> bool:
-    """True if ``rel`` is a blob at ``commit`` from the project root or the git top."""
+    """True if ``rel`` is a blob or tree at ``commit`` from the project root or the git top."""
     if git_ok(["cat-file", "-e", f"{commit}:./{rel}"], root)[0]:
         return True
     top = git_root(root) or root
@@ -87,7 +100,7 @@ def uncommitted_refs_section(root: Path, t: ReviewTarget, brief: str, node: dict
             texts.append(body)
     missing: list[str] = []
     for text in texts:
-        for rel in _named_paths(text):
+        for rel in _named_paths(text, root, t.commit):
             if rel not in missing and not _exists_at_commit(root, t.commit, rel):
                 missing.append(rel)
     out += [computed, ""]
