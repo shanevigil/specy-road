@@ -133,7 +133,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.24` Executors and reviewers in a worktree can write and check the right places `worktree-handoff-writable` — task — **Complete**
   - `M11.25` finish-this-task says what merge mode will push before it pushes `merge-push-disclosure` — task — **Complete**
   - `M11.26` A model profile can match harness model ids that carry an effort suffix `profile-aliases` — task — **Complete**
-  - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Not Started**
+  - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Complete**
   - `M11.28` A light chore mode for work outside the roadmap `chore-mode` — task — **Not Started**
   - `M11.29` doctor warns when the running specy-road is older than the project's stubs `doctor-version-skew` — task — **Complete**
   - `M11.30` Leaf worktrees get the project's environment set up `worktree-env-setup` — task — **Not Started**
@@ -204,8 +204,10 @@ Do not pick these up.
 - `M11.64` on `feature/rm-abort-untracked-like-pickup` since 2026-11-03
 - `M11.65` on `feature/rm-why-blocked-plan-holds` since 2026-11-03
 - `M11.70` on `feature/rm-zones-checked-at-authoring` since 2026-11-03
+- `M11.72` on `feature/rm-reviewer-failure-visible` since 2026-11-03
 - `M8.2` on `feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
+- `M8.5` on `feature/rm-guard-hooks-per-harness-and-avoid-lists-in-every-model-profile` since 2026-11-03
 
 ## Reaching the detail behind this
 

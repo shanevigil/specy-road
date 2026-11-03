@@ -139,22 +139,3 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: small-cli-fixes
-    node_id: M11.27
-    branch: feature/rm-small-cli-fixes
-    touch_zones:
-      - specy_road/bundled_scripts/session_cli.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/bundled_scripts/worker_cli_render.py
-      - specy_road/worker_adapters.py
-      - specy_road/worker_ops.py
-      - tests/
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/worker_runner.py
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - specy_road/finish_ancestor_rollup.py
-      - specy_road/worker_runner_ready.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T11:28:15+00:00'
