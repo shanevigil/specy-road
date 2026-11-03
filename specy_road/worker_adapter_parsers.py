@@ -14,6 +14,8 @@ import shlex
 from pathlib import Path
 from typing import Any
 
+from specy_road.runtime_paths import git_root, recorded_project_root
+
 
 def _text(prompt_path: Path) -> str:
     return prompt_path.read_text(encoding="utf-8")
@@ -102,6 +104,53 @@ def effort_note(cli: str | None, level: str | None) -> str | None:
     return f"note: the profile sets effort {level} for this role, but the command takes no effort (no {{effort}}): {cli}"
 
 
+def resume_form_note(cli: str | None, cli_resume: str | None) -> str | None:
+    """The warning ``delegate`` prints for a custom launch command that ``message`` / ``resume`` cannot run again:
+    it names no ``{session}`` or ``{session_flag}`` and the roster sets no ``channels.cli_resume``, so a resumed
+    turn would run the harness's default command, with the default's permissions."""
+    if not cli or cli_resume or placeholder_problem(cli) or any(ph in _SESSION for _s, _e, ph, _p in _tokens(cli)):
+        return None   # a command that cannot run is refused with its own reason
+    return ("warning: `worker message` and `resume` cannot reuse this launch command (it names no {session} or "
+            "{session_flag}) and the roster sets no channels.cli_resume, so every resumed turn runs the harness's "
+            f"default command with the default's permissions: {cli}")
+
+
+#: Print-mode commands whose JSON event stream the adapters parse: (binary, print words, JSON form, its words).
+_JSON_FORMS = (("claude", {"-p", "--print"}, "--output-format stream-json --verbose", None),
+               ("agent", {"-p", "--print"}, "--output-format stream-json", None),
+               ("cursor-agent", {"-p", "--print"}, "--output-format stream-json", None),
+               ("codex", {"exec"}, "--json", {"--json", "--experimental-json"}))
+
+
+def _output_format(words: list[str]) -> str | None:
+    for i, w in enumerate(words):
+        if w == "--output-format" and i + 1 < len(words):
+            return words[i + 1]
+        if w.startswith("--output-format="):
+            return w.split("=", 1)[1]
+    return None
+
+
+def output_mode_note(cli: str | None) -> str | None:
+    """The note for a command that visibly runs ``claude`` / ``agent`` in print mode, or ``codex exec``, with text
+    output (``--output-format text`` or none): it prints only the final message, so the worker's events keep only
+    that. A wrapper script is not looked into."""
+    if not cli or placeholder_problem(cli):
+        return None
+    words = [w.strip("\"'") for w in _WORD.findall(cli)]
+    for binary, print_words, form, json_words in _JSON_FORMS:
+        at = [i for i, w in enumerate(words) if w.rsplit("/", 1)[-1] == binary]
+        if not at or not print_words & set(words[at[0] + 1:]):
+            continue
+        rest = words[at[0] + 1:]
+        streams = bool(json_words & set(rest)) if json_words else _output_format(rest) == "stream-json"
+        if streams:
+            return None
+        return (f"note: this command prints no {binary} event stream (text output), so the worker's log keeps only "
+                f"its last message; use `{form}`: {cli}")
+    return None
+
+
 def _snip(s: str, n: int = 200) -> str:
     s = " ".join(str(s).split())
     return s if len(s) <= n else s[: n - 1] + "…"
@@ -152,6 +201,97 @@ def _num(v: Any, *, whole: bool = False) -> int | float | None:
     if whole:
         return int(v) if float(v).is_integer() else None
     return v
+
+
+def model_from_argv(argv: list[str]) -> str | None:
+    """The ``--model`` / ``-m`` value from a harness launch argv, when present."""
+    for i, w in enumerate(argv):
+        if w in ("--model", "-m") and i + 1 < len(argv):
+            return argv[i + 1]
+        if w.startswith("--model="):
+            return w.split("=", 1)[1]
+    return None
+
+
+def worktree_from_argv(argv: list[str]) -> Path | None:
+    """``--workspace`` or ``-C`` from a harness launch argv, when present."""
+    for i, w in enumerate(argv):
+        if w in ("--workspace", "-C") and i + 1 < len(argv):
+            return Path(argv[i + 1])
+    return None
+
+
+def project_root_from_worktree(wt: Path | None) -> Path:
+    """Project root the way :func:`project_root` would from this checkout's cwd.
+
+    ``recorded_project_root(git_root(wt))`` when ``.specyrd`` records a nested
+    root; otherwise the git worktree (embedded). ``wt`` is the harness
+    ``--workspace`` (a git worktree root). Does not take ``project_root(wt)``
+    (that is ``--repo-root``) and does not walk ancestors with
+    :func:`discover_project_root`.
+    """
+    start = Path(wt).resolve() if wt is not None else Path.cwd()
+    top = git_root(start)
+    if top is None:
+        return start
+    return recorded_project_root(top) or top
+
+
+def _mtok_rate(value: Any) -> float | None:
+    if value is None or value == "unknown":
+        return None
+    try:
+        rate = float(value)
+    except (TypeError, ValueError):
+        return None
+    return rate if rate >= 0 else None
+
+
+def mtok_rates(profile_data: dict[str, Any]) -> dict[str, float | None]:
+    """``cost_usd_per_mtok`` rates orchestrate plan reads, for :func:`estimate_usage_cost`."""
+    raw = profile_data.get("cost_usd_per_mtok") or {}
+    if not isinstance(raw, dict):
+        return {}
+    return {k: _mtok_rate(raw.get(k)) for k in ("input", "output", "cached_input")}
+
+
+def estimate_usage_cost(usage: dict[str, Any], rates: dict[str, float | None]) -> float | None:
+    """USD for one turn from token counts and profile list prices; ``None`` when a required rate is missing."""
+    inp, out = usage.get("input_tokens"), usage.get("output_tokens")
+    if inp is None and out is None:
+        return None
+    in_rate, out_rate = rates.get("input"), rates.get("output")
+    if in_rate is None or out_rate is None:
+        return None
+    cached = usage.get("cached_input_tokens") or 0
+    inp, out = inp or 0, out or 0
+    cached_rate = rates.get("cached_input")
+    non_cached = inp - cached if inp >= cached else inp
+    usd = (non_cached * in_rate + cached * (cached_rate if cached_rate is not None else in_rate) + out * out_rate) / 1_000_000
+    return round(usd, 6)
+
+
+def apply_roster_price_estimate(usage: dict[str, Any], model_id: str, repo_root: Path) -> dict[str, Any]:
+    """Fill ``cost_usd`` and ``cost_is_estimate`` from the pinned roster profile when the harness reported none.
+
+    ``model_id`` is what production puts on argv (``Profile.api_id`` or an alias), not necessarily
+    the roster ``id``. Each entry's pinned profile is matched with :meth:`Profile.for_id`.
+    """
+    if usage.get("cost_usd") is not None or not model_id:
+        return usage
+    from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry  # noqa: PLC0415
+
+    config, err = pinned_config(repo_root)
+    if err:
+        return usage
+    prof = next((m for e in config.get("roster") or []
+                 if (p := pinned_profile_for_entry(repo_root, e)) and p.ok and (m := p.for_id(model_id))), None)
+    if not prof:
+        return usage
+    cost = estimate_usage_cost(usage, mtok_rates(prof.data))
+    if cost is None:
+        return usage
+    return {**usage, "cost_usd": cost, "cost_is_estimate": True}
 
 
 def usage_fields(u: Any, *, cost: Any = None, num_turns: Any = None, estimate: bool | None = None) -> dict[str, Any]:

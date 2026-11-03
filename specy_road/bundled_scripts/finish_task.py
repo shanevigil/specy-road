@@ -38,6 +38,7 @@ from specy_road.finish_modes import (
     delete_branch_preflight,
     merge_landing_preflight,
 )
+from specy_road.finish_pr_merge import pr_merge_integration_or_exit
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context_for_finish
 from specy_road.generated_files import (
     GENERATED_COMMITTED,
@@ -51,6 +52,7 @@ from specy_road.on_complete_session import (
 )
 from specy_road.runtime_paths import resolve_repo_root
 from specy_road.bundled_scripts.repo_ops import current_branch, git_run
+from specy_road.repo_lock import pickup_finish_lock
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
 #: so the name exists at import. Resolving the real root here would make
@@ -165,16 +167,13 @@ def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
     on_mode = resolve_on_complete(
         ROOT, cli=args.on_complete, session=session_oc,
     )
-    delete_branch_preflight(
-        on_mode,
-        delete_branch=args.delete_branch,
-        rollup=rollup_session_applies(
-            read_milestone_session(milestone_session_path(work_dir)),
-            skip=args.no_milestone_rollup,
-            node_id=node_id,
-            nodes=nodes,
-        ),
+    rollup = rollup_session_applies(
+        read_milestone_session(milestone_session_path(work_dir)),
+        skip=args.no_milestone_rollup,
+        node_id=node_id,
+        nodes=nodes,
     )
+    delete_branch_preflight(on_mode, delete_branch=args.delete_branch, rollup=rollup)
     trial_merge_or_exit(ROOT)
     scaffold_planning_or_exit(ROOT, node, allow=args.allow_scaffold_planning)
     human_acceptance_or_exit(ROOT, node)
@@ -196,7 +195,7 @@ def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
         "codename": codename, "reg": reg, "entry": entry, "nodes": nodes,
         "node": node, "node_id": node_id, "work_dir": work_dir,
         "sess_path": sess_path, "on_mode": on_mode, "ib": ib,
-        "gw_remote": gw_remote,
+        "gw_remote": gw_remote, "rollup": rollup,
     }
 
 
@@ -255,7 +254,15 @@ def _bookkeeping_commit_phase(
     *,
     pr_body_path: Path | None = None,
     sess_path: Path | None = None,
+    pr_integration: tuple[str, str] | None = None,
 ) -> None:
+    """Commit the bookkeeping, then push under ``--push``.
+
+    ``pr_integration`` is ``(integration branch, remote)`` under
+    ``on_complete: pr``: before anything is pushed, the integration tip is
+    merged in when only bookkeeping conflicts, and finish exits 1 when
+    anything else does, so the PR never opens conflicted.
+    """
     changed_files = _update_chunk_status(node_id)
     for rel in complete_rolled_up_ancestors(ROOT, node_id):
         if rel not in changed_files:
@@ -286,6 +293,8 @@ def _bookkeeping_commit_phase(
     git_run(ROOT, "add", *changed_files)
     git_run(ROOT, "commit", "-m", f"chore(rm-{codename}): complete, deregister")
     print("\n[ok] bookkeeping committed")
+    if pr_integration is not None:
+        pr_merge_integration_or_exit(ROOT, branch=branch, ib=pr_integration[0], remote=pr_integration[1])
     if args.push:
         print(f"-> git push -u {args.remote} {branch}")
         git_run(ROOT, "push", "-u", args.remote, branch)
@@ -295,6 +304,11 @@ def main(argv: list[str] | None = None) -> None:
     global ROOT
     args = parse_finish_args(argv if argv is not None else sys.argv[1:])
     ROOT = resolve_repo_root(args)
+    with pickup_finish_lock(ROOT, operation="finish-this-task"):
+        _finish_locked(args)
+
+
+def _finish_locked(args) -> None:
     branch = current_branch(ROOT)
     if not branch.startswith("feature/rm-"):
         print(
@@ -326,6 +340,7 @@ def main(argv: list[str] | None = None) -> None:
     _bookkeeping_commit_phase(
         args, codename, node_id, branch, reg,
         pr_body_path=pr_body_path, sess_path=sess_path,
+        pr_integration=(ib, gw_remote) if on_mode == "pr" and not ctx["rollup"] else None,
     )
     mr_manual = merge_request_requires_manual_approval(ROOT)
 

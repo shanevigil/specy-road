@@ -94,7 +94,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.23_resume-keeps-permissions_6e0a98be-987f-4e0d-bc0a-f1d0fe79b216.md",
       "sibling_order": 23,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A custom launch command's permissions carry through resume",
       "touch_zones": [
         "specy_road/worker_adapters.py",
@@ -202,7 +202,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.27_small-cli-fixes_1e874f38-9169-41f3-8500-d90f747d04b4.md",
       "sibling_order": 27,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Small CLI fixes from field use",
       "touch_zones": [
         "specy_road/bundled_scripts/session_cli.py",
@@ -212,7 +212,10 @@
         "specy_road/worker_ops.py",
         "tests/",
         "specy_road/bundled_scripts/role_prompt.py",
-        "specy_road/worker_runner.py"
+        "specy_road/worker_runner.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py",
+        "specy_road/finish_ancestor_rollup.py",
+        "specy_road/worker_runner_ready.py"
       ],
       "type": "task"
     },

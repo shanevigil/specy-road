@@ -26,6 +26,14 @@ role_fit:
   executor:    { score: 3, reason: 'Third on AA Agentic Index (55.7) at low cost', sources: [S7] }
   reviewer:    { score: 2, reason: 'No review data', sources: [S6] }
 ---
+## Orchestration: harness features to avoid
+
+| Feature | Switch |
+|---|---|
+| memory off | Claude `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`; Codex `--disable memories`; Cursor persist: no switch (never invoked) |
+| plan mode | never pass `--plan` |
+| worktree or cloud | never pass `--worktree` / `--cloud`; Cursor cloud handoff: never invoked |
+
 ## Strengths
 - AA Agentic Index 55.7, third in one October 2026 aggregator, ahead of GPT-6 Astra (51.5) [S7] (confidence: medium)
 - Low price: $1.25/$4.25 with no long-context premium [S3] (confidence: high)

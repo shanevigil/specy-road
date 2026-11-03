@@ -39,3 +39,7 @@
 # and `roadmap-context.md` (specy-road digest) is what an agent reads instead of
 # crawling planning/ and work/. Regenerate them when the graph changes; gate CI
 # on `specy-road export --check` and `specy-road digest --check`.
+#
+# Per-checkout capacity pauses (available / paused_until) without pushing the
+# shared roster; merged at runtime with roadmap/orchestration.yaml. The ignore
+# rule lives in agent_ignores.GITIGNORE_LINES (managed block below).

@@ -26,6 +26,14 @@ role_fit:
   executor:    { score: 3, reason: 'Vendor-reported DeepSWE 74.2 was strong for the price, but 1017 improves on it and the old checkpoint cannot be reliably selected through the current alias', sources: [S1] }
   reviewer:    { score: 2, reason: 'No dedicated review calibration found and the checkpoint is weaker than the current one', sources: [S1] }
 ---
+## Orchestration: harness features to avoid
+
+| Feature | Switch |
+|---|---|
+| memory off | Claude `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`; Codex `--disable memories`; Cursor persist: no switch (never invoked) |
+| plan mode | never pass `--plan` |
+| worktree or cloud | never pass `--worktree` / `--cloud`; Cursor cloud handoff: never invoked |
+
 ## Strengths
 - At release it reported DeepSWE v1.1 74.2, Terminal-Bench 4.0 31.2, ProgramBench 20.3, and Automation-Bench 54.8 under the vendor's documented evaluation setups [S1] (confidence: high)
 - Uses a 552B-parameter MoE architecture with only a fraction of parameters active per token, released with open weights [S5] (confidence: high)

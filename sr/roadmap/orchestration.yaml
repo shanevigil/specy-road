@@ -44,6 +44,18 @@ roster:
     harness: codex
     channels:
       cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/codex-review.sh gpt-6.1-sol \"<prompt>\""
+  - id: gpt-5.6-sol-medium
+    family: openai
+    roles: [reviewer]
+    harness: codex
+    channels:
+      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/codex-review.sh gpt-5.6-sol \"<prompt>\" medium"
+  - id: gpt-5.6-sol-low
+    family: openai
+    roles: [reviewer]
+    harness: codex
+    channels:
+      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/codex-review.sh gpt-5.6-sol \"<prompt>\" low"
   - id: cursor-grok-4.6-high
     family: xai
     roles: [reviewer]
