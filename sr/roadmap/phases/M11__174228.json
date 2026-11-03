@@ -103,7 +103,11 @@
         "docs/orchestration-workers.md",
         "tests/",
         "specy_road/worker_adapter_parsers.py",
-        "specy_road/bundled_scripts/worker_cli.py"
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/worker_adapter_base.py",
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/worker_ops_message.py"
       ],
       "type": "task"
     },

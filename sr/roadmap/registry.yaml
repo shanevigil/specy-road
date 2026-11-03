@@ -114,6 +114,10 @@ entries:
       - tests/
       - specy_road/worker_adapter_parsers.py
       - specy_road/bundled_scripts/worker_cli.py
+      - specy_road/worker_adapter_base.py
+      - specy_road/worker_adapter_claude.py
+      - specy_road/worker_ops_launch.py
+      - specy_road/worker_ops_message.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
@@ -126,6 +130,11 @@ entries:
       - specy_road/worker_lease.py
       - docs/orchestration-workers.md
       - tests/
+      - specy_road/bundled_scripts/finish_task.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - specy_road/worker_ops_slots.py
+      - specy_road/worker_orphans.py
+      - specy_road/worker_reconcile.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
