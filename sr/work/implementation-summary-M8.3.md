@@ -1,68 +1,89 @@
 # Implementation summary: M8.3 — reviewer runs are read-only and specy-road writes the review record from structured output
 
-Branch `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output`, merged with `origin/WIP/improvements-0-3-1` (fast-forward to `4a82059f`, which brings the M11.59 adapter split) before the change. Implementation commit: `84f88f75`.
+Branch `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output`, merged with `origin/WIP/improvements-0-3-1` (fast-forward to `4a82059f`, which brings the M11.59 adapter split) before the change. Round 1: `84f88f75`; touch zones `322e41fd`. Round 2 answers Codex Sol's block (`REVIEW-gpt-6.1-sol.md` at `322e41fd`); the READY file names its commit.
 
 ## What changed
 
 - **Adapters (A4, A5).** `Adapter.reviewer_launch` / `Adapter.final_message` on the base (generic: unsupported / `None`), with one implementation per harness module:
-  - `worker_adapter_claude.py`: the existing bare reviewer launch now passes `--disallowedTools "Bash(git commit *)" "Bash(git push *)" "Bash(gh *)"` right after `--allowedTools Read,Edit,Bash`, and `--json-schema '<schema>'` when given the schema file; `final_message` reads the `result` event's `structured_output`, else its text.
-  - `worker_adapter_codex.py`: `codex exec --json [-m] [effort] -c sandbox_mode=read-only -c approval_policy=never --output-schema <file> -o <OUTPUT-<model>.json> -`; a resume (`codex exec resume`) keeps the read-only policy but leaves out the two flags, which are documented for `codex exec` only; `final_message` reads `agent_message` text.
-  - `worker_adapter_cursor.py`: `agent -p [--resume id] --output-format stream-json --mode ask --trust [--model] <prompt>`, no `--force`; `final_message` reads the `result` text. Executor launches are unchanged (Cursor keeps `--force`, Codex `workspace-write`), so `docs/design-notes/M8.7-runtime-verification-harness-facts.md` ("Review-only runs omit `--force`; executor template keeps `--force`", and its `sandbox_mode=read-only` Codex run) now matches the code. The note itself needed no edit.
-- **Writer (A1, A2, A3).** New `specy_road/review_record_write.py`: the output schema is the review-record schema less the fields `review record` fills (`family`, `independence`, `notes_sha256`, `signature`, `launch_mode`), plus a required `notes`. It also covers the before/after snapshot, the final-message extraction and the outcome:
-  - `review_failure`: the run changed a checkout file (outside the project's `work/`), moved `HEAD`, or filed its own `REVIEW-<model>.md`/history copy. That self-filed record is put back as it was.
-  - `rerun`: no JSON object, a schema mismatch, or `review record` refused it.
-  - `recorded`: the notes go to `notes-<model>.md`, then `review record` itself files the record. That reuses every check, the family, signing refusal, `history/` copy and launch mode.
-- **Prompt (A1).** `role_prompt.build_prompt` ends every reviewer prompt with the schema section. With `read_back=True` (the default, used by `review delegate`) it says specy-road files the record and the reviewer writes nothing but notes. With `read_back=False` (`paste`, `subagent`, a roster `channels.cli`) it asks for the object and still has the reviewer file it with `review record`.
-- **Wiring.** `prompt --channel cli` runs the adapter's reviewer command for `claude-code`, `codex` and `cursor` entries without `channels.cli` (`run_default_reviewer`, replacing `run_bare_reviewer`), logs to `RUN-<model>.log`, and files the result. `review delegate` does the same for every non-generic entry without `channels.cli`, and files from the run log or Codex's `-o` file for every run, so a `channels.cli`/generic reviewer's final message is parsed as plain JSON. The run record gains `outcome`, and the resume prompt asks for the JSON again.
-- **Docs.** `docs/orchestration-review.md` now has the new argv and a "Reviewer output and the read-only check" section. Its step 2 no longer says Codex reviewers run `workspace-write`, and step 5 describes the outcome. The two `specyrd` command stubs (`specyrd-prompt.md`, `specyrd-review-record.md`) each got one line.
+  - `worker_adapter_claude.py`: the bare reviewer launch passes `--disallowedTools "Bash(git commit *)" "Bash(git push *)" "Bash(gh *)"` right after `--allowedTools Read,Edit,Bash`, and `--json-schema '<schema>'`; `final_message` reads the `result` event's `structured_output`, else its text.
+  - `worker_adapter_codex.py`: `codex exec --json [-m] [effort] -c sandbox_mode=read-only -c approval_policy=never --output-schema <file> -o <OUTPUT-<model>.json> -`; a resume keeps the read-only policy without the two flags (documented for `codex exec` only); `final_message` reads `agent_message` text.
+  - `worker_adapter_cursor.py`: `agent -p [--resume id] --output-format stream-json --mode ask --trust [--model] <prompt>`, no `--force`; `final_message` reads the `result` text. Executor launches are unchanged, so `docs/design-notes/M8.7-runtime-verification-harness-facts.md` ("Review-only runs omit `--force`") matches the code.
+- **Antigravity (A1, round 2).** `agy` runs as a `generic` harness. The harness-compatibility triage, M8.6's "agy generic profile" and `test_harness_facts` all require a facts record and `--help` captures for every non-generic harness, and `agy` isn't installed. So instead of a new harness value, `worker_adapter_base.reviewer_cli` handles any reviewer command whose program is `agy`:
+  - It inserts `--json-schema <schema file>`, `--output-format json`, `--sandbox` and `--print-timeout 30m` right after the program, each only when absent.
+  - It refuses `--dangerously-skip-permissions`.
+  - The answer comes from the envelope's `structured_output`, which `file_review` unwraps (Claude's json envelope too).
+  - The flags come from https://antigravity.google/docs/cli/headless (fetched 2026-11-03): `--json-schema` takes "a schema string, a path to a `.json` schema file, or a primitive type name"; `json` gives one envelope with `status`, `response` and `structured_output`; `--sandbox` is the only sandbox control; there is no read-only mode; `--print-timeout` defaults to 5m.
+  - `review delegate` and `prompt --channel cli` both pass every custom reviewer command through `reviewer_cli`.
+- **Writer (A1, A2, A3).** `specy_road/review_record_write.py`.
+  - The output schema is the review-record schema less the fields `review record` fills (`family`, `independence`, `notes_sha256`, `signature`, `launch_mode`), plus `notes`.
+  - **Round 2: the write check is strict.** `snapshot` records `(size, mtime_ns)` of every file in the checkout the reviewer ran in, git-ignored and `work/` files included, and of the leaf's hand-off directory when it lies outside that checkout. It also records `HEAD` and every ref.
+  - The only exemptions are `runtime_files`: `notes-<model>.md` and what the run itself writes during the turn (`RUN-<model>.json`, its `.json.tmp`, `RUN-<model>.log`, `OUTPUT-<model>.json`, `review-output.schema.json`, `.review-run.lock`). Prompts and packets are written before the first snapshot, so they need no exemption.
+  - The walk skips `.git` and nested checkouts (a directory holding `.git`, e.g. a linked worktree under `work/.worktrees`), since those are other repositories.
+  - `review_failure` files nothing and puts back a self-filed `REVIEW-<model>.md`. `rerun` covers missing output, a schema mismatch, and a refusal from `review record`. `recorded` goes through `review record` itself.
+  - `review_run_lock`: a non-blocking `flock` (`msvcrt` on Windows) on `.review-run.lock`. Two reviewer runs of one leaf share its hand-off directory and would otherwise fail each other, so a second run is refused at once.
+  - `reviewer_env`: the reviewer process gets `PYTHONDONTWRITEBYTECODE=1` and `PYTEST_ADDOPTS=-p no:cacheprovider`, so an honest re-run of Python tests writes nothing under the strict check.
+  - `run_and_file` runs one `prompt --channel cli` turn under the lock and files it.
+- **Prompt (A1).** Every reviewer prompt ends with the schema section.
+  - `read_back=True` says specy-road files the record and the reviewer writes nothing but notes, caches and build output included. Round 2: `prompt --channel cli` now always reads back.
+  - `read_back=False` (`paste`, `subagent`) asks for the object and still has the reviewer file it with `review record`.
+- **Custom commands (round 2).** `prompt --channel cli` on a roster `channels.cli` or profile `access.cli` reviewer no longer runs it uncaptured. `run_custom_reviewer` passes it through `reviewer_cli`, runs it as `sh -c` under `run_and_file` with the same lock, write check and filing, and parses its output with the entry's harness adapter (generic: the last JSON object). `review delegate` already captured custom commands; they now get `reviewer_cli` too.
+- **Wiring.** `prompt --channel cli` runs the adapter's reviewer command for `claude-code`, `codex` and `cursor` entries without `channels.cli` (`run_default_reviewer`). `review delegate` does the same for every non-generic entry without `channels.cli`, takes the lock, snapshots around `_attempts`, files the result, and records `outcome`. Its `_turn` env goes through `reviewer_env`, and the resume prompt asks for the JSON again.
+- **Docs.** `docs/orchestration-review.md` covers the argv, the per-harness output table (with an Antigravity row), the strict exemptions, the lock, the cache env and the advice to run reviewers where nothing else writes. The two `specyrd` command stubs were updated to match.
 
 ## Touch zones (report, per the brief's section 7)
 
-Final list I needed: the brief's zones **plus** `specy_road/review_delegate.py` and `docs/orchestration-review.md`; **minus** `docs/pm-llm-review.md`, which documents the PM GUI's advisory LLM Review button and has nothing to do with implementation reviewers. I left it untouched.
+The zones now include `specy_road/review_delegate.py` and `docs/orchestration-review.md` (`322e41fd`). Round 2 needed nothing new: every file it changes is inside them, and the new `tests/review_delegate_helpers.py` is under `tests/`. `docs/pm-llm-review.md` (the PM GUI's LLM Review guide) is unrelated to implementation reviewers and was left untouched.
 
-- `specy_road/review_delegate.py`: outside the zones, edited because the maintainer asked that review delegate get the reviewer launches. It only ever called `ClaudeCode.reviewer_launch`, so Cursor and Codex reviewers ran the executor command. The edit is wiring only: `_Harness.default`/`launch_mode`, the `reviewer_launch` call, the snapshot before `_attempts`, `file_review` after them, the `outcome` field, the resume prompt and two docstring sentences. No logic moved, and nothing was deleted except the replaced lines.
-- `docs/orchestration-review.md`: outside the zones. It is where reviewer launches are documented, and it stated the opposite of A5 (Codex `workspace-write`). The edits replace the argv block and step 2's Codex sentence and add one section. No other text was removed.
+## Verification (round 2)
 
-## Verification
-
-- `pytest -n auto` over the whole suite, in two halves to fit the foreground limit: 1700 passed, 2 skipped; then 1615 passed. Both halves exited 0.
-- Targeted: `pytest tests/test_review_record_write.py tests/test_review_delegate.py tests/test_review_files.py tests/test_worker_adapters.py tests/test_models_and_prompt.py tests/test_prerelease_review.py` all passed.
-- `specy-road file-limits`: OK. I added the `reviewer_lines` helper so `build_prompt` stays under the 80-line function cap.
-- Red/green: with `file_review`'s write check disabled, Codex's reviewer policy set back to `workspace-write`, and the Claude deny list emptied, 5 tests fail: both A2 delegate tests, the Codex argv test, the Codex end-to-end test, and the pinned Claude argv test. With the fix restored they pass.
-- `ruff check specy_road tests scripts` reports one C901, in `review_packet_uncommitted_refs.py`. That file came in with the WIP merge and this leaf does not touch it.
-- `scripts/check_clones.py` (pylint from a scratch venv) reports 2 new pairs, `abort_task_pickup`↔`pm_sync` and `planning_sheet_bootstrap`↔`planning_scaffold_check`. Neither involves a file this leaf touched.
+- Targeted: `pytest -q -n 8 -p no:cacheprovider` over the following files ran 211 tests: 210 passed, 1 failed:
+  - `tests/test_review_record_write.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_worker_adapters.py`, `tests/test_models_and_prompt.py`
+  - `tests/test_prerelease_review.py`, `tests/test_prerelease_s2.py`, `tests/test_lean_rules.py`, `tests/test_finish_work_cleanup.py`, `tests/test_harness_facts.py`, `tests/test_worker_cli.py`
+  - The failure was `tests/test_worker_cli.py::test_sync_wait_ends_on_an_event_or_times_out_with_exit_2`, a wait-timeout test, at load average 38 with other sessions' suites running. It passed when re-run alone, and it doesn't touch reviewer code.
+- After the `run_custom_reviewer` refactor: `tests/test_review_record_write.py tests/test_review_files.py tests/test_prerelease_review.py tests/test_models_and_prompt.py` plus that worker test: 82 passed.
+- `specy-road file-limits`: OK. `python scripts/check_test_private_imports.py`: 0 new.
+- `ruff check specy_road tests scripts` reports one C901, `uncommitted_refs_section` in `review_packet_uncommitted_refs.py`, which came in with the WIP merge. The `run_cli_channel` C901 this round introduced is fixed by extracting `run_custom_reviewer`.
+- Red/green: with `written` returning nothing and `reviewer_cli` passing every command through, 8 tests in `tests/test_review_record_write.py` fail: the three write-regression cases, the self-filed record, refs and runtime files, the captured custom command that writes, and both agy tests. With the files restored, all 23 pass.
+- The full suite was not re-run this round. Round 1's full run passed: 1700 passed, 2 skipped; then 1615 passed.
 
 ## Not verified / open
 
-- Live harness runs were not made. The flags come from the tracked captures and harness-facts fixture (`claude --help` `--json-schema <schema>`; `codex exec --help` `--output-schema <FILE>`, `-o`; Cursor `--mode ask`).
-  - Whether Codex's strict structured output accepts this schema (optional properties, `propertyNames`) is unverified. A rejection would surface as a harness error, which the run reports as incomplete.
-  - Claude's `structured_output` field name on the `result` event is also unverified. If it is absent, the result text is parsed instead.
-- Antigravity has no adapter, so specy-road passes no `--json-schema` for it. An `agy` entry's own `channels.cli` would have to pass it, and its final message is parsed as plain JSON.
-- `prompt --channel cli` with a roster `channels.cli` still runs the command as written, without capturing output, because an interactive harness needs its terminal. That reviewer files with `review record` itself, and A2 is not checked on that path. `review delegate` checks every path.
-- Paths git ignores, other than the model's own record files, are not inspected by the write check.
+- **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
+  - Whether Codex strict structured output accepts this schema is unverified.
+  - Whether `agy --output-format json` prints one line or many is unverified. Both work: `json_object` takes the last top-level object from the whole output.
+- **Strict check in a shared checkout.** Any write by another session in the checkout during a review now fails it. That covers a coordinator, an executor, another leaf's reviewer, or `specy-road` commands writing `.specyrd/cache`. Reviewers should run where nothing else writes (`review delegate --worktree <quiet checkout>`). The report lists the paths, so a foreign write is visible.
+- **Walking a large checkout is slow.** The main toolkit checkout has 76k files and took about 26s cold with nested checkouts included; this walk skips them.
+- **What the check doesn't see:** writes outside the checkout and the hand-off directory, for example `/tmp`, `~`, or another worktree.
+- **A `channels.cli` that opens an interactive harness** now has its output captured under `prompt --channel cli`, so it gets no terminal. Use `paste` for an interactive reviewer.
 
 ## Added
 
-- `Adapter.reviewer_launch` (base, raises `Unsupported`): a generic entry has no default reviewer command; the error says to set `channels.cli`.
-- `Adapter.final_message` (base, returns `None`): generic output is read whole as the final message.
-- `CODEX_REVIEW_POLICY`: read-only sandbox config for Codex reviewer turns (A5).
-- `REVIEWER_DISALLOWED`: the three deny patterns for the bare Claude reviewer (A4).
-- `ClaudeCode.reviewer_launch` `--disallowedTools` / `--json-schema` args and `ClaudeCode.final_message`: A4 and A1.
-- `Codex.reviewer_launch` (fresh/resume branch) and `Codex.final_message`: A5 and A1. The resume branch exists because `exec resume` documents no `--output-schema`/`-o`.
-- `Cursor.reviewer_launch` and `Cursor.final_message`: A5 and A1. The `is_error` guard stops an error result's text from being read as an answer.
-- `review_record_write.output_schema`, `write_schema`, `output_path`, `schema_lines`: A1 schema, the file the harness flags read, and the prompt section.
-- `review_record_write.snapshot`, `Snapshot.restore`, `written`, `_digest`, `_own_records`: A2 write detection, plus putting back a self-filed record so the gate never counts it. `_digest` handles a missing file or directory (`OSError` from a deleted path or a nested repo). The rename branch handles git's `-z` second path.
-- `review_record_write.run_text`, `final_output`, `json_object`: A1/A3 extraction from the log, the Codex `-o` file, or plain text.
-- `review_record_write.file_review`, `Outcome`, `_review_record`: A1/A2/A3 outcome. Output is captured because `review delegate --json` owns stdout.
-- `review_record_write.run_logged`: runs a `prompt --channel cli` reviewer turn with a log, echoing event summaries. Its `OSError` branch covers a harness that isn't on PATH, and its stdin `OSError` covers a harness that quits early.
-- `role_prompt.READ_BACK_HARNESSES`, `READ_BACK_LINES`, `PASTED_LINES`, `reviewer_lines`, the `read_back` parameter, `_shown`, `run_default_reviewer` (replaces `run_bare_reviewer`): A1 prompt, routing Codex and Cursor too, and a terminal line that doesn't echo the prompt or the inline schema.
-- `review_delegate._Harness.default` / `.launch_mode`, the `file_review` call, the `outcome` field and the new `RESUME_PROMPT` text: wiring (see Touch zones).
-- Test helper `tests/review_repo_helpers.review_output`: a valid reviewer JSON.
-- `tests/test_review_delegate.py`: the fake answers with JSON (`answer`/`raw` steps) instead of writing the record. `_files_record` now returns an answer, and the clean-exit test asserts the rerun reason.
-- `tests/test_review_files.py`: `_fake_run` also fakes `role_prompt.run_logged`. The bare-reviewer test now pins the full argv (A4) and checks the filed record (A1).
-- `tests/test_review_record_write.py`, 13 tests:
-  - A2: a checkout edit fails the review; a self-filed record fails it and is put back; a commit (HEAD) counts as a write while specy-road's `work/` doesn't.
-  - A3: truncated JSON and a schema mismatch are rerun requests; a `review record` refusal (stale commit) is a rerun request.
-  - JSON extraction cases; the output schema derivation; pasted vs read-back prompt text.
-  - A5: Cursor argv pinned, with the M8.7 note cross-check and executors keeping `--force`; Codex argv pinned, fresh and resume.
-  - End to end: a Codex `review delegate` through a fake `codex` binary filing from `-o`, and a Cursor `prompt --channel cli` filing from the result text.
+- `Adapter.reviewer_launch` (base, raises `Unsupported`) and `Adapter.final_message` (base, `None`): generic entries run their command; their output is read whole.
+- `CODEX_REVIEW_POLICY`, `REVIEWER_DISALLOWED`: A5 and A4.
+- `ClaudeCode.reviewer_launch` `--disallowedTools`/`--json-schema`, `ClaudeCode.final_message`; `Codex.reviewer_launch` (fresh/resume) and `Codex.final_message`; `Cursor.reviewer_launch` and `Cursor.final_message` (its `is_error` guard keeps an error's text from reading as an answer): A1, A4, A5.
+- `AGY_REVIEW_FLAGS`, `reviewer_cli`: A1's Antigravity support. Branches:
+  - unbalanced quotes are left for `placeholder_problem`;
+  - a non-`agy` program is left unchanged;
+  - `--dangerously-skip-permissions` is refused, since it would auto-approve writes;
+  - a flag already present is not added twice.
+- `review_record_write.output_schema`, `write_schema`, `output_path`, `schema_lines`: the A1 schema, its file and the prompt section.
+- `runtime_files`, `_walk`, `snapshot`, `Snapshot` (`exempt`, `top`, `restore`), `written`, `_own_records`: the A2 write check. `_walk`'s `OSError` branches cover a directory or file removed mid-walk; the nested-checkout skip covers linked worktrees.
+- `review_run_lock`, `ReviewRunBusy`: keep one leaf's reviewer runs from failing each other under the strict check. The `ImportError` branch is Windows; `OSError` means busy.
+- `reviewer_env`: lets an honest Python test re-run write nothing.
+- `run_text`, `final_output`, `json_object`, the envelope unwrap in `file_review`: A1/A3 extraction.
+- `file_review`, `Outcome`, `_review_record` (output captured because `review delegate --json` owns stdout): the A1/A2/A3 outcome.
+- `run_logged` (`OSError` for a harness missing from PATH, stdin `OSError` for one that quits early) and `run_and_file` (busy lock reported, exit 1): the `prompt --channel cli` turn.
+- `role_prompt.READ_BACK_HARNESSES`, `READ_BACK_LINES`, `PASTED_LINES`, `reviewer_lines`, `read_back`, `_shown`, `run_default_reviewer`, `run_custom_reviewer` (its `Unsupported` branch reports a refused `agy` command): the A1 prompt and both cli paths.
+- `review_delegate._Harness.default`/`.launch_mode`, the `reviewer_cli` call, the `review_run_lock` `ExitStack`, the `file_review` call, the `outcome` field, `reviewer_env` in `_turn`, and the new `RESUME_PROMPT`: wiring.
+- `tests/review_delegate_helpers.py` (new, public; answers Sol's test-integrity finding):
+  - `FAKE` (now with a `plain` step for a final-message-only harness), `CAPACITY`, `delegate_roster`, `delegate_repo` (optional roster with `{fake}`);
+  - `set_steps`, `fake_calls`, `verdict_step` (optional model), `fake_reviewer_run` (fakes `review_record_write.run_logged`);
+  - all moved from `tests/test_review_delegate.py` and `tests/test_review_files.py`, whose bodies now import them. No assertion was weakened, except that the `channels.cli` test now expects exit 1 and a rerun line, because `cat | head` prints no verdict.
+- `tests/review_repo_helpers.review_output`: a valid reviewer JSON.
+- `tests/test_review_record_write.py` (23 tests):
+  - A2: writes to a tracked file, an untracked `work/` file and an ignored hand-off file each fail, file nothing, and are reported by path (Sol's public-interface regression). Notes are the one write allowed. A self-filed record is put back. A commit (refs) and another model's run file count; this run's own log and a nested checkout don't.
+  - The lock refuses a second run. The reviewer env.
+  - A3 rerun cases; JSON extraction; schema derivation; pasted vs read-back prompts.
+  - A5: Cursor and Codex argv pinned, with the M8.7 note cross-check; a Codex `review delegate` end to end through a fake `codex`; a Cursor `prompt --channel cli` end to end.
+  - Custom `channels.cli` under `prompt --channel cli`, filed or failed by its writes, and under `review delegate`.
+  - `reviewer_cli` cases, and an Antigravity `review delegate` end to end through a fake `agy` that prints a pretty-printed envelope.
