@@ -16,7 +16,10 @@ from specy_road.runtime_paths import default_user_repo_root
 from specy_road.bundled_scripts.brief_acceptance import warn_acceptance_merged, warn_acceptance_missing, warn_unauthored
 from specy_road.bundled_scripts.planning_sheet_bootstrap import unauthored_leaves
 from specy_road.bundled_scripts.validate_touch_zones import warn_touch_zones_match_nothing
-from specy_road.bundled_scripts.validate_registry_overlap import warn_registry_touch_zone_overlap
+from specy_road.bundled_scripts.validate_registry_overlap import (
+    AuthoringOverlapScope,
+    warn_registry_touch_zone_overlap,
+)
 from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
 from specy_road.node_kinds import is_gate
 
@@ -320,7 +323,7 @@ def run_validation(
     *,
     repo_root: Path | None = None,
     show_all: bool = False,
-    overlap_scope: tuple[str, list[str]] | None = None,
+    overlap_scope: AuthoringOverlapScope | None = None,
 ) -> None:
     r = repo_root or default_user_repo_root()
     _validate_roadmap_and_registry_schemas(roadmap, registry, r)

@@ -5,16 +5,26 @@ from __future__ import annotations
 import contextlib
 import sys
 from contextvars import ContextVar
+from typing import NamedTuple
 
-_authoring_overlap_scope: ContextVar[tuple[str, list[str]] | None] = ContextVar(
+AuthoringOverlapScope = NamedTuple(
+    "AuthoringOverlapScope",
+    [("label", str), ("node_id", str | None), ("touch_zones", list[str])],
+)
+
+_authoring_overlap_scope: ContextVar[AuthoringOverlapScope | None] = ContextVar(
     "authoring_overlap_scope", default=None
 )
 
 
 @contextlib.contextmanager
-def authoring_overlap_scope(label: str, touch_zones: list[str]):
+def authoring_overlap_scope(
+    label: str, touch_zones: list[str], *, node_id: str | None = None
+):
     """Limit registry overlap warnings to clashes with one node's touch zones."""
-    token = _authoring_overlap_scope.set((label, list(touch_zones)))
+    token = _authoring_overlap_scope.set(
+        AuthoringOverlapScope(label, node_id, list(touch_zones))
+    )
     try:
         yield
     finally:
@@ -26,11 +36,11 @@ def authoring_overlap_for_node(node: dict, *, node_id: str | None = None):
     """``authoring_overlap_scope`` for a roadmap node dict (add-node / edit-node)."""
     nid = node_id or str(node.get("id") or "?")
     label = str(node.get("codename") or nid)
-    with authoring_overlap_scope(label, list(node.get("touch_zones") or [])):
+    with authoring_overlap_scope(label, list(node.get("touch_zones") or []), node_id=nid):
         yield
 
 
-def current_authoring_overlap_scope() -> tuple[str, list[str]] | None:
+def current_authoring_overlap_scope() -> AuthoringOverlapScope | None:
     return _authoring_overlap_scope.get()
 
 
@@ -45,14 +55,39 @@ def _is_broad_touch_zone(zone: str) -> bool:
     return zone.endswith("/")
 
 
-def _first_touch_zone_clash(
-    za: list[str], zb: list[str], *, skip: set[tuple[str, str]] | None = None
+def _in_broad_zone_tree(path: str, broad_zone: str) -> bool:
+    base = broad_zone.rstrip("/")
+    return path == broad_zone or path.startswith(base + "/")
+
+
+def _clash_suppressed_by_broad_summary(
+    x: str, y: str, summarized_broad: set[str]
+) -> bool:
+    """True when the clash is already covered by a shared-directory summary."""
+    if x == y and not _is_broad_touch_zone(x):
+        return False
+    for zone in summarized_broad:
+        if _in_broad_zone_tree(x, zone) and _in_broad_zone_tree(y, zone):
+            return True
+    return False
+
+
+def _first_independent_pair_clash(
+    za: list[str], zb: list[str], *, summarized_broad: set[str]
 ) -> tuple[str, str] | None:
-    skip = skip or set()
     for x in za:
         for y in zb:
-            if (x, y) in skip:
+            if not _touch_zones_clash(x, y):
                 continue
+            if _clash_suppressed_by_broad_summary(x, y, summarized_broad):
+                continue
+            return x, y
+    return None
+
+
+def _first_touch_zone_clash(za: list[str], zb: list[str]) -> tuple[str, str] | None:
+    for x in za:
+        for y in zb:
             if _touch_zones_clash(x, y):
                 return x, y
     return None
@@ -77,6 +112,7 @@ def touch_zone_overlap(
     *,
     scope_label: str | None = None,
     scope_touch_zones: list[str] | None = None,
+    scope_node_id: str | None = None,
 ) -> None:
     """Warn if entries share a touch zone path (heuristic).
 
@@ -88,6 +124,8 @@ def touch_zone_overlap(
         label = scope_label or "?"
         scoped = sorted(scope_touch_zones)
         for entry in entries:
+            if scope_node_id and entry.get("node_id") == scope_node_id:
+                continue
             zb = sorted(entry.get("touch_zones") or [])
             clash = _first_touch_zone_clash(scoped, zb)
             if clash is None:
@@ -101,9 +139,9 @@ def touch_zone_overlap(
             )
         return
 
-    skip_clashes: set[tuple[str, str]] = set()
-    for zone, cns in _broad_zone_summaries(entries):
-        skip_clashes.add((zone, zone))
+    summaries = _broad_zone_summaries(entries)
+    summarized_broad = {zone for zone, _ in summaries}
+    for zone, cns in summaries:
         joined = ", ".join(cns)
         print(
             f"registry: warning — possible overlap on shared zone "
@@ -118,7 +156,9 @@ def touch_zone_overlap(
             b = entries[j]
             zb = sorted(b.get("touch_zones") or [])
             bc = b.get("codename") or "?"
-            clash = _first_touch_zone_clash(za, zb, skip=skip_clashes)
+            clash = _first_independent_pair_clash(
+                za, zb, summarized_broad=summarized_broad
+            )
             if clash is None:
                 continue
             x, y = clash
@@ -133,12 +173,16 @@ def warn_registry_touch_zone_overlap(
     entries: list[dict],
     *,
     no_overlap_warn: bool,
-    overlap_scope: tuple[str, list[str]] | None,
+    overlap_scope: AuthoringOverlapScope | None,
 ) -> None:
     if not entries or no_overlap_warn:
         return
     if overlap_scope is not None:
-        label, zones = overlap_scope
-        touch_zone_overlap(entries, scope_label=label, scope_touch_zones=zones)
+        touch_zone_overlap(
+            entries,
+            scope_label=overlap_scope.label,
+            scope_touch_zones=overlap_scope.touch_zones,
+            scope_node_id=overlap_scope.node_id,
+        )
     else:
         touch_zone_overlap(entries)

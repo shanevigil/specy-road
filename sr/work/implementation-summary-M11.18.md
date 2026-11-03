@@ -8,15 +8,19 @@ Registry overlap warnings during add-node and edit-node should mention only clai
 
 - `specy_road/bundled_scripts/validate_roadmap.py` — passes authoring overlap scope into validation
 - `specy_road/bundled_scripts/validate_roadmap_checks.py` — wires overlap reporting into `run_validation`
-- `specy_road/bundled_scripts/validate_registry_overlap.py` — overlap logic and authoring scope (added; required for file limits and cohesion)
+- `specy_road/bundled_scripts/validate_registry_overlap.py` — overlap logic and authoring scope
 - `specy_road/bundled_scripts/roadmap_crud_ops.py` — wraps chunk writes in authoring overlap scope
-- `tests/test_registry_overlap_warnings.py` — behavioural coverage (added)
-- `tests/test_validate_roadmap.py` — removed duplicate overlap import/test relocation only
+- `tests/test_registry_overlap_warnings.py` — behavioural coverage
 
 ## Acceptance
 
-- **A1:** `authoring_overlap_for_node` / `authoring_overlap_scope` set a contextvar read by `validate_at` → `run_validation` → scoped `touch_zone_overlap`. Add-node and edit-node post-write validation runs inside that scope. Unscoped validate uses the full reporter.
-- **A2:** `touch_zone_overlap` without scope emits one shared-zone summary per broad directory zone listed by two or more claims, skips redundant `tests/' vs 'tests/'` pair lines, and still emits one line per claim pair for specific path clashes.
+- **A1:** Authoring scope carries `node_id`; scoped reporting skips the authored node's own registry claim. `cmd_edit` on a sole claim with `touch_zones=tests/` emits no self-overlap warning.
+- **A2:** Pair lines skip clashes already represented by a shared-zone summary (including directory vs nested paths under that directory). Independent collisions on the same specific file path still emit one pair line.
+
+## Review fixes (Codex Sol)
+
+- **R1:** `AuthoringOverlapScope` includes `node_id`; scoped loop skips `entry.node_id == scope_node_id`. `test_touch_zone_overlap_scoped_skips_the_authored_nodes_own_claim` and `test_edit_node_cli_does_not_warn_self_overlap_on_claim` cover reporter and public `edit-node`.
+- **R2:** `_clash_suppressed_by_broad_summary` / `_first_independent_pair_clash` drop broad-tree pair spam after summaries. `test_touch_zone_overlap_validate_skips_nested_clashes_under_summarized_broad` and `test_touch_zone_overlap_keeps_same_specific_file_under_shared_directory` cover nested-only vs same-file collisions.
 
 ## Verification
 
@@ -25,10 +29,9 @@ Registry overlap warnings during add-node and edit-node should mention only clai
 
 ## Added
 
-- `specy_road/bundled_scripts/validate_registry_overlap.py` — overlap clash helpers, scoped/full reporting, authoring contextvar, `warn_registry_touch_zone_overlap` entry for validate
-- `authoring_overlap_for_node` — context manager for add-node/edit-node without duplicating label/zone extraction in CRUD
-- `_validate_registry_entries` in `validate_roadmap_checks.py` — keeps `run_validation` under the per-function line cap after overlap wiring
-- `tests/test_registry_overlap_warnings.py::test_touch_zone_overlap_scoped_skips_unrelated_claim_pairs` — A1 scoped filtering
-- `tests/test_registry_overlap_warnings.py::test_touch_zone_overlap_validate_summarizes_broad_shared_zone` — A2 broad zone summary
-- `tests/test_registry_overlap_warnings.py::test_touch_zone_overlap_validate_one_line_per_specific_pair` — A2 pair line for specific paths alongside broad summary
-- `tests/test_registry_overlap_warnings.py::test_touch_zone_overlap_warns_on_same_path` — regression for simple same-path overlap
+- `AuthoringOverlapScope` NamedTuple — label, node_id, and touch_zones for scoped validation (R1)
+- `_clash_suppressed_by_broad_summary` / `_first_independent_pair_clash` — suppress pair lines covered by shared-directory summaries (R2)
+- `test_touch_zone_overlap_scoped_skips_the_authored_nodes_own_claim` — R1 scoped self-claim exclusion
+- `test_edit_node_cli_does_not_warn_self_overlap_on_claim` — R1 through public edit-node CLI
+- `test_touch_zone_overlap_validate_skips_nested_clashes_under_summarized_broad` — R2 nested paths under summarized `tests/`
+- `test_touch_zone_overlap_keeps_same_specific_file_under_shared_directory` — R2 retains identical specific-file pair line
