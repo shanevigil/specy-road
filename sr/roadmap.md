@@ -176,7 +176,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.67` | Worker usage prices Cursor runs from the roster's price table | task | Agentic-led | Complete |
 | `M11.68` | A re-delegated executor starts from the blocking review findings | task | Agentic-led | Not Started |
 | `M11.69` | A leaf that adds a schema key can be gated and finished | task | Agentic-led | Not Started |
-| `M11.70` | Touch zones are checked when they are written | task | Agentic-led | Not Started |
+| `M11.70` | Touch zones are checked when they are written | task | Agentic-led | Complete |
 | `M11.71` | Review loops escalate on their own and criteria are written with bounds | task | Agentic-led | Complete |
 | `M11.72` | A reviewer run that ends without a record is reported as a failure | task | Agentic-led | Complete |
 | `M11.73` | specy-road ready warns when the leaf no longer merges cleanly | task | Agentic-led | Not Started |
