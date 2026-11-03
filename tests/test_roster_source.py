@@ -57,10 +57,39 @@ ROSTER_STATES = {
     "added-unpushed": (None, "commit", True,
                        "is committed on the local dev but not on origin/dev, where the roster is read from, so "
                        "routing uses the default roster (no models) until dev is pushed to origin"),
+    "deleted-uncommitted": (ROSTER, "unlink", False,
+                            "is deleted in the working tree but still on origin/dev, where the roster is read from; "
+                            "routing uses the copy there until the deletion is committed to dev and pushed to origin"),
     "deleted-unpushed": (ROSTER, "delete", True,
                          "is deleted on the local dev but still on origin/dev, where the roster is read from; "
                          "routing uses the copy there until dev is pushed to origin"),
 }
+
+
+def _arrange(repo: Path, step: str | None, detach: bool) -> None:
+    """Put the roster in the state ``step`` names on the local dev, then optionally leave dev."""
+    yaml_path = repo / "roadmap" / "orchestration.yaml"
+    if step in ("write", "commit"):
+        yaml_path.write_text(ROSTER)
+    if step == "delete":
+        git(repo, "rm", "-q", "roadmap/orchestration.yaml")
+    if step == "unlink":
+        yaml_path.unlink()
+    if step in ("commit", "delete"):
+        git(repo, "add", "-A")
+        git(repo, "commit", "-qm", f"roster {step}")   # on the local dev, not on origin/dev
+    if detach:
+        git(repo, "checkout", "-q", "-b", "feature/x", "origin/dev")   # working tree as pushed
+
+
+def _remedy(repo: Path, step: str, detach: bool) -> None:
+    """What the sentence says to do: commit (an uncommitted edit or deletion), push, fetch."""
+    if step in ("write", "unlink"):
+        git(repo, "commit", "-qam", "roster")
+    git(repo, "push", "-q", "origin", "dev")
+    git(repo, "fetch", "-q", "origin")
+    if detach:
+        git(repo, "merge", "-q", "--ff-only", "origin/dev")
 
 
 @pytest.mark.parametrize("state", list(ROSTER_STATES))
@@ -69,16 +98,7 @@ def test_plan_and_validate_name_the_roster_source_and_remedy(
     pushed, step, detach, drift = ROSTER_STATES[state]
     repo = plan_repo(tmp_path, roster=pushed)
     _pushed(repo, tmp_path)
-    yaml_path = repo / "roadmap" / "orchestration.yaml"
-    if step in ("write", "commit"):
-        yaml_path.write_text(ROSTER)
-    if step == "delete":
-        git(repo, "rm", "-q", "roadmap/orchestration.yaml")
-    if step in ("commit", "delete"):
-        git(repo, "add", "-A")
-        git(repo, "commit", "-qm", f"roster {step}")   # on the local dev, not on origin/dev
-    if detach:
-        git(repo, "checkout", "-q", "-b", "feature/x", "origin/dev")   # working tree as pushed
+    _arrange(repo, step, detach)
     plan, out, err = _cli(repo, monkeypatch, capsys)
     assert plan["roster_ref"] == "origin/dev"
     problems = " ".join(p for b in plan["batches"] for a in b for p in a["problems"])
@@ -88,17 +108,12 @@ def test_plan_and_validate_name_the_roster_source_and_remedy(
         return
     assert drift in plan["roster_drift"] and "warning: roadmap/orchestration.yaml" in err and drift in err
     assert "may_process containing" not in problems
-    git(repo, "push", "-q", "origin", "dev")   # the remedy the sentence names clears it
-    git(repo, "fetch", "-q", "origin")
-    if step == "write":
-        git(repo, "commit", "-qam", "roster")
-        git(repo, "push", "-q", "origin", "dev")
-        git(repo, "fetch", "-q", "origin")
-    if detach:
-        git(repo, "merge", "-q", "--ff-only", "origin/dev")
+    if step in ("unlink", "delete"):   # routing still uses origin/dev's roster, not the default policy
+        assert "the default policy applies" not in out
+    _remedy(repo, step, detach)
     plan, out, err = _cli(repo, monkeypatch, capsys)
     assert "warning: roadmap/orchestration.yaml" not in err
-    if step == "delete":   # pushed deletion: no roster anywhere, the docs notice and no warning
+    if step in ("delete", "unlink"):   # pushed deletion: no roster anywhere, the docs notice and no warning
         assert plan["roster_drift"].startswith("no roadmap/orchestration.yaml on origin/dev")
         assert "docs/orchestration.md" in out
     else:

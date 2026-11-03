@@ -196,22 +196,28 @@ def validate_orchestration_contract(root: Path) -> None:
     No roster anywhere is not a warning (``validate`` prints :data:`NO_ORCHESTRATION_NOTICE`):
     it means the default review policy (one reviewer, any family), the
     scaffolded starter's policy, which ``--generate-orchestration`` writes as an editable file.
-    A roster routing does not read (uncommitted in the working tree, or added, deleted or changed
-    on an unpushed local integration branch) is, as ``orchestrate plan`` says.
+    A roster routing does not read (edited, added or deleted in the working tree without a commit,
+    or added, deleted or changed on an unpushed local integration branch) is, as ``orchestrate plan`` says.
     """
     _data, err = load_orchestration_config(root)
     if err:
         print(err, file=sys.stderr)
         raise SystemExit(1)
-    _ref, drift, none_anywhere = roster_report(root)
-    if drift and not none_anywhere:   # no roster at all: the notice, not a warning
-        print(f"warning: {drift}", file=sys.stderr)
+    report = roster_report(root)
+    if report.drift and not report.none_anywhere:   # no roster at all: the notice, not a warning
+        print(f"warning: {report.drift}", file=sys.stderr)
 
 
-def no_orchestration_notice(root: Path) -> str:
-    """:data:`NO_ORCHESTRATION_NOTICE`, plus where the roster is read from when routing finds none there either."""
-    _ref, drift, none_anywhere = roster_report(root)
-    return NO_ORCHESTRATION_NOTICE + (f"\nnotice: {drift}" if none_anywhere else "")
+def no_orchestration_notice(root: Path) -> str | None:
+    """:data:`NO_ORCHESTRATION_NOTICE`, plus where the roster is read from when routing finds none there either.
+
+    ``None`` when the integration ref has a roster: routing uses it, not the default policy, and the
+    working-tree deletion is the warning :func:`validate_orchestration_contract` printed.
+    """
+    report = roster_report(root)
+    if report.on_ref:
+        return None
+    return NO_ORCHESTRATION_NOTICE + (f"\nnotice: {report.drift}" if report.none_anywhere else "")
 
 
 NO_ORCHESTRATION_NOTICE = (
@@ -340,8 +346,8 @@ def main() -> None:
         notice_complete_scaffold(root, load_roadmap(root)["nodes"], show_all=args.all)
         if args.generate_orchestration:
             generate_orchestration(root)
-        elif not orchestration_yaml_path(root).is_file():
-            print(no_orchestration_notice(root))   # stdout: a notice, which --strict does not count
+        elif not orchestration_yaml_path(root).is_file() and (notice := no_orchestration_notice(root)):
+            print(notice)   # stdout: a notice, which --strict does not count
         print_injected_context(root)
     if args.strict and stderr.lines:
         sys.stdout.flush()  # the OK line first, then why it does not count
