@@ -8,6 +8,11 @@ Base: `a54c409b` (origin/WIP/improvements-0-3-1 after the M8.2 touch-zone update
   - `worker_runner.py`: WIP's `fresh_ready`, `completion_summary` and `harness_env` sit alongside this branch's `TurnWatch` and `close_turn`. `launch.env` is applied on top of `harness_env`, and `paused_by_limit` still wins over READY.
   - No behaviour change was needed: the leaf's tests and the WIP tests on these modules pass (147 tests).
 
+- **Merge of WIP for M11.35:** two conflicts, both resolved keeping both sides:
+  - `worker_adapter_claude.py`: the Claude resume passes `*_model_flag("--model", model)` (M11.35) and `EXECUTOR_PERMISSIONS`.
+  - `worker_runner.py`: `_finish` keeps `log_start` and M11.35's `exit_event`, and still runs `close_turn` first, with `PAUSED_BY_LIMIT` winning over READY and the exit code. `exit_event`'s `streamed()` counts only `source: worker` events, so the system `post_run_check` written before it does not hide the harness's stderr reason.
+  - No behaviour fix was needed: `pytest -n 4` over the leaf's tests and `tests/test_roster_harness_model.py` passes (110 tests).
+  - `specy-road file-limits` still exits 1, only for WIP's own `bundled_scripts/worker_cli.py` (401 lines, identical to WIP).
 - **Merge of WIP for M11.57 (`ff5ce21f`):** the conflict was the `state` row in `docs/orchestration-workers.md`. It keeps this branch's `paused_by_limit` / `limit_reset_at` wording and M11.57's clause that a completed worker whose leaf is over does not keep its slot.
   - **Follow-on fix (`3bce63d8`):** M11.57's `worker_orphans.HELD_STATES` named only `idle` and `completed`. A worker paused at a usage limit whose leaf then ended would have held its `max_workers` slot for good, and neither `terminate --orphaned` nor finish would end it. `HELD_STATES` now includes `paused_by_limit`. `specy_road/worker_orphans.py` was added to M8.2's zones with `edit-node` (`3d2a513c`).
   - **Regression:** new `test_a_paused_worker_frees_its_slot_once_its_leaf_is_over_like_an_idle_one`, covering `orphans`, `holding_slots` and `end_finished_workers`. It fails without the fix: `orphans` returns `{}`.
