@@ -25,6 +25,8 @@ certifi==2026.10.19
     #   requests
 charset-normalizer==3.4.7
     # via requests
+execnet==2.1.2
+    # via pytest-xdist
 fastapi==0.141.1
     # via specy-road
 h11==0.16.0
@@ -55,6 +57,10 @@ pydantic-core==2.46.0
 pygments==2.20.0
     # via pytest
 pytest==9.1.1
+    # via
+    #   pytest-xdist
+    #   specy-road
+pytest-xdist==3.8.0
     # via specy-road
 pyyaml==6.0.3
     # via specy-road
