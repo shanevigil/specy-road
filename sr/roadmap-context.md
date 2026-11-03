@@ -126,7 +126,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.16` A commit that changes only planning or bookkeeping files keeps existing approvals `sheet-edits-keep-approvals` — task — **Not Started**
   - `M11.17` edit-node names every chunk file it changes, and relocation is loud `edit-node-names-chunks` — task — **Complete**
   - `M11.18` Registry overlap warnings show only what concerns the command at hand `quieter-overlap-warnings` — task — **Not Started**
-  - `M11.19` Pickup never stashes work/ around the registry commit `pickup-no-work-stash` — task — **Not Started**
+  - `M11.19` Pickup never stashes work/ around the registry commit `pickup-no-work-stash` — task — **Complete**
   - `M11.20` orchestrate plan and validate say where the roster is read from `roster-source-explained` — task — **Not Started**
   - `M11.22` Worker worktrees can include nested sibling repositories `nested-repo-worktrees` — task — **Not Started**
   - `M11.23` A custom launch command's permissions carry through resume `resume-keeps-permissions` — task — **Not Started**
@@ -149,6 +149,17 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.40` worker reconcile works on merged leaves and separates untracked files `reconcile-merged-and-untracked` — task — **Not Started**
   - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Not Started**
   - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Not Started**
+  - `M11.43` init project reports exactly what it writes `init-project-reports-writes` — task — **Not Started**
+  - `M11.44` init project can install only the model profiles a project uses `init-profiles-subset` — task — **Not Started**
+  - `M11.45` The stale-command warning fires only on command-shaped mentions `stale-command-prose` — task — **Not Started**
+  - `M11.46` Placeholder leaves neither fail validate --strict nor pad briefs `placeholder-leaves-strict-brief` — task — **Not Started**
+  - `M11.47` validate checks git-root touch zones in a nested project `validate-zones-git-root` — task — **Not Started**
+  - `M11.48` A claimed leaf reads as claimed in list-nodes and brief `claimed-leaf-status` — task — **Not Started**
+  - `M11.49` The review packet takes touch zones from the reviewed commit and treats lockfiles as generated `packet-zones-at-commit` — task — **Not Started**
+  - `M11.50` finish keeps a committed implementation summary in history `finish-keeps-summary` — task — **Not Started**
+  - `M11.51` Dashboard saves never overwrite newer disk edits, and the read API is documented `dashboard-safe-saves` — task — **Not Started**
+  - `M11.52` PR mode predicts and resolves the registry conflict `pr-mode-registry-conflict` — task — **Not Started**
+  - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Not Started**
 
 ## Archived (not in the live roadmap)
 
@@ -162,7 +173,6 @@ Do not pick these up.
 
 - `M11.13` on `feature/rm-milestone-full-review` since 2026-11-02
 - `M11.18` on `feature/rm-quieter-overlap-warnings` since 2026-11-02
-- `M11.19` on `feature/rm-pickup-no-work-stash` since 2026-11-02
 - `M11.26` on `feature/rm-profile-aliases` since 2026-11-02
 - `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
 - `M11.34` on `feature/rm-decision-ledger` since 2026-11-02

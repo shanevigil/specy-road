@@ -12,7 +12,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.19_pickup-no-work-stash_174228c2-0ffe-4dc5-80b6-2556bd0ec707.md",
       "sibling_order": 19,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Pickup never stashes work/ around the registry commit",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
