@@ -8,6 +8,11 @@ Base: `a54c409b` (origin/WIP/improvements-0-3-1 after the M8.2 touch-zone update
   - `worker_runner.py`: WIP's `fresh_ready`, `completion_summary` and `harness_env` sit alongside this branch's `TurnWatch` and `close_turn`. `launch.env` is applied on top of `harness_env`, and `paused_by_limit` still wins over READY.
   - No behaviour change was needed: the leaf's tests and the WIP tests on these modules pass (147 tests).
 
+- **Merge of WIP for M11.57 (`ff5ce21f`):** the conflict was the `state` row in `docs/orchestration-workers.md`. It keeps this branch's `paused_by_limit` / `limit_reset_at` wording and M11.57's clause that a completed worker whose leaf is over does not keep its slot.
+  - **Follow-on fix (`3bce63d8`):** M11.57's `worker_orphans.HELD_STATES` named only `idle` and `completed`. A worker paused at a usage limit whose leaf then ended would have held its `max_workers` slot for good, and neither `terminate --orphaned` nor finish would end it. `HELD_STATES` now includes `paused_by_limit`. `specy_road/worker_orphans.py` was added to M8.2's zones with `edit-node` (`3d2a513c`).
+  - **Regression:** new `test_a_paused_worker_frees_its_slot_once_its_leaf_is_over_like_an_idle_one`, covering `orphans`, `holding_slots` and `end_finished_workers`. It fails without the fix: `orphans` returns `{}`.
+  - **`specy-road file-limits` exits 1, from WIP:** WIP's own `specy_road/bundled_scripts/worker_cli.py` is 401 lines (M11.57's merge), and this branch does not touch it. Every file this branch changes is within its cap.
+  - **Timing:** `test_message_while_running_queues_and_delivers` failed once in the `-n 4` run at load average 39, the known state-read race. It passed twice alone.
 - **Merge of WIP for M11.69:** the conflict was in `worker_state.py`, where `WorkerRecord` keeps both `limit_reset_at` and M11.69's `unknown_fields`. `unknown_fields` stays last, so `load_record` and `to_dict` still treat `limit_reset_at` as a known field. No behaviour fix was needed: the leaf's tests, `test_schema_revision.py` and file-limits pass.
   - **Timing failure under load:** `test_spawn_returns_before_the_worker_ends_and_the_record_catches_up` failed once with the load average near 38. Timing a spawned turn in isolation showed this branch costs about 0.3 s more per turn than WIP's own checkout (0.6 s against 0.2–0.3 s): the post-run check's git reads and record writes. The test then passed twice in under 2 s, and passed in the full targeted run.
 
@@ -121,6 +126,7 @@ Not changed, though they are now stale, because they are outside M8.2's zones:
 - `PAUSED_BY_LIMIT if paused else …` ordering in `_finish` (round 2, R1): a limit wins over a fresh READY.
 - Fake-harness `write` option in `tests/test_worker_turn_check.py` (round 2): lets a turn write its READY, for the R1 regression.
 - Union of start and end dirty paths in `git_findings` (round 4): pre-turn work the turn restores, deletes or commits is a finding.
+- `paused_by_limit` in `worker_orphans.HELD_STATES`, and `test_a_paused_worker_frees_its_slot_once_its_leaf_is_over_like_an_idle_one` (M11.57 merge): a paused worker whose leaf is over frees its slot, like idle.
 - `test_pre_turn_work_outside_the_zones_that_the_turn_restores_or_deletes_is_a_finding` (round 4): Sol's required regression.
 - `test_a_turn_whose_record_was_terminated_still_gets_the_check_and_stays_terminated` (round 3): the terminated path's check.
 - `test_a_limit_wins_over_a_fresh_ready_written_in_the_same_turn`, `test_a_further_edit_to_an_already_dirty_file_outside_the_zones_keeps_the_worker_flagged` (round 2): the reviewer's two regressions.
