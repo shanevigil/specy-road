@@ -68,3 +68,45 @@ def test_a_read_only_git_status_that_refreshes_the_index_is_not_a_write(tmp_path
                          "--repo-root", str(repo)])
     assert e.value.code == 0 and json.loads(capsys.readouterr().out)["outcome"] == "recorded"
     assert index.read_bytes() != raw                                     # git status did rewrite the index file
+
+
+# --- Git metadata beyond the index: hooks, the common and worktree Git directories, the .git pointer (Sol, 07169a5a) ---
+
+def _delegate_cli(repo: Path, capsys, *extra: str) -> tuple[int, dict]:
+    with pytest.raises(SystemExit) as e:
+        review_cli.main(["review", "delegate", "M1.1", "--model", "opus", "--backoff", "0", "--json", *extra,
+                         "--repo-root", str(repo)])
+    return e.value.code, json.loads(capsys.readouterr().out)
+
+
+def _common_git_dir(checkout: Path) -> Path:
+    return Path(git(checkout, "rev-parse", "--path-format=absolute", "--git-common-dir")).resolve()
+
+
+def test_review_delegate_cli_fails_a_reviewer_created_hook_and_files_no_verdict(tmp_path: Path, capsys) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    hooks = _common_git_dir(repo) / "hooks"
+    hooks.mkdir(exist_ok=True)
+    set_steps(repo, spec, {**verdict_step(repo), "write": {"path": str(hooks / "pre-commit"), "text": "#!/bin/sh\n"}})
+    code, run = _delegate_cli(repo, capsys)
+    assert code == 1 and run["outcome"] == "review_failure"
+    assert run["reason"].startswith("review failure: the reviewer run wrote .git/hooks/pre-commit;")
+    assert not rf.review_path(repo, "M1.1", "opus").exists()
+
+
+@pytest.mark.parametrize("target", ["hook", "pointer"])
+def test_a_reviewer_in_a_linked_worktree_that_writes_git_metadata_files_no_verdict(tmp_path: Path, capsys,
+                                                                                    target: str) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    wt = tmp_path / "review-wt"
+    git(repo, "worktree", "add", "-q", "--detach", str(wt))
+    common = _common_git_dir(wt)
+    (common / "hooks").mkdir(exist_ok=True)
+    path = common / "hooks" / "post-checkout" if target == "hook" else wt / ".git"
+    text = "#!/bin/sh\n" if target == "hook" else (wt / ".git").read_text() + "\n"
+    set_steps(repo, spec, {**verdict_step(repo), "write": {"path": str(path), "text": text}})
+    code, run = _delegate_cli(repo, capsys, "--worktree", str(wt))
+    shown = ".git" if target == "pointer" else str(path)   # inside the worktree: relative; the common dir: absolute
+    assert code == 1 and run["outcome"] == "review_failure"
+    assert run["reason"].startswith(f"review failure: the reviewer run wrote {shown};")
+    assert not rf.review_path(repo, "M1.1", "opus").exists()

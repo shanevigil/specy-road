@@ -11,7 +11,8 @@ envelope's ``structured_output`` is the answer.
 
 * ``review_failure`` — the run wrote something besides its notes and the run's own runtime files
   (:func:`runtime_files`), compared by content as well as size and mtime: any file of the checkout it ran in, git-ignored and ``work/`` files included, any
-  file of the leaf's hand-off directory, a ref (``HEAD``, a branch, a stash), or the Git index's entries (a
+  file of the leaf's hand-off directory, any Git metadata (a hook, the config, an object, the worktree's
+  ``.git`` pointer: :func:`_walk_git`), a ref (``HEAD``, a branch, a stash), or the Git index's entries (a
   ``git add``, ``git update-index --assume-unchanged``; a stat refresh by ``git status`` is not one). A
   ``REVIEW-<model>.md`` it filed itself is put back as it was, so the gate never counts it. Nothing is filed;
 * ``rerun`` — the output is missing, is not a JSON object, does not match the schema, or ``review record``
@@ -124,9 +125,10 @@ def _content(path: str, is_link: bool) -> str:
         return "unreadable"
 
 
-def _walk(base: Path, state: dict[str, Any]) -> None:
+def _walk(base: Path, state: dict[str, Any], skip: frozenset[str] = frozenset()) -> None:
     """``(size, mtime, content digest)`` of every file under ``base``, ignored ones included; ``.git`` and nested
-    checkouts (a directory holding ``.git``) are other repositories' and are skipped."""
+    checkouts (a directory holding ``.git``) are other repositories' and are skipped (the Git directories are
+    walked on their own: :func:`_walk_git`), as is every path in ``skip``."""
     stack = [str(base)]
     while stack:
         try:
@@ -135,7 +137,8 @@ def _walk(base: Path, state: dict[str, Any]) -> None:
             continue
         for e in entries:
             try:
-                if e.name == ".git" or (e.is_dir(follow_symlinks=False) and os.path.lexists(os.path.join(e.path, ".git"))):
+                if e.path in skip or e.name == ".git" or (e.is_dir(follow_symlinks=False)
+                                                          and os.path.lexists(os.path.join(e.path, ".git"))):
                     continue
                 if e.is_dir(follow_symlinks=False):
                     stack.append(e.path)
@@ -144,6 +147,26 @@ def _walk(base: Path, state: dict[str, Any]) -> None:
             except OSError:
                 continue
             state[e.path] = (st.st_size, st.st_mtime_ns, _content(e.path, e.is_symlink()))
+
+
+def _walk_git(top: Path, state: dict[str, Any]) -> None:
+    """The checkout's Git metadata: every file of its common Git directory (hooks, config, info, objects, refs,
+    logs) and of its own worktree Git directory, and its ``.git`` pointer file in a linked worktree. Skipped: the
+    other linked worktrees' directories under ``<common>/worktrees`` (other checkouts), and raw index bytes (this
+    checkout's, which a read-only ``git status`` rewrites and :func:`snapshot` compares by its entries instead, and
+    the main checkout's when this one is linked)."""
+    def resolved(*args: str) -> Path | None:
+        out = git_text(["rev-parse", "--path-format=absolute", *args], top)
+        return Path(out).resolve() if out else None
+    common, own, index = resolved("--git-common-dir"), resolved("--git-dir"), resolved("--git-path", "index")
+    other = (common / "index", common / "worktrees") if common else ()   # the main checkout's index; other worktrees
+    skip = frozenset(str(p) for p in (index, *other) if p)
+    for d in dict.fromkeys(d for d in (common, own) if d):   # one directory when the checkout is the main one
+        _walk(d, state, skip)
+    pointer = top / ".git"
+    if pointer.is_file():
+        st = pointer.stat()
+        state[str(pointer)] = (st.st_size, st.st_mtime_ns, _content(str(pointer), False))
 
 
 @dataclass
@@ -165,8 +188,8 @@ class Snapshot:
 
 
 def snapshot(cwd: Path, reviews: Path, model: str) -> Snapshot:
-    """Every file of the checkout at ``cwd`` and of the hand-off directory ``reviews``, plus every ref and the
-    Git index. The walk skips ``.git``, so the index is compared by what it records (``ls-files --stage -v``:
+    """Every file of the checkout at ``cwd``, of its Git directories (:func:`_walk_git`) and of the hand-off
+    directory ``reviews``, plus every ref and the Git index. The index is compared by what it records (``ls-files --stage -v``:
     each entry's mode, blob, stage and assume-unchanged / skip-worktree flag), not its bytes, which a read-only
     ``git status`` rewrites when it refreshes the stat cache."""
     top = Path(git_text(["rev-parse", "--show-toplevel"], cwd) or cwd).resolve()
@@ -176,6 +199,7 @@ def snapshot(cwd: Path, reviews: Path, model: str) -> Snapshot:
                              + (git_text(["for-each-ref", "--format=%(refname) %(objectname)"], top) or ""),
                              "git index": hashlib.sha256(index.encode()).hexdigest()}
     _walk(top, state)
+    _walk_git(top, state)
     if top not in reviews.parents:   # a reviewer in a linked worktree: the hand-off directory is the main checkout's
         _walk(reviews, state)
     return Snapshot(state, {p: p.read_bytes() for p in _own_records(reviews, model)}, runtime_files(reviews, model), top)

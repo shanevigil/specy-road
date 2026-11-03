@@ -95,7 +95,10 @@ def test_a_commit_and_an_ignored_cache_count_as_writes_and_other_checkouts_do_no
     assert written(before, snapshot(repo, reviews, "opus")) == []
     git(repo, "commit", "-q", "--allow-empty", "-m", "reviewer commit")
     (repo / "work" / "reviews" / "M1.1" / "RUN-sol.log").write_text("not this run's\n")
-    assert written(before, snapshot(repo, reviews, "opus")) == ["git refs", "work/reviews/M1.1/RUN-sol.log"]
+    wrote = written(before, snapshot(repo, reviews, "opus"))
+    assert {"git refs", "work/reviews/M1.1/RUN-sol.log"} <= set(wrote)
+    meta = set(wrote) - {"git refs", "work/reviews/M1.1/RUN-sol.log"}   # the commit's objects, logs and ref file
+    assert meta and all(w.startswith(".git/") for w in meta)
 
 
 def test_one_leafs_reviewer_runs_take_turns(tmp_path: Path) -> None:

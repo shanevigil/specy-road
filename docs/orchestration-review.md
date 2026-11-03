@@ -268,7 +268,10 @@ specy-road decides the outcome:
   (`notes-<model>.md`) and the files the run itself keeps (`RUN-<model>.json`,
   its `.tmp`, `RUN-<model>.log`, `OUTPUT-<model>.json`, the schema file and
   `.review-run.lock`): any file of the checkout it ran in, git-ignored and
-  `work/` files included, any file of the leaf's hand-off directory, a ref
+  `work/` files included, any file of the leaf's hand-off directory, any Git
+  metadata (every file of the common and the worktree Git directories, such as a
+  hook, the config or an object, and a linked worktree's `.git` pointer; other
+  linked worktrees' directories and raw index bytes are left out), a ref
   (`HEAD`, a branch, a stash), or the Git index's entries (`git add`,
   `git update-index --assume-unchanged`; compared by `git ls-files --stage -v`,
   so the stat refresh a read-only `git status` writes is not a write). Files are compared by content (SHA-256) as well
