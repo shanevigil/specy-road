@@ -2,6 +2,12 @@
 
 Base: `a54c409b` (origin/WIP/improvements-0-3-1 after the M8.2 touch-zone updates). Code commit: `4e6a6acb`. Zone commit: `55c44ecd`. Review fixes: `da6f33a4`.
 
+- **Merge of WIP (`d5fb31d0`, after `4f3990a7`):** brings in the Codex reviewer entries, M8.5's `harness_env`, the Cursor pricing changes and `worker_runner_ready`. Conflicts were resolved keeping both sides:
+  - `worker_adapter_codex.py`: `exec resume` takes WIP's `-m <model>` plus this branch's memory switches and `CODEX_HOME`.
+  - `worker_adapter_parsers.py`: both sides' new imports are kept.
+  - `worker_runner.py`: WIP's `fresh_ready`, `completion_summary` and `harness_env` sit alongside this branch's `TurnWatch` and `close_turn`. `launch.env` is applied on top of `harness_env`, and `paused_by_limit` still wins over READY.
+  - No behaviour change was needed: the leaf's tests and the WIP tests on these modules pass (147 tests).
+
 ## Round 2: fixes for review gpt-6.1-sol (block)
 
 - **R1.** In `worker_runner._finish`, a detected usage limit now takes precedence over a fresh READY. A turn that exits 0 with a valid READY at HEAD and a timed limit ends in `paused_by_limit`, so `limit_gate` applies. Its `completion` event still records `"ready": true`. New regression: `test_a_limit_wins_over_a_fresh_ready_written_in_the_same_turn`, which goes through `worker_runner.run` and `worker_ops_message.resume`.
