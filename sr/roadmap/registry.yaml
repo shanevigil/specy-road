@@ -94,16 +94,3 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: roster-source-explained
-    node_id: M11.20
-    branch: feature/rm-roster-source-explained
-    touch_zones:
-      - specy_road/orchestration_pinned.py
-      - specy_road/orchestrate_plan.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - docs/orchestration.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T05:46:42+00:00'
