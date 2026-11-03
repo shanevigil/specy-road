@@ -50,11 +50,21 @@ The zones now include `specy_road/review_delegate.py` and `docs/orchestration-re
 
 - After the M11.71 merge (`869950c5`): `pytest -q -n 6 -p no:cacheprovider` over `tests/test_review_rca.py`, `tests/test_review_record_write.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_models_and_prompt.py`, `tests/test_prerelease_review.py`, `tests/test_prerelease_s2.py`, `tests/test_lean_rules.py`, `tests/test_worker_adapters.py` and `tests/test_planning_sheet_bootstrap.py`: 154 passed. File limits OK; `ruff` on `role_prompt.py` clean.
 
+## Round 3 (Codex Sol's block at `f859aff5`; commit `df2c588c`)
+
+- **A2, content compare.** Each file in the snapshot is recorded as `(size, mtime_ns, sha256)` (`_content`; a symlink hashes its target text; an unreadable file is `unreadable`). An equal-length overwrite with its atime/mtime put back is now a review failure. Regression through `review delegate`: `test_a_same_length_rewrite_with_its_mtime_put_back_is_a_review_failure`. The fake harness gained a `keep_mtime` write option.
+- **A3, malformed final object.** `json_object` takes the last complete top-level object only if it starts a line (prose or a ```` ```json ```` fence may precede it) and no `{` appears after it. So a valid object followed by a truncated or malformed one is a rerun request, and the earlier object never stands in as the verdict. Other trailing text without a brace stays permitted: a closing fence, or a harness's status lines such as a token count, which a plain-text Codex wrapper may print after the answer. End-to-end regression through `review delegate`: `test_a_valid_object_followed_by_truncated_json_is_a_rerun_request_and_files_nothing` (the same object alone is then filed). The unit cases now cover a cut-off later object, a truncated object whose inner object would decode, and an object that doesn't start its line.
+- **Verification:**
+  - `pytest -q -n 6 -p no:cacheprovider` over `tests/test_review_record_write.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_worker_adapters.py`, `tests/test_models_and_prompt.py`, `tests/test_prerelease_review.py`, `tests/test_orchestration_guard_hooks.py`, `tests/test_review_rca.py`, `tests/test_harness_facts.py` and `tests/test_role_prompt_file_limits.py`: 234 passed. `tests/test_review_record_write.py` alone: 28 passed.
+  - File limits OK; private imports 0 new. `ruff`'s two C901s are WIP's.
+  - Red/green: with the digest and the trailing-object rule removed, the three new tests fail.
+- **Cost:** hashing every file twice makes the walk slower on a large checkout, which is one more reason to run reviewers from the leaf's worktree.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
   - Whether Codex strict structured output accepts this schema is unverified.
-  - Whether `agy --output-format json` prints one line or many is unverified. Both work: `json_object` takes the last top-level object from the whole output.
+  - Whether `agy --output-format json` prints one line or many is unverified. Both work: the envelope is the output's final object, starting a line.
 - **Strict check in a shared checkout.** Any write by another session in the checkout during a review now fails it. That covers a coordinator, an executor, another leaf's reviewer, or `specy-road` commands writing `.specyrd/cache`. Reviewers should run where nothing else writes (`review delegate --worktree <quiet checkout>`). The report lists the paths, so a foreign write is visible.
 - **Walking a large checkout is slow.** The main toolkit checkout has 76k files and took about 26s cold with nested checkouts included; this walk skips them.
 - **What the check doesn't see:** writes outside the checkout and the hand-off directory, for example `/tmp`, `~`, or another worktree.
@@ -75,6 +85,7 @@ The zones now include `specy_road/review_delegate.py` and `docs/orchestration-re
 - `review_run_lock`, `ReviewRunBusy`: keep one leaf's reviewer runs from failing each other under the strict check. The `ImportError` branch is Windows; `OSError` means busy.
 - `reviewer_env`: lets an honest Python test re-run write nothing.
 - `run_text`, `final_output`, `json_object`, the envelope unwrap in `file_review`: A1/A3 extraction.
+- `_content` (round 3): the content digest in the A2 snapshot. Its `OSError` branch covers a file removed mid-walk or without read permission. `json_object`'s final-object rule (round 3): A3.
 - `file_review`, `Outcome`, `_review_record` (output captured because `review delegate --json` owns stdout): the A1/A2/A3 outcome.
 - `run_logged` (`OSError` for a harness missing from PATH, stdin `OSError` for one that quits early) and `run_and_file` (busy lock reported, exit 1): the `prompt --channel cli` turn.
 - `role_prompt.READ_BACK_HARNESSES`, `READ_BACK_LINES`, `PASTED_LINES`, `reviewer_lines`, `read_back`, `_shown`, `run_default_reviewer`, `run_custom_reviewer` (its `Unsupported` branch reports a refused `agy` command): the A1 prompt and both cli paths.
