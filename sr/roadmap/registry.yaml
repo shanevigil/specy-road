@@ -113,3 +113,17 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
+  - codename: review-lessons
+    node_id: M11.78
+    branch: feature/rm-review-lessons
+    touch_zones:
+      - specy_road/review_lessons.py
+      - specy_road/bundled_scripts/lessons_cli.py
+      - specy_road/cli.py
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/templates/project/
+      - docs/orchestration-review.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
