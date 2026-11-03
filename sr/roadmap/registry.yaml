@@ -74,19 +74,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: pickup-second-claim-guard
-    node_id: M11.63
-    branch: feature/rm-pickup-second-claim-guard
-    touch_zones:
-      - specy_road/bundled_scripts/do_next_task.py
-      - specy_road/bundled_scripts/do_next_task_args.py
-      - specy_road/templates/
-      - tests/
-      - specy_road/bundled_scripts/do_next_task_held_claim.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T16:04:13+00:00'
   - codename: abort-untracked-like-pickup
     node_id: M11.64
     branch: feature/rm-abort-untracked-like-pickup
