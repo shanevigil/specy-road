@@ -21,7 +21,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text, run
@@ -33,6 +32,7 @@ from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import git_root, project_prefix
 from specy_road.worker_adapter_parsers import effort_note
 from specy_road.worker_adapters import Unsupported, adapter_for
+from specy_road.worker_lease import acquire_lease, foreign_leases, lease_adopted, max_workers, release_lease, slot_error
 from specy_road.worker_process import kill_group, process_alive, require_branch, wrapper_gone
 from specy_road.worker_reconcile import _bookkeeping
 from specy_road.worker_runner import spawn
@@ -59,10 +59,6 @@ from specy_road.worker_state import (
 
 CONTINUE_PROMPT = ("Continue the task from where you stopped. Re-read the brief and the precondition "
                    "first; if the hand-off is already written, say so and stop.\n")
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def _target(repo_root: Path, node_id: str):
@@ -210,35 +206,36 @@ def sweep_stalled(repo_root: Path, *, now: datetime | None = None) -> list[Worke
     return out
 
 
-def _slot_or_existing(repo_root: Path, node_id: str, limit: int) -> WorkerRecord | None:
-    """Under the lock: the leaf's live worker, else ``None`` once a ``max_workers`` slot is confirmed free."""
+def _slot_or_existing(repo_root: Path, node_id: str, *, own: str | None = None,
+                      foreign: list[str] | None = None) -> WorkerRecord | None:
+    """Under the lock: the leaf's live worker other than ``own``, else ``None`` once a ``max_workers`` slot is free;
+    counted are every other active record (linked worktrees share this directory) and ``foreign`` lease refs
+    (``None``: not read yet, so only the leaf's own worker is looked for, and nothing is counted)."""
     sweep_dead_wrappers(repo_root)   # a dead wrapper on another leaf must not hold a slot
-    existing = active_for_node(repo_root, node_id)
-    if existing:
+    active = [r for r in list_records(repo_root, active_only=True) if r.worker_id != own]
+    if existing := next((r for r in active if r.node_id == node_id), None):
         return existing
-    active = list_records(repo_root, active_only=True)
-    if len(active) >= limit:
-        raise WorkerError(f"{len(active)} workers active, policy max_workers is {limit}; "
-                          "wait for one to finish or raise the limit")
+    if foreign is not None and len(active) + len(foreign) >= (limit := max_workers(repo_root)):
+        raise slot_error(len(active), foreign, limit)
     return None
 
 
 def delegate(repo_root: Path, node_id: str, model: str, *, harness: str | None = None,
-             worktree: Path | None = None) -> tuple[WorkerRecord, bool]:
+             worktree: Path | None = None, offline: bool = False) -> tuple[WorkerRecord, bool]:
     """``(record, created)``: an active worker on the leaf is returned, not duplicated.
 
-    The existing-worker check, the cap and the launch happen under the workers
-    lock, so two concurrent delegates on one leaf launch one harness. The
-    roster's ``preflight`` and the prompt build run **between** two lock
-    sections, not under one: a hook witness must never queue behind them.
-    """
+    The existing-worker check, the cap and the launch happen under the workers lock, so two concurrent delegates
+    on one leaf launch one harness. The roster's ``preflight`` and the prompt build run **between** two lock
+    sections, not under one: a hook witness must never queue behind them. ``offline`` counts this checkout's
+    workers only and pushes no lease (worker_lease)."""
     entry, harness = _entry_and_harness(repo_root, model, harness)
-    config, _ = pinned_config(repo_root)
-    limit = int(config["policy"]["max_workers"])
+    with workers_lock(repo_root):   # before any network read: a retry is answered while the remote is down
+        if existing := _slot_or_existing(repo_root, node_id):
+            return existing, False
+    foreign = foreign_leases(repo_root, offline=offline)   # other checkouts' workers: a network read, so outside the lock
     with workers_lock(repo_root):
-        existing = _slot_or_existing(repo_root, node_id, limit)
-    if existing:
-        return existing, False
+        if existing := _slot_or_existing(repo_root, node_id, foreign=foreign):
+            return existing, False
     t = _target(repo_root, node_id)
     _check_eligible(entry, t.node, model)
     _preflight(entry, repo_root)
@@ -246,14 +243,14 @@ def delegate(repo_root: Path, node_id: str, model: str, *, harness: str | None =
     if err:
         raise WorkerError(err)
     with workers_lock(repo_root):
-        existing = _slot_or_existing(repo_root, node_id, limit)   # re-checked: another delegate may have landed
+        existing = _slot_or_existing(repo_root, node_id, foreign=foreign)   # re-checked: another delegate may have landed
         if existing:
             return existing, False
-        return _launch_locked(repo_root, node_id, model, harness, entry, t, text, worktree), True
+        return _launch_locked(repo_root, node_id, model, harness, entry, t, text, worktree, offline), True
 
 
 def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entry: dict[str, Any], t,
-                   text: str, worktree: Path | None) -> WorkerRecord:
+                   text: str, worktree: Path | None, offline: bool = False) -> WorkerRecord:
     branch = str(t.entry["branch"])
     wt = _worktree_for(repo_root, branch, str(t.node.get("codename") or node_id), worktree)
     # The worker edits this tree: uncommitted work in it could be overwritten, and
@@ -279,23 +276,27 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
                         contract_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
                         billing_route=entry.get("billing_route"))
     try:
+        acquire_lease(repo_root, rec, new=True, offline=offline)   # before the harness: another checkout may hold the slot
+    except WorkerError as e:
+        append_event(repo_root, rec, "error", source="system", summary=str(e))
+        set_state(repo_root, rec, "failed", pid=None)
+        raise
+    try:
         spawn(repo_root, rec, launch)
     except OSError as e:
         append_event(repo_root, rec, "error", source="system", summary=f"cannot start the wrapper: {e}")
         set_state(repo_root, rec, "failed", pid=None)
+        release_lease(repo_root, rec.worker_id)
         raise WorkerError(f"{rec.worker_id}: cannot start the wrapper: {e}") from None
     return rec
 
 
 def _wrapper_gone(repo_root: Path, rec: WorkerRecord) -> bool:
-    """A record that says ``running``/``starting`` with no live wrapper: closed so the leaf is free again.
-
-    Not while the harness or its process group survives (worker_process.wrapper_gone).
-    """
+    """A ``running``/``starting`` record with no live wrapper (nor harness group) is closed: the leaf is free again."""
     return wrapper_gone(repo_root, rec)
 
 
-def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRecord:
+def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: bool = False) -> WorkerRecord:
     require_writer(rec)
     _wrapper_gone(repo_root, rec)   # a crashed turn is recorded as failed, then resumed below like any failed one
     if rec.state == "terminated" or (rec.state == "failed" and not rec.provider_session_id):   # failed keeps its session
@@ -312,10 +313,9 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRec
         raise WorkerError(f"{rec.worker_id} has no native session id yet; nothing to resume")
     sid = check_session_id(rec.harness, rec.provider_session_id)   # the harness's output chose it; never a shell word
     entry, _ = _entry_and_harness(repo_root, rec.model, rec.harness)   # raises on an unreadable config first
-    if rec.state == "failed":   # reopening takes a max_workers slot, as a launch does
-        other = _slot_or_existing(repo_root, rec.node_id, int(pinned_config(repo_root)[0]["policy"]["max_workers"]))
-        if other:
-            raise WorkerError(f"{rec.node_id} already has an active worker ({other.worker_id}); {rec.worker_id} stays failed")
+    other = _slot_or_existing(repo_root, rec.node_id, own=rec.worker_id, foreign=[])   # the local cap; leases below
+    if other:
+        raise WorkerError(f"{rec.node_id} already has an active worker ({other.worker_id}); {rec.worker_id} stays {rec.state}")
     _check_eligible(entry, _target(repo_root, rec.node_id).node, rec.model)   # availability and sensitivity can change
     _preflight(entry, repo_root)
     cli, api_id, mode, effort = _cli_for(repo_root, entry, rec.harness)
@@ -325,20 +325,21 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRec
     prompt.write_text(text, encoding="utf-8")
     launch = adapter.resume(sid, prompt, Path(rec.worktree), api_id, cli,
                             node_id=rec.node_id, repo_root=repo_root, launch_mode=mode, effort=effort)
+    acquire_lease(repo_root, rec, new=rec.state == "failed", offline=offline)   # a failed worker's was released
     append_event(repo_root, rec, "message", source="orchestrator", authority="orchestrator",
                  summary=f"{kind}: {' '.join(text.split())[:300]}")
     spawn(repo_root, rec, launch, resumed=True)
     return rec
 
 
-def message(repo_root: Path, worker_id: str, text: str) -> WorkerRecord:
+def message(repo_root: Path, worker_id: str, text: str, *, offline: bool = False) -> WorkerRecord:
     with workers_lock(repo_root):   # check, event and spawn as one transition
-        return _send(repo_root, load_record(repo_root, worker_id), text, "message")
+        return _send(repo_root, load_record(repo_root, worker_id), text, "message", offline)
 
 
-def resume(repo_root: Path, worker_id: str) -> WorkerRecord:
+def resume(repo_root: Path, worker_id: str, *, offline: bool = False) -> WorkerRecord:
     with workers_lock(repo_root):
-        return _send(repo_root, load_record(repo_root, worker_id), CONTINUE_PROMPT, "resume")
+        return _send(repo_root, load_record(repo_root, worker_id), CONTINUE_PROMPT, "resume", offline)
 
 
 def interrupt(repo_root: Path, worker_id: str) -> None:
@@ -350,7 +351,9 @@ def interrupt(repo_root: Path, worker_id: str) -> None:
 
 def terminate(repo_root: Path, worker_id: str) -> WorkerRecord:
     with workers_lock(repo_root):
-        return _terminate_locked(repo_root, load_record(repo_root, worker_id))
+        rec = _terminate_locked(repo_root, load_record(repo_root, worker_id))
+    release_lease(repo_root, rec.worker_id)   # a network call: after the lock
+    return rec
 
 
 def _terminate_locked(repo_root: Path, rec: WorkerRecord) -> WorkerRecord:
@@ -383,11 +386,8 @@ def adopt(repo_root: Path, node_id: str, harness: str, session_id: str, *,
             raise WorkerError(f"session {session_id} is already a worker")
         wt = _worktree_for(repo_root, str(t.entry["branch"]), str(t.node.get("codename") or node_id), worktree)
         rec = create_record(repo_root, node_id, harness, model, wt, branch=str(t.entry["branch"]), lease="native")
-
-        def fn(r: WorkerRecord) -> None:
-            r.provider_session_id = session_id
-            r.state = "idle"
-        mutate(repo_root, rec, fn)
+        lease_adopted(repo_root, rec)   # visible to other checkouts before it counts as adopted here
+        mutate(repo_root, rec, lambda r: r.__dict__.update(provider_session_id=session_id, state="idle"))
         take_checkpoint(repo_root, rec)
         append_event(repo_root, rec, "adopted", source="orchestrator", authority="orchestrator",
                      summary=f"adopted native {harness} session {session_id}; observe only")
@@ -396,5 +396,3 @@ def adopt(repo_root: Path, node_id: str, harness: str, session_id: str, *,
 
 from specy_road.worker_lease import handoff, interventions_path, reclaim, record_hook_prompt  # noqa: E402,F401 — re-exported
 from specy_road.worker_reconcile import reconcile, sync  # noqa: E402,F401 — re-exported; the CLI calls ops.reconcile/ops.sync
-
-

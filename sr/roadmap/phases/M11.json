@@ -105,7 +105,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.4_max-workers-global_5c014d93-e0e4-4d94-a066-9a2534c7b870.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "max_workers counts live workers across checkouts and applies to resumes",
       "touch_zones": [
         "specy_road/worker_ops.py",
