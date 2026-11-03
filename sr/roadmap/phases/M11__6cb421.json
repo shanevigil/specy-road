@@ -279,7 +279,8 @@
     },
     {
       "acceptance": [
-        "When the leaf has blocking review records (at the branch tip or an earlier commit), the executor prompt inlines each blocking reviewer's required changes under a 'Rework' heading and says to build on the existing commits; worker delegate --rework makes this explicit and is the documented path when the previous worker is terminated or cannot be resumed; tests cover a leaf with and without blocking records"
+        "When the leaf has blocking review records (at the branch tip or an earlier commit), the executor prompt inlines each blocking reviewer's required changes under a 'Rework' heading and says to build on the existing commits; worker delegate --rework makes this explicit and is the documented path when the previous worker is terminated or cannot be resumed; tests cover a leaf with and without blocking records",
+        "worker delegate --rework on a leaf whose previous worker was terminated or failed (for example its model became unavailable) also carries that worker's last final message into the new prompt, so a model change mid-leaf loses nothing; a test covers a takeover by a different model"
       ],
       "codename": "rework-findings-in-prompt",
       "dependencies": [],
@@ -296,6 +297,147 @@
         "specy_road/review_gate.py",
         "specy_road/bundled_scripts/worker_cli.py",
         "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When a leaf adds or changes a field in a bundled schema (policy, review record, registry, worker record), the review gate, handoff status and finish-this-task validate that leaf's records against the schemas at the leaf's commit, not only the installed copy, so an approved leaf can land without a manual retry; tests cover a leaf that adds a policy key"
+      ],
+      "codename": "branch-schema-for-gate-and-finish",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.69",
+      "node_key": "8aa58292-b00a-47d6-9d63-54a57e47d440",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.69_branch-schema-for-gate-and-finish_8aa58292-b00a-47d6-9d63-54a57e47d440.md",
+      "sibling_order": 69,
+      "status": "Not Started",
+      "title": "A leaf that adds a schema key can be gated and finished",
+      "touch_zones": [
+        "specy_road/review_files.py",
+        "specy_road/review_gate.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/git_workflow_config.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "add-node, edit-node and validate warn when a touch zone matches no tracked file and is not a directory (for example a name prefix such as specy_road/worker_ops_, which the matcher treats as a literal path), and either support explicit glob zones (for example specy_road/worker_ops_*.py) or say in the warning that prefixes are not supported",
+        "The brief lists, under the touch zones, the modules that import each zoned file (one level), so an executor sees likely call sites before it starts; docs/roadmap-authoring.md says how to choose zones; tests cover the warning, globs if supported, and the call-site list"
+      ],
+      "codename": "zones-checked-at-authoring",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.70",
+      "node_key": "85605152-67f2-4099-a3ed-588f1566cbc8",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.70_zones-checked-at-authoring_85605152-67f2-4099-a3ed-588f1566cbc8.md",
+      "sibling_order": 70,
+      "status": "Not Started",
+      "title": "Touch zones are checked when they are written",
+      "touch_zones": [
+        "specy_road/bundled_scripts/roadmap_crud_ops.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py",
+        "specy_road/bundled_scripts/generate_brief.py",
+        "docs/roadmap-authoring.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "handoff status marks a leaf escalated when one reviewer family has blocked it three times in a row on the same leaf, across different acceptance ids or reviewer models, and prompt --role rca accepts --force with a recorded reason for a coordinator-initiated analysis",
+        "docs/roadmap-authoring.md has a short checklist for acceptance criteria (state what is out of scope, bound concurrency and input classes, name the observable check), and the planning-sheet template points to it; tests cover the new escalation rule and --force"
+      ],
+      "codename": "review-loops-escalate",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.71",
+      "node_key": "773d61e8-07d6-4741-a137-008f3234d01b",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.71_review-loops-escalate_773d61e8-07d6-4741-a137-008f3234d01b.md",
+      "sibling_order": 71,
+      "status": "Not Started",
+      "title": "Review loops escalate on their own and criteria are written with bounds",
+      "touch_zones": [
+        "specy_road/review_rca.py",
+        "specy_road/review_gate.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "docs/roadmap-authoring.md",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "review delegate (and prompt --channel cli for reviewers) detects a run that exits without writing a review record for the commit under review, records a reviewer-failure event with the harness's own error line (for example a usage limit, a model at capacity, or not logged in), and handoff status shows it next to the gate line instead of a silent 'not met'; tests cover a usage-limit failure and a successful run"
+      ],
+      "codename": "reviewer-failure-visible",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.72",
+      "node_key": "e4a94617-e5fe-4d77-8dd5-8ae2e0b431d1",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.72_reviewer-failure-visible_e4a94617-e5fe-4d77-8dd5-8ae2e0b431d1.md",
+      "sibling_order": 72,
+      "status": "Not Started",
+      "title": "A reviewer run that ends without a record is reported as a failure",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_delegate.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_gate.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road ready runs the same trial merge with the integration branch that handoff status uses and, when it conflicts, prints the conflicting paths and tells the executor to merge the integration branch before handing off; tests cover a clean and a conflicting leaf"
+      ],
+      "codename": "ready-warns-integration-conflict",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.73",
+      "node_key": "a245310c-1353-4fd3-89d4-be6cc19241ef",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.73_ready-warns-integration-conflict_a245310c-1353-4fd3-89d4-be6cc19241ef.md",
+      "sibling_order": 73,
+      "status": "Not Started",
+      "title": "specy-road ready warns when the leaf no longer merges cleanly",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_gate.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "do-next-available-task, finish-this-task and abort-task-pickup take one repository lock (for example under .git/specy-road/) before switching branches or committing in the main checkout, wait in arrival order with a timeout and a message naming the holder, and release it on exit; tests cover two concurrent callers and a stale lock left by a killed process"
+      ],
+      "codename": "pickup-finish-shared-lock",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.74",
+      "node_key": "b4a57d7e-258e-4f66-9afc-3f4ffe5004cb",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.74_pickup-finish-shared-lock_b4a57d7e-258e-4f66-9afc-3f4ffe5004cb.md",
+      "sibling_order": 74,
+      "status": "Not Started",
+      "title": "Pickup and finish in one checkout take a shared lock in order",
+      "touch_zones": [
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/bundled_scripts/abort_task_pickup.py",
+        "specy_road/repo_lock.py",
+        "docs/git-workflow.md",
         "tests/"
       ],
       "type": "task"
