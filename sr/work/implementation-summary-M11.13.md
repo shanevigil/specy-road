@@ -47,6 +47,10 @@ Merged `origin/WIP/improvements-0-3-1` first (auto-merge; `review_cli.py` landed
 
 Merged `origin/WIP/improvements-0-3-1` (M11.8 delta review and M11.25). Kept both `policy.milestone_full_review` and `policy.delta_review` in `DEFAULT_POLICY`, both `orchestration.schema.json` copies, the packet (milestone range plus `prior`/`--full` delta), and `docs/orchestration-review.md`. Packet display helpers `policy_source_line` / `trial_merge_lines` moved to `review_gate_ready.py` so `review_gate.py` stays at the 400-line cap with the delta-review functions.
 
+## Review round 5 (Grok's block, 2026-11-02)
+
+R1: `unfinished_leaves_at` used `chunk.relative_to(repo_root)` while `find_chunk_path` returns a resolved path; on macOS `TemporaryDirectory()` passes an unresolved `/var/...` root and `load_roadmap` raised `ValueError`. Chunk paths are now relative to `repo_root.resolve()` (same idea as `prefix_within`). Regression: `test_load_roadmap_holds_rollup_when_repo_root_is_not_resolved` uses `TemporaryDirectory` and asserts the public loader returns `In Progress`.
+
 ## Verification
 
 - `python -m pytest -q tests/test_milestone_full_review.py tests/test_finish_ancestor_rollup.py tests/test_roadmap_load.py tests/test_review_packet.py tests/test_review_cli.py tests/test_review_gate.py tests/test_mark_implementation_reviewed_gate.py tests/test_orchestration_config.py -p no:cacheprovider` → 117 passed.
@@ -72,6 +76,7 @@ Merged `origin/WIP/improvements-0-3-1` (M11.8 delta review and M11.25). Kept bot
 - `complete_reviewed_milestone(repo_root, node_id)` (finish_ancestor_rollup): the release, A1/A3.
 - `UNRESOLVABLE_HOLD`, `demote_pending_milestone_rollups` (finish_ancestor_rollup) and its call from `load_roadmap`: Sol R1, effective rollup.
 - `resolve_target(..., *, nodes=)`: avoid re-entering `load_roadmap` from the hold.
+- `unfinished_leaves_at` resolves `repo_root` before `chunk.relative_to`: Grok R1, symlink-unequal macOS temp paths.
 - `_leaf_annotated` (finish_ancestor_rollup): authored-status walk still sees leaf Complete so `[hold]` and the release keep working.
 - `_close_milestone` / `complete_reviewed_milestone` judge unfinished leaves via `compute_rollup_status`: the demotion must not look like open leaves.
 - `policy_source_line(root)`, `trial_merge_lines(root, ref, integration_ref)` (review_gate): moved from review_packet unchanged (file limit).
@@ -91,5 +96,6 @@ Merged `origin/WIP/improvements-0-3-1` (M11.8 delta review and M11.25). Kept bot
   - `test_an_unfinished_milestone_is_not_awaiting_its_full_review`: `leaves_open`, packet and record refusals, round 2 change 3.
   - `test_close_refuses_on_the_wrong_branch`, `test_close_refuses_a_divergent_integration_tip`: round 2 change 2.
   - `test_effective_rollup_is_held_until_approval_and_complete_when_policy_is_off`: Sol R1, public `load_roadmap` rollup.
+  - `test_load_roadmap_holds_rollup_when_repo_root_is_not_resolved`: Grok R1, unresolved `TemporaryDirectory` root.
   - Helpers `_branch_leaf` / `_merge_leaf` split out of `_land_leaf` so a leaf can be finished before it lands; `_effective_rollup` reads the public loader.
 - Mocks: none.

@@ -204,6 +204,20 @@ def test_effective_rollup_is_held_until_approval_and_complete_when_policy_is_off
     assert _effective_rollup(off, "M2") == "Complete"
 
 
+def test_load_roadmap_holds_rollup_when_repo_root_is_not_resolved() -> None:
+    """Grok R1: demote_pending_milestone_rollups must not crash when repo_root and chunk paths disagree on /var vs /private/var."""
+    from tempfile import TemporaryDirectory
+
+    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+
+    with TemporaryDirectory() as d:
+        root = make_milestone_repo(Path(d))
+        complete_rolled_up_ancestors(root, "M2.2")
+        node = next(n for n in load_roadmap(root)["nodes"] if n["id"] == "M2")
+        assert node["rollup_status"] == "In Progress"
+        assert node["status"] == "Not Started"
+
+
 def test_handoff_status_and_review_list_show_a_milestone_awaiting_its_full_review(tmp_path: Path, capsys) -> None:
     root = make_milestone_repo(tmp_path)
     reviews_dir(root, "M2").mkdir(parents=True)

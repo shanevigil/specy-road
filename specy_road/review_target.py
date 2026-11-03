@@ -208,9 +208,11 @@ def unfinished_leaves_at(repo_root: Path, nodes: list[dict[str, Any]], node_id: 
     unfinished: the review must cover the landed change.
     """
     out = []
+    root = repo_root.resolve()
     for leaf in leaf_descendants(nodes, node_id):
         chunk = find_chunk_path(repo_root, leaf["id"])
-        text = chunk and git_stdout(["show", f"{commit}:./{chunk.relative_to(repo_root)}"], repo_root)
+        rel = chunk.relative_to(root) if chunk else None
+        text = rel is not None and git_stdout(["show", f"{commit}:./{rel.as_posix()}"], repo_root)
         try:
             landed = nodes_from_chunk_doc(json.loads(text)) if text else None
         except ValueError:
