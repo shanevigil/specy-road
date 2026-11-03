@@ -93,6 +93,18 @@ CONTEXT_FEEDBACK_LINES = [
     "- unused: <a section of the brief or prompt you never needed; quote its heading>",
     "",
 ]
+# Executors once deleted unrelated docstrings and messages to stay under a line cap; reviewers caught it a round late.
+FILE_LIMIT_LINES = [
+    "If a change would push a file over a `specy-road file-limits` cap, move the new or related code into a new "
+    "module and name that file in your implementation summary so the touch zones can be updated; never delete or "
+    "shorten unrelated docstrings, comments or user-facing text to fit.",
+    "",
+]
+REMOVED_TEXT_LINES = [
+    "Also check the diff for docstrings, comments or messages removed or shortened that the leaf did not need to "
+    "touch (often to fit a file-limits cap), and require their restoration under `required_changes`.",
+    "",
+]
 LAUNCH_MODE_LINES = [
     "Add `--launch-mode full|bare|explicit` to that `review record` command, naming how this session was "
     "started: `bare` for Claude Code's `--bare` (no repository hooks, skills, MCP servers or CLAUDE.md; "
@@ -187,12 +199,13 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
     if role == "executor":
         lines += executor_preamble(node_id, model, zones, entry.get("subagent_family_lock"),
                                    reviews_dir(root, node_id), prefix)
+        lines += FILE_LIMIT_LINES
         if has_subagents(prof):
             lines += [SUBAGENT_LINE, ""]
         if context_feedback:
             lines += CONTEXT_FEEDBACK_LINES
     elif role == "reviewer":
-        lines += reviewer_preamble(node_id, model, ref) + LAUNCH_MODE_LINES + escalated_note(loop, node_id)
+        lines += reviewer_preamble(node_id, model, ref) + REMOVED_TEXT_LINES + LAUNCH_MODE_LINES + escalated_note(loop, node_id)
     elif role == "rca":
         lines += rca_preamble(root, node_id, model, loop.escalation) + [DATA_LINE, ""]
     else:
