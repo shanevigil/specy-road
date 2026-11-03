@@ -21,6 +21,7 @@ from specy_road.on_complete_session import (
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
 from specy_road.bundled_scripts.repo_ops import current_branch, git_capture, git_run
+from specy_road.repo_lock import pickup_finish_lock
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
 #: so the name exists at import. Resolving the real root here would make
@@ -350,6 +351,18 @@ def main(argv: list[str] | None = None) -> None:
     _assert_working_tree_clean(_pickup_artifact_rel_paths(node_id))
     _exit_if_base_checked_out_elsewhere(base, branch)
 
+    with pickup_finish_lock(ROOT, operation="abort-task-pickup"):
+        _abort_locked(args, base, remote, branch, codename, node_id)
+
+
+def _abort_locked(
+    args,
+    base: str,
+    remote: str,
+    branch: str,
+    codename: str,
+    node_id: str,
+) -> None:
     git_run(ROOT, "fetch", remote)
     local_claim = all(
         _only_own_registration_ahead(remote, base, codename, ref) for ref in ("HEAD", base)

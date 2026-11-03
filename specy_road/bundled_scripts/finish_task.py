@@ -52,6 +52,7 @@ from specy_road.on_complete_session import (
 )
 from specy_road.runtime_paths import resolve_repo_root
 from specy_road.bundled_scripts.repo_ops import current_branch, git_run
+from specy_road.repo_lock import pickup_finish_lock
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
 #: so the name exists at import. Resolving the real root here would make
@@ -313,6 +314,11 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(1)
 
     ctx = _resolve_main_context(args, branch)
+    with pickup_finish_lock(ROOT, operation="finish-this-task"):
+        _finish_locked(args, branch, ctx)
+
+
+def _finish_locked(args, branch: str, ctx: dict) -> None:
     codename, reg, nodes = ctx["codename"], ctx["reg"], ctx["nodes"]
     node, node_id = ctx["node"], ctx["node_id"]
     work_dir, sess_path, on_mode = ctx["work_dir"], ctx["sess_path"], ctx["on_mode"]
