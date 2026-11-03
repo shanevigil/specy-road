@@ -61,18 +61,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: merge-push-disclosure
-    node_id: M11.25
-    branch: feature/rm-merge-push-disclosure
-    touch_zones:
-      - specy_road/finish_land_integration.py
-      - specy_road/bundled_scripts/finish_task.py
-      - specy_road/finish_modes.py
-      - docs/git-workflow.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: decision-ledger
     node_id: M11.34
     branch: feature/rm-decision-ledger

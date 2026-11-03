@@ -131,7 +131,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.22` Worker worktrees can include nested sibling repositories `nested-repo-worktrees` — task — **Not Started**
   - `M11.23` A custom launch command's permissions carry through resume `resume-keeps-permissions` — task — **Not Started**
   - `M11.24` Executors and reviewers in a worktree can write and check the right places `worktree-handoff-writable` — task — **Not Started**
-  - `M11.25` finish-this-task says what merge mode will push before it pushes `merge-push-disclosure` — task — **Not Started**
+  - `M11.25` finish-this-task says what merge mode will push before it pushes `merge-push-disclosure` — task — **Complete**
   - `M11.26` A model profile can match harness model ids that carry an effort suffix `profile-aliases` — task — **Not Started**
   - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Not Started**
   - `M11.28` A light chore mode for work outside the roadmap `chore-mode` — task — **Not Started**
@@ -163,7 +163,6 @@ Do not pick these up.
 - `M11.13` on `feature/rm-milestone-full-review` since 2026-11-02
 - `M11.18` on `feature/rm-quieter-overlap-warnings` since 2026-11-02
 - `M11.19` on `feature/rm-pickup-no-work-stash` since 2026-11-02
-- `M11.25` on `feature/rm-merge-push-disclosure` since 2026-11-02
 - `M11.26` on `feature/rm-profile-aliases` since 2026-11-02
 - `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
 - `M11.34` on `feature/rm-decision-ledger` since 2026-11-02
