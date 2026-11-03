@@ -21,6 +21,9 @@
    else ``PACKET.md``; for ``rca``, then every review round side by side with the
    diffs between them.
 
+``--context-feedback`` (executor only, opt-in pilot) appends :data:`CONTEXT_FEEDBACK_LINES`, which ask
+for a three-line missing / wrong / unused block at the end of the implementation summary.
+
 ``--channel cli`` also runs the roster entry's ``channels.cli``, else the
 profile's ``access.cli``, with its placeholder replaced: ``"<prompt>"`` (the
 shipped profiles' form) by the prompt text as one argument, ``{prompt}`` by the
@@ -74,6 +77,21 @@ from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_
 CHANNELS = ("cli", "paste", "subagent")
 # `rca` is not a roster role or a profile score: any rostered reviewer that is not a party may analyse.
 PROMPT_ROLES = (*ROLES, "rca")
+# Opt-in pilot (`--context-feedback`): three structured lines on what the brief and prompt got wrong, before
+# the question is asked of every implementation summary (docs/design-notes/context-feedback-pilot.md).
+CONTEXT_FEEDBACK_LINES = [
+    "## Context feedback (pilot)",
+    "",
+    "End your implementation summary with a `## Context feedback` section of exactly three lines. Each line "
+    "quotes the brief or prompt line it is about, or names the turn where you noticed it; without one of "
+    "those it is not acted on. Write `none` when there is nothing to report.",
+    "",
+    "- missing: <what the brief or prompt should have told you and did not; quote the line that should have "
+    "said it, or name the turn where you had to find it out yourself>",
+    "- wrong: <a line of the brief or prompt that was false or out of date; quote it>",
+    "- unused: <a section of the brief or prompt you never needed; quote its heading>",
+    "",
+]
 LAUNCH_MODE_LINES = [
     "Add `--launch-mode full|bare|explicit` to that `review record` command, naming how this session was "
     "started: `bare` for Claude Code's `--bare` (no repository hooks, skills, MCP servers or CLAUDE.md; "
@@ -112,8 +130,9 @@ def reviewer_packet(root: Path, node_id: str, model: str, t: ReviewTarget,
 
 
 def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
-                 ref: str | None = None) -> tuple[str, Profile | None, str | None]:
-    """``(text, profile, error)``; ``ref`` names the branch or commit under review, as ``review-packet --ref``."""
+                 ref: str | None = None, context_feedback: bool = False) -> tuple[str, Profile | None, str | None]:
+    """``(text, profile, error)``; ``ref`` names the branch or commit under review, as ``review-packet --ref``;
+    ``context_feedback`` adds the pilot's three-line block to an executor prompt."""
     config, err = pinned_config(root)
     if err:
         return "", None, f"orchestration config: {err}"
@@ -169,6 +188,8 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
                                    reviews_dir(root, node_id), prefix)
         if has_subagents(prof):
             lines += [SUBAGENT_LINE, ""]
+        if context_feedback:
+            lines += CONTEXT_FEEDBACK_LINES
     elif role == "reviewer":
         lines += reviewer_preamble(node_id, model, ref) + LAUNCH_MODE_LINES + escalated_note(loop, node_id)
     elif role == "rca":
@@ -255,10 +276,14 @@ def main(argv: list[str] | None = None) -> None:
                         "paste/subagent only write the file")
     p.add_argument("-o", "--output", type=Path)
     p.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+    p.add_argument("--context-feedback", action="store_true",
+                   help="Executor only: ask for the pilot's three-line context-feedback block "
+                        "(missing / wrong / unused) at the end of the implementation summary")
     add_repo_root_arg(p)
     ns = p.parse_args(argv)
     root = resolve_repo_root(ns)
-    text, prof, err = build_prompt(root, ns.node_id, role=ns.role, model=ns.model, ref=ns.ref)
+    text, prof, err = build_prompt(root, ns.node_id, role=ns.role, model=ns.model, ref=ns.ref,
+                                   context_feedback=ns.context_feedback)
     if err:
         print(f"error: {err}", file=sys.stderr)
         raise SystemExit(1)

@@ -1,30 +1,5 @@
 version: 1
 entries:
-  - codename: harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps
-    node_id: M8.1
-    branch: feature/rm-harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps
-    touch_zones:
-      - specy_road/templates/project/model-profiles/
-      - specy_road/bundled_scripts/refresh_profiles.py
-      - specy_road/harness_facts.py
-      - specy_road/templates/project/schemas/
-      - schemas/
-      - docs/orchestration-models.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: measure-whether-lower-reviewer
-    node_id: M10.6
-    branch: feature/rm-measure-whether-lower-reviewer
-    touch_zones:
-      - scripts/review_effort_study.py
-      - docs/design-notes/reviewer-effort-study.md
-      - specy_road/templates/project/model-profiles/
-      - tests/test_review_effort_study.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: max-workers-global
     node_id: M11.4
     branch: feature/rm-max-workers-global
@@ -57,28 +32,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: managed-section-ablation
-    node_id: M5.7
-    branch: feature/rm-managed-section-ablation
-    touch_zones:
-      - docs/design-notes/
-      - docs/agentic-sandbox-runbook.md
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: review-delegate
-    node_id: M11.7
-    branch: feature/rm-review-delegate
-    touch_zones:
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_delegate.py
-      - specy_road/worker_adapters.py
-      - specy_road/review_files.py
-      - docs/orchestration-review.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: milestone-full-review
     node_id: M11.13
     branch: feature/rm-milestone-full-review
@@ -97,63 +50,54 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: context-feedback-pilot
-    node_id: M5.6
-    branch: feature/rm-context-feedback-pilot
+  - codename: profile-aliases
+    node_id: M11.26
+    branch: feature/rm-profile-aliases
     touch_zones:
-      - docs/agentic-sandbox-runbook.md
-      - docs/design-notes/
-      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/model_profiles.py
+      - specy_road/templates/project/model-profiles/
+      - specy_road/templates/project/schemas/
+      - docs/orchestration-models.md
+      - tests/
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: runtime-dirs-not-dirty
-    node_id: M11.3
-    branch: feature/rm-runtime-dirs-not-dirty
+  - codename: doctor-version-skew
+    node_id: M11.29
+    branch: feature/rm-doctor-version-skew
     touch_zones:
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/worker_reconcile.py
-      - specy_road/worker_ops.py
-      - specy_road/agent_ignores.py
-      - specy_road/templates/project/
+      - specy_road/bundled_scripts/doctor.py
+      - specy_road/cli.py
+      - specy_road/templates/
+      - README.md
+      - docs/install-and-usage.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: merge-push-disclosure
+    node_id: M11.25
+    branch: feature/rm-merge-push-disclosure
+    touch_zones:
+      - specy_road/finish_land_integration.py
+      - specy_road/bundled_scripts/finish_task.py
+      - specy_road/finish_modes.py
       - docs/git-workflow.md
       - tests/
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: human-acceptance
-    node_id: M11.9
-    branch: feature/rm-human-acceptance
+  - codename: decision-ledger
+    node_id: M11.34
+    branch: feature/rm-decision-ledger
     touch_zones:
-      - specy_road/templates/project/schemas/roadmap.schema.json
-      - sr/schemas/
-      - schemas/
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/finish_task_gates.py
-      - specy_road/bundled_scripts/finish_task.py
-      - docs/roadmap-authoring.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: pickup-refuses-scaffold-sheet
-    node_id: M11.15
-    branch: feature/rm-pickup-refuses-scaffold-sheet
-    touch_zones:
-      - specy_road/planning_scaffold_check.py
-      - specy_road/bundled_scripts/do_next_task.py
-      - specy_road/bundled_scripts/do_next_available.py
-      - docs/roadmap-authoring.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: edit-node-names-chunks
-    node_id: M11.17
-    branch: feature/rm-edit-node-names-chunks
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_crud_ops.py
-      - specy_road/bundled_scripts/roadmap_crud_argparse.py
+      - specy_road/decisions.py
+      - specy_road/bundled_scripts/decisions_cli.py
+      - specy_road/cli.py
+      - specy_road/templates/project/schemas/
+      - specy_road/templates/specyrd/commands/specyrd-orchestrate.md
+      - specy_road/bundled_scripts/role_prompt.py
+      - docs/orchestration.md
       - tests/
     started: '2026-11-02'
     owner: savigil

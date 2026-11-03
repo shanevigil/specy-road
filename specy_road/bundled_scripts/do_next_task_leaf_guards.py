@@ -6,10 +6,12 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
+from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.do_next_available import _leaf_diagnostics
 from specy_road.bundled_scripts.planning_sheet_bootstrap import placeholder_sheet
 from specy_road.do_next_milestone_pickup import print_integration_branch_hint
 from specy_road.milestone_subtree import structural_leaf_ids
+from specy_road.planning_scaffold_check import scaffold_sheet
 
 
 def _fmt_ids(ids: Iterable[str], *, cap: int = 6) -> str:
@@ -32,27 +34,40 @@ def assert_leaf_target(node: dict, nodes: list[dict]) -> None:
     raise SystemExit(1)
 
 
-def drop_unauthored(root: Path, available: list[dict], *, allow: bool) -> list[dict]:
-    """Remove leaves an agent would have nothing to build from, saying why for each.
+def drop_unauthored(
+    root: Path,
+    available: list[dict],
+    *,
+    allow_unauthored: bool,
+    allow_scaffold_planning: bool = False,
+) -> list[dict]:
+    """Remove leaves pickup refuses until their planning sheet is written.
 
-    A leaf whose planning sheet is still scaffold-planning's or brainstorm
-    promote's placeholder, on a node with no ``acceptance``, is skipped unless
-    ``allow`` (``--allow-unauthored``).
+    No ``acceptance`` and a placeholder sheet: skipped unless ``allow_unauthored``.
+    ``acceptance`` set but ``## Intent`` / ``## Approach`` still scaffold or promote
+    placeholders: skipped unless ``allow_scaffold_planning``.
     """
-    if allow:
-        return available
     kept: list[dict] = []
     for n in available:
-        reason = placeholder_sheet(root, n)
-        if reason is None:
-            kept.append(n)
+        placeholder_reason = placeholder_sheet(root, n)
+        if placeholder_reason and not allow_unauthored:
+            print(
+                f"skipping {n['id']}: {placeholder_reason}. Write the sheet or set acceptance "
+                f"(specy-road edit-node {n['id']} --set acceptance=...), or pass "
+                "--allow-unauthored to pick it anyway.",
+                file=sys.stderr,
+            )
             continue
-        print(
-            f"skipping {n['id']}: {reason}. Write the sheet or set acceptance "
-            f"(specy-road edit-node {n['id']} --set acceptance=...), or pass "
-            "--allow-unauthored to pick it anyway.",
-            file=sys.stderr,
-        )
+        scaffold_reason = scaffold_sheet(root, n)
+        if scaffold_reason and acceptance_ids(n) and not allow_scaffold_planning:
+            print(
+                f"skipping {n['id']}: {scaffold_reason}. Write its ## Intent and ## Approach "
+                "and commit the sheet on this branch, or pass --allow-scaffold-planning "
+                "to pick it anyway.",
+                file=sys.stderr,
+            )
+            continue
+        kept.append(n)
     return kept
 
 

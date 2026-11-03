@@ -92,7 +92,7 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
           "minItems": 1,
-          "description": "Observable acceptance criteria — what must be true for this node to be considered done."
+          "description": "Observable acceptance criteria — what must be true for this node to be considered done. A criterion starting with `human:` is one only a person can satisfy: reviewers mark it n/a (reason: human) and finish-this-task requires a recorded decision for it (a line `A#: <decision>`) on the planning sheet."
         },
         "planned_test_changes": {
           "type": "array",

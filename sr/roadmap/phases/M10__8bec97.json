@@ -131,6 +131,30 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "Confirm from the installed Codex (and Cursor) model inventories whether GPT-6.1 Terra is available and under which id, recording the capture; if it is not available, write that down and stop",
+        "Run it as an executor on two or three small, already-landed Agentic-led leaves replayed from their base commit (no merges), recording usage, wall time, verifier outcome and the reviewers' verdicts on its result against the landed version",
+        "Write a short findings note under research/ with a recommendation (roster it as an executor, or not) for the maintainer; add a model profile only if the recommendation is yes"
+      ],
+      "codename": "terra-executor-pilot",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M10.20",
+      "node_key": "7ce59410-b2f5-41ab-9a5c-390eb7a41193",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.20_terra-executor-pilot_7ce59410-b2f5-41ab-9a5c-390eb7a41193.md",
+      "sibling_order": 20,
+      "status": "Not Started",
+      "title": "Pilot GPT-6.1 Terra as a lower-cost executor before rostering it",
+      "touch_zones": [
+        "sr/research/",
+        "sr/roadmap/orchestration.yaml",
+        "specy_road/templates/project/model-profiles/openai-gpt/",
+        "docs/orchestration-models.md"
+      ],
+      "type": "task"
     }
   ]
 }

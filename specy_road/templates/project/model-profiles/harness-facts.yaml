@@ -1,0 +1,358 @@
+# Harness facts: one record per harness a roster can name (schemas/harness-facts.schema.json).
+#
+# `specy-road refresh-profiles` renders from this file: every profile's `access.cli` whose
+# `family` an `executor_template.renders_cli_for` lists, and the README's harness block.
+# `--check` reports a hand edit to either as drift; `--render` rewrites them.
+#
+# Labels: documented = a vendor page or repository doc says so (the source names it);
+# runtime = observed by running the binary (the source names the capture or run);
+# unverified = no cited source yet. M8.7 replaces unverified labels with runtime results.
+# Sources under harness-captures/ are the accepted --version/--help captures next to
+# this file; docs/... paths are the specy-road toolkit's own docs.
+#
+# `relationships` classifies harness identifiers (flags, subcommands, inventory entries):
+# use, avoid, duplicate, complement, gap, neutral. A version bump's new identifier that
+# contains plan, memory, task, todo, worktree, branch, commit, push, pr, background,
+# delegate, cloud, schedule, review, resume, fork or autopilot fails
+# `refresh-profiles --capture` until it is listed here.
+version: 1
+harnesses:
+  - id: claude-code
+    name: Claude Code
+    binary: claude
+    version:
+      value: 2.1.312
+      label: runtime
+      source: harness-captures/claude-code/version.txt (captured 2026-11-02)
+    headless_command:
+      value: claude -p --output-format stream-json --verbose --session-id <uuid> --model <id> --permission-mode acceptEdits (prompt on stdin)
+      label: documented
+      source: specy_road/worker_adapters.py; docs/design-notes/harness-compatibility-triage.md
+    executor_template:
+      value: claude -p "<prompt>"
+      renders_cli_for: [Anthropic Claude]
+      label: documented
+      source: https://code.claude.com/docs/en/headless (profile source S4)
+    session_flags:
+      value: --session-id <uuid> chosen up front; --resume <id> to continue; never --continue across worktrees
+      label: documented
+      source: docs/design-notes/harness-compatibility-triage.md
+    permission_example:
+      value: --permission-mode acceptEdits, or dontAsk with --allowedTools allow rules; bypassPermissions only inside an external sandbox. Since 2.1.302 -p silently denies unapproved tools
+      label: documented
+      source: docs/design-notes/harness-compatibility-triage.md
+    instruction_files:
+      value: [CLAUDE.md, .claude/CLAUDE.md, CLAUDE.local.md]
+      size_guidance: under 200 lines per file (vendor target); AGENTS.md and .claude/AGENTS.md only when none of the three exists
+      label: documented
+      source: docs/install-and-usage.md (validate context lines)
+    skill_dirs:
+      value: [.claude/skills]
+      label: documented
+      source: docs/design-notes/harness-compatibility-triage.md
+    hooks:
+      value: PreToolUse hooks in .claude/settings.json fire under claude -p and block with exit 2; --bare skips every hook
+      label: runtime
+      source: docs/optional-ai-tooling-patterns.md (sandbox run 2026-10-28)
+    git_actions:
+      - action: commits when asked, with an attribution trailer by default
+        switch: unknown (attribution setting not checked)
+        label: unverified
+      - action: --worktree / -w creates its own git worktree
+        switch: never pass -w/--worktree; specy-road creates the worktree
+        label: runtime
+        source: harness-captures/claude-code/help.txt
+      - action: --bg / --background and routines run sessions specy-road does not own
+        switch: never pass --bg; CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1
+        label: documented
+        source: docs/design-notes/harness-compatibility-triage.md
+      - action: --cloud and ultrareview run sessions or reviews in the cloud
+        switch: never pass --cloud; do not run ultrareview as gate evidence
+        label: runtime
+        source: harness-captures/claude-code/help.txt
+    model_families:
+      value: [anthropic]
+      label: documented
+      source: docs/design-notes/harness-compatibility-triage.md
+    quota:
+      value: a usage limit prints a message with a reset time; grind-session waits out a timed limit and stops on a spend cap or unrecognised wording
+      label: documented
+      source: specy_road/claude_code_limits.py
+    # No inventory: Claude Code has no listing that runs without a model turn (slash commands and
+    # tools appear only in a session's system/init event; an unknown subcommand becomes a prompt).
+    capture_commands:
+      version.txt: [claude, --version]
+      help.txt: [claude, --help]
+    relationships:
+      --add-dir: use
+      --allowedTools: use
+      --append-system-prompt: complement
+      --background: avoid
+      --bare: use
+      --bg: avoid
+      --cloud: avoid
+      --continue: avoid
+      --dangerously-skip-permissions: avoid
+      --effort: use
+      --exclude-dynamic-system-prompt-sections: neutral
+      --fork-session: avoid
+      --from-pr: avoid
+      --model: use
+      --output-format: use
+      --permission-mode: use
+      --permission-prompt-tool: neutral
+      --permission-prompts: complement
+      --print: use
+      --prompt-suggestions: neutral
+      --remote-control-session-name-prefix: neutral
+      --resume: use
+      --session-id: use
+      --system-prompt: complement
+      --system-prompt-snapshot: neutral
+      --verbose: use
+      --worktree: avoid
+      agents: avoid
+      attach: avoid
+      ultrareview: avoid
+
+  - id: codex
+    name: Codex CLI
+    binary: codex
+    version:
+      value: codex-cli 0.165.0
+      label: runtime
+      source: harness-captures/codex/version.txt (captured 2026-11-02)
+    headless_command:
+      value: codex exec --json -m <id> -c sandbox_mode=workspace-write -c approval_policy=never -C <worktree> - (prompt on stdin)
+      label: runtime
+      source: specy_road/worker_adapters.py (codex-cli 0.165, run 2026-10-28)
+    executor_template:
+      value: codex exec --model {api_id} -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"
+      renders_cli_for: [OpenAI GPT]
+      label: runtime
+      source: model-profiles/openai-gpt/gpt-6.1-sol.md (cli_verified_from codex-cli 0.165.0, run 2026-10-28)
+    session_flags:
+      value: thread id from the thread.started event; codex exec resume <id> - to continue; --last is cwd-scoped
+      label: documented
+      source: docs/design-notes/harness-compatibility-triage.md
+    permission_example:
+      value: -c sandbox_mode=workspace-write -c approval_policy=never (exec has no --ask-for-approval; its default sandbox is read-only)
+      label: runtime
+      source: specy_road/worker_adapters.py (codex-cli 0.165)
+    instruction_files:
+      value: [AGENTS.override.md, AGENTS.md]
+      size_guidance: first non-empty of the two per directory from the git root down, truncated at project_doc_max_bytes (32 KiB); ~/.codex/AGENTS.override.md replaces the global file
+      label: documented
+      source: docs/install-and-usage.md (validate context lines)
+    skill_dirs:
+      value: [.agents/skills]
+      label: unverified
+    hooks:
+      value: PreToolUse on Bash in .codex/hooks.json (or [hooks] in .codex/config.toml); exit 2 denies; project hooks load only when .codex/ is trusted, and an untrusted hook is skipped silently
+      label: documented
+      source: docs/optional-ai-tooling-patterns.md
+    git_actions:
+      - action: .git and the linked gitdir are read-only inside workspace-write, so the executor cannot commit
+        switch: none; the adapter commits on the worker's behalf (decision 2026-10-29, M8.2)
+        label: documented
+        source: docs/design-notes/harness-compatibility-triage.md
+      - action: --worktree runs the session in a new managed git worktree
+        switch: never pass --worktree
+        label: runtime
+        source: harness-captures/codex/help.txt
+      - action: fork and cloud start sessions or tasks specy-road does not own
+        switch: never run codex fork, codex exec fork or codex cloud for a leaf
+        label: runtime
+        source: harness-captures/codex/help.txt
+      - action: memories (memories.use_memories, memories.generate_memories) default on
+        switch: set both false; per-profile CODEX_HOME
+        label: documented
+        source: docs/design-notes/harness-compatibility-triage.md
+    model_families:
+      value: [openai]
+      label: documented
+      source: docs/design-notes/harness-compatibility-triage.md
+    quota:
+      value: unknown; one failure exit is documented, so the event stream (turn.failed) is read, not the exit code
+      label: unverified
+    capture_commands:
+      version.txt: [codex, --version]
+      help.txt: [codex, --help]
+      help-exec.txt: [codex, exec, --help]
+      inventory-features.txt: [codex, features, list]
+    relationships:
+      --approve-for-me: avoid
+      --ask-for-approval: neutral
+      --cd: use
+      --cyber-access-program: neutral
+      --dangerously-bypass-approvals-and-sandbox: avoid
+      --json: use
+      --local-provider: neutral
+      --model: use
+      --output-last-message: complement
+      --profile: complement
+      --sandbox: complement
+      --worktree: avoid
+      cloud: avoid
+      exec: use
+      fork: avoid
+      resume: use
+      review: duplicate
+      # inventory-features.txt (codex features list)
+      analytics_plan_history: neutral
+      api_key_cyber_access_programs: neutral
+      app_server_websocket_compression: neutral
+      apply_patch_preserve_line_endings: neutral
+      background_paginated_rollout_migration: neutral
+      code_mode_prewarm: neutral
+      codex_git_commit: avoid
+      defer_mailbox_preemption: neutral
+      enable_request_compression: neutral
+      exec_permission_approvals: neutral
+      external_agent_memory_import: avoid
+      guardian_approval: neutral
+      local_thread_store_compression: neutral
+      local_thread_store_shared_compression: neutral
+      memories: avoid
+      network_proxy: neutral
+      non_prefixed_mcp_tool_names: neutral
+      prediction_preserve_parent_tools: neutral
+      prefer_mxc: neutral
+      prevent_idle_sleep: neutral
+      respect_system_proxy: neutral
+      shell_zsh_fork: neutral
+      skill_env_var_dependency_prompt: neutral
+      system_proxy_fallback: neutral
+      unified_exec_zsh_fork: neutral
+      worktrees: avoid
+      write_stdin_approval: neutral
+
+  - id: cursor
+    name: Cursor agent CLI
+    binary: agent
+    version:
+      value: 2026.10.22-27dcf5f
+      label: runtime
+      source: harness-captures/cursor/version.txt (captured 2026-11-02)
+    headless_command:
+      value: agent -p --output-format stream-json --force --trust --model <id> --workspace <worktree> "<prompt>"
+      label: documented
+      source: specy_road/worker_adapters.py; docs/design-notes/harness-compatibility-triage.md
+    executor_template:
+      value: agent -p --force "<prompt>"
+      renders_cli_for: [Cursor Composer]
+      label: documented
+      source: model-profiles/cursor-composer/composer-2.5.md (source S2)
+    session_flags:
+      value: session id from the first stream event (or agent create-chat); --resume <id> to continue (with a new prompt in print mode undocumented); agent ls is not headless
+      label: documented
+      source: docs/design-notes/harness-compatibility-triage.md
+    permission_example:
+      value: --force force-allows every command not denied; --trust skips a new worktree's trust prompt; pair with hooks or an external sandbox
+      label: documented
+      source: docs/design-notes/harness-compatibility-triage.md
+    instruction_files:
+      value: [AGENTS.md, CLAUDE.md, .cursor/rules]
+      size_guidance: no documented limit; only .cursor/rules with alwaysApply true load every session
+      label: documented
+      source: docs/install-and-usage.md (validate context lines)
+    skill_dirs:
+      value: [.agents/skills, .cursor/skills, .claude/skills, .codex/skills]
+      label: documented
+      source: docs/design-notes/harness-compatibility-triage.md
+    hooks:
+      value: beforeShellExecution in .cursor/hooks.json answers allow or deny as JSON (failClosed true, or empty output fails open); also runs .claude/settings.json hooks
+      label: runtime
+      source: docs/optional-ai-tooling-patterns.md (Cursor CLI 2026.10.22, sandbox run 2026-10-28)
+    git_actions:
+      - action: -w / --worktree makes its own worktrees under ~/.cursor/worktrees
+        switch: never pass -w/--worktree
+        label: runtime
+        source: harness-captures/cursor/help.txt
+      - action: /split-to-prs, /autopilot and Cloud Agents create branches and PRs
+        switch: do not use them on a leaf
+        label: documented
+        source: docs/design-notes/harness-compatibility-triage.md
+      - action: plan mode (--plan, --mode plan) and generate-rule write harness planning or rules
+        switch: never pass --plan; do not run generate-rule
+        label: runtime
+        source: harness-captures/cursor/help.txt
+    model_families:
+      value: [anthropic, openai, xai, cursor, google]
+      label: documented
+      source: docs/orchestration-models.md (Cursor model ids carry vendor and effort)
+    quota:
+      value: unknown
+      label: unverified
+    capture_commands:
+      version.txt: [agent, --version]
+      help.txt: [agent, --help]
+      inventory-models.txt: [agent, models]
+    relationships:
+      --approve-mcps: neutral
+      --auto-review: avoid
+      --continue: avoid
+      --force: use
+      --list-models: use
+      --model: use
+      --output-format: use
+      --plan: avoid
+      --print: use
+      --resume: use
+      --skip-worktree-setup: neutral
+      --trust: use
+      --workspace: use
+      --worktree: avoid
+      --worktree-base: avoid
+      create-chat: use
+      generate-rule: avoid
+      resume: use
+      worker: avoid
+      # inventory-models.txt (agent models; the list depends on the account)
+      gemini-3.1-pro: neutral
+
+  - id: generic
+    name: Generic (the profile's own command)
+    binary: access.cli
+    version:
+      value: none of its own; the version is that of whatever binary access.cli names
+      label: unverified
+    headless_command:
+      value: the roster channels.cli, else the profile's access.cli, with {prompt} (the prompt file path) or <prompt> (the prompt text) substituted
+      label: documented
+      source: docs/orchestration-workers.md (harness table); docs/orchestration-models.md
+    executor_template:
+      value: the profile's own access.cli, written with "<prompt>" or {prompt}
+      renders_cli_for: []
+      label: documented
+      source: docs/orchestration-models.md (prompt --channel cli and generic workers run access.cli)
+    session_flags:
+      value: none; a generic worker cannot resume, interrupt or hand off
+      label: documented
+      source: docs/orchestration-workers.md (harness table); specy_road/worker_adapters.py (Adapter.caps)
+    permission_example:
+      value: whatever the command's own flags grant; specy-road adds none
+      label: unverified
+    instruction_files:
+      value: [AGENTS.md]
+      size_guidance: unknown
+      label: unverified
+    skill_dirs:
+      value: [.agents/skills]
+      label: unverified
+    hooks:
+      value: no hook of its own; the session guard's generic contract reads a JSON object with a command field on stdin and exits 2 to deny, for any harness that can call it
+      label: documented
+      source: specy_road/tool_call_guard_adapters.py (generic adapter)
+    git_actions:
+      - action: unknown; depends on the binary access.cli names
+        switch: unknown
+        label: unverified
+    model_families:
+      value: []
+      label: unverified
+    quota:
+      value: unknown; no usage is reported (every usage field is null)
+      label: documented
+      source: docs/orchestration-workers.md (usage events)
+    relationships: {}

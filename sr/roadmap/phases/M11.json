@@ -78,7 +78,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.3_runtime-dirs-not-dirty_d6ce85d8-6e44-41b3-881a-292ca185cc50.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "specy-road's own runtime directories never fail the clean-tree checks",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt_rca.py",
@@ -93,7 +93,7 @@
     },
     {
       "acceptance": [
-        "worker delegate and worker message/resume refuse a launch that would exceed policy.max_workers, counting live workers in the main checkout and in every linked worktree or clone that shares the integration branch's registry",
+        "worker delegate and worker message/resume refuse a launch that would exceed policy.max_workers, counting live workers in the main checkout, in every linked worktree, and (through lease refs on the configured remote) in other clones. With --offline the count uses this checkout plus the last-fetched lease refs, the command warns that the global limit was not verified, and docs name --offline as the explicit local-only escape (maintainer decision 2026-11-02)",
         "docs/orchestration-workers.md states what is counted and how a separate clone is included (for example through the claims on the integration branch)",
         "Tests show a resume refused at the limit and two checkouts sharing one limit"
       ],
@@ -183,7 +183,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.7_review-delegate_2d7324a8-cfd7-4eca-8662-113e963c98b4.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review delegate runs a rostered reviewer like worker delegate runs an executor",
       "touch_zones": [
         "specy_road/bundled_scripts/review_cli.py",
@@ -198,7 +198,7 @@
     {
       "acceptance": [
         "A review policy setting (on by default) lets a fix round after an approval be reviewed from a delta packet: the diff since the last commit that reviewer approved, plus that reviewer's notes. The delta packet is used only when every changed path in the delta is a documentation or test file, the delta touches at most three files, the integrity report for the delta has no findings (no removed or skipped tests, no lost asserts), and every path is inside the leaf's touch zones; otherwise the round gets a full packet. There is no line-count limit",
-        "A delta approval counts only for a reviewer that approved the earlier commit, and the gate still needs both distinct families; a --full flag and the policy (set to off) force full fresh review",
+        "A delta approval counts only when the same reviewer has a counting approval of the earlier commit named in delta_from. A counting approval of a commit is that reviewer's latest record on it (two spellings of one commit are the same commit) and only when that record is an approve that passes the gate's ordinary eligibility checks: rostered reviewer, any required fresh session and signature, and a result for every acceptance id in the brief. If that approval itself names delta_from, it counts only while its basis is a counting approval under this same rule; once a basis stops counting, every delta approval that depends on it stops counting. A later block by the same reviewer on that commit replaces the approval, and a later eligible approval restores it. The gate still needs both distinct families at the commit under review. The --full flag and the policy set to off force a full fresh review of that commit: no delta packet is built, and no approval that names delta_from counts. A block is not a delta approval. Which diffs may use a delta packet is unchanged: documentation or test files, at most three files, a clean integrity report, paths inside the touch zones, and no line-count limit. (rewritten from RCA-4, maintainer-approved 2026-11-02)",
         "docs/orchestration-review.md documents the rule and the policy key; tests cover an eligible delta, a delta with a source file, a delta over three files, a delta with an integrity finding, a reviewer that did not approve the earlier commit, and the policy off"
       ],
       "codename": "delta-review-packet",
@@ -237,7 +237,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.9_human-acceptance_a10ebda9-1fa9-4c54-a84d-cdff292accb9.md",
       "sibling_order": 9,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Acceptance items a human must satisfy are marked and handled as such",
       "touch_zones": [
         "specy_road/templates/project/schemas/roadmap.schema.json",
@@ -395,14 +395,18 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.15_pickup-refuses-scaffold-sheet_f12c077c-a36d-4aa1-937d-28152012cf2e.md",
       "sibling_order": 15,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Pickup and finish agree on unwritten planning sheets",
       "touch_zones": [
         "specy_road/planning_scaffold_check.py",
         "specy_road/bundled_scripts/do_next_task.py",
         "specy_road/bundled_scripts/do_next_available.py",
         "docs/roadmap-authoring.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/do_next_task_args.py",
+        "specy_road/bundled_scripts/do_next_task_leaf_guards.py",
+        "specy_road/bundled_scripts/session_plan_git.py",
+        "specy_road/bundled_scripts/session_plan_render.py"
       ],
       "type": "task"
     },
@@ -442,12 +446,13 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.17_edit-node-names-chunks_b0dc8ed9-8928-426b-9cd7-0adb92ee713c.md",
       "sibling_order": 17,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "edit-node names every chunk file it changes, and relocation is loud",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
         "specy_road/bundled_scripts/roadmap_crud_argparse.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/roadmap_crud_chunk_report.py"
       ],
       "type": "task"
     },

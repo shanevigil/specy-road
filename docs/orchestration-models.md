@@ -142,6 +142,78 @@ the id the harness lists; otherwise the profile's `api_id` is, as before.
   system refuses to launch it (a `<prompt>` too long for a command line) it
   exits 1 with the reason — use `{prompt}` for long prompts.
 
+## Harness facts: what `refresh-profiles` renders
+
+`model-profiles/harness-facts.yaml` holds one record per harness a roster can
+name (`claude-code`, `codex`, `cursor`, `generic`): version, the adapter's headless
+command, the executor command template, session flags, a permission example,
+instruction files and their size guidance, skill directories, hooks, the git
+actions the harness can take on its own with the switch that keeps each off,
+model families, and quota behaviour. Every fact carries a label, `documented`,
+`runtime` or `unverified`, and the source for the first two;
+`schemas/harness-facts.schema.json` enforces the shape. Facts nobody has
+checked stay `unverified` until the runtime verification leaf (M8.7) replaces
+them. `generic` has no binary of its own (it runs the profile's `access.cli`),
+so its record renders no `access.cli`, has no `capture_commands`, and
+`--capture generic` needs `--from`.
+
+Two parts of `model-profiles/` are rendered from it. A hand edit to either is
+drift:
+
+- each profile's `access.cli`, from the `executor_template` of the harness
+  whose `renders_cli_for` names the profile's `family` (`{api_id}` becomes the
+  profile's `api_id`);
+- the README's harness block, between the `harness facts` markers. A README
+  with neither marker is behind. One with only one marker, a repeated marker,
+  or the end before the start is drift: `--check` exits 1, and `--render`
+  leaves it byte for byte and exits 1.
+
+```bash
+specy-road refresh-profiles --check    # report drift (exit 1); a README older than the block is "behind" (exit 0)
+specy-road refresh-profiles --render   # rewrite the rendered regions; --dry-run lists them
+```
+
+`--render` rewrites only the shipped layout: a block-style `access:` whose
+children are one-line keys indented two spaces. It puts a removed `access.cli`
+back under `access:`. It writes a profile only when the result parses to the
+same front matter with just that value changed. Any other layout is left byte
+for byte as it was, and so is a profile whose front matter does not parse,
+which counts as drift. Examples are a folded or literal `cli`, a flow
+`access: { … }`, or another indentation. `--render` names each such profile and
+exits 1; fix it by hand or take the toolkit's copy with `--force`.
+
+A plain `refresh-profiles` still copies only missing files, and also prints
+any drift without failing. To re-render the shipped copies after editing the
+fixture, run `--render --repo-root specy_road/templates/project` from a
+toolkit checkout.
+
+**On a harness version bump**, classify the new `--version` and `--help`
+output before accepting it:
+
+```bash
+specy-road refresh-profiles --capture codex            # runs the record's capture_commands
+specy-road refresh-profiles --capture codex --from DIR # or reads DIR/*.txt (version.txt required)
+specy-road refresh-profiles --capture codex --accept   # store a passing capture as the accepted one (--dry-run: report only)
+```
+
+The accepted capture lives in `model-profiles/harness-captures/<harness>/`. A
+new capture must hold every file the record's `capture_commands` names and
+every file the accepted capture has (an `inventory*.txt` included). An
+incomplete one is refused before classification, and the accepted capture is
+left as it was.
+Identifiers are `--flags`, the rows under a help text's `Commands:` heading,
+and the first word of each line of an `inventory*.txt` file. The shipped
+inventories are `codex features list` (`inventory-features.txt`) and
+`agent models` (`inventory-models.txt`, which depends on the account). Claude
+Code has no listing that runs without a model turn, so it captures none. Every identifier the new capture adds or drops is listed. A new
+one whose name contains `plan`, `memory`, `task`, `todo`, `worktree`,
+`branch`, `commit`, `push`, `pr`, `background`, `delegate`, `cloud`,
+`schedule`, `review`, `resume`, `fork` or `autopilot` fails the diff, and
+`--accept` writes nothing, until the record's `relationships` assigns it one of
+`use`, `avoid`, `duplicate`, `complement`, `gap` or `neutral`. The match is a
+plain substring, so `--print` needs a relationship as well: a false alarm costs
+one fixture line. After accepting, update the record's `version`.
+
 ## Parallel work inside a leaf
 
 Every supported harness has its own subagents, so specy-road adds no

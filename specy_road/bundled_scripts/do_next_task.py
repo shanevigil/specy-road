@@ -111,6 +111,7 @@ def _resync_and_select(
     *,
     sync: bool = True,
     allow_unauthored: bool = False,
+    allow_scaffold_planning: bool = False,
     prefer_agentic_cli: bool | None = None,
 ) -> tuple[list[dict], dict, list[dict], dict[str, str]]:
     """Sync integration branch, recompute availability, exit if empty.
@@ -152,7 +153,11 @@ def _resync_and_select(
     available = _drop_finished_unmerged(available, base, remote)
     if parent_filter:
         available = filter_available_under_parent(available, parent_filter, nodes)
-    available = drop_unauthored(ROOT, available, allow=allow_unauthored)
+    available = drop_unauthored(
+        ROOT, available,
+        allow_unauthored=allow_unauthored,
+        allow_scaffold_planning=allow_scaffold_planning,
+    )
     if not available:
         if parent_filter:
             _exit_no_leaves_under_parent(parent_filter, after_sync=True, integration_branch=base)
@@ -233,18 +238,8 @@ def _push_integration_branch(remote: str, base: str) -> None:
     git_run(ROOT, "push", remote, base)
 
 
-# ---------------------------------------------------------------------------
-# Brief output
-# ---------------------------------------------------------------------------
-
-
 def _write_brief(node: dict, nodes: list[dict]) -> Path:
     return _do_write_brief(ROOT / "work", node, nodes)
-
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 
 def _push_and_branch_with_self_heal(**kwargs) -> None:
@@ -351,7 +346,8 @@ def _pick_node(args, nodes, reg, available, integration_statuses) -> dict:
     else:
         node = available[0]
     _assert_leaf_target(node, nodes)
-    warn_scaffold_at_pickup(ROOT, node)
+    if args.allow_scaffold_planning:
+        warn_scaffold_at_pickup(ROOT, node)
     return node
 
 
@@ -381,6 +377,7 @@ def main(argv: list[str] | None = None) -> None:
     nodes, reg, available, integration_statuses = _resync_and_select(
         base, remote, parent_filter, sync=not args.local,
         allow_unauthored=args.allow_unauthored,
+        allow_scaffold_planning=args.allow_scaffold_planning,
         prefer_agentic_cli=args.prefer_agentic,
     )
     _assert_current_branch_equals(base)

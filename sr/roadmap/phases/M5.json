@@ -163,7 +163,7 @@
       "parent_id": "M5",
       "planning_dir": "planning/M5.6_context-feedback-pilot_1bd3af2e-a948-4b50-b678-5ef27f9e290d.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Pilot the context-feedback question in the sandbox before shipping it",
       "touch_zones": [
         "docs/agentic-sandbox-runbook.md",
@@ -191,7 +191,7 @@
       "parent_id": "M5",
       "planning_dir": "planning/M5.7_managed-section-ablation_2dfefcb7-224f-49cd-b36a-0782a52b6e6c.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Measure the managed section on and off across the sandbox apps",
       "touch_zones": [
         "docs/design-notes/",
