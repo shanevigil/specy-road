@@ -4,6 +4,23 @@ family: Anthropic Claude
 track: Opus
 model: Claude Opus 5
 api_id: claude-opus-5
+aliases:
+  - claude-opus-5-thinking-high
+  - claude-opus-5-thinking-high-fast
+  - claude-opus-5-low
+  - claude-opus-5-low-fast
+  - claude-opus-5-medium
+  - claude-opus-5-medium-fast
+  - claude-opus-5-high
+  - claude-opus-5-high-fast
+  - claude-opus-5-thinking-low
+  - claude-opus-5-thinking-low-fast
+  - claude-opus-5-thinking-medium
+  - claude-opus-5-thinking-medium-fast
+  - claude-opus-5-thinking-xhigh
+  - claude-opus-5-thinking-xhigh-fast
+  - claude-opus-5-thinking-max
+  - claude-opus-5-thinking-max-fast
 checkpoint: same-as-api_id
 alias_moves: 'no'
 version_rank: previous

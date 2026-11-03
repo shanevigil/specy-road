@@ -4,6 +4,13 @@ family: Meta Muse
 track: Wonder
 model: Muse Wonder
 api_id: muse-wonder-1.0
+aliases:
+  - muse-wonder-1.0-minimal
+  - muse-wonder-1.0-low
+  - muse-wonder-1.0-medium
+  - muse-wonder-1.0-high
+  - muse-wonder-1.0-xhigh
+  - muse-wonder-1.0-max
 checkpoint: same-as-api_id
 alias_moves: unknown
 version_rank: latest
