@@ -85,25 +85,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: version-shows-checkout-sha
-    node_id: M11.66
-    branch: feature/rm-version-shows-checkout-sha
-    touch_zones:
-      - specy_road/cli.py
-      - specy_road/version_skew.py
-      - specy_road/worker_runner.py
-      - specy_road/review_files.py
-      - tests/
-      - specy_road/schemas/review-record.schema.json
-      - specy_road/schemas/worker-record.schema.json
-      - specy_road/toolkit_version.py
-      - specy_road/worker_state.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_gate_ready.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T18:32:13+00:00'
   - codename: roster-harness-model-id
     node_id: M11.35
     branch: feature/rm-roster-harness-model-id
