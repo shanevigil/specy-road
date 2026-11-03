@@ -236,7 +236,8 @@
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
         "specy_road/bundled_scripts/generate_brief.py",
         "tests/",
-        "docs/pm-workflow.md"
+        "docs/pm-workflow.md",
+        "specy_road/bundled_scripts/registry_claim_status.py"
       ],
       "type": "task"
     },
