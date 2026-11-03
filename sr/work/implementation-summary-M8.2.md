@@ -8,6 +8,15 @@ Base: `a54c409b` (origin/WIP/improvements-0-3-1 after the M8.2 touch-zone update
   - `worker_runner.py`: WIP's `fresh_ready`, `completion_summary` and `harness_env` sit alongside this branch's `TurnWatch` and `close_turn`. `launch.env` is applied on top of `harness_env`, and `paused_by_limit` still wins over READY.
   - No behaviour change was needed: the leaf's tests and the WIP tests on these modules pass (147 tests).
 
+## Round 4: fix for review gpt-5.6-sol-medium (block, again)
+
+- **Lost pre-turn work is a finding.** `git_findings` now compares the union of the starting and ending dirty-path keys, excluding expected bookkeeping. Before, it walked only the paths still dirty at the turn's end, so pre-turn work outside the zones that the turn restored or deleted left no finding.
+  - A path is a porcelain finding when it is **new, changed or gone** during the turn: absent from the start, a different content digest, or absent from the end.
+  - "Gone" covers a restored tracked edit, a deleted untracked file and a pre-existing edit the turn committed.
+  - The summary text is now "dirty paths new, changed or gone during the turn". The sentence in `docs/orchestration-workers.md` is updated in place.
+- **Regression.** New `test_pre_turn_work_outside_the_zones_that_the_turn_restores_or_deletes_is_a_finding`: before the turn, the test leaves a tracked edit to `docs/x.md` and an untracked `docs/notes.md`, both outside the `src` zone. The turn runs `git checkout -- docs/x.md` and `rm docs/notes.md`. The test asserts the `post_run_check` event's porcelain paths, its summary, state `idle` and the flag.
+  - **Red-green.** Without the fix the test fails (there is no `post_run_check` event at all); with it, it passes.
+
 ## Round 3: fix for review gpt-5.6-sol-medium (block)
 
 - **Every started turn's end runs the post-run check.** Before this fix, two paths returned before `close_turn`, so no check ran and a stale `post_run_findings` flag survived as if it described that turn:
@@ -86,7 +95,7 @@ Not changed, though they are now stale, because they are outside M8.2's zones:
 ## Verification
 
 - `pytest -n 8` over the whole suite: 3321 passed, 2 skipped.
-- `tests/test_worker_turn_check.py`: 8 new tests (10 after round 2, 11 after round 3). Fake `claude` / `codex` / `agent` binaries on PATH record the argv, environment and stdin the wrapper really ran them with, and replay the streams in `tests/fixtures/worker_turn_check/streams.json`.
+- `tests/test_worker_turn_check.py`: 8 new tests (10 after round 2, 11 after round 3, 12 after round 4). Fake `claude` / `codex` / `agent` binaries on PATH record the argv, environment and stdin the wrapper really ran them with, and replay the streams in `tests/fixtures/worker_turn_check/streams.json`.
 - `ruff check` (C901) over every changed or added Python file, `specy-road file-limits`, `scripts/check_test_private_imports.py`: clean.
 - `ruff check specy_road tests scripts` exits 1, but only for `uncommitted_refs_section` in `specy_road/bundled_scripts/review_packet_uncommitted_refs.py` (12 > 10). That file is untouched here, so the failure is on the base.
 - `scripts/check_clones.py` reports two new pairs. Both are in files this leaf does not touch (`abort_task_pickup`/`pm_sync`, `planning_sheet_bootstrap`/`planning_scaffold_check`), so they were already on the base.
@@ -108,6 +117,8 @@ Not changed, though they are now stale, because they are outside M8.2's zones:
 - `_content()` (round 2, R2): a dirty path's content digest, so a further edit to an already-dirty file is seen.
 - `PAUSED_BY_LIMIT if paused else …` ordering in `_finish` (round 2, R1): a limit wins over a fresh READY.
 - Fake-harness `write` option in `tests/test_worker_turn_check.py` (round 2): lets a turn write its READY, for the R1 regression.
+- Union of start and end dirty paths in `git_findings` (round 4): pre-turn work the turn restores, deletes or commits is a finding.
+- `test_pre_turn_work_outside_the_zones_that_the_turn_restores_or_deletes_is_a_finding` (round 4): Sol's required regression.
 - `test_a_turn_whose_record_was_terminated_still_gets_the_check_and_stays_terminated` (round 3): the terminated path's check.
 - `test_a_limit_wins_over_a_fresh_ready_written_in_the_same_turn`, `test_a_further_edit_to_an_already_dirty_file_outside_the_zones_keeps_the_worker_flagged` (round 2): the reviewer's two regressions.
 - `TurnWatch` (`observe`, `_watchdog`, `stream_findings`): reads each parsed event for A3's stream findings, and is A1's retry watchdog.
