@@ -30,6 +30,7 @@ from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_PATTERN, ID_
 from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
 from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
 from specy_road.bundled_scripts.roadmap_load import load_roadmap, validate_roadmap_line_limits
+from specy_road.bundled_scripts.validate_registry_overlap import authoring_overlap_for_node
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.runtime_paths import default_user_repo_root
 from specy_road.node_kinds import is_gate
@@ -243,9 +244,10 @@ def append_node_to_chunk(
     parent_id = parent_id_raw if isinstance(parent_id_raw, str) else None
     planned_sheet = plan_planning_sheet_for_new_node(root, node)
     extra = {planned_sheet[0]: planned_sheet[1]} if planned_sheet else None
-    return write_with_routing(
-        root, parent_id, chunk_arg, node, extra_files=extra, validate=validate,
-    )
+    with authoring_overlap_for_node(node):
+        return write_with_routing(
+            root, parent_id, chunk_arg, node, extra_files=extra, validate=validate,
+        )
 
 
 def _planning_rename_plan(
@@ -330,10 +332,11 @@ def edit_node_set_pairs(
 
     from specy_road.bundled_scripts.roadmap_chunk_router import write_node_update
 
-    with claim_zones_following(root, node_id, zones, notify=notify):
-        holding = write_node_update(
-            root, node_id, chunk, nodes, renames=[rename] if rename else None
-        )
+    with authoring_overlap_for_node(node, node_id=node_id):
+        with claim_zones_following(root, node_id, zones, notify=notify):
+            holding = write_node_update(
+                root, node_id, chunk, nodes, renames=[rename] if rename else None
+            )
     holding_rel = repo_rel(root, holding)
     assert holding_rel in report.written
     return report
@@ -389,10 +392,7 @@ def cmd_set_gate_status(args: object) -> None:
     print(f"[ok] gate {nid} status -> {args.status} ({report.read_from})")
 
 
-# Node removal lives in ``roadmap_crud_delete`` (per-file line cap). Re-exported
-# here so ``roadmap_crud_argparse``, the PM GUI routes, and tests keep one
-# import site. Imported at the bottom because that module imports back for
-# ``node_index_in_chunk`` / ``repo_root`` / ``unknown_node_msg``.
+# Re-exported from ``roadmap_crud_delete`` (import at bottom avoids a cycle).
 from specy_road.bundled_scripts.roadmap_crud_delete import (  # noqa: E402,F401
     can_hard_remove,
     cmd_archive,
