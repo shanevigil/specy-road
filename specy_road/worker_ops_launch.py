@@ -21,7 +21,7 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.review_files import reviews_dir, reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import git_root, project_prefix
-from specy_road.worker_adapter_parsers import effort_note
+from specy_road.worker_adapter_parsers import effort_note, output_mode_note, resume_form_note
 from specy_road.worker_adapters import adapter_for
 from specy_road.worker_lease import acquire_lease, foreign_leases, release_lease
 from specy_road.worker_ops_slots import _slot_or_existing
@@ -128,6 +128,17 @@ def _cli_for(repo_root: Path, entry: dict[str, Any], harness: str) -> tuple[str 
     return cli, api_id, prof.launch_mode(), effort
 
 
+def _report_cli(entry: dict[str, Any], harness: str, cli: str | None) -> None:
+    """Before a launch, on stderr: a custom command a resumed turn cannot run again (it would fall back to the
+    harness's default command and its permissions), and one whose output is text only."""
+    cli_resume = (entry.get("channels") or {}).get("cli_resume")
+    notes = [output_mode_note(cli), output_mode_note(cli_resume)]
+    if adapter_for(harness).caps.resume:
+        notes.append(resume_form_note(cli, cli_resume))
+    for note in filter(None, notes):
+        print(note, file=sys.stderr)
+
+
 def _preflight(entry: dict[str, Any], repo_root: Path) -> None:
     """The roster entry's ``preflight`` command, as ``prompt --channel cli`` runs it, before any launch."""
     cmd = entry.get("preflight")
@@ -202,6 +213,7 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     prompt.write_text(text, encoding="utf-8")
     _brief_into(wt, repo_root, node_id, t)
     cli, api_id, mode, effort = _cli_for(repo_root, entry, harness)
+    _report_cli(entry, harness, cli)
     reviews_dir(repo_root, node_id).mkdir(parents=True, exist_ok=True)   # a harness may refuse an --add-dir that is missing
     launch = adapter_for(harness).launch(prompt, wt, api_id, cli, node_id=node_id, repo_root=repo_root,
                                          launch_mode=mode, effort=effort)

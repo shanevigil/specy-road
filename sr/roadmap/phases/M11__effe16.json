@@ -90,7 +90,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.43_init-project-reports-writes_12cd9d17-8a37-4149-b7eb-2acdc740c4ff.md",
       "sibling_order": 43,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "init project reports exactly what it writes",
       "touch_zones": [
         "specy_road/init_project.py",
@@ -315,14 +315,15 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.52_pr-mode-registry-conflict_fe1a3718-b3ae-4c2f-85e7-8e14b05e763c.md",
       "sibling_order": 52,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "PR mode predicts and resolves the registry conflict",
       "touch_zones": [
         "specy_road/bundled_scripts/finish_task.py",
         "specy_road/finish_modes.py",
         "specy_road/review_gate_ready.py",
         "tests/",
-        "docs/git-workflow.md"
+        "docs/git-workflow.md",
+        "specy_road/finish_pr_merge.py"
       ],
       "type": "task"
     },

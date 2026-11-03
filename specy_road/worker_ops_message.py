@@ -7,6 +7,7 @@ these through that module.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from specy_road.review_files import reviews_dir
 from specy_road.worker_adapters import Unsupported, adapter_for
@@ -29,6 +30,13 @@ from specy_road.worker_state import (
 
 CONTINUE_PROMPT = ("Continue the task from where you stopped. Re-read the brief and the precondition "
                    "first; if the hand-off is already written, say so and stop.\n")
+
+
+def _resume_cli(entry: dict[str, Any], cli: str | None) -> str | None:
+    """The roster's ``channels.cli_resume`` when it sets one, else the launch command: a resumed turn keeps the
+    launch's permissions on a harness whose resume is its own command (``codex exec resume``, ``agent -p --resume``),
+    where ``{session_flag}`` is refused. The schema requires it to name ``{session}`` or ``{session_flag}``."""
+    return (entry.get("channels") or {}).get("cli_resume") or cli
 
 
 def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: bool = False, *,
@@ -60,6 +68,7 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: boo
     _check_eligible(entry, _target(repo_root, rec.node_id).node, rec.model)   # availability and sensitivity can change
     _preflight(entry, repo_root)
     cli, api_id, mode, effort = _cli_for(repo_root, entry, rec.harness)
+    cli = _resume_cli(entry, cli)
     n = rec.last_event_seq + 1
     prompt = repo_root / "work" / f"prompt-{rec.worker_id}-{kind}-{n}.md"
     prompt.parent.mkdir(parents=True, exist_ok=True)   # a linked worktree may have no work/ yet

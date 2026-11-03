@@ -15,41 +15,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic
-    node_id: M8.6
-    branch: feature/rm-candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic
-    touch_zones:
-      - specy_road/templates/project/model-profiles/
-      - roadmap/
-      - docs/orchestration-models.md
-      - tests/test_models_and_prompt.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
-  - codename: init-project-reports-writes
-    node_id: M11.43
-    branch: feature/rm-init-project-reports-writes
-    touch_zones:
-      - specy_road/init_project.py
-      - specy_road/agent_ignores.py
-      - specy_road/templates/project/.gitignore
-      - tests/
-      - docs/pm-workflow.md
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
-  - codename: pr-mode-registry-conflict
-    node_id: M11.52
-    branch: feature/rm-pr-mode-registry-conflict
-    touch_zones:
-      - specy_road/bundled_scripts/finish_task.py
-      - specy_road/finish_modes.py
-      - specy_road/review_gate_ready.py
-      - tests/
-      - docs/git-workflow.md
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
     node_id: M8.3
     branch: feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
@@ -93,24 +58,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: resume-keeps-permissions
-    node_id: M11.23
-    branch: feature/rm-resume-keeps-permissions
-    touch_zones:
-      - specy_road/worker_adapters.py
-      - specy_road/worker_ops.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - docs/orchestration-workers.md
-      - tests/
-      - specy_road/worker_adapter_parsers.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/worker_adapter_base.py
-      - specy_road/worker_adapter_claude.py
-      - specy_road/worker_ops_launch.py
-      - specy_road/worker_ops_message.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: completed-worker-frees-slot
     node_id: M11.57
     branch: feature/rm-completed-worker-frees-slot
@@ -125,6 +72,48 @@ entries:
       - specy_road/worker_ops_slots.py
       - specy_road/worker_orphans.py
       - specy_road/worker_reconcile.py
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: pickup-second-claim-guard
+    node_id: M11.63
+    branch: feature/rm-pickup-second-claim-guard
+    touch_zones:
+      - specy_road/bundled_scripts/do_next_task.py
+      - specy_road/bundled_scripts/do_next_task_args.py
+      - specy_road/templates/
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: abort-untracked-like-pickup
+    node_id: M11.64
+    branch: feature/rm-abort-untracked-like-pickup
+    touch_zones:
+      - specy_road/bundled_scripts/abort_task_pickup.py
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: why-blocked-plan-holds
+    node_id: M11.65
+    branch: feature/rm-why-blocked-plan-holds
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_query_cli.py
+      - specy_road/bundled_scripts/session_plan.py
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: zones-checked-at-authoring
+    node_id: M11.70
+    branch: feature/rm-zones-checked-at-authoring
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_crud_ops.py
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
+      - specy_road/bundled_scripts/generate_brief.py
+      - docs/roadmap-authoring.md
+      - tests/
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending

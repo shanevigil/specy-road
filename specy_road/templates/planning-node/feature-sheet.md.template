@@ -8,6 +8,8 @@ Constraints, major steps, and how you will verify done.
 
 ## Tasks / checklist
 
+Write each acceptance criterion on the node to the checklist in `docs/roadmap-authoring.md` (Acceptance criteria checklist): state what is out of scope, bound concurrency and input classes, and name the observable check.
+
 - [ ] …
 
 ## References

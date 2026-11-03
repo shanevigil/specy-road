@@ -105,6 +105,53 @@ def effort_note(cli: str | None, level: str | None) -> str | None:
     return f"note: the profile sets effort {level} for this role, but the command takes no effort (no {{effort}}): {cli}"
 
 
+def resume_form_note(cli: str | None, cli_resume: str | None) -> str | None:
+    """The warning ``delegate`` prints for a custom launch command that ``message`` / ``resume`` cannot run again:
+    it names no ``{session}`` or ``{session_flag}`` and the roster sets no ``channels.cli_resume``, so a resumed
+    turn would run the harness's default command, with the default's permissions."""
+    if not cli or cli_resume or placeholder_problem(cli) or any(ph in _SESSION for _s, _e, ph, _p in _tokens(cli)):
+        return None   # a command that cannot run is refused with its own reason
+    return ("warning: `worker message` and `resume` cannot reuse this launch command (it names no {session} or "
+            "{session_flag}) and the roster sets no channels.cli_resume, so every resumed turn runs the harness's "
+            f"default command with the default's permissions: {cli}")
+
+
+#: Print-mode commands whose JSON event stream the adapters parse: (binary, print words, JSON form, its words).
+_JSON_FORMS = (("claude", {"-p", "--print"}, "--output-format stream-json --verbose", None),
+               ("agent", {"-p", "--print"}, "--output-format stream-json", None),
+               ("cursor-agent", {"-p", "--print"}, "--output-format stream-json", None),
+               ("codex", {"exec"}, "--json", {"--json", "--experimental-json"}))
+
+
+def _output_format(words: list[str]) -> str | None:
+    for i, w in enumerate(words):
+        if w == "--output-format" and i + 1 < len(words):
+            return words[i + 1]
+        if w.startswith("--output-format="):
+            return w.split("=", 1)[1]
+    return None
+
+
+def output_mode_note(cli: str | None) -> str | None:
+    """The note for a command that visibly runs ``claude`` / ``agent`` in print mode, or ``codex exec``, with text
+    output (``--output-format text`` or none): it prints only the final message, so the worker's events keep only
+    that. A wrapper script is not looked into."""
+    if not cli or placeholder_problem(cli):
+        return None
+    words = [w.strip("\"'") for w in _WORD.findall(cli)]
+    for binary, print_words, form, json_words in _JSON_FORMS:
+        at = [i for i, w in enumerate(words) if w.rsplit("/", 1)[-1] == binary]
+        if not at or not print_words & set(words[at[0] + 1:]):
+            continue
+        rest = words[at[0] + 1:]
+        streams = bool(json_words & set(rest)) if json_words else _output_format(rest) == "stream-json"
+        if streams:
+            return None
+        return (f"note: this command prints no {binary} event stream (text output), so the worker's log keeps only "
+                f"its last message; use `{form}`: {cli}")
+    return None
+
+
 def _snip(s: str, n: int = 200) -> str:
     s = " ".join(str(s).split())
     return s if len(s) <= n else s[: n - 1] + "…"
