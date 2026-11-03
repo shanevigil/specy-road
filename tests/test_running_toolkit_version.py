@@ -153,3 +153,22 @@ def test_render_front_matter_stamps_toolkit_version(tmp_path: Path) -> None:
     loaded = load_review(path, ["A1"])
     assert loaded.ok
     assert loaded.data["toolkit_version"] == running_toolkit_version()
+
+
+def test_ready_front_matter_does_not_stamp_toolkit_version(tmp_path: Path) -> None:
+    from specy_road.review_files import load_ready, render_front_matter
+
+    data = {
+        "node_id": "M1.1",
+        "agent": "composer-2.5",
+        "branch": "feature/rm-thing",
+        "commit": "a" * 40,
+        "base": "b" * 40,
+        "changed_paths": ["src/a.py"],
+        "verify": [{"cmd": "pytest", "exit": 0}],
+    }
+    path = tmp_path / "READY-composer-2.5.md"
+    path.write_text(render_front_matter(data, "done\n"), encoding="utf-8")
+    loaded = load_ready(path)
+    assert loaded.ok, loaded.errors
+    assert "toolkit_version" not in loaded.data
