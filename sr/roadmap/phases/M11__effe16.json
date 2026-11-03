@@ -86,7 +86,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.42_session-end-default_b19b342c-cefe-4632-89e0-e937fb48710e.md",
       "sibling_order": 42,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "session end finds the session the same agent started",
       "touch_zones": [
         "specy_road/session_presence.py",
