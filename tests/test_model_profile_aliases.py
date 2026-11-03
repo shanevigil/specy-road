@@ -28,9 +28,11 @@ def test_models_list_names_unmatched_roster_ids_and_alias_in_json(tmp_path: Path
     repo = make_profile_repo(tmp_path)
     assert run_main(models_cli, "models", "list", "--repo-root", str(repo)) == 0
     text = capsys.readouterr().out
-    assert "roster id(s) match no profile" in text and "  human\n" in text and "  sol\n" in text
+    assert "roster id(s) match no profile" in text and "  sol\n" in text
+    assert "  human\n" not in text
     assert run_main(models_cli, "models", "list", "--json", "--repo-root", str(repo)) == 0
     out = json.loads(capsys.readouterr().out)
-    assert out["unmatched_roster_ids"] == ["human", "sol"]
+    assert out["unmatched_roster_ids"] == ["sol"]
+    assert "human" not in out["unmatched_roster_ids"]
     rows = {r["id"]: r for r in out["roster"]}
     assert rows["sol"]["profile"] is None

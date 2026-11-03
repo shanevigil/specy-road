@@ -255,9 +255,14 @@ def unmatched_roster_ids(
     entries: list[dict[str, Any]],
     resolve: Callable[[dict[str, Any]], Profile | None],
 ) -> list[str]:
-    """Roster entry ``id`` values ``resolve(entry)`` could not match to any profile."""
+    """Roster entry ``id`` values ``resolve(entry)`` could not match to any profile.
+
+    Entries with ``family: human`` are omitted: a person is not a model profile.
+    """
     out: list[str] = []
     for entry in entries:
+        if entry.get("family") == "human":
+            continue
         if resolve(entry) is None:
             out.append(entry["id"])
     return out

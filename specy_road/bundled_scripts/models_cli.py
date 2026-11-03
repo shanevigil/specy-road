@@ -44,7 +44,7 @@ def _row(root: Path, entry: dict[str, Any], prof: Profile | None) -> dict[str, A
     return row
 
 
-def _roster_rows(root: Path) -> tuple[list[dict[str, Any]], list[Profile], str | None]:
+def _roster_rows(root: Path) -> tuple[list[dict[str, Any]], list[Profile], list[str], str | None]:
     config, err = pinned_config(root)
     rows = []
     used: set[Path] = set()
