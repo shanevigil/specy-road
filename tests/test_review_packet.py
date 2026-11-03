@@ -6,7 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import NODE, commit_file, diverge, git, make_review_repo
+from tests.review_repo_helpers import (
+    NODE, commit_file, diverge, git, git_root_relative, make_layout_finish_repo, make_review_repo,
+)
 
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.bundled_scripts.review_packet_uncommitted_refs import UNCOMMITTED_REF_NOTE
@@ -269,6 +271,8 @@ def test_packet_warns_when_a_planning_sheet_names_an_uncommitted_file(tmp_path: 
     repo = make_review_repo(tmp_path)
     sheet = repo / NODE["planning_dir"]
     commit_file(repo, NODE["planning_dir"], sheet.read_text() + "\nTrack `shared/missing.md`.\n", "cite missing")
+    (repo / "shared").mkdir(exist_ok=True)
+    (repo / "shared" / "missing.md").write_text("untracked\n", encoding="utf-8")
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
     block = _uncommitted_block(text)
     assert UNCOMMITTED_REF_NOTE in block and "- `shared/missing.md`" in block
@@ -291,10 +295,28 @@ def test_packet_ignores_path_like_tokens_that_are_not_repository_paths(tmp_path:
     commit_file(
         repo,
         NODE["planning_dir"],
-        sheet.read_text() + "\nUse branch `feature/rm-thing` and `path/to/nowhere`.\n",
+        sheet.read_text() + "\nUse branch `feature/rm-thing` and `path/to/nowhere`; "
+        "not `src/a.py::test_ok` or `docs/x.md:12`.\n",
         "path-like noise",
     )
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
     assert "_none_" in _uncommitted_block(text)
     err = capsys.readouterr().err
     assert "path/to/nowhere" not in err and "feature/rm-thing" not in err
+    assert "src/a.py" not in err and "docs/x.md" not in err
+
+
+def test_packet_accepts_a_git_root_path_named_in_a_nested_layout_brief(tmp_path: Path, capsys) -> None:
+    git_top, project = make_layout_finish_repo(tmp_path, "nested")
+    commit_file(git_top, "tests/at-git-root.py", "ok\n", "at git root")
+    sheet = project / NODE["planning_dir"]
+    commit_file(
+        git_top,
+        git_root_relative(git_top, project, NODE["planning_dir"]),
+        sheet.read_text() + "\nSee `src/a.py` and `tests/at-git-root.py`.\n",
+        "cite committed",
+    )
+    text = rp.build_packet(project, "M1.1", ref=None, verify_cmds=[])
+    assert "_none_" in _uncommitted_block(text)
+    err = capsys.readouterr().err
+    assert "src/a.py" not in err and "tests/at-git-root.py" not in err

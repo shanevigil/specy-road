@@ -9,6 +9,7 @@ from pathlib import Path
 from specy_road.bundled_scripts.generate_brief import _chain_sheet_paths
 from specy_road.git_subprocess import git_ok, git_stdout
 from specy_road.review_target import ReviewTarget
+from specy_road.runtime_paths import git_root
 
 UNCOMMITTED_REF_NOTE = ("_The brief, a planning sheet or the implementation summary names these paths, but they "
                         "are not in the tree at the commit under review (untracked or uncommitted). Commit them "
@@ -27,6 +28,8 @@ def _named_repo_path(token: str) -> str | None:
     if not raw or raw.startswith(("http://", "https://", "git@", "mailto:")):
         return None
     raw = raw.split()[0].split("?")[0]
+    raw = raw.split("::", 1)[0]          # pytest node id: path::name
+    raw = re.sub(r":\d+$", "", raw)      # editor / compiler :line
     while raw.startswith("./") or raw.startswith("../"):
         raw = raw[2:] if raw.startswith("./") else raw[3:]
     raw = raw.lstrip("/").rstrip("/")
@@ -55,6 +58,14 @@ def _show(root: Path, commit: str, rel: str) -> str | None:
     return git_stdout(["show", f"{commit}:./{rel}"], root)
 
 
+def _exists_at_commit(root: Path, commit: str, rel: str) -> bool:
+    """True if ``rel`` is a blob at ``commit`` from the project root or the git top."""
+    if git_ok(["cat-file", "-e", f"{commit}:./{rel}"], root)[0]:
+        return True
+    top = git_root(root) or root
+    return git_ok(["cat-file", "-e", f"{commit}:{rel}"], top)[0]
+
+
 def uncommitted_refs_section(root: Path, t: ReviewTarget, brief: str, node: dict, by_id: dict[str, dict],
                              computed: str) -> list[str]:
     out = ["## Uncommitted references", ""]
@@ -77,7 +88,7 @@ def uncommitted_refs_section(root: Path, t: ReviewTarget, brief: str, node: dict
     missing: list[str] = []
     for text in texts:
         for rel in _named_paths(text):
-            if rel not in missing and not git_ok(["cat-file", "-e", f"{t.commit}:./{rel}"], root)[0]:
+            if rel not in missing and not _exists_at_commit(root, t.commit, rel):
                 missing.append(rel)
     out += [computed, ""]
     if not missing:
