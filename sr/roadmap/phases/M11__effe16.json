@@ -237,7 +237,8 @@
         "specy_road/bundled_scripts/generate_brief.py",
         "tests/",
         "docs/pm-workflow.md",
-        "specy_road/bundled_scripts/registry_claim_status.py"
+        "specy_road/bundled_scripts/registry_claim_status.py",
+        "constraints/file-limits.yaml"
       ],
       "type": "task"
     },

@@ -114,6 +114,7 @@ entries:
       - tests/
       - docs/pm-workflow.md
       - specy_road/bundled_scripts/registry_claim_status.py
+      - constraints/file-limits.yaml
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
