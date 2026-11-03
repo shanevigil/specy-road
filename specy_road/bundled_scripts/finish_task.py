@@ -53,6 +53,8 @@ from specy_road.on_complete_session import (
 from specy_road.runtime_paths import resolve_repo_root
 from specy_road.bundled_scripts.repo_ops import current_branch, git_run
 from specy_road.repo_lock import pickup_finish_lock
+from specy_road.worker_orphans import end_finished_workers
+from specy_road.worker_state import WorkerError
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
 #: so the name exists at import. Resolving the real root here would make
@@ -300,6 +302,19 @@ def _bookkeeping_commit_phase(
         git_run(ROOT, "push", "-u", args.remote, branch)
 
 
+def _end_leaf_workers(node_id: str) -> None:
+    """The finished leaf's idle and completed workers can get no fix round now: terminate them (each records a
+    ``terminated`` event) so their ``max_workers`` slots free. Best effort: a failure here never fails the finish."""
+    try:
+        ended = end_finished_workers(ROOT, node_id)
+    except (WorkerError, OSError) as e:
+        print(f"[warn] could not terminate {node_id}'s workers ({e}); "
+              "`specy-road worker terminate --orphaned` ends them once the leaf lands")
+        return
+    for rec, why in ended:
+        print(f"[ok] terminated worker {rec.worker_id}: {why}")
+
+
 def main(argv: list[str] | None = None) -> None:
     global ROOT
     args = parse_finish_args(argv if argv is not None else sys.argv[1:])
@@ -342,6 +357,7 @@ def _finish_locked(args) -> None:
         pr_body_path=pr_body_path, sess_path=sess_path,
         pr_integration=(ib, gw_remote) if on_mode == "pr" and not ctx["rollup"] else None,
     )
+    _end_leaf_workers(node_id)
     mr_manual = merge_request_requires_manual_approval(ROOT)
 
     if try_milestone_rollup_finish(

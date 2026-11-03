@@ -58,23 +58,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: completed-worker-frees-slot
-    node_id: M11.57
-    branch: feature/rm-completed-worker-frees-slot
-    touch_zones:
-      - specy_road/worker_ops.py
-      - specy_road/worker_state.py
-      - specy_road/worker_lease.py
-      - docs/orchestration-workers.md
-      - tests/
-      - specy_road/bundled_scripts/finish_task.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/worker_ops_slots.py
-      - specy_road/worker_orphans.py
-      - specy_road/worker_reconcile.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: version-shows-checkout-sha
     node_id: M11.66
     branch: feature/rm-version-shows-checkout-sha
@@ -108,6 +91,37 @@ entries:
       - specy_road/worker_adapter_parsers.py
       - specy_road/worker_runner.py
       - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: reviewer-probe-rules
+    node_id: M11.75
+    branch: feature/rm-reviewer-probe-rules
+    touch_zones:
+      - specy_road/bundled_scripts/role_prompt.py
+      - docs/orchestration-review.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: profile-alias-coverage
+    node_id: M11.76
+    branch: feature/rm-profile-alias-coverage
+    touch_zones:
+      - specy_road/model_profiles.py
+      - specy_road/templates/project/model-profiles/
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: run-record-no-false-failure
+    node_id: M11.77
+    branch: feature/rm-run-record-no-false-failure
+    touch_zones:
+      - specy_road/reviewer_run_failure.py
+      - specy_road/review_delegate.py
       - tests/
     started: '2026-11-03'
     owner: savigil

@@ -439,7 +439,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.57_completed-worker-frees-slot_6a0429e2-027e-4d14-8d7d-9e3e19676467.md",
       "sibling_order": 57,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A completed worker on a finished leaf does not hold a max_workers slot",
       "touch_zones": [
         "specy_road/worker_ops.py",
