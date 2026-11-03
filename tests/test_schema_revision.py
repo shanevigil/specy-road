@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
+import pytest
 import yaml
 
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
@@ -21,11 +22,13 @@ from specy_road.review_files import latest_ready, load_review, render_front_matt
 from specy_road.review_gate import evaluate_gate, gate_holds_at_head_or_exit
 from specy_road.runtime_paths import specy_road_package_dir
 from specy_road.schema_revision import revision_text
+from specy_road.worker_state import WorkerError, create_record, list_records, load_record, record_path, set_state
 
 ORCHESTRATION = "templates/project/schemas/orchestration.schema.json"
 GIT_WORKFLOW = "templates/project/schemas/git-workflow.schema.json"
 REVIEW_RECORD = "schemas/review-record.schema.json"
 HANDOFF = "schemas/handoff.schema.json"
+WORKER_RECORD = "schemas/worker-record.schema.json"
 
 POLICY_KEY = """version: 1
 roster:
@@ -134,3 +137,30 @@ def test_a_record_value_never_reaches_git_as_an_option(tmp_path: Path) -> None:
     out = tmp_path / "written"
     assert revision_text(repo, REVIEW_RECORD, f"--output={out}") is None
     assert not out.exists()
+
+
+def _worker_with(repo: Path, branch: str, extra: dict[str, Any]) -> str:
+    """A worker record as a leaf's own code would write it: ``extra`` beside the installed fields."""
+    rec = create_record(repo, "M1.1", "generic", "opus", repo, branch=branch)
+    path = record_path(repo, rec.worker_id)
+    path.write_text(yaml.safe_dump({**yaml.safe_load(path.read_text(encoding="utf-8")), **extra}), encoding="utf-8")
+    return rec.worker_id
+
+
+def test_a_worker_record_field_the_leaf_adds_is_read_and_kept(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    _leaf_changes(repo, WORKER_RECORD, _add_property("", "lane", {"type": "string"}))
+    wid = _worker_with(repo, "feature/rm-thing", {"lane": "worktree"})
+    assert [r.worker_id for r in list_records(repo)] == [wid]   # what handoff status and the coordinator read
+    set_state(repo, load_record(repo, wid), "running")   # the installed code saves the record
+    saved = yaml.safe_load(record_path(repo, wid).read_text(encoding="utf-8"))
+    assert saved["state"] == "running" and saved["lane"] == "worktree"
+
+
+def test_a_worker_record_field_is_checked_against_the_record_s_own_branch(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    _leaf_changes(repo, WORKER_RECORD, _add_property("", "lane", {"type": "string"}))
+    wid = _worker_with(repo, "dev", {"lane": "worktree"})   # dev has no such schema
+    with pytest.raises(WorkerError, match="lane"):
+        load_record(repo, wid)
+    assert list_records(repo) == []

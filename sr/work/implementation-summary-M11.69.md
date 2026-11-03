@@ -13,6 +13,7 @@ The revision depends on where the data was read:
 | ---- | --------- | ------------------------- |
 | `REVIEW-*.md`, `READY-*.md` (gate, handoff status, finish) | `work/reviews/<node>/` | the record's own `commit` (`git show <commit>:specy_road/schemas/<name>`) |
 | `roadmap/orchestration.yaml` at a ref (the gate's integration-branch policy) | `git show <ref>:…` | that same `ref` |
+| Worker records (`work/.workers/<id>.yaml`: handoff status, the coordinator, every save) | the main checkout's `work/.workers/` | the record's own `branch` (`git show <branch>:specy_road/schemas/worker-record.schema.json`); a record with no branch uses the installed copy only |
 | `roadmap/orchestration.yaml`, `roadmap/git-workflow.yaml` in the working tree (`validate` inside finish, `review_required`, every `_flag`) | working tree | the working tree's `specy_road/templates/project/schemas/…` |
 
 "A specy-road checkout" is a git root holding `specy_road/__init__.py`, found
@@ -37,23 +38,29 @@ record value never reaches git as an option (a `-`-leading revision is refused).
   `tests/test_schema_revision.py`, including a leaf that adds a policy key
   (working-tree read, `HEAD` read, then the gate and finish's
   `gate_holds_at_head_or_exit` once the integration branch has the key).
+- **A1, worker records (review round 2, Sol block)** — `worker_state` now checks
+  records through `specy_road/worker_schema.py` (new; `worker_state.py` was at
+  the 400-line cap), which falls back to the schema on the record's `branch`.
+  A schema that accepts a new field is not enough on its own: the installed
+  `WorkerRecord(**raw)` would raise `TypeError` on a key it has no field for,
+  so `load_record` keeps such keys in a new `unknown_fields` field and
+  `to_dict` writes them back, so a save by the installed coordinator (`mutate`,
+  `set_state`) keeps the leaf's field. Worker **events** still use the installed
+  schema only: an event names no branch, and none of the review comments asked for it.
 
 ## Touch zones (final)
 
 - `specy_road/review_files.py`, `specy_road/orchestration_config.py`,
-  `specy_road/git_workflow_config.py`, `tests/` — changed.
+  `specy_road/git_workflow_config.py`, `specy_road/worker_state.py`, `tests/` — changed.
 - `specy_road/review_gate.py`, `specy_road/bundled_scripts/finish_task.py` —
   confirmed in the path, no change needed.
-- **New module outside the listed zones: `specy_road/schema_revision.py`.**
-  `review_files.py` was at 399 of 400 lines and `review_gate.py` at 400, so the
-  shared lookup could not live in a touch-zone file; please add it to the zones.
+- New modules `specy_road/schema_revision.py` and `specy_road/worker_schema.py`
+  (file-limit caps on `review_files.py`, `review_gate.py`, `worker_state.py`).
+  All three added paths are in the zones, via `edit-node --add touch_zones=…` on this branch.
 
 ## Not covered (outside this leaf's zones or not reached by gate/finish)
 
-- **Worker records** (`worker_state.py`, outside the zones) still use the
-  installed copy only. They are runtime state written by the coordinator's own
-  installed specy-road and bind to no commit, so gate and finish never see one
-  written by a leaf's code.
+- **Worker events** (`*.events.jsonl`) use the installed schema only: an event names no branch.
 - **Registry** is already validated against the project's own `schemas/`
   copy (`validate_roadmap_checks.py`), not the installed one.
 - `review record --file <draft>` checks the draft at its own path: a draft
@@ -68,6 +75,12 @@ record value never reaches git as an option (a `-`-leading revision is refused).
   positive tests fail and the three fallback tests pass.
 - `specy-road file-limits` — OK (`review_files.py` 400, `git_workflow_config.py` 395).
 - `python -m pytest -n auto -q` — 3384 passed, 2 skipped.
+- Round 2: `python -m pytest tests/test_schema_revision.py -q` — 10 passed;
+  `python -m pytest -n auto -q tests/test_worker_state.py tests/test_schema_revision.py` — 34 passed;
+  `specy-road file-limits` — OK (`worker_state.py` 389). `pytest -n auto tests/test_worker*.py`
+  has one failure, `test_worker_queue_message.py::test_message_while_running_queues_and_delivers`.
+  It also fails under the same parallel run with the pre-change `worker_state.py`, and passes when
+  run alone (twice), so it is an existing timing failure, not this change.
 - Merged `origin/WIP/improvements-0-3-1` at `042423f0` (Codex reviewer roster entries) cleanly; it touched none of this leaf's files or the bundled schemas, and the leaf's tests (8 passed) and `specy-road file-limits` pass after it.
 - `ruff check specy_road tests scripts` reports two C901 findings that exist
   at the base commit (`orchestration_config.load_availability_overlay`,
@@ -82,6 +95,9 @@ record value never reaches git as an option (a `-`-leading revision is refused).
 - `schema_revision._validator` (cached by text) — compiles a revision copy once; returns `None` for invalid JSON / JSON Schema so a broken copy never accepts anything.
 - `schema_revision.revision_text` — reads `specy_road/<sub>` at a revision or in the working tree.
 - Guard in `revision_text`: refuses a non-string, empty or `-`-leading revision, so a record's `commit` value cannot become a git option.
+- `specy_road/worker_schema.py` — new module (`worker_state.py` at the file cap): `schema_errors` moved from `worker_state` (re-exported there), with the fallback to the schema on the record's `branch`.
+- `WorkerRecord.unknown_fields` plus the merge in `to_dict` — keeps a field a newer schema added, which the installed dataclass cannot take as an argument, and writes it back on save.
+- `load_record` field split — passes only known keys to `WorkerRecord`; the rest go to `unknown_fields`.
 - `schema_revision.accepted_at_revision` — whether the revision copy accepts the data; false outside a checkout, for a missing file, or a copy equal to the installed one.
 - `review_files._schema_errors(…, path)` — new `path` argument; returns no errors when the copy at the record's `commit` accepts it.
 - `orchestration_config.validate_orchestration_dict(…, repo_root, rev)` / `parse_orchestration_text(…, repo_root, rev)` — optional arguments (old calls unchanged); `load_orchestration_config` passes the ref (or the working tree).
@@ -95,3 +111,5 @@ record value never reaches git as an option (a `-`-leading revision is refused).
 - `…::test_outside_a_specy_road_checkout_only_the_installed_schema_counts` — adopter behaviour unchanged.
 - `…::test_a_checkout_copy_equal_to_the_installed_one_changes_nothing` — an unchanged copy does not widen anything.
 - `…::test_a_record_value_never_reaches_git_as_an_option` — the option guard.
+- `…::test_a_worker_record_field_the_leaf_adds_is_read_and_kept` — a worker record with a new field is listed (handoff status's `list_records`) and keeps the field through an installed-code save.
+- `…::test_a_worker_record_field_is_checked_against_the_record_s_own_branch` — the same record on a branch without the schema change is still rejected.
