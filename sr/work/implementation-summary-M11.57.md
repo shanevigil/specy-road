@@ -6,6 +6,7 @@ Commits:
 - `c3518c98`: implementation.
 - `b8516f50`: fix round 1, Codex Sol F1. Claims are read from the integration branch, not the caller's worktree.
 - `90b03081`: fix round 2, Codex Sol F1. One conservative rule replaces the separate Complete and claim checks; a stale Complete ref no longer overrides a reopened leaf.
+- `096d5040`: merge of `origin/WIP/improvements-0-3-1` (brings in WIP's new Codex reviewer entries; no behaviour change for this leaf). `finish_task.py`: kept WIP's `pickup_finish_lock` import beside this leaf's imports; `_end_leaf_workers` still runs after the bookkeeping commit, now inside WIP's lock. `docs/orchestration-workers.md`: took WIP's one-line paragraph, with this leaf's finish sentence replacing "`terminate` the idle worker afterwards". `worker_cli.py` auto-merged to 401 lines, so the leaf's two `sync` lines became one call to the new `worker_orphans.with_orphans`, back to 400. After the merge: `tests/test_worker_orphans.py` with `tests/test_worker_cli.py`, 36 passed; WIP's finish and lock tests, 18 passed; file-limits OK.
 
 ## What changed
 
@@ -83,6 +84,7 @@ In the zones but not changed: `specy_road/worker_ops.py`, `specy_road/worker_sta
 - `worker_orphans._end`: the shared locked bulk terminate with one lease release, plus a read-before-lock guard.
 - `worker_orphans.terminate_orphaned`: `worker terminate --orphaned` (A3).
 - `worker_orphans.end_finished_workers`: finish's cleanup of its own leaf's workers (A3).
+- `worker_orphans.with_orphans` (merge): `worker sync`'s JSON and lines with every orphan added, one call so `worker_cli.py` stays at 400 lines after WIP's `sync` additions.
 - `worker_orphans.orphan_lines`, `list_view`, `add_terminate`: CLI code kept out of `worker_cli.py`, which is at the cap. `add_terminate` makes `W` optional and refuses neither/both and `--orphaned --op-id` (argparse exit 2).
 - `worker_lease.slot_error`: takes records, not a count, to name running and held workers apart.
 - `worker_lease.sync_leases`: releases a freed worker's lease and pushes only for counted workers. It replaces `_closed`, which only this function used.
