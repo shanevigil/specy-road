@@ -6,6 +6,18 @@
 - **A2 (`--read-only`):** `specy-road gui --read-only` sets `SPECY_ROAD_GUI_READ_ONLY=1`; `create_app(read_only=None)` reads it (or takes it explicitly) and installs middleware that refuses every non-GET/HEAD/OPTIONS request under `/api/` with a JSON `403`. That includes POSTs that only test settings (`/llm/test`, `/git/test`, `/archives/preview`, `/research/test`); `/git/test` writes a flag, and the others are refused too so that one rule covers every route.
 - **A3 (docs + JSON 404):** `docs/pm-gui.md` gains a *Read-only JSON API* section listing every GET route, the safe-save protocol, and `--read-only`. A catch-all `/api/{rest:path}` (all methods), registered after the API routers and before the SPA fallback, returns a JSON `404` instead of `index.html`.
 
+## Bounded A1 (decision D1, maintainer, 2026-11-03)
+
+A1 now reads: GET `/api/planning/file` and GET `/api/workspace/file`, and every successful PUT to them, return the hash of the bytes read or written. A PUT whose `X-Base-Content-Hash` does not match the file on disk gets `409` with the current content, and nothing is written. The UI shows the conflict instead of overwriting. Edits by other writers after that one check, a second check, and file locks against other writers are out of scope.
+
+The code at `ccc3670a` already meets it, and nothing about the save check was widened:
+- GETs hash the bytes they read (`read_snapshot`), and a successful PUT returns the hash of the bytes it wrote (`write_snapshot`).
+- `require_unchanged_since` is the one check before each write; on a mismatch it returns `409` with `current_content`, and nothing is written.
+- `FileChangedOnDiskError` in `api.ts`, shipped in the rebuilt bundle, shows the conflict.
+- The stale-save, fresh-save, snapshot and post-write tests cover it.
+
+Merged `origin/WIP/improvements-0-3-1` into this branch (`7f7117f2`, no conflicts). `specy_road/cli.py` changed on both sides, and the `--read-only` flag and its env var are intact.
+
 ## Review round 1 (Codex Sol block) — fixes
 
 - **F1, packaged UI rebuilt:** ran `npm ci && npm run lint && npm test && npm run build` in `gui/pm-gantt/`. The rebuilt `specy_road/pm_gantt_static/` is committed: every content-hashed chunk was renamed because the index chunk changed, and `index.html` was updated. The new index chunk is 94 KB, well under CI's 900 KB budget. **Served-dashboard check:** uvicorn ran the worktree app against a scratch copy of the dogfood fixture, and headless Chromium (Python Playwright 1.64.1 in a scratch venv) opened **Vision**. The script then changed `vision.md` on disk and typed in the editor. The PUT carried `X-Base-Content-Hash` equal to the GET's `content_hash`, the server answered `409`, the footer showed "vision.md changed on disk since you opened it; your save was not written…", and the disk edit was kept. The footer prefixes the message with `FileChangedOnDiskError:` because `VisionDrawer` renders `String(e)`; the component is outside the touch zones, so it is left as is.
@@ -57,6 +69,7 @@ Used: `specy_road/gui_app_routes_planning.py`, `specy_road/gui_app_routes_worksp
 - `specy-road file-limits` — OK
 - `gui/pm-gantt`: `npm ci`, `npm run lint` (0 errors), `npm test` (184 passed), `npm run build` (into the tracked `specy_road/pm_gantt_static/`, round 1)
 - Red-green: with `gui_app.py` reverted, all 8 original tests fail; with only the two route files reverted, the 4 A1 tests fail; with the route files at `808d64fd` (separate reads), the 2 snapshot tests fail; with the route files at `b6e8772c` (hash reread after write), the 2 post-write tests fail.
+- After the D1 merge (foreground): `pytest -n 4 -q tests/test_gui_safe_saves.py tests/test_gui_workspace_file.py tests/test_gui_app.py tests/test_gui_app_mutations.py tests/test_pm_gui_fingerprint.py` — 51 passed; `specy-road file-limits` — OK.
 - Round 2, foreground: `python -m pytest tests/test_gui_safe_saves.py tests/test_gui_workspace_file.py tests/test_gui_app.py tests/test_gui_app_mutations.py tests/test_pm_gui_fingerprint.py -q` — 51 passed; `specy-road file-limits` — OK. The full suite and frontend gates were not rerun this round (no client change).
 
 ## Added
