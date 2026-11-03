@@ -22,6 +22,8 @@ def _line(rec, repo: Path | None = None) -> str:
     run = " (running)" if wrapper_alive(rec) else ""
     line = (f"{rec.worker_id}  {rec.node_id:<10} {rec.harness}/{rec.model:<22} {rec.state}{run}  "
             f"lease={rec.lease.get('holder')} epoch={rec.instruction_epoch}{flags}")
+    if rec.queued_message:
+        line += f"\n  queued: {' '.join(rec.queued_message.split())[:300]}"
     if repo is not None and rec.state == "failed":
         msg = _terminal_message(repo, rec.worker_id)
         if msg:
@@ -171,4 +173,14 @@ def usage_lines(data: dict[str, Any]) -> list[str]:
         lines.append(f"  attempt {a['attempt']} {a['worker_id']} {a['harness']}{version}/{a['model']}, {a['turns']} turn(s): {usage_text(a)}")
     t = data["total"]
     lines.append(f"  total, {t['turns']} turn(s): {usage_text(t)}")
+    return lines
+
+
+def sync_worker_header(w: dict[str, Any], queued: str | None) -> list[str]:
+    if queued:
+        w["queued_message"] = queued
+    flags = f" [{', '.join(w['flags'])}]" if w["flags"] else ""
+    lines = [f"{w['worker_id']} {w['node_id']} {w['state']} lease={w['lease']} epoch={w['epoch']}{flags}"]
+    if queued:
+        lines.append(f"  queued: {' '.join(queued.split())[:300]}")
     return lines

@@ -76,7 +76,9 @@ def test_a_stalled_worker_that_is_still_alive_says_how_to_resume(tmp_path: Path,
     monkeypatch.setattr(ops, "wrapper_gone", lambda *_a: False)
     monkeypatch.setattr(ops, "process_alive", lambda *_a: True)
     with pytest.raises(ws.WorkerError, match="stalled: once its harness exits, message resumes the session"):
-        ops.message(repo, rec.worker_id, "x")
+        ops.message(repo, rec.worker_id, "x", no_queue=True)
+    with pytest.raises(ws.WorkerError, match="still running"):
+        ops.resume(repo, rec.worker_id)
 
 
 def test_the_reopened_turn_counts_against_max_workers(tmp_path: Path, capsys) -> None:

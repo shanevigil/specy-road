@@ -84,6 +84,7 @@ class WorkerRecord:
     harness_pid: int | None = None    # the harness child, while it runs
     harness_start: str | None = None  # the harness's start time (ps lstart): with the pid, its identity
     last_output_at: str | None = None  # the harness's last stdout line (the turn's launch until one); stalled reads it
+    queued_message: str | None = None  # a follow-up from ``worker message`` while the wrapper was still running
 
     @property
     def active(self) -> bool:

@@ -1,15 +1,7 @@
-"""The operations behind ``specy-road worker`` (slice 7c).
+"""Operations behind ``specy-road worker`` (slice 7c): one lifecycle step per function, :class:`WorkerError` for the CLI.
 
-Each function does one lifecycle step on a worker record and raises
-:class:`WorkerError` (or :class:`Unsupported`) with the sentence the CLI
-prints. The CLI module is argument parsing and output only.
-
-``delegate`` runs **after pickup**: the leaf must already hold a registry
-claim with a branch, because pickup switches branches and pushes the
-registry, which is not something a coordinator's checkout should do on a
-worker's behalf (design note, slice 7). The worker's worktree is the
-coordinator's checkout when it has the claim's branch checked out, otherwise
-a linked worktree under ``work/.worktrees/<codename>``.
+``delegate`` runs after pickup (registry claim with a branch). The worktree is the coordinator checkout on
+that branch, else ``work/.worktrees/<codename>``.
 """
 
 from __future__ import annotations
@@ -297,15 +289,20 @@ def _wrapper_gone(repo_root: Path, rec: WorkerRecord) -> bool:
     return wrapper_gone(repo_root, rec)
 
 
-def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: bool = False) -> WorkerRecord:
+def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: bool = False, *,
+          no_queue: bool = False) -> WorkerRecord:
     require_writer(rec)
     _wrapper_gone(repo_root, rec)   # a crashed turn is recorded as failed, then resumed below like any failed one
     if rec.state == "terminated" or (rec.state == "failed" and not rec.provider_session_id):   # failed keeps its session
         raise WorkerError(f"{rec.worker_id} is {rec.state}, session {rec.provider_session_id or 'none'}; delegate again instead")
     if process_alive(rec, repo_root):
-        raise WorkerError(f"{rec.worker_id} is still running (pid {rec.pid}); the CLI adapters cannot steer a live turn — "
-                          + ("it is stalled: once its harness exits, message resumes the session (terminate closes it "
-                             "for good)" if FLAG_STALLED in rec.flags else "wait for it to end, or terminate it"))
+        if no_queue:
+            raise WorkerError(f"{rec.worker_id} is still running (pid {rec.pid}); the CLI adapters cannot steer a live turn — "
+                              + ("it is stalled: once its harness exits, message resumes the session (terminate closes it "
+                                 "for good)" if FLAG_STALLED in rec.flags else "wait for it to end, or terminate it"))
+        from specy_road.worker_runner import queue_worker_message  # noqa: PLC0415 — runner calls _send on delivery
+
+        return queue_worker_message(repo_root, rec, text)
     require_branch(rec)   # the worktree must still be on the worker's branch (review round 6, B12)
     adapter = adapter_for(rec.harness)
     if not adapter.caps.resume:
@@ -334,14 +331,14 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: boo
     return rec
 
 
-def message(repo_root: Path, worker_id: str, text: str, *, offline: bool = False) -> WorkerRecord:
+def message(repo_root: Path, worker_id: str, text: str, *, offline: bool = False, no_queue: bool = False) -> WorkerRecord:
     with workers_lock(repo_root):   # check, event and spawn as one transition
-        return _send(repo_root, load_record(repo_root, worker_id), text, "message", offline)
+        return _send(repo_root, load_record(repo_root, worker_id), text, "message", offline, no_queue=no_queue)
 
 
 def resume(repo_root: Path, worker_id: str, *, offline: bool = False) -> WorkerRecord:
     with workers_lock(repo_root):
-        return _send(repo_root, load_record(repo_root, worker_id), CONTINUE_PROMPT, "resume", offline)
+        return _send(repo_root, load_record(repo_root, worker_id), CONTINUE_PROMPT, "resume", offline, no_queue=True)
 
 
 def interrupt(repo_root: Path, worker_id: str) -> None:
@@ -371,6 +368,9 @@ def _terminate_locked(repo_root: Path, rec: WorkerRecord) -> WorkerRecord:
         # group holds the harness and everything the harness spawned; the
         # group is signalled and confirmed gone even when the wrapper itself died.
         kill_group(rec, repo_root)
+    if rec.queued_message:
+        mutate(repo_root, rec, lambda r: setattr(r, "queued_message", None))
+        rec, summary = load_record(repo_root, rec.worker_id), f"{summary}; dropped queued follow-up"
     set_state(repo_root, rec, "terminated", pid=None)
     append_event(repo_root, rec, "terminated", source="orchestrator", authority="orchestrator", summary=summary)
     return rec

@@ -1,21 +1,5 @@
 version: 1
 entries:
-  - codename: queue-worker-message
-    node_id: M11.14
-    branch: feature/rm-queue-worker-message
-    touch_zones:
-      - specy_road/worker_ops.py
-      - specy_road/worker_runner.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - docs/orchestration-workers.md
-      - tests/
-      - specy_road/bundled_scripts/worker_cli_render.py
-      - specy_road/schemas/worker-event.schema.json
-      - specy_road/schemas/worker-record.schema.json
-      - specy_road/worker_state.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: sheet-edits-keep-approvals
     node_id: M11.16
     branch: feature/rm-sheet-edits-keep-approvals
