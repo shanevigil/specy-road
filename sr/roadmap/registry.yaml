@@ -83,15 +83,3 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: worktree-handoff-writable
-    node_id: M11.24
-    branch: feature/rm-worktree-handoff-writable
-    touch_zones:
-      - specy_road/worker_adapters.py
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - docs/orchestration-workers.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T04:07:35+00:00'

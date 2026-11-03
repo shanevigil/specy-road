@@ -111,7 +111,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.24_worktree-handoff-writable_5021c591-ae29-4b76-b422-66c0a4d51c13.md",
       "sibling_order": 24,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Executors and reviewers in a worktree can write and check the right places",
       "touch_zones": [
         "specy_road/worker_adapters.py",
