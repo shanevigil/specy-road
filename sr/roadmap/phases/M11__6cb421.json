@@ -187,13 +187,14 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.63_pickup-second-claim-guard_cabfd63c-1329-4e9f-9b32-aaeaeaa851d6.md",
       "sibling_order": 63,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "do-next-available-task refuses a second claim in a checkout that already holds one",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_task.py",
         "specy_road/bundled_scripts/do_next_task_args.py",
         "specy_road/templates/",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/do_next_task_held_claim.py"
       ],
       "type": "task"
     },
