@@ -23,7 +23,9 @@ force-allows every command not explicitly denied, so that default is the widest 
 A reviewer gets its own command (:meth:`Adapter.reviewer_launch`), read-only on every harness that has one:
 Claude Code ``--bare`` with ``--disallowedTools`` for commits, pushes and ``gh``; Codex ``sandbox_mode=read-only``;
 Cursor ``--mode ask --trust`` without ``--force``. Its final message is the review as JSON
-(:meth:`Adapter.final_message`), which :mod:`specy_road.review_record_write` files as the record.
+(:meth:`Adapter.final_message`), which :mod:`specy_road.review_record_write` files as the record. A reviewer's
+custom command goes through :func:`reviewer_cli`, which gives Antigravity's ``agy`` (a ``generic`` harness) its
+``--json-schema`` and read-only flags.
 """
 
 from __future__ import annotations
@@ -32,6 +34,7 @@ from specy_road.worker_adapter_base import (  # re-exported
     CODEX_POLICY,
     CODEX_REVIEW_POLICY,
     EFFORT_FLAGS,
+    AGY_REVIEW_FLAGS,
     REVIEWER_DISALLOWED,
     REVIEWS_DIR,
     STDIN_INSTRUCTION,
@@ -44,6 +47,7 @@ from specy_road.worker_adapter_base import (  # re-exported
     _model_flag,
     _reviews_handoff_dir,
     linked_worktree,
+    reviewer_cli,
     reviews_dir_into,
 )
 from specy_road.worker_adapter_claude import ClaudeCode

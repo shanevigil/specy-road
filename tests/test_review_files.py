@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.review_delegate_helpers import fake_reviewer_run
+
 from specy_road import review_files as rf
 
 READY = """---
@@ -235,24 +237,6 @@ def _claude_code_reviewer_repo(tmp_path: Path, channels: str = "") -> Path:
     return repo
 
 
-def _fake_run(monkeypatch, answer: list[str] | None = None) -> list[dict]:
-    """Record each launch instead of running it; a default reviewer turn "prints" ``answer``'s lines."""
-    from types import SimpleNamespace
-
-    from specy_road.bundled_scripts import role_prompt
-
-    calls: list[dict] = []
-    monkeypatch.setattr(role_prompt, "subprocess", SimpleNamespace(
-        run=lambda cmd, **kw: calls.append({"cmd": cmd, **kw}) or SimpleNamespace(returncode=0)))
-
-    def logged(launch, adapter, cwd, log) -> int:
-        calls.append({"cmd": launch.argv, "input": launch.stdin, "cwd": cwd})
-        log.write_text("[review prompt] now claude\n" + "\n".join(answer or []) + "\n", encoding="utf-8")
-        return 0
-    monkeypatch.setattr(role_prompt, "run_logged", logged)
-    return calls
-
-
 def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, capsys, monkeypatch) -> None:
     from specy_road.bundled_scripts import role_prompt
     from specy_road.worker_adapters import STDIN_INSTRUCTION
@@ -261,7 +245,7 @@ def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, cap
 
     repo = _claude_code_reviewer_repo(tmp_path)
     answer = review_output(git(repo, "rev-parse", "HEAD"), model="opus")
-    calls = _fake_run(monkeypatch, [json.dumps({"type": "result", "subtype": "success", "result": "done",
+    calls = fake_reviewer_run(monkeypatch, [json.dumps({"type": "result", "subtype": "success", "result": "done",
                                                 "structured_output": answer})])
     assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
                     "--repo-root", str(repo)) == 0
@@ -298,11 +282,13 @@ def test_claude_code_reviewer_with_channels_cli_runs_it_as_written(tmp_path: Pat
     from tests.test_models_and_prompt import run_main
 
     repo = _claude_code_reviewer_repo(tmp_path, '    channels: {cli: "cat {prompt} | head -1"}\n')
-    calls = _fake_run(monkeypatch)
+    calls = fake_reviewer_run(monkeypatch)
     assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
-                    "--repo-root", str(repo)) == 0
-    assert calls[0]["cmd"].startswith("cat ") and "--bare" not in calls[0]["cmd"]
-    assert "ANTHROPIC_API_KEY" not in capsys.readouterr().err
+                    "--repo-root", str(repo)) == 1   # M8.3: captured, and `cat | head` prints no verdict
+    assert calls[0]["cmd"][:2] == ["sh", "-c"] and calls[0]["cmd"][2].startswith("cat ")
+    assert "--bare" not in calls[0]["cmd"][2]
+    err = capsys.readouterr().err
+    assert "ANTHROPIC_API_KEY" not in err and "rerun: rerun requested" in err
 
 
 def test_reviewer_prompt_asks_for_launch_mode(tmp_path: Path) -> None:

@@ -34,10 +34,13 @@ A reviewer on a ``claude-code`` roster entry without ``channels.cli`` runs bare 
 (:meth:`ClaudeCode.reviewer_launch`): a fresh session reading a branch it did not write runs none
 of that branch's hooks or MCP servers, and the reviewer prompt asks it to record ``--launch-mode``.
 A ``codex`` or ``cursor`` entry without ``channels.cli`` runs its adapter's read-only reviewer command
-the same way. A reviewer prompt ends with the review output schema (:mod:`specy_road.review_record_write`);
-on those default commands specy-road reads the final JSON object and files ``REVIEW-<model>.md`` from it,
-reports a run that wrote anything else as a review failure, and a missing or malformed object as a rerun
-request. A reviewer it does not read back (``paste``, ``subagent``, a roster command) files with ``review record``.
+the same way; any other reviewer command (a roster ``channels.cli``, an ``access.cli``) runs as written but
+captured, with the structured-output flags its program takes (Antigravity ``agy``:
+:func:`~specy_road.worker_adapter_base.reviewer_cli`). A reviewer prompt ends with the review output schema
+(:mod:`specy_road.review_record_write`); on ``--channel cli`` specy-road reads the final JSON object and files
+``REVIEW-<model>.md`` from it, reports a run that wrote anything else as a review failure, and a missing or
+malformed object as a rerun request. A reviewer it does not read back (``paste``, ``subagent``) files with
+``review record``.
 """
 
 from __future__ import annotations
@@ -71,13 +74,12 @@ from specy_road.orchestrate_plan import (
     node_sensitivity,
 )
 from specy_road.worker_adapter_parsers import effort_note
-from specy_road.worker_adapters import ADAPTERS, placeholder_problem, substitute_prompt
+from specy_road.worker_adapters import ADAPTERS, Launch, Unsupported, placeholder_problem, reviewer_cli, substitute_prompt
 from specy_road.orchestration_config import substitute_for
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_files import PACKET_NAME, reviews_dir
-from specy_road.review_record_write import (file_review, final_output, output_path, run_logged, run_text,
-                                            schema_lines, snapshot, write_schema)
+from specy_road.review_record_write import output_path, run_and_file, schema_lines, write_schema
 from specy_road.review_gate import delta_basis
 from specy_road.review_rca import escalated_note, loop_state, rca_evidence, rca_parties, rca_preamble
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
@@ -128,7 +130,8 @@ READ_BACK_LINES = [
     "object described at the end of this prompt, and skip the `review record` and `--launch-mode` steps above. "
     "Write no file but your notes (which belong in the object's `notes`), and do not commit, push or run `gh`: "
     "a run that writes anything else is reported as a review failure, and output with no valid object is a rerun "
-    "request, never a verdict.",
+    "request, never a verdict. That includes caches and build output in ignored or `work/` paths: specy-road runs "
+    "you with no Python bytecode and no pytest cache, so re-run commands that only read.",
     "",
 ]
 PASTED_LINES = [
@@ -262,10 +265,11 @@ def _shown(argv: list[str]) -> str:
 def run_default_reviewer(prof: Profile | None, prompt_path: Path, root: Path, model: str | None, reviews: Path,
                          level: str | None, harness: str = "claude-code", ref: str | None = None) -> int:
     """The harness's own read-only reviewer command (Claude Code bare, with ``--add-dir`` for the hand-off
-    directory), its final JSON filed as the record (:func:`file_review`); 0 only when a record was filed."""
+    directory), its final JSON filed as the record (:func:`~specy_road.review_record_write.file_review`);
+    0 only when a record was filed."""
     api_id = prof.api_id if prof is not None else model
     api_id = None if (api_id or "").strip().lower() in ("", "unknown") else api_id   # unknown: the harness default
-    adapter, out, log = ADAPTERS[harness], output_path(reviews, str(model)), reviews / f"RUN-{model}.log"
+    adapter, out = ADAPTERS[harness], output_path(reviews, str(model))
     out.unlink(missing_ok=True)   # a stale answer never stands in for this run's
     session = (str(uuid.uuid4()), False) if harness == "claude-code" else None   # stream-json, to read the result
     launch = adapter.reviewer_launch(prompt_path, api_id, reviews, level, session=session,
@@ -274,13 +278,24 @@ def run_default_reviewer(prof: Profile | None, prompt_path: Path, root: Path, mo
         print("note: the reviewer runs with --bare (no repository hooks, MCP servers or CLAUDE.md), and bare mode "
               "never reads your subscription login: it needs ANTHROPIC_API_KEY (or an apiKeyHelper)", file=sys.stderr)
     print(f"running: {_shown(launch.argv)}" + (f" < {prompt_path}" if launch.stdin is not None else ""), file=sys.stderr)
-    before = snapshot(root, root, reviews, str(model))
-    rc = run_logged(launch, adapter, root, log)
-    outcome = file_review(root, reviews.name, str(model), reviews, before=before,
-                          after=snapshot(root, root, reviews, str(model)),
-                          output=final_output(adapter, run_text(log), out), ref=ref, launch_mode=launch.launch_mode)
-    print(f"{outcome.state}: {outcome.path or outcome.reason}", file=sys.stderr)
-    return rc or (0 if outcome.state == "recorded" else 1)
+    return run_and_file(launch, adapter, root, str(model), reviews, ref)
+
+
+def run_custom_reviewer(prof: Profile | None, cli: str, prompt_path: Path, root: Path, model: str, reviews: Path,
+                        ref: str | None, harness: str | None, effort: list[str]) -> int:
+    """A roster ``channels.cli`` or profile ``access.cli`` reviewer, run as written plus its program's
+    structured-output flags (:func:`reviewer_cli`), captured and filed like the default commands."""
+    try:
+        cli = reviewer_cli(cli, write_schema(reviews))
+    except Unsupported as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    # The template, not the expansion: "<prompt>" would echo the whole brief.
+    print(f"running: {cli} (prompt: {prompt_path})", file=sys.stderr)
+    output_path(reviews, model).unlink(missing_ok=True)   # a stale answer never stands in for this run's
+    launch = Launch(["sh", "-c", substitute_prompt(cli, prompt_path, effort=effort)],
+                    launch_mode=prof.launch_mode() if prof is not None else "full")
+    return run_and_file(launch, ADAPTERS.get(harness or "generic", ADAPTERS["generic"]), root, model, reviews, ref)
 
 
 def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflight: str | None = None,
@@ -311,6 +326,8 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
     if note:
         print(note, file=sys.stderr)
     effort = ADAPTERS.get(harness or "generic", ADAPTERS["generic"]).effort_flag(level)
+    if role == "reviewer" and reviews is not None:   # captured, flagged and filed like the default commands
+        return run_custom_reviewer(prof, cli, prompt_path, root, str(model), reviews, ref, harness, effort)
     # The template, not the expansion: "<prompt>" would echo the whole brief.
     print(f"running: {cli} (prompt: {prompt_path})", file=sys.stderr)
     try:
@@ -343,7 +360,7 @@ def main(argv: list[str] | None = None) -> None:
     config, _ = pinned_config(root)
     entry = next((e for e in config.get("roster") or [] if e.get("id") == ns.model), {})
     entry_cli = (entry.get("channels") or {}).get("cli")
-    read_back = ns.channel == "cli" and entry.get("harness") in READ_BACK_HARNESSES and not entry_cli
+    read_back = ns.channel == "cli"   # every --channel cli reviewer turn is read back and filed
     text, prof, err = build_prompt(root, ns.node_id, role=ns.role, model=ns.model, ref=ns.ref,
                                    context_feedback=ns.context_feedback, read_back=read_back)
     if err:

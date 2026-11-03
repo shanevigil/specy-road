@@ -200,7 +200,8 @@ note saying so. Bare mode also fires no hook, so no hook can stop a commit or
 push: `--disallowedTools` denies them, and `gh`, beside the allowed tools. A
 `codex` or `cursor` entry without `channels.cli` runs its adapter's read-only
 reviewer command instead (next section). A `channels.cli` is run as written, and
-other harnesses use their profile's `access.cli` as before.
+other harnesses use their profile's `access.cli` as before, but a reviewer's
+command is captured and filed like the default ones (next section).
 
 ## Reviewer output and the read-only check
 
@@ -215,16 +216,20 @@ reviewer command passes the harness's structured-output flag where there is one:
 | Claude Code | `--bare`, `--disallowedTools` as above, `--json-schema '<schema>'` | the `result` event's `structured_output`, else its text |
 | Codex | `codex exec --json -c sandbox_mode=read-only -c approval_policy=never --output-schema <file> -o <OUTPUT-<model>.json> -` | the `-o` file; a resume (which documents neither flag) its last `agent_message` |
 | Cursor | `agent -p --output-format stream-json --mode ask --trust` (no `--force`) | the `result` event's text |
-| anything else (`channels.cli`, `generic`) | as written | the last JSON object in the output; Antigravity (`agy`) has no adapter yet, so its `--json-schema` is the entry's own command's to pass |
+| Antigravity (`agy`, a `generic` entry) | its `channels.cli` or `access.cli`, with `--json-schema <schema file>`, `--output-format json`, `--sandbox` and `--print-timeout 30m` added after `agy` where absent; `--dangerously-skip-permissions` is refused | the envelope's `structured_output` |
+| anything else (`channels.cli`, `generic`) | as written | the last JSON object in the output (a JSON envelope's `structured_output`) |
 
 The schema file is `work/reviews/<NODE_ID>/review-output.schema.json`. After the
-run (`prompt --channel cli` on a default command, or `review delegate`)
+run (`prompt --channel cli` or `review delegate`, default or custom command)
 specy-road decides the outcome:
 
-- **review failure** — the run wrote something besides its notes: a changed or
-  untracked file in the checkout it ran in (outside the project's `work/`), a
-  moved `HEAD`, or a `REVIEW-<model>.md` it filed itself, which is put back as
-  it was. Nothing is filed.
+- **review failure** — the run wrote something besides its notes
+  (`notes-<model>.md`) and the files the run itself keeps (`RUN-<model>.json`,
+  its `.tmp`, `RUN-<model>.log`, `OUTPUT-<model>.json`, the schema file and
+  `.review-run.lock`): any file of the checkout it ran in, git-ignored and
+  `work/` files included, any file of the leaf's hand-off directory, or a ref
+  (`HEAD`, a branch, a stash). A `REVIEW-<model>.md` it filed itself is put
+  back as it was. Nothing is filed.
 - **rerun request** — the output has no JSON object, does not match the schema,
   or `review record` refuses it (another commit, an approve with a failing
   item). Nothing is filed; it is never recorded as a verdict.
@@ -232,10 +237,18 @@ specy-road decides the outcome:
   `REVIEW-<model>.md` from them, with the launch mode, family and `history/`
   copy an interactive filing gets.
 
-Paths git ignores, other than the model's own record, are not inspected. A
-prompt specy-road does not read back (`paste`, `subagent`, a roster
-`channels.cli` through `prompt --channel cli`) asks for the same object and
-still has the reviewer file it with `review record`.
+The check walks every file, so run reviewers where nothing else writes: a
+coordinator or executor editing the same checkout during the run, or another
+leaf's reviewer filing there, counts as this run's write. The walk skips `.git`
+and nested checkouts (a linked worktree under `work/.worktrees`, a nested
+repository), which are other checkouts. Two reviewer runs of one leaf share its
+hand-off directory, so they take turns: a second run while one holds
+`.review-run.lock` is refused at once. The reviewer's process gets
+`PYTHONDONTWRITEBYTECODE=1` and `PYTEST_ADDOPTS=-p no:cacheprovider`, so
+re-running Python tests writes nothing; a command that still writes (a build,
+`.specyrd/cache`) fails the review. A prompt specy-road does not read back
+(`paste`, `subagent`) asks for the same object and still has the reviewer file
+it with `review record`.
 
 The reviewer prompt asks the reviewer to say how it was started:
 `specy-road review record … --launch-mode full|bare|explicit` stores

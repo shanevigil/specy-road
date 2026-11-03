@@ -1,75 +1,23 @@
 """``specy-road review delegate``: a rostered reviewer run on a fake claude-code harness (M11.7).
 
-The fake answers as a launched reviewer does since M8.3: a final JSON object specy-road files as the record.
+The fake (tests/review_delegate_helpers.py) answers as a launched reviewer does since M8.3: a final JSON object
+specy-road files as the record.
 """
 
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_output
+from tests.review_delegate_helpers import CAPACITY, delegate_repo, fake_calls, set_steps, verdict_step
+from tests.review_repo_helpers import commit_file, git
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_delegate import capacity_error, delegate, load_run
 from specy_road.review_files import reviews_dir
 from specy_road.worker_adapters import ClaudeCode
-
-# Each call takes the next step of the spec; the call's argv is appended to `calls`.
-FAKE = '''
-import json, os, sys
-spec = json.loads(open(sys.argv[1]).read())
-calls = json.loads(open(spec["calls"]).read()) if os.path.exists(spec["calls"]) else []
-calls.append(sys.argv[2:])
-open(spec["calls"], "w").write(json.dumps(calls))
-step = spec["steps"][min(len(calls), len(spec["steps"])) - 1]
-sid = sys.argv[-1]
-print(json.dumps({"type": "system", "subtype": "init", "session_id": sid, "model": "fake"}), flush=True)
-if step.get("write"):
-    open(step["write"]["path"], "w").write(step["write"]["text"])
-answer = json.dumps(step["answer"]) if "answer" in step else step.get("raw", "filed")
-if step.get("error"):
-    print(json.dumps({"type": "result", "subtype": "error_during_execution", "is_error": True,
-                      "result": step["error"], "session_id": sid}), flush=True)
-else:
-    print(json.dumps({"type": "result", "subtype": "success", "result": answer, "session_id": sid}), flush=True)
-sys.exit(step.get("exit", 0))
-'''
-
-CAPACITY = 'API Error: 529 {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}'
-
-
-def _roster(cli: str) -> str:
-    return ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
-            f"  - {{id: opus, family: anthropic, roles: [reviewer], harness: claude-code, channels: {{cli: '{cli}'}}}}\n"
-            "  - {id: plain, family: openai, roles: [reviewer]}\n")
-
-
-def _repo(tmp_path: Path) -> tuple[Path, Path]:
-    script, spec = tmp_path / "fake.py", tmp_path / "spec.json"
-    script.write_text(FAKE)
-    repo = make_review_repo(tmp_path, orchestration=_roster(f"{sys.executable} {script} {spec} {{prompt}} {{session_flag}}"))
-    (reviews_dir(repo, "M1.1")).mkdir(parents=True, exist_ok=True)
-    (reviews_dir(repo, "M1.1") / "PACKET.md").write_text("# Review packet\n\n**Commit under review:** HEAD\n")
-    return repo, spec
-
-
-def _steps(repo: Path, spec: Path, *steps: dict) -> None:
-    spec.write_text(json.dumps({"calls": str(spec.with_name("calls.json")), "steps": list(steps)}))
-
-
-def _calls(spec: Path) -> list[list[str]]:
-    return json.loads(spec.with_name("calls.json").read_text())
-
-
-def _files_record(repo: Path, verdict: str = "approve") -> dict:
-    """A step whose final JSON specy-road files as a valid REVIEW-opus.md for the commit under review."""
-    return {"answer": review_output(git(repo, "rev-parse", "HEAD"), model="opus", verdict=verdict,
-                                    a1="pass" if verdict == "approve" else "fail")}
-
 
 def _run(*args: str) -> int:
     with pytest.raises(SystemExit) as e:
@@ -88,13 +36,13 @@ def _status(repo: Path, capsys) -> dict:
 
 
 def test_success_builds_the_prompt_launches_and_records_the_session(tmp_path: Path, capsys) -> None:
-    repo, spec = _repo(tmp_path)
-    _steps(repo, spec, _files_record(repo))
+    repo, spec = delegate_repo(tmp_path)
+    set_steps(repo, spec, verdict_step(repo))
     assert _delegate(repo, "--json") == 0
     run = json.loads(capsys.readouterr().out)
     assert run["state"] == "complete" and run["harness"] == "claude-code" and run["reason"] is None
     assert run["commit"] == git(repo, "rev-parse", "HEAD") and len(run["attempts"]) == 1
-    (call,) = _calls(spec)
+    (call,) = fake_calls(spec)
     assert call[1] == "--session-id" and run["session_id"] == call[2]   # chosen up front, reported back
     prompt = Path(call[0]).read_text()
     assert "## Your role: reviewer" in prompt and "# Review packet" in prompt
@@ -105,35 +53,35 @@ def test_success_builds_the_prompt_launches_and_records_the_session(tmp_path: Pa
 
 
 def test_a_capacity_error_is_retried_with_backoff_and_resumes_the_session(tmp_path: Path) -> None:
-    repo, spec = _repo(tmp_path)
-    _steps(repo, spec, {"error": CAPACITY, "exit": 1}, {"error": CAPACITY, "exit": 1}, _files_record(repo))
+    repo, spec = delegate_repo(tmp_path)
+    set_steps(repo, spec, {"error": CAPACITY, "exit": 1}, {"error": CAPACITY, "exit": 1}, verdict_step(repo))
     waits: list[float] = []
     run = delegate(repo, "M1.1", "opus", retries=3, backoff=2.0, sleep=waits.append)
     assert run["state"] == "complete"
     assert [a["capacity"] for a in run["attempts"]] == [True, True, False]
     assert waits == [2.0, 4.0]                              # doubling, between attempts only
-    first, second, third = _calls(spec)
+    first, second, third = fake_calls(spec)
     assert first[1] == "--session-id" and second[1:3] == third[1:3] == ["--resume", first[2]]
     assert "Continue the review" in Path(second[0]).read_text()
 
 
 def test_capacity_retries_are_bounded_and_end_incomplete(tmp_path: Path, capsys) -> None:
-    repo, spec = _repo(tmp_path)
-    _steps(repo, spec, {"error": CAPACITY, "exit": 1})
+    repo, spec = delegate_repo(tmp_path)
+    set_steps(repo, spec, {"error": CAPACITY, "exit": 1})
     assert _delegate(repo, "--retries", "2") == 1
-    assert len(_calls(spec)) == 3
+    assert len(fake_calls(spec)) == 3
     run = load_run(repo, "M1.1", "opus")
     assert run["state"] == "incomplete" and "capacity error after 3 attempt(s)" in run["reason"]
     assert "incomplete" in capsys.readouterr().out
 
 
 def test_a_run_that_writes_no_record_is_incomplete_and_never_shows_the_old_verdict(tmp_path: Path, capsys) -> None:
-    repo, spec = _repo(tmp_path)
-    _steps(repo, spec, _files_record(repo, "block"))
+    repo, spec = delegate_repo(tmp_path)
+    set_steps(repo, spec, verdict_step(repo, "block"))
     assert _delegate(repo) == 0
     assert _status(repo, capsys)["state"] == "blocked"
     commit_file(repo, "src/a.py", "print('fixed')\n", "fix")       # the executor answers the block
-    _steps(repo, spec, {"error": CAPACITY, "exit": 1})
+    set_steps(repo, spec, {"error": CAPACITY, "exit": 1})
     assert _delegate(repo, "--retries", "0") == 1
     st = _status(repo, capsys)
     assert st["state"] != "blocked" and st["reviews"] == []          # the old block is not this commit's verdict
@@ -149,8 +97,8 @@ def test_a_run_that_writes_no_record_is_incomplete_and_never_shows_the_old_verdi
 
 
 def test_a_clean_exit_without_a_record_is_incomplete(tmp_path: Path) -> None:
-    repo, spec = _repo(tmp_path)
-    _steps(repo, spec, {})
+    repo, spec = delegate_repo(tmp_path)
+    set_steps(repo, spec, {})
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
     assert run["state"] == "incomplete" and run["outcome"] == "rerun"
     assert run["reason"] == "rerun requested: the reviewer's output ends with no JSON object"
@@ -159,12 +107,12 @@ def test_a_clean_exit_without_a_record_is_incomplete(tmp_path: Path) -> None:
 
 
 def test_resume_continues_the_recorded_session(tmp_path: Path, capsys) -> None:
-    repo, spec = _repo(tmp_path)
-    _steps(repo, spec, {}, _files_record(repo))
+    repo, spec = delegate_repo(tmp_path)
+    set_steps(repo, spec, {}, verdict_step(repo))
     assert _delegate(repo) == 1
     sid = load_run(repo, "M1.1", "opus")["session_id"]
     assert _delegate(repo, "--resume") == 0
-    assert _calls(spec)[1][1:3] == ["--resume", sid]
+    assert fake_calls(spec)[1][1:3] == ["--resume", sid]
     commit_file(repo, "src/a.py", "print('moved')\n", "moved")
     capsys.readouterr()
     assert _delegate(repo, "--resume") == 1                           # the session reviewed another commit
@@ -172,7 +120,7 @@ def test_resume_continues_the_recorded_session(tmp_path: Path, capsys) -> None:
 
 
 def test_refusals(tmp_path: Path, capsys) -> None:
-    repo, _spec = _repo(tmp_path)
+    repo, _spec = delegate_repo(tmp_path)
     assert _run("review", "delegate", "M1.1", "--model", "nobody", "--repo-root", str(repo)) == 1
     assert "not in the roster" in capsys.readouterr().err
     assert _run("review", "delegate", "M1.1", "--model", "plain", "--resume", "--repo-root", str(repo)) == 2
@@ -182,19 +130,19 @@ def test_refusals(tmp_path: Path, capsys) -> None:
 @pytest.mark.parametrize("flag,value", [("--retries", "-1"), ("--retries", "1.5"), ("--backoff", "-1"),
                                         ("--backoff", "nan"), ("--backoff", "inf")])
 def test_invalid_retry_controls_are_refused_before_any_launch(tmp_path: Path, capsys, flag: str, value: str) -> None:
-    repo, spec = _repo(tmp_path)
-    _steps(repo, spec, {"error": CAPACITY, "exit": 1})
+    repo, spec = delegate_repo(tmp_path)
+    set_steps(repo, spec, {"error": CAPACITY, "exit": 1})
     assert _run("review", "delegate", "M1.1", "--model", "opus", flag, value, "--repo-root", str(repo)) == 2
     assert f"argument {flag}" in capsys.readouterr().err
     assert not spec.with_name("calls.json").exists() and load_run(repo, "M1.1", "opus") is None
 
 
 def test_zero_retries_still_makes_the_first_attempt_and_ends_incomplete(tmp_path: Path, capsys) -> None:
-    repo, spec = _repo(tmp_path)
-    _steps(repo, spec, {"error": CAPACITY, "exit": 1})
+    repo, spec = delegate_repo(tmp_path)
+    set_steps(repo, spec, {"error": CAPACITY, "exit": 1})
     assert _delegate(repo, "--retries", "0", "--json") == 1             # --backoff 0: no wait, no crash
     run = json.loads(capsys.readouterr().out)
-    assert len(_calls(spec)) == 1 and [a["capacity"] for a in run["attempts"]] == [True]
+    assert len(fake_calls(spec)) == 1 and [a["capacity"] for a in run["attempts"]] == [True]
     assert run["state"] == "incomplete" and "capacity error after 1 attempt(s)" in run["reason"]
 
 

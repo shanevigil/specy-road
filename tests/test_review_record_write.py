@@ -9,14 +9,16 @@ from pathlib import Path
 
 import pytest
 
+from tests.review_delegate_helpers import delegate_repo, fake_reviewer_run, set_steps, verdict_step
 from tests.review_repo_helpers import commit_file, git, make_review_repo, review_output
-from tests.test_review_delegate import _files_record, _repo, _steps
+from tests.test_models_and_prompt import run_main
 
 from specy_road import review_files as rf
 from specy_road.bundled_scripts import role_prompt
-from specy_road.review_delegate import delegate
-from specy_road.review_record_write import json_object, output_schema, snapshot, written
-from specy_road.worker_adapters import Codex, Cursor
+from specy_road.review_delegate import DelegateError, delegate
+from specy_road.review_record_write import (json_object, output_schema, review_run_lock, reviewer_env, snapshot,
+                                            written)
+from specy_road.worker_adapters import Codex, Cursor, Unsupported, reviewer_cli
 
 M87_NOTE = Path(__file__).resolve().parents[1] / "docs" / "design-notes" / "M8.7-runtime-verification-harness-facts.md"
 
@@ -27,38 +29,72 @@ def _record(repo: Path) -> Path:
 
 # --- A2: a run that writes anything but its notes ------------------------------------------------------------
 
-def test_a_run_that_edits_a_checkout_file_is_a_review_failure_and_files_nothing(tmp_path: Path) -> None:
-    repo, spec = _repo(tmp_path)
-    _steps(repo, spec, {**_files_record(repo), "write": {"path": str(repo / "src" / "a.py"), "text": "x = 2\n"}})
+@pytest.mark.parametrize("rel", [
+    "src/a.py",                         # a tracked file
+    "work/unrelated-output.txt",        # an untracked file in the project's work/
+    "work/reviews/M1.1/scratch.md",     # an ignored file, in the hand-off directory itself
+])
+def test_a_run_that_writes_anything_but_its_notes_is_a_review_failure_and_files_nothing(tmp_path: Path, rel: str) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    set_steps(repo, spec, {**verdict_step(repo), "write": {"path": str(repo / rel), "text": "x = 2\n"}})
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
     assert run["state"] == "incomplete" and run["outcome"] == "review_failure"
-    assert run["reason"].startswith("review failure: the reviewer run wrote src/a.py")
+    assert run["reason"].startswith(f"review failure: the reviewer run wrote {rel};")
     assert not _record(repo).exists()                                 # the verdict in its output is not filed
 
 
+def test_the_reviewers_own_notes_are_the_one_write_allowed(tmp_path: Path) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    notes = rf.reviews_dir(repo, "M1.1") / "notes-opus.md"
+    set_steps(repo, spec, {**verdict_step(repo), "write": {"path": str(notes), "text": "draft\n"}})
+    run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
+    assert run["state"] == "complete" and run["outcome"] == "recorded", run["reason"]
+
+
 def test_a_run_that_files_its_own_record_is_a_review_failure_and_the_record_is_put_back(tmp_path: Path) -> None:
-    repo, spec = _repo(tmp_path)
-    _steps(repo, spec, _files_record(repo, "block"))
+    repo, spec = delegate_repo(tmp_path)
+    set_steps(repo, spec, verdict_step(repo, "block"))
     assert delegate(repo, "M1.1", "opus", sleep=lambda s: None)["state"] == "complete"
     filed = _record(repo).read_bytes()
     commit_file(repo, "src/a.py", "print('fixed')\n", "fix")
     approve = review_output(git(repo, "rev-parse", "HEAD"), model="opus")
     text = "---\n" + json.dumps({k: v for k, v in approve.items() if k != "notes"}) + "\n---\nmine\n"
-    _steps(repo, spec, {**_files_record(repo), "write": {"path": str(_record(repo)), "text": text}})
+    set_steps(repo, spec, {**verdict_step(repo), "write": {"path": str(_record(repo)), "text": text}})
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
     assert run["outcome"] == "review_failure" and "REVIEW-opus.md" in run["reason"]
     assert _record(repo).read_bytes() == filed                        # the earlier block, not the self-filed approve
 
 
-def test_a_commit_moves_head_and_counts_as_a_write(tmp_path: Path) -> None:
+def test_a_commit_and_an_ignored_cache_count_as_writes_and_other_checkouts_do_not(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     reviews = rf.reviews_dir(repo, "M1.1")
-    before = snapshot(repo, repo, reviews, "opus")
-    (repo / "work").mkdir(exist_ok=True)
-    (repo / "work" / "prompt-M1.1-reviewer-opus.md").write_text("specy-road's own\n")
-    assert written(before, snapshot(repo, repo, reviews, "opus")) == []   # the project's work/ is specy-road's
+    nested = repo / "work" / ".worktrees" / "other"
+    nested.mkdir(parents=True)
+    (nested / ".git").write_text("gitdir: elsewhere\n")                   # a linked worktree: another checkout
+    before = snapshot(repo, reviews, "opus")
+    (nested / "edit.py").write_text("theirs\n")
+    assert written(before, snapshot(repo, reviews, "opus")) == []
+    (repo / "work" / "reviews" / "M1.1").mkdir(parents=True, exist_ok=True)
+    (repo / "work" / "reviews" / "M1.1" / "RUN-opus.log").write_text("the run's own log\n")
+    assert written(before, snapshot(repo, reviews, "opus")) == []
     git(repo, "commit", "-q", "--allow-empty", "-m", "reviewer commit")
-    assert written(before, snapshot(repo, repo, reviews, "opus")) == ["HEAD"]
+    (repo / "work" / "reviews" / "M1.1" / "RUN-sol.log").write_text("not this run's\n")
+    assert written(before, snapshot(repo, reviews, "opus")) == ["git refs", "work/reviews/M1.1/RUN-sol.log"]
+
+
+def test_one_leafs_reviewer_runs_take_turns(tmp_path: Path) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    set_steps(repo, spec, verdict_step(repo))
+    with review_run_lock(rf.reviews_dir(repo, "M1.1")):
+        with pytest.raises(DelegateError, match="another reviewer run of M1.1 is in progress"):
+            delegate(repo, "M1.1", "opus", sleep=lambda s: None)
+    assert delegate(repo, "M1.1", "opus", sleep=lambda s: None)["state"] == "complete"
+
+
+def test_the_reviewer_process_writes_no_bytecode_or_pytest_cache() -> None:
+    env = reviewer_env({"PYTEST_ADDOPTS": "-q"})
+    assert env["PYTHONDONTWRITEBYTECODE"] == "1" and env["PYTEST_ADDOPTS"] == "-q -p no:cacheprovider"
+    assert reviewer_env(env) == env
 
 
 # --- A3: missing or malformed output is a rerun request ---------------------------------------------------------
@@ -68,8 +104,8 @@ def test_a_commit_moves_head_and_counts_as_a_write(tmp_path: Path) -> None:
     ('{"verdict": "approve"}', "does not match the review output schema"),
 ])
 def test_malformed_output_is_a_rerun_request_never_a_verdict(tmp_path: Path, raw: str, why: str) -> None:
-    repo, spec = _repo(tmp_path)
-    _steps(repo, spec, {"raw": raw})
+    repo, spec = delegate_repo(tmp_path)
+    set_steps(repo, spec, {"raw": raw})
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
     assert run["state"] == "incomplete" and run["outcome"] == "rerun"
     assert run["reason"].startswith("rerun requested: ") and why in run["reason"]
@@ -77,9 +113,9 @@ def test_malformed_output_is_a_rerun_request_never_a_verdict(tmp_path: Path, raw
 
 
 def test_output_review_record_refuses_is_a_rerun_request(tmp_path: Path) -> None:
-    repo, spec = _repo(tmp_path)
+    repo, spec = delegate_repo(tmp_path)
     stale = review_output(git(repo, "rev-parse", "HEAD~1"), model="opus")   # not the commit under review
-    _steps(repo, spec, {"answer": stale})
+    set_steps(repo, spec, {"answer": stale})
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
     assert run["outcome"] == "rerun" and "review record refused the output" in run["reason"]
     assert "Re-review the current commit" in run["reason"] and not _record(repo).exists()
@@ -103,7 +139,7 @@ def test_the_output_schema_is_the_record_schema_less_what_specy_road_fills() -> 
 
 
 def test_a_pasted_reviewer_prompt_asks_for_the_object_and_still_files_by_hand(tmp_path: Path) -> None:
-    repo, _spec = _repo(tmp_path)
+    repo, _spec = delegate_repo(tmp_path)
     pasted = role_prompt.build_prompt(repo, "M1.1", role="reviewer", model="opus", read_back=False)[0]
     read_back = role_prompt.build_prompt(repo, "M1.1", role="reviewer", model="opus")[0]
     assert pasted.rstrip().endswith("```") and "## Your final message: one JSON object" in pasted
@@ -179,20 +215,90 @@ def test_a_codex_review_delegate_files_the_verdict_from_its_output_file(tmp_path
 
 
 def test_prompt_channel_cli_runs_a_cursor_reviewer_read_only_and_files_its_answer(tmp_path: Path, monkeypatch) -> None:
-    from tests.test_models_and_prompt import run_main
-    from tests.test_review_files import _fake_run
-
     repo = make_review_repo(tmp_path, orchestration=(
         "version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
         "  - {id: comp, family: cursor, roles: [reviewer], harness: cursor}\n"))
     rf.reviews_dir(repo, "M1.1").mkdir(parents=True)
     (rf.reviews_dir(repo, "M1.1") / "PACKET.md").write_text("# Review packet\n")
     answer = review_output(git(repo, "rev-parse", "HEAD"), model="comp")
-    calls = _fake_run(monkeypatch, [json.dumps({"type": "result", "subtype": "success",
-                                                "result": "Verdict:\n" + json.dumps(answer)})])
+    calls = fake_reviewer_run(monkeypatch, [json.dumps({"type": "result", "subtype": "success",
+                                                        "result": "Verdict:\n" + json.dumps(answer)})])
     assert run_main(role_prompt, "M1.1", "--model", "comp", "--role", "reviewer", "--channel", "cli",
                     "--repo-root", str(repo)) == 0
     (call,) = calls
     assert call["cmd"][:7] == ["agent", "-p", "--output-format", "stream-json", "--mode", "ask", "--trust"]
     assert "--force" not in call["cmd"] and "**specy-road files your record.**" in call["cmd"][-1]
     assert rf.load_review(rf.review_path(repo, "M1.1", "comp"), ["A1", "A2"]).ok
+
+
+# --- custom reviewer commands: captured, write-checked and filed too ------------------------------------------------
+
+GENERIC = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+           "  - {id: gem, family: google, roles: [reviewer], harness: generic, channels: {cli: '{fake} {prompt}'}}\n")
+
+
+@pytest.mark.parametrize("writes", [False, True])
+def test_prompt_channel_cli_captures_a_custom_reviewer_command_and_checks_its_writes(tmp_path: Path, capsys,
+                                                                                     writes: bool) -> None:
+    repo, spec = delegate_repo(tmp_path, GENERIC)
+    step = {**verdict_step(repo, model="gem"), "plain": True}
+    set_steps(repo, spec, {**step, "write": {"path": str(repo / "work" / "out.txt"), "text": "x"}} if writes else step)
+    rc = run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli",
+                  "--repo-root", str(repo))
+    err = capsys.readouterr().err
+    assert (rc, rf.review_path(repo, "M1.1", "gem").exists()) == ((1, False) if writes else (0, True))
+    assert ("review_failure: review failure: the reviewer run wrote work/out.txt" in err) is writes
+    prompt = (repo / "work" / "prompt-M1.1-reviewer-gem.md").read_text()
+    assert "**specy-road files your record.**" in prompt
+
+
+def test_a_custom_reviewer_command_under_review_delegate_is_checked_and_filed(tmp_path: Path) -> None:
+    repo, spec = delegate_repo(tmp_path, GENERIC)
+    set_steps(repo, spec, {**verdict_step(repo, model="gem"), "plain": True})
+    assert delegate(repo, "M1.1", "gem", sleep=lambda s: None)["outcome"] == "recorded"
+
+
+# --- A1: Antigravity (agy, a generic harness) gets --json-schema from the adapter -------------------------------------
+
+def test_agy_reviewer_commands_get_the_schema_and_read_only_flags(tmp_path: Path) -> None:
+    schema = tmp_path / "review-output.schema.json"
+    assert reviewer_cli('agy -p "<prompt>" --model g', schema) == (
+        f'agy --json-schema {schema} --output-format json --sandbox --print-timeout 30m -p "<prompt>" --model g')
+    kept = reviewer_cli("agy --json-schema=s.json --output-format stream-json --sandbox --print-timeout 1h -p x", schema)
+    assert kept == "agy --json-schema=s.json --output-format stream-json --sandbox --print-timeout 1h -p x"
+    assert reviewer_cli("/opt/bin/agy -p x", schema).startswith(f"/opt/bin/agy --json-schema {schema} ")
+    assert reviewer_cli('wrapper agy -p "<prompt>"', schema) == 'wrapper agy -p "<prompt>"'
+    with pytest.raises(Unsupported, match="--dangerously-skip-permissions"):
+        reviewer_cli("agy -p x --dangerously-skip-permissions", schema)
+
+
+FAKE_AGY = '''#!{python}
+import json, os, sys
+spec = json.loads(open(os.environ["FAKE_AGY_SPEC"]).read())
+open(spec["calls"], "w").write(json.dumps(sys.argv[1:]))
+envelope = {{"conversation_id": "c-1", "status": "SUCCESS", "response": json.dumps(spec["answer"]),
+            "structured_output": spec["answer"], "num_turns": 1}}
+print(json.dumps(envelope, indent=2), flush=True)   # one envelope, pretty-printed over many lines
+'''
+
+
+def test_an_antigravity_review_delegate_passes_json_schema_and_files_structured_output(tmp_path: Path,
+                                                                                       monkeypatch) -> None:
+    repo = make_review_repo(tmp_path, orchestration=GENERIC.replace("{fake} {prompt}", 'agy -p "<prompt>"'))
+    reviews = rf.reviews_dir(repo, "M1.1")
+    reviews.mkdir(parents=True)
+    (reviews / "PACKET.md").write_text("# Review packet\n")
+    bin_dir, spec = tmp_path / "bin", tmp_path / "agy-spec.json"
+    bin_dir.mkdir()
+    (bin_dir / "agy").write_text(FAKE_AGY.format(python=sys.executable))
+    (bin_dir / "agy").chmod(0o755)
+    spec.write_text(json.dumps({"calls": str(tmp_path / "agy-calls.json"),
+                                "answer": review_output(git(repo, "rev-parse", "HEAD"), model="gem")}))
+    monkeypatch.setenv("FAKE_AGY_SPEC", str(spec))
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+    run = delegate(repo, "M1.1", "gem", sleep=lambda s: None)
+    assert run["state"] == "complete" and run["outcome"] == "recorded", run["reason"]
+    argv = json.loads((tmp_path / "agy-calls.json").read_text())
+    assert argv[:7] == ["--json-schema", str(reviews / "review-output.schema.json"), "--output-format", "json",
+                        "--sandbox", "--print-timeout", "30m"]
+    assert json.loads((reviews / "review-output.schema.json").read_text())["title"] == "specy-road reviewer output"

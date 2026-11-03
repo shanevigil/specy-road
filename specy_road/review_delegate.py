@@ -10,6 +10,8 @@ command waits for the turn: a reviewer has one job, and its outcome is whether
 a valid ``REVIEW-<model>.md`` for the commit under review exists afterwards,
 filed by specy-road from the run's final JSON (:func:`file_review`): a run that
 wrote anything else is a review failure, one with no valid JSON a rerun request.
+A custom command gets its program's structured-output flags (:func:`reviewer_cli`),
+and one leaf's reviewer runs take turns (:func:`review_run_lock`).
 
 ``work/reviews/<NODE_ID>/RUN-<model>.json`` records the run: the commit it was
 for, the native session id (``--resume`` continues that session), each attempt
@@ -23,6 +25,7 @@ commit, never as that record's verdict. Raw output goes to ``RUN-<model>.log``.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import math
 import os
@@ -41,10 +44,11 @@ from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_files import list_reviews, reviews_dir
-from specy_road.review_record_write import file_review, final_output, output_path, run_text, snapshot, write_schema
+from specy_road.review_record_write import (ReviewRunBusy, file_review, final_output, output_path, review_run_lock,
+                                            reviewer_env, run_text, snapshot, write_schema)
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.worker_adapters import ClaudeCode, Launch, Unsupported, adapter_for
+from specy_road.worker_adapters import ClaudeCode, Launch, Unsupported, adapter_for, reviewer_cli
 from specy_road.worker_sessions import check_session_id
 
 RUN_PREFIX = "RUN-"
@@ -141,15 +145,17 @@ class _Harness:
                                                 session=(sid, session is not None) if sid else None,
                                                 schema=write_schema(reviews), output=output_path(reviews, self.model))
         kw = {"node_id": self.node_id, "repo_root": self.repo_root, "launch_mode": self.mode, "effort": self.effort}
+        # A custom command gets its program's structured-output flags (Antigravity `agy`: --json-schema).
+        cli = reviewer_cli(self.cli, write_schema(reviews_dir(self.repo_root, self.node_id))) if self.cli else self.cli
         if session is not None:
-            return self.adapter.resume(session, prompt, self.cwd, self.api_id, self.cli, **kw)
-        return self.adapter.launch(prompt, self.cwd, self.api_id, self.cli, **kw)
+            return self.adapter.resume(session, prompt, self.cwd, self.api_id, cli, **kw)
+        return self.adapter.launch(prompt, self.cwd, self.api_id, cli, **kw)
 
 
 def _turn(h: _Harness, launch: Launch, log: Path) -> dict[str, Any]:
     """Run one turn to its end; ``exit``, the reported ``session_id`` and the ``errors`` it printed."""
     out: dict[str, Any] = {"exit": None, "session_id": None, "errors": [], "tail": []}
-    env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "CLAUDE_CODE_EFFORT_LEVEL")}
+    env = reviewer_env({k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "CLAUDE_CODE_EFFORT_LEVEL")})
     with log.open("a", encoding="utf-8") as raw:
         raw.write(f"[review delegate] {_now()} {launch.argv[0]}\n")
         try:
@@ -263,23 +269,30 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
     run = {"node_id": node_id, "model": model, "harness": h.harness, "ref": t.ref, "commit": t.commit,
            "state": "running", "session_id": session, "resumed": resume, "started_at": _now(), "ended_at": None,
            "attempts": [], "reason": None, "log": str(path.with_suffix(".log"))}
-    _save(path, run)
-    output_path(reviews, model).unlink(missing_ok=True)   # a stale answer never stands in for this run's
-    before = snapshot(cwd, repo_root, reviews, model)
+    lock = contextlib.ExitStack()
     try:
-        reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
-        filed = file_review(repo_root, node_id, model, reviews, before=before, after=snapshot(cwd, repo_root, reviews, model),
-                            output=final_output(h.adapter, run_text(path.with_suffix(".log")), output_path(reviews, model)),
-                            ref=ref, launch_mode=h.launch_mode)
-        ok, why = valid_record(repo_root, t, model) if filed.state == "recorded" else (False, filed.reason)
-        run.update(state="complete" if ok else "incomplete", outcome=filed.state,
-                   reason=None if ok else "; ".join(x for x in (reason, why) if x))
-    except BaseException as e:   # an interrupt or a launch refusal still closes the record
-        run.update(state="incomplete", reason=f"interrupted: {e or type(e).__name__}")
-        raise
-    finally:
-        run["ended_at"] = _now()
+        lock.enter_context(review_run_lock(reviews))   # one reviewer run per leaf: their files would cross-fail
+    except ReviewRunBusy as e:
+        raise DelegateError(str(e)) from None
+    with lock:
         _save(path, run)
+        output_path(reviews, model).unlink(missing_ok=True)   # a stale answer never stands in for this run's
+        try:
+            before = snapshot(cwd, reviews, model)
+            reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
+            filed = file_review(repo_root, node_id, model, reviews, before=before, after=snapshot(cwd, reviews, model),
+                                output=final_output(h.adapter, run_text(path.with_suffix(".log")),
+                                                    output_path(reviews, model)),
+                                ref=ref, launch_mode=h.launch_mode)
+            ok, why = valid_record(repo_root, t, model) if filed.state == "recorded" else (False, filed.reason)
+            run.update(state="complete" if ok else "incomplete", outcome=filed.state,
+                       reason=None if ok else "; ".join(x for x in (reason, why) if x))
+        except BaseException as e:   # an interrupt or a launch refusal still closes the record
+            run.update(state="incomplete", reason=f"interrupted: {e or type(e).__name__}")
+            raise
+        finally:
+            run["ended_at"] = _now()
+            _save(path, run)
     return run
 
 

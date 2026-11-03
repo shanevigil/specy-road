@@ -7,6 +7,7 @@ Split from :mod:`specy_road.worker_adapters` for the file limit; its docstring d
 
 from __future__ import annotations
 
+import re
 import shlex
 import uuid
 from dataclasses import dataclass
@@ -61,6 +62,10 @@ CODEX_POLICY = ("-c", "sandbox_mode=workspace-write", "-c", "approval_policy=nev
 CODEX_REVIEW_POLICY = ("-c", "sandbox_mode=read-only", "-c", "approval_policy=never")
 #: Claude Code's reviewer runs --bare, so no hook fires to stop these; the deny list does.
 REVIEWER_DISALLOWED = ("Bash(git commit *)", "Bash(git push *)", "Bash(gh *)")
+# Antigravity's `agy` runs as a `generic` harness (docs/design-notes/harness-compatibility-triage.md); a reviewer turn
+# needs these, each added when the command lacks it (https://antigravity.google/docs/cli/headless): one JSON envelope
+# whose structured_output is the answer, the terminal sandbox, and more than the 5m default to answer in.
+AGY_REVIEW_FLAGS = (("--output-format", "json"), ("--sandbox", None), ("--print-timeout", "30m"))
 REVIEWS_DIR = "{reviews_dir}"   # a custom command's writable root (module docstring)
 
 
@@ -92,6 +97,26 @@ def reviews_dir_into(cli: str, repo_root: Path | None, node_id: str | None) -> s
     for s, e in reversed(words):
         cli = cli[:s] + shlex.quote(str(_reviews_handoff_dir(repo_root, node_id))) + cli[e:]
     return cli
+
+
+def reviewer_cli(cli: str, schema: Path | None) -> str:
+    """A custom reviewer command with the structured-output flags its program takes. For Antigravity (``agy``):
+    ``--json-schema <schema file>`` and :data:`AGY_REVIEW_FLAGS`, each only when absent, right after the program;
+    ``--dangerously-skip-permissions`` (auto-approve every tool) is refused. Any other program is left as written."""
+    try:
+        words = shlex.split(cli)
+    except ValueError:   # unbalanced quotes: placeholder_problem reports the command as it is
+        return cli
+    if not words or Path(words[0]).name != "agy":
+        return cli
+    if "--dangerously-skip-permissions" in words:
+        raise Unsupported(f"an agy reviewer must not pass --dangerously-skip-permissions: {cli}")
+    named = {w.split("=", 1)[0] for w in words}
+    add = [] if not schema or "--json-schema" in named else ["--json-schema", shlex.quote(str(schema))]
+    for flag, value in AGY_REVIEW_FLAGS:
+        add += [flag, *([value] if value else [])] if flag not in named else []
+    head = re.match(r"\s*\S+", cli)
+    return cli[:head.end()] + "".join(f" {a}" for a in add) + cli[head.end():] if head and add else cli
 
 
 def _bare(launch_mode: str) -> list[str]:
