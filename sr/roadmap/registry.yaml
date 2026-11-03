@@ -103,7 +103,8 @@ entries:
       - tests/
     started: '2026-11-03'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-03T14:53:56+00:00'
   - codename: zones-checked-at-authoring
     node_id: M11.70
     branch: feature/rm-zones-checked-at-authoring
