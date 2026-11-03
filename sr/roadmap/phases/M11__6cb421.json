@@ -77,7 +77,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.39_roster-availability_effe1668-f68c-4ff8-be70-61296b3cf696.md",
       "sibling_order": 39,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A roster entry can be marked unavailable without deleting it",
       "touch_zones": [
         "specy_road/orchestration_config.py",
@@ -86,7 +86,12 @@
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/templates/project/schemas/orchestration.schema.json",
         "docs/orchestration.md",
-        "tests/"
+        "tests/",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/templates/project/.gitignore",
+        "specy_road/review_eligible.py",
+        "specy_road/agent_ignores.py"
       ],
       "type": "task"
     },
@@ -99,7 +104,8 @@
       ],
       "codename": "headless-limits-denials",
       "dependencies": [
-        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53",
+        "f4d6efe0-4286-44f8-a36e-d30947c401d6"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M11.62",
@@ -267,13 +273,15 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.67_cursor-usage-cost_94746b89-1891-49c5-ad57-6b3526f4a6d9.md",
       "sibling_order": 67,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Worker usage prices Cursor runs from the roster's price table",
       "touch_zones": [
         "specy_road/worker_adapter_parsers.py",
         "specy_road/worker_adapter_cursor.py",
         "specy_road/cli_usage.py",
-        "tests/"
+        "tests/",
+        "specy_road/worker_adapter_base.py",
+        "specy_road/worker_adapter_codex.py"
       ],
       "type": "task"
     },
@@ -391,13 +399,16 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.72_reviewer-failure-visible_e4a94617-e5fe-4d77-8dd5-8ae2e0b431d1.md",
       "sibling_order": 72,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A reviewer run that ends without a record is reported as a failure",
       "touch_zones": [
         "specy_road/bundled_scripts/review_delegate.py",
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/review_gate.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/review_delegate.py",
+        "specy_road/reviewer_run_failure.py"
       ],
       "type": "task"
     },
@@ -434,7 +445,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.74_pickup-finish-shared-lock_b4a57d7e-258e-4f66-9afc-3f4ffe5004cb.md",
       "sibling_order": 74,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Pickup and finish in one checkout take a shared lock in order",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_task.py",

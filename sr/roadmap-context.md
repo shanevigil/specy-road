@@ -71,7 +71,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M8.2` Worker adapters harden the launch and run a deterministic post-run check `worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` — task — **Not Started**
   - `M8.3` Reviewer runs are read-only and specy-road writes the review record from structured output `reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` — task — **Not Started**
   - `M8.4` Ship skills once and meter every file each harness injects `ship-skills-once-and-meter-every-file-each-harness-injects` — task — **Complete**
-  - `M8.5` Guard hooks per harness and avoid lists in every model profile `guard-hooks-per-harness-and-avoid-lists-in-every-model-profile` — task — **Not Started**
+  - `M8.5` Guard hooks per harness and avoid lists in every model profile `guard-hooks-per-harness-and-avoid-lists-in-every-model-profile` — task — **Complete**
   - `M8.7` Runtime verification of the harness facts against installed binaries `runtime-verification-of-the-harness-facts-against-installed-binaries` — task — **Complete**
   - `M8.6` Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic `candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic` — task — **Complete**
 - `M9` Regression prevention `regression-prevention` — phase — **In Progress**
@@ -133,7 +133,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.24` Executors and reviewers in a worktree can write and check the right places `worktree-handoff-writable` — task — **Complete**
   - `M11.25` finish-this-task says what merge mode will push before it pushes `merge-push-disclosure` — task — **Complete**
   - `M11.26` A model profile can match harness model ids that carry an effort suffix `profile-aliases` — task — **Complete**
-  - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Not Started**
+  - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Complete**
   - `M11.28` A light chore mode for work outside the roadmap `chore-mode` — task — **Not Started**
   - `M11.29` doctor warns when the running specy-road is older than the project's stubs `doctor-version-skew` — task — **Complete**
   - `M11.30` Leaf worktrees get the project's environment set up `worktree-env-setup` — task — **Not Started**
@@ -145,7 +145,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.36` A resumed reviewer session may approve a delta it was shown `resumed-delta-approval` — task — **Not Started**
   - `M11.37` review-packet warns when the brief or summary names a file not committed at the reviewed commit `packet-uncommitted-refs` — task — **Complete**
   - `M11.38` handoff status says who can still supply a missing approval `handoff-eligible-reviewers` — task — **Complete**
-  - `M11.39` A roster entry can be marked unavailable without deleting it `roster-availability` — task — **Not Started**
+  - `M11.39` A roster entry can be marked unavailable without deleting it `roster-availability` — task — **Complete**
   - `M11.40` worker reconcile works on merged leaves and separates untracked files `reconcile-merged-and-untracked` — task — **Not Started**
   - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Complete**
   - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Complete**
@@ -173,14 +173,14 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.64` abort-task-pickup treats untracked files the way pickup does `abort-untracked-like-pickup` — task — **Not Started**
   - `M11.65` why-blocked reports touch-zone holds from the plan `why-blocked-plan-holds` — task — **Not Started**
   - `M11.66` specy-road --version identifies the code when run from a checkout `version-shows-checkout-sha` — task — **Not Started**
-  - `M11.67` Worker usage prices Cursor runs from the roster's price table `cursor-usage-cost` — task — **Not Started**
+  - `M11.67` Worker usage prices Cursor runs from the roster's price table `cursor-usage-cost` — task — **Complete**
   - `M11.68` A re-delegated executor starts from the blocking review findings `rework-findings-in-prompt` — task — **Not Started**
   - `M11.69` A leaf that adds a schema key can be gated and finished `branch-schema-for-gate-and-finish` — task — **Not Started**
   - `M11.70` Touch zones are checked when they are written `zones-checked-at-authoring` — task — **Not Started**
   - `M11.71` Review loops escalate on their own and criteria are written with bounds `review-loops-escalate` — task — **Complete**
-  - `M11.72` A reviewer run that ends without a record is reported as a failure `reviewer-failure-visible` — task — **Not Started**
+  - `M11.72` A reviewer run that ends without a record is reported as a failure `reviewer-failure-visible` — task — **Complete**
   - `M11.73` specy-road ready warns when the leaf no longer merges cleanly `ready-warns-integration-conflict` — task — **Not Started**
-  - `M11.74` Pickup and finish in one checkout take a shared lock in order `pickup-finish-shared-lock` — task — **Not Started**
+  - `M11.74` Pickup and finish in one checkout take a shared lock in order `pickup-finish-shared-lock` — task — **Complete**
 
 ## Dependencies that were removed
 
@@ -198,12 +198,20 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
+- `M11.35` on `feature/rm-roster-harness-model-id` since 2026-11-03
+- `M11.36` on `feature/rm-resumed-delta-approval` since 2026-11-03
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.57` on `feature/rm-completed-worker-frees-slot` since 2026-11-03
+- `M11.58` on `feature/rm-session-routing-preferences` since 2026-11-03
+- `M11.62` on `feature/rm-headless-limits-denials` since 2026-11-03
 - `M11.63` on `feature/rm-pickup-second-claim-guard` since 2026-11-03
 - `M11.64` on `feature/rm-abort-untracked-like-pickup` since 2026-11-03
 - `M11.65` on `feature/rm-why-blocked-plan-holds` since 2026-11-03
+- `M11.66` on `feature/rm-version-shows-checkout-sha` since 2026-11-03
+- `M11.68` on `feature/rm-rework-findings-in-prompt` since 2026-11-03
+- `M11.69` on `feature/rm-branch-schema-for-gate-and-finish` since 2026-11-03
 - `M11.70` on `feature/rm-zones-checked-at-authoring` since 2026-11-03
+- `M11.73` on `feature/rm-ready-warns-integration-conflict` since 2026-11-03
 - `M8.2` on `feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 

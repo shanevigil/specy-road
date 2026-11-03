@@ -168,14 +168,24 @@
       "parent_id": "M8",
       "planning_dir": "planning/M8.5_guard-hooks-per-harness-and-avoid-lists-in-every-model-profile_459f8613-65b1-46f4-8ffb-6d7bad56874d.md",
       "sibling_order": 5,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Guard hooks per harness and avoid lists in every model profile",
       "touch_zones": [
         "specy_road/templates/specyrd/hooks/",
         "specy_road/specyrd_init.py",
         "specy_road/templates/project/model-profiles/",
         "docs/orchestration-models.md",
-        "tests/"
+        "tests/",
+        "docs/orchestration-workers.md",
+        "specy_road/bundled_scripts/orchestration_guard_cli.py",
+        "specy_road/cli.py",
+        "specy_road/orchestration_guard_adapters.py",
+        "specy_road/orchestration_role_guard.py",
+        "specy_road/specyrd_cli.py",
+        "specy_road/specyrd_hooks.py",
+        "specy_road/orchestration_role_env.py",
+        "specy_road/worker_runner.py",
+        "specy_road/review_delegate.py"
       ],
       "type": "task"
     },

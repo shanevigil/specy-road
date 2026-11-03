@@ -292,10 +292,11 @@ def file_review(root: Path, node_id: str, model: str, reviews: Path, *, output: 
     return Outcome("recorded", "", review_path(root, node_id, model))
 
 
-def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path) -> int:
+def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path, transcript: list[str] | None = None) -> int:
     """Run one reviewer turn with :func:`reviewer_env`, its raw output appended to ``log`` under a :data:`RUN_MARK`
-    line and each event's summary echoed to stderr; for ``prompt --channel cli``, whose terminal would otherwise
-    show raw JSON lines."""
+    line (and to ``transcript``, which ``prompt --channel cli``'s run record keeps: M11.72) and each event's
+    summary echoed to stderr as it arrives; for ``prompt --channel cli``, whose terminal would otherwise show raw
+    JSON lines."""
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open("a", encoding="utf-8") as raw:
         raw.write(f"[review prompt] {datetime.now(timezone.utc).replace(microsecond=0).isoformat()} {launch.argv[0]}\n")
@@ -305,6 +306,8 @@ def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path) -> int:
                                     stdin=subprocess.PIPE if launch.stdin is not None else subprocess.DEVNULL)
         except OSError as e:   # e.g. the harness is not on PATH
             print(f"error: could not launch {launch.argv[0]}: {e.strerror}", file=sys.stderr)
+            if transcript is not None:
+                transcript.append(f"error: could not launch {launch.argv[0]}: {e.strerror}")
             return 127
         if launch.stdin is not None and proc.stdin:
             try:
@@ -315,25 +318,33 @@ def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path) -> int:
         assert proc.stdout is not None
         for line in proc.stdout:
             raw.write(line)
+            if transcript is not None:
+                transcript.append(line.rstrip("\n"))
             for ev in adapter.parse_events(line, launch):
                 print(f"{ev.type}: {ev.summary}", file=sys.stderr)
         return proc.wait()
 
 
-def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Path, ref: str | None = None) -> int:
+def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Path, ref: str | None = None,
+                 transcript: list[str] | None = None) -> int:
     """``prompt --channel cli``'s reviewer turn: run ``launch`` under the lock, then :func:`file_review` it;
-    0 only when a record was filed. The node id is the hand-off directory's name."""
+    0 only when a record was filed. The node id is the hand-off directory's name; ``transcript`` gets the output
+    and, last, the outcome line, which the run record's reviewer-failure event then names."""
     out, log = output_path(reviews, model), reviews / f"RUN-{model}.log"
     try:
         with review_run_lock(reviews):
             before = snapshot(root, reviews, model)
-            rc = run_logged(launch, adapter, root, log)
+            rc = run_logged(launch, adapter, root, log, transcript)
             outcome = file_review(root, reviews.name, model, reviews, before=before,
                                   after=snapshot(root, reviews, model),
                                   output=final_output(adapter, run_text(log), out), ref=ref,
                                   launch_mode=launch.launch_mode)
     except ReviewRunBusy as e:
         print(f"error: {e}", file=sys.stderr)
+        if transcript is not None:
+            transcript.append(f"error: {e}")
         return 1
     print(f"{outcome.state}: {outcome.path or outcome.reason}", file=sys.stderr)
+    if transcript is not None and outcome.state != "recorded":
+        transcript.append(outcome.reason)
     return rc or (0 if outcome.state == "recorded" else 1)

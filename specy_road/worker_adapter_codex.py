@@ -37,7 +37,8 @@ class Codex(Adapter):
             return custom
         # Same policy as the launch, prompt on stdin again (128 KiB argv cap). `exec resume` takes neither --sandbox,
         # -C (the wrapper runs it in the worktree) nor a documented --add-dir, so the policy goes in as config overrides.
-        return Launch(["codex", "exec", "resume", "--json", *self.effort_flag(effort), *CODEX_POLICY, session_id, "-"],
+        return Launch(["codex", "exec", "resume", "--json", *_model_flag("-m", model), *self.effort_flag(effort),
+                       *CODEX_POLICY, session_id, "-"],
                       stdin=_text(prompt_path), session_id=session_id)
 
     def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,

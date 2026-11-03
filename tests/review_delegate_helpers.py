@@ -13,7 +13,7 @@ from pathlib import Path
 from tests.review_repo_helpers import git, make_review_repo, review_output
 
 from specy_road import review_record_write
-from specy_road.bundled_scripts import role_prompt
+from specy_road.bundled_scripts import role_prompt, role_prompt_cli
 from specy_road.review_files import reviews_dir
 
 # Each call takes the next step of the spec; the call's argv is appended to `calls`.
@@ -76,16 +76,42 @@ def verdict_step(repo: Path, verdict: str = "approve", model: str = "opus") -> d
 
 
 def fake_reviewer_run(monkeypatch, answer: list[str] | None = None) -> list[dict]:
-    """Record each ``prompt --channel cli`` launch instead of running it; a reviewer turn "prints" ``answer``'s lines."""
+    """Record each ``prompt --channel cli`` launch instead of running it; a reviewer turn "prints" ``answer``'s lines.
+    ``role_prompt``'s and ``role_prompt_cli``'s own ``subprocess.run`` and ``Popen`` (the streamed, transcribed
+    path) are recorded too."""
+    import subprocess as real_sp
     from types import SimpleNamespace
 
     calls: list[dict] = []
-    monkeypatch.setattr(role_prompt, "subprocess", SimpleNamespace(
-        run=lambda cmd, **kw: calls.append({"cmd": cmd, **kw}) or SimpleNamespace(returncode=0)))
 
-    def logged(launch, adapter, cwd, log) -> int:
+    def run(cmd, **kw):
+        calls.append({"cmd": cmd, **kw})
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    def popen(cmd, **kw):
+        rec = {"cmd": cmd, **kw, "input": ""}
+
+        class Stdin:
+            def write(self, s):
+                rec["input"] += s
+                return len(s)
+
+            def close(self):
+                pass
+
+        stdin = Stdin() if kw.get("stdin") not in (None, real_sp.DEVNULL) else None
+        calls.append(rec)
+        return SimpleNamespace(stdin=stdin, stdout=iter(()), wait=lambda: 0)
+
+    fake = SimpleNamespace(run=run, Popen=popen, PIPE=real_sp.PIPE, STDOUT=real_sp.STDOUT, DEVNULL=real_sp.DEVNULL)
+    for module in (role_prompt, role_prompt_cli):   # the preflight runs in one, the launched commands in the other
+        monkeypatch.setattr(module, "subprocess", fake)
+
+    def logged(launch, adapter, cwd, log, transcript=None) -> int:
         calls.append({"cmd": launch.argv, "input": launch.stdin, "cwd": cwd})
         log.write_text("[review prompt] now claude\n" + "\n".join(answer or []) + "\n", encoding="utf-8")
+        if transcript is not None:
+            transcript.extend(answer or [])
         return 0
     monkeypatch.setattr(review_record_write, "run_logged", logged)
     return calls
