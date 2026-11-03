@@ -291,7 +291,8 @@
         "specy_road/cli.py",
         "gui/pm-gantt/src/api.ts",
         "tests/",
-        "docs/pm-gui.md"
+        "docs/pm-gui.md",
+        "specy_road/pm_gantt_static/"
       ],
       "type": "task"
     },

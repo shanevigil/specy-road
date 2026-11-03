@@ -78,6 +78,7 @@ entries:
       - gui/pm-gantt/src/api.ts
       - tests/
       - docs/pm-gui.md
+      - specy_road/pm_gantt_static/
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
