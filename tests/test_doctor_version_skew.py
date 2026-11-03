@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 from specy_road import __version__
-from specy_road.bundled_scripts import doctor
 from specy_road.managed_block import HTML_COMMENT, render_block
 from specy_road.agents_md_block import AGENTS_MD, render_agents_lines
-from specy_road import cli
 
 
 def _write_manifest(root: Path, version: str) -> None:
@@ -33,66 +33,78 @@ def _write_agents_block(root: Path, *, written_by: str | None = None, minimum: s
     (root / AGENTS_MD).write_text(f"# Agents\n\n{block}\n", encoding="utf-8")
 
 
+def _cli(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, "-m", "specy_road.cli", *args],
+        capture_output=True,
+        text=True,
+    )
+
+
 @pytest.mark.parametrize(
     "recorded",
     ["99.0.0", "0.3.1rc99"],
 )
-def test_warns_when_the_running_version_is_older_than_the_manifest(
-    tmp_path: Path, capsys, recorded: str
-) -> None:
+def test_warns_when_the_running_version_is_older_than_the_manifest(tmp_path: Path, recorded: str) -> None:
     _write_manifest(tmp_path, recorded)
 
-    cli.warn_if_running_version_older(tmp_path)
+    proc = _cli("validate", "--repo-root", str(tmp_path), "--help")
 
-    err = capsys.readouterr().err
-    assert err.count("\n") == 1
-    assert f"specy-road {__version__} is running but this project records {recorded}" in err
-    assert "older install earlier on PATH" in err
-
-
-def test_warns_when_the_running_version_is_older_than_agents_md(tmp_path: Path, capsys) -> None:
-    _write_agents_block(tmp_path, written_by="99.0.0", minimum="99.0.0")
-
-    cli.warn_if_running_version_older(tmp_path)
-
-    err = capsys.readouterr().err
-    assert f"records 99.0.0 ({AGENTS_MD})" in err
+    assert proc.returncode == 0
+    assert proc.stderr.count("older install earlier on PATH") == 1
+    assert f"specy-road {__version__} is running but this project records {recorded}" in proc.stderr
 
 
-def test_silent_when_running_matches_or_exceeds_the_recorded_version(tmp_path: Path, capsys) -> None:
-    _write_manifest(tmp_path, __version__)
-    _write_agents_block(tmp_path)
-
-    cli.warn_if_running_version_older(tmp_path)
-    assert capsys.readouterr().err == ""
-
+def test_warns_when_the_minimum_is_newer_than_written_by_and_the_manifest(tmp_path: Path) -> None:
     _write_manifest(tmp_path, "0.0.1")
-    cli.warn_if_running_version_older(tmp_path)
-    assert capsys.readouterr().err == ""
+    _write_agents_block(tmp_path, written_by=__version__, minimum="99.0.0")
+
+    proc = _cli("validate", "--repo-root", str(tmp_path), "--help")
+
+    assert proc.returncode == 0
+    assert f"records 99.0.0 ({AGENTS_MD})" in proc.stderr
+    assert proc.stderr.count("older install earlier on PATH") == 1
 
 
-def test_doctor_emits_the_skew_warning(tmp_path: Path, capsys, monkeypatch) -> None:
+@pytest.mark.parametrize(
+    "root_args",
+    [
+        lambda path: ["--repo-root", str(path)],
+        lambda path: [f"--repo-root={path}"],
+    ],
+    ids=["space", "equals"],
+)
+def test_cli_warns_for_both_repo_root_spellings(tmp_path: Path, root_args) -> None:
     _write_manifest(tmp_path, "99.0.0")
-    monkeypatch.setattr(doctor, "_context", lambda ns: None)
 
-    with pytest.raises(SystemExit) as exc:
-        doctor.main(["--repo-root", str(tmp_path)])
+    proc = _cli("validate", *root_args(tmp_path), "--help")
 
-    assert exc.value.code == 1
-    err = capsys.readouterr().err
-    assert err.count("older install earlier on PATH") == 1
+    assert proc.returncode == 0
+    assert proc.stderr.count("older install earlier on PATH") == 1
 
 
-def test_cli_warns_once_for_other_commands(tmp_path: Path, capsys, monkeypatch) -> None:
+def test_silent_when_running_matches_the_recorded_version(tmp_path: Path) -> None:
+    _write_manifest(tmp_path, __version__)
+
+    proc = _cli("validate", "--repo-root", str(tmp_path), "--help")
+
+    assert proc.returncode == 0
+    assert "older install earlier on PATH" not in proc.stderr
+
+
+def test_silent_when_running_is_newer_than_every_recorded_source(tmp_path: Path) -> None:
+    _write_manifest(tmp_path, "0.0.1")
+
+    proc = _cli("validate", "--repo-root", str(tmp_path), "--help")
+
+    assert proc.returncode == 0
+    assert "older install earlier on PATH" not in proc.stderr
+
+
+def test_doctor_emits_the_skew_warning(tmp_path: Path) -> None:
     _write_manifest(tmp_path, "99.0.0")
 
-    def stop(_script: str, _args: list[str]) -> None:
-        raise SystemExit(0)
+    proc = _cli("doctor", "--repo-root", str(tmp_path))
 
-    monkeypatch.setattr(cli, "_run", stop)
-
-    with pytest.raises(SystemExit):
-        cli.main(["validate", "--repo-root", str(tmp_path)])
-
-    err = capsys.readouterr().err
-    assert err.count("older install earlier on PATH") == 1
+    assert proc.returncode != 0
+    assert proc.stderr.count("older install earlier on PATH") == 1

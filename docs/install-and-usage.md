@@ -52,7 +52,7 @@ pip install "specy-road[review]"    # LLM review (`specy-road review-node`)
 ```
 
 On a maintainer machine use `pipx install specy-road` or `uv tool install specy-road`;
-check `which specy-road` and `specy-road --version` (warns when running older than `.specyrd/manifest.json` / `AGENTS.md`).
+check `which specy-road` and `specy-road --version`. Commands (not `--version`) warn when running older than `.specyrd/manifest.json` / `AGENTS.md`.
 
 ### Install a release candidate (TestPyPI)
 

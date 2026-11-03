@@ -23,7 +23,7 @@ _PKG_DIR = Path(__file__).resolve().parent
 _PM_GANTT_INDEX = _PKG_DIR / "pm_gantt_static" / "index.html"
 _VERSION = re.compile(r"^(\d+(?:\.\d+)*)(?:(a|b|rc)(\d+))?$", re.IGNORECASE)
 _AGENTS_WRITTEN = re.compile(r"Written by specy-road (\S+);")
-_MINIMUM_LINE = re.compile(r"\*\*Minimum specy-road version:\*\* (\S+)")
+_MINIMUM_LINE = re.compile(r"\*\*Minimum specy-road version:\*\* (\S+)\.")
 _PRE = {"a": 0, "b": 1, "rc": 2}
 
 
@@ -349,7 +349,10 @@ def _unknown_command(cmd: str) -> None:
 def _repo_root_from_argv(args: list[str]) -> Path | None:
     i = 0
     while i < len(args):
-        if args[i] == "--repo-root" and i + 1 < len(args):
+        arg = args[i]
+        if arg.startswith("--repo-root="):
+            return Path(arg.split("=", 1)[1])
+        if arg == "--repo-root" and i + 1 < len(args):
             return Path(args[i + 1])
         i += 1
     return None
