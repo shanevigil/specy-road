@@ -2,7 +2,7 @@
 
 ## What changed
 
-Cursor `result` lines still carry token counts only; on turn end the adapter now looks up the pinned profile whose `for_id` matches the argv model (`Profile.api_id` / aliases, the id `_cli_for` puts on `adapter.launch` / `resume`), and fills `cost_usd` from `cost_usd_per_mtok` (cached input at `cached_input` when known, otherwise at the input rate), with `cost_is_estimate: true`. `Cursor.resume` now passes `--model` the same way `launch` does. `specy-road worker usage` text output already suffixes `est.` when that flag is set. Top-level CLI help mentions the estimate behaviour.
+Cursor `result` lines still carry token counts only; on turn end the adapter now looks up the pinned profile whose `for_id` matches the argv model (`Profile.api_id` / aliases, the id `_cli_for` puts on `adapter.launch` / `resume`), and fills `cost_usd` from `cost_usd_per_mtok` (cached input at `cached_input` when known, otherwise at the input rate), with `cost_is_estimate: true`. The project root for that lookup is `recorded_project_root(git_root(--workspace))` when `.specyrd` records a nested root, else the git worktree (embedded) — not `project_root(wt)` and not ancestor discovery. `Cursor.resume` now passes `--model` the same way `launch` does. `specy-road worker usage` text output already suffixes `est.` when that flag is set. Top-level CLI help mentions the estimate behaviour.
 
 ## Touch zones (confirmed)
 
@@ -22,9 +22,10 @@ Codex and other harnesses without harness-reported cost can reuse `apply_roster_
 
 - `model_from_argv` — read `--model` / `-m` from a launch argv for roster id during parse
 - `worktree_from_argv` — read `--workspace` / `-C` so project root resolves from the worker checkout, not the coordinator cwd
+- `project_root_from_worktree` — nested via `recorded_project_root(git_root(wt))`, else the worktree; never `project_root(wt)` or `discover_project_root`
 - `_mtok_rate` / `mtok_rates` — parse profile `cost_usd_per_mtok` the same way orchestrate plan reads list prices
 - `estimate_usage_cost` — turn USD from token counts with separate cached pricing when a cached rate exists
 - `apply_roster_price_estimate` — walk pinned roster profiles and match argv via `Profile.for_id` (api_id / aliases), then estimate when `cost_usd` is still null
 - `Cursor.parse_events` branch — apply roster estimate on turn-end usage when the line had no cost
 - `Cursor.resume` `--model` flag — same `*_model_flag('--model', model)` as launch, so resumed turns can be priced
-- `tests/test_cursor_usage_cost.py` — cached-rate math; recorded Cursor line through `adapter.launch(api_id)` and `adapter.resume(api_id)` on a roster whose id is not the profile api_id; unpriced launch leaves cost null; `worker usage` output shows `est.`
+- `tests/test_cursor_usage_cost.py` — cached-rate math; recorded Cursor line through `adapter.launch(api_id)` and `adapter.resume(api_id)` on a roster whose id is not the profile api_id, for embedded and nested (`--workspace` is a linked git worktree, roadmap under `sr/`); unpriced launch leaves cost null; `worker usage` output shows `est.`
