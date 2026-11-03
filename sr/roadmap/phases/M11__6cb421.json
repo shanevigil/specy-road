@@ -251,7 +251,8 @@
         "specy_road/version_skew.py",
         "specy_road/worker_runner.py",
         "specy_road/review_files.py",
-        "tests/"
+        "tests/",
+        "specy_road/schemas/review-record.schema.json"
       ],
       "type": "task"
     },
