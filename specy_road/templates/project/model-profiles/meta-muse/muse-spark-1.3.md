@@ -26,6 +26,10 @@ role_fit:
   executor:    { score: 3, reason: 'Third on AA Agentic Index (55.7) at low cost', sources: [S7] }
   reviewer:    { score: 2, reason: 'No review data', sources: [S6] }
 ---
+## Orchestration: harness features to avoid
+
+This profile is usually rostered on `generic` or another harness; see `model-profiles/README.md` harness facts for switches when the roster names `claude-code`, `codex`, or `cursor`.
+
 ## Strengths
 - AA Agentic Index 55.7, third in one October 2026 aggregator, ahead of GPT-6 Astra (51.5) [S7] (confidence: medium)
 - Low price: $1.25/$4.25 with no long-context premium [S3] (confidence: high)

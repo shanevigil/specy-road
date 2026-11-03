@@ -35,6 +35,10 @@ role_fit:
   executor:    { score: 4, reason: 'Default model of the Grok Build coding agent at $2/$6; CursorBench 4.0 46.3 percent at xhigh, up from 40.4 percent for Grok 4.6, credible but not the strongest', sources: [S2, S1, S9, S10] }
   reviewer:    { score: 3, reason: 'Vendor reports better self-checking and verification; neither run found independent reviewer calibration data', sources: [S1, S10, S9] }
 ---
+## Orchestration: harness features to avoid
+
+This profile is usually rostered on `generic` or another harness; see `model-profiles/README.md` harness facts for switches when the roster names `claude-code`, `codex`, or `cursor`.
+
 ## Strengths
 - Lowest output price among the frontier general models in the Claude run's roster: $2 input / $6 output per MTok below 200K prompt tokens [S1, S7] (confidence: high)
 - 500,000-token context, low/medium/high/xhigh reasoning, function calling, web and X search, and code execution [S2] (confidence: high)

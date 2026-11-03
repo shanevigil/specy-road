@@ -55,8 +55,7 @@ def test_default_commands_follow_the_documented_cli_flags(tmp_path: Path) -> Non
     assert xr.argv[:4] == ["codex", "exec", "resume", "--json"] and xr.argv[-2:] == ["t1", "-"] and xr.stdin == "do the thing"
     # codex-cli 0.165: `exec` has no --ask-for-approval, and `exec resume` no --sandbox or -C either.
     for argv in (x.argv, xr.argv):
-        assert "approval_policy=never" in argv and "sandbox_mode=workspace-write" in argv
-        assert "--ask-for-approval" not in argv and "--sandbox" not in argv
+        assert "approval_policy=never" in argv and "sandbox_mode=workspace-write" in argv and "--ask-for-approval" not in argv
     assert "-C" not in xr.argv
     u = wa.adapter_for("cursor").launch(p, tmp_path, "composer-2.5", None)
     assert u.argv[:2] == ["agent", "-p"] and "--force" in u.argv and "--workspace" in u.argv

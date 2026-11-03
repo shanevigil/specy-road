@@ -154,7 +154,7 @@ harnesses:
       label: runtime
       source: specy_road/worker_adapters.py (codex-cli 0.165, run 2026-10-28)
     executor_template:
-      value: codex exec --model {api_id} -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"
+      value: codex exec --model {api_id} --disable memories --disable multi_agent --disable goals -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"
       renders_cli_for: [OpenAI GPT]
       label: runtime
       source: model-profiles/openai-gpt/gpt-6.1-sol.md (cli_verified_from codex-cli 0.165.0, run 2026-10-28)

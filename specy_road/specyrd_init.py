@@ -252,6 +252,23 @@ def _write_readme_and_gui_stub(
     written.append(gui_display)
 
 
+def _maybe_install_specyrd_hooks(
+    repo_root: Path,
+    agent: str,
+    *,
+    install_guard_hooks: bool,
+    install_pre_push: bool,
+    dry_run: bool,
+    written: list[str],
+) -> None:
+    from specy_road.specyrd_init_helpers import maybe_install_specyrd_hooks
+
+    maybe_install_specyrd_hooks(
+        repo_root, agent, install_guard_hooks=install_guard_hooks, install_pre_push=install_pre_push,
+        dry_run=dry_run, written=written,
+    )
+
+
 def run_init(
     *,
     target: Path,
@@ -262,35 +279,15 @@ def run_init(
     role: str | None = None,
     write_claude_md: bool = False,
     gui_settings_stub: bool = False,
+    install_guard_hooks: bool = False,
+    install_pre_push: bool = False,
 ) -> InitResult:
-    if agent not in AGENT_CHOICES:
-        raise ValueError(f"unknown agent: {agent}")
-    if role is not None and role not in ROLE_CHOICES:
-        raise ValueError(
-            f"unknown role: {role!r}; choose pm, dev, or both",
-        )
-    if agent == "generic":
-        if ai_commands_dir is None:
-            raise ValueError("--ai-commands-dir is required when --ai generic")
-        rel_dest = ai_commands_dir
-    else:
-        rel_dest = AGENT_REL_DEST[agent]
-        assert rel_dest is not None
+    from specy_road.specyrd_init_helpers import init_repo_context
 
-    repo_root = resolve_repo_root(target)
-    if agent == "generic":
-        rel_dest = _validate_generic_commands_dir(repo_root, rel_dest)
+    repo_root, rel_dest, written, skipped, manifest, files_to_install, already_owned = init_repo_context(
+        target, agent, ai_commands_dir, role,
+    )
 
-    written: list[str] = []
-    skipped: list[str] = []
-
-    manifest = _load_manifest(repo_root)
-
-    if role in ("pm", "dev"):
-        files_to_install = ROLE_COMMAND_FILES[role]
-    else:
-        files_to_install = COMMAND_FILES
-    already_owned = {p for paths in (manifest.get("agents") or {}).values() for p in paths}
     _append_command_stub_installs(
         repo_root, rel_dest, files_to_install, force, dry_run, written, skipped, agent=agent,
         owned=already_owned,
@@ -320,6 +317,11 @@ def run_init(
     apply_and_report(repo_root, prefix, written, dry_run=dry_run)
     if project is not None:   # no roadmap yet: `init project` writes the block when it scaffolds one
         apply_agents_and_report(project, written, dry_run=dry_run, prefix=prefix)
+
+    _maybe_install_specyrd_hooks(
+        repo_root, agent, install_guard_hooks=install_guard_hooks, install_pre_push=install_pre_push,
+        dry_run=dry_run, written=written,
+    )
 
     if not dry_run:
         _record_manifest(

@@ -35,6 +35,10 @@ role_fit:
   executor:    { score: 3, reason: 'CursorBench 4.0 High 40.4 percent, behind 4.7 and the leading models; vendor-reported gains over Grok 4.5 not independently verified', sources: [S8, S2] }
   reviewer:    { score: 3, reason: 'Neither run found reviewer-specific evidence; 4.7 improves verification', sources: [S2, S9] }
 ---
+## Orchestration: harness features to avoid
+
+This profile is usually rostered on `generic` or another harness; see `model-profiles/README.md` harness facts for switches when the roster names `claude-code`, `codex`, or `cursor`.
+
 ## Strengths
 - 500K context and low/medium/high/xhigh reasoning effort [S11, S1] (confidence: high)
 - Standard short-context API pricing: $2 input, $0.50 cached input and $6 output per MTok [S11] (confidence: high)

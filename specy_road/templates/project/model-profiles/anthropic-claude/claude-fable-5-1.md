@@ -28,6 +28,17 @@ role_fit:
   executor:    { score: 5, reason: 'Terminal-Bench 4.0 55.8 percent vs 42.0 for Fable 5 (vendor), first on AA Agentic Index (58.0)', sources: [S3, S6] }
   reviewer:    { score: 4, reason: 'Partner page reports it says when stuck instead of claiming success and is less likely to disable failing tests', sources: [S2] }
 ---
+## Orchestration: harness features to avoid
+
+When this model runs as a roster **executor** on `claude-code`, the worker sets:
+
+| Feature | Switch |
+|---|---|
+| auto memory (shared by every worktree of a repository) | `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` |
+| background tasks and `/loop` wakeups | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` |
+
+Orchestration guard hooks (optional, `specyrd init --install-orchestration-hooks`) deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`.
+
 ## Strengths
 - Terminal-Bench 4.0: 55.8 percent vs 42.0 percent for Fable 5 and 52.3 percent for Opus 5 (vendor-reported); Anthropic reported Claude Mythos 5.1 (the same model with looser safeguards) at 60.9 percent and says the gap "reflects the tasks on which our earlier, less precise cyber safeguards intervened" [S3, S7] (confidence: medium)
 - First on the Artificial Analysis Agentic Index at 58.0 in an October 2026 aggregator [S6] (confidence: medium)

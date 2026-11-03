@@ -49,7 +49,7 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: boo
             raise WorkerError(f"{rec.worker_id} is still running (pid {rec.pid}); the CLI adapters cannot steer a live turn — "
                               + ("it is stalled: once its harness exits, message resumes the session (terminate closes it "
                                  "for good)" if FLAG_STALLED in rec.flags else "wait for it to end, or terminate it"))
-        from specy_road.worker_runner import queue_worker_message  # noqa: PLC0415 — runner calls _send on delivery
+        from specy_road.worker_runner_queue import queue_worker_message  # noqa: PLC0415 — runner calls _send on delivery
 
         return queue_worker_message(repo_root, rec, text)
     require_branch(rec)   # the worktree must still be on the worker's branch (review round 6, B12)

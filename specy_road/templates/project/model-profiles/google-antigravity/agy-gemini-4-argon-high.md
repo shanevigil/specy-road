@@ -26,6 +26,10 @@ role_fit:
   executor:    { score: 3, reason: 'The model is the Argon executor (5), lowered because shell commands, git commit included, are soft-denied in print mode unless permissions.allow grants them, and the run still exits 0; not run', sources: [S7, S1] }
   reviewer:    { score: 3, reason: 'The Gemini 4 Argon reviewer score (no published review evaluation); the verdict channel is the envelope, not the exit code; not run', sources: [S7, S1] }
 ---
+## Orchestration: harness features to avoid
+
+This profile is usually rostered on `generic` or another harness; see `model-profiles/README.md` harness facts for switches when the roster names `claude-code`, `codex`, or `cursor`.
+
 ## Strengths
 - Print mode (-p, --print, --prompt) sends one prompt, returns the response and exits; the response goes to stdout and diagnostics to stderr [S1] (confidence: high)
 - --output-format json prints one envelope on completion with conversation_id, status, response, error (on failure), duration_seconds, num_turns and usage; stream-json prints init, step_update and a final result event of the same shape [S1] (confidence: high)

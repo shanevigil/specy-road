@@ -14,7 +14,7 @@ supersedes: gpt-6-sol
 access:
   context_tokens: 1050000
   output_tokens: 128000
-  cli: codex exec --model gpt-6.1-sol -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"
+  cli: codex exec --model gpt-6.1-sol --disable memories --disable multi_agent --disable goals -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"
   cli_verified_from: codex-cli 0.165.0, run 2026-10-28 (exec has no --ask-for-approval)
   subagents: 'yes Native multi-agent orchestration in the Responses API is in beta, per OpenAI''s API changelog and a third-party report; Codex also supplies an agent harness [S9, S3, S10]'
   effort_controls: 'low, medium, high, xhigh, max (default medium; none and minimal rejected)'
@@ -26,6 +26,18 @@ role_fit:
   executor:    { score: 5, reason: '(claude 4, chatgpt 5) Vendor builds it for complex refactors and long-running agents at a low price; the Claude run found no independent agentic numbers, while the ChatGPT run found Terminal-Bench 4.0 at 55.05 percent for $1.72 per test and a 6.4-point DeepSWE v1.1 gain over GPT-6 Sol, so the higher score rests on stronger evidence', sources: [S1, S3, S13] }
   reviewer:    { score: 4, reason: 'Both runs rate it 4 - different vendor and training data from Claude models, which is the main value in a cross-review pair, plus improved restriction-following and tool-failure disclosure; direct code-review calibration evidence is limited', sources: [S1] }
 ---
+## Orchestration: harness features to avoid
+
+When this model runs as a roster **executor** on `codex`, the worker command includes:
+
+| Feature | Switch |
+|---|---|
+| memories | `--disable memories` |
+| multi_agent | `--disable multi_agent` |
+| goals | `--disable goals` |
+
+Orchestration guard hooks deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`.
+
 ## Strengths
 - Vendor claims near-Astra performance on agentic coding, computer use and professional work at one-fifth of Astra's token price [S1] (confidence: medium)
 - Long-horizon coding improved over GPT-6 Sol: OpenAI reports a 6.4 percentage-point best-score gain on DeepSWE v1.1 at a lower reasoning setting and cost [S1] (confidence: high)

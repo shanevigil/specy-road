@@ -380,21 +380,10 @@ feature in your own setup.
    resumed run carries the same `session_id`; if not, set `channels.cli` with
    `{session}` to a command that works, or treat Cursor workers as one-shot.
 
+## Optional: refuse push from a linked worktree
+
+`specyrd init --install-pre-push-hook` installs `specy_road/templates/specyrd/hooks/pre-push` as `.git/hooks/pre-push`; it refuses push when the repo toplevel is under `work/.worktrees/` and allows push from the main checkout.
+
 ## Working alongside sessions and the gate
 
-`handoff status` prints active workers beside live sessions. A worker in a
-linked worktree does not touch the coordinator's branch; one in the same
-checkout (the claim's branch was checked out here) does, so the coordinator
-must not edit files in that leaf's touch zones while the worker runs — the
-presence guard (`session guard`) already refuses the git operations that
-would collide. Finishing the leaf is still `finish-this-task` from the
-leaf's branch after the gate; `terminate` the idle worker afterwards so its
-record closes and the slot frees. With `--on-complete merge`, finish merges
-into the integration branch and **pushes that branch** (after stating how many
-local integration commits are not on the remote yet); `--push` only pushes
-the feature branch. From a linked worktree with
-`on_complete: merge`, finish cannot check the integration branch out while
-the coordinator's checkout holds it, so it merges and pushes **in that
-checkout** instead. That checkout must have no uncommitted changes to tracked
-files (untracked files are fine): otherwise finish refuses before its
-bookkeeping commit and names the checkout to commit or stash in.
+`handoff status` prints active workers beside live sessions. A worker in a linked worktree does not touch the coordinator's branch; one in the same checkout does, so do not edit that leaf's touch zones while it runs — `session guard` refuses colliding git ops. After the gate, `finish-this-task` on the leaf branch; `terminate` the idle worker. With `--on-complete merge`, finish merges into the integration branch and **pushes it** (after stating how many local integration commits are not on the remote); `--push` only pushes the feature branch. From a linked worktree with `on_complete: merge`, finish merges and pushes **in the coordinator checkout** (cannot check out integration there). That checkout must have no uncommitted tracked changes (untracked files are fine) or finish refuses before its bookkeeping commit.

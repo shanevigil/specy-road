@@ -27,7 +27,7 @@ supersedes: none
 access:
   context_tokens: 1000000
   output_tokens: unknown
-  cli: codex exec --model gpt-5.6-sol -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"
+  cli: codex exec --model gpt-5.6-sol --disable memories --disable multi_agent --disable goals -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"
   cli_verified_from: codex-cli 0.165.0, run 2026-10-28 (exec has no --ask-for-approval)
   subagents: 'yes Cursor agent harness; native OpenAI multi-agent is documented for GPT-6.1 Sol on the API, not verified for this Cursor id [S3]'
   effort_controls: none documented; Cursor model ids carry the effort (gpt-5.6-sol-high, -xhigh, …)
@@ -39,6 +39,18 @@ role_fit:
   executor:    { score: 4, reason: 'Two aggregators citing the same AA Intelligence Index disagree: one ranks Opus 5.5 first at 57.6, the other ranks GPT-5.6 Sol first at 58.9; the dispute is not a single run and does not justify 5', sources: [S1] }
   reviewer:    { score: 4, reason: 'Different vendor stack from Claude; limited review calibration data for this Cursor id', sources: [S1] }
 ---
+## Orchestration: harness features to avoid
+
+When this model runs as a roster **executor** on `codex`, the worker command includes:
+
+| Feature | Switch |
+|---|---|
+| memories | `--disable memories` |
+| multi_agent | `--disable multi_agent` |
+| goals | `--disable goals` |
+
+Orchestration guard hooks deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`.
+
 ## Strengths
 - Cursor lists a 1M-context Sol variant with effort baked into the model id (high, xhigh, max, fast tiers) [S2] (confidence: high)
 - List price reported as twice GPT-6 Sol ($4 / $20 per MTok), from the GPT-6 Sol profile's third-party source [S4] (confidence: low)

@@ -26,6 +26,10 @@ role_fit:
   executor:    { score: 3, reason: 'ProgramBench 50.0 vs 70.5 for Opus 5.5 in Meta''s own table', sources: [S3] }
   reviewer:    { score: 3, reason: 'Independent vendor and training lineage; no review data', sources: [S1] }
 ---
+## Orchestration: harness features to avoid
+
+This profile is usually rostered on `generic` or another harness; see `model-profiles/README.md` harness facts for switches when the roster names `claude-code`, `codex`, or `cursor`.
+
 ## Strengths
 - MemoryBench 85.6, top of the five models in Meta's table (vendor-reported) [S3] (confidence: low)\[8\]
 - Artificial Analysis Intelligence Index v4.3 score 52 at max effort (Wonder Full 56) [S4] (confidence: medium)\[9\]

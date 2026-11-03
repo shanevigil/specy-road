@@ -26,6 +26,10 @@ role_fit:
   executor:    { score: 1, reason: 'Not an executor until -p with --resume and commit-when-asked are verified at runtime; this profile denies git commit; not run', sources: [S5] }
   reviewer:    { score: 3, reason: 'The Gemini 4 Argon reviewer score (no published review evaluation; a vendor outside Anthropic and OpenAI); Copilot adds deny rules that win over allow rules; not run', sources: [S6, S1] }
 ---
+## Orchestration: harness features to avoid
+
+This profile is usually rostered on `generic` or another harness; see `model-profiles/README.md` harness facts for switches when the roster names `claude-code`, `codex`, or `cursor`.
+
 ## Strengths
 - One harness reaches models from several vendors by name with --model, so a roster can add a `google` reviewer without a Google harness [S2, S3, S5] (confidence: high)
 - Deny rules always take precedence over allow rules, even when --allow-all is set, so the git push, git commit and gh denials hold whatever else is granted [S1] (confidence: high)

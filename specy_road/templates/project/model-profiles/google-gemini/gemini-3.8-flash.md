@@ -26,6 +26,10 @@ role_fit:
   executor:    { score: 3, reason: 'Both runs describe it as aimed at long-running engineering and agent work; CursorBench 4.0 High 39.6 percent is below current frontier models, and the $0.75/$3.75 introductory price suits cheaper well-scoped passes (claude 3, chatgpt 4)', sources: [S1, S5, S3] }
   reviewer:    { score: 2, reason: 'Neither run found review data; ChatGPT run notes a lower coding score and advises putting a stronger independent model behind it (claude 2, chatgpt 3)', sources: [S1, S5, S9] }
 ---
+## Orchestration: harness features to avoid
+
+This profile is usually rostered on `generic` or another harness; see `model-profiles/README.md` harness facts for switches when the roster names `claude-code`, `codex`, or `cursor`.
+
 ## Strengths
 - Documented features: 1,048,576 input-token context, 65,536 output tokens, low/medium/high thinking, tool calling, code execution, computer use (preview), file search and structured outputs [S3] (confidence: high)
 - Introductory pricing through 2026-12-31 is $0.75 per MTok input and $3.75 per MTok output, which makes it a low-cost candidate for first-pass execution [S3] (confidence: high)
