@@ -17,22 +17,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: delta-review-packet
-    node_id: M11.8
-    branch: feature/rm-delta-review-packet
-    touch_zones:
-      - specy_road/bundled_scripts/review_packet.py
-      - specy_road/review_gate.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/schemas/review-record.schema.json
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/orchestration_config.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T01:25:22+00:00'
   - codename: milestone-full-review
     node_id: M11.13
     branch: feature/rm-milestone-full-review

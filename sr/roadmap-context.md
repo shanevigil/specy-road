@@ -115,7 +115,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.5` Pickup's stale-claim check tests the local branch and never advises deleting a live claim `pickup-claim-heuristic` — task — **Complete**
   - `M11.6` worker reconcile judges a worker against the leaf's current contract `reconcile-current-contract` — task — **Complete**
   - `M11.7` review delegate runs a rostered reviewer like worker delegate runs an executor `review-delegate` — task — **Complete**
-  - `M11.8` An opt-in delta review packet for small fix rounds `delta-review-packet` — task — **Not Started**
+  - `M11.8` An opt-in delta review packet for small fix rounds `delta-review-packet` — task — **Complete**
   - `M11.9` Acceptance items a human must satisfy are marked and handled as such `human-acceptance` — task — **Complete**
   - `M11.10` edit-node can add and remove single list entries `edit-node-add-remove` — task — **Complete**
   - `M11.11` orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route `one-readiness-rule` — task — **Complete**
@@ -143,6 +143,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.34` Open human decisions live in one tracked ledger and every question is self-contained `decision-ledger` — task — **Not Started**
   - `M11.35` A roster entry maps to the harness's own model id, and a failed start says why `roster-harness-model-id` — task — **Not Started**
 
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+
 ## Archived (not in the live roadmap)
 
 This work was completed and moved out of the graph. It is deliberately excluded from IDE indexing; reach it with `specy-road search <QUERY> --scope archived`.
@@ -154,8 +160,11 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M11.13` on `feature/rm-milestone-full-review` since 2026-11-02
+- `M11.25` on `feature/rm-merge-push-disclosure` since 2026-11-02
+- `M11.26` on `feature/rm-profile-aliases` since 2026-11-02
+- `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
+- `M11.34` on `feature/rm-decision-ledger` since 2026-11-02
 - `M11.4` on `feature/rm-max-workers-global` since 2026-11-02
-- `M11.8` on `feature/rm-delta-review-packet` since 2026-11-02
 
 ## Reaching the detail behind this
 
