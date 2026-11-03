@@ -67,18 +67,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: finish-keeps-summary
-    node_id: M11.50
-    branch: feature/rm-finish-keeps-summary
-    touch_zones:
-      - specy_road/finish_work_artifacts.py
-      - specy_road/bundled_scripts/finish_task.py
-      - tests/
-      - docs/git-workflow.md
-      - docs/dev-workflow.md
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: dashboard-safe-saves
     node_id: M11.51
     branch: feature/rm-dashboard-safe-saves

@@ -156,7 +156,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.47` validate checks git-root touch zones in a nested project `validate-zones-git-root` — task — **Complete**
   - `M11.48` A claimed leaf reads as claimed in list-nodes and brief `claimed-leaf-status` — task — **Complete**
   - `M11.49` The review packet takes touch zones from the reviewed commit and treats lockfiles as generated `packet-zones-at-commit` — task — **Not Started**
-  - `M11.50` finish keeps a committed implementation summary in history `finish-keeps-summary` — task — **Not Started**
+  - `M11.50` finish keeps a committed implementation summary in history `finish-keeps-summary` — task — **Complete**
   - `M11.51` Dashboard saves never overwrite newer disk edits, and the read API is documented `dashboard-safe-saves` — task — **Not Started**
   - `M11.52` PR mode predicts and resolves the registry conflict `pr-mode-registry-conflict` — task — **Not Started**
   - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Complete**
@@ -180,8 +180,9 @@ Do not pick these up.
 - `M11.14` on `feature/rm-queue-worker-message` since 2026-11-02
 - `M11.16` on `feature/rm-sheet-edits-keep-approvals` since 2026-11-02
 - `M11.37` on `feature/rm-packet-uncommitted-refs` since 2026-11-02
+- `M11.41` on `feature/rm-gate-config-agree` since 2026-11-02
 - `M11.44` on `feature/rm-init-profiles-subset` since 2026-11-02
-- `M11.50` on `feature/rm-finish-keeps-summary` since 2026-11-02
+- `M11.46` on `feature/rm-placeholder-leaves-strict-brief` since 2026-11-02
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.54` on `feature/rm-parallel-test-suite` since 2026-11-02
 
