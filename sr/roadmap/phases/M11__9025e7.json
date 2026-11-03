@@ -1,0 +1,47 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "validate (or orchestrate plan) warns when a roster entry with a reviewer or executor role matches no model profile by api_id, file name or alias, naming the entry and the closest profile; the shipped profiles carry aliases for the harness ids they document (for example cursor-grok-4.6-high and gpt-5.6-sol-high); a test covers a matched and an unmatched roster id"
+      ],
+      "codename": "profile-alias-coverage",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.76",
+      "node_key": "9025e735-d94d-4074-92de-191f5457d561",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.76_profile-alias-coverage_9025e735-d94d-4074-92de-191f5457d561.md",
+      "sibling_order": 76,
+      "status": "Not Started",
+      "title": "Every roster model reaches its profile notes",
+      "touch_zones": [
+        "specy_road/model_profiles.py",
+        "specy_road/templates/project/model-profiles/",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A reviewer run that filed its review record for the commit under review is recorded as complete with no error in RUN-<model>.json, and the 'no review record was filed' error appears only when no record for that commit exists after the run; a test covers both"
+      ],
+      "codename": "run-record-no-false-failure",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.77",
+      "node_key": "ceeb3342-6ba7-40f0-8563-6a6831182c26",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.77_run-record-no-false-failure_ceeb3342-6ba7-40f0-8563-6a6831182c26.md",
+      "sibling_order": 77,
+      "status": "Not Started",
+      "title": "A completed reviewer run does not report a missing record",
+      "touch_zones": [
+        "specy_road/reviewer_run_failure.py",
+        "specy_road/review_delegate.py",
+        "tests/"
+      ],
+      "type": "task"
+    }
+  ]
+}

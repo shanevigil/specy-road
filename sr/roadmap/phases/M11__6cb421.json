@@ -187,13 +187,14 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.63_pickup-second-claim-guard_cabfd63c-1329-4e9f-9b32-aaeaeaa851d6.md",
       "sibling_order": 63,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "do-next-available-task refuses a second claim in a checkout that already holds one",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_task.py",
         "specy_road/bundled_scripts/do_next_task_args.py",
         "specy_road/templates/",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/do_next_task_held_claim.py"
       ],
       "type": "task"
     },
@@ -209,7 +210,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.64_abort-untracked-like-pickup_099973ff-86a7-4fbb-9882-6231169d204b.md",
       "sibling_order": 64,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "abort-task-pickup treats untracked files the way pickup does",
       "touch_zones": [
         "specy_road/bundled_scripts/abort_task_pickup.py",
@@ -229,7 +230,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.65_why-blocked-plan-holds_a2c70000-f148-4d74-bee8-bd8dd01eb619.md",
       "sibling_order": 65,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "why-blocked reports touch-zone holds from the plan",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_query_cli.py",
@@ -298,7 +299,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.68_rework-findings-in-prompt_4baf83c6-0d3d-423b-93ee-2d8037b65166.md",
       "sibling_order": 68,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A re-delegated executor starts from the blocking review findings",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt.py",
@@ -321,7 +322,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.69_branch-schema-for-gate-and-finish_8aa58292-b00a-47d6-9d63-54a57e47d440.md",
       "sibling_order": 69,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A leaf that adds a schema key can be gated and finished",
       "touch_zones": [
         "specy_road/review_files.py",
@@ -329,7 +330,10 @@
         "specy_road/orchestration_config.py",
         "specy_road/git_workflow_config.py",
         "specy_road/bundled_scripts/finish_task.py",
-        "tests/"
+        "tests/",
+        "specy_road/schema_revision.py",
+        "specy_road/worker_state.py",
+        "specy_road/worker_schema.py"
       ],
       "type": "task"
     },
@@ -346,14 +350,16 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.70_zones-checked-at-authoring_85605152-67f2-4099-a3ed-588f1566cbc8.md",
       "sibling_order": 70,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Touch zones are checked when they are written",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
         "specy_road/bundled_scripts/validate_roadmap_checks.py",
         "specy_road/bundled_scripts/generate_brief.py",
         "docs/roadmap-authoring.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/brief_call_sites.py",
+        "specy_road/bundled_scripts/touch_zone_tracked.py"
       ],
       "type": "task"
     },
@@ -424,12 +430,13 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.73_ready-warns-integration-conflict_a245310c-1353-4fd3-89d4-be6cc19241ef.md",
       "sibling_order": 73,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "specy-road ready warns when the leaf no longer merges cleanly",
       "touch_zones": [
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/review_gate.py",
-        "tests/"
+        "tests/",
+        "specy_road/review_ready_merge.py"
       ],
       "type": "task"
     },
@@ -453,6 +460,28 @@
         "specy_road/bundled_scripts/abort_task_pickup.py",
         "specy_road/repo_lock.py",
         "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The reviewer prompt tells every reviewer to (1) run the tests that import each changed module, not only the executor's selection, (2) try at least one input per changed public function that the diff's tests do not use and report it under commands_rerun, (3) fail an acceptance item whose observed behaviour differs from its text, even when the difference looks minor, and (4) list every defect its notes describe under required_changes or explain why it is not a defect; a test pins the four rules in the rendered prompt",
+        "review record refuses an approve whose notes or findings name a defect without a matching required_changes entry or an explicit 'not a defect because' line, with a message saying which; a test covers the refusal and an approve with no findings"
+      ],
+      "codename": "reviewer-probe-rules",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.75",
+      "node_key": "fad49524-fd80-4585-86c5-6855921d0ed8",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.75_reviewer-probe-rules_fad49524-fd80-4585-86c5-6855921d0ed8.md",
+      "sibling_order": 75,
+      "status": "Not Started",
+      "title": "Reviewer prompt asks for independent probes, not the executor's own checks",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt.py",
+        "docs/orchestration-review.md",
         "tests/"
       ],
       "type": "task"

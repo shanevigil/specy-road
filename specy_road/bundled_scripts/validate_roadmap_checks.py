@@ -16,6 +16,7 @@ from specy_road.runtime_paths import default_user_repo_root, git_root
 
 from specy_road.bundled_scripts.brief_acceptance import warn_acceptance_merged, warn_acceptance_missing, warn_unauthored
 from specy_road.bundled_scripts.planning_sheet_bootstrap import unauthored_leaves
+from specy_road.bundled_scripts.touch_zone_tracked import warn_untracked_zones
 from specy_road.bundled_scripts.validate_touch_zones import warn_touch_zones_match_nothing
 from specy_road.bundled_scripts.validate_registry_overlap import (
     AuthoringOverlapScope,
@@ -386,6 +387,7 @@ def run_validation(
 
     warn_stale_parent_status(nodes)
     warn_touch_zones_match_nothing(nodes, r, git_root=git_root(r) or r)
+    warn_untracked_zones(nodes, r)
     warn_authoring_gaps(nodes, r, gate, show_all=show_all, strict_authoring=strict_authoring)
     warn_acceptance_merged(nodes)
     warn_registry_touch_zone_overlap(

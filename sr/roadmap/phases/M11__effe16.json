@@ -471,7 +471,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.58_session-routing-preferences_0f7f80f3-23c0-4824-ac19-58e173360f5d.md",
       "sibling_order": 58,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The coordinator records the session's routing preferences where the next session can read them",
       "touch_zones": [
         "specy_road/decisions.py",
@@ -480,7 +480,9 @@
         "specy_road/templates/specyrd/commands/specyrd-orchestrate.md",
         "specy_road/bundled_scripts/role_prompt.py",
         "docs/orchestration.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/orchestrate_cli.py",
+        "specy_road/orchestrate_plan.py"
       ],
       "type": "task"
     }

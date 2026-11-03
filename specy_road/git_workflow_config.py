@@ -12,6 +12,7 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from specy_road.git_subprocess import current_branch_name, git_ok, is_git_worktree
+from specy_road.schema_revision import accepted_at_revision
 
 _PACKAGE_DIR = Path(__file__).resolve().parent
 _GIT_WORKFLOW_SCHEMA = _PACKAGE_DIR / "templates" / "project" / "schemas" / "git-workflow.schema.json"
@@ -39,11 +40,13 @@ def _schema_validator() -> Draft202012Validator:
     return Draft202012Validator(schema)
 
 
-def validate_git_workflow_dict(data: dict[str, Any]) -> str | None:
-    """Return error message if invalid, else None."""
+def validate_git_workflow_dict(data: dict[str, Any], repo_root: Path | None = None) -> str | None:
+    """Return error message if invalid, else None; with ``repo_root``, the working-tree schema of a
+    specy-road checkout counts too (:func:`schema_revision.accepted_at_revision`)."""
     v = _schema_validator()
     errs = sorted(v.iter_errors(data), key=lambda e: e.path)
-    if not errs:
+    sub = _GIT_WORKFLOW_SCHEMA.relative_to(_PACKAGE_DIR).as_posix()
+    if not errs or repo_root is not None and accepted_at_revision(data, sub, repo_root):
         return None
     e = errs[0]
     loc = "/".join(str(x) for x in e.path) if e.path else "(root)"
@@ -61,7 +64,7 @@ def load_git_workflow_config(repo_root: Path) -> tuple[dict[str, Any] | None, st
         return None, f"YAML error in {GIT_WORKFLOW_REL}: {e}"
     if not isinstance(raw, dict):
         return None, f"{GIT_WORKFLOW_REL}: must be a mapping"
-    err = validate_git_workflow_dict(raw)
+    err = validate_git_workflow_dict(raw, repo_root)
     if err:
         return None, f"{GIT_WORKFLOW_REL}: {err}"
     return raw, None

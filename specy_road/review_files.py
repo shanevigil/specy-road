@@ -34,6 +34,7 @@ from jsonschema import Draft202012Validator
 
 from specy_road.git_subprocess import git_text
 from specy_road.runtime_paths import specy_road_package_dir
+from specy_road.schema_revision import accepted_at_revision
 
 REVIEWS_REL = Path("work") / "reviews"
 READY_PREFIX = "READY-"
@@ -111,12 +112,12 @@ def _validator(name: str) -> Draft202012Validator:
     return Draft202012Validator(json.loads(path.read_text(encoding="utf-8")))
 
 
-def _schema_errors(data: dict[str, Any], schema_name: str) -> list[str]:
+def _schema_errors(data: dict[str, Any], schema_name: str, path: Path) -> list[str]:
     out = []
     for e in sorted(_validator(schema_name).iter_errors(data), key=lambda e: list(e.path)):
         loc = "/".join(str(x) for x in e.path) if e.path else "(root)"
         out.append(f"{loc}: {e.message}")
-    return out
+    return [] if out and accepted_at_revision(data, f"schemas/{schema_name}", path, data.get("commit") or "") else out
 
 
 _SHA_KEYS = ("commit", "base")
@@ -196,7 +197,7 @@ def load_ready(path: Path, node_id: str | None = None, branch: str | None = None
     """
     data, body, errs = _read(path)
     if not errs:
-        errs = _schema_errors(data, "handoff.schema.json")
+        errs = _schema_errors(data, "handoff.schema.json", path)
     if not errs and node_id is not None and data.get("node_id") != node_id:
         errs.append(f"node_id is {data.get('node_id')!r}, not {node_id!r} (misfiled hand-off)")
     if not errs and branch is not None and data.get("branch") != branch:
@@ -235,7 +236,7 @@ def review_semantic_errors(data: dict[str, Any], acceptance_ids: list[str] | Non
 def load_review(path: Path, acceptance_ids: list[str] | None = None) -> ReviewFile:
     data, body, errs = _read(path)
     if not errs:
-        errs = _schema_errors(data, "review-record.schema.json")
+        errs = _schema_errors(data, "review-record.schema.json", path)
     if not errs:
         errs = review_semantic_errors(data, acceptance_ids)
     return ReviewFile(path, data, body, errs)
@@ -318,7 +319,7 @@ def list_rcas(repo_root: Path, node_id: str) -> list[ReviewFile]:
     out = []
     for p in _files(repo_root, node_id, RCA_PREFIX):
         data, body, errs = _read(p)
-        errs = errs or _schema_errors(data, "rca-record.schema.json")
+        errs = errs or _schema_errors(data, "rca-record.schema.json", p)
         if not errs and data.get("node_id") != node_id:
             errs.append(f"node_id is {data.get('node_id')!r}, not {node_id!r}")
         out.append(ReviewFile(p, data, body, errs))
