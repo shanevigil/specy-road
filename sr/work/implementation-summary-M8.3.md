@@ -1,6 +1,6 @@
 # Implementation summary: M8.3 — reviewer runs are read-only and specy-road writes the review record from structured output
 
-Branch `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output`, merged with `origin/WIP/improvements-0-3-1` (fast-forward to `4a82059f`, which brings the M11.59 adapter split) before the change. Round 1: `84f88f75`; touch zones `322e41fd`. Round 2 answers Codex Sol's block (`REVIEW-gpt-6.1-sol.md` at `322e41fd`); the READY file names its commit. Merged `origin/WIP/improvements-0-3-1` again at `260030ad` (M11.23, M8.6). The only conflict was `worker_adapters.py`'s docstring: M11.23's `channels.cli_resume` and `permission_denials` text and this leaf's reviewer paragraph are both kept. M11.23's logic lives in `worker_adapter_parsers.py` and `worker_ops_*`, so no adapter code moved. `6b22ff8a` adds one test against M8.6's shipped `agy` profile.
+Branch `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output`, merged with `origin/WIP/improvements-0-3-1` (fast-forward to `4a82059f`, which brings the M11.59 adapter split) before the change. Round 1: `84f88f75`; touch zones `322e41fd`. Round 2 answers Codex Sol's block (`REVIEW-gpt-6.1-sol.md` at `322e41fd`); the READY file names its commit. Merged `origin/WIP/improvements-0-3-1` again at `260030ad` (M11.23, M8.6). The only conflict was `worker_adapters.py`'s docstring: M11.23's `channels.cli_resume` and `permission_denials` text and this leaf's reviewer paragraph are both kept. M11.23's logic lives in `worker_adapter_parsers.py` and `worker_ops_*`, so no adapter code moved. `6b22ff8a` adds one test against M8.6's shipped `agy` profile. Merged WIP again at `869950c5` (M11.71, forced RCA). The only conflict was `role_prompt.build_prompt`'s signature and docstring, and the `build_prompt` call in `main`. `build_prompt` now takes both `read_back` and M11.71's `force_reason`, and `main` keeps M11.71's `--force`/`--reason` checks and passes both. The rca branch (`rca_trigger`, `forced` precondition) and the reviewer branch (`reviewer_lines`, `schema_lines`) are unchanged.
 
 ## What changed
 
@@ -47,6 +47,8 @@ The zones now include `specy_road/review_delegate.py` and `docs/orchestration-re
 - The full suite was not re-run this round. Round 1's full run passed: 1700 passed, 2 skipped; then 1615 passed.
 
 - After the WIP merge (`260030ad`): `pytest -q -n 6 -p no:cacheprovider` over `tests/test_review_record_write.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_worker_adapters.py`, `tests/test_worker_resume_permissions.py`, `tests/test_models_and_prompt.py`, `tests/test_prerelease_review.py` and `tests/test_harness_facts.py`: 189 passed. File limits OK; private imports 0 new; `ruff` unchanged (the WIP C901 only).
+
+- After the M11.71 merge (`869950c5`): `pytest -q -n 6 -p no:cacheprovider` over `tests/test_review_rca.py`, `tests/test_review_record_write.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_models_and_prompt.py`, `tests/test_prerelease_review.py`, `tests/test_prerelease_s2.py`, `tests/test_lean_rules.py`, `tests/test_worker_adapters.py` and `tests/test_planning_sheet_bootstrap.py`: 154 passed. File limits OK; `ruff` on `role_prompt.py` clean.
 
 ## Not verified / open
 
