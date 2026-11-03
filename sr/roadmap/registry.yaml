@@ -59,6 +59,7 @@ entries:
       - specy_road/templates/project/schemas/
       - docs/orchestration-models.md
       - tests/
+      - specy_road/bundled_scripts/models_cli.py
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
@@ -99,6 +100,37 @@ entries:
       - specy_road/bundled_scripts/role_prompt.py
       - docs/orchestration.md
       - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: quieter-overlap-warnings
+    node_id: M11.18
+    branch: feature/rm-quieter-overlap-warnings
+    touch_zones:
+      - specy_road/bundled_scripts/validate_roadmap.py
+      - specy_road/bundled_scripts/roadmap_crud_ops.py
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: pickup-no-work-stash
+    node_id: M11.19
+    branch: feature/rm-pickup-no-work-stash
+    touch_zones:
+      - specy_road/bundled_scripts/do_next_task_pickup_helpers.py
+      - specy_road/bundled_scripts/do_next_task.py
+      - specy_road/worker_reconcile.py
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: runtime-verification-of-the-harness-facts-against-installed-binaries
+    node_id: M8.7
+    branch: feature/rm-runtime-verification-of-the-harness-facts-against-installed-binaries
+    touch_zones:
+      - research/
+      - specy_road/templates/project/model-profiles/
+      - docs/
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
