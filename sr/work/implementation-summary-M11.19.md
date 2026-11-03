@@ -15,7 +15,7 @@ Acceptance **A1** only: prove that a real `specy-road do-next-available-task` pi
 
 ## Behaviour
 
-Added `test_pickup_leaves_worker_events_and_stash_alone_while_the_log_grows`: frees the dogfood-style review repo leaf, creates a worker record, runs `--local` pickup on `dev` while a background thread appends `output` events during the registry `git commit` window (short delay injected only in the test’s `git_run` wrapper so the race is reliable). Asserts contiguous event sequences, every appended line present on disk, `last_event_seq` matches the log, and `git stash list` is empty.
+Added `test_pickup_leaves_worker_events_and_stash_alone_while_the_log_grows`: frees the dogfood-style review repo leaf, creates a worker record, runs `--local` pickup on `dev` while a background thread appends `output` events during the registry `git commit` window (short delay injected only in the test’s `git_run` wrapper so the race is reliable). `--local` does not push, so the test does not stub the integration-branch push. Asserts contiguous event sequences, every appended line present on disk, `last_event_seq` matches the log, and `git stash list` is empty.
 
 ## Verification
 
