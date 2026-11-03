@@ -178,7 +178,11 @@ def test_close_requires_decision_block_record(tmp_path: Path, capsys) -> None:
     assert closed["status"] == "closed" and closed["answer"] == "blue" and closed.get("closed")
 
 
-@pytest.mark.parametrize("flag,value", [("--asked", "not-a-date"), ("--needed-by", "tomorrow-ish")])
+@pytest.mark.parametrize(
+    "flag,value",
+    [("--asked", "not-a-date"), ("--needed-by", "tomorrow-ish"),
+     ("--asked", "2026-99-99"), ("--needed-by", "2026-02-30")],
+)
 def test_add_rejects_malformed_dates(tmp_path: Path, capsys, flag: str, value: str) -> None:
     repo = _decisions_repo(tmp_path)
     assert _run(_add_args(repo, flag, value)) == 1
@@ -187,7 +191,7 @@ def test_add_rejects_malformed_dates(tmp_path: Path, capsys, flag: str, value: s
     assert not (repo / "roadmap" / "decisions.yaml").is_file()
 
 
-@pytest.mark.parametrize("asked_yaml", ["not-a-date", '"2026-02-30"'])
+@pytest.mark.parametrize("asked_yaml", ["not-a-date", '"2026-99-99"', '"2026-02-30"'])
 def test_list_rejects_malformed_asked_in_ledger(tmp_path: Path, capsys, asked_yaml: str) -> None:
     repo = _decisions_repo(tmp_path)
     (repo / "roadmap" / "decisions.yaml").write_text(
