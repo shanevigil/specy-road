@@ -27,7 +27,7 @@
       "parent_id": "M8",
       "planning_dir": "planning/M8.1_harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps_d78a68ac-55a4-449c-9b00-97d0840a6afe.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Harness facts fixture drives model-profiles and executor templates, with a classified diff on version bumps",
       "touch_zones": [
         "specy_road/templates/project/model-profiles/",

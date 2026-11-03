@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from specy_road.agent_ignores import RUNTIME_WORK_DIRS
 from specy_road.git_workflow_config import WORKER_LOGS_REL
 from specy_road.model_profiles import Profile
 from specy_road.review_files import PACKET_NAME
@@ -42,11 +43,21 @@ _EXCESS_CHECKLIST = (
 )
 
 
+def runtime_excludes(prefix: str) -> str:
+    """Pathspecs leaving out specy-road's own runtime directories (``RUNTIME_WORK_DIRS``): a fresh clone or
+    worktree holds them before any human edit, and a project scaffolded before they were ignored lists them."""
+    return " ".join(f"':(top,exclude){prefix}{d}'" for d in RUNTIME_WORK_DIRS)
+
+
+def runtime_dirs_prose(prefix: str) -> str:
+    return ", ".join(f"`{prefix}{d}`" for d in RUNTIME_WORK_DIRS if d != "work/reviews/")
+
+
 def dirty_check(prefix: str = "", node_id: str | None = None) -> str:
     """The clean-tree check; with ``node_id``, that leaf's tracked worker logs (``track_worker_logs``) are left out too."""
     logs = f" ':(top,exclude){prefix}{WORKER_LOGS_REL}/{node_id}/'" if node_id else ""
     return (f"git status --porcelain --untracked-files=all -- ':(top)' ':(top,exclude){prefix}work/brief-*.md' "
-            f"':(top,exclude){prefix}work/implementation-summary-*.md' ':(top,exclude){prefix}work/reviews/'{logs}")
+            f"':(top,exclude){prefix}work/implementation-summary-*.md' {runtime_excludes(prefix)}{logs}")
 
 
 def where(prefix: str) -> list[str]:
@@ -69,7 +80,8 @@ def reviewer_precondition(node_id: str, t, packet: Path, prefix: str) -> list[st
         f"':(top,exclude){work}/prompt-{node_id}.md' "
         f"':(top,exclude){work}/prompt-{node_id}-*.md' "
         f"':(top,exclude){work}/reviews/{node_id}/' "
-        f"':(top,exclude){prefix}{WORKER_LOGS_REL}/{node_id}/'"   # the wrapper mirrors these after READY
+        f"':(top,exclude){prefix}{WORKER_LOGS_REL}/{node_id}/' "   # the wrapper mirrors these after READY
+        + runtime_excludes(prefix)
     )
     return [
         "## Precondition",
@@ -79,8 +91,9 @@ def reviewer_precondition(node_id: str, t, packet: Path, prefix: str) -> list[st
         f"the checkout that has `{branch}` checked out (`git worktree list` names it; usually the leaf's worktree, "
         "not the coordinator's main checkout); if none has it, skip it, since the packet names the commit you review. "
         f"It leaves out only this leaf's `{work}/brief-{node_id}.md`, implementation summary, prompts, "
-        f"`{work}/reviews/{node_id}/` hand-offs and `{prefix}{WORKER_LOGS_REL}/{node_id}/` worker logs; any other "
-        "change, tracked or untracked, counts.",
+        f"`{work}/reviews/{node_id}/` hand-offs and `{prefix}{WORKER_LOGS_REL}/{node_id}/` worker logs, plus "
+        f"specy-road's own runtime state ({runtime_dirs_prose(prefix)}); any other change, tracked or untracked, "
+        "counts.",
         "",
         "The packet is gitignored, so file-search and glob tools may not list it: open that "
         f"absolute path directly (`ls {packet}`).",
@@ -111,8 +124,8 @@ def precondition(role: str, node_id: str, t, packet: Path, prefix: str = "") -> 
         f"If {missing}, or `{dirty_check(prefix, node_id)}` lists changes you did not make, "
         f"change nothing, reply exactly `{node_id} not landed; waiting`, and stop. That command leaves out "
         f"only specy-road's bookkeeping (`{prefix}work/brief-*.md`, `{prefix}work/implementation-summary-*.md`, "
-        f"`{prefix}work/reviews/`, this leaf's `{prefix}{WORKER_LOGS_REL}/{node_id}/`); any other change, "
-        "tracked or untracked, counts.",
+        f"`{prefix}work/reviews/`, this leaf's `{prefix}{WORKER_LOGS_REL}/{node_id}/`) and its runtime state "
+        f"({runtime_dirs_prose(prefix)}); any other change, tracked or untracked, counts.",
         "",
     ]
 
@@ -165,7 +178,10 @@ def reviewer_preamble(node_id: str, model: str, ref: str | None = None) -> list[
         f"You review leaf `{node_id}` from the packet below and nothing else. This is a fresh session; "
         "you did not write the change, and you are not the coordinator.",
         "",
-        "Judge each acceptance item `A#` in the brief as pass, fail, or n/a. Record findings under "
+        "Judge each acceptance item `A#` in the brief as pass, fail, or n/a. An item whose text starts with "
+        "`human:` needs a person, not a reviewer: mark it `n/a`, write `human` as its reason in your notes, "
+        "and never fail or block on it; finish-this-task holds the leaf until that decision is recorded on the "
+        "planning sheet. Record findings under "
         "correctness, regression, boundary (paths outside the touch zones), and test integrity "
         "(weakened or deleted tests). Re-run at least one verify command yourself and list it. "
         "Sections the packet marks as executor-asserted are claims; weigh them against the diff and "

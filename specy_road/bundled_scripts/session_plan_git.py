@@ -13,7 +13,10 @@ from dataclasses import replace
 from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_finished_unmerged import finished_unmerged_ids
-from specy_road.bundled_scripts.planning_sheet_bootstrap import unauthored_leaves
+from specy_road.bundled_scripts.do_next_available import unauthored_leaves
+from specy_road.bundled_scripts.planning_sheet_bootstrap import (
+    unauthored_leaves as placeholder_unauthored_leaves,
+)
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.session_plan import SessionPlan, compute_session_plan, _parallel_batches
 from specy_road.git_workflow_config import resolve_integration_defaults, resolve_prefer_agentic
@@ -82,16 +85,23 @@ def gather_session_plan(
 ) -> tuple[list[dict], dict, SessionPlan]:
     """Load roadmap/registry and return a git-enriched session plan.
 
-    Unless ``allow_unauthored``, leaves pickup would skip as unauthored are
-    listed as not ready instead of ready. ``prefer_agentic`` is the CLI value;
+    Leaves pickup would skip as unauthored are listed as not ready instead of
+    ready. ``allow_unauthored`` drops only the no-acceptance placeholder set
+    (same as pickup ``--allow-unauthored``); a leaf with acceptance and an
+    unwritten sheet stays not-ready. ``prefer_agentic`` is the CLI value;
     ``None`` falls back to ``roadmap/git-workflow.yaml`` as pickup does, so
     ``ready`` keeps pickup's order.
     """
     nodes = load_roadmap(repo_root)["nodes"]
     reg = read_registry(registry_path(repo_root))
-    unauthored = {} if allow_unauthored else unauthored_leaves(repo_root, nodes)
+    skipped = unauthored_leaves(repo_root, nodes)
+    if allow_unauthored:
+        skipped = {
+            nid: reason for nid, reason in skipped.items()
+            if nid not in placeholder_unauthored_leaves(repo_root, nodes)
+        }
     plan = compute_session_plan(
-        nodes, reg, under=under, unauthored=unauthored,
+        nodes, reg, under=under, unauthored=skipped,
         prefer_agentic=resolve_prefer_agentic(repo_root, cli=prefer_agentic),
     )
     base, remote, _ = resolve_integration_defaults(

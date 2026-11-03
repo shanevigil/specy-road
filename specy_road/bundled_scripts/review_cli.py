@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI for `specy-road handoff status`, `specy-road review record`, `specy-road review list` and `specy-road ready`.
+"""CLI for `specy-road handoff status`, `specy-road review record|list|delegate` and `specy-road ready`.
 
 ``handoff status`` is what a coordinator polls: for each node with a
 ``work/reviews/<NODE_ID>/`` directory it reports the READY hand-off, every
@@ -12,9 +12,9 @@ whose review loop is not converging and has no root-cause analysis for it is
 ``review record`` validates one reviewer's notes, fills in the family from the
 roster, labels same-family independence, and files the record as
 ``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``.
-``review list`` prints the filed records, any RCA records, the escalation and
-the gate evaluation, and writes nothing. Both commands report the leaf's review
-rounds (distinct reviewed commits) and the time from its first review to the latest.
+``review list`` prints the filed records, any RCA records, the escalation and the gate evaluation, and writes nothing.
+Both commands report the leaf's review rounds (distinct reviewed commits), the time from its first review to the latest,
+and each ``review delegate`` run with its commit; an older commit's record never reads as the current verdict.
 """
 
 from __future__ import annotations
@@ -35,6 +35,7 @@ from specy_road.review_files import (
     review_path, reviews_root, round_span, write_review,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
+from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states
 from specy_road.review_gate_ready import add_ready_parser
 from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
@@ -95,11 +96,12 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
             for c in gate.approvals + gate.blocks
         ],
         "review_rounds": round_span(root, node_id),
+        "review_runs": (runs := run_states(root, node_id, gate.commit)),
         "policy": gate.summary(),
         "policy_met": gate.passed,
         "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
                         "blocking": tm.code_conflicts} if tm and tm.conflicts else None,
-        "problems": merge_problem + gate.problems() + non_gating_verify_problems(ready) + loop.problems(),
+        "problems": merge_problem + gate.problems() + non_gating_verify_problems(ready) + loop.problems() + run_problems(node_id, runs),
     }
 
 
@@ -115,8 +117,10 @@ def _render(st: dict[str, Any]) -> list[str]:
         rerun = r.get("commands_rerun") or []
         extra = f"; reviewer re-ran {', '.join(rerun)!r}" if rerun else ""
         mode = f", launch mode {r['launch_mode']}" if r.get("launch_mode") else ""
-        lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']})"
+        at = "" if r["counted"] else f" at {str(r.get('commit') or '?')[:12]}, not evaluated"
+        lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']}){at}"
                      f"{' [signed]' if r['signed'] else ''}{mode}{extra}")
+    lines += [f"  {line}" for line in run_lines(st.get("review_runs") or [])]
     lines.append(f"  {st['review_rounds']['line']}")
     lines.append(f"  policy: {st['policy']}")
     if tm := st.get("trial_merge"):
@@ -170,10 +174,11 @@ def _unclaimed(root: Path, nid: str) -> dict[str, Any]:
         "reviews": [
             {"file": r.path.name, "model": r.data["model"], "family": r.data.get("family"),
              "verdict": r.data["verdict"], "counted": False, "signed": bool(r.data.get("signature")),
-             "launch_mode": r.data.get("launch_mode")}
+             "launch_mode": r.data.get("launch_mode"), "commit": r.data.get("commit")}
             for r in reviews if r.ok
         ],
         "review_rounds": round_span(root, nid),
+        "review_runs": run_states(root, nid, None),
         "policy": "not evaluated: no claim names the commit under review",
         "policy_met": False,
         "trial_merge": None,
@@ -324,9 +329,11 @@ def cmd_review_list(ns: argparse.Namespace) -> int:
         print(f"No review records for {ns.node_id}.")
     for r in reviews:
         d = r.data
+        stale = t is not None and r.ok and not same_commit(root, d.get("commit"), t.commit)
         print(f"{r.path.name}: {d.get('verdict')} by {d.get('model')} ({d.get('family')}) "
               f"at {str(d.get('commit') or '?')[:12]}{' [signed]' if d.get('signature') else ''}"
-              + ("" if r.ok else f" — invalid: {'; '.join(r.errors)}"))
+              + ("" if r.ok else f" — invalid: {'; '.join(r.errors)}") + (" — stale: not the commit under review" if stale else ""))
+    print("\n".join(run_lines(run_states(root, ns.node_id, t.commit if t else None))) or "No delegated review runs.")
     print(round_span(root, ns.node_id)["line"])
     loop = loop_state(root, ns.node_id)
     _print_rcas(loop)
@@ -370,21 +377,16 @@ def build_parser() -> argparse.ArgumentParser:
     rec.add_argument("--launch-mode", choices=REVIEW_LAUNCH_MODES, help="How your harness was started; stored on the record")
     add_repo_root_arg(rec)
     rec.set_defaults(func=cmd_review_record)
-    ls = rsub.add_parser("list", help="Print a node's filed review records and the gate evaluation; writes nothing")
-    ls.add_argument("node_id")
-    ls.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
-    add_repo_root_arg(ls)
-    ls.set_defaults(func=cmd_review_list)
-    pre = rsub.add_parser("check-pre-existing", help="Re-run claimed pre-existing verifier failures twice on the integration tip")
-    pre.add_argument("node_id")
-    pre.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
-    add_repo_root_arg(pre)
-    pre.set_defaults(func=cmd_check_pre_existing)
-    rg = rsub.add_parser("red-green", help="Run the tests a leaf adds or changes at its merge base and at head")
-    rg.add_argument("node_id")
-    rg.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
-    add_repo_root_arg(rg)
-    rg.set_defaults(func=cmd_red_green)
+    for name, about, fn in (("list", "Print a node's filed review records and the gate evaluation; writes nothing", cmd_review_list),
+                            ("check-pre-existing", "Re-run claimed pre-existing verifier failures twice on the integration tip",
+                             cmd_check_pre_existing),
+                            ("red-green", "Run the tests a leaf adds or changes at its merge base and at head", cmd_red_green)):
+        sp = rsub.add_parser(name, help=about)
+        sp.add_argument("node_id")
+        sp.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+        add_repo_root_arg(sp)
+        sp.set_defaults(func=fn)
+    add_delegate_parser(rsub)
     add_ready_parser(sub)
     return p
 

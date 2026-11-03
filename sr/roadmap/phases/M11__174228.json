@@ -2,9 +2,7 @@
   "nodes": [
     {
       "acceptance": [
-        "Pickup commits the registry change without stashing work/ (for example git commit --only roadmap/registry.yaml), so a running worker's work/.workers files and other sessions' untracked files under work/ are never moved",
-        "If any stash or restore step remains and fails, pickup exits non-zero naming the stash; worker sync reports a gap in a worker's event sequence numbers",
-        "Tests run a pickup while another worker's event log is being appended and show no events are lost and no stash entry is left"
+        "A test runs a real pickup while another worker's work/.workers event log is being appended and shows no events are lost and no stash entry is left"
       ],
       "codename": "pickup-no-work-stash",
       "dependencies": [],
@@ -26,8 +24,8 @@
     },
     {
       "acceptance": [
-        "When the roster on the integration ref differs from the working tree or local branch, orchestrate plan and validate print that the roster is read from origin/<integration> and that the local roadmap/orchestration.yaml must be pushed to take effect; with no roster file on the integration ref they say so and point at docs/orchestration.md instead of a may_process hint",
-        "Tests cover a local-only roster, a committed-unpushed roster and no roster"
+        "When the roster on the integration ref differs from the working tree or the local integration branch, orchestrate plan and validate say the roster is read from <remote>/<integration> and that the change must be committed and pushed (not only committed); with no roster on the integration ref and no working-tree file they say so and point at docs/orchestration.md instead of the may_process hint",
+        "Tests cover a committed-but-unpushed roster and no roster at all"
       ],
       "codename": "roster-source-explained",
       "dependencies": [],
@@ -44,30 +42,6 @@
         "specy_road/orchestrate_plan.py",
         "specy_road/bundled_scripts/validate_roadmap.py",
         "docs/orchestration.md",
-        "tests/"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "A --prefer-agentic flag (and a git-workflow.yaml default) orders ready leaves Agentic-led before Mixed before Human-led within the same tree position; grind-session --plan prints the execution milestone next to the next auto-pick",
-        "Tests cover the ordering with and without the flag"
-      ],
-      "codename": "prefer-agentic-pick",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M11.21",
-      "node_key": "439c8b26-a447-4ead-a8e0-5b1af091e935",
-      "parent_id": "M11",
-      "planning_dir": "planning/M11.21_prefer-agentic-pick_439c8b26-a447-4ead-a8e0-5b1af091e935.md",
-      "sibling_order": 21,
-      "status": "Not Started",
-      "title": "Auto-pick can prefer Agentic-led leaves and shows each leaf's mode",
-      "touch_zones": [
-        "specy_road/bundled_scripts/do_next_available.py",
-        "specy_road/bundled_scripts/session_plan.py",
-        "specy_road/bundled_scripts/do_next_task_args.py",
-        "docs/dev-workflow.md",
         "tests/"
       ],
       "type": "task"
@@ -100,8 +74,8 @@
     },
     {
       "acceptance": [
-        "A roster entry can set channels.cli_resume (or an extra_args list appended to both default commands), so worker message and resume keep the same permissions as the launch; a custom cli without a usable resume form is reported at delegate time instead of silently falling back",
-        "docs/orchestration-workers.md documents the per-worktree settings-file route for Claude Code permissions; tests cover launch and resume argv"
+        "A roster entry can set channels.cli_resume (or an extra_args list appended to both default commands), so worker message and resume keep the launch's permissions; a custom cli without a usable resume form is reported at delegate time instead of silently falling back to the default command",
+        "Tests cover the launch and resume argv for both fields and the delegate-time report"
       ],
       "codename": "resume-keeps-permissions",
       "dependencies": [],
@@ -124,8 +98,8 @@
     },
     {
       "acceptance": [
-        "When a worker launches in a linked worktree, the Claude Code adapter adds the main checkout's work/reviews/<ID> directory as an allowed directory (and the equivalent for other harnesses that support it), so the executor can write its READY there",
-        "The executor and reviewer clean-tree preconditions name the checkout to run git status in (the leaf worktree path, filled in), so a reviewer does not check the main checkout by mistake; tests cover both prompts and the adapter argv"
+        "A roster channels.cli can receive the main checkout's work/reviews/<ID> directory (for example a {reviews_dir} placeholder), so a custom launch can allow the executor to write READY there",
+        "The Codex and Cursor adapters pass the equivalent allowed-directory option when the installed harness supports it (checked against model-profiles/harness-facts.yaml), or the docs state that the harness has none; tests cover the argv"
       ],
       "codename": "worktree-handoff-writable",
       "dependencies": [],
@@ -147,8 +121,8 @@
     },
     {
       "acceptance": [
-        "In merge mode, finish-this-task prints before pushing how many commits it will push to the integration branch and how many of them are not from this leaf, and --help says merge mode pushes the integration branch",
-        "Tests cover a push that carries an unrelated local commit"
+        "In merge mode, the push notice prints the total number of commits the push will carry and how many are not from this leaf branch, and still prints a count when the remote-tracking ref or local branch is absent; docs/git-workflow.md's merge-mode bullet mentions the notice",
+        "An end-to-end finish test pushes an unrelated local commit and checks the printed total and not-from-leaf counts"
       ],
       "codename": "merge-push-disclosure",
       "dependencies": [],
@@ -161,9 +135,9 @@
       "status": "Not Started",
       "title": "finish-this-task says what merge mode will push before it pushes",
       "touch_zones": [
+        "specy_road/finish_land_integration.py",
         "specy_road/bundled_scripts/finish_task.py",
         "specy_road/finish_modes.py",
-        "specy_road/bundled_scripts/finish_task_args.py",
         "docs/git-workflow.md",
         "tests/"
       ],
@@ -171,8 +145,8 @@
     },
     {
       "acceptance": [
-        "A profile can list aliases (or a roster entry can name its profile), so roster ids like gpt-5.6-sol-high or -xhigh find the GPT-5.6 Sol profile and prompts carry its model notes",
-        "Tests cover an alias match and an unmatched id"
+        "Shipped model profiles cover the Cursor ids the docs recommend: a GPT-5.6 Sol profile exists and lists its effort-suffixed Cursor ids (for example gpt-5.6-sol-high, -xhigh) as aliases, and the shipped Grok and Composer profiles list theirs",
+        "models list (or validate) names roster ids that match no profile; a test covers an alias match and an unmatched id"
       ],
       "codename": "profile-aliases",
       "dependencies": [],
@@ -189,14 +163,14 @@
         "specy_road/templates/project/model-profiles/",
         "specy_road/templates/project/schemas/",
         "docs/orchestration-models.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/models_cli.py"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "session start --path accepts several paths after one flag (or the error says to repeat --path); prompt --role reviewer accepts --packet or says the packet must be at the default path when review-packet -o wrote elsewhere",
-        "worker sync shows the worker's full final message on a completion without READY; session end works on the caller's own stale sessions; the Cursor adapter's default launch passes --trust, with a test"
+        "worker delegate reports a custom channels.cli that uses a text-only output mode (for example agent -p --output-format text, or no output format), which keeps only the last message, and suggests the stream-json form; a test covers the report"
       ],
       "codename": "small-cli-fixes",
       "dependencies": [],
@@ -210,11 +184,10 @@
       "title": "Small CLI fixes from field use",
       "touch_zones": [
         "specy_road/bundled_scripts/session_cli.py",
-        "specy_road/bundled_scripts/review_packet.py",
-        "specy_road/bundled_scripts/role_prompt.py",
         "specy_road/bundled_scripts/worker_cli.py",
         "specy_road/bundled_scripts/worker_cli_render.py",
         "specy_road/worker_adapters.py",
+        "specy_road/worker_ops.py",
         "tests/"
       ],
       "type": "task"
@@ -247,7 +220,8 @@
     {
       "acceptance": [
         "specy-road doctor warns when the running version is older than the version recorded in the AGENTS.md managed block or .specyrd/manifest.json, naming both and the likely cause (an older install earlier on PATH)",
-        "Tests cover older, equal and newer"
+        "The generated AGENTS.md stub states the minimum specy-road version, and commands warn once when the running version is older than it",
+        "README and docs/install-and-usage.md document one supported install route for the CLI on a maintainer machine (for example uv tool install or pipx) and how to check which install is on PATH; tests cover older, equal and newer"
       ],
       "codename": "doctor-version-skew",
       "dependencies": [],
@@ -261,6 +235,237 @@
       "title": "doctor warns when the running specy-road is older than the project's stubs",
       "touch_zones": [
         "specy_road/bundled_scripts/doctor.py",
+        "specy_road/cli.py",
+        "specy_road/templates/",
+        "README.md",
+        "docs/install-and-usage.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "An optional env_setup command in roadmap/git-workflow.yaml runs in a new worktree when delegate or pickup creates it; a failure stops the launch with the command's output",
+        "doctor reports a configured env_setup and whether it succeeds in the main checkout; docs give a uv workspace example (uv sync --all-packages --all-groups --locked) and warn that a plain uv sync in a workspace removes other members' packages; tests cover success, failure and no setting"
+      ],
+      "codename": "worktree-env-setup",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.30",
+      "node_key": "e442e4b8-d057-4e6d-b520-9ec4b28f356e",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.30_worktree-env-setup_e442e4b8-d057-4e6d-b520-9ec4b28f356e.md",
+      "sibling_order": 30,
+      "status": "Not Started",
+      "title": "Leaf worktrees get the project's environment set up",
+      "touch_zones": [
+        "specy_road/git_workflow_config.py",
+        "specy_road/worker_ops.py",
+        "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road worktree prune <ID> removes the leaf's worktree only when the leaf branch is merged into the integration branch and the worktree has no uncommitted changes, untracked non-ignored files or stashes, and lists ignored files it would delete (with --yes to proceed)",
+        "When nested_repos are configured, it also refuses if any nested repo in the worktree holds commits on no branch of the main checkout's copy or any remote, uncommitted changes or stashes, and handles both linked worktrees and full clones; tests cover each refusal and a clean prune"
+      ],
+      "codename": "worktree-prune",
+      "dependencies": [
+        "0e58af0e-895f-4a7c-b3c9-e5cb788d598f"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.31",
+      "node_key": "4f1db491-c309-4ba9-b5d7-d5d91a9cf9b6",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.31_worktree-prune_4f1db491-c309-4ba9-b5d7-d5d91a9cf9b6.md",
+      "sibling_order": 31,
+      "status": "Not Started",
+      "title": "A safe command to retire a leaf worktree",
+      "touch_zones": [
+        "specy_road/bundled_scripts/worktree_cli.py",
+        "specy_road/worktree_prune.py",
+        "specy_road/cli.py",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "doctor and grind-session --plan list configured nested repos with branches that are ahead of their upstream, have no upstream, or have no remote, naming the repo, branch and commit count",
+        "Tests cover ahead, no upstream, no remote and clean"
+      ],
+      "codename": "nested-unpushed-report",
+      "dependencies": [
+        "0e58af0e-895f-4a7c-b3c9-e5cb788d598f"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.32",
+      "node_key": "66a3455f-0e4e-4947-8cb5-cee6a60ddcf0",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.32_nested-unpushed-report_66a3455f-0e4e-4947-8cb5-cee6a60ddcf0.md",
+      "sibling_order": 32,
+      "status": "Not Started",
+      "title": "Unpushed nested-repo commits are reported",
+      "touch_zones": [
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/bundled_scripts/session_plan.py",
+        "specy_road/nested_repos.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A roster entry can declare routing: fixed (the default) or routing: dynamic; the review gate does not count a dynamic entry's approval toward the distinct-family requirement unless the entry also pins its model (for example a pinned: true flag the maintainer sets after checking the harness honours it), and handoff status says why an approval was not counted",
+        "Worker usage records keep the requested model and, when the harness stream reports one, the observed model (beside the harness version already recorded); worker sync flags a mismatch",
+        "Docs explain the rule (a harness that cascades or runs its own critic underneath could put the same family on both sides) and that a harness's internal critic is supporting evidence, never a gate approval; tests cover fixed, dynamic, dynamic-pinned and a mismatch"
+      ],
+      "codename": "dynamic-routing-reviewers",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.33",
+      "node_key": "abfffa4b-36f6-4fc1-8754-ab8bc26e9fb8",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.33_dynamic-routing-reviewers_abfffa4b-36f6-4fc1-8754-ab8bc26e9fb8.md",
+      "sibling_order": 33,
+      "status": "Not Started",
+      "title": "A reviewer whose harness routes models dynamically does not count as an independent family by default",
+      "touch_zones": [
+        "specy_road/orchestration_config.py",
+        "specy_road/review_gate.py",
+        "specy_road/worker_adapter_parsers.py",
+        "specy_road/worker_runner.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "docs/orchestration.md",
+        "docs/orchestration-models.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road decisions add|list|close keeps open human decisions in a tracked roadmap/decisions.yaml (schema-validated): id, node, kind (decision | human-action), plain-words summary, why now and what it blocks, options with their effect, the recommendation and its reason, the default the agent applies if unanswered, asked date and optional needed-by date; list orders by needed-by and shows every open entry; close records the answer and requires it to be written to the node's planning sheet decision block",
+        "The orchestrate skill and the coordinator prompt tell the agent to read decisions list each turn (as with worker sync), to search the ledger and planning-sheet decision blocks before asking anything, to ask at most four at once in the self-contained shape with no bare ids, and to end any turn that has open entries with one 'Decisions waiting on you' block listing all of them below the status",
+        "docs/orchestration.md describes the ledger and the question shape; tests cover add, list ordering, close requiring the sheet record, and schema validation"
+      ],
+      "codename": "decision-ledger",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.34",
+      "node_key": "bc3055ab-39c6-4972-b8a7-bf83e135d26a",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.34_decision-ledger_bc3055ab-39c6-4972-b8a7-bf83e135d26a.md",
+      "sibling_order": 34,
+      "status": "Not Started",
+      "title": "Open human decisions live in one tracked ledger and every question is self-contained",
+      "touch_zones": [
+        "specy_road/decisions.py",
+        "specy_road/bundled_scripts/decisions_cli.py",
+        "specy_road/cli.py",
+        "specy_road/templates/project/schemas/",
+        "specy_road/templates/specyrd/commands/specyrd-orchestrate.md",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "docs/orchestration.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A roster entry can set harness_model (the id the harness CLI expects, for example claude-opus-5-5 for roster id claude-opus-5.5); the default adapters pass it to --model, falling back to the roster id; validate warns when a Claude Code entry's id contains a dot and no harness_model is set",
+        "When a worker exits non-zero before its first stream event, its error event summary includes the harness's last error line from the log (for example an HTTP 404 for an unknown model), not only a pointer to the log; tests cover the mapping, the fallback and the early-failure summary"
+      ],
+      "codename": "roster-harness-model-id",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.35",
+      "node_key": "f2ed72a7-5b45-4457-8649-e65c6fe42b0e",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.35_roster-harness-model-id_f2ed72a7-5b45-4457-8649-e65c6fe42b0e.md",
+      "sibling_order": 35,
+      "status": "Not Started",
+      "title": "A roster entry maps to the harness's own model id, and a failed start says why",
+      "touch_zones": [
+        "specy_road/orchestration_config.py",
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_runner.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "docs/orchestration-models.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the review policy allows it (a key, off by default), a reviewer that resumes its own earlier session may approve a delta: the record names delta_from (the commit it last approved) and the delta it read, fresh_session may be false, and the approval counts only under M11.8's delta rules; any other resumed approval is still refused by reviewer_fresh_session",
+        "handoff status says when an approval was refused only for fresh_session and whether a resumed delta would be allowed; docs and tests cover allowed, refused (policy off), and a resumed full review"
+      ],
+      "codename": "resumed-delta-approval",
+      "dependencies": [
+        "0aae8208-413d-4d60-b7b8-c83f9c31b522"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.36",
+      "node_key": "17d67a22-2e77-4f9f-9627-a051cdc2c225",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.36_resumed-delta-approval_17d67a22-2e77-4f9f-9627-a051cdc2c225.md",
+      "sibling_order": 36,
+      "status": "Not Started",
+      "title": "A resumed reviewer session may approve a delta it was shown",
+      "touch_zones": [
+        "specy_road/review_gate.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "review-packet lists, in a warning section and on stderr, every repository path named in the brief, the planning sheet or the implementation summary that does not exist at the reviewed commit (untracked or uncommitted), so the coordinator can commit it before a reviewer starts",
+        "Tests cover a named untracked file, a named committed file and a path-like string that is not a repository path"
+      ],
+      "codename": "packet-uncommitted-refs",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.37",
+      "node_key": "f1463500-d122-4d16-b18c-97d36d9dd71f",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.37_packet-uncommitted-refs_f1463500-d122-4d16-b18c-97d36d9dd71f.md",
+      "sibling_order": 37,
+      "status": "Not Started",
+      "title": "review-packet warns when the brief or summary names a file not committed at the reviewed commit",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_packet.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the gate is not met, handoff status lists each rostered reviewer (including a human entry) and whether it can supply a counting approval at this commit, and for each excluded one the reason (same family as an approval already counted, wrote a fix commit on this leaf, executor of the leaf, not a reviewer role, or rejected record)",
+        "Tests cover a human reviewer listed as eligible, an author-excluded reviewer and a same-family reviewer"
+      ],
+      "codename": "handoff-eligible-reviewers",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.38",
+      "node_key": "35380c40-e3ba-4d90-913d-342ecd12d964",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.38_handoff-eligible-reviewers_35380c40-e3ba-4d90-913d-342ecd12d964.md",
+      "sibling_order": 38,
+      "status": "Not Started",
+      "title": "handoff status says who can still supply a missing approval",
+      "touch_zones": [
+        "specy_road/review_gate.py",
+        "specy_road/bundled_scripts/review_cli.py",
         "tests/"
       ],
       "type": "task"

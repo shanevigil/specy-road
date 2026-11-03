@@ -12,6 +12,7 @@ from typing import Any
 
 import yaml
 
+from specy_road.agent_ignores import RUNTIME_WORK_DIRS
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.finish_implementation_check import _clean, zone_matches
@@ -65,10 +66,6 @@ def _changed_since(worktree: Path, since_sha: str | None) -> list[str]:
     return sorted(changed | {p for p in untracked.splitlines() if p.strip()})
 
 
-#: specy-road's state under work/: gitignored by the project template, listed by git where it is not.
-_STATE_DIRS = ("work/reviews/", "work/.workers/", "work/.sessions/", "work/.worktrees/")
-
-
 def _delegated_brief(repo_root: Path, rec: WorkerRecord) -> Path:
     wt = Path(rec.worktree)
     return git_root(wt) / project_prefix(repo_root) / "work" / f"brief-{rec.node_id}.md"
@@ -119,7 +116,7 @@ def _bookkeeping(path: str, node_id: str, prefix: str = "") -> bool:
     rel = rebase_to_project(path, prefix)
     return rel is not None and (rel in (f"work/brief-{node_id}.md", f"work/implementation-summary-{node_id}.md")
                                 or rel.startswith((f"work/prompt-{node_id}-", f"{WORKER_LOGS_REL}/{node_id}/",
-                                                   *_STATE_DIRS)))
+                                                   *RUNTIME_WORK_DIRS)))
 
 
 def reconcile(repo_root: Path, worker_id: str) -> tuple[WorkerRecord, dict[str, Any]]:
