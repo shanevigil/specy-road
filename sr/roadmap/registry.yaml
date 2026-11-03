@@ -110,3 +110,15 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
+  - codename: completed-worker-frees-slot
+    node_id: M11.57
+    branch: feature/rm-completed-worker-frees-slot
+    touch_zones:
+      - specy_road/worker_ops.py
+      - specy_road/worker_state.py
+      - specy_road/worker_lease.py
+      - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
