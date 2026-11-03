@@ -81,7 +81,8 @@
       ],
       "codename": "reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output",
       "dependencies": [
-        "d78a68ac-55a4-449c-9b00-97d0840a6afe"
+        "d78a68ac-55a4-449c-9b00-97d0840a6afe",
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M8.3",
@@ -98,7 +99,12 @@
         "specy_road/review_record_write.py",
         "specy_road/templates/specyrd/",
         "docs/pm-llm-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_adapter_base.py",
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/worker_adapter_codex.py",
+        "specy_road/worker_adapter_cursor.py"
       ],
       "type": "task"
     },
@@ -207,7 +213,8 @@
       "touch_zones": [
         "specy_road/templates/project/model-profiles/",
         "roadmap/",
-        "docs/orchestration-models.md"
+        "docs/orchestration-models.md",
+        "tests/test_models_and_prompt.py"
       ],
       "type": "task"
     }

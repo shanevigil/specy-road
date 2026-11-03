@@ -47,6 +47,7 @@ entries:
       - specy_road/templates/project/model-profiles/
       - roadmap/
       - docs/orchestration-models.md
+      - tests/test_models_and_prompt.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
@@ -84,6 +85,11 @@ entries:
       - specy_road/templates/specyrd/
       - docs/pm-llm-review.md
       - tests/
+      - specy_road/worker_adapters.py
+      - specy_road/worker_adapter_base.py
+      - specy_road/worker_adapter_claude.py
+      - specy_road/worker_adapter_codex.py
+      - specy_road/worker_adapter_cursor.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
