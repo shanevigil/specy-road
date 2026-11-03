@@ -114,15 +114,3 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: claimed-leaf-status
-    node_id: M11.48
-    branch: feature/rm-claimed-leaf-status
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_crud_ops.py
-      - specy_road/bundled_scripts/generate_brief.py
-      - tests/
-      - docs/pm-workflow.md
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T05:08:10+00:00'
