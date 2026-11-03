@@ -153,7 +153,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.44` init project can install only the model profiles a project uses `init-profiles-subset` — task — **Not Started**
   - `M11.45` The stale-command warning fires only on command-shaped mentions `stale-command-prose` — task — **Complete**
   - `M11.46` Placeholder leaves neither fail validate --strict nor pad briefs `placeholder-leaves-strict-brief` — task — **Not Started**
-  - `M11.47` validate checks git-root touch zones in a nested project `validate-zones-git-root` — task — **Not Started**
+  - `M11.47` validate checks git-root touch zones in a nested project `validate-zones-git-root` — task — **Complete**
   - `M11.48` A claimed leaf reads as claimed in list-nodes and brief `claimed-leaf-status` — task — **Not Started**
   - `M11.49` The review packet takes touch zones from the reviewed commit and treats lockfiles as generated `packet-zones-at-commit` — task — **Not Started**
   - `M11.50` finish keeps a committed implementation summary in history `finish-keeps-summary` — task — **Not Started**
@@ -182,7 +182,6 @@ Do not pick these up.
 - `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
 - `M11.37` on `feature/rm-packet-uncommitted-refs` since 2026-11-02
 - `M11.44` on `feature/rm-init-profiles-subset` since 2026-11-02
-- `M11.47` on `feature/rm-validate-zones-git-root` since 2026-11-02
 - `M11.48` on `feature/rm-claimed-leaf-status` since 2026-11-02
 - `M11.50` on `feature/rm-finish-keeps-summary` since 2026-11-02
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
