@@ -368,7 +368,9 @@
         "docs/git-workflow.md",
         "docs/contributor-guide.md",
         "CLAUDE.md",
-        "tests/"
+        "tests/",
+        "requirements-ci.txt",
+        "requirements-ci.in"
       ],
       "type": "task"
     },
