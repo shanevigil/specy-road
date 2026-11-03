@@ -106,3 +106,17 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
+  - codename: test-worker-cap
+    node_id: M11.80
+    branch: feature/rm-test-worker-cap
+    touch_zones:
+      - specy_road/git_workflow_config.py
+      - specy_road/templates/project/schemas/git-workflow.schema.json
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/bundled_scripts/generate_brief.py
+      - docs/git-workflow.md
+      - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
