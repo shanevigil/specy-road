@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import difflib
 import importlib.util
+import json
 import os
 import re
 import subprocess
@@ -17,7 +18,6 @@ from specy_road.cli_init_argparse import build_specy_road_init_parser
 from specy_road.cli_usage import USAGE_TEXT
 from specy_road.managed_block import HTML_COMMENT, _split
 from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, git_root, project_root, resolve_repo_root
-from specy_road.specyrd_init import _load_manifest
 
 _PKG_DIR = Path(__file__).resolve().parent
 _PM_GANTT_INDEX = _PKG_DIR / "pm_gantt_static" / "index.html"
@@ -37,18 +37,24 @@ def _version_sort_key(version: str) -> tuple[int, ...]:
     return (*release, 3, 0) if pre is None else (*release, _PRE[pre.lower()], int(m.group(3)))
 
 
+def _read_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8") if path.is_file() else ""
+    except (OSError, UnicodeDecodeError):
+        return ""
+
+
 def recorded_toolkit_version(project: Path) -> tuple[str, str] | None:
     checkout = git_root(project) or project.resolve()
     candidates: list[tuple[str, str]] = []
-    recorded = str(_load_manifest(checkout).get("specyrd_version") or "").strip()
+    try:
+        raw = json.loads(_read_text(checkout / ".specyrd" / "manifest.json") or "null")
+    except json.JSONDecodeError:
+        raw = None
+    recorded = str(raw.get("specyrd_version") or "").strip() if isinstance(raw, dict) else ""
     if recorded:
         candidates.append((recorded, ".specyrd/manifest.json"))
-    path = project / AGENTS_MD
-    try:
-        text = path.read_text(encoding="utf-8") if path.is_file() else ""
-    except (OSError, UnicodeDecodeError):
-        text = ""
-    _before, block, _after = _split(text, HTML_COMMENT)
+    _before, block, _after = _split(_read_text(project / AGENTS_MD), HTML_COMMENT)
     if block:
         for pattern in (_AGENTS_WRITTEN, _MINIMUM_LINE):
             m = pattern.search(block)
@@ -308,10 +314,7 @@ def _cmd_gui(rest: list[str]) -> None:
     if ns.repo_root is not None:
         env["SPECY_ROAD_REPO_ROOT"] = str(ns.repo_root.resolve())
     host, port_s = ns.host, str(ns.port)
-    if ns.host == "0.0.0.0":
-        display_host = "127.0.0.1"
-    else:
-        display_host = ns.host
+    display_host = "127.0.0.1" if ns.host == "0.0.0.0" else ns.host
     print(
         f"Gantt PM UI — open http://{display_host}:{ns.port}/ "
         f"(listening on {host}:{port_s}; Ctrl+C to stop)\n",
@@ -370,8 +373,6 @@ def main(argv: list[str] | None = None) -> None:
         print(USAGE_TEXT)
         raise SystemExit(0)
     if argv[0] in ("--version", "-V", "version"):
-        from specy_road import __version__
-
         print(f"specy-road {__version__}")
         raise SystemExit(0)
     cmd, *rest = argv

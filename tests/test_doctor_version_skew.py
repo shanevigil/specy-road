@@ -42,13 +42,17 @@ def _cli(*args: str) -> subprocess.CompletedProcess[str]:
 
 
 @pytest.mark.parametrize(
-    "recorded",
-    ["99.0.0", "0.3.1rc99"],
+    ("recorded", "equals"),
+    [("99.0.0", False), ("0.3.1rc99", True)],
+    ids=["final-space", "prerelease-equals"],
 )
-def test_warns_when_the_running_version_is_older_than_the_manifest(tmp_path: Path, recorded: str) -> None:
+def test_warns_when_the_running_version_is_older_than_the_manifest(
+    tmp_path: Path, recorded: str, equals: bool
+) -> None:
     _write_manifest(tmp_path, recorded)
+    root = [f"--repo-root={tmp_path}"] if equals else ["--repo-root", str(tmp_path)]
 
-    proc = _cli("validate", "--repo-root", str(tmp_path), "--help")
+    proc = _cli("validate", *root, "--help")
 
     assert proc.returncode == 0
     assert proc.stderr.count("older install earlier on PATH") == 1
@@ -67,19 +71,34 @@ def test_warns_when_the_minimum_is_newer_than_written_by_and_the_manifest(tmp_pa
 
 
 @pytest.mark.parametrize(
-    "root_args",
-    [
-        lambda path: ["--repo-root", str(path)],
-        lambda path: [f"--repo-root={path}"],
-    ],
-    ids=["space", "equals"],
+    "manifest_bytes",
+    [None, b"", b"{", b"\xff"],
+    ids=["missing", "empty", "invalid-json", "non-utf8"],
 )
-def test_cli_warns_for_both_repo_root_spellings(tmp_path: Path, root_args) -> None:
-    _write_manifest(tmp_path, "99.0.0")
+def test_unreadable_manifest_still_warns_from_agents_md(
+    tmp_path: Path, manifest_bytes: bytes | None
+) -> None:
+    if manifest_bytes is not None:
+        path = tmp_path / ".specyrd" / "manifest.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(manifest_bytes)
+    _write_agents_block(tmp_path, written_by=__version__, minimum="99.0.0")
 
-    proc = _cli("validate", *root_args(tmp_path), "--help")
+    proc = _cli("validate", "--repo-root", str(tmp_path), "--help")
 
     assert proc.returncode == 0
+    assert f"records 99.0.0 ({AGENTS_MD})" in proc.stderr
+    assert proc.stderr.count("older install earlier on PATH") == 1
+
+
+def test_unreadable_agents_md_still_warns_from_the_manifest(tmp_path: Path) -> None:
+    _write_manifest(tmp_path, "99.0.0")
+    (tmp_path / AGENTS_MD).write_bytes(b"\xff")
+
+    proc = _cli("validate", "--repo-root", str(tmp_path), "--help")
+
+    assert proc.returncode == 0
+    assert "records 99.0.0 (.specyrd/manifest.json)" in proc.stderr
     assert proc.stderr.count("older install earlier on PATH") == 1
 
 
