@@ -17,26 +17,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: milestone-full-review
-    node_id: M11.13
-    branch: feature/rm-milestone-full-review
-    touch_zones:
-      - specy_road/bundled_scripts/review_packet.py
-      - specy_road/review_gate.py
-      - specy_road/finish_ancestor_rollup.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - sr/schemas/
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/review_target.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/bundled_scripts/mark_implementation_reviewed.py
-      - specy_road/orchestration_config.py
-      - specy_road/bundled_scripts/roadmap_load.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T02:48:27+00:00'
   - codename: profile-aliases
     node_id: M11.26
     branch: feature/rm-profile-aliases

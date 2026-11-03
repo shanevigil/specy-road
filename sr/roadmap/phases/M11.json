@@ -341,7 +341,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.13_milestone-full-review_b0b6bb18-c235-4783-b69a-7aadde34b219.md",
       "sibling_order": 13,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A milestone gets one full review of its combined change before it is marked complete",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet.py",
