@@ -28,7 +28,11 @@ role_fit:
 ---
 ## Orchestration: harness features to avoid
 
-This profile is usually rostered on `generic` or another harness; see `model-profiles/README.md` harness facts for switches when the roster names `claude-code`, `codex`, or `cursor`.
+| Feature | Switch |
+|---|---|
+| memory off | Claude `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`; Codex `--disable memories`; Cursor persist: no switch (never invoked) |
+| plan mode | never pass `--plan` |
+| worktree or cloud | never pass `--worktree` / `--cloud`; Cursor cloud handoff: never invoked |
 
 ## Strengths
 - Unified 1,048,576-token input-output window; long decode up to 1M tokens minus input via background execution, while ordinary synchronous output is handled more conservatively [S1, S8] (confidence: high)

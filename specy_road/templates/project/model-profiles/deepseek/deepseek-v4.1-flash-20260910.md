@@ -28,7 +28,11 @@ role_fit:
 ---
 ## Orchestration: harness features to avoid
 
-This profile is usually rostered on `generic` or another harness; see `model-profiles/README.md` harness facts for switches when the roster names `claude-code`, `codex`, or `cursor`.
+| Feature | Switch |
+|---|---|
+| memory off | Claude `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`; Codex `--disable memories`; Cursor persist: no switch (never invoked) |
+| plan mode | never pass `--plan` |
+| worktree or cloud | never pass `--worktree` / `--cloud`; Cursor cloud handoff: never invoked |
 
 ## Strengths
 - At release it reported DeepSWE v1.1 74.2, Terminal-Bench 4.0 31.2, ProgramBench 20.3, and Automation-Bench 54.8 under the vendor's documented evaluation setups [S1] (confidence: high)

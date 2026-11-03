@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -48,6 +47,7 @@ def _run_orch(repo: Path, fmt: str, payload: dict, role: str, cmd: str | None = 
         ("executor", "git push origin main", True),
         ("executor", "claude -p --worktree foo", True),
         ("executor", "git status", False),
+        ("executor", "grep -w foo", False),
     ],
 )
 def test_orchestration_role_rules(role: str, command: str, blocked: bool) -> None:
@@ -104,6 +104,20 @@ def test_codex_launch_template_pins_disable_flags() -> None:
     assert not missing, missing
 
 
+def test_claude_launch_template_pins_env_switches() -> None:
+    facts = (REPO / "specy_road" / "templates" / "project" / "model-profiles" / "harness-facts.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude -p" in facts
+    root = REPO / "specy_road" / "templates" / "project" / "model-profiles" / "anthropic-claude"
+    missing = []
+    for path in sorted(root.glob("*.md")):
+        cli = next((line for line in path.read_text(encoding="utf-8").splitlines() if line.startswith("  cli:")), "")
+        if "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1" not in cli or "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1" not in cli:
+            missing.append(path.name)
+    assert not missing, missing
+
+
 def test_every_shipped_profile_lists_orchestration_avoid() -> None:
     from specy_road.model_profiles import list_profiles
 
@@ -113,12 +127,35 @@ def test_every_shipped_profile_lists_orchestration_avoid() -> None:
         if prof.path.name == "README.md":
             continue
         text = prof.path.read_text(encoding="utf-8")
+        rel = str(prof.path.relative_to(root))
         if "## Orchestration: harness features to avoid" not in text:
-            missing.append(str(prof.path.relative_to(root)))
+            missing.append(f"{rel}: heading")
+            continue
+        family = str(prof.data.get("family") or "").lower()
+        if "anthropic" in family or "claude" in family:
+            if "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1" not in text:
+                missing.append(f"{rel}: claude memory switch")
+        elif "openai" in family or "gpt" in family:
+            if "--disable memories" not in text:
+                missing.append(f"{rel}: codex --disable")
+        elif "cursor" in family or "composer" in family:
+            if "--plan" not in text or "persist" not in text:
+                missing.append(f"{rel}: cursor persist/plan")
+        else:
+            if "memory off" not in text or "--plan" not in text or "worktree" not in text:
+                missing.append(f"{rel}: generic exact switches")
     assert not missing, missing
 
 
-def test_specyrd_init_installs_claude_orchestration_hooks(tmp_path: Path) -> None:
+def _pretool_commands(settings: dict) -> list[str]:
+    cmds: list[str] = []
+    for matcher in settings.get("hooks", {}).get("PreToolUse", []):
+        for hook in matcher.get("hooks", []):
+            cmds.append(hook["command"])
+    return cmds
+
+
+def test_specyrd_init_installs_one_claude_orchestration_hook(tmp_path: Path) -> None:
     run_init(
         target=tmp_path,
         agent="claude-code",
@@ -128,8 +165,35 @@ def test_specyrd_init_installs_claude_orchestration_hooks(tmp_path: Path) -> Non
         install_guard_hooks=True,
     )
     settings = json.loads((tmp_path / ".claude" / "settings.json").read_text(encoding="utf-8"))
-    cmd = settings["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
-    assert "orchestration guard" in cmd
+    cmds = _pretool_commands(settings)
+    assert len(cmds) == 1
+    cmd = cmds[0]
+    assert cmd == "specy-road orchestration guard --format claude-code"
+    assert "SPECY_ROAD_ORCHESTRATION_ROLE=" not in cmd
+    allow = _run_orch(tmp_path, "claude-code", PAYLOADS["claude-code"]("git commit -m x --only foo.py"), "executor")
+    deny = _run_orch(tmp_path, "claude-code", PAYLOADS["claude-code"]("git commit -m x --only foo.py"), "reviewer")
+    assert allow.returncode == 0
+    assert deny.returncode == 2
+
+
+def test_codex_hook_in_fresh_worktree_denies_reviewer_commit(tmp_path: Path) -> None:
+    main = tmp_path / "main"
+    main.mkdir()
+    subprocess.run(["git", "init"], cwd=main, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "t@e.com"], cwd=main, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=main, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=main, check=True, capture_output=True)
+    wt = main / "work" / ".worktrees" / "leaf"
+    subprocess.run(["git", "worktree", "add", str(wt), "-b", "feature/x"], cwd=main, check=True, capture_output=True)
+    install_orchestration_hooks(wt, "codex", dry_run=False)
+    hooks = json.loads((wt / ".codex" / "hooks.json").read_text(encoding="utf-8"))
+    cmds = _pretool_commands(hooks)
+    assert cmds == ["specy-road orchestration guard --format codex"]
+    readme = (REPO / "specy_road" / "templates" / "specyrd" / "hooks" / "README.md").read_text(encoding="utf-8")
+    assert "--dangerously-bypass-hook-trust" in readme
+    r = _run_orch(wt, "codex", PAYLOADS["codex"]("git commit -m x --only foo.py"), "reviewer")
+    assert r.returncode == 2
+    assert "orchestration guard" in r.stderr
 
 
 def test_pre_push_refuses_worktree_allows_main(tmp_path: Path) -> None:

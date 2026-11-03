@@ -31,7 +31,7 @@ harnesses:
       label: documented
       source: specy_road/worker_adapters.py; docs/design-notes/harness-compatibility-triage.md
     executor_template:
-      value: claude -p "<prompt>"
+      value: CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude -p "<prompt>"
       renders_cli_for: [Anthropic Claude]
       label: documented
       source: https://code.claude.com/docs/en/headless (profile source S4)

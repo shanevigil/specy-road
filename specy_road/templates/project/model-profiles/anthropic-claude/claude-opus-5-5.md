@@ -14,7 +14,7 @@ supersedes: claude-opus-5
 access:
   context_tokens: 1000000
   output_tokens: 128000
-  cli: claude -p "<prompt>"
+  cli: CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude -p "<prompt>"
   cli_verified_from: S4
   subagents: yes Vendor guide describes multihour runs "with parallel subagents" and gives time-budget signals for multiagent harnesses; both runs report Claude Code subagent support and parallel delegation [S2]
   effort_controls: 'low, medium, high, xhigh, max (default medium; thinking always on)'

@@ -46,7 +46,8 @@ _CLAUDE_EXEC = OrchestrationAdapter(
     lambda reason: (None, reason, 2),
     _CLAUDE_JSON % _claude_hook("executor"),
     _CLAUDE_JSON % _claude_hook("reviewer"),
-    "Merge into .claude/settings.json (or settings.local.json). Exit 2 blocks; exit 1 does not. "
+    "One hook in .claude/settings.json (or settings.local.json); role from "
+    "$SPECY_ROAD_ORCHESTRATION_ROLE. Exit 2 blocks; exit 1 does not. "
     "onFailure block fails closed on timeout or crash. Hooks run under claude -p.",
 )
 
@@ -73,7 +74,8 @@ _CODEX = OrchestrationAdapter(
     lambda reason: (None, reason, 2),
     _CODEX_JSON % (_CODEX_HOOK % "executor"),
     _CODEX_JSON % (_CODEX_HOOK % "reviewer"),
-    "Put in .codex/hooks.json. Project hooks load only when .codex/ is trusted, or run once with "
+    "One hook in .codex/hooks.json; role from $SPECY_ROAD_ORCHESTRATION_ROLE. "
+    "Project hooks load only when .codex/ is trusted, or run once with "
     "--dangerously-bypass-hook-trust for specy-road's own hook files. Exit 2 denies.",
 )
 
@@ -103,7 +105,8 @@ _CURSOR = OrchestrationAdapter(
     ),
     _CURSOR_JSON % "SPECY_ROAD_ORCHESTRATION_ROLE=executor specy-road orchestration guard --format cursor",
     _CURSOR_JSON % "SPECY_ROAD_ORCHESTRATION_ROLE=reviewer specy-road orchestration guard --format cursor",
-    "Put in .cursor/hooks.json with failClosed true. Cursor also merges .claude/settings.json hooks.",
+    "One hook in .cursor/hooks.json with failClosed true; role from "
+    "$SPECY_ROAD_ORCHESTRATION_ROLE. Cursor also merges .claude/settings.json hooks.",
 )
 
 ADAPTERS: dict[str, OrchestrationAdapter] = {

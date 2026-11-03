@@ -8,12 +8,15 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
-from specy_road.orchestration_guard_adapters import ADAPTERS
 from specy_road.specyrd_skills import _package_templates_dir
 
 HOOKS_REL = Path("templates/specyrd/hooks")
 PRE_PUSH_NAME = "pre-push"
-ROLES = ("executor", "reviewer")
+_HARNESS_HOOK_FILES = {
+    "claude-code": (Path("claude-code") / "settings.json", Path(".claude") / "settings.json"),
+    "codex": (Path("codex") / "hooks.json", Path(".codex") / "hooks.json"),
+    "cursor": (Path("cursor") / "hooks.json", Path(".cursor") / "hooks.json"),
+}
 
 
 def _hooks_template_dir() -> Path:
@@ -57,62 +60,27 @@ def install_orchestration_hooks(
     repo_root: Path,
     agent: str,
     *,
-    roles: tuple[str, ...] = ROLES,
     dry_run: bool = False,
     written: list[str] | None = None,
 ) -> None:
-    """Merge orchestration guard hook snippets for ``agent`` and each ``roles`` entry."""
+    """Merge the one shipped hook snippet for ``agent`` (role comes from the environment)."""
     written = written if written is not None else []
-    rel_base = HOOKS_REL / agent
-    if agent == "claude-code":
-        dest = repo_root / ".claude" / "settings.json"
-        existing = _load_json(dest)
-        for role in roles:
-            snippet = json.loads(
-                ADAPTERS["claude-code"].config_reviewer
-                if role == "reviewer"
-                else ADAPTERS["claude-code"].config_executor
-            )
-            merged = _merge_json_dict(existing, snippet)
-            if not dry_run:
-                _write_json(dest, merged, dry_run=False)
-            existing = merged
-        written.append(str(dest.relative_to(repo_root)))
-        readme = _hooks_template_dir() / "README.md"
-        if readme.is_file():
-            rel = rel_base / "README.md"
-            target = repo_root / ".specyrd" / "hooks" / agent / "README.md"
-            if not dry_run:
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text(readme.read_text(encoding="utf-8"), encoding="utf-8")
-            written.append(str(target.relative_to(repo_root)))
+    pair = _HARNESS_HOOK_FILES.get(agent)
+    if pair is None:
         return
-    if agent == "codex":
-        dest = repo_root / ".codex" / "hooks.json"
-        existing = _load_json(dest)
-        for role in roles:
-            snippet = json.loads(
-                ADAPTERS["codex"].config_reviewer
-                if role == "reviewer"
-                else ADAPTERS["codex"].config_executor
-            )
-            existing = _merge_json_dict(existing, snippet)
-        _write_json(dest, existing, dry_run=dry_run)
-        written.append(str(dest.relative_to(repo_root)))
-        return
-    if agent == "cursor":
-        dest = repo_root / ".cursor" / "hooks.json"
-        existing = _load_json(dest)
-        for role in roles:
-            snippet = json.loads(
-                ADAPTERS["cursor"].config_reviewer
-                if role == "reviewer"
-                else ADAPTERS["cursor"].config_executor
-            )
-            existing = _merge_json_dict(existing, snippet)
-        _write_json(dest, existing, dry_run=dry_run)
-        written.append(str(dest.relative_to(repo_root)))
-        return
+    src_rel, dest_rel = pair
+    snippet = _load_json(_hooks_template_dir() / src_rel)
+    dest = repo_root / dest_rel
+    merged = _merge_json_dict(_load_json(dest), snippet)
+    _write_json(dest, merged, dry_run=dry_run)
+    written.append(str(dest.relative_to(repo_root)))
+    readme = _hooks_template_dir() / "README.md"
+    if readme.is_file():
+        target = repo_root / ".specyrd" / "hooks" / agent / "README.md"
+        if not dry_run:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(readme.read_text(encoding="utf-8"), encoding="utf-8")
+        written.append(str(target.relative_to(repo_root)))
 
 
 def install_pre_push_hook(

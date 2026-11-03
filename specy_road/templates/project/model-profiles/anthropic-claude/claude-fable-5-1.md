@@ -14,7 +14,7 @@ supersedes: claude-fable-5
 access:
   context_tokens: 1000000
   output_tokens: 128000
-  cli: claude -p "<prompt>"
+  cli: CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude -p "<prompt>"
   cli_verified_from: S4
   subagents: 'unknown Vendor and partner pages describe multi-hour autonomous work; a third party reports fewer parallel tool calls than Fable 5 [S2, S3]'
   effort_controls: 'effort parameter, default high; mid-conversation effort change in beta; levels low, medium, high, xhigh, max [S11]'

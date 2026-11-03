@@ -1,19 +1,19 @@
 # Orchestration guard hooks (specy-road M8.5)
 
-Checked-in snippets `specyrd init --install-orchestration-hooks` merges into your harness config.
+Checked-in snippets `specyrd init --install-orchestration-hooks` merges into your harness config. Each harness file gets **one** hook. The command is `specy-road orchestration guard --format …`; the role comes from `$SPECY_ROAD_ORCHESTRATION_ROLE` in the worker environment (`executor` or `reviewer`). Do not merge executor and reviewer snippets into the same settings/hooks.json.
 
-| Harness | File | Role env in hook command |
-|---|---|---|
-| Claude Code | `.claude/settings.json` | `SPECY_ROAD_ORCHESTRATION_ROLE=executor` or `reviewer` |
-| Codex | `.codex/hooks.json` | same |
-| Cursor | `.cursor/hooks.json` | same |
+| Harness | File |
+|---|---|
+| Claude Code | `.claude/settings.json` |
+| Codex | `.codex/hooks.json` |
+| Cursor | `.cursor/hooks.json` |
 
-**Denials**
+**Denials** (selected by `$SPECY_ROAD_ORCHESTRATION_ROLE`)
 
 - **Reviewer:** `git commit`, `git push`, `gh pr`
 - **Executor:** `git push`, `gh pr`, harness worktree and cloud commands
 
-Print a snippet without installing:
+Print a single-role snippet (pins `SPECY_ROAD_ORCHESTRATION_ROLE` in the command) without installing:
 
 ```bash
 specy-road orchestration guard --format claude-code --print-config --config-role executor

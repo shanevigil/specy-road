@@ -20,9 +20,9 @@ ROLE_CHOICES = frozenset({"reviewer", "executor"})
 _GIT = re.compile(r"\bgit\b")
 _GH = re.compile(r"\bgh\b")
 _WORKTREE = re.compile(
-    r"(?<![\w-])(?:--worktree|-w\b|--worktree-base)\b|(?<![\w-])git\s+worktree\b"
+    r"(?<![\w-])(?:--worktree|--worktree-base)\b|(?<![\w-])git\s+worktree\b"
     r"|(?<![\w-])codex\s+(?:exec\s+)?(?:--worktree\b|fork\b|cloud\b)"
-    r"|(?<![\w-])claude\b[^|;&\n]*\b--cloud\b"
+    r"|(?<![\w-])claude\b[^|;&\n]*\b--(?:cloud|worktree)\b"
     r"|(?<![\w-])agent\b[^|;&\n]*(?:\b-w\b|--worktree\b)"
     r"|(?<![\w-])(?:agent\s+persist|/goal\b|/split-to-prs\b|/autopilot\b)",
     re.IGNORECASE,

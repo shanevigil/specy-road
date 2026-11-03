@@ -14,7 +14,7 @@ supersedes: none
 access:
   context_tokens: 1000000
   output_tokens: 128000
-  cli: claude -p "<prompt>"
+  cli: CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude -p "<prompt>"
   cli_verified_from: S4
   subagents: unknown No model-specific data found
   effort_controls: 'effort parameter, default high; levels low, medium, high, xhigh, max [S12]'
