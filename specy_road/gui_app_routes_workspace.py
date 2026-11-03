@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query
 
 from specy_road.bundled_scripts.pm_gui_git_remote_verify import set_git_remote_tested_ok
 
@@ -23,6 +23,11 @@ from specy_road.gui_app_helpers import (
     assert_under_allowed_root,
     get_repo_root,
     safe_rel_path,
+)
+from specy_road.gui_app_routes_planning import (
+    BASE_CONTENT_HASH_HEADER,
+    content_hash,
+    require_unchanged_since,
 )
 from specy_road.pm_gui_concurrency import require_pm_gui_write_header
 from specy_road.gui_app_models import (
@@ -94,7 +99,7 @@ def _api_workspace_file_get(
         ...,
         description="Repo-relative path under shared/",
     ),
-) -> dict[str, str]:
+) -> dict[str, Any]:
     root = get_repo_root()
     raw = path.strip().replace("\\", "/").lstrip("/")
     if not raw.startswith("shared/"):
@@ -107,7 +112,7 @@ def _api_workspace_file_get(
     if not p.is_file():
         raise HTTPException(status_code=404, detail="file not found")
     text = p.read_text(encoding="utf-8", errors="replace")
-    return {"path": path, "content": text}
+    return {"path": path, "content": text, "content_hash": content_hash(p)}
 
 
 def _api_workspace_file_put(
@@ -116,8 +121,9 @@ def _api_workspace_file_put(
         description="Repo-relative path under shared/",
     ),
     body: PutFileBody = Body(...),
+    base_hash: str | None = Header(default=None, alias=BASE_CONTENT_HASH_HEADER),
     _pm: None = Depends(require_pm_gui_write_header),
-) -> dict[str, str]:
+) -> dict[str, Any]:
     root = get_repo_root()
     raw = path.strip().replace("\\", "/").lstrip("/")
     if not raw.startswith("shared/"):
@@ -127,6 +133,7 @@ def _api_workspace_file_put(
         )
     p = safe_rel_path(root, raw)
     assert_under_allowed_root(root, p, "shared")
+    require_unchanged_since(p, base_hash)
     had_file = p.is_file()
     if had_file:
         previous = p.read_text(
@@ -144,7 +151,7 @@ def _api_workspace_file_put(
         elif p.is_file() and not had_file:
             p.unlink()
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return {"ok": "true", "path": path}
+    return {"ok": "true", "path": path, "content_hash": content_hash(p)}
 
 
 def register_workspace_routes(api: APIRouter) -> None:

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
+from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query
 
 from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
@@ -30,6 +32,43 @@ from specy_road.gui_app_models import (
     PutFileBody,
 )
 from specy_road.pm_gui_concurrency import require_pm_gui_write_header
+
+BASE_CONTENT_HASH_HEADER = "X-Base-Content-Hash"
+
+
+def content_hash(p: Path) -> str | None:
+    """sha256 of the file's bytes on disk, or None when it does not exist."""
+    if not p.is_file():
+        return None
+    return hashlib.sha256(p.read_bytes()).hexdigest()
+
+
+def require_unchanged_since(p: Path, base_hash: str | None) -> None:
+    """409 with the current content when *p* changed on disk since *base_hash*.
+
+    No header means the caller did not read the file first (a create or a
+    script), so the save goes ahead as before.
+    """
+    if base_hash is None or not base_hash.strip():
+        return
+    current = content_hash(p)
+    if current == base_hash.strip():
+        return
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "message": (
+                "file changed on disk since it was opened; "
+                "reload it and reapply your edits"
+            ),
+            "content_hash": current,
+            "current_content": (
+                p.read_text(encoding="utf-8", errors="replace")
+                if current is not None
+                else None
+            ),
+        },
+    )
 
 
 def api_constitution_scaffold(
@@ -110,24 +149,26 @@ def api_planning_artifacts(node_id: str) -> dict[str, Any]:
     }
 
 
-def api_planning_get(path: str = Query(..., description="Repo-relative path")) -> dict[str, str]:
+def api_planning_get(path: str = Query(..., description="Repo-relative path")) -> dict[str, Any]:
     root = get_repo_root()
     p = safe_rel_path(root, path)
     assert_planning_file_api_path(root, p)
     if not p.is_file():
         raise HTTPException(status_code=404, detail="file not found")
     text = p.read_text(encoding="utf-8", errors="replace")
-    return {"path": path, "content": text}
+    return {"path": path, "content": text, "content_hash": content_hash(p)}
 
 
 def api_planning_put(
     path: str = Query(...),
     body: PutFileBody = Body(...),
+    base_hash: str | None = Header(default=None, alias=BASE_CONTENT_HASH_HEADER),
     _pm: None = Depends(require_pm_gui_write_header),
-) -> dict[str, str]:
+) -> dict[str, Any]:
     root = get_repo_root()
     p = safe_rel_path(root, path)
     assert_planning_file_api_path(root, p)
+    require_unchanged_since(p, base_hash)
     had_file = p.is_file()
     previous: str | None = (
         p.read_text(encoding="utf-8", errors="replace") if had_file else None
@@ -142,7 +183,7 @@ def api_planning_put(
         elif p.is_file():
             p.unlink()
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return {"ok": "true", "path": path}
+    return {"ok": "true", "path": path, "content_hash": content_hash(p)}
 
 
 def register_planning_routes(api: APIRouter) -> None:
