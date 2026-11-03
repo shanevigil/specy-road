@@ -82,6 +82,10 @@ project with its own `schemas/decisions.schema.json` should run `refresh-schemas
 - A consumer whose own `schemas/decisions.schema.json` predates this change will reject preference
   entries until it runs `specy-road refresh-schemas`. The docs say so.
 
+## Merge refresh
+
+- Merged `origin/WIP/improvements-0-3-1` into the branch (`5eb2b1ec`, clean) to pick up the new Codex reviewer entries. It touches none of this leaf's modules. Re-run after the merge: the three leaf test files (41 passed) and `specy-road file-limits` (OK). No behaviour this leaf depends on changed.
+
 ## Verification
 
 - `python -m pytest tests/test_decision_preferences.py tests/test_decisions.py tests/test_orchestrate_plan.py -q`: 41 passed
