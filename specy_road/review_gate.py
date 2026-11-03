@@ -53,6 +53,7 @@ from specy_road.review_gate_ready import (  # noqa: F401 — public names re-exp
     write_human_approval)
 from specy_road.review_signing import (  # noqa: F401 — SigningError re-exported
     SigningError, notes_problem, verify)
+from specy_road.review_bookkeeping import CARRY_NOTE, count_at_later_commit, only_planning_or_review_bookkeeping_since
 from specy_road.review_files import (HUMAN, PACKET_NAME, ReviewFile, executor_blocked_gate_problems, latest_ready,
                                      list_review_history, list_reviews, review_semantic_errors, reviews_dir,
                                      verifier_gate_problems)
@@ -114,7 +115,7 @@ class GateResult:
     ineligible: list[tuple[ReviewFile, str]] = field(default_factory=list)
     verifier_problems: list[str] = field(default_factory=list)
     config_error: str | None = None
-    config: dict[str, Any] = field(default_factory=dict)
+    bookkeeping_carry: bool = False; config: dict[str, Any] = field(default_factory=dict)
 
     @property
     def approval_count(self) -> int:
@@ -128,7 +129,7 @@ class GateResult:
     def summary(self) -> str:
         unit = "distinct-family approvals" if self.distinct_families else "approvals"
         state = "met" if self.passed else "not met"
-        return f"{self.approval_count}/{self.required} {unit}, {len(self.blocks)} block(s): {state}"
+        return f"{self.approval_count}/{self.required} {unit}, {len(self.blocks)} block(s): {state}" + (CARRY_NOTE if self.bookkeeping_carry else "")
 
     def problems(self) -> list[str]:
         out = []
@@ -326,8 +327,7 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
         if not review.ok:
             result.invalid.append(review)
             continue
-        if not same_commit(repo_root, review.data["commit"], result.commit):
-            result.stale.append(review)
+        if not count_at_later_commit(result, repo_root, node, review):
             continue
         counted, why = _eligibility(config, node, review, today)
         if counted is not None and counted.verdict == "approve" and review.data.get("delta_from"):

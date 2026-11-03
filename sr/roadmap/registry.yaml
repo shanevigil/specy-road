@@ -1,17 +1,5 @@
 version: 1
 entries:
-  - codename: sheet-edits-keep-approvals
-    node_id: M11.16
-    branch: feature/rm-sheet-edits-keep-approvals
-    touch_zones:
-      - specy_road/review_gate.py
-      - specy_road/review_files.py
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/review_bookkeeping.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: dashboard-safe-saves
     node_id: M11.51
     branch: feature/rm-dashboard-safe-saves

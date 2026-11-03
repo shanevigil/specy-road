@@ -123,7 +123,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.13` A milestone gets one full review of its combined change before it is marked complete `milestone-full-review` — task — **Complete**
   - `M11.14` worker message queues a follow-up for a worker whose turn is still running `queue-worker-message` — task — **Complete**
   - `M11.15` Pickup and finish agree on unwritten planning sheets `pickup-refuses-scaffold-sheet` — task — **Complete**
-  - `M11.16` A commit that changes only planning or bookkeeping files keeps existing approvals `sheet-edits-keep-approvals` — task — **Not Started**
+  - `M11.16` A commit that changes only planning or bookkeeping files keeps existing approvals `sheet-edits-keep-approvals` — task — **Complete**
   - `M11.17` edit-node names every chunk file it changes, and relocation is loud `edit-node-names-chunks` — task — **Complete**
   - `M11.18` Registry overlap warnings show only what concerns the command at hand `quieter-overlap-warnings` — task — **Complete**
   - `M11.19` Pickup never stashes work/ around the registry commit `pickup-no-work-stash` — task — **Complete**
@@ -180,9 +180,9 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M11.16` on `feature/rm-sheet-edits-keep-approvals` since 2026-11-02
 - `M11.41` on `feature/rm-gate-config-agree` since 2026-11-02
 - `M11.46` on `feature/rm-placeholder-leaves-strict-brief` since 2026-11-02
+- `M11.49` on `feature/rm-packet-zones-at-commit` since 2026-11-02
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.59` on `feature/rm-split-worker-modules` since 2026-11-02
 - `M11.60` on `feature/rm-harness-facts-nov-refresh` since 2026-11-02
