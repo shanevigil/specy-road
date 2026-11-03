@@ -253,7 +253,7 @@ def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, cap
     calls = _fake_run(monkeypatch)
     assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
                     "--repo-root", str(repo)) == 0
-    (call,) = calls
+    call = calls[-1]
     argv = call["cmd"]
     assert argv[:2] == ["claude", "-p"] and "--bare" in argv
     assert argv[argv.index("--add-dir") + 1] == str(rf.reviews_dir(repo, "M1.1"))

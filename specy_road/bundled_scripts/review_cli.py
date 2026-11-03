@@ -12,9 +12,9 @@ whose review loop is not converging and has no root-cause analysis for it is
 ``review record`` validates one reviewer's notes, fills in the family from the
 roster, labels same-family independence, and files the record as
 ``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``.
-``review list`` prints the filed records, any RCA records, the escalation and the gate evaluation, and writes nothing.
-Both commands report the leaf's review rounds (distinct reviewed commits), the time from its first review to the latest,
-and each ``review delegate`` run with its commit; an older commit's record never reads as the current verdict.
+``review list`` prints filed records, RCA records, escalation and the gate; writes nothing.
+Both commands report review rounds, elapsed review time, and each ``review delegate`` run;
+an older commit's record never reads as the current verdict.
 """
 
 from __future__ import annotations
@@ -35,7 +35,8 @@ from specy_road.review_files import (
     review_path, reviews_root, round_span, write_review,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
-from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states
+from specy_road.review_delegate import (add_parser as add_delegate_parser, gate_policy_summary, run_lines,
+                                        run_problems, run_states)
 from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
 from specy_road.review_gate_ready import add_ready_parser
 from specy_road.review_pre_existing import cmd_check_pre_existing
@@ -96,7 +97,8 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         ],
         "review_rounds": round_span(root, node_id),
         "review_runs": (runs := run_states(root, node_id, gate.commit)),
-        "policy": gate.summary(), "reviewer_eligibility": reviewer_eligibility(root, t.node, gate, branch),
+        "policy": gate_policy_summary(gate, runs),
+        "reviewer_eligibility": reviewer_eligibility(root, t.node, gate, branch),
         "policy_met": gate.passed,
         "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
                         "blocking": tm.code_conflicts} if tm and tm.conflicts else None,
@@ -394,7 +396,3 @@ def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     ns = build_parser().parse_args(argv)
     raise SystemExit(ns.func(ns))
-
-
-if __name__ == "__main__":
-    main()

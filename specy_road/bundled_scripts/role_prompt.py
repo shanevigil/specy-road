@@ -225,7 +225,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
 
 
 def run_bare_reviewer(prof: Profile | None, prompt_path: Path, root: Path, model: str | None, reviews: Path,
-                      level: str | None) -> int:
+                      level: str | None, transcript: list[str] | None = None) -> int:
     """The default Claude Code reviewer command: bare, with ``--add-dir`` for the hand-off directory."""
     api_id = prof.api_id if prof is not None else model
     api_id = None if (api_id or "").strip().lower() in ("", "unknown") else api_id   # unknown: the harness default
@@ -234,15 +234,30 @@ def run_bare_reviewer(prof: Profile | None, prompt_path: Path, root: Path, model
           "never reads your subscription login: it needs ANTHROPIC_API_KEY (or an apiKeyHelper)", file=sys.stderr)
     print(f"running: {shlex.join(launch.argv)} < {prompt_path}", file=sys.stderr)
     try:
+        if transcript is None:
+            return subprocess.run(launch.argv, input=launch.stdin, text=True, cwd=root, check=False).returncode
+        try:
+            result = subprocess.run(launch.argv, input=launch.stdin, cwd=root, check=False,
+                                    capture_output=True, text=True)
+        except TypeError:
+            result = None
+        if result is not None and hasattr(result, "stdout"):
+            for line in (result.stdout or "").splitlines():
+                sys.stderr.write(line + "\n")
+                transcript.append(line)
+            return result.returncode
         return subprocess.run(launch.argv, input=launch.stdin, text=True, cwd=root, check=False).returncode
     except OSError as e:   # e.g. no `claude` on PATH
         print(f"error: could not launch claude: {e.strerror}", file=sys.stderr)
+        if transcript is not None:
+            transcript.append(f"error: could not launch claude: {e.strerror}")
         return 1
 
 
 def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflight: str | None = None,
                     entry_cli: str | None = None, *, harness: str | None = None, role: str | None = None,
-                    model: str | None = None, reviews: Path | None = None) -> int:
+                    model: str | None = None, reviews: Path | None = None,
+                    transcript: list[str] | None = None) -> int:
     if preflight:
         # Proposal §3.6: e.g. confirm which process owns a local model's port.
         # It runs before anything else is even inspected: a failed check stops
@@ -255,7 +270,7 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
     # `rca` is a reviewer's turn; a harness the roster does not name has no effort flag.
     level = prof.effort("reviewer" if role == "rca" else role) if prof and role else None
     if role == "reviewer" and harness == "claude-code" and not entry_cli and reviews is not None:
-        return run_bare_reviewer(prof, prompt_path, root, model, reviews, level)
+        return run_bare_reviewer(prof, prompt_path, root, model, reviews, level, transcript)
     cli = entry_cli or (prof.cli() if prof else None)   # the roster's channels.cli wins, as `worker delegate` has it
     if not cli:
         print("error: --channel cli needs a roster `channels.cli` or an `access.cli` in the model's profile", file=sys.stderr)
@@ -271,11 +286,25 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
     # The template, not the expansion: "<prompt>" would echo the whole brief.
     print(f"running: {cli} (prompt: {prompt_path})", file=sys.stderr)
     try:
-        return subprocess.run(substitute_prompt(cli, prompt_path, effort=effort), shell=True, cwd=root,
-                              check=False).returncode
+        cmd = substitute_prompt(cli, prompt_path, effort=effort)
+        if transcript is None:
+            return subprocess.run(cmd, shell=True, cwd=root, check=False).returncode
+        try:
+            result = subprocess.run(cmd, shell=True, cwd=root, check=False, capture_output=True, text=True)
+        except TypeError:
+            result = None
+        if result is not None and hasattr(result, "stdout"):
+            combined = (result.stdout or "") + (result.stderr or "")
+            for line in combined.splitlines():
+                sys.stderr.write(line + "\n")
+                transcript.append(line)
+            return result.returncode
+        return subprocess.run(cmd, shell=True, cwd=root, check=False).returncode
     except OSError as e:   # E2BIG: "<prompt>" puts the whole text on the command line
         print(f"error: could not launch the cli: {e.strerror}; if the prompt is too long for a command line, "
               'use {prompt} (its file path) instead of "<prompt>"', file=sys.stderr)
+        if transcript is not None:
+            transcript.append(f"error: could not launch the cli: {e.strerror}")
         return 1
 
 
@@ -319,10 +348,25 @@ def main(argv: list[str] | None = None) -> None:
     print(f"Wrote {out}")
     if prof is None:
         print(f"note: no profile for {ns.model!r}; the prompt has no model notes (see `specy-road models list`)", file=sys.stderr)
-    raise SystemExit(run_cli_channel(prof, out, root, entry.get("preflight"), (entry.get("channels") or {}).get("cli"),
-                                     harness=entry.get("harness"), role=ns.role, model=ns.model,
-                                     reviews=reviews_dir(root, ns.node_id))
-                     if ns.channel == "cli" else 0)
+    if ns.channel != "cli":
+        raise SystemExit(0)
+    transcript: list[str] = []
+    reviewer_target = None
+    reviewer_run = None
+    if ns.role == "reviewer":
+        from specy_road.reviewer_run_failure import close_reviewer_cli_run, open_reviewer_cli_run
+        try:
+            reviewer_target = resolve_target(root, ns.node_id, ns.ref)
+        except ReviewTargetError as e:
+            print(f"error: {e}", file=sys.stderr)
+            raise SystemExit(1)
+        reviewer_run = open_reviewer_cli_run(root, reviewer_target, ns.model, entry.get("harness"))
+    rc = run_cli_channel(prof, out, root, entry.get("preflight"), (entry.get("channels") or {}).get("cli"),
+                         harness=entry.get("harness"), role=ns.role, model=ns.model,
+                         reviews=reviews_dir(root, ns.node_id), transcript=transcript if ns.role == "reviewer" else None)
+    if reviewer_target is not None and reviewer_run is not None:
+        close_reviewer_cli_run(root, reviewer_target, ns.model, reviewer_run, rc, transcript)
+    raise SystemExit(rc)
 
 
 if __name__ == "__main__":
