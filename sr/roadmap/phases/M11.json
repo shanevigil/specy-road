@@ -355,7 +355,8 @@
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/bundled_scripts/mark_implementation_reviewed.py",
         "specy_road/orchestration_config.py",
-        "specy_road/bundled_scripts/roadmap_load.py"
+        "specy_road/bundled_scripts/roadmap_load.py",
+        "specy_road/review_gate_ready.py"
       ],
       "type": "task"
     },
