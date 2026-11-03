@@ -69,6 +69,7 @@ _FORWARDED = {
     "review": "review_cli.py",
     "ready": "review_cli.py",
     "worker": "worker_cli.py",
+    "orchestration": "orchestration_guard_cli.py",
     "decisions": "decisions_cli.py",
     "branches": "branches_cli.py",
 }

@@ -150,6 +150,15 @@ the id the harness lists; otherwise the profile's `api_id` is, as before.
   system refuses to launch it (a `<prompt>` too long for a command line) it
   exits 1 with the reason — use `{prompt}` for long prompts.
 
+Each shipped profile includes **`## Orchestration: harness features to avoid`**: the harness
+capability specy-road turns off for executors (memory, background tasks, Codex `--disable …`, Cursor
+`/goal` and persist) and the switch the worker launch or `access.cli` applies. Optional
+**orchestration guard** hooks (`specyrd init --install-orchestration-hooks`, or
+`specy-road orchestration guard --format … --print-config`) deny role-inappropriate git and cloud
+commands; `worker delegate` / `review delegate` export `SPECY_ROAD_ORCHESTRATION_ROLE` so the
+installed command can read the role; pair them with the shared-checkout guard from
+`specy-road session guard --print-config`.
+
 ## Harness facts: what `refresh-profiles` renders
 
 `model-profiles/harness-facts.yaml` holds one record per harness a roster can
@@ -164,6 +173,15 @@ checked stay `unverified` until the runtime verification leaf (M8.7) replaces
 them. `generic` has no binary of its own (it runs the profile's `access.cli`),
 so its record renders no `access.cli`, has no `capture_commands`, and
 `--capture generic` needs `--from`.
+
+Two candidate profiles run other harnesses' CLIs through `generic`:
+`github-copilot/copilot-gemini-4-argon.md` (Copilot CLI, a one-shot reviewer
+that denies `git push`, `git commit`, `gh` and Copilot Memory) and
+`google-antigravity/agy-gemini-4-argon-high.md` (Antigravity `agy`, whose run
+succeeded only when the JSON envelope's `status` is `SUCCESS`: a soft-denied
+tool or a `--print-timeout` expiry still exits 0). Both were written from
+vendor documentation; their `runtime_checks` are `not run`, and neither
+harness has a facts record yet.
 
 Two parts of `model-profiles/` are rendered from it. A hand edit to either is
 drift:

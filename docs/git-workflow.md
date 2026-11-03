@@ -62,11 +62,11 @@ Optional fields **`grind_session_max_limit_waits`** (integer, default 3), **`gri
 
 Optional field **`on_complete`** (`pr`, `merge`, or `auto`; default **`pr`**): controls how **`specy-road finish-this-task`** lands work after the bookkeeping commit on the feature branch.
 
-- **`pr`** — Print guidance to push (if needed) and open a **pull request** or **merge request** targeting the integration branch. On GitHub this is a **PR**; on GitLab and many other hosts it is an **MR**. They are the same kind of integration review; this doc uses **PR/MR** when the forge is unspecified.
+- **`pr`** — Print guidance to push (if needed) and open a **pull request** or **merge request** targeting the integration branch. On GitHub this is a **PR**; on GitLab and many other hosts it is an **MR**. They are the same kind of integration review; this doc uses **PR/MR** when the forge is unspecified. Before anything is pushed, finish fetches the integration branch and trial-merges its tip into the bookkeeping commit. When the only conflicts are on `roadmap/registry.yaml`, `roadmap.md` and `roadmap-context.md` (the usual case once another lane has claimed a leaf since pickup), it commits that merge on the feature branch, resolved as described below, so the PR/MR opens without a conflict. When any other path conflicts, it names the paths, pushes nothing and exits non-zero; merge the integration branch by hand, resolve, have the result reviewed, then push and open the PR/MR. A milestone rollup finish skips this step.
 - **`merge`** — After bookkeeping, try **`git merge`** of the feature branch into the **integration branch** locally, then **`git push`** the integration branch. Before it merges or pushes, finish prints how many commits that push will carry and how many of them are **not** from the finishing feature branch (for example an extra commit already on the local integration branch). On failure (a source conflict, a non-fast-forward integration branch, a rejected push) it **exits non-zero with the reason and does not fall back to PR/MR hints** — `merge` means merge (F-012). Use **`auto`** if you want the fallback. If the integration branch is checked out in another worktree (the usual layout when the leaf lives in a `worker delegate` worktree), the merge and push run there; finish refuses before the bookkeeping commit if that worktree has uncommitted changes to tracked files, and never touches them.
 - **`auto`** — Try the **`merge`** path first; if landing the merge fails, fall back to the PR/MR guidance (**merge pending**) instead of only failing.
 
-**Bookkeeping is resolved, not merged.** Landing a finish never 3-way-merges
+**Bookkeeping is resolved, not merged.** Landing a finish, or the `pr` mode's merge of the integration tip, never 3-way-merges
 **`roadmap/registry.yaml`**, **`roadmap.md`** or **`roadmap-context.md`**. The
 registry is a keyed collection (one row per active claim) and the other two are
 generated in full, so a line-based merge of any of them can conflict — leaving a
@@ -78,6 +78,16 @@ only then is the merge commit created. Conflicts anywhere else still fail hard.
 This is what makes **concurrent lanes** against one integration branch safe; see
 [grind-session.md](grind-session.md). Merging by hand still means removing your
 own row yourself.
+
+**Pickup/finish lock in one checkout.** When several agents share the main
+checkout, `specy-road do-next-available-task`, `finish-this-task` and
+`abort-task-pickup` each take one repository lock under
+`.git/specy-road/repo-lock/` (in git's common directory, so every worktree of
+the clone shares it) before they switch branches or commit on the integration
+branch. Waiters queue in arrival order; if the lock is held, the command prints
+who holds it (pid and operation) and waits, with a timeout. A holder whose
+process has exited is cleared automatically so a killed pickup or finish does
+not block the queue forever.
 
 **Land check on the merge commit.** Optional field **`land_check_cmd`** (string):
 a shell command `merge` (and `auto`) runs on the local merge commit before it

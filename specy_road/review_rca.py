@@ -4,21 +4,27 @@ A **round** is one reviewed commit in the order ``review record`` filed it
 (``work/reviews/<ID>/history/``); it **blocks on** ``A<n>`` when a blocking
 record at that commit (the latest per model) marks ``A<n>: fail``. A leaf is
 escalated when the last ``escalate_same_acceptance_blocks`` rounds all block on
-one acceptance id, or after ``escalate_review_rounds`` rounds. An ``RCA-*.md``
-record resolves every round up to its ``trigger.round``, so counting restarts
-after each analysis. Thresholds come from the gate's policy (the integration
-branch). Design: ``docs/design-notes/review-loop-rca.md``.
+one acceptance id; when one reviewer family (from the roster) blocked that many
+of the rounds it reviewed in a row, whatever ids or models it named; or after
+``escalate_review_rounds`` rounds. A coordinator may also force an analysis with
+a reason (:func:`forced_escalation`). An ``RCA-*.md`` record resolves every
+round up to its ``trigger.round``, so counting restarts after each analysis.
+Thresholds come from the gate's policy (the integration branch). Design:
+``docs/design-notes/review-loop-rca.md``.
 """
 
 from __future__ import annotations
 
+import json
+import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from specy_road.git_subprocess import git_stdout
 from specy_road.orchestration_config import (
     effective_config,
+    family_of,
     is_rostered_reviewer,
     substitute_for,
 )
@@ -48,6 +54,14 @@ class Round:
         return {a for r in self.records if r.data["verdict"] == "block"
                 for a, v in (r.data.get("acceptance") or {}).items() if v == "fail"}
 
+    def family_verdicts(self, family: Callable[[str], str]) -> dict[str, bool]:
+        """Each family that filed here -> whether any of its models blocks."""
+        out: dict[str, bool] = {}
+        for r in self.records:
+            f = family(r.data["model"])
+            out[f] = out.get(f, False) or r.data["verdict"] == "block"
+        return out
+
 
 @dataclass
 class Escalation:
@@ -55,16 +69,24 @@ class Escalation:
     round: int
     acceptance_ids: list[str]
     threshold: int
+    family: str | None = None   # same_family: the family that kept blocking
+    reason: str | None = None   # forced: the coordinator's reason
 
     def describe(self) -> str:
         if self.rule == "same_acceptance":
             return (f"the last {self.threshold} review rounds all block on {', '.join(self.acceptance_ids)} "
                     f"(same_acceptance, round {self.round})")
+        if self.rule == "same_family":
+            return (f"{self.family} reviewers blocked the last {self.threshold} rounds they reviewed "
+                    f"(same_family, round {self.round})")
+        if self.rule == "forced":
+            return f"a coordinator forced an analysis, giving the reason {self.reason!r} (forced, round {self.round})"
         return f"{self.threshold} review rounds without converging (review_rounds, round {self.round})"
 
     def to_dict(self) -> dict[str, Any]:
         return {"rule": self.rule, "round": self.round, "acceptance_ids": self.acceptance_ids,
-                "threshold": self.threshold, "describe": self.describe()}
+                "threshold": self.threshold, "family": self.family, "reason": self.reason,
+                "describe": self.describe()}
 
 
 @dataclass
@@ -72,6 +94,7 @@ class LoopState:
     rounds: list[Round]
     rcas: list[ReviewFile]
     escalation: Escalation | None
+    resolved: int = 0   # rounds an RCA record already covers
 
     def problems(self) -> list[str]:
         return [f"{r.path.name}: invalid — {'; '.join(r.errors)}" for r in self.rcas if not r.ok]
@@ -115,7 +138,13 @@ def _rca_semantic_errors(
     rnd = int(trig["round"])
     if rnd > len(rounds):
         return [f"trigger.round is {rnd}, but the history has {len(rounds)} round(s)"]
-    esc = escalation(rounds[:rnd], policy, resolved)
+    esc = escalation(rounds[:rnd], policy, resolved, _family(config))
+    if esc is None and trig["rule"] == "forced":
+        esc = forced_escalation(rounds[:rnd], resolved, trig.get("reason") or "")
+        if esc is None:
+            errs.append(f"trigger.rule is 'forced', but no review round after round {resolved} is up to "
+                        f"round {rnd}")
+            return errs
     if esc is None:
         errs.append("trigger does not match an escalation active at that round")
         return errs
@@ -133,17 +162,43 @@ def _rca_semantic_errors(
     return errs
 
 
-def escalation(rounds: list[Round], policy: dict[str, Any], resolved: int = 0) -> Escalation | None:
+def _family(config: dict[str, Any]) -> Callable[[str], str]:
+    """A model's roster family; a model the roster does not name is its own family."""
+    return lambda model: family_of(config, model) or model
+
+
+def _family_streak(window: list[Round], family: Callable[[str], str], n: int) -> str | None:
+    """The family whose last ``n`` verdicts (one per round it reviewed in ``window``) all block."""
+    seq: dict[str, list[bool]] = {}
+    for rnd in window:
+        for f, blocked in rnd.family_verdicts(family).items():
+            seq.setdefault(f, []).append(blocked)
+    return next((f for f, v in sorted(seq.items()) if len(v) >= n and all(v[-n:])), None)
+
+
+def escalation(rounds: list[Round], policy: dict[str, Any], resolved: int = 0,
+               family: Callable[[str], str] | None = None) -> Escalation | None:
+    """The rule active after ``rounds``; ``family`` maps a model to its family (default: the model id)."""
     window = rounds[resolved:]
     same = int(policy["escalate_same_acceptance_blocks"])
     if len(window) >= same:
         ids = set.intersection(*(r.failed for r in window[-same:]))
         if ids:
             return Escalation("same_acceptance", len(rounds), sorted(ids, key=_id_key), same)
+    fam = _family_streak(window, family or (lambda m: m), same)
+    if fam is not None:
+        return Escalation("same_family", len(rounds), [], same, family=fam)
     total = int(policy["escalate_review_rounds"])
     if len(window) >= total:
         return Escalation("review_rounds", len(rounds), [], total)
     return None
+
+
+def forced_escalation(rounds: list[Round], resolved: int, reason: str) -> Escalation | None:
+    """A coordinator-initiated analysis of the rounds since the last RCA; ``None`` when there are none."""
+    if len(rounds) <= resolved or not reason.strip():
+        return None
+    return Escalation("forced", len(rounds), [], 0, reason=reason.strip())
 
 
 def loop_state(repo_root: Path, node_id: str) -> LoopState:
@@ -156,7 +211,7 @@ def loop_state(repo_root: Path, node_id: str) -> LoopState:
         r.errors.extend(_rca_semantic_errors(repo_root, node_id, r.data, rounds, policy, config, resolved))
         if r.ok:
             resolved = max(resolved, int(r.data["trigger"]["round"]))
-    return LoopState(rounds, rcas, escalation(rounds, policy, resolved))
+    return LoopState(rounds, rcas, escalation(rounds, policy, resolved, _family(config)), resolved)
 
 
 def escalated_note(loop: LoopState, node_id: str) -> list[str]:
@@ -174,6 +229,28 @@ def escalated_note(loop: LoopState, node_id: str) -> list[str]:
     ]
 
 
+def rca_trigger(repo_root: Path, node_id: str, model: str, loop: LoopState,
+                force_reason: str | None = None) -> tuple[Escalation | None, str | None]:
+    """``(escalation the prompt analyses, error)``. ``force_reason`` (``prompt --role rca --force --reason``)
+    starts a coordinator-initiated analysis when nothing is escalated; an active escalation wins over it."""
+    esc = loop.escalation
+    if esc is not None and force_reason:
+        print(f"note: {node_id} is already escalated ({esc.describe()}); --force is ignored", file=sys.stderr)
+    if esc is None and force_reason:
+        esc = forced_escalation(loop.rounds, loop.resolved, force_reason)
+        if esc is None:
+            return None, (f"{node_id} has no review round since the last root-cause analysis; "
+                          "there is nothing to analyse")
+    if esc is None:
+        return None, (f"{node_id}'s review loop is not escalated; no root-cause analysis is due "
+                      f"(`specy-road handoff status {node_id}`); a coordinator can start one anyway "
+                      "with `--force --reason '<why>'`")
+    if model in rca_parties(repo_root, node_id, loop):
+        return None, (f"{model!r} implemented or reviewed {node_id}; the root-cause analyst must be "
+                      "a rostered reviewer that is neither")
+    return esc, None
+
+
 def rca_parties(repo_root: Path, node_id: str, loop: LoopState) -> set[str]:
     """Models that may not analyse the loop: its executors and its reviewers."""
     return ({str(r.data.get("agent")) for r in list_ready(repo_root, node_id) if r.ok}
@@ -188,7 +265,8 @@ def _skeleton(node_id: str, model: str, esc: Escalation) -> list[str]:
         f"node_id: {node_id}",
         f"model: {model}",
         "date: YYYY-MM-DD",
-        f"trigger: {{rule: {esc.rule}, acceptance_ids: [{ids}], round: {esc.round}}}",
+        f"trigger: {{rule: {esc.rule}, acceptance_ids: [{ids}], round: {esc.round}"
+        + (f", reason: {json.dumps(esc.reason)}" if esc.reason else "") + "}",
         "classification: {primary: <class>, secondary: <class, optional>, confidence: 0.0-1.0}",
         "evidence:",
         "  - {kind: finding|commit|acceptance|signal|check_result, ref: <round/reviewer, sha, A#, check>, "
@@ -237,7 +315,8 @@ def rca_preamble(repo_root: Path, node_id: str, model: str, esc: Escalation) -> 
         "roadmap.",
         f"5. Write the record to `{out}` (gitignored; open the absolute path) in this shape, validated against "
         "specy-road's `rca-record` schema, then run "
-        f"`specy-road handoff status {node_id}`: a valid record clears the escalation, and an invalid one is "
+        f"`specy-road handoff status {node_id}`: a valid record clears the escalation (a forced one restarts "
+        "the round count), and an invalid one is "
         "listed as a problem. Stop.",
         "",
         *_skeleton(node_id, model, esc),

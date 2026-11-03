@@ -18,7 +18,7 @@ from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload
 from specy_road.worker_adapters import ADAPTERS, Unsupported
 from specy_road.worker_hook import HOOKS
-from specy_road.worker_orphans import add_terminate, list_view, orphan_lines, orphans
+from specy_road.worker_orphans import add_terminate, list_view, with_orphans
 from specy_road.worker_outbox import lookup_op
 from specy_road.worker_reconcile import sync_marks
 from specy_road.worker_runner import log_path
@@ -137,7 +137,9 @@ def cmd_sync(ns: argparse.Namespace) -> int:
     delta = ops.sync(root, ack=ns.ack)
     lines = []
     for w in delta:
-        lines += sync_worker_header(w, load_record(root, w["worker_id"]).queued_message)
+        rec = load_record(root, w["worker_id"])
+        w["worktree"] = rec.worktree
+        lines += sync_worker_header(w, rec.queued_message)
         lines += [f"  ! gap: event(s) #{a}" + (f"–#{b}" if b > a else "") + " missing from the log (lost or unreadable)"
                   for a, b in w["gaps"]]
         # The whole log, not the delta: the final message may have been acked before the exit event.
@@ -147,8 +149,7 @@ def cmd_sync(ns: argparse.Namespace) -> int:
         lines = ["No new worker events."]
     elif not ns.ack:
         lines.append("(re-run with --ack once handled)")
-    gone = orphans(root)   # held workers whose leaf is over, whether or not they wrote an event
-    rc = _emit(ns, {"workers": delta, "acked": ns.ack, "orphaned": gone}, lines + orphan_lines(gone))
+    rc = _emit(ns, *with_orphans(root, {"workers": delta, "acked": ns.ack}, lines))   # orphans, events or not
     return 2 if timed_out and not delta else rc
 
 

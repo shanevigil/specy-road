@@ -15,55 +15,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: gate-config-agree
-    node_id: M11.41
-    branch: feature/rm-gate-config-agree
-    touch_zones:
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - specy_road/bundled_scripts/doctor.py
-      - specy_road/git_workflow_config.py
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/bundled_scripts/mark_implementation_reviewed.py
-      - specy_road/review_gate_agreement.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic
-    node_id: M8.6
-    branch: feature/rm-candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic
-    touch_zones:
-      - specy_road/templates/project/model-profiles/
-      - roadmap/
-      - docs/orchestration-models.md
-      - tests/test_models_and_prompt.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
-  - codename: init-project-reports-writes
-    node_id: M11.43
-    branch: feature/rm-init-project-reports-writes
-    touch_zones:
-      - specy_road/init_project.py
-      - specy_road/agent_ignores.py
-      - specy_road/templates/project/.gitignore
-      - tests/
-      - docs/pm-workflow.md
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
-  - codename: pr-mode-registry-conflict
-    node_id: M11.52
-    branch: feature/rm-pr-mode-registry-conflict
-    touch_zones:
-      - specy_road/bundled_scripts/finish_task.py
-      - specy_road/finish_modes.py
-      - specy_road/review_gate_ready.py
-      - tests/
-      - docs/git-workflow.md
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
     node_id: M8.3
     branch: feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
@@ -100,23 +51,8 @@ entries:
       - specy_road/worker_state.py
       - specy_road/worker_ops_lifecycle.py
       - specy_road/worker_ops_launch.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
-  - codename: resume-keeps-permissions
-    node_id: M11.23
-    branch: feature/rm-resume-keeps-permissions
-    touch_zones:
-      - specy_road/worker_adapters.py
-      - specy_road/worker_ops.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - docs/orchestration-workers.md
-      - tests/
-      - specy_road/worker_adapter_parsers.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/worker_adapter_base.py
-      - specy_road/worker_adapter_claude.py
-      - specy_road/worker_ops_launch.py
+      - specy_road/schemas/worker-record.schema.json
+      - specy_road/schemas/worker-event.schema.json
       - specy_road/worker_ops_message.py
     started: '2026-11-03'
     owner: savigil
@@ -135,6 +71,146 @@ entries:
       - specy_road/worker_ops_slots.py
       - specy_road/worker_orphans.py
       - specy_road/worker_reconcile.py
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: pickup-second-claim-guard
+    node_id: M11.63
+    branch: feature/rm-pickup-second-claim-guard
+    touch_zones:
+      - specy_road/bundled_scripts/do_next_task.py
+      - specy_road/bundled_scripts/do_next_task_args.py
+      - specy_road/templates/
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: abort-untracked-like-pickup
+    node_id: M11.64
+    branch: feature/rm-abort-untracked-like-pickup
+    touch_zones:
+      - specy_road/bundled_scripts/abort_task_pickup.py
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: why-blocked-plan-holds
+    node_id: M11.65
+    branch: feature/rm-why-blocked-plan-holds
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_query_cli.py
+      - specy_road/bundled_scripts/session_plan.py
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: zones-checked-at-authoring
+    node_id: M11.70
+    branch: feature/rm-zones-checked-at-authoring
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_crud_ops.py
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
+      - specy_road/bundled_scripts/generate_brief.py
+      - docs/roadmap-authoring.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: version-shows-checkout-sha
+    node_id: M11.66
+    branch: feature/rm-version-shows-checkout-sha
+    touch_zones:
+      - specy_road/cli.py
+      - specy_road/version_skew.py
+      - specy_road/worker_runner.py
+      - specy_road/review_files.py
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: resumed-delta-approval
+    node_id: M11.36
+    branch: feature/rm-resumed-delta-approval
+    touch_zones:
+      - specy_road/review_gate.py
+      - specy_road/bundled_scripts/review_packet.py
+      - specy_road/bundled_scripts/role_prompt.py
+      - docs/orchestration-review.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: roster-harness-model-id
+    node_id: M11.35
+    branch: feature/rm-roster-harness-model-id
+    touch_zones:
+      - specy_road/orchestration_config.py
+      - specy_road/worker_adapters.py
+      - specy_road/worker_runner.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - docs/orchestration-models.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: rework-findings-in-prompt
+    node_id: M11.68
+    branch: feature/rm-rework-findings-in-prompt
+    touch_zones:
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/review_gate.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: session-routing-preferences
+    node_id: M11.58
+    branch: feature/rm-session-routing-preferences
+    touch_zones:
+      - specy_road/decisions.py
+      - specy_road/bundled_scripts/decisions_cli.py
+      - specy_road/templates/project/schemas/
+      - specy_road/templates/specyrd/commands/specyrd-orchestrate.md
+      - specy_road/bundled_scripts/role_prompt.py
+      - docs/orchestration.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: headless-limits-denials
+    node_id: M11.62
+    branch: feature/rm-headless-limits-denials
+    touch_zones:
+      - specy_road/worker_adapters.py
+      - specy_road/worker_adapter_parsers.py
+      - specy_road/worker_runner.py
+      - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: branch-schema-for-gate-and-finish
+    node_id: M11.69
+    branch: feature/rm-branch-schema-for-gate-and-finish
+    touch_zones:
+      - specy_road/review_files.py
+      - specy_road/review_gate.py
+      - specy_road/orchestration_config.py
+      - specy_road/git_workflow_config.py
+      - specy_road/bundled_scripts/finish_task.py
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: ready-warns-integration-conflict
+    node_id: M11.73
+    branch: feature/rm-ready-warns-integration-conflict
+    touch_zones:
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/review_gate.py
+      - tests/
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending

@@ -148,6 +148,12 @@ def orphan_lines(gone: dict[str, str]) -> list[str]:
     return [*(f"orphaned: {w} ({why})" for w, why in gone.items()), _HINT]
 
 
+def with_orphans(repo_root: Path, data: dict[str, Any], lines: list[str]) -> tuple[dict[str, Any], list[str]]:
+    """``worker sync``'s JSON and lines with every orphaned worker added, whether or not it wrote an event."""
+    gone = orphans(repo_root)
+    return {**data, "orphaned": gone}, lines + orphan_lines(gone)
+
+
 def list_view(repo_root: Path, recs: list[WorkerRecord], row: Callable[[WorkerRecord], dict[str, Any]],
               line: Callable[..., str]) -> tuple[dict[str, Any], list[str]]:
     """``worker list``'s JSON and lines, each held worker whose leaf is over marked ``orphaned`` with its reason."""

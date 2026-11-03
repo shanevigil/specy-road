@@ -180,7 +180,8 @@ def test_archiving_a_node_with_an_open_claim_is_refused(repo: Path) -> None:
         "    node_id: M0.1\n"
         "    branch: feature/rm-contracts-bootstrap\n"
         "    touch_zones: []\n"
-        "    started: '2026-01-01'\n",
+        "    started: '2026-01-01'\n"
+        "    implementation_review: pending\n",   # the fixture enables the review gate
         encoding="utf-8",
     )
 
