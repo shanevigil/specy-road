@@ -52,7 +52,8 @@ entries:
       - specy_road/bundled_scripts/mark_implementation_reviewed.py
     started: '2026-11-02'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-03T07:55:42+00:00'
   - codename: placeholder-leaves-strict-brief
     node_id: M11.46
     branch: feature/rm-placeholder-leaves-strict-brief
