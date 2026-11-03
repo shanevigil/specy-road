@@ -258,11 +258,8 @@ def unmatched_roster_ids(
     """Roster entry ``id`` values ``resolve(entry)`` could not match to any profile."""
     out: list[str] = []
     for entry in entries:
-        mid = entry.get("id")
-        if not isinstance(mid, str) or not mid:
-            continue
         if resolve(entry) is None:
-            out.append(mid)
+            out.append(entry["id"])
     return out
 
 

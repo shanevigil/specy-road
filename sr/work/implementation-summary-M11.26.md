@@ -24,7 +24,7 @@ Ship Cursor effort-suffixed model ids as profile `aliases`, add a GPT-5.6 Sol pr
 
 ## Added
 
-- `unmatched_roster_ids` in `model_profiles.py` — collect roster entry ids with no profile match for `models list`
+- `unmatched_roster_ids` in `model_profiles.py` — collect `entry["id"]` when `resolve` returns no profile; roster ids are already validated at the orchestration boundary
 - `unmatched_roster_ids` JSON field and text section in `models_cli.cmd_list` — A2 reporting
 - `specy_road/templates/project/model-profiles/openai-gpt/gpt-5.6-sol.md` — GPT-5.6 Sol profile and Cursor aliases
 - `aliases` front matter on shipped Grok 4.7, Grok 4.6, Composer 2.5 profiles — A1
