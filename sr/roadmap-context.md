@@ -158,7 +158,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.49` The review packet takes touch zones from the reviewed commit and treats lockfiles as generated `packet-zones-at-commit` — task — **Complete**
   - `M11.50` finish keeps a committed implementation summary in history `finish-keeps-summary` — task — **Complete**
   - `M11.51` Dashboard saves never overwrite newer disk edits, and the read API is documented `dashboard-safe-saves` — task — **Not Started**
-  - `M11.52` PR mode predicts and resolves the registry conflict `pr-mode-registry-conflict` — task — **Not Started**
+  - `M11.52` PR mode predicts and resolves the registry conflict `pr-mode-registry-conflict` — task — **Complete**
   - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Complete**
   - `M11.54` The test suite and land check run in parallel `parallel-test-suite` — task — **Complete**
   - `M11.55` Executors split modules to meet file limits instead of deleting documentation `file-limit-split-not-delete` — task — **Complete**
@@ -199,7 +199,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
-- `M11.52` on `feature/rm-pr-mode-registry-conflict` since 2026-11-03
 - `M11.57` on `feature/rm-completed-worker-frees-slot` since 2026-11-03
 - `M11.63` on `feature/rm-pickup-second-claim-guard` since 2026-11-03
 - `M11.64` on `feature/rm-abort-untracked-like-pickup` since 2026-11-03

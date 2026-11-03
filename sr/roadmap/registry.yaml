@@ -15,18 +15,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: pr-mode-registry-conflict
-    node_id: M11.52
-    branch: feature/rm-pr-mode-registry-conflict
-    touch_zones:
-      - specy_road/bundled_scripts/finish_task.py
-      - specy_road/finish_modes.py
-      - specy_road/review_gate_ready.py
-      - tests/
-      - docs/git-workflow.md
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
     node_id: M8.3
     branch: feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output

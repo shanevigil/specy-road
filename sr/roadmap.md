@@ -158,7 +158,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.49` | The review packet takes touch zones from the reviewed commit and treats lockfiles as generated | task | Agentic-led | Complete |
 | `M11.50` | finish keeps a committed implementation summary in history | task | Agentic-led | Complete |
 | `M11.51` | Dashboard saves never overwrite newer disk edits, and the read API is documented | task | Agentic-led | Not Started |
-| `M11.52` | PR mode predicts and resolves the registry conflict | task | Agentic-led | Not Started |
+| `M11.52` | PR mode predicts and resolves the registry conflict | task | Agentic-led | Complete |
 | `M11.53` | A worktree-based flow can claim leaves without pushing from the worktree | task | Agentic-led | Complete |
 | `M11.54` | The test suite and land check run in parallel | task | Agentic-led | Complete |
 | `M11.55` | Executors split modules to meet file limits instead of deleting documentation | task | Agentic-led | Complete |
