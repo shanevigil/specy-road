@@ -104,3 +104,14 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
+  - codename: pickup-second-claim-guard
+    node_id: M11.63
+    branch: feature/rm-pickup-second-claim-guard
+    touch_zones:
+      - specy_road/bundled_scripts/do_next_task.py
+      - specy_road/bundled_scripts/do_next_task_args.py
+      - specy_road/templates/
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
