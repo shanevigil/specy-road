@@ -238,7 +238,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.29_doctor-version-skew_367c4c28-1e0e-4e69-9d85-9c432e4aee08.md",
       "sibling_order": 29,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "doctor warns when the running specy-road is older than the project's stubs",
       "touch_zones": [
         "specy_road/bundled_scripts/doctor.py",

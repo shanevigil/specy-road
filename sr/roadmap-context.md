@@ -135,7 +135,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.26` A model profile can match harness model ids that carry an effort suffix `profile-aliases` — task — **Not Started**
   - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Not Started**
   - `M11.28` A light chore mode for work outside the roadmap `chore-mode` — task — **Not Started**
-  - `M11.29` doctor warns when the running specy-road is older than the project's stubs `doctor-version-skew` — task — **Not Started**
+  - `M11.29` doctor warns when the running specy-road is older than the project's stubs `doctor-version-skew` — task — **Complete**
   - `M11.30` Leaf worktrees get the project's environment set up `worktree-env-setup` — task — **Not Started**
   - `M11.31` A safe command to retire a leaf worktree `worktree-prune` — task — **Not Started**
   - `M11.32` Unpushed nested-repo commits are reported `nested-unpushed-report` — task — **Not Started**
@@ -160,6 +160,14 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.51` Dashboard saves never overwrite newer disk edits, and the read API is documented `dashboard-safe-saves` — task — **Not Started**
   - `M11.52` PR mode predicts and resolves the registry conflict `pr-mode-registry-conflict` — task — **Not Started**
   - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Not Started**
+  - `M11.54` The test suite and land check run in parallel `parallel-test-suite` — task — **Not Started**
+  - `M11.55` Executors split modules to meet file limits instead of deleting documentation `file-limit-split-not-delete` — task — **Not Started**
+
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
 
 ## Archived (not in the live roadmap)
 
@@ -171,9 +179,15 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
+- `M11.14` on `feature/rm-queue-worker-message` since 2026-11-02
+- `M11.16` on `feature/rm-sheet-edits-keep-approvals` since 2026-11-02
+- `M11.20` on `feature/rm-roster-source-explained` since 2026-11-02
+- `M11.24` on `feature/rm-worktree-handoff-writable` since 2026-11-02
 - `M11.26` on `feature/rm-profile-aliases` since 2026-11-02
-- `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
 - `M11.34` on `feature/rm-decision-ledger` since 2026-11-02
+- `M11.37` on `feature/rm-packet-uncommitted-refs` since 2026-11-02
+- `M11.42` on `feature/rm-session-end-default` since 2026-11-02
+- `M11.54` on `feature/rm-parallel-test-suite` since 2026-11-02
 
 ## Reaching the detail behind this
 
