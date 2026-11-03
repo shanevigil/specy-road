@@ -8,6 +8,16 @@ Base: `a54c409b` (origin/WIP/improvements-0-3-1 after the M8.2 touch-zone update
   - `worker_runner.py`: WIP's `fresh_ready`, `completion_summary` and `harness_env` sit alongside this branch's `TurnWatch` and `close_turn`. `launch.env` is applied on top of `harness_env`, and `paused_by_limit` still wins over READY.
   - No behaviour change was needed: the leaf's tests and the WIP tests on these modules pass (147 tests).
 
+## Round 3: fix for review gpt-5.6-sol-medium (block)
+
+- **Every started turn's end runs the post-run check.** Before this fix, two paths returned before `close_turn`, so no check ran and a stale `post_run_findings` flag survived as if it described that turn:
+  - **A harness that cannot start** (`Popen` `OSError`): it now goes through `close_turn` as a failed turn (`watch.failed = "cannot start …"`). The worker is flagged by a fresh `post_run_check` naming the start failure, and the state is still `failed` with its lease released.
+  - **A record already `terminated`** when the turn ends: `_finish` now runs `close_turn(..., pause=False)` before returning. Findings are recorded, and the flag is set or cleared. A usage limit stays a finding but sets no `limit_reset_at`, so the state stays `terminated`. As before, that path writes no exit record.
+- **Tests.**
+  - `tests/test_worker_adapters.py::test_run_reports_a_missing_binary_as_failed` now also asserts the `post_run_check` event (before the exit record) and the flag. Its line count is unchanged; the file is at the 400-line cap.
+  - New `test_a_turn_whose_record_was_terminated_still_gets_the_check_and_stays_terminated`: the fake harness marks its own record terminated mid-turn, leaves a stray file and reports a limit. The test asserts the state stays `terminated` with no `limit_reset_at`, the flag is set, the findings are `porcelain` and `usage_limit`, and there is no `completion` event. It cannot use `worker terminate`, which would signal the test's own process group.
+  - **Red-green.** Both fail against `a45defbc` and pass on the fix.
+
 ## Round 2: fixes for review gpt-6.1-sol (block)
 
 - **R1.** In `worker_runner._finish`, a detected usage limit now takes precedence over a fresh READY. A turn that exits 0 with a valid READY at HEAD and a timed limit ends in `paused_by_limit`, so `limit_gate` applies. Its `completion` event still records `"ready": true`. New regression: `test_a_limit_wins_over_a_fresh_ready_written_in_the_same_turn`, which goes through `worker_runner.run` and `worker_ops_message.resume`.
@@ -76,7 +86,7 @@ Not changed, though they are now stale, because they are outside M8.2's zones:
 ## Verification
 
 - `pytest -n 8` over the whole suite: 3321 passed, 2 skipped.
-- `tests/test_worker_turn_check.py`: 8 new tests (10 after round 2). Fake `claude` / `codex` / `agent` binaries on PATH record the argv, environment and stdin the wrapper really ran them with, and replay the streams in `tests/fixtures/worker_turn_check/streams.json`.
+- `tests/test_worker_turn_check.py`: 8 new tests (10 after round 2, 11 after round 3). Fake `claude` / `codex` / `agent` binaries on PATH record the argv, environment and stdin the wrapper really ran them with, and replay the streams in `tests/fixtures/worker_turn_check/streams.json`.
 - `ruff check` (C901) over every changed or added Python file, `specy-road file-limits`, `scripts/check_test_private_imports.py`: clean.
 - `ruff check specy_road tests scripts` exits 1, but only for `uncommitted_refs_section` in `specy_road/bundled_scripts/review_packet_uncommitted_refs.py` (12 > 10). That file is untouched here, so the failure is on the base.
 - `scripts/check_clones.py` reports two new pairs. Both are in files this leaf does not touch (`abort_task_pickup`/`pm_sync`, `planning_sheet_bootstrap`/`planning_scaffold_check`), so they were already on the base.
@@ -98,12 +108,14 @@ Not changed, though they are now stale, because they are outside M8.2's zones:
 - `_content()` (round 2, R2): a dirty path's content digest, so a further edit to an already-dirty file is seen.
 - `PAUSED_BY_LIMIT if paused else …` ordering in `_finish` (round 2, R1): a limit wins over a fresh READY.
 - Fake-harness `write` option in `tests/test_worker_turn_check.py` (round 2): lets a turn write its READY, for the R1 regression.
+- `test_a_turn_whose_record_was_terminated_still_gets_the_check_and_stays_terminated` (round 3): the terminated path's check.
 - `test_a_limit_wins_over_a_fresh_ready_written_in_the_same_turn`, `test_a_further_edit_to_an_already_dirty_file_outside_the_zones_keeps_the_worker_flagged` (round 2): the reviewer's two regressions.
 - `TurnWatch` (`observe`, `_watchdog`, `stream_findings`): reads each parsed event for A3's stream findings, and is A1's retry watchdog.
 - `TurnWatch.failed` cleared by `turn_completed`: a launch-mode mismatch or a mid-turn Codex `error` followed by a completed turn is not a failed turn.
 - `TurnWatch.pending`: `rate_limit` retries that end the turn with no completed turn count as a limit.
 - `git_findings()` / `_outside_zones()`: A3's git half, reusing reconcile's `_bookkeeping` and `zone_matches`.
 - `close_turn()`, with its `except Exception` guard: records findings, sets or clears the flag, sets `limit_reset_at`; the guard keeps a git failure from costing the turn its exit record.
+- `close_turn(..., pause=False)` and its calls on the start-failure and terminated paths (round 3): the check runs on every started turn's end without changing that path's terminal state.
 - `limit_gate()`: A1's "resume picks it up after the reset"; refuses before `limit_reset_at`.
 - `limit_gate(rec)` call in `worker_ops_message._send`: applies the gate to `resume`, `message` and queued delivery.
 - `WorkerRecord.limit_reset_at` and the schema field: when the limit lifts, for resume to read.
