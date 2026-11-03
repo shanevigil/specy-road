@@ -334,7 +334,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.53_pickup-into-worktree_506fa374-4f3b-4d82-881b-315253ebab87.md",
       "sibling_order": 53,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A worktree-based flow can claim leaves without pushing from the worktree",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_task.py",

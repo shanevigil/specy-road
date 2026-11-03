@@ -159,7 +159,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.50` finish keeps a committed implementation summary in history `finish-keeps-summary` — task — **Not Started**
   - `M11.51` Dashboard saves never overwrite newer disk edits, and the read API is documented `dashboard-safe-saves` — task — **Not Started**
   - `M11.52` PR mode predicts and resolves the registry conflict `pr-mode-registry-conflict` — task — **Not Started**
-  - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Not Started**
+  - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Complete**
   - `M11.54` The test suite and land check run in parallel `parallel-test-suite` — task — **Not Started**
   - `M11.55` Executors split modules to meet file limits instead of deleting documentation `file-limit-split-not-delete` — task — **Not Started**
   - `M11.56` Delegate creates the reviews directory before a harness is told to allow it `reviews-dir-before-launch` — task — **Complete**
@@ -184,7 +184,6 @@ Do not pick these up.
 - `M11.44` on `feature/rm-init-profiles-subset` since 2026-11-02
 - `M11.50` on `feature/rm-finish-keeps-summary` since 2026-11-02
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
-- `M11.53` on `feature/rm-pickup-into-worktree` since 2026-11-02
 - `M11.54` on `feature/rm-parallel-test-suite` since 2026-11-02
 - `M11.55` on `feature/rm-file-limit-split-not-delete` since 2026-11-02
 

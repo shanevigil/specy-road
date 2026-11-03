@@ -91,18 +91,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: pickup-into-worktree
-    node_id: M11.53
-    branch: feature/rm-pickup-into-worktree
-    touch_zones:
-      - specy_road/bundled_scripts/do_next_task.py
-      - specy_road/bundled_scripts/do_next_task_args.py
-      - specy_road/bundled_scripts/do_next_task_pickup_helpers.py
-      - tests/
-      - docs/git-workflow.md
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: dashboard-safe-saves
     node_id: M11.51
     branch: feature/rm-dashboard-safe-saves
