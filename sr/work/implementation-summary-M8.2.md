@@ -8,6 +8,12 @@ Base: `a54c409b` (origin/WIP/improvements-0-3-1 after the M8.2 touch-zone update
   - `worker_runner.py`: WIP's `fresh_ready`, `completion_summary` and `harness_env` sit alongside this branch's `TurnWatch` and `close_turn`. `launch.env` is applied on top of `harness_env`, and `paused_by_limit` still wins over READY.
   - No behaviour change was needed: the leaf's tests and the WIP tests on these modules pass (147 tests).
 
+- **Merge of WIP for D4 (`62061abc`, clean):** brings `5d1828a8`, which replaces A3 with RCA-8's bounded text. There was no code change; the post-run check is unchanged. How each clause is met:
+  - **One `post_run_check` per turn, whatever the exit code:** `close_turn` runs on every end, including the `OSError` start failure and an already-`terminated` record.
+  - **Stream findings:** permission denial, a failed turn (an error with no later `turn_completed`), and `api_retry`.
+  - **Git findings:** branch change; HEAD missing or not descended from the start; an out-of-zone commit; a stash change; a porcelain change (a new dirty path, changed bytes, or a start-dirty path that vanished).
+  - **Out of scope:** index-only changes.
+  - **Tests:** `tests/test_worker_turn_check.py` and the missing-binary test in `tests/test_worker_adapters.py` cover these. `pytest -n 4` (116 tests, including WIP's `test_worker_reconcile_merged.py`) and `specy-road file-limits` pass.
 - **Merge of WIP for `toolkit_version`:** the conflict was in `worker_state.py`, where `WorkerRecord` keeps `limit_reset_at` and WIP's `toolkit_version`, with `unknown_fields` last. The schema carries both. The post-run check is unchanged while the maintainer decides on the RCA's proposal to bound A3. `pytest -n 4` over the leaf's tests passes (110 tests), and `specy-road file-limits` passes again: WIP's `worker_cli.py` is back to 400 lines.
 - **Merge of WIP for M11.35:** two conflicts, both resolved keeping both sides:
   - `worker_adapter_claude.py`: the Claude resume passes `*_model_flag("--model", model)` (M11.35) and `EXECUTOR_PERMISSIONS`.
