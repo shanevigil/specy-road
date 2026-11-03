@@ -2,37 +2,14 @@
   "nodes": [
     {
       "acceptance": [
-        "A roster entry can set available: false or paused_until: <date or datetime>, read from a local untracked roadmap/orchestration.local.yaml overlay (so availability changes need no push) as well as the shared roster; orchestrate plan skips unavailable entries for every role, and worker delegate and review delegate refuse them with the reason",
-        "Past review records by an unavailable entry still count at their commit; tests cover available: false, a paused_until in the past and future, and the overlay"
-      ],
-      "codename": "roster-availability",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M11.39",
-      "node_key": "effe1668-f68c-4ff8-be70-61296b3cf696",
-      "parent_id": "M11",
-      "planning_dir": "planning/M11.39_roster-availability_effe1668-f68c-4ff8-be70-61296b3cf696.md",
-      "sibling_order": 39,
-      "status": "Not Started",
-      "title": "A roster entry can be marked unavailable without deleting it",
-      "touch_zones": [
-        "specy_road/orchestration_config.py",
-        "specy_road/orchestrate_plan.py",
-        "specy_road/worker_ops.py",
-        "specy_road/bundled_scripts/review_cli.py",
-        "specy_road/templates/project/schemas/orchestration.schema.json",
-        "docs/orchestration.md",
-        "tests/"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
         "worker reconcile on a worker whose leaf has no registry claim (already merged) uses the node's touch zones from the roadmap instead of refusing, and worker reconcile --dismiss '<reason>' clears needs_reconcile with the reason recorded as an event; worker list and sync stop showing a dismissed or reconciled worker as needing reconcile",
         "reconcile reports committed changes and untracked files separately; untracked-only paths outside the zones are a warning, not a failure; tests cover a merged leaf, dismiss, and an untracked file outside the zones"
       ],
       "codename": "reconcile-merged-and-untracked",
-      "dependencies": [],
+      "dependencies": [
+        "6a0429e2-027e-4d14-8d7d-9e3e19676467",
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+      ],
       "execution_milestone": "Agentic-led",
       "id": "M11.40",
       "node_key": "14933e19-770a-4026-8ef6-14d1aa315567",
@@ -102,7 +79,9 @@
         "In the nested layout init project writes no .gitignore under the project root (the git-root managed block covers those paths with the project prefix); a test covers the nested layout"
       ],
       "codename": "init-project-reports-writes",
-      "dependencies": [],
+      "dependencies": [
+        "27d1e4aa-a2e8-4ad2-8369-f431163cce87"
+      ],
       "execution_milestone": "Agentic-led",
       "id": "M11.43",
       "node_key": "12cd9d17-8a37-4149-b7eb-2acdc740c4ff",
@@ -322,7 +301,9 @@
         "Tests cover an integration branch that gained another claim after pickup (resolved, branch merges cleanly) and a code conflict (reported, nothing pushed)"
       ],
       "codename": "pr-mode-registry-conflict",
-      "dependencies": [],
+      "dependencies": [
+        "04cf2d19-1c5e-4dfa-b624-ec26031e09fd"
+      ],
       "execution_milestone": "Agentic-led",
       "id": "M11.52",
       "node_key": "fe1a3718-b3ae-4c2f-85e7-8e14b05e763c",
@@ -441,7 +422,9 @@
         "finish-this-task terminates the finished leaf's own idle or completed workers (recording an event), and worker list and sync mark any held worker as orphaned when its leaf is Complete, its claim is gone or its worktree no longer exists; worker terminate --orphaned ends all of them in one step and prints what it ended; tests cover finish cleanup, each orphan cause and the bulk command"
       ],
       "codename": "completed-worker-frees-slot",
-      "dependencies": [],
+      "dependencies": [
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+      ],
       "execution_milestone": "Agentic-led",
       "id": "M11.57",
       "node_key": "6a0429e2-027e-4d14-8d7d-9e3e19676467",
@@ -461,12 +444,14 @@
     },
     {
       "acceptance": [
-        "specy-road decisions can record a preference entry (kind preference) that states a routing rule in plain words and optional structured fields: role, preferred roster ids in order, roster ids to avoid with an optional until time, and the leaf kinds it applies to (for example docs or data only); decisions list shows active preferences first and drops expired ones",
+        "specy-road decisions can record a preference entry (kind preference) that states a routing rule in plain words and optional structured fields: role, preferred roster ids in order, and the leaf kinds it applies to (for example docs or data only); decisions list shows active preferences first and drops expired ones; whether a model is available or paused is not a preference: it is read from the roster availability fields (M11.39), so the two never disagree",
         "The orchestrate skill and coordinator prompt tell the coordinator to read active preferences at the start of each session and before each delegate or review launch, to record a preference whenever the human states one in chat, and to close or update it when the human changes it; orchestrate plan prints the active preferences it did not apply automatically",
         "docs/orchestration.md explains that preferences are per project and session-durable (they survive a context reset, an account switch or a different agent taking over) and are not roster config; tests cover add, expiry, listing order and the plan notice"
       ],
       "codename": "session-routing-preferences",
-      "dependencies": [],
+      "dependencies": [
+        "effe1668-f68c-4ff8-be70-61296b3cf696"
+      ],
       "execution_milestone": "Agentic-led",
       "id": "M11.58",
       "node_key": "0f7f80f3-23c0-4824-ac19-58e173360f5d",
