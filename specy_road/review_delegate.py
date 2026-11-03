@@ -34,6 +34,7 @@ from typing import Any
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
+from specy_road.orchestration_role_env import harness_env
 from specy_road.review_files import reviews_dir
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.reviewer_run_failure import (_now, _read_json, _save, capacity_error, close_run, gate_policy_summary,
@@ -113,7 +114,7 @@ class _Harness:
 def _turn(h: _Harness, launch: Launch, log: Path) -> dict[str, Any]:
     """Run one turn to its end; ``exit``, the reported ``session_id`` and the ``errors`` it printed."""
     out: dict[str, Any] = {"exit": None, "session_id": None, "errors": [], "tail": []}
-    env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "CLAUDE_CODE_EFFORT_LEVEL")}
+    env = harness_env(os.environ, "reviewer")
     with log.open("a", encoding="utf-8") as raw:
         raw.write(f"[review delegate] {_now()} {launch.argv[0]}\n")
         try:

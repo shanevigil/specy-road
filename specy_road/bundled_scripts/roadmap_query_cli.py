@@ -4,6 +4,10 @@
 Both answer questions `grind-session --plan` could already answer, but only by
 rendering a whole session plan and reading it. Asking about one node — or about
 the gates alone — is common enough during a grind to deserve its own entrypoint.
+
+For a leaf with nothing in its way, `why-blocked` still asks that plan whether
+it holds the leaf out of a parallel batch for sharing a touch zone, so the two
+commands never disagree about one leaf.
 """
 
 from __future__ import annotations
@@ -15,6 +19,8 @@ from dataclasses import asdict
 
 from specy_road.bundled_scripts.roadmap_explain import DependencyNode, Explanation, explain, open_gates
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.bundled_scripts.session_plan_git import gather_session_plan
+from specy_road.bundled_scripts.session_plan_render import zone_overlaps
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
@@ -22,6 +28,12 @@ from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 #: scripting around this wants to branch on that without parsing prose.
 EXIT_BLOCKED = 1
 EXIT_BAD_NODE = 2
+
+#: Pickup (``do-next-available-task``, and the ``grind-session`` loop through it)
+#: claims the head of ``ready`` and never reads ``parallel_batches``, so a
+#: touch-zone hold shapes only the plan's dispatch sets. A held leaf therefore
+#: still exits 0: it is pickable, just better dispatched after its holder.
+PICKUP_HONOURS_ZONE_HOLDS = False
 
 
 def _render_chain(deps: list[DependencyNode], indent: int = 1) -> list[str]:
@@ -35,7 +47,47 @@ def _render_chain(deps: list[DependencyNode], indent: int = 1) -> list[str]:
     return lines
 
 
-def _render_explanation(exp: Explanation) -> str:
+def plan_hold(root, node_id: str) -> dict | None:
+    """The touch-zone hold ``grind-session --plan`` puts on ``node_id``, or ``None``.
+
+    Read from the plan ``--plan`` prints without ``--under`` (git-enriched, in
+    pickup order), via the same ``zone_overlaps`` its "Held for the next batch"
+    section renders. A scoped plan can hold fewer leaves: a holder outside the
+    scope is not in it.
+    """
+    _nodes, _reg, plan = gather_session_plan(root, None)
+    for h in zone_overlaps(plan):
+        if h["node_id"] == node_id:
+            return {
+                "waits_for": h["waits_for"],
+                "zones": list(h["zones"]),
+                "pickup_honours": PICKUP_HONOURS_ZONE_HOLDS,
+            }
+    return None
+
+
+def _render_hold(node_id: str, hold: dict) -> list[str]:
+    holder = hold["waits_for"]
+    mine, theirs = hold["zones"]
+    honour = (
+        "Pickup honours this hold."
+        if hold["pickup_honours"]
+        else (
+            "Pickup does not honour this hold: do-next-available-task and the "
+            "grind-session loop claim in ready order regardless of touch zones, "
+            f"so {node_id} can still be claimed while {holder} is open. Dispatch "
+            f"it once {holder} lands to keep the two off the same files."
+        )
+    )
+    return [
+        "",
+        f"grind-session --plan holds {node_id} for a later parallel batch, "
+        f"behind {holder}: touch zone `{mine}` overlaps `{theirs}`.",
+        honour,
+    ]
+
+
+def _render_explanation(exp: Explanation, hold: dict | None = None) -> str:
     header = f"{exp.node_id}" + (f" — {exp.title}" if exp.title else "")
     lines = [header, "", exp.summary]
     if exp.waiting_on:
@@ -52,6 +104,8 @@ def _render_explanation(exp: Explanation) -> str:
             "A gate needs a human decision; it is never auto-picked. Clear it "
             "with specy-road set-gate-status <NODE_ID> --status Complete.",
         ]
+    if hold is not None:
+        lines += _render_hold(exp.node_id, hold)
     return "\n".join(lines)
 
 
@@ -60,10 +114,11 @@ def cmd_why_blocked(ns: argparse.Namespace) -> int:
     nodes = load_roadmap(root)["nodes"]
     reg = read_registry(registry_path(root))
     exp = explain(nodes, reg, ns.node_id)
+    hold = plan_hold(root, ns.node_id) if exp.state == "ready" else None
     if ns.json:
-        print(json.dumps(asdict(exp), indent=2))
+        print(json.dumps({**asdict(exp), "plan_hold": hold}, indent=2))
     else:
-        print(_render_explanation(exp))
+        print(_render_explanation(exp, hold))
     if exp.state == "unknown":
         return EXIT_BAD_NODE
     return EXIT_BLOCKED if exp.state in ("blocked", "gated") else 0
@@ -100,8 +155,11 @@ def _add_why_blocked(sub: argparse._SubParsersAction) -> None:
         description=(
             "Why a node cannot be picked up: the transitive chain of unmet "
             "dependencies, an open gate, an existing claim, or a missing "
-            "codename. Exits 1 when the node really is blocked or gated, 0 when "
-            "it is pickable or already closed, 2 when the id does not exist."
+            "codename. For a pickable leaf, also whether grind-session --plan "
+            "holds it behind another leaf that shares a touch zone, and that "
+            "pickup does not honour that hold. Exits 1 when the node really is "
+            "blocked or gated, 0 when it is pickable (held or not) or already "
+            "closed, 2 when the id does not exist."
         ),
     )
     p.add_argument("node_id", metavar="NODE_ID")

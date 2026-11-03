@@ -1,4 +1,11 @@
-"""Tracked open human decisions in ``roadmap/decisions.yaml`` (M11.34)."""
+"""Tracked open human decisions in ``roadmap/decisions.yaml`` (M11.34).
+
+The same ledger holds the human's routing preferences (``kind: preference``,
+M11.58): rules stated in chat, such as which executor takes docs-only leaves,
+kept where a later session, an account switch or another agent can read them.
+Whether a model is available or paused is never a preference; that stays in the
+roster's ``available`` / ``paused_until`` fields.
+"""
 
 from __future__ import annotations
 
@@ -14,10 +21,12 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from specy_road.init_project import project_template_root
+from specy_road.orchestration_config import _paused_until_error
 from specy_road.registry_yaml import dump_registry_text
 from specy_road.text_sections import find_section
 
 DECISIONS_REL = Path("roadmap") / "decisions.yaml"
+PREFERENCE = "preference"
 _SCHEMA_NAME = "decisions.schema.json"
 _DECISION_HEADINGS = {"decisions and notes", "decisions"}
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -99,6 +108,40 @@ def open_entries(doc: dict[str, Any]) -> list[dict[str, Any]]:
     return [e for e in doc.get("entries") or [] if isinstance(e, dict) and e.get("status") == "open"]
 
 
+def open_questions(doc: dict[str, Any]) -> list[dict[str, Any]]:
+    """Open decision and human-action entries: what the human is asked, in needed-by order."""
+    return sort_for_list([e for e in open_entries(doc) if e.get("kind") != PREFERENCE])
+
+
+def preference_active(e: dict[str, Any], now: datetime | date | None = None) -> bool:
+    """An open preference whose ``expires`` (a date, inclusive, or a datetime) has not passed."""
+    # Same boundary rule as a roster pause, so `expires` and `paused_until` read alike.
+    from specy_road.orchestrate_plan import _pause_active
+
+    if e.get("kind") != PREFERENCE or e.get("status") != "open":
+        return False
+    return not e.get("expires") or _pause_active({"paused_until": e["expires"]}, now)
+
+
+def active_preferences(doc: dict[str, Any], now: datetime | date | None = None) -> list[dict[str, Any]]:
+    """Open, unexpired preferences, oldest first; expired ones are dropped, not closed."""
+    prefs = [e for e in open_entries(doc) if preference_active(e, now)]
+    return sorted(prefs, key=lambda e: ((e.get("asked") or ""), e.get("id") or ""))
+
+
+def plan_preferences(root: Path, now: datetime | date | None = None) -> tuple[list[dict[str, Any]], str | None]:
+    """Active preferences for ``orchestrate plan``; an unreadable ledger is a warning, never a plan failure."""
+    rel = DECISIONS_REL.as_posix()
+    try:
+        doc = read_decisions(decisions_path(root))
+    except (OSError, yaml.YAMLError) as e:
+        return [], f"{rel} could not be read ({e}); preferences not shown"
+    errs = schema_errors(doc, schema_path_for_write(root)) if isinstance(doc, dict) else ["(root): not a mapping"]
+    if errs:
+        return [], f"{rel} fails its schema ({errs[0]}); preferences not shown; run `specy-road decisions list`"
+    return active_preferences(doc, now), None
+
+
 def sort_for_list(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     def key(e: dict[str, Any]) -> tuple:
         nb = (e.get("needed_by") or "").strip()
@@ -108,11 +151,11 @@ def sort_for_list(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(entries, key=key)
 
 
-def next_decision_id(doc: dict[str, Any]) -> str:
+def next_decision_id(doc: dict[str, Any], prefix: str = "D") -> str:
     used = {e.get("id") for e in doc.get("entries") or [] if isinstance(e, dict)}
     n = 1
     while True:
-        cand = f"D{n}"
+        cand = f"{prefix}{n}"
         if cand not in used:
             return cand
         n += 1
@@ -179,6 +222,20 @@ def format_open_entry(e: dict[str, Any]) -> str:
     )
 
 
+def format_preference(e: dict[str, Any]) -> str:
+    scope = [f"role {e['role']}"] if e.get("role") else []
+    if e.get("models"):
+        scope.append("prefer " + ", ".join(e["models"]))
+    if e.get("applies_to"):
+        scope.append("leaf kinds " + ", ".join(e["applies_to"]))
+    if e.get("expires"):
+        scope.append(f"expires {e['expires']}")
+    lines = [f"{e['id']} [preference] " + ("; ".join(scope) or "every role and leaf"), f"  {e['summary']}"]
+    if e.get("why_now"):
+        lines.append(f"  why: {e['why_now']}")
+    return "\n".join(lines)
+
+
 def coordinator_decision_lines() -> list[str]:
     return [
         "## Human decisions ledger",
@@ -195,9 +252,27 @@ def coordinator_decision_lines() -> list[str]:
         "will apply if unanswered, and any needed-by date. Register new ones with "
         "`specy-road decisions add`.",
         "",
-        "End **every** turn that still has open ledger entries with one "
-        "**Decisions waiting on you** block below your status, listing **all** open "
-        "entries in the same self-contained shape.",
+        "End **every** turn that still has open decision or human-action entries with "
+        "one **Decisions waiting on you** block below your status, listing **all** of "
+        "them in the same self-contained shape.",
+        "",
+        "## Routing preferences",
+        "",
+        "The human's routing preferences (which executor or reviewer to use, for which "
+        "leaf kinds, until when) are `kind: preference` entries in the same ledger; "
+        "`specy-road decisions list` shows the active ones first. Read them at the "
+        "**start of every session** and again **before each** `worker delegate` or "
+        "reviewer launch, and apply them: `orchestrate plan` lists them but does not "
+        "apply them itself.",
+        "",
+        "Whenever the human states a preference in chat, record it at once with "
+        "`specy-road decisions add --kind preference --summary \"<rule in plain words>\"` "
+        "plus `--role`, `--model <roster id>` (repeat, most preferred first), "
+        "`--applies-to <leaf kind>` and `--expires` when they apply. When the human "
+        "changes one, record the new rule with `--supersedes <id>`; when they drop it, "
+        "`specy-road decisions close <id> --answer \"<why>\"`. Whether a model is "
+        "available or paused is not a preference: set `available` / `paused_until` in "
+        "the roster (`roadmap/orchestration.local.yaml` needs no push).",
         "",
     ]
 
@@ -243,8 +318,50 @@ def add_entry(
     return entry
 
 
-def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str) -> dict[str, Any]:
-    if not recorded_on_sheet(sheet_text, decision_id, answer):
+def add_preference(
+    root: Path,
+    *,
+    summary: str,
+    role: str | None = None,
+    models: list[str] | None = None,
+    applies_to: list[str] | None = None,
+    expires: str | None = None,
+    why: str | None = None,
+    node_id: str | None = None,
+    preference_id: str | None = None,
+    supersedes: str | None = None,
+    asked: str | None = None,
+) -> dict[str, Any]:
+    """Record a routing preference; ``supersedes`` closes an open preference in the same write."""
+    path = decisions_path(root)
+    doc = read_decisions(path)
+    entries = doc.setdefault("entries", [])
+    entry_id = preference_id or next_decision_id(doc, "P")
+    if any(isinstance(e, dict) and e.get("id") == entry_id for e in entries):
+        raise ValueError(f"decision id {entry_id!r} already exists")
+    if expires and (err := _paused_until_error("expires", expires.strip())):
+        raise ValueError(err)
+    entry: dict[str, Any] = {"id": entry_id, "kind": PREFERENCE, "summary": summary.strip()}
+    for key, val in (("node", node_id), ("role", role), ("why_now", (why or "").strip()),
+                     ("models", models), ("applies_to", applies_to), ("expires", (expires or "").strip())):
+        if val:
+            entry[key] = val
+    entry["asked"] = require_iso_date("asked", asked) if asked else _today_iso()
+    entry["status"] = "open"
+    if supersedes:
+        old = next((e for e in entries if isinstance(e, dict) and e.get("id") == supersedes), None)
+        if not old or old.get("kind") != PREFERENCE or old.get("status") != "open":
+            raise ValueError(f"--supersedes {supersedes!r} is not an open preference")
+        old.update(status="closed", answer=f"superseded by {entry_id}", closed=_now_iso())
+    entries.append(entry)
+    write_decisions(path, doc)
+    return entry
+
+
+def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str | None) -> dict[str, Any]:
+    """Close an open entry. A preference (``sheet_text`` None) needs no planning-sheet record:
+    it belongs to the project's sessions, not to one leaf."""
+    if sheet_text is not None and not recorded_on_sheet(sheet_text, decision_id, answer):
         print(
             f"error: planning sheet decision block has no line `{decision_id}: {answer.strip()}` "
             "(optional list marker or checkbox in front is fine; other sections and fenced "
@@ -260,6 +377,10 @@ def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str) -
         if isinstance(e, dict) and e.get("id") == decision_id:
             if e.get("status") != "open":
                 print(f"error: decision {decision_id!r} is not open", file=sys.stderr)
+                raise SystemExit(1)
+            if sheet_text is None and e.get("kind") != PREFERENCE:
+                print(f"error: decision {decision_id!r} closes only with its planning-sheet record",
+                      file=sys.stderr)
                 raise SystemExit(1)
             e["status"] = "closed"
             e["answer"] = answer.strip()

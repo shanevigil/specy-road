@@ -225,3 +225,10 @@ def review_text(commit: str, *, model: str = "human", verdict: str = "approve",
         **extra,
     }
     return "---\n" + yaml.safe_dump(data, sort_keys=False) + "---\nnotes\n"
+
+
+def shipped_anthropic_opus_cli_yaml_line() -> str:
+    """The shipped ``access.cli`` YAML line for claude-opus-5-5 (project template)."""
+    path = Path(__file__).resolve().parent.parent / "specy_road" / "templates" / "project" / "model-profiles"
+    text = (path / "anthropic-claude" / "claude-opus-5-5.md").read_text(encoding="utf-8")
+    return next(line for line in text.splitlines() if line.startswith("  cli: "))

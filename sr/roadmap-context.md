@@ -71,7 +71,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M8.2` Worker adapters harden the launch and run a deterministic post-run check `worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` — task — **Not Started**
   - `M8.3` Reviewer runs are read-only and specy-road writes the review record from structured output `reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` — task — **Not Started**
   - `M8.4` Ship skills once and meter every file each harness injects `ship-skills-once-and-meter-every-file-each-harness-injects` — task — **Complete**
-  - `M8.5` Guard hooks per harness and avoid lists in every model profile `guard-hooks-per-harness-and-avoid-lists-in-every-model-profile` — task — **Not Started**
+  - `M8.5` Guard hooks per harness and avoid lists in every model profile `guard-hooks-per-harness-and-avoid-lists-in-every-model-profile` — task — **Complete**
   - `M8.7` Runtime verification of the harness facts against installed binaries `runtime-verification-of-the-harness-facts-against-installed-binaries` — task — **Complete**
   - `M8.6` Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic `candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic` — task — **Complete**
 - `M9` Regression prevention `regression-prevention` — phase — **In Progress**
@@ -142,7 +142,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.33` A reviewer whose harness routes models dynamically does not count as an independent family by default `dynamic-routing-reviewers` — task — **Not Started**
   - `M11.34` Open human decisions live in one tracked ledger and every question is self-contained `decision-ledger` — task — **Complete**
   - `M11.35` A roster entry maps to the harness's own model id, and a failed start says why `roster-harness-model-id` — task — **Not Started**
-  - `M11.36` A resumed reviewer session may approve a delta it was shown `resumed-delta-approval` — task — **Not Started**
+  - `M11.36` A resumed reviewer session may approve a delta it was shown `resumed-delta-approval` — task — **Complete**
   - `M11.37` review-packet warns when the brief or summary names a file not committed at the reviewed commit `packet-uncommitted-refs` — task — **Complete**
   - `M11.38` handoff status says who can still supply a missing approval `handoff-eligible-reviewers` — task — **Complete**
   - `M11.39` A roster entry can be marked unavailable without deleting it `roster-availability` — task — **Complete**
@@ -164,22 +164,22 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.55` Executors split modules to meet file limits instead of deleting documentation `file-limit-split-not-delete` — task — **Complete**
   - `M11.56` Delegate creates the reviews directory before a harness is told to allow it `reviews-dir-before-launch` — task — **Complete**
   - `M11.57` A completed worker on a finished leaf does not hold a max_workers slot `completed-worker-frees-slot` — task — **Not Started**
-  - `M11.58` The coordinator records the session's routing preferences where the next session can read them `session-routing-preferences` — task — **Not Started**
+  - `M11.58` The coordinator records the session's routing preferences where the next session can read them `session-routing-preferences` — task — **Complete**
   - `M11.59` Split worker_ops and worker_adapters so parallel leaves stop colliding `split-worker-modules` — task — **Complete**
   - `M11.62` Headless runs report usage limits and denied actions instead of looking like success `headless-limits-denials` — task — **Not Started**
   - `M11.60` The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names `harness-facts-nov-refresh` — task — **Complete**
   - `M11.61` The context meter counts Claude rules, auto memory, Cursor nested AGENTS.md and Copilot path instructions `meter-claude-rules-and-nested` — task — **Complete**
   - `M11.63` do-next-available-task refuses a second claim in a checkout that already holds one `pickup-second-claim-guard` — task — **Not Started**
-  - `M11.64` abort-task-pickup treats untracked files the way pickup does `abort-untracked-like-pickup` — task — **Not Started**
-  - `M11.65` why-blocked reports touch-zone holds from the plan `why-blocked-plan-holds` — task — **Not Started**
+  - `M11.64` abort-task-pickup treats untracked files the way pickup does `abort-untracked-like-pickup` — task — **Complete**
+  - `M11.65` why-blocked reports touch-zone holds from the plan `why-blocked-plan-holds` — task — **Complete**
   - `M11.66` specy-road --version identifies the code when run from a checkout `version-shows-checkout-sha` — task — **Not Started**
   - `M11.67` Worker usage prices Cursor runs from the roster's price table `cursor-usage-cost` — task — **Complete**
   - `M11.68` A re-delegated executor starts from the blocking review findings `rework-findings-in-prompt` — task — **Not Started**
-  - `M11.69` A leaf that adds a schema key can be gated and finished `branch-schema-for-gate-and-finish` — task — **Not Started**
-  - `M11.70` Touch zones are checked when they are written `zones-checked-at-authoring` — task — **Not Started**
+  - `M11.69` A leaf that adds a schema key can be gated and finished `branch-schema-for-gate-and-finish` — task — **Complete**
+  - `M11.70` Touch zones are checked when they are written `zones-checked-at-authoring` — task — **Complete**
   - `M11.71` Review loops escalate on their own and criteria are written with bounds `review-loops-escalate` — task — **Complete**
   - `M11.72` A reviewer run that ends without a record is reported as a failure `reviewer-failure-visible` — task — **Complete**
-  - `M11.73` specy-road ready warns when the leaf no longer merges cleanly `ready-warns-integration-conflict` — task — **Not Started**
+  - `M11.73` specy-road ready warns when the leaf no longer merges cleanly `ready-warns-integration-conflict` — task — **Complete**
   - `M11.74` Pickup and finish in one checkout take a shared lock in order `pickup-finish-shared-lock` — task — **Complete**
 
 ## Dependencies that were removed
@@ -199,18 +199,14 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M11.35` on `feature/rm-roster-harness-model-id` since 2026-11-03
-- `M11.36` on `feature/rm-resumed-delta-approval` since 2026-11-03
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.57` on `feature/rm-completed-worker-frees-slot` since 2026-11-03
+- `M11.62` on `feature/rm-headless-limits-denials` since 2026-11-03
 - `M11.63` on `feature/rm-pickup-second-claim-guard` since 2026-11-03
-- `M11.64` on `feature/rm-abort-untracked-like-pickup` since 2026-11-03
-- `M11.65` on `feature/rm-why-blocked-plan-holds` since 2026-11-03
 - `M11.66` on `feature/rm-version-shows-checkout-sha` since 2026-11-03
 - `M11.68` on `feature/rm-rework-findings-in-prompt` since 2026-11-03
-- `M11.70` on `feature/rm-zones-checked-at-authoring` since 2026-11-03
 - `M8.2` on `feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
-- `M8.5` on `feature/rm-guard-hooks-per-harness-and-avoid-lists-in-every-model-profile` since 2026-11-03
 
 ## Reaching the detail behind this
 

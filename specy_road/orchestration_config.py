@@ -18,6 +18,7 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from specy_road.git_subprocess import git_stdout
+from specy_road.schema_revision import accepted_at_revision
 
 _PACKAGE_DIR = Path(__file__).resolve().parent
 _ORCHESTRATION_SCHEMA = _PACKAGE_DIR / "templates" / "project" / "schemas" / "orchestration.schema.json"
@@ -37,6 +38,7 @@ DEFAULT_POLICY: dict[str, Any] = {
     "stall_after_seconds": 600,
     "milestone_full_review": True,
     "delta_review": True,
+    "reviewer_resumed_delta": False,
 }
 DEFAULT_CONFIG: dict[str, Any] = {
     "version": 1,
@@ -61,10 +63,17 @@ def _schema_validator() -> Draft202012Validator:
     return Draft202012Validator(schema)
 
 
-def validate_orchestration_dict(data: dict[str, Any]) -> str | None:
-    """Return error message if invalid, else None."""
+def validate_orchestration_dict(data: dict[str, Any], repo_root: Path | None = None,
+                                rev: str | None = None) -> str | None:
+    """Return error message if invalid, else None.
+
+    With ``repo_root``, the file was read at ``rev`` (the working tree when
+    ``None``), and the schema as a specy-road checkout has it there counts too:
+    a leaf that adds a policy key is valid against its own schema.
+    """
     errs = sorted(_schema_validator().iter_errors(data), key=lambda e: list(e.path))
-    if not errs:
+    sub = _ORCHESTRATION_SCHEMA.relative_to(_PACKAGE_DIR).as_posix()
+    if not errs or repo_root is not None and accepted_at_revision(data, sub, repo_root, rev):
         return None
     e = errs[0]
     loc = "/".join(str(x) for x in e.path) if e.path else "(root)"
@@ -198,8 +207,10 @@ def apply_availability_overlay(config: dict[str, Any], overlay: dict[str, dict[s
                 entry[key] = val
 
 
-def parse_orchestration_text(text: str) -> tuple[dict[str, Any] | None, str | None]:
-    """Parse and validate the file's text. Returns (data, parse_or_schema_error)."""
+def parse_orchestration_text(text: str, repo_root: Path | None = None,
+                             rev: str | None = None) -> tuple[dict[str, Any] | None, str | None]:
+    """Parse and validate the file's text, read at ``rev`` of ``repo_root`` when given
+    (:func:`validate_orchestration_dict`). Returns (data, parse_or_schema_error)."""
     try:
         raw = yaml.safe_load(text)
     except (yaml.YAMLError, ValueError) as e:   # ValueError: an impossible date such as 2026-00-00
@@ -207,7 +218,7 @@ def parse_orchestration_text(text: str) -> tuple[dict[str, Any] | None, str | No
     if not isinstance(raw, dict):
         return None, f"{ORCHESTRATION_REL}: must be a mapping"
     _dates_to_iso(raw)
-    err = validate_orchestration_dict(raw) or _semantic_error(raw)
+    err = validate_orchestration_dict(raw, repo_root, rev) or _semantic_error(raw)
     if err:
         return None, f"{ORCHESTRATION_REL}: {err}"
     return raw, None
@@ -223,11 +234,11 @@ def load_orchestration_config(
     """
     if ref is not None:
         text = git_stdout(["show", f"{ref}:./{ORCHESTRATION_REL.as_posix()}"], repo_root)   # ./ = project-root relative
-        return (None, None) if text is None else parse_orchestration_text(text)
+        return (None, None) if text is None else parse_orchestration_text(text, repo_root, ref)
     path = orchestration_yaml_path(repo_root)
     if not path.is_file():
         return None, None
-    return parse_orchestration_text(path.read_text(encoding="utf-8"))
+    return parse_orchestration_text(path.read_text(encoding="utf-8"), repo_root)
 
 
 def effective_config(repo_root: Path, ref: str | None = None) -> tuple[dict[str, Any], str | None]:

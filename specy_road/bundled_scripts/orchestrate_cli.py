@@ -7,7 +7,8 @@ for each pick, and names every leaf the roster cannot staff under the current
 policy. Ready means what pickup and `grind-session --plan` mean, so leaves
 pickup skips are listed apart, not assigned. Exit 1 when any ready leaf
 is unstaffable, so a coordinator script stops before dispatching. Assigns
-only: dispatch is `specy-road prompt`.
+only: dispatch is `specy-road prompt`. Ends with the human's active routing
+preferences from `roadmap/decisions.yaml`, which the plan does not apply itself.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ import json
 import sys
 from datetime import date
 
+from specy_road.decisions import format_preference
 from specy_road.orchestrate_plan import OrchestrationPlan, build_orchestration_plan
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
@@ -49,6 +51,19 @@ def render(plan: OrchestrationPlan) -> list[str]:
         lines.append(f"active claims (not reassigned): {', '.join(plan.active)}")
     if plan.unauthored:
         lines.append(f"unauthored (not assigned; pickup skips them): {', '.join(plan.unauthored)}")
+    return lines + preference_lines(plan)
+
+
+def preference_lines(plan: OrchestrationPlan) -> list[str]:
+    if plan.preferences_error:
+        return [f"! preferences: {plan.preferences_error}"]
+    if not plan.preferences_not_applied:
+        return []
+    lines = ["preferences not applied automatically (roadmap/decisions.yaml; "
+             "apply them when you delegate or launch a review):"]
+    for p in plan.preferences_not_applied:
+        lines += [f"  {line}" for line in format_preference(p).splitlines()]
+        lines += [f"    ! {n} (roster)" for n in p["roster_notes"]]
     return lines
 
 

@@ -9,6 +9,7 @@
 - `render_front_matter` does not stamp. `stamp_review_toolkit_version` runs only in `review record` and interactive human approve immediately before `sign()`, always setting `toolkit_version` to `running_toolkit_version()` (overwriting any value copied into reviewer notes). Independence relabel re-renders do not call the stamp helper.
 - JSON schemas: optional `toolkit_version` on `review-record` and `worker-record`; handoff schema unchanged.
 - Merged `origin/WIP/improvements-0-3-1` (M11.27, M11.39, M11.67, M11.74 among others); `review_cli.py` keeps both `stamp_review_toolkit_version` and WIP `gate_policy_summary`.
+- Merged latest WIP again for **M11.69**: the gate validates review records against the schema at the record’s commit, so `toolkit_version` on filed REVIEWs is accepted without invalidating older validators on the integration branch.
 
 ## Touch zones
 
@@ -25,7 +26,7 @@
 
 ## Verification
 
-- `pytest` (full suite)
+- `pytest tests/test_running_toolkit_version.py tests/test_cli_version.py tests/test_review_files.py tests/test_worker_state.py tests/test_review_signing.py tests/test_review_cli.py`
 - `specy-road file-limits`
 
 ## Added (behaviour)
