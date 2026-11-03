@@ -195,6 +195,7 @@ def validate_codenames(nodes: list[dict]) -> None:
 
 def validate_required_planning_dirs(nodes: list[dict]) -> None:
     """Vision/phase/milestone/task/gate nodes must set planning_dir (one .md)."""
+    missing: list[tuple[str, str]] = []
     for n in nodes:
         t = n.get("type")
         if t not in ("vision", "phase", "milestone", "task", "gate"):
@@ -202,14 +203,18 @@ def validate_required_planning_dirs(nodes: list[dict]) -> None:
         pd = n.get("planning_dir")
         if isinstance(pd, str) and pd.strip():
             continue
-        nid = n.get("id", "?")
-        msg = (
+        missing.append((n.get("id", "?"), str(t)))
+    if not missing:
+        return
+    for nid, t in missing:
+        print(
             f"roadmap: node {nid} (type {t}): must set planning_dir to a "
             "repo-relative path to a single feature sheet, e.g. "
-            "planning/M1.1_slug_<node_key>.md"
+            "planning/M1.1_slug_<node_key>.md",
+            file=sys.stderr,
         )
-        print(msg, file=sys.stderr)
-        raise SystemExit(1)
+        print(f"  fix: specy-road scaffold-planning {nid}", file=sys.stderr)
+    raise SystemExit(1)
 
 
 def warn_stale_parent_status(nodes: list[dict]) -> None:

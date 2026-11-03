@@ -133,7 +133,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.24` Executors and reviewers in a worktree can write and check the right places `worktree-handoff-writable` — task — **Complete**
   - `M11.25` finish-this-task says what merge mode will push before it pushes `merge-push-disclosure` — task — **Complete**
   - `M11.26` A model profile can match harness model ids that carry an effort suffix `profile-aliases` — task — **Complete**
-  - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Not Started**
+  - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Complete**
   - `M11.28` A light chore mode for work outside the roadmap `chore-mode` — task — **Not Started**
   - `M11.29` doctor warns when the running specy-road is older than the project's stubs `doctor-version-skew` — task — **Complete**
   - `M11.30` Leaf worktrees get the project's environment set up `worktree-env-setup` — task — **Not Started**
@@ -198,7 +198,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M11.27` on `feature/rm-small-cli-fixes` since 2026-11-03
 - `M11.35` on `feature/rm-roster-harness-model-id` since 2026-11-03
 - `M11.36` on `feature/rm-resumed-delta-approval` since 2026-11-03
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
@@ -207,6 +206,7 @@ Do not pick these up.
 - `M11.64` on `feature/rm-abort-untracked-like-pickup` since 2026-11-03
 - `M11.65` on `feature/rm-why-blocked-plan-holds` since 2026-11-03
 - `M11.66` on `feature/rm-version-shows-checkout-sha` since 2026-11-03
+- `M11.68` on `feature/rm-rework-findings-in-prompt` since 2026-11-03
 - `M11.70` on `feature/rm-zones-checked-at-authoring` since 2026-11-03
 - `M8.2` on `feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03

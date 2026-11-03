@@ -128,21 +128,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: small-cli-fixes
-    node_id: M11.27
-    branch: feature/rm-small-cli-fixes
-    touch_zones:
-      - specy_road/bundled_scripts/session_cli.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/bundled_scripts/worker_cli_render.py
-      - specy_road/worker_adapters.py
-      - specy_road/worker_ops.py
-      - tests/
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/worker_runner.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: version-shows-checkout-sha
     node_id: M11.66
     branch: feature/rm-version-shows-checkout-sha
