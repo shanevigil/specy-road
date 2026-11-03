@@ -164,7 +164,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.55` Executors split modules to meet file limits instead of deleting documentation `file-limit-split-not-delete` — task — **Complete**
   - `M11.56` Delegate creates the reviews directory before a harness is told to allow it `reviews-dir-before-launch` — task — **Complete**
   - `M11.57` A completed worker on a finished leaf does not hold a max_workers slot `completed-worker-frees-slot` — task — **Not Started**
-  - `M11.58` The coordinator records the session's routing preferences where the next session can read them `session-routing-preferences` — task — **Not Started**
+  - `M11.58` The coordinator records the session's routing preferences where the next session can read them `session-routing-preferences` — task — **Complete**
   - `M11.59` Split worker_ops and worker_adapters so parallel leaves stop colliding `split-worker-modules` — task — **Complete**
   - `M11.62` Headless runs report usage limits and denied actions instead of looking like success `headless-limits-denials` — task — **Not Started**
   - `M11.60` The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names `harness-facts-nov-refresh` — task — **Complete**
@@ -201,7 +201,6 @@ Do not pick these up.
 - `M11.35` on `feature/rm-roster-harness-model-id` since 2026-11-03
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.57` on `feature/rm-completed-worker-frees-slot` since 2026-11-03
-- `M11.58` on `feature/rm-session-routing-preferences` since 2026-11-03
 - `M11.62` on `feature/rm-headless-limits-denials` since 2026-11-03
 - `M11.63` on `feature/rm-pickup-second-claim-guard` since 2026-11-03
 - `M11.64` on `feature/rm-abort-untracked-like-pickup` since 2026-11-03

@@ -143,20 +143,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: session-routing-preferences
-    node_id: M11.58
-    branch: feature/rm-session-routing-preferences
-    touch_zones:
-      - specy_road/decisions.py
-      - specy_road/bundled_scripts/decisions_cli.py
-      - specy_road/templates/project/schemas/
-      - specy_road/templates/specyrd/commands/specyrd-orchestrate.md
-      - specy_road/bundled_scripts/role_prompt.py
-      - docs/orchestration.md
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: headless-limits-denials
     node_id: M11.62
     branch: feature/rm-headless-limits-denials

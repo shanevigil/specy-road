@@ -178,6 +178,20 @@ before writing, and `list` rejects a file whose date is not a real calendar day 
 most four questions at once, each in the self-contained shape above. End any turn that still has open
 entries with one **Decisions waiting on you** block listing all of them below your status.
 
+**Routing preferences (`kind: preference`):** a routing rule the human states in chat (say, which
+executor takes docs-only leaves until a provider resets) is a ledger entry: `decisions add --kind
+preference --summary "<rule>"`, with optional `--role`, `--model` (roster ids, most preferred first),
+`--applies-to` (leaf kinds), `--expires` (date, inclusive, or datetime) and `--why`; ids default to
+`P1`. Preferences are **per project and session-durable**: they live in the tracked ledger, not one
+agent's context, so they survive a context reset, an account switch or a different agent taking over.
+They are **not roster config**: availability and pauses come only from the roster (`available`,
+`paused_until`), and `orchestrate plan` flags a preferred model the roster lacks or marks unavailable.
+`list` shows active preferences first and drops expired ones. `--supersedes <id>` closes the old rule as
+it records the new; `close <id> --answer "<why>"` needs no sheet record. `orchestrate plan` never
+applies them: it prints them (JSON `preferences_not_applied`); the coordinator reads them each session
+and before each delegate or review launch. A project with its own `schemas/decisions.schema.json` runs
+`refresh-schemas` first.
+
 ## Hand-off files: `work/reviews/<NODE_ID>/`
 
 Plain files work across every harness, including IDE chats that cannot see each other. Each file is Markdown whose YAML front matter is the machine-readable part.

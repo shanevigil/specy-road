@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://specy-road.local/schemas/decisions.schema.json",
-  "title": "specy-road open human decisions ledger",
+  "title": "specy-road human decisions and routing preferences ledger",
   "type": "object",
   "required": ["version", "entries"],
   "additionalProperties": false,
@@ -24,19 +24,7 @@
     },
     "entry": {
       "type": "object",
-      "required": [
-        "id",
-        "node",
-        "kind",
-        "summary",
-        "why_now",
-        "options",
-        "recommendation",
-        "recommendation_reason",
-        "default_if_unanswered",
-        "asked",
-        "status"
-      ],
+      "required": ["id", "kind", "summary", "asked", "status"],
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -45,13 +33,19 @@
         },
         "node": {
           "type": "string",
-          "pattern": "^M[0-9]+(\\.[0-9]+)*$"
+          "pattern": "^M[0-9]+(\\.[0-9]+)*$",
+          "description": "Roadmap node the entry belongs to; required for decision and human-action, optional for preference"
         },
         "kind": {
           "type": "string",
-          "enum": ["decision", "human-action"]
+          "enum": ["decision", "human-action", "preference"],
+          "description": "decision and human-action ask a person something about a leaf; preference records a routing rule the human stated for this project's sessions"
         },
-        "summary": { "type": "string", "minLength": 1 },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The question, or for a preference the routing rule in plain words"
+        },
         "why_now": { "type": "string", "minLength": 1 },
         "options": {
           "type": "array",
@@ -61,6 +55,30 @@
         "recommendation": { "type": "string", "minLength": 1 },
         "recommendation_reason": { "type": "string", "minLength": 1 },
         "default_if_unanswered": { "type": "string", "minLength": 1 },
+        "role": {
+          "type": "string",
+          "enum": ["coordinator", "executor", "reviewer"],
+          "description": "Preference only: the role the rule routes"
+        },
+        "models": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Preference only: preferred roster ids, most preferred first. Whether a model is available or paused is not a preference: it is read from the roster (available, paused_until)"
+        },
+        "applies_to": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Preference only: the leaf kinds the rule covers, in plain words (for example docs, data); omit for every leaf"
+        },
+        "expires": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Preference only: active through this calendar date (YYYY-MM-DD, inclusive) or until this datetime (ISO 8601); omit for no expiry"
+        },
         "asked": {
           "type": "string",
           "format": "date",
@@ -84,6 +102,41 @@
         }
       },
       "allOf": [
+        {
+          "if": { "properties": { "kind": { "enum": ["decision", "human-action"] } }, "required": ["kind"] },
+          "then": {
+            "required": [
+              "node",
+              "why_now",
+              "options",
+              "recommendation",
+              "recommendation_reason",
+              "default_if_unanswered"
+            ],
+            "not": {
+              "anyOf": [
+                { "required": ["role"] },
+                { "required": ["models"] },
+                { "required": ["applies_to"] },
+                { "required": ["expires"] }
+              ]
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "preference" } }, "required": ["kind"] },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["options"] },
+                { "required": ["recommendation"] },
+                { "required": ["recommendation_reason"] },
+                { "required": ["default_if_unanswered"] },
+                { "required": ["needed_by"] }
+              ]
+            }
+          }
+        },
         {
           "if": { "properties": { "status": { "const": "closed" } }, "required": ["status"] },
           "then": { "required": ["answer", "closed"] }
