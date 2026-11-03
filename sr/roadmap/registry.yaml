@@ -50,6 +50,10 @@ entries:
       - specy_road/bundled_scripts/worker_cli.py
       - docs/orchestration-workers.md
       - tests/
+      - specy_road/bundled_scripts/worker_cli_render.py
+      - specy_road/schemas/worker-event.schema.json
+      - specy_road/schemas/worker-record.schema.json
+      - specy_road/worker_state.py
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
@@ -70,6 +74,7 @@ entries:
     touch_zones:
       - specy_road/bundled_scripts/review_packet.py
       - tests/
+      - specy_road/bundled_scripts/review_packet_uncommitted_refs.py
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending

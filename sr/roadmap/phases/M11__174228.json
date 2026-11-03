@@ -451,7 +451,8 @@
       "title": "review-packet warns when the brief or summary names a file not committed at the reviewed commit",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/review_packet_uncommitted_refs.py"
       ],
       "type": "task"
     },
