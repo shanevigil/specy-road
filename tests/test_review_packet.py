@@ -6,9 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, diverge, git, make_review_repo
+from tests.review_repo_helpers import NODE, commit_file, diverge, git, make_review_repo
 
 from specy_road.bundled_scripts import review_packet as rp
+from specy_road.bundled_scripts.review_packet_uncommitted_refs import UNCOMMITTED_REF_NOTE
 from specy_road.review_files import PACKET_NAME, reviews_dir
 
 
@@ -95,7 +96,7 @@ def test_each_section_states_its_provenance(tmp_path: Path) -> None:
     assert text.count(rp.RENDERED) == 1
     assert text.count(rp.ASSERTED) == 1           # READY tails; the summary is not committed here
     assert text.count(rp.ASSERTED_WORKING_TREE) == 1
-    assert text.count("_Computed by review-packet from git (`") == 4   # changed paths, integrity, tests at risk, diff
+    assert text.count("_Computed by review-packet from git (`") == 5   # uncommitted refs, changed paths, integrity, tests at risk, diff
     assert text.count(f"_Run now by review-packet at HEAD `{head}`._") == 1
     assert f"## Implementation summary\n\n{rp.ASSERTED_WORKING_TREE}\n\nDid it." in text
 
@@ -257,3 +258,43 @@ def test_main_passes_max_diff_bytes_through(tmp_path: Path) -> None:
     text = (reviews_dir(repo, "M1.1") / PACKET_NAME).read_text()
     assert f"**Diff capped at {rp.MAX_DIFF_LINES} lines** and **1 bytes**" in text
     assert "the first 0 of 2 changed file(s)" in text and "- `src/a.py` (+1 -0) — not inlined (" in text
+
+
+def _uncommitted_block(text: str) -> str:
+    start = "## Uncommitted references\n"
+    return text.split(start, 1)[1].split("\n## Changed paths\n", 1)[0]
+
+
+def test_packet_warns_when_a_planning_sheet_names_an_uncommitted_file(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    sheet = repo / NODE["planning_dir"]
+    commit_file(repo, NODE["planning_dir"], sheet.read_text() + "\nTrack `shared/missing.md`.\n", "cite missing")
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    block = _uncommitted_block(text)
+    assert UNCOMMITTED_REF_NOTE in block and "- `shared/missing.md`" in block
+    assert "warning: `shared/missing.md` is named in the packet but not at commit" in capsys.readouterr().err
+
+
+def test_packet_is_silent_when_a_named_file_is_at_the_reviewed_commit(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    commit_file(repo, "shared/ok.md", "# ok\n", "shared contract")
+    sheet = repo / NODE["planning_dir"]
+    commit_file(repo, NODE["planning_dir"], sheet.read_text() + "\nSee `shared/ok.md`.\n", "cite shared")
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    assert "_none_" in _uncommitted_block(text)
+    assert "shared/ok.md" not in capsys.readouterr().err
+
+
+def test_packet_ignores_path_like_tokens_that_are_not_repository_paths(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    sheet = repo / NODE["planning_dir"]
+    commit_file(
+        repo,
+        NODE["planning_dir"],
+        sheet.read_text() + "\nUse branch `feature/rm-thing` and `path/to/nowhere`.\n",
+        "path-like noise",
+    )
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    assert "_none_" in _uncommitted_block(text)
+    err = capsys.readouterr().err
+    assert "path/to/nowhere" not in err and "feature/rm-thing" not in err
