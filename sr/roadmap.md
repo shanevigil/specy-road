@@ -145,5 +145,9 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.36` | A resumed reviewer session may approve a delta it was shown | task | Agentic-led | Not Started |
 | `M11.37` | review-packet warns when the brief or summary names a file not committed at the reviewed commit | task | Agentic-led | Not Started |
 | `M11.38` | handoff status says who can still supply a missing approval | task | Agentic-led | Not Started |
+| `M11.39` | A roster entry can be marked unavailable without deleting it | task | Agentic-led | Not Started |
+| `M11.40` | worker reconcile works on merged leaves and separates untracked files | task | Agentic-led | Not Started |
+| `M11.41` | The two review-gate settings cannot silently disagree | task | Agentic-led | Not Started |
+| `M11.42` | session end finds the session the same agent started | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
