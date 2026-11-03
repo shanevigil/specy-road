@@ -150,7 +150,7 @@ every profile whose `family` a harness's executor template names is rendered fro
 - **Model families:** `anthropic` _[documented: docs/design-notes/harness-compatibility-triage.md]_
 - **Quota:** a usage limit prints a message with a reset time; grind-session waits out a timed limit and stops on a spend cap or unrecognised wording _[documented: specy_road/claude_code_limits.py]_
 - **Autonomous git actions:**
-  - commits when asked, with an attribution trailer by default; switch: unknown (attribution setting not checked) _[unverified]_
+  - commits when asked, with an attribution trailer by default; switch: unknown (attribution CLI setting not checked; Co-Authored-By trailer observed at runtime) _[runtime: docs/design-notes/M8.7-runtime-verification-harness-facts.md (claude 2.1.312, nested/sub commit 2026-11-02)]_
   - --worktree / -w creates its own git worktree; switch: never pass -w/--worktree; specy-road creates the worktree _[runtime: harness-captures/claude-code/help.txt]_
   - --bg / --background and routines run sessions specy-road does not own; switch: never pass --bg; CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 _[documented: docs/design-notes/harness-compatibility-triage.md]_
   - --cloud and ultrareview run sessions or reviews in the cloud; switch: never pass --cloud; do not run ultrareview as gate evidence _[runtime: harness-captures/claude-code/help.txt]_
@@ -163,10 +163,10 @@ every profile whose `family` a harness's executor template names is rendered fro
 - **Session:** thread id from the thread.started event; codex exec resume &lt;id&gt; - to continue; --last is cwd-scoped _[documented: docs/design-notes/harness-compatibility-triage.md]_
 - **Permissions:** -c sandbox_mode=workspace-write -c approval_policy=never (exec has no --ask-for-approval; its default sandbox is read-only) _[runtime: specy_road/worker_adapters.py (codex-cli 0.165)]_
 - **Instruction files:** `AGENTS.override.md`, `AGENTS.md` _[documented: docs/install-and-usage.md (validate context lines)]_; size: first non-empty of the two per directory from the git root down, truncated at project_doc_max_bytes (32 KiB); ~/.codex/AGENTS.override.md replaces the global file
-- **Skill directories:** `.agents/skills` _[unverified]_
+- **Skill directories:** `.agents/skills` _[runtime: docs/design-notes/M8.7-runtime-verification-harness-facts.md (codex-cli 0.165.0 loads .agents/skills at exec start, 2026-11-02)]_
 - **Hooks:** PreToolUse on Bash in .codex/hooks.json (or [hooks] in .codex/config.toml); exit 2 denies; project hooks load only when .codex/ is trusted, and an untrusted hook is skipped silently _[documented: docs/optional-ai-tooling-patterns.md]_
 - **Model families:** `openai` _[documented: docs/design-notes/harness-compatibility-triage.md]_
-- **Quota:** unknown; one failure exit is documented, so the event stream (turn.failed) is read, not the exit code _[unverified]_
+- **Quota:** unknown; one failure exit is documented, so the event stream (turn.failed) is read, not the exit code _[runtime: docs/design-notes/M8.7-runtime-verification-harness-facts.md (turn.failed with exit 0 on model error, codex-cli 0.165.0, 2026-11-02)]_
 - **Autonomous git actions:**
   - .git and the linked gitdir are read-only inside workspace-write, so the executor cannot commit; switch: none; the adapter commits on the worker's behalf (decision 2026-10-29, M8.2) _[documented: docs/design-notes/harness-compatibility-triage.md]_
   - --worktree runs the session in a new managed git worktree; switch: never pass --worktree _[runtime: harness-captures/codex/help.txt]_
@@ -184,7 +184,7 @@ every profile whose `family` a harness's executor template names is rendered fro
 - **Skill directories:** `.agents/skills`, `.cursor/skills`, `.claude/skills`, `.codex/skills` _[documented: docs/design-notes/harness-compatibility-triage.md]_
 - **Hooks:** beforeShellExecution in .cursor/hooks.json answers allow or deny as JSON (failClosed true, or empty output fails open); also runs .claude/settings.json hooks _[runtime: docs/optional-ai-tooling-patterns.md (Cursor CLI 2026.10.22, sandbox run 2026-10-28)]_
 - **Model families:** `anthropic`, `openai`, `xai`, `cursor`, `google` _[documented: docs/orchestration-models.md (Cursor model ids carry vendor and effort)]_
-- **Quota:** unknown _[unverified]_
+- **Quota:** unknown (no usage-limit event observed on this account during M8.7 runs) _[documented: docs/design-notes/M8.7-runtime-verification-harness-facts.md (still unknown, agent 2026.10.22, 2026-11-02)]_
 - **Autonomous git actions:**
   - -w / --worktree makes its own worktrees under ~/.cursor/worktrees; switch: never pass -w/--worktree _[runtime: harness-captures/cursor/help.txt]_
   - /split-to-prs, /autopilot and Cloud Agents create branches and PRs; switch: do not use them on a leaf _[documented: docs/design-notes/harness-compatibility-triage.md]_
@@ -192,18 +192,18 @@ every profile whose `family` a harness's executor template names is rendered fro
 
 #### Generic (the profile's own command) (`generic`, binary `access.cli`)
 
-- **Version:** `none of its own; the version is that of whatever binary access.cli names` _[unverified]_
+- **Version:** `none of its own; the version is that of whatever binary access.cli names` _[documented: docs/design-notes/M8.7-runtime-verification-harness-facts.md (by definition; not one binary, 2026-11-02)]_
 - **Headless command:** `the roster channels.cli, else the profile's access.cli, with {prompt} (the prompt file path) or <prompt> (the prompt text) substituted` _[documented: docs/orchestration-workers.md (harness table); docs/orchestration-models.md]_
 - **Executor template:** `the profile's own access.cli, written with "<prompt>" or {prompt}` _[documented: docs/orchestration-models.md (prompt --channel cli and generic workers run access.cli)]_
 - **Session:** none; a generic worker cannot resume, interrupt or hand off _[documented: docs/orchestration-workers.md (harness table); specy_road/worker_adapters.py (Adapter.caps)]_
-- **Permissions:** whatever the command's own flags grant; specy-road adds none _[unverified]_
-- **Instruction files:** `AGENTS.md` _[unverified]_; size: unknown
-- **Skill directories:** `.agents/skills` _[unverified]_
+- **Permissions:** whatever the command's own flags grant; specy-road adds none _[documented: docs/design-notes/M8.7-runtime-verification-harness-facts.md (still unknown per access.cli; not exercised, 2026-11-02)]_
+- **Instruction files:** `AGENTS.md` _[documented: docs/design-notes/M8.7-runtime-verification-harness-facts.md (specy-road init convention; not verified per generic binary, 2026-11-02)]_; size: unknown
+- **Skill directories:** `.agents/skills` _[documented: docs/design-notes/M8.7-runtime-verification-harness-facts.md (init layout; per-binary load still unknown, 2026-11-02)]_
 - **Hooks:** no hook of its own; the session guard's generic contract reads a JSON object with a command field on stdin and exits 2 to deny, for any harness that can call it _[documented: specy_road/tool_call_guard_adapters.py (generic adapter)]_
-- **Model families:** none listed _[unverified]_
+- **Model families:** none listed _[documented: docs/design-notes/M8.7-runtime-verification-harness-facts.md (roster contract; empty list by design, 2026-11-02)]_
 - **Quota:** unknown; no usage is reported (every usage field is null) _[documented: docs/orchestration-workers.md (usage events)]_
 - **Autonomous git actions:**
-  - unknown; depends on the binary access.cli names; switch: unknown _[unverified]_
+  - unknown; depends on the binary access.cli names; switch: unknown _[documented: docs/design-notes/M8.7-runtime-verification-harness-facts.md (still unknown per access.cli, 2026-11-02)]_
 
 <!-- >>> end harness facts <<< -->
 
