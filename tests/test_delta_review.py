@@ -170,6 +170,22 @@ def test_a_later_block_rescinds_an_approval_as_delta_basis_and_a_later_approval_
     assert [a.model for a in _gate(repo).approvals] == ["opus"]
 
 
+def test_a_delta_approval_stops_counting_when_its_basis_does_and_comes_back_with_it(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)   # opus approves P
+    c1 = _fix(repo, {"src/NOTES.md": "# n\n"})
+    _file(repo, "opus", c1, delta_from=approved)   # a delta approval of C1 from P
+    _file(repo, "opus", approved, verdict="block")   # P no longer counts, so neither does C1
+    c2 = _fix(repo, {"src/MORE.md": "# m\n"})
+    assert delta_basis(repo, NODE, "opus", c2) == (None, "no earlier approval")   # C1 is no basis
+    _file(repo, "opus", c2, delta_from=c1)
+    assert f"a delta review from {c1}, which opus did not approve" in _why(repo, "opus")
+    assert not _gate(repo).approvals
+    _file(repo, "opus", approved)   # an eligible approval of P again restores the chain
+    assert delta_basis(repo, NODE, "opus", c2)[0] is not None   # the latest filing, P, is the basis now
+    _file(repo, "opus", c2, delta_from=c1)   # and C1 counts again, so a delta from it does too
+    assert [a.model for a in _gate(repo).approvals] == ["opus"]
+
+
 def test_policy_off_forces_full_review(tmp_path: Path) -> None:
     repo, approved = _repo(tmp_path, ", delta_review: false")
     head = _fix(repo, {"src/NOTES.md": "# n\n"})

@@ -66,7 +66,9 @@ current policy. An earlier approval counts only if it would have counted at its
 own commit:
 - it has a result for every acceptance id in the brief;
 - it passes the roster, session and signature checks;
-- if it names `delta_from` itself, its own delta qualified.
+- if it names `delta_from` itself, its own delta qualifies and its basis still counts under this same rule.
+
+The reviewer's latest record on a commit is its verdict there. A later block on that commit takes the approval back, and with it every delta approval that depends on it; a later eligible approval of the commit restores them.
 
 A delta approval the gate rejected is therefore never the start of a later delta. Otherwise `handoff status` lists it as `does not count — a delta
 review from <sha>, …; a full review is needed`. A delta approval is still one

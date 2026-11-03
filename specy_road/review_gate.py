@@ -118,19 +118,12 @@ class GateResult:
 
     @property
     def approval_count(self) -> int:
-        if self.distinct_families:
-            return len({a.family for a in self.approvals})
-        return len(self.approvals)
+        return len({a.family for a in self.approvals}) if self.distinct_families else len(self.approvals)
 
     @property
     def passed(self) -> bool:
-        return (
-            self.config_error is None
-            and self.commit is not None
-            and not self.blocks
-            and not self.verifier_problems
-            and self.approval_count >= self.required
-        )
+        return (self.config_error is None and self.commit is not None and not self.blocks
+                and not self.verifier_problems and self.approval_count >= self.required)
 
     def summary(self) -> str:
         unit = "distinct-family approvals" if self.distinct_families else "approvals"
@@ -265,20 +258,27 @@ def _delta_why(repo_root: Path, node: dict[str, Any], priors: list[ReviewFile], 
 
 def prior_approvals(repo_root: Path, config: dict[str, Any], node: dict[str, Any], model: str,
                     commit: str | None, today: date | None = None) -> list[ReviewFile]:
-    """``model``'s approvals of other commits that count there, oldest first. Its latest record on a commit is its
-    verdict (a later block rescinds, a later approval restores); a delta approval needs a kept ``delta_from``."""
-    kept: list[ReviewFile] = []
+    """``model``'s counting approvals of other commits, in filing order. Its latest record on a commit is its
+    verdict there; an approval naming ``delta_from`` counts only while that basis counts and the delta qualifies."""
+    latest: dict[str, ReviewFile] = {}   # full sha -> the model's latest record on it, in filing order
     for r in list_review_history(repo_root, node["id"]) + list_reviews(repo_root, node["id"]):
-        if not (r.ok and r.data.get("node_id") == node["id"] and r.data["model"] == model) or \
-                same_commit(repo_root, r.data["commit"], commit):
-            continue
-        kept = [k for k in kept if not same_commit(repo_root, k.data["commit"], r.data["commit"])]
-        if (r.data["verdict"] == "approve" and not review_semantic_errors(r.data, acceptance_ids(node))
-                and _eligibility(config, node, r, today)[0] is not None   # history is loaded without the ids
-                and not (r.data.get("delta_from")
-                         and _delta_why(repo_root, node, kept, r, r.data["commit"], config["policy"]))):
-            kept.append(r)
-    return kept
+        if r.ok and r.data.get("node_id") == node["id"] and r.data["model"] == model and \
+                not same_commit(repo_root, r.data["commit"], commit):
+            sha = full_sha(repo_root, r.data["commit"]) or r.data["commit"]
+            latest = {k: v for k, v in latest.items() if k != sha} | {sha: r}   # moves it last
+    counts: dict[str, bool] = {}
+    ids = acceptance_ids(node)   # history is loaded without them
+
+    def counting(sha: str) -> bool:   # False is set first, so a delta_from cycle never counts
+        if sha not in counts:
+            counts[sha], r = False, latest.get(sha)
+            base = full_sha(repo_root, r.data.get("delta_from")) if r else None
+            counts[sha] = bool(r and r.data["verdict"] == "approve" and not review_semantic_errors(r.data, ids)
+                               and _eligibility(config, node, r, today)[0] is not None
+                               and (not r.data.get("delta_from") or base in latest and counting(base)
+                                    and not delta_problem(repo_root, node, base, r.data["commit"], config["policy"])))
+        return counts[sha]
+    return [r for sha, r in latest.items() if counting(sha)]
 
 
 def delta_basis(repo_root: Path, node: dict[str, Any], model: str, commit: str | None) -> tuple[ReviewFile | None, str]:
