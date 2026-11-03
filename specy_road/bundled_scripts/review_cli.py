@@ -36,6 +36,7 @@ from specy_road.review_files import (
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
 from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states
+from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
 from specy_road.review_gate_ready import add_ready_parser
 from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
@@ -95,7 +96,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         ],
         "review_rounds": round_span(root, node_id),
         "review_runs": (runs := run_states(root, node_id, gate.commit)),
-        "policy": gate.summary(),
+        "policy": gate.summary(), "reviewer_eligibility": reviewer_eligibility(root, t.node, gate, branch),
         "policy_met": gate.passed,
         "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
                         "blocking": tm.code_conflicts} if tm and tm.conflicts else None,
@@ -120,7 +121,7 @@ def _render(st: dict[str, Any]) -> list[str]:
                      f"{' [signed]' if r['signed'] else ''}{mode}{extra}")
     lines += [f"  {line}" for line in run_lines(st.get("review_runs") or [])]
     lines.append(f"  {st['review_rounds']['line']}")
-    lines.append(f"  policy: {st['policy']}")
+    lines += [f"  policy: {st['policy']}"] + eligibility_lines(st)   # who can still approve, when not met
     if tm := st.get("trial_merge"):
         kind = "" if tm["blocking"] else " (bookkeeping only, which does not block)"
         lines.append(f"  trial merge with {tm['ref']}: conflicts on {', '.join(tm['conflicts'])}{kind}")
