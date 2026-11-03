@@ -165,6 +165,9 @@ entries:
       - specy_road/templates/project/schemas/orchestration.schema.json
       - docs/orchestration.md
       - tests/
+      - specy_road/worker_ops_launch.py
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/templates/project/.gitignore
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending

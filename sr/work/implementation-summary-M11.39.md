@@ -6,12 +6,19 @@ Roster entries can be paused locally (`available: false`, `paused_until`, or leg
 
 ## Touch zones (confirmed)
 
-Listed on the leaf, plus files required for behaviour:
+Listed on the leaf, plus three paths added with `edit-node --add` because A1 cannot land without them after M11.59 split the worker module:
 
-- `specy_road/orchestration_config.py`, `specy_road/orchestrate_plan.py`, `specy_road/bundled_scripts/review_cli.py`, `specy_road/templates/project/schemas/orchestration.schema.json`, `docs/orchestration.md`, `tests/`
-- Also edited (not on the leaf list): `specy_road/worker_ops_launch.py`, `specy_road/bundled_scripts/role_prompt.py`, `specy_road/templates/project/.gitignore`, `sr/schemas/orchestration.schema.json`
+- `specy_road/orchestration_config.py`, `specy_road/orchestrate_plan.py`, `specy_road/worker_ops.py`, `specy_road/bundled_scripts/review_cli.py`, `specy_road/templates/project/schemas/orchestration.schema.json`, `docs/orchestration.md`, `tests/`
+- `specy_road/worker_ops_launch.py`, `specy_road/bundled_scripts/role_prompt.py`, `specy_road/templates/project/.gitignore`
 
-`specy_road/worker_ops.py` unchanged (availability checks live in `worker_ops_launch` and shared helpers).
+`specy_road/worker_ops.py` is unchanged (it re-exports launch); the eligibility check lives in `worker_ops_launch`.
+
+## Out-of-zone files
+
+- `specy_road/worker_ops_launch.py` — A1's worker-delegate refusal: `_check_eligible` lives here after M11.59 split `worker_ops`.
+- `specy_road/bundled_scripts/role_prompt.py` — A1's review-delegate refusal: `review delegate` calls `build_prompt`, which must name `available: false` / `paused_until`, not only legacy `unavailable_until`.
+- `specy_road/templates/project/.gitignore` — A1's overlay is untracked so availability needs no push; `init project` must ignore `roadmap/orchestration.local.yaml`.
+- `sr/schemas/orchestration.schema.json` — reverted; the shipped schema is the templates copy already in the original zones, and this nested project copy is not required for A1/A2.
 
 ## Acceptance
 
