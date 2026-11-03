@@ -25,6 +25,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
+from specy_road.orchestration_role_env import harness_env
 from specy_road.runtime_paths import project_prefix
 from specy_road.worker_adapter_parsers import USAGE_FIELDS, usage_text
 from specy_road.worker_adapters import Launch, adapter_for
@@ -212,11 +213,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
     set_state(repo_root, rec, "running", pid=os.getpid())
     if resumed:
         append_event(repo_root, rec, "resumed", source="broker", summary="resumed with a new prompt")
-    env = dict(os.environ)
-    env.pop("PYTHONPATH", None)
-    env.pop("CLAUDE_CODE_EFFORT_LEVEL", None)   # a caller's setting must not override the profile's effort_by_role
-    if harness_pythonpath:
-        env["PYTHONPATH"] = harness_pythonpath
+    env = harness_env(os.environ, "executor", harness_pythonpath=harness_pythonpath, harness=rec.harness)
     with log.open("a", encoding="utf-8") as raw:
         log_start = raw.tell()   # this turn's part of the log starts here (the harness writes stderr into it)
         try:

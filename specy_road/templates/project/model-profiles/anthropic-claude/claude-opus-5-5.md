@@ -14,7 +14,7 @@ supersedes: claude-opus-5
 access:
   context_tokens: 1000000
   output_tokens: 128000
-  cli: claude -p "<prompt>"
+  cli: CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude -p "<prompt>"
   cli_verified_from: S4
   subagents: yes Vendor guide describes multihour runs "with parallel subagents" and gives time-budget signals for multiagent harnesses; both runs report Claude Code subagent support and parallel delegation [S2]
   effort_controls: 'low, medium, high, xhigh, max (default medium; thinking always on)'
@@ -28,6 +28,17 @@ role_fit:
   executor:    { score: 5, reason: 'Both runs rate it strongest - vendor reports medium effort matches or beats Opus 5 at high on repository coding with fewer tokens, and independent CursorBench 4.0 and Terminal-Bench 4.0 results lead the field, at a higher unit price than GPT-6.1 Sol', sources: [S2, S8, S9] }
   reviewer:    { score: 4, reason: '(claude 4, chatgpt 5) Early testers reported more bugs caught and fewer false alarms than Opus 5, and the vendor stresses root-cause analysis, checking work and scope discipline, but both runs found only vendor-reported or thin reviewer-calibration evidence', sources: [S2, S9, S10] }
 ---
+## Orchestration: harness features to avoid
+
+When this model runs as a roster **executor** on `claude-code`, `worker delegate` exports in the process environment (via `harness_env`, not only `access.cli` / `specy-road prompt --channel cli`):
+
+| Feature | Switch |
+|---|---|
+| auto memory (shared by every worktree of a repository) | `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` |
+| background tasks and `/loop` wakeups | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` |
+
+Orchestration guard hooks (optional, `specyrd init --install-orchestration-hooks`) deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`.
+
 ## Strengths
 - At default medium effort, matches or beats Claude Opus 5 at high effort on multistep repository coding tasks, in fewer steps and tokens (Anthropic internal testing) [S2] (confidence: medium)
 - Generates output tokens more than 30 percent faster than Opus 5 and uses fewer tokens to finish the same kinds of tasks [S2] (confidence: high)
