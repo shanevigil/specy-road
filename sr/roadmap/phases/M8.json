@@ -74,7 +74,10 @@
         "specy_road/worker_adapter_parsers.py",
         "specy_road/worker_state.py",
         "specy_road/worker_ops_lifecycle.py",
-        "specy_road/worker_ops_launch.py"
+        "specy_road/worker_ops_launch.py",
+        "specy_road/schemas/worker-record.schema.json",
+        "specy_road/schemas/worker-event.schema.json",
+        "specy_road/worker_ops_message.py"
       ],
       "type": "task"
     },
