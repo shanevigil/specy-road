@@ -157,6 +157,10 @@ entries:
       - docs/roadmap-authoring.md
       - docs/orchestration-review.md
       - tests/
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/bundled_scripts/planning_sheet_bootstrap.py
+      - specy_road/templates/planning-node/feature-sheet.md.template
+      - specy_road/schemas/rca-record.schema.json
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending

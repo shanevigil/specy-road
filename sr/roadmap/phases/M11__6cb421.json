@@ -371,7 +371,11 @@
         "specy_road/bundled_scripts/role_prompt_rca.py",
         "docs/roadmap-authoring.md",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/planning_sheet_bootstrap.py",
+        "specy_road/templates/planning-node/feature-sheet.md.template",
+        "specy_road/schemas/rca-record.schema.json"
       ],
       "type": "task"
     },
