@@ -122,6 +122,31 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "ruff check specy_road tests scripts passes on the branch: uncommitted_refs_section and load_availability_overlay are split so each stays under the C901 limit with no behaviour change (the existing tests for the review packet's uncommitted-references section and for orchestration.local.yaml pass unchanged)",
+        "roadmap/git-workflow.yaml land_check_cmd for this repository runs ruff check before pytest (one shell command), and docs/git-workflow.md's land_check_cmd example shows that lint belongs in the land check when CI enforces it; a test is not required for the yaml change"
+      ],
+      "codename": "wip-ruff-clean",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.82",
+      "node_key": "29461e62-7961-4fc1-bdc9-901d25cd57d5",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.82_wip-ruff-clean_29461e62-7961-4fc1-bdc9-901d25cd57d5.md",
+      "sibling_order": 81,
+      "status": "Not Started",
+      "title": "The integration branch passes ruff again and the land check runs it",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_packet_uncommitted_refs.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/orchestration_local_overlay.py",
+        "sr/roadmap/git-workflow.yaml",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
