@@ -430,6 +430,30 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "A worker in state completed (or idle) whose leaf is Complete on the integration branch, or no longer claimed, no longer counts toward policy.max_workers; a completed worker on an unfinished leaf still holds its slot so it can be resumed for a fix round",
+        "When delegate refuses at the limit, the message lists running and held-but-idle workers separately (for example '2 running, 1 completed: w-0001; worker terminate frees it'); tests cover a finished-leaf worker freeing its slot, an unfinished one holding it, and the message"
+      ],
+      "codename": "completed-worker-frees-slot",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.57",
+      "node_key": "6a0429e2-027e-4d14-8d7d-9e3e19676467",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.57_completed-worker-frees-slot_6a0429e2-027e-4d14-8d7d-9e3e19676467.md",
+      "sibling_order": 57,
+      "status": "Not Started",
+      "title": "A completed worker on a finished leaf does not hold a max_workers slot",
+      "touch_zones": [
+        "specy_road/worker_ops.py",
+        "specy_road/worker_state.py",
+        "specy_road/worker_lease.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
