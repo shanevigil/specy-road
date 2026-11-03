@@ -165,7 +165,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.56` Delegate creates the reviews directory before a harness is told to allow it `reviews-dir-before-launch` — task — **Complete**
   - `M11.57` A completed worker on a finished leaf does not hold a max_workers slot `completed-worker-frees-slot` — task — **Not Started**
   - `M11.58` The coordinator records the session's routing preferences where the next session can read them `session-routing-preferences` — task — **Not Started**
-  - `M11.59` Split worker_ops and worker_adapters so parallel leaves stop colliding `split-worker-modules` — task — **Not Started**
+  - `M11.59` Split worker_ops and worker_adapters so parallel leaves stop colliding `split-worker-modules` — task — **Complete**
   - `M11.62` Headless runs report usage limits and denied actions instead of looking like success `headless-limits-denials` — task — **Not Started**
   - `M11.60` The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names `harness-facts-nov-refresh` — task — **Complete**
   - `M11.61` The context meter counts Claude rules, auto memory, Cursor nested AGENTS.md and Copilot path instructions `meter-claude-rules-and-nested` — task — **Complete**
@@ -182,8 +182,11 @@ Do not pick these up.
 
 - `M11.38` on `feature/rm-handoff-eligible-reviewers` since 2026-11-02
 - `M11.41` on `feature/rm-gate-config-agree` since 2026-11-02
+- `M11.43` on `feature/rm-init-project-reports-writes` since 2026-11-03
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
-- `M11.59` on `feature/rm-split-worker-modules` since 2026-11-02
+- `M11.52` on `feature/rm-pr-mode-registry-conflict` since 2026-11-03
+- `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
+- `M8.6` on `feature/rm-candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic` since 2026-11-03
 
 ## Reaching the detail behind this
 
