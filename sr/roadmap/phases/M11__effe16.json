@@ -322,7 +322,8 @@
         "specy_road/finish_modes.py",
         "specy_road/review_gate_ready.py",
         "tests/",
-        "docs/git-workflow.md"
+        "docs/git-workflow.md",
+        "specy_road/finish_pr_merge.py"
       ],
       "type": "task"
     },
