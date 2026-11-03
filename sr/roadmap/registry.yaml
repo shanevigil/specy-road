@@ -40,23 +40,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: placeholder-leaves-strict-brief
-    node_id: M11.46
-    branch: feature/rm-placeholder-leaves-strict-brief
-    touch_zones:
-      - specy_road/templates/project/roadmap/phases/M1.json
-      - specy_road/templates/project/planning/M1.1_project-setup_b2c3d4e5-f6a7-4890-b123-456789abcdef.md
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - specy_road/bundled_scripts/brief_acceptance.py
-      - specy_road/bundled_scripts/brief_dependency_context.py
-      - tests/
-      - docs/roadmap-authoring.md
-      - specy_road/bundled_scripts/generate_brief.py
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T07:16:52+00:00'
   - codename: split-worker-modules
     node_id: M11.59
     branch: feature/rm-split-worker-modules
