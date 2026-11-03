@@ -23,22 +23,21 @@ import argparse
 import json
 import math
 import os
-import re
 import subprocess
 import sys
 import time
 import uuid
 from collections.abc import Callable
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
-from specy_road.review_files import list_reviews, reviews_dir
+from specy_road.review_files import reviews_dir
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
+from specy_road.reviewer_run_failure import (_now, _read_json, _save, capacity_error, close_run, gate_policy_summary,
+                                             record_reviewer_failure_event, run_path as _run_path, valid_record)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worker_adapters import ClaudeCode, Launch, Unsupported, adapter_for
 from specy_road.worker_sessions import check_session_id
@@ -46,10 +45,6 @@ from specy_road.worker_sessions import check_session_id
 RUN_PREFIX = "RUN-"
 DEFAULT_RETRIES = 3
 DEFAULT_BACKOFF = 30.0
-#: What a provider says when it is out of capacity or the account is throttled (Anthropic 429/529
-#: ``overloaded_error``, OpenAI 429 / usage limit, Google ``RESOURCE_EXHAUSTED``).
-CAPACITY = re.compile(r"rate[ _-]?limit|usage limit|\b429\b|\b529\b|overloaded|capacity|too many requests"
-                      r"|quota|resource[ _-]?exhausted", re.IGNORECASE)
 RESUME_PROMPT = ("Continue the review from where you stopped. If you already filed your verdict with "
                  "`specy-road review record`, say so and stop.\n")
 
@@ -58,36 +53,12 @@ class DelegateError(Exception):
     """A refusal, with the sentence the CLI prints."""
 
 
-def _now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
 def run_path(repo_root: Path, node_id: str, model: str) -> Path:
-    return reviews_dir(repo_root, node_id) / f"{RUN_PREFIX}{model}.json"
+    return _run_path(repo_root, node_id, model)
 
 
 def load_run(repo_root: Path, node_id: str, model: str) -> dict[str, Any] | None:
     return _read_json(run_path(repo_root, node_id, model))
-
-
-def _read_json(path: Path) -> dict[str, Any] | None:
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
-    return data if isinstance(data, dict) else None
-
-
-def _save(path: Path, run: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps(run, indent=2) + "\n", encoding="utf-8")
-    tmp.replace(path)
-
-
-def capacity_error(texts: list[str]) -> str | None:
-    """The first of ``texts`` that reads as a capacity or rate-limit error, else ``None``."""
-    return next((t for t in texts if CAPACITY.search(t)), None)
 
 
 def _entry(repo_root: Path, model: str) -> dict[str, Any]:
@@ -170,19 +141,6 @@ def _turn(h: _Harness, launch: Launch, log: Path) -> dict[str, Any]:
     return out
 
 
-def valid_record(repo_root: Path, t: ReviewTarget, model: str) -> tuple[bool, str]:
-    """``(ok, why not)``: is there a valid ``REVIEW-<model>.md`` for the commit under review?"""
-    rec = next((r for r in list_reviews(repo_root, t.node["id"], acceptance_ids(t.node))
-                if r.path.name == f"REVIEW-{model}.md"), None)
-    if rec is None:
-        return False, f"no REVIEW-{model}.md was filed"
-    if not rec.ok:
-        return False, f"{rec.path.name} is invalid: {'; '.join(rec.errors)}"
-    if rec.data.get("node_id") != t.node["id"] or not same_commit(repo_root, rec.data["commit"], t.commit):
-        return False, f"{rec.path.name} reviews {str(rec.data.get('commit'))[:12]}, not this commit"
-    return True, ""
-
-
 def _start(repo_root: Path, t: ReviewTarget, model: str, ref: str | None, h: _Harness,
            resume: bool) -> tuple[str, str | None]:
     """``(prompt text, session to resume)``; refuses a resume the record cannot support."""
@@ -254,16 +212,23 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
                _prompt_file(repo_root, node_id, model, RESUME_PROMPT, "-resume"))
     path = run_path(repo_root, node_id, model)
     run = {"node_id": node_id, "model": model, "harness": h.harness, "ref": t.ref, "commit": t.commit,
-           "state": "running", "session_id": session, "resumed": resume, "started_at": _now(), "ended_at": None,
-           "attempts": [], "reason": None, "log": str(path.with_suffix(".log"))}
+           "state": "running", "session_id": session, "resumed": resume, "source": "review-delegate",
+           "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
+           "log": str(path.with_suffix(".log"))}
     _save(path, run)
     try:
         reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
-        ok, why = valid_record(repo_root, t, model)
-        run.update(state="complete" if ok else "incomplete",
-                   reason=None if ok else "; ".join(x for x in (reason, why) if x))
+        log_path = path.with_suffix(".log")
+        log_tail = (log_path.read_text(encoding="utf-8", errors="replace").splitlines()[-20:]
+                    if log_path.is_file() else [])
+        last = run["attempts"][-1] if run["attempts"] else {}
+        err_line = last.get("error")
+        close_run(repo_root, t, model, run, exit_code=last.get("exit"),
+                  errors=[err_line] if err_line else [], tail=log_tail, reason_prefix=reason)
     except BaseException as e:   # an interrupt or a launch refusal still closes the record
-        run.update(state="incomplete", reason=f"interrupted: {e or type(e).__name__}")
+        err = f"interrupted: {e or type(e).__name__}"
+        run.update(state="incomplete", reason=err)
+        record_reviewer_failure_event(run, err)
         raise
     finally:
         run["ended_at"] = _now()
@@ -279,7 +244,8 @@ def run_states(repo_root: Path, node_id: str, commit: str | None) -> list[dict[s
         r = _read_json(p) or {}
         current = bool(commit and r.get("commit") and same_commit(repo_root, r["commit"], commit))
         out.append({"file": p.name, "model": r.get("model"), "state": r.get("state"), "commit": r.get("commit"),
-                    "session_id": r.get("session_id"), "reason": r.get("reason"), "current": current})
+                    "session_id": r.get("session_id"), "reason": r.get("reason"), "events": r.get("events") or [],
+                    "current": current})
     return out
 
 

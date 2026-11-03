@@ -391,13 +391,16 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.72_reviewer-failure-visible_e4a94617-e5fe-4d77-8dd5-8ae2e0b431d1.md",
       "sibling_order": 72,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A reviewer run that ends without a record is reported as a failure",
       "touch_zones": [
         "specy_road/bundled_scripts/review_delegate.py",
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/review_gate.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/review_delegate.py",
+        "specy_road/reviewer_run_failure.py"
       ],
       "type": "task"
     },
