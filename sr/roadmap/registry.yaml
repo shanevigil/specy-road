@@ -123,3 +123,13 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: runtime-verification-of-the-harness-facts-against-installed-binaries
+    node_id: M8.7
+    branch: feature/rm-runtime-verification-of-the-harness-facts-against-installed-binaries
+    touch_zones:
+      - research/
+      - specy_road/templates/project/model-profiles/
+      - docs/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
