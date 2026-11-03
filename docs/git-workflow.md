@@ -94,6 +94,24 @@ itself is the compare-and-swap. The temporary worktree is always removed.
 **`--land-check-cmd ''`** skips it. `pr` never runs it: there CI owns the merge
 result.
 
+For projects whose pytest suite is **parallel-safe**, prefer a parallel land
+check so finish does not spend many minutes on a serial full run under the
+landing lock. A suite is parallel-safe when each test owns its fixtures and
+temp directories, avoids shared mutable module-level state and implicit
+ordering between tests, and does not depend on another test having run first.
+When order or shared state slips in, fix the test rather than marking it to
+run serially under xdist. Install **`pytest-xdist`** in development
+dependencies and point **`land_check_cmd`** at the same command CI uses, for
+example:
+
+```yaml
+land_check_cmd: pytest -n auto
+```
+
+Run the suite once with **`pytest -n auto`** and once serially (**`pytest`**
+with no **`-n`**) before adopting that gate; if both pass, the tree is a
+reasonable candidate for a parallel land check.
+
 ### What `pr` leaves behind (read this before re-running pickup)
 
 Under **`pr`**, `finish-this-task` commits everything on the **feature branch** and touches the integration branch not at all. So the moment it returns, one node has two truths:
