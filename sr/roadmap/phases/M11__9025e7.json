@@ -42,6 +42,86 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "A tracked project file (for example constraints/review-lessons.md, created by init project with a short header) lists known defect classes, one per entry with a one-line rule and an optional example, and every reviewer prompt includes its entries under a 'Project review lessons' heading; a test pins the inclusion",
+        "specy-road lessons add --rule <text> [--example <text>] [--from <NODE_ID>] appends an entry and specy-road lessons list prints them; an entry naming --from records the leaf it came from; tests cover add, list and a missing file"
+      ],
+      "codename": "review-lessons",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.78",
+      "node_key": "bc1266c1-cff7-45ce-99ef-8baff6f93b90",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.78_review-lessons_bc1266c1-cff7-45ce-99ef-8baff6f93b90.md",
+      "sibling_order": 78,
+      "status": "Not Started",
+      "title": "Review lessons: escaped defect classes feed every reviewer prompt",
+      "touch_zones": [
+        "specy_road/review_lessons.py",
+        "specy_road/bundled_scripts/lessons_cli.py",
+        "specy_road/cli.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/templates/project/",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "orchestration.yaml policy accepts an optional strong_review list, each item naming touch-zone paths or directory prefixes and the roster ids allowed to count as the strong approval (for example zones: [specy_road/review_gate.py, specy_road/schemas/], require_one_of: [gpt-5.6-sol-medium, claude-opus-5-5-review]); the review gate, handoff status and mark-implementation-reviewed require at least one counting approval from that set when the leaf's touch zones intersect an item, and name the unmet item when they refuse",
+        "orchestrate plan shows, for each ready leaf, which strong_review item applies and which reviewers can satisfy it; tests cover a leaf inside and outside a strong zone, an approval from the set and one from outside it"
+      ],
+      "codename": "risk-tiered-review",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.79",
+      "node_key": "1b324096-545d-4e7b-baa2-450bee0e78a7",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.79_risk-tiered-review_1b324096-545d-4e7b-baa2-450bee0e78a7.md",
+      "sibling_order": 79,
+      "status": "Not Started",
+      "title": "Leaves that touch high-risk zones need a stronger reviewer",
+      "touch_zones": [
+        "specy_road/orchestration_config.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "sr/schemas/orchestration.schema.json",
+        "specy_road/review_gate.py",
+        "specy_road/review_eligible.py",
+        "specy_road/bundled_scripts/orchestrate_cli.py",
+        "specy_road/orchestrate_plan.py",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "roadmap/git-workflow.yaml accepts an optional verify_cmd (for example 'python -m pytest -n 4 -p no:cacheprovider') that executor briefs and reviewer prompts give as the command to run the leaf's tests (with test paths appended), separate from land_check_cmd; when it is unset the prompts say to cap parallel test workers when other workers share the machine",
+        "docs/orchestration-workers.md explains that concurrent workers each running a full parallel suite oversubscribe the CPU, and recommends verify_cmd with a small worker count plus land_check_cmd for the full suite at landing; tests cover the prompt text with and without verify_cmd"
+      ],
+      "codename": "test-worker-cap",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.80",
+      "node_key": "090fe219-a5b0-4737-b9d8-d44749f0bb10",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.80_test-worker-cap_090fe219-a5b0-4737-b9d8-d44749f0bb10.md",
+      "sibling_order": 80,
+      "status": "Not Started",
+      "title": "Executors and reviewers run tests with a bounded worker count",
+      "touch_zones": [
+        "specy_road/git_workflow_config.py",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/generate_brief.py",
+        "docs/git-workflow.md",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
