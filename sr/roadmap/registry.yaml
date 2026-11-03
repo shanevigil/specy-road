@@ -213,6 +213,7 @@ entries:
       - specy_road/git_workflow_config.py
       - specy_road/bundled_scripts/finish_task.py
       - tests/
+      - specy_road/schema_revision.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
