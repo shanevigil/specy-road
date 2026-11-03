@@ -143,9 +143,11 @@ def close_reviewer_cli_run(repo_root: Path, t: ReviewTarget, model: str, path: P
     log.write_text("\n".join(output_lines) + ("\n" if output_lines else ""), encoding="utf-8")
     tail = [ln.strip() for ln in output_lines[-20:] if ln.strip()]
     prefix = f"harness exited {exit_code}" if exit_code != 0 else ""
+    # A clean exit is an error only when no record for this commit exists after the run.
+    filed = exit_code == 0 and valid_record(repo_root, t, model)[0]
     run["attempts"] = [{"at": _now(), "exit": exit_code, "capacity": bool(capacity_error(output_lines)),
-                        "error": harness_error_line(exit_code=exit_code, errors=[], tail=tail, fallback=prefix)[:300]
-                        or None}]
+                        "error": None if filed else
+                        harness_error_line(exit_code=exit_code, errors=[], tail=tail, fallback=prefix)[:300] or None}]
     close_run(repo_root, t, model, run, exit_code=exit_code, errors=[], tail=output_lines, reason_prefix=prefix)
     run["ended_at"] = _now()
     _save(path, run)

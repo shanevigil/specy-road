@@ -71,19 +71,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: roster-harness-model-id
-    node_id: M11.35
-    branch: feature/rm-roster-harness-model-id
-    touch_zones:
-      - specy_road/orchestration_config.py
-      - specy_road/worker_adapters.py
-      - specy_road/worker_runner.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - docs/orchestration-models.md
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: headless-limits-denials
     node_id: M11.62
     branch: feature/rm-headless-limits-denials
@@ -117,12 +104,27 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: run-record-no-false-failure
-    node_id: M11.77
-    branch: feature/rm-run-record-no-false-failure
+  - codename: reconcile-merged-and-untracked
+    node_id: M11.40
+    branch: feature/rm-reconcile-merged-and-untracked
     touch_zones:
-      - specy_road/reviewer_run_failure.py
-      - specy_road/review_delegate.py
+      - specy_road/worker_reconcile.py
+      - specy_road/worker_ops.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: review-lessons
+    node_id: M11.78
+    branch: feature/rm-review-lessons
+    touch_zones:
+      - specy_road/review_lessons.py
+      - specy_road/bundled_scripts/lessons_cli.py
+      - specy_road/cli.py
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/templates/project/
+      - docs/orchestration-review.md
       - tests/
     started: '2026-11-03'
     owner: savigil
