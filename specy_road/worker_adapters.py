@@ -23,7 +23,7 @@ force-allows every command not explicitly denied, so that default is the widest 
 
 from __future__ import annotations
 
-from specy_road.worker_adapter_base import (  # noqa: F401 — re-exported
+from specy_road.worker_adapter_base import (  # re-exported
     CODEX_POLICY,
     EFFORT_FLAGS,
     REVIEWS_DIR,
@@ -42,7 +42,7 @@ from specy_road.worker_adapter_base import (  # noqa: F401 — re-exported
 from specy_road.worker_adapter_claude import ClaudeCode
 from specy_road.worker_adapter_codex import Codex
 from specy_road.worker_adapter_cursor import Cursor
-from specy_road.worker_adapter_parsers import (_SESSION, _init_detail, _json, _snip, _text, _tokens,  # noqa: F401 — re-exported
+from specy_road.worker_adapter_parsers import (_SESSION, _init_detail, _json, _snip, _text, _tokens,  # re-exported
                                                 placeholder_problem, substitute_prompt, usage_fields)
 from specy_road.worker_state import HARNESSES
 

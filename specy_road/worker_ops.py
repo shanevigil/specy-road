@@ -15,9 +15,9 @@ import sys
 import types
 
 from specy_road import worker_ops_launch, worker_ops_lifecycle, worker_ops_message, worker_ops_slots
-from specy_road.worker_adapters import Unsupported  # noqa: F401 — re-exported
-from specy_road.worker_lease import handoff, interventions_path, reclaim, record_hook_prompt  # noqa: F401 — re-exported
-from specy_road.worker_ops_launch import (  # noqa: F401 — re-exported
+from specy_road.worker_adapters import Unsupported  # re-exported
+from specy_road.worker_lease import handoff, interventions_path, reclaim, record_hook_prompt  # re-exported
+from specy_road.worker_ops_launch import (  # re-exported
     _brief_into,
     _check_eligible,
     _check_tree,
@@ -29,18 +29,18 @@ from specy_road.worker_ops_launch import (  # noqa: F401 — re-exported
     _worktree_for,
     delegate,
 )
-from specy_road.worker_ops_lifecycle import _terminate_locked, adopt, terminate  # noqa: F401 — re-exported
-from specy_road.worker_ops_message import CONTINUE_PROMPT, _send, interrupt, message, resume  # noqa: F401 — re-exported
-from specy_road.worker_ops_slots import (  # noqa: F401 — re-exported
+from specy_road.worker_ops_lifecycle import _terminate_locked, adopt, terminate  # re-exported
+from specy_road.worker_ops_message import CONTINUE_PROMPT, _send, interrupt, message, resume  # re-exported
+from specy_road.worker_ops_slots import (  # re-exported
     _slot_or_existing,
     _wrapper_gone,
     sweep_dead_wrappers,
     sweep_stalled,
 )
-from specy_road.worker_process import process_alive, wrapper_gone  # noqa: F401 — re-exported: tests patch them here
-from specy_road.worker_reconcile import reconcile, sync  # noqa: F401 — re-exported; the CLI calls ops.reconcile/ops.sync
-from specy_road.worker_runner import spawn  # noqa: F401 — re-exported: tests patch it here
-from specy_road.worker_state import WorkerError, WorkerRecord  # noqa: F401 — re-exported
+from specy_road.worker_process import process_alive, wrapper_gone  # re-exported: tests patch them here
+from specy_road.worker_reconcile import reconcile, sync  # re-exported; the CLI calls ops.reconcile/ops.sync
+from specy_road.worker_runner import spawn  # re-exported: tests patch it here
+from specy_road.worker_state import WorkerError, WorkerRecord  # re-exported
 
 _PARTS = (worker_ops_launch, worker_ops_message, worker_ops_slots, worker_ops_lifecycle)
 
