@@ -37,7 +37,6 @@ from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified
     new_token,
     pid_alive,
     pid_verified,
-    process_alive,
     ready_fingerprints,
     start_token,
 )
@@ -72,21 +71,22 @@ def queue_worker_message(repo_root: Path, rec: WorkerRecord, text: str) -> Worke
 
 
 def deliver_queued_message(repo_root: Path, worker_id: str, *, offline: bool = False) -> WorkerRecord | None:
-    with workers_lock(repo_root):
+    from specy_road.worker_ops import _send  # noqa: PLC0415 — ops imports spawn from this module
+
+    with workers_lock(repo_root):   # process_alive and spawn as one transition, like message()
         rec = load_record(repo_root, worker_id)
         text = rec.queued_message
         if not text or rec.state == "terminated":
             return None
         mutate(repo_root, rec, lambda r: setattr(r, "queued_message", None))
-    rec = load_record(repo_root, worker_id)
-    from specy_road.worker_ops import _send  # noqa: PLC0415 — ops imports spawn from this module
-
-    try:
-        return _send(repo_root, rec, text, "message", offline)
-    except WorkerError as e:
-        mutate(repo_root, rec, lambda r: setattr(r, "queued_message", text))
-        append_event(repo_root, rec, "error", source="system", summary=f"queued message not delivered: {e}")
-        raise
+        try:
+            return _send(repo_root, rec, text, "message", offline)
+        except WorkerError as e:
+            rec = load_record(repo_root, worker_id)
+            if rec.state != "terminated":
+                mutate(repo_root, rec, lambda r: setattr(r, "queued_message", text))
+            append_event(repo_root, rec, "error", source="system", summary=f"queued message not delivered: {e}")
+            raise
 
 
 #: ``last_output_at`` is written at most this often: each write is a mutate under the workers lock.

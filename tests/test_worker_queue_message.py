@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -12,6 +14,7 @@ import pytest
 from tests.test_worker_cli import _repo, run_worker_cli, wait_for_worker
 
 from specy_road import worker_ops as ops
+from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import worker_cli_render as wcr
 
@@ -111,3 +114,46 @@ def test_terminate_drops_queued_message(tmp_path: Path) -> None:
     assert ws.load_record(repo, rec.worker_id).queued_message is None
     summary = ws.events_since(repo, rec.worker_id)[-1].summary
     assert "dropped queued follow-up" in summary
+
+
+def test_deliver_and_message_launch_one_turn(tmp_path: Path, monkeypatch) -> None:
+    repo, _ = _repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
+    ws.set_state(repo, rec, "idle", pid=None)
+    ws.mutate(repo, rec, lambda r: setattr(r, "queued_message", "queued-follow-up"))
+    spawned: list[str] = []
+    gate = threading.Event()
+
+    def fake_spawn(repo_root, r, launch, *, resumed=False):
+        spawned.append(r.worker_id)
+        gate.wait(1)
+        ws.set_state(repo_root, r, "running", pid=os.getpid())
+        return os.getpid()
+
+    monkeypatch.setattr(ops, "spawn", fake_spawn)
+    monkeypatch.setattr(ops, "process_alive", lambda r, repo_root=None: r.pid == os.getpid())
+    monkeypatch.setattr(ops, "wrapper_gone", lambda repo_root, r: False)
+    errors: list[Exception] = []
+
+    def deliver() -> None:
+        try:
+            wr.deliver_queued_message(repo, rec.worker_id)
+        except Exception as e:  # noqa: BLE001
+            errors.append(e)
+
+    def send() -> None:
+        try:
+            ops.message(repo, rec.worker_id, "from-coordinator")
+        except Exception as e:  # noqa: BLE001
+            errors.append(e)
+
+    threads = [threading.Thread(target=deliver), threading.Thread(target=send)]
+    for t in threads:
+        t.start()
+    time.sleep(0.2)
+    gate.set()
+    for t in threads:
+        t.join()
+    assert len(spawned) == 1 and len(errors) == 0
+    assert ws.load_record(repo, rec.worker_id).queued_message in ("queued-follow-up", "from-coordinator")
