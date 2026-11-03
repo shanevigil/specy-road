@@ -116,17 +116,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: reviewer-failure-visible
-    node_id: M11.72
-    branch: feature/rm-reviewer-failure-visible
-    touch_zones:
-      - specy_road/bundled_scripts/review_delegate.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_gate.py
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: guard-hooks-per-harness-and-avoid-lists-in-every-model-profile
     node_id: M8.5
     branch: feature/rm-guard-hooks-per-harness-and-avoid-lists-in-every-model-profile
@@ -146,6 +135,58 @@ entries:
       - specy_road/orchestration_role_env.py
       - specy_road/worker_runner.py
       - specy_road/review_delegate.py
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: small-cli-fixes
+    node_id: M11.27
+    branch: feature/rm-small-cli-fixes
+    touch_zones:
+      - specy_road/bundled_scripts/session_cli.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - specy_road/bundled_scripts/worker_cli_render.py
+      - specy_road/worker_adapters.py
+      - specy_road/worker_ops.py
+      - tests/
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/worker_runner.py
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: pickup-finish-shared-lock
+    node_id: M11.74
+    branch: feature/rm-pickup-finish-shared-lock
+    touch_zones:
+      - specy_road/bundled_scripts/do_next_task.py
+      - specy_road/bundled_scripts/finish_task.py
+      - specy_road/bundled_scripts/abort_task_pickup.py
+      - specy_road/repo_lock.py
+      - docs/git-workflow.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: version-shows-checkout-sha
+    node_id: M11.66
+    branch: feature/rm-version-shows-checkout-sha
+    touch_zones:
+      - specy_road/cli.py
+      - specy_road/version_skew.py
+      - specy_road/worker_runner.py
+      - specy_road/review_files.py
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: resumed-delta-approval
+    node_id: M11.36
+    branch: feature/rm-resumed-delta-approval
+    touch_zones:
+      - specy_road/review_gate.py
+      - specy_road/bundled_scripts/review_packet.py
+      - specy_road/bundled_scripts/role_prompt.py
+      - docs/orchestration-review.md
+      - tests/
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
