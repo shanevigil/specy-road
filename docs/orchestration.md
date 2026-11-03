@@ -154,11 +154,13 @@ Each **open** entry carries:
 
 **CLI:** `specy-road decisions add|list|close`. `list` prints every open entry ordered by `needed_by`
 (entries without a deadline sort last). `close` records the answer in the ledger only after the same
-answer appears on the node's planning sheet as a decision line (`D1: chose option A`, optional list
-marker or checkbox in front).
+answer appears in the node's planning-sheet **decision block** (`## Decisions and notes`) as a
+decision line (`D1: chose option A`, optional list marker or checkbox in front). Lines in other
+sections and inside fenced examples do not count. `asked` and `needed_by` are ISO dates (`YYYY-MM-DD`).
 
 **Coordinator turn discipline:** at the start of each turn, run `specy-road decisions list` (as with
-`worker sync`). Search the ledger and planning-sheet decision blocks before asking anything new. Ask at
+`worker sync`). Search the ledger and planning-sheet decision blocks
+(`specy-road search "<topic>" --kind planning`) before asking anything new. Ask at
 most four questions at once, each in the self-contained shape above. End any turn that still has open
 entries with one **Decisions waiting on you** block listing all of them below your status.
 

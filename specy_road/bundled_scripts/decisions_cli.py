@@ -57,20 +57,24 @@ def _sheet_for_node(root: Path, node_id: str) -> tuple[str, str]:
 def cmd_add(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     options = [_parse_option(o) for o in ns.option]
-    entry = add_entry(
-        root,
-        node_id=ns.node,
-        kind=ns.kind,
-        summary=ns.summary,
-        why_now=ns.why,
-        options=options,
-        recommendation=ns.recommendation,
-        recommendation_reason=ns.recommendation_reason,
-        default_if_unanswered=ns.default,
-        decision_id=ns.id,
-        needed_by=ns.needed_by,
-        asked=ns.asked,
-    )
+    try:
+        entry = add_entry(
+            root,
+            node_id=ns.node,
+            kind=ns.kind,
+            summary=ns.summary,
+            why_now=ns.why,
+            options=options,
+            recommendation=ns.recommendation,
+            recommendation_reason=ns.recommendation_reason,
+            default_if_unanswered=ns.default,
+            decision_id=ns.id,
+            needed_by=ns.needed_by,
+            asked=ns.asked,
+        )
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
     print(f"added {entry['id']} (open) → {decisions_path(root)}")
     return 0
 

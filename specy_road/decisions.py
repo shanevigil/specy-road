@@ -15,9 +15,12 @@ from jsonschema import Draft202012Validator
 
 from specy_road.init_project import project_template_root
 from specy_road.registry_yaml import dump_registry_text
+from specy_road.text_sections import find_section
 
 DECISIONS_REL = Path("roadmap") / "decisions.yaml"
 _SCHEMA_NAME = "decisions.schema.json"
+_DECISION_HEADINGS = {"decisions and notes", "decisions"}
+_ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _DECISION_LINE = re.compile(
     r"^\s*(?:[-*+]\s*(?:\[[ xX]\]\s*)?)?([A-Za-z][A-Za-z0-9._-]*)\s*:\s*(\S.*)$"
 )
@@ -75,6 +78,18 @@ def _today_iso() -> str:
     return date.today().isoformat()
 
 
+def require_iso_date(name: str, value: str) -> str:
+    """YYYY-MM-DD only; calendar-invalid strings (2026-13-40) are refused too."""
+    text = value.strip()
+    if not _ISO_DATE.fullmatch(text):
+        raise ValueError(f"{name} must be an ISO date YYYY-MM-DD, got {value!r}")
+    try:
+        date.fromisoformat(text)
+    except ValueError as e:
+        raise ValueError(f"{name} must be an ISO date YYYY-MM-DD, got {value!r}") from e
+    return text
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
@@ -102,9 +117,26 @@ def next_decision_id(doc: dict[str, Any]) -> str:
         n += 1
 
 
+def _unfenced_lines(text: str) -> list[str]:
+    """Lines outside fenced code blocks (`` ``` ``), so examples cannot close an entry."""
+    in_fence = False
+    out: list[str] = []
+    for line in text.splitlines():
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not in_fence:
+            out.append(line)
+    return out
+
+
 def recorded_on_sheet(sheet_text: str, decision_id: str, answer: str) -> bool:
+    """True when ``id: answer`` is in the planning-sheet decision block, unfenced."""
+    block = find_section(sheet_text, _DECISION_HEADINGS)
+    if not block:
+        return False
     want = answer.strip()
-    for line in sheet_text.splitlines():
+    for line in _unfenced_lines(block):
         m = _DECISION_LINE.match(line)
         if m and m.group(1) == decision_id and m.group(2).strip() == want:
             return True
@@ -132,7 +164,7 @@ def coordinator_decision_lines() -> list[str]:
         "At the **start of every turn**, after `specy-road worker sync`, run "
         "`specy-road decisions list`. Before asking the human anything, search "
         "`roadmap/decisions.yaml` and each relevant planning sheet's decision block "
-        "(`specy-road search \"<topic>\" --scope planning`) so you do not repeat a "
+        "(`specy-road search \"<topic>\" --kind planning`) so you do not repeat a "
         "question that is already open or answered.",
         "",
         "Ask at most **four** open questions in one turn. Each question must be "
@@ -179,11 +211,11 @@ def add_entry(
         "recommendation": recommendation.strip(),
         "recommendation_reason": recommendation_reason.strip(),
         "default_if_unanswered": default_if_unanswered.strip(),
-        "asked": asked or _today_iso(),
+        "asked": require_iso_date("asked", asked) if asked else _today_iso(),
         "status": "open",
     }
     if needed_by:
-        entry["needed_by"] = needed_by.strip()
+        entry["needed_by"] = require_iso_date("needed_by", needed_by)
     doc.setdefault("entries", []).append(entry)
     write_decisions(path, doc)
     return entry
@@ -192,8 +224,9 @@ def add_entry(
 def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str) -> dict[str, Any]:
     if not recorded_on_sheet(sheet_text, decision_id, answer):
         print(
-            f"error: planning sheet has no line `{decision_id}: {answer.strip()}` "
-            "(optional list marker or checkbox in front is fine). Record the answer on the sheet, "
+            f"error: planning sheet decision block has no line `{decision_id}: {answer.strip()}` "
+            "(optional list marker or checkbox in front is fine; other sections and fenced "
+            "examples do not count). Record the answer under `## Decisions and notes`, "
             "commit it, then run close again.",
             file=sys.stderr,
         )
