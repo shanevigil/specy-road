@@ -262,6 +262,24 @@ def roster_entry(config: dict[str, Any], model_id: str) -> dict[str, Any] | None
     return None
 
 
+def harness_model(entry: dict[str, Any], profile_api_id: str | None = None) -> str | None:
+    """The model id a harness is told for roster ``entry``: its ``harness_model``, else the profile's ``api_id``,
+    else the roster ``id``. ``None`` (a profile whose ``api_id`` is ``unknown``) means the harness's default."""
+    if entry.get("harness_model"):
+        return str(entry["harness_model"])
+    if profile_api_id is not None:
+        return None if profile_api_id.strip().lower() in ("", "unknown") else profile_api_id
+    return str(entry["id"])
+
+
+def harness_model_warnings(config: dict[str, Any]) -> list[str]:
+    """Claude Code entries whose ``id`` has a dot and no ``harness_model``: ``claude --model`` ids use dashes."""
+    return [f"roster entry {e.get('id')!r} runs on claude-code and its id has a dot; set harness_model to the id "
+            "`claude --model` expects (e.g. claude-opus-5-5), or the default command may pass an unknown model"
+            for e in config.get("roster") or []
+            if e.get("harness") == "claude-code" and "." in str(e.get("id")) and not e.get("harness_model")]
+
+
 def family_of(config: dict[str, Any], model_id: str) -> str | None:
     entry = roster_entry(config, model_id)
     return entry.get("family") if entry else None

@@ -16,7 +16,7 @@ from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text, run
 from specy_road.orchestrate_plan import ANY, is_available, may_handle, node_eligibility, node_sensitivity, unavailability_reason
-from specy_road.orchestration_config import roster_entry
+from specy_road.orchestration_config import harness_model, roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_files import reviews_dir, reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
@@ -120,8 +120,8 @@ def _cli_for(repo_root: Path, entry: dict[str, Any], harness: str) -> tuple[str 
     if not cli and harness == "generic" and prof is not None:
         cli = prof.cli()
     if prof is None:
-        return cli, str(entry["id"]), "full", None
-    api_id = None if prof.api_id.strip().lower() == "unknown" else prof.api_id   # unknown: harness default
+        return cli, harness_model(entry), "full", None
+    api_id = harness_model(entry, prof.api_id)   # harness_model, else the profile's (unknown: harness default)
     effort = prof.effort("executor")
     note = effort_note(cli, effort)
     if note:

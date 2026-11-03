@@ -29,6 +29,7 @@ from specy_road.review_target import same_commit
 from specy_road.runtime_paths import project_prefix
 from specy_road.worker_adapter_parsers import USAGE_FIELDS, usage_text
 from specy_road.worker_adapters import Launch, adapter_for
+from specy_road.worker_exit import exit_event
 from specy_road.worker_lease import release_lease
 from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified re-exported for existing callers
     argv_too_long,
@@ -218,6 +219,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
     if harness_pythonpath:
         env["PYTHONPATH"] = harness_pythonpath
     with log.open("a", encoding="utf-8") as raw:
+        log_start = raw.tell()   # this turn's part of the log starts here (the harness writes stderr into it)
         try:
             proc = subprocess.Popen(  # noqa: S603 — the adapter's documented command
                 launch.argv, cwd=rec.worktree, env=env,
@@ -261,7 +263,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
                 raw.write(f"[wrapper] could not record a line: {e}\n")
         code = proc.wait()
-    return _finish(repo_root, rec, code, before, usage_logged)
+    return _finish(repo_root, rec, code, before, usage_logged, log_start)
 
 
 def _output_seen(repo_root: Path, rec: WorkerRecord, marked: float | None, now: float) -> float | None:
@@ -340,21 +342,16 @@ def _fresh_ready(repo_root: Path, rec: WorkerRecord, before: list[str]) -> bool:
     return True
 
 
-def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], usage_logged: bool) -> int:
+def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], usage_logged: bool,
+            log_start: int = 0) -> int:
     rec = load_record(repo_root, rec.worker_id)   # the record may have moved on (handoff, terminate)
     if rec.state == "terminated":
         return code
     if not usage_logged:   # one usage event per turn: a harness that reported none gets nulls, not zeros
         _append_usage(repo_root, rec, {})
     ready = _fresh_ready(repo_root, rec, before)
-    if code == 0:
-        append_event(repo_root, rec, "completion", source="worker",
-                     summary=f"exit 0; READY file {'present' if ready else 'missing'}", detail={"exit": 0, "ready": ready})
-        _exit_state(repo_root, rec, "completed" if ready else "idle")
-    else:
-        append_event(repo_root, rec, "error", source="worker", summary=f"exit {code}; see {log_path(repo_root, rec.worker_id).name}",
-                     detail={"exit": code, "ready": ready})
-        _exit_state(repo_root, rec, "failed")
+    exit_event(repo_root, rec, code, ready, log_path(repo_root, rec.worker_id), log_start)
+    _exit_state(repo_root, rec, ("completed" if ready else "idle") if code == 0 else "failed")
     return code
 
 

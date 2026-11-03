@@ -38,8 +38,9 @@ class ClaudeCode(Adapter):
         custom = self._custom(cli, prompt_path, session_id, effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return replace(custom, launch_mode=launch_mode)
+        # A resumed session does not keep the launch's --model: pass it again, as the launch did.
         return Launch(["claude", "-p", *_bare(launch_mode), "--resume", session_id, "--output-format", "stream-json",
-                       "--verbose", *self.effort_flag(effort), *self._add_dir(worktree, repo_root, node_id),
+                       "--verbose", *_model_flag("--model", model), *self.effort_flag(effort), *self._add_dir(worktree, repo_root, node_id),
                        "--permission-mode", "acceptEdits", STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=session_id, launch_mode=launch_mode)
 

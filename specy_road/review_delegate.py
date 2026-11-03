@@ -33,6 +33,7 @@ from typing import Any
 
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text
+from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_files import reviews_dir
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
@@ -89,8 +90,8 @@ class _Harness:
         self.cli = (entry.get("channels") or {}).get("cli")
         if not self.cli and self.harness == "generic" and prof is not None:
             self.cli = prof.cli()
-        api = prof.api_id if prof is not None else None
-        self.api_id = None if (api or "").strip().lower() in ("", "unknown") else api
+        api = prof.api_id if prof is not None else ""   # no profile and no harness_model: the harness's default
+        self.api_id = harness_model(entry, api)
         self.effort = prof.effort("reviewer") if prof is not None else None
         self.mode = prof.launch_mode() if prof is not None else "full"
         self.repo_root, self.node_id, self.cwd = repo_root, node_id, cwd

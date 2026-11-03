@@ -31,6 +31,7 @@
         "family": { "$ref": "#/$defs/id", "description": "Vendor family; reviewer independence is judged by family (e.g. anthropic, openai, human)." },
         "profile": { "type": "string", "minLength": 1, "description": "Repo-relative path to this model's profile (model-profiles/<family>/<api_id>.md)." },
         "harness": { "enum": ["claude-code", "codex", "cursor", "generic"], "description": "Which vendor harness `specy-road worker delegate` runs this model on (generic runs the profile's access.cli). Distinct from the model: a Claude model under Cursor's agent is a cursor worker." },
+        "harness_model": { "$ref": "#/$defs/id", "description": "Model id the harness CLI expects when it differs from id (e.g. claude-opus-5-5 for id claude-opus-5.5); the default commands pass it as --model / -m, before the profile's api_id and the id." },
         "billing_route": { "type": "string", "minLength": 1, "description": "Label for whose quota a worker on this entry draws (e.g. claude_subscription, chatgpt_oauth, api_key). Recorded on the worker; never used to authenticate." },
         "roles": {
           "type": "array",

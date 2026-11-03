@@ -107,6 +107,23 @@ The roster `id` stays the label review records and the gate count. When the
 `id` is one of the profile's aliases (found that way or named by `profile:`),
 the alias is what `worker delegate` passes the harness as the model, since it is
 the id the harness lists; otherwise the profile's `api_id` is, as before.
+An entry's `harness_model` overrides both: it is the id the harness CLI expects
+when the roster `id` is not one (`claude --model` takes `claude-opus-5-5`, not
+`claude-opus-5.5`), and the default commands pass it as `--model` / `-m` on
+launch and on resume alike. With no profile and no `harness_model`, the roster
+`id` itself is passed. `validate` warns about a `claude-code` entry whose `id`
+has a dot and no `harness_model`. When a worker exits non-zero before its
+first stream event, its `error` event quotes the harness's last error line from
+`work/.workers/<id>.log` (an HTTP 404 for an unknown model, say), not only the
+log's name.
+
+```yaml
+  - id: claude-opus-5.5
+    family: anthropic
+    roles: [executor]
+    harness: claude-code
+    harness_model: claude-opus-5-5
+```
 
 - `specy-road models list` — the roster as the gate sees it, with each entry's
   profile, coordinator/executor/reviewer scores, and staleness; roster ids that

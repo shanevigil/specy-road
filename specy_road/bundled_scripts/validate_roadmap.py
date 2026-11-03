@@ -39,7 +39,7 @@ from specy_road.bundled_scripts.validate_stale_commands import (
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.init_project import project_template_root
-from specy_road.orchestration_config import load_orchestration_config, orchestration_yaml_path
+from specy_road.orchestration_config import harness_model_warnings, load_orchestration_config, orchestration_yaml_path
 from specy_road.orchestration_pinned import roster_report
 from specy_road.planning_scaffold_check import notice_complete_scaffold
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, git_root
@@ -199,10 +199,12 @@ def validate_orchestration_contract(root: Path) -> None:
     A roster routing does not read (edited, added or deleted in the working tree without a commit,
     or added, deleted or changed on an unpushed local integration branch) is, as ``orchestrate plan`` says.
     """
-    _data, err = load_orchestration_config(root)
+    data, err = load_orchestration_config(root)
     if err:
         print(err, file=sys.stderr)
         raise SystemExit(1)
+    for note in harness_model_warnings(data or {}):
+        print(f"warning: {note}", file=sys.stderr)
     report = roster_report(root)
     if report.drift and not report.none_anywhere:   # no roster at all: the notice, not a warning
         print(f"warning: {report.drift}", file=sys.stderr)
