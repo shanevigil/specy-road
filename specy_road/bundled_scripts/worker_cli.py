@@ -321,11 +321,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--model", required=True, help="Roster id (executor role)")
     sp.add_argument("--harness", choices=HARNESSES, help="Override the roster entry's harness")
     sp.add_argument("--worktree", help="Run in this checkout (default: this one if it has the claim's branch, else a linked worktree)")
-    _offline_arg(sp)
-    sp.add_argument("--rework", action="store_true", help="Take over after blocking reviews or a terminated or failed worker")
+    _offline_arg(sp); sp.add_argument("--rework", action="store_true", help="Take over after blocking reviews or a terminated or failed worker")
     sp.add_argument("--json", action="store_true"); sp.add_argument("--op-id", metavar="ID")
-    add_repo_root_arg(sp)
-    sp.set_defaults(func=cmd_delegate)
+    add_repo_root_arg(sp); sp.set_defaults(func=cmd_delegate)
 
     sp = ws.add_parser("list", help="Active workers (--all includes finished)")
     sp.add_argument("--all", action="store_true")

@@ -49,6 +49,10 @@ exactly 400 lines: the delegate subparser's `--json` and `--op-id` lines were jo
 subparser already writes them. `build_prompt` stays at 80 lines because the call is folded into
 `lines += FILE_LIMIT_LINES + rework_lines(...)`.
 
+## Merge refresh
+
+- Merged `origin/WIP/improvements-0-3-1` (`983b03c8`, for the Codex reviewer roster entries) cleanly; it added two lines to `worker_cli.cmd_sync` (402 > 400), so the delegate subparser's `--rework` and `set_defaults` lines were joined with `;` as `build_parser` already does (`_offline_arg(sp); sp.set_defaults(...)`) — no behaviour change, no text removed; the leaf's tests (49 passed) and `specy-road file-limits` pass after the merge.
+
 ## Verification
 
 - `python -m pytest -q tests/test_rework_findings_in_prompt.py tests/test_worker_cli.py tests/test_models_and_prompt.py tests/test_role_prompt_file_limits.py` → 49 passed
