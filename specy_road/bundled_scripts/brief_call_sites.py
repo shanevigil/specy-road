@@ -41,23 +41,31 @@ def direct_importers(files: dict[str, bytes], targets: set[str]) -> dict[str, li
     return {t: sorted(ps) for t, ps in sorted(out.items())}
 
 
-def _importer_line(target: str, outside: list[str], inside: int) -> str:
-    shown = [f"`{p}`" for p in outside[:IMPORTER_CAP]]
-    if len(outside) > IMPORTER_CAP:
-        shown.append(f"_… and {len(outside) - IMPORTER_CAP} more_")
-    if inside:
-        shown.append(f"{inside} inside the zones")
+def _importer_line(target: str, importers: list[str], outside: set[str]) -> str:
+    ordered = sorted(importers, key=lambda p: (p not in outside, p))
+    shown = [
+        f"`{p}`" + (" _(outside zones)_" if p in outside else "")
+        for p in ordered[:IMPORTER_CAP]
+    ]
+    if len(ordered) > IMPORTER_CAP:
+        shown.append(f"_… and {len(ordered) - IMPORTER_CAP} more_")
     return f"- `{target}` ← " + ", ".join(shown)
 
 
 def call_site_lines(root: Path, zones: list[str], ref: str = "HEAD") -> list[str]:
-    """``### Call sites`` for section 7 of the brief, without a trailing blank line."""
+    """``### Call sites`` for section 7 of the brief, without a trailing blank line.
+
+    Every zoned file with an importer gets a line naming its importers, those
+    outside the zones first and marked, so the caps never hide them behind
+    importers the leaf may already change. Files with an outside importer are
+    listed first for the same reason.
+    """
     lines = [
         "### Call sites (one level)",
         "",
-        f"Modules that import each zoned Python file at `{ref}`, named when they lie "
-        "outside the zones: each is a likely change outside this leaf's zones, so add "
-        "it to the zones before starting or say why it stays unchanged.",
+        f"Modules that import each zoned Python file at `{ref}`: likely call sites to "
+        "read before starting. One marked _(outside zones)_ is a likely change outside "
+        "this leaf's zones, so add it to the zones first or say why it stays unchanged.",
         "",
     ]
     files = python_sources(root, ref)
@@ -68,16 +76,9 @@ def call_site_lines(root: Path, zones: list[str], ref: str = "HEAD") -> list[str
     found = direct_importers(files, {p for p in files if in_zones(zs, p, prefix)})
     if not found:
         return lines + ["_none found (Python imports only)_"]
-    rows, inside_only = [], 0
-    for target, importers in found.items():
-        outside = [p for p in importers if not in_zones(zs, p, prefix)]
-        if outside:
-            rows.append(_importer_line(target, outside, len(importers) - len(outside)))
-        else:
-            inside_only += 1
-    lines += rows[:FILE_CAP]
-    if len(rows) > FILE_CAP:
-        lines.append(f"- _… and {len(rows) - FILE_CAP} more zoned files imported from outside the zones_")
-    if inside_only:
-        lines.append(f"- {inside_only} zoned file(s) imported only from inside the zones")
+    outside = {p for ps in found.values() for p in ps if not in_zones(zs, p, prefix)}
+    targets = sorted(found, key=lambda t: (not outside.intersection(found[t]), t))
+    lines += [_importer_line(t, found[t], outside) for t in targets[:FILE_CAP]]
+    if len(targets) > FILE_CAP:
+        lines.append(f"- _… and {len(targets) - FILE_CAP} more zoned files with importers_")
     return lines

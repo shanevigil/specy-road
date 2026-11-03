@@ -1,8 +1,8 @@
 """The brief lists, under the touch zones, the modules that import each zoned file.
 
-One level of the ``specy-road impact`` import graph at ``HEAD``: an importer
-outside the zones is named, since it is where an executor would otherwise stop
-for a file outside its zones; importers inside the zones are counted.
+One level of the ``specy-road impact`` import graph at ``HEAD``: every importer
+is named, and one outside the zones is marked and listed first, since it is
+where an executor would otherwise stop for a file outside its zones.
 """
 
 from __future__ import annotations
@@ -45,15 +45,29 @@ def test_direct_importers_are_one_level_and_resolve_relative_imports(tmp_path: P
     assert found == {"pkg/core.py": ["pkg/api.py", "pkg/cli.py", "tests/test_core.py"]}
 
 
-def test_importers_outside_the_zones_are_named_and_inside_counted(tmp_path: Path) -> None:
+def test_every_importer_is_named_with_outside_ones_first_and_marked(tmp_path: Path) -> None:
     _repo(tmp_path)
 
     lines = bcs.call_site_lines(tmp_path, ["pkg/core.py", "pkg/helper.py", "tests/"])
 
     assert lines[0] == "### Call sites (one level)"
-    assert "- `pkg/core.py` ← `pkg/api.py`, `pkg/cli.py`, 1 inside the zones" in lines
-    assert "- 1 zoned file(s) imported only from inside the zones" in lines   # pkg/helper.py
+    assert (
+        "- `pkg/core.py` ← `pkg/api.py` _(outside zones)_, `pkg/cli.py` _(outside zones)_, "
+        "`tests/test_core.py`"
+    ) in lines
+    assert "- `pkg/helper.py` ← `tests/test_core.py`" in lines   # imported only from inside the zones
     assert not any("pkg/deep.py" in ln for ln in lines)
+
+
+def test_zones_whose_importers_are_all_inside_still_list_each_file(tmp_path: Path) -> None:
+    _repo(tmp_path)
+
+    lines = bcs.call_site_lines(tmp_path, ["pkg/", "tests/"])
+
+    assert "- `pkg/core.py` ← `pkg/api.py`, `pkg/cli.py`, `tests/test_core.py`" in lines
+    assert "- `pkg/api.py` ← `pkg/deep.py`" in lines
+    assert "- `pkg/helper.py` ← `tests/test_core.py`" in lines
+    assert any(ln.startswith("- `pkg/__init__.py` ← ") for ln in lines)
 
 
 def test_a_zone_nobody_imports_says_so(tmp_path: Path) -> None:
@@ -71,10 +85,12 @@ def test_outside_git_the_section_says_it_cannot_compute(tmp_path: Path) -> None:
 def test_long_lists_are_capped_and_counted(tmp_path: Path, monkeypatch) -> None:
     _repo(tmp_path)
     monkeypatch.setattr(bcs, "IMPORTER_CAP", 1)
+    monkeypatch.setattr(bcs, "FILE_CAP", 1)
 
-    lines = bcs.call_site_lines(tmp_path, ["pkg/core.py"])
+    lines = bcs.call_site_lines(tmp_path, ["pkg/core.py", "pkg/helper.py", "tests/"])
 
-    assert "- `pkg/core.py` ← `pkg/api.py`, _… and 2 more_" in lines
+    assert "- `pkg/core.py` ← `pkg/api.py` _(outside zones)_, _… and 2 more_" in lines
+    assert lines[-1] == "- _… and 1 more zoned files with importers_"
 
 
 def test_the_brief_lists_call_sites_under_the_touch_zones(tmp_path: Path) -> None:
@@ -87,7 +103,10 @@ def test_the_brief_lists_call_sites_under_the_touch_zones(tmp_path: Path) -> Non
 
     section = text.split("\n## 7. Touch zones")[1].split("\n## 8.")[0]
     assert "### Call sites (one level)" in section
-    assert "- `pkg/core.py` ← `pkg/api.py`, `pkg/cli.py`, `tests/test_core.py`" in section
+    assert (
+        "- `pkg/core.py` ← `pkg/api.py` _(outside zones)_, `pkg/cli.py` _(outside zones)_, "
+        "`tests/test_core.py` _(outside zones)_"
+    ) in section
 
 
 def test_a_brief_without_zones_has_no_call_site_list(tmp_path: Path) -> None:

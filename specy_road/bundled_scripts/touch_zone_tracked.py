@@ -6,20 +6,25 @@ zone as a file, a directory or a glob. A bare name prefix such as
 nothing, and the executor whose real files are ``pkg/worker_ops_*.py`` stops for
 files "outside its zones". Nothing said so while the zone was being written.
 
-Two checks, both advisory and both silent when git cannot list the tree:
+:func:`warn_untracked_zones` runs inside ``validate`` over every open node (Not
+Started included, unlike :mod:`validate_touch_zones`, which reads the working
+tree for started nodes only). Advisory, and silent when git cannot list the tree:
 
-* :func:`warn_zone_prefixes` runs inside ``validate`` (so inside every
-  ``add-node`` and ``edit-node`` too) and names an open node's zone that is a
-  name prefix of tracked files but no file or directory itself. It covers Not
-  Started nodes, unlike :mod:`validate_touch_zones`: a zone that tracked files
-  extend is not a file the work will create.
-* :func:`warn_untracked_zones` runs once, for the node ``add-node`` or
-  ``edit-node --set touch_zones=`` just wrote, and names every other zone that
-  matches no tracked file and is not a directory. A new file is a fine zone; the
-  warning says so, so that nobody deletes one to silence it.
+* a zone that is a name prefix of tracked files gets a stderr warning of its
+  own naming the glob to use: tracked files extend it, so it is no file the work
+  will create, and the line reaches ``add-node`` and ``edit-node`` too;
+* every other zone that matches no tracked file and is not a directory, plain
+  path or glob, is named in one stdout notice for all nodes, which says to keep
+  a zone that names a file the work will create, so that nobody deletes one to
+  silence it. A notice, like the unauthored-leaf block, because ``--strict``
+  fails on any stderr line and a fresh ``init project`` scaffold names a file
+  its first leaf will create; one line rather than one per node because the
+  guidance is the same for all of them.
 
-Each warning is one line containing ``warning``, because ``add-node`` and
-``edit-node`` re-print only such lines from the validation they run.
+:func:`warn_written_zones` is that second line as a stderr warning for the one
+node ``add-node`` or ``edit-node --set touch_zones=`` just wrote: they print
+only the stderr ``warning`` lines of the validation they run, so the notice
+never reaches them.
 """
 
 from __future__ import annotations
@@ -120,48 +125,15 @@ def _is_settled(node: dict) -> bool:
     )
 
 
-def warn_zone_prefixes(nodes: list[dict], project_root: Path) -> None:
-    """One line per open node's zone that is a name prefix of tracked files."""
-    open_zones = [
-        (str(n.get("id", "?")), z)
-        for n in nodes
-        if isinstance(n.get("touch_zones"), list) and not _is_settled(n)
-        for z in n["touch_zones"]
-        if _clean(z)
-    ]
-    if not open_zones:
-        return
-    tracked = tracked_files(project_root)
-    if tracked is None:
-        return
-    for nid, zone in open_zones:
-        extends = prefix_of(zone, tracked)
-        if not extends:
-            continue
-        print(
-            f"roadmap: warning — {nid} touch zone {zone!r} is a name prefix of "
-            f"{len(extends)} tracked file(s) (e.g. {extends[0]!r}) and matches none of "
-            f"them: {GLOB_HINT}. Use {_glob_for(zone, extends)!r} "
-            f"(specy-road edit-node {nid} --set touch_zones=<paths>).",
-            file=sys.stderr,
-        )
-
-
-def untracked_zones(zones: object, project_root: Path) -> list[str]:
-    """Zones naming no tracked file and no directory, leaving out name prefixes.
-
-    Prefixes are left to :func:`warn_zone_prefixes`, which ``validate`` prints
-    for the same write with a glob to use instead.
-    """
+def untracked_zones(zones: object, tracked: Tracked) -> list[str]:
+    """Zones naming no tracked file and no directory, leaving out name prefixes."""
     if not isinstance(zones, list):
         return []
-    wanted = [z for z in zones if _clean(z)]
-    tracked = tracked_files(project_root) if wanted else None
-    if tracked is None:
-        return []
     out = []
-    for z in wanted:
+    for z in zones:
         cleaned = _clean(z)
+        if not cleaned:
+            continue
         if Path(cleaned).is_absolute() or ".." in PurePosixPath(cleaned).parts:
             out.append(z)
         elif not tracked.matches(cleaned) and not prefix_of(z, tracked):
@@ -169,14 +141,55 @@ def untracked_zones(zones: object, project_root: Path) -> list[str]:
     return out
 
 
-def warn_untracked_zones(node_id: str, zones: object, project_root: Path) -> None:
-    """``add-node`` / ``edit-node``: one line naming the written node's untracked zones."""
-    missing = untracked_zones(zones, project_root)
-    if not missing:
-        return
+def _warn_prefix(nid: str, zone: str, extends: list[str]) -> None:
     print(
-        f"roadmap: warning — {node_id} touch zone(s) match no tracked file and are not "
-        f"a directory: {', '.join(repr(z) for z in missing)}. Keep a zone that names a "
-        f"file this work will create; otherwise fix the path — {GLOB_HINT}.",
+        f"roadmap: warning — {nid} touch zone {zone!r} is a name prefix of "
+        f"{len(extends)} tracked file(s) (e.g. {extends[0]!r}) and matches none of "
+        f"them: {GLOB_HINT}. Use {_glob_for(zone, extends)!r} "
+        f"(specy-road edit-node {nid} --set touch_zones=<paths>).",
         file=sys.stderr,
     )
+
+
+def _untracked_line(entries: list[str]) -> str:
+    return (
+        "touch zones that match no tracked file and are not a directory: "
+        f"{'; '.join(entries)}. Keep a zone that names a file the work will create; "
+        "otherwise fix the path (specy-road edit-node <NODE_ID> --set "
+        f"touch_zones=<paths>) — {GLOB_HINT}."
+    )
+
+
+def _entry(nid: str, zones: list[str]) -> str:
+    return f"{nid} " + ", ".join(repr(z) for z in zones)
+
+
+def warn_untracked_zones(nodes: list[dict], project_root: Path) -> None:
+    """``validate``: open nodes' zones that match no tracked file and are not a directory."""
+    open_nodes = [
+        n for n in nodes
+        if isinstance(n.get("touch_zones"), list) and n["touch_zones"] and not _is_settled(n)
+    ]
+    tracked = tracked_files(project_root) if open_nodes else None
+    if tracked is None:
+        return
+    missing: list[str] = []
+    for n in open_nodes:
+        nid = str(n.get("id", "?"))
+        for z in n["touch_zones"]:
+            extends = prefix_of(z, tracked) if isinstance(z, str) else []
+            if extends:
+                _warn_prefix(nid, z, extends)
+        zones = untracked_zones(n["touch_zones"], tracked)
+        if zones:
+            missing.append(_entry(nid, zones))
+    if missing:
+        print(f"roadmap: notice — {_untracked_line(missing)}")   # stdout: --strict does not count it
+
+
+def warn_written_zones(node_id: str, zones: object, project_root: Path) -> None:
+    """``add-node`` / ``edit-node``: the written node's untracked zones, as a stderr warning."""
+    tracked = tracked_files(project_root) if isinstance(zones, list) and zones else None
+    missing = untracked_zones(zones, tracked) if tracked is not None else []
+    if missing:
+        print(f"roadmap: warning — {_untracked_line([_entry(node_id, missing)])}", file=sys.stderr)
