@@ -143,6 +143,8 @@ entries:
       - specy_road/bundled_scripts/generate_brief.py
       - docs/roadmap-authoring.md
       - tests/
+      - specy_road/bundled_scripts/brief_call_sites.py
+      - specy_road/bundled_scripts/touch_zone_tracked.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
