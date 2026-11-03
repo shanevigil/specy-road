@@ -8,6 +8,7 @@ Base: `a54c409b` (origin/WIP/improvements-0-3-1 after the M8.2 touch-zone update
   - `worker_runner.py`: WIP's `fresh_ready`, `completion_summary` and `harness_env` sit alongside this branch's `TurnWatch` and `close_turn`. `launch.env` is applied on top of `harness_env`, and `paused_by_limit` still wins over READY.
   - No behaviour change was needed: the leaf's tests and the WIP tests on these modules pass (147 tests).
 
+- **Merge of WIP for `toolkit_version`:** the conflict was in `worker_state.py`, where `WorkerRecord` keeps `limit_reset_at` and WIP's `toolkit_version`, with `unknown_fields` last. The schema carries both. The post-run check is unchanged while the maintainer decides on the RCA's proposal to bound A3. `pytest -n 4` over the leaf's tests passes (110 tests), and `specy-road file-limits` passes again: WIP's `worker_cli.py` is back to 400 lines.
 - **Merge of WIP for M11.35:** two conflicts, both resolved keeping both sides:
   - `worker_adapter_claude.py`: the Claude resume passes `*_model_flag("--model", model)` (M11.35) and `EXECUTOR_PERMISSIONS`.
   - `worker_runner.py`: `_finish` keeps `log_start` and M11.35's `exit_event`, and still runs `close_turn` first, with `PAUSED_BY_LIMIT` winning over READY and the exit code. `exit_event`'s `streamed()` counts only `source: worker` events, so the system `post_run_check` written before it does not hide the harness's stderr reason.
