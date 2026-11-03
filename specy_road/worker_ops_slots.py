@@ -12,6 +12,7 @@ from pathlib import Path
 from specy_road.orchestration_config import DEFAULT_POLICY
 from specy_road.orchestration_pinned import pinned_config
 from specy_road.worker_lease import max_workers, slot_error
+from specy_road.worker_orphans import holding_slots
 from specy_road.worker_process import wrapper_gone
 from specy_road.worker_state import (
     FLAG_STALLED,
@@ -60,13 +61,17 @@ def _slot_or_existing(repo_root: Path, node_id: str, *, own: str | None = None,
                       foreign: list[str] | None = None) -> WorkerRecord | None:
     """Under the lock: the leaf's live worker other than ``own``, else ``None`` once a ``max_workers`` slot is free;
     counted are every other active record (linked worktrees share this directory) and ``foreign`` lease refs
-    (``None``: not read yet, so only the leaf's own worker is looked for, and nothing is counted)."""
+    (``None``: not read yet, so only the leaf's own worker is looked for, and nothing is counted). An ``idle`` or
+    ``completed`` record whose leaf is Complete on the integration branch or no longer claimed is not counted."""
     sweep_dead_wrappers(repo_root)   # a dead wrapper on another leaf must not hold a slot
     active = [r for r in list_records(repo_root, active_only=True) if r.worker_id != own]
     if existing := next((r for r in active if r.node_id == node_id), None):
         return existing
-    if foreign is not None and len(active) + len(foreign) >= (limit := max_workers(repo_root)):
-        raise slot_error(len(active), foreign, limit)
+    if foreign is None:
+        return None
+    held = holding_slots(repo_root, active)   # a held worker whose leaf is over frees its slot (M11.57)
+    if len(held) + len(foreign) >= (limit := max_workers(repo_root)):
+        raise slot_error(held, foreign, limit)
     return None
 
 
