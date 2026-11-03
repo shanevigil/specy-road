@@ -346,14 +346,16 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.70_zones-checked-at-authoring_85605152-67f2-4099-a3ed-588f1566cbc8.md",
       "sibling_order": 70,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Touch zones are checked when they are written",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
         "specy_road/bundled_scripts/validate_roadmap_checks.py",
         "specy_road/bundled_scripts/generate_brief.py",
         "docs/roadmap-authoring.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/brief_call_sites.py",
+        "specy_road/bundled_scripts/touch_zone_tracked.py"
       ],
       "type": "task"
     },

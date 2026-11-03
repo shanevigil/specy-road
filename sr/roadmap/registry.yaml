@@ -94,18 +94,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: zones-checked-at-authoring
-    node_id: M11.70
-    branch: feature/rm-zones-checked-at-authoring
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_crud_ops.py
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - specy_road/bundled_scripts/generate_brief.py
-      - docs/roadmap-authoring.md
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: version-shows-checkout-sha
     node_id: M11.66
     branch: feature/rm-version-shows-checkout-sha
