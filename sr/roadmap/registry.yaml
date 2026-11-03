@@ -92,3 +92,15 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: init-profiles-subset
+    node_id: M11.44
+    branch: feature/rm-init-profiles-subset
+    touch_zones:
+      - specy_road/init_project.py
+      - specy_road/cli_init_argparse.py
+      - specy_road/bundled_scripts/refresh_profiles.py
+      - tests/
+      - docs/orchestration-models.md
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
