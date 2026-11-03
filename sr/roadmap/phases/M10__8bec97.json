@@ -136,7 +136,8 @@
       "acceptance": [
         "Confirm from the installed Codex (and Cursor) model inventories whether GPT-6.1 Terra is available and under which id, recording the capture; if it is not available, write that down and stop",
         "Run it as an executor on two or three small, already-landed Agentic-led leaves replayed from their base commit (no merges), recording usage, wall time, verifier outcome and the reviewers' verdicts on its result against the landed version",
-        "Write a short findings note under research/ with a recommendation (roster it as an executor, or not) for the maintainer; add a model profile only if the recommendation is yes"
+        "Write a short findings note under research/ with a recommendation (roster it as an executor, or not) for the maintainer; add a model profile only if the recommendation is yes",
+        "The pilot records the Codex CLI version it ran; if GPT-6.1 Terra is missing from the codex-cli 0.165.0 inventory, it is rechecked on 0.166.0 or later (the changelog adds Terra in 0.165/0.166) before the note says it is not available."
       ],
       "codename": "terra-executor-pilot",
       "dependencies": [],

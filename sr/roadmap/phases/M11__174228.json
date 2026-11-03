@@ -81,7 +81,8 @@
         "A roster entry can set channels.cli_resume (or an extra_args list appended to both default commands), so worker message and resume keep the launch's permissions on every harness, including codex and cursor where {session_flag} is refused; tests cover the launch and resume argv for both fields",
         "worker delegate reports, before launching, a custom channels.cli (or access.cli) that has no usable resume form (no session placeholder and no cli_resume) instead of silently falling back to the default command on resume, and one that uses a text-only output mode (for example agent -p --output-format text, or no output format), which keeps only the last message, suggesting the stream-json form; a test covers each report",
         "docs/orchestration-workers.md gives one complete hands-off Claude Code executor example: a settings file with allow and deny lists and the channels.cli line that uses it with --permission-mode acceptEdits --settings <file> {session_flag}, with no bare Edit or Write allow rule; the docs warn that a bare Edit allow in dontAsk mode lets a worker write anywhere (including the main checkout) and that relative deny rules cover only the worker's own worktree",
-        "A test checks that the example settings file parses and that its deny list covers git push"
+        "A test checks that the example settings file parses and that its deny list covers git push",
+        "docs/orchestration-workers.md says that a Claude Code permission denial under -p does not stop the run (it appears as a permission_denied message and in the result's permission_denials, and the turn exits 0), replacing 'may stop at a shell permission' and the installation check that expects a stop; the hands-off example's deny list uses the prefix form Bash(git push *) and Bash(gh pr *); and a test asserts that the Codex resume argv repeats every launch policy flag, since exec resume carries only the conversation."
       ],
       "codename": "resume-keeps-permissions",
       "dependencies": [
@@ -349,7 +350,8 @@
       "acceptance": [
         "A roster entry can declare routing: fixed (the default) or routing: dynamic; the review gate does not count a dynamic entry's approval toward the distinct-family requirement unless the entry also pins its model (for example a pinned: true flag the maintainer sets after checking the harness honours it), and handoff status says why an approval was not counted",
         "Worker usage records keep the requested model and, when the harness stream reports one, the observed model (beside the harness version already recorded); worker sync flags a mismatch",
-        "Docs explain the rule (a harness that cascades or runs its own critic underneath could put the same family on both sides) and that a harness's internal critic is supporting evidence, never a gate approval; tests cover fixed, dynamic, dynamic-pinned and a mismatch"
+        "Docs explain the rule (a harness that cascades or runs its own critic underneath could put the same family on both sides) and that a harness's internal critic is supporting evidence, never a gate approval; tests cover fixed, dynamic, dynamic-pinned and a mismatch",
+        "A cursor entry launched without --model (profile api_id unknown) or with model auto counts as routing: dynamic, because fresh Cursor CLI installs default to Auto model routing; a test covers both."
       ],
       "codename": "dynamic-routing-reviewers",
       "dependencies": [

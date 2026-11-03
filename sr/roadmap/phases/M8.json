@@ -75,7 +75,9 @@
       "acceptance": [
         "The reviewer prompt asks for a final JSON object matching the review-record schema (Claude --json-schema, Codex --output-schema, Antigravity --json-schema; plain final-message JSON elsewhere) and the adapter writes work/reviews/<ID>/REVIEW-<model>.md from it",
         "A reviewer run that writes any file other than its notes is reported as a review failure",
-        "A malformed or missing structured output is reported as a rerun request, never recorded as a verdict"
+        "A malformed or missing structured output is reported as a rerun request, never recorded as a verdict",
+        "The default Claude Code reviewer launch, which runs --bare and so fires no hook, passes --disallowedTools \"Bash(git commit *)\" \"Bash(git push *)\" \"Bash(gh *)\" beside its allowed tools; a test pins the argv.",
+        "Cursor reviewer runs drop --force and pass --mode ask --trust, and Codex reviewer runs use sandbox_mode=read-only with the verdict taken from --output-schema / -o, so docs/design-notes/M8.7-runtime-verification-harness-facts.md ('Review-only runs omit --force') matches the code; tests pin both argv."
       ],
       "codename": "reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output",
       "dependencies": [
@@ -133,7 +135,9 @@
       "acceptance": [
         "specyrd init ships checked-in hook files that deny git commit, git push and gh pr for reviewer roles and push, gh pr, worktree and cloud commands for executors, for Claude Code and Codex (documented blocking hooks) and Cursor (reported)",
         "Every model profile lists the harness features to avoid with the exact switch (memory off, no plan mode, no worktree or cloud features) and the launch template applies them",
-        "An optional git pre-push hook (installed by specyrd init on request, or given as a recipe in docs/orchestration-workers.md) refuses a push made from a linked worktree under work/.worktrees/; a test shows the push refused there and allowed from the main checkout"
+        "An optional git pre-push hook (installed by specyrd init on request, or given as a recipe in docs/orchestration-workers.md) refuses a push made from a linked worktree under work/.worktrees/; a test shows the push refused there and allowed from the main checkout",
+        "Shipped Claude Code guard hooks block with exit 2 (exit 1 does not block) and set onFailure: \"block\" so a hook that times out or crashes fails closed; Codex hook files ship only with a documented way to make them load in a new linked worktree (a trusted .codex/ layer, or --dangerously-bypass-hook-trust passed only for specy-road's own hook files), and a check shows the hook denying a git commit in a fresh worktree.",
+        "Executor avoid lists name each feature with the switch the launch applies: Claude auto memory (shared by every worktree of a repository) and background tasks and /loop wakeups; Codex memories, multi_agent and goals (--disable <feature>); Cursor persist, /goal and cloud handoff (no switch: never invoked; denied where a permission token exists); a test pins the Codex argv with the --disable flags."
       ],
       "codename": "guard-hooks-per-harness-and-avoid-lists-in-every-model-profile",
       "dependencies": [
@@ -183,7 +187,9 @@
     },
     {
       "acceptance": [
-        "A Copilot CLI reviewer profile (model pinned, deny git push and gh pr, one-shot) and an Antigravity agy generic profile exist, each marked by the runtime checks that passed"
+        "A Copilot CLI reviewer profile (model pinned, deny git push and gh pr, one-shot) and an Antigravity agy generic profile exist, each marked by the runtime checks that passed",
+        "The Copilot reviewer profile's command passes -p, -s, --no-ask-user and --deny-tool for shell(git push), shell(git commit) and shell(gh), never --autopilot, --share-gist, --allow-all or --yolo, and is checked against a captured copilot --help of v1.0.105 or later.",
+        "The agy profile's command sets --output-format json (or stream-json) and an explicit --print-timeout, and success is read from the envelope's status (SUCCESS), not the exit code, since permission denials and benign tool errors exit 0 from 1.3.4; the version comes from a captured agy --version (the two reports disagree: 1.4.3 vs 1.4.10)."
       ],
       "codename": "candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic",
       "dependencies": [

@@ -27,7 +27,8 @@
     {
       "acceptance": [
         "A roster entry can set harness_model (the id the harness CLI expects, for example claude-opus-5-5 for roster id claude-opus-5.5); the default adapters pass it to --model, falling back to the roster id; validate warns when a Claude Code entry's id contains a dot and no harness_model is set",
-        "When a worker exits non-zero before its first stream event, its error event summary includes the harness's last error line from the log (for example an HTTP 404 for an unknown model), not only a pointer to the log; tests cover the mapping, the fallback and the early-failure summary"
+        "When a worker exits non-zero before its first stream event, its error event summary includes the harness's last error line from the log (for example an HTTP 404 for an unknown model), not only a pointer to the log; tests cover the mapping, the fallback and the early-failure summary",
+        "Resume passes the same model flag as the launch on claude-code, codex and cursor (today all three default resume commands drop it, and Codex documents that a resume keeps only the conversation, not flags); tests pin the resume argv with and without harness_model."
       ],
       "codename": "roster-harness-model-id",
       "dependencies": [
@@ -54,7 +55,8 @@
     {
       "acceptance": [
         "A roster entry can set available: false or paused_until: <date or datetime>, read from a local untracked roadmap/orchestration.local.yaml overlay (so availability changes need no push) as well as the shared roster; orchestrate plan skips unavailable entries for every role, and worker delegate and review delegate refuse them with the reason",
-        "Past review records by an unavailable entry still count at their commit; tests cover available: false, a paused_until in the past and future, and the overlay"
+        "Past review records by an unavailable entry still count at their commit; tests cover available: false, a paused_until in the past and future, and the overlay",
+        "When a worker is paused by a usage limit with a parsed reset time (M8.2), worker sync prints the roster entry and the reset time with the paused_until line to put in roadmap/orchestration.local.yaml; a test covers the printed line. (Depends on M8.2's paused-by-limit state; drop this sentence if M8.2 lands later.)"
       ],
       "codename": "roster-availability",
       "dependencies": [
@@ -76,6 +78,84 @@
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/templates/project/schemas/orchestration.schema.json",
         "docs/orchestration.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A Claude Code result line whose permission_denials list is non-empty records a permission_denied worker event naming each denied tool and its input, and flags the worker, even when subtype is success, is_error is false and the exit code is 0; a test replays such a line.",
+        "A usage limit is recognised from the turn's text, never its exit code: a Claude result or api_error text that claude_code_limits.classify_limit reads as a limit (including subtype success with exit 0, and exit 1 with no result line, where the last message is read from ~/.claude/projects/<project>/<session-id>.jsonl), a system/api_retry line with error rate_limit, and a Codex turn.failed whose text says 'try again at <time>' each put the worker in paused-by-limit with the parsed reset time when there is one; a test replays one line per case.",
+        "Claude Code worker and reviewer launches either set CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 in the harness environment, as harness-facts.yaml states, or the fixture row and the 'Backgrounded tests' paragraph of docs/orchestration-workers.md say that claude -p waits up to 10 minutes of idle for background work it started; a test checks the environment the wrapper passes.",
+        "The Codex memory overrides the launch passes are checked against the captured `codex features list` (memory v2 is on by default for fresh profiles since 0.165), and a key the capture does not list fails refresh-profiles --check instead of being passed and ignored."
+      ],
+      "codename": "headless-limits-denials",
+      "dependencies": [
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.62",
+      "node_key": "eda7b3fe-97ec-4eba-9a95-3df7ed230209",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.62_headless-limits-denials_eda7b3fe-97ec-4eba-9a95-3df7ed230209.md",
+      "sibling_order": 60,
+      "status": "Not Started",
+      "title": "Headless runs report usage limits and denied actions instead of looking like success",
+      "touch_zones": [
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_adapter_parsers.py",
+        "specy_road/worker_runner.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "harness-facts.yaml carries rows F1-F22 of the 2026-11-02 triage (recorded in a design note under docs/design-notes/), each labelled documented with the vendor URL or runtime with its capture; no row rests only on the unsourced OpenAI report; refresh-profiles --check passes after --render",
+        "WORKFLOW_WORDS also contains goal, loop, queue, persist, gist, fleet, teleport, remote and spawn; every identifier in the accepted captures that now matches has a relationship; a test shows a capture that adds persist failing the diff until it is classified",
+        "The Codex captures are refreshed from an installed codex-cli 0.166.0 or later (--version, --help, exec --help, features list), and docs/orchestration-workers.md cites the captured versions instead of 'codex-cli 0.165.0' and 'verified … on 2026-10-27'"
+      ],
+      "codename": "harness-facts-nov-refresh",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.60",
+      "node_key": "c0c1edb5-8b5c-4287-b48d-f158baafde83",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.60_harness-facts-nov-refresh_c0c1edb5-8b5c-4287-b48d-f158baafde83.md",
+      "sibling_order": 61,
+      "status": "Not Started",
+      "title": "The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names",
+      "touch_zones": [
+        "specy_road/templates/project/model-profiles/harness-facts.yaml",
+        "specy_road/templates/project/model-profiles/harness-captures/",
+        "specy_road/templates/project/model-profiles/README.md",
+        "specy_road/harness_facts.py",
+        "docs/orchestration-workers.md",
+        "docs/design-notes/",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "validate's Claude context line counts .claude/rules/*.md (recursive) beside the CLAUDE.md family and reports the auto-memory MEMORY.md (first 200 lines or 25 KB) as a machine-local note; a test with a rules file and a memory file covers both",
+        "Cursor's line notes nested AGENTS.md files below the root (applied when the agent edits a file there) and Copilot's counts .github/instructions/* files; a test covers each",
+        "A Claude instruction file over 4 MiB is reported as not loaded, never counted; a test covers it"
+      ],
+      "codename": "meter-claude-rules-and-nested",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.61",
+      "node_key": "cd54ad06-f1fa-4ebb-a22a-d09af76245b3",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.61_meter-claude-rules-and-nested_cd54ad06-f1fa-4ebb-a22a-d09af76245b3.md",
+      "sibling_order": 62,
+      "status": "Not Started",
+      "title": "The context meter counts Claude rules, auto memory, Cursor nested AGENTS.md and Copilot path instructions",
+      "touch_zones": [
+        "specy_road/agents_md_block.py",
+        "docs/install-and-usage.md",
         "tests/"
       ],
       "type": "task"
