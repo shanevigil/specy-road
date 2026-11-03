@@ -121,3 +121,14 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
+  - codename: profile-alias-coverage
+    node_id: M11.76
+    branch: feature/rm-profile-alias-coverage
+    touch_zones:
+      - specy_road/model_profiles.py
+      - specy_road/templates/project/model-profiles/
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
