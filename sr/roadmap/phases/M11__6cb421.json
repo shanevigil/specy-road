@@ -124,7 +124,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.60_harness-facts-nov-refresh_c0c1edb5-8b5c-4287-b48d-f158baafde83.md",
       "sibling_order": 61,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names",
       "touch_zones": [
         "specy_road/templates/project/model-profiles/harness-facts.yaml",
