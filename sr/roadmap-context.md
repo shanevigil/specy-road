@@ -115,7 +115,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.5` Pickup's stale-claim check tests the local branch and never advises deleting a live claim `pickup-claim-heuristic` — task — **Complete**
   - `M11.6` worker reconcile judges a worker against the leaf's current contract `reconcile-current-contract` — task — **Complete**
   - `M11.7` review delegate runs a rostered reviewer like worker delegate runs an executor `review-delegate` — task — **Complete**
-  - `M11.8` An opt-in delta review packet for small fix rounds `delta-review-packet` — task — **Not Started**
+  - `M11.8` An opt-in delta review packet for small fix rounds `delta-review-packet` — task — **Complete**
   - `M11.9` Acceptance items a human must satisfy are marked and handled as such `human-acceptance` — task — **Complete**
   - `M11.10` edit-node can add and remove single list entries `edit-node-add-remove` — task — **Complete**
   - `M11.11` orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route `one-readiness-rule` — task — **Complete**
@@ -142,6 +142,13 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.33` A reviewer whose harness routes models dynamically does not count as an independent family by default `dynamic-routing-reviewers` — task — **Not Started**
   - `M11.34` Open human decisions live in one tracked ledger and every question is self-contained `decision-ledger` — task — **Not Started**
   - `M11.35` A roster entry maps to the harness's own model id, and a failed start says why `roster-harness-model-id` — task — **Not Started**
+  - `M11.36` A resumed reviewer session may approve a delta it was shown `resumed-delta-approval` — task — **Not Started**
+  - `M11.37` review-packet warns when the brief or summary names a file not committed at the reviewed commit `packet-uncommitted-refs` — task — **Not Started**
+  - `M11.38` handoff status says who can still supply a missing approval `handoff-eligible-reviewers` — task — **Not Started**
+  - `M11.39` A roster entry can be marked unavailable without deleting it `roster-availability` — task — **Not Started**
+  - `M11.40` worker reconcile works on merged leaves and separates untracked files `reconcile-merged-and-untracked` — task — **Not Started**
+  - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Not Started**
+  - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Not Started**
 
 ## Archived (not in the live roadmap)
 
@@ -154,8 +161,14 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M11.13` on `feature/rm-milestone-full-review` since 2026-11-02
+- `M11.18` on `feature/rm-quieter-overlap-warnings` since 2026-11-02
+- `M11.19` on `feature/rm-pickup-no-work-stash` since 2026-11-02
+- `M11.25` on `feature/rm-merge-push-disclosure` since 2026-11-02
+- `M11.26` on `feature/rm-profile-aliases` since 2026-11-02
+- `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
+- `M11.34` on `feature/rm-decision-ledger` since 2026-11-02
 - `M11.4` on `feature/rm-max-workers-global` since 2026-11-02
-- `M11.8` on `feature/rm-delta-review-packet` since 2026-11-02
+- `M8.7` on `feature/rm-runtime-verification-of-the-harness-facts-against-installed-binaries` since 2026-11-02
 
 ## Reaching the detail behind this
 

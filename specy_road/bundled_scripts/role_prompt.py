@@ -16,8 +16,10 @@
 3. the model's profile applied mechanically (§4.4): its ``## Prompting rules``
    as instructions, each ``## Failure modes`` mitigation as a guard, and the
    touch zones repeated at the end when the profile says the model drifts;
-4. the brief (executor, coordinator, rca) or the review packet (reviewer);
-   for ``rca``, then every review round side by side with the diffs between them.
+4. the brief (executor, coordinator, rca) or the review packet (reviewer): the
+   reviewer's own delta packet when its fix round qualifies (:func:`reviewer_packet`),
+   else ``PACKET.md``; for ``rca``, then every review round side by side with the
+   diffs between them.
 
 ``--context-feedback`` (executor only, opt-in pilot) appends :data:`CONTEXT_FEEDBACK_LINES`, which ask
 for a three-line missing / wrong / unused block at the end of the implementation summary.
@@ -43,6 +45,7 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_prompt import SUBAGENT_LINE
 from specy_road.bundled_scripts.generate_brief import index, render_brief
+from specy_road.bundled_scripts.review_packet import build_packet
 from specy_road.bundled_scripts.role_prompt_rca import (
     DATA_LINE,
     coordinator_preamble,
@@ -66,8 +69,9 @@ from specy_road.orchestration_config import substitute_for
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_files import PACKET_NAME, reviews_dir
+from specy_road.review_gate import delta_basis
 from specy_road.review_rca import escalated_note, loop_state, rca_evidence, rca_parties, rca_preamble
-from specy_road.review_target import ReviewTargetError, resolve_target
+from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
 from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_repo_root
 
 CHANNELS = ("cli", "paste", "subagent")
@@ -103,6 +107,26 @@ def has_subagents(prof: Profile | None) -> bool:
     access = prof.data.get("access") if prof is not None else None
     value = access.get("subagents") if isinstance(access, dict) else None
     return value is True or str(value or "").startswith("yes")
+
+
+def reviewer_packet(root: Path, node_id: str, model: str, t: ReviewTarget,
+                    ref: str | None = None) -> tuple[str | None, str]:
+    """``(packet text, error)``. ``model``'s own delta packet, written now to ``PACKET-<model>.md``, when
+    ``policy.delta_review`` lets its fix round be reviewed from one (``review_gate.delta_basis``, which
+    also honours ``review-packet --full``); else ``PACKET.md``, the full packet."""
+    packet, own = reviews_dir(root, node_id) / PACKET_NAME, reviews_dir(root, node_id) / f"PACKET-{model}.md"
+    own.unlink(missing_ok=True)   # a stale delta packet never stands in for this round's
+    if not packet.is_file():
+        return None, f"no review packet at {packet}; run `specy-road review-packet {node_id}` first"
+    text = packet.read_text(encoding="utf-8")
+    prior = delta_basis(root, t.node, model, t.commit)[0]   # None under `review-packet --full`
+    if prior is None:
+        return text, ""
+    text = build_packet(root, node_id, ref=ref, verify_cmds=[], max_diff_lines=0, max_diff_bytes=0, prior=prior)
+    own.write_text(text, encoding="utf-8")
+    print(f"note: {model} reviews the change since its approval of {prior.data['commit']} from {own}",
+          file=sys.stderr)
+    return text, ""
 
 
 def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
@@ -174,10 +198,10 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
         lines += coordinator_preamble(node_id)
     lines += profile_lines(prof, role, zones)
     if role == "reviewer":
-        packet = reviews_dir(root, node_id) / PACKET_NAME
-        if not packet.is_file():
-            return "", prof, f"no review packet at {packet}; run `specy-road review-packet {node_id}` first"
-        lines += ["---", "", packet.read_text(encoding="utf-8").rstrip(), ""]
+        packet, err = reviewer_packet(root, node_id, model, t, ref)
+        if packet is None:
+            return "", prof, err
+        lines += ["---", "", packet.rstrip(), ""]
     else:
         lines += ["---", "", render_brief(node_id, index(nodes), repo_root=root, include_history=False).rstrip(), ""]
     if role == "rca":

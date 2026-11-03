@@ -17,21 +17,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: delta-review-packet
-    node_id: M11.8
-    branch: feature/rm-delta-review-packet
-    touch_zones:
-      - specy_road/bundled_scripts/review_packet.py
-      - specy_road/review_gate.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/schemas/review-record.schema.json
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/orchestration_config.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: milestone-full-review
     node_id: M11.13
     branch: feature/rm-milestone-full-review
@@ -59,6 +44,7 @@ entries:
       - specy_road/templates/project/schemas/
       - docs/orchestration-models.md
       - tests/
+      - specy_road/bundled_scripts/models_cli.py
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
@@ -109,6 +95,29 @@ entries:
       - specy_road/bundled_scripts/validate_roadmap.py
       - specy_road/bundled_scripts/roadmap_crud_ops.py
       - tests/
+      - specy_road/bundled_scripts/validate_registry_overlap.py
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: pickup-no-work-stash
+    node_id: M11.19
+    branch: feature/rm-pickup-no-work-stash
+    touch_zones:
+      - specy_road/bundled_scripts/do_next_task_pickup_helpers.py
+      - specy_road/bundled_scripts/do_next_task.py
+      - specy_road/worker_reconcile.py
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: runtime-verification-of-the-harness-facts-against-installed-binaries
+    node_id: M8.7
+    branch: feature/rm-runtime-verification-of-the-harness-facts-against-installed-binaries
+    touch_zones:
+      - research/
+      - specy_road/templates/project/model-profiles/
+      - docs/
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
