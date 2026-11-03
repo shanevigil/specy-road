@@ -24,6 +24,11 @@ Branch `feature/rm-meter-claude-rules-and-nested`, base `de7cfc6c`, code commit 
   Inside the git root it is a `context: warning` on stderr (like the 200-line warning, so
   `--strict` fails on it); outside it is a note. A file of exactly 4 MiB still counts.
 - **Docs.** `docs/install-and-usage.md` context-meter paragraph covers the new files.
+- **Review fix (gpt-6.1-sol block, P2).** Discovered Claude rules now pass the same
+  resolved-path `inside(path, top)` boundary as the CLAUDE.md family: a rule that resolves
+  outside the git root (for example a symlink) is not counted or warned on, and is a
+  machine-local note instead (`machine_local_paths` now walks rules too). An over-4-MiB
+  external rule still gets only the not-loaded note via `claude_skipped`.
 
 ## Touch zones
 
@@ -41,6 +46,7 @@ measuring and reporting and re-exports `AGENTS_MD`; it is now 297 lines, the new
 - `specy-road file-limits` = 0
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood` = 0
 - `pytest -n auto` = 0 (3254 passed, 2 skipped)
+- After the review fix: `pytest -q tests/test_context_meter_rules_memory_nested.py tests/test_context_meter_harnesses.py tests/test_context_regressions.py tests/test_agents_md_block.py tests/test_enforced_rules_pointers.py` = 0 (60 passed); the extended rules test fails (exit 1) with the fix reverted
 
 ## Open points for review
 
@@ -72,7 +78,8 @@ measuring and reporting and re-exports `AGENTS_MD`; it is now 297 lines, the new
 
 ### Branches / guards
 - `copilot_paths` appends `.github/instructions/**/*.instructions.md` (A2).
-- `injected_context` adds rules to Claude's list and filters it by `claude_loads` (A1, A3).
+- `injected_context` adds rules to Claude's list, applies `inside(p, top)` to rules as well as the CLAUDE.md family (review fix), and filters by `claude_loads` (A1, A3).
+- `machine_local_paths` includes rules resolving outside the git root, so an externally linked rule is a note (review fix).
 - `machine_local_paths` drops over-cap Claude files so they are not described as read (A3).
 - `print_injected_context` prints the Cursor nested note after the Cursor line (A2).
 - `warn_if_context_over_limits` warns for an over-cap Claude file inside the git root (A3).
@@ -81,7 +88,7 @@ measuring and reporting and re-exports `AGENTS_MD`; it is now 297 lines, the new
 - none (tests use real temp git repos and a `HOME` override).
 
 ### Tests (`tests/test_context_meter_rules_memory_nested.py`)
-- `test_claude_counts_rules_recursively_beside_the_claude_md_family` — recursive rules, `paths`-scoped and non-`.md` left out, nested project rules (A1).
+- `test_claude_counts_rules_recursively_beside_the_claude_md_family` — recursive rules, `paths`-scoped and non-`.md` left out, nested project rules (A1); extended with a rule symlinked outside the repo: not counted, no warning, a machine-local note (review fix).
 - `test_auto_memory_is_a_machine_local_note_shared_by_worktrees` — memory note text and loaded part, not in the counted line, same file from a worktree (A1).
 - `test_auto_memory_load_stops_at_25_kb_before_200_lines` — the byte cap wins over the line cap (A1).
 - `test_cursor_notes_nested_agents_md_below_the_root` — nested note, on-path and ignored files excluded (A2).
