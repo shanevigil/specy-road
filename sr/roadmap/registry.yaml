@@ -79,6 +79,8 @@ entries:
       - specy_road/worker_adapter_claude.py
       - specy_road/worker_adapter_codex.py
       - specy_road/worker_adapter_cursor.py
+      - specy_road/review_delegate.py
+      - docs/orchestration-review.md
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
