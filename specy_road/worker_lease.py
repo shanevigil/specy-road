@@ -185,41 +185,36 @@ def checkout_id(repo_root: Path) -> str:
     """This repository's stable id, a uuid in ``<git-common-dir>/specy-road-checkout-id``; a :class:`WorkerError`
     when none can be had, never an empty id (with one, a checkout would count no leases and push none).
 
-    A missing, empty, unreadable or malformed file is uninitialized: no lease can have been pushed under it, so a
-    new id is safe. The uuid is written to a private temporary file; a bad file is first renamed aside, then the
-    temporary file is hard-linked into place, which never overwrites. Racing callers therefore all read the one
-    id that won, an interrupted call leaves a whole id or none, and a call that still finds no usable id refuses."""
+    A file holding a valid id is only ever read: never renamed, removed or rewritten, so an id once returned stays
+    the id. Only an absent, empty or invalid file is initialised, under the workers lock and after reading it again
+    there: a new uuid goes to a unique temporary file, installed with ``os.link`` when the file is absent (which
+    fails if it now exists) or ``os.replace`` over an invalid one (no valid id can appear while the lock is held,
+    since every initialisation takes it). After any failure the file is read again and a valid id there is used."""
     common = git_text(["rev-parse", "--git-common-dir"], repo_root)
     if not common:
         raise WorkerError(f"cannot find git's common dir from {repo_root}, so this checkout has no id for its leases")
     path = Path(repo_root, common) / "specy-road-checkout-id"
-    for _attempt in range(4):
-        cid = _read_id(path)
-        if cid:
+    if cid := _read_id(path):
+        return cid
+    with workers_lock(repo_root):
+        if cid := _read_id(path):   # another caller initialised it while this one waited
             return cid
         tmp = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
         try:
-            if path.exists() or path.is_symlink():   # uninitialized: set it aside (another caller may already have)
-                aside = tmp.with_suffix(".bad")
-                with contextlib.suppress(FileNotFoundError):
-                    os.rename(path, aside)
-                if _read_id(aside):   # a racing caller's id landed between our read and the rename: put it back
-                    with contextlib.suppress(FileExistsError):
-                        os.link(aside, path)
-                aside.unlink(missing_ok=True)
-                continue
             tmp.write_text(uuid.uuid4().hex + "\n", encoding="utf-8")
-            os.link(tmp, path)
-        except FileExistsError:
-            pass   # another caller's id won; it is read on the next pass
+            if path.exists() or path.is_symlink():
+                os.replace(tmp, path)   # empty or invalid: no lease was ever pushed under it
+            else:
+                os.link(tmp, path)
         except OSError as e:
+            if cid := _read_id(path):
+                return cid
             raise WorkerError(f"cannot write the checkout id {path}: {e}; nothing was launched") from None
         finally:
             tmp.unlink(missing_ok=True)
-    cid = _read_id(path)
-    if not cid:
-        raise WorkerError(f"{path} holds no usable checkout id after rewriting it; nothing was launched")
-    return cid
+    if cid := _read_id(path):
+        return cid
+    raise WorkerError(f"{path} holds no usable checkout id after initialising it; nothing was launched")
 
 
 def _read_id(path: Path) -> str | None:
