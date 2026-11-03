@@ -102,14 +102,3 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: meter-claude-rules-and-nested
-    node_id: M11.61
-    branch: feature/rm-meter-claude-rules-and-nested
-    touch_zones:
-      - specy_road/agents_md_block.py
-      - docs/install-and-usage.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-03T07:01:47+00:00'

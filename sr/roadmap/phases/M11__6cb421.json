@@ -151,7 +151,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.61_meter-claude-rules-and-nested_cd54ad06-f1fa-4ebb-a22a-d09af76245b3.md",
       "sibling_order": 62,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The context meter counts Claude rules, auto memory, Cursor nested AGENTS.md and Copilot path instructions",
       "touch_zones": [
         "specy_road/agents_md_block.py",
