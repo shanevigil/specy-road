@@ -192,3 +192,15 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
+  - codename: version-shows-checkout-sha
+    node_id: M11.66
+    branch: feature/rm-version-shows-checkout-sha
+    touch_zones:
+      - specy_road/cli.py
+      - specy_road/version_skew.py
+      - specy_road/worker_runner.py
+      - specy_road/review_files.py
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
