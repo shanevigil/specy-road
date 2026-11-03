@@ -168,6 +168,137 @@
         "specy_road/harness_instruction_files.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "do-next-available-task exits 6 with the held claim named when this checkout already holds a claim whose branch exists locally, unless --allow-second-claim is passed; the AGENTS.md stub's description of exit 6 matches the command's behaviour; tests cover refusal, the override and a claim whose branch is gone"
+      ],
+      "codename": "pickup-second-claim-guard",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.63",
+      "node_key": "cabfd63c-1329-4e9f-9b32-aaeaeaa851d6",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.63_pickup-second-claim-guard_cabfd63c-1329-4e9f-9b32-aaeaeaa851d6.md",
+      "sibling_order": 63,
+      "status": "Not Started",
+      "title": "do-next-available-task refuses a second claim in a checkout that already holds one",
+      "touch_zones": [
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/bundled_scripts/do_next_task_args.py",
+        "specy_road/templates/",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "abort-task-pickup accepts untracked files that pickup accepts (untracked files survive the branch switch it makes) and refuses only on tracked changes; when it refuses, the error names which paths blocked it and why; tests cover untracked coordinator notes under work/ and a tracked change"
+      ],
+      "codename": "abort-untracked-like-pickup",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.64",
+      "node_key": "099973ff-86a7-4fbb-9882-6231169d204b",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.64_abort-untracked-like-pickup_099973ff-86a7-4fbb-9882-6231169d204b.md",
+      "sibling_order": 64,
+      "status": "Not Started",
+      "title": "abort-task-pickup treats untracked files the way pickup does",
+      "touch_zones": [
+        "specy_road/bundled_scripts/abort_task_pickup.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "why-blocked <ID> reports a plan hold when grind-session --plan holds the leaf behind another by touch-zone overlap (naming the holding leaf and the overlapping zones) and says whether pickup honours the hold; tests cover a dependency block, a zone hold and a free leaf"
+      ],
+      "codename": "why-blocked-plan-holds",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.65",
+      "node_key": "a2c70000-f148-4d74-bee8-bd8dd01eb619",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.65_why-blocked-plan-holds_a2c70000-f148-4d74-bee8-bd8dd01eb619.md",
+      "sibling_order": 65,
+      "status": "Not Started",
+      "title": "why-blocked reports touch-zone holds from the plan",
+      "touch_zones": [
+        "specy_road/bundled_scripts/roadmap_query_cli.py",
+        "specy_road/bundled_scripts/session_plan.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When specy-road runs from a git checkout, --version prints the version plus the commit sha and a dirty marker; worker records and review records store that same toolkit version string; tests cover a checkout, a dirty checkout and a non-checkout install"
+      ],
+      "codename": "version-shows-checkout-sha",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.66",
+      "node_key": "84185e5e-d8cc-487d-a0a5-103e757360f3",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.66_version-shows-checkout-sha_84185e5e-d8cc-487d-a0a5-103e757360f3.md",
+      "sibling_order": 66,
+      "status": "Not Started",
+      "title": "specy-road --version identifies the code when run from a checkout",
+      "touch_zones": [
+        "specy_road/cli.py",
+        "specy_road/version_skew.py",
+        "specy_road/worker_runner.py",
+        "specy_road/review_files.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "worker usage reports an estimated cost for Cursor turns (and any harness that reports tokens without cost) from the same price table orchestrate plan uses, pricing cached input separately when a cached rate is known, and marks the figure as an estimate; tests cover a Cursor result line with cached input and a model with no price"
+      ],
+      "codename": "cursor-usage-cost",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.67",
+      "node_key": "94746b89-1891-49c5-ad57-6b3526f4a6d9",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.67_cursor-usage-cost_94746b89-1891-49c5-ad57-6b3526f4a6d9.md",
+      "sibling_order": 67,
+      "status": "Not Started",
+      "title": "Worker usage prices Cursor runs from the roster's price table",
+      "touch_zones": [
+        "specy_road/worker_adapter_parsers.py",
+        "specy_road/worker_adapter_cursor.py",
+        "specy_road/cli_usage.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the leaf has blocking review records (at the branch tip or an earlier commit), the executor prompt inlines each blocking reviewer's required changes under a 'Rework' heading and says to build on the existing commits; worker delegate --rework makes this explicit and is the documented path when the previous worker is terminated or cannot be resumed; tests cover a leaf with and without blocking records"
+      ],
+      "codename": "rework-findings-in-prompt",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.68",
+      "node_key": "4baf83c6-0d3d-423b-93ee-2d8037b65166",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.68_rework-findings-in-prompt_4baf83c6-0d3d-423b-93ee-2d8037b65166.md",
+      "sibling_order": 68,
+      "status": "Not Started",
+      "title": "A re-delegated executor starts from the blocking review findings",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/review_gate.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
