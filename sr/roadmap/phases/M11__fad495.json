@@ -2,6 +2,28 @@
   "nodes": [
     {
       "acceptance": [
+        "The reviewer prompt tells every reviewer to (1) run the tests that import each changed module, not only the executor's selection, (2) try at least one input per changed public function that the diff's tests do not use and report it under commands_rerun, (3) fail an acceptance item whose observed behaviour differs from its text, even when the difference looks minor, and (4) list every defect its notes describe under required_changes or explain why it is not a defect; a test pins the four rules in the rendered prompt",
+        "review record refuses an approve whose notes or findings name a defect without a matching required_changes entry or an explicit 'not a defect because' line, with a message saying which; a test covers the refusal and an approve with no findings"
+      ],
+      "codename": "reviewer-probe-rules",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.75",
+      "node_key": "fad49524-fd80-4585-86c5-6855921d0ed8",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.75_reviewer-probe-rules_fad49524-fd80-4585-86c5-6855921d0ed8.md",
+      "sibling_order": 75,
+      "status": "Not Started",
+      "title": "Reviewer prompt asks for independent probes, not the executor's own checks",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt.py",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
         "validate (or orchestrate plan) warns when a roster entry with a reviewer or executor role matches no model profile by api_id, file name or alias, naming the entry and the closest profile; the shipped profiles carry aliases for the harness ids they document (for example cursor-grok-4.6-high and gpt-5.6-sol-high); a test covers a matched and an unmatched roster id"
       ],
       "codename": "profile-alias-coverage",
