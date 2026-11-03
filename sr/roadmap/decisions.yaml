@@ -28,9 +28,9 @@ entries:
     node: M1.1
     kind: decision
     summary: Version number for promoting the 0.3.1 line to main
-    why_now: Promotion to main needs an exact version from the maintainer (version
-      numbers are human-owned). Maintainer (2026-11-03): decide at rc4, expected to be
-      the last release candidate (a final feedback round) before the 0.3.1 release.
+    why_now: 'Promotion to main needs an exact version from the maintainer (version
+      numbers are human-owned). Maintainer (2026-11-03): decide at rc4, expected to
+      be the last release candidate (a final feedback round) before the 0.3.1 release.'
     options:
       - label: 0.3.1
         effect: Final release of this line after the release candidates.
@@ -65,3 +65,27 @@ entries:
     default_if_unanswered: wait (the 23:59 Sol pass runs)
     asked: '2026-11-03'
     status: open
+  - id: D4
+    node: M8.2
+    kind: decision
+    summary: 'Bound M8.2''s A3 (post-run check) to the RCA-8 text: one post_run_check
+      per turn, defined turn kinds, defined stream and git findings; an index-only
+      (XY) change is out of scope'
+    why_now: Four openai blocks on A3, each a new porcelain class; RCA-8 (work/reviews/M8.2/RCA-8.md)
+      classifies it as a specification gap and proposes bounded text. Blocks M8.2
+      from landing.
+    options:
+      - label: approve
+        effect: Replace A3 with the RCA-8 proposed text (A1, A2 unchanged); the current
+          commit already meets it, so after the pending WIP merge it goes to re-review
+      - label: reject
+        effect: Keep A3 open-ended; another fix round records XY-only stages and Sol
+          may find a narrower class
+    recommendation: approve
+    recommendation_reason: No porcelain comparison can enumerate every git state transition;
+      the bounded text names the classes that matter (content, path membership, early
+      exits) and excludes index-only changes
+    default_if_unanswered: hold M8.2 until answered
+    asked: '2026-11-03'
+    status: open
+    needed_by: '2026-11-03'
