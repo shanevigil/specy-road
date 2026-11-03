@@ -55,6 +55,7 @@ entries:
       - specy_road/schemas/worker-event.schema.json
       - specy_road/worker_ops_message.py
       - specy_road/worker_turn_check.py
+      - specy_road/worker_orphans.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending

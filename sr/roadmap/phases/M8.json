@@ -78,7 +78,8 @@
         "specy_road/schemas/worker-record.schema.json",
         "specy_road/schemas/worker-event.schema.json",
         "specy_road/worker_ops_message.py",
-        "specy_road/worker_turn_check.py"
+        "specy_road/worker_turn_check.py",
+        "specy_road/worker_orphans.py"
       ],
       "type": "task"
     },
