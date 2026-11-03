@@ -51,6 +51,8 @@ entries:
       - specy_road/bundled_scripts/brief_dependency_context.py
       - tests/
       - docs/roadmap-authoring.md
+      - specy_road/bundled_scripts/generate_brief.py
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending

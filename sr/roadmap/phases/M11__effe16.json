@@ -169,7 +169,9 @@
         "specy_road/bundled_scripts/brief_acceptance.py",
         "specy_road/bundled_scripts/brief_dependency_context.py",
         "tests/",
-        "docs/roadmap-authoring.md"
+        "docs/roadmap-authoring.md",
+        "specy_road/bundled_scripts/generate_brief.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py"
       ],
       "type": "task"
     },
