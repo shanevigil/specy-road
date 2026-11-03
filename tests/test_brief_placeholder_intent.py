@@ -12,11 +12,7 @@ from pathlib import Path
 
 from tests.unauthored_repo_helpers import FILLED, unauthored_repo
 
-from specy_road.bundled_scripts.brief_dependency_context import (
-    is_placeholder_intent,
-    unwritten_sheet_line,
-    without_placeholder_intent,
-)
+from specy_road.bundled_scripts.brief_dependency_context import unwritten_sheet_line, without_placeholder_intent
 from specy_road.bundled_scripts.generate_brief import index, load_nodes, render_brief
 from specy_road.bundled_scripts.planning_sheet_bootstrap import PROMOTE_PLACEHOLDER, render_feature_sheet_template
 
@@ -59,13 +55,6 @@ def test_written_intents_are_inlined_as_before(tmp_path: Path) -> None:
     assert "its planning sheet is not written yet" not in brief
     assert "The export writes one row per edge." in brief
     assert brief.count("**Intent (from this dependency's planning sheet):**") == 2
-
-
-def test_is_placeholder_intent_matches_both_writers_only() -> None:
-    scaffold = render_feature_sheet_template("M1").split("## Approach")[0].removeprefix("## Intent")
-    assert is_placeholder_intent(scaffold)
-    assert is_placeholder_intent(f"Users wait.\n\nPromoted from brainstorm idea `i-1`. {PROMOTE_PLACEHOLDER}")
-    assert not is_placeholder_intent("The export writes one row per node.")
 
 
 def test_without_placeholder_intent_swaps_only_the_intent_body() -> None:

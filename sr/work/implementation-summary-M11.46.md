@@ -33,10 +33,14 @@ Not needed: `specy_road/templates/project/roadmap/phases/M1.json` and the M1.1 p
 
 ## Verification
 
-- `python -m pytest -q tests/test_brief_placeholder_intent.py tests/test_validate_strict.py tests/test_unauthored_leaf_guard.py tests/test_validate_acceptance_coverage.py`: 40 passed.
+- `python -m pytest -q tests/test_brief_placeholder_intent.py tests/test_validate_strict.py tests/test_unauthored_leaf_guard.py tests/test_validate_acceptance_coverage.py`: 40 passed (39 after the review round below).
 - Broader regression across 18 test files that exercise validate, brief, init and promote (`test_generate_brief`, `test_brief_dependency_context`, `test_validate_roadmap`, `test_one_readiness_rule`, `test_init_project`, `test_brainstorm_*`, `test_project_layouts` and others): 283 passed.
 - `specy-road file-limits`: OK.
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: exit 0, and it left no `.specyrd/cache` behind.
+
+## Review round 1
+
+The Sol review (`REVIEW-gpt-6.1-sol.md`, E1) found that `test_is_placeholder_intent_matches_both_writers_only` overlapped the two brief-rendering tests, which already feed both placeholders and an authored Intent through `is_placeholder_intent`. I removed it and its import. The rendering tests are unchanged.
 
 ## Added
 
@@ -64,6 +68,5 @@ Not needed: `specy_road/templates/project/roadmap/phases/M1.json` and the M1.1 p
 - `test_unauthored_leaf_guard.test_validate_without_strict_authoring_makes_the_block_a_stdout_notice`: A1's default path at the `validate_at` level.
 - `test_brief_placeholder_intent.test_placeholder_intents_become_one_line_each`: A2's required test. Scaffold and promote placeholder text is absent from the brief for an ancestor and two dependencies, and each one gets its own line.
 - `test_brief_placeholder_intent.test_written_intents_are_inlined_as_before`: control case. Authored intents are still inlined.
-- `test_brief_placeholder_intent.test_is_placeholder_intent_matches_both_writers_only`: the detector matches both placeholders and does not match authored text.
 - `test_brief_placeholder_intent.test_without_placeholder_intent_swaps_only_the_intent_body`: the other sections stay byte-identical, and an authored sheet comes back unchanged.
 - `tests/_validate_err` helper: now passes `strict_authoring=True` so the existing warning-path tests keep asserting stderr.
