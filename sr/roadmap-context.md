@@ -157,7 +157,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.48` A claimed leaf reads as claimed in list-nodes and brief `claimed-leaf-status` — task — **Complete**
   - `M11.49` The review packet takes touch zones from the reviewed commit and treats lockfiles as generated `packet-zones-at-commit` — task — **Complete**
   - `M11.50` finish keeps a committed implementation summary in history `finish-keeps-summary` — task — **Complete**
-  - `M11.51` Dashboard saves never overwrite newer disk edits, and the read API is documented `dashboard-safe-saves` — task — **Not Started**
+  - `M11.51` Dashboard saves never overwrite newer disk edits, and the read API is documented `dashboard-safe-saves` — task — **Complete**
   - `M11.52` PR mode predicts and resolves the registry conflict `pr-mode-registry-conflict` — task — **Complete**
   - `M11.53` A worktree-based flow can claim leaves without pushing from the worktree `pickup-into-worktree` — task — **Complete**
   - `M11.54` The test suite and land check run in parallel `parallel-test-suite` — task — **Complete**
@@ -206,10 +206,11 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M11.40` on `feature/rm-reconcile-merged-and-untracked` since 2026-11-03
-- `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.62` on `feature/rm-headless-limits-denials` since 2026-11-03
 - `M11.75` on `feature/rm-reviewer-probe-rules` since 2026-11-03
 - `M11.79` on `feature/rm-risk-tiered-review` since 2026-11-03
+- `M11.80` on `feature/rm-test-worker-cap` since 2026-11-03
+- `M11.82` on `feature/rm-wip-ruff-clean` since 2026-11-03
 - `M8.2` on `feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
