@@ -209,7 +209,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.8_delta-review-packet_0aae8208-413d-4d60-b7b8-c83f9c31b522.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "An opt-in delta review packet for small fix rounds",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet.py",
@@ -354,7 +354,8 @@
         "specy_road/review_target.py",
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/bundled_scripts/mark_implementation_reviewed.py",
-        "specy_road/orchestration_config.py"
+        "specy_road/orchestration_config.py",
+        "specy_road/bundled_scripts/roadmap_load.py"
       ],
       "type": "task"
     },
@@ -474,7 +475,9 @@
       "touch_zones": [
         "specy_road/bundled_scripts/validate_roadmap.py",
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/validate_registry_overlap.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py"
       ],
       "type": "task"
     }

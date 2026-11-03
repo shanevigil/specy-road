@@ -43,6 +43,10 @@ R1: the hold only skipped `_set_complete`; `load_roadmap` still annotated `rollu
 
 Merged `origin/WIP/improvements-0-3-1` first (auto-merge; `review_cli.py` landed at 401 lines from that merge, folded `_node_status`'s `blocked_lines` wrap to satisfy file-limits).
 
+## Review round 4 (WIP merge, 2026-11-02)
+
+Merged `origin/WIP/improvements-0-3-1` (M11.8 delta review and M11.25). Kept both `policy.milestone_full_review` and `policy.delta_review` in `DEFAULT_POLICY`, both `orchestration.schema.json` copies, the packet (milestone range plus `prior`/`--full` delta), and `docs/orchestration-review.md`. Packet display helpers `policy_source_line` / `trial_merge_lines` moved to `review_gate_ready.py` so `review_gate.py` stays at the 400-line cap with the delta-review functions.
+
 ## Verification
 
 - `python -m pytest -q tests/test_milestone_full_review.py tests/test_finish_ancestor_rollup.py tests/test_roadmap_load.py tests/test_review_packet.py tests/test_review_cli.py tests/test_review_gate.py tests/test_mark_implementation_reviewed_gate.py tests/test_orchestration_config.py -p no:cacheprovider` → 117 passed.

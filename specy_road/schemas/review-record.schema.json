@@ -17,6 +17,7 @@
     "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
     "verdict": { "enum": ["approve", "block"] },
     "commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$", "description": "The commit reviewed (quote it). The gate counts a record only while this is the commit under review: the branch tip, skipping commits that touch only roadmap/registry.yaml." },
+    "delta_from": { "type": "string", "pattern": "^[0-9a-f]{7,40}$", "description": "Set (quoted) when the review read a delta packet: the earlier commit this reviewer approved, whose change since is all it reviewed. Under policy.delta_review the gate counts such an approval only when the same model's counting approval of this commit is on file and the delta still qualifies; omit it for a full review." },
     "acceptance": {
       "type": "object",
       "description": "Result per acceptance id from the brief (A1..An).",

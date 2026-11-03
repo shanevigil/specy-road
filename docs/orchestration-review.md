@@ -32,6 +32,56 @@ commit.
 `finish-this-task` checks the gate again at the current commit, so work
 committed after approval cannot ship on the earlier reviews.
 
+## Delta review of small fix rounds
+
+A new commit makes every record stale, so each fix round normally needs fresh
+full reviews. With `policy.delta_review` (in `roadmap/orchestration.yaml`, read
+from the integration branch like the rest of the policy; **default true**), a
+reviewer whose last counting approval was of an earlier commit of the branch may
+review the next round from a **delta packet** when the change since that commit
+(`git diff <approved>..<commit>`) meets all of:
+
+- every changed path is a documentation file (`.md`, `.rst`, `.txt`, `.adoc`) or a
+  test file (under a `tests`, `test` or `__tests__` directory, or named `test_*.py`,
+  `*_test.*`, `*.test.*` or `*.spec.*`);
+- it touches at most three files (both sides of a rename count); there is no line limit;
+- the `specy-road integrity` report for that change has no findings (no removed or
+  skipped tests, no lost asserts, nothing else it reports);
+- every path is inside the leaf's touch zones; the leaf's own
+  `work/implementation-summary-<NODE_ID>.md` counts as inside.
+
+Otherwise the round gets the full packet. `specy-road prompt <NODE_ID> --role
+reviewer --model <id>` applies the rule for that reviewer: when it holds it
+writes `work/reviews/<NODE_ID>/PACKET-<model>.md` and hands that reviewer that
+packet instead of `PACKET.md`. It has the usual sections computed over the
+change since the approved commit (the **Base** line names it), the whole diff
+inlined, and a **Delta review** section with that reviewer's notes on the
+approved commit. Every other reviewer gets `PACKET.md` as before.
+
+The reviewer then adds `delta_from: "<approved commit>"` to its record's front
+matter. The gate counts an approval naming `delta_from` only when a counting
+approval of that commit by the same model is on file (`history/` keeps every
+filing), and only while the change since still meets the rule above under the
+current policy. An earlier approval counts only if it would have counted at its
+own commit:
+- it has a result for every acceptance id in the brief;
+- it passes the roster, session and signature checks;
+- if it names `delta_from` itself, its own delta qualifies and its basis still counts under this same rule.
+
+The reviewer's latest record on a commit is its verdict there. A later block on that commit takes the approval back, and with it every delta approval that depends on it; a later eligible approval of the commit restores them.
+
+A delta approval the gate rejected is therefore never the start of a later delta. Otherwise `handoff status` lists it as `does not count — a delta
+review from <sha>, …; a full review is needed`. A delta approval is still one
+model's vote, so `reviewers_distinct_families` still needs approvals from both
+families at the current commit. A block is never affected. Like
+`fresh_session`, `delta_from` is self-attested; a signature covers it.
+
+Full fresh review comes back two ways. `specy-road review-packet <NODE_ID>
+--full` stamps `PACKET.md`; while that packet is the one for the commit under
+review, no delta packet is built and no `delta_from` approval counts. Rebuilding
+the packet without `--full`, or a new commit, lifts the stamp. `delta_review:
+false` turns the rule off everywhere.
+
 **Under the default policy** the interactive menu's **approve** files
 `REVIEW-human.md` and closes the gate in one step; a human approval is offered
 only when it would complete the policy. **`--yes` never creates a review:** it
