@@ -132,7 +132,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.80_test-worker-cap_090fe219-a5b0-4737-b9d8-d44749f0bb10.md",
       "sibling_order": 80,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Executors and reviewers run tests with a bounded worker count",
       "touch_zones": [
         "specy_road/git_workflow_config.py",

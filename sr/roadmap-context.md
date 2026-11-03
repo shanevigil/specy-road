@@ -186,7 +186,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.77` A completed reviewer run does not report a missing record `run-record-no-false-failure` — task — **Complete**
   - `M11.78` Review lessons: escaped defect classes feed every reviewer prompt `review-lessons` — task — **Complete**
   - `M11.79` Leaves that touch high-risk zones need a stronger reviewer `risk-tiered-review` — task — **Not Started**
-  - `M11.80` Executors and reviewers run tests with a bounded worker count `test-worker-cap` — task — **Not Started**
+  - `M11.80` Executors and reviewers run tests with a bounded worker count `test-worker-cap` — task — **Complete**
   - `M11.82` The integration branch passes ruff again and the land check runs it `wip-ruff-clean` — task — **Not Started**
 
 ## Dependencies that were removed
