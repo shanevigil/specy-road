@@ -15,6 +15,8 @@ from tests.test_worker_adapters import CURSOR_RESULT, RECORDED
 from specy_road import worker_adapters as wa
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import worker_cli
+from specy_road.orchestration_config import roster_entry
+from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.worker_adapter_parsers import estimate_usage_cost, mtok_rates
 from specy_road.worker_adapters import Launch
 
@@ -50,6 +52,22 @@ def _cursor_repo(tmp_path: Path) -> Path:
     return repo
 
 
+def _api_id_for(repo: Path, roster_id: str) -> str | None:
+    """The id ``worker_ops_launch._cli_for`` puts on argv: profile api_id, or none when unknown."""
+    config, err = pinned_config(repo)
+    assert err is None
+    entry = roster_entry(config, roster_id)
+    prof = pinned_profile_for_entry(repo, entry)
+    assert prof is not None and prof.ok
+    return None if prof.api_id.strip().lower() == "unknown" else prof.api_id
+
+
+def _prompt(tmp_path: Path) -> Path:
+    p = tmp_path / "prompt.md"
+    p.write_text("ok")
+    return p
+
+
 def test_estimate_usage_cost_prices_cached_input_at_cached_rate() -> None:
     rates = {"input": 4.0, "output": 20.0, "cached_input": 0.2}
     usage = {"input_tokens": 1000, "cached_input_tokens": 800, "output_tokens": 100}
@@ -61,24 +79,33 @@ def test_estimate_usage_cost_returns_none_without_list_prices() -> None:
     assert estimate_usage_cost(usage, mtok_rates({"cost_usd_per_mtok": {"input": "unknown", "output": "unknown"}})) is None
 
 
-def test_cursor_parse_events_estimates_cost_for_cached_input(tmp_path: Path, monkeypatch) -> None:
+def test_cursor_parse_events_estimates_cost_for_cached_input(tmp_path: Path) -> None:
     repo = _cursor_repo(tmp_path)
-    monkeypatch.chdir(repo)
-    monkeypatch.delenv("SPECY_ROAD_REPO_ROOT", raising=False)
+    api_id = _api_id_for(repo, "priced")
+    assert api_id == "composer-2.5" and api_id != "priced"
     cu = wa.adapter_for("cursor")
-    launch = Launch(["agent", "-p", "--output-format", "stream-json", "--model", "priced",
-                     "--workspace", str(repo), "ok"])
+    launch = cu.launch(_prompt(tmp_path), repo, api_id, None)
+    assert launch.argv[launch.argv.index("--model") + 1] == api_id
     usage = cu.parse_events(json.dumps(CURSOR_RESULT), launch)[0].usage
     assert usage["input_tokens"] == 9323 + 4864 and usage["cached_input_tokens"] == 4864
     assert usage["cost_usd"] == 0.007156 and usage["cost_is_estimate"] is True
 
 
-def test_cursor_parse_events_leaves_cost_null_when_profile_has_no_price(tmp_path: Path, monkeypatch) -> None:
+def test_cursor_resume_parse_events_estimates_cost_for_cached_input(tmp_path: Path) -> None:
     repo = _cursor_repo(tmp_path)
-    monkeypatch.chdir(repo)
-    monkeypatch.delenv("SPECY_ROAD_REPO_ROOT", raising=False)
+    api_id = _api_id_for(repo, "priced")
     cu = wa.adapter_for("cursor")
-    launch = Launch(["agent", "-p", "--model", "unpriced", "--workspace", str(repo)])
+    resumed = cu.resume("c1", _prompt(tmp_path), repo, api_id, None)
+    assert resumed.argv[resumed.argv.index("--model") + 1] == api_id
+    usage = cu.parse_events(json.dumps(CURSOR_RESULT), resumed)[0].usage
+    assert usage["cost_usd"] == 0.007156 and usage["cost_is_estimate"] is True
+
+
+def test_cursor_parse_events_leaves_cost_null_when_profile_has_no_price(tmp_path: Path) -> None:
+    repo = _cursor_repo(tmp_path)
+    api_id = _api_id_for(repo, "unpriced")
+    cu = wa.adapter_for("cursor")
+    launch = cu.launch(_prompt(tmp_path), repo, api_id, None)
     usage = cu.parse_events(json.dumps(CURSOR_RESULT), launch)[0].usage
     assert usage["cost_usd"] is None and usage["cost_is_estimate"] is None
 
@@ -87,6 +114,7 @@ def test_worker_usage_shows_estimated_cursor_cost(tmp_path: Path, capsys) -> Non
     from specy_road import worker_runner as wr
 
     repo = _cursor_repo(tmp_path)
+    api_id = _api_id_for(repo, "priced")
     script = tmp_path / "fake-cursor.py"
     script.write_text(
         "import json, sys\n"
@@ -96,7 +124,7 @@ def test_worker_usage_shows_estimated_cursor_cost(tmp_path: Path, capsys) -> Non
     rec = ws.create_record(repo, "M1.1", "cursor", "priced", repo)
     spec = tmp_path / "turn.json"
     spec.write_text(json.dumps({"lines": RECORDED["cursor"]["lines"], "exit": 0}))
-    wr.run(repo, rec.worker_id, Launch([sys.executable, str(script), str(spec), "--model", "priced",
+    wr.run(repo, rec.worker_id, Launch([sys.executable, str(script), str(spec), "--model", api_id,
                                         "--workspace", str(repo)]))
     with pytest.raises(SystemExit) as exc:
         worker_cli.main(["worker", "usage", "M1.1", "--repo-root", str(repo)])

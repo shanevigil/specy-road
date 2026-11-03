@@ -254,20 +254,21 @@ def estimate_usage_cost(usage: dict[str, Any], rates: dict[str, float | None]) -
 
 
 def apply_roster_price_estimate(usage: dict[str, Any], model_id: str, repo_root: Path) -> dict[str, Any]:
-    """Fill ``cost_usd`` and ``cost_is_estimate`` from the pinned roster profile when the harness reported none."""
+    """Fill ``cost_usd`` and ``cost_is_estimate`` from the pinned roster profile when the harness reported none.
+
+    ``model_id`` is what production puts on argv (``Profile.api_id`` or an alias), not necessarily
+    the roster ``id``. Each entry's pinned profile is matched with :meth:`Profile.for_id`.
+    """
     if usage.get("cost_usd") is not None or not model_id:
         return usage
-    from specy_road.orchestration_config import roster_entry  # noqa: PLC0415 — keeps import graph small
-    from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
+    from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry  # noqa: PLC0415
 
     config, err = pinned_config(repo_root)
     if err:
         return usage
-    entry = roster_entry(config, model_id)
-    if not entry:
-        return usage
-    prof = pinned_profile_for_entry(repo_root, entry)
-    if not prof or not prof.ok:
+    prof = next((m for e in config.get("roster") or []
+                 if (p := pinned_profile_for_entry(repo_root, e)) and p.ok and (m := p.for_id(model_id))), None)
+    if not prof:
         return usage
     cost = estimate_usage_cost(usage, mtok_rates(prof.data))
     if cost is None:

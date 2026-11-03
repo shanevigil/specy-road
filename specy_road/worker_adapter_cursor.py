@@ -45,7 +45,8 @@ class Cursor(Adapter):
         if custom:
             return custom
         return Launch(["agent", "-p", "--resume", session_id, "--output-format", "stream-json", "--force", "--trust",
-                       "--workspace", str(worktree), *self._add_dir(worktree, repo_root, node_id), _text(prompt_path)],
+                       *_model_flag("--model", model), "--workspace", str(worktree), *self._add_dir(worktree, repo_root, node_id),
+                       _text(prompt_path)],
                       session_id=session_id)
 
     def parse(self, line: str) -> Parsed | None:
