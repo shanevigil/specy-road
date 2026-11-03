@@ -7,7 +7,16 @@
 - **Coordinator discipline (A2):** `specyrd-orchestrate.md`, `coordinator_decision_lines()` in `decisions.py` (included from `role_prompt.py` for coordinator prompts), and a **Human decisions ledger** section in `docs/orchestration.md`.
 - **Tests (A3):** `tests/test_decisions.py` covers add, list ordering, close vs decision-block, date/schema rejection, coordinator/skill text, and the documented `search --kind planning` command. Tests drive the public CLI (`decisions_cli.main` / `search_cli.main`), not patched internals.
 
-Merged `origin/WIP/improvements-0-3-1` into this branch before the review fixes (`23b4ce39`). Roadmap JSON was not edited for RCA-3.
+Merged `origin/WIP/improvements-0-3-1` again after the maintainer approved the A1 rewrite (`f2019539`). The implementation already matched that text: schema validation before add writes and before list prints; `asked` / `needed_by` are `YYYY-MM-DD` values `datetime.date.fromisoformat` accepts, rejected by add before write and by list's format checker (`2026-99-99`, `2026-02-30`); list orders open entries with `needed_by` first; close strips CommonMark fences from the whole sheet, then takes the first level-2 `decisions and notes` / `decisions` section. Indented code, HTML comments, blockquotes, and datetimes stay out of scope.
+
+## Approved A1 (f2019539)
+
+| Clause | Where | Test |
+|---|---|---|
+| Whole-sheet fence strip, then decision section; a fenced heading is not the block | `recorded_on_sheet` (`0109ad49`) | `test_close_requires_decision_block_record` |
+| Add rejects non-calendar strings before writing, including `2026-99-99` and `2026-02-30` | `require_iso_date` | `test_add_rejects_malformed_dates` |
+| List exits non-zero on `2026-99-99` and `2026-02-30` | schema `FORMAT_CHECKER` (`a9314c04`) | `test_list_rejects_malformed_asked_in_ledger` |
+| Docs state the same bounds; tests name `2026-99-99` and `2026-02-30` | `a2a4dd48` | `test_add_rejects_malformed_dates`, `test_list_rejects_malformed_asked_in_ledger` |
 
 ## RCA-3 (round 3 R1, in_scope_must_fix)
 
@@ -37,7 +46,7 @@ Final list matches the brief: `specy_road/decisions.py`, `specy_road/bundled_scr
 
 ## Verification
 
-- `pytest tests/test_decisions.py -q` (10 passed)
+- `pytest tests/test_decisions.py -q` (13 passed)
 - `specy-road file-limits`
 
 ## Added
