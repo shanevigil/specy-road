@@ -471,7 +471,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.58_session-routing-preferences_0f7f80f3-23c0-4824-ac19-58e173360f5d.md",
       "sibling_order": 58,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The coordinator records the session's routing preferences where the next session can read them",
       "touch_zones": [
         "specy_road/decisions.py",
