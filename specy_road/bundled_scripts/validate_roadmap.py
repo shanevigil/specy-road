@@ -58,8 +58,13 @@ from specy_road.bundled_scripts.validate_roadmap_checks import (
 )
 from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
 from specy_road.bundled_scripts.validate_self_heal import auto_heal_roadmap
+from specy_road.bundled_scripts.validate_registry_overlap import (
+    authoring_overlap_scope,
+    current_authoring_overlap_scope,
+)
 
 __all__ = [
+    "authoring_overlap_scope",
     "cycle_check",
     "pinned_version",
     "run_validation",
@@ -277,6 +282,7 @@ def validate_at(
         no_overlap_warn,
         repo_root=root,
         show_all=show_all,
+        overlap_scope=current_authoring_overlap_scope(),
     )
 
 
