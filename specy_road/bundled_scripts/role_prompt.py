@@ -21,6 +21,9 @@
    else ``PACKET.md``; for ``rca``, then every review round side by side with the
    diffs between them.
 
+An executor's prompt also carries a ``## Rework`` section when the leaf has blocking review records or its
+latest worker was terminated or failed (:mod:`role_prompt_rework`).
+
 ``--context-feedback`` (executor only, opt-in pilot) appends :data:`CONTEXT_FEEDBACK_LINES`, which ask
 for a three-line missing / wrong / unused block at the end of the implementation summary.
 
@@ -54,6 +57,7 @@ from specy_road.bundled_scripts.role_prompt_rca import (
     profile_lines,
     reviewer_preamble,
 )
+from specy_road.bundled_scripts.role_prompt_rework import rework_lines
 from specy_road.decisions import coordinator_decision_lines
 from specy_road.model_profiles import ROLES, Profile
 from specy_road.orchestrate_plan import (
@@ -200,7 +204,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
     if role == "executor":
         lines += executor_preamble(node_id, model, zones, entry.get("subagent_family_lock"),
                                    reviews_dir(root, node_id), prefix)
-        lines += FILE_LIMIT_LINES
+        lines += FILE_LIMIT_LINES + rework_lines(root, node_id, t)
         if has_subagents(prof):
             lines += [SUBAGENT_LINE, ""]
         if context_feedback:
