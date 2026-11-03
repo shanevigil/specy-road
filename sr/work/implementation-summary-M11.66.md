@@ -6,8 +6,9 @@
 - `specy-road --version` prints `specy-road {running_toolkit_version()}` via `specy_road/cli.py`.
 - `version_skew.py` re-exports `running_toolkit_version`; skew warnings still compare pins to plain `__version__`.
 - Worker YAML records store `toolkit_version` at delegation time (`worker_state.create_record`).
-- `render_front_matter` does not stamp; `stamp_review_toolkit_version` runs only in `review record` and interactive human approve before `sign()`. Independence relabel re-renders leave unsigned fields unchanged and do not break signatures.
+- `render_front_matter` does not stamp. `stamp_review_toolkit_version` runs only in `review record` and interactive human approve immediately before `sign()`, always setting `toolkit_version` to `running_toolkit_version()` (overwriting any value copied into reviewer notes). Independence relabel re-renders do not call the stamp helper.
 - JSON schemas: optional `toolkit_version` on `review-record` and `worker-record`; handoff schema unchanged.
+- Merged `origin/WIP/improvements-0-3-1` (M11.27, M11.39, M11.67, M11.74 among others); `review_cli.py` keeps both `stamp_review_toolkit_version` and WIP `gate_policy_summary`.
 
 ## Touch zones
 
@@ -20,15 +21,15 @@
 | `specy_road/review_gate_ready.py`, `specy_road/bundled_scripts/review_cli.py` | Stamp before sign |
 | `specy_road/review_files.py` | Front matter render only |
 | `specy_road/schemas/review-record.schema.json`, `worker-record.schema.json` | Optional field |
-| `tests/` | Checkout, venv-in-consumer, dirty, worker, explicit stamp, re-render signature, CLI |
+| `tests/` | Behaviour coverage |
 
 ## Verification
 
-- `pytest tests/test_running_toolkit_version.py tests/test_cli_version.py tests/test_review_files.py tests/test_worker_state.py tests/test_review_signing.py tests/test_review_cli.py`
+- `pytest` (full suite)
 - `specy-road file-limits`
 
 ## Added (behaviour)
 
 - `_toolkit_git_root()` — limits SHA suffix to tracked toolkit checkout.
-- `stamp_review_toolkit_version` — used at record filing / human approve only.
-- Tests: wheel in gitignored consumer venv (no `+sha`); re-render signed REVIEW without `toolkit_version` still verifies; removed duplicate CLI test (covered in `test_cli_version.py`).
+- Unconditional stamp at filing — filed REVIEW always records the running build, even when notes front matter includes `toolkit_version`.
+- `test_record_overwrites_bogus_toolkit_version_in_notes` — `review record` integration check.

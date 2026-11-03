@@ -40,6 +40,5 @@ def running_toolkit_version() -> str:
 
 
 def stamp_review_toolkit_version(data: dict[str, Any]) -> dict[str, Any]:
-    if "verdict" not in data or data.get("toolkit_version"):
-        return data
+    """Set ``toolkit_version`` to the running build (overwrites reviewer-supplied values)."""
     return {**data, "toolkit_version": running_toolkit_version()}
