@@ -37,6 +37,7 @@ DEFAULT_POLICY: dict[str, Any] = {
     "stall_after_seconds": 600,
     "milestone_full_review": True,
     "delta_review": True,
+    "reviewer_resumed_delta": False,
 }
 DEFAULT_CONFIG: dict[str, Any] = {
     "version": 1,

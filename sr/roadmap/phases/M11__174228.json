@@ -430,14 +430,19 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.36_resumed-delta-approval_17d67a22-2e77-4f9f-9627-a051cdc2c225.md",
       "sibling_order": 36,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A resumed reviewer session may approve a delta it was shown",
       "touch_zones": [
         "specy_road/review_gate.py",
         "specy_road/bundled_scripts/review_packet.py",
         "specy_road/bundled_scripts/role_prompt.py",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/review_resumed_delta.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "sr/schemas/orchestration.schema.json",
+        "specy_road/bundled_scripts/role_prompt_rca.py"
       ],
       "type": "task"
     },

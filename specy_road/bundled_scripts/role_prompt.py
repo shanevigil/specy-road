@@ -72,6 +72,7 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_gate import delta_basis
+from specy_road.review_resumed_delta import resumed_delta_on
 from specy_road.review_rca import escalated_note, loop_state, rca_evidence, rca_preamble, rca_trigger
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
 from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_repo_root
@@ -143,6 +144,20 @@ def reviewer_packet(root: Path, node_id: str, model: str, t: ReviewTarget,
     return text, ""
 
 
+def reviewer_lines(root: Path, node_id: str, model: str, t: ReviewTarget, ref: str | None,
+                   loop) -> tuple[list[str], str | None, str]:
+    """``(preamble lines, packet text, error)`` for a reviewer; the packet is ``None`` on error. The preamble
+    lets a resumed session approve when the packet is ``model``'s delta and ``policy.reviewer_resumed_delta``
+    is on (M11.36)."""
+    packet, err = reviewer_packet(root, node_id, model, t, ref)
+    if packet is None:
+        return [], None, err
+    # reviewer_packet writes PACKET-<model>.md only for a delta round (and removes a stale one first)
+    resumed = (reviews_dir(root, node_id) / f"PACKET-{model}.md").is_file() and resumed_delta_on(root)
+    return (reviewer_preamble(node_id, model, ref, resumed_delta=resumed) + REMOVED_TEXT_LINES
+            + LAUNCH_MODE_LINES + escalated_note(loop, node_id)), packet, ""
+
+
 def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
                  ref: str | None = None, context_feedback: bool = False,
                  force_reason: str | None = None) -> tuple[str, Profile | None, str | None]:
@@ -206,7 +221,10 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
         if context_feedback:
             lines += CONTEXT_FEEDBACK_LINES
     elif role == "reviewer":
-        lines += reviewer_preamble(node_id, model, ref) + REMOVED_TEXT_LINES + LAUNCH_MODE_LINES + escalated_note(loop, node_id)
+        preamble, packet, err = reviewer_lines(root, node_id, model, t, ref, loop)
+        if packet is None:
+            return "", prof, err
+        lines += preamble
     elif role == "rca":
         lines += rca_preamble(root, node_id, model, loop.escalation) + [DATA_LINE, ""]
     else:
@@ -214,9 +232,6 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
         lines += coordinator_decision_lines()
     lines += profile_lines(prof, role, zones)
     if role == "reviewer":
-        packet, err = reviewer_packet(root, node_id, model, t, ref)
-        if packet is None:
-            return "", prof, err
         lines += ["---", "", packet.rstrip(), ""]
     else:
         lines += ["---", "", render_brief(node_id, index(nodes), repo_root=root, include_history=False).rstrip(), ""]
