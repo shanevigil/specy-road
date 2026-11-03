@@ -112,6 +112,7 @@ entries:
       - specy_road/bundled_scripts/do_next_task_args.py
       - specy_road/templates/
       - tests/
+      - specy_road/bundled_scripts/do_next_task_held_claim.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending

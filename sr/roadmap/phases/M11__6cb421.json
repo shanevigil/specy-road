@@ -187,7 +187,8 @@
         "specy_road/bundled_scripts/do_next_task.py",
         "specy_road/bundled_scripts/do_next_task_args.py",
         "specy_road/templates/",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/do_next_task_held_claim.py"
       ],
       "type": "task"
     },
