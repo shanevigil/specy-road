@@ -13,6 +13,7 @@ from specy_road import orchestrate_plan as op
 from specy_road import worker_ops as ops
 from specy_road.bundled_scripts import role_prompt
 from specy_road.orchestration_config import effective_config, roster_entry
+from specy_road.review_eligible import reviewer_eligibility
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.worker_state import WorkerError
@@ -77,3 +78,22 @@ policy: {reviewers_required: 1}
     _write_local(repo, "version: 1\nroster:\n  - {id: opus, available: false}\n")
     gate = evaluate_gate(repo, NODE, head, branch="feature/rm-thing")
     assert gate.passed
+
+
+def test_paused_counted_reviewer_still_shows_as_counting(tmp_path: Path) -> None:
+    roster = """version: 1
+roster:
+  - {id: human, family: human, roles: [coordinator, reviewer]}
+  - {id: opus, family: anthropic, roles: [reviewer]}
+policy: {reviewers_required: 2}
+"""
+    repo = make_review_repo(tmp_path, orchestration=roster)
+    head = git(repo, "rev-parse", "HEAD")
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "REVIEW-opus.md").write_text(review_text(head, model="opus"))
+    _write_local(repo, "version: 1\nroster:\n  - {id: opus, available: false}\n")
+    gate = evaluate_gate(repo, NODE, head, branch="feature/rm-thing")
+    assert not gate.passed and [a.model for a in gate.approvals] == ["opus"]
+    rows = {r["model"]: r for r in reviewer_eligibility(repo, NODE, gate, "feature/rm-thing")}
+    assert rows["opus"]["eligible"] and rows["opus"]["reason"].startswith("its approval counts")

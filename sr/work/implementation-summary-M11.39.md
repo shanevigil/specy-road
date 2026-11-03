@@ -37,6 +37,6 @@ Listed on the leaf, plus three paths added with `edit-node --add` because A1 can
 - `load_availability_overlay`, `apply_availability_overlay`, `orchestration_local_path` in `orchestration_config.py` — read and merge local availability without touching committed roster.
 - `_paused_until_error`, extended `_date_error` / `_dates_to_iso` in `orchestration_config.py` — validate date and datetime pauses.
 - `_pause_active`, `unavailability_reason`, `unavailable_prompt_error` in `orchestrate_plan.py` — shared availability rules and refuse-with-reason text.
-- Availability exclusion in `review_eligible._roster_reason` — `handoff status` lists paused reviewers as excluded without shortening `review_cli.py`.
+- Availability exclusion in `review_eligible._roster_reason` — skipped when that model's approval already counts, so `handoff status` still says ``its approval counts``.
 - Schema fields `available`, `paused_until`; gitignore line for `orchestration.local.yaml`.
-- `tests/test_roster_availability.py` — behavioural coverage for A1/A2.
+- `tests/test_roster_availability.py` — behavioural coverage for A1/A2, including a counted paused reviewer under `reviewers_required: 2`.
