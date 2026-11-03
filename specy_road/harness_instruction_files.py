@@ -146,9 +146,10 @@ def machine_local_paths(start: Path, top: Path) -> list[Path]:
     """Instruction files outside the git root. Each is a note, never a warning.
 
     The ancestor walk and the explicit home candidates can name one file; it is listed once.
+    A rule linked from inside the repository to a file outside it is one of these too.
     A Claude file too large to load is left out: :func:`claude_skipped` reports it.
     """
-    discovered = claude_paths(start)
+    discovered = [*claude_paths(start), *claude_rules(start, top)]
     outside = [p for p in discovered if not inside(p, top) and claude_loads(p)]
     seen = {p.resolve() for p in discovered}
     user = user_claude_path()

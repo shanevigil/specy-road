@@ -212,7 +212,7 @@ def injected_context(project_root: Path) -> dict[str, list[InjectedFile]]:
     Claude Code's list leaves out a file over its 4 MiB cap, which it never loads.
     """
     project_root, top = _roots(project_root)
-    claude = [p for p in claude_paths(project_root) if inside(p, top)] + claude_rules(project_root, top)
+    claude = [p for p in (*claude_paths(project_root), *claude_rules(project_root, top)) if inside(p, top)]
     found = {"Codex": codex_paths(project_root, top),
              "Claude Code": [p for p in claude if claude_loads(p)],
              "Cursor": cursor_paths(project_root, top), "Copilot": copilot_paths(project_root, top)}

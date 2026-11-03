@@ -58,7 +58,7 @@ def _memory(home: Path, checkout: Path, text: str) -> Path:
     return _write(home, f".claude/projects/{project}/memory/MEMORY.md", text)
 
 
-def test_claude_counts_rules_recursively_beside_the_claude_md_family(repo: Path) -> None:
+def test_claude_counts_rules_recursively_beside_the_claude_md_family(repo: Path, capsys) -> None:
     _write(repo, AGENT_GUIDE, "# Claude\n")
     _write(repo, ".claude/rules/style.md", "- Style.\n")
     _write(repo, ".claude/rules/sub/deep.md", "- Deep.\n")
@@ -68,6 +68,16 @@ def test_claude_counts_rules_recursively_beside_the_claude_md_family(repo: Path)
     assert _rels(repo, "Claude Code") == [AGENT_GUIDE, ".claude/rules/style.md", ".claude/rules/sub/deep.md"]
     assert _rels(repo / "sr", "Claude Code") == [AGENT_GUIDE, ".claude/rules/style.md",
                                                  ".claude/rules/sub/deep.md", "sr/.claude/rules/ours.md"]
+    external = _write(repo.parent, "external.md", "- outside\n" * 201)
+    (repo / ".claude/rules/linked.md").symlink_to(external)
+    assert _rels(repo, "Claude Code") == [AGENT_GUIDE, ".claude/rules/style.md", ".claude/rules/sub/deep.md"]
+    warn_if_context_over_limits(repo)
+    assert capsys.readouterr().err == ""
+    print_injected_context(repo)
+    out = capsys.readouterr().out.splitlines()
+    assert "linked.md" not in next(ln for ln in out if ln.startswith("context: Claude Code reads"))
+    assert (f"context: note — .claude/rules/linked.md 201 lines, {external.stat().st_size:,} bytes, "
+            "user-level / machine-local; not counted toward this repository's limit") in out
 
 
 def test_auto_memory_is_a_machine_local_note_shared_by_worktrees(repo: Path, home: Path, capsys) -> None:
