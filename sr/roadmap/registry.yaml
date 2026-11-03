@@ -14,7 +14,8 @@ entries:
       - specy_road/pm_gantt_static/
     started: '2026-11-02'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-03T19:43:46+00:00'
   - codename: reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
     node_id: M8.3
     branch: feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
