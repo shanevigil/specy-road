@@ -2,7 +2,7 @@
 
 ## Summary
 
-- **A1.** A new module, `specy_road/review_gate_agreement.py`, decides when the two settings disagree. They disagree when `roadmap/orchestration.yaml` exists and its effective `policy.reviewers_required` is above 0, while `review_gate.review_required()` is False. That function is the rule finish itself uses: the gate is on if the working tree or the integration branch turns it on, and counts as on if the integration branch can't be found. The message names `roadmap/orchestration.yaml`, `policy.reviewers_required`, `roadmap/git-workflow.yaml` and `require_implementation_review_before_finish`, and gives the one-line fix: ``set `require_implementation_review_before_finish: true` in roadmap/git-workflow.yaml``.
+- **A1.** A new module, `specy_road/review_gate_agreement.py`, decides when the two settings disagree. They disagree when `roadmap/orchestration.yaml` exists and loads (the loader's schema already requires `policy.reviewers_required` ≥ 1, so no separate count check is needed), while `review_gate.review_required()` is False. That function is the rule finish itself uses: the gate is on if the working tree or the integration branch turns it on, and counts as on if the integration branch can't be found. The message names `roadmap/orchestration.yaml`, `policy.reviewers_required`, `roadmap/git-workflow.yaml` and `require_implementation_review_before_finish`, and gives the one-line fix: ``set `require_implementation_review_before_finish: true` in roadmap/git-workflow.yaml``.
   - `validate` (`run_validation` in `validate_roadmap_checks.py`): prints `roadmap: error — …` and exits 1. It reuses the `gate` value it already computed.
   - `doctor`: prints `error: …` to stderr first, still lists the branches, worktrees, registry rows and stashes as before, then exits 1. **This changes doctor's behaviour:** before, a dry run always exited 0.
   - `mark-implementation-reviewed`: the "nothing to do" message now says the review gate is not enforced at finish-this-task. The stdout line adds that finish lands without reviews and how to enforce them.
@@ -34,6 +34,7 @@
 - `gate_config_mismatch(repo_root, *, gate_on=None)`: the single definition of "the settings disagree", shared by validate and doctor. `gate_on` lets validate reuse the `review_required()` result it already has.
 - `report_gate_mismatch(repo_root)`: doctor's one-call wrapper that prints `error:` and returns whether there was a mismatch.
 - `GATE_KEY` and `GATE_FIX` constants: the switch name and the fix text, so the message and the tests share one spelling.
+- Review fix (E1, gpt-6.1-sol): removed an unreachable `required <= 0` clause from `gate_config_mismatch`; the loader rejects a count below 1.
 - Guard `err or data is None` in `gate_config_mismatch`: a missing file asks for no reviewers, and a broken file is reported elsewhere.
 - Branch in `run_validation`: error and exit 1 on a mismatch.
 - `bad_config` in `cmd_doctor`: doctor reports the error first, still lists the rest, then exits 1.

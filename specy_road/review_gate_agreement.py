@@ -37,7 +37,7 @@ def gate_config_mismatch(repo_root: Path, *, gate_on: bool | None = None) -> str
     if err or data is None:
         return None
     required = int({**DEFAULT_POLICY, **(data.get("policy") or {})}["reviewers_required"])
-    if required <= 0 or (review_required(repo_root) if gate_on is None else gate_on):
+    if review_required(repo_root) if gate_on is None else gate_on:
         return None
     return (
         f"{ORCHESTRATION_REL.as_posix()} requires {required} reviewer(s) (policy.reviewers_required), "
