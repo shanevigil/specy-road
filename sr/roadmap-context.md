@@ -147,7 +147,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.38` handoff status says who can still supply a missing approval `handoff-eligible-reviewers` — task — **Not Started**
   - `M11.39` A roster entry can be marked unavailable without deleting it `roster-availability` — task — **Not Started**
   - `M11.40` worker reconcile works on merged leaves and separates untracked files `reconcile-merged-and-untracked` — task — **Not Started**
-  - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Not Started**
+  - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Complete**
   - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Complete**
   - `M11.43` init project reports exactly what it writes `init-project-reports-writes` — task — **Not Started**
   - `M11.44` init project can install only the model profiles a project uses `init-profiles-subset` — task — **Not Started**
@@ -170,6 +170,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.60` The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names `harness-facts-nov-refresh` — task — **Not Started**
   - `M11.61` The context meter counts Claude rules, auto memory, Cursor nested AGENTS.md and Copilot path instructions `meter-claude-rules-and-nested` — task — **Not Started**
 
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+
 ## Archived (not in the live roadmap)
 
 This work was completed and moved out of the graph. It is deliberately excluded from IDE indexing; reach it with `specy-road search <QUERY> --scope archived`.
@@ -181,7 +187,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M11.16` on `feature/rm-sheet-edits-keep-approvals` since 2026-11-02
-- `M11.41` on `feature/rm-gate-config-agree` since 2026-11-02
 - `M11.44` on `feature/rm-init-profiles-subset` since 2026-11-02
 - `M11.46` on `feature/rm-placeholder-leaves-strict-brief` since 2026-11-02
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
