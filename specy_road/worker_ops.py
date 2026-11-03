@@ -338,8 +338,7 @@ def message(repo_root: Path, worker_id: str, text: str, *, offline: bool = False
 
 def resume(repo_root: Path, worker_id: str, *, offline: bool = False) -> WorkerRecord:
     with workers_lock(repo_root):
-        return _send(repo_root, load_record(repo_root, worker_id), CONTINUE_PROMPT, "resume", offline,
-                     no_queue=True)
+        return _send(repo_root, load_record(repo_root, worker_id), CONTINUE_PROMPT, "resume", offline, no_queue=True)
 
 
 def interrupt(repo_root: Path, worker_id: str) -> None:

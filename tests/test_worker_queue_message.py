@@ -16,7 +16,6 @@ from tests.test_worker_cli import _repo, run_worker_cli, wait_for_worker
 from specy_road import worker_ops as ops
 from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
-from specy_road.bundled_scripts import worker_cli_render as wcr
 
 
 FAKE_SLOW = '''
@@ -125,8 +124,8 @@ def test_list_and_sync_show_queued_message(tmp_path: Path, capsys) -> None:
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.mutate(repo, rec, lambda r: (setattr(r, "provider_session_id", "sid-1"), setattr(r, "queued_message", "wait for it")))
     ws.set_state(repo, rec, "running", pid=None)
-    line = wcr._line(ws.load_record(repo, rec.worker_id), repo)
-    assert "queued: wait for it" in line
+    assert run_worker_cli("worker", "list", "--repo-root", str(repo)) == 0
+    assert "queued: wait for it" in capsys.readouterr().out
     ws.append_event(repo, rec, "message_queued", source="orchestrator", authority="orchestrator", summary="queued: wait")
     assert run_worker_cli("worker", "sync", "--repo-root", str(repo), "--json") == 0
     out = json.loads(capsys.readouterr().out)

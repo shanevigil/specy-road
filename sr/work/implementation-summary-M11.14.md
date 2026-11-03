@@ -5,7 +5,7 @@
 - **`worker message` while a turn is running** stores the text on `WorkerRecord.queued_message` (under the workers lock), logs `message_queued`, and returns without spawning. A second message during the same turn is appended, separated by a blank line; the event summary says `appended`. **`--no-queue`** restores the previous “cannot steer a live turn” refusal (including the stalled hint). **`resume()`** always passes `no_queue=True` into `_send`, so a live process is still refused.
 - **After each turn**, the wrapper calls `deliver_queued_message`, which holds `workers_lock` across `_send` (same scope as `message()`), so liveness and spawn are one transition; on `WorkerError` it re-queues only when the refreshed record is not `terminated`.
 - **`worker terminate`** clears `queued_message` and notes `dropped queued follow-up` on the `terminated` event.
-- **`worker list` / `sync`** show queued text (`_line`, `sync_worker_header`); JSON sync payloads include `queued_message` when set.
+- **`worker list` / `sync`** show queued text; JSON sync payloads include `queued_message` when set. The list/sync test reads that through the public CLI, not a private renderer.
 - **Docs** (`docs/orchestration-workers.md`) document the field, event type, commands, and terminate behaviour.
 
 ## Touch zones (confirmed)
@@ -15,6 +15,7 @@ Listed in the brief, plus **`specy_road/bundled_scripts/worker_cli_render.py`**,
 ## Verification
 
 - `pytest tests/test_worker_queue_message.py tests/test_worker_resume_failed.py tests/test_review_round4_sol.py::test_concurrent_messages_launch_one_turn tests/test_review_round6_runner.py::test_a_dead_wrapper_with_a_live_harness_keeps_the_leaf_and_terminate_kills_the_group`
+- `python scripts/check_test_private_imports.py`
 - `specy-road file-limits`
 
 ## Added
@@ -31,5 +32,5 @@ Listed in the brief, plus **`specy_road/bundled_scripts/worker_cli_render.py`**,
 - `--no-queue` on `worker message` CLI — opt out of queueing.
 - `sync_worker_header` in `worker_cli_render.py` — sync/list-style queued line plus JSON field.
 - `message_queued` event type in `worker-event.schema.json`.
-- `tests/test_worker_queue_message.py` — queue, delivery, list/sync, terminate, and `--no-queue` coverage.
+- `tests/test_worker_queue_message.py` — queue, delivery, list/sync via public CLI, terminate, and `--no-queue` coverage.
 - Updates to `test_worker_resume_failed.py` and `test_review_round4_sol.py` — `--no-queue` / concurrent queue expectations; stalled-alive now asserts the stalled hint on `message(..., no_queue=True)` and that `resume()` still refuses.
