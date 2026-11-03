@@ -255,7 +255,9 @@
         "specy_road/schemas/review-record.schema.json",
         "specy_road/schemas/worker-record.schema.json",
         "specy_road/toolkit_version.py",
-        "specy_road/worker_state.py"
+        "specy_road/worker_state.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_gate_ready.py"
       ],
       "type": "task"
     },
