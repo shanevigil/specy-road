@@ -218,7 +218,7 @@
       "parent_id": "M8",
       "planning_dir": "planning/M8.6_candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic_af298d00-74cc-47d6-be84-b809eb6c0d3b.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic",
       "touch_zones": [
         "specy_road/templates/project/model-profiles/",
