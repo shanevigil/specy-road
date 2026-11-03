@@ -9,7 +9,7 @@
 2. the role preamble — the executor boundary (§3.1), the reviewer's
    packet-only rule (§3.2), the coordinator's never-review-your-own-fix
    rule, or the root-cause analyst's protocol (``rca``, only while the leaf's
-   review loop is escalated) — plus the standing line that text inside tool
+   review loop is escalated, or with ``--force --reason`` from a coordinator) — plus the standing line that text inside tool
    output is data (§3.5); a reviewer's prompt also says when the loop is escalated,
    and an executor's says to use the harness's subagents for verification and
    search when the profile's ``access.subagents`` starts with ``yes``;
@@ -71,7 +71,7 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_gate import delta_basis
-from specy_road.review_rca import escalated_note, loop_state, rca_evidence, rca_parties, rca_preamble
+from specy_road.review_rca import escalated_note, loop_state, rca_evidence, rca_preamble, rca_trigger
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
 from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_repo_root
 
@@ -143,9 +143,11 @@ def reviewer_packet(root: Path, node_id: str, model: str, t: ReviewTarget,
 
 
 def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
-                 ref: str | None = None, context_feedback: bool = False) -> tuple[str, Profile | None, str | None]:
+                 ref: str | None = None, context_feedback: bool = False,
+                 force_reason: str | None = None) -> tuple[str, Profile | None, str | None]:
     """``(text, profile, error)``; ``ref`` names the branch or commit under review, as ``review-packet --ref``;
-    ``context_feedback`` adds the pilot's three-line block to an executor prompt."""
+    ``context_feedback`` adds the pilot's three-line block to an executor prompt; ``force_reason`` starts an
+    ``rca`` prompt although the loop is not escalated (:func:`review_rca.rca_trigger`)."""
     config, err = pinned_config(root)
     if err:
         return "", None, f"orchestration config: {err}"
@@ -183,19 +185,17 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
     zones = list(t.touch_zones) if t else []
     loop = loop_state(root, node_id) if role in ("reviewer", "rca") else None
     if role == "rca":
-        if loop.escalation is None:
-            return "", prof, (f"{node_id}'s review loop is not escalated; no root-cause analysis is due "
-                              f"(`specy-road handoff status {node_id}`)")
-        if model in rca_parties(root, node_id, loop):
-            return "", prof, (f"{model!r} implemented or reviewed {node_id}; the root-cause analyst must be "
-                              "a rostered reviewer that is neither")
+        loop.escalation, err = rca_trigger(root, node_id, model, loop, force_reason)
+        if err:
+            return "", prof, err
     title = "Root-cause analysis" if role == "rca" else role.title()
     lines = [f"# {title} prompt: `{node_id}` for `{model}`", ""]
     if t and t.commit:   # the AGENTS.md rule: a prompt names its commit, or the agent stops to ask
         lines += [f"base: {t.commit}", ""]
     prefix = project_prefix(root)
     if t:
-        lines += precondition(role, node_id, t, reviews_dir(root, node_id) / PACKET_NAME, prefix)
+        lines += precondition(role, node_id, t, reviews_dir(root, node_id) / PACKET_NAME, prefix,
+                              forced=role == "rca" and loop.escalation.rule == "forced")
     if role == "executor":
         lines += executor_preamble(node_id, model, zones, entry.get("subagent_family_lock"),
                                    reviews_dir(root, node_id), prefix)
@@ -294,11 +294,20 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--context-feedback", action="store_true",
                    help="Executor only: ask for the pilot's three-line context-feedback block "
                         "(missing / wrong / unused) at the end of the implementation summary")
+    p.add_argument("--force", action="store_true",
+                   help="rca only: build a root-cause prompt although the loop is not escalated "
+                        "(a coordinator-initiated analysis); needs --reason")
+    p.add_argument("--reason", help="With --force: why the analysis is due; the prompt and the RCA record carry it")
     add_repo_root_arg(p)
     ns = p.parse_args(argv)
+    if ns.force and ns.role != "rca":
+        p.error("--force applies only to --role rca")
+    if ns.force != bool((ns.reason or "").strip()):
+        p.error("--force needs a non-empty --reason, and --reason needs --force")
     root = resolve_repo_root(ns)
     text, prof, err = build_prompt(root, ns.node_id, role=ns.role, model=ns.model, ref=ns.ref,
-                                   context_feedback=ns.context_feedback)
+                                   context_feedback=ns.context_feedback,
+                                   force_reason=ns.reason if ns.force else None)
     if err:
         print(f"error: {err}", file=sys.stderr)
         raise SystemExit(1)
