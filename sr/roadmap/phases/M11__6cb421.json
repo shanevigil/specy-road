@@ -13,7 +13,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.59_split-worker-modules_6cb421f0-05d8-4db3-b111-58b8708a3f53.md",
       "sibling_order": 59,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Split worker_ops and worker_adapters so parallel leaves stop colliding",
       "touch_zones": [
         "specy_road/worker_ops.py",
