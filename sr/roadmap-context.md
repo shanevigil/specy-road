@@ -170,7 +170,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.60` The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names `harness-facts-nov-refresh` — task — **Complete**
   - `M11.61` The context meter counts Claude rules, auto memory, Cursor nested AGENTS.md and Copilot path instructions `meter-claude-rules-and-nested` — task — **Complete**
   - `M11.63` do-next-available-task refuses a second claim in a checkout that already holds one `pickup-second-claim-guard` — task — **Not Started**
-  - `M11.64` abort-task-pickup treats untracked files the way pickup does `abort-untracked-like-pickup` — task — **Not Started**
+  - `M11.64` abort-task-pickup treats untracked files the way pickup does `abort-untracked-like-pickup` — task — **Complete**
   - `M11.65` why-blocked reports touch-zone holds from the plan `why-blocked-plan-holds` — task — **Complete**
   - `M11.66` specy-road --version identifies the code when run from a checkout `version-shows-checkout-sha` — task — **Not Started**
   - `M11.67` Worker usage prices Cursor runs from the roster's price table `cursor-usage-cost` — task — **Complete**
@@ -203,7 +203,6 @@ Do not pick these up.
 - `M11.57` on `feature/rm-completed-worker-frees-slot` since 2026-11-03
 - `M11.62` on `feature/rm-headless-limits-denials` since 2026-11-03
 - `M11.63` on `feature/rm-pickup-second-claim-guard` since 2026-11-03
-- `M11.64` on `feature/rm-abort-untracked-like-pickup` since 2026-11-03
 - `M11.66` on `feature/rm-version-shows-checkout-sha` since 2026-11-03
 - `M11.68` on `feature/rm-rework-findings-in-prompt` since 2026-11-03
 - `M11.69` on `feature/rm-branch-schema-for-gate-and-finish` since 2026-11-03
