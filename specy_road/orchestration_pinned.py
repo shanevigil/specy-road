@@ -42,15 +42,25 @@ def pinned_config(repo_root: Path) -> tuple[dict[str, Any], str | None]:
 
 
 def roster_source(repo_root: Path) -> tuple[str | None, str | None]:
-    """``(ref, drift)``: the ref :func:`pinned_config` reads the roster from, shortened to
-    ``<remote>/<branch>`` or ``<branch>`` (``None`` outside git or when it cannot be read), and a
-    sentence when routing ignores a roster the adopter can see: the working-tree
-    ``roadmap/orchestration.yaml``, or the local integration branch's, is absent at that ref or differs
-    from it. With no roster at the ref and none in the working tree the sentence says so and points at
-    the docs, since the default roster has no executor."""
+    """``(ref, drift)`` from :func:`roster_report`."""
+    ref, drift, _none = roster_report(repo_root)
+    return ref, drift
+
+
+def roster_report(repo_root: Path) -> tuple[str | None, str | None, bool]:
+    """``(ref, drift, none_anywhere)``: the ref :func:`pinned_config` reads the roster from, shortened
+    to ``<remote>/<branch>`` or ``<branch>`` (``None`` outside git or when it cannot be read), and a
+    sentence when routing ignores a roster the adopter can see.
+
+    Three copies are compared: the working tree's ``roadmap/orchestration.yaml``, the local
+    integration branch's when it has unpushed commits, and the ref's. An uncommitted working-tree
+    roster says commit (and push); a roster added, deleted or changed on the unpushed local branch says
+    push, whatever the working tree holds. With no roster anywhere the sentence says so and points at
+    the docs, since the default roster has no executor; ``none_anywhere`` marks that case, which
+    ``validate`` reports as a notice rather than a warning."""
     full, err = policy_source(repo_root)
     if err or full is None:
-        return None, None
+        return None, None, False
     ref = full.removeprefix("refs/remotes/").removeprefix("refs/heads/")
     local, rel = orchestration_yaml_path(repo_root), ORCHESTRATION_REL.as_posix()
     try:
@@ -59,21 +69,29 @@ def roster_source(repo_root: Path) -> tuple[str | None, str | None]:
         mine = None
     committed = _blob(repo_root, full, rel)
     remote, ib = _integration(repo_root, full, ref)
-    fix = f"committed to {ib} and pushed to {remote}" if remote else f"committed to {ib}"
+    # The local integration branch counts only when it is ahead of the ref: a stale one is not news.
+    branch = _blob(repo_root, f"refs/heads/{ib}", rel) if remote and _unpushed(repo_root, full, ib) else committed
     where = f"{ref}, where the roster is read from"
+    if mine is not None and mine != committed and mine != branch:
+        fix = f"committed to {ib} and pushed to {remote}" if remote else f"committed to {ib}"
+        if committed is None:
+            return ref, (f"{rel} is not on {where}, so routing uses the default roster (no models) "
+                         f"until it is {fix}"), False
+        return ref, (f"{rel} in the working tree differs from {where}; routing uses the copy there "
+                     f"until the change is {fix}"), False
+    push = f"until {ib} is pushed to {remote}"
+    if branch != committed and committed is None:
+        return ref, (f"{rel} is committed on the local {ib} but not on {where}, so routing uses the "
+                     f"default roster (no models) {push}"), False
+    if branch != committed and branch is None:
+        return ref, (f"{rel} is deleted on the local {ib} but still on {where}; routing uses the copy "
+                     f"there {push}"), False
+    if branch != committed:
+        return ref, f"{rel} on the local {ib} differs from {where}; routing uses the copy there {push}", False
     if mine is None and committed is None:
         return ref, (f"no {rel} on {where}, nor in the working tree, so routing uses the default roster "
-                     "(one human, no executor); see docs/orchestration.md to write and commit one")
-    if mine is not None and committed is None:
-        return ref, (f"{rel} is not on {where}, so routing uses the default roster (no models) "
-                     f"until it is {fix}")
-    if mine is not None and committed != mine:
-        return ref, (f"{rel} in the working tree differs from {where}; routing uses the copy there "
-                     f"until the change is {fix}")
-    if remote and _unpushed(repo_root, full, ib) and _blob(repo_root, f"refs/heads/{ib}", rel) not in (None, committed):
-        return ref, (f"{rel} on the local {ib} differs from {where}; routing uses the copy there "
-                     f"until {ib} is pushed to {remote}")
-    return ref, None
+                     "(one human, no executor); see docs/orchestration.md to write and commit one"), True
+    return ref, None, False
 
 
 def _unpushed(repo_root: Path, full: str, ib: str) -> bool:
