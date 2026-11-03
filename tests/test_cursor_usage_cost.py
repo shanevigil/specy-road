@@ -52,6 +52,28 @@ def _cursor_repo(tmp_path: Path) -> Path:
     return repo
 
 
+def _cursor_workspace(tmp_path: Path, layout: str) -> tuple[Path, Path]:
+    """``(workspace, project_root)``: workspace is the git worktree Cursor puts on ``--workspace``."""
+    project = _cursor_repo(tmp_path / layout / "src")
+    if layout == "embedded":
+        return project, project
+    top = tmp_path / layout / "top"
+    git(project, "checkout", "-q", "dev")
+    shutil.copytree(project, top / "sr", ignore=shutil.ignore_patterns(".git"))
+    (top / ".specyrd").mkdir()
+    (top / ".specyrd" / "manifest.json").write_text('{"project_root": "sr"}\n')
+    git(top, "init", "-q", "-b", "dev")
+    git(top, "config", "user.email", "t@e.com")
+    git(top, "config", "user.name", "T")
+    git(top, "add", "-A")
+    git(top, "commit", "-qm", "nested graph")
+    git(top, "checkout", "-q", "-b", "feature/rm-thing")
+    git(top, "checkout", "-q", "dev")
+    wt = tmp_path / layout / "wt"
+    git(top, "worktree", "add", "-q", str(wt), "feature/rm-thing")
+    return wt.resolve(), (wt / "sr").resolve()
+
+
 def _api_id_for(repo: Path, roster_id: str) -> str | None:
     """The id ``worker_ops_launch._cli_for`` puts on argv: profile api_id, or none when unknown."""
     config, err = pinned_config(repo)
@@ -79,13 +101,18 @@ def test_estimate_usage_cost_returns_none_without_list_prices() -> None:
     assert estimate_usage_cost(usage, mtok_rates({"cost_usd_per_mtok": {"input": "unknown", "output": "unknown"}})) is None
 
 
-def test_cursor_parse_events_estimates_cost_for_cached_input(tmp_path: Path) -> None:
-    repo = _cursor_repo(tmp_path)
-    api_id = _api_id_for(repo, "priced")
+@pytest.mark.parametrize("layout", ["embedded", "nested"])
+def test_cursor_parse_events_estimates_cost_for_cached_input(tmp_path: Path, layout: str) -> None:
+    workspace, project = _cursor_workspace(tmp_path, layout)
+    if layout == "nested":
+        assert workspace != project and (workspace / ".specyrd" / "manifest.json").is_file()
+        assert (project / "roadmap" / "orchestration.yaml").is_file()
+    api_id = _api_id_for(project, "priced")
     assert api_id == "composer-2.5" and api_id != "priced"
     cu = wa.adapter_for("cursor")
-    launch = cu.launch(_prompt(tmp_path), repo, api_id, None)
+    launch = cu.launch(_prompt(tmp_path), workspace, api_id, None)
     assert launch.argv[launch.argv.index("--model") + 1] == api_id
+    assert Path(launch.argv[launch.argv.index("--workspace") + 1]).resolve() == workspace
     usage = cu.parse_events(json.dumps(CURSOR_RESULT), launch)[0].usage
     assert usage["input_tokens"] == 9323 + 4864 and usage["cached_input_tokens"] == 4864
     assert usage["cost_usd"] == 0.007156 and usage["cost_is_estimate"] is True

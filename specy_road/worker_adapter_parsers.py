@@ -14,6 +14,8 @@ import shlex
 from pathlib import Path
 from typing import Any
 
+from specy_road.runtime_paths import git_root, recorded_project_root
+
 
 def _text(prompt_path: Path) -> str:
     return prompt_path.read_text(encoding="utf-8")
@@ -217,6 +219,22 @@ def worktree_from_argv(argv: list[str]) -> Path | None:
         if w in ("--workspace", "-C") and i + 1 < len(argv):
             return Path(argv[i + 1])
     return None
+
+
+def project_root_from_worktree(wt: Path | None) -> Path:
+    """Project root the way :func:`project_root` would from this checkout's cwd.
+
+    ``recorded_project_root(git_root(wt))`` when ``.specyrd`` records a nested
+    root; otherwise the git worktree (embedded). ``wt`` is the harness
+    ``--workspace`` (a git worktree root). Does not take ``project_root(wt)``
+    (that is ``--repo-root``) and does not walk ancestors with
+    :func:`discover_project_root`.
+    """
+    start = Path(wt).resolve() if wt is not None else Path.cwd()
+    top = git_root(start)
+    if top is None:
+        return start
+    return recorded_project_root(top) or top
 
 
 def _mtok_rate(value: Any) -> float | None:
