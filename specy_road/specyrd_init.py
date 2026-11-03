@@ -261,12 +261,12 @@ def _maybe_install_specyrd_hooks(
     dry_run: bool,
     written: list[str],
 ) -> None:
-    from specy_road.specyrd_init_helpers import maybe_install_specyrd_hooks
+    from specy_road.specyrd_hooks import install_orchestration_hooks, install_pre_push_hook
 
-    maybe_install_specyrd_hooks(
-        repo_root, agent, install_guard_hooks=install_guard_hooks, install_pre_push=install_pre_push,
-        dry_run=dry_run, written=written,
-    )
+    if install_guard_hooks and agent in ("claude-code", "codex", "cursor"):
+        install_orchestration_hooks(repo_root, agent, dry_run=dry_run, written=written)
+    if install_pre_push:
+        install_pre_push_hook(repo_root, dry_run=dry_run, written=written)
 
 
 def run_init(
@@ -282,11 +282,25 @@ def run_init(
     install_guard_hooks: bool = False,
     install_pre_push: bool = False,
 ) -> InitResult:
-    from specy_road.specyrd_init_helpers import init_repo_context
-
-    repo_root, rel_dest, written, skipped, manifest, files_to_install, already_owned = init_repo_context(
-        target, agent, ai_commands_dir, role,
-    )
+    if agent not in AGENT_CHOICES:
+        raise ValueError(f"unknown agent: {agent}")
+    if role is not None and role not in ROLE_CHOICES:
+        raise ValueError(f"unknown role: {role!r}; choose pm, dev, or both")
+    if agent == "generic":
+        if ai_commands_dir is None:
+            raise ValueError("--ai-commands-dir is required when --ai generic")
+        rel_dest = ai_commands_dir
+    else:
+        rel_dest = AGENT_REL_DEST[agent]
+        assert rel_dest is not None
+    repo_root = resolve_repo_root(target)
+    if agent == "generic":
+        rel_dest = _validate_generic_commands_dir(repo_root, rel_dest)
+    written: list[str] = []
+    skipped: list[str] = []
+    manifest = _load_manifest(repo_root)
+    files_to_install = ROLE_COMMAND_FILES[role] if role in ("pm", "dev") else COMMAND_FILES
+    already_owned = {p for paths in (manifest.get("agents") or {}).values() for p in paths}
 
     _append_command_stub_installs(
         repo_root, rel_dest, files_to_install, force, dry_run, written, skipped, agent=agent,
@@ -311,9 +325,7 @@ def run_init(
     # Both managed blocks report under --dry-run too: a dry run that silently
     # omitted them is what let the CLAUDE.md overwrite go unnoticed.
     if write_claude_md:
-        apply_guide_and_report(
-            repo_root, prefix, written, agent=agent, dry_run=dry_run
-        )
+        apply_guide_and_report(repo_root, prefix, written, agent=agent, dry_run=dry_run)
     apply_and_report(repo_root, prefix, written, dry_run=dry_run)
     if project is not None:   # no roadmap yet: `init project` writes the block when it scaffolds one
         apply_agents_and_report(project, written, dry_run=dry_run, prefix=prefix)

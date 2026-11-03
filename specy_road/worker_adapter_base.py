@@ -57,8 +57,6 @@ STDIN_INSTRUCTION = "The task is the text on standard input. Follow it exactly; 
 EFFORT_FLAGS = {"claude-code": lambda lv: ["--effort", lv], "codex": lambda lv: ["-c", f"model_reasoning_effort={lv}"]}
 # `codex exec` has no --ask-for-approval (codex-cli 0.165): set both as config, which exec and resume take.
 CODEX_POLICY = ("-c", "sandbox_mode=workspace-write", "-c", "approval_policy=never")
-# Executor workers disable harness memory, subagents and goals (M8.5); pinned in tests/test_worker_adapters.py.
-CODEX_EXECUTOR_DISABLE = ("--disable", "memories", "--disable", "multi_agent", "--disable", "goals")
 REVIEWS_DIR = "{reviews_dir}"   # a custom command's writable root (module docstring)
 
 

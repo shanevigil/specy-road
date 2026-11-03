@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 
-from specy_road.bundled_scripts.session_cli import add_repo_root_arg, resolve_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.orchestration_guard_adapters import ADAPTERS
 from specy_road.orchestration_role_guard import ROLE_CHOICES, decide_role, orchestration_role
 from specy_road.tool_call_guard import read_payload

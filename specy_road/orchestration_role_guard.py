@@ -40,16 +40,6 @@ class RoleVerdict:
     command: str
 
 
-def executor_harness_env(env: dict[str, str], harness: str) -> None:
-    """Env vars and role marker for worker launches (M8.5)."""
-    if harness == "claude-code":
-        env["CLAUDE_CODE_DISABLE_AUTO_MEMORY"] = "1"
-        env["CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"] = "1"
-        env["SPECY_ROAD_ORCHESTRATION_ROLE"] = "executor"
-    elif harness == "codex":
-        env["SPECY_ROAD_ORCHESTRATION_ROLE"] = "executor"
-
-
 def orchestration_role() -> str | None:
     raw = (os.environ.get("SPECY_ROAD_ORCHESTRATION_ROLE") or "").strip().lower()
     return raw if raw in ROLE_CHOICES else None

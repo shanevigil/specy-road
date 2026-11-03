@@ -86,15 +86,22 @@ def test_claude_print_config_has_on_failure_block() -> None:
     assert "orchestration guard" in hook["command"]
 
 
-def test_codex_worker_launch_pins_disable_flags(tmp_path: Path) -> None:
-    from specy_road import worker_adapters as wa
-
-    p = tmp_path / "p.md"
-    p.write_text("x")
-    x = wa.adapter_for("codex").launch(p, tmp_path, "gpt-6.1-sol", None)
-    assert "--disable" in x.argv
-    for feat in ("memories", "multi_agent", "goals"):
-        assert feat in x.argv
+def test_codex_launch_template_pins_disable_flags() -> None:
+    facts = (REPO / "specy_road" / "templates" / "project" / "model-profiles" / "harness-facts.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert "--disable memories --disable multi_agent --disable goals" in facts
+    root = REPO / "specy_road" / "templates" / "project" / "model-profiles" / "openai-gpt"
+    missing = []
+    for path in sorted(root.glob("*.md")):
+        cli = ""
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("  cli:"):
+                cli = line
+                break
+        if "--disable memories" not in cli or "--disable multi_agent" not in cli or "--disable goals" not in cli:
+            missing.append(path.name)
+    assert not missing, missing
 
 
 def test_every_shipped_profile_lists_orchestration_avoid() -> None:

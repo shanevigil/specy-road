@@ -173,7 +173,14 @@
         "specy_road/specyrd_init.py",
         "specy_road/templates/project/model-profiles/",
         "docs/orchestration-models.md",
-        "tests/"
+        "tests/",
+        "docs/orchestration-workers.md",
+        "specy_road/bundled_scripts/orchestration_guard_cli.py",
+        "specy_road/cli.py",
+        "specy_road/orchestration_guard_adapters.py",
+        "specy_road/orchestration_role_guard.py",
+        "specy_road/specyrd_cli.py",
+        "specy_road/specyrd_hooks.py"
       ],
       "type": "task"
     },

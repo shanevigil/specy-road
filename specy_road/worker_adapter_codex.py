@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from specy_road.worker_adapter_base import CODEX_POLICY, CODEX_EXECUTOR_DISABLE, Adapter, Capabilities, Launch, Parsed, _model_flag
+from specy_road.worker_adapter_base import CODEX_POLICY, Adapter, Capabilities, Launch, Parsed, _model_flag
 from specy_road.worker_adapter_parsers import _json, _snip, _text, usage_fields
 
 
@@ -24,9 +24,8 @@ class Codex(Adapter):
         custom = self._custom(cli, prompt_path, effort=effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return custom
-        return Launch(["codex", "exec", "--json", *_model_flag("-m", model), *CODEX_EXECUTOR_DISABLE, *self.effort_flag(effort),
-                       *CODEX_POLICY, "-C", str(worktree), *self._add_dir(worktree, repo_root, node_id), "-"],
-                      stdin=_text(prompt_path))
+        return Launch(["codex", "exec", "--json", *_model_flag("-m", model), *self.effort_flag(effort), *CODEX_POLICY,
+                       "-C", str(worktree), *self._add_dir(worktree, repo_root, node_id), "-"], stdin=_text(prompt_path))
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
@@ -36,7 +35,7 @@ class Codex(Adapter):
             return custom
         # Same policy as the launch, prompt on stdin again (128 KiB argv cap). `exec resume` takes neither --sandbox,
         # -C (the wrapper runs it in the worktree) nor a documented --add-dir, so the policy goes in as config overrides.
-        return Launch(["codex", "exec", "resume", "--json", *CODEX_EXECUTOR_DISABLE, *self.effort_flag(effort), *CODEX_POLICY, session_id, "-"],
+        return Launch(["codex", "exec", "resume", "--json", *self.effort_flag(effort), *CODEX_POLICY, session_id, "-"],
                       stdin=_text(prompt_path), session_id=session_id)
 
     def parse(self, line: str) -> Parsed | None:

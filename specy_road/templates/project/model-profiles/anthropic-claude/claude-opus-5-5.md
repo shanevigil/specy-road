@@ -30,7 +30,7 @@ role_fit:
 ---
 ## Orchestration: harness features to avoid
 
-When this model runs as a roster **executor** on `claude-code`, the worker sets:
+When this model runs as a roster **executor** on `claude-code`, apply:
 
 | Feature | Switch |
 |---|---|
