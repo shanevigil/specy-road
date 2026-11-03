@@ -33,6 +33,7 @@
 - `python -m pytest -n auto -q`: 3379 passed, 2 skipped (exit 0)
 - Red-green: with `review_cli.py` pointed back at `review_gate_ready.add_ready_parser`,
   `python -m pytest -q tests/test_ready_command.py -k trial_merge` failed on the bookkeeping and code cases (exit 1).
+- Merge round: merged `origin/WIP/improvements-0-3-1` (Codex reviewer roster entries) cleanly at `b5409504`; it changes nothing this leaf depends on (only an unrelated helper in `tests/review_repo_helpers.py`), and after it the leaf's tests (42 passed) and `specy-road file-limits` (OK) pass again.
 
 ## Added
 
