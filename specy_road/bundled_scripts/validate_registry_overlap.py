@@ -93,17 +93,28 @@ def _first_touch_zone_clash(za: list[str], zb: list[str]) -> tuple[str, str] | N
     return None
 
 
+def _claims_in_broad_zone_tree(entries: list[dict], zone: str) -> set[str]:
+    names: set[str] = set()
+    for entry in entries:
+        cn = entry.get("codename") or "?"
+        for path in entry.get("touch_zones") or []:
+            if _in_broad_zone_tree(path, zone):
+                names.add(cn)
+                break
+    return names
+
+
 def _broad_zone_summaries(entries: list[dict]) -> list[tuple[str, list[str]]]:
-    by_zone: dict[str, set[str]] = {}
+    exact: dict[str, set[str]] = {}
     for entry in entries:
         cn = entry.get("codename") or "?"
         for zone in entry.get("touch_zones") or []:
             if _is_broad_touch_zone(zone):
-                by_zone.setdefault(zone, set()).add(cn)
+                exact.setdefault(zone, set()).add(cn)
     return sorted(
-        (zone, sorted(cns))
-        for zone, cns in by_zone.items()
-        if len(cns) >= 2
+        (zone, sorted(_claims_in_broad_zone_tree(entries, zone)))
+        for zone, owners in exact.items()
+        if len(owners) >= 2
     )
 
 

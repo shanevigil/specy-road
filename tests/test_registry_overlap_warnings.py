@@ -9,6 +9,26 @@ from specy_road.bundled_scripts.validate_registry_overlap import touch_zone_over
 from tests.review_repo_helpers import make_review_repo
 
 
+def _zones_clash(x: str, y: str) -> bool:
+    x_base, y_base = x.rstrip("/"), y.rstrip("/")
+    return x == y or x.startswith(y_base + "/") or y.startswith(x_base + "/")
+
+
+def _assert_colliding_claims_appear(entries: list[dict], err: str) -> None:
+    names: set[str] = set()
+    for i, a in enumerate(entries):
+        za = a.get("touch_zones") or []
+        ac = a.get("codename") or "?"
+        for b in entries[i + 1 :]:
+            zb = b.get("touch_zones") or []
+            bc = b.get("codename") or "?"
+            if any(_zones_clash(x, y) for x in za for y in zb):
+                names.add(ac)
+                names.add(bc)
+    for name in names:
+        assert name in err, f"colliding claim {name!r} missing from overlap output"
+
+
 def test_touch_zone_overlap_warns_on_same_path(capsys) -> None:
     entries = [
         {"codename": "a", "touch_zones": ["src/"]},
@@ -73,11 +93,13 @@ def test_edit_node_cli_does_not_warn_self_overlap_on_claim(
 
 
 def test_touch_zone_overlap_validate_summarizes_broad_shared_zone(capsys) -> None:
-    touch_zone_overlap(_registry_entries())
+    entries = _registry_entries()
+    touch_zone_overlap(entries)
     err = capsys.readouterr().err
     assert "shared zone 'tests/'" in err
     assert "alpha, beta, gamma" in err
     assert err.count("tests/' vs 'tests/'") == 0
+    _assert_colliding_claims_appear(entries, err)
 
 
 def test_touch_zone_overlap_validate_skips_nested_clashes_under_summarized_broad(
@@ -92,6 +114,23 @@ def test_touch_zone_overlap_validate_skips_nested_clashes_under_summarized_broad
     err = capsys.readouterr().err
     assert "shared zone 'tests/'" in err
     assert err.count("possible overlap") == 1
+    _assert_colliding_claims_appear(entries, err)
+
+
+def test_touch_zone_overlap_lists_nested_only_claim_in_shared_zone_summary(
+    capsys,
+) -> None:
+    entries = [
+        {"codename": "alpha", "touch_zones": ["tests/"]},
+        {"codename": "beta", "touch_zones": ["tests/"]},
+        {"codename": "gamma", "touch_zones": ["tests/nested/"]},
+    ]
+    touch_zone_overlap(entries)
+    err = capsys.readouterr().err
+    assert "shared zone 'tests/'" in err
+    assert "alpha, beta, gamma" in err
+    assert err.count("possible overlap") == 1
+    _assert_colliding_claims_appear(entries, err)
 
 
 def test_touch_zone_overlap_validate_one_line_per_specific_pair(capsys) -> None:
@@ -104,6 +143,7 @@ def test_touch_zone_overlap_validate_one_line_per_specific_pair(capsys) -> None:
     assert "shared zone 'tests/'" in err
     assert "src/foo.py" in err
     assert err.count("possible overlap") == 2
+    _assert_colliding_claims_appear(entries, err)
 
 
 def test_touch_zone_overlap_keeps_same_specific_file_under_shared_directory(
@@ -118,3 +158,4 @@ def test_touch_zone_overlap_keeps_same_specific_file_under_shared_directory(
     assert "shared zone 'tests/'" in err
     assert "tests/shared.py" in err
     assert err.count("possible overlap") == 2
+    _assert_colliding_claims_appear(entries, err)

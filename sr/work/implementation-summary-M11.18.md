@@ -15,12 +15,13 @@ Registry overlap warnings during add-node and edit-node should mention only clai
 ## Acceptance
 
 - **A1:** Authoring scope carries `node_id`; scoped reporting skips the authored node's own registry claim. `cmd_edit` on a sole claim with `touch_zones=tests/` emits no self-overlap warning.
-- **A2:** Pair lines skip clashes already represented by a shared-zone summary (including directory vs nested paths under that directory). Independent collisions on the same specific file path still emit one pair line.
+- **A2:** Pair lines skip clashes already represented by a shared-zone summary (including directory vs nested paths under that directory). Independent collisions on the same specific file path still emit one pair line. Nested-only claims under a summarized directory are listed in that summary so they are not dropped.
 
 ## Review fixes (Codex Sol)
 
 - **R1:** `AuthoringOverlapScope` includes `node_id`; scoped loop skips `entry.node_id == scope_node_id`. `test_touch_zone_overlap_scoped_skips_the_authored_nodes_own_claim` and `test_edit_node_cli_does_not_warn_self_overlap_on_claim` cover reporter and public `edit-node`.
 - **R2:** `_clash_suppressed_by_broad_summary` / `_first_independent_pair_clash` drop broad-tree pair spam after summaries. `test_touch_zone_overlap_validate_skips_nested_clashes_under_summarized_broad` and `test_touch_zone_overlap_keeps_same_specific_file_under_shared_directory` cover nested-only vs same-file collisions.
+- **P2:** `_claims_in_broad_zone_tree` lists every claim whose zones sit under a summarized directory, including `tests/nested/` when only two claims own exact `tests/`. `test_touch_zone_overlap_lists_nested_only_claim_in_shared_zone_summary` is the regression; `_assert_colliding_claims_appear` checks the invariant on the unscoped cases.
 
 ## Verification
 
@@ -31,7 +32,10 @@ Registry overlap warnings during add-node and edit-node should mention only clai
 
 - `AuthoringOverlapScope` NamedTuple — label, node_id, and touch_zones for scoped validation (R1)
 - `_clash_suppressed_by_broad_summary` / `_first_independent_pair_clash` — suppress pair lines covered by shared-directory summaries (R2)
+- `_claims_in_broad_zone_tree` — include nested-only claims in a shared-zone summary (P2)
 - `test_touch_zone_overlap_scoped_skips_the_authored_nodes_own_claim` — R1 scoped self-claim exclusion
 - `test_edit_node_cli_does_not_warn_self_overlap_on_claim` — R1 through public edit-node CLI
 - `test_touch_zone_overlap_validate_skips_nested_clashes_under_summarized_broad` — R2 nested paths under summarized `tests/`
 - `test_touch_zone_overlap_keeps_same_specific_file_under_shared_directory` — R2 retains identical specific-file pair line
+- `test_touch_zone_overlap_lists_nested_only_claim_in_shared_zone_summary` — P2 two `tests/` claims plus `tests/nested/`
+- `_assert_colliding_claims_appear` — invariant that every colliding claim is named in the output
