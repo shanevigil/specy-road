@@ -1,0 +1,12 @@
+#!/bin/sh
+# specy-road: refuse git push from a linked worktree under work/.worktrees/ (M8.5).
+# Install with: specyrd init --install-pre-push-hook (or copy this recipe from docs/orchestration-workers.md).
+set -e
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+case "$root" in
+  */work/.worktrees/*)
+    echo "specy-road: push refused from a linked worktree under work/.worktrees/ (use the main checkout to push)" >&2
+    exit 1
+    ;;
+esac
+exit 0

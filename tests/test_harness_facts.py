@@ -83,7 +83,9 @@ def test_the_shipped_profiles_are_already_rendered_from_the_fixture() -> None:
 
 def test_each_executor_template_renders_its_families_cli() -> None:
     facts = hf.load_facts()
-    assert hf.rendered_cli(facts, "Anthropic Claude", "claude-opus-5-5") == 'claude -p "<prompt>"'
+    assert hf.rendered_cli(facts, "Anthropic Claude", "claude-opus-5-5") == (
+        'CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude -p "<prompt>"'
+    )
     assert hf.rendered_cli(facts, "OpenAI GPT", "gpt-6.1-sol").startswith("codex exec --model gpt-6.1-sol ")
     assert hf.rendered_cli(facts, "Cursor Composer", "unknown") == 'agent -p --force "<prompt>"'
     assert hf.rendered_cli(facts, "Google Gemini", "gemini-4-argon") is None
