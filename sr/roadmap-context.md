@@ -129,7 +129,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.19` Pickup never stashes work/ around the registry commit `pickup-no-work-stash` — task — **Complete**
   - `M11.20` orchestrate plan and validate say where the roster is read from `roster-source-explained` — task — **Complete**
   - `M11.22` Worker worktrees can include nested sibling repositories `nested-repo-worktrees` — task — **Not Started**
-  - `M11.23` A custom launch command's permissions carry through resume `resume-keeps-permissions` — task — **Not Started**
+  - `M11.23` A custom launch command's permissions carry through resume `resume-keeps-permissions` — task — **Complete**
   - `M11.24` Executors and reviewers in a worktree can write and check the right places `worktree-handoff-writable` — task — **Complete**
   - `M11.25` finish-this-task says what merge mode will push before it pushes `merge-push-disclosure` — task — **Complete**
   - `M11.26` A model profile can match harness model ids that carry an effort suffix `profile-aliases` — task — **Complete**
@@ -198,10 +198,14 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M11.23` on `feature/rm-resume-keeps-permissions` since 2026-11-03
 - `M11.51` on `feature/rm-dashboard-safe-saves` since 2026-11-02
 - `M11.52` on `feature/rm-pr-mode-registry-conflict` since 2026-11-03
 - `M11.57` on `feature/rm-completed-worker-frees-slot` since 2026-11-03
+- `M11.63` on `feature/rm-pickup-second-claim-guard` since 2026-11-03
+- `M11.64` on `feature/rm-abort-untracked-like-pickup` since 2026-11-03
+- `M11.65` on `feature/rm-why-blocked-plan-holds` since 2026-11-03
+- `M11.70` on `feature/rm-zones-checked-at-authoring` since 2026-11-03
+- `M11.71` on `feature/rm-review-loops-escalate` since 2026-11-03
 - `M8.2` on `feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 

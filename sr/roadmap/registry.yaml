@@ -69,24 +69,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: resume-keeps-permissions
-    node_id: M11.23
-    branch: feature/rm-resume-keeps-permissions
-    touch_zones:
-      - specy_road/worker_adapters.py
-      - specy_road/worker_ops.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - docs/orchestration-workers.md
-      - tests/
-      - specy_road/worker_adapter_parsers.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/worker_adapter_base.py
-      - specy_road/worker_adapter_claude.py
-      - specy_road/worker_ops_launch.py
-      - specy_road/worker_ops_message.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: completed-worker-frees-slot
     node_id: M11.57
     branch: feature/rm-completed-worker-frees-slot
