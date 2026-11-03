@@ -104,7 +104,8 @@
       ],
       "codename": "headless-limits-denials",
       "dependencies": [
-        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53",
+        "f4d6efe0-4286-44f8-a36e-d30947c401d6"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M11.62",

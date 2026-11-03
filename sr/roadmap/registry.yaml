@@ -116,18 +116,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: guard-hooks-per-harness-and-avoid-lists-in-every-model-profile
-    node_id: M8.5
-    branch: feature/rm-guard-hooks-per-harness-and-avoid-lists-in-every-model-profile
-    touch_zones:
-      - specy_road/templates/specyrd/hooks/
-      - specy_road/specyrd_init.py
-      - specy_road/templates/project/model-profiles/
-      - docs/orchestration-models.md
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: version-shows-checkout-sha
     node_id: M11.66
     branch: feature/rm-version-shows-checkout-sha
@@ -214,6 +202,16 @@ entries:
       - specy_road/bundled_scripts/finish_task.py
       - tests/
       - specy_road/schema_revision.py
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: ready-warns-integration-conflict
+    node_id: M11.73
+    branch: feature/rm-ready-warns-integration-conflict
+    touch_zones:
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/review_gate.py
+      - tests/
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
