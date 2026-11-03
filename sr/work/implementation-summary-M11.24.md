@@ -45,7 +45,7 @@ passed there literally; the natural home for the placeholder is `worker_adapter_
 - `specy-road file-limits`: OK. `ruff check specy_road tests scripts`: OK.
   `python scripts/check_test_private_imports.py`: 0 new.
 - Red-green: `tests/test_worker_handoff_writable.py` against the base `worker_adapters.py`: 19 failed, 3 passed
-  (the Claude launch, main-checkout and Codex-resume cases already held); with the change, 22 passed.
+  (the Claude launch, main-checkout and Codex-resume cases already held); with the change, 22 passed (21 after review round 1 dropped the claude-code launch case, E1).
 - Not run: `scripts/check_clones.py` (pylint is not installed in this environment); the full `pytest` suite.
 
 ## Added
@@ -57,7 +57,7 @@ passed there literally; the natural home for the placeholder is `worker_adapter_
 - `node_id` / `repo_root` keyword parameters on `Adapter._custom`: the leaf the directory is resolved for.
 - `tests/test_worker_handoff_writable.py`:
   - `linked` fixture: nested project plus linked worktree (reuses `nested_project`).
-  - `test_default_launch_adds_the_handoff_dir_only_in_a_linked_worktree` (claude-code, codex, cursor): A2 launch argv.
+  - `test_default_launch_adds_the_handoff_dir_only_in_a_linked_worktree` (codex, cursor; claude-code is the existing `test_claude_passes_add_dir_only_in_a_linked_worktree`): A2 launch argv.
   - `test_default_resume_adds_the_handoff_dir_where_the_harness_documents_it`: A2 resume argv, including Codex's documented absence.
   - `test_claude_add_dir_does_not_swallow_the_stdin_instruction`: regression for the variadic-flag order.
   - `test_custom_cli_receives_the_handoff_dir_as_one_argument` (4 harnesses × 3 quoting forms, run through `sh`): A1.

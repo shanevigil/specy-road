@@ -31,7 +31,7 @@ def _added(argv: list[str]) -> str | None:
     return argv[argv.index("--add-dir") + 1] if "--add-dir" in argv else None
 
 
-@pytest.mark.parametrize("harness", ["claude-code", "codex", "cursor"])
+@pytest.mark.parametrize("harness", ["codex", "cursor"])   # claude-code: test_worker_m310_reconcile_status
 def test_default_launch_adds_the_handoff_dir_only_in_a_linked_worktree(linked, harness: str) -> None:
     top, project, wt, prompt = linked
     a = wa.adapter_for(harness)
