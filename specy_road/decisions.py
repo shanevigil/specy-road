@@ -146,12 +146,19 @@ def _unfenced_lines(text: str) -> list[str]:
 
 
 def recorded_on_sheet(sheet_text: str, decision_id: str, answer: str) -> bool:
-    """True when ``id: answer`` is in the planning-sheet decision block, unfenced."""
-    block = find_section(sheet_text, _DECISION_HEADINGS)
+    """True when ``id: answer`` is in the planning-sheet decision block.
+
+    CommonMark fences are stripped from the whole sheet first, then the
+    decision block is the first level-2 section whose heading normalises to
+    ``decisions and notes`` or ``decisions``. A heading that exists only
+    inside a fence is not that block.
+    """
+    unfenced = "\n".join(_unfenced_lines(sheet_text))
+    block = find_section(unfenced, _DECISION_HEADINGS)
     if not block:
         return False
     want = answer.strip()
-    for line in _unfenced_lines(block):
+    for line in block.splitlines():
         m = _DECISION_LINE.match(line)
         if m and m.group(1) == decision_id and m.group(2).strip() == want:
             return True

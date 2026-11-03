@@ -162,6 +162,14 @@ def test_close_requires_decision_block_record(tmp_path: Path, capsys) -> None:
     assert read_decisions(repo / "roadmap" / "decisions.yaml")["entries"][0]["status"] == "open"
 
     (repo / SHEET).write_text(
+        "# M1.1 Thing\n\n```markdown\n## Decisions and notes\n\nD1: blue\n```\n",
+        encoding="utf-8",
+    )
+    assert _run(["decisions", "close", "D1", "--answer", "blue", "--repo-root", str(repo)]) == 1
+    assert "planning sheet decision block has no line" in capsys.readouterr().err
+    assert read_decisions(repo / "roadmap" / "decisions.yaml")["entries"][0]["status"] == "open"
+
+    (repo / SHEET).write_text(
         "# M1.1 Thing\n\n## Intent\n\nD1: blue\n\n## Decisions and notes\n\n- D1: blue\n",
         encoding="utf-8",
     )
