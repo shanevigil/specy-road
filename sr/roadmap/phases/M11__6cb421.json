@@ -252,7 +252,8 @@
         "specy_road/worker_runner.py",
         "specy_road/review_files.py",
         "tests/",
-        "specy_road/schemas/review-record.schema.json"
+        "specy_road/schemas/review-record.schema.json",
+        "specy_road/schemas/worker-record.schema.json"
       ],
       "type": "task"
     },
