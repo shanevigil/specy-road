@@ -52,3 +52,13 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic
+    node_id: M8.6
+    branch: feature/rm-candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic
+    touch_zones:
+      - specy_road/templates/project/model-profiles/
+      - roadmap/
+      - docs/orchestration-models.md
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
