@@ -93,14 +93,20 @@ def default_agent_id() -> str:
     started in a new session and carry their own id. Set the variable when
     two agents share one terminal session.
     """
-    env = os.environ.get("SPECY_ROAD_AGENT_ID", "").strip()
-    if env and _ID.match(env):
+    env = env_agent_id()
+    if env:
         return env
     try:
         sid = os.getsid(0)
     except (AttributeError, OSError):   # Windows: no sessions; the process is the best there is
         sid = os.getpid()
     return f"{current_user()}-s{sid}"
+
+
+def env_agent_id() -> str | None:
+    """A usable ``SPECY_ROAD_AGENT_ID``, else ``None``."""
+    env = os.environ.get("SPECY_ROAD_AGENT_ID", "").strip()
+    return env if env and _ID.match(env) else None
 
 
 def current_user() -> str:
@@ -131,6 +137,13 @@ def list_sessions(repo_root: Path, *, live_only: bool = True, now: datetime | No
         return []
     out = [s for s in (load_session(p) for p in sorted(d.glob("*.yaml"))) if s]
     return [s for s in out if s.is_live(now)] if live_only else out
+
+
+def own_live_sessions(repo_root: Path) -> list[Session]:
+    """Live records this user started in this checkout: what ``session end`` falls back on
+    when a harness ran ``start`` and ``end`` in different POSIX sessions."""
+    me = current_user()
+    return [s for s in list_sessions(repo_root) if s.user == me]
 
 
 def unreadable_records(repo_root: Path) -> list[Path]:

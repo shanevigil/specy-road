@@ -130,3 +130,56 @@ def test_handoff_status_lists_live_sessions(tmp_path: Path, capsys) -> None:
         review_cli.main(["handoff", "status", "--json", "--repo-root", str(repo)])
     data = json.loads(capsys.readouterr().out)
     assert data["sessions"][0]["agent"] == "alice" and data["nodes"] == []
+
+
+def _derived_end(repo: Path, monkeypatch, sid: int) -> int:
+    """`session end` with no id from a shell whose POSIX session differs from start's."""
+    monkeypatch.delenv("SPECY_ROAD_AGENT_ID", raising=False)
+    monkeypatch.setattr(sp.os, "getsid", lambda _pid: sid)
+    return _cli("session", "end", "--repo-root", str(repo))
+
+
+def test_cli_start_prints_the_id_to_export(tmp_path: Path, capsys, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path)
+    monkeypatch.delenv("SPECY_ROAD_AGENT_ID", raising=False)
+    monkeypatch.setenv("USER", "erin")
+    monkeypatch.setattr(sp.os, "getsid", lambda _pid: 101)
+    assert _cli("session", "start", "--path", "src", "--repo-root", str(repo)) == 0
+    assert "export SPECY_ROAD_AGENT_ID=erin-s101\n" in capsys.readouterr().out
+
+
+def test_cli_end_with_a_new_derived_id_ends_the_users_only_live_session(tmp_path: Path, capsys, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path)
+    monkeypatch.setenv("USER", "frank")
+    sp.start_session(repo, "frank-s101", paths=["src"])
+    monkeypatch.setenv("USER", "gina")
+    sp.start_session(repo, "gina-s303", paths=["docs"])      # another user's: never a candidate
+    monkeypatch.setenv("USER", "frank")
+    assert _derived_end(repo, monkeypatch, 202) == 0
+    out = capsys.readouterr().out
+    assert "session frank-s101: ended (no record for frank-s202" in out
+    assert [s.agent for s in sp.list_sessions(repo)] == ["gina-s303"]
+    assert _derived_end(repo, monkeypatch, 202) == 0           # none left: the old answer
+    assert "session frank-s202: no record" in capsys.readouterr().out
+
+
+def test_cli_end_with_a_new_derived_id_lists_several_and_ends_none(tmp_path: Path, capsys, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path)
+    monkeypatch.setenv("USER", "frank")
+    sp.start_session(repo, "frank-s101", paths=["src"])
+    sp.start_session(repo, "frank-s102", paths=["docs"])
+    assert _derived_end(repo, monkeypatch, 202) == 1
+    err = capsys.readouterr().err
+    assert "you have 2 live sessions here" in err and "frank-s101" in err and "frank-s102" in err
+    assert len(sp.list_sessions(repo)) == 2
+
+
+def test_cli_end_with_an_explicit_id_never_falls_back(tmp_path: Path, capsys, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path)
+    monkeypatch.setenv("USER", "frank")
+    sp.start_session(repo, "frank-s101", paths=["src"])
+    monkeypatch.setenv("SPECY_ROAD_AGENT_ID", "frank-other")
+    assert _cli("session", "end", "--repo-root", str(repo)) == 0
+    assert _cli("session", "end", "--agent", "frank-x", "--repo-root", str(repo)) == 0
+    assert capsys.readouterr().out.count("no record") == 2
+    assert [s.agent for s in sp.list_sessions(repo)] == ["frank-s101"]

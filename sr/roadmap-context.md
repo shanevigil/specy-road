@@ -148,7 +148,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.39` A roster entry can be marked unavailable without deleting it `roster-availability` — task — **Not Started**
   - `M11.40` worker reconcile works on merged leaves and separates untracked files `reconcile-merged-and-untracked` — task — **Not Started**
   - `M11.41` The two review-gate settings cannot silently disagree `gate-config-agree` — task — **Not Started**
-  - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Not Started**
+  - `M11.42` session end finds the session the same agent started `session-end-default` — task — **Complete**
   - `M11.43` init project reports exactly what it writes `init-project-reports-writes` — task — **Not Started**
   - `M11.44` init project can install only the model profiles a project uses `init-profiles-subset` — task — **Not Started**
   - `M11.45` The stale-command warning fires only on command-shaped mentions `stale-command-prose` — task — **Not Started**
@@ -179,7 +179,6 @@ Do not pick these up.
 - `M11.26` on `feature/rm-profile-aliases` since 2026-11-02
 - `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
 - `M11.37` on `feature/rm-packet-uncommitted-refs` since 2026-11-02
-- `M11.42` on `feature/rm-session-end-default` since 2026-11-02
 - `M11.54` on `feature/rm-parallel-test-suite` since 2026-11-02
 
 ## Reaching the detail behind this
