@@ -135,7 +135,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.26` A model profile can match harness model ids that carry an effort suffix `profile-aliases` — task — **Complete**
   - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Not Started**
   - `M11.28` A light chore mode for work outside the roadmap `chore-mode` — task — **Not Started**
-  - `M11.29` doctor warns when the running specy-road is older than the project's stubs `doctor-version-skew` — task — **Not Started**
+  - `M11.29` doctor warns when the running specy-road is older than the project's stubs `doctor-version-skew` — task — **Complete**
   - `M11.30` Leaf worktrees get the project's environment set up `worktree-env-setup` — task — **Not Started**
   - `M11.31` A safe command to retire a leaf worktree `worktree-prune` — task — **Not Started**
   - `M11.32` Unpushed nested-repo commits are reported `nested-unpushed-report` — task — **Not Started**
@@ -180,7 +180,6 @@ Do not pick these up.
 - `M11.14` on `feature/rm-queue-worker-message` since 2026-11-02
 - `M11.16` on `feature/rm-sheet-edits-keep-approvals` since 2026-11-02
 - `M11.20` on `feature/rm-roster-source-explained` since 2026-11-02
-- `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
 - `M11.37` on `feature/rm-packet-uncommitted-refs` since 2026-11-02
 - `M11.44` on `feature/rm-init-profiles-subset` since 2026-11-02
 - `M11.50` on `feature/rm-finish-keeps-summary` since 2026-11-02

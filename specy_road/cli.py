@@ -12,7 +12,8 @@ from pathlib import Path
 
 from specy_road.cli_init_argparse import build_specy_road_init_parser
 from specy_road.cli_usage import USAGE_TEXT
-from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, resolve_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, project_root, resolve_repo_root
+from specy_road.version_skew import warn_if_running_version_older
 
 _PKG_DIR = Path(__file__).resolve().parent
 _PM_GANTT_INDEX = _PKG_DIR / "pm_gantt_static" / "index.html"
@@ -324,6 +325,24 @@ def _unknown_command(cmd: str) -> None:
     raise SystemExit(2)
 
 
+def _repo_root_from_argv(args: list[str]) -> Path | None:
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg.startswith("--repo-root="):
+            return Path(arg.split("=", 1)[1])
+        if arg == "--repo-root" and i + 1 < len(args):
+            return Path(args[i + 1])
+        i += 1
+    return None
+
+
+def _maybe_warn_running_version_older(cmd: str, rest: list[str]) -> None:
+    if cmd == "doctor" or cmd not in _known_commands():
+        return
+    warn_if_running_version_older(project_root(_repo_root_from_argv(rest)))
+
+
 def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ("-h", "--help"):
@@ -335,6 +354,7 @@ def main(argv: list[str] | None = None) -> None:
         print(f"specy-road {__version__}")
         raise SystemExit(0)
     cmd, *rest = argv
+    _maybe_warn_running_version_older(cmd, rest)
     if cmd in _SCRIPTS:
         _run(_SCRIPTS[cmd], rest)
     elif cmd in _CRUD_COMMANDS:

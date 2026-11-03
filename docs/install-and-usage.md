@@ -51,6 +51,9 @@ pip install "specy-road[gui-next]"  # PM Gantt UI deps
 pip install "specy-road[review]"    # LLM review (`specy-road review-node`)
 ```
 
+On a maintainer machine use `pipx install specy-road` or `uv tool install specy-road`;
+check `which specy-road` and `specy-road --version`. Commands (not `--version`) warn when running older than `.specyrd/manifest.json` / `AGENTS.md`.
+
 ### Install a release candidate (TestPyPI)
 
 Prereleases (`X.Y.ZrcN`) publish to **TestPyPI**, not PyPI. Pin the exact
@@ -62,11 +65,8 @@ pip install --index-url https://test.pypi.org/simple/ \
             "specy-road==0.3.1rc1"
 ```
 
-**`--pre` is not needed when you pin an exact prerelease.** A specifier that
-names the prerelease itself (`==0.3.1rc1`) already permits it. Add `--pre` only
-when you are asking for *whatever the latest prerelease is* — an unpinned
-install, or `pip index versions specy-road`, both of which hide prereleases
-without it.
+**`--pre` is not needed when you pin an exact prerelease.** Add `--pre` only for
+an unpinned install or `pip index versions specy-road`.
 
 **`uv pip` needs one extra flag.** By default uv only considers versions from
 the first index that contains a package at all — that is PyPI, which has no
