@@ -72,7 +72,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M8.3` Reviewer runs are read-only and specy-road writes the review record from structured output `reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` — task — **Not Started**
   - `M8.4` Ship skills once and meter every file each harness injects `ship-skills-once-and-meter-every-file-each-harness-injects` — task — **Complete**
   - `M8.5` Guard hooks per harness and avoid lists in every model profile `guard-hooks-per-harness-and-avoid-lists-in-every-model-profile` — task — **Not Started**
-  - `M8.7` Runtime verification of the harness facts against installed binaries `runtime-verification-of-the-harness-facts-against-installed-binaries` — task — **Not Started**
+  - `M8.7` Runtime verification of the harness facts against installed binaries `runtime-verification-of-the-harness-facts-against-installed-binaries` — task — **Complete**
   - `M8.6` Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic `candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic` — task — **Not Started**
 - `M9` Regression prevention `regression-prevention` — phase — **Complete**
   - `M9.1` finish-this-task runs a configured land check on the merge commit before it pushes `land-check-on-merge-commit` — task — **Complete**
@@ -143,6 +143,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.34` Open human decisions live in one tracked ledger and every question is self-contained `decision-ledger` — task — **Not Started**
   - `M11.35` A roster entry maps to the harness's own model id, and a failed start says why `roster-harness-model-id` — task — **Not Started**
 
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+
 ## Archived (not in the live roadmap)
 
 This work was completed and moved out of the graph. It is deliberately excluded from IDE indexing; reach it with `specy-road search <QUERY> --scope archived`.
@@ -154,6 +160,12 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M11.13` on `feature/rm-milestone-full-review` since 2026-11-02
+- `M11.18` on `feature/rm-quieter-overlap-warnings` since 2026-11-02
+- `M11.19` on `feature/rm-pickup-no-work-stash` since 2026-11-02
+- `M11.25` on `feature/rm-merge-push-disclosure` since 2026-11-02
+- `M11.26` on `feature/rm-profile-aliases` since 2026-11-02
+- `M11.29` on `feature/rm-doctor-version-skew` since 2026-11-02
+- `M11.34` on `feature/rm-decision-ledger` since 2026-11-02
 - `M11.4` on `feature/rm-max-workers-global` since 2026-11-02
 - `M11.8` on `feature/rm-delta-review-packet` since 2026-11-02
 
