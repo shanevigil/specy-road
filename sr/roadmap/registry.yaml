@@ -40,7 +40,8 @@ entries:
       - tests/
     started: '2026-11-02'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-03T04:02:34+00:00'
   - codename: quieter-overlap-warnings
     node_id: M11.18
     branch: feature/rm-quieter-overlap-warnings
