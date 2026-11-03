@@ -72,7 +72,12 @@
         "specy_road/templates/project/schemas/git-workflow.schema.json",
         "docs/git-workflow.md",
         "tests/",
-        "specy_road/bundled_scripts/review_packet.py"
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/nested_repos.py",
+        "specy_road/bundled_scripts/review_packet_nested.py",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/finish_implementation_check.py"
       ],
       "type": "task"
     },
