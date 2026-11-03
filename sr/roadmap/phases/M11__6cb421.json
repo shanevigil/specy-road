@@ -229,7 +229,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.65_why-blocked-plan-holds_a2c70000-f148-4d74-bee8-bd8dd01eb619.md",
       "sibling_order": 65,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "why-blocked reports touch-zone holds from the plan",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_query_cli.py",
