@@ -173,7 +173,9 @@
     {
       "acceptance": [
         "worker delegate reports a custom channels.cli that uses a text-only output mode (for example agent -p --output-format text, or no output format), which keeps only the last message, and suggests the stream-json form; a test covers the report",
-        "prompt prints its 'Wrote <path>' line on stderr, so redirecting stdout never captures it in place of the prompt; a test covers it"
+        "prompt prints its 'Wrote <path>' line on stderr, so redirecting stdout never captures it in place of the prompt; a test covers it",
+        "finish-this-task prints each validate warning at most once per run; a test finishes a leaf while another open leaf lacks acceptance and counts that warning's lines",
+        "validate's missing-planning_dir error lists every node without one and names specy-road scaffold-planning <ID> as the fix; a test covers two such nodes"
       ],
       "codename": "small-cli-fixes",
       "dependencies": [],

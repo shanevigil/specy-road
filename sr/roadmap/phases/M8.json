@@ -44,7 +44,8 @@
       "acceptance": [
         "Claude Code launches pass an explicit permission mode and allowed tools, no permission prompts, and the retry watchdog with a capped usage-limit wait; a worker stopped by a usage limit enters a paused-by-limit state that worker resume picks up after the reset",
         "Codex launches use exec --json with the workspace-write sandbox, both memory switches off and a per-profile CODEX_HOME; Cursor launches create the chat first and pass --force --trust and never -w",
-        "After every turn the adapter checks the event stream for permission denials, failed turns and api retries, and the git state (HEAD, branch, stash list, porcelain) for anything beyond the expected files; a finding flags the worker and is shown by worker sync, regardless of exit code"
+        "After every turn the adapter checks the event stream for permission denials, failed turns and api retries, and the git state (HEAD, branch, stash list, porcelain) for anything beyond the expected files; a finding flags the worker and is shown by worker sync, regardless of exit code",
+        "docs/orchestration-workers.md gives a complete hands-off Claude Code executor example: a settings file with allow and deny lists and the channels.cli line that uses it with --permission-mode dontAsk --settings <file>; a test checks that the example settings file parses and that its deny list covers git push"
       ],
       "codename": "worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check",
       "dependencies": [
@@ -131,7 +132,8 @@
     {
       "acceptance": [
         "specyrd init ships checked-in hook files that deny git commit, git push and gh pr for reviewer roles and push, gh pr, worktree and cloud commands for executors, for Claude Code and Codex (documented blocking hooks) and Cursor (reported)",
-        "Every model profile lists the harness features to avoid with the exact switch (memory off, no plan mode, no worktree or cloud features) and the launch template applies them"
+        "Every model profile lists the harness features to avoid with the exact switch (memory off, no plan mode, no worktree or cloud features) and the launch template applies them",
+        "An optional git pre-push hook (installed by specyrd init on request, or given as a recipe in docs/orchestration-workers.md) refuses a push made from a linked worktree under work/.worktrees/; a test shows the push refused there and allowed from the main checkout"
       ],
       "codename": "guard-hooks-per-harness-and-avoid-lists-in-every-model-profile",
       "dependencies": [
@@ -158,7 +160,8 @@
     {
       "acceptance": [
         "The verification guide from the research (versions and help, denial behaviour and exit codes, commit-when-asked from a nested subdirectory, create and resume by id from a sibling worktree, instruction sentinels versus the meter, Cursor -p with and without --force, Claude usage-limit events with the watchdog, forbidden-commit hook test, sibling-worktree concurrency) is run in a scratch repository and its results recorded with dates",
-        "Every unverified label in the harness facts fixture is replaced by a runtime result or an explicit still-unknown"
+        "Every unverified label in the harness facts fixture is replaced by a runtime result or an explicit still-unknown",
+        "harness-facts records, for each Claude model profile, the minimum Claude Code version that accepts its model id, and whether Claude Code enforces Write(path) deny rules; the profile and docs/orchestration-models.md state the minimum and say to write file-write deny rules as Edit(path) if Write(path) is not enforced"
       ],
       "codename": "runtime-verification-of-the-harness-facts-against-installed-binaries",
       "dependencies": [],
