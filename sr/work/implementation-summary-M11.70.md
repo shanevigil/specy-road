@@ -80,6 +80,8 @@ the add/edit-only untracked-zone warning.
 
 ## Verification
 
+Merge round: merged `origin/WIP/improvements-0-3-1` (`042423f0`, new Codex reviewer roster entries) as `4c383819`, cleanly; it touched only unrelated parts of `validate_roadmap_checks.py` (planning_dir errors) and `docs/roadmap-authoring.md` (acceptance checklist), so no fix was needed — `tests/test_touch_zone_tracked.py` and `tests/test_brief_call_sites.py` 27 passed, `specy-road file-limits` OK.
+
 Fix round 1:
 
 - `python -m pytest -n auto -q` on the new tests and the validate, CRUD, brief,
