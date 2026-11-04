@@ -227,6 +227,24 @@ def test_prepare_resume_checks_out_and_keeps_existing_artifacts(tmp_path):
     assert (tmp_path / "work" / "prompt-M1.1.md").read_text() == "hand-edited"
 
 
+def test_prepare_resume_rewrites_a_deleted_prompt_from_the_current_sheet(tmp_path):
+    """The documented refresh after a PM edits an in-flight leaf: delete the prompt, resume."""
+    _artifacts(tmp_path, "M1.1", prompt="stale copy")
+    sheet = "planning/M1.1_cn_11111111-1111-5111-8111-111111111111.md"
+    (tmp_path / sheet).parent.mkdir()
+    (tmp_path / sheet).write_text("# M1.1\n\n## Intent\n\nThe PM's edited intent.\n", encoding="utf-8")
+    (tmp_path / "work" / "prompt-M1.1.md").unlink()
+    error = prepare_resume(
+        tmp_path,
+        InFlightClaim("M1.1", "cn", "feature/rm-cn"),
+        [{"id": "M1.1", "codename": "cn", "planning_dir": sheet}],
+        on_complete="merge",
+        checkout=lambda _root, _b: (0, ""),
+    )
+    assert error is None
+    assert "The PM's edited intent." in (tmp_path / "work" / "prompt-M1.1.md").read_text()
+
+
 def test_prepare_resume_reports_a_failed_checkout(tmp_path):
     error = prepare_resume(
         tmp_path,

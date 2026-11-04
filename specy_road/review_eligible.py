@@ -99,9 +99,11 @@ def _same_family(gate: Any, model: str, family: str | None) -> str | None:
 def _eligible_text(gate: Any, node_id: str, model: str) -> str:
     if any(b.model == model for b in gate.blocks):
         return "can approve on re-review (its record blocks this commit)"
+    key = " --sign-key <your private key>" if (gate.config.get("policy") or {}).get("signed_reviews") else ""
     if model == HUMAN:
-        return f"can approve, interactively with `specy-road mark-implementation-reviewed {node_id}`"
-    return "can approve (file with `specy-road review record`)"
+        return f"can approve, interactively with `specy-road mark-implementation-reviewed {node_id}{key}`"
+    return (f"can approve (file a signed record: `specy-road review record{key}`)" if key
+            else "can approve (file with `specy-road review record`)")
 
 
 def reviewer_eligibility(repo_root: Path, node: dict[str, Any], gate: Any, branch: str | None) -> list[dict[str, Any]]:
