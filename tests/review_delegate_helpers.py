@@ -32,6 +32,8 @@ if step.get("write"):
     open(w["path"], "w").write(w["text"])
     if kept:
         os.utime(w["path"], ns=(kept.st_atime_ns, kept.st_mtime_ns))
+if step.get("chmod"):   # a permission change alone: content, size and mtime stay as they were
+    os.chmod(step["chmod"], os.stat(step["chmod"]).st_mode ^ 0o100)
 if step.get("git"):   # a git command in the checkout the harness was started in (an index-only write)
     import subprocess
     subprocess.run(["git", *step["git"]], check=True, capture_output=True)

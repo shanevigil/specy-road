@@ -110,3 +110,27 @@ def test_a_reviewer_in_a_linked_worktree_that_writes_git_metadata_files_no_verdi
     assert code == 1 and run["outcome"] == "review_failure"
     assert run["reason"].startswith(f"review failure: the reviewer run wrote {shown};")
     assert not rf.review_path(repo, "M1.1", "opus").exists()
+
+
+# --- permission mode: a reviewer-only chmod is a write (Sol, e6195893) --------------------------------------------------
+
+@pytest.mark.parametrize("area", ["checkout", "hand-off", "git-dir", "pointer"])
+def test_review_delegate_cli_fails_a_reviewer_only_chmod_and_files_no_verdict(tmp_path: Path, capsys, area: str) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    extra: tuple[str, ...] = ()
+    if area == "pointer":
+        wt = tmp_path / "review-wt"
+        git(repo, "worktree", "add", "-q", "--detach", str(wt))
+        path, shown, extra = wt / ".git", ".git", ("--worktree", str(wt))
+    else:
+        rel = {"checkout": "src/a.py", "hand-off": "work/reviews/M1.1/PACKET.md", "git-dir": ".git/config"}[area]
+        path, shown = repo / rel, rel
+    before, content = path.stat(), path.read_bytes()
+    set_steps(repo, spec, {**verdict_step(repo), "chmod": str(path)})
+    code, run = _delegate_cli(repo, capsys, *extra)
+    after = path.stat()
+    assert after.st_mode != before.st_mode                                                 # only the mode changed
+    assert (after.st_size, after.st_mtime_ns, path.read_bytes()) == (before.st_size, before.st_mtime_ns, content)
+    assert code == 1 and run["outcome"] == "review_failure"
+    assert run["reason"].startswith(f"review failure: the reviewer run wrote {shown};")
+    assert not rf.review_path(repo, "M1.1", "opus").exists()
