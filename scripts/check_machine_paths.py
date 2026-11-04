@@ -27,9 +27,9 @@ _PATH_NAME = rf"(?!(?:{_NO_PERSON})(?![A-Za-z0-9._-])|<)[A-Za-z0-9._-]+"
 _DIR_NAME = rf"(?!(?:{_NO_PERSON})(?![A-Za-z0-9._]))[A-Za-z0-9._]+"
 
 PATTERN = re.compile(
-    rf"/(?:Users|home)/{_PATH_NAME}"
+    rf"(?<![A-Za-z0-9._~%-])/(?:Users|home)/{_PATH_NAME}"   # not a URL path segment (example.com/home/...)
     rf"|(?<![A-Za-z0-9])-(?:Users|home)-{_DIR_NAME}-"   # a project dir name, not prose
-    rf"|[A-Za-z]:\\{{1,2}}Users\\{{1,2}}{_PATH_NAME}"
+    rf"|[A-Za-z]:\\{{1,2}}(?i:users)\\{{1,2}}{_PATH_NAME}"
     r"|/(?:private/)?tmp/claude-\d"
     r"|-MacBook(?:-(?:Pro|Air))?(?:-\d+)?\.local\b"
 )
