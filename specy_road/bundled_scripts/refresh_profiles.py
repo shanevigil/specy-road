@@ -3,10 +3,12 @@
 
 ``init project`` scaffolds ``model-profiles/`` once, so a repo scaffolded by an
 older version has none, and a repo whose roster names a model profiled only by
-a newer version lacks that one file. This copies **missing** profiles and the
-README, and never overwrites: the adopter's copies are theirs to edit (prices,
-CLI syntax, their own research), which is why the profiles are scaffolded
-rather than read from the package. Use ``--force`` for one named profile to
+a newer version lacks that one file. This copies the **missing** profiles a roster
+entry in ``roadmap/orchestration.yaml`` names (by ``id``, alias or ``profile:``),
+or every missing one with ``--profiles all``, and the README, and never
+overwrites: the adopter's copies are theirs to edit (prices, CLI syntax, their
+own research), which is why the profiles are scaffolded rather than read from
+the package. Use ``--force`` for one named profile to
 take the toolkit's copy over yours.
 
 Two regions of ``model-profiles/`` are rendered from the harness facts fixture
@@ -29,7 +31,8 @@ from pathlib import Path
 
 from specy_road import harness_facts as hf
 from specy_road.init_project import index_bundled_profile_names, project_template_root
-from specy_road.model_profiles import PROFILES_REL
+from specy_road.model_profiles import PROFILES_REL, load_profile
+from specy_road.orchestration_config import load_orchestration_config
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 from specy_road.worker_adapter_codex import CODEX_MEMORY_OFF
 
@@ -47,14 +50,35 @@ def _contained(repo_root: Path, path: Path) -> None:
         )
 
 
+def _roster_rels(repo_root: Path, src_dir: Path) -> set[str]:
+    """Bundled profile paths (relative to ``src_dir``) a roster entry names by ``id``/alias or ``profile:``."""
+    config, _err = load_orchestration_config(repo_root)
+    entries = [e for e in (config or {}).get("roster") or [] if isinstance(e, dict)]
+    out: set[str] = set()
+    for src in sorted(p for p in src_dir.rglob("*.md") if p.name != "README.md"):
+        rel_in = src.relative_to(src_dir).as_posix()
+        prof = load_profile(src)
+        if any(Path(str(e.get("profile") or "")).as_posix() == f"{PROFILES_REL.as_posix()}/{rel_in}"
+               or prof.for_id(e.get("id")) for e in entries):
+            out.add(rel_in)
+    return out
+
+
 def refresh_profiles(
     repo_root: Path,
     *,
     dry_run: bool = False,
     force: list[str] | None = None,
     only: str | None = None,
+    profiles: str = "roster",
 ) -> tuple[list[str], list[str]]:
-    """``(written, kept)`` repo-relative paths. ``force`` names relative paths to overwrite."""
+    """``(written, kept)`` repo-relative paths. ``force`` names relative paths to overwrite.
+
+    ``profiles="roster"`` limits it to the README and the profiles the roster names; ``"all"``
+    to every bundled profile. ``only`` overrides either.
+    """
+    if profiles not in ("roster", "all"):
+        raise ValueError(f"--profiles must be roster or all, not {profiles!r}")
     src_dir = bundled_profiles_dir()
     if not src_dir.is_dir():
         raise ValueError(f"missing bundled model profiles at {src_dir}")
@@ -68,6 +92,9 @@ def refresh_profiles(
         if only not in names or only in families:
             raise ValueError(f"unknown api_id {only!r}")
         only_rels = set(rels_by_token[only])
+    elif profiles == "roster":
+        only_rels = _roster_rels(repo_root, src_dir) | {"README.md"} | {
+            f.removeprefix(f"{PROFILES_REL.as_posix()}/") for f in forced}
     written: list[str] = []
     kept: list[str] = []
     for src in sorted(p for p in src_dir.rglob("*.md")):
@@ -208,7 +235,12 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--only",
         metavar="API_ID",
-        help="Add missing profile(s) whose front-matter api_id or file stem matches; default adds every missing profile.",
+        help="Add missing profile(s) whose front-matter api_id or file stem matches, whatever --profiles says.",
+    )
+    p.add_argument(
+        "--profiles", choices=("roster", "all"), default="roster",
+        help="roster (default): add the missing profiles a roadmap/orchestration.yaml roster entry names, "
+             "and the README; all: every missing profile this specy-road ships.",
     )
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--check", action="store_true",
@@ -225,12 +257,17 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _copy_missing(root: Path, args: argparse.Namespace) -> None:
-    written, kept = refresh_profiles(root, dry_run=args.dry_run, force=args.force, only=args.only)
+    written, kept = refresh_profiles(root, dry_run=args.dry_run, force=args.force, only=args.only,
+                                     profiles=args.profiles)
     verb = "would write" if args.dry_run else "wrote"
     for rel in written:
         print(f"{verb} {rel}")
-    if not written:
-        print(f"model-profiles/ already has every profile this specy-road ships ({root})")
+    if args.profiles == "roster" and not args.only and all(r.endswith("/README.md") for r in written + kept):
+        print("no roster entry in roadmap/orchestration.yaml names a profile this specy-road ships; "
+              "`specy-road refresh-profiles --profiles all` adds every one")
+    elif not written:
+        which = "the roster names" if args.profiles == "roster" and not args.only else "this specy-road ships"
+        print(f"model-profiles/ already has every profile {which} ({root})")
     elif kept:
         profiles = [k for k in kept if not k.endswith("/README.md")]
         readme = " and the README" if len(profiles) < len(kept) else ""
@@ -244,8 +281,8 @@ def main(argv: list[str] | None = None) -> None:
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     if (args.from_dir or args.accept) and not args.capture:
         p.error("--from and --accept need --capture")
-    if args.only and (args.capture or args.check or args.render):
-        p.error("--only adds missing profiles; do not combine with --check, --render or --capture")
+    if (args.only or args.profiles != "roster") and (args.capture or args.check or args.render):
+        p.error("--only and --profiles add missing profiles; do not combine with --check, --render or --capture")
     root = (args.repo_root or default_user_repo_root()).resolve()
     try:
         if args.capture:
