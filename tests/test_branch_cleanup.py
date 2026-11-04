@@ -45,6 +45,7 @@ def _merge_mode_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
     git(bare, "symbolic-ref", "HEAD", "refs/heads/dev")   # a remote refuses to delete its HEAD branch
     git(repo, "remote", "add", "origin", str(bare))
     git(repo, "fetch", "-q", "origin")
+    git(repo, "remote", "set-head", "origin", "dev")   # as clone does; fetch does it only from git 2.48
     return repo, bare
 
 

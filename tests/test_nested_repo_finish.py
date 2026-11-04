@@ -98,6 +98,7 @@ def test_delegate_in_the_checkout_on_the_claim_branch_puts_the_nested_repo_on_it
     git(tmp_path, "clone", "-q", "--bare", str(repo), str(bare))
     git(repo, "remote", "add", "origin", str(bare))
     git(repo, "fetch", "-q", "origin")
+    git(repo, "remote", "set-head", "origin", "dev")   # as clone does; fetch does it only from git 2.48
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0
     rec = ws.list_records(repo)[0]
     assert Path(rec.worktree) == repo.resolve()
