@@ -18,6 +18,7 @@ entries:
       - specy_road/review_delegate.py
       - docs/orchestration-review.md
       - specy_road/bundled_scripts/role_prompt_cli.py
+      - specy_road/review_write_check.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
