@@ -16,7 +16,7 @@ from pathlib import Path
 
 from specy_road.agent_guide_block import AGENT_GUIDE
 from specy_road.bundled_scripts.planning_artifacts import split_frontmatter
-from specy_road.claude_config import claude_projects_dir
+from specy_road.claude_config import claude_config_dir, claude_projects_dir
 from specy_road.git_subprocess import git_stdout, git_text
 
 AGENTS_MD = "AGENTS.md"
@@ -90,8 +90,8 @@ def inside(path: Path, top: Path) -> bool:
 
 
 def user_claude_path() -> Path:
-    """``~/.claude/CLAUDE.md`` on this machine, whether or not the repo sits under it."""
-    return Path.home() / ".claude" / AGENT_GUIDE
+    """The user ``CLAUDE.md`` (``$CLAUDE_CONFIG_DIR`` or ``~/.claude``), whether or not the repo sits under it."""
+    return claude_config_dir() / AGENT_GUIDE
 
 
 def codex_home_file() -> Path | None:

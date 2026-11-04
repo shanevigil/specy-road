@@ -16,7 +16,9 @@ body. Keep section bodies focused; link to PRs for detail.
 - Claude transcript and memory lookups honour `CLAUDE_CONFIG_DIR`: the worker
   wrappers, usage-limit detection from a transcript, the `MEMORY.md` context
   line and `grind-session`'s session lookup all read `~/.claude/projects`, so
-  under another account a worker started fresh instead of resuming.
+  under another account a worker started fresh instead of resuming. The context
+  meter's user `CLAUDE.md` now comes from the same directory, and the value is
+  taken literally (a `~` in it is not expanded, as in the shell wrappers).
 
 ### Added
 
