@@ -10,8 +10,8 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-from tests.review_delegate_helpers import (FAKE_CODEX, delegate_repo, fake_reviewer_run, set_steps, strict_problems,
-                                          verdict_step, wrote_only)
+from tests.review_delegate_helpers import (FAKE_AGY, FAKE_CODEX, delegate_repo, fake_reviewer_run, set_steps,
+                                          strict_problems, verdict_step, wrote_only)
 from tests.review_repo_helpers import commit_file, git, make_review_repo, review_output
 from tests.test_models_and_prompt import run_main
 
@@ -32,17 +32,20 @@ def _record(repo: Path) -> Path:
 
 # --- A2: a run that writes anything but its notes ------------------------------------------------------------
 
-@pytest.mark.parametrize("rel", [
-    "src/a.py",                         # a tracked file
-    "work/unrelated-output.txt",        # an untracked file in the project's work/
-    "work/reviews/M1.1/scratch.md",     # an ignored file, in the hand-off directory itself
+@pytest.mark.parametrize("rel,named", [
+    ("src/a.py", None),                                         # a tracked file
+    ("work/unrelated-output.txt", None),                        # an untracked file in the project's work/
+    ("work/reviews/M1.1/scratch.md", None),                     # an ignored file, in the hand-off directory itself
+    ("work/reviews/M1.1/review-output.schema.json", None),      # the schema specy-road wrote before the run
+    ("work/reviews/M1.1/RUN-opus.json", "work/reviews/M1.1"),   # the run record: the fence names the hand-off dir
 ])
-def test_a_run_that_writes_anything_but_its_notes_is_a_review_failure_and_files_nothing(tmp_path: Path, rel: str) -> None:
+def test_a_run_that_writes_anything_but_its_notes_is_a_review_failure_and_files_nothing(tmp_path: Path, rel: str,
+                                                                                       named: str | None) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, {**verdict_step(repo), "write": {"path": str(repo / rel), "text": "x = 2\n"}})
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
     assert run["state"] == "incomplete" and run["outcome"] == "review_failure"
-    assert wrote_only(run["reason"], rel)
+    assert wrote_only(run["reason"], named or rel)
     assert not _record(repo).exists()                                 # the verdict in its output is not filed
 
 
@@ -119,10 +122,16 @@ def test_the_reviewed_branch_is_checked_when_the_reviewer_runs_on_a_detached_che
 def test_one_leafs_reviewer_runs_take_turns(tmp_path: Path) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, verdict_step(repo))
-    with review_run_lock(rf.reviews_dir(repo, "M1.1")):
-        with pytest.raises(DelegateError, match="another reviewer run of M1.1 is in progress"):
-            delegate(repo, "M1.1", "opus", sleep=lambda s: None)
+    reviews = rf.reviews_dir(repo, "M1.1")
+    with review_run_lock(reviews), pytest.raises(DelegateError, match="another reviewer run of M1.1 is in progress"):
+        delegate(repo, "M1.1", "opus", sleep=lambda s: None)
     assert delegate(repo, "M1.1", "opus", sleep=lambda s: None)["state"] == "complete"
+    kept = (reviews / "review-output.schema.json").stat()
+    with review_run_lock(reviews):   # a refused prompt --channel cli run leaves the running one's schema file alone
+        assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+                        "--repo-root", str(repo)) == 1
+    after = (reviews / "review-output.schema.json").stat()
+    assert (after.st_mtime_ns, after.st_ctime_ns) == (kept.st_mtime_ns, kept.st_ctime_ns)
 
 
 def test_the_reviewer_process_writes_no_bytecode_or_pytest_cache() -> None:
@@ -137,10 +146,12 @@ def test_the_reviewer_process_writes_no_bytecode_or_pytest_cache() -> None:
 @pytest.mark.parametrize("raw,why", [
     ('{"verdict": "approve", "commit": ', "ends with no JSON object"),
     ('{"verdict": "approve"}', "does not match the review output schema"),
+    ("[\nVERDICT", "ends with no JSON object"),           # a valid verdict after an unclosed array
+    ("[\nVERDICT\n]", "ends with no JSON object"),        # a valid verdict inside an array
 ])
 def test_malformed_output_is_a_rerun_request_never_a_verdict(tmp_path: Path, raw: str, why: str) -> None:
     repo, spec = delegate_repo(tmp_path)
-    set_steps(repo, spec, {"raw": raw})
+    set_steps(repo, spec, {"raw": raw.replace("VERDICT", json.dumps(verdict_step(repo)["answer"]))})
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
     assert run["state"] == "incomplete" and run["outcome"] == "rerun"
     assert run["reason"].startswith("rerun requested: ") and why in run["reason"]
@@ -181,6 +192,8 @@ def test_the_final_complete_json_object_of_a_message_is_the_answer() -> None:
     assert json_object('see {"final": 2}') is None                           # the answer starts its own line
     assert json_object('{"wrapper": "draft",\n{"final": 2}') is None         # nested in an unterminated object
     assert json_object('use {x} here, a stray }\n{"final": 2}') == {"final": 2}   # balanced prose, stray brace
+    assert json_object('[\n{"final": 2}') is None and json_object('[\n{"final": 2}\n]') is None   # in an array
+    assert json_object('see [the docs](x)\n{"final": 2}') == {"final": 2}       # balanced brackets in prose
 
 
 def test_a_valid_object_followed_by_truncated_json_is_a_rerun_request_and_files_nothing(tmp_path: Path) -> None:
@@ -363,16 +376,6 @@ def test_the_shipped_agy_profile_gets_only_the_flags_it_lacks_as_a_reviewer(tmp_
     schema = tmp_path / "review-output.schema.json"
     cli = reviewer_cli(profile.cli(), schema)
     assert cli == profile.cli().replace("agy ", f"agy --json-schema {schema} --sandbox ", 1)   # keeps json and 60m
-
-
-FAKE_AGY = '''#!{python}
-import json, os, sys
-spec = json.loads(open(os.environ["FAKE_AGY_SPEC"]).read())
-open(spec["calls"], "w").write(json.dumps(sys.argv[1:]))
-envelope = {{"conversation_id": "c-1", "status": "SUCCESS", "response": json.dumps(spec["answer"]),
-            "structured_output": spec["answer"], "num_turns": 1}}
-print(json.dumps(envelope, indent=2), flush=True)   # one envelope, pretty-printed over many lines
-'''
 
 
 def test_an_antigravity_review_delegate_passes_json_schema_and_files_structured_output(tmp_path: Path,

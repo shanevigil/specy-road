@@ -175,3 +175,13 @@ if "-o" in argv:
     open(argv[argv.index("-o") + 1], "w").write(json.dumps(spec["answer"]))
 print(json.dumps({{"type": "turn.completed", "usage": {{}}}}), flush=True)
 '''
+
+
+FAKE_AGY = '''#!{python}
+import json, os, sys
+spec = json.loads(open(os.environ["FAKE_AGY_SPEC"]).read())
+open(spec["calls"], "w").write(json.dumps(sys.argv[1:]))
+envelope = {{"conversation_id": "c-1", "status": "SUCCESS", "response": json.dumps(spec["answer"]),
+            "structured_output": spec["answer"], "num_turns": 1}}
+print(json.dumps(envelope, indent=2), flush=True)   # one envelope, pretty-printed over many lines
+'''

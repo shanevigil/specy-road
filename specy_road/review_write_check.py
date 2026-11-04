@@ -25,10 +25,11 @@ LOCK_NAME = ".review-run.lock"
 
 def runtime_files(reviews: Path, model: str) -> frozenset[str]:
     """The files a reviewer run may change: its notes and what the adapter writes during the run (the run
-    record ``review_delegate.RUN_PREFIX`` names and its temporary copy, the raw log, Codex's ``-o`` file, the
-    output schema and :data:`LOCK_NAME`). Prompts and packets are written before the run starts."""
+    record ``review_delegate.RUN_PREFIX`` names and its temporary copy, the raw log, Codex's ``-o`` file and
+    :data:`LOCK_NAME`). Prompts, packets and the output schema are written before the run starts, so a change to
+    them is the reviewer's."""
     names = (f"notes-{model}.md", f"RUN-{model}.json", f"RUN-{model}.json.tmp", f"RUN-{model}.log",
-             f"{OUTPUT_PREFIX}{model}.json", OUTPUT_SCHEMA_NAME, LOCK_NAME)
+             f"{OUTPUT_PREFIX}{model}.json", LOCK_NAME)
     return frozenset(str(reviews / n) for n in names)
 
 
@@ -216,23 +217,28 @@ def prepare_harness_files(reviews: Path, model: str) -> None:
 
 
 class RootFence:
-    """The hand-off root's own metadata across one harness turn. specy-road changes that directory's entries only
-    between turns (the run record's rename, the schema file), and the harness's own files exist before the turn
-    (:func:`prepare_harness_files`), so any move of its mtime, ctime or link count during the turn is a file
-    created, renamed or deleted there: :meth:`moved` is then true and the run is a review failure, whatever else
-    the turn wrote. A harness that replaces its answer or notes by renaming a temporary file over them is caught
-    too; both are written in place."""
+    """The hand-off root's own metadata, and ``model``'s run record, across one harness turn. specy-road changes
+    that directory's entries and writes the run record (``RUN-<model>.json``, exempt from :func:`written` because
+    ``review delegate`` saves it between turns) only between turns, and the harness's own files exist before the
+    turn (:func:`prepare_harness_files`), so any move of the root's mtime, ctime or link count during the turn is a
+    file created, renamed or deleted there, and any change to the run record is the harness's: :meth:`moved` is
+    then true and the run is a review failure, whatever else the turn wrote. A harness that replaces its answer or
+    notes by renaming a temporary file over them is caught too; both are written in place."""
 
-    def __init__(self, root: Path) -> None:
-        self.root = root
+    def __init__(self, root: Path, model: str) -> None:
+        self.root, self.run = root, root / f"RUN-{model}.json"
         self.before = self._state()
 
-    def _state(self) -> tuple[int, int, int] | None:
+    def _state(self) -> tuple[Any, ...] | None:
         try:
             st = os.stat(self.root)
         except OSError:
             return None
-        return st.st_mtime_ns, st.st_ctime_ns, st.st_nlink
+        try:
+            run = _record(os.stat(self.run), str(self.run), False)
+        except OSError:   # no run record: run_default_reviewer and run_custom_reviewer called without one
+            run = None
+        return st.st_mtime_ns, st.st_ctime_ns, st.st_nlink, run
 
     def moved(self) -> bool:
         return self._state() != self.before

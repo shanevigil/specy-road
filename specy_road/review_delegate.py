@@ -44,9 +44,9 @@ from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.orchestration_role_env import harness_env
 from specy_road.review_files import reviews_dir
-from specy_road.review_record_write import (Outcome, ReviewRunBusy, RootFence, file_review, final_output,
-                                            output_path, prepare_harness_files, review_run_lock, reviewer_env,
-                                            run_text, snapshot, write_schema)
+from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, ReviewRunBusy, RootFence, file_review,
+                                            final_output, output_path, prepare_harness_files, review_run_lock,
+                                            reviewer_env, run_text, snapshot, write_schema)
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.reviewer_run_failure import (_now, _read_json, _save, capacity_error, close_run, gate_policy_summary,
                                              harness_error_line, record_reviewer_failure_event, run_path as _run_path,
@@ -124,12 +124,12 @@ class _Harness:
         if self.default:
             sid = session or (str(uuid.uuid4()) if isinstance(self.adapter, ClaudeCode) else None)
             reviews = reviews_dir(self.repo_root, self.node_id)
-            structured = {} if self.chore else {"schema": write_schema(self.repo_root, reviews), "output": output_path(reviews, self.model)}
+            structured = {} if self.chore else {"schema": reviews / OUTPUT_SCHEMA_NAME, "output": output_path(reviews, self.model)}
             return self.adapter.reviewer_launch(prompt, self.api_id, reviews, self.effort,
                                                 session=(sid, session is not None) if sid else None, **structured)
         kw = {"node_id": self.node_id, "repo_root": self.repo_root, "launch_mode": self.mode, "effort": self.effort}
         # A custom command gets its program's structured-output flags (Antigravity `agy`: --json-schema).
-        cli = (reviewer_cli(self.cli, write_schema(self.repo_root, reviews_dir(self.repo_root, self.node_id)))
+        cli = (reviewer_cli(self.cli, reviews_dir(self.repo_root, self.node_id) / OUTPUT_SCHEMA_NAME)
                if self.cli and not self.chore else self.cli)
         if session is not None:
             return self.adapter.resume(session, prompt, self.cwd, self.api_id, cli, **kw)
@@ -144,7 +144,7 @@ def _turn(h: _Harness, launch: Launch, log: Path) -> dict[str, Any]:
     with log.open("a", encoding="utf-8") as raw:
         raw.write(f"[review delegate] {_now()} {launch.argv[0]}\n")
         # specy-road changes the hand-off root's entries only between turns: one moving during the turn is the harness's
-        fence = RootFence(reviews_dir(h.repo_root, h.node_id))
+        fence = RootFence(reviews_dir(h.repo_root, h.node_id), h.model)
         try:
             proc = subprocess.Popen(launch.argv, cwd=h.cwd, env=env, text=True, encoding="utf-8",
                                     errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -287,6 +287,8 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
         prepare_harness_files(reviews, model)   # the answer emptied (never a stale one), both written in place
         try:
             # M8.3's read-only check and filing are for roadmap reviews; a chore reviewer files its own verdict file.
+            if chore is None:
+                write_schema(repo_root, reviews)   # before the snapshot: the reviewer must not change it
             before = snapshot(cwd, reviews, model, t.ref) if chore is None else None
             reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
             filed = None if before is None else file_review(

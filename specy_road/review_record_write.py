@@ -107,11 +107,15 @@ def drop_nulls(data: dict[str, Any]) -> dict[str, Any]:
 
 def write_schema(root: Path, reviews: Path) -> Path:
     """``review-output.schema.json`` in the hand-off directory, for the harness flags that read a file: the
-    :func:`strict_schema` of the leaf the directory is named for, which Codex needs and the others accept."""
+    :func:`strict_schema` of the leaf the directory is named for, which Codex needs and the others accept. It is
+    not in :func:`runtime_files`, so it is written before a run's first snapshot, and left alone when it already
+    says the same: a run waiting for :func:`review_run_lock` (Claude Code reads the file to build its command)
+    must not change the running one's."""
     path = reviews / OUTPUT_SCHEMA_NAME
     reviews.mkdir(parents=True, exist_ok=True)
-    ids = acceptance_ids(index(load_nodes(root))[reviews.name])
-    path.write_text(json.dumps(strict_schema(ids), indent=2) + "\n", encoding="utf-8")
+    text = json.dumps(strict_schema(acceptance_ids(index(load_nodes(root))[reviews.name])), indent=2) + "\n"
+    if not path.is_file() or path.read_text(encoding="utf-8") != text:
+        path.write_text(text, encoding="utf-8")
     return path
 
 
@@ -192,8 +196,8 @@ def json_object(value: Any) -> dict[str, Any] | None:
     """``value`` if it is a dict, else the final JSON object of its text, or ``None``. The final object is the last
     complete top-level one; it must start a line (prose and a ```` ```json ```` fence may precede it), nothing
     after it may open another (``{``): a truncated or malformed later object is a rerun request, never the earlier
-    one's verdict; and it must not sit inside an object left open before it (:func:`_open_braces`): a complete
-    object nested in malformed outer JSON is a rerun request too. Other trailing text (a closing fence, a harness's
+    one's verdict; and it must not sit inside an object or array left open before it (:func:`_open_braces`): a
+    complete object nested in malformed outer JSON, or in an array, is a rerun request too. Other trailing text (a closing fence, a harness's
     status lines) is permitted."""
     if isinstance(value, dict):
         return value
@@ -218,13 +222,14 @@ def json_object(value: Any) -> dict[str, Any] | None:
 
 
 def _open_braces(value: str, spans: list[tuple[int, int, Any]]) -> bool:
-    """Whether an object opened outside the complete ones (``spans``) is still open where the last one starts:
-    ``{`` adds one, ``}`` takes one away but never below none, so balanced prose (``use {x}``) and a stray ``}``
-    leave the final object at top level, and an unterminated outer object does not."""
+    """Whether an object or array opened outside the complete objects (``spans``) is still open where the last one
+    starts: ``{`` or ``[`` adds one, ``}`` or ``]`` takes one away but never below none, so balanced prose
+    (``use {x}``, ``[link]``) and a stray ``}`` leave the final object at top level, and an unterminated outer
+    object, or any array around it, does not."""
     depth, pos = 0, 0
     for begin, stop, _obj in spans:
         for ch in value[pos:begin]:
-            depth = depth + 1 if ch == "{" else max(0, depth - 1) if ch == "}" else depth
+            depth = depth + 1 if ch in "{[" else max(0, depth - 1) if ch in "}]" else depth
         pos = stop
     return depth > 0
 
@@ -325,7 +330,7 @@ def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Pat
             log.touch()   # created now, so the turn's appends move nothing in the hand-off root
             prepare_harness_files(reviews, model)   # and the answer and notes, written in place during the turn
             before = snapshot(root, reviews, model, ref)
-            fence = RootFence(reviews)
+            fence = RootFence(reviews, model)
             rc = run_logged(launch, adapter, root, log, transcript)
             outcome = file_review(root, reviews.name, model, reviews, before=before,
                                   after=snapshot(root, reviews, model, ref),
