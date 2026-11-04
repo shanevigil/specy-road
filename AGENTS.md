@@ -51,7 +51,9 @@ When a bump appears needed: stop, highlight **published PyPI version**, **declar
 
 When the user asks to publish (RC or final), follow [`docs/release-runbook.md`](docs/release-runbook.md) verbatim. Do **not** improvise. Two examples:
 
-- *"Publish v0.2.0-rc1 to TestPyPI"* → runbook §A (RC flow). Tag form `v0.2.0-rc1`; pyproject `0.2.0rc1`; routes to TestPyPI.
-- *"Publish v0.2.0 to PyPI"* → runbook §B (final flow). Tag form `v0.2.0`; pyproject `0.2.0`; routes to PyPI; back-merge to `dev` is mandatory.
+- *"Publish v0.3.1-rc1 to TestPyPI"* → runbook §A (RC flow). Tag form `v0.3.1-rc1`; pyproject `0.3.1rc1`; routes to TestPyPI.
+- *"Publish v0.3.1 to PyPI"* → runbook §B (final flow). Tag form `v0.3.1`; pyproject `0.3.1`; routes to PyPI; back-merge to `dev` is mandatory.
+
+A line's first tag is `x.y.1-rc1` and later candidates count up (`-rc2`, `-rc3`); `x.y.0` is never used. The maintainer chooses the number; the form above is fixed.
 
 The user owns these runbook §2 steps: **choosing the exact version/tag (2.2)**, the **manual tag re-push** when `RELEASE_TAG_TOKEN` is unset (footgun ④), the **`pypi` environment approval** on finals (footgun ⑨), and the **live-on-(Test)PyPI confirmation**. The agent prints the exact commands and waits. Check whether 2.12 / 2.12a apply before starting — see the runbook matrix.
