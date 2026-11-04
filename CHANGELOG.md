@@ -70,6 +70,27 @@ body. Keep section bodies focused; link to PRs for detail.
   output. A rejected push now also resets the local integration branch, so the
   re-run it names merges onto the new tip and checks it again.
 
+### Fixed
+
+- A fresh `specy-road init project` scaffold failed its own `specy-road
+  file-limits`: `model-profiles/README.md` had grown past the scaffold's
+  400-line `**/*.md` cap. The README now keeps the sources, roster and
+  upkeep notes; the research reference (role rankings, reviewer pairs,
+  cheap first passes, capacity, roster corrections, conflicting reports,
+  confidence and gaps) moved unchanged to
+  `docs/model-profiles-research-notes.md`. `refresh-profiles --render`
+  places a missing harness block before `## Keeping this current`. A test
+  scaffolds a project and runs `file-limits` on it.
+- The feature-sheet template's `## Tasks / checklist` pointed at the toolkit
+  doc `docs/roadmap-authoring.md`, which consumer repositories do not have,
+  so `review-packet` flagged an uncommitted reference on every leaf; it now
+  points at the acceptance criteria checklist in the scaffold's
+  `planning/README.md`.
+- `docs/dev-workflow.md` said a leaf with `acceptance` but a scaffold
+  planning sheet is picked with a warning; pickup skips it (as
+  `docs/roadmap-authoring.md` already said) unless
+  `--allow-scaffold-planning` is passed.
+
 ## [v0.3.1-rc2] - 2026-10-29
 
 Second prerelease for v0.3.1 (TestPyPI). Builds on rc1 with upgrade-path

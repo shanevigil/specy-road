@@ -41,7 +41,7 @@ README_NAME = "README.md"
 BLOCK_START = "<!-- >>> harness facts: rendered by `specy-road refresh-profiles --render` from harness-facts.yaml; do not edit inside <<< -->"
 BLOCK_END = "<!-- >>> end harness facts <<< -->"
 #: The README block goes before this heading when the README has no block yet.
-BLOCK_ANCHOR = "## Role rankings"
+BLOCK_ANCHOR = "## Keeping this current"
 #: Matched as a substring of the lower-cased identifier, as the acceptance states it.
 WORKFLOW_WORDS = (
     "plan", "memory", "task", "todo", "worktree", "branch", "commit", "push", "pr",
