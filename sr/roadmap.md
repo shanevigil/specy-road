@@ -139,7 +139,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.30` | Leaf worktrees get the project's environment set up | task | Agentic-led | Not Started |
 | `M11.31` | A safe command to retire a leaf worktree | task | Agentic-led | Not Started |
 | `M11.32` | Unpushed nested-repo commits are reported | task | Agentic-led | Not Started |
-| `M11.33` | A reviewer whose harness routes models dynamically does not count as an independent family by default | task | Agentic-led | Not Started |
+| `M11.33` | A reviewer whose harness routes models dynamically does not count as an independent family by default | task | Agentic-led | Complete |
 | `M11.34` | Open human decisions live in one tracked ledger and every question is self-contained | task | Agentic-led | Complete |
 | `M11.35` | A roster entry maps to the harness's own model id, and a failed start says why | task | Agentic-led | Complete |
 | `M11.36` | A resumed reviewer session may approve a delta it was shown | task | Agentic-led | Complete |

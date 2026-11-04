@@ -384,7 +384,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.33_dynamic-routing-reviewers_abfffa4b-36f6-4fc1-8754-ab8bc26e9fb8.md",
       "sibling_order": 33,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A reviewer whose harness routes models dynamically does not count as an independent family by default",
       "touch_zones": [
         "specy_road/orchestration_config.py",
