@@ -20,12 +20,16 @@ import sys
 from pathlib import Path
 
 #: Placeholder, shared, system or CI-owned home directories that name no person.
-_NOT_A_PERSON = r"(?!(?:x|Shared|runner|linuxbrew|Public|Default)(?![A-Za-z0-9._])|<)"
+_NO_PERSON = "x|Shared|runner|linuxbrew|Public|Default"
+#: The name is exactly one of those: in a path a hyphen is part of the name (an ``x-user`` home is a person);
+#: in an encoded project dir (``-home-x-repo``) the hyphen ends it.
+_PATH_NAME = rf"(?!(?:{_NO_PERSON})(?![A-Za-z0-9._-])|<)[A-Za-z0-9._-]+"
+_DIR_NAME = rf"(?!(?:{_NO_PERSON})(?![A-Za-z0-9._]))[A-Za-z0-9._]+"
 
 PATTERN = re.compile(
-    rf"/(?:Users|home)/{_NOT_A_PERSON}[A-Za-z0-9._-]+"
-    rf"|(?<![A-Za-z0-9])-(?:Users|home)-{_NOT_A_PERSON}[A-Za-z0-9._]+-"   # a project dir name, not prose
-    rf"|[A-Za-z]:\\{{1,2}}Users\\{{1,2}}{_NOT_A_PERSON}[A-Za-z0-9._-]+"
+    rf"/(?:Users|home)/{_PATH_NAME}"
+    rf"|(?<![A-Za-z0-9])-(?:Users|home)-{_DIR_NAME}-"   # a project dir name, not prose
+    rf"|[A-Za-z]:\\{{1,2}}Users\\{{1,2}}{_PATH_NAME}"
     r"|/(?:private/)?tmp/claude-\d"
     r"|-MacBook(?:-(?:Pro|Air))?(?:-\d+)?\.local\b"
 )
