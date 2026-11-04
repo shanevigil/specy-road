@@ -4,7 +4,7 @@
 
 - **Policy (A1).** `policy.strong_review` is an optional list in `roadmap/orchestration.yaml`. Each item is `{zones: [...], require_one_of: [...]}`: touch-zone paths, directory prefixes or globs, and roster ids. I added it to both copies of the schema (`specy_road/templates/project/schemas/orchestration.schema.json` and `sr/schemas/orchestration.schema.json`) as `$defs/strongReview`. Both lists need at least one entry, and the ids must be unique. `orchestration_config._semantic_error` also refuses a `require_one_of` id that is not in the roster, the same way it treats `substitutions/use`. The key is not added to `DEFAULT_POLICY`; like `ratchet_paths`, it is read with `.get(...)`, so the default is empty.
 - **Gate (A1).** At the end of `evaluate_gate`, `GateResult.strong_unmet` is set to the applicable items that have no counted approval (from `result.approvals`) by a model they list. While any item is unmet, `passed` is false, and `problems()` adds one line per item: `strong_review[<n>] (zones: …): the leaf's touch zones meet a strong-review zone; need a counting approval from one of … at this commit, have none`. Handoff status, mark-implementation-reviewed and finish-this-task all print `gate.problems()`, so each of them names the unmet item. Policy comes from the integration branch like the rest. A block, a stale record or an ineligible record never satisfies an item, and neither does a substitute unless its own id is listed. `human_approval_completes` returns true only when every unmet item lists `human`.
-- **Zone matching.** An item applies when one of the leaf's touch zones meets one of the item's zones. Zones meet when `finish_implementation_check.zone_matches` (the rule the review packet's `in_zones` uses) matches in either direction, the way the picker's `zone_clash` works. Both the project-root and git-root forms of each zone are tried. In the gate, the leaf's zones are its registry claim's zones plus the node's own. In the plan, they are the node's zones, because ready leaves have no claim.
+- **Zone matching.** An item applies when one of the leaf's touch zones meets one of the item's zones. Zones meet when `finish_implementation_check.zone_matches` (the rule the review packet's `in_zones` uses) matches in either direction, the way the picker's `zone_clash` works. Both the project-root and git-root forms of each zone are tried. In the gate, the leaf's zones are its registry claim's zones, the node's in the checkout running the command, and the node's **as committed at the commit under review** (`review_target.node_at`, the same read behind `ReviewTarget.review_zones`). So a zone the feature commit adds counts even when the gate runs from the integration checkout (round 2: Sol's block at `9a0bf822`). In the plan, they are the node's zones, because ready leaves have no claim.
 - **Handoff status rows.** While an item is unmet, each row in `review_eligible.reviewer_eligibility` that can still approve ends with `; would satisfy …` or `; would not satisfy …`. A model whose approval would satisfy an unmet item is no longer excluded as "same family", because a strong approval counts whatever its family.
 - **Plan (A2).** For each ready leaf, `orchestrate plan` adds `Assignment.strong_review` (`item`, `require_one_of`, `can_satisfy`), and `--json` carries it too. The text output prints `strong review strong_review[<n>] (zones: …): one approval from …; can satisfy it: …`. `_pick_reviewers` first picks the best-ranked reviewer that can satisfy each item (`_pick_strong`), then fills up to `reviewers_required` as before. Under `reviewers_distinct_families` the fill-up counts distinct families. When no item applies, the picks are unchanged. If no reviewer can satisfy an item, the leaf gets a problem and the plan exits 1.
 - **Docs.** `docs/orchestration-review.md` gets a new section, "Strong review for high-risk zones", plus one clause in the paragraph on when the gate passes.
@@ -13,10 +13,17 @@
 
 These are the listed zones plus **`specy_road/review_strong.py`**. It is a new module because `review_gate.py` is at the 400-line `file-limits` cap. As the planning sheet says, I added it with `specy-road edit-node M11.79 --add touch_zones=specy_road/review_strong.py` (this changed `sr/roadmap/phases/M11__9025e7.json` and the claim row in `sr/roadmap/registry.yaml`, both in the implementation commit). To keep `review_gate.py` at 400 lines, `delta_problem` now reads its zones through `review_strong.touch_zones` (same claim-or-node rule) in place of its inline registry read, and the gate's module docstring paragraph is reflowed with every word kept. The importers flagged outside the zones (`review_cli.py`, `mark_implementation_reviewed.py`, `finish_task.py`) need no change: they already print `gate.problems()`.
 
+## Round 2 (Sol's block at `9a0bf822`)
+
+- **Finding.** From the integration checkout, the gate read only that checkout's node and claim. A high-risk zone added on the feature commit (`edit-node --add touch_zones=`) therefore never made its item applicable, and ordinary approvals passed the gate.
+- **Fix.** `unmet_strong` takes the commit under review, and `evaluate_gate` passes `result.commit`. The node's touch zones at that commit (`node_at`) are added to the claim zones and working-tree zones. `review_gate.py` stays at 400 lines (the change is one argument).
+- **Regression.** `test_a_strong_zone_added_on_the_feature_commit_counts_from_the_integration_checkout`. The feature commit adds `sensitive/` to the node and the claim, and the integration checkout's policy has a strong item for `sensitive/`. With `dev` checked out and only opus and sol approving, `handoff status --json` exits 1 and names `strong_review[0] (zones: sensitive/)`. It fails without the fix (the gate passes, exit 0); I confirmed this by running it with the `commit` argument dropped from `evaluate_gate`.
+
 ## Verification
 
-- `python -m pytest tests/test_strong_review.py -q`: 22 passed.
-- `python -m pytest -n auto -q -p no:cacheprovider`: 3553 passed, 2 skipped.
+- Round 2: `python -m pytest tests/test_strong_review.py -q`: 23 passed.
+- Round 2: `python -m pytest -n 4 -q -p no:cacheprovider`: 3554 passed, 2 skipped (29 min).
+- Round 1: `python -m pytest -n auto -q -p no:cacheprovider`: 3553 passed, 2 skipped.
 - `specy-road file-limits`: OK.
 - `specy-road validate/export --check/digest --check --repo-root tests/fixtures/specy_road_dogfood`: all exit 0.
 - `ruff check specy_road tests scripts` reports two C901 findings, both in functions this leaf does not touch: `orchestration_config.load_availability_overlay` and `review_packet_uncommitted_refs.py:82`. Both fail the same way at the base commit. I did not add any noqa.
@@ -31,7 +38,7 @@ These are the listed zones plus **`specy_road/review_strong.py`**. It is a new m
 - `zones_meet`: two zones share a path, using `zone_matches` in both directions.
 - `applicable_items`: the `(index, item)` pairs a leaf's zones meet. The gate and the plan share it.
 - `item_label`: the `strong_review[<n>] (zones: …)` name used in every refusal and plan line.
-- `unmet_strong`: the applicable items with no counted approval from their set. The gate's new check.
+- `unmet_strong`: the applicable items with no counted approval from their set. The gate's new check. Its `commit` argument (round 2) adds the node's zones as committed there, read with `review_target.node_at`.
 - `strong_problem`: the gate's refusal text naming the item and its `require_one_of`.
 - `human_closes_strong`: stops the interactive human approval from closing a gate whose unmet item does not list `human`.
 
@@ -64,3 +71,4 @@ These are the listed zones plus **`specy_road/review_strong.py`**. It is a new m
 - `test_plan_leaf_outside_the_zone_has_no_item`: plan, leaf outside the zone (no item, picks unchanged).
 - `test_plan_item_no_reviewer_can_satisfy_is_unstaffable`: CLI text lines and exit 1.
 - `test_plan_json_carries_the_items`: the `--json` output.
+- `test_a_strong_zone_added_on_the_feature_commit_counts_from_the_integration_checkout` (round 2): a zone the feature commit adds makes its item apply when handoff status runs from the integration checkout.

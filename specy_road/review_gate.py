@@ -342,7 +342,7 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
     if ready is not None and same_commit(repo_root, ready.data["commit"], result.commit):
         result.verifier_problems += executor_blocked_gate_problems(ready)
     result.verifier_problems += integrity_gate_problems(repo_root, policy, node["id"], result.commit, ref)
-    result.strong_unmet = unmet_strong(repo_root, node, policy, result.approvals)
+    result.strong_unmet = unmet_strong(repo_root, node, policy, result.approvals, result.commit)
     return result
 
 

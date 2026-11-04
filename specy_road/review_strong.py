@@ -6,9 +6,10 @@ prefix of the other, or a glob zone matching the other (:func:`finish_implementa
 rule the review packet uses, tried in both directions as the picker's zone clash is). In a nested project
 either zone may be written from the git root or from the project root, so both forms are tried.
 
-The review gate refuses while an applicable item has no counting approval (one the gate already counts:
-eligible, at the commit under review) from a model it lists; ``orchestrate plan`` shows each ready leaf's items
-and who can satisfy them. A substitute satisfies an item only when its own id is listed.
+The review gate reads the leaf's zones from its claim, from the node in this checkout and from the node as
+committed at the commit under review, and refuses while an applicable item has no counting approval (one the gate
+already counts: eligible, at the commit under review) from a model it lists; ``orchestrate plan`` shows each ready
+leaf's items and who can satisfy them. A substitute satisfies an item only when its own id is listed.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from typing import Any, Iterable
 
 from specy_road.finish_implementation_check import zone_matches
 from specy_road.review_files import HUMAN
+from specy_road.review_target import node_at
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.runtime_paths import project_prefix, rebase_to_project
 
@@ -54,13 +56,19 @@ def item_label(index: int, item: dict[str, Any]) -> str:
 
 
 def unmet_strong(repo_root: Path, node: dict[str, Any], policy: dict[str, Any],
-                 approvals: list[Any]) -> list[tuple[int, dict[str, Any]]]:
-    """The items that apply to ``node`` and that no counted approval in ``approvals`` satisfies."""
+                 approvals: list[Any], commit: str | None = None) -> list[tuple[int, dict[str, Any]]]:
+    """The items that apply to ``node`` and that no counted approval in ``approvals`` satisfies.
+
+    The leaf's zones are the claim's and the node's in this checkout plus the node's **as committed at
+    ``commit``** (:attr:`ReviewTarget.review_zones`): a zone the feature commit adds counts although the
+    integration checkout running the gate has not seen it.
+    """
     if not policy.get("strong_review"):
         return []
     claim, own = touch_zones(repo_root, node)
+    committed = _clean((node_at(repo_root, node["id"], commit) or {}).get("touch_zones"))
     models = {a.model for a in approvals}
-    items = applicable_items(policy, list(dict.fromkeys(claim + own)), project_prefix(repo_root))
+    items = applicable_items(policy, list(dict.fromkeys(claim + own + committed)), project_prefix(repo_root))
     return [(i, item) for i, item in items if not models & set(item["require_one_of"])]
 
 

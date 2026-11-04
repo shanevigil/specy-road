@@ -7,6 +7,7 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+import yaml
 
 from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
 from tests.test_orchestrate_plan import ROSTER, only_assignment, plan_repo
@@ -197,3 +198,30 @@ def test_plan_json_carries_the_items(tmp_path: Path, capsys) -> None:
         orchestrate_cli.main(["orchestrate", "plan", "--json", "--today", "2026-11-01", "--repo-root", str(repo)])
     a = json.loads(capsys.readouterr().out)["batches"][0][0]
     assert a["strong_review"][0]["can_satisfy"] == ["sol", "human"]
+
+
+def test_a_strong_zone_added_on_the_feature_commit_counts_from_the_integration_checkout(tmp_path: Path, capsys) -> None:
+    """The feature commit adds a high-risk zone (``edit-node --add touch_zones=``); the coordinator runs
+    ``handoff status`` from the integration checkout, whose node and claim still lack it."""
+    repo = make_review_repo(tmp_path, orchestration=STRONG.replace("[src/a.py, lib/]", "[sensitive/]"))
+    chunk, registry = repo / "roadmap" / "phases" / "M1.json", repo / "roadmap" / "registry.yaml"
+    chunk.write_text(chunk.read_text().replace('"touch_zones": ["src"]', '"touch_zones": ["src", "sensitive/"]'))
+    reg = yaml.safe_load(registry.read_text())
+    reg["entries"][0]["touch_zones"].append("sensitive/")
+    registry.write_text(yaml.safe_dump(reg))
+    (repo / "sensitive").mkdir()
+    (repo / "sensitive" / "gate.py").write_text("x = 1\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "add a high-risk zone")
+    git(repo, "checkout", "-q", "dev")
+    head = git(repo, "rev-parse", "feature/rm-thing")
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True, exist_ok=True)
+    for model in ("opus", "sol"):   # the usual count, from outside the strong set
+        (d / f"REVIEW-{model}.md").write_text(review_text(head, model=model))
+    capsys.readouterr()
+    with pytest.raises(SystemExit) as e:
+        review_cli.main(["handoff", "status", "M1.1", "--json", "--repo-root", str(repo)])
+    st = json.loads(capsys.readouterr().out)["nodes"][0]
+    assert e.value.code == 1 and not st["policy_met"]
+    assert any(p.startswith("strong_review[0] (zones: sensitive/): ") for p in st["problems"]), st["problems"]
