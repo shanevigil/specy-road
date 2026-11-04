@@ -150,13 +150,13 @@ different command lines:
 - **Grok:** the verified `grok -p` has no model flag. The ChatGPT run's `-m` and
   `--output-format` are unverified.
 
-**Opus 5.5** ([profile](anthropic-claude/claude-opus-5-5.md))
+**Opus 5.5** ([profile](../model-profiles/anthropic-claude/claude-opus-5-5.md))
 
 - **Reviewer score:** Claude run 4 (vendor-reported evidence only), ChatGPT run 5.
 - **AA Intelligence Index leader:** two aggregators citing the same index
   disagree. One has Opus 5.5 first at 57.6; the other has GPT-5.6 Sol first at 58.9.
 
-**Opus 5** ([profile](anthropic-claude/claude-opus-5.md))
+**Opus 5** ([profile](../model-profiles/anthropic-claude/claude-opus-5.md))
 
 - **CursorBench:** Claude run 70.0% at max and 62.8% at low effort (version not
   stated, via Caylent). ChatGPT run 46.6% at Max on CursorBench 4.0. These are
@@ -164,18 +164,18 @@ different command lines:
 - **Index scale:** 63 in August vs Opus 5.5's 57.6 in October. The index version
   changed between those readings.
 
-**GPT-6.1 Sol** ([profile](openai-gpt/gpt-6.1-sol.md))
+**GPT-6.1 Sol** ([profile](../model-profiles/openai-gpt/gpt-6.1-sol.md))
 
 - **Effort levels:** Claude run says `none` and `minimal` are rejected. ChatGPT
   run lists `none` through `max`. The profile treats `none` as rejected.
 - **Executor score:** Claude run 4 (no independent numbers found). ChatGPT run 5
   (Terminal-Bench 4.0, DeepSWE). The profile uses 5.
 
-**GPT-6 Sol** ([profile](openai-gpt/gpt-6-sol.md))
+**GPT-6 Sol** ([profile](../model-profiles/openai-gpt/gpt-6-sol.md))
 
 - **Coordinator and executor scores:** Claude run 3 and 3, ChatGPT run 4 and 4.
 
-**Gemini 4 Argon** ([profile](google-gemini/gemini-4-argon.md))
+**Gemini 4 Argon** ([profile](../model-profiles/google-gemini/gemini-4-argon.md))
 
 - **Output limit:** Claude run 65,536 per synchronous response, with longer output
   only through background long decode. ChatGPT run 1,048,576 (the unified window).
@@ -188,11 +188,11 @@ different command lines:
   indexes.
 - **Context in Cursor:** 200K by default, vs 1M on the API (Claude run).
 
-**Gemini 3.8 Flash** ([profile](google-gemini/gemini-3.8-flash.md))
+**Gemini 3.8 Flash** ([profile](../model-profiles/google-gemini/gemini-3.8-flash.md))
 
 - **Role scores (C/E/R):** Claude run 2 / 3 / 2 (thin evidence). ChatGPT run 4 / 4 / 3.
 
-**Grok 4.7** ([profile](spacexai-grok/grok-4.7.md))
+**Grok 4.7** ([profile](../model-profiles/spacexai-grok/grok-4.7.md))
 
 - **What $4 / $12 means:** Claude run says the whole request bills at $4 / $12
   once the prompt passes 200K tokens. ChatGPT run says $4 / $12 is the Fast-mode
@@ -205,7 +205,7 @@ different command lines:
 - **Output limit:** xAI says "no text output limit" with a 128,000 default
   `max_output_tokens`; AWS lists 524,288 minus input.
 
-**Grok 4.6** ([profile](spacexai-grok/grok-4.6.md))
+**Grok 4.6** ([profile](../model-profiles/spacexai-grok/grok-4.6.md))
 
 - **Standing:** Claude run cites AA index 61 at launch (August index). ChatGPT run
   cites CursorBench 4.0 High 40.4%, "no longer frontier".

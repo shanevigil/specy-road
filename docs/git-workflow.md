@@ -16,13 +16,13 @@
 - every `git-workflow.yaml` field, the `on_complete` modes and finish precedence → "Machine-readable contract (`roadmap/git-workflow.yaml`)"
 - `feature/rm-*` patterns and milestone rollups → "Branch naming"
 - the pre-claim checklist → "Before implementation"
-- the registration commit and `registry-prune` → "Registration commit (mandatory)"
+- the registration commit and `registry-prune` → "Registration commit (mandatory)" and "Releasing a claim whose branch is gone (`registry-prune`)"
 - touch zones and worktrees while implementing → "While working"
-- code in separately versioned repositories under the project root (`nested_repos`) → "Nested repositories"
-- a virtual environment and ignored files (`.python-version`, `.env`) in each new leaf worktree (`env_setup`) → "Worktree environment"
+- code in separately versioned repositories under the project root (`nested_repos`) → "Nested repositories (`nested_repos`)"
+- a virtual environment and ignored files (`.python-version`, `.env`) in each new leaf worktree (`env_setup`) → "Worktree environment (`env_setup`)"
 - landing, then revert vs follow-up → "Merge back" and "Correcting merged work: revert vs follow-up"
 - deleting merged `feature/rm-*` branches (`finish-this-task --delete-branch`, `branches prune`) → "Deleting merged feature branches"
-- removing one leaf's worktree safely (`worktree prune`) → "Retiring a leaf's worktree"
+- removing one leaf's worktree safely (`worktree prune`) → "Retiring a leaf's worktree (`worktree prune`)"
 - every leftover the loop leaves (branches, worktrees, registry rows, stashes) → "Finding leftovers: `doctor`"
 
 **Related:** [`dev-workflow.md`](dev-workflow.md), [`grind-session.md`](grind-session.md), [`pm-workflow.md`](pm-workflow.md), [`orchestration.md`](orchestration.md).
@@ -64,6 +64,10 @@ Optional field **`track_worker_logs`** (`"off"`, `"events"` or `"full"`; default
 Optional field **`nested_repos`** (list): separately versioned git repositories under the project root, each a project-relative path or `{path, integration_branch, remote}`; the worktree flow, `worker reconcile`, merge-mode finish and `review-packet` include them. See "Nested repositories" below.
 
 Optional field **`env_setup`** (`{cmd, copy}`): what a new leaf worktree gets when `do-next-available-task --worktree` or `worker delegate` creates it — ignored files copied from the main checkout, then a command run there. See "Worktree environment" below.
+
+Optional field **`baseline_cmd`** (string): a check command, such as `make test`, that `do-next-available-task` and `grind-session` run on the integration branch after the sync and before a leaf is claimed. A non-zero exit refuses the pickup, so a red base is fixed before a leaf inherits it; the command must only check (pickup also refuses when it moves `HEAD`, switches branch or changes files). `--baseline-cmd CMD` overrides it for one run (an empty value turns it off) and `--baseline-warn` downgrades a failure to a warning. See [`dev-workflow.md`](dev-workflow.md) (Baseline gate).
+
+Optional field **`prefer_agentic_pick_order`** (boolean, default **false**): when **true**, `do-next-available-task` and `grind-session` order each pickup tier (Blocked, MR-rejected, the rest) by `execution_milestone` — `Agentic-led`, then `Mixed`, then unset, then `Human-led` — and by outline order within each. It only reorders; eligibility is unchanged. `--prefer-agentic` / `--no-prefer-agentic` override it for one run.
 
 Optional fields **`grind_session_max_limit_waits`** (integer, default 3), **`grind_session_max_limit_wait_hours`** (number, default 6), **`grind_session_limit_wait_grace_seconds`** (integer, default 120) and **`grind_session_max_empty_retries`** (integer, default 2): bounds for a `grind-session` run whose `--implement-cmd` is the Claude CLI — how many times one leaf may wait out a usage limit, the ceiling on any single wait, the slack added after a stated reset, and how many times to re-run a hook killed from outside without printing anything. The matching CLI flags override this file. Ignored for any other implement command. See [grind-session.md](grind-session.md).
 

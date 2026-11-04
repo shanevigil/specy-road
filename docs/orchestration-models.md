@@ -326,8 +326,11 @@ order:
   anything, so a local model's port can be checked first.
 - **Eligibility.** A leaf's `executor_eligibility` (default `any`) names a
   roster `class` tag such as `senior`; only executors with that tag qualify.
-- **Availability.** A roster entry with `unavailable_until` is skipped through
-  that date; a substitution says who stands in meanwhile.
+- **Availability.** A roster entry with `available: false` is skipped, one with
+  `paused_until` is skipped until that time, and legacy `unavailable_until` is
+  skipped through that date; `roadmap/orchestration.local.yaml` can set the first
+  two for this working tree only ([orchestration.md](orchestration.md#roadmaporchestrationyaml),
+  "Local availability overlay"). A substitution says who stands in meanwhile.
 - **Cost.** Among capable executors (profile executor score 3 or more, or no
   profile) the cheapest list price wins. Reviewers rank by reviewer score,
   then cost; the coordinator by coordinator score.

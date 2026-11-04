@@ -42,13 +42,13 @@ measuring that review verdicts hold.
 ## Where this comes from
 
 Two runs of the deep-research prompt in the
-[orchestration proposal](../design-notes/model-aware-orchestration-proposal.md) §7.2,
+[orchestration proposal](https://github.com/shanevigil/specy-road/blob/main/docs/design-notes/model-aware-orchestration-proposal.md) §7.2,
 weighted equally:
 
 | Run | Researched | Schema | Roster | Raw output |
 |---|---|---|---|---|
-| ChatGPT (Deep Research) | 2026-10-20 | 1 | GPT Sol, Claude Opus, Gemini, Grok, DeepSeek | [proposal §7.4](../design-notes/model-aware-orchestration-proposal.md) |
-| Claude (Research) | 2026-10-26 | 2 | Claude Opus and Fable, GPT Sol, Gemini, Grok, Meta Muse, Cursor Composer | [model-research-2026-10-26-claude.md](../design-notes/model-research-2026-10-26-claude.md) |
+| ChatGPT (Deep Research) | 2026-10-20 | 1 | GPT Sol, Claude Opus, Gemini, Grok, DeepSeek | [proposal §7.4](https://github.com/shanevigil/specy-road/blob/main/docs/design-notes/model-aware-orchestration-proposal.md) |
+| Claude (Research) | 2026-10-26 | 2 | Claude Opus and Fable, GPT Sol, Gemini, Grok, Meta Muse, Cursor Composer | [model-research-2026-10-26-claude.md](https://github.com/shanevigil/specy-road/blob/main/docs/design-notes/model-research-2026-10-26-claude.md) |
 
 How the profiles were merged:
 
@@ -239,8 +239,8 @@ From proposal §7.3, plus the merge rules under *Where this comes from*:
   to that family and the current profiles pasted in. The new release becomes
   `latest`, the old latest becomes `previous`, and the one before that is
   archived.
-- Run both researchers. Keep each raw output under
-  [`../design-notes/`](../design-notes/), merge with the rules above, and list
+- Run both researchers. Keep each raw output in a tracked file (the toolkit keeps
+  its own in [`docs/design-notes/`](https://github.com/shanevigil/specy-road/tree/main/docs/design-notes)), merge with the rules above, and list
   new conflicts under Open questions and in the research notes' watch-out list.
 - Treat a profile as stale when `researched` is old or its `api_id` is no longer
   the vendor's latest. Mark anything released more than 180 days before research
