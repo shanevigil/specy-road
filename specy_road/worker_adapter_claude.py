@@ -6,6 +6,7 @@ Split from :mod:`specy_road.worker_adapters` for the file limit; callers reach i
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from dataclasses import replace
 from pathlib import Path
@@ -124,6 +125,31 @@ class ClaudeCode(Adapter):
             out.append(Parsed("usage_limited", f"usage limit; resets {limit['reset_at'] or 'at an unstated time'}",
                               sid, {**limit, "source": "claude-code result"}))
         return out
+
+    @staticmethod
+    def transcript_limit(session_id: str | None, *, home: Path | None = None) -> Parsed | None:
+        """A usage limit the session transcript's last assistant message names (Claude writes an API error as
+        one), for a turn that exited non-zero with no result line: ``~/.claude/projects/<project>/<session-id>.jsonl``
+        (harness-facts), found by the id alone. The prompt is never read: a brief may mention limits."""
+        root = (home or Path.home()) / ".claude" / "projects"
+        if not session_id or not re.fullmatch(r"[A-Za-z0-9-]+", session_id) or not root.is_dir():
+            return None
+        text = ""
+        for path in sorted(root.glob(f"*/{session_id}.jsonl")):
+            try:
+                lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+            except OSError:
+                continue
+            for line in lines:
+                d = _json(line) or {}
+                message = d.get("message") if d.get("type") == "assistant" else None
+                content = message.get("content") if isinstance(message, dict) else None
+                parts = [content] if isinstance(content, str) else [
+                    p.get("text", "") for p in content or [] if isinstance(p, dict) and p.get("type") == "text"]
+                text = " ".join(parts).strip() or text
+        limit = limit_detail(text, failed=True)
+        return Parsed("usage_limited", f"usage limit; resets {limit['reset_at'] or 'at an unstated time'}", session_id,
+                      {**limit, "source": "claude-code transcript"}) if limit else None
 
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:
         return ["claude", "--resume", session_id]

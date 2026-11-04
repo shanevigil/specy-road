@@ -168,7 +168,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.59` | Split worker_ops and worker_adapters so parallel leaves stop colliding | task | Agentic-led | Complete |
 | `M11.60` | The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names | task | Agentic-led | Complete |
 | `M11.61` | The context meter counts Claude rules, auto memory, Cursor nested AGENTS.md and Copilot path instructions | task | Agentic-led | Complete |
-| `M11.62` | Headless runs report usage limits and denied actions instead of looking like success | task | Agentic-led | Not Started |
+| `M11.62` | Headless runs report usage limits and denied actions instead of looking like success | task | Agentic-led | Complete |
 | `M11.63` | do-next-available-task refuses a second claim in a checkout that already holds one | task | Agentic-led | Complete |
 | `M11.64` | abort-task-pickup treats untracked files the way pickup does | task | Agentic-led | Complete |
 | `M11.65` | why-blocked reports touch-zone holds from the plan | task | Agentic-led | Complete |

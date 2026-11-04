@@ -41,6 +41,7 @@ of that branch's hooks or MCP servers, and the reviewer prompt asks it to record
 from __future__ import annotations
 
 import argparse
+import os
 import shlex
 import subprocess
 import sys
@@ -74,6 +75,8 @@ from specy_road.worker_adapters import ADAPTERS, placeholder_problem, substitute
 from specy_road.orchestration_config import substitute_for
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.bundled_scripts.role_prompt_stream import stream_and_capture
+from specy_road.orchestration_role_env import CLAUDE_REVIEWER_AVOID_ENV
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_gate import delta_basis
 from specy_road.review_lessons import reviewer_lesson_lines
@@ -245,27 +248,6 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
     return "\n".join(lines) + "\n", prof, None
 
 
-def _stream_and_capture(cmd, *, cwd: Path, transcript: list[str], stdin: str | None = None,
-                        shell: bool = False) -> int:
-    """Run ``cmd`` to its end, writing each line to stderr and ``transcript`` as it arrives."""
-    proc = subprocess.Popen(
-        cmd, cwd=cwd, shell=shell, text=True, encoding="utf-8", errors="replace",
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        stdin=subprocess.PIPE if stdin is not None else subprocess.DEVNULL,
-    )
-    if stdin is not None and proc.stdin:
-        try:
-            proc.stdin.write(stdin)
-            proc.stdin.close()
-        except OSError as e:   # the harness quit before reading its prompt
-            sys.stderr.write(f"harness closed stdin early: {e}\n")
-    assert proc.stdout is not None
-    for line in proc.stdout:
-        sys.stderr.write(line)
-        transcript.append(line.rstrip("\n"))
-    return proc.wait()
-
-
 def run_bare_reviewer(prof: Profile | None, prompt_path: Path, root: Path, model: str | None, reviews: Path,
                       level: str | None, transcript: list[str] | None = None) -> int:
     """The default Claude Code reviewer command: bare, with ``--add-dir`` for the hand-off directory."""
@@ -275,10 +257,11 @@ def run_bare_reviewer(prof: Profile | None, prompt_path: Path, root: Path, model
     print("note: the reviewer runs with --bare (no repository hooks, MCP servers or CLAUDE.md), and bare mode "
           "never reads your subscription login: it needs ANTHROPIC_API_KEY (or an apiKeyHelper)", file=sys.stderr)
     print(f"running: {shlex.join(launch.argv)} < {prompt_path}", file=sys.stderr)
+    env = {**os.environ, **CLAUDE_REVIEWER_AVOID_ENV}   # as `review delegate`'s reviewer (harness_env)
     try:
         if transcript is None:
-            return subprocess.run(launch.argv, input=launch.stdin, text=True, cwd=root, check=False).returncode
-        return _stream_and_capture(launch.argv, cwd=root, transcript=transcript, stdin=launch.stdin)
+            return subprocess.run(launch.argv, input=launch.stdin, text=True, cwd=root, env=env, check=False).returncode
+        return stream_and_capture(launch.argv, cwd=root, transcript=transcript, stdin=launch.stdin, env=env)
     except OSError as e:   # e.g. no `claude` on PATH
         print(f"error: could not launch claude: {e.strerror}", file=sys.stderr)
         if transcript is not None:
@@ -321,7 +304,7 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
         cmd = substitute_prompt(cli, prompt_path, effort=effort)
         if transcript is None:
             return subprocess.run(cmd, shell=True, cwd=root, check=False).returncode
-        return _stream_and_capture(cmd, cwd=root, transcript=transcript, shell=True)
+        return stream_and_capture(cmd, cwd=root, transcript=transcript, shell=True)
     except OSError as e:   # E2BIG: "<prompt>" puts the whole text on the command line
         print(f"error: could not launch the cli: {e.strerror}; if the prompt is too long for a command line, "
               'use {prompt} (its file path) instead of "<prompt>"', file=sys.stderr)

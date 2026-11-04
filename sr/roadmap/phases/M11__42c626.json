@@ -118,35 +118,6 @@
     },
     {
       "acceptance": [
-        "A Claude Code result line whose permission_denials list is non-empty records a permission_denied worker event naming each denied tool and its input, and flags the worker, even when subtype is success, is_error is false and the exit code is 0; a test replays such a line.",
-        "A usage limit is recognised from the turn's text, never its exit code: a Claude result or api_error text that claude_code_limits.classify_limit reads as a limit (including subtype success with exit 0, and exit 1 with no result line, where the last message is read from ~/.claude/projects/<project>/<session-id>.jsonl), a system/api_retry line with error rate_limit, and a Codex turn.failed whose text says 'try again at <time>' each put the worker in paused-by-limit with the parsed reset time when there is one; a test replays one line per case.",
-        "Claude Code worker and reviewer launches either set CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 in the harness environment, as harness-facts.yaml states, or the fixture row and the 'Backgrounded tests' paragraph of docs/orchestration-workers.md say that claude -p waits up to 10 minutes of idle for background work it started; a test checks the environment the wrapper passes.",
-        "The Codex memory overrides the launch passes are checked against the captured `codex features list` (memory v2 is on by default for fresh profiles since 0.165), and a key the capture does not list fails refresh-profiles --check instead of being passed and ignored."
-      ],
-      "codename": "headless-limits-denials",
-      "dependencies": [
-        "6cb421f0-05d8-4db3-b111-58b8708a3f53",
-        "f4d6efe0-4286-44f8-a36e-d30947c401d6"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M11.62",
-      "node_key": "eda7b3fe-97ec-4eba-9a95-3df7ed230209",
-      "parent_id": "M11",
-      "planning_dir": "planning/M11.62_headless-limits-denials_eda7b3fe-97ec-4eba-9a95-3df7ed230209.md",
-      "sibling_order": 60,
-      "status": "Not Started",
-      "title": "Headless runs report usage limits and denied actions instead of looking like success",
-      "touch_zones": [
-        "specy_road/worker_adapters.py",
-        "specy_road/worker_adapter_parsers.py",
-        "specy_road/worker_runner.py",
-        "docs/orchestration-workers.md",
-        "tests/"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
         "harness-facts.yaml carries rows F1-F22 of the 2026-11-02 triage (recorded in a design note under docs/design-notes/), each labelled documented with the vendor URL or runtime with its capture; no row rests only on the unsourced OpenAI report; refresh-profiles --check passes after --render",
         "WORKFLOW_WORDS also contains goal, loop, queue, persist, gist, fleet, teleport, remote and spawn; every identifier in the accepted captures that now matches has a relationship; a test shows a capture that adds persist failing the diff until it is classified",
         "The Codex captures are refreshed from an installed codex-cli 0.166.0 or later (--version, --help, exec --help, features list), and docs/orchestration-workers.md cites the captured versions instead of 'codex-cli 0.165.0' and 'verified … on 2026-10-27'"

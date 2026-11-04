@@ -14,6 +14,9 @@ CLAUDE_EXECUTOR_AVOID_ENV = {
     "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1",
     "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1",
 }
+#: A reviewer runs ``--bare`` (no auto memory), but ``claude -p`` still waits up to 10 minutes of idle for
+#: background work it started (harness-facts), so background tasks are off for it too.
+CLAUDE_REVIEWER_AVOID_ENV = {"CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1"}
 
 
 def harness_env(
@@ -29,7 +32,8 @@ def harness_env(
     tests) and ``CLAUDE_CODE_EFFORT_LEVEL`` (a caller's setting must not
     override the profile's ``effort_by_role``). Restores ``PYTHONPATH`` from
     ``harness_pythonpath`` when the caller supplied one. For ``claude-code``
-    executors, sets the Claude avoid-list env switches (M8.5).
+    executors, sets the Claude avoid-list env switches (M8.5); for its reviewers,
+    the background-task switch.
     """
     env = {k: v for k, v in source.items() if k not in ("PYTHONPATH", "CLAUDE_CODE_EFFORT_LEVEL")}
     if harness_pythonpath:
@@ -37,4 +41,6 @@ def harness_env(
     env[ROLE_ENV] = role
     if role == "executor" and harness == "claude-code":
         env.update(CLAUDE_EXECUTOR_AVOID_ENV)
+    elif role == "reviewer" and harness == "claude-code":
+        env.update(CLAUDE_REVIEWER_AVOID_ENV)
     return env

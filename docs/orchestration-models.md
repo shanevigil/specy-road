@@ -211,6 +211,11 @@ drift:
   or the end before the start is drift: `--check` exits 1, and `--render`
   leaves it byte for byte and exits 1.
 
+`--check` also exits 1 when a Codex memory override the worker launch passes
+(`-c features.memories=false`, `-c memories.…`) names a feature the accepted
+`codex features list` capture (`harness-captures/codex/inventory-features.txt`)
+does not list: Codex would take the key and ignore it.
+
 ```bash
 specy-road refresh-profiles --check    # report drift (exit 1); a README older than the block is "behind" (exit 0)
 specy-road refresh-profiles --render   # rewrite the rendered regions; --dry-run lists them

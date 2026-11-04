@@ -238,7 +238,7 @@ def _fake_run(monkeypatch) -> list[dict]:
     import subprocess as real_sp
     from types import SimpleNamespace
 
-    from specy_road.bundled_scripts import role_prompt
+    from specy_road.bundled_scripts import role_prompt, role_prompt_stream
 
     calls: list[dict] = []
 
@@ -261,8 +261,9 @@ def _fake_run(monkeypatch) -> list[dict]:
         calls.append(rec)
         return SimpleNamespace(stdin=stdin, stdout=iter(()), wait=lambda: 0)
 
-    monkeypatch.setattr(role_prompt, "subprocess", SimpleNamespace(
-        run=run, Popen=popen, PIPE=real_sp.PIPE, STDOUT=real_sp.STDOUT, DEVNULL=real_sp.DEVNULL))
+    fake = SimpleNamespace(run=run, Popen=popen, PIPE=real_sp.PIPE, STDOUT=real_sp.STDOUT, DEVNULL=real_sp.DEVNULL)
+    for module in (role_prompt, role_prompt_stream):   # the streaming run moved out for the file limit (M11.62)
+        monkeypatch.setattr(module, "subprocess", fake)
     return calls
 
 

@@ -18,18 +18,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: headless-limits-denials
-    node_id: M11.62
-    branch: feature/rm-headless-limits-denials
-    touch_zones:
-      - specy_road/worker_adapters.py
-      - specy_road/worker_adapter_parsers.py
-      - specy_road/worker_runner.py
-      - docs/orchestration-workers.md
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: reviewer-probe-rules
     node_id: M11.75
     branch: feature/rm-reviewer-probe-rules
