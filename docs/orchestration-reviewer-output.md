@@ -30,8 +30,10 @@ specy-road decides the outcome:
 - **review failure** — the run wrote something besides its notes
   (`notes-<model>.md`) and the files the run itself keeps (`RUN-<model>.json`,
   its `.tmp`, `RUN-<model>.log`, `OUTPUT-<model>.json` and
-  `.review-run.lock`; the schema file is written before the run, and left
-  alone when it already says the same, so it is not one of them): any file of the checkout it ran in, git-ignored and
+  `.review-run.lock`; the schema file is written before the run, so it is not
+  one of them), or changed `RUN-<model>.log` other than by specy-road's own
+  appends of the harness's output (specy-road hashes what the log held when the
+  run began and every byte it appended since): any file of the checkout it ran in, git-ignored and
   `work/` files included, any file of the leaf's hand-off directory, the Git
   metadata a reviewer of this leaf could change (below), `HEAD` or the reviewed
   branch moving, or the Git index's entries (`git add`,
@@ -43,10 +45,16 @@ specy-road decides the outcome:
   start a line or sits inside an outer object left unterminated or inside an array (closed or not), a later object was begun and left malformed or truncated (an
   earlier complete object never stands in for it), it does not match the schema,
   or `review record` refuses it (another commit, an approve with a failing
-  item). Nothing is filed; it is never recorded as a verdict.
+  item, or no `--sign-key` under `policy.signed_reviews`). Nothing is filed; it
+  is never recorded as a verdict. `OUTPUT-<model>.json` is emptied before every
+  attempt, so a resumed turn (a Codex resume writes no `-o` file) is judged by
+  its own final message, never by an earlier attempt's answer.
 - **recorded** — the notes go to `notes-<model>.md` and `review record` files
   `REVIEW-<model>.md` from them, with the launch mode, family and `history/`
-  copy an interactive filing gets.
+  copy an interactive filing gets. Under `policy.signed_reviews`, pass the
+  reviewer's key to the launch (`review delegate --sign-key <key>`,
+  `prompt --role reviewer --channel cli --sign-key <key>`); specy-road files the
+  record with `review record --sign-key`, and the gate verifies the signature.
 
 The check walks every file, so run reviewers where nothing else writes: a
 coordinator or executor editing the same checkout during the run, or another
@@ -77,7 +85,8 @@ linked worktree under `work/.worktrees`, a nested repository) are another
 checkout's and are skipped, but its `.git` marker is recorded, so a
 reviewer-created `.git` file or `git init` anywhere is a write. The reviewer runs with `GIT_OPTIONAL_LOCKS=0`, so a read-only `git status` takes no `index.lock`; the hand-off root, whose entries specy-road changes between harness turns, is fenced during each turn instead: `OUTPUT-<model>.json` and `notes-<model>.md` are created before the run and written in place, so any file created, renamed or deleted there while the harness runs is a write, whatever else the turn wrote. The fence also holds `RUN-<model>.json`, which specy-road writes only between turns: a change to it during a turn is a write, reported as the hand-off directory. Two reviewer runs of one leaf share its
 hand-off directory, so they take turns: a second run while one holds
-`.review-run.lock` is refused at once. The reviewer's process gets
+`.review-run.lock` is refused at once, before it writes its prompt, run record,
+schema or answer file. The reviewer's process gets
 `PYTHONDONTWRITEBYTECODE=1` and `PYTEST_ADDOPTS=-p no:cacheprovider`, so
 re-running Python tests writes nothing; a command that still writes (a build,
 `.specyrd/cache`) fails the review. A prompt specy-road does not read back

@@ -14,10 +14,12 @@ envelope's ``structured_output`` is the answer.
   file of the leaf's hand-off directory, the Git metadata a reviewer of this leaf could change (the checkout's
   ``HEAD`` and its reflog, the reviewed branch's ref, reflog and ``packed-refs`` line, a hook, the worktree's
   ``.git`` pointer: :func:`~specy_road.review_write_check._walk_git`), ``HEAD`` or the reviewed branch moving, or the Git index's entries (a
-  ``git add``, ``git update-index --assume-unchanged``; a stat refresh by ``git status`` is not one). A
+  ``git add``, ``git update-index --assume-unchanged``; a stat refresh by ``git status`` is not one), or the
+  transcript ``RUN-<model>.log`` other than by specy-road's appends (:class:`RunLog`). A
   ``REVIEW-<model>.md`` it filed itself is put back as it was, so the gate never counts it. Nothing is filed;
 * ``rerun`` — the output is missing, is not a JSON object, does not match the schema, or ``review record``
-  refuses it (a wrong commit, an approve with a failing item): a rerun request, never a verdict;
+  refuses it (a wrong commit, an approve with a failing item, no ``sign_key`` under ``policy.signed_reviews``):
+  a rerun request, never a verdict;
 * ``recorded`` — the notes went to ``notes-<model>.md`` and ``review record`` filed the record from them, with
   every check, the roster family and the ``history/`` copy an interactive filing gets.
 
@@ -57,6 +59,7 @@ from specy_road.review_write_check import (  # re-exported: the post-run write c
     OUTPUT_PREFIX,
     OUTPUT_SCHEMA_NAME,
     RootFence,
+    RunLog,
     Snapshot,
     harness_files,
     prepare_harness_files,
@@ -108,14 +111,11 @@ def drop_nulls(data: dict[str, Any]) -> dict[str, Any]:
 def write_schema(root: Path, reviews: Path) -> Path:
     """``review-output.schema.json`` in the hand-off directory, for the harness flags that read a file: the
     :func:`strict_schema` of the leaf the directory is named for, which Codex needs and the others accept. It is
-    not in :func:`runtime_files`, so it is written before a run's first snapshot, and left alone when it already
-    says the same: a run waiting for :func:`review_run_lock` (Claude Code reads the file to build its command)
-    must not change the running one's."""
+    not in :func:`runtime_files`: callers write it under :func:`review_run_lock`, before the run's first snapshot."""
     path = reviews / OUTPUT_SCHEMA_NAME
     reviews.mkdir(parents=True, exist_ok=True)
-    text = json.dumps(strict_schema(acceptance_ids(index(load_nodes(root))[reviews.name])), indent=2) + "\n"
-    if not path.is_file() or path.read_text(encoding="utf-8") != text:
-        path.write_text(text, encoding="utf-8")
+    ids = acceptance_ids(index(load_nodes(root))[reviews.name])
+    path.write_text(json.dumps(strict_schema(ids), indent=2) + "\n", encoding="utf-8")
     return path
 
 
@@ -242,11 +242,12 @@ class Outcome:
 
 
 def _review_record(root: Path, node_id: str, model: str, verdict: str, notes: Path, ref: str | None,
-                   launch_mode: str | None) -> tuple[int, str]:
-    """``review record`` itself, its output captured (a ``--json`` caller owns stdout)."""
+                   launch_mode: str | None, sign_key: Path | None) -> tuple[int, str]:
+    """``review record`` itself, its output captured (a ``--json`` caller owns stdout); ``sign_key`` as its
+    ``--sign-key``."""
     from specy_road.bundled_scripts.review_cli import cmd_review_record  # noqa: PLC0415 — review_cli imports this module's callers
     ns = argparse.Namespace(node_id=node_id, model=model, verdict=verdict, file=str(notes), ref=ref,
-                            launch_mode=launch_mode, sign_key=None, repo_root=root)
+                            launch_mode=launch_mode, sign_key=sign_key, repo_root=root)
     buf = io.StringIO()
     with redirect_stdout(buf), redirect_stderr(buf):
         rc = cmd_review_record(ns)
@@ -255,12 +256,15 @@ def _review_record(root: Path, node_id: str, model: str, verdict: str, notes: Pa
 
 def file_review(root: Path, node_id: str, model: str, reviews: Path, *, output: Any, before: Snapshot,
                 after: Snapshot, ref: str | None = None, launch_mode: str | None = None,
-                fenced: bool = False) -> Outcome:
+                fenced: bool = False, log: RunLog | None = None, sign_key: Path | None = None) -> Outcome:
     """The run's outcome (module docstring); ``output`` is :func:`final_output`'s, ``before`` and ``after``
     the :func:`snapshot` either side of the run; ``fenced``: a :class:`RootFence` saw the hand-off root move
-    during a harness turn (a file created, renamed or deleted there)."""
-    shown = str(reviews.resolve()).removeprefix(f"{before.top}{os.sep}")
-    wrote = sorted({*written(before, after), *([shown] if fenced else [])})
+    during a harness turn (a file created, renamed or deleted there); ``log``: the run's :class:`RunLog`, a write
+    when it :meth:`~RunLog.changed`; ``sign_key``: ``review record --sign-key``, for ``policy.signed_reviews``."""
+    top = f"{before.top}{os.sep}"
+    shown = str(reviews.resolve()).removeprefix(top)
+    wrote = sorted({*written(before, after), *([shown] if fenced else []),
+                    *([str(log.path.resolve()).removeprefix(top)] if log is not None and log.changed() else [])})
     if wrote:
         before.restore(reviews, model)
         return Outcome("review_failure", f"review failure: the reviewer run wrote {', '.join(wrote)}; a reviewer "
@@ -279,20 +283,19 @@ def file_review(root: Path, node_id: str, model: str, reviews: Path, *, output: 
     record = {k: v for k, v in data.items() if k != "notes"}
     notes = reviews / f"notes-{model}.md"
     notes.write_text(render_front_matter(record, "\n" + data["notes"].strip() + "\n"), encoding="utf-8")
-    rc, said = _review_record(root, node_id, model, record["verdict"], notes, ref, launch_mode)
+    rc, said = _review_record(root, node_id, model, record["verdict"], notes, ref, launch_mode, sign_key)
     if rc != 0:
         return Outcome("rerun", f"rerun requested: review record refused the output: {said[-400:]}")
     return Outcome("recorded", "", review_path(root, node_id, model))
 
 
-def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path, transcript: list[str] | None = None) -> int:
+def run_logged(launch: Any, adapter: Any, cwd: Path, log: RunLog, transcript: list[str] | None = None) -> int:
     """Run one reviewer turn with :func:`reviewer_env` (over the launch's own ``env``, e.g. M11.62's Claude avoid-list), its raw output appended to ``log`` under a :data:`RUN_MARK`
     line (and to ``transcript``, which ``prompt --channel cli``'s run record keeps: M11.72) and each event's
     summary echoed to stderr as it arrives; for ``prompt --channel cli``, whose terminal would otherwise show raw
     JSON lines."""
-    log.parent.mkdir(parents=True, exist_ok=True)
-    with log.open("a", encoding="utf-8") as raw:
-        raw.write(f"[review prompt] {datetime.now(timezone.utc).replace(microsecond=0).isoformat()} {launch.argv[0]}\n")
+    with log.open() as raw:
+        log.write(raw, f"[review prompt] {datetime.now(timezone.utc).replace(microsecond=0).isoformat()} {launch.argv[0]}\n")
         try:
             proc = subprocess.Popen(launch.argv, cwd=cwd, text=True, encoding="utf-8", errors="replace",
                                     env=reviewer_env({**os.environ, **(launch.env or {})}),
@@ -308,10 +311,10 @@ def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path, transcript: list
                 proc.stdin.write(launch.stdin)
                 proc.stdin.close()
             except OSError as e:   # the harness quit before reading its prompt
-                raw.write(f"[harness closed stdin early: {e}]\n")
+                log.write(raw, f"[harness closed stdin early: {e}]\n")
         assert proc.stdout is not None
         for line in proc.stdout:
-            raw.write(line)
+            log.write(raw, line)
             if transcript is not None:
                 transcript.append(line.rstrip("\n"))
             for ev in adapter.parse_events(line, launch):
@@ -320,28 +323,21 @@ def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path, transcript: list
 
 
 def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Path, ref: str | None = None,
-                 transcript: list[str] | None = None) -> int:
-    """``prompt --channel cli``'s reviewer turn: run ``launch`` under the lock, then :func:`file_review` it;
-    0 only when a record was filed. The node id is the hand-off directory's name; ``transcript`` gets the output
+                 transcript: list[str] | None = None, sign_key: Path | None = None) -> int:
+    """``prompt --channel cli``'s reviewer turn: run ``launch``, then :func:`file_review` it (signed with
+    ``sign_key``); 0 only when a record was filed. The caller holds :func:`review_run_lock` from before it writes
+    any of the run's files. The node id is the hand-off directory's name; ``transcript`` gets the output
     and, last, the outcome line (but a rerun request after a failed harness), which the run record's
     reviewer-failure event then names."""
-    out, log = output_path(reviews, model), reviews / f"RUN-{model}.log"
-    try:
-        with review_run_lock(reviews):
-            log.touch()   # created now, so the turn's appends move nothing in the hand-off root
-            prepare_harness_files(reviews, model)   # and the answer and notes, written in place during the turn
-            before = snapshot(root, reviews, model, ref)
-            fence = RootFence(reviews, model)
-            rc = run_logged(launch, adapter, root, log, transcript)
-            outcome = file_review(root, reviews.name, model, reviews, before=before,
-                                  after=snapshot(root, reviews, model, ref),
-                                  output=final_output(adapter, run_text(log), out), ref=ref,
-                                  launch_mode=launch.launch_mode, fenced=fence.moved())
-    except ReviewRunBusy as e:
-        print(f"error: {e}", file=sys.stderr)
-        if transcript is not None:
-            transcript.append(f"error: {e}")
-        return 1
+    out, path = output_path(reviews, model), reviews / f"RUN-{model}.log"
+    path.touch()   # created now, so the turn's appends move nothing in the hand-off root
+    prepare_harness_files(reviews, model)   # and the answer and notes, written in place during the turn
+    before, log = snapshot(root, reviews, model, ref), RunLog(path)
+    fence = RootFence(reviews, model)
+    rc = run_logged(launch, adapter, root, log, transcript)
+    outcome = file_review(root, reviews.name, model, reviews, before=before, after=snapshot(root, reviews, model, ref),
+                          output=final_output(adapter, run_text(path), out), ref=ref, launch_mode=launch.launch_mode,
+                          fenced=fence.moved(), log=log, sign_key=sign_key)
     print(f"{outcome.state}: {outcome.path or outcome.reason}", file=sys.stderr)
     # The outcome line goes last, for the run record's reviewer-failure event; but a rerun request after a harness
     # failure is that failure's consequence, and the event reads a capacity error from the last plain line only.

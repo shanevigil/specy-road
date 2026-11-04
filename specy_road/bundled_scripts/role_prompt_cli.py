@@ -29,14 +29,14 @@ def _shown(argv: list[str]) -> str:
 
 def run_default_reviewer(prof: Profile | None, prompt_path: Path, root: Path, model: str | None, reviews: Path,
                          level: str | None, harness: str = "claude-code", ref: str | None = None,
-                         transcript: list[str] | None = None) -> int:
+                         transcript: list[str] | None = None, sign_key: Path | None = None) -> int:
     """The harness's own read-only reviewer command (Claude Code bare, with ``--add-dir`` for the hand-off
-    directory), its final JSON filed as the record (:func:`~specy_road.review_record_write.file_review`);
-    0 only when a record was filed. ``transcript`` collects the output for the run record (M11.72)."""
+    directory), its final JSON filed as the record (:func:`~specy_road.review_record_write.file_review`, signed
+    with ``sign_key``); 0 only when a record was filed. ``transcript`` collects the output for the run record
+    (M11.72). The caller holds the leaf's run lock (the answer is emptied under it)."""
     api_id = prof.api_id if prof is not None else model
     api_id = None if (api_id or "").strip().lower() in ("", "unknown") else api_id   # unknown: the harness default
     adapter, out = ADAPTERS[harness], output_path(reviews, str(model))
-    out.unlink(missing_ok=True)   # a stale answer never stands in for this run's
     session = (str(uuid.uuid4()), False) if harness == "claude-code" else None   # stream-json, to read the result
     launch = adapter.reviewer_launch(prompt_path, api_id, reviews, level, session=session,
                                      schema=write_schema(root, reviews), output=out)
@@ -45,12 +45,12 @@ def run_default_reviewer(prof: Profile | None, prompt_path: Path, root: Path, mo
         print("note: the reviewer runs with --bare (no repository hooks, MCP servers or CLAUDE.md), and bare mode "
               "never reads your subscription login: it needs ANTHROPIC_API_KEY (or an apiKeyHelper)", file=sys.stderr)
     print(f"running: {_shown(launch.argv)}" + (f" < {prompt_path}" if launch.stdin is not None else ""), file=sys.stderr)
-    return run_and_file(launch, adapter, root, str(model), reviews, ref, transcript)
+    return run_and_file(launch, adapter, root, str(model), reviews, ref, transcript, sign_key)
 
 
 def run_custom_reviewer(prof: Profile | None, cli: str, prompt_path: Path, root: Path, model: str, reviews: Path,
                         ref: str | None, harness: str | None, effort: list[str],
-                        transcript: list[str] | None = None) -> int:
+                        transcript: list[str] | None = None, sign_key: Path | None = None) -> int:
     """A roster ``channels.cli`` or profile ``access.cli`` reviewer, run as written plus its program's
     structured-output flags (:func:`reviewer_cli`), captured and filed like the default commands."""
     try:
@@ -62,11 +62,10 @@ def run_custom_reviewer(prof: Profile | None, cli: str, prompt_path: Path, root:
         return 1
     # The template, not the expansion: "<prompt>" would echo the whole brief.
     print(f"running: {cli} (prompt: {prompt_path})", file=sys.stderr)
-    output_path(reviews, model).unlink(missing_ok=True)   # a stale answer never stands in for this run's
     launch = Launch(["sh", "-c", substitute_prompt(cli, prompt_path, effort=effort)],
                     launch_mode=prof.launch_mode() if prof is not None else "full")
     return run_and_file(launch, ADAPTERS.get(harness or "generic", ADAPTERS["generic"]), root, model, reviews, ref,
-                        transcript)
+                        transcript, sign_key)
 
 
 def run_plain_cli(cli: str, prompt_path: Path, root: Path, effort: list[str],

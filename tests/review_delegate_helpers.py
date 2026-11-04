@@ -132,7 +132,8 @@ def fake_reviewer_run(monkeypatch, answer: list[str] | None = None) -> list[dict
 
     def logged(launch, adapter, cwd, log, transcript=None) -> int:
         calls.append({"cmd": launch.argv, "input": launch.stdin, "cwd": cwd})
-        log.write_text("[review prompt] now claude\n" + "\n".join(answer or []) + "\n", encoding="utf-8")
+        with log.open() as raw:   # through the RunLog, as the real turn writes
+            log.write(raw, "[review prompt] now claude\n" + "\n".join(answer or []) + "\n")
         if transcript is not None:
             transcript.extend(answer or [])
         return 0

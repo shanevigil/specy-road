@@ -49,6 +49,7 @@ malformed object as a rerun request. A reviewer it does not read back (``paste``
 from __future__ import annotations
 
 import argparse
+import contextlib
 import subprocess
 import sys
 from pathlib import Path
@@ -83,7 +84,7 @@ from specy_road.orchestration_config import substitute_for
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_files import PACKET_NAME, reviews_dir
-from specy_road.review_record_write import schema_lines
+from specy_road.review_record_write import ReviewRunBusy, review_run_lock, schema_lines
 from specy_road.review_gate import delta_basis
 from specy_road.review_lessons import reviewer_lesson_lines
 from specy_road.review_resumed_delta import resumed_delta_on
@@ -273,7 +274,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
 def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflight: str | None = None,
                     entry_cli: str | None = None, *, harness: str | None = None, role: str | None = None,
                     model: str | None = None, reviews: Path | None = None, ref: str | None = None,
-                    transcript: list[str] | None = None) -> int:
+                    transcript: list[str] | None = None, sign_key: Path | None = None) -> int:
     if preflight:
         # Proposal §3.6: e.g. confirm which process owns a local model's port.
         # It runs before anything else is even inspected: a failed check stops
@@ -286,7 +287,7 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
     # `rca` is a reviewer's turn; a harness the roster does not name has no effort flag.
     level = prof.effort("reviewer" if role == "rca" else role) if prof and role else None
     if role == "reviewer" and harness in READ_BACK_HARNESSES and not entry_cli and reviews is not None:
-        return run_default_reviewer(prof, prompt_path, root, model, reviews, level, harness, ref, transcript)
+        return run_default_reviewer(prof, prompt_path, root, model, reviews, level, harness, ref, transcript, sign_key)
     cli = entry_cli or (prof.cli() if prof else None)   # the roster's channels.cli wins, as `worker delegate` has it
     if not cli:
         print("error: --channel cli needs a roster `channels.cli` or an `access.cli` in the model's profile", file=sys.stderr)
@@ -300,7 +301,8 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
         print(note, file=sys.stderr)
     effort = ADAPTERS.get(harness or "generic", ADAPTERS["generic"]).effort_flag(level)
     if role == "reviewer" and reviews is not None:   # captured, flagged and filed like the default commands
-        return run_custom_reviewer(prof, cli, prompt_path, root, str(model), reviews, ref, harness, effort, transcript)
+        return run_custom_reviewer(prof, cli, prompt_path, root, str(model), reviews, ref, harness, effort, transcript,
+                                   sign_key)
     return run_plain_cli(cli, prompt_path, root, effort, transcript)
 
 
@@ -323,6 +325,9 @@ def main(argv: list[str] | None = None) -> None:
                    help="rca only: build a root-cause prompt although the loop is not escalated "
                         "(a coordinator-initiated analysis); needs --reason")
     p.add_argument("--reason", help="With --force: why the analysis is due; the prompt and the RCA record carry it")
+    p.add_argument("--sign-key", type=Path, metavar="PATH",
+                   help="Reviewer --channel cli: sign the filed record with this OpenSSH private key "
+                        "(`review record --sign-key`; needed under policy.signed_reviews)")
     add_repo_root_arg(p)
     ns = p.parse_args(argv)
     if ns.force and ns.role != "rca":
@@ -330,6 +335,19 @@ def main(argv: list[str] | None = None) -> None:
     if ns.force != bool((ns.reason or "").strip()):
         p.error("--force needs a non-empty --reason, and --reason needs --force")
     root = resolve_repo_root(ns)
+    lock = contextlib.ExitStack()
+    if ns.role == "reviewer" and ns.channel == "cli":   # the leaf's run lock before the run writes any of its files
+        try:
+            lock.enter_context(review_run_lock(reviews_dir(root, ns.node_id)))
+        except ReviewRunBusy as e:
+            print(f"error: {e}", file=sys.stderr)
+            raise SystemExit(1) from None
+    with lock:
+        _run(ns, root)
+
+
+def _run(ns: argparse.Namespace, root: Path) -> None:
+    """:func:`main` after its arguments: write the prompt and, with ``--channel cli``, run it."""
     config, _ = pinned_config(root)
     entry = next((e for e in config.get("roster") or [] if e.get("id") == ns.model), {})
     entry_cli = (entry.get("channels") or {}).get("cli")
@@ -363,7 +381,8 @@ def main(argv: list[str] | None = None) -> None:
     try:
         rc = run_cli_channel(prof, out, root, entry.get("preflight"), entry_cli,
                              harness=entry.get("harness"), role=ns.role, model=ns.model,
-                             reviews=reviews_dir(root, ns.node_id), ref=ns.ref, transcript=transcript)
+                             reviews=reviews_dir(root, ns.node_id), ref=ns.ref, transcript=transcript,
+                             sign_key=ns.sign_key)
         close_reviewer_cli_run(root, reviewer_target, ns.model, reviewer_run, rc, transcript)
     except BaseException as e:
         fail_reviewer_cli_run(reviewer_run, e)

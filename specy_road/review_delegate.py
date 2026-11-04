@@ -44,9 +44,9 @@ from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.orchestration_role_env import harness_env
 from specy_road.review_files import reviews_dir
-from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, ReviewRunBusy, RootFence, file_review,
-                                            final_output, output_path, prepare_harness_files, review_run_lock,
-                                            reviewer_env, run_text, snapshot, write_schema)
+from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, ReviewRunBusy, RootFence, RunLog,
+                                            file_review, final_output, output_path, prepare_harness_files,
+                                            review_run_lock, reviewer_env, run_text, snapshot, write_schema)
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.reviewer_run_failure import capacity_error, gate_policy_summary, valid_record  # noqa: F401 — re-exported
 from specy_road.reviewer_run_failure import (_now, _read_json, close_run, harness_error_line,
@@ -138,13 +138,13 @@ class _Harness:
         return self.adapter.launch(prompt, self.cwd, self.api_id, cli, **kw)
 
 
-def _turn(h: _Harness, launch: Launch, log: Path) -> dict[str, Any]:
+def _turn(h: _Harness, launch: Launch) -> dict[str, Any]:
     """Run one turn to its end; ``exit``, the reported ``session_id`` and the ``errors`` it printed."""
     out: dict[str, Any] = {"exit": None, "session_id": None, "errors": [], "tail": []}
     # the role and the harness's avoid-list for installed guard hooks (M8.5, M11.62), no caches (M8.3)
     env = reviewer_env(harness_env(os.environ, "reviewer", harness=h.harness))
-    with log.open("a", encoding="utf-8") as raw:
-        raw.write(f"[review delegate] {_now()} {launch.argv[0]}\n")
+    with h.log.open() as raw:
+        h.log.write(raw, f"[review delegate] {_now()} {launch.argv[0]}\n")
         # specy-road changes the hand-off root's entries only between turns: one moving during the turn is the harness's
         fence = RootFence(reviews_dir(h.repo_root, h.node_id), h.model)
         try:
@@ -159,10 +159,10 @@ def _turn(h: _Harness, launch: Launch, log: Path) -> dict[str, Any]:
                 proc.stdin.write(launch.stdin)
                 proc.stdin.close()
             except OSError as e:   # the harness quit before reading its prompt
-                raw.write(f"[review delegate] harness closed stdin early: {e}\n")
+                h.log.write(raw, f"[review delegate] harness closed stdin early: {e}\n")
         assert proc.stdout is not None
         for line in proc.stdout:
-            raw.write(line)
+            h.log.write(raw, line)
             out["tail"] = [*out["tail"][-19:], line.strip()]
             for ev in h.adapter.parse_events(line, launch):
                 out["session_id"] = ev.session_id or out["session_id"]
@@ -204,8 +204,10 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
     """
     reason = ""
     for n in range(retries + 1):
+        # each attempt's answer starts empty: a resumed turn (a Codex resume writes no -o file) never files an earlier one's
+        prepare_harness_files(reviews_dir(h.repo_root, h.node_id), h.model)
         launch = h.launch(prompts[1] if session else prompts[0], session)
-        turn = _turn(h, launch, path.with_suffix(".log"))
+        turn = _turn(h, launch)
         run["session_id"] = turn["session_id"] or launch.session_id or run["session_id"]
         if turn["session_id"] and h.can_resume:
             session = check_session_id(h.harness, turn["session_id"])
@@ -252,8 +254,9 @@ def _close(repo_root: Path, t: ReviewTarget, model: str, run: dict[str, Any], pa
 
 def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = None, resume: bool = False,
              retries: int = DEFAULT_RETRIES, backoff: float = DEFAULT_BACKOFF, worktree: Path | None = None,
-             sleep: Callable[[float], None] = time.sleep) -> dict[str, Any]:
-    """Run the reviewer until it ends or runs out of capacity retries; returns the run record.
+             sleep: Callable[[float], None] = time.sleep, sign_key: Path | None = None) -> dict[str, Any]:
+    """Run the reviewer until it ends or runs out of capacity retries; returns the run record. ``sign_key``
+    signs the filed record (``review record --sign-key``).
 
     ``node_id`` may be a chore slug started with ``--review`` (chore_cli): the reviewer runs in its worktree."""
     chore = load_chore(repo_root, node_id)
@@ -270,33 +273,33 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
     entry = _entry(repo_root, model)
     cwd = (worktree or Path(git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root)).resolve()
     h = _Harness(repo_root, entry, node_id, cwd, chore=chore is not None)
-    text, session = _start(repo_root, t, model, ref, h, resume)
-    _preflight(entry, cwd)
-    prompts = (_prompt_file(repo_root, node_id, model, text),
-               _prompt_file(repo_root, node_id, model, CHORE_RESUME_PROMPT if chore else RESUME_PROMPT, "-resume"))
     path, reviews = run_path(repo_root, node_id, model), reviews_dir(repo_root, node_id)
-    run = {"node_id": node_id, "model": model, "harness": h.harness, "ref": t.ref, "commit": t.commit,
-           "state": "running", "session_id": session, "resumed": resume, "source": "review-delegate",
-           "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
-           "log": str(path.with_suffix(".log"))}
     lock = contextlib.ExitStack()
-    try:
-        lock.enter_context(review_run_lock(reviews))   # one reviewer run per leaf: their files would cross-fail
+    try:   # one reviewer run per leaf, taken before the run writes any of its files: they would cross-fail
+        lock.enter_context(review_run_lock(reviews))
     except ReviewRunBusy as e:
         raise DelegateError(str(e)) from None
     with lock:
+        text, session = _start(repo_root, t, model, ref, h, resume)
+        _preflight(entry, cwd)
+        prompts = (_prompt_file(repo_root, node_id, model, text),
+                   _prompt_file(repo_root, node_id, model, CHORE_RESUME_PROMPT if chore else RESUME_PROMPT, "-resume"))
+        run = {"node_id": node_id, "model": model, "harness": h.harness, "ref": t.ref, "commit": t.commit,
+               "state": "running", "session_id": session, "resumed": resume, "source": "review-delegate",
+               "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
+               "log": str(path.with_suffix(".log"))}
         save_run(path, run)
-        prepare_harness_files(reviews, model)   # the answer emptied (never a stale one), both written in place
         try:
             # M8.3's read-only check and filing are for roadmap reviews; a chore reviewer files its own verdict file.
             if chore is None:
                 write_schema(repo_root, reviews)   # before the snapshot: the reviewer must not change it
             before = snapshot(cwd, reviews, model, t.ref) if chore is None else None
+            h.log = RunLog(path.with_suffix(".log"))
             reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
             filed = None if before is None else file_review(
                 repo_root, node_id, model, reviews, before=before, after=snapshot(cwd, reviews, model, t.ref),
                 output=final_output(h.adapter, run_text(path.with_suffix(".log")), output_path(reviews, model)),
-                ref=ref, launch_mode=h.launch_mode, fenced=h.fenced)
+                ref=ref, launch_mode=h.launch_mode, fenced=h.fenced, log=h.log, sign_key=sign_key)
             _close(repo_root, t, model, run, path, reason, filed)
         except BaseException as e:   # an interrupt or a launch refusal still closes the record
             err = f"interrupted: {e or type(e).__name__}"
@@ -344,7 +347,7 @@ def cmd_review_delegate(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     try:
         run = delegate(root, ns.node_id, ns.model, ref=ns.ref, resume=ns.resume, retries=ns.retries,
-                       backoff=ns.backoff, worktree=Path(ns.worktree) if ns.worktree else None)
+                       backoff=ns.backoff, worktree=Path(ns.worktree) if ns.worktree else None, sign_key=ns.sign_key)
     except (DelegateError, ReviewTargetError, WorkerError) as e:   # WorkerError: an unsafe recorded session id
         print(f"error: {e}", file=sys.stderr)
         return 1
@@ -389,6 +392,8 @@ def add_parser(rsub: Any) -> None:
                     help=f"First retry's wait, doubled each time (default {DEFAULT_BACKOFF:g})")
     sp.add_argument("--worktree", help="Run the reviewer in this checkout (default: a chore's worktree for a "
                                        "chore slug, else this checkout's git root)")
+    sp.add_argument("--sign-key", type=Path, metavar="PATH",
+                    help="Sign the filed record with this OpenSSH private key (needed under policy.signed_reviews)")
     sp.add_argument("--json", action="store_true")
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_review_delegate)

@@ -17,9 +17,11 @@ from tests.helpers import script_subprocess_env
 from tests.review_delegate_helpers import (CAPACITY, delegate_repo, delegate_roster, fake_calls, set_steps,
                                            verdict_step)
 from tests.review_repo_helpers import commit_file, git, make_review_repo
+from tests.test_models_and_prompt import run_main
 
-from specy_road.bundled_scripts import review_cli
-from specy_road.review_delegate import capacity_error, delegate, load_run
+from specy_road.bundled_scripts import review_cli, role_prompt
+from specy_road.review_delegate import DelegateError, capacity_error, delegate, load_run
+from specy_road.review_record_write import review_run_lock
 from specy_road.reviewer_run_failure import save_run, run_path, turn_capacity_error
 from specy_road.review_files import reviews_dir
 from specy_road.worker_adapters import ClaudeCode
@@ -68,6 +70,37 @@ def test_a_capacity_error_is_retried_with_backoff_and_resumes_the_session(tmp_pa
     first, second, third = fake_calls(spec)
     assert first[1] == "--session-id" and second[1:3] == third[1:3] == ["--resume", first[2]]
     assert "Continue the review" in Path(second[0]).read_text()
+
+
+def test_a_retry_never_files_an_earlier_attempts_answer(tmp_path: Path) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    answer = reviews_dir(repo, "M1.1") / "OUTPUT-opus.json"   # the -o file a fresh Codex turn writes
+    first = {"write": {"path": str(answer), "text": json.dumps(verdict_step(repo)["answer"])}, "error": CAPACITY,
+             "exit": 1}
+    set_steps(repo, spec, first, {"raw": "not a verdict"})    # the resumed attempt writes no -o file
+    run = delegate(repo, "M1.1", "opus", retries=1, backoff=0, sleep=lambda _s: None)
+    assert len(fake_calls(spec)) == 2 and run["outcome"] == "rerun"
+    assert not (reviews_dir(repo, "M1.1") / "REVIEW-opus.md").exists()
+
+
+def test_one_leafs_reviewer_runs_take_turns(tmp_path: Path) -> None:
+    """Moved from tests/test_review_record_write.py (file limit): a refused launch writes none of the run's files."""
+    repo, spec = delegate_repo(tmp_path)
+    set_steps(repo, spec, verdict_step(repo))
+    reviews = reviews_dir(repo, "M1.1")
+    with review_run_lock(reviews), pytest.raises(DelegateError, match="another reviewer run of M1.1 is in progress"):
+        delegate(repo, "M1.1", "opus", sleep=lambda s: None)
+    assert delegate(repo, "M1.1", "opus", sleep=lambda s: None)["state"] == "complete"
+    (reviews / "OUTPUT-opus.json").write_text("the active turn's answer")
+    files = sorted(p for p in (repo / "work").rglob("*") if p.is_file())
+    kept = {p: (p.stat().st_mtime_ns, p.read_bytes()) for p in files}   # prompts, run record, answer, schema, record
+    with review_run_lock(reviews):   # as the active run holds it
+        with pytest.raises(DelegateError, match="in progress"):
+            delegate(repo, "M1.1", "opus", sleep=lambda s: None)
+        assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+                        "--repo-root", str(repo)) == 1
+    assert sorted(p for p in (repo / "work").rglob("*") if p.is_file()) == files
+    assert {p: (p.stat().st_mtime_ns, p.read_bytes()) for p in files} == kept
 
 
 def test_capacity_retries_are_bounded_and_end_incomplete(tmp_path: Path, capsys) -> None:
@@ -194,8 +227,6 @@ def test_successful_delegate_run_has_no_reviewer_failure_event(tmp_path: Path, c
 
 
 def test_prompt_cli_channel_records_usage_limit_and_shows_it_on_the_gate_line(tmp_path: Path, capsys, monkeypatch) -> None:
-    from specy_road.bundled_scripts import role_prompt
-    from tests.test_models_and_prompt import run_main
 
     script = tmp_path / "fake_cli.py"
     script.write_text(
@@ -235,7 +266,6 @@ def test_review_text_that_mentions_capacity_is_not_a_capacity_error(tmp_path: Pa
 
 
 def test_prompt_cli_exception_closes_the_run_incomplete(tmp_path: Path, monkeypatch) -> None:
-    from specy_road.bundled_scripts import role_prompt
 
     repo, _spec = delegate_repo(tmp_path)
 

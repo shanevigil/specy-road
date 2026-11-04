@@ -38,6 +38,7 @@ def _record(repo: Path) -> Path:
     ("work/reviews/M1.1/scratch.md", None),                     # an ignored file, in the hand-off directory itself
     ("work/reviews/M1.1/review-output.schema.json", None),      # the schema specy-road wrote before the run
     ("work/reviews/M1.1/RUN-opus.json", "work/reviews/M1.1"),   # the run record: the fence names the hand-off dir
+    ("work/reviews/M1.1/RUN-opus.log", None),                   # the transcript specy-road appends to, rewritten
 ])
 def test_a_run_that_writes_anything_but_its_notes_is_a_review_failure_and_files_nothing(tmp_path: Path, rel: str,
                                                                                        named: str | None) -> None:
@@ -117,21 +118,6 @@ def test_the_reviewed_branch_is_checked_when_the_reviewer_runs_on_a_detached_che
     before = snapshot(wt, reviews, "opus", branch)
     git(wt, "update-ref", f"refs/heads/{branch}", "HEAD~1")                # moved without touching the checkout
     assert "git refs" in written(before, snapshot(wt, reviews, "opus", branch))
-
-
-def test_one_leafs_reviewer_runs_take_turns(tmp_path: Path) -> None:
-    repo, spec = delegate_repo(tmp_path)
-    set_steps(repo, spec, verdict_step(repo))
-    reviews = rf.reviews_dir(repo, "M1.1")
-    with review_run_lock(reviews), pytest.raises(DelegateError, match="another reviewer run of M1.1 is in progress"):
-        delegate(repo, "M1.1", "opus", sleep=lambda s: None)
-    assert delegate(repo, "M1.1", "opus", sleep=lambda s: None)["state"] == "complete"
-    kept = (reviews / "review-output.schema.json").stat()
-    with review_run_lock(reviews):   # a refused prompt --channel cli run leaves the running one's schema file alone
-        assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
-                        "--repo-root", str(repo)) == 1
-    after = (reviews / "review-output.schema.json").stat()
-    assert (after.st_mtime_ns, after.st_ctime_ns) == (kept.st_mtime_ns, kept.st_ctime_ns)
 
 
 def test_the_reviewer_process_writes_no_bytecode_or_pytest_cache() -> None:

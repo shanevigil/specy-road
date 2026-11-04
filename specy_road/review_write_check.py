@@ -244,6 +244,32 @@ class RootFence:
         return self._state() != self.before
 
 
+class RunLog:
+    """``RUN-<model>.log`` across a run. specy-road appends the harness's output to it during each turn, so
+    :func:`written` does not compare it; every byte specy-road appends goes through :meth:`write` instead, and
+    :meth:`changed` is true when the file is anything but what it held when the run began plus those bytes: the
+    harness rewrote, truncated, removed or appended to it."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.digest = hashlib.sha256(self._bytes())
+
+    def _bytes(self) -> bytes:
+        return self.path.read_bytes() if self.path.is_file() else b""   # removed: specy-road's lines are gone
+
+    def open(self) -> Any:
+        """The log for appending, untranslated (``newline=""``), so the bytes written are the bytes hashed."""
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        return self.path.open("a", encoding="utf-8", newline="")
+
+    def write(self, f: Any, text: str) -> None:
+        f.write(text)
+        self.digest.update(text.encode("utf-8"))
+
+    def changed(self) -> bool:
+        return hashlib.sha256(self._bytes()).digest() != self.digest.digest()
+
+
 def written(before: Snapshot, after: Snapshot) -> list[str]:
     """Each path (or ``git refs``, ``git index``) added, removed or changed between the two snapshots, but the run's own
     :func:`runtime_files`; shown relative to the checkout when it is inside it."""
