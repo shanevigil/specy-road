@@ -37,7 +37,7 @@ def _read_json(path: Path) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
-def _save(path: Path, run: dict[str, Any]) -> None:
+def save_run(path: Path, run: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(json.dumps(run, indent=2) + "\n", encoding="utf-8")
@@ -136,7 +136,7 @@ def open_reviewer_cli_run(repo_root: Path, t: ReviewTarget, model: str, harness:
            "commit": t.commit, "state": "running", "session_id": None, "resumed": False, "source": "prompt-cli",
            "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
            "log": str(path.with_suffix(".log"))}
-    _save(path, run)
+    save_run(path, run)
     return path
 
 
@@ -154,7 +154,7 @@ def fail_reviewer_cli_run(path: Path, exc: BaseException) -> None:
     run.update(state="incomplete", reason=err)
     record_reviewer_failure_event(run, err)
     run["ended_at"] = _now()
-    _save(path, run)
+    save_run(path, run)
 
 
 def close_reviewer_cli_run(repo_root: Path, t: ReviewTarget, model: str, path: Path, exit_code: int,
@@ -173,4 +173,4 @@ def close_reviewer_cli_run(repo_root: Path, t: ReviewTarget, model: str, path: P
                         harness_error_line(exit_code=exit_code, errors=[], tail=tail, fallback=prefix)[:300] or None}]
     close_run(repo_root, t, model, run, exit_code=exit_code, errors=[], tail=output_lines, reason_prefix=prefix)
     run["ended_at"] = _now()
-    _save(path, run)
+    save_run(path, run)

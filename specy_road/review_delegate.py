@@ -40,7 +40,7 @@ from specy_road.orchestration_role_env import harness_env
 from specy_road.review_files import reviews_dir
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.reviewer_run_failure import capacity_error, gate_policy_summary, valid_record  # noqa: F401 — re-exported
-from specy_road.reviewer_run_failure import (_now, _read_json, _save, close_run, record_reviewer_failure_event,
+from specy_road.reviewer_run_failure import (_now, _read_json, save_run, close_run, record_reviewer_failure_event,
                                              run_path as _run_path, turn_capacity_error)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worker_adapters import ClaudeCode, Launch, Unsupported, adapter_for
@@ -186,7 +186,7 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
         cap = turn_capacity_error(turn["errors"], turn["tail"]) if failed else None
         said = cap or next(iter(turn["errors"]), "")
         run["attempts"].append({"at": _now(), "exit": turn["exit"], "capacity": bool(cap), "error": said[:300] or None})
-        _save(path, run)
+        save_run(path, run)
         if not cap:
             return f"harness exited {turn['exit']}: {said[:200] or 'no error text'}" if failed else ""
         reason = f"capacity error after {n + 1} attempt(s): {cap[:200]}"
@@ -231,7 +231,7 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
            "state": "running", "session_id": session, "resumed": resume, "source": "review-delegate",
            "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
            "log": str(path.with_suffix(".log"))}
-    _save(path, run)
+    save_run(path, run)
     try:
         reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
         log_path = path.with_suffix(".log")
@@ -248,7 +248,7 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
         raise
     finally:
         run["ended_at"] = _now()
-        _save(path, run)
+        save_run(path, run)
     return run
 
 

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.repo_lock import RepoLockTimeout, _new_ticket, _ticket_pid, lock_root, pickup_finish_lock
+from specy_road.repo_lock import RepoLockTimeout, new_ticket, ticket_pid, lock_root, pickup_finish_lock
 from specy_road.worker_process import start_token
 
 
@@ -113,5 +113,5 @@ def test_a_live_holder_with_its_own_start_time_is_kept_and_the_timeout_names_the
 def test_the_fallback_ticket_name_ends_with_this_pid(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     queue = lock_root(_git_repo(tmp_path)) / "queue"
     monkeypatch.setattr(time, "monotonic_ns", lambda: 7)
-    first, second = _new_ticket(queue), _new_ticket(queue)   # the second name collides, then falls back
-    assert first != second and _ticket_pid(second.name) == _ticket_pid(first.name) == os.getpid()
+    first, second = new_ticket(queue), new_ticket(queue)   # the second name collides, then falls back
+    assert first != second and ticket_pid(second.name) == ticket_pid(first.name) == os.getpid()

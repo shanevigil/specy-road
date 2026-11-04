@@ -14,7 +14,7 @@ from tests.review_repo_helpers import commit_file, git, make_review_repo, review
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_delegate import capacity_error, delegate, load_run
-from specy_road.reviewer_run_failure import _save, run_path, turn_capacity_error
+from specy_road.reviewer_run_failure import save_run, run_path, turn_capacity_error
 from specy_road.review_files import reviews_dir
 from specy_road.worker_adapters import ClaudeCode
 
@@ -174,7 +174,7 @@ def test_resume_continues_the_recorded_session(tmp_path: Path, capsys) -> None:
 
 def test_an_unsafe_recorded_session_id_is_refused_without_a_traceback(tmp_path: Path, capsys) -> None:
     repo, spec = _repo(tmp_path)
-    _save(run_path(repo, "M1.1", "opus"), {"harness": "claude-code", "commit": git(repo, "rev-parse", "HEAD"),
+    save_run(run_path(repo, "M1.1", "opus"), {"harness": "claude-code", "commit": git(repo, "rev-parse", "HEAD"),
                                            "session_id": "x; rm -rf ~"})
     assert _delegate(repo, "--resume") == 1
     assert "has whitespace or shell metacharacters" in capsys.readouterr().err

@@ -58,7 +58,7 @@ def _pid_alive(pid: int, start: str | None = None) -> bool:
     return not (start and now and now != start)   # ps cannot say: trust the pid
 
 
-def _ticket_pid(name: str) -> int | None:
+def ticket_pid(name: str) -> int | None:
     try:
         return int(name.rsplit("-", 1)[-1])
     except ValueError:
@@ -95,14 +95,14 @@ def _prune_dead_tickets(queue: Path, *, keep: Path) -> None:
     for ticket in queue.iterdir():
         if not ticket.is_file() or ticket == keep:
             continue
-        pid = _ticket_pid(ticket.name)
+        pid = ticket_pid(ticket.name)
         with contextlib.suppress(OSError):
             if pid is not None and not _pid_alive(pid, ticket.read_text(encoding="utf-8").strip() or None):
                 ticket.unlink()
 
 
-def _new_ticket(queue: Path) -> Path:
-    """A queue entry named ``<monotonic ns>-…-<own pid>`` (the pid last: :func:`_ticket_pid` reads it), holding
+def new_ticket(queue: Path) -> Path:
+    """A queue entry named ``<monotonic ns>-…-<own pid>`` (the pid last: :func:`ticket_pid` reads it), holding
     this process's start token."""
     ticket = queue / f"{time.monotonic_ns():019d}-{os.getpid()}"
     try:
@@ -157,7 +157,7 @@ def pickup_finish_lock(
     root = lock_root(repo_root)
     queue = root / "queue"
     holder = root / "holder"
-    ticket = _new_ticket(queue)
+    ticket = new_ticket(queue)
     deadline = time.monotonic() + timeout
     last_log = 0.0
     try:
