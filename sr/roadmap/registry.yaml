@@ -30,19 +30,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: reviewer-probe-rules
-    node_id: M11.75
-    branch: feature/rm-reviewer-probe-rules
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt.py
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_record_rules.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-04T07:26:33+00:00'
   - codename: nested-repo-worktrees
     node_id: M11.22
     branch: feature/rm-nested-repo-worktrees
