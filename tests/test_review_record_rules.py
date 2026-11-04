@@ -199,8 +199,27 @@ def test_record_refuses_an_approve_whose_marker_is_only_a_substring(tmp_path: Pa
     assert not (reviews_dir(repo, "M1.1") / "history").exists()
 
 
+MULTILINE_WORDING = "The parser accepts malformed input; not a defect because\nthe parser is unreachable."
+
+
+def test_record_refuses_an_approve_whose_reason_is_on_the_next_line(tmp_path: Path, capsys) -> None:
+    """The reason must follow the marker on the same line; a line break after 'because' is not one (round 7)."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, findings={"correctness": [MULTILINE_WORDING]}) == 1
+    assert "findings.correctness[0] " in capsys.readouterr().err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
 @pytest.mark.parametrize("text, ok", [
     (BOUNDARY_WORDING, False),
+    (MULTILINE_WORDING, False),
+    ("x; not a defect because \r\ny", False),
+    ("x; not a\ndefect because y", False),
+    ("x; not a defect because\u2028y", False),
+    ("x; not a defect because - \ny", False),
+    ("x; not a defect because\ty", True),
+    ("x; not a defect because \u2014 y", True),
     ("x; anot a defect because y", False),
     ("x; not a defect becausey", False),
     ("x; not-a defect because y", False),

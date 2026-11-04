@@ -81,13 +81,18 @@ _NEGATED = re.compile(r"\b(?:no|none|nothing|not(?:\s+an?)?|\w+n't|cannot|withou
                       rf"instead\s+of)\s+(?:{_QUALIFIER}\s+){{0,3}}$", re.I)
 _CODE_SPAN = re.compile(r"`[^`]*`")
 # The explanation marker: the whole phrase standing alone (not "xnot a defect becausey") and followed by a reason
-# on the same line, outside code spans, which quote rather than explain.
-_EXPLAINED = re.compile(r"(?<![\w-])not\s+a\s+defect\s+because\s+\W*\w", re.I)
+# on the same line, outside code spans, which quote rather than explain. Only spaces and tabs may separate its
+# words and the reason: a line break of any kind str.splitlines knows would put the reason on another line.
+_EXPLAINED = re.compile(r"(?<![\w-])not[ \t]+a[ \t]+defect[ \t]+because[ \t]+"
+                        r"[^\w\n\r\v\f\x1c-\x1e\x85\u2028\u2029]*\w", re.I)
 
 
 def explained(text: str) -> bool:
-    """``text`` carries a standalone :data:`NOT_A_DEFECT` followed by a reason, outside code spans."""
+    """``text`` carries a standalone :data:`NOT_A_DEFECT` followed by a reason on the same line, outside code
+    spans."""
     return bool(_EXPLAINED.search(_CODE_SPAN.sub("", text)))
+
+
 # Lines of approve notes that carry no observation: a bare acceptance result ("- **A1:** pass", "| A1 | pass |")
 # and a table separator row or horizontal rule. Any other line of two words or more is an observation and needs a
 # NOT_A_DEFECT reason.
