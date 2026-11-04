@@ -41,6 +41,7 @@ entries:
       - docs/orchestration-chores.md
       - specy_road/templates/project/
       - tests/
+      - specy_road/bundled_scripts/chore_garden.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending

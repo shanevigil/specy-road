@@ -223,6 +223,7 @@ Do not pick these up.
 - `M12.1` on `feature/rm-a-review-fix-round-budget-that-defers-new-input-class-findings-to-a-follow-up-leaf` since 2026-11-04
 - `M12.2` on `feature/rm-every-refusal-names-its-fix` since 2026-11-04
 - `M12.3` on `feature/rm-scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves` since 2026-11-04
+- `M13.1` on `feature/rm-say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote` since 2026-11-04
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
 ## Reaching the detail behind this
