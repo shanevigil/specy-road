@@ -165,6 +165,23 @@ Required change → what changed:
 
 - **WIP merge `4983a4d5`** (M11.62: limits from the Claude transcript, background tasks off for reviewers, Codex overrides). Resolutions: `role_prompt.py` keeps this leaf's side, since the reviewer runners live in `role_prompt_cli`, and M11.62's `stream_and_capture` and `CLAUDE_REVIEWER_AVOID_ENV` imports moved there; `role_prompt_cli.py` drops its copy of `_stream_and_capture` for M11.62's `role_prompt_stream.stream_and_capture`, and `run_default_reviewer` puts `CLAUDE_REVIEWER_AVOID_ENV` on a Claude reviewer's `Launch.env`, which `review_record_write.run_logged` now applies under `reviewer_env`; `review_delegate.py` uses `reviewer_env(harness_env(os.environ, "reviewer", harness=h.harness))`; `tests/test_review_files.py` keeps the shared `fake_reviewer_run`, which now also patches `role_prompt_stream`. M11.62's new `tests/test_headless_limits_denials.py` imports `role_prompt_cli.run_default_reviewer` (this leaf's name for `run_bare_reviewer`), and its env assertion is unchanged. It expects exit 1, because its fake prints no verdict, so nothing is filed. The round 3–9 fixes are unchanged. `pytest -n 4` over the leaf's test files plus `tests/test_headless_limits_denials.py`: 190 passed. File limits OK; ruff clean.
 
+## Round 10 (gpt-5.6-sol-medium's block at `06d90dba`)
+
+Required change → what changed:
+
+- **"Include stable change-time metadata (st_ctime_ns on the supported POSIX filesystems) in _record."**
+  - `review_write_check._record` returns `(st_dev, st_ino, st_nlink, st_mode, st_size, st_mtime_ns, st_ctime_ns, sha256)`. Every snapshot entry goes through it: checkout, hand-off, Git directories, a nested `.git` marker, and a linked worktree's `.git` pointer.
+  - The inode change time can't be set back by a process, so a rewrite with its mtime restored differs.
+  - `docs/orchestration-review.md` names change time among the compared fields. The paragraph was reflowed to keep the file at 400 lines; nothing was removed except the word "same-length", which the broader sentence covers.
+- **"Add a public review-delegate regression proving that rewriting a tracked file with identical bytes and restoring its mtime is review_failure with no verdict filed."**
+  - `test_review_delegate_cli_fails_an_identical_rewrite_with_its_mtime_restored_and_files_no_verdict` in `tests/test_review_record_write_git.py`, through `specy-road review delegate`. The fake reviewer rewrites the tracked `src/a.py` with its own bytes and restores its atime/mtime, using the existing `keep_mtime` write step.
+  - The test confirms device, inode, link count, mode, size, mtime and bytes are all unchanged and only `st_ctime_ns` moved. The run is a `review_failure` naming `src/a.py`, with no `REVIEW-opus.md`.
+- **Touch zones:** no new path.
+- **Verification:**
+  - `pytest -n 4` over the leaf's test files (`tests/test_review_record_write.py`, `tests/test_review_record_write_git.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_worker_adapters.py`, `tests/test_models_and_prompt.py`, `tests/test_prerelease_review.py`, `tests/test_review_rca.py`, `tests/test_role_prompt_file_limits.py`, `tests/test_resumed_delta_review.py`, `tests/test_chore_mode.py`, `tests/test_headless_limits_denials.py`): 191 passed. That includes the honest `git status` case, so change time adds no false failure there.
+  - File limits OK; ruff clean; private imports 0 new.
+  - Red/green: without `st_ctime_ns` in `_record`, the new test fails.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
@@ -192,6 +209,7 @@ Required change → what changed:
 - `run_text`, `final_output`, `json_object`, the envelope unwrap in `file_review`: A1/A3 extraction.
 - `git index` entry in `snapshot` (round 4): Sol's A2 index finding.
 - `_record` (round 9): file identity and links in every snapshot entry, for Sol's hard-link finding.
+- `st_ctime_ns` in `_record` (round 10): Sol's identical-rewrite finding.
 - `_git_marker`, and `_walk`'s top-level-only `.git` skip (round 8): Sol's nested-`.git` finding.
 - `st_mode` in the snapshot tuples, and the `review_write_check` module split (round 7): Sol's chmod finding, and the file limit.
 - `_walk_git` and `_walk`'s `skip` (round 6): Git metadata in the A2 snapshot. Its `resolved()` returns `None` when git can't answer.
