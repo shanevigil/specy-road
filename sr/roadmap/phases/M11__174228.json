@@ -364,6 +364,8 @@
       "touch_zones": [
         "specy_road/bundled_scripts/doctor.py",
         "specy_road/bundled_scripts/session_plan.py",
+        "specy_road/bundled_scripts/session_plan_git.py",
+        "specy_road/bundled_scripts/session_plan_render.py",
         "specy_road/nested_repos.py",
         "tests/"
       ],
