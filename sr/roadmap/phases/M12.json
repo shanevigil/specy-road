@@ -72,7 +72,7 @@
     },
     {
       "acceptance": [
-        "specy-road garden (or chore garden) runs read-only scans and prints one finding per line: docs/*.md and agent files naming a command or flag this version does not register (extending validate_stale_commands beyond AGENTS.md/CLAUDE.md), enforced-rule comments marked 'enforced: advisory' in managed agent files, and ratchet baselines (policy.ratchet_paths) that grew since the last tag",
+        "specy-road garden (or chore garden) runs read-only scans and prints one finding per line: docs/*.md and agent files naming a command this version does not register (extending validate_stale_commands beyond AGENTS.md/CLAUDE.md; flags are out of scope, since no per-command flag registry exists), enforced-rule comments marked 'enforced: advisory' in managed agent files, and ratchet baselines (policy.ratchet_paths) that grew since the last tag",
         "--open-chores turns each finding class into at most one chore leaf (title, acceptance, touch zones from the finding paths) through the existing chore/add-node path, never edits code itself, and is idempotent: a second run with the same findings adds nothing",
         "A cadence key (like research/ cadences) lets validate say when gardening is due; docs/orchestration-chores.md documents the scans, the cadence and how to run it unattended"
       ],
@@ -92,7 +92,8 @@
         "specy_road/bundled_scripts/validate_roadmap.py",
         "docs/orchestration-chores.md",
         "specy_road/templates/project/",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/chore_garden.py"
       ],
       "type": "task"
     },
@@ -131,7 +132,10 @@
         "specy_road/review_rca.py",
         "specy_road/orchestration_config.py",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/orchestrate_plan.py",
+        "specy_road/review_gate.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json"
       ],
       "type": "task"
     },
@@ -159,7 +163,11 @@
         "specy_road/templates/project/schemas/",
         "specy_road/templates/project/",
         "docs/roadmap-authoring.md",
-        "tests/"
+        "tests/",
+        "specy_road/cli.py",
+        "specy_road/digest.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/bundled_scripts/finish_task.py"
       ],
       "type": "task"
     }

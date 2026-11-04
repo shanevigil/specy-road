@@ -195,5 +195,13 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M12.4` | Quality signals agents and PMs read first | milestone | — | Not Started |
 | `M12.4.1` | Per-area quality scores in the digest from review history | task | Agentic-led | Not Started |
 | `M12.4.2` | A tracked tech-debt ledger that planning can turn into leaves | task | Agentic-led | Not Started |
+| `M13` | rc3 adopter feedback: upgrade and adoption friction | phase | — | Not Started |
+| `M13.1` | Say which install is running and flag managed blocks an older version wrote | task | Agentic-led | Not Started |
+| `M13.2` | upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap | task | Agentic-led | Not Started |
+| `M13.3` | A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates | task | Agentic-led | Not Started |
+| `M13.4` | A milestone held for its full review says so in validate, list-nodes and why-blocked | task | Agentic-led | Not Started |
+| `M13.5` | refresh-profiles installs only the profiles the roster names, and suggests the alias for a near miss | task | Agentic-led | Not Started |
+| `M13.6` | Safe release-candidate install recipe, pipx and uv tool upgrades, and checking which binary is on PATH | task | Agentic-led | Not Started |
+| `M13.7` | Clearer notices: symlinked skill dirs, new ignore rules over tracked files, and session end | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
