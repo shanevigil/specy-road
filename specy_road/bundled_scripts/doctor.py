@@ -44,6 +44,7 @@ from specy_road.bundled_scripts.doctor_env_setup import report_checkout
 from specy_road.bundled_scripts.grind_session_cleanup import merged_into
 from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_text
+from specy_road.nested_repos import report_unpushed
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.version_skew import warn_if_running_version_older
@@ -153,8 +154,7 @@ def _branch_findings(ctx: _Ctx) -> tuple[list[Finding], set[str]]:
             if where == "local":
                 remove, done = partial(_delete_local, ctx.root, b, sha), f"deleted local branch {b}"
             else:
-                remove = partial(_delete_remote, ctx.root, b, sha, ctx.remote)
-                done = f"deleted {b} on {ctx.remote}"
+                remove, done = partial(_delete_remote, ctx.root, b, sha, ctx.remote), f"deleted {b} on {ctx.remote}"
             found.append(Finding("branch", f"{where:<9} {b}", reason, remove, done))
     return found, merged_local
 
@@ -284,8 +284,7 @@ def _sections(ctx: _Ctx) -> list[tuple[str, str, list[Finding]]]:
     """(kind, heading, findings) in report order."""
     branches, merged_local = _branch_findings(ctx)
     return [
-        ("branch", (f"feature/rm-* branches whose leaf is Complete or that nothing claims "
-                    f"(against {ctx.target}):"), branches),
+        ("branch", f"feature/rm-* branches whose leaf is Complete or that nothing claims (against {ctx.target}):", branches),
         ("worktree", "Worktrees whose branch is gone or merged, and detached worktrees:",
          _worktree_findings(ctx, merged_local)),
         ("registry", (f"Registry rows on {ctx.target} with no branch (advisory: another clone's "
@@ -355,6 +354,7 @@ def _context(ns: argparse.Namespace) -> _Ctx | None:
 def cmd_doctor(ns: argparse.Namespace) -> int:
     warn_if_running_version_older(resolve_repo_root(ns))
     bad_config = report_checkout(resolve_repo_root(ns))   # gate mismatch, env_setup failure: exit 1 after the listing
+    report_unpushed(resolve_repo_root(ns))   # advisory: nested-repo commits no remote has
     ctx = _context(ns)
     if ctx is None:
         return 1
@@ -378,7 +378,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="specy-road doctor",
         description=(
             "After git fetch --prune, list feature/rm-* branches (local and remote) whose leaf is "
-            "Complete or that nothing claims — merged by ancestry or patch content, leaf Complete, or claim gone — worktrees whose branch is gone or merged, other detached worktrees, registry rows with no branch or a Complete leaf, and stashes specy-road pushed. Dry-run unless --fix."
+            "Complete or that nothing claims — merged by ancestry or patch content, leaf Complete, or claim gone — worktrees whose branch is gone or merged, other detached worktrees, registry rows with no branch or a Complete leaf, and stashes specy-road pushed; also nested-repo branches with commits no remote has. Dry-run unless --fix."
         ),
     )
     p.add_argument("--fix", action="store_true", help="Remove what is listed, asking once per kind, and report each action.")

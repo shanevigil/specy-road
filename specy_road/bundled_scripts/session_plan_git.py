@@ -4,7 +4,8 @@
 drops leaves whose ``feature/rm-<codename>`` tip already marks them Complete
 while the integration branch has not merged. This module applies the same filter
 to ``ready`` and ``parallel_batches``, and surfaces claimed leaves that are in
-the same state under ``finished_claimed``.
+the same state under ``finished_claimed``. It also lists nested-repository
+branches holding commits no remote has (``nested_unpushed``).
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from specy_road.bundled_scripts.planning_sheet_bootstrap import (
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.session_plan import SessionPlan, compute_session_plan, _parallel_batches
 from specy_road.git_workflow_config import resolve_integration_defaults, resolve_prefer_agentic
+from specy_road.nested_repos import unpushed_branches
 from specy_road.registry_yaml import read_registry, registry_path
 
 
@@ -114,4 +116,4 @@ def gather_session_plan(
         remote=remote,
         integration_branch=base,
     )
-    return nodes, reg, plan
+    return nodes, reg, replace(plan, nested_unpushed=unpushed_branches(repo_root))

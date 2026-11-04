@@ -107,7 +107,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M10.18` | Review records are found and written with the canonical file name on case-insensitive filesystems | task | Agentic-led | Complete |
 | `M10.19` | The executor prompt forbids killing processes the executor did not start | task | Agentic-led | Complete |
 | `M10.20` | Pilot GPT-6.1 Terra as a lower-cost executor before rostering it | task | Agentic-led | Complete |
-| `M11` | rc2 field feedback: worktrees, workers and the review loop | phase | Agentic-led | Not Started |
+| `M11` | rc2 field feedback: worktrees, workers and the review loop | phase | Agentic-led | In Progress |
 | `M11.1` | In a git worktree, every command resolves work/ paths the same way and a sandboxed reviewer can file its record | task | Agentic-led | Complete |
 | `M11.2` | worker message resumes a failed or stalled worker whose native session id is known | task | Agentic-led | Complete |
 | `M11.3` | specy-road's own runtime directories never fail the clean-tree checks | task | Agentic-led | Complete |
@@ -138,7 +138,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.29` | doctor warns when the running specy-road is older than the project's stubs | task | Agentic-led | Complete |
 | `M11.30` | Leaf worktrees get the project's environment set up | task | Agentic-led | Complete |
 | `M11.31` | A safe command to retire a leaf worktree | task | Agentic-led | Complete |
-| `M11.32` | Unpushed nested-repo commits are reported | task | Agentic-led | Not Started |
+| `M11.32` | Unpushed nested-repo commits are reported | task | Agentic-led | Complete |
 | `M11.33` | A reviewer whose harness routes models dynamically does not count as an independent family by default | task | Agentic-led | Complete |
 | `M11.34` | Open human decisions live in one tracked ledger and every question is self-contained | task | Agentic-led | Complete |
 | `M11.35` | A roster entry maps to the harness's own model id, and a failed start says why | task | Agentic-led | Complete |
