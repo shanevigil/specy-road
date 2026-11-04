@@ -82,7 +82,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.79_risk-tiered-review_1b324096-545d-4e7b-baa2-450bee0e78a7.md",
       "sibling_order": 79,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Leaves that touch high-risk zones need a stronger reviewer",
       "touch_zones": [
         "specy_road/orchestration_config.py",

@@ -128,7 +128,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.18` | Registry overlap warnings show only what concerns the command at hand | task | Agentic-led | Complete |
 | `M11.19` | Pickup never stashes work/ around the registry commit | task | Agentic-led | Complete |
 | `M11.20` | orchestrate plan and validate say where the roster is read from | task | Agentic-led | Complete |
-| `M11.22` | Worker worktrees can include nested sibling repositories | task | Mixed | Not Started |
+| `M11.22` | Worker worktrees can include nested sibling repositories | task | Agentic-led | Not Started |
 | `M11.23` | A custom launch command's permissions carry through resume | task | Agentic-led | Complete |
 | `M11.24` | Executors and reviewers in a worktree can write and check the right places | task | Agentic-led | Complete |
 | `M11.25` | finish-this-task says what merge mode will push before it pushes | task | Agentic-led | Complete |
@@ -185,7 +185,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.76` | Every roster model reaches its profile notes | task | Agentic-led | Not Started |
 | `M11.77` | A completed reviewer run does not report a missing record | task | Agentic-led | Complete |
 | `M11.78` | Review lessons: escaped defect classes feed every reviewer prompt | task | Agentic-led | Not Started |
-| `M11.79` | Leaves that touch high-risk zones need a stronger reviewer | task | Agentic-led | Not Started |
+| `M11.79` | Leaves that touch high-risk zones need a stronger reviewer | task | Agentic-led | Complete |
 | `M11.80` | Executors and reviewers run tests with a bounded worker count | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
