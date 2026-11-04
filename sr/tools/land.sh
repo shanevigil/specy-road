@@ -15,7 +15,7 @@ C=$(real_conflicts "sr/work/.worktrees/$WT")
 [ -z "$C" ] || { echo "$ID: MERGE CONFLICT, not landing:" $C; exit 3; }
 # The branch may carry the scaffold sheet while WIP has the written one (sheets are
 # authored on WIP by the coordinator); the merge keeps WIP's, so allow it only then.
-if [ -z "${FINISH_ARGS:-}" ] && "$PY" -c "
+if [ -z "${FINISH_ARGS:-}" ] && PYTHONPATH=$ROOT "$PY" -c "
 import json,glob,sys; from pathlib import Path
 from specy_road.planning_scaffold_check import scaffold_sheet
 for f in glob.glob('sr/roadmap/phases/*.json'):

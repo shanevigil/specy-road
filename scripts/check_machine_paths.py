@@ -2,11 +2,11 @@
 """Fail when a tracked file names one person's machine: a home directory, a harness temp dir, a hostname.
 
 Paths are resolved at run time (repo-relative, ``git rev-parse``, environment
-variables), never written in. Flagged: ``/Users/<name>/`` and ``/home/<name>/``
-(and the ``-Users-<name>`` form Claude Code uses for project directories),
+variables), never written in. Flagged: ``/Users/<name>`` and ``/home/<name>``
+(and the ``-Users-<name>`` / ``-home-<name>`` forms Claude Code uses for project directories),
 ``C:\\Users\\<name>\\``, ``/tmp/claude-<uid>`` and ``/private/tmp/claude-<uid>``, and
-``<host>-MacBook`` hostnames. Deliberate placeholders pass: the name ``x``
-(``/Users/x/``) and an angle-bracketed name (``/home/<name>/``).
+Mac hostnames (``<host>-MacBook-Pro`` with ``.local``). These pass: the placeholder name ``x`` (``/Users/x/``),
+an angle-bracketed name (``/home/<name>/``), and homes that name no person (``Shared``, ``runner``, ``linuxbrew``).
 
 Usage: ``python scripts/check_machine_paths.py [--root DIR]``
 """
@@ -19,12 +19,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+#: Shared or CI-owned home directories that name no person.
+_NOT_A_PERSON = r"(?!(?:x|Shared|runner|linuxbrew)\b|<)"
+
 PATTERN = re.compile(
-    r"/(?:Users|home)/(?!x/|<)[^/\s`'\"]+/"
-    r"|-Users-(?!x-)[A-Za-z0-9]"
+    rf"/(?:Users|home)/{_NOT_A_PERSON}[A-Za-z0-9._-]+"
+    r"|-(?:Users|home)-(?!x-)[A-Za-z0-9]"
     r"|[A-Za-z]:\\Users\\(?!<)"
     r"|/(?:private/)?tmp/claude-\d"
-    r"|[A-Za-z0-9]-MacBook"
+    r"|-MacBook(?:-(?:Pro|Air))?(?:-\d+)?\.local\b"
 )
 
 
