@@ -13,5 +13,5 @@ elif [ -x "$ROOT/.venv/bin/python" ]; then PY=$ROOT/.venv/bin/python
 else PY=python3
 fi
 REVIEWS=$ROOT/sr/work/reviews
-case "$PY" in */*) PATH=$ROOT/sr/tools:$(dirname "$PY"):$PATH ;; *) PATH=$ROOT/sr/tools:$PATH ;; esac
+case "$PY" in */*) PATH="$ROOT/sr/tools:$(dirname "$PY"):$PATH" ;; *) PATH="$ROOT/sr/tools:$PATH" ;; esac
 export PATH
