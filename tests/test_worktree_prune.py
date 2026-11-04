@@ -213,6 +213,22 @@ def test_a_full_clone_branch_held_only_by_its_own_stale_remote_tracking_ref_is_r
     assert clone.is_dir() and wt.is_dir()
 
 
+def test_a_full_clone_remote_tracking_ref_whose_branch_left_the_copy_is_refused(tmp_path: Path) -> None:
+    root, wt, clone = _clone_leaf(tmp_path)
+    git(clone, "checkout", "-q", "-b", "topic")
+    commit_file(clone, "core.py", "x = 9\n", "clone work")
+    git(clone, "push", "-q", "origin", "topic")
+    git(clone, "checkout", "-q", "main")
+    git(clone, "branch", "-q", "-D", "topic")   # only origin/topic holds it in the clone
+    git(root / UNCOVERED, "branch", "-q", "-D", "topic")   # and nothing in the copy does
+    assert not git(clone, "branch", "--list", "topic") and git(clone, "rev-parse", "--verify", "origin/topic")
+    out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
+    assert out.returncode == 1
+    assert f"nested repo {UNCOVERED} (full clone): commits on no branch or remote-tracking ref of" in out.stderr
+    assert "origin/topic (" in out.stderr
+    assert clone.is_dir() and wt.is_dir()
+
+
 @pytest.mark.parametrize(("make", "why"), [
     (lambda c: (c / "core.py").write_text("x = 6\n"), "(full clone): uncommitted or untracked: core.py"),
     (lambda c: ((c / "core.py").write_text("x = 6\n"), git(c, "stash", "push", "-q", "-m", "clone wip")),

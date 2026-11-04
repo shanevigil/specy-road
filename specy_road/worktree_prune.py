@@ -15,9 +15,9 @@ shared too, so a stash refuses unless its subject names another branch: one made
 on the leaf's branch, on a detached ``HEAD`` (``On (no branch):`` does not say
 which worktree made it) or under a custom subject (``git stash store -m``)
 cannot be told apart from this worktree's. A full clone loses its branches,
-remote-tracking refs and stash with its directory, so each of its branch tips
-must be held by a branch or remote-tracking ref of the main checkout's copy, and
-any stash refuses.
+remote-tracking refs and stash with its directory, so each of its branch and
+remote-tracking tips must be held by a branch or remote-tracking ref of the main
+checkout's copy, and any stash refuses.
 """
 
 from __future__ import annotations
@@ -97,19 +97,17 @@ def _held(repo: Path, sha: str, refs: list[str]) -> bool:
 
 
 def _lost_tips(src: Path, d: Path, linked: bool) -> list[str]:
-    """``HEAD`` and, for a clone, each local branch whose tip no branch or remote-tracking ref of ``src`` holds.
+    """``HEAD`` and, for a clone, each local branch and remote-tracking ref whose tip no branch or
+    remote-tracking ref of ``src`` holds.
 
-    A clone's own remote-tracking refs do not count: they go with its directory, and may be stale.
+    A clone's own remote-tracking refs go with its directory and may be stale (the remote's branch
+    deleted since), so they are tips to keep, never a place that keeps them.
     """
-    names = ["HEAD"]
+    tips = [("HEAD", git_text(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"], d))]
     if not linked:
-        names += (git_text(["for-each-ref", "--format=%(refname:short)", "refs/heads"], d) or "").splitlines()
-    lost = []
-    for name in names:
-        sha = git_text(["rev-parse", "--verify", "--quiet", f"{name}^{{commit}}"], d)
-        if sha and not _held(src, sha, ["refs/heads", "refs/remotes"]):
-            lost.append(f"{name} ({sha[:12]})")
-    return lost
+        out = git_text(["for-each-ref", "--format=%(refname:short) %(objectname)", "refs/heads", "refs/remotes"], d)
+        tips += [tuple(line.rsplit(" ", 1)) for line in (out or "").splitlines()]
+    return [f"{name} ({sha[:12]})" for name, sha in tips if sha and not _held(src, sha, ["refs/heads", "refs/remotes"])]
 
 
 def _check_nested(plan: PrunePlan, main: Path, prefix: str) -> None:
