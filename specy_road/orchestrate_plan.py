@@ -29,6 +29,10 @@ Rules, in the order they apply:
   score.
 * **Independence (§3.2).** The executor's model is not offered as its own
   reviewer, and with ``reviewers_distinct_families`` one reviewer per family.
+* **Strong review.** Each ``policy.strong_review`` item the leaf's touch zones
+  meet (:mod:`specy_road.review_strong`) is listed with the reviewers that can
+  satisfy it, and its best-ranked one is picked first, whatever its family;
+  an item none of them can satisfy makes the leaf unstaffable.
 
 The human's routing preferences (``kind: preference`` in ``roadmap/decisions.yaml``)
 are never applied here: the plan lists every active one under
@@ -53,6 +57,8 @@ from specy_road.decisions import plan_preferences
 from specy_road.model_profiles import Profile
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry, roster_source
 from specy_road.orchestration_config import active_substitutions
+from specy_road.review_strong import applicable_items, item_label
+from specy_road.runtime_paths import project_prefix
 
 DEFAULT_SENSITIVITY = "public"
 ANY = "any"
@@ -193,6 +199,7 @@ class Assignment:
     reviewers: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     problems: list[str] = field(default_factory=list)
+    strong_review: list[dict[str, Any]] = field(default_factory=list)   # item, require_one_of, can_satisfy
 
     @property
     def ok(self) -> bool:
@@ -201,7 +208,7 @@ class Assignment:
     def to_dict(self) -> dict[str, Any]:
         return {"node_id": self.node_id, "sensitivity": self.sensitivity, "eligibility": self.eligibility,
                 "coordinator": self.coordinator, "executor": self.executor, "reviewers": self.reviewers,
-                "notes": self.notes, "problems": self.problems}
+                "notes": self.notes, "problems": self.problems, "strong_review": self.strong_review}
 
 
 @dataclass
@@ -274,19 +281,40 @@ def _pick_reviewers(cands: list[Candidate], a: Assignment, config: dict[str, Any
                    if ("reviewer" in (c.entry.get("roles") or []) or c.id in substitutes)
                    and _usable(c, a.sensitivity, today) and c.id != a.executor], a)
     pool.sort(key=lambda c: (-c.score("reviewer"), c.cost if c.cost is not None else float("inf")))
-    seen: set[str] = set()
+    _pick_strong(pool, a, substitutes)
+    seen = {c.family for c in pool if c.id in a.reviewers}
+
+    def count() -> int:   # distinct families when the policy asks for them; strong picks may share one
+        return len(seen) if distinct else len(a.reviewers)
+
     for c in pool:
-        if distinct and c.family in seen:
+        if count() >= required:
+            break
+        if c.id in a.reviewers or distinct and c.family in seen:
             continue
         a.reviewers.append(c.id)
         seen.add(c.family)
         a.notes.append("reviewer: " + c.describe("reviewer") + (" [substitute]" if c.id in substitutes else ""))
-        if len(a.reviewers) >= required:
-            break
-    if len(a.reviewers) < required:
+    if count() < required:
         unit = "distinct-family reviewers" if distinct else "reviewers"
         a.problems.append(f"need {required} {unit} that may process {a.sensitivity!r} "
-                          f"(other than the executor), found {len(a.reviewers)}")
+                          f"(other than the executor), found {count()}")
+
+
+def _pick_strong(pool: list[Candidate], a: Assignment, substitutes: set[Any]) -> None:
+    """Record who can satisfy each of ``a.strong_review`` and pick the best-ranked one first: the gate needs one
+    approval per item whatever the families, so an item already met by an earlier pick adds no one."""
+    for s in a.strong_review:
+        s["can_satisfy"] = [c.id for c in pool if c.id in s["require_one_of"]]
+        if not s["can_satisfy"]:
+            a.problems.append(f"{s['item']}: none of {', '.join(s['require_one_of'])} can review this leaf "
+                              f"(a rostered reviewer or active substitute, available, that may process "
+                              f"{a.sensitivity!r}, other than the executor)")
+        elif not set(s["can_satisfy"]) & set(a.reviewers):
+            c = next(c for c in pool if c.id == s["can_satisfy"][0])
+            a.reviewers.append(c.id)
+            a.notes.append("reviewer: " + c.describe("reviewer") + (" [substitute]" if c.id in substitutes else "")
+                           + f" [strong review: {s['item']}]")
 
 
 def _pick_coordinator(cands: list[Candidate], a: Assignment, today: date | None) -> None:
@@ -301,8 +329,11 @@ def _pick_coordinator(cands: list[Candidate], a: Assignment, today: date | None)
 
 
 def assign_leaf(node: dict[str, Any], cands: list[Candidate], config: dict[str, Any],
-                today: date | None = None, drift: str | None = None) -> Assignment:
+                today: date | None = None, drift: str | None = None, prefix: str = "") -> Assignment:
+    """``prefix``: :func:`project_prefix`, so a strong-review zone written from either root meets the leaf's."""
     a = Assignment(node["id"], node_sensitivity(node), node_eligibility(node))
+    a.strong_review = [{"item": item_label(i, item), "require_one_of": list(item["require_one_of"])}
+                       for i, item in applicable_items(config["policy"], node.get("touch_zones"), prefix)]
     _pick_executor(cands, a, today, drift)
     _pick_reviewers(cands, a, config, today)
     _pick_coordinator(cands, a, today)
@@ -331,7 +362,8 @@ def build_orchestration_plan(root: Path, *, under: str | None = None,
     by_id = {n["id"]: n for n in nodes}
     cands = [Candidate(e, pinned_profile_for_entry(root, e)) for e in config.get("roster") or []]
     ref, drift = roster_source(root)
-    batches = [[assign_leaf(by_id[nid], cands, config, today, drift) for nid in batch if nid in by_id]
+    prefix = project_prefix(root)
+    batches = [[assign_leaf(by_id[nid], cands, config, today, drift, prefix) for nid in batch if nid in by_id]
                for batch in sp.parallel_batches]
     prefs, pref_err = plan_preferences(root, today)
     return OrchestrationPlan(under, dict(config["policy"]), batches,

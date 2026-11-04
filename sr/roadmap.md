@@ -134,7 +134,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.25` | finish-this-task says what merge mode will push before it pushes | task | Agentic-led | Complete |
 | `M11.26` | A model profile can match harness model ids that carry an effort suffix | task | Agentic-led | Complete |
 | `M11.27` | Small CLI fixes from field use | task | Agentic-led | Complete |
-| `M11.28` | A light chore mode for work outside the roadmap | task | Mixed | Not Started |
+| `M11.28` | A light chore mode for work outside the roadmap | task | Agentic-led | Not Started |
 | `M11.29` | doctor warns when the running specy-road is older than the project's stubs | task | Agentic-led | Complete |
 | `M11.30` | Leaf worktrees get the project's environment set up | task | Agentic-led | Not Started |
 | `M11.31` | A safe command to retire a leaf worktree | task | Agentic-led | Not Started |
@@ -185,7 +185,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.76` | Every roster model reaches its profile notes | task | Agentic-led | Complete |
 | `M11.77` | A completed reviewer run does not report a missing record | task | Agentic-led | Complete |
 | `M11.78` | Review lessons: escaped defect classes feed every reviewer prompt | task | Agentic-led | Complete |
-| `M11.79` | Leaves that touch high-risk zones need a stronger reviewer | task | Agentic-led | Not Started |
+| `M11.79` | Leaves that touch high-risk zones need a stronger reviewer | task | Agentic-led | Complete |
 | `M11.80` | Executors and reviewers run tests with a bounded worker count | task | Agentic-led | Complete |
 | `M11.82` | The integration branch passes ruff again and the land check runs it | task | Agentic-led | Complete |
 
