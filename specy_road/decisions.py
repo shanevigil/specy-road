@@ -358,9 +358,11 @@ def add_preference(
     return entry
 
 
-def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str | None) -> dict[str, Any]:
+def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str | None,
+                ledger_only: bool = False) -> dict[str, Any]:
     """Close an open entry. A preference (``sheet_text`` None) needs no planning-sheet record:
-    it belongs to the project's sessions, not to one leaf."""
+    it belongs to the project's sessions, not to one leaf. ``ledger_only`` closes a decision without one
+    for a caller that keeps its own audit trail (``review defer``: the RCA record and its deferral marker)."""
     if sheet_text is not None and not recorded_on_sheet(sheet_text, decision_id, answer):
         print(
             f"error: planning sheet decision block has no line `{decision_id}: {answer.strip()}` "
@@ -378,7 +380,7 @@ def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str | 
             if e.get("status") != "open":
                 print(f"error: decision {decision_id!r} is not open", file=sys.stderr)
                 raise SystemExit(1)
-            if sheet_text is None and e.get("kind") != PREFERENCE:
+            if sheet_text is None and e.get("kind") != PREFERENCE and not ledger_only:
                 print(f"error: decision {decision_id!r} closes only with its planning-sheet record",
                       file=sys.stderr)
                 raise SystemExit(1)

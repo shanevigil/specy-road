@@ -105,6 +105,11 @@
           "minimum": 1,
           "description": "A leaf's review loop is escalated for root-cause analysis after this many review rounds since its last analysis. Default 5."
         },
+        "max_fix_rounds": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Fix-round budget: after this many blocking review rounds on one leaf, `handoff status` reports fix_round_budget_spent and names the command that resolves it (a root-cause analysis, then `specy-road review defer` for a defer_findings record). Unset (the default): no budget."
+        },
         "stall_after_seconds": {
           "type": "integer",
           "minimum": 1,

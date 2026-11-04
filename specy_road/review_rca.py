@@ -41,7 +41,7 @@ from specy_road.review_target import ReviewTarget, full_sha
 
 CLASSES = ("specification", "implementation", "test", "reviewer", "environment", "hard_problem")
 ACTIONS = ("amend_criterion", "split_leaf", "continue_with_class_fix", "restart_executor_fresh",
-           "fix_tests", "change_or_reprompt_reviewer", "fix_environment", "escalate_human")
+           "fix_tests", "change_or_reprompt_reviewer", "fix_environment", "escalate_human", "defer_findings")
 
 
 @dataclass
@@ -278,7 +278,11 @@ def _skeleton(node_id: str, model: str, esc: Escalation) -> list[str]:
         "  proposed_text: <bounded rewrite>",
         "  finding_disposition:",
         "    - {finding: <round/reviewer: text>, label: in_scope_must_fix|out_of_scope_now|already_resolved, "
-        "justification: <one line>}",
+        "justification: <one line>, input_class: <short label, optional>}",
+        "deferred_findings:   # required when recommended_action.type is defer_findings",
+        "  - {finding: <round/reviewer: text>, reviewer: <roster id>, commit: <sha it blocked>, "
+        "category: correctness|regression|boundary|test_integrity, acceptance_id: A#, input_class: <short label>, "
+        "follow_up_title: <follow-up leaf title>, follow_up_acceptance: <one acceptance line>}",
         "---",
         "<your reasoning: evidence for and against each class, and the counterfactuals>",
         "```",
@@ -312,7 +316,12 @@ def rca_preamble(repo_root: Path, node_id: str, model: str, esc: Escalation) -> 
         "class is `specification`, write a bounded rewrite of the criterion: what is in and out of scope, "
         "every term defined operationally, no wider than the original; then label every past blocking finding "
         "on it. A rewrite is a proposal for a human: set `requires_human_approval: true` and never edit the "
-        "roadmap.",
+        "roadmap. `defer_findings` proposes moving blocking findings to a follow-up leaf (a human applies it "
+        f"with `specy-road review defer {node_id} --rca <record>`). List a finding under `deferred_findings` "
+        "only when its input class (a short label you write, such as `CRLF line endings`) matches no input "
+        "class an earlier RCA record or applied deferral of this leaf named (compared lower-cased, whitespace "
+        "collapsed), and it is not a `correctness` finding on an acceptance id an earlier round marked `pass`; "
+        "anything else stays a must-fix in this leaf.",
         f"5. Write the record to `{out}` (gitignored; open the absolute path) in this shape, validated against "
         "specy-road's `rca-record` schema, then run "
         f"`specy-road handoff status {node_id}`: a valid record clears the escalation (a forced one restarts "
@@ -357,3 +366,4 @@ def rca_evidence(repo_root: Path, t: ReviewTarget, loop: LoopState) -> list[str]
         out += [f"**Diff: {label}**", ""] + _diff(repo_root, prev, rnd.commit)
         prev = rnd.commit
     return out
+

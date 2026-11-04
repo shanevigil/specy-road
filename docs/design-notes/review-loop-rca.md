@@ -111,6 +111,7 @@ again only after another 3 (same criterion) or 5 (total) rounds.
 | reviewer | `change_or_reprompt_reviewer` |
 | environment | `fix_environment` (rebase, regenerate the packet, fix touch zones or the base) |
 | hard_problem | `escalate_human` |
+| any, when findings name new input classes | `defer_findings` (below) |
 
 ## Adopted: the record
 
@@ -129,7 +130,41 @@ A trimmed form of the Claude report's Part F (`specy_road/schemas/rca-record.sch
 - `criterion_rewrite`, required when the primary class is `specification`:
   `acceptance_id`, `original_text`, `proposed_text`, and a disposition
   (`in_scope_must_fix` | `out_of_scope_now` | `already_resolved`) for each
-  past finding on that criterion.
+  past finding on that criterion, each with an optional `input_class`;
+- `deferred_findings`, required when the action is `defer_findings`: per
+  finding its `reviewer`, `commit`, `category`, `acceptance_id`,
+  `input_class`, `follow_up_title` and `follow_up_acceptance`.
+
+## Adopted: the fix-round budget and deferral
+
+A loop whose reviewers find a *new* input class every round (deferred leaf
+M8.3 ran five blocking rounds from one reviewer that way) only stopped when a
+maintainer stopped it by hand. That call is now a recorded step, opt-in per
+project:
+
+- **Budget.** `policy.max_fix_rounds` (unset: no budget, nothing changes)
+  counts the leaf's blocking rounds. Once spent while a review still blocks,
+  `handoff status` reports `fix_round_budget_spent` and names the next command:
+  a forced RCA while none covers the latest round, then `review defer`.
+- **Input class.** A short free-text label the analyst writes per finding; it
+  is stored, never inferred. Two match when equal after lower-casing and
+  collapsing whitespace; there is no fuzzy or semantic matching.
+- **The rule.** A finding may be deferred only when its input class matches
+  none an earlier RCA record (`deferred_findings` or a disposition's
+  `input_class`) or applied deferral of the leaf named, and it is not a
+  `correctness` finding on an acceptance id an earlier round marked `pass`. A
+  class seen before means the loop is circling, and a regression on a passing
+  criterion is this leaf's to fix; neither leaves the leaf.
+- **Applying it.** `specy-road review defer <ID> --rca <record>` is
+  human-only (an interactive terminal, no `--yes`). It refuses the whole record
+  when any item breaks the rule; otherwise it adds the follow-up leaf beside
+  the leaf through the `add-node` write, records a closed `decision` in
+  `roadmap/decisions.yaml` naming every deferred finding, the follow-up leaf
+  and the approver, and writes `DEFERRAL-<round>.yaml` beside the record.
+- **Audit trail and gate.** RCA record → decision entry → follow-up leaf. The
+  gate stops counting a block only when a marker names its reviewer and commit
+  and the decision is closed; another reviewer's block, or the same reviewer's
+  on a later commit, still counts.
 
 ## Deferred
 
