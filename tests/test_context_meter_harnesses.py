@@ -104,3 +104,17 @@ def test_claude_code_counts_what_claude_md_imports_and_notes_the_rest(repo: Path
             "Claude Code file; machine-local") in out
     (repo / "sr/.specyrd/AGENTS.md").write_bytes(b"\xff@AGENTS.team.md\n")   # unreadable: counted, imports nothing
     assert _rels(repo / "sr", "Claude Code") == [AGENT_GUIDE, "sr/.specyrd/AGENTS.md"]
+
+
+@pytest.mark.parametrize("example", [
+    "```\n@example.md\n```\n",
+    "```md\n~~~text\n@example.md\n~~~\n```\n",          # another fence character inside does not close it
+    "````\n```\n@example.md\n```\n````\n",            # a shorter run inside does not close it
+    "```\n@example.md\n``` not a closer\n```\n",       # a closer has nothing after the run
+], ids=["plain", "other-character-inside", "shorter-run-inside", "text-after-run"])
+def test_an_import_inside_a_fenced_example_is_not_counted(repo: Path, example: str) -> None:
+    """CommonMark fences: only the opener's character, at least as long, with nothing after it, closes one."""
+    _write(repo, AGENT_GUIDE, f"# Claude\n{example}@after.md\n")
+    _write(repo, "example.md", "# example\n")
+    _write(repo, "after.md", "# after\n")
+    assert _rels(repo, "Claude Code") == [AGENT_GUIDE, "after.md"]

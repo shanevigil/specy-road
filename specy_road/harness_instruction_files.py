@@ -41,6 +41,7 @@ _CLAUDE_RULES = ".claude/rules"
 #: ``@path`` imports, outside code spans and fenced blocks, resolve relative to the importing
 #: file and nest up to four hops: https://code.claude.com/docs/en/memory
 _CLAUDE_IMPORT = re.compile(r"(?<!\w)@(~?[\w./-]+)")
+_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 _CODE_SPAN = re.compile(r"`[^`]*`")
 CLAUDE_IMPORT_HOPS = 4
 #: "Claude Code skips a file over 4 MiB and loads none of it."
@@ -147,11 +148,16 @@ def _imports_in(path: Path) -> list[Path]:
     except (OSError, UnicodeDecodeError):
         return []
     found: list[Path] = []
-    fenced = False
+    opener = ""   # the open fence's run, e.g. "````"; "" outside a fence
     for line in text.splitlines():
-        if line.lstrip().startswith(("```", "~~~")):
-            fenced = not fenced
-        if fenced or line.lstrip().startswith(("```", "~~~")):
+        fence = _FENCE.match(line)
+        if opener:   # CommonMark: only the same character, at least as long, and nothing after it closes
+            if fence and fence.group(1)[0] == opener[0] and len(fence.group(1)) >= len(opener) \
+                    and not fence.group(2).strip():
+                opener = ""
+            continue
+        if fence:
+            opener = fence.group(1)
             continue
         for m in _CLAUDE_IMPORT.finditer(_CODE_SPAN.sub("", line)):
             target = Path(m.group(1)).expanduser()
