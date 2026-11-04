@@ -5,13 +5,15 @@ The leaf's worktree is ``work/.worktrees/<codename>`` in the main checkout, on
 worktree's ``HEAD`` are merged into the integration branch (the remote-tracking
 ref as it stands, else the local one; nothing is fetched) and the worktree has
 no uncommitted changes, no untracked files git does not ignore, and no stash
-made on the leaf's branch. Ignored files are deleted with it, so they are
-listed first.
+made on the leaf's branch or on a detached ``HEAD``. Ignored files are deleted
+with it, so they are listed first.
 
 Each ``nested_repos`` repository inside the worktree is checked too. A linked
 worktree of the main checkout's copy shares its branches and stash, so only a
 ``HEAD`` no branch or remote-tracking ref holds is at risk, and only stashes
-made on the leaf's branch count. A full clone loses its branches and stash with
+made on the leaf's branch or on a detached ``HEAD`` count (the stash stack is
+shared, and ``On (no branch):`` does not say which worktree made it, so any
+such stash refuses). A full clone loses its branches and stash with
 its directory, so each of its branch tips must be held by a branch of the main
 checkout's copy or by a remote-tracking ref (the clone's or the copy's), and any
 stash refuses.
@@ -75,8 +77,9 @@ def _status(d: Path, skip: tuple[str, ...] = ()) -> tuple[list[str], list[str]] 
 
 
 def _stashes(d: Path, branch: str, linked: bool) -> list[str]:
-    """Stash subjects that refuse: any for a clone; those made on ``branch`` for a linked worktree (stash is shared)."""
-    own = re.compile(rf"^(WIP on|On) {re.escape(branch)}:")
+    """Stash subjects that refuse: any for a clone; for a linked worktree (stash is shared), those made on
+    ``branch`` or on a detached ``HEAD``, which may be this worktree's (an uncovered nested repo is detached)."""
+    own = re.compile(rf"^(WIP on|On) ({re.escape(branch)}|\(no branch\)):")
     subjects = (git_text(["stash", "list", "--format=%gs"], d) or "").splitlines()
     return [s for s in subjects if not linked or own.match(s)]
 
@@ -145,7 +148,7 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         if changed:
             plan.refusals.append(f"uncommitted or untracked: {', '.join(changed)}")
     if stashes := _stashes(wt, branch, linked=True):
-        plan.refusals.append(f"stashes made on {branch}: {'; '.join(stashes)}")
+        plan.refusals.append(f"stashes made on {branch} or a detached HEAD: {'; '.join(stashes)}")
     return plan
 
 

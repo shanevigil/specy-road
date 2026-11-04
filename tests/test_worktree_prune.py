@@ -70,7 +70,7 @@ def test_unknown_node_and_missing_worktree_are_errors(tmp_path: Path) -> None:
     (lambda wt: (wt / "src" / "a.py").write_text("a = 2\n"), "uncommitted or untracked: src/a.py"),
     (lambda wt: (wt / "notes.txt").write_text("x\n"), "uncommitted or untracked: notes.txt"),
     (lambda wt: ((wt / "src" / "a.py").write_text("a = 2\n"), git(wt, "stash", "push", "-q", "-m", "wip")),
-     f"stashes made on {FEATURE}: On {FEATURE}: wip"),
+     f"stashes made on {FEATURE} or a detached HEAD: On {FEATURE}: wip"),
 ])
 def test_unsaved_work_in_the_worktree_is_refused(tmp_path: Path, make, why: str) -> None:
     root, wt = _leaf(tmp_path)
@@ -136,6 +136,17 @@ def test_unsaved_work_in_a_nested_linked_worktree_is_refused(tmp_path: Path, mak
     root, wt = _nested_leaf(tmp_path)
     make(wt)
     assert why in _refusals(root)
+
+
+def test_a_stash_made_in_a_detached_nested_linked_worktree_refuses_the_prune(tmp_path: Path) -> None:
+    root, wt = _nested_leaf(tmp_path)
+    (wt / UNCOVERED / "core.py").write_text("x = 7\n")
+    git(wt / UNCOVERED, "stash", "push", "-q", "-m", "detached nested wip")   # subject: On (no branch): ...
+    why = f"nested repo {UNCOVERED} (linked worktree): stashes: On (no branch): detached nested wip"
+    assert why in _refusals(root)
+    out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
+    assert out.returncode == 1 and why in out.stderr
+    assert (wt / UNCOVERED).is_dir() and wt.is_dir()
 
 
 def test_a_commit_on_the_leaf_branch_of_a_nested_linked_worktree_is_kept_by_that_branch(tmp_path: Path) -> None:
