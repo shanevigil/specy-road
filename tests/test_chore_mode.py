@@ -157,3 +157,130 @@ def test_review_delegate_takes_a_chore_started_with_review(tmp_path: Path) -> No
     chore_cli.close(repo, "fix-env", "done")
     assert "- opus: approve at " in (repo / "work" / "chores" / "fix-env.md").read_text()
     assert chore_cli.load_chore(repo, "fix-env")["closed_at"]
+
+
+# --- chore garden (M12.3) ---------------------------------------------------------------------------
+
+from datetime import date, timedelta  # noqa: E402
+
+from specy_road.bundled_scripts import chore_garden  # noqa: E402
+from specy_road.bundled_scripts.roadmap_load import load_roadmap  # noqa: E402
+
+_RULES = ("# Rules\n\nRead the docs.\n<!-- prevents: drift | enforced: advisory | ref: x -->\n"
+          "Run validate.\n<!-- prevents: bad graphs | enforced: specy-road validate | ref: y -->\n")
+_GARDEN_LINES = [
+    "stale-command: docs/guide.md:3: `specy-road grind` is not a command in specy-road "
+    f"{chore_garden.__version__}; use `specy-road grind-session`",
+    "stale-command: AGENTS.md:3: `specy-road nope` is not a command in specy-road "
+    f"{chore_garden.__version__}; see `specy-road --help`",
+    "advisory-rule: .specyrd/AGENTS.md:4: prevents: drift",
+    "ratchet-grew: constraints/base.txt: +2 line(s) since v1",
+]
+
+
+def garden_repo(tmp_path: Path, *, tag: bool = True, cadence: int | None = None) -> Path:
+    """A repo on ``dev`` with one finding of each class in its last commit (``work/`` ignored)."""
+    repo = make_review_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    policy = "version: 1\npolicy:\n  ratchet_paths:\n    - constraints/base.txt\n" + (
+        f"  garden_cadence_days: {cadence}\n" if cadence else "")
+    for rel, text in ((".gitignore", "work/\n"), ("roadmap/orchestration.yaml", policy), ("constraints/base.txt", "a\n")):
+        commit_file(repo, rel, text, f"add {rel}")
+    if tag:
+        git(repo, "tag", "v1")
+    for rel, text in (("constraints/base.txt", "a\nb\nc\n"),
+                      ("docs/guide.md", "# Guide\n\nRun `specy-road grind` then run `specy-road validate`.\n"),
+                      ("AGENTS.md", "# Agents\n\n- specy-road nope --flag\n"), (".specyrd/AGENTS.md", _RULES)):
+        commit_file(repo, rel, text, f"drift in {rel}")
+    return repo
+
+
+def _roadmap_bytes(repo: Path) -> dict[str, bytes]:
+    return {p.relative_to(repo).as_posix(): p.read_bytes()
+            for base in ("roadmap", "planning") if (repo / base).is_dir()
+            for p in sorted((repo / base).rglob("*")) if p.is_file()}
+
+
+def test_garden_prints_one_line_per_finding_and_writes_nothing_tracked(tmp_path: Path, capsys) -> None:
+    repo = garden_repo(tmp_path)
+    capsys.readouterr()
+    assert run_chore_cli("chore", "garden", "--repo-root", str(repo)) == 0
+    assert capsys.readouterr().out.splitlines() == _GARDEN_LINES
+    assert git(repo, "status", "--porcelain") == ""                       # the run record is under work/
+    assert json.loads(chore_garden.record_path(repo).read_text()) == {"last_run": date.today().isoformat()}
+    assert run_chore_cli("chore", "garden", "--json", "--repo-root", str(repo)) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert [f["cls"] for f in report["findings"]] == ["stale-command", "stale-command", "advisory-rule", "ratchet-grew"]
+    assert report["notes"] == [] and report["chores"] == []
+
+
+def test_garden_without_a_tag_skips_the_ratchet_scan_and_says_why_once(tmp_path: Path, capsys) -> None:
+    repo = garden_repo(tmp_path, tag=False)
+    capsys.readouterr()
+    assert run_chore_cli("chore", "garden", "--repo-root", str(repo)) == 0
+    out = capsys.readouterr()
+    assert out.out.splitlines() == _GARDEN_LINES[:3]
+    assert out.err.count("no tag to compare against") == 1
+
+
+def test_open_chores_adds_one_leaf_per_class_then_nothing(tmp_path: Path, capsys) -> None:
+    repo = garden_repo(tmp_path)
+    capsys.readouterr()
+    assert run_chore_cli("chore", "garden", "--open-chores", "--repo-root", str(repo)) == 1
+    assert "--open-chores needs --under" in capsys.readouterr().err
+    assert run_chore_cli("chore", "garden", "--open-chores", "--under", "M1.1", "--repo-root", str(repo)) == 0
+    added = {n["codename"]: n for n in load_roadmap(repo)["nodes"] if n.get("parent_id") == "M1.1"}
+    assert sorted(added) == ["garden-advisory-rule", "garden-ratchet-grew", "garden-stale-command"]
+    stale = added["garden-stale-command"]
+    assert stale["title"] == "Garden: stale command mentions" and stale["touch_zones"] == ["AGENTS.md", "docs/guide.md"]
+    assert stale["acceptance"] == [
+        "`docs/guide.md` names no specy-road command this version does not register (now: line 3)",
+        "`AGENTS.md` names no specy-road command this version does not register (now: line 3)"]
+    assert added["garden-ratchet-grew"]["acceptance"][0].endswith("(now: +2 line(s) since v1)")
+    before = _roadmap_bytes(repo)
+    capsys.readouterr()
+    assert run_chore_cli("chore", "garden", "--open-chores", "--under", "M1.1", "--repo-root", str(repo)) == 0
+    assert _roadmap_bytes(repo) == before
+    assert f"stale-command: {stale['id']} is still open; added nothing" in capsys.readouterr().out
+
+
+def test_open_chores_files_a_numbered_leaf_once_the_last_is_complete(tmp_path: Path) -> None:
+    repo = garden_repo(tmp_path)
+    assert run_chore_cli("chore", "garden", "--open-chores", "--under", "M1.1", "--repo-root", str(repo)) == 0
+    chunk = repo / "roadmap" / "phases" / "M1.json"
+    doc = json.loads(chunk.read_text())
+    for n in doc["nodes"]:
+        if n.get("codename") == "garden-stale-command":
+            n["status"] = "Complete"
+    chunk.write_text(json.dumps(doc, indent=2))
+    assert run_chore_cli("chore", "garden", "--open-chores", "--under", "M1.1", "--repo-root", str(repo)) == 0
+    codenames = [n.get("codename") for n in load_roadmap(repo)["nodes"]]
+    assert codenames.count("garden-stale-command-2") == 1 and codenames.count("garden-advisory-rule") == 1
+    assert "Garden: stale command mentions (2)" in [n["title"] for n in load_roadmap(repo)["nodes"]]
+
+
+def test_garden_cadence_warns_when_due_and_names_the_command(tmp_path: Path, capsys) -> None:
+    assert chore_garden.garden_due(garden_repo(tmp_path / "unset"), date.today()) is None
+    repo = garden_repo(tmp_path / "set", cadence=7)
+    today = date.today()
+    assert chore_garden.garden_due(repo, today) == (
+        "gardening due: never run, every 7 days; run `specy-road chore garden`")
+    record = chore_garden.record_path(repo)
+    record.parent.mkdir(parents=True, exist_ok=True)
+    record.write_text(json.dumps({"last_run": (today - timedelta(days=7)).isoformat()}))
+    assert chore_garden.garden_due(repo, today) is None                  # due only past the cadence
+    record.write_text(json.dumps({"last_run": (today - timedelta(days=8)).isoformat()}))
+    assert chore_garden.garden_due(repo, today) == (
+        f"gardening due: last run {today - timedelta(days=8)}, every 7 days; run `specy-road chore garden`")
+    capsys.readouterr()
+    from specy_road.bundled_scripts.validate_roadmap import validate_at  # noqa: PLC0415
+    validate_at(repo)
+    assert "garden: warning — gardening due: last run" in capsys.readouterr().err
+    assert run_chore_cli("chore", "garden", "--repo-root", str(repo)) == 0
+    assert chore_garden.garden_due(repo, today) is None                  # the run reset the clock
+
+
+def test_garden_is_not_a_chore_slug(tmp_path: Path, capsys) -> None:
+    repo = chore_repo(tmp_path)
+    assert run_chore_cli("chore", "start", "garden", "--task", "t", "--zone", "src", "--repo-root", str(repo)) == 1
+    assert "not 'garden'" in capsys.readouterr().err

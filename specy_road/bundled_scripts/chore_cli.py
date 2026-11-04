@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI for ``specy-road chore start|close`` (``docs/orchestration-chores.md``): work outside the roadmap.
+"""CLI for ``specy-road chore start|close|garden`` (``docs/orchestration-chores.md``): work outside the roadmap.
 
 A chore is ``work/chores/<slug>.json`` in the main checkout: no roadmap node,
 branch or registry row. It runs in the checkout it was started from (or
@@ -8,7 +8,8 @@ leaf does. ``worker delegate``, ``message``, ``resume``, ``sync``, ``usage``,
 ``reconcile`` and ``review delegate`` take the slug where they take a node id;
 its model may be off the roster when ``--harness`` names where it runs.
 ``chore close`` writes ``work/chores/<slug>.md``: the summary, the workers'
-usage, and each reviewer's verdict, or ``unreviewed``. Exit codes: 0 done, 1 refused.
+usage, and each reviewer's verdict, or ``unreviewed``. ``chore garden`` (``chore_garden.py``)
+reports drift and may file it as roadmap leaves. Exit codes: 0 done, 1 refused.
 """
 
 from __future__ import annotations
@@ -27,8 +28,9 @@ from specy_road.review_target import ReviewTarget
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worker_state import HARNESSES, WorkerError, _now, _write_atomic, events_since, list_records
 
-# Lower case, so never a node id (``M1.2``); not ``w-``, which names a worker id where a target is either.
-_SLUG = re.compile(r"^(?!w-)[a-z0-9][a-z0-9-]*$")
+# Lower case, so never a node id (``M1.2``); not ``w-``, which names a worker id where a target is either;
+# not ``garden``, whose ``work/chores/garden.json`` is ``chore garden``'s run record.
+_SLUG = re.compile(r"^(?!w-)(?!garden$)[a-z0-9][a-z0-9-]*$")
 
 
 def chores_dir(repo_root: Path) -> Path:
@@ -100,7 +102,7 @@ def chore_prompt(chore: dict[str, Any], role: str, model: str, repo_root: Path, 
 def start(repo_root: Path, slug: str, *, task: str, zones: list[str], review: bool = False,
           model: str | None = None, harness: str | None = None, worktree: Path | None = None) -> dict[str, Any]:
     if not _SLUG.match(slug):
-        raise WorkerError(f"{slug!r} is not a chore slug: lower-case letters, digits and '-', not starting with 'w-'")
+        raise WorkerError(f"{slug!r} is not a chore slug: lower-case letters, digits and '-', not starting with 'w-', not 'garden'")
     if not zones or any(_clean(z) is None for z in zones):   # reconcile drops these, and no zones means unguarded
         raise WorkerError(f"every --zone must name a path; got {zones!r}")
     if (chores_dir(repo_root) / f"{slug}.json").exists():
@@ -170,6 +172,24 @@ def cmd_close(ns: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_garden(ns: argparse.Namespace) -> int:
+    from specy_road.bundled_scripts.chore_garden import as_json, garden  # noqa: PLC0415 — it imports this module
+
+    if ns.open_chores and not ns.under:
+        raise WorkerError("--open-chores needs --under <PARENT>: the node the chore leaves are added under")
+    report = garden(resolve_repo_root(ns), ns.under if ns.open_chores else None)
+    if ns.json:
+        print(as_json(report))
+        return 0
+    for f in report["findings"]:
+        print(f.text())
+    for line in report["notes"]:
+        print(f"garden: {line}", file=sys.stderr)
+    for line in report["chores"]:
+        print(f"garden: {line}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="specy-road")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -193,6 +213,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--json", action="store_true")
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_close)
+    sp = cs.add_parser("garden", help="Read-only drift scans, one finding per line; --open-chores files them as leaves")
+    sp.add_argument("--open-chores", action="store_true",
+                    help="Add one leaf per finding class through the add-node write; none while one is still open")
+    sp.add_argument("--under", metavar="PARENT", help="The node --open-chores adds its leaves under (required with it)")
+    sp.add_argument("--json", action="store_true")
+    add_repo_root_arg(sp)
+    sp.set_defaults(func=cmd_garden)
     return p
 
 

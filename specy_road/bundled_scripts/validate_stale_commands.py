@@ -308,31 +308,49 @@ def unregistered_commands(text: str) -> list[str]:
     ]
 
 
+def agent_files(root: Path) -> list[Path]:
+    """The agent files ``validate`` checks: ``AGENTS.md`` and ``CLAUDE.md`` at the project and git roots, and the team file."""
+    root = root.resolve()
+    checkout = git_root(root) or root
+    return list(dict.fromkeys(
+        [*(base / name for base in (root, checkout) for name in ("AGENTS.md", "CLAUDE.md")), root / TEAM_MD]
+    ))
+
+
+def file_unregistered_commands(path: Path) -> list[tuple[int, str]]:
+    """``(line, mention)`` per unregistered command ``path`` names outside its managed block; none when unreadable.
+
+    The scanner ``validate`` runs over :func:`agent_files` and ``chore garden`` runs over those and ``docs/``.
+    """
+    if not path.is_file():
+        return []
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return []
+    return _occurrences(agent_file_lines_outside_block(text))
+
+
+def stale_command_advice(mention: str) -> str:
+    """What to do about ``mention``: its replacement, that nothing replaces it, or where to look."""
+    replacement = REPLACED_COMMANDS.get(mention)
+    return (
+        f"use `{replacement}`"
+        if replacement
+        else "it was removed and nothing replaces it"
+        if replacement == ""
+        else f"see `{mention.split()[0]} --help`"
+    )
+
+
 def warn_unregistered_commands(root: Path) -> None:
     root = root.resolve()
     checkout = git_root(root) or root
-    paths = dict.fromkeys(
-        [*(base / name for base in (root, checkout) for name in ("AGENTS.md", "CLAUDE.md")), root / TEAM_MD]
-    )
-    for path in paths:
-        if not path.is_file():
-            continue
-        try:
-            text = path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            continue
+    for path in agent_files(root):
         rel = path.relative_to(checkout)
-        for lineno, mention in _occurrences(agent_file_lines_outside_block(text)):
-            replacement = REPLACED_COMMANDS.get(mention)
-            advice = (
-                f"use `{replacement}`"
-                if replacement
-                else "it was removed and nothing replaces it"
-                if replacement == ""
-                else f"see `{mention.split()[0]} --help`"
-            )
+        for lineno, mention in file_unregistered_commands(path):
             print(
                 f"agents: warning — {rel}:{lineno} tells agents to run `{mention}`, which is not a "
-                f"command in specy-road {__version__}; {advice}.",
+                f"command in specy-road {__version__}; {stale_command_advice(mention)}.",
                 file=sys.stderr,
             )
