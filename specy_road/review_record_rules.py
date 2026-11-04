@@ -37,8 +37,9 @@ PROBE_RULES_LINES = [
     "words or more outside code spans, other than a heading, a `>` quote, fenced code, a table separator row or "
     "horizontal rule, or a bare acceptance result such as `A1: pass`; so write each observation with its reason "
     "on the same line, and quote text or test output in backticks, a `>` line or fenced code. One explanation "
-    "covers one observation, the sentence or clause it ends or the one just before it: give each observation its "
-    "own, and keep each reason to one clause that names no defect itself.",
+    "covers one observation, the sentence or clause it ends or the one just before it, and that text may not join a "
+    "second observation with a comma or a conjunction: give each observation its own, and keep each reason to one "
+    "clause that names no defect itself.",
     "",
 ]
 # Executors once deleted unrelated docstrings and messages to stay under a line cap; reviewers caught it a round late.
@@ -135,26 +136,56 @@ def _observation(clause: str) -> str | None:
     return "is an observation"
 
 
+# Inside the text one explanation covers, parts joined by a comma or a coordinating conjunction; a part opening
+# with one of _CONTINUES carries on the same observation ("x accepts malformed input, so y reaches execution").
+_PARTS = re.compile(r"\s*,\s*|\s+(?:and|but|while|whereas|although|though|yet|plus)\s+", re.I)
+_CONTINUES = re.compile(r"(?:so|which|that|because|since|as|causing|meaning|thus|hence|therefore|then|when|if|"
+                        r"unless|until|where|rather|instead|including|such|for|with|without|via|by|from|to|in|on|"
+                        r"at|of|after|before|e\.g\.|i\.e\.)\b", re.I)
+
+
+def _second_observation(text: str) -> str | None:
+    """Why ``text``, which one explanation covers, holds more than one observation, or ``None``. A part counts when
+    it names a defect, or has three words or more and does not carry on the part before it."""
+    found = []
+    for i, part in enumerate(p.strip() for p in _PARTS.split(text) if p.strip()):
+        word = _named_defect(part)
+        if word:
+            found.append(f'says "{word}"')
+        elif len(_WORD.findall(part)) >= 3 and (i == 0 or not _CONTINUES.match(part)):
+            found.append("is an observation")
+    if len(found) < 2:
+        return None
+    return next((f for f in found if f.startswith("says")), found[1])
+
+
 def clause_problem(text: str) -> str | None:
     """Why ``text`` (a notes line or a findings entry, code spans ignored) is not fully explained, or ``None``.
     One explanation covers one observation: the clause it ends ("x, not a defect because y"), or, when the marker
     opens its clause, the one clause just before it ("x; not a defect because y", "x. Not a defect because y").
-    Any other clause that would need a reason fails, and so does a reason that itself names a defect."""
-    pending = None
+    Any other clause that would need a reason fails, so does a covered clause that joins a second observation to
+    the first (:func:`_second_observation`), and so does a reason that itself names a defect."""
+    pending = None   # (why, clause) for an observation no explanation has covered yet
     for clause in _CLAUSE_END.split(_CODE_SPAN.sub("", text).strip()):
         m = _EXPLAINED.search(clause)
         if not m:
             if pending:
-                return pending
-            pending = _observation(clause)
+                return pending[0]
+            why = _observation(clause)
+            pending = (why, clause) if why else None
             continue
-        if pending and _observation(clause[:m.start()]):   # this marker explains its own clause, not the last
-            return pending
+        own = clause[:m.start()]
+        if pending and _observation(own):   # this marker explains its own clause, not the last
+            return pending[0]
+        covered = own if _observation(own) or not pending else pending[1]
         pending = None
+        why = _second_observation(covered)
+        if why:
+            return why
         word = _named_defect(clause[m.end() - 1:])   # the reason, from its first word character
         if word:
             return f'says "{word}" in its reason'
-    return pending
+    return pending[0] if pending else None
 
 
 def note_problem(line: str) -> str | None:

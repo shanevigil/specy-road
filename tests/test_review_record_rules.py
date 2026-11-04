@@ -258,7 +258,42 @@ def test_record_files_an_approve_with_one_explanation_per_observation(tmp_path: 
     assert review_path(repo, "M1.1", "opus").is_file()
 
 
+CONJUNCTION_WORDING = ("The cache miss is expected and valid input crashes, not a defect because the fallback "
+                       "handles the cache miss.")
+
+
+def test_record_refuses_an_approve_whose_explained_clause_joins_a_second_defect(tmp_path: Path, capsys) -> None:
+    """The text one explanation covers may not join a second observation with a conjunction (round 9)."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, notes=f"## Acceptance\n\n- **A1:** pass\n\n{CONJUNCTION_WORDING}\n") == 1
+    assert 'notes line 5 says "valid input crashes"' in capsys.readouterr().err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+def test_record_refuses_an_approve_whose_explained_finding_joins_a_second_defect(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, findings={"correctness": [CONJUNCTION_WORDING]}) == 1
+    assert 'findings.correctness[0] says "valid input crashes"' in capsys.readouterr().err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
 @pytest.mark.parametrize("text, why", [
+    (CONJUNCTION_WORDING, 'says "valid input crashes"'),
+    ("The cache miss is expected and valid input crashes; not a defect because the fallback handles it.",
+     'says "valid input crashes"'),
+    ("The cache miss is expected, valid input crashes, not a defect because the fallback handles it.",
+     'says "valid input crashes"'),
+    ("The cache miss is expected and the cache key ignores the branch name, not a defect because it is handled.",
+     "is an observation"),
+    ("x y; not a defect because the fallback handles it, so the message is lost.", 'says "is lost" in its reason'),
+    ("The parser accepts malformed input, so invalid configuration reaches execution. Not a defect because the "
+     "parser is outside this leaf.", None),
+    ("The lock and the registry are both held, not a defect because both calls take the lock.", None),
+    ("It returns 0, 1 or 2; not a defect because the brief lists them.", None),
+    ("Malformed values are treated as missing, rather than crashing the gate; not a defect because the brief asks "
+     "for it.", None),
     (TWO_OBSERVATIONS, 'says "valid input crashes"'),
     ("Valid input crashes. The cache miss is expected, not a defect because the fallback handles it.",
      'says "Valid input crashes"'),
