@@ -136,7 +136,7 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         plan.refusals += [f"{label} is not merged into {target}" for label, ref in heads
                           if not merged_into(main, ref, target)]
     _check_nested(plan, main, prefix)
-    state = _status(wt, tuple(f"{prefix}{nr.path}/" for nr in nested_repos(main)))
+    state = _status(wt, tuple(f"{d.relative_to(wt).as_posix()}/" for _src, d, _linked in plan.nested))
     if state is None:
         plan.refusals.append("cannot read git status of the worktree")
     else:

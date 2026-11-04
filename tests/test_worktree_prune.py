@@ -179,3 +179,12 @@ def test_unsaved_work_in_a_nested_full_clone_is_refused(tmp_path: Path, make, wh
     root, _wt, clone = _clone_leaf(tmp_path)
     make(clone)
     assert why in _refusals(root)
+
+
+def test_a_plain_directory_at_a_nested_path_is_checked_as_part_of_the_worktree(tmp_path: Path) -> None:
+    root, wt = _leaf(tmp_path, (UNCOVERED,))
+    _land(root, wt)
+    (wt / UNCOVERED).mkdir()
+    (wt / UNCOVERED / "notes.txt").write_text("x\n")   # ignored by the main repo: listed, not skipped
+    plan = plan_prune(root, "M1")
+    assert plan.nested == [] and f"{UNCOVERED}/" in plan.ignored
