@@ -2,6 +2,21 @@
 
 **Merge (6efac279):** merged origin/WIP/improvements-0-3-1 (db320d0d). The reviewer prompt keeps this leaf's probe rules plus integration's `verify_cmd_lines` and `reviewer_lesson_lines`. `REMOVED_TEXT_LINES` (text unchanged) moved into `review_record_rules.py` to keep `role_prompt.py` at 397/400 lines. This leaf's two touch-zone additions now sit in M11.75's new chunk, `M11__fad495.json`. The round-2 and round-3 changes are intact. Checks at the merge: `pytest -n 4` on the 50 test files that import the changed modules → 650 passed; file-limits OK; validate OK.
 
+## Round 4 (after the gpt-5.6-sol-medium block at 730428ba)
+
+Each `required_changes` item and the change that answers it:
+
+| # | Required change | Change (commit bb8281b6) |
+|---|---|---|
+| 1 | Refuse an approve whose notes say "The second call reads the registry before the first writes it." without a same-line `not a defect because` | `_DEFECT` in `specy_road/review_record_rules.py` now matches ordering defects and races: "reads … before … writes / wrote / is written / commits / flushes / finishes / lands", stale reads, "out of order", lost updates, TOCTOU / time-of-check / check-then-act. Negation still applies: "no longer reads … before …" and "no stale reads" pass. Rule 4 in the reviewer prompt and `docs/orchestration-review.md` name this class. |
+| 1 | Public-CLI regression: neither the review nor its history record is written, and the error names the notes line | `tests/test_review_record_rules.py::test_record_refuses_an_approve_whose_notes_describe_a_write_order_race` runs `review record` with that sentence on notes line 3. It asserts exit 1, `notes line 3 says "reads the registry before the first writes"` in the error, no `REVIEW-opus.md`, and no `history/` directory. A companion test, `…_whose_notes_explain_the_order_on_the_same_line`, shows that the same sentence with `Not a defect because …` on that line is filed. |
+
+- **Test changed:** the round-3 test `…_with_any_finding_that_does_not_say_why_it_is_not_a_defect` used this same sentence as its "finding with no trigger word". Now that the list matches it, the test uses "The cache key ignores the branch name.", which still matches no word, so it keeps testing the findings-by-structure rule. Its assertions are unchanged.
+- **Red-green:** with 730428ba's `review_record_rules.py` swapped in temporarily (restored, checked with `cmp`), the new race test failed (1 failed). With this commit it passes.
+- **Calibration:** 78 of 319 distinct approving records in the main checkout would be refused (~24%). The new wording adds one hit: M8.1, "out of order".
+- **Touch zones:** no file outside the zones was needed.
+- **For the coordinator:** this is the fourth round on A2, and each block has been a sentence in the notes that the list does not yet cover. Findings have been covered whatever their wording since round 3. Notes are free text, so another sentence can always describe a defect without matching. Closing that class needs a decision outside this leaf's acceptance text: for example, require approve notes to carry a `not a defect because` line for each observation, or have `review record` ask a model to classify the notes. Without one, the loop may keep finding new wordings.
+
 ## Round 3 (after the gpt-5.6-sol-medium block at c5944c15)
 
 The block's `required_changes`: refuse an approve whose findings or notes plainly describe a defect even when they avoid the trigger vocabulary. Its example was a finding that read "Valid input raises ValueError, so the command exits 1 instead of filing the review." It also asked for a public-CLI regression using that wording, asserting that no review or history record is written and that the error names the offending finding. Commit c62f1cf9:
@@ -48,12 +63,19 @@ I ran `unexplained_defects` over the distinct approving records in the main chec
 
 ## Known limits
 
-- Findings are covered whatever their wording (round 3). Notes are still checked against a word list, not parsed, so a defect described in the notes in other words (for example, "the second call reads the registry before the first writes it") still gets through. An unquoted acceptance text in the notes that says "defect" is refused until it is quoted in backticks or with `>`. The prompt and the docs both tell reviewers this.
+- Findings are covered whatever their wording (round 3). Notes are still checked against a word list, not parsed, so a defect described in the notes in other words still gets through (round 4 added ordering and race wording such as "the second call reads the registry before the first writes it"; "the cache key ignores the branch name" in the notes is still missed). An unquoted acceptance text in the notes that says "defect" is refused until it is quoted in backticks or with `>`. The prompt and the docs both tell reviewers this.
 - An approve that puts non-defect observations in `findings` ("Checked the lock order.") is now refused until each says `not a defect because …` or moves to the notes.
 - Approve records already filed are not re-checked: the rule applies only in `review record`, not in `load_review`/`list_reviews`, so the gate still counts existing records.
 - The `specy-road review record` instructions under `specy_road/templates/` do not mention `not a defect because`. The reviewer prompt and the refusal message both do, and adding it to the templates would mean widening the touch zones further.
 
 ## Verification
+
+Round 4 (at bb8281b6):
+
+- `python -m pytest -q -n 4 tests/test_review_record_rules.py` → 41 passed
+- `python -m pytest -q -n 4 <the same 50 files as at the merge>` → 655 passed
+- `specy-road file-limits` → OK; `specy-road validate` → OK; `ruff check` on the changed Python files → clean
+
 
 Round 3 (at c62f1cf9):
 
@@ -96,9 +118,11 @@ Round 1:
 - `…::test_record_refuses_an_approve_whose_finding_says_valid_input_raises` (round 3) — the blocking reviewer's ValueError / exits-1 wording as a finding, through the CLI; no review or history record, and the message names `findings.correctness[0]`.
 - `…::test_record_refuses_an_approve_with_any_finding_that_does_not_say_why_it_is_not_a_defect` (round 3) — a finding with no trigger word is still refused as `findings.boundary[0] is a finding`; no review or history record.
 - `…::test_record_refuses_an_approve_whose_notes_say_valid_input_raises` (round 3) — the same wording on a notes line; names the line, and no review or history record.
+- `…::test_record_refuses_an_approve_whose_notes_describe_a_write_order_race` (round 4) — the blocking reviewer's sentence on a notes line, through the CLI; no review or history record, and the error names `notes line 3`.
+- `…::test_record_files_an_approve_whose_notes_explain_the_order_on_the_same_line` (round 4) — the same sentence with a same-line `Not a defect because …` is filed.
 - `…::test_record_files_an_approve_with_no_findings` — A2: a clean approve (with "No defect found; no bugs.") is filed.
 - `…::test_record_files_an_approve_that_says_why_it_is_not_a_defect` — the explanation line lets an approve through.
 - `…::test_record_files_a_block_that_lists_the_defect` — a block with the defect under required_changes is not affected.
-- `…::test_defect_word` (23 cases; 9 added in round 2 for concrete failures, the tightened negation, and bare verbs that stay out; 5 in round 3 for refused valid input and non-zero exits, and the forms that stay out) — pins negation, headings, quotes, code spans and the explanation phrase.
+- `…::test_defect_word` (26 cases; 9 added in round 2 for concrete failures, the tightened negation, and bare verbs that stay out; 5 in round 3 for refused valid input and non-zero exits, and the forms that stay out; 3 in round 4 for ordering and races) — pins negation, headings, quotes, code spans and the explanation phrase.
 - `…::test_fenced_code_in_the_notes_is_not_checked` — test output in fenced code is not read as a defect.
 - Mocks: none.
