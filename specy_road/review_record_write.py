@@ -164,14 +164,16 @@ def final_output(adapter: Any, text: str, output_file: Path | None = None) -> An
 
 def json_object(value: Any) -> dict[str, Any] | None:
     """``value`` if it is a dict, else the final JSON object of its text, or ``None``. The final object is the last
-    complete top-level one; it must start a line (prose and a ```` ```json ```` fence may precede it) and nothing
+    complete top-level one; it must start a line (prose and a ```` ```json ```` fence may precede it), nothing
     after it may open another (``{``): a truncated or malformed later object is a rerun request, never the earlier
-    one's verdict. Other trailing text (a closing fence, a harness's status lines) is permitted."""
+    one's verdict; and it must not sit inside an object left open before it (:func:`_open_braces`): a complete
+    object nested in malformed outer JSON is a rerun request too. Other trailing text (a closing fence, a harness's
+    status lines) is permitted."""
     if isinstance(value, dict):
         return value
     if not isinstance(value, str):
         return None
-    dec, last, start, end = json.JSONDecoder(), None, 0, 0
+    dec, spans = json.JSONDecoder(), []
     i = value.find("{")
     while i != -1:
         try:
@@ -179,12 +181,26 @@ def json_object(value: Any) -> dict[str, Any] | None:
         except ValueError:
             i = value.find("{", i + 1)
             continue
-        if isinstance(obj, dict):
-            last, start, end = obj, i, stop
+        spans.append((i, stop, obj))
         i = value.find("{", stop)
-    if last is None or "{" in value[end:] or value[value.rfind("\n", 0, start) + 1:start].strip():
+    if not spans:
+        return None
+    start, end, last = spans[-1]
+    if "{" in value[end:] or value[value.rfind("\n", 0, start) + 1:start].strip() or _open_braces(value, spans):
         return None
     return last
+
+
+def _open_braces(value: str, spans: list[tuple[int, int, Any]]) -> bool:
+    """Whether an object opened outside the complete ones (``spans``) is still open where the last one starts:
+    ``{`` adds one, ``}`` takes one away but never below none, so balanced prose (``use {x}``) and a stray ``}``
+    leave the final object at top level, and an unterminated outer object does not."""
+    depth, pos = 0, 0
+    for begin, stop, _obj in spans:
+        for ch in value[pos:begin]:
+            depth = depth + 1 if ch == "{" else max(0, depth - 1) if ch == "}" else depth
+        pos = stop
+    return depth > 0
 
 
 @dataclass

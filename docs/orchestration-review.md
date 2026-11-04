@@ -280,7 +280,7 @@ specy-road decides the outcome:
   change time (ctime, which a process cannot put back), content (SHA-256), size and mtime, so a rewrite with its mtime put back counts.
   A `REVIEW-<model>.md` it filed itself is put back as it was. Nothing is filed.
 - **rerun request** — the output has no JSON object, its last object does not
-  start a line, a later object was begun and left malformed or truncated (an
+  start a line or sits inside an outer object left unterminated, a later object was begun and left malformed or truncated (an
   earlier complete object never stands in for it), it does not match the schema,
   or `review record` refuses it (another commit, an approve with a failing
   item). Nothing is filed; it is never recorded as a verdict.

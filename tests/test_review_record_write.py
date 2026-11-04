@@ -8,13 +8,14 @@ import sys
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft202012Validator
 
 from tests.review_delegate_helpers import delegate_repo, fake_reviewer_run, set_steps, verdict_step, wrote_only
 from tests.review_repo_helpers import commit_file, git, make_review_repo, review_output
 from tests.test_models_and_prompt import run_main
 
 from specy_road import review_files as rf
-from specy_road.bundled_scripts import role_prompt
+from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.model_profiles import load_profile
 from specy_road.review_delegate import DelegateError, delegate
 from specy_road.review_record_write import (json_object, output_schema, review_run_lock, reviewer_env, snapshot,
@@ -150,6 +151,8 @@ def test_the_final_complete_json_object_of_a_message_is_the_answer() -> None:
     assert json_object('{"final": 2}\n{"verdict": ') is None                 # a later object was cut off
     assert json_object('{"final": 2}\n{"x": {"y": 1}') is None               # not its complete inner object
     assert json_object('see {"final": 2}') is None                           # the answer starts its own line
+    assert json_object('{"wrapper": "draft",\n{"final": 2}') is None         # nested in an unterminated object
+    assert json_object('use {x} here, a stray }\n{"final": 2}') == {"final": 2}   # balanced prose, stray brace
 
 
 def test_a_valid_object_followed_by_truncated_json_is_a_rerun_request_and_files_nothing(tmp_path: Path) -> None:
@@ -162,6 +165,20 @@ def test_a_valid_object_followed_by_truncated_json_is_a_rerun_request_and_files_
     assert not _record(repo).exists()
     set_steps(repo, spec, {"raw": valid})                                     # the same object alone is filed
     assert delegate(repo, "M1.1", "opus", sleep=lambda s: None)["outcome"] == "recorded"
+
+
+def test_a_verdict_nested_in_an_unterminated_outer_object_is_a_rerun_request(tmp_path: Path, capsys) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    valid = verdict_step(repo)["answer"]
+    assert Draft202012Validator(output_schema()).is_valid(valid)             # the nested verdict is schema-valid
+    set_steps(repo, spec, {"raw": '{"wrapper": "draft", "review":\n' + json.dumps(valid)})
+    with pytest.raises(SystemExit) as e:
+        review_cli.main(["review", "delegate", "M1.1", "--model", "opus", "--backoff", "0", "--json",
+                         "--repo-root", str(repo)])
+    run = json.loads(capsys.readouterr().out)
+    assert e.value.code == 1 and run["state"] == "incomplete" and run["outcome"] == "rerun"
+    assert run["reason"] == "rerun requested: the reviewer's output ends with no JSON object"
+    assert not _record(repo).exists()
 
 
 # --- A1: the prompt asks for the object; the schema is the record's -----------------------------------------------
