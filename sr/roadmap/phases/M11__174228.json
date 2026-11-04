@@ -302,16 +302,19 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.30_worktree-env-setup_e442e4b8-d057-4e6d-b520-9ec4b28f356e.md",
       "sibling_order": 30,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Leaf worktrees get the project's environment set up",
       "touch_zones": [
         "specy_road/git_workflow_config.py",
         "specy_road/worker_ops.py",
         "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
         "specy_road/bundled_scripts/doctor.py",
+        "specy_road/bundled_scripts/doctor_env_setup.py",
+        "specy_road/worker_ops_launch.py",
         "specy_road/templates/project/schemas/git-workflow.schema.json",
         "docs/git-workflow.md",
-        "tests/"
+        "tests/",
+        "specy_road/worktree_env.py"
       ],
       "type": "task"
     },
@@ -330,7 +333,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.31_worktree-prune_4f1db491-c309-4ba9-b5d7-d5d91a9cf9b6.md",
       "sibling_order": 31,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A safe command to retire a leaf worktree",
       "touch_zones": [
         "specy_road/bundled_scripts/worktree_cli.py",
@@ -356,11 +359,13 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.32_nested-unpushed-report_66a3455f-0e4e-4947-8cb5-cee6a60ddcf0.md",
       "sibling_order": 32,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Unpushed nested-repo commits are reported",
       "touch_zones": [
         "specy_road/bundled_scripts/doctor.py",
         "specy_road/bundled_scripts/session_plan.py",
+        "specy_road/bundled_scripts/session_plan_git.py",
+        "specy_road/bundled_scripts/session_plan_render.py",
         "specy_road/nested_repos.py",
         "tests/"
       ],
@@ -384,7 +389,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.33_dynamic-routing-reviewers_abfffa4b-36f6-4fc1-8754-ab8bc26e9fb8.md",
       "sibling_order": 33,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A reviewer whose harness routes models dynamically does not count as an independent family by default",
       "touch_zones": [
         "specy_road/orchestration_config.py",
@@ -394,7 +399,8 @@
         "specy_road/templates/project/schemas/orchestration.schema.json",
         "docs/orchestration.md",
         "docs/orchestration-models.md",
-        "tests/"
+        "tests/",
+        "specy_road/worker_models.py"
       ],
       "type": "task"
     },
@@ -458,38 +464,6 @@
         "specy_road/review_delegate.py",
         "specy_road/bundled_scripts/validate_roadmap.py",
         "specy_road/worker_exit.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "When the review policy allows it (a key, off by default), a reviewer that resumes its own earlier session may approve a delta: the record names delta_from (the commit it last approved) and the delta it read, fresh_session may be false, and the approval counts only under M11.8's delta rules; any other resumed approval is still refused by reviewer_fresh_session",
-        "handoff status says when an approval was refused only for fresh_session and whether a resumed delta would be allowed; docs and tests cover allowed, refused (policy off), and a resumed full review"
-      ],
-      "codename": "resumed-delta-approval",
-      "dependencies": [
-        "0aae8208-413d-4d60-b7b8-c83f9c31b522",
-        "35380c40-e3ba-4d90-913d-342ecd12d964"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M11.36",
-      "node_key": "17d67a22-2e77-4f9f-9627-a051cdc2c225",
-      "parent_id": "M11",
-      "planning_dir": "planning/M11.36_resumed-delta-approval_17d67a22-2e77-4f9f-9627-a051cdc2c225.md",
-      "sibling_order": 36,
-      "status": "Complete",
-      "title": "A resumed reviewer session may approve a delta it was shown",
-      "touch_zones": [
-        "specy_road/review_gate.py",
-        "specy_road/bundled_scripts/review_packet.py",
-        "specy_road/bundled_scripts/role_prompt.py",
-        "docs/orchestration-review.md",
-        "tests/",
-        "specy_road/review_resumed_delta.py",
-        "specy_road/orchestration_config.py",
-        "specy_road/templates/project/schemas/orchestration.schema.json",
-        "sr/schemas/orchestration.schema.json",
-        "specy_road/bundled_scripts/role_prompt_rca.py"
       ],
       "type": "task"
     }

@@ -19,8 +19,10 @@
 - the registration commit and `registry-prune` → "Registration commit (mandatory)"
 - touch zones and worktrees while implementing → "While working"
 - code in separately versioned repositories under the project root (`nested_repos`) → "Nested repositories"
+- a virtual environment and ignored files (`.python-version`, `.env`) in each new leaf worktree (`env_setup`) → "Worktree environment"
 - landing, then revert vs follow-up → "Merge back" and "Correcting merged work: revert vs follow-up"
 - deleting merged `feature/rm-*` branches (`finish-this-task --delete-branch`, `branches prune`) → "Deleting merged feature branches"
+- removing one leaf's worktree safely (`worktree prune`) → "Retiring a leaf's worktree"
 - every leftover the loop leaves (branches, worktrees, registry rows, stashes) → "Finding leftovers: `doctor`"
 
 **Related:** [`dev-workflow.md`](dev-workflow.md), [`grind-session.md`](grind-session.md), [`pm-workflow.md`](pm-workflow.md), [`orchestration.md`](orchestration.md).
@@ -60,6 +62,8 @@ Optional field **`cleanup_work_artifacts_on_finish`** (boolean): when **true** o
 Optional field **`track_worker_logs`** (`"off"`, `"events"` or `"full"`; default **`"off"`** when omitted): whether worker logs travel with the leaf in git. **`"off"`** keeps them in gitignored `work/.workers/` and writes nothing else. **`"events"`** makes the worker wrapper copy each worker's event log, at the end of every turn, to **`work/worker-logs/<NODE_ID>/<worker id>.events.jsonl`** in the worker's own checkout (where the leaf's branch is checked out); **`"full"`** copies the raw output log `<worker id>.log` there too. `finish-this-task` stages that directory in its bookkeeping commit whatever `cleanup_work_artifacts_on_finish` says, and never deletes it. Quote the value: YAML reads a bare `off` as `false`, which is accepted as `"off"`; any other value fails `specy-road validate`. **Size warning:** logs get long. An event log is typically tens of kilobytes per leaf, a raw log under `"full"` can reach megabytes, and both stay in history for good, so opt in per project only when the audit trail is worth that. `work/.workers/` and `work/.worktrees/` stay gitignored in every mode (`init project` and `refresh-stubs` write the rule, and the executor and reviewer clean-tree preconditions and `worker delegate`'s uncommitted-work check leave `work/.workers/`, `work/.sessions/`, `work/.worktrees/` and `work/reviews/` out in any checkout, so a fresh clone starts clean even where the rule is missing), and the toolkit's ignore rules never cover `work/worker-logs/`; if your own `.gitignore` does (for example a blanket `work/*`), finish warns and commits nothing until you add `!work/worker-logs/`.
 
 Optional field **`nested_repos`** (list): separately versioned git repositories under the project root, each a project-relative path or `{path, integration_branch, remote}`; the worktree flow, `worker reconcile`, merge-mode finish and `review-packet` include them. See "Nested repositories" below.
+
+Optional field **`env_setup`** (`{cmd, copy}`): what a new leaf worktree gets when `do-next-available-task --worktree` or `worker delegate` creates it — ignored files copied from the main checkout, then a command run there. See "Worktree environment" below.
 
 Optional fields **`grind_session_max_limit_waits`** (integer, default 3), **`grind_session_max_limit_wait_hours`** (number, default 6), **`grind_session_limit_wait_grace_seconds`** (integer, default 120) and **`grind_session_max_empty_retries`** (integer, default 2): bounds for a `grind-session` run whose `--implement-cmd` is the Claude CLI — how many times one leaf may wait out a usage limit, the ceiling on any single wait, the slack added after a stated reset, and how many times to re-run a hook killed from outside without printing anything. The matching CLI flags override this file. Ignored for any other implement command. See [grind-session.md](grind-session.md).
 
@@ -272,7 +276,24 @@ nested_repos:
 - **`worker reconcile`** diffs each nested repository in the worker's tree from its merge base with its integration branch, committed or not, and reports those paths (`nested_changed`, git-root-relative) under the same touch-zone check as the main repository's: an edit in a detached repository, or outside the zones, sets `needs_reconcile`. Untracked files there count as warnings, as in the main repository.
 - **`finish-this-task`.** The implementation gate (`require_implementation_before_finish`) counts the branch's in-zone changes in nested repositories, so a leaf whose work lives only there can finish. In `merge` (and `auto`) mode, every nested repository holding the leaf's branch is merged and pushed **before** the main repository: the merge is made in a detached temporary worktree at `<remote>/<integration_branch>` and pushed straight to the remote, so no checkout of that repository moves (pull the main checkout's copy afterwards). A conflict or a rejected push there, or a configured path that is not a git repository (whether it held the leaf's work cannot be told), stops the landing before the main repository moves; a repository without the leaf's branch has nothing to land and is skipped; a re-run skips the repositories already landed. The land check (`land_check_cmd`) runs on the main repository's merge commit only. `pr` mode does not touch nested repositories: push each nested branch and open its PR/MR there yourself.
 - **`review-packet`** adds a **Nested repositories** section: each repository's changed paths, with those outside the touch zones called out, and its diff from the merge base with its integration branch to the leaf's branch (local, else remote-tracking). A diff past `--max-diff-lines` or `--max-diff-bytes` is written to `work/reviews/<NODE_ID>/DIFF-nested-<path>.patch` instead, with each `/` of the path written `+` (`DIFF-nested-services+api.patch`), which no configured path contains, so two repositories never share a file.
-- **Removing the leaf's worktree** leaves each nested repository's worktree registration behind; `git -C <repository> worktree prune` drops it, after which that repository's branch can be deleted.
+- **Removing the leaf's worktree** by hand leaves each nested repository's worktree registration behind; `git -C <repository> worktree prune` drops it, after which that repository's branch can be deleted. `specy-road worktree prune <ID>` removes them with the leaf's worktree, after checking each (see "Retiring a leaf's worktree").
+
+### Worktree environment (`env_setup`)
+
+A linked worktree holds tracked files only: no virtual environment, and none of the ignored files the main checkout has, such as `.python-version` or `.env`. Without a pin file, a tool that builds an environment there (`uv sync`, for one) silently picks whatever Python it finds first. Name the setup once in `roadmap/git-workflow.yaml`:
+
+```yaml
+env_setup:
+  copy:
+    - .python-version                      # same path in the worktree
+    - {from: .env.example, to: .env}       # copied under another name
+  cmd: uv sync --all-packages --all-groups --locked
+```
+
+- **When it runs.** `do-next-available-task --worktree` and `worker delegate` run it once, right after they create `work/.worktrees/<codename>`: every `copy` item first, from the main checkout's project root (also when `worker delegate` runs from a linked worktree, which lacks those ignored files) to the same project-relative path in the worktree (in the nested layout `../.python-version` is the git root's), then `cmd` at the worktree's project root. `worker delegate` runs it after adding the nested repositories' worktrees and before its uncommitted-work check, so whatever the setup writes must be ignored. Pickup runs it before adding them, so a command that needs a nested repository belongs to `worker delegate`, or rerun it in the worktree after pickup. A worktree that already exists, or a worker run in the main checkout itself, is never set up.
+- **A failure stops it.** A missing copy source, or a command exiting non-zero, stops the pickup or the launch with the command's output (stdout and stderr together). The worktree stays as it is and is not set up again by a later `worker delegate`: fix the cause and finish the setup there by hand, or remove the worktree (`git worktree remove`) and delegate again. A failed pickup has already pushed its claim.
+- **uv workspaces.** Use `uv sync --all-packages --all-groups --locked`. A plain `uv sync` in a workspace installs only the root package's dependencies and **removes every other member's packages** from the environment; `--locked` fails when `uv.lock` is out of date instead of rewriting it in the worktree.
+- **`doctor`** prints the configured setup, checks that each copy source exists in the main checkout and runs `cmd` there: a missing source or a failing command is an error (exit 1 after the listing). It also compares the Python of each linked worktree's `.venv` (from `.venv/pyvenv.cfg` at the worktree's project root, else its git root) with the main checkout's, major.minor, and warns on a mismatch whether or not `env_setup` is set.
 
 ## Merge back
 
@@ -292,6 +313,15 @@ specy-road branches prune            # list only
 specy-road branches prune --delete   # delete locally and on the remote
 ```
 
+### Retiring a leaf's worktree (`worktree prune`)
+
+**`specy-road worktree prune <ID>`** removes the leaf's worktree, `work/.worktrees/<codename>` in the main checkout, only when nothing in it would be lost. It refuses, naming each reason, unless the worktree's `HEAD` and `feature/rm-<codename>` (local, `<remote>/feature/rm-<codename>`, and the branch on the remote itself, each only where it exists) are merged into the remote's actual integration branch. The remote's tips are read with `git ls-remote`, whatever `remote.<name>.fetch` covers, and their commits fetched by name, so a peer's later push to the leaf branch counts. A remote that cannot be read, a commit that cannot be fetched, or a remote without the integration branch refuses. The worktree must also have no uncommitted changes, no untracked files git does not ignore, and no stash that may be its own. The stash stack is shared by every worktree, so a stash is passed over only when its subject names another branch (`On main: …`); one made on the leaf's branch, on a detached `HEAD` (`On (no branch):` does not say which worktree made it) or stored under a custom subject refuses. Each `nested_repos` repository in the worktree is checked too: no uncommitted or untracked changes, no stashes, and no commits that no branch or remote-tracking ref of the main checkout's copy holds. A linked worktree of that copy shares its branches and stash, so only its `HEAD` (a detached commit) and stashes are checked, as above; a full clone loses its branches, remote-tracking refs and stash with its directory, so each of its branch and remote-tracking tips must be held by a branch or remote-tracking ref of the main checkout's copy (the clone's own `origin/…` refs are tips to keep, not a place that keeps them: they may be stale) and any stash refuses. A status, stash list or ref listing git cannot read refuses as well, and so does a `roadmap/git-workflow.yaml` that is present but does not parse or validate: without it the nested repositories cannot be found to check. When the checks pass it lists each ignored file removal deletes, including files inside an ignored directory (`git worktree remove` deletes them without asking), and removes nothing; **`--yes`** removes each nested worktree or clone, then the leaf's worktree. The branch is left for `branches prune`.
+
+```bash
+specy-road worktree prune M1.2         # check and list only
+specy-road worktree prune M1.2 --yes   # remove it
+```
+
 ### Finding leftovers: `doctor`
 
 **`specy-road doctor`** lists everything the task loop can leave behind, after `git fetch --prune`, without changing anything:
@@ -300,6 +330,8 @@ specy-road branches prune --delete   # delete locally and on the remote
 - **Worktrees** (never the main one, the current one or a locked one) whose directory is missing, whose branch is gone (detached at a commit the integration branch contains, or whose patch it has — the same ancestry-then-patch test as a branch — which is how `finish-this-task --delete-branch` leaves a `worker delegate` worktree), or whose branch is merged, even when the branch itself is kept because it is still claimed and its leaf is not `Complete`. A row names the ignored files (`work/` and so on) that removing the worktree would delete.
 - **Registry rows** on the integration branch whose branch is in neither this clone nor the remote (advisory, as with `registry-prune`: another clone's claim looks the same until it pushes its branch), or whose leaf is `Complete`; that row's branch is listed above and goes first under `--fix`.
 - **Stashes specy-road pushed** (messages starting `specy-road:`; pickup and review used to stash `work/`).
+
+Before the listing it checks the checkout: an `env_setup` (see "Worktree environment") that fails in the main checkout is an error, and a linked worktree whose `.venv` runs another Python than the main checkout's is a warning.
 
 **`--fix`** removes what it listed, asking once per kind (`--yes` skips the questions), and prints each action. It removes worktrees first, then branches (a branch checked out in a kept worktree is not deleted and is reported), then stashes, then registry rows through `registry-prune --remove`, which checks out the integration branch, commits and pushes. A branch is deleted only at the tip that was listed: a local branch that moved is left alone, and the remote delete is leased to that tip. A dropped stash can still be restored with `git stash apply <sha>`, which the report prints, until `git gc`. An unmerged branch is deleted too when you confirm, so read the commit count first. A failed fetch stops `doctor`.
 

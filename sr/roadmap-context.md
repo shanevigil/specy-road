@@ -8,8 +8,8 @@ The current state of this project's roadmap, generated from the merged graph, th
 
 Status is the computed rollup: a non-leaf is Complete only when every leaf descendant is.
 
-- `M1` Adopt specy-road `adopt-specy-road` — phase — **Not Started**
-  - `M1.1` Set up the project's specy-road basics `project-setup` — task — **Not Started**
+- `M1` Adopt specy-road `adopt-specy-road` — phase — **Complete**
+  - `M1.1` Set up the project's specy-road basics `project-setup` — task — **Complete**
 - `M2` Outcome record pilot `outcome-record-pilot` — phase — **Not Started**
   - `M2.1` List shipped nodes with no result after N days `list-shipped-nodes-with-no-result-after-n-days` — milestone — **Not Started**
   - `M2.2` Store a pointer and a human verdict for outcomes, never the metric itself `store-a-pointer-and-a-human-verdict-for-outcomes-never-the-metric-itself` — milestone — **Not Started**
@@ -107,7 +107,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.18` Review records are found and written with the canonical file name on case-insensitive filesystems `review-file-case` — task — **Complete**
   - `M10.19` The executor prompt forbids killing processes the executor did not start `no-foreign-kills` — task — **Complete**
   - `M10.20` Pilot GPT-6.1 Terra as a lower-cost executor before rostering it `terra-executor-pilot` — task — **Complete**
-- `M11` rc2 field feedback: worktrees, workers and the review loop `rc2-field-feedback` — phase — **Not Started**
+- `M11` rc2 field feedback: worktrees, workers and the review loop `rc2-field-feedback` — phase — **In Progress**
   - `M11.1` In a git worktree, every command resolves work/ paths the same way and a sandboxed reviewer can file its record `worktree-paths-agree` — task — **Complete**
   - `M11.2` worker message resumes a failed or stalled worker whose native session id is known `resume-failed-workers` — task — **Complete**
   - `M11.3` specy-road's own runtime directories never fail the clean-tree checks `runtime-dirs-not-dirty` — task — **Complete**
@@ -136,10 +136,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Complete**
   - `M11.28` A light chore mode for work outside the roadmap `chore-mode` — task — **Complete**
   - `M11.29` doctor warns when the running specy-road is older than the project's stubs `doctor-version-skew` — task — **Complete**
-  - `M11.30` Leaf worktrees get the project's environment set up `worktree-env-setup` — task — **Not Started**
-  - `M11.31` A safe command to retire a leaf worktree `worktree-prune` — task — **Not Started**
-  - `M11.32` Unpushed nested-repo commits are reported `nested-unpushed-report` — task — **Not Started**
-  - `M11.33` A reviewer whose harness routes models dynamically does not count as an independent family by default `dynamic-routing-reviewers` — task — **Not Started**
+  - `M11.30` Leaf worktrees get the project's environment set up `worktree-env-setup` — task — **Complete**
+  - `M11.31` A safe command to retire a leaf worktree `worktree-prune` — task — **Complete**
+  - `M11.32` Unpushed nested-repo commits are reported `nested-unpushed-report` — task — **Complete**
+  - `M11.33` A reviewer whose harness routes models dynamically does not count as an independent family by default `dynamic-routing-reviewers` — task — **Complete**
   - `M11.34` Open human decisions live in one tracked ledger and every question is self-contained `decision-ledger` — task — **Complete**
   - `M11.35` A roster entry maps to the harness's own model id, and a failed start says why `roster-harness-model-id` — task — **Complete**
   - `M11.36` A resumed reviewer session may approve a delta it was shown `resumed-delta-approval` — task — **Complete**
@@ -181,7 +181,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.72` A reviewer run that ends without a record is reported as a failure `reviewer-failure-visible` — task — **Complete**
   - `M11.73` specy-road ready warns when the leaf no longer merges cleanly `ready-warns-integration-conflict` — task — **Complete**
   - `M11.74` Pickup and finish in one checkout take a shared lock in order `pickup-finish-shared-lock` — task — **Complete**
-  - `M11.75` Reviewer prompt asks for independent probes, not the executor's own checks `reviewer-probe-rules` — task — **Not Started**
+  - `M11.75` Reviewer prompt asks for independent probes, not the executor's own checks `reviewer-probe-rules` — task — **Complete**
   - `M11.76` Every roster model reaches its profile notes `profile-alias-coverage` — task — **Complete**
   - `M11.77` A completed reviewer run does not report a missing record `run-record-no-false-failure` — task — **Complete**
   - `M11.78` Review lessons: escaped defect classes feed every reviewer prompt `review-lessons` — task — **Complete**
@@ -200,15 +200,6 @@ Someone deliberately dropped these. Check why before re-adding one.
 This work was completed and moved out of the graph. It is deliberately excluded from IDE indexing; reach it with `specy-road search <QUERY> --scope archived`.
 
 - 2026-11-02 `M11.21` (1 node) — `specy-road show-archive M11.21-439c8b26-20261102`
-
-## Claimed and in flight
-
-Do not pick these up.
-
-- `M11.30` on `feature/rm-worktree-env-setup` since 2026-11-03
-- `M11.31` on `feature/rm-worktree-prune` since 2026-11-03
-- `M11.33` on `feature/rm-dynamic-routing-reviewers` since 2026-11-03
-- `M11.75` on `feature/rm-reviewer-probe-rules` since 2026-11-03
 
 ## Reaching the detail behind this
 

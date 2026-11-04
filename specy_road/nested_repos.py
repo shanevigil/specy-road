@@ -8,7 +8,8 @@ the leaf's branch when the leaf's touch zones cover the repository, detached at
 its integration tip otherwise (read-only in practice). ``worker reconcile``
 diffs them, ``finish-this-task`` in merge mode merges and pushes each leaf
 branch before the main repository moves, and ``review-packet`` adds their
-diffs.
+diffs. ``doctor`` and ``grind-session --plan`` list their branches whose
+commits no remote has (:func:`unpushed_branches`): finish pushes nothing else.
 
 A path git reports inside a nested repository is prefixed with that
 repository's path, so touch zones match it as they match the main
@@ -17,6 +18,7 @@ repository's files.
 
 from __future__ import annotations
 
+import re
 import shutil
 import tempfile
 from dataclasses import dataclass
@@ -338,3 +340,56 @@ def land_nested_branches(repo_root: Path, feature_branch: str) -> tuple[bool, st
             return False, (f"nested repo {nr.path!r}: {err}. The main repository was not merged; "
                            "fix it there, then re-run (nested repos already landed are skipped)")
     return True, ""
+
+
+def _unpushed(repo: Path, branch: str, upstream: str, track: str, has_remote: bool) -> tuple[str, int]:
+    """``(state, commits)`` for one local branch; ``commits`` 0 when every one is on a remote."""
+    if not has_remote:
+        return "no remote", int(git_text(["rev-list", "--count", f"refs/heads/{branch}"], repo) or 0)
+    if not upstream or track == "gone":
+        count = git_text(["rev-list", "--count", f"refs/heads/{branch}", "--not", "--remotes"], repo)
+        return "no upstream", int(count or 0)
+    ahead = re.search(r"ahead (\d+)", track)
+    return "ahead", int(ahead.group(1)) if ahead else 0
+
+
+def unpushed_branches(repo_root: Path) -> list[dict]:
+    """Each local branch of a configured nested repository holding commits its remotes lack.
+
+    ``{"repo", "branch", "commits", "state", "upstream"}``: ``state`` is
+    ``ahead`` (``commits`` past ``upstream``), ``no upstream`` (``commits`` on
+    no remote branch; also when the upstream was deleted) or ``no remote`` (the
+    repository has none, so every commit counts). A branch with nothing to push
+    is left out, and so is a configured path that is not a repository: delegate
+    and finish report that one.
+    """
+    fmt = "%(refname:short)%09%(upstream:short)%09%(upstream:track,nobracket)"
+    out = []
+    for nr in nested_repos(repo_root):
+        repo = repo_root / nr.path
+        if not is_repo_top(repo):
+            continue
+        has_remote = bool(git_text(["remote"], repo))
+        for line in (git_text(["for-each-ref", f"--format={fmt}", "refs/heads"], repo) or "").splitlines():
+            branch, upstream, track = (line.split("\t") + ["", ""])[:3]   # git_text strips trailing tabs
+            state, commits = _unpushed(repo, branch, upstream, track, has_remote)
+            if commits:
+                out.append({"repo": nr.path, "branch": branch, "commits": commits, "state": state,
+                            "upstream": upstream if state == "ahead" else None})
+    return out
+
+
+def describe_unpushed(u: dict) -> str:
+    """One line for a :func:`unpushed_branches` entry, naming the repository, branch and commit count."""
+    where = {"ahead": f"ahead of {u['upstream']}", "no upstream": "on no remote branch (no upstream)",
+             "no remote": "in a repository with no remote"}[u["state"]]
+    return f"{u['repo']}: {u['branch']} has {u['commits']} commit(s) {where}"
+
+
+def report_unpushed(repo_root: Path) -> None:
+    """``doctor``'s advisory listing of :func:`unpushed_branches`; nothing when there are none."""
+    found = unpushed_branches(repo_root)
+    if found:
+        print("Nested repos with commits no remote has (finish pushes only the leaf branch it lands):")
+        for u in found:
+            print(f"  {describe_unpushed(u)}")

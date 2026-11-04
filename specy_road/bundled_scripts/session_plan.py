@@ -93,6 +93,8 @@ class SessionPlan:
     #: ready leaf id -> its ``execution_milestone`` (``None`` when unset).
     ready_execution: dict[str, str | None] = field(default_factory=dict)
     prefer_agentic: bool = False
+    #: ``nested_repos.unpushed_branches``: filled by ``session_plan_git`` (this module reads no git).
+    nested_unpushed: list[dict] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------

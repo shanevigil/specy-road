@@ -5,6 +5,20 @@
   "type": "object",
   "required": ["version", "integration_branch", "remote"],
   "additionalProperties": false,
+  "$defs": {
+    "nestedRepoPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!(.*/)?\\.\\.?(/|$))[A-Za-z0-9._/-]+$",
+      "description": "Project-relative path of the repository's top directory, without '.' or '..' segments."
+    },
+    "envSetupPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)",
+      "description": "Project-relative file path; '../' reaches the git root when the project root is nested."
+    }
+  },
   "properties": {
     "version": { "type": "integer", "const": 1 },
     "integration_branch": {
@@ -74,6 +88,67 @@
       "type": "integer",
       "minimum": 0,
       "description": "grind-session: slack added after the stated reset, because clocks disagree (default 120). CLI --limit-wait-grace-seconds wins."
+    },
+    "nested_repos": {
+      "type": "array",
+      "description": "Separately versioned git repositories under the project root, each a project-relative path or {path, integration_branch, remote} (both default to this file's). worker delegate and do-next-available-task --worktree give each one a worktree at the same path inside the leaf's worktree: on the leaf's branch when the leaf's touch zones cover it, detached at its integration tip otherwise. worker reconcile diffs them, finish-this-task in merge (and auto) mode merges and pushes each leaf branch before the main repository, and review-packet includes their diffs. See docs/git-workflow.md.",
+      "uniqueItems": true,
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/nestedRepoPath" },
+          {
+            "type": "object",
+            "required": ["path"],
+            "additionalProperties": false,
+            "properties": {
+              "path": { "$ref": "#/$defs/nestedRepoPath" },
+              "integration_branch": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9._/-]+$",
+                "description": "This repository's integration branch (default: integration_branch above)."
+              },
+              "remote": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9._-]+$",
+                "description": "This repository's remote (default: remote above)."
+              }
+            }
+          }
+        ]
+      }
+    },
+    "env_setup": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "description": "What a new leaf worktree gets when do-next-available-task --worktree or worker delegate creates it: copy names files (usually ignored, so git does not bring them) copied from the main checkout's project root, then cmd runs at the worktree's project root. A failure stops the pickup or launch with the command's output. doctor runs cmd in the main checkout. See docs/git-workflow.md.",
+      "properties": {
+        "cmd": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Shell command run at the new worktree's project root after the copies (e.g. uv sync --all-packages --all-groups --locked)."
+        },
+        "copy": {
+          "type": "array",
+          "description": "Files copied from the main checkout before cmd runs: a path (copied to the same path) or {from, to} (e.g. .env.example to .env).",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/envSetupPath" },
+              {
+                "type": "object",
+                "required": ["from", "to"],
+                "additionalProperties": false,
+                "properties": {
+                  "from": { "$ref": "#/$defs/envSetupPath" },
+                  "to": { "$ref": "#/$defs/envSetupPath" }
+                }
+              }
+            ]
+          }
+        }
+      }
     },
     "grind_session_max_empty_retries": {
       "type": "integer",

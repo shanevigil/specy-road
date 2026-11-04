@@ -51,6 +51,39 @@ it as an `error:` and exits 1, both naming the two settings and the fix: set
 for you; whether a project reviews is its own decision, and a project that does
 not can delete `roadmap/orchestration.yaml`.
 
+## What a reviewer probes
+
+An evaluation of reviewer effectiveness on the 0.3.1 line found that the approving reviewer had usually seen the issues the second reviewer blocked on, and excused them: it re-ran only the executor's own tests, read loose acceptance text in the leaf's favour, and filed real defects as "advisory" or "non-blocking". So every reviewer prompt (`specy-road prompt --role reviewer`, and `review delegate`) tells the reviewer to:
+
+1. run the tests that import each changed module, not only the executor's selection;
+2. try at least one input per changed public function that the diff's tests do not use, and report it under `commands_rerun`;
+3. fail an acceptance item whose observed behaviour differs from its text, even when the difference looks minor;
+4. list every defect its notes or findings describe under `required_changes`, or explain on that line why it is not one, starting `not a defect because`.
+
+`specy-road review record` enforces the fourth rule on an approve, which may not carry `required_changes`. No word list catches every way of describing a defect, so the rule is structural. Every `findings` entry, and every observation line of the notes, must say `not a defect because <reason>` on that same line, whatever its wording. The phrase has to stand on its own, outside backticks, with a reason after it: "xnot a defect becausey", a bare "not a defect because.", a reason that starts on the next line after "because", and a quoted `` `not a defect because …` `` don't count; otherwise the record is refused and nothing is written, neither the review nor its `history/` copy. An observation line is any line of two words or more outside code spans, except:
+
+- a heading;
+- a `>` quote;
+- fenced code;
+- a table separator row or horizontal rule;
+- a bare acceptance result such as `- **A1:** pass` or `| A1 | pass |`.
+
+One explanation covers one observation. A line or findings entry is split into clauses at `.`, `!`, `?` or `;` before whitespace (not after "e.g.", "i.e.", "etc.", "vs." or "cf."). A marker covers the clause it ends ("x, not a defect because y"), or, when it opens its clause, the one clause just before it ("x; not a defect because y", "x. Not a defect because y"). Any other clause on the line that names a defect or is an observation fails on its own: "The cache miss is expected; not a defect because the fallback handles it. Separately, valid input crashes." is refused as `says "valid input crashes"`. The text one explanation covers may not join a second observation to the first. It is split at commas and at "and", "but", "while", "whereas", "although", "though", "yet" and "plus", and more than one part may not be an observation. A part counts when it names a defect, or when it has three words or more and does not open with a word that carries on the same observation ("so", "which", "because", "rather", "when", …). So "The cache miss is expected and valid input crashes, not a defect because the fallback handles the cache miss." is refused as `says "valid input crashes"`, while "The parser accepts malformed input, so invalid configuration reaches execution." and "The lock and the registry are both held" each count as one observation. A reason that itself names a defect ("…because the fallback handles it, and valid input crashes") is refused as `says "…" in its reason`. Keep each reason to one clause.
+
+So approve notes look like this:
+
+```markdown
+## Acceptance
+
+- **A1:** pass
+- **A2:** pass
+
+Re-ran `pytest -q tests/test_x.py` (12 passed) and tried an empty file; not a defect because both match the brief.
+The second call reads the registry before the first writes it; not a defect because both hold the registry lock.
+```
+
+The message names each offending entry or line, for example `findings.boundary[0] is a finding`, `notes line 5 is an observation`, or, when a word names the defect, `findings.correctness[1] says "Advisory"` and `notes line 3 says "crashes"`. A single-word line is still refused when the word names a defect ("Crashes."). Words that name a defect include advisory, non-blocking, minor, nit, bug, defect, crash, hang, data loss, race, a stale read, and refused valid input. A block with the defect under `required_changes` is filed as before. The rules and the check live in `specy_road/review_record_rules.py`.
+
 ## Delta review of small fix rounds
 
 A new commit makes every record stale, so each fix round normally needs fresh

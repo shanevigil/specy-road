@@ -66,6 +66,10 @@ roster:
     roles: [reviewer]
     profile: model-profiles/spacexai-grok/grok-4.6.md
     harness: cursor
+    harness_model: cursor-grok-4.6-high
+    # The wrapper runs `agent --model cursor-grok-4.6-high` with Auto off (sr/tools/cursor-review.sh);
+    # checked by the maintainer 2026-11-04, so the approval counts as xai (M11.33 routing rule).
+    pinned: true
     channels:
       cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/cursor-review.sh cursor-grok-4.6-high {prompt}"
   - id: composer-2.5
