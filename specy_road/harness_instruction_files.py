@@ -16,6 +16,7 @@ from pathlib import Path
 
 from specy_road.agent_guide_block import AGENT_GUIDE
 from specy_road.bundled_scripts.planning_artifacts import split_frontmatter
+from specy_road.claude_config import claude_projects_dir
 from specy_road.git_subprocess import git_stdout, git_text
 
 AGENTS_MD = "AGENTS.md"
@@ -168,13 +169,13 @@ def _main_worktree(top: Path) -> Path:
 
 
 def claude_memory_file(top: Path) -> Path | None:
-    """``~/.claude/projects/<repo>/memory/MEMORY.md`` when present, or None.
+    """``<config dir>/projects/<repo>/memory/MEMORY.md`` when present, or None.
 
     ``<repo>`` is the main checkout's absolute path with every non-alphanumeric
     character replaced by ``-``.
     """
     project = re.sub(r"[^A-Za-z0-9]", "-", _main_worktree(top).as_posix())
-    path = Path.home() / ".claude" / "projects" / project / "memory" / "MEMORY.md"
+    path = claude_projects_dir() / project / "memory" / "MEMORY.md"
     return path if path.is_file() else None
 
 

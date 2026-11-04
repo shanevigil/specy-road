@@ -5,7 +5,7 @@
 sid=$1 prompt=$2
 . "$(dirname "$0")/env.sh"
 set -- -p --output-format stream-json --verbose --dangerously-skip-permissions --model claude-opus-5-5
-if ls "$HOME"/.claude/projects/*/"$sid".jsonl >/dev/null 2>&1; then
+if ls "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/projects/*/"$sid".jsonl >/dev/null 2>&1; then
   exec claude "$@" --resume "$sid" < "$prompt"
 fi
 exec claude "$@" --session-id "$sid" < "$prompt"
