@@ -2,6 +2,52 @@
   "nodes": [
     {
       "acceptance": [
+        "specy-road ready runs the same trial merge with the integration branch that handoff status uses and, when it conflicts, prints the conflicting paths and tells the executor to merge the integration branch before handing off; tests cover a clean and a conflicting leaf"
+      ],
+      "codename": "ready-warns-integration-conflict",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.73",
+      "node_key": "a245310c-1353-4fd3-89d4-be6cc19241ef",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.73_ready-warns-integration-conflict_a245310c-1353-4fd3-89d4-be6cc19241ef.md",
+      "sibling_order": 73,
+      "status": "Complete",
+      "title": "specy-road ready warns when the leaf no longer merges cleanly",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_gate.py",
+        "tests/",
+        "specy_road/review_ready_merge.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "do-next-available-task, finish-this-task and abort-task-pickup take one repository lock (for example under .git/specy-road/) before switching branches or committing in the main checkout, wait in arrival order with a timeout and a message naming the holder, and release it on exit; tests cover two concurrent callers and a stale lock left by a killed process"
+      ],
+      "codename": "pickup-finish-shared-lock",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.74",
+      "node_key": "b4a57d7e-258e-4f66-9afc-3f4ffe5004cb",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.74_pickup-finish-shared-lock_b4a57d7e-258e-4f66-9afc-3f4ffe5004cb.md",
+      "sibling_order": 74,
+      "status": "Complete",
+      "title": "Pickup and finish in one checkout take a shared lock in order",
+      "touch_zones": [
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/bundled_scripts/abort_task_pickup.py",
+        "specy_road/repo_lock.py",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
         "The reviewer prompt tells every reviewer to (1) run the tests that import each changed module, not only the executor's selection, (2) try at least one input per changed public function that the diff's tests do not use and report it under commands_rerun, (3) fail an acceptance item whose observed behaviour differs from its text, even when the difference looks minor, and (4) list every defect its notes describe under required_changes or explain why it is not a defect; a test pins the four rules in the rendered prompt",
         "review record refuses an approve whose notes or findings name a defect without a matching required_changes entry or an explicit 'not a defect because' line, with a message saying which; a test covers the refusal and an approve with no findings"
       ],
@@ -171,43 +217,6 @@
         "sr/roadmap/git-workflow.yaml",
         "docs/git-workflow.md",
         "tests/"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "A Claude Code result line whose permission_denials list is non-empty records a permission_denied worker event naming each denied tool and its input, and flags the worker, even when subtype is success, is_error is false and the exit code is 0; a test replays such a line.",
-        "A usage limit is recognised from the turn's text, never its exit code: a Claude result or api_error text that claude_code_limits.classify_limit reads as a limit (including subtype success with exit 0, and exit 1 with no result line, where the last message is read from ~/.claude/projects/<project>/<session-id>.jsonl), a system/api_retry line with error rate_limit, and a Codex turn.failed whose text says 'try again at <time>' each put the worker in paused-by-limit with the parsed reset time when there is one; a test replays one line per case.",
-        "Claude Code worker and reviewer launches either set CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 in the harness environment, as harness-facts.yaml states, or the fixture row and the 'Backgrounded tests' paragraph of docs/orchestration-workers.md say that claude -p waits up to 10 minutes of idle for background work it started; a test checks the environment the wrapper passes.",
-        "The Codex memory overrides the launch passes are checked against the captured `codex features list` (memory v2 is on by default for fresh profiles since 0.165), and a key the capture does not list fails refresh-profiles --check instead of being passed and ignored."
-      ],
-      "codename": "headless-limits-denials",
-      "dependencies": [
-        "6cb421f0-05d8-4db3-b111-58b8708a3f53",
-        "f4d6efe0-4286-44f8-a36e-d30947c401d6"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M11.62",
-      "node_key": "eda7b3fe-97ec-4eba-9a95-3df7ed230209",
-      "parent_id": "M11",
-      "planning_dir": "planning/M11.62_headless-limits-denials_eda7b3fe-97ec-4eba-9a95-3df7ed230209.md",
-      "sibling_order": 60,
-      "status": "Complete",
-      "title": "Headless runs report usage limits and denied actions instead of looking like success",
-      "touch_zones": [
-        "specy_road/worker_adapters.py",
-        "specy_road/worker_adapter_parsers.py",
-        "specy_road/worker_runner.py",
-        "docs/orchestration-workers.md",
-        "tests/",
-        "specy_road/worker_adapter_claude.py",
-        "specy_road/orchestration_role_env.py",
-        "specy_road/review_delegate.py",
-        "specy_road/bundled_scripts/role_prompt.py",
-        "specy_road/bundled_scripts/role_prompt_stream.py",
-        "specy_road/harness_facts.py",
-        "specy_road/bundled_scripts/refresh_profiles.py",
-        "docs/orchestration-models.md"
       ],
       "type": "task"
     }

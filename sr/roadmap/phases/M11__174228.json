@@ -466,38 +466,6 @@
         "specy_road/worker_exit.py"
       ],
       "type": "task"
-    },
-    {
-      "acceptance": [
-        "When the review policy allows it (a key, off by default), a reviewer that resumes its own earlier session may approve a delta: the record names delta_from (the commit it last approved) and the delta it read, fresh_session may be false, and the approval counts only under M11.8's delta rules; any other resumed approval is still refused by reviewer_fresh_session",
-        "handoff status says when an approval was refused only for fresh_session and whether a resumed delta would be allowed; docs and tests cover allowed, refused (policy off), and a resumed full review"
-      ],
-      "codename": "resumed-delta-approval",
-      "dependencies": [
-        "0aae8208-413d-4d60-b7b8-c83f9c31b522",
-        "35380c40-e3ba-4d90-913d-342ecd12d964"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M11.36",
-      "node_key": "17d67a22-2e77-4f9f-9627-a051cdc2c225",
-      "parent_id": "M11",
-      "planning_dir": "planning/M11.36_resumed-delta-approval_17d67a22-2e77-4f9f-9627-a051cdc2c225.md",
-      "sibling_order": 36,
-      "status": "Complete",
-      "title": "A resumed reviewer session may approve a delta it was shown",
-      "touch_zones": [
-        "specy_road/review_gate.py",
-        "specy_road/bundled_scripts/review_packet.py",
-        "specy_road/bundled_scripts/role_prompt.py",
-        "docs/orchestration-review.md",
-        "tests/",
-        "specy_road/review_resumed_delta.py",
-        "specy_road/orchestration_config.py",
-        "specy_road/templates/project/schemas/orchestration.schema.json",
-        "sr/schemas/orchestration.schema.json",
-        "specy_road/bundled_scripts/role_prompt_rca.py"
-      ],
-      "type": "task"
     }
   ]
 }

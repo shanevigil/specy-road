@@ -8,8 +8,8 @@ The current state of this project's roadmap, generated from the merged graph, th
 
 Status is the computed rollup: a non-leaf is Complete only when every leaf descendant is.
 
-- `M1` Adopt specy-road `adopt-specy-road` — phase — **Not Started**
-  - `M1.1` Set up the project's specy-road basics `project-setup` — task — **Not Started**
+- `M1` Adopt specy-road `adopt-specy-road` — phase — **Complete**
+  - `M1.1` Set up the project's specy-road basics `project-setup` — task — **Complete**
 - `M2` Outcome record pilot `outcome-record-pilot` — phase — **Not Started**
   - `M2.1` List shipped nodes with no result after N days `list-shipped-nodes-with-no-result-after-n-days` — milestone — **Not Started**
   - `M2.2` Store a pointer and a human verdict for outcomes, never the metric itself `store-a-pointer-and-a-human-verdict-for-outcomes-never-the-metric-itself` — milestone — **Not Started**

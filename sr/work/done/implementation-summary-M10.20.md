@@ -12,7 +12,7 @@ GPT-6.1 Terra was piloted as an executor on three already-landed Agentic-led lea
   - M11.73: Terra stopped, since the needed edit was outside the touch zones; nothing to review.
   - M11.77: approve / approve.
   - Nothing was merged or pushed. Local branches `pilot/terra-M11.65`, `pilot/terra-M11.73` and `pilot/terra-M11.77` and their worktrees under this session's scratchpad are left in place for inspection. Remove them with `git worktree remove` and `git branch -D`.
-- **A3:** The note is at `sr/research/terra-executor-pilot.md`. The recommendation is yes, so the profile `specy_road/templates/project/model-profiles/openai-gpt/gpt-6.1-terra.md` was added.
+- **A3:** The note is at `sr/docs/terra-executor-pilot.md`. The recommendation is yes, so the profile `specy_road/templates/project/model-profiles/openai-gpt/gpt-6.1-terra.md` was added.
 - **A4:** The note records codex-cli 0.165.0. Terra is present in that inventory, so no recheck on 0.166.0 was needed.
 
 ## Notes for the reviewers and maintainer
@@ -49,5 +49,5 @@ GPT-6.1 Terra was piloted as an executor on three already-landed Agentic-led lea
 - none
 
 ### Files
-- `sr/research/terra-executor-pilot.md`: the A3 findings note, holding the A1/A4 capture and the A2 replay results
+- `sr/docs/terra-executor-pilot.md`: the A3 findings note, holding the A1/A4 capture and the A2 replay results
 - `specy_road/templates/project/model-profiles/openai-gpt/gpt-6.1-terra.md`: the profile A3 asks for when the recommendation is yes

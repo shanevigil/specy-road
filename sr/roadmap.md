@@ -8,8 +8,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 
 | ID | Title | Type | Gate | Status |
 |----|-------|------|------|--------|
-| `M1` | Adopt specy-road | phase | Human-led | Not Started |
-| `M1.1` | Set up the project's specy-road basics | task | Mixed | Not Started |
+| `M1` | Adopt specy-road | phase | Human-led | Complete |
+| `M1.1` | Set up the project's specy-road basics | task | Mixed | Complete |
 | `M2` | Outcome record pilot | phase | — | Not Started |
 | `M2.1` | List shipped nodes with no result after N days | milestone | Agentic-led | Not Started |
 | `M2.2` | Store a pointer and a human verdict for outcomes, never the metric itself | milestone | Agentic-led | Not Started |

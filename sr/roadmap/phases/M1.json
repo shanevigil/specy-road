@@ -12,7 +12,7 @@
       "parent_id": null,
       "planning_dir": "planning/M1_adopt-specy-road_a1b2c3d4-e5f6-4789-a012-3456789abcde.md",
       "sibling_order": 0,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Adopt specy-road",
       "touch_zones": [],
       "type": "phase"
@@ -35,7 +35,7 @@
       "parent_id": "M1",
       "planning_dir": "planning/M1.1_project-setup_b2c3d4e5-f6a7-4890-b123-456789abcdef.md",
       "sibling_order": 0,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Set up the project's specy-road basics",
       "touch_zones": [
         "constitution/",
