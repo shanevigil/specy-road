@@ -333,7 +333,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.31_worktree-prune_4f1db491-c309-4ba9-b5d7-d5d91a9cf9b6.md",
       "sibling_order": 31,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A safe command to retire a leaf worktree",
       "touch_zones": [
         "specy_road/bundled_scripts/worktree_cli.py",

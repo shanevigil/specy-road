@@ -137,7 +137,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.28` | A light chore mode for work outside the roadmap | task | Agentic-led | Complete |
 | `M11.29` | doctor warns when the running specy-road is older than the project's stubs | task | Agentic-led | Complete |
 | `M11.30` | Leaf worktrees get the project's environment set up | task | Agentic-led | Complete |
-| `M11.31` | A safe command to retire a leaf worktree | task | Agentic-led | Not Started |
+| `M11.31` | A safe command to retire a leaf worktree | task | Agentic-led | Complete |
 | `M11.32` | Unpushed nested-repo commits are reported | task | Agentic-led | Not Started |
 | `M11.33` | A reviewer whose harness routes models dynamically does not count as an independent family by default | task | Agentic-led | Not Started |
 | `M11.34` | Open human decisions live in one tracked ledger and every question is self-contained | task | Agentic-led | Complete |

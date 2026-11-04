@@ -22,6 +22,7 @@
 - a virtual environment and ignored files (`.python-version`, `.env`) in each new leaf worktree (`env_setup`) → "Worktree environment"
 - landing, then revert vs follow-up → "Merge back" and "Correcting merged work: revert vs follow-up"
 - deleting merged `feature/rm-*` branches (`finish-this-task --delete-branch`, `branches prune`) → "Deleting merged feature branches"
+- removing one leaf's worktree safely (`worktree prune`) → "Retiring a leaf's worktree"
 - every leftover the loop leaves (branches, worktrees, registry rows, stashes) → "Finding leftovers: `doctor`"
 
 **Related:** [`dev-workflow.md`](dev-workflow.md), [`grind-session.md`](grind-session.md), [`pm-workflow.md`](pm-workflow.md), [`orchestration.md`](orchestration.md).
@@ -275,7 +276,7 @@ nested_repos:
 - **`worker reconcile`** diffs each nested repository in the worker's tree from its merge base with its integration branch, committed or not, and reports those paths (`nested_changed`, git-root-relative) under the same touch-zone check as the main repository's: an edit in a detached repository, or outside the zones, sets `needs_reconcile`. Untracked files there count as warnings, as in the main repository.
 - **`finish-this-task`.** The implementation gate (`require_implementation_before_finish`) counts the branch's in-zone changes in nested repositories, so a leaf whose work lives only there can finish. In `merge` (and `auto`) mode, every nested repository holding the leaf's branch is merged and pushed **before** the main repository: the merge is made in a detached temporary worktree at `<remote>/<integration_branch>` and pushed straight to the remote, so no checkout of that repository moves (pull the main checkout's copy afterwards). A conflict or a rejected push there, or a configured path that is not a git repository (whether it held the leaf's work cannot be told), stops the landing before the main repository moves; a repository without the leaf's branch has nothing to land and is skipped; a re-run skips the repositories already landed. The land check (`land_check_cmd`) runs on the main repository's merge commit only. `pr` mode does not touch nested repositories: push each nested branch and open its PR/MR there yourself.
 - **`review-packet`** adds a **Nested repositories** section: each repository's changed paths, with those outside the touch zones called out, and its diff from the merge base with its integration branch to the leaf's branch (local, else remote-tracking). A diff past `--max-diff-lines` or `--max-diff-bytes` is written to `work/reviews/<NODE_ID>/DIFF-nested-<path>.patch` instead, with each `/` of the path written `+` (`DIFF-nested-services+api.patch`), which no configured path contains, so two repositories never share a file.
-- **Removing the leaf's worktree** leaves each nested repository's worktree registration behind; `git -C <repository> worktree prune` drops it, after which that repository's branch can be deleted.
+- **Removing the leaf's worktree** by hand leaves each nested repository's worktree registration behind; `git -C <repository> worktree prune` drops it, after which that repository's branch can be deleted. `specy-road worktree prune <ID>` removes them with the leaf's worktree, after checking each (see "Retiring a leaf's worktree").
 
 ### Worktree environment (`env_setup`)
 
@@ -310,6 +311,15 @@ Both commands delete only a branch the integration branch already contains, and 
 ```bash
 specy-road branches prune            # list only
 specy-road branches prune --delete   # delete locally and on the remote
+```
+
+### Retiring a leaf's worktree (`worktree prune`)
+
+**`specy-road worktree prune <ID>`** removes the leaf's worktree, `work/.worktrees/<codename>` in the main checkout, only when nothing in it would be lost. It refuses, naming each reason, unless the worktree's `HEAD` and `feature/rm-<codename>` (local, `<remote>/feature/rm-<codename>`, and the branch on the remote itself, each only where it exists) are merged into the remote's actual integration branch. The remote's tips are read with `git ls-remote`, whatever `remote.<name>.fetch` covers, and their commits fetched by name, so a peer's later push to the leaf branch counts. A remote that cannot be read, a commit that cannot be fetched, or a remote without the integration branch refuses. The worktree must also have no uncommitted changes, no untracked files git does not ignore, and no stash that may be its own. The stash stack is shared by every worktree, so a stash is passed over only when its subject names another branch (`On main: …`); one made on the leaf's branch, on a detached `HEAD` (`On (no branch):` does not say which worktree made it) or stored under a custom subject refuses. Each `nested_repos` repository in the worktree is checked too: no uncommitted or untracked changes, no stashes, and no commits that no branch or remote-tracking ref of the main checkout's copy holds. A linked worktree of that copy shares its branches and stash, so only its `HEAD` (a detached commit) and stashes are checked, as above; a full clone loses its branches, remote-tracking refs and stash with its directory, so each of its branch and remote-tracking tips must be held by a branch or remote-tracking ref of the main checkout's copy (the clone's own `origin/…` refs are tips to keep, not a place that keeps them: they may be stale) and any stash refuses. A status, stash list or ref listing git cannot read refuses as well, and so does a `roadmap/git-workflow.yaml` that is present but does not parse or validate: without it the nested repositories cannot be found to check. When the checks pass it lists each ignored file removal deletes, including files inside an ignored directory (`git worktree remove` deletes them without asking), and removes nothing; **`--yes`** removes each nested worktree or clone, then the leaf's worktree. The branch is left for `branches prune`.
+
+```bash
+specy-road worktree prune M1.2         # check and list only
+specy-road worktree prune M1.2 --yes   # remove it
 ```
 
 ### Finding leftovers: `doctor`
