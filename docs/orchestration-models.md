@@ -174,7 +174,8 @@ capability specy-road turns off for executors (memory, background tasks, Codex `
 `specy-road orchestration guard --format … --print-config`) deny role-inappropriate git and cloud
 commands; `worker delegate` / `review delegate` export `SPECY_ROAD_ORCHESTRATION_ROLE` so the
 installed command can read the role; pair them with the shared-checkout guard from
-`specy-road session guard --print-config`.
+`specy-road session guard --print-config`. The hook judges Bash tool calls only (including what
+`sh -c`, `eval`, `$(…)`, `xargs` and `!` git aliases run); it does not see file-edit tools.
 
 ## Harnesses that route models
 
