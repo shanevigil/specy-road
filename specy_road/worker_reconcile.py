@@ -13,6 +13,7 @@ from typing import Any
 import yaml
 
 from specy_road.agent_ignores import RUNTIME_WORK_DIRS
+from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, load_chore
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.finish_implementation_check import _clean, zone_matches
@@ -44,7 +45,9 @@ from specy_road.worker_state import (
 def _target(repo_root: Path, rec: WorkerRecord) -> ReviewTarget:
     """The leaf's review target; with no registry claim (the leaf merged and finish released it), the
     roadmap node alone, whose touch zones still say where the worker may write. No base: the worker's
-    checkpoint or start head is where its changes are judged from."""
+    checkpoint or start head is where its changes are judged from. A chore's is its own (chore_cli)."""
+    if (chore := load_chore(repo_root, rec.node_id)) is not None:
+        return chore_target(repo_root, chore)
     try:
         return resolve_target(repo_root, rec.node_id)
     except ReviewTargetError as e:
@@ -121,7 +124,7 @@ def _brief_unchanged(repo_root: Path, rec: WorkerRecord, nodes: list[dict]) -> b
 
 def _bookkeeping(path: str, node_id: str, prefix: str = "") -> bool:
     """The leaf's own specy-road files: the brief and summary the reviewer's clean-tree check leaves
-    out (role_prompt), the prompts ``delegate`` writes, the leaf's own mirrored worker logs
+    out (role_prompt), the prompts ``delegate`` writes, a chore's own record (chore_cli), the leaf's own mirrored worker logs
     (``track_worker_logs``; another leaf's are not), and the toolkit's state.
 
     ``path`` is git-root-relative; ``prefix`` is the project's (nested layout). A path outside the
@@ -129,7 +132,7 @@ def _bookkeeping(path: str, node_id: str, prefix: str = "") -> bool:
     """
     rel = rebase_to_project(path, prefix)
     return rel is not None and (rel in (f"work/brief-{node_id}.md", f"work/implementation-summary-{node_id}.md")
-                                or rel.startswith((f"work/prompt-{node_id}-", f"{WORKER_LOGS_REL}/{node_id}/",
+                                or rel.startswith((f"work/prompt-{node_id}-", f"work/chores/{node_id}.", f"{WORKER_LOGS_REL}/{node_id}/",
                                                    *RUNTIME_WORK_DIRS)))
 
 
@@ -166,12 +169,14 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
     untracked_outside = _outside(untracked)
     # With no claim to name the branch, the prompt is built at the worker's own HEAD.
     ref = None if t.entry is not None else head_sha(wt)
-    text, _p, err = build_prompt(repo_root, rec.node_id, role="executor", model=rec.model, ref=ref)
+    chore = t.node.get("chore")
+    text, _p, err = (chore_prompt(chore, "executor", rec.model, repo_root), None, None) if chore else \
+        build_prompt(repo_root, rec.node_id, role="executor", model=rec.model, ref=ref)
     # A prompt that can no longer be built (the model lost the leaf's
     # sensitivity or class) is a contract change too, not a pass. Otherwise
     # only the leaf's own contract counts: the prompt and the rest of the brief
     # also move when the integration branch does.
-    brief_same = _brief_unchanged(repo_root, rec, t.nodes)
+    brief_same = bool(chore) or _brief_unchanged(repo_root, rec, t.nodes)   # a chore has no brief
     prompt_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
     contract_changed = bool(
         rec.contract_hash

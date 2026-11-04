@@ -55,16 +55,3 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: chore-mode
-    node_id: M11.28
-    branch: feature/rm-chore-mode
-    touch_zones:
-      - specy_road/bundled_scripts/chore_cli.py
-      - specy_road/worker_ops.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/cli.py
-      - docs/orchestration-workers.md
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending

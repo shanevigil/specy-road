@@ -134,7 +134,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.25` finish-this-task says what merge mode will push before it pushes `merge-push-disclosure` — task — **Complete**
   - `M11.26` A model profile can match harness model ids that carry an effort suffix `profile-aliases` — task — **Complete**
   - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Complete**
-  - `M11.28` A light chore mode for work outside the roadmap `chore-mode` — task — **Not Started**
+  - `M11.28` A light chore mode for work outside the roadmap `chore-mode` — task — **Complete**
   - `M11.29` doctor warns when the running specy-road is older than the project's stubs `doctor-version-skew` — task — **Complete**
   - `M11.30` Leaf worktrees get the project's environment set up `worktree-env-setup` — task — **Not Started**
   - `M11.31` A safe command to retire a leaf worktree `worktree-prune` — task — **Not Started**
@@ -206,7 +206,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M11.22` on `feature/rm-nested-repo-worktrees` since 2026-11-03
-- `M11.28` on `feature/rm-chore-mode` since 2026-11-03
 - `M11.62` on `feature/rm-headless-limits-denials` since 2026-11-03
 - `M11.75` on `feature/rm-reviewer-probe-rules` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03

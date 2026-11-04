@@ -310,8 +310,8 @@ def build_parser() -> argparse.ArgumentParser:
     ws = w.add_subparsers(dest="worker_cmd", required=True)
 
     sp = ws.add_parser("delegate", help="Launch a worker for a claimed leaf and return at once")
-    sp.add_argument("node_id")
-    sp.add_argument("--model", required=True, help="Roster id (executor role)")
+    sp.add_argument("node_id", help="A claimed leaf, or a chore slug (`specy-road chore start`)")
+    sp.add_argument("--model", help="Roster id (executor role); a chore's default is its own --model")
     sp.add_argument("--harness", choices=HARNESSES, help="Override the roster entry's harness")
     sp.add_argument("--worktree", help="Run in this checkout (default: this one if it has the claim's branch, else a linked worktree)")
     _offline_arg(sp); sp.add_argument("--rework", action="store_true", help="Take over after blocking reviews or a terminated or failed worker")
