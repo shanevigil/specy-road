@@ -31,11 +31,11 @@ PROBE_RULES_LINES = [
     "minor; do not read a loose criterion in the leaf's favour.",
     "4. List every defect your notes or findings describe under `required_changes` (and block), or explain on "
     f"that same line why it is not one, starting `{NOT_A_DEFECT}`. On an approve, `review record` treats every "
-    f"`findings` entry as a defect unless it says `{NOT_A_DEFECT}`, so keep observations that are not defects "
-    "in the notes; it also refuses notes that call something advisory, non-blocking, minor, a nit, a bug or a "
-    "defect, or describe a concrete failure (it crashes, hangs, drops or loses data, returns a wrong result, "
-    "rejects valid input, exits non-zero instead of succeeding, reads before a write lands), without that line. "
-    "Text you quote in backticks or on a `>` line is not checked.",
+    "`findings` entry and every observation line of the notes as a possible defect, whatever its wording, and "
+    f"refuses the record unless that line says `{NOT_A_DEFECT} <reason>`. An observation line is any line of two "
+    "words or more outside code spans, other than a heading, a `>` quote, fenced code, a table separator row or "
+    "horizontal rule, or a bare acceptance result such as `A1: pass`; so write each observation with its reason "
+    "on the same line, and quote text or test output in backticks, a `>` line or fenced code.",
     "",
 ]
 # Executors once deleted unrelated docstrings and messages to stay under a line cap; reviewers caught it a round late.
@@ -79,6 +79,12 @@ _QUALIFIER = (r"(?:other|more|new|real|known|actual|obvious|remaining|further|su
 _NEGATED = re.compile(r"\b(?:no|none|nothing|not(?:\s+an?)?|\w+n't|cannot|without|zero|never|rather\s+than|"
                       rf"instead\s+of)\s+(?:{_QUALIFIER}\s+){{0,3}}$", re.I)
 _CODE_SPAN = re.compile(r"`[^`]*`")
+# Lines of approve notes that carry no observation: a bare acceptance result ("- **A1:** pass", "| A1 | pass |")
+# and a table separator row or horizontal rule. Any other line of two words or more is an observation and needs a
+# NOT_A_DEFECT reason.
+_ACCEPTANCE_RESULT = re.compile(r"^[-*+|\s]*[*_]*A[1-9]\d*[*_\s]*[:|\u2014\u2013-]?[*_\s]*(?:pass|n/a)[*_\s.|]*$", re.I)
+_RULE = re.compile(r"^[\s|:*_-]*$")
+_WORD = re.compile(r"[A-Za-z][\w'-]*")
 
 
 def defect_word(line: str) -> str | None:
@@ -93,11 +99,25 @@ def defect_word(line: str) -> str | None:
     return None
 
 
+def note_problem(line: str) -> str | None:
+    """Why one line of approve notes needs a :data:`NOT_A_DEFECT` reason, or ``None``: ``says "<word>"`` when
+    it names a defect, else ``is an observation`` when it has two words or more outside code spans and is not a
+    heading, a ``>`` quote, a bare acceptance result or a table separator row or horizontal rule."""
+    word = defect_word(line)
+    if word:
+        return f'says "{word}"'
+    text = _CODE_SPAN.sub("", line).strip()
+    if (NOT_A_DEFECT in text.lower() or text.startswith(("#", ">")) or _ACCEPTANCE_RESULT.match(text)
+            or _RULE.match(text) or len(_WORD.findall(text)) < 2):
+        return None
+    return "is an observation"
+
+
 def unexplained_defects(data: dict[str, Any], body: str) -> list[str]:
     """``<where> says "<word>"`` for each findings entry and notes line that names a defect without a
-    :data:`NOT_A_DEFECT` line; fenced code in the notes is skipped. Every findings entry without that line
-    counts, whatever its wording (``<where> is a finding``): a word list cannot catch every way of describing
-    a defect, and findings are where a reviewer reports one."""
+    :data:`NOT_A_DEFECT` line; fenced code in the notes is skipped. A word list cannot catch every way of
+    describing a defect, so every findings entry (``<where> is a finding``) and every observation line of the
+    notes (``<where> is an observation``, :func:`note_problem`) without that line counts, whatever its wording."""
     out = []
     for key, items in (data.get("findings") or {}).items():
         for i, item in enumerate(items or []):
@@ -109,9 +129,9 @@ def unexplained_defects(data: dict[str, Any], body: str) -> list[str]:
         if line.lstrip().startswith(("```", "~~~")):
             fenced = not fenced
             continue
-        word = None if fenced else defect_word(line)
-        if word:
-            out.append(f'notes line {n} says "{word}"')
+        why = None if fenced else note_problem(line)
+        if why:
+            out.append(f"notes line {n} {why}")
     return out
 
 
@@ -124,7 +144,8 @@ def approve_defect_problem(data: dict[str, Any], body: str) -> str | None:
         return None
     return (f"verdict: approve, but {'; '.join(named)} with no required_changes entry and no "
             f"'{NOT_A_DEFECT}' line: list each defect under required_changes and block, or say on that line "
-            f"why it is not one ('{NOT_A_DEFECT} <reason>'); on an approve every findings entry needs that line")
+            f"why it is not one ('{NOT_A_DEFECT} <reason>'); on an approve every findings entry and every "
+            "observation line of the notes needs that line")
 
 
 def check_record(ns: argparse.Namespace, root: Path, t: ReviewTarget) -> tuple[dict | None, str | None]:

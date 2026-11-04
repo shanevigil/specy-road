@@ -60,9 +60,27 @@ An evaluation of reviewer effectiveness on the 0.3.1 line found that the approvi
 3. fail an acceptance item whose observed behaviour differs from its text, even when the difference looks minor;
 4. list every defect its notes or findings describe under `required_changes`, or explain on that line why it is not one, starting `not a defect because`.
 
-`specy-road review record` enforces the fourth rule on an approve, which may not carry `required_changes`. It refuses, writing nothing, in two cases. First, when any `findings` entry lacks a `not a defect because` line, whatever its wording: findings are where a reviewer reports a defect, and no word list catches every way of describing one. Keep observations that are not defects in the notes. Second, when a line of the notes calls something advisory, non-blocking (or not blocking), minor, a nit, cosmetic, residual, latent, an optional fix, a weak assertion, a bug or a defect, or describes a concrete failure, unless that line says `not a defect because`. Concrete failures are crashes, hangs, deadlocks, corruption, leaks, data loss, races, unhandled exceptions and tracebacks; dropping, losing or overwriting something a user keeps ("drops the review", "loses data", "the message is lost"); silently dropping, ignoring or accepting something; wrong or incorrect results; and valid input refused or a non-zero exit where success was due ("valid input raises ValueError", "rejects a valid ledger", "fails on valid input", "exits 1 instead of filing the review"); and ordering defects and races ("the second call reads the registry before the first writes it", a stale read, out of order, a lost update, TOCTOU / check-then-act). A bare "fails", "drops" or "raises" is not enough, since those words usually describe a refusal or filter working as intended.
+`specy-road review record` enforces the fourth rule on an approve, which may not carry `required_changes`. No word list catches every way of describing a defect, so the rule is structural. Every `findings` entry, and every observation line of the notes, must say `not a defect because <reason>` on that same line, whatever its wording; otherwise the record is refused and nothing is written, neither the review nor its `history/` copy. An observation line is any line of two words or more outside code spans, except:
 
-A negation clears a mention only when nothing but qualifiers stand between them: "no defect", "no other correctness defect", "no longer crashes", "doesn't drop data" and "rather than crashing" don't count, but "no workaround for this bug" does. Headings, `>` quotes, code spans and fenced code are not checked either, so a reviewer can quote acceptance text or test output. The message names each offending entry or line, for example `findings.correctness[1] says "Advisory"`, `findings.boundary[0] is a finding`, `notes line 3 says "crashes"`. A block with the defect under `required_changes` is filed as before. The rules and the check live in `specy_road/review_record_rules.py`.
+- a heading;
+- a `>` quote;
+- fenced code;
+- a table separator row or horizontal rule;
+- a bare acceptance result such as `- **A1:** pass` or `| A1 | pass |`.
+
+So approve notes look like this:
+
+```markdown
+## Acceptance
+
+- **A1:** pass
+- **A2:** pass
+
+Re-ran `pytest -q tests/test_x.py` (12 passed) and tried an empty file; not a defect because both match the brief.
+The second call reads the registry before the first writes it; not a defect because both hold the registry lock.
+```
+
+The message names each offending entry or line, for example `findings.boundary[0] is a finding`, `notes line 5 is an observation`, or, when a word names the defect, `findings.correctness[1] says "Advisory"` and `notes line 3 says "crashes"`. A single-word line is still refused when the word names a defect ("Crashes."). Words that name a defect include advisory, non-blocking, minor, nit, bug, defect, crash, hang, data loss, race, a stale read, and refused valid input. A block with the defect under `required_changes` is filed as before. The rules and the check live in `specy_road/review_record_rules.py`.
 
 ## Delta review of small fix rounds
 

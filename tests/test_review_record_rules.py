@@ -13,7 +13,7 @@ from tests.test_review_cli import ONE_AI
 
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.review_files import PACKET_NAME, review_path, reviews_dir
-from specy_road.review_record_rules import defect_word, unexplained_defects
+from specy_road.review_record_rules import defect_word, note_problem, unexplained_defects
 
 
 def test_reviewer_prompt_carries_the_four_probe_rules(tmp_path: Path) -> None:
@@ -96,7 +96,8 @@ def test_record_names_every_offending_finding_and_line(tmp_path: Path, capsys) -
                   'notes line 2 says "hangs"'):
         assert where in err
     assert 'findings.correctness[0] is a finding' in err
-    assert "notes line 1" not in err and "notes line 3" not in err
+    # negated lines name no defect word, but they are still observations without a reason (round 5)
+    assert "notes line 1 is an observation" in err and "notes line 3 is an observation" in err
     assert not review_path(repo, "M1.1", "opus").exists()
     assert not (reviews_dir(repo, "M1.1") / "history").exists()
 
@@ -119,7 +120,8 @@ def test_record_refuses_an_approve_with_any_finding_that_does_not_say_why_it_is_
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     assert _record(repo, findings={"boundary": ["The cache key ignores the branch name."]}) == 1
     err = capsys.readouterr().err
-    assert "findings.boundary[0] is a finding" in err and "on an approve every findings entry needs that line" in err
+    assert "findings.boundary[0] is a finding" in err
+    assert "on an approve every findings entry and every observation line of the notes needs that line" in err
     assert not review_path(repo, "M1.1", "opus").exists()
     assert not (reviews_dir(repo, "M1.1") / "history").exists()
 
@@ -150,9 +152,46 @@ def test_record_files_an_approve_whose_notes_explain_the_order_on_the_same_line(
     assert review_path(repo, "M1.1", "opus").is_file()
 
 
+MALFORMED_WORDING = "The parser accepts malformed input, so invalid configuration reaches execution."
+
+
+def test_record_refuses_an_approve_whose_notes_carry_an_unclassified_observation(tmp_path: Path, capsys) -> None:
+    """No word in the sentence names a defect: every observation line of approve notes needs a reason (round 5)."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert defect_word(MALFORMED_WORDING) is None
+    assert _record(repo, notes=f"## Acceptance\n\n- **A1:** pass\n\n{MALFORMED_WORDING}\n") == 1
+    err = capsys.readouterr().err
+    assert "notes line 5 is an observation" in err
+    assert "every observation line of the notes needs that line" in err
+    assert "notes line 1" not in err and "notes line 3" not in err   # the heading and the bare result
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+@pytest.mark.parametrize("line, why", [
+    (MALFORMED_WORDING, "is an observation"),
+    ("The cache key ignores the branch name.", "is an observation"),
+    ("No defect found.", "is an observation"),
+    ("- A2 — pass. The prompt renders all four rules.", "is an observation"),
+    ("Crashes.", 'says "Crashes"'),
+    (f"{MALFORMED_WORDING} Not a defect because the parser is outside this leaf.", None),
+    ("notes", None),
+    ("- **A1:** pass", None),
+    ("| A1 | pass |", None),
+    ("|---|---|", None),
+    ("## Acceptance", None),
+    ("> The parser accepts malformed input.", None),
+    ("`pytest -q` -> 41", None),
+])
+def test_note_problem(line: str, why: str | None) -> None:
+    assert note_problem(line) == why
+
+
 def test_record_files_an_approve_with_no_findings(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
-    assert _record(repo, notes="No defect found; no bugs.\n") == 0
+    notes = ("## Acceptance\n\n- **A1:** pass\n- **A2:** pass\n\n"
+             "Re-ran the record tests; not a defect because all of them passed.\n")
+    assert _record(repo, notes=notes) == 0
     assert review_path(repo, "M1.1", "opus").is_file()
 
 
@@ -203,4 +242,5 @@ def test_defect_word(line: str, word: str | None) -> None:
 
 def test_fenced_code_in_the_notes_is_not_checked() -> None:
     body = "Ran it:\n```\nFAILED test_bug - minor\n```\nadvisory: z\n"
-    assert unexplained_defects({"findings": {}}, body) == ['notes line 5 says "advisory"']
+    assert unexplained_defects({"findings": {}}, body) == ["notes line 1 is an observation",
+                                                           'notes line 5 says "advisory"']
