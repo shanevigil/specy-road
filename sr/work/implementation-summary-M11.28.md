@@ -85,7 +85,7 @@ so nothing in it needed to change.
   tests/test_review_delegate.py tests/test_worker_resume_failed.py tests/test_validate_stale_commands.py
   tests/test_doc_links.py`, 104 passed, 2 skipped. `specy-road file-limits`: OK.
 - Superseded by the full run above: an earlier background run of the whole suite was cut off at about 50% when the
-  session was interrupted, with no failures up to that point. There is no complete result.
+  session was interrupted, with no failures up to that point.
 
 ## Added
 
