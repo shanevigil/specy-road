@@ -215,6 +215,14 @@ def model_from_argv(argv: list[str]) -> str | None:
     return None
 
 
+def init_model(line: str) -> str | None:
+    """The ``model`` a ``system/init`` line reports (Claude Code and Cursor print one per run), else ``None``."""
+    d = _json(line)
+    if d and d.get("type") == "system" and d.get("subtype") == "init" and isinstance(d.get("model"), str):
+        return d["model"].strip() or None
+    return None
+
+
 def worktree_from_argv(argv: list[str]) -> Path | None:
     """``--workspace`` or ``-C`` from a harness launch argv, when present."""
     for i, w in enumerate(argv):

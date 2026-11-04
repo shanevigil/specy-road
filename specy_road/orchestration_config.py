@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import copy
 import json
+import shlex
 from datetime import date, datetime
 from functools import cache
 from pathlib import Path
@@ -19,6 +20,7 @@ from jsonschema import Draft202012Validator
 
 from specy_road.git_subprocess import git_stdout
 from specy_road.schema_revision import accepted_at_revision
+from specy_road.worker_adapter_parsers import model_from_argv
 
 _PACKAGE_DIR = Path(__file__).resolve().parent
 _ORCHESTRATION_SCHEMA = _PACKAGE_DIR / "templates" / "project" / "schemas" / "orchestration.schema.json"
@@ -308,6 +310,39 @@ def harness_model_warnings(config: dict[str, Any]) -> list[str]:
             "`claude --model` expects (e.g. claude-opus-5-5), or the default command may pass an unknown model"
             for e in config.get("roster") or []
             if e.get("harness") == "claude-code" and "." in str(e.get("id")) and not e.get("harness_model")]
+
+
+def entry_routing(repo_root: Path, entry: dict[str, Any]) -> str:
+    """``dynamic`` when the entry declares ``routing: dynamic``, or runs on ``cursor`` told no model or ``auto``
+    (fresh Cursor CLI installs route Auto): its ``channels.cli``'s ``--model``, else :func:`harness_model` with the
+    committed profile's ``api_id``, as ``review delegate`` passes it. Else ``fixed``."""
+    if entry.get("routing") == "dynamic":
+        return "dynamic"
+    if entry.get("harness") != "cursor":
+        return "fixed"
+    cli = (entry.get("channels") or {}).get("cli")
+    if cli:
+        try:
+            model = model_from_argv(shlex.split(cli))
+        except ValueError:   # an unbalanced quote: no model can be read from it
+            model = None
+    else:
+        from specy_road.orchestration_pinned import pinned_profile_for_entry  # noqa: PLC0415 — it imports this module
+        prof = pinned_profile_for_entry(repo_root, entry)
+        model = harness_model(entry, prof.api_id if prof is not None and prof.ok else "")
+    return "dynamic" if model is None or model.strip().lower() == "auto" else "fixed"
+
+
+def routing_problem(repo_root: Path, config: dict[str, Any], data: dict[str, Any]) -> str | None:
+    """Why an approval does not count under ``reviewers_distinct_families``: its entry's harness routes models
+    dynamically (:func:`entry_routing`) and the entry is not ``pinned``, so the family behind it is not known."""
+    entry = roster_entry(config, data["model"]) or {}
+    if (data.get("verdict") != "approve" or not config["policy"].get("reviewers_distinct_families")
+            or entry.get("pinned") or entry_routing(repo_root, entry) == "fixed"):
+        return None
+    return (f"{data['model']!r} runs on a harness that routes models dynamically (routing: dynamic, or cursor with "
+            "no model or auto), so its family is not known; it counts toward distinct families only once its roster "
+            "entry sets pinned: true")
 
 
 def family_of(config: dict[str, Any], model_id: str) -> str | None:

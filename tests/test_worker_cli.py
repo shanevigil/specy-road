@@ -256,7 +256,7 @@ def test_launch_events_ack_time_and_timeline(tmp_path: Path, capsys) -> None:
     assert types[:3] == ["started", "launched", "first_output"] and types[-1] == "completion"
     launched = evs[1]
     assert launched.source == "system" and launched.authority == "system"
-    assert launched.detail == {"argv0": "sh", "harness": "claude-code", "resumed": False}
+    assert launched.detail == {"argv0": "sh", "harness": "claude-code", "resumed": False, "model": None}   # custom cli
     assert evs[2].detail is None
     capsys.readouterr()
     # A3 by node id, before any ack: the last phase is unknown.
@@ -338,7 +338,7 @@ def test_usage_events_per_turn_and_the_usage_command(tmp_path: Path, capsys) -> 
     assert [u["cost_usd"] for u in cu] == [1.0474079, 0.162736] and [u["session_cost_usd"] for u in cu] == [1.0474079, 1.2101441]
     assert cu[1] == {"input_tokens": 380001, "cached_input_tokens": 376181, "output_tokens": 2849, "reasoning_tokens": 123,
                      "cost_usd": 0.162736, "cost_is_estimate": True, "num_turns": 4, "harness_version": "2.1.312",
-                     "session_cost_usd": 1.2101441}
+                     "session_cost_usd": 1.2101441, "requested_model": None, "observed_model": "claude-opus-5-5"}
     xu = [e for e in ws.events_since(repo, codex.worker_id) if e.type == "usage"]
     assert xu[0].detail["reasoning_tokens"] == 0 and xu[0].detail["cost_usd"] is None
     assert set(xu[1].detail.values()) == {None} and xu[1].authority == "worker_suggestion"   # nothing reported: nulls
@@ -358,6 +358,27 @@ def test_usage_events_per_turn_and_the_usage_command(tmp_path: Path, capsys) -> 
     assert run_worker_cli("worker", "usage", "w-0002", "--json", "--repo-root", str(repo)) == 0
     assert json.loads(capsys.readouterr().out)["total"]["cost_usd"] is None
     assert run_worker_cli("worker", "usage", "M9.9", "--repo-root", str(repo)) == 1
+
+
+@pytest.mark.parametrize("told", ["claude-opus-5-5", "claude-sonnet-5-5"])
+def test_usage_keeps_requested_and_observed_model_and_sync_flags_a_mismatch(tmp_path: Path, capsys, told: str) -> None:
+    """M11.33 A2: the turn's usage event keeps the --model the harness was told and the model its init line
+    reported; when they differ, `worker sync` prints the mismatch."""
+    from specy_road import worker_runner as wr
+    from specy_road.worker_adapters import Launch
+    repo, script = _repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    spec = tmp_path / "turn.json"
+    spec.write_text(json.dumps({"lines": [
+        {"type": "system", "subtype": "init", "session_id": "s-1", "model": "claude-opus-5-5"},
+        {"type": "result", "subtype": "success", "result": "done", "session_id": "s-1", "total_cost_usd": 0.01}]}))
+    wr.run(repo, rec.worker_id, Launch([sys.executable, str(script), str(spec), "--model", told]))
+    usage = next(e.detail for e in ws.events_since(repo, rec.worker_id) if e.type == "usage")
+    assert (usage["requested_model"], usage["observed_model"]) == (told, "claude-opus-5-5")
+    capsys.readouterr()
+    assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0
+    mismatch = "model mismatch: told claude-sonnet-5-5, harness reported claude-opus-5-5"
+    assert (mismatch in capsys.readouterr().out) is (told == "claude-sonnet-5-5")
 
 
 def test_usage_event_schema_needs_every_field_nullable_never_missing() -> None:

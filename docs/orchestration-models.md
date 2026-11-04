@@ -176,6 +176,33 @@ commands; `worker delegate` / `review delegate` export `SPECY_ROAD_ORCHESTRATION
 installed command can read the role; pair them with the shared-checkout guard from
 `specy-road session guard --print-config`.
 
+## Harnesses that route models
+
+The review gate takes a reviewer's family from its roster entry, not from what ran. Some harnesses choose
+the model themselves: Cursor's Auto (the default on a fresh Cursor CLI install), a cascade that tries a
+cheap model before a strong one, or a draft-critique-revision workflow that runs its own critic underneath.
+Such a harness can put the executor's family on the reviewer side without anyone seeing it. Two roster
+fields say so:
+
+| Key | Meaning |
+|---|---|
+| `routing` | `fixed` (the default): the harness runs the model it is told. `dynamic`: it may choose among models itself. A `cursor` entry told no model (no `harness_model`, a profile `api_id` of `unknown` or no profile, or a `channels.cli` without `--model`) or `auto` is `dynamic` whatever this says. |
+| `pinned` | `true` once the maintainer has checked that the harness honours the requested model (for Cursor: a model id that is not `auto`, with Auto turned off). Default `false`. |
+
+Under `policy.reviewers_distinct_families`, an approval from a `dynamic` entry that is not `pinned` does not
+count; a block from it still does, and with distinct families off its approval counts as any other.
+`handoff status` and `review list` name each approval this keeps out (`does not count — '<model>' runs on
+a harness that routes models dynamically …`). A harness's internal critic, however it reports, is
+supporting evidence for a reviewer, never a gate approval: only a review record filed by a rostered
+reviewer counts.
+
+Each worker turn's `usage` event records `requested_model` (the `--model` the default command passed;
+`null` for a custom command or none) and `observed_model` (the model the harness's `system/init` line
+named; Claude Code and Cursor print one, Codex does not), beside `harness_version`. When both are known
+and differ (ignoring case), the event's summary ends `model mismatch: told <requested>, harness reported
+<observed>`, which `worker sync` prints. An alias the harness resolves to another id reads as a mismatch
+too.
+
 ## Harness facts: what `refresh-profiles` renders
 
 `model-profiles/harness-facts.yaml` holds one record per harness a roster can
