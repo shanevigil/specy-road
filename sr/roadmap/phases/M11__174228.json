@@ -359,7 +359,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.32_nested-unpushed-report_66a3455f-0e4e-4947-8cb5-cee6a60ddcf0.md",
       "sibling_order": 32,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Unpushed nested-repo commits are reported",
       "touch_zones": [
         "specy_road/bundled_scripts/doctor.py",

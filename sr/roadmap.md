@@ -51,7 +51,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M4.16` | Review rounds and elapsed time per leaf, and doctor lists detached worktrees | task | Agentic-led | Complete |
 | `M4.17` | Review-loop escalation: a root-cause analysis runs when reviews keep blocking | task | Agentic-led | Complete |
 | `M4.18` | Further TS/JS syntax forms for the function cap found in M4.12 review | task | Agentic-led | Complete |
-| `M5` | Agent context and outcomes | phase | — | In Progress |
+| `M5` | Agent context and outcomes | phase | — | Complete |
 | `M5.1` | Every managed AGENTS.md rule carries its provenance in the template | task | Agentic-led | Complete |
 | `M5.2` | validate flags specy-road commands that do not exist in the consumer's agent files | task | Agentic-led | Complete |
 | `M5.3` | validate reports always-injected context per harness against documented limits | task | Agentic-led | Complete |
@@ -60,10 +60,10 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M5.6` | Pilot the context-feedback question in the sandbox before shipping it | task | Agentic-led | Complete |
 | `M5.7` | Measure the managed section on and off across the sandbox apps | task | Agentic-led | Complete |
 | `M5.8` | Further Markdown mention forms for the stale-command check found in M5.2 review | task | Agentic-led | Complete |
-| `M6` | 0.3.1-rc2 release | phase | — | In Progress |
+| `M6` | 0.3.1-rc2 release | phase | — | Complete |
 | `M6.1` | Close out the triage note, changelog and what's-new for rc2 | task | Agentic-led | Complete |
 | `M6.2` | Pre-release checks and the 0.3.1-rc2 cut | task | Human-led | Complete |
-| `M7` | Keeping current: recurring research | phase | — | In Progress |
+| `M7` | Keeping current: recurring research | phase | — | Complete |
 | `M7.1` | A research register tracks deep-research topics with a refresh cadence | task | Agentic-led | Complete |
 | `M7.2` | Run the harness-capabilities research and fold its findings | task | Human-led | Complete |
 | `M8` | Harness compatibility | phase | — | Not Started |
@@ -74,7 +74,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M8.5` | Guard hooks per harness and avoid lists in every model profile | task | Agentic-led | Complete |
 | `M8.6` | Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic | task | Agentic-led | Complete |
 | `M8.7` | Runtime verification of the harness facts against installed binaries | task | Agentic-led | Complete |
-| `M9` | Regression prevention | phase | — | In Progress |
+| `M9` | Regression prevention | phase | — | Complete |
 | `M9.1` | finish-this-task runs a configured land check on the merge commit before it pushes | task | Agentic-led | Complete |
 | `M9.2` | pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree | task | Agentic-led | Complete |
 | `M9.3` | Finish, the packet and a finish re-run are tested in a nested layout whose leaf also changes a file outside the project | task | Agentic-led | Complete |
@@ -86,7 +86,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M9.9` | The executor prompt and the review packet list the Python tests that import the leaf's code | task | Agentic-led | Complete |
 | `M9.10` | Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head | task | Agentic-led | Complete |
 | `M9.11` | Touch-zone checks match project-relative and git-root-relative paths alike in a nested project | task | Agentic-led | Complete |
-| `M10` | Agent loop performance and observability | phase | — | In Progress |
+| `M10` | Agent loop performance and observability | phase | — | Complete |
 | `M10.1` | Record phase timestamps in the event log and print a per-leaf timeline | task | Agentic-led | Complete |
 | `M10.2` | Normalised usage event in the worker log | task | Agentic-led | Complete |
 | `M10.3` | Replace per-worker polling with a single mailbox flag file and a foreground --wait | task | Agentic-led | Complete |
@@ -138,7 +138,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.29` | doctor warns when the running specy-road is older than the project's stubs | task | Agentic-led | Complete |
 | `M11.30` | Leaf worktrees get the project's environment set up | task | Agentic-led | Complete |
 | `M11.31` | A safe command to retire a leaf worktree | task | Agentic-led | Complete |
-| `M11.32` | Unpushed nested-repo commits are reported | task | Agentic-led | Not Started |
+| `M11.32` | Unpushed nested-repo commits are reported | task | Agentic-led | Complete |
 | `M11.33` | A reviewer whose harness routes models dynamically does not count as an independent family by default | task | Agentic-led | Not Started |
 | `M11.34` | Open human decisions live in one tracked ledger and every question is self-contained | task | Agentic-led | Complete |
 | `M11.35` | A roster entry maps to the harness's own model id, and a failed start says why | task | Agentic-led | Complete |

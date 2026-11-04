@@ -43,15 +43,3 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: nested-unpushed-report
-    node_id: M11.32
-    branch: feature/rm-nested-unpushed-report
-    touch_zones:
-      - specy_road/bundled_scripts/doctor.py
-      - specy_road/bundled_scripts/session_plan.py
-      - specy_road/nested_repos.py
-      - tests/
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-04T07:58:26+00:00'
