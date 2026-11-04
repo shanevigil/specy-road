@@ -117,7 +117,7 @@ def test_record_refuses_an_approve_with_any_finding_that_does_not_say_why_it_is_
         tmp_path: Path, capsys) -> None:
     """A word list cannot catch every way of describing a defect, so on an approve every finding needs the line."""
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
-    assert _record(repo, findings={"boundary": ["The second call reads the registry before the first writes it."]}) == 1
+    assert _record(repo, findings={"boundary": ["The cache key ignores the branch name."]}) == 1
     err = capsys.readouterr().err
     assert "findings.boundary[0] is a finding" in err and "on an approve every findings entry needs that line" in err
     assert not review_path(repo, "M1.1", "opus").exists()
@@ -130,6 +130,24 @@ def test_record_refuses_an_approve_whose_notes_say_valid_input_raises(tmp_path: 
     assert 'notes line 2 says "Valid input raises"' in capsys.readouterr().err
     assert not review_path(repo, "M1.1", "opus").exists()
     assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+ORDER_WORDING = "The second call reads the registry before the first writes it."
+
+
+def test_record_refuses_an_approve_whose_notes_describe_a_write_order_race(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, notes=f"A1 pass.\n\n{ORDER_WORDING}\n") == 1
+    assert 'notes line 3 says "reads the registry before the first writes"' in capsys.readouterr().err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+def test_record_files_an_approve_whose_notes_explain_the_order_on_the_same_line(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    notes = f"{ORDER_WORDING} Not a defect because both calls hold the registry lock.\n"
+    assert _record(repo, notes=notes) == 0
+    assert review_path(repo, "M1.1", "opus").is_file()
 
 
 def test_record_files_an_approve_with_no_findings(tmp_path: Path, capsys) -> None:
@@ -175,6 +193,9 @@ def test_record_files_a_block_that_lists_the_defect(tmp_path: Path, capsys) -> N
     ("It fails on valid input.", "fails on valid"),
     ("It exits non-zero instead of writing the record.", "exits non-zero"),
     ("It no longer rejects a valid ledger; it exits 1 on an unknown node.", None),
+    (ORDER_WORDING, "reads the registry before the first writes"),
+    ("A stale read of the claim; events arrive out of order.", "stale read"),
+    ("It reads the config before running git; no stale reads.", None),
 ])
 def test_defect_word(line: str, word: str | None) -> None:
     assert defect_word(line) == word

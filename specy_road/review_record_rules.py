@@ -34,8 +34,8 @@ PROBE_RULES_LINES = [
     f"`findings` entry as a defect unless it says `{NOT_A_DEFECT}`, so keep observations that are not defects "
     "in the notes; it also refuses notes that call something advisory, non-blocking, minor, a nit, a bug or a "
     "defect, or describe a concrete failure (it crashes, hangs, drops or loses data, returns a wrong result, "
-    "rejects valid input, exits non-zero instead of succeeding), without that line. Text you quote in backticks "
-    "or on a `>` line is not checked.",
+    "rejects valid input, exits non-zero instead of succeeding, reads before a write lands), without that line. "
+    "Text you quote in backticks or on a `>` line is not checked.",
     "",
 ]
 # Executors once deleted unrelated docstrings and messages to stay under a line cap; reviewers caught it a round late.
@@ -66,7 +66,11 @@ _DEFECT = re.compile(
     r"valid\s+[\w'-]+\s+(?:raises|fails|errors|crashes|is\s+rejected|is\s+refused)|"
     r"(?:rejects|refuses)\s+(?:a\s+|an\s+|the\s+)?valid|"
     r"(?:raises|fails|errors)\s+(?:[\w'-]+\s+){0,2}(?:on|for|with)\s+(?:a\s+|an\s+|the\s+)?valid|"
-    r"exits?\s+(?:with\s+)?(?:code\s+)?(?:[1-9]\d*|non-?zero)(?=[^.;]*\binstead\s+of\b))\b", re.I)
+    r"exits?\s+(?:with\s+)?(?:code\s+)?(?:[1-9]\d*|non-?zero)(?=[^.;]*\binstead\s+of\b)|"
+    # ordering and races: "the second call reads the registry before the first writes it", "a stale read"
+    r"reads?\s+[^.;]*?\bbefore\s+[^.;]*?\b(?:writes?|wrote|is\s+written|commits?|flushes|finishes|lands)|"
+    r"stale\s+reads?|reads?\s+(?:a\s+|the\s+)?stale|out\s+of\s+order|lost\s+updates?|toctou|time-of-check|"
+    r"check-then-act)\b", re.I)
 # A negation only negates when nothing but qualifiers stand between it and the word: "no other correctness
 # defect" is negated, "no workaround for this bug" is not.
 _QUALIFIER = (r"(?:other|more|new|real|known|actual|obvious|remaining|further|such|open|proven|significant|serious|"
