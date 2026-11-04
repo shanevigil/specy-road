@@ -3,7 +3,9 @@
 > **Status:** on the `0.3.x` line. All six items are built: 3 and 4 as the
 > `AGENTS.md` managed block (`specy_road/agents_md_block.py`), 5 and 6 as
 > `specy-road session` (`specy_road/session_presence.py`). The hook adapter
-> that runs `session check` on commit in each harness is slice 5. Companion to
+> that runs `session check` on commit in each harness is slice 5. Since
+> 2026-11-04 (last section) the rules live in `.specyrd/AGENTS.md` and the
+> block is a stub that points there. Companion to
 > [`v0-3-0-orchestration-slices.md`](v0-3-0-orchestration-slices.md).
 
 ## What happened
@@ -84,3 +86,53 @@ disagree, either.
 Enforcing any of this inside a harness that bypasses hooks. The rules stay
 advisory where the tool cannot see the agent; the presence file and the guard
 make the common case visible, no more.
+
+## 2026-11-04: the rules leave the adopter's `AGENTS.md`
+
+Decision 3 still took over a large part of a file the team owns (52 lines in
+`AGENTS.md`, a second copy in `CLAUDE.md`), and left no place for a developer's
+or PM's own specy-road notes that `upgrade` would never touch. The maintainer
+decided:
+
+1. **specy-road owns `.specyrd/AGENTS.md`** under the project root (template
+   `agents-rules.md`): the full rule set the `AGENTS.md` block held, plus the
+   non-Claude part of the `CLAUDE.md` block (roadmap model, docs win, common
+   commands). `upgrade` rewrites it whole. Provenance comments stay in the
+   template and are stripped when rendered; the floor rule (decision 4) is in it.
+2. **`AGENTS.md` keeps a 16-line stub**: a pointer ("read `.specyrd/AGENTS.md`
+   before any roadmap, registry or git work"), the addenda, and six rules
+   picked by the damage they prevent if an agent never opens the file. Codex
+   loads only `AGENTS.md`/`AGENTS.override.md` and has no import, so this is
+   all a Codex session is sure to see:
+   - *floor* — without it an addendum or project rule reads as permission to
+     relax the rest;
+   - *shared checkout* (`git status`, `git worktree list`, own worktree) and
+     *git writes* (`git commit --only`, no stash/reset/clean/rebase/amend/branch
+     switch) — the 2026-10-26 incident: lost or captured uncommitted work that
+     nothing can recover;
+   - *claims only through `do-next-available-task`*, never a hand-edited
+     registry — two agents implementing one leaf;
+   - *never review or approve your own leaf* — work merged with no independent
+     review;
+   - *generated files are regenerated, not hand-edited* — edits silently lost
+     on the next export or digest.
+   Everything else (load order, search, lean rules, task loop detail, workers)
+   costs time when missed, not data. `CLAUDE.md`'s block becomes
+   `@.specyrd/AGENTS.md` and `@.specyrd/AGENTS.team.md` imports (Claude Code's
+   `@path` syntax, relative to the importing file; code spans are not imported)
+   plus one Claude-specific line: Claude Code skips `AGENTS.md` while
+   `CLAUDE.md` exists.
+3. **Two addenda, never rewritten, never in `.specyrd/manifest.json`:**
+   `.specyrd/AGENTS.team.md` (tracked, created with a short header) and
+   `.specyrd/AGENTS.local.md` (personal; the `.gitignore` block lists it; not
+   created, so it never appears as an empty file nobody asked for). The rules
+   file and both stubs say to read them when present, that they add to the
+   rules, and that they never relax the floor.
+4. **Migration:** a refresh replaces the old full blocks with the stubs (the
+   managed block mechanism already does this), writes the two files, and prints
+   a `migration:` line when an `AGENTS.md` section exists with no rules file
+   beside it. Outside text is untouched; a second run is a no-op.
+5. **Meter:** `validate` counts the `AGENTS.md` stub for every harness and, for
+   Claude Code, each file a counted file `@`-imports (up to four hops). An
+   import outside the git root and `.specyrd/AGENTS.local.md` are machine-local
+   notes, never counted.

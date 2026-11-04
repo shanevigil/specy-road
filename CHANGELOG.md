@@ -69,6 +69,36 @@ body. Keep section bodies focused; link to PRs for detail.
   branch and prints the command, its exit code and the last 20 lines of its
   output. A rejected push now also resets the local integration branch, so the
   re-run it names merges onto the new tip and checks it again.
+- `.specyrd/AGENTS.team.md` (tracked) for a repository's own specy-road
+  instructions from its developers and PMs, and `.specyrd/AGENTS.local.md`
+  (personal; the `.gitignore` managed block now lists it) for one person's.
+  `init project` and `upgrade` create the team file when it is missing and never
+  rewrite it; neither is recorded in `.specyrd/manifest.json`, and the local one
+  is never created. Both add to specy-road's rules and never relax them.
+  `validate` also checks the team file for unregistered commands.
+
+### Changed
+
+- specy-road's agent rules move out of your `AGENTS.md` into
+  `.specyrd/AGENTS.md` under the project root, a file specy-road owns and
+  `upgrade` rewrites whole. The managed block in `AGENTS.md` becomes a 16-line
+  stub (was 52): a pointer to that file and the addenda, plus six rules that
+  prevent damage if an agent never opens it (the floor, the shared checkout,
+  git writes, claims only through `do-next-available-task`, never reviewing your
+  own leaf, never hand-editing generated files). Codex reads only `AGENTS.md`,
+  so the stub is what every Codex session is sure to see. The `CLAUDE.md` block
+  becomes `@.specyrd/AGENTS.md` and `@.specyrd/AGENTS.team.md` imports, which
+  Claude Code loads with the file, plus a note that Claude Code skips
+  `AGENTS.md` while `CLAUDE.md` exists. **On upgrade:** the first
+  `specy-road upgrade` (or `refresh-stubs`) prints a `migration:` line,
+  replaces both old blocks with the stubs, writes `.specyrd/AGENTS.md` and
+  `.specyrd/AGENTS.team.md`, and adds the `.gitignore` line; text outside the
+  markers is untouched, anything added inside the old markers is replaced (see
+  `git diff`), and a second run changes nothing. Commit the two new files.
+  `validate` warns when `.specyrd/AGENTS.md` is missing or stale, reads the load
+  order from it, and its `context:` line for Claude Code now counts the files a
+  counted file `@`-imports (and notes `.specyrd/AGENTS.local.md` as
+  machine-local, never counted).
 
 ### Fixed
 

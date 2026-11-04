@@ -84,9 +84,25 @@ When layers conflict, **tracked docs in the repo** should win.
 
 ---
 
+## Agent rules: `AGENTS.md` and `.specyrd/`
+
+specy-road keeps its agent rules in files it owns, and only a short marked stub in yours:
+
+| File | Whose | Written by |
+| ---- | ----- | ---------- |
+| `.specyrd/AGENTS.md` | specy-road's: the full rules (load order, task loop, review, lean changes) | `init project`, rewritten whole by every `upgrade` / `refresh-stubs` |
+| `AGENTS.md` | yours, except one managed block: a pointer to `.specyrd/AGENTS.md` and six core rules | `init project`; `upgrade` rewrites only the block |
+| `CLAUDE.md` | yours, except one managed block: `@.specyrd/AGENTS.md` and `@.specyrd/AGENTS.team.md` imports | `specyrd init --ai claude-code`; `upgrade` rewrites only the block |
+| `.specyrd/AGENTS.team.md` | yours (tracked): this repository's specy-road instructions from devs and PMs | created once when missing; never rewritten, not in `.specyrd/manifest.json` |
+| `.specyrd/AGENTS.local.md` | yours alone (gitignored): personal specy-road notes | never created; `init` adds it to `.gitignore` |
+
+Paths sit under the project root (`sr/.specyrd/…` in the nested layout). Codex loads only `AGENTS.md`, so the stub's core rules (the floor, the shared checkout, git writes, claims, review, generated files) are all a Codex session is sure to see; Claude Code loads the rules through the import. Both addenda add to the rules and never relax their floor.
+
+**Upgrading from a full section.** Before 2026-11-04 the whole rule set sat in the `AGENTS.md` block, with a second copy in `CLAUDE.md`'s. The first `upgrade` after that prints a `migration:` line, replaces both blocks with the stubs, writes `.specyrd/AGENTS.md` and (when missing) `.specyrd/AGENTS.team.md`, and adds `.specyrd/AGENTS.local.md` to the `.gitignore` block. Text outside the markers is untouched, and a second run changes nothing. Anything you had added *inside* the old markers is replaced, as on every refresh: `git diff` shows it, and `.specyrd/AGENTS.team.md` is where it belongs now. Commit the two new files.
+
 ## Optional: `CLAUDE.md` or equivalent entry file
 
-`specy-road init project` writes the specy-road section of `AGENTS.md`, and `specyrd init --ai claude-code` the one in `CLAUDE.md`, as managed blocks; the rest of each file is yours. If your tool reads a root entry file, keep that part **short** and link out to `docs/`. Useful sections: project identity, tech stack with versions, directory map, workflow pointers, and a table of canonical docs.
+`specy-road init project` writes the specy-road stub in `AGENTS.md`, and `specyrd init --ai claude-code` the one in `CLAUDE.md`, as managed blocks; the rest of each file is yours (see above). If your tool reads a root entry file, keep that part **short** and link out to `docs/`. Useful sections: project identity, tech stack with versions, directory map, workflow pointers, and a table of canonical docs.
 
 For **roadmap-driven branches** and registration, point to your git workflow doc. In **this** repository that is [`git-workflow.md`](git-workflow.md) and **`roadmap/registry.yaml`** — not a free-form status file unless your team chose one.
 

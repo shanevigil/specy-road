@@ -18,8 +18,8 @@ Framing matters: later phases merge into `CLAUDE.md` / `.cursor` for **this repo
 
 ## Authoritative references
 
-1. **Consumer AGENTS template:** Same content as `specy-road init project` → `AGENTS.md` (load order + `specy-road brief` example).
-2. **Managed blocks** for consumer repos: the package ships `specy_road/templates/specyrd/agents-md-block.md` (the `AGENTS.md` section, Phase 3) and `specy_road/templates/specyrd/claude-md-block.md` (the optional `CLAUDE.md` section, written by `specyrd init --ai claude-code` and re-applied by `specy-road refresh-stubs` when the file exists). Both are **merged** between markers, never a wholesale replacement of this repo’s own `AGENTS.md` or `CLAUDE.md`.
+1. **Consumer AGENTS template:** Same content as `specy-road init project` → `AGENTS.md` (a short managed stub) and `.specyrd/AGENTS.md` (the full rules: load order, `specy-road brief` example, task loop, review, lean changes).
+2. **Agent rules and managed blocks** for consumer repos (Phase 3): the package ships `specy_road/templates/specyrd/agents-rules.md` (written to `.specyrd/AGENTS.md`, which specy-road owns and `specy-road refresh-stubs` rewrites whole), `agents-md-block.md` (the short stub in `AGENTS.md`: a pointer to `.specyrd/AGENTS.md` plus six core rules), `claude-md-block.md` (the optional `CLAUDE.md` stub that imports `@.specyrd/AGENTS.md` and `@.specyrd/AGENTS.team.md`, written by `specyrd init --ai claude-code` and re-applied by `specy-road refresh-stubs` when the file exists) and `agents-team.md` (the header of `.specyrd/AGENTS.team.md`, created once and never rewritten). The stubs are **merged** between markers, never a wholesale replacement of this repo’s own `AGENTS.md` or `CLAUDE.md`. All paths are under the project root (`sr/.specyrd/…` in the nested layout).
 3. **Branching and registry:** `docs/git-workflow.md` (register on integration branch, then `feature/rm-<codename>`, touch zones).
 4. **Consumer boundary (copy-paste snippets):** Align with shipped stubs under `specy_road/templates/adoption/` in the package (`specy-road-consumer-claude-snippet.md`, `004-specy-road-consumer.mdc`) when merging the **specy-road (consumer)** section and optional Cursor rule—edit the consumer repo’s own files; do not treat those paths as the app’s source tree.
 
@@ -37,23 +37,23 @@ Note conflicts between existing rules and specy-road (prefer **tracked docs** ov
 
 ## Phase 2 — Primary deliverable: `AGENTS.md`
 
-Create or update **`AGENTS.md`** at `[REPO_ROOT]`. Its coordination rules are a **managed block** — the section between the `<!-- specy-road managed block — do not edit inside -->` and `<!-- end specy-road managed block -->` markers that `specy-road init project` writes, `specy-road refresh-stubs` rewrites, and `specy-road validate` warns about when it is missing or stale (Phase 3). The block carries the **load order** (`roadmap-context.md`, constitution, constraints, supply-chain policy, the merged roadmap, planning sheets, `shared/`) and the focused-brief command. Do **not** restate either outside it: two load orders drift apart, and agents follow whichever they read first. If the existing file has its own load-order section, replace it with one line pointing at the block, and keep only project-specific reading (the team's own docs) outside it.
+Create or update **`AGENTS.md`** at `[REPO_ROOT]`. Its specy-road part is a short **managed block** — the section between the `<!-- specy-road managed block — do not edit inside -->` and `<!-- end specy-road managed block -->` markers that `specy-road init project` writes, `specy-road refresh-stubs` rewrites, and `specy-road validate` warns about when it is missing or stale (Phase 3). It points at `.specyrd/AGENTS.md`, which carries the **load order** (`roadmap-context.md`, constitution, constraints, supply-chain policy, the merged roadmap, planning sheets, `shared/`) and the focused-brief command, and it keeps the six rules a Codex session must see even if it never opens that file. Do **not** restate the load order or the rules outside them: two load orders drift apart, and agents follow whichever they read first. If the existing file has its own load-order section, replace it with one line pointing at `.specyrd/AGENTS.md`, and keep only project-specific reading (the team's own docs) outside it.
 
 Use the real repo's node IDs in any example you add.
 
-## Phase 3 — Merge the shipped managed block, then project-specific rules
+## Phase 3 — Merge the shipped managed block and rules file, then project-specific rules
 
-- **Merge the managed block verbatim.** The coordination rules every agent needs are one managed section, `## specy-road (coordination rules for every agent)`, that `specy-road init project` writes into `AGENTS.md` and `specy-road refresh-stubs` rewrites in place between its markers (source: `specy_road/templates/specyrd/agents-md-block.md` in the installed package). Run one of those commands rather than retyping the rules; if you must paste by hand, paste the whole section unchanged and keep its markers so `refresh-stubs` can update it. Do not paraphrase, trim or reorder it: project rules may add to it, never relax it.
-- **What the block already covers** (so you do not duplicate it): the load order, `specy-road digest` and `specy-road brief` (each dependency's `## Intent` is inlined); `specy-road search` (`--scope archived`) and `specy-road history` and why not to grep `planning/` or `work/`; `specy-road do-next-available-task` (`status: Blocked` first, outline order, `execution_milestone` advisory, phase/milestone dependencies satisfied by rollup), `specy-road abort-task-pickup`, `finish-this-task` under `on_complete: pr`; the review roles — `specy-road review-packet`, `specy-road review record`, `mark-implementation-reviewed --yes`; `specy-road session start|list`; `specy-road grind-session` (hook env `SPECY_ROAD_NODE_ID`, `SPECY_ROAD_BRANCH`, `SPECY_ROAD_BRIEF`, `SPECY_ROAD_PROMPT`, `SPECY_ROAD_REPO_ROOT`); `specy-road worker delegate|sync|handoff|reclaim`; and exit `3` / `6` with `specy-road why-blocked` and `specy-road list-gates`.
-- **Preserve** project-specific instructions that do not contradict the block.
-- **Add**, outside the block, only what is specific to this project, for example:
+- **Merge the managed block verbatim.** The coordination rules every agent needs are the file `.specyrd/AGENTS.md` (source: `specy_road/templates/specyrd/agents-rules.md` in the installed package), which specy-road owns, plus the managed `## specy-road` stub in `AGENTS.md` that points at it (source: `agents-md-block.md`). `specy-road init project` writes both and `specy-road refresh-stubs` rewrites them. Run one of those commands rather than retyping the rules; if you must paste by hand, paste the stub unchanged with its markers so `refresh-stubs` can update it, and never edit `.specyrd/AGENTS.md`. Do not paraphrase, trim or reorder either: project rules may add to them, never relax them.
+- **What `.specyrd/AGENTS.md` already covers** (so you do not duplicate it): the load order, `specy-road digest` and `specy-road brief` (each dependency's `## Intent` is inlined); `specy-road search` (`--scope archived`) and `specy-road history` and why not to grep `planning/` or `work/`; `specy-road do-next-available-task` (`status: Blocked` first, outline order, `execution_milestone` advisory, phase/milestone dependencies satisfied by rollup), `specy-road abort-task-pickup`, `finish-this-task` under `on_complete: pr`; the review roles — `specy-road review-packet`, `specy-road review record`, `mark-implementation-reviewed --yes`; `specy-road session start|list`; `specy-road grind-session` (hook env `SPECY_ROAD_NODE_ID`, `SPECY_ROAD_BRANCH`, `SPECY_ROAD_BRIEF`, `SPECY_ROAD_PROMPT`, `SPECY_ROAD_REPO_ROOT`); `specy-road worker delegate|sync|handoff|reclaim`; and exit `3` / `6` with `specy-road why-blocked` and `specy-road list-gates`.
+- **Preserve** project-specific instructions that do not contradict the rules.
+- **Add** only what is specific to this project: specy-road instructions (roadmap, registry, review, git workflow) in `.specyrd/AGENTS.team.md`, which `init project` creates and `upgrade` never rewrites; anything else outside the block in `AGENTS.md`; personal notes in `.specyrd/AGENTS.local.md` (gitignored). For example:
   - Docs win over chat when instructions conflict; smallest change that satisfies the task; no drive-by refactors.
   - The team's stack, build and test commands, and which `on_complete` mode (`pr` or `merge`) this repo uses.
   - The repo's layout (embedded or nested) and any wrapper scripts or environment the project adds.
-- The block's shared-checkout rules, reproduced here so a hand merge does not lose them:
+- The rules file's shared-checkout rules, reproduced here so a hand merge does not lose them:
   - **Shared checkouts and other agents.** Other agents may be working in this checkout, with or without a claim, and nothing warns you. Run `specy-road session start --path <paths you will edit>` before your first edit and `specy-road session list` to see who else is live; before any git write, run `git status` and `git worktree list`, and treat files you did not create as someone else's. Use your own `git worktree add ../<repo>-<task>`, and run `do-next-available-task` and `grind-session` (they switch branches) from there whenever `session list` shows anyone else. Edit only the files your task names, and only your own section of a file others are editing (`CHANGELOG.md` above all). A plan or prompt should name its commit (`base: <sha>`); if it does not, ask, and diff from that commit before starting. If a rule in this file conflicts with one from the toolkit (registry, branches, review, the shared tree), the toolkit's is the floor: stop and ask rather than relax it.
   - **Git in a shared tree:** commit only with `git commit --only <paths>`; never stash, hard-reset, discard changes, clean, rebase, amend or switch branches in a tree another session may be using. The opt-in tool-call guard (`specy-road session guard`) refuses these while another session is live; `docs/orchestration.md` lists them all.
-- The block's `## Lean changes and tests` section, reproduced here for the same reason (keep it inside the managed block; the same rules belong in any `CLAUDE.md` section your tool reads, not a second wording):
+- The rules file's `## Lean changes and tests` section, reproduced here for the same reason (keep it in `.specyrd/AGENTS.md`, which the `CLAUDE.md` stub imports; never a second wording):
   - Make the smallest behaviour-complete change; no configurability, fallbacks or abstractions the task did not ask for.
   - Before adding a helper, search for an existing one (`specy-road search`, then grep the verb and noun); reuse or extend it and name it in your summary.
   - Validate at boundaries only (CLI args, files, network, env, agent input). No guard or `except` without a nameable reachable trigger and a test that reaches it.
@@ -70,7 +70,7 @@ Copy or adapt the following into **`AGENTS.md`** (and optionally into `.cursor/r
 
 - **Consumer boundary:** Do not patch **`specy-road/`** in this repo to fix toolkit bugs. Instead produce an **upstream handoff**: repro steps, installed `specy-road` version (`pip show specy-road` or equivalent), relevant logs, suspected upstream area, and proposed upstream change or issue text.
 - **Integration fixes** belong in **this** repository only: wrapper scripts, environment variables, and corrections under **`roadmap/`**, **`planning/`**, and **`roadmap/registry.yaml`** per `docs/git-workflow.md`.
-- **Task pickup, grinding and review roles** are the managed block's (Phase 3); do not restate them here, and never hand-edit `roadmap/registry.yaml` outside the manual claim path in `docs/dev-workflow.md`.
+- **Task pickup, grinding and review roles** are `.specyrd/AGENTS.md`'s (Phase 3); do not restate them here, and never hand-edit `roadmap/registry.yaml` outside the manual claim path in `docs/dev-workflow.md`.
 
 Do **not** invent a parallel roadmap format (e.g. YAML merge file) in agent rules—the graph is JSON chunks + manifest.
 
@@ -78,11 +78,12 @@ Do **not** invent a parallel roadmap format (e.g. YAML merge file) in agent rule
 
 If `CLAUDE.md` exists, **merge** specy-road guidance:
 
+- Let `specyrd init --ai claude-code` (or `specy-road refresh-stubs`) write its managed stub: `@.specyrd/AGENTS.md` and `@.specyrd/AGENTS.team.md` imports, which Claude Code loads with the file. Claude Code does not read `AGENTS.md` while a `CLAUDE.md` exists, so add `@AGENTS.md` outside the markers if the team's own `AGENTS.md` rules should reach it.
 - Roadmap model: merged graph = `manifest.json` + chunks; `git-workflow.yaml` = CLI/PM git defaults; `registry.yaml` = claims overlay, not a graph chunk.
 - Commands: `specy-road validate`, `specy-road export --check`, `specy-road digest --check`, `specy-road file-limits`, `specy-road brief <NODE_ID> -o work/brief-...`.
 - Finding things: `specy-road search "<query>"` (ranked over planning sheets, contracts, nodes, summaries and archived work) and `specy-road history <NODE_ID>` (how a node got here, from git). Both are read-only.
 - Reading current state: `roadmap-context.md`, written by `specy-road digest`. Generated **and committed**, like `roadmap.md`.
-- Pointer to `AGENTS.md` as the canonical load order.
+- The imported `.specyrd/AGENTS.md` is the canonical load order; do not restate it.
 
 **Required mini-section — `specy-road (consumer)`:** Add a short section (merge, don’t replace the rest of the file) so agents don’t confuse this app repo with a nested toolkit tree. Use the package stub as a starting point (`specy_road/templates/adoption/specy-road-consumer-claude-snippet.md`) or this template:
 
@@ -93,7 +94,7 @@ If `CLAUDE.md` exists, **merge** specy-road guidance:
 
 **Troubleshooting:** Separate **integration** issues (this repo’s `roadmap/`, `planning/`, env vars, wrappers) from suspected **toolkit** bugs. For toolkit bugs, produce an **upstream handoff** (repro, package version, logs)—do not edit `specy-road/**` here to “fix” the kit.
 
-**Pointers:** CLI load order and invariants → `AGENTS.md`. GUI, repo root, and `SPECY_ROAD_REPO_ROOT` → toolkit `docs/pm-workflow.md` and package `README.md`, or optional project-specific notes (e.g. `docs/commands.md` if your team adds that file).
+**Pointers:** CLI load order and invariants → `.specyrd/AGENTS.md` (the `AGENTS.md` stub points there). GUI, repo root, and `SPECY_ROAD_REPO_ROOT` → toolkit `docs/pm-workflow.md` and package `README.md`, or optional project-specific notes (e.g. `docs/commands.md` if your team adds that file).
 ```
 
 Do **not** delete existing sections (team stack, build commands, etc.) unless the user asked for a full replacement.
