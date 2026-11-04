@@ -127,7 +127,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.20_terra-executor-pilot_7ce59410-b2f5-41ab-9a5c-390eb7a41193.md",
       "sibling_order": 20,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Pilot GPT-6.1 Terra as a lower-cost executor before rostering it",
       "touch_zones": [
         "sr/research/",
