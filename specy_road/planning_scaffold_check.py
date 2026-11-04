@@ -20,10 +20,10 @@ from specy_road.bundled_scripts.planning_sheet_bootstrap import (
     PROMOTE_PLACEHOLDER,
     _scaffold_bodies,
     _section_bodies,
+    open_pickable_leaves,
     placeholder_sheet,
 )
 from specy_road.milestone_subtree import structural_leaf_ids
-from specy_road.node_kinds import is_pickable
 
 
 def scaffold_sheet(root: Path, node: dict) -> str | None:
@@ -45,13 +45,8 @@ def scaffold_sheet(root: Path, node: dict) -> str | None:
 
 def pickup_unauthored_leaves(root: Path, nodes: list[dict]) -> dict[str, str]:
     """Open pickable leaves pickup skips for planning-sheet reasons, id -> reason."""
-    leaves = structural_leaf_ids(nodes)
     out: dict[str, str] = {}
-    for n in nodes:
-        if n.get("id") not in leaves or not is_pickable(n):
-            continue
-        if n.get("status") in ("Complete", "Cancelled"):
-            continue
+    for n in open_pickable_leaves(nodes):
         reason = placeholder_sheet(root, n)
         if reason is None and acceptance_ids(n):
             reason = scaffold_sheet(root, n)
