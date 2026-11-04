@@ -176,6 +176,18 @@ def test_delegate_launches_nothing_over_a_dirty_nested_worktree(tmp_path: Path, 
     assert (wt / COVERED / name).read_text(encoding="utf-8") == "someone's unsaved work\n"
 
 
+@pytest.mark.parametrize("rel", [COVERED, UNCOVERED])
+def test_delegate_refuses_a_nested_repo_without_its_integration_branch(tmp_path: Path, capsys, rel: str) -> None:
+    """The config says dev; the repository has only main. Its HEAD is not a stand-in for the tip."""
+    repo, _script = make_worker_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    add_nested_repo(repo, rel, "main")
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    assert f"nested repo {rel!r}: neither origin/dev nor a local dev exists" in capsys.readouterr().err
+    assert not ws.list_records(repo)
+    assert not (repo / "work" / ".worktrees" / "thing" / rel).exists()
+
+
 def test_reconcile_diffs_the_nested_repo_and_flags_edits_outside_the_zones(tmp_path: Path) -> None:
     repo, _nested, wt, wid = _leaf_worktree_delegate(tmp_path, COVERED)
     inner = wt / COVERED

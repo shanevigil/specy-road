@@ -16,7 +16,7 @@ from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text, run
 from specy_road.nested_repos import (
-    NestedRepoError, add_nested_worktrees, in_nested, nested_prefixes, nested_worktree_dirs,
+    NestedRepoError, add_nested_worktrees, align_nested_checkouts, in_nested, nested_prefixes, nested_worktree_dirs,
 )
 from specy_road.orchestrate_plan import ANY, is_available, may_handle, node_eligibility, node_sensitivity, unavailability_reason
 from specy_road.orchestration_config import harness_model, roster_entry
@@ -214,11 +214,14 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     branch = str(t.entry["branch"])
     wt = _worktree_for(repo_root, branch, str(t.node.get("codename") or node_id), worktree)
     prefix = project_prefix(repo_root)
-    if wt != git_root(repo_root):   # the leaf's own worktree: its nested repos (nested_repos) go inside it
-        try:
+    try:   # nested_repos: a leaf worktree gets its own worktrees of them; this checkout switches its own
+        if wt != git_root(repo_root):
             add_nested_worktrees(repo_root, wt / prefix, branch, t.touch_zones)
-        except NestedRepoError as e:
-            raise WorkerError(str(e)) from None
+        else:
+            for line in align_nested_checkouts(repo_root, branch, t.touch_zones):
+                print(f"nested repo {line}", file=sys.stderr)
+    except NestedRepoError as e:
+        raise WorkerError(str(e)) from None
     # The worker edits this tree: uncommitted work in it could be overwritten, and
     # `reconcile` could not tell the worker's edits from it. Only the leaf's own
     # untracked bookkeeping is exempt (pickup leaves the brief there untracked),

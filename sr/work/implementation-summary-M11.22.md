@@ -53,6 +53,27 @@ Call sites:
 
 No touch zones were added in this round. The new files are under `tests/`, and the rest are already-zoned files.
 
+## Review round 3 (gpt-5.6-sol-medium blocked 96053d7a): item → change
+
+- **(1) Delegate in the checkout already on the claim's branch.**
+  - `_launch_locked` used to set up nested repositories only for a leaf worktree. For the direct-checkout layout (`wt == git_root(repo_root)`) it now calls the new `nested_repos.align_nested_checkouts`.
+  - For each configured repository in the main checkout, that function reads the required state with `existing_worktree_problem` (the same test the worktree path uses): a covered repository on the leaf's branch, an uncovered one detached at the integration tip. A repository already in that state is left alone.
+  - A clean checkout (no tracked or untracked changes) is switched: `checkout <branch>`, or `-b <branch> <tip>` when the branch is missing, or `--detach <tip>`.
+  - A dirty checkout in the wrong state, an unreadable status, or a switch git refuses (for example, the branch checked out in another worktree) raises `NestedRepoError`. Delegate reports it as a `WorkerError` before anything is written or launched. Each switch is printed to stderr.
+  - Afterwards the round-2 R6 check covers these checkouts too: `nested_worktree_dirs` finds them under the worker's tree.
+  - Regressions (`tests/test_nested_repo_finish.py`):
+    - `test_delegate_in_the_checkout_on_the_claim_branch_puts_the_nested_repo_on_it_and_finish_lands_it`, through the public `worker delegate` CLI with the main checkout on `feature/rm-thing` and the nested repository on `dev`. The worker record's tree is the checkout, and the nested repository is now on the leaf's branch. A commit there (the worker's change) is then landed by finish's merge step (`land_merge_feature_into_integration`): the nested `origin/dev` carries `x = 7`, and the main `origin/dev` moves.
+    - `test_direct_checkout_delegate_refuses_a_dirty_nested_repo_off_the_branch`: exit 1, nothing launched, the checkout and the file untouched.
+    - `test_direct_checkout_delegate_detaches_an_uncovered_nested_repo_at_the_tip`.
+- **(2) A missing integration ref is refused, never replaced by `HEAD`.**
+  - The new `_source_and_tip` returns the configured repository and `base_ref(remote/branch, else local branch)`. With neither ref, it raises `NestedRepoError` ("neither <remote>/<branch> nor a local <branch> exists in <repo>; fetch it, or fix integration_branch/remote …").
+  - `add_nested_worktrees` and `align_nested_checkouts` both go through it.
+  - `existing_worktree_problem`'s `tip` parameter no longer defaults to `"HEAD"`.
+  - Boundary test: `test_delegate_refuses_a_nested_repo_without_its_integration_branch[src/engine|lib]`. The config says `dev` and the nested repository has only `main`. Through `worker delegate`: exit 1 with that message, no worker record, and no nested worktree created, for both a covered and an uncovered repository.
+- **Docs.** `docs/git-workflow.md` "Nested repositories" now states both behaviours.
+
+No touch zones were added this round; the changes are in `nested_repos.py`, `worker_ops_launch.py`, `docs/git-workflow.md` and `tests/`, all already zoned.
+
 ## Review round 2 (gpt-5.6-sol-medium blocked e7cbab7b): item → change
 
 - **R5. A detached destination must be at the integration tip.**
@@ -89,6 +110,14 @@ The originals plus these, added on this branch with `specy-road edit-node M11.22
 - `sr/schemas/git-workflow.schema.json` is a copy for the toolkit's own `sr/` roadmap, outside the zones, and was not updated. `specy_road/templates/project/roadmap/git-workflow.yaml`, the commented template, has no `nested_repos` example, for the same reason.
 
 ## Verification
+
+Round 3 fixes, at the commit that adds this summary:
+
+- `pytest -n 4 tests/test_nested_repo_worktrees.py tests/test_nested_repo_finish.py`: 36 passed.
+- `specy-road file-limits`: OK.
+- `ruff check specy_road tests`: clean.
+- The 36 modules that exercise delegate or the promoted helpers (`pytest -n 4 <those files>`): 474 passed.
+- **Red-green.** Both nested test files run against 96053d7a in a temporary detached worktree (removed afterwards): 5 failed, the 3 direct-checkout tests and both missing-integration-branch cases.
 
 Round 2 fixes, at the commit that adds this summary:
 
@@ -139,6 +168,9 @@ Round 0 (47ca8cc6): full suite 3591 passed; validate and export --check OK.
 - Round 1: `tests/pickup_repo_helpers.py` (`make_pickup_project`, `run_specy_road`, `run_pickup`, `SHEET`, `FEATURE`) and `tests/worker_repo_helpers.py` (`make_worker_repo`, `worker_roster`, `FAKE`) — T1: promoted from the test modules, which re-import them under their old names.
 - Round 2: `tip` parameter and detached-HEAD comparison in `existing_worktree_problem` — R5: a detached destination must be at the tip a new worktree would use.
 - Round 2: `nested_worktree_dirs()` (nested_repos) and `_nested_dirty()` (worker_ops_launch) — R6: delegate's uncommitted-work check covers each nested repository under the worker's tree.
+- Round 3: `_source_and_tip()` — (2): the configured repository and its required integration tip; no `HEAD` stand-in.
+- Round 3: `align_nested_checkouts()` (nested_repos) and its call in `_launch_locked` — (1): the direct-checkout layout gets the same nested states as a leaf worktree, switching only clean checkouts.
+- Round 3 tests: direct-checkout delegate then finish landing; the dirty direct checkout refused; the uncovered repository detached; the missing integration branch refused (covered and uncovered).
 - Round 2 tests: the detached-off-tip refusal (and its acceptance once re-detached), and the delegate refusal over a tracked or untracked change in a nested worktree.
 - Round 1 tests: the delegate public-boundary refusal of an ordinary directory, the wrong-state refusal, the gone-repository landing, the single-line byte cap, the colliding-path patches, and the `x//y` normalisation.
 - Tests: schema acceptance and refusals; defaults per entry; `covers` table.

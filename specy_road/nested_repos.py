@@ -89,7 +89,7 @@ def _common_dir(repo: Path) -> Path | None:
     return Path(out).resolve() if out else None
 
 
-def existing_worktree_problem(src: Path, dest: Path, branch: str | None, tip: str = "HEAD") -> str | None:
+def existing_worktree_problem(src: Path, dest: Path, branch: str | None, tip: str) -> str | None:
     """Why ``dest``, already there, is not ``src``'s worktree on ``branch``, or detached at ``tip`` when
     ``branch`` is ``None``; else ``None``.
 
@@ -116,6 +116,25 @@ def existing_worktree_problem(src: Path, dest: Path, branch: str | None, tip: st
     return None
 
 
+def _source_and_tip(repo_root: Path, nr: NestedRepo) -> tuple[Path, str]:
+    """The configured repository and the ref of its integration tip, or :class:`NestedRepoError`.
+
+    No ref for the configured branch (misspelt, or never fetched) is refused:
+    any other commit, ``HEAD`` included, would give the worker code from a
+    branch nobody named.
+    """
+    src = repo_root / nr.path
+    if not is_repo_top(src):
+        raise NestedRepoError(f"nested repo {nr.path!r} (roadmap/git-workflow.yaml): {src} is not "
+                              "the top of a git repository")
+    tip = base_ref(src, nr.remote, nr.integration_branch)
+    if not tip:
+        raise NestedRepoError(f"nested repo {nr.path!r}: neither {nr.remote}/{nr.integration_branch} nor a local "
+                              f"{nr.integration_branch} exists in {src}; fetch it, or fix integration_branch/remote "
+                              "for it in roadmap/git-workflow.yaml")
+    return src, tip
+
+
 def add_nested_worktrees(repo_root: Path, leaf_root: Path, branch: str, zones) -> list[str]:
     """Give each nested repository a worktree at its path under ``leaf_root``; one line per worktree made.
 
@@ -125,16 +144,14 @@ def add_nested_worktrees(repo_root: Path, leaf_root: Path, branch: str, zones) -
     tip, or the existing branch); any other one a detached HEAD at that tip.
     One already there in that state is left alone, so a re-run adds only what
     is missing; one in any other state (:func:`existing_worktree_problem`) is
-    refused. Nothing is fetched: the tip is the remote-tracking ref as it stands.
+    refused. Nothing is fetched: the tip is the remote-tracking ref as it stands,
+    else the local branch; with neither, the repository is refused.
     """
     prefix, made = project_prefix(repo_root), []
     for nr in nested_repos(repo_root):
-        src, dest = repo_root / nr.path, leaf_root / nr.path
-        if not is_repo_top(src):
-            raise NestedRepoError(f"nested repo {nr.path!r} (roadmap/git-workflow.yaml): {src} is not "
-                                  "the top of a git repository")
+        src, tip = _source_and_tip(repo_root, nr)
+        dest = leaf_root / nr.path
         covered = covers(zones, nr.path, prefix)
-        tip = base_ref(src, nr.remote, nr.integration_branch) or "HEAD"
         if dest.exists():
             problem = existing_worktree_problem(src, dest, branch if covered else None, tip)
             if problem:
@@ -152,6 +169,39 @@ def add_nested_worktrees(repo_root: Path, leaf_root: Path, branch: str, zones) -
             raise NestedRepoError(f"cannot create a worktree of nested repo {nr.path!r} at {dest}: {out}")
         made.append(f"{nr.path}: {how}")
     return made
+
+
+def align_nested_checkouts(repo_root: Path, branch: str, zones) -> list[str]:
+    """For a worker in the main checkout itself (already on ``branch``): put each nested repository there in the
+    state :func:`add_nested_worktrees` gives a leaf worktree; one line per repository switched.
+
+    The worker edits these checkouts directly, so a covered one must be on
+    ``branch`` (created at the integration tip when missing), else its work
+    would land on whatever it had checked out and finish would skip it; an
+    uncovered one is detached at the tip. One already in that state is left
+    alone. A checkout is switched only when it has no tracked or untracked
+    changes; otherwise, or when git refuses the switch, :class:`NestedRepoError`.
+    """
+    prefix, moved = project_prefix(repo_root), []
+    for nr in nested_repos(repo_root):
+        src, tip = _source_and_tip(repo_root, nr)
+        want = branch if covers(zones, nr.path, prefix) else None
+        if existing_worktree_problem(src, src, want, tip) is None:
+            continue
+        status = git_text(["status", "--porcelain", "--untracked-files=all"], src)
+        if status is None or status:
+            raise NestedRepoError(f"nested repo {nr.path!r}: {src} is not on {want or f'a detached {tip}'} and has "
+                                  "uncommitted changes (or an unreadable status); commit or stash them there, "
+                                  "then delegate again")
+        if want:
+            args = [want] if _has_branch(src, want) else ["-b", want, tip]
+        else:
+            args = ["--detach", tip]
+        code, out = git_code(["checkout", "-q", *args], src)
+        if code != 0:
+            raise NestedRepoError(f"nested repo {nr.path!r}: cannot check out {want or tip} in {src}: {out}")
+        moved.append(f"{nr.path}: " + (f"on {want}" if want else f"detached at {tip} (outside the touch zones)"))
+    return moved
 
 
 def announce_nested_worktrees(repo_root: Path, leaf_root: Path, branch: str, zones) -> None:

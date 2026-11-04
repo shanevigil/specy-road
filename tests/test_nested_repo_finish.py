@@ -15,6 +15,10 @@ import pytest
 
 from tests.review_repo_helpers import commit_file, git, make_review_repo
 from tests.test_nested_repo_worktrees import COVERED, UNCOVERED, add_nested_repo
+from tests.test_worker_cli import run_worker_cli, wait_for_worker
+from tests.worker_repo_helpers import make_worker_repo
+
+from specy_road import worker_state as ws
 
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.finish_implementation_check import implementation_paths
@@ -82,6 +86,49 @@ def test_a_nested_conflict_stops_before_the_main_repository_moves(tmp_path: Path
     assert _origin_tip(nested) == nested_before and _origin_tip(repo) == main_before
     assert git(repo, "branch", "--show-current") == BRANCH
     assert len(git(nested, "worktree", "list").splitlines()) == 1   # the temporary worktree is gone
+
+
+def test_delegate_in_the_checkout_on_the_claim_branch_puts_the_nested_repo_on_it_and_finish_lands_it(
+        tmp_path: Path) -> None:
+    """The direct-checkout layout: the main checkout is on the claim's branch, so the worker edits the
+    nested repository in place; delegate must put it on the leaf's branch, or finish has nothing to land."""
+    repo, _script = make_worker_repo(tmp_path)   # on feature/rm-thing: delegate runs the worker here
+    nested = add_nested_repo(repo, COVERED, "dev")   # configured on the leaf's branch, nested repo on dev
+    bare = tmp_path / "remote.git"
+    git(tmp_path, "clone", "-q", "--bare", str(repo), str(bare))
+    git(repo, "remote", "add", "origin", str(bare))
+    git(repo, "fetch", "-q", "origin")
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0
+    rec = ws.list_records(repo)[0]
+    assert Path(rec.worktree) == repo.resolve()
+    assert git(nested, "branch", "--show-current") == BRANCH
+    wait_for_worker(repo, rec.worker_id)
+    commit_file(nested, "core.py", "x = 7\n", "the worker's nested change")   # as the worker would
+    main_before, nested_before = _origin_tip(repo), _origin_tip(nested)
+    ok, err = _land(repo)
+    assert ok, err
+    assert _origin_tip(nested) != nested_before and _origin_tip(repo) != main_before
+    git(nested, "fetch", "-q", "origin")
+    assert git(nested, "show", "origin/dev:core.py") == "x = 7"
+
+
+def test_direct_checkout_delegate_refuses_a_dirty_nested_repo_off_the_branch(tmp_path: Path, capsys) -> None:
+    repo, _script = make_worker_repo(tmp_path)
+    nested = add_nested_repo(repo, COVERED, "dev")
+    (nested / "core.py").write_text("unsaved\n", encoding="utf-8")
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    assert "is not on feature/rm-thing and has uncommitted changes" in capsys.readouterr().err
+    assert git(nested, "branch", "--show-current") == "dev" and not ws.list_records(repo)
+    assert (nested / "core.py").read_text(encoding="utf-8") == "unsaved\n"
+
+
+def test_direct_checkout_delegate_detaches_an_uncovered_nested_repo_at_the_tip(tmp_path: Path) -> None:
+    repo, _script = make_worker_repo(tmp_path)
+    nested = add_nested_repo(repo, UNCOVERED, "dev")
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0
+    wait_for_worker(repo, ws.list_records(repo)[0].worker_id)
+    assert git(nested, "branch", "--show-current") == ""
+    assert git(nested, "rev-parse", "HEAD") == git(nested, "rev-parse", "origin/dev")
 
 
 def test_a_configured_repo_that_is_gone_stops_the_landing_before_the_main_repository(tmp_path: Path) -> None:
