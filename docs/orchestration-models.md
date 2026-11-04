@@ -196,8 +196,8 @@ a harness that routes models dynamically …`). A harness's internal critic, how
 supporting evidence for a reviewer, never a gate approval: only a review record filed by a rostered
 reviewer counts.
 
-Each worker turn's `usage` event records `requested_model` (the `--model` the default command passed;
-`null` for a custom command or none) and `observed_model` (the model the harness's `system/init` line
+Each worker turn's `usage` event records `requested_model` (the `--model` the launch passed, a roster
+`channels.cli`'s own included; `null` when it passed none) and `observed_model` (the model the harness's `system/init` line
 named; Claude Code and Cursor print one, Codex does not), beside `harness_version`. When both are known
 and differ (ignoring case), the event's summary ends `model mismatch: told <requested>, harness reported
 <observed>`, which `worker sync` prints. An alias the harness resolves to another id reads as a mismatch

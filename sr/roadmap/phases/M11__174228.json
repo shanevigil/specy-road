@@ -394,7 +394,8 @@
         "specy_road/templates/project/schemas/orchestration.schema.json",
         "docs/orchestration.md",
         "docs/orchestration-models.md",
-        "tests/"
+        "tests/",
+        "specy_road/worker_models.py"
       ],
       "type": "task"
     },

@@ -1,7 +1,36 @@
 # M11.33 implementation summary — dynamic-routing reviewers
 
-Implementation commit: `f116f383` on `feature/rm-dynamic-routing-reviewers` (base `232df5b8`); the commit that adds
-this summary also adds the unbalanced-quote test case.
+Implementation commit: `f116f383` on `feature/rm-dynamic-routing-reviewers` (base `232df5b8`); `5bd9b720` added this
+summary and the unbalanced-quote test case; the round-2 commit (this summary's latest) answers the
+gpt-5.6-sol-medium block at `5bd9b720` (see "Review round 2").
+
+## Review round 2 — gpt-5.6-sol-medium block at `5bd9b720`
+
+1. **Requested model through custom-command launches (A2).** A roster `channels.cli` launch is
+   `Launch(["sh", "-c", <command>])`, so `model_from_argv(launch.argv)` read no `--model`. New
+   `worker_adapter_parsers.launch_model(argv)`: the argv's `--model` / `-m`, else, for exactly `["sh", "-c", cmd]`,
+   the `--model` / `-m` among `cmd`'s shell words (the `_WORD` tokenizer `output_mode_note` already uses, quotes
+   stripped; it never raises). `worker_runner` uses it for the `launched` event's `model` and for the `OSError`
+   path's `requested_model`, so `requested_model` and the `worker sync` mismatch suffix cover custom commands.
+   `model_from_argv` itself is unchanged (it also feeds the roster price estimate). Regression test, public path:
+   `tests/test_dynamic_routing_reviewers.py::test_custom_cli_model_is_requested_and_sync_flags_a_mismatch`
+   runs `worker delegate` with a roster `channels.cli` ending `--model <told>` against the fake harness (whose
+   `system/init` reports `fake`): `told=claude-sonnet-5-5` records `requested_model: claude-sonnet-5-5`,
+   `observed_model: fake` and `worker sync` prints `model mismatch: told claude-sonnet-5-5, harness reported fake`;
+   `told=fake` records both and prints no mismatch. Red-green: with the runner's two `launch_model` calls put back
+   to `model_from_argv`, both cases fail (2 failed); with the fix, both pass. `docs/orchestration-models.md` now says
+   `requested_model` includes a `channels.cli`'s own `--model` (it said `null` for a custom command).
+2. **`specy_road/worker_models.py` boundary.** On the coordinator's instruction, added to this leaf's touch zones on
+   this branch with `specy-road edit-node M11.33 --add touch_zones=specy_road/worker_models.py` (commits
+   `sr/roadmap/phases/M11__174228.json` and the claim's zones in `sr/roadmap/registry.yaml`). Why it exists:
+   `worker_runner.py` was at 395 of its 400-line cap, and the turn-model helpers (`turn_models`, `mismatch_note`)
+   would have pushed it over; the runner is at 399 with them in the new module.
+
+Also in this round: `tests/test_worker_cli.py` went over its 400-line cap with the new test, so both M11.33 worker
+tests (`test_usage_keeps_requested_and_observed_model_and_sync_flags_a_mismatch` and the new one) moved, unchanged
+apart from imports, into `tests/test_dynamic_routing_reviewers.py`. `specy-road digest --check` (project root `sr/`)
+reports `sr/roadmap-context.md` drift; it reports the same at `5bd9b720` before the `edit-node` change, and
+that file lists no touch zones, so it is left alone.
 
 ## What changed
 
@@ -21,8 +50,8 @@ this summary also adds the unbalanced-quote test case.
   (via `model_from_argv` on `shlex.split`), else `harness_model(entry, profile api_id)` with the committed profile
   from `pinned_profile_for_entry`, `""` when there is no valid profile — the same value `review delegate` passes.
   `pinned: true` still overrides it (the maintainer's attestation).
-- **A2 — requested / observed model.** The wrapper's `launched` event detail now has `model` (the launch argv's
-  `--model`, `None` for a custom command). `worker_runner._consume` adds `model` to a worker `started` event when
+- **A2 — requested / observed model.** The wrapper's `launched` event detail now has `model` (the launch's
+  `--model`, a custom `sh -c` command's included: `worker_adapter_parsers.launch_model`; `None` when it passes none). `worker_runner._consume` adds `model` to a worker `started` event when
   the line is a `system/init` with a `model` (`worker_adapter_parsers.init_model`; Claude Code and Cursor print
   one, Codex does not). Each `usage` event detail now has `requested_model` and `observed_model` for the current
   turn (events since the last `launched`, `worker_models.turn_models`), beside `harness_version`; a turn that never
@@ -38,9 +67,9 @@ this summary also adds the unbalanced-quote test case.
 
 ## Touch zones
 
-Final list: the brief's zones plus **`specy_road/worker_models.py`** (new). `worker_runner.py` was at 395/400
-lines; the new turn-model helpers went into that module so the runner stays at 399. Please add it to the leaf's
-touch zones. `review_gate.py` stays at 400 (the docstring bullet was re-wrapped, not shortened, to name the rule).
+Final list: the brief's zones plus **`specy_road/worker_models.py`** (new), now in the node's touch zones (review
+round 2, item 2). `worker_runner.py` was at 395/400 lines; the new turn-model helpers went into that module so the
+runner stays at 399. `review_gate.py` stays at 400 (the docstring bullet was re-wrapped, not shortened, to name the rule).
 
 Not changed, outside the zones, possible follow-ups:
 
@@ -68,6 +97,14 @@ Not changed, outside the zones, possible follow-ups:
   and the new `test_worker_cli.py` test failed (10 failed, 2 passed before the unbalanced-quote case was added: the two cases that need no new schema key or
   behaviour — routing absent, and cursor with an explicit model — pass at base too).
 
+## Verification, round 2
+
+- `pytest -n 4 tests/test_dynamic_routing_reviewers.py tests/test_worker_cli.py tests/test_review_gate.py
+  tests/test_orchestration_config.py tests/test_worker_adapters.py tests/test_roster_harness_model.py`: 95 passed.
+- `pytest -n 4` over every `tests/test_worker*.py`: 259 passed.
+- `specy-road file-limits`, `ruff check specy_road tests scripts`, `python scripts/check_test_private_imports.py`,
+  `specy-road validate`, `specy-road export --check`: exit 0.
+
 ## Added
 
 - `orchestration_config.entry_routing` — classifies an entry as fixed or dynamic, including the Cursor no-model/auto rule (A1, A4).
@@ -75,11 +112,14 @@ Not changed, outside the zones, possible follow-ups:
 - Branch in `entry_routing`: `except ValueError` around `shlex.split(cli)` — an unbalanced quote in a cursor `channels.cli` reads as no model (dynamic) instead of crashing the gate (the schema does not refuse such a command; only the launch does); reached by the unbalanced-quote case of the parametrized gate test.
 - `review_gate._eligibility` gains a `repo_root` parameter and the `routing_problem` call (A1).
 - `worker_adapter_parsers.init_model` — the `model` a `system/init` line reports (A2).
+- `worker_adapter_parsers.launch_model` — the requested model of a launch, reading inside a custom `sh -c` command (A2, review round 2 item 1); its `sh -c` branch is reached by the custom-cli test, the plain-argv branch by the flat-argv test and the default launches.
 - New module `specy_road/worker_models.py`: `turn_models` (the turn's requested and observed model) and `mismatch_note` (the usage-summary suffix worker sync prints) (A2; split for the file limit).
 - `worker_runner`: `model` on the `launched` event detail; `model` on a worker `started` event from its init line; `requested_model` / `observed_model` in every usage event; the `OSError` path passes its own requested model (A2).
 - Schema: `rosterEntry.routing` (enum fixed|dynamic) and `rosterEntry.pinned` (boolean) (A1).
 - Test `tests/test_dynamic_routing_reviewers.py::test_dynamic_routing_approval_does_not_count_toward_distinct_families` — parametrized: routing absent, fixed, dynamic, dynamic+pinned, cursor with no model, cursor `auto`, cursor custom cli without `--model`, cursor custom cli with an unbalanced quote, cursor with a model, cursor+pinned; checks pass/approval count, the problem text and the handoff-status eligibility row (A1, A3, A4).
 - Test `tests/test_dynamic_routing_reviewers.py::test_dynamic_routing_still_blocks_and_counts_without_distinct_families` — reaches the `verdict != approve` and distinct-families-off branches of `routing_problem` (A1).
-- Test `tests/test_worker_cli.py::test_usage_keeps_requested_and_observed_model_and_sync_flags_a_mismatch` — parametrized match / mismatch through the real wrapper and `worker sync` output (A2, A3).
+- Test `tests/test_dynamic_routing_reviewers.py::test_usage_keeps_requested_and_observed_model_and_sync_flags_a_mismatch` (moved from `test_worker_cli.py` for its file limit) — parametrized match / mismatch through the real wrapper and `worker sync` output, argv `--model` (A2, A3).
+- Test `tests/test_dynamic_routing_reviewers.py::test_custom_cli_model_is_requested_and_sync_flags_a_mismatch` — parametrized match / mismatch through `worker delegate` with a roster `channels.cli` that passes its own `--model` (A2, review round 2 item 1).
+- Touch zone: `specy_road/worker_models.py` added to M11.33 with `specy-road edit-node` (review round 2 item 2).
 - Extended expectations (no test loosened): `test_usage_events_per_turn_and_the_usage_command` now expects `requested_model: None, observed_model: "claude-opus-5-5"` in the Claude usage detail; `test_launch_events_ack_time_and_timeline` expects `model: None` in the `launched` detail (custom command).
 - Mocks: none.

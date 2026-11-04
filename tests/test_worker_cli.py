@@ -360,27 +360,6 @@ def test_usage_events_per_turn_and_the_usage_command(tmp_path: Path, capsys) -> 
     assert run_worker_cli("worker", "usage", "M9.9", "--repo-root", str(repo)) == 1
 
 
-@pytest.mark.parametrize("told", ["claude-opus-5-5", "claude-sonnet-5-5"])
-def test_usage_keeps_requested_and_observed_model_and_sync_flags_a_mismatch(tmp_path: Path, capsys, told: str) -> None:
-    """M11.33 A2: the turn's usage event keeps the --model the harness was told and the model its init line
-    reported; when they differ, `worker sync` prints the mismatch."""
-    from specy_road import worker_runner as wr
-    from specy_road.worker_adapters import Launch
-    repo, script = _repo(tmp_path)
-    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
-    spec = tmp_path / "turn.json"
-    spec.write_text(json.dumps({"lines": [
-        {"type": "system", "subtype": "init", "session_id": "s-1", "model": "claude-opus-5-5"},
-        {"type": "result", "subtype": "success", "result": "done", "session_id": "s-1", "total_cost_usd": 0.01}]}))
-    wr.run(repo, rec.worker_id, Launch([sys.executable, str(script), str(spec), "--model", told]))
-    usage = next(e.detail for e in ws.events_since(repo, rec.worker_id) if e.type == "usage")
-    assert (usage["requested_model"], usage["observed_model"]) == (told, "claude-opus-5-5")
-    capsys.readouterr()
-    assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0
-    mismatch = "model mismatch: told claude-sonnet-5-5, harness reported claude-opus-5-5"
-    assert (mismatch in capsys.readouterr().out) is (told == "claude-sonnet-5-5")
-
-
 def test_usage_event_schema_needs_every_field_nullable_never_missing() -> None:
     """M10.2 A1: a usage event carries all eight fields; null is allowed, a missing field or a wrong type is not."""
     from specy_road.worker_adapter_parsers import USAGE_FIELDS

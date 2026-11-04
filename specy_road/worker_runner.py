@@ -27,7 +27,7 @@ from pathlib import Path
 from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
 from specy_road.orchestration_role_env import harness_env
 from specy_road.runtime_paths import project_prefix
-from specy_road.worker_adapter_parsers import USAGE_FIELDS, init_model, model_from_argv, usage_text
+from specy_road.worker_adapter_parsers import USAGE_FIELDS, init_model, launch_model, usage_text
 from specy_road.worker_adapters import ClaudeCode, Launch, adapter_for
 from specy_road.worker_exit import exit_event
 from specy_road.worker_lease import release_lease
@@ -228,7 +228,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             )
         except OSError as e:
             # The turn ends here too: nothing reported, so nulls; no `launched` event names its model.
-            _append_usage(repo_root, rec, {"requested_model": model_from_argv(launch.argv), "observed_model": None})
+            _append_usage(repo_root, rec, {"requested_model": launch_model(launch.argv), "observed_model": None})
             watch.failed = f"cannot start {launch.argv[0]}: {e}"   # a failed turn: the post-run check runs here too
             close_turn(repo_root, rec, watch)   # (M8.2); the record still ends `failed` below
             append_event(repo_root, rec, "error", source="system", summary=f"cannot start {launch.argv[0]}: {e}",
@@ -247,7 +247,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
         watch.proc = proc
         append_event(repo_root, rec, "launched", source="system", summary=f"started {launch.argv[0]} (pid {proc.pid})",
                      detail={"argv0": launch.argv[0], "harness": rec.harness, "resumed": resumed,
-                             "model": model_from_argv(launch.argv)})   # the model the harness is told, if any
+                             "model": launch_model(launch.argv)})   # the model the harness is told, if any
         if launch.stdin is not None and proc.stdin:
             try:
                 proc.stdin.write(launch.stdin)
