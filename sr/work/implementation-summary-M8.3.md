@@ -105,6 +105,24 @@ Required change → what changed:
 
 - **WIP merge `e2c1a2d0`** (M8.2 hardened launches and chore reviews, M10.20, M11.35, review lessons). Conflicts and resolutions: `worker_adapter_claude.py` and `worker_adapter_codex.py` keep M8.2's executor permissions, Codex memory-off and per-profile `CODEX_HOME` beside this leaf's read-only `reviewer_launch`/`final_message`; `role_prompt.py`'s reviewer preamble has M10.20's `verify_cmd_lines` and the review-lessons lines plus this leaf's `READ_BACK_LINES`/`PASTED_LINES`. `review_delegate.py` merged without a conflict marker but changed behaviour: M8.2's chore reviews (`--review` chores) have a reviewer that writes its own verdict file, so a chore run keeps M8.2's contract. That means Claude's bare reviewer without the schema, else the adapter's own command, no `reviewer_cli` flags, no snapshot or JSON filing, `close_run` as before, and its own resume prompt (`CHORE_RESUME_PROMPT`). M8.3's read-only check and filing stay on roadmap reviews. The round 3–6 fixes are unchanged. `pytest -n 4` over the leaf's test files plus `tests/test_review_lessons.py`, `tests/test_verify_cmd.py`, `tests/test_worker_turn_check.py`, `tests/test_chore_mode.py` and `tests/test_review_hardening.py`: 216 passed. File limits OK; ruff clean.
 
+## Round 7 (gpt-5.6-sol-medium's block at `e6195893`; commits `fc5628cf`, `f669980a`)
+
+Required change → what changed:
+
+- **"Include file permission mode in the checkout, hand-off, Git-directory, and linked-worktree .git-pointer snapshots."**
+  - `_walk` now records `(st_mode, size, mtime_ns, sha256)` for every file. That covers the checkout, the hand-off directory, and the common and worktree Git directories, which all go through `_walk`.
+  - `_walk_git` records the same for a linked worktree's `.git` pointer. A `chmod` alone is a write.
+  - `docs/orchestration-review.md` says files are compared by permission mode too.
+- **"Add a public-interface regression proving a reviewer-only chmod is a review_failure and files no verdict."**
+  - `test_review_delegate_cli_fails_a_reviewer_only_chmod_and_files_no_verdict` in `tests/test_review_record_write_git.py`, through `specy-road review delegate`, is parametrized over the four areas: `src/a.py`, `work/reviews/M1.1/PACKET.md`, `.git/config`, and a linked worktree's `.git` with `--worktree`.
+  - Each time the fake reviewer flips only the owner-execute bit. The test confirms that content, size and mtime are unchanged and that the run is a `review_failure` naming the path, with no `REVIEW-opus.md`.
+  - The fake harness gained a `chmod` step.
+- **File limits and touch zones:** the mode fix took `specy_road/review_record_write.py` to 401 lines. The post-run write check (`runtime_files`, `_own_records`, `_content`, `_walk`, `_walk_git`, `Snapshot`, `snapshot`, `written`, and the `OUTPUT_SCHEMA_NAME` / `OUTPUT_PREFIX` / `LOCK_NAME` constants it uses) moved, otherwise unchanged, to the new `specy_road/review_write_check.py`. `review_record_write` re-exports those names, so callers and tests are unchanged. The new file was outside the touch zones, so it was added with `specy-road edit-node M8.3 --add touch_zones=specy_road/review_write_check.py` (`f669980a`).
+- **Verification:**
+  - `pytest -n 4` over the leaf's test files (`tests/test_review_record_write.py`, `tests/test_review_record_write_git.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_worker_adapters.py`, `tests/test_models_and_prompt.py`, `tests/test_prerelease_review.py`, `tests/test_review_rca.py`, `tests/test_role_prompt_file_limits.py`, `tests/test_resumed_delta_review.py`, `tests/test_chore_mode.py`): 176 passed, before and after the split.
+  - File limits OK; ruff clean; private imports 0 new.
+  - Red/green: without `st_mode` in the two snapshot tuples, all four chmod cases fail.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
@@ -131,6 +149,7 @@ Required change → what changed:
 - `reviewer_env`: lets an honest Python test re-run write nothing.
 - `run_text`, `final_output`, `json_object`, the envelope unwrap in `file_review`: A1/A3 extraction.
 - `git index` entry in `snapshot` (round 4): Sol's A2 index finding.
+- `st_mode` in the snapshot tuples, and the `review_write_check` module split (round 7): Sol's chmod finding, and the file limit.
 - `_walk_git` and `_walk`'s `skip` (round 6): Git metadata in the A2 snapshot. Its `resolved()` returns `None` when git can't answer.
 - `_content` (round 3): the content digest in the A2 snapshot. Its `OSError` branch covers a file removed mid-walk or without read permission. `json_object`'s final-object rule (round 3): A3.
 - `file_review`, `Outcome`, `_review_record` (output captured because `review delegate --json` owns stdout): the A1/A2/A3 outcome.
