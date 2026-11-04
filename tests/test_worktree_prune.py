@@ -19,7 +19,9 @@ from tests.review_repo_helpers import commit_file, git
 from tests.test_nested_repo_worktrees import COVERED, UNCOVERED, add_nested_repo
 
 from specy_road.nested_repos import add_nested_worktrees
-from specy_road.worktree_prune import PruneError, plan_prune, remove
+from specy_road import worktree_prune
+from specy_road.worker_state import create_record, set_state
+from specy_road.worktree_prune import PrunePlan, PruneError, plan_prune, remove
 
 
 def _leaf(tmp_path: Path, nested: tuple[str, ...] = ()) -> tuple[Path, Path]:
@@ -368,3 +370,26 @@ def test_a_plain_directory_at_a_nested_path_is_checked_as_part_of_the_worktree(t
     (wt / UNCOVERED / "notes.txt").write_text("x\n")   # ignored by the main repo: listed, not skipped
     plan = plan_prune(root, "M1")
     assert plan.nested == [] and f"{UNCOVERED}/notes.txt" in plan.ignored
+
+
+def test_a_running_worker_in_the_worktree_refuses_and_names_it(tmp_path: Path) -> None:
+    root, wt = _leaf(tmp_path)
+    _land(root, wt)
+    rec = create_record(root, "M1", "generic", "m", wt, branch=FEATURE)
+    assert "is running in it" not in _refusals(root)              # starting: not yet running
+    set_state(root, rec, "running")
+    assert f"worker {rec.worker_id} is running in it" in _refusals(root)
+    set_state(root, rec, "completed")
+    assert "is running in it" not in _refusals(root)
+
+
+def test_a_nested_clone_that_cannot_be_deleted_is_an_error_not_a_traceback(tmp_path: Path, monkeypatch) -> None:
+    root, wt = _leaf(tmp_path)
+
+    def denied(path, *a, **k):
+        raise PermissionError(13, "Permission denied", str(path))
+
+    monkeypatch.setattr(worktree_prune.shutil, "rmtree", denied)
+    plan = PrunePlan(root, wt, FEATURE, nested=[(root / "lib", wt / "lib", False)])
+    assert remove(plan) == f"cannot remove {wt / 'lib'}: [Errno 13] Permission denied: '{wt / 'lib'}'"
+    assert wt.is_dir()

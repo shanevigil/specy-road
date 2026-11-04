@@ -17,7 +17,8 @@ which worktree made it) or under a custom subject (``git stash store -m``)
 cannot be told apart from this worktree's. A full clone loses its branches,
 remote-tracking refs and stash with its directory, so each of its branch and
 remote-tracking tips must be held by a branch or remote-tracking ref of the main
-checkout's copy, and any stash refuses.
+checkout's copy, and any stash refuses. A worker in state ``running`` in the
+worktree refuses too: its harness is writing there.
 """
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ from specy_road.git_workflow_config import load_git_workflow_config, resolve_int
 from specy_road.nested_repos import _common_dir, is_repo_top, nested_repos
 from specy_road.review_files import reviews_root
 from specy_road.runtime_paths import project_prefix
+from specy_road.worker_state import list_records
 
 
 class PruneError(RuntimeError):
@@ -173,6 +175,9 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
     """What removing ``node_id``'s worktree would delete, and every reason it must not; :class:`PruneError` if absent."""
     main, wt, branch = leaf_worktree(root, node_id)
     plan, prefix = PrunePlan(main, wt, branch), project_prefix(main)
+    plan.refusals += [f"worker {r.worker_id} is running in it; wait for it or `specy-road worker terminate "
+                      f"{r.worker_id}`" for r in list_records(main)
+                      if r.state == "running" and Path(r.worktree).resolve().is_relative_to(wt.resolve())]
     _cfg, cfg_err = load_git_workflow_config(main)
     if cfg_err:   # nested_repos would read as none, and their clones would go unchecked with the worktree
         plan.refusals.append(f"{cfg_err}; fix it, then re-run: without it the nested repositories cannot be checked")
@@ -226,6 +231,9 @@ def remove(plan: PrunePlan) -> str | None:
             if code:
                 return f"git -C {src} worktree remove {d} failed: {out}"
         else:
-            shutil.rmtree(d)
+            try:
+                shutil.rmtree(d)
+            except OSError as e:
+                return f"cannot remove {d}: {e}"
     code, out = git_code(["worktree", "remove", "--force", str(plan.worktree)], plan.main)
     return f"git worktree remove {plan.worktree} failed: {out}" if code else None

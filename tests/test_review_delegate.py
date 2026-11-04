@@ -14,6 +14,7 @@ from tests.review_repo_helpers import commit_file, git, make_review_repo, review
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_delegate import capacity_error, delegate, load_run
+from specy_road.reviewer_run_failure import _save, run_path, turn_capacity_error
 from specy_road.review_files import reviews_dir
 from specy_road.worker_adapters import ClaudeCode
 
@@ -29,6 +30,9 @@ sid = sys.argv[-1]
 print(json.dumps({"type": "system", "subtype": "init", "session_id": sid, "model": "fake"}), flush=True)
 if step.get("write"):
     open(step["write"]["path"], "w").write(step["write"]["text"])
+if step.get("say"):
+    print(json.dumps({"type": "assistant", "session_id": sid,
+                      "message": {"content": [{"type": "text", "text": step["say"]}]}}), flush=True)
 if step.get("error"):
     print(json.dumps({"type": "result", "subtype": "error_during_execution", "is_error": True,
                       "result": step["error"], "session_id": sid}), flush=True)
@@ -168,6 +172,15 @@ def test_resume_continues_the_recorded_session(tmp_path: Path, capsys) -> None:
     assert "delegate without --resume" in capsys.readouterr().err
 
 
+def test_an_unsafe_recorded_session_id_is_refused_without_a_traceback(tmp_path: Path, capsys) -> None:
+    repo, spec = _repo(tmp_path)
+    _save(run_path(repo, "M1.1", "opus"), {"harness": "claude-code", "commit": git(repo, "rev-parse", "HEAD"),
+                                           "session_id": "x; rm -rf ~"})
+    assert _delegate(repo, "--resume") == 1
+    assert "has whitespace or shell metacharacters" in capsys.readouterr().err
+    assert not spec.with_name("calls.json").exists()                     # nothing was launched
+
+
 def test_refusals(tmp_path: Path, capsys) -> None:
     repo, _spec = _repo(tmp_path)
     assert _run("review", "delegate", "M1.1", "--model", "nobody", "--repo-root", str(repo)) == 1
@@ -234,7 +247,8 @@ def test_prompt_cli_channel_records_usage_limit_and_shows_it_on_the_gate_line(tm
 
     script = tmp_path / "fake_cli.py"
     script.write_text(
-        "import sys\nprint(sys.argv[1])\nprint(\"You've hit your usage limit\", file=sys.stderr)\nraise SystemExit(1)\n"
+        "import sys\nprint(sys.argv[1], flush=True)\nprint(\"You've hit your usage limit\", file=sys.stderr)\n"
+        "raise SystemExit(1)\n"
     )
     cli = f"{sys.executable} {{prompt}}"
     repo = make_review_repo(tmp_path, orchestration=_roster(cli.replace("{prompt}", script.as_posix() + " {prompt}")))
@@ -253,6 +267,19 @@ def test_capacity_error_reads_provider_wording() -> None:
     assert capacity_error(["ok", CAPACITY])
     assert capacity_error(["429 Too Many Requests"]) and capacity_error(["You've hit your usage limit"])
     assert capacity_error(["RESOURCE_EXHAUSTED"]) and not capacity_error(["SyntaxError: bad input"])
+
+
+def test_review_text_that_mentions_capacity_is_not_a_capacity_error(tmp_path: Path) -> None:
+    said = "Capacity and quota handling look right; the rate limit retry is covered (429 too)."
+    assert not capacity_error([said.replace("rate limit retry", "retry").replace(" (429 too)", "")])
+    assert turn_capacity_error([], [json.dumps({"type": "assistant", "text": said}), "done"]) is None
+    assert turn_capacity_error([], [said, "Error: 429 Too Many Requests", ""]) == "Error: 429 Too Many Requests"
+    repo, spec = _repo(tmp_path)
+    _steps(repo, spec, {"say": said, "exit": 1})
+    run = delegate(repo, "M1.1", "opus", retries=3, backoff=0, sleep=lambda _s: None)
+    assert len(_calls(spec)) == 1 and [a["capacity"] for a in run["attempts"]] == [False]   # no retry
+    assert run["state"] == "incomplete" and "capacity" not in run["reason"]
+    assert said not in run["events"][-1]["error"]
 
 
 def test_prompt_cli_exception_closes_the_run_incomplete(tmp_path: Path, monkeypatch) -> None:

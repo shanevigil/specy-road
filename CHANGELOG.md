@@ -99,6 +99,39 @@ body. Keep section bodies focused; link to PRs for detail.
   planning sheet is picked with a warning; pickup skips it (as
   `docs/roadmap-authoring.md` already said) unless
   `--allow-scaffold-planning` is passed.
+- Pre-release core-code review fixes:
+  - `review check-pre-existing` took any non-zero exit on the integration tip
+    as proof a failure pre-existed, so a claim on a test file the leaf adds
+    (pytest exit 4) or a misspelt command (127) was recorded verified. Exits
+    126, 127 and pytest's 4 and 5 are now no evidence, and a command naming a
+    path the leaf has but the tip lacks is not run; both are recorded
+    `unverified` with the reason, which the gate shows.
+  - `review delegate` and `prompt --channel cli` read a capacity error from
+    the whole transcript, so a review that said "capacity" or "quota" was
+    retried and reported as a capacity failure. Only parsed error events and
+    the last non-JSON output line are read now, against specific phrases
+    (429, 529, rate limit, usage limit, overloaded, too many requests,
+    resource exhausted, at/over/out of capacity, quota exceeded).
+  - `review delegate` printed a traceback for an unsafe recorded session id;
+    it is now an `error:` line and exit 1. Its `--worktree` help names a
+    chore's worktree as the default for a chore slug.
+  - The repository lock (pickup, finish, abort) judged its holder and queue
+    by pid alone, and both survive a reboot, so a reused pid blocked every
+    pickup and finish until the two-hour timeout. Each entry now records its
+    process's start time, and a mismatch is stale; the timeout message names
+    the holder file. The fallback queue-ticket name ends with the process's
+    own pid, not its parent's.
+  - `registry-prune --remove` (and so `doctor --fix` for registry rows)
+    checked out and committed on the integration branch without the
+    repository lock; it now takes it.
+  - `doctor --fix` removed clean detached worktrees that land check,
+    `check-pre-existing`, nested land and the red/green check were still
+    using; it now leaves worktrees under those commands' temporary
+    directories.
+  - `worktree prune` printed a traceback when a nested full clone could not
+    be deleted, and removed a worktree a `running` worker was using; the
+    first is now an `error:` line, and the second refuses, naming the
+    worker.
 
 ## [v0.3.1-rc2] - 2026-10-29
 
