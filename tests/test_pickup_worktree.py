@@ -30,6 +30,7 @@ def test_worktree_pickup_claims_on_the_remote_and_leaves_the_main_checkout_alone
     assert _git(wt, "branch", "--show-current") == FEATURE
     assert Path(_git(wt, "rev-parse", "--show-toplevel")).resolve() == wt.resolve()
     assert (wt / "work" / "brief-M1.md").is_file()
+    assert not (root / "work" / "brief-M1.md").exists()   # moved, not copied: finish removes only the worktree's
     assert (wt / "work" / ".on-complete-M1.yaml").is_file()
     assert f"worktree: {wt}" in r.stdout
 

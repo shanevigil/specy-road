@@ -67,9 +67,15 @@ def turn_models(events: list[WorkerEvent]) -> dict[str, str | None]:
     return {"requested_model": requested, "observed_model": observed}
 
 
+def _model_key(name: object) -> str:
+    """A model name as :func:`mismatch_note` compares it: case, ``-``, ``_`` and spaces do not count, so Cursor's
+    display name ``Composer 2.5`` is the slug ``composer-2.5`` it was told."""
+    return re.sub(r"[-_\s]+", "-", str(name).strip().lower())
+
+
 def mismatch_note(detail: dict[str, Any]) -> str:
-    """The summary suffix when both models are known and differ (ignoring case), else ``""``."""
+    """The summary suffix when both models are known and differ (beyond :func:`_model_key`), else ``""``."""
     told, ran = detail.get("requested_model"), detail.get("observed_model")
-    if not told or not ran or str(told).lower() == str(ran).lower():
+    if not told or not ran or _model_key(told) == _model_key(ran):
         return ""
     return f"; model mismatch: told {told}, harness reported {ran}"

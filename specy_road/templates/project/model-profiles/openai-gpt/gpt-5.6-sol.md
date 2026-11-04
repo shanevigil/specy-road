@@ -51,6 +51,8 @@ When this model runs as a roster **executor** on `codex`, the executor template 
 
 Orchestration guard hooks deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`.
 
+Under the default codex launch (`sandbox_mode=workspace-write`) an executor cannot commit: git metadata is read-only, in a linked worktree (its gitdir under the main checkout's `.git/worktrees/`, and the common `.git`) and in a plain checkout alike. Give a codex executor a `channels.cli` and `cli_resume` that add the worktree's gitdir and the common `.git` as writable roots (specy-road `docs/orchestration-workers.md`, Roster setup, "Known limitation").
+
 ## Strengths
 - Cursor lists a 1M-context Sol variant with effort baked into the model id (high, xhigh, max, fast tiers) [S2] (confidence: high)
 - List price reported as twice GPT-6 Sol ($4 / $20 per MTok), from the GPT-6 Sol profile's third-party source [S4] (confidence: low)

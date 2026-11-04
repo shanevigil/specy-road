@@ -132,6 +132,30 @@ body. Keep section bodies focused; link to PRs for detail.
     be deleted, and removed a worktree a `running` worker was using; the
     first is now an `error:` line, and the second refuses, naming the
     worker.
+- Pre-release worker fixes (sandbox runbook §5 replay):
+  - `worker usage` counted a resumed Codex turn twice: `codex exec resume`
+    reports the thread's running token total, which was summed with the
+    earlier turns. The usage event now keeps that total as `session_usage`
+    (and the price estimate as `session_cost_usd`) and records the
+    difference from the previous turn, as Claude's session cost already was.
+  - A turn whose harness was killed (SIGKILL, or any non-zero exit no
+    usage limit explains) reported `post-run check: clean`, since the check
+    is written before the exit event; the check now records it as a failed
+    turn.
+  - Every Cursor `usage` event reported a false model mismatch
+    (`composer-2.5` against the harness's `Composer 2.5`); the comparison
+    now ignores case and treats `-`, `_` and spaces alike, and still reports
+    a different model.
+  - `do-next-available-task --worktree` left a copy of the brief in the
+    coordinator's `work/` that finish never removed; the brief is now moved
+    into the worktree, as documented.
+  - Docs: Codex and Cursor `cost_usd` is estimated from the roster
+    profile's prices, not `null`; the Claude Code hook was observed to fire
+    under `claude -p --resume` (2.1.312); the sandbox runbook's §5 9b(ii)
+    expects `worker resume` to reopen a failed worker's session; and a
+    known-limitation note says a Codex executor cannot commit under the
+    default `workspace-write` sandbox, with the `channels.cli` and
+    `cli_resume` that grant the worktree's gitdir and the common `.git`.
 
 ## [v0.3.1-rc2] - 2026-10-29
 
