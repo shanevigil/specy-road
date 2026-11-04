@@ -33,9 +33,9 @@ PATTERN = re.compile(
     r"|/(?:private/)?tmp/claude-\d"
     r"|-MacBook(?:-(?:Pro|Air))?(?:-\d+)?\.local\b"
 )
-#: A web URL (scheme://host/...), blanked before matching: its path names a site's page, not a machine.
-#: file:/// and file://localhost/ keep their path in scope.
-_WEB_URL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://(?!/|localhost/)[^\s\"'<>)\]`]*")
+#: An http(s) URL, blanked before matching: its path names a site's page, not a machine. Every other scheme
+#: (file:, ssh:, vscode:, ...) can name a local or personal path and stays in scope.
+_WEB_URL = re.compile(r"(?i)\bhttps?://[^\s\"'<>)\]`]*")
 
 
 def find_machine_paths(root: Path) -> list[str]:
