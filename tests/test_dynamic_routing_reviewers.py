@@ -46,6 +46,8 @@ def _gate(tmp_path: Path, rev: str, *, distinct: bool = True, rev_verdict: str =
     (", harness: cursor, harness_model: auto", False),            # A4: Cursor's Auto
     (", harness: cursor, channels: {cli: 'agent -p {prompt}'}", False),
     (""", harness: cursor, channels: {cli: "agent -p --model gpt-5.6-sol '{prompt}"}""", False),   # unbalanced quote
+    (", harness: cursor, channels: {cli: 'printf %s --model gpt-5.6-sol >/dev/null; agent -p {prompt}'}", False),  # decoy
+    (", harness: cursor, channels: {cli: 'agent -p --model gpt-5.6-sol {prompt} 2>&1'}", True),   # a redirection
     (", harness: cursor, harness_model: gpt-5.6-sol-high", True),
     (", harness: cursor, pinned: true", True),
 ])
@@ -87,20 +89,29 @@ def test_usage_keeps_requested_and_observed_model_and_sync_flags_a_mismatch(tmp_
     assert (mismatch in capsys.readouterr().out) is (told == "claude-sonnet-5-5")
 
 
-@pytest.mark.parametrize("told", ["fake", "claude-sonnet-5-5"])
-def test_custom_cli_model_is_requested_and_sync_flags_a_mismatch(tmp_path: Path, capsys, told: str) -> None:
-    """M11.33 A2: a roster channels.cli that passes its own --model (run as `sh -c`) records it as requested_model,
-    and `worker sync` flags it when the harness's init line reports another (the fake harness reports `fake`)."""
+@pytest.mark.parametrize("prologue, told, requested", [
+    ("", "fake", "fake"),
+    ("", "claude-sonnet-5-5", "claude-sonnet-5-5"),
+    ("printf %s --model decoy >/dev/null; ", "claude-sonnet-5-5", None),   # two commands: which --model is unknown
+])
+def test_custom_cli_model_is_requested_and_sync_flags_a_mismatch(tmp_path: Path, capsys, prologue: str, told: str,
+                                                                  requested: str | None) -> None:
+    """M11.33 A2: a roster channels.cli that is one command passing its own --model (run as `sh -c`) records it as
+    requested_model, and `worker sync` flags it when the harness's init line reports another (the fake harness
+    reports `fake`); in a command list the harness's model is unknown, so neither the decoy nor a mismatch is recorded."""
     script = tmp_path / "fake.py"
     script.write_text(FAKE)
-    repo = make_review_repo(tmp_path, orchestration=worker_roster(f"{sys.executable} {script} {{prompt}} --model {told}"))
+    cli = f"{prologue}{sys.executable} {script} {{prompt}} --model {told}"
+    repo = make_review_repo(tmp_path, orchestration=worker_roster(cli))
     (repo / ".gitignore").write_text("work/\n")
     git(repo, "add", ".gitignore")
     git(repo, "commit", "-qm", "ignore work")
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
     wait_for_worker(repo, "w-0001")
     usage = next(e.detail for e in ws.events_since(repo, "w-0001") if e.type == "usage")
-    assert (usage["requested_model"], usage["observed_model"]) == (told, "fake")
+    assert (usage["requested_model"], usage["observed_model"]) == (requested, "fake")
     capsys.readouterr()
     assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0
-    assert ("model mismatch: told claude-sonnet-5-5, harness reported fake" in capsys.readouterr().out) is (told != "fake")
+    out = capsys.readouterr().out
+    assert ("model mismatch: told claude-sonnet-5-5, harness reported fake" in out) is (requested == "claude-sonnet-5-5")
+    assert "decoy" not in out

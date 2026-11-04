@@ -215,15 +215,6 @@ def model_from_argv(argv: list[str]) -> str | None:
     return None
 
 
-def launch_model(argv: list[str]) -> str | None:
-    """The model a launch asks for: its argv's ``--model`` / ``-m``, else that of the command a custom launch runs
-    as ``sh -c <command>`` (its words read as :func:`output_mode_note` reads them)."""
-    model = model_from_argv(argv)
-    if model or len(argv) != 3 or argv[:2] != ["sh", "-c"]:
-        return model
-    return model_from_argv([w.strip("\"'") for w in _WORD.findall(argv[2])])
-
-
 def init_model(line: str) -> str | None:
     """The ``model`` a ``system/init`` line reports (Claude Code and Cursor print one per run), else ``None``."""
     d = _json(line)

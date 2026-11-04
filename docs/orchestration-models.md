@@ -186,7 +186,7 @@ fields say so:
 
 | Key | Meaning |
 |---|---|
-| `routing` | `fixed` (the default): the harness runs the model it is told. `dynamic`: it may choose among models itself. A `cursor` entry told no model (no `harness_model`, a profile `api_id` of `unknown` or no profile, or a `channels.cli` without `--model`) or `auto` is `dynamic` whatever this says. |
+| `routing` | `fixed` (the default): the harness runs the model it is told. `dynamic`: it may choose among models itself. A `cursor` entry told no model (no `harness_model`, a profile `api_id` of `unknown` or no profile, or a `channels.cli` without `--model`) or `auto` is `dynamic` whatever this says. A `channels.cli`'s `--model` is read only when it is one simple command (redirections such as `2>&1` allowed); in a list or pipeline (`;`, `&&`, `\|`, a newline, a subshell or `$(…)`) the flag may belong to another program, so the model counts as unknown. |
 | `pinned` | `true` once the maintainer has checked that the harness honours the requested model (for Cursor: a model id that is not `auto`, with Auto turned off). Default `false`. |
 
 Under `policy.reviewers_distinct_families`, an approval from a `dynamic` entry that is not `pinned` does not
@@ -197,8 +197,9 @@ supporting evidence for a reviewer, never a gate approval: only a review record 
 reviewer counts.
 
 Each worker turn's `usage` event records `requested_model` (the `--model` the launch passed, a roster
-`channels.cli`'s own included; `null` when it passed none) and `observed_model` (the model the harness's `system/init` line
-named; Claude Code and Cursor print one, Codex does not), beside `harness_version`. When both are known
+`channels.cli`'s own when that is one simple command; `null` when it passed none or its command is a list
+or pipeline) and `observed_model` (the model the harness's `system/init` line named; Claude Code and
+Cursor print one, Codex does not), beside `harness_version`. When both are known
 and differ (ignoring case), the event's summary ends `model mismatch: told <requested>, harness reported
 <observed>`, which `worker sync` prints. An alias the harness resolves to another id reads as a mismatch
 too.

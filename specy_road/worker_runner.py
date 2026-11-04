@@ -27,11 +27,11 @@ from pathlib import Path
 from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
 from specy_road.orchestration_role_env import harness_env
 from specy_road.runtime_paths import project_prefix
-from specy_road.worker_adapter_parsers import USAGE_FIELDS, init_model, launch_model, usage_text
+from specy_road.worker_adapter_parsers import USAGE_FIELDS, init_model, usage_text
 from specy_road.worker_adapters import ClaudeCode, Launch, adapter_for
 from specy_road.worker_exit import exit_event
 from specy_road.worker_lease import release_lease
-from specy_road.worker_models import mismatch_note, turn_models
+from specy_road.worker_models import launch_model, mismatch_note, turn_models
 from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified re-exported for existing callers
     argv_too_long,
     new_token,

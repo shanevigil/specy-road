@@ -1,8 +1,34 @@
 # M11.33 implementation summary — dynamic-routing reviewers
 
 Implementation commit: `f116f383` on `feature/rm-dynamic-routing-reviewers` (base `232df5b8`); `5bd9b720` added this
-summary and the unbalanced-quote test case; the round-2 commit (this summary's latest) answers the
-gpt-5.6-sol-medium block at `5bd9b720` (see "Review round 2").
+summary and the unbalanced-quote test case; `e7ef2a38` answered the block at `5bd9b720` (see "Review round 2"),
+and the round-3 commit (this summary's latest) answers the block at `e7ef2a38` (see "Review round 3").
+
+## Review round 3 — gpt-5.6-sol-medium block at `e7ef2a38`
+
+1. **Model from the actual harness invocation, or unknown (A2, A4).** Round 2's `launch_model` and the gate's
+   `entry_routing` took the first `--model` anywhere in a custom shell program, so
+   `printf ... --model fixed >/dev/null; agent -p {prompt}` counted an Auto-routed Cursor approval and recorded a
+   decoy `requested_model`. New `worker_models.command_model(command)`: a command's `--model` / `-m` only when it is
+   one simple command. Outside literal spans (single quotes, double quotes without a substitution, backslash
+   escapes) it must contain no `;`, `&`, `|`, `(`, `)`, backtick, newline or `$(`; the redirections `2>&1`, `<&3`
+   and `&>file` are allowed. Anything else returns `None`, the conservative reading the reviewer allowed.
+   - Both callers use it. `entry_routing` (local import) makes a cursor entry whose `channels.cli` is a list or
+     pipeline `dynamic`. `launch_model` records `requested_model: null` for such a launch, so no decoy and no
+     false mismatch reach `worker sync`.
+   - `launch_model` moved from `worker_adapter_parsers.py` into `worker_models.py` beside it. `entry_routing`'s
+     own `shlex.split` / `except ValueError` moved into `command_model`, which keeps the unbalanced-quote handling.
+   - Public-path regressions in `tests/test_dynamic_routing_reviewers.py`:
+     - The gate test gains a cursor `channels.cli` of
+       `printf %s --model gpt-5.6-sol >/dev/null; agent -p {prompt}`, which must not count, and
+       `agent -p --model gpt-5.6-sol {prompt} 2>&1`, which counts: a redirection is not a list.
+     - The `worker delegate` custom-cli test gains `printf %s --model decoy >/dev/null; <fake harness> {prompt} --model claude-sonnet-5-5`:
+       `requested_model` is `null`, `observed_model` is `fake`, and `worker sync` prints no mismatch and no `decoy`.
+   - Red-green: at `e7ef2a38` with the new test file, both decoy cases fail (2 failed, 16 passed); with the fix all pass.
+   - `docs/orchestration-models.md` states the one-simple-command rule in the `routing` row and the `requested_model` sentence.
+   - A wrapper script that is one simple command (`run-cursor.sh --model x {prompt}`) is still read as passing
+     `x`. Its program name is not checked against the harness binary; `pinned` stays the maintainer's attestation
+     either way.
 
 ## Review round 2 — gpt-5.6-sol-medium block at `5bd9b720`
 
@@ -105,21 +131,33 @@ Not changed, outside the zones, possible follow-ups:
 - `specy-road file-limits`, `ruff check specy_road tests scripts`, `python scripts/check_test_private_imports.py`,
   `specy-road validate`, `specy-road export --check`: exit 0.
 
+## Verification, round 3
+
+- `pytest -n 4 tests/test_dynamic_routing_reviewers.py tests/test_worker_cli.py tests/test_review_gate.py
+  tests/test_orchestration_config.py tests/test_worker_adapters.py tests/test_roster_harness_model.py`: 98 passed.
+- `pytest -n 4` over every `tests/test_worker*.py`: 259 passed. An earlier run of the same set hit the known
+  `test_message_while_running_queues_and_delivers` race; it fails the same way at base `232df5b8` (round 1). It
+  passed alone (6 passed) and in the re-run.
+- `specy-road file-limits`, `ruff check specy_road tests scripts`, `python scripts/check_test_private_imports.py`,
+  `specy-road validate`: exit 0.
+
 ## Added
 
 - `orchestration_config.entry_routing` — classifies an entry as fixed or dynamic, including the Cursor no-model/auto rule (A1, A4).
 - `orchestration_config.routing_problem` — the gate's reason an approval does not count toward distinct families (A1).
-- Branch in `entry_routing`: `except ValueError` around `shlex.split(cli)` — an unbalanced quote in a cursor `channels.cli` reads as no model (dynamic) instead of crashing the gate (the schema does not refuse such a command; only the launch does); reached by the unbalanced-quote case of the parametrized gate test.
+- `except ValueError` around `shlex.split` (in `entry_routing` until round 3, now in `command_model`) — an unbalanced quote in a cursor `channels.cli` reads as no model (dynamic) instead of crashing the gate (the schema does not refuse such a command; only the launch does); reached by the unbalanced-quote case of the parametrized gate test.
 - `review_gate._eligibility` gains a `repo_root` parameter and the `routing_problem` call (A1).
 - `worker_adapter_parsers.init_model` — the `model` a `system/init` line reports (A2).
-- `worker_adapter_parsers.launch_model` — the requested model of a launch, reading inside a custom `sh -c` command (A2, review round 2 item 1); its `sh -c` branch is reached by the custom-cli test, the plain-argv branch by the flat-argv test and the default launches.
+- `worker_models.launch_model` (round 2 in `worker_adapter_parsers`, moved in round 3) — the requested model of a launch, reading inside a custom `sh -c` command through `command_model` (A2); its `sh -c` branch is reached by the custom-cli test, the plain-argv branch by the flat-argv test.
+- `worker_models.command_model` with `_LITERAL`, `_REDIRECT_AMP`, `_CONTROL` — a shell command's `--model` only when it is one simple command, else unknown (A2, A4; review round 3); the list case is reached by both decoy regressions, the redirection allowance by the `2>&1` gate case, the `except ValueError` by the unbalanced-quote gate case.
 - New module `specy_road/worker_models.py`: `turn_models` (the turn's requested and observed model) and `mismatch_note` (the usage-summary suffix worker sync prints) (A2; split for the file limit).
 - `worker_runner`: `model` on the `launched` event detail; `model` on a worker `started` event from its init line; `requested_model` / `observed_model` in every usage event; the `OSError` path passes its own requested model (A2).
 - Schema: `rosterEntry.routing` (enum fixed|dynamic) and `rosterEntry.pinned` (boolean) (A1).
 - Test `tests/test_dynamic_routing_reviewers.py::test_dynamic_routing_approval_does_not_count_toward_distinct_families` — parametrized: routing absent, fixed, dynamic, dynamic+pinned, cursor with no model, cursor `auto`, cursor custom cli without `--model`, cursor custom cli with an unbalanced quote, cursor with a model, cursor+pinned; checks pass/approval count, the problem text and the handoff-status eligibility row (A1, A3, A4).
 - Test `tests/test_dynamic_routing_reviewers.py::test_dynamic_routing_still_blocks_and_counts_without_distinct_families` — reaches the `verdict != approve` and distinct-families-off branches of `routing_problem` (A1).
 - Test `tests/test_dynamic_routing_reviewers.py::test_usage_keeps_requested_and_observed_model_and_sync_flags_a_mismatch` (moved from `test_worker_cli.py` for its file limit) — parametrized match / mismatch through the real wrapper and `worker sync` output, argv `--model` (A2, A3).
-- Test `tests/test_dynamic_routing_reviewers.py::test_custom_cli_model_is_requested_and_sync_flags_a_mismatch` — parametrized match / mismatch through `worker delegate` with a roster `channels.cli` that passes its own `--model` (A2, review round 2 item 1).
+- Test `tests/test_dynamic_routing_reviewers.py::test_custom_cli_model_is_requested_and_sync_flags_a_mismatch` — parametrized match / mismatch / decoy-before-the-harness through `worker delegate` with a roster `channels.cli` (A2, review rounds 2 and 3).
+- Gate test cases (round 3): cursor `channels.cli` with a decoy `--model` before `agent` (dynamic) and with `2>&1` after an explicit model (fixed).
 - Touch zone: `specy_road/worker_models.py` added to M11.33 with `specy-road edit-node` (review round 2 item 2).
 - Extended expectations (no test loosened): `test_usage_events_per_turn_and_the_usage_command` now expects `requested_model: None, observed_model: "claude-opus-5-5"` in the Claude usage detail; `test_launch_events_ack_time_and_timeline` expects `model: None` in the `launched` detail (custom command).
 - Mocks: none.

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import copy
 import json
-import shlex
 from datetime import date, datetime
 from functools import cache
 from pathlib import Path
@@ -20,7 +19,6 @@ from jsonschema import Draft202012Validator
 
 from specy_road.git_subprocess import git_stdout
 from specy_road.schema_revision import accepted_at_revision
-from specy_road.worker_adapter_parsers import model_from_argv
 
 _PACKAGE_DIR = Path(__file__).resolve().parent
 _ORCHESTRATION_SCHEMA = _PACKAGE_DIR / "templates" / "project" / "schemas" / "orchestration.schema.json"
@@ -314,18 +312,17 @@ def harness_model_warnings(config: dict[str, Any]) -> list[str]:
 
 def entry_routing(repo_root: Path, entry: dict[str, Any]) -> str:
     """``dynamic`` when the entry declares ``routing: dynamic``, or runs on ``cursor`` told no model or ``auto``
-    (fresh Cursor CLI installs route Auto): its ``channels.cli``'s ``--model``, else :func:`harness_model` with the
-    committed profile's ``api_id``, as ``review delegate`` passes it. Else ``fixed``."""
+    (fresh Cursor CLI installs route Auto): its ``channels.cli``'s ``--model`` when that is one simple command
+    (``worker_models.command_model``; a list or pipeline is unknown), else :func:`harness_model` with the committed
+    profile's ``api_id``, as ``review delegate`` passes it. Else ``fixed``."""
     if entry.get("routing") == "dynamic":
         return "dynamic"
     if entry.get("harness") != "cursor":
         return "fixed"
     cli = (entry.get("channels") or {}).get("cli")
     if cli:
-        try:
-            model = model_from_argv(shlex.split(cli))
-        except ValueError:   # an unbalanced quote: no model can be read from it
-            model = None
+        from specy_road.worker_models import command_model  # noqa: PLC0415 — worker modules load late
+        model = command_model(cli)
     else:
         from specy_road.orchestration_pinned import pinned_profile_for_entry  # noqa: PLC0415 — it imports this module
         prof = pinned_profile_for_entry(repo_root, entry)
