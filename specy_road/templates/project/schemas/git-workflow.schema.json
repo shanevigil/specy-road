@@ -60,6 +60,10 @@
       "type": "string",
       "description": "Shell command finish-this-task runs in merge (and auto) mode on the local merge commit, at the project root of a detached temporary worktree, before it pushes the integration branch (e.g. the full test and lint gate). A non-zero exit pushes nothing and resets the local integration branch. CLI --land-check-cmd wins (an empty value skips it for that run). pr mode never runs it."
     },
+    "verify_cmd": {
+      "type": "string",
+      "description": "Command executor briefs and reviewer prompts give for running the leaf's tests, with the test paths appended (e.g. python -m pytest -n 4 -p no:cacheprovider). Keep its worker count small: several workers on one machine each running a full parallel suite oversubscribe the CPU. Separate from land_check_cmd, which runs the full suite at landing. When omitted, the prompts say to cap parallel test workers when other workers share the machine."
+    },
     "prefer_agentic_pick_order": {
       "type": "boolean",
       "description": "When true, do-next-available-task and grind-session order each pickup tier (Blocked, MR-rejected, the rest) Agentic-led, then Mixed, then unset, then Human-led, outline order within each (default false: outline order only). Eligibility is unchanged. CLI --prefer-agentic / --no-prefer-agentic wins."

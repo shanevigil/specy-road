@@ -56,6 +56,7 @@ from specy_road.worker_state import (
     workers_dir,
     workers_lock,
 )
+from specy_road.worker_turn_check import PAUSED_BY_LIMIT, TurnWatch, close_turn
 
 
 def queue_worker_message(repo_root: Path, rec: WorkerRecord, text: str) -> WorkerRecord:
@@ -209,11 +210,13 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
     log = log_path(repo_root, worker_id)
     # The turn's checkpoint: a completion needs a READY that is not one of these.
     before = ready_fingerprints(repo_root, rec.node_id)
+    watch = TurnWatch(repo_root, rec)   # the post-run check's starting git state, before the harness can move it
     before_all = all_ready_fingerprints(repo_root, rec.node_id)
     set_state(repo_root, rec, "running", pid=os.getpid())
     if resumed:
         append_event(repo_root, rec, "resumed", source="broker", summary="resumed with a new prompt")
     env = harness_env(os.environ, "executor", harness_pythonpath=harness_pythonpath, harness=rec.harness)
+    env.update(launch.env or {})   # the adapter's own (Codex: the profile's CODEX_HOME)
     with log.open("a", encoding="utf-8") as raw:
         log_start = raw.tell()   # this turn's part of the log starts here (the harness writes stderr into it)
         try:
@@ -224,6 +227,8 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             )
         except OSError as e:
             _append_usage(repo_root, rec, {})   # the turn ends here too: nothing reported, so nulls
+            watch.failed = f"cannot start {launch.argv[0]}: {e}"   # a failed turn: the post-run check runs here too
+            close_turn(repo_root, rec, watch)   # (M8.2); the record still ends `failed` below
             append_event(repo_root, rec, "error", source="system", summary=f"cannot start {launch.argv[0]}: {e}",
                          detail={"exit": 127})   # the wrapper's exit record: this error ends the turn
             mirror_logs(repo_root, rec)
@@ -237,6 +242,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             r.last_output_at = _now()
             r.flags = [f for f in r.flags if f != FLAG_STALLED]
         mutate(repo_root, rec, seen)
+        watch.proc = proc
         append_event(repo_root, rec, "launched", source="system", summary=f"started {launch.argv[0]} (pid {proc.pid})",
                      detail={"argv0": launch.argv[0], "harness": rec.harness, "resumed": resumed})
         if launch.stdin is not None and proc.stdin:
@@ -255,11 +261,11 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
                 append_event(repo_root, rec, "first_output", source="system", summary="first stdout line read")
             try:
                 marked = _output_seen(repo_root, rec, marked, clock())
-                usage_logged = _consume(repo_root, rec, adapter, line, launch) or usage_logged
+                usage_logged = _consume(repo_root, rec, adapter, line, launch, watch) or usage_logged
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
                 raw.write(f"[wrapper] could not record a line: {e}\n")
         code = proc.wait()
-    return _finish(repo_root, rec, code, before, before_all, usage_logged, log_start)
+    return _finish(repo_root, rec, code, before, before_all, usage_logged, watch, log_start)
 
 
 def _output_seen(repo_root: Path, rec: WorkerRecord, marked: float | None, now: float) -> float | None:
@@ -282,7 +288,7 @@ def _output_seen(repo_root: Path, rec: WorkerRecord, marked: float | None, now: 
     return now
 
 
-def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str, launch: Launch) -> bool:
+def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str, launch: Launch, watch: TurnWatch) -> bool:
     """Append the events ``line`` records; True when one of them carried the turn's usage."""
     logged = False
     # One line can record more than one event (Claude's init: `started`, then a launch-mode mismatch).
@@ -293,6 +299,7 @@ def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str, launch: Lau
         # Parsed from the harness's stdout, which the model controls: a claim, not a fact the wrapper observed.
         append_event(repo_root, rec, parsed.type, source="worker", authority="worker_suggestion",
                      summary=parsed.summary, detail=parsed.detail)
+        watch.observe(parsed)   # what the post-run check and the retry watchdog read
         if parsed.usage is not None:
             _append_usage(repo_root, rec, parsed.usage)
             logged = True
@@ -318,16 +325,19 @@ def _append_usage(repo_root: Path, rec: WorkerRecord, usage: dict) -> None:
 
 
 def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], before_all: list[str],
-            usage_logged: bool, log_start: int = 0) -> int:
+            usage_logged: bool, watch: TurnWatch, log_start: int = 0) -> int:
     rec = load_record(repo_root, rec.worker_id)   # the record may have moved on (handoff, terminate)
     if rec.state == "terminated":
+        close_turn(repo_root, rec, watch, pause=False)   # the check still runs; a terminated worker is not paused
         return code
     if not usage_logged:   # one usage event per turn: a harness that reported none gets nulls, not zeros
         _append_usage(repo_root, rec, {})
     ready = fresh_ready(repo_root, rec, before)
+    paused = close_turn(repo_root, rec, watch)   # the post-run check (M8.2): a usage limit pauses, whatever the exit code
     exit_event(repo_root, rec, code, ready, before_all=before_all, log=log_path(repo_root, rec.worker_id),
                log_start=log_start)
-    _exit_state(repo_root, rec, ("completed" if ready else "idle") if code == 0 else "failed")
+    _exit_state(repo_root, rec, PAUSED_BY_LIMIT if paused   # a limit wins over READY and over the exit code
+                else ("completed" if ready else "idle") if code == 0 else "failed")
     return code
 
 

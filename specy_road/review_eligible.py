@@ -10,13 +10,15 @@ READY files as ``review_rca.rca_parties`` does:
 * executor of the leaf — it filed a READY before any valid review of its own on the leaf;
 * wrote a fix commit on this leaf — it filed a READY after reviewing the leaf;
 * rejected record — its record at this commit is invalid or does not count, with the gate's reason;
-* same family as an approval already counted, under ``reviewers_distinct_families``;
+* same family as an approval already counted, under ``reviewers_distinct_families`` (not when its approval would
+  satisfy an unmet ``policy.strong_review`` item, which counts whatever the family);
 * ``signed_reviews`` is on and its roster entry has no ``public_key``;
 * unavailable — ``available: false`` or a ``paused_until`` / ``unavailable_until`` still in force
   (skipped when that model's approval already counts at this commit).
 
 Every exclusion is checked first, so a model whose approval the gate counts is listed as counting only when none
-applies (a READY author never is); one that blocks may still approve on re-review.
+applies (a READY author never is); one that blocks may still approve on re-review. While a ``policy.strong_review``
+item is unmet, each row that can approve says whether its approval would satisfy it.
 """
 
 from __future__ import annotations
@@ -33,6 +35,7 @@ from specy_road.orchestrate_plan import (
 )
 from specy_road.orchestration_config import is_rostered_reviewer, substitute_for
 from specy_road.review_files import HUMAN, list_ready, list_review_history, list_reviews
+from specy_road.review_strong import item_label
 from specy_road.review_target import same_commit
 
 
@@ -111,13 +114,29 @@ def reviewer_eligibility(repo_root: Path, node: dict[str, Any], gate: Any, branc
     for entry in config["roster"]:
         model, family = entry["id"], entry.get("family")
         # Every exclusion first: an author or a second same-family approval never reads as counting.
-        why = (_roster_reason(config, node, model, counting=counting) or writers.get(model)
-               or rejected.get(model) or _same_family(gate, model, family))
+        why = (_roster_reason(config, node, model, counting=counting) or writers.get(model) or rejected.get(model)
+               or (None if _meets_strong(gate, model) else _same_family(gate, model, family)))
         ok = "its approval counts" if model in counting else _eligible_text(gate, node["id"], model)
         if why is None and model in counting and not is_available(entry):
             ok = "its approval counts; unavailable for new reviews"
+        elif why is None and model not in counting:
+            ok += _strong_text(gate, model)
         rows.append({"model": model, "family": family, "eligible": why is None, "reason": why or ok})
     return rows
+
+
+def _meets_strong(gate: Any, model: str) -> bool:
+    return any(model in item["require_one_of"] for _, item in gate.strong_unmet)
+
+
+def _strong_text(gate: Any, model: str) -> str:
+    """Which unmet ``strong_review`` items an approval from ``model`` would satisfy, and which not."""
+    if not gate.strong_unmet:
+        return ""
+    meets = [item_label(i, item) for i, item in gate.strong_unmet if model in item["require_one_of"]]
+    misses = [item_label(i, item) for i, item in gate.strong_unmet if model not in item["require_one_of"]]
+    return ((f"; would satisfy {', '.join(meets)}" if meets else "")
+            + (f"; would not satisfy {', '.join(misses)}" if misses else ""))
 
 
 def eligibility_lines(st: dict[str, Any]) -> list[str]:

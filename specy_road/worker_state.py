@@ -84,6 +84,7 @@ class WorkerRecord:
     harness_start: str | None = None  # the harness's start time (ps lstart): with the pid, its identity
     last_output_at: str | None = None  # the harness's last stdout line (the turn's launch until one); stalled reads it
     queued_message: str | None = None  # a follow-up from ``worker message`` while the wrapper was still running
+    limit_reset_at: str | None = None  # while paused_by_limit: when the usage limit lifts (worker_turn_check)
     toolkit_version: str | None = None
     unknown_fields: dict[str, Any] = field(default_factory=dict, repr=False)  # a newer schema's, kept on save
 
@@ -111,8 +112,7 @@ class WorkerEvent:
     op_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        d = {k: v for k, v in asdict(self).items() if v is not None}
-        return d
+        return {k: v for k, v in asdict(self).items() if v is not None}
 
 
 def _now() -> str:
