@@ -6,7 +6,7 @@ variables), never written in. Flagged: ``/Users/<name>`` and ``/home/<name>``
 (and the ``-Users-<name>`` / ``-home-<name>`` forms Claude Code uses for project directories),
 ``C:\\Users\\<name>\\``, ``/tmp/claude-<uid>`` and ``/private/tmp/claude-<uid>``, and
 Mac hostnames (``<host>-MacBook-Pro`` with ``.local``). These pass: the placeholder name ``x`` (``/Users/x/``),
-an angle-bracketed name (``/home/<name>/``), and homes that name no person (``Shared``, ``runner``, ``linuxbrew``).
+an angle-bracketed name (``/home/<name>/``), and homes that name no person (``Shared``, ``runner``, ``linuxbrew``, Windows ``Public`` and ``Default``).
 
 Usage: ``python scripts/check_machine_paths.py [--root DIR]``
 """
@@ -19,13 +19,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-#: Shared or CI-owned home directories that name no person.
-_NOT_A_PERSON = r"(?!(?:x|Shared|runner|linuxbrew)\b|<)"
+#: Placeholder, shared, system or CI-owned home directories that name no person.
+_NOT_A_PERSON = r"(?!(?:x|Shared|runner|linuxbrew|Public|Default)(?![A-Za-z0-9._])|<)"
 
 PATTERN = re.compile(
     rf"/(?:Users|home)/{_NOT_A_PERSON}[A-Za-z0-9._-]+"
-    r"|-(?:Users|home)-(?!x-)[A-Za-z0-9]"
-    r"|[A-Za-z]:\\Users\\(?!<)"
+    rf"|(?<![A-Za-z0-9])-(?:Users|home)-{_NOT_A_PERSON}[A-Za-z0-9._]+-"   # a project dir name, not prose
+    rf"|[A-Za-z]:\\{{1,2}}Users\\{{1,2}}{_NOT_A_PERSON}[A-Za-z0-9._-]+"
     r"|/(?:private/)?tmp/claude-\d"
     r"|-MacBook(?:-(?:Pro|Air))?(?:-\d+)?\.local\b"
 )
