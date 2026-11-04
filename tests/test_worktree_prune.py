@@ -246,6 +246,29 @@ def test_a_full_clone_remote_tracking_ref_whose_branch_left_the_copy_is_refused(
     assert clone.is_dir() and wt.is_dir()
 
 
+def _break_stash(git_dir: Path) -> None:
+    """``refs/stash`` naming a missing object: ``git stash list`` fails, status and other refs still read."""
+    (git_dir / "refs" / "stash").write_text("0123456789012345678901234567890123456789\n")
+
+
+def test_an_unreadable_stash_list_in_the_leaf_worktree_refuses(tmp_path: Path) -> None:
+    root, wt = _leaf(tmp_path)
+    _land(root, wt)
+    _break_stash(root / ".git")   # the leaf worktree shares the main checkout's stash
+    out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
+    assert out.returncode == 1 and "  - cannot read the stash list\n" in out.stderr
+    assert wt.is_dir()
+
+
+def test_an_unreadable_stash_list_in_a_nested_full_clone_refuses(tmp_path: Path) -> None:
+    root, wt, clone = _clone_leaf(tmp_path)
+    _break_stash(clone / ".git")
+    out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
+    assert out.returncode == 1
+    assert f"nested repo {UNCOVERED} (full clone): cannot read the stash list" in out.stderr
+    assert clone.is_dir() and wt.is_dir()
+
+
 @pytest.mark.parametrize(("make", "why"), [
     (lambda c: (c / "core.py").write_text("x = 6\n"), "(full clone): uncommitted or untracked: core.py"),
     (lambda c: ((c / "core.py").write_text("x = 6\n"), git(c, "stash", "push", "-q", "-m", "clone wip")),

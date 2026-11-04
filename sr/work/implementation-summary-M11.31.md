@@ -6,7 +6,7 @@
 - **`specy_road/bundled_scripts/worktree_cli.py`** (new): `specy-road worktree prune <ID> [--yes] [--repo-root]`. Prints the refusals and exits 1, or lists nested repos and ignored files. Without `--yes` it removes nothing and exits 0.
 - **`specy_road/cli.py`**: registers `worktree` in `_FORWARDED`.
 - **`docs/git-workflow.md`**: new "Retiring a leaf's worktree (`worktree prune`)" section, an index line in the agent quickstart, and the nested-repo "Removing the leaf's worktree" bullet now points to the command.
-- **`tests/test_worktree_prune.py`** (new): 21 tests.
+- **`tests/test_worktree_prune.py`** (new): 23 tests.
 
 ## Acceptance
 
@@ -75,6 +75,17 @@ Confirmed as listed: `specy_road/bundled_scripts/worktree_cli.py`, `specy_road/w
 - **Touch zones:** no file outside the touch zones was needed.
 - **Verification:** `python -m pytest -n 4 -q -p no:cacheprovider tests/test_worktree_prune.py` gives 21 passed. `specy-road file-limits` is OK, and `ruff check` on the changed Python files is clean.
 
+## Rework round 5 (review `gpt-5.6-sol-medium`, blocked at 8cc8aba5)
+
+- **Required change 1** asked that the command fail closed when stash state cannot be read in the leaf worktree or any nested repository, with public-CLI coverage showing `--yes` refuses and preserves the leaf worktree and a nested full clone when `git stash list` fails. Changes:
+  - **`specy_road/worktree_prune.py`:** `_stashes` now reads `git stash list` with `git_stdout` and returns `None` on failure, where before it turned the failure into "no stashes". `plan_prune` (leaf worktree) and `_check_nested` (each nested repo) refuse on `None`, with `cannot read the stash list` and `<label>: cannot read the stash list`.
+  - **Same pattern in the clone's ref listing:** `_lost_tips` read a full clone's `refs/heads` and `refs/remotes` with `or ""`, so a failed listing meant "no tips to check". It now returns `None` on failure, and `_check_nested` refuses with `cannot list its branches and remote-tracking refs`.
+  - **Docs:** `docs/git-workflow.md` says that an unreadable status, stash list or ref listing refuses.
+  - **Tests:** `test_an_unreadable_stash_list_in_the_leaf_worktree_refuses` and `test_an_unreadable_stash_list_in_a_nested_full_clone_refuses` are new. Both break `refs/stash` (the main checkout's, which the leaf worktree shares, and the clone's own), run `worktree prune M1 --yes`, and check exit 1, the refusal text, and that the directories remain.
+- **Red-green:** both tests fail against `8cc8aba5`'s `worktree_prune.py`: the CLI exits 0 and removes the worktree (2 failed). They pass with the fix.
+- **Touch zones:** no file outside the touch zones was needed.
+- **Verification:** `python -m pytest -n 4 -q -p no:cacheprovider tests/test_worktree_prune.py` gives 23 passed. `specy-road file-limits` is OK, and `ruff check` on the changed Python files is clean.
+
 ## Added
 
 ### Helpers
@@ -93,6 +104,8 @@ Confirmed as listed: `specy_road/bundled_scripts/worktree_cli.py`, `specy_road/w
 - The branch check is skipped when the local branch is gone. The worktree's `HEAD` is still checked.
 - A nested path that is not a repository top inside the worktree is skipped by the nested checks. The main worktree's status leaves out only the nested repos that were actually checked, so such a directory is still checked (or listed as ignored) as part of the worktree.
 - Unreadable status (main or nested): refuse.
+- Unreadable stash list (leaf worktree or nested repo): refuse (round 5).
+- A full clone whose branches and remote-tracking refs cannot be listed: refuse (round 5).
 - `--force` on removal is used only after the checks, so that ignored files do not block git. A locked worktree still fails.
 
 ### Mocks
@@ -111,6 +124,9 @@ Confirmed as listed: `specy_road/bundled_scripts/worktree_cli.py`, `specy_road/w
 - `test_unsaved_work_in_a_nested_full_clone_is_refused` (2 cases: edit, stash): A2, full-clone refusals.
 - `test_a_stash_made_in_a_detached_nested_linked_worktree_refuses_the_prune`: rework round 1. A2, an `On (no branch):` stash in a detached linked nested worktree refuses, through `plan_prune` and through the CLI with `--yes`, which leaves both directories in place.
 - `test_a_plain_directory_at_a_nested_path_is_checked_as_part_of_the_worktree`: guards the skip so that a non-repository directory at a nested path is not passed over unchecked. Since round 4 it expects the contained file, `lib/notes.txt`, in place of `lib/`.
+- `_break_stash` (test helper): points `refs/stash` at a missing object, so `git stash list` really fails while status and the other refs still read. No mock is involved.
+- `test_an_unreadable_stash_list_in_the_leaf_worktree_refuses`: rework round 5. A1, the CLI with `--yes` exits 1 with `cannot read the stash list` and the leaf worktree stays.
+- `test_an_unreadable_stash_list_in_a_nested_full_clone_refuses`: rework round 5. A2, the CLI with `--yes` exits 1 with `nested repo lib (full clone): cannot read the stash list`, and the clone and the leaf worktree stay.
 - `test_the_dry_run_names_each_ignored_file_inside_an_ignored_directory`: rework round 4. A1, the dry run names `build/app.bin` and `build/deep/cache.db` inside the ignored `build/`, and `--yes` then removes the worktree.
 - `test_a_custom_subject_stash_refuses_but_another_branchs_does_not`: rework round 2, item 1. A1, a stash with an unattributable subject refuses through the CLI with `--yes` and the worktree stays; another branch's stash is not listed.
 - `test_a_full_clone_branch_held_only_by_its_own_stale_remote_tracking_ref_is_refused`: rework round 2, item 2. A2, a branch held only by the clone's stale remote-tracking ref refuses through the CLI with `--yes`, and the clone and the leaf worktree stay.

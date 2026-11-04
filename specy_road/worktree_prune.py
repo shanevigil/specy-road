@@ -82,33 +82,39 @@ def _status(d: Path, skip: tuple[str, ...] = ()) -> tuple[list[str], list[str]] 
 _STASH_ON = re.compile(r"^(?:WIP on|On) ([^:]+):")   # git's own subjects; a branch name cannot hold ':'
 
 
-def _stashes(d: Path, branch: str, linked: bool) -> list[str]:
+def _stashes(d: Path, branch: str, linked: bool) -> list[str] | None:
     """Stash subjects that refuse: any for a clone; for a linked worktree (stash is shared), every one whose
     subject does not name another branch: made on ``branch``, on a detached ``HEAD`` (an uncovered nested
-    repo is detached) or under a custom subject could be this worktree's."""
+    repo is detached) or under a custom subject could be this worktree's. ``None`` when the stash list
+    cannot be read, which refuses too: no stash cannot be told from an unreadable one."""
     def names_another_branch(subject: str) -> bool:
         m = _STASH_ON.match(subject)
         return bool(m) and m.group(1) not in (branch, "(no branch)")
 
-    subjects = (git_text(["stash", "list", "--format=%gs"], d) or "").splitlines()
-    return [s for s in subjects if not (linked and names_another_branch(s))]
+    out = git_stdout(["stash", "list", "--format=%gs"], d)
+    if out is None:
+        return None
+    return [s for s in out.splitlines() if not (linked and names_another_branch(s))]
 
 
 def _held(repo: Path, sha: str, refs: list[str]) -> bool:
     return bool(git_text(["for-each-ref", "--count=1", "--contains", sha, *refs], repo))
 
 
-def _lost_tips(src: Path, d: Path, linked: bool) -> list[str]:
+def _lost_tips(src: Path, d: Path, linked: bool) -> list[str] | None:
     """``HEAD`` and, for a clone, each local branch and remote-tracking ref whose tip no branch or
     remote-tracking ref of ``src`` holds.
 
     A clone's own remote-tracking refs go with its directory and may be stale (the remote's branch
-    deleted since), so they are tips to keep, never a place that keeps them.
+    deleted since), so they are tips to keep, never a place that keeps them. ``None`` when a clone's refs
+    cannot be listed.
     """
     tips = [("HEAD", git_text(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"], d))]
     if not linked:
         out = git_text(["for-each-ref", "--format=%(refname:short) %(objectname)", "refs/heads", "refs/remotes"], d)
-        tips += [tuple(line.rsplit(" ", 1)) for line in (out or "").splitlines()]
+        if out is None:
+            return None
+        tips += [tuple(line.rsplit(" ", 1)) for line in out.splitlines()]
     return [f"{name} ({sha[:12]})" for name, sha in tips if sha and not _held(src, sha, ["refs/heads", "refs/remotes"])]
 
 
@@ -129,9 +135,14 @@ def _check_nested(plan: PrunePlan, main: Path, prefix: str) -> None:
         plan.ignored += [f"{prefix}{nr.path}/{p}" for p in ignored]
         if changed:
             plan.refusals.append(f"{label}: uncommitted or untracked: {', '.join(changed)}")
-        if stashes := _stashes(d, plan.branch, linked):
+        stashes, lost = _stashes(d, plan.branch, linked), _lost_tips(src, d, linked)
+        if stashes is None:
+            plan.refusals.append(f"{label}: cannot read the stash list")
+        elif stashes:
             plan.refusals.append(f"{label}: stashes: {'; '.join(stashes)}")
-        if lost := _lost_tips(src, d, linked):
+        if lost is None:
+            plan.refusals.append(f"{label}: cannot list its branches and remote-tracking refs")
+        elif lost:
             plan.refusals.append(f"{label}: commits on no branch or remote-tracking ref of {src}: "
                                  f"{', '.join(lost)}")
 
@@ -159,7 +170,10 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         plan.ignored = ignored + plan.ignored
         if changed:
             plan.refusals.append(f"uncommitted or untracked: {', '.join(changed)}")
-    if stashes := _stashes(wt, branch, linked=True):
+    stashes = _stashes(wt, branch, linked=True)
+    if stashes is None:
+        plan.refusals.append("cannot read the stash list")
+    elif stashes:
         plan.refusals.append(f"stashes that may be this worktree's: {'; '.join(stashes)}")
     return plan
 
