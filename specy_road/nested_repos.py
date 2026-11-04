@@ -28,7 +28,7 @@ from specy_road.finish_implementation_check import _clean, base_ref, in_zones, z
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_code, git_ok, git_text
 from specy_road.git_workflow_config import load_git_workflow_config
-from specy_road.runtime_paths import project_prefix, rebase_to_project
+from specy_road.runtime_paths import nested_repo_path, project_prefix, rebase_to_project
 
 
 class NestedRepoError(RuntimeError):
@@ -50,8 +50,7 @@ def nested_repos(repo_root: Path) -> list[NestedRepo]:
     out = []
     for item in data.get("nested_repos") or []:
         spec = {"path": item} if isinstance(item, str) else item
-        path = "/".join(seg for seg in spec["path"].split("/") if seg)   # one spelling per directory
-        out.append(NestedRepo(path, spec.get("integration_branch", data["integration_branch"]),
+        out.append(NestedRepo(nested_repo_path(item), spec.get("integration_branch", data["integration_branch"]),
                               spec.get("remote", data["remote"])))
     return out
 

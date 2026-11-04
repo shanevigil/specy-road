@@ -17,7 +17,7 @@ from pathlib import Path
 from specy_road.git_subprocess import git_text
 from specy_road.review_gate_agreement import report_gate_mismatch
 from specy_road.runtime_paths import project_prefix
-from specy_road.worktree_env import copy_pairs, env_setup_config, run_setup_cmd
+from specy_road.worktree_env import EnvSetupError, copy_pairs, copy_source, env_setup_config, run_setup_cmd
 
 
 def _worktree_tops(root: Path) -> list[Path]:
@@ -49,10 +49,15 @@ def report_env_setup(main: Path) -> bool:
         return False
     copies = ", ".join(src if src == dest else f"{src} -> {dest}" for src, dest in copy_pairs(conf))
     print(f"env_setup: copy {copies or 'nothing'}; cmd {conf.get('cmd') or 'none'}")
-    missing = [src for src, _dest in copy_pairs(conf) if not (main / src).is_file()]
-    for src in missing:
-        print(f"error: env_setup copies {src}, which is not a file in the main checkout ({main / src})",
-              file=sys.stderr)
+    missing = []
+    for src, _dest in copy_pairs(conf):
+        try:
+            if not copy_source(main, src).is_file():
+                missing.append(f"env_setup copies {src}, which is not a file in the main checkout ({main / src})")
+        except EnvSetupError as e:   # climbs past the git root: the pickup would refuse it
+            missing.append(str(e))
+    for problem in missing:
+        print(f"error: {problem}", file=sys.stderr)
     if not conf.get("cmd"):
         return bool(missing)
     code, out = run_setup_cmd(conf["cmd"], main)
