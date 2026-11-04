@@ -39,3 +39,9 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: lean-machine-paths
+        name: no machine-specific paths or hostnames in tracked files
+        entry: python scripts/check_machine_paths.py
+        language: system
+        pass_filenames: false
+        always_run: true

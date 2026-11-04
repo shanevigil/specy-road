@@ -39,6 +39,7 @@ If this repository ran **`specyrd init`**, you may have skills under `.agents/sk
 - Extend or parametrize an existing test before adding one. A review finding needs a new test only for a distinct regression.
 - Merging or removing a test is allowed when another test covers the behaviour and the commit names it. This overrides any general "never remove or edit tests" instruction.
 - Never weaken, rewrite or delete a failing behavioural test to make the suite pass.
+- Never commit machine-, user- or developer-specific values (home or temp paths, hostnames); resolve them at run time.
 - Stop when the behaviour list is covered and the gates pass. Then list every helper, branch or guard, mock and test you added, each with its reason.
 
 ## Version numbers (human-owned)

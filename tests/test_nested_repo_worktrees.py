@@ -20,7 +20,7 @@ from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import worker_ops as ops
 from specy_road import worker_reconcile as wrc
-from specy_road.git_workflow_config import validate_git_workflow_dict
+from specy_road.git_workflow_config import load_git_workflow_config, validate_git_workflow_dict
 from specy_road import worker_state as ws
 from specy_road.nested_repos import NestedRepoError, add_nested_worktrees, covers, nested_repos
 
@@ -64,6 +64,21 @@ def test_schema_takes_paths_and_objects_and_refuses_escapes() -> None:
     for bad in ("../up", "/abs", "a/./b", "a/../b"):
         assert _cfg({"nested_repos": [bad]}) is not None, bad
     assert _cfg({"nested_repos": [{"path": "svc", "branch": "x"}]}) is not None
+
+
+@pytest.mark.parametrize("twice", [["svc", "svc/"], ["a//b", {"path": "a/b/"}]])
+def test_schema_refuses_two_spellings_of_one_directory(twice: list) -> None:
+    """uniqueItems compares spellings; a second row for one directory would fail the second worktree add."""
+    err = _cfg({"nested_repos": twice})
+    assert err is not None and err.startswith("nested_repos: ") and "names the same directory as" in err
+    assert repr(twice[1]) in err and repr(twice[0]) in err
+
+
+def test_a_duplicated_nested_repo_is_a_config_error_not_two_rows(tmp_path: Path) -> None:
+    root = make_pickup_project(tmp_path, "nested_repos:\n  - gui/app\n  - gui/app/\n")
+    _data, err = load_git_workflow_config(root)
+    assert err and "'gui/app/' names the same directory as 'gui/app' (gui/app)" in err
+    assert nested_repos(root) == []
 
 
 def test_entries_default_to_the_main_repositorys_branch_and_remote(tmp_path: Path) -> None:

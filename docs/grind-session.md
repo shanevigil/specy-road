@@ -207,9 +207,9 @@ exclusive. Every leaf downstream of your in-flight one is blocked *on it*, so in
 a normal grind both buckets are non-empty when the loop stops, and only the claim
 tells you what to do next.
 
-**`--resume-in-flight`** turns the first case into a resumed cycle: the branch is
-checked out, the brief and prompt are restored if they went missing, and the leaf
-goes straight to implement and finish without a second pickup. Only claims
+**`--resume-in-flight`** turns the first case into a resumed cycle: the branch is checked out, the brief and prompt are restored if they went missing, and the leaf goes straight to implement and finish without a second pickup.
+**After a PM edits an in-flight leaf**, delete `work/prompt-<ID>.md` (and `work/brief-<ID>.md`) and resume: both are rewritten from the current graph and planning sheet; an existing one is kept, so a hand edit survives. (`specy-road prompt <ID> --role executor` writes a different file, `work/prompt-<ID>-executor-<model>.md`.)
+Only claims
 registered to a branch that **exists in this clone** qualify — a claim held by
 another lane reaches `active` through the shared registry or an *In Progress*
 status, and resuming one would put two implementers on the same node.

@@ -118,7 +118,7 @@ def test_abort_of_a_local_pickup_drops_the_claim_without_pushing(tmp_path: Path)
 def test_local_abort_keeps_an_untracked_file_the_advanced_base_tracks(tmp_path: Path) -> None:
     """M11.64 review: untracked files no longer block abort, so its reset must not overwrite one."""
     remote, app, other = tmp_path / "remote.git", tmp_path / "app", tmp_path / "other"
-    _git(tmp_path, "init", "-q", "--bare", str(remote))
+    _git(tmp_path, "init", "-q", "--bare", "-b", "main", str(remote))   # clone checks out main whatever init.defaultBranch is
     _scaffold(app)
     _git(app, "config", "user.email", "t@example.com")
     _git(app, "config", "user.name", "T")

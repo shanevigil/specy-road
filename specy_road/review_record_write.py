@@ -323,7 +323,8 @@ def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Pat
                  transcript: list[str] | None = None) -> int:
     """``prompt --channel cli``'s reviewer turn: run ``launch`` under the lock, then :func:`file_review` it;
     0 only when a record was filed. The node id is the hand-off directory's name; ``transcript`` gets the output
-    and, last, the outcome line, which the run record's reviewer-failure event then names."""
+    and, last, the outcome line (but a rerun request after a failed harness), which the run record's
+    reviewer-failure event then names."""
     out, log = output_path(reviews, model), reviews / f"RUN-{model}.log"
     try:
         with review_run_lock(reviews):
@@ -342,6 +343,8 @@ def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Pat
             transcript.append(f"error: {e}")
         return 1
     print(f"{outcome.state}: {outcome.path or outcome.reason}", file=sys.stderr)
-    if transcript is not None and outcome.state != "recorded":
+    # The outcome line goes last, for the run record's reviewer-failure event; but a rerun request after a harness
+    # failure is that failure's consequence, and the event reads a capacity error from the last plain line only.
+    if transcript is not None and outcome.state != "recorded" and not (rc and outcome.state == "rerun"):
         transcript.append(outcome.reason)
     return rc or (0 if outcome.state == "recorded" else 1)

@@ -10,15 +10,7 @@ from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.orchestration_guard_adapters import ADAPTERS
 from specy_road.orchestration_role_guard import ROLE_CHOICES, decide_role, orchestration_role
 from specy_road.tool_call_guard import read_payload
-
-
-def _answer(answer: tuple) -> int:
-    out, err, code = answer
-    if out:
-        print(out)
-    if err:
-        print(err, file=sys.stderr)
-    return code
+from specy_road.tool_call_guard_adapters import print_answer
 
 
 def cmd_orchestration_guard(ns: argparse.Namespace) -> int:
@@ -33,15 +25,15 @@ def cmd_orchestration_guard(ns: argparse.Namespace) -> int:
         resolve_repo_root(ns)
         command = ns.command or adapter.extract(read_payload(sys.stdin.read()))
         if not command:
-            return _answer(adapter.on_allow(None))
+            return print_answer(adapter.on_allow(None))
         if role not in ROLE_CHOICES:
-            return _answer(adapter.on_allow(None))
+            return print_answer(adapter.on_allow(None))
         v = decide_role(command, role=role)
     except Exception as e:  # noqa: BLE001 — fail closed
-        return _answer(adapter.on_deny(f"internal error ({e}); refusing rather than failing open"))
+        return print_answer(adapter.on_deny(f"internal error ({e}); refusing rather than failing open"))
     if v.denied:
-        return _answer(adapter.on_deny(v.reason))
-    return _answer(adapter.on_allow(None))
+        return print_answer(adapter.on_deny(v.reason))
+    return print_answer(adapter.on_allow(None))
 
 
 def build_parser() -> argparse.ArgumentParser:

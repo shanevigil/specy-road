@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from specy_road.cli_entry import run_cli
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worktree_prune import PruneError, plan_prune, remove
 
@@ -65,17 +66,15 @@ def build_parser() -> argparse.ArgumentParser:
             "including those inside ignored directories; removes only with --yes."
         ),
     )
+    prune.set_defaults(func=cmd_prune)
     prune.add_argument("node_id", metavar="NODE_ID")
     prune.add_argument("--yes", action="store_true", help="Remove the worktree after the checks pass.")
     add_repo_root_arg(prune)
-    prune.set_defaults(func=cmd_prune)
     return p
 
 
 def main(argv: list[str] | None = None) -> None:
-    argv = list(sys.argv[1:] if argv is None else argv)
-    ns = build_parser().parse_args(argv)
-    raise SystemExit(ns.func(ns))
+    run_cli(build_parser, argv)
 
 
 if __name__ == "__main__":

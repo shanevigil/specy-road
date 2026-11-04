@@ -1,5 +1,5 @@
 ---
-description: "Use when a PM asks to brainstorm or expand roadmap ideas under a node: diverge in rounds, converge, source evidence, then the human triages and promotes. Not a design-elicitation or requirements skill."
+description: "Use when a PM asks to brainstorm or expand roadmap ideas under a node: diverge in rounds, converge, source evidence, then the human triages and promotes. Run `specy-road brainstorm start` first, before reading roadmap-context.md, roadmap/ or planning/ (not even in the same step as this skill). Not a design-elicitation or requirements skill."
 ---
 
 Run `start` **before reading anything else**: not `roadmap-context.md`, not the
@@ -23,7 +23,8 @@ prompt file (`-r2-`, `-recommend-`, `-evidence-`). **Read that file and follow
 it.** It asks you to propose an answer to each frame key from what the PM
 already said (marking those `assumed`) rather than question them cold,
 neutralise their assertions into questions, record the frame (`brainstorm
-frame`), plan an allocation grid of lenses × directions with a diversity
+frame`; when no person can answer during the run, record your proposals as
+`assumed:` and continue rather than stopping to wait), plan an allocation grid of lenses × directions with a diversity
 operator per cell, and then generate volume as prose concept cards before
 recording anything. Do not research and do not read the roadmap in this round
 — both anchor you. Record every idea with its origin:

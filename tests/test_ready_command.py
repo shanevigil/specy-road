@@ -10,7 +10,7 @@ import pytest
 from tests.review_repo_helpers import diverge, git, make_review_repo
 from tests.test_models_and_prompt import make_profile_repo
 
-from specy_road.bundled_scripts import review_cli, role_prompt
+from specy_road.bundled_scripts import review_cli, review_packet, role_prompt
 from specy_road.cli import registered_agent_command_names
 from specy_road.review_files import load_ready, reviews_dir
 
@@ -102,6 +102,39 @@ def test_handoff_status_still_validates_a_hand_written_ready(tmp_path: Path, cap
 def test_executor_prompt_tells_the_executor_to_write_ready_with_the_command(tmp_path: Path) -> None:
     text = role_prompt.build_prompt(make_profile_repo(tmp_path), "M1.1", role="executor", model="opus")[0]
     step = next(line for line in text.splitlines() if line.startswith("4. "))
-    assert "Then write `READY-opus.md` with `specy-road ready M1.1 --model=opus --verify '<cmd>=<exit>' ...`" in step
-    assert "refuses a non-zero `--verify`" in step and "`--red-green '<cmd>=<exit>'`" in step
+    assert "Then write `READY-opus.md` with `specy-road ready M1.1 --model=opus --run '<cmd>' ...`" in step
+    assert "the last lines of its output, which the reviewers' packet shows" in step
+    assert "refuses a non-zero exit" in step and "`--red-green '<cmd>=<exit>'`" in step
     assert "handoff-ready.template.md" not in step
+
+
+def test_ready_run_records_the_tail_and_the_packet_shows_it(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    monkeypatch.chdir(repo)   # --run runs from the current directory, as the executor would
+    script = "import sys; print('noise', flush=True); print('12 passed', file=sys.stderr)"
+    cmd = f'python3 -c "{script}"'
+    assert _cli("ready", "M1.1", "--model", "opus", "--run", cmd, "--verify", "ruff .=0",
+                "--repo-root", str(repo)) == 0
+    assert f"running: {cmd}" in capsys.readouterr().err
+    r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
+    assert r.ok, r.errors
+    assert r.data["verify"] == [{"cmd": "ruff .", "exit": 0}, {"cmd": cmd, "exit": 0, "tail": "noise\n12 passed"}]
+    text = review_packet.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    section = text.split(f"### `{cmd}` → exit 0", 1)[1].split("###", 1)[0]
+    assert "noise\n12 passed" in section and "(no output recorded)" not in section
+    assert "### `ruff .` → exit 0\n\n```\n(no output recorded)" in text   # --verify keeps no output
+
+
+def test_ready_run_refuses_a_failing_command_with_its_tail_and_writes_nothing(tmp_path: Path, monkeypatch,
+                                                                              capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    capsys.readouterr()
+    cmd = "python3 -c \"import sys; print('1 failed'); sys.exit(3)\""
+    assert _cli("ready", "M1.1", "--model", "opus", "--run", cmd, "--repo-root", str(repo)) == 1
+    err = capsys.readouterr().err
+    assert f"failing verifier: `{cmd}` exited 3; its last lines:\n1 failed" in err and "--red-green" in err
+    assert not (reviews_dir(repo, "M1.1") / "READY-opus.md").exists()
+    git(repo, "checkout", "-q", "-b", "feature/other")   # a cheap refusal comes before any command runs
+    assert _cli("ready", "M1.1", "--model", "opus", "--run", "touch ran", "--repo-root", str(repo)) == 1
+    assert "not the registered" in capsys.readouterr().err and not (tmp_path / "ran").exists()

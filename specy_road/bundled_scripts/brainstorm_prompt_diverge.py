@@ -107,6 +107,13 @@ def frame_lines(session: BrainstormSession) -> list[str]:
         "--answer \"not-the-question=...\" --answer \"assumed-vs-known=...\"",
         "```",
         "",
+        "**When no person can answer during this run** (a headless or one-shot "
+        "session, or the request was to produce the ideas now), do not stop to "
+        "wait for the PM: record your proposed answers with the command above, "
+        "every one the PM has not confirmed prefixed `assumed:` (a required key "
+        "included), go on to Step 2, and end your report by listing the "
+        "assumed answers so the PM can correct them with `brainstorm frame`.",
+        "",
     ]
     if session.frame:
         lines += ["Frame already recorded:", ""]

@@ -8,6 +8,7 @@ removal must never be inferred from branch absence.
 
 from __future__ import annotations
 
+import contextlib
 import subprocess
 from pathlib import Path
 
@@ -149,3 +150,23 @@ def test_removal_commit_message_names_the_claims(repo: Path, monkeypatch) -> Non
 
     commit = next(a for a in calls if a[0] == "commit")
     assert "alpha, beta" in commit[-1]
+
+
+def test_removal_runs_under_the_repository_lock(repo: Path, monkeypatch) -> None:
+    """It checks out and commits on the integration branch, as pickup and finish do: one at a time."""
+    events: list = []
+
+    @contextlib.contextmanager
+    def lock(root: Path, *, operation: str):
+        events.append(("lock", operation))
+        yield
+        events.append("unlock")
+
+    monkeypatch.setattr(rp, "pickup_finish_lock", lock)
+    monkeypatch.setattr(rp, "sync_integration_branch", lambda *a, **k: events.append("sync"))
+    monkeypatch.setattr(rp, "_resolve_removals", lambda root, reg, names: [])
+    monkeypatch.setattr(rp, "_remove_and_push", lambda *a: events.append("commit+push") or 0)
+    with pytest.raises(SystemExit) as e:
+        rp.main(["--remove", "alpha", "--repo-root", str(repo)])
+    assert e.value.code == 0
+    assert events == [("lock", "registry-prune"), "sync", "commit+push", "unlock"]

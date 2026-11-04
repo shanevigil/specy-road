@@ -48,6 +48,9 @@ if step.get("chmod"):   # a permission change alone: content, size and mtime sta
 if step.get("git"):   # a git command in the checkout the harness was started in (an index-only write)
     import subprocess
     subprocess.run(["git", *step["git"]], check=True, capture_output=True)
+if step.get("say"):   # an assistant message before the result
+    print(json.dumps({"type": "assistant", "session_id": sid,
+                      "message": {"content": [{"type": "text", "text": step["say"]}]}}), flush=True)
 answer = json.dumps(step["answer"]) if "answer" in step else step.get("raw", "filed")
 if step.get("plain"):   # a harness that prints only its final message
     print(answer, flush=True)

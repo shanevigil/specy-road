@@ -39,6 +39,7 @@ from specy_road.finish_modes import (
     merge_landing_preflight,
 )
 from specy_road.finish_pr_merge import pr_merge_integration_or_exit
+from specy_road.finish_on_complete_override import on_complete_override_or_exit
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context_for_finish
 from specy_road.generated_files import (
     GENERATED_COMMITTED,
@@ -332,6 +333,10 @@ def _finish_locked(args) -> None:
             file=sys.stderr,
         )
         raise SystemExit(1)
+    on_complete_override_or_exit(
+        ROOT, cli=args.on_complete, branch=branch,
+        acknowledged=args.override_on_complete,
+    )
 
     ctx = _resolve_main_context(args, branch)
     codename, reg, nodes = ctx["codename"], ctx["reg"], ctx["nodes"]

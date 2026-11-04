@@ -144,5 +144,7 @@ jobs:
         run: python scripts/check_clones.py
       - name: Lean-code gate - private imports in tests (vs constraints/test-private-imports-baseline.txt)
         run: python scripts/check_test_private_imports.py
+      - name: No machine-specific paths or hostnames in tracked files
+        run: python scripts/check_machine_paths.py
       - name: Tests
         run: pytest -n auto

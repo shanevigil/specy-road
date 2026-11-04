@@ -174,7 +174,8 @@ capability specy-road turns off for executors (memory, background tasks, Codex `
 `specy-road orchestration guard --format … --print-config`) deny role-inappropriate git and cloud
 commands; `worker delegate` / `review delegate` export `SPECY_ROAD_ORCHESTRATION_ROLE` so the
 installed command can read the role; pair them with the shared-checkout guard from
-`specy-road session guard --print-config`.
+`specy-road session guard --print-config`. The hook judges Bash tool calls only (including what
+`sh -c`, `eval`, `$(…)`, `xargs` and `!` git aliases run); it does not see file-edit tools.
 
 ## Harnesses that route models
 
@@ -200,7 +201,7 @@ Each worker turn's `usage` event records `requested_model` (the `--model` the la
 `channels.cli`'s own when that is one simple command with a literal value; `null` when it passed none, its
 command is a list or pipeline, or the shell expands the value) and `observed_model` (the model the harness's `system/init` line named; Claude Code and
 Cursor print one, Codex does not), beside `harness_version`. When both are known
-and differ (ignoring case), the event's summary ends `model mismatch: told <requested>, harness reported
+and differ (ignoring case, and treating `-`, `_` and spaces alike, so Cursor's `Composer 2.5` matches `composer-2.5`), the event's summary ends `model mismatch: told <requested>, harness reported
 <observed>`, which `worker sync` prints. An alias the harness resolves to another id reads as a mismatch
 too.
 
@@ -325,8 +326,11 @@ order:
   anything, so a local model's port can be checked first.
 - **Eligibility.** A leaf's `executor_eligibility` (default `any`) names a
   roster `class` tag such as `senior`; only executors with that tag qualify.
-- **Availability.** A roster entry with `unavailable_until` is skipped through
-  that date; a substitution says who stands in meanwhile.
+- **Availability.** A roster entry with `available: false` is skipped, one with
+  `paused_until` is skipped until that time, and legacy `unavailable_until` is
+  skipped through that date; `roadmap/orchestration.local.yaml` can set the first
+  two for this working tree only ([orchestration.md](orchestration.md#roadmaporchestrationyaml),
+  "Local availability overlay"). A substitution says who stands in meanwhile.
 - **Cost.** Among capable executors (profile executor score 3 or more, or no
   profile) the cheapest list price wins. Reviewers rank by reviewer score,
   then cost; the coordinator by coordinator score.

@@ -37,6 +37,7 @@ from specy_road.session_presence import (
 from specy_road.session_overlap import overlap_warning_lines
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import ADAPTERS, decide, read_payload
+from specy_road.tool_call_guard_adapters import print_answer
 
 
 def _agent(ns: argparse.Namespace) -> str:
@@ -151,15 +152,6 @@ def cmd_check(ns: argparse.Namespace) -> int:
     return 1
 
 
-def _answer(answer: tuple) -> int:
-    out, err, code = answer
-    if out:
-        print(out)
-    if err:
-        print(err, file=sys.stderr)
-    return code
-
-
 def cmd_guard(ns: argparse.Namespace) -> int:
     """Allow or deny one shell command; the body of every harness hook adapter.
 
@@ -178,13 +170,13 @@ def cmd_guard(ns: argparse.Namespace) -> int:
         root = resolve_repo_root(ns)
         command = ns.command or adapter.extract(read_payload(sys.stdin.read()))
         if not command:
-            return _answer(adapter.on_allow(None))
+            return print_answer(adapter.on_allow(None))
         v = decide(root, command, agent=_agent(ns), always=ns.always)
     except Exception as e:  # noqa: BLE001 — fail closed, loudly
-        return _answer(adapter.on_deny(f"internal error ({e}); refusing rather than failing open"))
+        return print_answer(adapter.on_deny(f"internal error ({e}); refusing rather than failing open"))
     if v.allowed:
-        return _answer(adapter.on_allow(v.reason or None))
-    return _answer(adapter.on_deny(v.reason))
+        return print_answer(adapter.on_allow(v.reason or None))
+    return print_answer(adapter.on_deny(v.reason))
 
 
 def build_parser() -> argparse.ArgumentParser:

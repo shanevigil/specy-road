@@ -43,6 +43,7 @@ def _repo(tmp_path: Path, *, gate: bool, orchestration: bool) -> Path:
     git(repo, "remote", "add", "origin", str(bare))
     git(repo, "push", "-q", "origin", "--all")
     git(repo, "fetch", "-q", "origin")
+    git(repo, "remote", "set-head", "origin", "dev")   # as clone does; fetch does it only from git 2.48
     return repo
 
 

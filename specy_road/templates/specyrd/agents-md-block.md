@@ -42,6 +42,8 @@ Focused brief: `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md`. Its `## 
 <!-- prevents: redundant tests kept forever because a harness-wide instruction forbids touching tests | enforced: advisory; the commit must name the covering test | ref: docs/design-notes/lean-code-census.md -->
 - Never weaken, rewrite or delete a failing behavioural test to make the suite pass.
 <!-- prevents: a green suite bought by removing the test that caught the bug | enforced: reviewers judge the diff through review-packet | ref: tests/test_lean_rules.py -->
+- Never commit machine-, user- or developer-specific values (home or temp paths, hostnames); resolve them at run time.
+<!-- prevents: a contributor's home directory, temp paths or hostname published in the repo and its history | enforced: advisory in adopter repos; the toolkit's own CI runs scripts/check_machine_paths.py | ref: AGENTS.md, Lean changes and tests -->
 - Stop when the behaviour list is covered and the gates pass. Then list every helper, branch or guard, mock and test you added, each with its reason.
 <!-- prevents: open-ended polishing and additions the reviewer never hears about | enforced: review-packet flags a summary with no Added inventory (bundled_scripts/review_packet.py) | ref: tests/test_lean_rules.py -->
 

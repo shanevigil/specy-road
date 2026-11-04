@@ -171,19 +171,21 @@ def reviewer_packet(root: Path, node_id: str, model: str, t: ReviewTarget,
 
 
 def reviewer_lines(root: Path, node_id: str, model: str, t: ReviewTarget, ref: str | None,
-                   loop, read_back: bool = True) -> tuple[list[str], str | None, str]:
+                   loop, read_back: bool = True, config: dict | None = None) -> tuple[list[str], str | None, str]:
     """``(preamble lines, packet text, error)`` for a reviewer; the packet is ``None`` on error. The preamble
     lets a resumed session approve when the packet is ``model``'s delta and ``policy.reviewer_resumed_delta``
     is on (M11.36); ``read_back`` (specy-road reads its final message and files the record, as
-    ``review delegate`` and ``--channel cli`` do) says not to file it by hand (M8.3)."""
+    ``review delegate`` and ``--channel cli`` do) says not to file it by hand (M8.3). ``config``'s
+    ``policy.signed_reviews`` adds ``--sign-key`` to the record command."""
+    signed = bool(((config or {}).get("policy") or {}).get("signed_reviews"))
     packet, err = reviewer_packet(root, node_id, model, t, ref)
     if packet is None:
         return [], None, err
     # reviewer_packet writes PACKET-<model>.md only for a delta round (and removes a stale one first)
     resumed = (reviews_dir(root, node_id) / f"PACKET-{model}.md").is_file() and resumed_delta_on(root)
-    return (reviewer_preamble(node_id, model, ref, resumed_delta=resumed) + REMOVED_TEXT_LINES + PROBE_RULES_LINES
-            + LAUNCH_MODE_LINES + verify_cmd_lines(root) + reviewer_lesson_lines(root) + escalated_note(loop, node_id)
-            + (READ_BACK_LINES if read_back else PASTED_LINES)), packet, ""
+    return (reviewer_preamble(node_id, model, ref, resumed_delta=resumed, signed=signed) + REMOVED_TEXT_LINES
+            + PROBE_RULES_LINES + LAUNCH_MODE_LINES + verify_cmd_lines(root) + reviewer_lesson_lines(root)
+            + escalated_note(loop, node_id) + (READ_BACK_LINES if read_back else PASTED_LINES)), packet, ""
 
 
 def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
@@ -249,7 +251,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
         if context_feedback:
             lines += CONTEXT_FEEDBACK_LINES
     elif role == "reviewer":
-        preamble, packet, err = reviewer_lines(root, node_id, model, t, ref, loop, read_back)
+        preamble, packet, err = reviewer_lines(root, node_id, model, t, ref, loop, read_back, config)
         if packet is None:
             return "", prof, err
         lines += preamble

@@ -1,10 +1,12 @@
-"""Lean-code gates: scripts/check_clones.py, check_test_private_imports.py, mutation_report.py."""
+"""Lean-code gates: scripts/check_clones.py, check_test_private_imports.py, check_machine_paths.py,
+mutation_report.py."""
 
 from __future__ import annotations
 
 import importlib.util
 import json
 import shutil
+import subprocess
 import textwrap
 from pathlib import Path
 
@@ -24,6 +26,7 @@ def _load(name: str):
 check_clones = _load("check_clones")
 private_imports = _load("check_test_private_imports")
 mutation_report = _load("mutation_report")
+machine_paths = _load("check_machine_paths")
 
 PYLINT_OUTPUT = textwrap.dedent(
     """\
@@ -168,6 +171,59 @@ def test_private_imports_fail_on_new_reference(tmp_path, capsys, source):
     assert private_imports.main([*args, "--update-baseline"]) == 0
     assert "tests/test_new.py: specy_road.core._secret" in baseline.read_text()
     assert private_imports.main(args) == 0
+
+
+# --- check_machine_paths ----------------------------------------------------
+# Samples are split ("/Users/" + "alice/") so this file does not trip the repo scan itself.
+
+
+def test_machine_paths_pass_on_this_repo():
+    assert machine_paths.main([]) == 0
+
+
+@pytest.mark.parametrize(
+    "line, flagged",
+    [
+        ("cd /Users/" + "alice/repo", True),
+        ("cd /home/" + "alice/repo", True),
+        ('"/Users/' + 'alice"', True),
+        ("~/.claude/projects/-home-" + "alice-repo", True),
+        ("C:\\" + "Users\\alice\\repo", True),
+        ("~/.claude/projects/-Users-" + "alice-repo", True),
+        ("/private/tmp/claude-" + "501/scratchpad", True),
+        ("/tmp/claude-" + "1000/scratchpad", True),
+        ("alice@alices-" + "MacBook-Pro.local", True),
+        ("an M3-" + "MacBook review", False),
+        ("work-from-" + "home-policy and the-" + "Users-guide", False),
+        ("~/.claude/projects/-home-" + "runner-work", False),
+        ("C:" + "\\\\Users\\\\alice", True),
+        ("C:\\" + "Users\\Public\\Desktop", False),
+        ("cd /home/" + "x-user/repo", True),
+        ("cd /Users/" + "runner-person/repo", True),
+        ("C:\\" + "Users\\Default-user\\repo", True),
+        ("c:\\" + "users\\alice\\repo", True),
+        ("file:///" + "Users/alice/repo", True),
+        ("https://example.com/" + "home/alice/page", True),   # no URL exemption: reword such a link
+        ("cc -I/home/" + "alice/include -L/Users/" + "alice/lib", True),
+        ("file://localhost/" + "Users/alice/repo", True),
+        ("file://LOCALHOST/" + "Users/alice/repo", True),
+        ("file://C:/" + "Users/alice/repo", True),
+        ("ssh://host/" + "home/alice/repo", True),
+        ("vscode://file/" + "Users/alice/repo", True),
+        ("curl https://example.com|/home/" + "alice/bin/filter", True),
+        ("cp x /Users/" + "Shared/ and /home/" + "runner/work", False),
+        ('Path("/Users/x/my_app")', False),
+        ("-Users-x-my-app-v2", False),
+        ("no `/home/<name>/` or `C:\\Users\\<name>\\` paths", False),
+    ],
+)
+def test_machine_paths_flag_personal_paths_only(tmp_path, capsys, line, flagged):
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / "notes.md").write_text(line + "\n", encoding="utf-8")
+    subprocess.run(["git", "add", "notes.md"], cwd=tmp_path, check=True)
+
+    assert machine_paths.main(["--root", str(tmp_path)]) == int(flagged)
+    assert ("notes.md:1:" in capsys.readouterr().out) is flagged
 
 
 # --- mutation_report --------------------------------------------------------

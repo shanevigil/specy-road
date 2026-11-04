@@ -12,6 +12,15 @@ import sys
 from collections.abc import Callable
 
 
+def run_cli(
+    build_parser: Callable[[], argparse.ArgumentParser],
+    argv: list[str] | None = None,
+) -> None:
+    """Parse ``argv`` (default ``sys.argv[1:]``) and exit with the chosen handler's status."""
+    ns = build_parser().parse_args(list(sys.argv[1:] if argv is None else argv))
+    raise SystemExit(ns.func(ns))
+
+
 def run_forwarded_cli(
     build_parser: Callable[[], argparse.ArgumentParser],
     command: str,

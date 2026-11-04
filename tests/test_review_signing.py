@@ -12,8 +12,9 @@ from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
 
 from specy_road import review_signing as rs
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
-from specy_road.bundled_scripts import review_cli
-from specy_road.review_files import load_review, review_path, reviews_dir
+from specy_road.bundled_scripts import review_cli, role_prompt
+from specy_road.bundled_scripts import review_packet as rp
+from specy_road.review_files import PACKET_NAME, load_review, review_path, reviews_dir
 from specy_road.review_gate import evaluate_gate
 
 pytestmark = pytest.mark.skipif(shutil.which("ssh-keygen") is None, reason="needs OpenSSH ssh-keygen")
@@ -181,3 +182,23 @@ def test_human_approval_needs_a_key_under_signed_reviews(tmp_path: Path, monkeyp
     assert (e.value.code or 0) == 0
     rec = load_review(review_path(repo, "M1.1", "human"))
     assert rec.data["signature"] and rs.verify(rec.data, rec.data["signature"], pub, "human")[0]
+
+
+@pytest.mark.parametrize("signed", [True, False])
+def test_reviewer_prompt_and_handoff_status_name_the_sign_key(tmp_path: Path, capsys, signed: bool) -> None:
+    _key_path, pub = _key(tmp_path, "opus")
+    repo = make_review_repo(tmp_path, orchestration=_roster(pub, signed=signed))
+    assert _cli("handoff", "status", "M1.1", "--repo-root", str(repo)) == 1   # not met yet
+    status = capsys.readouterr().out
+    reviews_dir(repo, "M1.1").mkdir(parents=True)
+    (reviews_dir(repo, "M1.1") / PACKET_NAME).write_text(rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[]))
+    text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="reviewer", model="opus")
+    assert err is None, err
+    record = "`specy-road review record M1.1 --model opus --verdict approve|block --file <notes.md>"
+    if signed:
+        assert f"{record} --sign-key <path to your private key>`." in text
+        assert "`policy.signed_reviews` is on: `review record` refuses a record without `--sign-key`" in text
+        assert "can approve (file a signed record: `specy-road review record --sign-key <your private key>`)" in status
+    else:
+        assert f"{record}`." in text and "--sign-key" not in text
+        assert "can approve (file with `specy-road review record`)" in status and "--sign-key" not in status
