@@ -31,6 +31,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, load_chore
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text
 from specy_road.orchestration_config import harness_model
@@ -146,6 +147,8 @@ def _turn(h: _Harness, launch: Launch, log: Path) -> dict[str, Any]:
 def _start(repo_root: Path, t: ReviewTarget, model: str, ref: str | None, h: _Harness,
            resume: bool) -> tuple[str, str | None]:
     """``(prompt text, session to resume)``; refuses a resume the record cannot support."""
+    if not resume and t.node.get("chore"):
+        return chore_prompt(t.node["chore"], "reviewer", model, repo_root, commit=t.commit), None
     if not resume:
         text, _prof, err = build_prompt(repo_root, t.node["id"], role="reviewer", model=model, ref=ref)
         if err:
@@ -200,11 +203,20 @@ def _prompt_file(repo_root: Path, node_id: str, model: str, text: str, suffix: s
 def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = None, resume: bool = False,
              retries: int = DEFAULT_RETRIES, backoff: float = DEFAULT_BACKOFF, worktree: Path | None = None,
              sleep: Callable[[float], None] = time.sleep) -> dict[str, Any]:
-    """Run the reviewer until it ends or runs out of capacity retries; returns the run record."""
-    try:
-        t = resolve_target(repo_root, node_id, ref)
-    except ReviewTargetError as e:
-        raise DelegateError(str(e)) from None
+    """Run the reviewer until it ends or runs out of capacity retries; returns the run record.
+
+    ``node_id`` may be a chore slug started with ``--review`` (chore_cli): the reviewer runs in its worktree."""
+    chore = load_chore(repo_root, node_id)
+    if chore is not None:
+        if chore.get("closed_at") or not chore["review"]:
+            raise DelegateError(f"chore {node_id} is closed" if chore.get("closed_at")
+                                else f"chore {node_id} was started without --review")
+        t, worktree = chore_target(repo_root, chore), worktree or Path(chore["worktree"])
+    else:
+        try:
+            t = resolve_target(repo_root, node_id, ref)
+        except ReviewTargetError as e:
+            raise DelegateError(str(e)) from None
     entry = _entry(repo_root, model)
     cwd = (worktree or Path(git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root)).resolve()
     h = _Harness(repo_root, entry, node_id, cwd)

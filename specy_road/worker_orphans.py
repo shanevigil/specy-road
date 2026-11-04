@@ -33,6 +33,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any
 
+from specy_road.bundled_scripts.chore_cli import load_chore
 from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.git_subprocess import git_text
 from specy_road.git_workflow_config import resolve_integration_defaults
@@ -94,11 +95,14 @@ def _cause(rec: WorkerRecord, leaves: _Leaves) -> str | None:
     if rec.state not in HELD_STATES:
         return None
     why = []
+    chore = load_chore(leaves.root, rec.node_id)   # no claim or graph node: a chore is over once it is closed
+    if chore is not None and chore.get("closed_at"):
+        why.append(f"chore {rec.node_id} is closed")
     # Only a record that names the claim it was delegated under can have lost it (delegate and adopt always
     # set ``branch``); one without never had a claim to compare, so the claim cause does not apply to it.
-    if rec.branch and (where := leaves.unclaimed(rec.node_id)):
+    if chore is None and rec.branch and (where := leaves.unclaimed(rec.node_id)):
         why.append(f"no claim on {rec.node_id} on {where}")
-    if where := leaves.complete(rec.node_id):
+    if chore is None and (where := leaves.complete(rec.node_id)):
         why.append(f"{rec.node_id} is Complete on {where}")
     if not Path(rec.worktree).is_dir():
         why.append(f"worktree {rec.worktree} is gone")

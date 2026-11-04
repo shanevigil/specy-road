@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, open_chore
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text, run
@@ -48,11 +49,17 @@ def _target(repo_root: Path, node_id: str):
     return t
 
 
-def _entry_and_harness(repo_root: Path, model: str, harness: str | None) -> tuple[dict[str, Any], str]:
+def _entry_and_harness(repo_root: Path, model: str, harness: str | None, *,
+                       roster_free: bool = False) -> tuple[dict[str, Any], str]:
+    """``roster_free`` (a chore): a model off the roster runs on ``harness`` with an entry naming only its id."""
     config, err = pinned_config(repo_root)
     if err:
         raise WorkerError(f"orchestration config: {err}")
     entry = roster_entry(config, model)
+    if entry is None and roster_free:
+        if not harness:
+            raise WorkerError(f"{model!r} is not in the roster; pass --harness to run it on a chore")
+        return {"id": model, "roster_free": True}, harness
     if entry is None:
         raise WorkerError(f"{model!r} is not in the roster (roadmap/orchestration.yaml)")
     configured = entry.get("harness")
@@ -164,15 +171,21 @@ def _brief_into(wt: Path, repo_root: Path, node_id: str, t) -> None:
         dest.write_text(render_brief(node_id, index(t.nodes), repo_root=repo_root, include_history=False), encoding="utf-8")
 
 
-def delegate(repo_root: Path, node_id: str, model: str, *, harness: str | None = None,
+def delegate(repo_root: Path, node_id: str, model: str | None, *, harness: str | None = None,
              worktree: Path | None = None, offline: bool = False) -> tuple[WorkerRecord, bool]:
     """``(record, created)``: an active worker on the leaf is returned, not duplicated.
 
     The existing-worker check, the cap and the launch happen under the workers lock, so two concurrent delegates
     on one leaf launch one harness. The roster's ``preflight`` and the prompt build run **between** two lock
     sections, not under one: a hook witness must never queue behind them. ``offline`` counts this checkout's
-    workers only and pushes no lease (worker_lease)."""
-    entry, harness = _entry_and_harness(repo_root, model, harness)
+    workers only and pushes no lease (worker_lease). ``node_id`` may be a chore slug (chore_cli), whose
+    ``--model`` and ``--harness`` are the defaults here."""
+    chore = open_chore(repo_root, node_id)
+    if chore is not None:
+        model, harness = model or chore["model"], harness or chore["harness"]
+    if not model:
+        raise WorkerError(f"--model is required for {node_id}")
+    entry, harness = _entry_and_harness(repo_root, model, harness, roster_free=chore is not None)
     with workers_lock(repo_root):   # before any network read: a retry is answered while the remote is down
         if existing := _slot_or_existing(repo_root, node_id):
             return existing, False
@@ -180,17 +193,20 @@ def delegate(repo_root: Path, node_id: str, model: str, *, harness: str | None =
     with workers_lock(repo_root):
         if existing := _slot_or_existing(repo_root, node_id, foreign=foreign):
             return existing, False
-    t = _target(repo_root, node_id)
-    _check_eligible(entry, t.node, model)
+    t = chore_target(repo_root, chore) if chore else _target(repo_root, node_id)
+    if not entry.get("roster_free"):
+        _check_eligible(entry, t.node, model)
     _preflight(entry, repo_root)
-    text, _prof, err = build_prompt(repo_root, node_id, role="executor", model=model)
+    text, _prof, err = (chore_prompt(chore, "executor", model, repo_root), None, None) if chore else \
+        build_prompt(repo_root, node_id, role="executor", model=model)
     if err:
         raise WorkerError(err)
     with workers_lock(repo_root):
         existing = _slot_or_existing(repo_root, node_id, foreign=foreign)   # re-checked: another delegate may have landed
         if existing:
             return existing, False
-        return _launch_locked(repo_root, node_id, model, harness, entry, t, text, worktree, offline), True
+        return _launch_locked(repo_root, node_id, model, harness, entry, t, text,
+                              worktree or (Path(chore["worktree"]) if chore else None), offline), True
 
 
 def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entry: dict[str, Any], t,
@@ -212,7 +228,8 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     prompt = repo_root / "work" / f"prompt-{node_id}-executor-{model}.md"   # written only once the tree is clean
     prompt.parent.mkdir(parents=True, exist_ok=True)
     prompt.write_text(text, encoding="utf-8")
-    _brief_into(wt, repo_root, node_id, t)
+    if not t.node.get("chore"):   # a chore's task is in its prompt; it has no brief
+        _brief_into(wt, repo_root, node_id, t)
     cli, api_id, mode, effort = _cli_for(repo_root, entry, harness)
     _report_cli(entry, harness, cli)
     reviews_dir(repo_root, node_id).mkdir(parents=True, exist_ok=True)   # a harness may refuse an --add-dir that is missing
