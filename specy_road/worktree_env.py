@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.git_workflow_config import load_git_workflow_config
+from specy_road.review_files import reviews_root
 
 
 class EnvSetupError(Exception):
@@ -41,13 +42,21 @@ def run_setup_cmd(cmd: str, cwd: Path) -> tuple[int, str]:
     return r.returncode, r.stdout or ""
 
 
-def setup_worktree_env(repo_root: Path, leaf_root: Path) -> list[str]:
-    """Copy ``env_setup.copy`` from ``repo_root`` into ``leaf_root``, then run ``env_setup.cmd`` there.
+def main_project_root(repo_root: Path) -> Path:
+    """The main checkout's project root, whichever checkout ``repo_root`` is (``reviews_root`` is the one resolver)."""
+    return reviews_root(repo_root).parents[1]   # <main project root>/work/reviews
 
-    ``repo_root`` is the main checkout's project root, ``leaf_root`` the project root in the new worktree.
-    Returns one line per step done (none when ``env_setup`` is unset); raises :class:`EnvSetupError` at the
-    first failure. The worktree stays either way, and is never set up again by the commands that created it.
+
+def setup_worktree_env(repo_root: Path, leaf_root: Path) -> list[str]:
+    """Copy ``env_setup.copy`` from the main checkout into ``leaf_root``, then run ``env_setup.cmd`` there.
+
+    ``repo_root`` is the project root of the checkout running the command, which may be a linked worktree
+    (``worker delegate``); the setting and every copy source come from the main checkout's project root,
+    where the ignored files live. ``leaf_root`` is the project root in the new worktree. Returns one line
+    per step done (none when ``env_setup`` is unset); raises :class:`EnvSetupError` at the first failure.
+    The worktree stays either way, and is never set up again by the commands that created it.
     """
+    repo_root = main_project_root(repo_root)
     conf = env_setup_config(repo_root)
     if not conf:
         return []

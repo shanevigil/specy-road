@@ -36,9 +36,12 @@ entries:
       - specy_road/worker_ops.py
       - specy_road/bundled_scripts/do_next_task_pickup_helpers.py
       - specy_road/bundled_scripts/doctor.py
+      - specy_road/bundled_scripts/doctor_env_setup.py
+      - specy_road/worker_ops_launch.py
       - specy_road/templates/project/schemas/git-workflow.schema.json
       - docs/git-workflow.md
       - tests/
+      - specy_road/worktree_env.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending

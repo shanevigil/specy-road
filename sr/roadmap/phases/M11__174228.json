@@ -313,7 +313,8 @@
         "specy_road/worker_ops_launch.py",
         "specy_road/templates/project/schemas/git-workflow.schema.json",
         "docs/git-workflow.md",
-        "tests/"
+        "tests/",
+        "specy_road/worktree_env.py"
       ],
       "type": "task"
     },

@@ -114,6 +114,21 @@ def test_delegate_sets_up_the_worktree_it_creates(tmp_path: Path, capsys) -> Non
     wait_for_worker(repo, rec.worker_id)
 
 
+def test_delegate_from_a_linked_worktree_copies_from_the_main_checkout(tmp_path: Path, capsys) -> None:
+    """The ignored files exist in the main checkout only; the invoking linked checkout has none of them."""
+    repo = _worker_repo(tmp_path, SETUP)
+    lane = tmp_path / "lane"
+    git(repo, "worktree", "add", "-q", "-b", "lane", str(lane), "dev")
+    assert not (lane / ".python-version").exists()
+    assert _delegate(lane) == 0, capsys.readouterr().err
+    wt = repo / "work" / ".worktrees" / "thing"
+    assert (wt / ".python-version").read_text(encoding="utf-8") == "3.12\n"
+    assert (wt / ".env").read_text(encoding="utf-8") == "TOKEN=\n"
+    assert (wt / "env-built").is_file()
+    [rec] = ws.list_records(lane)
+    wait_for_worker(lane, rec.worker_id)
+
+
 def test_delegate_stops_the_launch_on_a_failing_command_and_does_not_rerun_it(tmp_path: Path, capsys) -> None:
     repo = _worker_repo(tmp_path, "env_setup:\n  cmd: echo resolver-said-no; exit 4\n")
     assert _delegate(repo) == 1
