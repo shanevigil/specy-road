@@ -74,6 +74,7 @@ _FORWARDED = {
     "decisions": "decisions_cli.py",
     "lessons": "lessons_cli.py",
     "branches": "branches_cli.py",
+    "worktree": "worktree_cli.py",
 }
 
 _CRUD_COMMANDS = (
