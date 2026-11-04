@@ -65,6 +65,8 @@ No touch zones were added in this round. The new files are under `tests/`, and t
   - This applies in the coordinator-checkout layout too, where the nested directories are the repositories themselves.
   - Public regression: `test_delegate_launches_nothing_over_a_dirty_nested_worktree[tracked|untracked]`, through `worker delegate` on the CLI. It asserts exit 1, the path named, no worker record, no prompt file, and the dirty file untouched.
 
+- **Docs.** `docs/git-workflow.md` now says delegate checks each nested repository for tracked and untracked changes. "Detached at that tip" was already stated for R5.
+
 No touch zones were added this round; both changes are in already-zoned files.
 
 ## Touch zones (final list)
