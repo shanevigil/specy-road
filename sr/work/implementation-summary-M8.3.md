@@ -163,6 +163,8 @@ Required change → what changed:
   - File limits OK; ruff clean; private imports 0 new.
   - Red/green: with `_record` back to `(mode, size, mtime, sha256)`, all four hard-link cases fail.
 
+- **WIP merge `4983a4d5`** (M11.62: limits from the Claude transcript, background tasks off for reviewers, Codex overrides). Resolutions: `role_prompt.py` keeps this leaf's side, since the reviewer runners live in `role_prompt_cli`, and M11.62's `stream_and_capture` and `CLAUDE_REVIEWER_AVOID_ENV` imports moved there; `role_prompt_cli.py` drops its copy of `_stream_and_capture` for M11.62's `role_prompt_stream.stream_and_capture`, and `run_default_reviewer` puts `CLAUDE_REVIEWER_AVOID_ENV` on a Claude reviewer's `Launch.env`, which `review_record_write.run_logged` now applies under `reviewer_env`; `review_delegate.py` uses `reviewer_env(harness_env(os.environ, "reviewer", harness=h.harness))`; `tests/test_review_files.py` keeps the shared `fake_reviewer_run`, which now also patches `role_prompt_stream`. M11.62's new `tests/test_headless_limits_denials.py` imports `role_prompt_cli.run_default_reviewer` (this leaf's name for `run_bare_reviewer`), and its env assertion is unchanged. It expects exit 1, because its fake prints no verdict, so nothing is filed. The round 3–9 fixes are unchanged. `pytest -n 4` over the leaf's test files plus `tests/test_headless_limits_denials.py`: 190 passed. File limits OK; ruff clean.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
