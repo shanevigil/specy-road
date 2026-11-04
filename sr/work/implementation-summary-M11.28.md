@@ -30,6 +30,25 @@
 - Docs: new `docs/orchestration-chores.md`. `docs/orchestration-workers.md` (393/400 lines) got one sentence
   linking to it, in its existing "delegate runs after pickup" bullet. `cli_usage.py` has a `chore` entry.
 
+## Review round 1 (gpt-5.6-sol-medium, block at b66d133b)
+
+1. **Required change 1: a zone that normalises to nothing disabled the guard.** `chore_cli.start` now refuses
+   the start (exit 1, `every --zone must name a path`) when any `--zone` is empty under
+   `finish_implementation_check._clean`, the normalisation reconcile uses. That includes blank, `/` and `//`
+   values, alone or beside a valid zone, so a stored chore's zones are always ones reconcile keeps. The
+   regression is at the top of `test_reconcile_enforces_the_chore_zones`. Through the public CLI
+   (`chore_cli.main`) it asserts that `[" "]`, `["/"]` and `["src", "//"]` are refused and no chore is
+   written. The same test then shows the valid `src` zone still enforced: an in-zone commit passes, and an
+   out-of-zone commit sets `needs_reconcile`.
+2. **Required change 2: a private test helper was imported.** `tests/test_chore_mode.py` no longer imports
+   `tests.test_worker_cli._repo`. A local public `chore_repo(tmp_path)` builds the same repo from public
+   names: `make_review_repo`, plus `FAKE` and `worker_roster` from `test_worker_cli`. Its imports name no
+   `_`-prefixed object.
+
+Earlier, at b66d133b: the review test stopped monkeypatching `review_delegate._turn` (a new private reference
+the `test_lean_gates` baseline caught). It files the record from `chore_prompt`'s template, and the fake
+harness then runs a real reviewer turn.
+
 ## Touch zones (final)
 
 Added on this branch with `specy-road edit-node M11.28 --add touch_zones=…` (commit `8b913659`), as the
@@ -60,7 +79,12 @@ so nothing in it needed to change.
   tests/test_worker_reconcile_contract.py tests/test_review_delegate.py tests/test_worker_resume_failed.py
   tests/test_validate_stale_commands.py tests/test_doc_links.py`: 87 passed.
 - `specy-road file-limits`: OK. `ruff check` on the changed files: clean.
-- Not run to completion: the whole suite (`pytest -n 4`). A background run was cut off at about 50% when the
+- Full suite at b66d133b: `python -m pytest -n 4 -q`, 3578 passed, 2 skipped.
+- After review round 1: `python -m pytest -n 4 -q tests/test_chore_mode.py tests/test_lean_gates.py
+  tests/test_worker_cli.py tests/test_worker_orphans.py tests/test_worker_reconcile_contract.py
+  tests/test_review_delegate.py tests/test_worker_resume_failed.py tests/test_validate_stale_commands.py
+  tests/test_doc_links.py`, 104 passed, 2 skipped. `specy-road file-limits`: OK.
+- Superseded by the full run above: an earlier background run of the whole suite was cut off at about 50% when the
   session was interrupted, with no failures up to that point. There is no complete result.
 
 ## Added
@@ -72,6 +96,7 @@ so nothing in it needed to change.
 - `chore_node` / `chore_target` — the node- and ReviewTarget-shaped view the existing eligibility, reconcile and review-run code reads
 - `chore_prompt` — the executor's and reviewer's prompt; the executor's names nothing that moves, so its hash stays the contract
 - `start`, `close`, `_verdicts`, `_save`, `cmd_start`, `cmd_close`, `build_parser`, `main` — the command surface the sheet settled on
+- `start`: empty-zone guard (`_clean` on each `--zone`) — review round 1, item 1: a zone reconcile drops would leave the chore unguarded
 - `_SLUG` guard — keeps slugs disjoint from node ids and from `w-` worker ids (`worker usage` reads `w-` as a worker)
 - `_entry_and_harness(..., roster_free=)` branch — the roster-free `--model`/`--harness` A1 asks for; a leaf is unaffected
 - `delegate`: "--model is required" guard — argparse no longer requires it, because a chore supplies one
@@ -88,5 +113,7 @@ so nothing in it needed to change.
   - `test_close_refuses_while_a_worker_runs` — close guard (`spawn` mocked to leave the worker starting)
   - `test_roster_free_model_needs_a_harness` — roster-free model needs `--harness`; leaves still need the roster (`spawn` mocked to capture argv)
   - `test_reconcile_enforces_the_chore_zones` — in-zone change passes, out-of-zone change sets `needs_reconcile` (`spawn` mocked)
-  - `test_review_delegate_takes_a_chore_started_with_review` — refused without `--review`; with it, a mocked `_turn` files the prompt's template, the run is complete and close records `approve`
+  - `test_review_delegate_takes_a_chore_started_with_review` — refused without `--review`; with it, the record from `chore_prompt`'s template is filed, the fake harness runs the turn, the run is complete and close records `approve`
   - `run_chore_cli`, `_start`, `_filed_review` — test helpers
+  - `chore_repo` — local repo setup (review round 1, item 2: replaces the imported private `_repo`)
+  - the empty-zone refusals in `test_reconcile_enforces_the_chore_zones` — review round 1, item 1's public-CLI regression
