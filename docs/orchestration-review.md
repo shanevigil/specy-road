@@ -294,7 +294,7 @@ leaf's reviewer filing there, counts as this run's write. The checkout's own
 `.git` is walked as Git metadata (above). The contents of a nested checkout (a
 linked worktree under `work/.worktrees`, a nested repository) are another
 checkout's and are skipped, but its `.git` marker is recorded, so a
-reviewer-created `.git` file or `git init` anywhere is a write. Two directories' own metadata is left out, though their contents are compared: the hand-off directory (the run's own files appear there) and a Git directory holding an index (`git status` creates `index.lock` there). Two reviewer runs of one leaf share its
+reviewer-created `.git` file or `git init` anywhere is a write. The reviewer runs with `GIT_OPTIONAL_LOCKS=0`, so a read-only `git status` takes no `index.lock` and a Git directory root is compared like any directory; the hand-off root, whose entries specy-road changes between harness turns, is fenced during each turn instead: a file created, renamed or deleted there while the harness runs is a write, unless the harness's own `OUTPUT-<model>.json` or the reviewer's notes appeared, went or were replaced in that turn. Two reviewer runs of one leaf share its
 hand-off directory, so they take turns: a second run while one holds
 `.review-run.lock` is refused at once. The reviewer's process gets
 `PYTHONDONTWRITEBYTECODE=1` and `PYTEST_ADDOPTS=-p no:cacheprovider`, so

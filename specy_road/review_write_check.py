@@ -116,15 +116,15 @@ def _walk_git(top: Path, state: dict[str, Any], quiet: frozenset[str] = frozense
     logs) and of its own worktree Git directory, and its ``.git`` pointer file in a linked worktree. Skipped: the
     other linked worktrees' directories under ``<common>/worktrees`` (other checkouts), and raw index bytes (this
     checkout's, which a read-only ``git status`` rewrites and :func:`snapshot` compares by its entries instead, and
-    the main checkout's when this one is linked). The directories holding those indexes are ``quiet``: a read-only
-    ``git status`` creates and renames ``index.lock`` there, so only their own metadata is left out."""
+    the main checkout's when this one is linked). Their directories are recorded like any other: the reviewer runs
+    with ``GIT_OPTIONAL_LOCKS=0`` (:func:`~specy_road.review_record_write.reviewer_env`), so a read-only
+    ``git status`` takes no ``index.lock`` there, and a file created and deleted in a Git directory root is a write."""
     def resolved(*args: str) -> Path | None:
         out = git_text(["rev-parse", "--path-format=absolute", *args], top)
         return Path(out).resolve() if out else None
     common, own, index = resolved("--git-common-dir"), resolved("--git-dir"), resolved("--git-path", "index")
     other = (common / "index", common / "worktrees") if common else ()   # the main checkout's index; other worktrees
     skip = frozenset(str(p) for p in (index, *other) if p)
-    quiet = quiet | frozenset(str(p.parent) for p in (index, common / "index" if common else None) if p)
     for d in dict.fromkeys(d for d in (common, own) if d):   # one directory when the checkout is the main one
         _walk(d, state, skip, quiet)
     pointer = top / ".git"
@@ -162,14 +162,52 @@ def snapshot(cwd: Path, reviews: Path, model: str) -> Snapshot:
     state: dict[str, Any] = {"git refs": (git_text(["rev-parse", "HEAD"], top) or "") + "\n"
                              + (git_text(["for-each-ref", "--format=%(refname) %(objectname)"], top) or ""),
                              "git index": hashlib.sha256(index.encode()).hexdigest()}
-    # The hand-off directory's own metadata moves during an honest run (the run record's temporary file, the log,
-    # Codex's -o file): its files and subdirectories are still compared.
+    # The hand-off directory's own metadata moves between harness turns (the run record's temporary file and
+    # rename): its files and subdirectories are compared here, and its own metadata during each turn by RootFence.
     quiet = frozenset({str(reviews)})
     _walk(top, state, frozenset({str(top / ".git")}), quiet)   # the checkout's own Git directory: _walk_git
     _walk_git(top, state, quiet)
     if top not in reviews.parents:   # a reviewer in a linked worktree: the hand-off directory is the main checkout's
         _walk(reviews, state, quiet=quiet)
     return Snapshot(state, {p: p.read_bytes() for p in _own_records(reviews, model)}, runtime_files(reviews, model), top)
+
+
+def harness_files(reviews: Path, model: str) -> tuple[str, ...]:
+    """The files a reviewer's harness may create or replace in the hand-off root during its turn: Codex's ``-o``
+    answer and the reviewer's notes (the other :func:`runtime_files` are specy-road's, written between turns)."""
+    return (f"{OUTPUT_PREFIX}{model}.json", f"notes-{model}.md")
+
+
+class RootFence:
+    """The hand-off root's own metadata across one harness turn. specy-road changes that directory's entries only
+    between turns (the run record's rename, the schema file), so a move of its mtime, ctime or link count during the
+    turn is the harness's: a file created, renamed or deleted there. It is explained only by one of
+    :func:`harness_files` appearing, going or being replaced in the same turn (which then also hides any other such
+    change in that turn); otherwise :meth:`moved` is true and the run is a review failure."""
+
+    def __init__(self, root: Path, allowed: tuple[str, ...]) -> None:
+        self.root, self.allowed = root, allowed
+        self.before = self._state()
+
+    def _state(self) -> tuple[Any, ...] | None:
+        try:
+            st = os.stat(self.root)
+        except OSError:
+            return None
+        ids = []
+        for name in self.allowed:
+            try:
+                f = os.stat(self.root / name, follow_symlinks=False)
+                ids.append((f.st_dev, f.st_ino))
+            except OSError:
+                ids.append(None)
+        return (st.st_mtime_ns, st.st_ctime_ns, st.st_nlink), tuple(ids)
+
+    def moved(self) -> bool:
+        after = self._state()
+        if after is None or self.before is None:
+            return after != self.before
+        return after[0] != self.before[0] and after[1] == self.before[1]
 
 
 def written(before: Snapshot, after: Snapshot) -> list[str]:

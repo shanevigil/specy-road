@@ -98,7 +98,7 @@ def test_a_commit_and_an_ignored_cache_count_as_writes_and_other_checkouts_do_no
     wrote = written(before, snapshot(repo, reviews, "opus"))
     assert {"git refs", "work/reviews/M1.1/RUN-sol.log"} <= set(wrote)
     meta = set(wrote) - {"git refs", "work/reviews/M1.1/RUN-sol.log"}   # the commit's objects, logs and ref file
-    assert meta and all(w.startswith(".git/") for w in meta)
+    assert meta and all(w == ".git" or w.startswith(".git/") for w in meta)
 
 
 def test_one_leafs_reviewer_runs_take_turns(tmp_path: Path) -> None:
@@ -113,6 +113,7 @@ def test_one_leafs_reviewer_runs_take_turns(tmp_path: Path) -> None:
 def test_the_reviewer_process_writes_no_bytecode_or_pytest_cache() -> None:
     env = reviewer_env({"PYTEST_ADDOPTS": "-q"})
     assert env["PYTHONDONTWRITEBYTECODE"] == "1" and env["PYTEST_ADDOPTS"] == "-q -p no:cacheprovider"
+    assert env["GIT_OPTIONAL_LOCKS"] == "0"                                  # no index.lock from a read-only git status
     assert reviewer_env(env) == env
 
 

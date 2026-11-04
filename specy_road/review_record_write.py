@@ -52,7 +52,9 @@ from specy_road.review_write_check import (  # re-exported: the post-run write c
     LOCK_NAME,
     OUTPUT_PREFIX,
     OUTPUT_SCHEMA_NAME,
+    RootFence,
     Snapshot,
+    harness_files,
     runtime_files,
     snapshot,
     written,
@@ -126,10 +128,13 @@ def review_run_lock(reviews: Path) -> Iterator[None]:
 
 
 def reviewer_env(env: dict[str, str]) -> dict[str, str]:
-    """``env`` for a reviewer's process: no Python bytecode and no pytest cache, so re-running a test writes nothing."""
+    """``env`` for a reviewer's process: no Python bytecode and no pytest cache, so re-running a test writes nothing,
+    and no optional Git locks (``GIT_OPTIONAL_LOCKS=0``), so a read-only ``git status`` neither takes ``index.lock``
+    nor refreshes the index, and a Git directory root changes only when the reviewer writes there."""
     addopts = env.get("PYTEST_ADDOPTS", "")
     extra = "" if "no:cacheprovider" in addopts else " -p no:cacheprovider"
-    return {**env, "PYTHONDONTWRITEBYTECODE": "1", "PYTEST_ADDOPTS": (addopts + extra).strip()}
+    return {**env, "PYTHONDONTWRITEBYTECODE": "1", "PYTEST_ADDOPTS": (addopts + extra).strip(),
+            "GIT_OPTIONAL_LOCKS": "0"}
 
 
 def run_text(log: Path) -> str:
@@ -201,10 +206,13 @@ def _review_record(root: Path, node_id: str, model: str, verdict: str, notes: Pa
 
 
 def file_review(root: Path, node_id: str, model: str, reviews: Path, *, output: Any, before: Snapshot,
-                after: Snapshot, ref: str | None = None, launch_mode: str | None = None) -> Outcome:
+                after: Snapshot, ref: str | None = None, launch_mode: str | None = None,
+                fenced: bool = False) -> Outcome:
     """The run's outcome (module docstring); ``output`` is :func:`final_output`'s, ``before`` and ``after``
-    the :func:`snapshot` either side of the run."""
-    wrote = written(before, after)
+    the :func:`snapshot` either side of the run; ``fenced``: a :class:`RootFence` saw the hand-off root move
+    during a harness turn (a file created, renamed or deleted there)."""
+    shown = str(reviews.resolve()).removeprefix(f"{before.top}{os.sep}")
+    wrote = sorted({*written(before, after), *([shown] if fenced else [])})
     if wrote:
         before.restore(reviews, model)
         return Outcome("review_failure", f"review failure: the reviewer run wrote {', '.join(wrote)}; a reviewer "
@@ -270,12 +278,14 @@ def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Pat
     out, log = output_path(reviews, model), reviews / f"RUN-{model}.log"
     try:
         with review_run_lock(reviews):
+            log.touch()   # created now, so the turn's appends move nothing in the hand-off root
             before = snapshot(root, reviews, model)
+            fence = RootFence(reviews, harness_files(reviews, model))
             rc = run_logged(launch, adapter, root, log, transcript)
             outcome = file_review(root, reviews.name, model, reviews, before=before,
                                   after=snapshot(root, reviews, model),
                                   output=final_output(adapter, run_text(log), out), ref=ref,
-                                  launch_mode=launch.launch_mode)
+                                  launch_mode=launch.launch_mode, fenced=fence.moved())
     except ReviewRunBusy as e:
         print(f"error: {e}", file=sys.stderr)
         if transcript is not None:

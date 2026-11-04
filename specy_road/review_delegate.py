@@ -44,8 +44,9 @@ from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.orchestration_role_env import harness_env
 from specy_road.review_files import reviews_dir
-from specy_road.review_record_write import (Outcome, ReviewRunBusy, file_review, final_output, output_path,
-                                            review_run_lock, reviewer_env, run_text, snapshot, write_schema)
+from specy_road.review_record_write import (Outcome, ReviewRunBusy, RootFence, file_review, final_output,
+                                            harness_files, output_path, review_run_lock, reviewer_env, run_text,
+                                            snapshot, write_schema)
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.reviewer_run_failure import (_now, _read_json, _save, capacity_error, close_run, gate_policy_summary,
                                              harness_error_line, record_reviewer_failure_event, run_path as _run_path,
@@ -116,6 +117,7 @@ class _Harness:
         self.default = self.harness != "generic" and not self.cli and (not chore or isinstance(self.adapter, ClaudeCode))
         self.launch_mode = "bare" if self.default and isinstance(self.adapter, ClaudeCode) else self.mode
         self.can_resume = self.adapter.caps.resume
+        self.fenced = False   # a RootFence saw the hand-off root move during one of this run's turns
 
     def launch(self, prompt: Path, session: str | None) -> Launch:
         """A fresh turn, or a resume of ``session`` (an id the harness reported)."""
@@ -141,6 +143,8 @@ def _turn(h: _Harness, launch: Launch, log: Path) -> dict[str, Any]:
     env = reviewer_env(harness_env(os.environ, "reviewer", harness=h.harness))
     with log.open("a", encoding="utf-8") as raw:
         raw.write(f"[review delegate] {_now()} {launch.argv[0]}\n")
+        # specy-road changes the hand-off root's entries only between turns: one moving during the turn is the harness's
+        fence = RootFence(reviews_dir(h.repo_root, h.node_id), harness_files(reviews_dir(h.repo_root, h.node_id), h.model))
         try:
             proc = subprocess.Popen(launch.argv, cwd=h.cwd, env=env, text=True, encoding="utf-8",
                                     errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -163,6 +167,7 @@ def _turn(h: _Harness, launch: Launch, log: Path) -> dict[str, Any]:
                 if ev.type == "error":
                     out["errors"].append(str((ev.detail or {}).get("message") or ev.summary))
         out["exit"] = proc.wait()
+    h.fenced = h.fenced or fence.moved()
     return out
 
 
@@ -287,7 +292,7 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
             filed = None if before is None else file_review(
                 repo_root, node_id, model, reviews, before=before, after=snapshot(cwd, reviews, model),
                 output=final_output(h.adapter, run_text(path.with_suffix(".log")), output_path(reviews, model)),
-                ref=ref, launch_mode=h.launch_mode)
+                ref=ref, launch_mode=h.launch_mode, fenced=h.fenced)
             _close(repo_root, t, model, run, path, reason, filed)
         except BaseException as e:   # an interrupt or a launch refusal still closes the record
             err = f"interrupted: {e or type(e).__name__}"
