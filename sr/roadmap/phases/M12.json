@@ -131,7 +131,10 @@
         "specy_road/review_rca.py",
         "specy_road/orchestration_config.py",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/orchestrate_plan.py",
+        "specy_road/review_gate.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json"
       ],
       "type": "task"
     },
@@ -159,7 +162,11 @@
         "specy_road/templates/project/schemas/",
         "specy_road/templates/project/",
         "docs/roadmap-authoring.md",
-        "tests/"
+        "tests/",
+        "specy_road/cli.py",
+        "specy_road/digest.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/bundled_scripts/finish_task.py"
       ],
       "type": "task"
     }
