@@ -207,6 +207,39 @@ Required change → what changed:
   - File limits OK; ruff clean; private imports 0 new.
   - Red/green: without the directory records, all three new cases fail.
 
+## Round 12 (gpt-5.6-sol-medium's block at `aa94cafa`; commit `07dd812f`)
+
+Required change → what changed:
+
+- **"Make a create/write/delete directly in work/reviews/<ID>/ (and the analogous quiet Git-directory root) observable as review_failure without false-failing specy-road's own runtime files."**
+  - **Git directory roots:** `reviewer_env` now sets `GIT_OPTIONAL_LOCKS=0`, so a read-only `git status` (or `diff`) takes no `index.lock` and doesn't refresh the index. `_walk_git` no longer makes the index-holding directories quiet; their own metadata is compared like any directory's.
+  - **Hand-off root:** it stays quiet in the snapshot, because specy-road changes its entries between harness turns (the run record's `.tmp` and rename, the schema file). Instead the new `review_write_check.RootFence` records the root's `(mtime, ctime, link count)` around each harness turn:
+    - in `review_delegate._turn`, after its log is open;
+    - in `review_record_write.run_and_file` (`prompt --channel cli`), which now creates the log before the first snapshot.
+  - A move during the turn is a write, unless one of `harness_files` appeared, went or was replaced in that turn: Codex's `OUTPUT-<model>.json` and the reviewer's `notes-<model>.md`.
+  - `file_review(..., fenced=)` reports the root, e.g. `work/reviews/M1.1`.
+  - `docs/orchestration-review.md` says so, within its 400 lines.
+- **"Add a public review-delegate regression for the hand-off-root case."**
+  - `test_review_delegate_cli_fails_a_created_written_and_deleted_file_and_files_no_verdict` (through `specy-road review delegate`) gains `work/reviews/M1.1`, the hand-off root, and `.git`, the Git root, beside `src`, `.git/hooks` and `work/reviews/M1.1/history`.
+  - Each case is a `review_failure` naming that directory, with no `REVIEW-opus.md`.
+- **No false failures from specy-road's own files, checked by the existing tests:**
+  - the Codex `-o` end-to-end delegate, where Codex creates `OUTPUT-sol.json` in the root during its turn;
+  - the reviewer's own notes in the root (`test_the_reviewers_own_notes_are_the_one_write_allowed`);
+  - the prompt-CLI runs;
+  - capacity retries, where the run record is saved between turns;
+  - chores;
+  - the stale-stat `git status`, renamed `test_a_read_only_git_status_with_a_stale_stat_cache_is_not_a_write`. It now asserts that the index file is left alone under the reviewer env, rather than rewritten, and that the review is recorded.
+- **Tests adapted to the wider report:**
+  - Index-only writes now also name `.git`, where Git takes `index.lock` to write the index. Those tests require exactly `{"git index", ".git"}`.
+  - The commit test accepts `.git` itself among the commit's metadata.
+  - `test_the_reviewer_process_writes_no_bytecode_or_pytest_cache` asserts `GIT_OPTIONAL_LOCKS=0`.
+- **Remaining limit:** if, in the same turn, the harness's own `OUTPUT-<model>.json` or the reviewer's notes appear, go or are replaced in the hand-off root, that explains the root's move and would hide another file created and deleted there in that turn.
+- **Touch zones:** no new path.
+- **Verification:**
+  - `pytest -n 4` over the leaf's test files (`tests/test_review_record_write.py`, `tests/test_review_record_write_git.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_worker_adapters.py`, `tests/test_models_and_prompt.py`, `tests/test_prerelease_review.py`, `tests/test_review_rca.py`, `tests/test_role_prompt_file_limits.py`, `tests/test_resumed_delta_review.py`, `tests/test_chore_mode.py`, `tests/test_headless_limits_denials.py`): 196 passed.
+  - File limits OK; ruff clean; private imports 0 new.
+  - Red/green: with the fence result dropped and the Git roots quiet again, the `work/reviews/M1.1` and `.git` cases fail.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
@@ -236,6 +269,7 @@ Required change → what changed:
 - `_record` (round 9): file identity and links in every snapshot entry, for Sol's hard-link finding.
 - `st_ctime_ns` in `_record` (round 10): Sol's identical-rewrite finding.
 - `_dir_record`, `_walk`'s `quiet` set and `wrote_only` (round 11): directory metadata for Sol's create-and-delete finding.
+- `RootFence`, `harness_files`, `file_review`'s `fenced`, `_Harness.fenced`, `GIT_OPTIONAL_LOCKS=0` in `reviewer_env` and `wrote_paths` (round 12): Sol's hand-off-root and Git-root finding.
 - `_git_marker`, and `_walk`'s top-level-only `.git` skip (round 8): Sol's nested-`.git` finding.
 - `st_mode` in the snapshot tuples, and the `review_write_check` module split (round 7): Sol's chmod finding, and the file limit.
 - `_walk_git` and `_walk`'s `skip` (round 6): Git metadata in the A2 snapshot. Its `resolved()` returns `None` when git can't answer.
