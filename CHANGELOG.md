@@ -132,6 +132,29 @@ body. Keep section bodies focused; link to PRs for detail.
     be deleted, and removed a worktree a `running` worker was using; the
     first is now an `error:` line, and the second refuses, naming the
     worker.
+- Context-regression replay of 2026-11-04 (triage:
+  `docs/design-notes/context-regressions-2026-11-04-triage.md`):
+  - `finish-this-task --on-complete` silently outranked the committed
+    `on_complete`, so agents asked to "finish and clean up" landed PR-mode
+    leaves with `--on-complete merge --delete-branch`. A value other than
+    `pr` that differs from the mode finish would use without the flag (the
+    pickup's session file, `SPECY_ROAD_ON_COMPLETE`, then
+    `roadmap/git-workflow.yaml`) is now refused before anything is
+    committed, naming the configured mode, unless `--override-on-complete`
+    (a person's choice) is passed; this includes the repeat-finish landing
+    retry. The `pr` finish also says not to merge or delete the branch by
+    hand.
+  - The brainstorm round-1 prompt made a one-shot (headless) run stop after
+    `brainstorm start` waiting for frame answers, with no ideas recorded. It
+    now tells a run nobody can answer to record its proposed frame as
+    `assumed:` with `brainstorm frame`, continue, and list the assumptions
+    in its report; the brainstorm skill's description says to run `start`
+    before reading `roadmap-context.md`, `roadmap/` or `planning/`.
+  - Documented what the review gate cannot stop without
+    `policy.signed_reviews` (an agent with shell access impersonating an
+    approval) and the known limitation of a Codex worker launched from
+    inside a Codex coordinator's sandbox; the Cursor harness fact now
+    records that project hooks load under `agent -p --force`.
 
 ## [v0.3.1-rc2] - 2026-10-29
 

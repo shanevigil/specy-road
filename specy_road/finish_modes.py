@@ -18,6 +18,7 @@ from specy_road.finish_land_integration import (
     print_merge_push_notice,
     tracking_ref_snapshot,
 )
+from specy_road.finish_on_complete_override import OVERRIDE_FLAG, needs_override
 from specy_road.git_subprocess import git_ok
 from specy_road.on_complete_session import remove_on_complete_session
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
@@ -97,15 +98,27 @@ def print_pr_gated_state(
         "  Merging the PR is what closes the node on "
         f"{integration_branch}. Do not re-pick it,\n"
         "  and do not abort it — `abort-task-pickup` deletes the branch and "
-        "the work with it."
+        "the work with it.\n"
+        f"  Cleaning up stops here: do not merge {branch} into "
+        f"{integration_branch} yourself or delete it;\n"
+        "  the PR is the team's review step, and `branches prune --delete` "
+        "removes the branch once the PR has merged it."
     )
 
 
 def merge_landing_failed(
     ib: str, err_msg: str, *, delete_branch: bool = False, land_check_cmd: str | None = None,
+    repo: Path | None = None,
 ) -> NoReturn:
-    """Exit 1 after a failed merge landing, naming the re-run that retries it."""
+    """Exit 1 after a failed merge landing, naming the re-run that retries it.
+
+    The re-run has no pickup session file (the bookkeeping commit removed it),
+    so when merge is not the configured mode the re-run names the
+    acknowledgement flag that mode needs.
+    """
     again = "specy-road finish-this-task --on-complete merge"
+    if repo is not None and needs_override(repo, "merge"):
+        again += f" {OVERRIDE_FLAG}"
     if delete_branch:
         again += " --delete-branch"
     if land_check_cmd is not None:
@@ -249,6 +262,7 @@ def retry_merge_landing(
     if not ok:
         merge_landing_failed(
             ib, err_msg, delete_branch=delete_branch, land_check_cmd=land_check_cmd,
+            repo=repo,
         )
     print(f"\n[ok] merged {branch} into {ib} and pushed to {remote}")
     if delete_branch:
@@ -311,7 +325,7 @@ def apply_on_complete_mode(
         # instructions as a fallback — that's exactly the bug being fixed.
         merge_landing_failed(
             ib, err_msg, delete_branch=args.delete_branch,
-            land_check_cmd=args.land_check_cmd,
+            land_check_cmd=args.land_check_cmd, repo=repo,
         )
 
     print(

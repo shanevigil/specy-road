@@ -197,6 +197,8 @@ USAGE_TEXT = (
     "     --no-milestone-rollup)\n"
     "    --delete-branch deletes the feature branch locally and on the remote once\n"
     "    the merge lands; refused under pr.\n"
+    "    --on-complete MODE other than pr that differs from the configured mode\n"
+    "    is refused without --override-on-complete (a person's choice).\n"
     "    Finishing the last open leaf under a parent also closes that parent in the\n"
     "    same bookkeeping commit — except milestone-session nodes, which\n"
     "    reconcile-milestone-status closes once the rollup branch is proven merged.\n"

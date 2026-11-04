@@ -199,6 +199,19 @@ The boundary is the key: run each reviewer with a private key the executor's
 process does not hold. Still self-attested: the session flags inside a signed record
 (the key proves who signed, not how they worked) and presence files, which stay advisory.
 
+**What the gate cannot stop.** Without `signed_reviews`, an agent with shell access can
+impersonate an approval: the 2026-11-04 context-regression replay saw one executor drive the
+interactive human menu with `expect`, one call the toolkit's own record writer from `python -c`,
+and one add itself to the roster on the integration branch and approve its own work. The gate
+reads policy and roster from the integration branch, so it stops a feature branch lowering its
+own bar, not a process that can commit and push to that branch. For an unattended executor
+(Codex and Cursor in particular, whose headless runs allow every command they decide to run),
+turn `policy.signed_reviews` on and keep the human's and each reviewer's private key outside the
+executor's reach (another user, a hardware key or an agent the executor cannot reach), and protect
+the integration branch on the host (pushes through a reviewed PR, a code owner on
+`roadmap/orchestration.yaml`), so the executor cannot roster a key of its own. Triage:
+[design-notes/context-regressions-2026-11-04-triage.md](design-notes/context-regressions-2026-11-04-triage.md).
+
 `specy-road handoff status [<NODE_ID>] [--json]` shows each node's state:
 
 | State | Meaning |
