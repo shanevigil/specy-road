@@ -30,7 +30,7 @@ Base: `a54c409b` (origin/WIP/improvements-0-3-1 after the M8.2 touch-zone update
 
 ## Round 5: fix for review gpt-5.6-sol-medium at `c2588247` (block)
 
-Required change (1), and where it is done (commit `2bfd8f5d`):
+Required change (1), and where it is done (commit `0451e99c`):
 - **Exactly one `post_run_check` per turn, clean turns included.** `close_turn` in `specy_road/worker_turn_check.py` now always appends one event.
   - **Clean turn:** `detail: {"findings": []}` and the summary `post-run check: clean`.
   - **Turn with findings:** unchanged, with the findings and their count.
