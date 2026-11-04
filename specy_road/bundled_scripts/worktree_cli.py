@@ -56,8 +56,8 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "Remove work/.worktrees/<codename> for NODE_ID only when the worktree's HEAD and "
             "feature/rm-<codename>, local and on the remote wherever they exist, are merged into the "
-            "integration branch (the remote-tracking ref as it "
-            "stands; nothing is fetched) and it has no uncommitted changes, untracked non-ignored "
+            "remote's integration branch, read by git fetch --prune (a failed fetch refuses), and it "
+            "has no uncommitted changes, untracked non-ignored "
             "files, or stashes whose subject does not name another branch. Each nested_repos "
             "repository in it must also hold no uncommitted changes, stashes, or commits that no "
             "branch or remote-tracking ref of the main checkout's copy holds (a full clone's own "

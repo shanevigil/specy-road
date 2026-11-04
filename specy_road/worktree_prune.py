@@ -2,8 +2,9 @@
 
 The leaf's worktree is ``work/.worktrees/<codename>`` in the main checkout, on
 ``feature/rm-<codename>``. It is removed only when the worktree's ``HEAD`` and
-that branch, local and remote-tracking wherever they exist, are merged into the integration branch (the remote-tracking
-ref as it stands, else the local one; nothing is fetched) and the worktree has
+that branch, local and remote-tracking wherever they exist, are merged into
+``<remote>/<integration_branch>`` just fetched (``git fetch --prune``; a fetch
+that fails refuses) and the worktree has
 no uncommitted changes, no untracked files git does not ignore, and no stash
 that could be its own (see below). Ignored files are deleted
 with it, so they are listed first.
@@ -29,7 +30,6 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.grind_session_cleanup import merged_into
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.finish_implementation_check import base_ref
 from specy_road.git_subprocess import git_code, git_stdout, git_text
 from specy_road.git_workflow_config import load_git_workflow_config, resolve_integration_defaults
 from specy_road.nested_repos import _common_dir, is_repo_top, nested_repos
@@ -156,9 +156,15 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         plan.refusals.append(f"{cfg_err}; fix it, then re-run: without it the nested repositories cannot be checked")
         return plan
     base, remote, _warns = resolve_integration_defaults(main, explicit_base=None, explicit_remote=None)
-    target = base_ref(main, remote, base)
-    if target is None:
-        plan.refusals.append(f"neither {remote}/{base} nor a local {base} exists")
+    target = f"refs/remotes/{remote}/{base}"
+    # The remote's own tips, not remote-tracking refs as they last stood: a peer may have pushed to the
+    # leaf branch since they were merged. --prune drops a leaf branch deleted there after landing.
+    code, out = git_code(["fetch", "--prune", remote], main)
+    if code:
+        plan.refusals.append(f"cannot read {remote} (git fetch --prune {remote}: {out}); "
+                             "merged cannot be judged on stale refs")
+    elif not git_text(["rev-parse", "--verify", "--quiet", target], main):
+        plan.refusals.append(f"{remote} has no {base} to judge merged against")
     else:
         # Every leaf ref that exists, local and remote-tracking: either may hold work the other lacks, and
         # with neither (the branch deleted after landing) the worktree's HEAD alone is checked.

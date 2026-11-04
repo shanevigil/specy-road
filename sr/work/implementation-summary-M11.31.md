@@ -6,11 +6,11 @@
 - **`specy_road/bundled_scripts/worktree_cli.py`** (new): `specy-road worktree prune <ID> [--yes] [--repo-root]`. Prints the refusals and exits 1, or lists nested repos and ignored files. Without `--yes` it removes nothing and exits 0.
 - **`specy_road/cli.py`**: registers `worktree` in `_FORWARDED`.
 - **`docs/git-workflow.md`**: new "Retiring a leaf's worktree (`worktree prune`)" section, an index line in the agent quickstart, and the nested-repo "Removing the leaf's worktree" bullet now points to the command.
-- **`tests/test_worktree_prune.py`** (new): 27 tests.
+- **`tests/test_worktree_prune.py`** (new): 29 tests.
 
 ## Acceptance
 
-- **A1**: the command refuses unless the worktree's `HEAD`, the local `feature/rm-<codename>` and `<remote>/feature/rm-<codename>` (each only when it exists; Rework round 7) are ancestors of the integration ref. That ref is `base_ref`: `<remote>/<integration_branch>`, else the local branch. Nothing is fetched, so a stale ref can only make the check stricter. It also refuses on any non-ignored `git status` entry (tracked changes or untracked files) and on any stash whose subject does not name another branch. That covers stashes made on the leaf's branch, on a detached `HEAD`, or stored under a custom subject. The stash stack is shared across worktrees, so a stash is passed over only when git's own `WIP on <b>:` / `On <b>:` names some other branch `<b>` (see Rework rounds 1 and 2). It lists `!!` entries from `git status --porcelain --ignored --untracked-files=all`, one per file, including files inside ignored directories (Rework round 4), and removes only with `--yes`. Tests: unmerged, merged locally but not pushed, tracked change, untracked file, stash, and clean (list without `--yes`, removal with it, branch kept).
+- **A1**: the command refuses unless the worktree's `HEAD`, the local `feature/rm-<codename>` and `<remote>/feature/rm-<codename>` (each only when it exists; Rework round 7) are ancestors of `<remote>/<integration_branch>`, read right after a `git fetch --prune <remote>`. A failed fetch, or a remote without that branch, refuses (Rework round 8). It also refuses on any non-ignored `git status` entry (tracked changes or untracked files) and on any stash whose subject does not name another branch. That covers stashes made on the leaf's branch, on a detached `HEAD`, or stored under a custom subject. The stash stack is shared across worktrees, so a stash is passed over only when git's own `WIP on <b>:` / `On <b>:` names some other branch `<b>` (see Rework rounds 1 and 2). It lists `!!` entries from `git status --porcelain --ignored --untracked-files=all`, one per file, including files inside ignored directories (Rework round 4), and removes only with `--yes`. Tests: unmerged, merged locally but not pushed, tracked change, untracked file, stash, and clean (list without `--yes`, removal with it, branch kept).
 - **A2**: for each `nested_repos` path that is a repository top inside the leaf worktree:
   - **Linked worktree vs full clone:** the type is decided by comparing its git common dir with the main checkout's copy.
   - **Linked worktree:** it shares refs and stash with the copy, so only `HEAD` is checked. It must be contained in some `refs/heads` or `refs/remotes` of the copy. Stashes are judged as in A1.
@@ -107,6 +107,20 @@ Confirmed as listed: `specy_road/bundled_scripts/worktree_cli.py`, `specy_road/w
 - **Touch zones:** no file outside the touch zones was needed.
 - **Verification:** `python -m pytest -n 4 -q -p no:cacheprovider tests/test_worktree_prune.py` gives 27 passed. `specy-road file-limits` is OK, and `ruff check` on the changed Python files is clean.
 
+## Rework round 8 (review `gpt-5.6-sol-medium`, blocked at 23b0cf27)
+
+- **Required change 1** asked that the command refresh or directly verify the configured remote's leaf and integration refs before allowing removal, fail closed when that remote state cannot be read, and compare the actual leaf tip against the actual integration tip. It also asked for a public-CLI test where a peer advances the remote leaf branch after the local remote-tracking ref was merged. Changes:
+  - **`specy_road/worktree_prune.py`:** `plan_prune` now runs `git fetch --prune <remote>` in the main checkout before the merge checks. This is how `branches prune` and `doctor` judge merged. On failure it refuses with `cannot read <remote> (git fetch --prune <remote>: …)` and does not judge merged.
+  - **Integration target:** it is now always `refs/remotes/<remote>/<integration_branch>`, as just fetched. When the remote has no such branch it refuses. The fallback to the local integration branch (`base_ref`) is removed, because that is not the actual integration tip. The import goes with it.
+  - **Leaf refs:** `--prune` drops a remote leaf branch deleted after landing. The completed cleanup state therefore still prunes, which `test_with_both_leaf_refs_gone_a_merged_head_is_pruned` covers.
+  - **Side effect:** the dry run also fetches, which updates this checkout's remote-tracking refs, as `branches prune` does.
+  - **Docs:** the module docstring, help text and `docs/git-workflow.md` replace "nothing is fetched" with the fetch and its refusals.
+  - **Test `test_a_peer_push_to_the_leaf_branch_after_it_merged_refuses`:** the leaf is landed and `feature/rm-leaf-one` is pushed, so this checkout's `origin/feature/rm-leaf-one` is merged. A peer clone then pushes a commit to that branch. `--yes` exits 1 with `origin/feature/rm-leaf-one is not merged into refs/remotes/origin/main`, and the worktree stays.
+  - **Test `test_an_unreachable_remote_refuses`:** `origin` points at a path that does not exist. `--yes` exits 1 with `cannot read origin`, and the worktree stays.
+- **Red-green:** both tests fail against `23b0cf27`'s `worktree_prune.py`: the CLI exits 0 and removes the worktree (2 failed). They pass with the fix.
+- **Touch zones:** no file outside the touch zones was needed.
+- **Verification:** `python -m pytest -n 4 -q -p no:cacheprovider tests/test_worktree_prune.py` gives 29 passed. `specy-road file-limits` is OK, and `ruff check` on the changed Python files is clean.
+
 ## Added
 
 ### Helpers
@@ -122,7 +136,7 @@ Confirmed as listed: `specy_road/bundled_scripts/worktree_cli.py`, `specy_road/w
 
 ### Branches and guards
 - `roadmap/git-workflow.yaml` present but unparsable or invalid: refuse before any other check, because `nested_repos` would read as empty and a nested clone would go unchecked (round 6).
-- No integration ref: refuse, because merged cannot be judged.
+- `git fetch --prune <remote>` fails, or the remote has no integration branch: refuse, because merged cannot be judged on stale or missing refs (round 8; this replaces the earlier fallback to the local integration branch).
 - Each leaf ref check (local `refs/heads/<branch>`, remote-tracking `refs/remotes/<remote>/<branch>`) is skipped only when that ref does not exist. The worktree's `HEAD` is always checked, so with both gone, a merged `HEAD` prunes (round 7).
 - A nested path that is not a repository top inside the worktree is skipped by the nested checks. The main worktree's status leaves out only the nested repos that were actually checked, so such a directory is still checked (or listed as ignored) as part of the worktree.
 - Unreadable status (main or nested): refuse.
@@ -138,6 +152,8 @@ Confirmed as listed: `specy_road/bundled_scripts/worktree_cli.py`, `specy_road/w
 - `test_merged_locally_but_not_pushed_is_refused`: A1, only the remote-tracking integration ref counts when it exists.
 - `test_unknown_node_and_missing_worktree_are_errors`: the `PruneError` paths.
 - `test_an_unmerged_remote_leaf_branch_refuses_when_the_local_one_is_gone`: rework round 7. A1, an unmerged `origin/feature/rm-leaf-one` refuses `--yes` through the CLI when the local branch is deleted and the worktree's detached `HEAD` is merged; the worktree stays.
+- `test_a_peer_push_to_the_leaf_branch_after_it_merged_refuses`: rework round 8. A1, a peer pushes to the leaf branch after this checkout's `origin/feature/rm-leaf-one` was merged. The CLI with `--yes` exits 1 and the worktree stays.
+- `test_an_unreachable_remote_refuses`: rework round 8. A1, a remote that cannot be fetched refuses through the CLI with `--yes`, and the worktree stays.
 - `test_with_both_leaf_refs_gone_a_merged_head_is_pruned`: rework round 7. A1, the completed cleanup state, with no local or remote leaf ref and a merged detached `HEAD`, still prunes through the CLI with `--yes`.
 - `test_unsaved_work_in_the_worktree_is_refused` (3 cases: tracked change, untracked file, stash on the branch): A1 refusals, via the API and the CLI with `--yes`.
 - `test_clean_prune_lists_ignored_files_and_removes_only_with_yes`: A1, clean prune through the CLI.

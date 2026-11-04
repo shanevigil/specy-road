@@ -71,6 +71,31 @@ def test_an_unmerged_remote_leaf_branch_refuses_when_the_local_one_is_gone(tmp_p
     assert wt.is_dir()
 
 
+def test_a_peer_push_to_the_leaf_branch_after_it_merged_refuses(tmp_path: Path) -> None:
+    root, wt = _leaf(tmp_path)
+    _land(root, wt)
+    git(wt, "push", "-q", "origin", FEATURE)   # origin/feature/rm-leaf-one here: merged
+    peer = tmp_path / "peer"
+    git(tmp_path, "clone", "-q", "-b", FEATURE, str(tmp_path / "origin.git"), str(peer))
+    git(peer, "config", "user.email", "p@e.com")
+    git(peer, "config", "user.name", "P")
+    commit_file(peer, "src/c.py", "c = 1\n", "peer work")
+    git(peer, "push", "-q", "origin", FEATURE)   # this checkout's origin/feature/rm-leaf-one is now stale
+    out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
+    assert out.returncode == 1
+    assert f"origin/{FEATURE} is not merged into refs/remotes/origin/main" in out.stderr
+    assert wt.is_dir()
+
+
+def test_an_unreachable_remote_refuses(tmp_path: Path) -> None:
+    root, wt = _leaf(tmp_path)
+    _land(root, wt)
+    git(root, "remote", "set-url", "origin", str(tmp_path / "gone.git"))
+    out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
+    assert out.returncode == 1 and "cannot read origin (git fetch --prune origin" in out.stderr
+    assert wt.is_dir()
+
+
 def test_with_both_leaf_refs_gone_a_merged_head_is_pruned(tmp_path: Path) -> None:
     root, wt = _leaf(tmp_path)
     _land(root, wt)
