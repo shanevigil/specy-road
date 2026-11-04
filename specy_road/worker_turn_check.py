@@ -193,9 +193,11 @@ def close_turn(repo_root: Path, rec: WorkerRecord, watch: TurnWatch, *, pause: b
     if limit:
         found.append({"kind": "usage_limit", "summary": f"usage limit ({limit.get('source')}); resets "
                                                         f"{limit.get('reset_at') or 'at an unstated time'}", **limit})
+    # Exactly one event per turn, a clean one included (empty findings): the log shows the check ran.
+    append_event(repo_root, rec, "post_run_check", source="system", detail={"findings": found},
+                 summary=(f"post-run check: {len(found)} finding(s): " + "; ".join(f["summary"] for f in found))
+                 if found else "post-run check: clean")
     if found:
-        append_event(repo_root, rec, "post_run_check", source="system", detail={"findings": found},
-                     summary=f"post-run check: {len(found)} finding(s): " + "; ".join(f["summary"] for f in found))
         add_flag(repo_root, rec, FLAG_POST_RUN)
     else:
         clear_flag(repo_root, rec, FLAG_POST_RUN)

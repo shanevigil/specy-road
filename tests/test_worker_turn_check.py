@@ -114,11 +114,12 @@ def test_claude_launch_and_resume_pass_mode_tools_and_no_prompts_and_a_denial_fl
     assert rec.state == "idle" and tc.FLAG_POST_RUN in rec.flags and _findings(repo, rec.worker_id) == {"permission_denied"}
     [shown] = [w for w in wrc.sync(repo, ack=True) if w["worker_id"] == rec.worker_id]
     assert tc.FLAG_POST_RUN in shown["flags"] and "post_run_check" in [e["type"] for e in shown["events"]]
-    # The next clean turn clears the flag and records no check event.
+    # The next clean turn clears the flag and adds exactly one clean check event: no findings, a summary saying so.
     _respec(spec, lines=STREAMS["claude_clean"])
     wr.run(repo, rec.worker_id, adapter.resume("sid", _prompt(tmp_path), repo, "m", None))
     assert tc.FLAG_POST_RUN not in ws.load_record(repo, rec.worker_id).flags
-    assert len(_events(repo, rec.worker_id, "post_run_check")) == 1
+    first, clean = _events(repo, rec.worker_id, "post_run_check")
+    assert first.detail["findings"] and clean.detail == {"findings": []} and clean.summary == "post-run check: clean"
 
 
 def test_a_limit_reported_as_success_pauses_the_worker_and_resume_waits_for_the_reset(
