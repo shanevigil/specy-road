@@ -4,9 +4,10 @@
 Prints the ref the roster was read from, then, per parallel batch, which roster
 model should coordinate, execute, and review each ready leaf, with the reason
 for each pick, and names every leaf the roster cannot staff under the current
-policy. Ready means what pickup and `grind-session --plan` mean, so leaves
-pickup skips are listed apart, not assigned. Exit 1 when any ready leaf
-is unstaffable, so a coordinator script stops before dispatching. Assigns
+policy, with each `policy.strong_review` item a leaf's touch zones meet and the
+reviewers that can satisfy it. Ready means what pickup and `grind-session --plan`
+mean, so leaves pickup skips are listed apart, not assigned. Exit 1 when any
+ready leaf is unstaffable, so a coordinator script stops before dispatching. Assigns
 only: dispatch is `specy-road prompt`. Ends with the human's active routing
 preferences from `roadmap/decisions.yaml`, which the plan does not apply itself.
 """
@@ -43,6 +44,8 @@ def render(plan: OrchestrationPlan) -> list[str]:
             lines.append(f"  {a.node_id}{tag}")
             lines.append(f"    coordinator: {a.coordinator or '-'}   executor: {a.executor or '-'}   "
                          f"reviewers: {', '.join(a.reviewers) or '-'}")
+            lines += [f"    strong review {s['item']}: one approval from {', '.join(s['require_one_of'])}; "
+                      f"can satisfy it: {', '.join(s['can_satisfy']) or 'none'}" for s in a.strong_review]
             lines += [f"    {n}" for n in a.notes]
             lines += [f"    ! {p}" for p in a.problems]
     if plan.blocked:

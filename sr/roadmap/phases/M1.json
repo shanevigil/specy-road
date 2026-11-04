@@ -41,7 +41,9 @@
         "constitution/",
         "vision.md",
         "roadmap/",
-        "planning/"
+        "planning/",
+        "schemas/",
+        "AGENTS.md"
       ],
       "type": "task"
     }

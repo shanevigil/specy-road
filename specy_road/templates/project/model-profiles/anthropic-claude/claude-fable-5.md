@@ -4,6 +4,17 @@ family: Anthropic Claude
 track: Fable
 model: Claude Fable 5
 api_id: claude-fable-5
+aliases:
+  - claude-fable-5-thinking-high
+  - claude-fable-5-thinking-xhigh
+  - claude-fable-5-low
+  - claude-fable-5-medium
+  - claude-fable-5-high
+  - claude-fable-5-xhigh
+  - claude-fable-5-max
+  - claude-fable-5-thinking-low
+  - claude-fable-5-thinking-medium
+  - claude-fable-5-thinking-max
 checkpoint: same-as-api_id
 alias_moves: 'no'
 version_rank: previous

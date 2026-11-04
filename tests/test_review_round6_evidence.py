@@ -81,7 +81,7 @@ def test_uncommitted_rename_is_seen_by_reconcile(tmp_path: Path) -> None:
     assert wr._changed_since(repo, "HEAD") == ["docs/a.py", "src/a.py"]
     git(repo, "mv", "docs/a.py", "src/a.py")
     (repo / "src" / "a.py").rename(repo / "docs" / "a moved.py")   # unstaged delete + untracked file
-    assert wr._changed_since(repo, "HEAD") == ["docs/a moved.py", "src/a.py"]
+    assert wr._changed_since(repo, "HEAD") == ["src/a.py"]   # the untracked side is reported on its own (M11.40)
 
 
 def test_copy_is_reported_on_both_sides(tmp_path: Path) -> None:

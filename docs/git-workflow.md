@@ -132,9 +132,33 @@ When they live at the git root in a nested layout (`project_root: sr`):
 land_check_cmd: python -m pytest -n auto -p no:cacheprovider ../tests
 ```
 
+When CI also enforces a linter, put it in the same command ahead of the tests.
+Reviewers lint only the leaf's own files, so two leaves that each pass can still
+land a tree CI rejects on promotion; the land check is the one place the merged
+tree is checked before it is pushed:
+
+```yaml
+land_check_cmd: python -m ruff check ../src ../tests && python -m pytest -n auto -p no:cacheprovider ../tests
+```
+
 Run the suite once with **`pytest -n auto`** and once serially (**`pytest`**
 with no **`-n`**) before adopting that gate; if both pass, the tree is a
 reasonable candidate for a parallel land check.
+
+**Leaf test command.** Optional field **`verify_cmd`** (string): the command
+executor briefs and reviewer prompts give for running the leaf's tests, with the
+test paths appended. It is separate from `land_check_cmd`: the land check runs
+the full suite once per landing, while executors and reviewers run their leaf's
+tests while other workers may share the machine, and each full parallel suite
+starts one test worker per core. Keep its worker count small:
+
+```yaml
+verify_cmd: python -m pytest -n 4 -p no:cacheprovider
+```
+
+When it is unset, the brief and the reviewer prompt say to cap parallel test
+workers when other workers share the machine. See
+[orchestration-workers.md](orchestration-workers.md) (Parallel tests).
 
 ### What `pr` leaves behind (read this before re-running pickup)
 

@@ -11,6 +11,9 @@ from specy_road import __version__
 from specy_road.agents_md_block import AGENTS_MD
 from specy_road.managed_block import HTML_COMMENT, _split
 from specy_road.runtime_paths import git_root
+from specy_road.toolkit_version import running_toolkit_version
+
+__all__ = ["recorded_toolkit_version", "running_toolkit_version", "warn_if_running_version_older"]
 
 _VERSION = re.compile(r"^(\d+(?:\.\d+)*)(?:(a|b|rc)(\d+))?$", re.IGNORECASE)
 _AGENTS_WRITTEN = re.compile(r"Written by specy-road (\S+)")

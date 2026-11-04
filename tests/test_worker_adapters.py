@@ -152,7 +152,7 @@ def test_run_records_session_id_events_and_a_clean_exit(tmp_path: Path) -> None:
     rec = ws.load_record(repo, rec.worker_id)
     assert rec.provider_session_id == "s-42" and rec.state == "idle" and rec.pid is None   # no READY file yet
     types = [e.type for e in ws.events_since(repo, rec.worker_id)]
-    assert types == ["started", "launched", "first_output", "started", "output", "turn_completed", "usage", "completion"]
+    assert types == ["started", "launched", "first_output", "started", "output", "turn_completed", "usage", "post_run_check", "completion"]
     assert "working" in wr.log_path(repo, rec.worker_id).read_text()
 
 
@@ -169,22 +169,22 @@ def test_run_marks_completed_when_ready_exists_and_failed_on_nonzero_exit(tmp_pa
     wr.run(repo, rec.worker_id, wa.adapter_for("codex").launch(prompt, repo, "sol", cli))
     rec = ws.load_record(repo, rec.worker_id)
     assert rec.state == "completed" and rec.provider_session_id == "t-9"
-    prompt2, cli2 = _fake(tmp_path, [{"type": "error", "message": "quota"}], fail=True)
+    prompt2, cli2 = _fake(tmp_path, [{"type": "error", "message": "boom"}], fail=True)   # limit wording pauses (M8.2)
     rec2 = ws.create_record(repo, "M1.2", "codex", "sol", repo)
     assert wr.run(repo, rec2.worker_id, wa.adapter_for("codex").launch(prompt2, repo, "sol", cli2)) == 1
     rec2 = ws.load_record(repo, rec2.worker_id)
     assert rec2.state == "failed"
-    assert [e.type for e in ws.events_since(repo, rec2.worker_id)][-3:] == ["error", "usage", "error"]   # nulls: no usage
+    assert [e.type for e in ws.events_since(repo, rec2.worker_id)][-4:] == ["error", "usage", "post_run_check", "error"]   # nulls: no usage
 
 
 def test_run_reports_a_missing_binary_as_failed(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     repo = make_review_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "generic", "x", repo)
     assert wr.run(repo, rec.worker_id, wa.Launch(["/no/such/binary"])) == 127
-    assert ws.load_record(repo, rec.worker_id).state == "failed"
-    last = ws.events_since(repo, rec.worker_id)[-1]
-    assert "cannot start" in last.summary and last.detail == {"exit": 127}
-    assert [(e.type, set(e.detail.values())) for e in ws.events_since(repo, rec.worker_id)[-2:-1]] == [("usage", {None})]
+    assert (after := ws.load_record(repo, rec.worker_id)).state == "failed" and after.flags == ["post_run_findings"]
+    *_, usage, check, last = ws.events_since(repo, rec.worker_id)   # the post-run check runs on a start failure too (M8.2)
+    assert "cannot start" in last.summary and last.detail == {"exit": 127} and "cannot start" in check.summary
+    assert usage.type == "usage" and set(usage.detail.values()) == {None} and check.type == "post_run_check"
     # The startup failure is the turn's end, so its ack is timed; the harness never launched or spoke.
     assert [d["worker_id"] for d in wrc.sync(repo, ack=True)] == [rec.worker_id]
     capsys.readouterr()
@@ -286,7 +286,7 @@ def test_the_wrapper_payload_carries_the_mode_and_records_the_mismatch(tmp_path:
     assert e.value.code == 0
     events = ws.events_since(repo, rec.worker_id)
     assert [x.type for x in events] == ["started", "launched", "first_output", "started", "error", "turn_completed",
-                                        "usage", "completion"]
+                                        "usage", "post_run_check", "completion"]
     mismatch = events[4]
     assert mismatch.detail == {"inferred_mode": "full", "launch_mode": "bare"}
     assert "exit" not in mismatch.detail   # not a turn end: the turn goes on

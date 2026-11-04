@@ -38,6 +38,13 @@ PROBE_RULES_LINES = [
     "or on a `>` line is not checked.",
     "",
 ]
+# Executors once deleted unrelated docstrings and messages to stay under a line cap; reviewers caught it a round late.
+# Moved here from role_prompt.py, which is at the file-limits cap, beside the other reviewer-only prompt lines.
+REMOVED_TEXT_LINES = [
+    "Also check the diff for docstrings, comments or messages removed or shortened that the leaf did not need to "
+    "touch (often to fit a file-limits cap), and require their restoration under `required_changes`.",
+    "",
+]
 # Words a reviewer uses for a defect it lets through, and wording that describes a concrete failure.
 # Each counts unless negated ("no defect", "never crashes"); bare "fails" or "drops" usually describe intended
 # behaviour (a refusal, a filter), so only a drop or loss of something a user keeps counts.

@@ -13,13 +13,15 @@ from typing import Any
 import yaml
 
 from specy_road.agent_ignores import RUNTIME_WORK_DIRS
+from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, load_chore
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.finish_implementation_check import _clean, zone_matches
 from specy_road.git_changed_paths import branch_commit_paths, diff_paths
-from specy_road.git_subprocess import git_text
+from specy_road.git_subprocess import git_text, head_sha
 from specy_road.git_workflow_config import WORKER_LOGS_REL
-from specy_road.review_target import ReviewTargetError, resolve_target
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.review_target import ReviewTarget, ReviewTargetError, _registry_entry, resolve_target
 from specy_road.runtime_paths import git_root, project_prefix, rebase_to_project
 from specy_road.worker_lease import sync_leases
 from specy_road.worker_process import branch_mismatch
@@ -40,15 +42,24 @@ from specy_road.worker_state import (
 )
 
 
-def _target(repo_root: Path, node_id: str):
+def _target(repo_root: Path, rec: WorkerRecord) -> ReviewTarget:
+    """The leaf's review target; with no registry claim (the leaf merged and finish released it), the
+    roadmap node alone, whose touch zones still say where the worker may write. No base: the worker's
+    checkpoint or start head is where its changes are judged from. A chore's is its own (chore_cli)."""
+    if (chore := load_chore(repo_root, rec.node_id)) is not None:
+        return chore_target(repo_root, chore)
     try:
-        t = resolve_target(repo_root, node_id)
+        return resolve_target(repo_root, rec.node_id)
     except ReviewTargetError as e:
-        raise WorkerError(str(e)) from None
-    return t
+        nodes = load_roadmap(repo_root)["nodes"]
+        node = next((n for n in nodes if n.get("id") == rec.node_id), None)
+        if node is None or (_registry_entry(repo_root, rec.node_id) or {}).get("branch"):
+            raise WorkerError(str(e)) from None   # an unknown node, or a claim whose branch is gone
+        return ReviewTarget(node, nodes, None, rec.branch or "HEAD", None, None, None)
 
 
 def _changed_since(worktree: Path, since_sha: str | None) -> list[str]:
+    """What the worker's commits and uncommitted edits to tracked files changed since ``since_sha``."""
     if not since_sha:
         return []
     # Both sides of a rename or copy: a `git mv` into the zone is also a
@@ -61,10 +72,15 @@ def _changed_since(worktree: Path, since_sha: str | None) -> list[str]:
     uncommitted = diff_paths(worktree, "HEAD")
     if committed is not None and uncommitted is not None:
         changed &= committed | set(uncommitted)
-    # Named from the git root over the whole repo, as `git diff` names them: the
-    # worktree may be a nested project root, where plain ls-files is directory-relative.
-    untracked = git_text(["ls-files", "--others", "--exclude-standard", "--full-name", "--", ":(top)"], worktree) or ""
-    return sorted(changed | {p for p in untracked.splitlines() if p.strip()})
+    return sorted(changed)
+
+
+def _untracked(worktree: Path) -> list[str]:
+    """Untracked, unignored files in the tree: no commit carries them, and a project's own tooling may have
+    written them. Named from the git root over the whole repo, as `git diff` names paths: the worktree may
+    be a nested project root, where plain ls-files is directory-relative."""
+    out = git_text(["ls-files", "--others", "--exclude-standard", "--full-name", "--", ":(top)"], worktree) or ""
+    return sorted(p for p in out.splitlines() if p.strip())
 
 
 def _delegated_brief(repo_root: Path, rec: WorkerRecord) -> Path:
@@ -108,7 +124,7 @@ def _brief_unchanged(repo_root: Path, rec: WorkerRecord, nodes: list[dict]) -> b
 
 def _bookkeeping(path: str, node_id: str, prefix: str = "") -> bool:
     """The leaf's own specy-road files: the brief and summary the reviewer's clean-tree check leaves
-    out (role_prompt), the prompts ``delegate`` writes, the leaf's own mirrored worker logs
+    out (role_prompt), the prompts ``delegate`` writes, a chore's own record (chore_cli), the leaf's own mirrored worker logs
     (``track_worker_logs``; another leaf's are not), and the toolkit's state.
 
     ``path`` is git-root-relative; ``prefix`` is the project's (nested layout). A path outside the
@@ -116,7 +132,7 @@ def _bookkeeping(path: str, node_id: str, prefix: str = "") -> bool:
     """
     rel = rebase_to_project(path, prefix)
     return rel is not None and (rel in (f"work/brief-{node_id}.md", f"work/implementation-summary-{node_id}.md")
-                                or rel.startswith((f"work/prompt-{node_id}-", f"{WORKER_LOGS_REL}/{node_id}/",
+                                or rel.startswith((f"work/prompt-{node_id}-", f"work/chores/{node_id}.", f"{WORKER_LOGS_REL}/{node_id}/",
                                                    *RUNTIME_WORK_DIRS)))
 
 
@@ -126,10 +142,10 @@ def reconcile(repo_root: Path, worker_id: str) -> tuple[WorkerRecord, dict[str, 
 
 
 def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord, dict[str, Any]]:
-    t = _target(repo_root, rec.node_id)
-    since = (rec.checkpoint or {}).get("git_head") or t.base
+    t = _target(repo_root, rec)
+    since = (rec.checkpoint or {}).get("git_head") or t.base or rec.started_head
     wt = Path(rec.worktree)
-    changed = _changed_since(wt, since)
+    changed, untracked = _changed_since(wt, since), (_untracked(wt) if since else [])
     # The claim row as it is now (edit-node keeps it in step with the node),
     # not the zones the worker was delegated with.
     zones = [z for z in (_clean(z) for z in t.touch_zones) if z]
@@ -143,16 +159,24 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
     # from the git root; zones are matched as the review packet matches them,
     # by the project-relative name inside the project, the git-root name outside.
     prefix = project_prefix(repo_root)
-    substantive = [p for p in sorted(set(changed) | set(on_branch))
-                   if not (_bookkeeping(p, rec.node_id, prefix) or rebase_to_project(p, prefix) == "roadmap/registry.yaml")]
-    outside = [p for p in substantive
-               if zones and not any(zone_matches(z, rebase_to_project(p, prefix) or p) for z in zones)]
-    text, _p, err = build_prompt(repo_root, rec.node_id, role="executor", model=rec.model)
+    def _outside(paths):
+        return [p for p in paths if zones and not (
+            _bookkeeping(p, rec.node_id, prefix) or rebase_to_project(p, prefix) == "roadmap/registry.yaml"
+            or any(zone_matches(z, rebase_to_project(p, prefix) or p) for z in zones))]
+    outside = _outside(sorted(set(changed) | set(on_branch)))
+    # An untracked file is in no commit the leaf lands (a project's own tests may
+    # write reports): outside the zones it is a warning, not a breach.
+    untracked_outside = _outside(untracked)
+    # With no claim to name the branch, the prompt is built at the worker's own HEAD.
+    ref = None if t.entry is not None else head_sha(wt)
+    chore = t.node.get("chore")
+    text, _p, err = (chore_prompt(chore, "executor", rec.model, repo_root), None, None) if chore else \
+        build_prompt(repo_root, rec.node_id, role="executor", model=rec.model, ref=ref)
     # A prompt that can no longer be built (the model lost the leaf's
     # sensitivity or class) is a contract change too, not a pass. Otherwise
     # only the leaf's own contract counts: the prompt and the rest of the brief
     # also move when the integration branch does.
-    brief_same = _brief_unchanged(repo_root, rec, t.nodes)
+    brief_same = bool(chore) or _brief_unchanged(repo_root, rec, t.nodes)   # a chore has no brief
     prompt_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
     contract_changed = bool(
         rec.contract_hash
@@ -163,14 +187,49 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
         add_flag(repo_root, rec, FLAG_RECONCILE)
     else:
         clear_flag(repo_root, rec, FLAG_RECONCILE)
-    delta = {"since": since, "changed": changed, "outside_touch_zones": outside,
+    delta = {"since": since, "changed": changed, "outside_touch_zones": outside, "untracked": untracked,
+             "untracked_outside_touch_zones": untracked_outside, "claimed": t.entry is not None,
              "contract_changed": contract_changed, "branch_mismatch": off_branch, "epoch": rec.instruction_epoch,
              "needs_reconcile": FLAG_RECONCILE in rec.flags}
     append_event(repo_root, rec, "reconcile", source="orchestrator", authority="orchestrator",
                  summary=(f"{len(changed)} path(s) changed, {len(outside)} outside touch zones"
+                          + (f"; {len(untracked_outside)} untracked outside them" if untracked_outside else "")
                           + ("; contract changed" if contract_changed else "") + (f"; {off_branch}" if off_branch else "")),
                  detail=delta)
     return rec, delta
+
+
+def dismiss(repo_root: Path, worker_id: str, reason: str) -> tuple[WorkerRecord, dict[str, Any]]:
+    """Clear ``needs_reconcile`` on a human's word, recording ``reason`` as a ``reconcile`` event.
+
+    The next ``reconcile`` judges the tree afresh and may set the flag again.
+    """
+    if not reason.strip():
+        raise WorkerError("worker reconcile --dismiss needs a reason")
+    with workers_lock(repo_root):
+        rec = load_record(repo_root, worker_id)
+        was = FLAG_RECONCILE in rec.flags
+        clear_flag(repo_root, rec, FLAG_RECONCILE)
+        delta = {"dismissed": reason, "was_flagged": was, "needs_reconcile": False}
+        append_event(repo_root, rec, "reconcile", source="orchestrator", authority="orchestrator",
+                     summary=f"needs_reconcile dismissed: {reason}", detail=delta)
+    return rec, delta
+
+
+def reconcile_lines(o: dict[str, Any]) -> list[str]:
+    """``worker reconcile``'s text output for its JSON result ``o`` (a worker row plus ``delta``)."""
+    d = o["delta"]
+    if "dismissed" in d:
+        return [f"{o['worker_id']}: needs_reconcile dismissed ({d['dismissed']})"]
+    lines = [f"{o['worker_id']}: {len(d['changed'])} path(s) changed since {(d['since'] or '?')[:12]}, "
+             f"{len(d['untracked'])} untracked; needs_reconcile={d['needs_reconcile']}"]
+    if not d["claimed"]:
+        lines.append("  no registry claim (the leaf merged?): judged against the roadmap node's touch zones")
+    lines += [f"  OUTSIDE touch zones: {p}" for p in d["outside_touch_zones"]]
+    lines += [f"  warning: untracked, outside touch zones: {p}" for p in d["untracked_outside_touch_zones"]]
+    if d["contract_changed"]:
+        lines.append("  the leaf's brief changed since delegation")
+    return lines
 
 
 # --- sync ------------------------------------------------------------------

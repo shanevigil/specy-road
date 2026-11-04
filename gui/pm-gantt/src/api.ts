@@ -295,44 +295,74 @@ export async function scaffoldPlanning(
   }>;
 }
 
-export async function fetchPlanningFile(path: string) {
-  const r = await fetch(
-    `${API}/planning/file?${new URLSearchParams({ path })}`,
-  );
+/** Hash of each file as last read or saved, sent back on the next save so the
+ *  server refuses it (409) when the file changed on disk in the meantime. */
+const lastContentHash = new Map<string, string>();
+
+export class FileChangedOnDiskError extends Error {
+  readonly currentContent: string | null;
+
+  constructor(path: string, currentContent: string | null) {
+    super(
+      `${path} changed on disk since you opened it; your save was not written. ` +
+        "Copy your edits, reopen the file, and reapply them.",
+    );
+    this.name = "FileChangedOnDiskError";
+    this.currentContent = currentContent;
+  }
+}
+
+type FileBody = { path: string; content: string; content_hash?: string };
+
+async function fetchTextFile(route: string, path: string): Promise<FileBody> {
+  const r = await fetch(`${API}/${route}?${new URLSearchParams({ path })}`);
   if (!r.ok) throw new Error(await r.text());
-  return r.json() as Promise<{ path: string; content: string }>;
+  const body = (await r.json()) as FileBody;
+  if (body.content_hash) lastContentHash.set(`${route}:${path}`, body.content_hash);
+  return body;
+}
+
+async function saveTextFile(route: string, path: string, content: string) {
+  const key = `${route}:${path}`;
+  const base = lastContentHash.get(key);
+  const r = await fetch(`${API}/${route}?${new URLSearchParams({ path })}`, {
+    method: "PUT",
+    headers: pmGuiMutationHeaders({
+      "Content-Type": "application/json",
+      ...(base ? { "X-Base-Content-Hash": base } : {}),
+    }),
+    body: JSON.stringify({ content }),
+  });
+  if (r.status === 409) {
+    const text = await r.text();
+    let current: string | null = null;
+    try {
+      const d = (JSON.parse(text) as { detail?: { current_content?: unknown } }).detail;
+      if (d && typeof d.current_content === "string") current = d.current_content;
+    } catch {
+      /* not JSON: report the conflict without the current content */
+    }
+    throw new FileChangedOnDiskError(path, current);
+  }
+  await throwIfMutationFailed(r);
+  const body = (await r.json().catch(() => ({}))) as { content_hash?: string };
+  if (body.content_hash) lastContentHash.set(key, body.content_hash);
+}
+
+export async function fetchPlanningFile(path: string) {
+  return fetchTextFile("planning/file", path);
 }
 
 export async function savePlanningFile(path: string, content: string) {
-  const r = await fetch(
-    `${API}/planning/file?${new URLSearchParams({ path })}`,
-    {
-      method: "PUT",
-      headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ content }),
-    },
-  );
-  await throwIfMutationFailed(r);
+  await saveTextFile("planning/file", path, content);
 }
 
 export async function fetchSharedFile(path: string) {
-  const r = await fetch(
-    `${API}/workspace/file?${new URLSearchParams({ path })}`,
-  );
-  if (!r.ok) throw new Error(await r.text());
-  return r.json() as Promise<{ path: string; content: string }>;
+  return fetchTextFile("workspace/file", path);
 }
 
 export async function saveSharedFile(path: string, content: string) {
-  const r = await fetch(
-    `${API}/workspace/file?${new URLSearchParams({ path })}`,
-    {
-      method: "PUT",
-      headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ content }),
-    },
-  );
-  await throwIfMutationFailed(r);
+  await saveTextFile("workspace/file", path, content);
 }
 
 export type WorkspaceFileEntry = {

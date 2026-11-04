@@ -22,7 +22,7 @@ for f in glob.glob('sr/roadmap/phases/*.json'):
     for n in ns:
         if n.get('id')=='$ID': sys.exit(0 if scaffold_sheet(Path('sr'),n) is None else 1)
 sys.exit(1)"; then FINISH_ARGS=--allow-scaffold-planning; fi
-(cd "sr/work/.worktrees/$WT/sr" && $S mark-implementation-reviewed --yes >/dev/null 2>&1 && $S finish-this-task ${FINISH_ARGS:-} 2>&1 | grep -E '^\[ok\] merged|^error|policy|re-review')
+(cd "sr/work/.worktrees/$WT/sr" && $S mark-implementation-reviewed --yes >/dev/null 2>&1 && $S finish-this-task ${FINISH_ARGS:-} 2>&1 | tee "$ROOT/work/grind-logs/$ID-finish.log" | grep -E '^\[ok\] merged|^error|policy|re-review')
 if ! git merge-base --is-ancestor "$B" WIP/improvements-0-3-1 && git fetch -q origin && ! git merge-base --is-ancestor "$B" origin/WIP/improvements-0-3-1; then
   # A leaf that adds a schema key cannot be finished by the installed specy-road, whose
   # bundled schema predates it: restore finish's partial bookkeeping and retry with the
@@ -30,7 +30,7 @@ if ! git merge-base --is-ancestor "$B" WIP/improvements-0-3-1 && git fetch -q or
   W_ROOT="$ROOT/sr/work/.worktrees/$WT"
   git -C "$W_ROOT" checkout -- sr/roadmap 2>/dev/null
   echo "$ID: retrying finish with the branch's own specy-road"
-  (cd "$W_ROOT/sr" && PYTHONPATH="$W_ROOT" "$ROOT/.conda/bin/python" -m specy_road.cli mark-implementation-reviewed --yes >/dev/null 2>&1; PYTHONPATH="$W_ROOT" "$ROOT/.conda/bin/python" -m specy_road.cli finish-this-task ${FINISH_ARGS:-} 2>&1 | grep -E '^\[ok\] merged|^error')
+  (cd "$W_ROOT/sr" && PYTHONPATH="$W_ROOT" "$ROOT/.conda/bin/python" -m specy_road.cli mark-implementation-reviewed --yes >/dev/null 2>&1; PYTHONPATH="$W_ROOT" "$ROOT/.conda/bin/python" -m specy_road.cli finish-this-task ${FINISH_ARGS:-} 2>&1 | tee "$ROOT/work/grind-logs/$ID-finish-retry.log" | grep -E '^\[ok\] merged|^error')
   git fetch -q origin
   git merge-base --is-ancestor "$B" origin/WIP/improvements-0-3-1 || { echo "$ID: NOT MERGED"; exit 4; }
   git pull -q --ff-only origin WIP/improvements-0-3-1

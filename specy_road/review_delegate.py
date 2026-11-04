@@ -31,8 +31,10 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, load_chore
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text
+from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.orchestration_role_env import harness_env
 from specy_road.review_files import reviews_dir
@@ -90,8 +92,8 @@ class _Harness:
         self.cli = (entry.get("channels") or {}).get("cli")
         if not self.cli and self.harness == "generic" and prof is not None:
             self.cli = prof.cli()
-        api = prof.api_id if prof is not None else None
-        self.api_id = None if (api or "").strip().lower() in ("", "unknown") else api
+        api = prof.api_id if prof is not None else ""   # no profile and no harness_model: the harness's default
+        self.api_id = harness_model(entry, api)
         self.effort = prof.effort("reviewer") if prof is not None else None
         self.mode = prof.launch_mode() if prof is not None else "full"
         self.repo_root, self.node_id, self.cwd = repo_root, node_id, cwd
@@ -145,6 +147,8 @@ def _turn(h: _Harness, launch: Launch, log: Path) -> dict[str, Any]:
 def _start(repo_root: Path, t: ReviewTarget, model: str, ref: str | None, h: _Harness,
            resume: bool) -> tuple[str, str | None]:
     """``(prompt text, session to resume)``; refuses a resume the record cannot support."""
+    if not resume and t.node.get("chore"):
+        return chore_prompt(t.node["chore"], "reviewer", model, repo_root, commit=t.commit), None
     if not resume:
         text, _prof, err = build_prompt(repo_root, t.node["id"], role="reviewer", model=model, ref=ref)
         if err:
@@ -199,11 +203,20 @@ def _prompt_file(repo_root: Path, node_id: str, model: str, text: str, suffix: s
 def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = None, resume: bool = False,
              retries: int = DEFAULT_RETRIES, backoff: float = DEFAULT_BACKOFF, worktree: Path | None = None,
              sleep: Callable[[float], None] = time.sleep) -> dict[str, Any]:
-    """Run the reviewer until it ends or runs out of capacity retries; returns the run record."""
-    try:
-        t = resolve_target(repo_root, node_id, ref)
-    except ReviewTargetError as e:
-        raise DelegateError(str(e)) from None
+    """Run the reviewer until it ends or runs out of capacity retries; returns the run record.
+
+    ``node_id`` may be a chore slug started with ``--review`` (chore_cli): the reviewer runs in its worktree."""
+    chore = load_chore(repo_root, node_id)
+    if chore is not None:
+        if chore.get("closed_at") or not chore["review"]:
+            raise DelegateError(f"chore {node_id} is closed" if chore.get("closed_at")
+                                else f"chore {node_id} was started without --review")
+        t, worktree = chore_target(repo_root, chore), worktree or Path(chore["worktree"])
+    else:
+        try:
+            t = resolve_target(repo_root, node_id, ref)
+        except ReviewTargetError as e:
+            raise DelegateError(str(e)) from None
     entry = _entry(repo_root, model)
     cwd = (worktree or Path(git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root)).resolve()
     h = _Harness(repo_root, entry, node_id, cwd)

@@ -110,6 +110,9 @@ def _semantic_error(raw: dict[str, Any]) -> str | None:
                 f"substitutions/{i}/use: {sub.get('use')!r} must be a roster entry, "
                 "so its family comes from the roster and not from the review file"
             )
+    for i, item in enumerate((raw.get("policy") or {}).get("strong_review") or []):
+        if missing := [m for m in item.get("require_one_of") or [] if m not in ids]:
+            return f"policy/strong_review/{i}/require_one_of: {', '.join(map(repr, missing))} must be roster entries"
     return _date_error(raw)
 
 
@@ -153,41 +156,57 @@ def _date_error(raw: dict[str, Any]) -> str | None:
     return None
 
 
-def load_availability_overlay(repo_root: Path) -> tuple[dict[str, dict[str, Any]] | None, str | None]:
-    """``roadmap/orchestration.local.yaml``: local roster availability overrides, not committed."""
-    path = orchestration_local_path(repo_root)
-    if not path.is_file():
-        return None, None
+def _overlay_roster(path: Path) -> tuple[list[Any] | None, str | None]:
+    """The overlay file's ``roster`` list (empty when the file or key is), or an error."""
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (yaml.YAMLError, ValueError) as e:
         return None, f"YAML error in {ORCHESTRATION_LOCAL_REL}: {e}"
     if raw is None:
-        return {}, None
+        return [], None
     if not isinstance(raw, dict):
         return None, f"{ORCHESTRATION_LOCAL_REL}: must be a mapping"
     roster = raw.get("roster")
     if roster is None:
-        return {}, None
+        return [], None
     if not isinstance(roster, list):
         return None, f"{ORCHESTRATION_LOCAL_REL}: roster must be a list"
+    return roster, None
+
+
+def _overlay_patch(i: int, entry: Any) -> tuple[dict[str, Any] | None, str | None]:
+    """One overlay roster entry's availability fields (None when it has none), or an error."""
+    if not isinstance(entry, dict):
+        return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i} must be a mapping"
+    if not entry.get("id"):
+        return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i}/id is required"
+    patch = {k: entry[k] for k in AVAILABILITY_OVERLAY_KEYS if k in entry}
+    if not patch:
+        return None, None
+    if "available" in patch and not isinstance(patch["available"], bool):
+        return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i}/available must be true or false"
+    _dates_to_iso({"roster": [patch]})
+    for key in ("paused_until", "unavailable_until"):
+        if err := _paused_until_error(f"{ORCHESTRATION_LOCAL_REL}/roster/{i}/{key}", patch.get(key)):
+            return None, err
+    return patch, None
+
+
+def load_availability_overlay(repo_root: Path) -> tuple[dict[str, dict[str, Any]] | None, str | None]:
+    """``roadmap/orchestration.local.yaml``: local roster availability overrides, not committed."""
+    path = orchestration_local_path(repo_root)
+    if not path.is_file():
+        return None, None
+    roster, err = _overlay_roster(path)
+    if err:
+        return None, err
     out: dict[str, dict[str, Any]] = {}
-    for i, entry in enumerate(roster):
-        if not isinstance(entry, dict):
-            return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i} must be a mapping"
-        rid = entry.get("id")
-        if not rid:
-            return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i}/id is required"
-        patch = {k: entry[k] for k in AVAILABILITY_OVERLAY_KEYS if k in entry}
-        if not patch:
-            continue
-        if "available" in patch and not isinstance(patch["available"], bool):
-            return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i}/available must be true or false"
-        _dates_to_iso({"roster": [patch]})
-        for key in ("paused_until", "unavailable_until"):
-            if err := _paused_until_error(f"{ORCHESTRATION_LOCAL_REL}/roster/{i}/{key}", patch.get(key)):
-                return None, err
-        out[str(rid)] = patch
+    for i, entry in enumerate(roster or []):
+        patch, err = _overlay_patch(i, entry)
+        if err:
+            return None, err
+        if patch:
+            out[str(entry["id"])] = patch
     return out, None
 
 
@@ -271,6 +290,24 @@ def roster_entry(config: dict[str, Any], model_id: str) -> dict[str, Any] | None
         if entry.get("id") == model_id:
             return entry
     return None
+
+
+def harness_model(entry: dict[str, Any], profile_api_id: str | None = None) -> str | None:
+    """The model id a harness is told for roster ``entry``: its ``harness_model``, else the profile's ``api_id``,
+    else the roster ``id``. ``None`` (a profile whose ``api_id`` is ``unknown``) means the harness's default."""
+    if entry.get("harness_model"):
+        return str(entry["harness_model"])
+    if profile_api_id is not None:
+        return None if profile_api_id.strip().lower() in ("", "unknown") else profile_api_id
+    return str(entry["id"])
+
+
+def harness_model_warnings(config: dict[str, Any]) -> list[str]:
+    """Claude Code entries whose ``id`` has a dot and no ``harness_model``: ``claude --model`` ids use dashes."""
+    return [f"roster entry {e.get('id')!r} runs on claude-code and its id has a dot; set harness_model to the id "
+            "`claude --model` expects (e.g. claude-opus-5-5), or the default command may pass an unknown model"
+            for e in config.get("roster") or []
+            if e.get("harness") == "claude-code" and "." in str(e.get("id")) and not e.get("harness_model")]
 
 
 def family_of(config: dict[str, Any], model_id: str) -> str | None:
