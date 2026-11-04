@@ -28,20 +28,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: worktree-env-setup
-    node_id: M11.30
-    branch: feature/rm-worktree-env-setup
-    touch_zones:
-      - specy_road/git_workflow_config.py
-      - specy_road/worker_ops.py
-      - specy_road/bundled_scripts/do_next_task_pickup_helpers.py
-      - specy_road/bundled_scripts/doctor.py
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - docs/git-workflow.md
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: worktree-prune
     node_id: M11.31
     branch: feature/rm-worktree-prune

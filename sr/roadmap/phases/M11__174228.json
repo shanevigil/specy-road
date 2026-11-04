@@ -302,7 +302,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.30_worktree-env-setup_e442e4b8-d057-4e6d-b520-9ec4b28f356e.md",
       "sibling_order": 30,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Leaf worktrees get the project's environment set up",
       "touch_zones": [
         "specy_road/git_workflow_config.py",
@@ -313,7 +313,8 @@
         "specy_road/worker_ops_launch.py",
         "specy_road/templates/project/schemas/git-workflow.schema.json",
         "docs/git-workflow.md",
-        "tests/"
+        "tests/",
+        "specy_road/worktree_env.py"
       ],
       "type": "task"
     },

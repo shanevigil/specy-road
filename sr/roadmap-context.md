@@ -136,7 +136,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Complete**
   - `M11.28` A light chore mode for work outside the roadmap `chore-mode` — task — **Complete**
   - `M11.29` doctor warns when the running specy-road is older than the project's stubs `doctor-version-skew` — task — **Complete**
-  - `M11.30` Leaf worktrees get the project's environment set up `worktree-env-setup` — task — **Not Started**
+  - `M11.30` Leaf worktrees get the project's environment set up `worktree-env-setup` — task — **Complete**
   - `M11.31` A safe command to retire a leaf worktree `worktree-prune` — task — **Not Started**
   - `M11.32` Unpushed nested-repo commits are reported `nested-unpushed-report` — task — **Not Started**
   - `M11.33` A reviewer whose harness routes models dynamically does not count as an independent family by default `dynamic-routing-reviewers` — task — **Not Started**
@@ -205,8 +205,8 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M11.30` on `feature/rm-worktree-env-setup` since 2026-11-03
 - `M11.31` on `feature/rm-worktree-prune` since 2026-11-03
+- `M11.33` on `feature/rm-dynamic-routing-reviewers` since 2026-11-03
 - `M11.75` on `feature/rm-reviewer-probe-rules` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 

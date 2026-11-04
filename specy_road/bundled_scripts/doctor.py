@@ -40,11 +40,11 @@ from typing import Callable
 
 from specy_road.bundled_scripts.branches_cli import feature_branches, fetch_integration, live_branches
 from specy_road.bundled_scripts.do_next_task_self_heal import detect_stale_claims
+from specy_road.bundled_scripts.doctor_env_setup import report_checkout
 from specy_road.bundled_scripts.grind_session_cleanup import merged_into
 from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_text
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
-from specy_road.review_gate_agreement import report_gate_mismatch
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.version_skew import warn_if_running_version_older
 
@@ -354,7 +354,7 @@ def _context(ns: argparse.Namespace) -> _Ctx | None:
 
 def cmd_doctor(ns: argparse.Namespace) -> int:
     warn_if_running_version_older(resolve_repo_root(ns))
-    bad_config = report_gate_mismatch(resolve_repo_root(ns))   # an error: exit 1 after the listing
+    bad_config = report_checkout(resolve_repo_root(ns))   # gate mismatch, env_setup failure: exit 1 after the listing
     ctx = _context(ns)
     if ctx is None:
         return 1

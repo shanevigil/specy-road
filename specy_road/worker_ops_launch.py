@@ -40,6 +40,7 @@ from specy_road.worker_state import (
     status_entries,
     workers_lock,
 )
+from specy_road.worktree_env import EnvSetupError, setup_worktree_env
 
 
 def _target(repo_root: Path, node_id: str):
@@ -227,8 +228,11 @@ def delegate(repo_root: Path, node_id: str, model: str | None, *, harness: str |
 
 def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entry: dict[str, Any], t,
                    text: str, worktree: Path | None, offline: bool = False) -> WorkerRecord:
-    branch = str(t.entry["branch"])
-    wt = _worktree_for(repo_root, branch, str(t.node.get("codename") or node_id), worktree)
+    branch, codename = str(t.entry["branch"]), str(t.node.get("codename") or node_id)
+    default = reviews_root(repo_root).parent / ".worktrees" / codename
+    fresh = not default.exists()   # _worktree_for creates it there unless the claim's branch is checked out here
+    wt = _worktree_for(repo_root, branch, codename, worktree)
+    fresh = fresh and wt == default.resolve()
     prefix = project_prefix(repo_root)
     try:   # nested_repos: a leaf worktree gets its own worktrees of them; this checkout switches its own
         if wt != git_root(repo_root):
@@ -236,7 +240,9 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
         else:
             for line in align_nested_checkouts(repo_root, branch, t.touch_zones):
                 print(f"nested repo {line}", file=sys.stderr)
-    except NestedRepoError as e:
+        for line in setup_worktree_env(repo_root, wt / prefix) if fresh else []:   # worktree_env, once
+            print(f"env_setup: {line}", file=sys.stderr)
+    except (NestedRepoError, EnvSetupError) as e:
         raise WorkerError(str(e)) from None
     # The worker edits this tree: uncommitted work in it could be overwritten, and
     # `reconcile` could not tell the worker's edits from it. Only the leaf's own

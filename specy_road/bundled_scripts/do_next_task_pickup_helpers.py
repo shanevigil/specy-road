@@ -25,6 +25,7 @@ from specy_road.on_complete_session import (
 from specy_road.registry_yaml import write_registry
 from specy_road.runtime_paths import project_prefix
 from specy_road.worker_adapters import linked_worktree
+from specy_road.worktree_env import EnvSetupError, setup_worktree_env
 
 
 def write_brief(work_dir: Path, node: dict, nodes: list[dict]) -> Path:
@@ -157,11 +158,20 @@ def branch_fns(git_runner, base: str, wt: Path | None):
 
 
 def worktree_work_dir(repo_root: Path, wt: Path, brief_path: Path) -> tuple[Path, Path]:
-    """``(project root in wt, its work/)`` with the brief copied in: the leaf's agent runs there."""
+    """``(project root in wt, its work/)`` with the brief copied in: the leaf's agent runs there.
+
+    The new worktree also gets ``env_setup`` (:mod:`specy_road.worktree_env`); a failure stops the
+    pickup with the command's output, after the claim is pushed, so the claim and the worktree stay.
+    """
     wt_root = wt / project_prefix(repo_root)
     work = wt_root / "work"
     work.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(brief_path, work / brief_path.name)
+    try:
+        for line in setup_worktree_env(repo_root, wt_root):
+            print(f"env_setup: {line}")
+    except EnvSetupError as e:
+        raise SystemExit(f"error: {e}") from None
     return wt_root, work
 
 
