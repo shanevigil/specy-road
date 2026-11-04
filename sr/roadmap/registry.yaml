@@ -91,6 +91,7 @@ entries:
       - specy_road/agent_ignores.py
       - specy_road/bundled_scripts/session_cli.py
       - tests/
+      - specy_road/bundled_scripts/refresh_stubs_report.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
