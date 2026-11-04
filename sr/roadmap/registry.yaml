@@ -94,3 +94,16 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
+  - codename: a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates
+    node_id: M13.3
+    branch: feature/rm-a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates
+    touch_zones:
+      - specy_road/agents_md_block.py
+      - specy_road/templates/specyrd/agents-md-block.md
+      - specy_road/templates/specyrd/claude-md-block.md
+      - suggested_prompts/bootstrap-agents-md.md
+      - docs/install-and-usage.md
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
