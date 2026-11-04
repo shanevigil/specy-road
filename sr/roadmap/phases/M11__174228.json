@@ -62,7 +62,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.22_nested-repo-worktrees_0e58af0e-895f-4a7c-b3c9-e5cb788d598f.md",
       "sibling_order": 22,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Worker worktrees can include nested sibling repositories",
       "touch_zones": [
         "specy_road/git_workflow_config.py",
