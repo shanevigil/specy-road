@@ -123,21 +123,19 @@ def _filed_review(prompt: str) -> tuple[Path, str]:
     return path, template
 
 
-def test_review_delegate_takes_a_chore_started_with_review(tmp_path: Path, monkeypatch) -> None:
+def test_review_delegate_takes_a_chore_started_with_review(tmp_path: Path) -> None:
     repo, _ = _repo(tmp_path)
     _start(repo, "plain")
     with pytest.raises(rd.DelegateError, match="without --review"):
         rd.delegate(repo, "plain", "opus")
-    _start(repo, "fix-env", "--review")
-
-    def turn(h, launch, log):   # the reviewer files the record its prompt describes
-        path, template = _filed_review((repo / "work" / "prompt-fix-env-reviewer-opus.md").read_text())
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(template)
-        return {"exit": 0, "session_id": None, "errors": [], "tail": []}
-
-    monkeypatch.setattr(rd, "_turn", turn)
+    chore = _start(repo, "fix-env", "--review")
+    # The record the reviewer prompt describes, filed as the reviewer would; the fake harness then runs the turn.
+    head = git(repo, "rev-parse", "HEAD")
+    path, template = _filed_review(chore_cli.chore_prompt(chore, "reviewer", "opus", repo, commit=head))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(template)
     run = rd.delegate(repo, "fix-env", "opus")
+    assert "Write your verdict to" in (repo / "work" / "prompt-fix-env-reviewer-opus.md").read_text()
     assert run["state"] == "complete" and run["commit"] == git(repo, "rev-parse", "HEAD")
     chore_cli.close(repo, "fix-env", "done")
     assert "- opus: approve at " in (repo / "work" / "chores" / "fix-env.md").read_text()
