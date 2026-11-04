@@ -11,8 +11,9 @@ envelope's ``structured_output`` is the answer.
 
 * ``review_failure`` — the run wrote something besides its notes and the run's own runtime files
   (:func:`runtime_files`), compared by permission mode and content as well as size and mtime: any file of the checkout it ran in, git-ignored and ``work/`` files included, any
-  file of the leaf's hand-off directory, any Git metadata (a hook, the config, an object, the worktree's
-  ``.git`` pointer: :func:`~specy_road.review_write_check._walk_git`), a ref (``HEAD``, a branch, a stash), or the Git index's entries (a
+  file of the leaf's hand-off directory, the Git metadata a reviewer of this leaf could change (the checkout's
+  ``HEAD`` and its reflog, the reviewed branch's ref, reflog and ``packed-refs`` line, a hook, the worktree's
+  ``.git`` pointer: :func:`~specy_road.review_write_check._walk_git`), ``HEAD`` or the reviewed branch moving, or the Git index's entries (a
   ``git add``, ``git update-index --assume-unchanged``; a stat refresh by ``git status`` is not one). A
   ``REVIEW-<model>.md`` it filed itself is put back as it was, so the gate never counts it. Nothing is filed;
 * ``rerun`` — the output is missing, is not a JSON object, does not match the schema, or ``review record``
@@ -20,8 +21,9 @@ envelope's ``structured_output`` is the answer.
 * ``recorded`` — the notes went to ``notes-<model>.md`` and ``review record`` filed the record from them, with
   every check, the roster family and the ``history/`` copy an interactive filing gets.
 
-The walk skips ``.git`` and nested checkouts (a linked worktree under ``work/.worktrees``, a nested repository):
-they are other checkouts. Other sessions writing in the same checkout during the run count as the run's writes,
+The walk skips nested checkouts (a linked worktree under ``work/.worktrees``, a nested repository): they are other
+checkouts. Of the Git directories it reads only what :func:`~specy_road.review_write_check._walk_git` names, so an
+IDE polling the repository or another worktree committing on another branch is not this run's write. Other sessions writing in the same checkout during the run count as the run's writes,
 so run reviewers where nothing else writes; :func:`review_run_lock` keeps two reviewer runs of one leaf, whose
 hand-off directory is shared, from failing each other. The reviewer's process gets :func:`reviewer_env`, so
 re-running Python tests writes no bytecode or pytest cache.
@@ -297,11 +299,11 @@ def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Pat
         with review_run_lock(reviews):
             log.touch()   # created now, so the turn's appends move nothing in the hand-off root
             prepare_harness_files(reviews, model)   # and the answer and notes, written in place during the turn
-            before = snapshot(root, reviews, model)
+            before = snapshot(root, reviews, model, ref)
             fence = RootFence(reviews)
             rc = run_logged(launch, adapter, root, log, transcript)
             outcome = file_review(root, reviews.name, model, reviews, before=before,
-                                  after=snapshot(root, reviews, model),
+                                  after=snapshot(root, reviews, model, ref),
                                   output=final_output(adapter, run_text(log), out), ref=ref,
                                   launch_mode=launch.launch_mode, fenced=fence.moved())
     except ReviewRunBusy as e:

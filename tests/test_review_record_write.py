@@ -98,8 +98,21 @@ def test_a_commit_and_an_ignored_cache_count_as_writes_and_other_checkouts_do_no
     (repo / "work" / "reviews" / "M1.1" / "RUN-sol.log").write_text("not this run's\n")
     wrote = written(before, snapshot(repo, reviews, "opus"))
     assert {"git refs", "work/reviews/M1.1/RUN-sol.log"} <= set(wrote)
-    meta = set(wrote) - {"git refs", "work/reviews/M1.1/RUN-sol.log"}   # the commit's objects, logs and ref file
-    assert meta and all(w == ".git" or w.startswith(".git/") for w in meta)
+    meta = set(wrote) - {"git refs", "work/reviews/M1.1/RUN-sol.log"}   # the reviewed branch's reflog and ref file
+    branch = git(repo, "symbolic-ref", "HEAD")
+    assert f".git/logs/{branch}" in meta and meta <= {".git/logs/HEAD", f".git/logs/{branch}", f".git/{branch}"}
+
+
+def test_the_reviewed_branch_is_checked_when_the_reviewer_runs_on_a_detached_checkout(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    branch = git(repo, "symbolic-ref", "--short", "HEAD")
+    wt = tmp_path / "quiet-wt"
+    git(repo, "worktree", "add", "-q", "--detach", str(wt))
+    reviews = rf.reviews_dir(repo, "M1.1")
+    reviews.mkdir(parents=True, exist_ok=True)
+    before = snapshot(wt, reviews, "opus", branch)
+    git(wt, "update-ref", f"refs/heads/{branch}", "HEAD~1")                # moved without touching the checkout
+    assert "git refs" in written(before, snapshot(wt, reviews, "opus", branch))
 
 
 def test_one_leafs_reviewer_runs_take_turns(tmp_path: Path) -> None:

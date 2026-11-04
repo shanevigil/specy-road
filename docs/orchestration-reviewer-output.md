@@ -24,11 +24,9 @@ specy-road decides the outcome:
   (`notes-<model>.md`) and the files the run itself keeps (`RUN-<model>.json`,
   its `.tmp`, `RUN-<model>.log`, `OUTPUT-<model>.json`, the schema file and
   `.review-run.lock`): any file of the checkout it ran in, git-ignored and
-  `work/` files included, any file of the leaf's hand-off directory, any Git
-  metadata (every file of the common and the worktree Git directories, such as a
-  hook, the config or an object, and a linked worktree's `.git` pointer; other
-  linked worktrees' directories and raw index bytes are left out), a ref
-  (`HEAD`, a branch, a stash), or the Git index's entries (`git add`,
+  `work/` files included, any file of the leaf's hand-off directory, the Git
+  metadata a reviewer of this leaf could change (below), `HEAD` or the reviewed
+  branch moving, or the Git index's entries (`git add`,
   `git update-index --assume-unchanged`; compared by `git ls-files --stage -v`,
   so the stat refresh a read-only `git status` writes is not a write). Files, and directories (a file created and deleted again still moves its directory's mtime and ctime), are compared by identity (device, inode, link count), permission mode,
   change time (ctime, which a process cannot put back), content (SHA-256), size and mtime, so a rewrite with its mtime put back counts.
@@ -44,11 +42,32 @@ specy-road decides the outcome:
 
 The check walks every file, so run reviewers where nothing else writes: a
 coordinator or executor editing the same checkout during the run, or another
-leaf's reviewer filing there, counts as this run's write. The checkout's own
-`.git` is walked as Git metadata (above). The contents of a nested checkout (a
+leaf's reviewer filing there, counts as this run's write.
+
+Git metadata is shared by every checkout of the repository, so the check reads
+only what a reviewer of this leaf could change:
+
+- the checkout's own Git directory (`git rev-parse --git-dir`): `HEAD` and
+  `logs/HEAD`, and the index by its entries (above);
+- the reviewed branch (the branch checked out where the reviewer runs, and the
+  local branch `review delegate` reviews when that checkout is detached): its
+  loose ref `refs/heads/<branch>`, its reflog `logs/refs/heads/<branch>` and its
+  line in `packed-refs`;
+- the shared `hooks/` directory, files and directories, since every checkout runs
+  that code;
+- a linked worktree's `.git` pointer file.
+
+Everything else in the Git directories is left out: the common directory's own
+metadata (an `index.lock` another session takes there), `config`, `objects`,
+`FETCH_HEAD`, `ORIG_HEAD`, other branches' refs and reflogs, and other
+worktrees' directories. An IDE polling the repository or another worktree
+committing on its own branch during the run does not fail the review; a reviewer
+commit on the reviewed branch does (its ref and reflog move).
+
+The contents of a nested checkout (a
 linked worktree under `work/.worktrees`, a nested repository) are another
 checkout's and are skipped, but its `.git` marker is recorded, so a
-reviewer-created `.git` file or `git init` anywhere is a write. The reviewer runs with `GIT_OPTIONAL_LOCKS=0`, so a read-only `git status` takes no `index.lock` and a Git directory root is compared like any directory; the hand-off root, whose entries specy-road changes between harness turns, is fenced during each turn instead: `OUTPUT-<model>.json` and `notes-<model>.md` are created before the run and written in place, so any file created, renamed or deleted there while the harness runs is a write, whatever else the turn wrote. Two reviewer runs of one leaf share its
+reviewer-created `.git` file or `git init` anywhere is a write. The reviewer runs with `GIT_OPTIONAL_LOCKS=0`, so a read-only `git status` takes no `index.lock`; the hand-off root, whose entries specy-road changes between harness turns, is fenced during each turn instead: `OUTPUT-<model>.json` and `notes-<model>.md` are created before the run and written in place, so any file created, renamed or deleted there while the harness runs is a write, whatever else the turn wrote. Two reviewer runs of one leaf share its
 hand-off directory, so they take turns: a second run while one holds
 `.review-run.lock` is refused at once. The reviewer's process gets
 `PYTHONDONTWRITEBYTECODE=1` and `PYTEST_ADDOPTS=-p no:cacheprovider`, so

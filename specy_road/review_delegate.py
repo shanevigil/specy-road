@@ -287,10 +287,10 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
         prepare_harness_files(reviews, model)   # the answer emptied (never a stale one), both written in place
         try:
             # M8.3's read-only check and filing are for roadmap reviews; a chore reviewer files its own verdict file.
-            before = snapshot(cwd, reviews, model) if chore is None else None
+            before = snapshot(cwd, reviews, model, t.ref) if chore is None else None
             reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
             filed = None if before is None else file_review(
-                repo_root, node_id, model, reviews, before=before, after=snapshot(cwd, reviews, model),
+                repo_root, node_id, model, reviews, before=before, after=snapshot(cwd, reviews, model, t.ref),
                 output=final_output(h.adapter, run_text(path.with_suffix(".log")), output_path(reviews, model)),
                 ref=ref, launch_mode=h.launch_mode, fenced=h.fenced)
             _close(repo_root, t, model, run, path, reason, filed)

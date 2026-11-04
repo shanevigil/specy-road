@@ -39,8 +39,8 @@ def test_review_delegate_cli_fails_an_index_only_write_and_files_no_verdict(tmp_
                          "--repo-root", str(repo)])
     assert e.value.code == 1
     run = json.loads(capsys.readouterr().out)
-    # the index's entries, and the Git directory root where git took index.lock to write it
-    assert run["outcome"] == "review_failure" and set(wrote_paths(run["reason"])) == {"git index", ".git"}
+    # the index's entries (the Git directory root, where git took index.lock, is not compared: other sessions move it)
+    assert run["outcome"] == "review_failure" and set(wrote_paths(run["reason"])) == {"git index"}
     assert not rf.review_path(repo, "M1.1", "opus").exists()
     if cmd[0] == "update-index":   # the index changed and the worktree did not: git status sees nothing either
         assert git(repo, "ls-files", "-v", "src/a.py").startswith("h ") and git(
@@ -53,7 +53,7 @@ def test_prompt_channel_cli_fails_an_index_only_write_and_files_no_verdict(tmp_p
     assert run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli",
                     "--repo-root", str(repo)) == 1
     failure = next(line for line in capsys.readouterr().err.splitlines() if line.startswith("review_failure: "))
-    assert set(wrote_paths(failure)) == {"git index", ".git"}
+    assert set(wrote_paths(failure)) == {"git index"}
     assert not rf.review_path(repo, "M1.1", "gem").exists()
 
 
@@ -69,8 +69,8 @@ def test_a_read_only_git_status_with_a_stale_stat_cache_is_not_a_write(tmp_path:
         review_cli.main(["review", "delegate", "M1.1", "--model", "opus", "--backoff", "0", "--json",
                          "--repo-root", str(repo)])
     assert e.value.code == 0 and json.loads(capsys.readouterr().out)["outcome"] == "recorded"
-    # The reviewer runs with GIT_OPTIONAL_LOCKS=0: a status that would refresh the stale cache takes no index.lock in
-    # the Git directory root (whose own metadata is compared now) and leaves the index file alone.
+    # The reviewer runs with GIT_OPTIONAL_LOCKS=0: a status that would refresh the stale cache takes no index.lock
+    # and leaves the index file alone.
     assert index.read_bytes() == raw
 
 
@@ -127,7 +127,7 @@ def test_review_delegate_cli_fails_a_reviewer_only_chmod_and_files_no_verdict(tm
         git(repo, "worktree", "add", "-q", "--detach", str(wt))
         path, shown, extra = wt / ".git", ".git", ("--worktree", str(wt))
     else:
-        rel = {"checkout": "src/a.py", "hand-off": "work/reviews/M1.1/PACKET.md", "git-dir": ".git/config"}[area]
+        rel = {"checkout": "src/a.py", "hand-off": "work/reviews/M1.1/PACKET.md", "git-dir": ".git/HEAD"}[area]
         path, shown = repo / rel, rel
     before, content = path.stat(), path.read_bytes()
     set_steps(repo, spec, {**verdict_step(repo), "chmod": str(path)})
@@ -171,7 +171,7 @@ def test_review_delegate_cli_fails_an_identical_hard_link_replacement_and_files_
         git(repo, "worktree", "add", "-q", "--detach", str(wt))
         path, shown, extra = wt / ".git", ".git", ("--worktree", str(wt))
     else:
-        rel = {"checkout": "src/a.py", "hand-off": "work/reviews/M1.1/PACKET.md", "git-dir": ".git/config"}[area]
+        rel = {"checkout": "src/a.py", "hand-off": "work/reviews/M1.1/PACKET.md", "git-dir": ".git/HEAD"}[area]
         path, shown = repo / rel, rel
     alias = tmp_path / f"alias-{area}"                                        # outside every snapshotted tree
     before, content = path.stat(), path.read_bytes()
@@ -209,8 +209,9 @@ def test_review_delegate_cli_fails_an_identical_rewrite_with_its_mtime_restored_
 
 # --- directory metadata: a file created, written and deleted again is a write (Sol, 26f5cfb6) ----------------------
 
-# the hand-off root and the Git directory root (Sol, aa94cafa) as well as their subdirectories and the checkout
-@pytest.mark.parametrize("where", ["src", ".git/hooks", "work/reviews/M1.1/history", "work/reviews/M1.1", ".git"])
+# the hand-off root (Sol, aa94cafa) as well as its subdirectories, the checkout and the shared hooks directory; the Git
+# directory root is not compared (other sessions of the repository create and delete files there: see below)
+@pytest.mark.parametrize("where", ["src", ".git/hooks", "work/reviews/M1.1/history", "work/reviews/M1.1"])
 def test_review_delegate_cli_fails_a_created_written_and_deleted_file_and_files_no_verdict(tmp_path: Path, capsys,
                                                                                            where: str) -> None:
     repo, spec = delegate_repo(tmp_path)
@@ -252,3 +253,34 @@ def test_an_allowed_answer_or_notes_write_alone_is_still_filed(tmp_path: Path, c
                                              "text": _allowed_text(allowed, step)}})
     code, run = _delegate_cli(repo, capsys)
     assert code == 0 and run["outcome"] == "recorded", run["reason"]
+
+
+# --- scope: other sessions of the same repository are not the reviewer's writes (live failure at f01824de) ------------
+
+@pytest.mark.parametrize("who", ["other-worktree", "reviewer"])
+def test_only_a_commit_on_the_reviewed_branch_fails_the_review_not_other_sessions_git_activity(
+        tmp_path: Path, capsys, who: str) -> None:
+    """Another worktree committing on its own branch, an IDE's config write and its lock file in the Git directory
+    root, all during the run, leave the review recorded; the reviewer's own commit on the reviewed branch fails it."""
+    repo, spec = delegate_repo(tmp_path)
+    other = tmp_path / "other-wt"
+    git(repo, "worktree", "add", "-q", "-b", "other", str(other))
+    common = _common_git_dir(repo)
+    config = (common / "config").read_text()
+    if who == "other-worktree":
+        step = {"git": ["-C", str(other), "commit", "-q", "--allow-empty", "-m", "theirs"],
+                "write": {"path": str(common / "config"), "text": config + "[specy]\n\tpolled = 1\n"},
+                "transient": str(common / "index.lock")}
+    else:
+        step = {"git": ["commit", "-q", "--allow-empty", "-m", "reviewer commit"]}
+    set_steps(repo, spec, {**verdict_step(repo), **step})
+    tip = git(repo, "rev-parse", "other")
+    code, run = _delegate_cli(repo, capsys)
+    if who == "other-worktree":
+        assert git(repo, "rev-parse", "other") != tip                         # the other branch did move
+        assert code == 0 and run["outcome"] == "recorded", run["reason"]
+    else:
+        branch = git(repo, "symbolic-ref", "HEAD")
+        assert code == 1 and run["outcome"] == "review_failure"
+        assert {"git refs", ".git/logs/HEAD", f".git/logs/{branch}"} <= set(wrote_paths(run["reason"]))
+        assert not rf.review_path(repo, "M1.1", "opus").exists()
