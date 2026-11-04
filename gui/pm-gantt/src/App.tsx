@@ -1750,9 +1750,12 @@ export default function App() {
                   minimized={minimizedTaskIds.includes(nodeId)}
                   onMinimize={() => minimizeEditNode(nodeId)}
                   onPersisted={() =>
-                    void runRoadmapAction("Saving task…", loadSnapshot).catch(
+                    runRoadmapAction("Saving task…", loadSnapshot).catch(
                       (e: unknown) => setErr(String(e)),
                     )
+                  }
+                  onSaveErrorAfterClose={(message) =>
+                    setErr(`${nodeId}: ${message}`)
                   }
                   readOnlyCheckout={modalPlanningReadOnly}
                 />

@@ -194,6 +194,17 @@ body. Keep section bodies focused; link to PRs for detail.
     approval) and the known limitation of a Codex worker launched from
     inside a Codex coordinator's sandbox; the Cursor harness fact now
     records that project hooks load under `agent -p --force`.
+- PM GUI edit dialog: a title change no longer loses planning-sheet text typed
+  right after it. The dialog autosaved from effects that re-armed on every
+  roadmap refresh, so one title edit could send two PATCHes that renamed the
+  sheet against each other (412, then 400 `planning file missing` / `orphan
+  planning file`), and sheet text went to the old path or was overwritten by
+  the reload, with no error shown. Saves now go through one queue per dialog:
+  one request at a time, a value is never sent twice, a title save adopts the
+  renamed sheet path and the new roadmap token before the sheet is saved, edits
+  still pending when the dialog closes are sent, and a failed save stays in the
+  footer until the field saves. The server refuses a second concurrent PATCH
+  for the same node with 409 instead of running both.
 
 ## [v0.3.1-rc2] - 2026-10-29
 
