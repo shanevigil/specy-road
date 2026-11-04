@@ -261,6 +261,25 @@ Required change → what changed:
   - File limits OK; ruff clean; private imports 0 new.
   - Red/green: with the three production files back at `a158edd9`, both combined cases fail and the allowed-only cases pass.
 
+## Round 14 (gpt-5.6-sol-medium's block at `8663f3f0`; commit `7d68f9b3`)
+
+Required change → what changed:
+
+- **"Reject malformed outer JSON instead of accepting a nested object as the final verdict."**
+  - `review_record_write.json_object` keeps its rules: the final complete object must start a line, and no `{` may open after it. It now adds a third: the final object must be at top level.
+  - The new `_open_braces(value, spans)` counts the braces outside the complete objects found before it (`{` adds one, `}` takes one away but never below none). If an object is still open where the final one starts, the output is a rerun request.
+  - So an unterminated outer object followed by a complete nested verdict is never filed. Balanced prose (`use {x} here`) and a stray `}` still leave the answer at top level.
+  - `docs/orchestration-review.md`'s rerun-request bullet says so, within its 400 lines.
+- **"Add a public review-delegate regression using an unterminated outer object followed on a new line by a schema-valid nested verdict; require outcome rerun and no REVIEW file."**
+  - `test_a_verdict_nested_in_an_unterminated_outer_object_is_a_rerun_request` in `tests/test_review_record_write.py` goes through `specy-road review delegate --json`. The fake reviewer prints `{"wrapper": "draft", "review":` and then, on the next line, the full verdict, which the test first confirms is valid against `output_schema()`.
+  - The test confirms exit 1, `state: incomplete`, `outcome: rerun` with reason `rerun requested: the reviewer's output ends with no JSON object`, and no `REVIEW-opus.md`.
+  - The `json_object` unit test gained the nested case (`None`) and the balanced-prose-plus-stray-brace case (still the answer).
+- **Touch zones:** no new path.
+- **Verification:**
+  - `pytest -n 4` over the leaf's test files (`tests/test_review_record_write.py`, `tests/test_review_record_write_git.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_worker_adapters.py`, `tests/test_models_and_prompt.py`, `tests/test_prerelease_review.py`, `tests/test_review_rca.py`, `tests/test_role_prompt_file_limits.py`, `tests/test_resumed_delta_review.py`, `tests/test_chore_mode.py`, `tests/test_headless_limits_denials.py`): 201 passed.
+  - File limits OK; ruff clean; private imports 0 new.
+  - Red/green: without the `_open_braces` condition, the new regression and the unit test fail.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
@@ -292,6 +311,7 @@ Required change → what changed:
 - `_dir_record`, `_walk`'s `quiet` set and `wrote_only` (round 11): directory metadata for Sol's create-and-delete finding.
 - `RootFence`, `harness_files`, `file_review`'s `fenced`, `_Harness.fenced`, `GIT_OPTIONAL_LOCKS=0` in `reviewer_env` and `wrote_paths` (round 12): Sol's hand-off-root and Git-root finding.
 - `prepare_harness_files`, and `RootFence` without exceptions (round 13): Sol's combined allowed-plus-forbidden finding.
+- `_open_braces` and its condition in `json_object` (round 14): Sol's nested-in-malformed-JSON finding.
 - `_git_marker`, and `_walk`'s top-level-only `.git` skip (round 8): Sol's nested-`.git` finding.
 - `st_mode` in the snapshot tuples, and the `review_write_check` module split (round 7): Sol's chmod finding, and the file limit.
 - `_walk_git` and `_walk`'s `skip` (round 6): Git metadata in the A2 snapshot. Its `resolved()` returns `None` when git can't answer.
