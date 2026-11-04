@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_delegate_helpers import delegate_repo, fake_reviewer_run, set_steps, verdict_step
+from tests.review_delegate_helpers import delegate_repo, fake_reviewer_run, set_steps, verdict_step, wrote_only
 from tests.review_repo_helpers import commit_file, git, make_review_repo, review_output
 from tests.test_models_and_prompt import run_main
 
@@ -40,7 +40,7 @@ def test_a_run_that_writes_anything_but_its_notes_is_a_review_failure_and_files_
     set_steps(repo, spec, {**verdict_step(repo), "write": {"path": str(repo / rel), "text": "x = 2\n"}})
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
     assert run["state"] == "incomplete" and run["outcome"] == "review_failure"
-    assert run["reason"].startswith(f"review failure: the reviewer run wrote {rel};")
+    assert wrote_only(run["reason"], rel)
     assert not _record(repo).exists()                                 # the verdict in its output is not filed
 
 
@@ -55,7 +55,7 @@ def test_a_same_length_rewrite_with_its_mtime_put_back_is_a_review_failure(tmp_p
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
     after = target.stat()
     assert (after.st_size, after.st_mtime_ns) == (before.st_size, before.st_mtime_ns)   # only the bytes differ
-    assert run["outcome"] == "review_failure" and run["reason"].startswith("review failure: the reviewer run wrote src/a.py;")
+    assert run["outcome"] == "review_failure" and wrote_only(run["reason"], 'src/a.py')
     assert not _record(repo).exists()
 
 
@@ -87,10 +87,10 @@ def test_a_commit_and_an_ignored_cache_count_as_writes_and_other_checkouts_do_no
     nested = repo / "work" / ".worktrees" / "other"
     nested.mkdir(parents=True)
     (nested / ".git").write_text("gitdir: elsewhere\n")                   # a linked worktree: another checkout
+    reviews.mkdir(parents=True, exist_ok=True)                              # set up before the run, as specy-road does
     before = snapshot(repo, reviews, "opus")
     (nested / "edit.py").write_text("theirs\n")
     assert written(before, snapshot(repo, reviews, "opus")) == []
-    (repo / "work" / "reviews" / "M1.1").mkdir(parents=True, exist_ok=True)
     (repo / "work" / "reviews" / "M1.1" / "RUN-opus.log").write_text("the run's own log\n")
     assert written(before, snapshot(repo, reviews, "opus")) == []
     git(repo, "commit", "-q", "--allow-empty", "-m", "reviewer commit")
@@ -282,7 +282,8 @@ def test_prompt_channel_cli_captures_a_custom_reviewer_command_and_checks_its_wr
                   "--repo-root", str(repo))
     err = capsys.readouterr().err
     assert (rc, rf.review_path(repo, "M1.1", "gem").exists()) == ((1, False) if writes else (0, True))
-    assert ("review_failure: review failure: the reviewer run wrote work/out.txt" in err) is writes
+    failure = next((line for line in err.splitlines() if line.startswith("review_failure: ")), "")
+    assert bool(failure) is writes and (not writes or wrote_only(failure, "work/out.txt"))
     prompt = (repo / "work" / "prompt-M1.1-reviewer-gem.md").read_text()
     assert "**specy-road files your record.**" in prompt
 

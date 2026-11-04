@@ -276,7 +276,7 @@ specy-road decides the outcome:
   linked worktrees' directories and raw index bytes are left out), a ref
   (`HEAD`, a branch, a stash), or the Git index's entries (`git add`,
   `git update-index --assume-unchanged`; compared by `git ls-files --stage -v`,
-  so the stat refresh a read-only `git status` writes is not a write). Files are compared by identity (device, inode, link count), permission mode,
+  so the stat refresh a read-only `git status` writes is not a write). Files, and directories (a file created and deleted again still moves its directory's mtime and ctime), are compared by identity (device, inode, link count), permission mode,
   change time (ctime, which a process cannot put back), content (SHA-256), size and mtime, so a rewrite with its mtime put back counts.
   A `REVIEW-<model>.md` it filed itself is put back as it was. Nothing is filed.
 - **rerun request** — the output has no JSON object, its last object does not
@@ -294,7 +294,7 @@ leaf's reviewer filing there, counts as this run's write. The checkout's own
 `.git` is walked as Git metadata (above). The contents of a nested checkout (a
 linked worktree under `work/.worktrees`, a nested repository) are another
 checkout's and are skipped, but its `.git` marker is recorded, so a
-reviewer-created `.git` file or `git init` anywhere is a write. Two reviewer runs of one leaf share its
+reviewer-created `.git` file or `git init` anywhere is a write. Two directories' own metadata is left out, though their contents are compared: the hand-off directory (the run's own files appear there) and a Git directory holding an index (`git status` creates `index.lock` there). Two reviewer runs of one leaf share its
 hand-off directory, so they take turns: a second run while one holds
 `.review-run.lock` is refused at once. The reviewer's process gets
 `PYTHONDONTWRITEBYTECODE=1` and `PYTEST_ADDOPTS=-p no:cacheprovider`, so

@@ -33,6 +33,10 @@ if step.get("write"):
     open(w["path"], "w").write(w["text"])
     if kept:
         os.utime(w["path"], ns=(kept.st_atime_ns, kept.st_mtime_ns))
+if step.get("transient"):   # a file created, written and deleted again: only its directory keeps a trace
+    with open(step["transient"], "w") as f:
+        f.write("scratch")
+    os.unlink(step["transient"])
 if step.get("relink"):  # the file swapped for a hard link to an identical copy outside: same mode, size, mtime, bytes
     import shutil
     r = step["relink"]
@@ -131,3 +135,15 @@ def fake_reviewer_run(monkeypatch, answer: list[str] | None = None) -> list[dict
         return 0
     monkeypatch.setattr(review_record_write, "run_logged", logged)
     return calls
+
+
+def wrote_paths(reason: str) -> list[str]:
+    """The paths a ``review_failure`` reason names (``review failure: the reviewer run wrote a, b; …``)."""
+    head = "review failure: the reviewer run wrote "
+    return reason[reason.index(head) + len(head):].split(";", 1)[0].split(", ")
+
+
+def wrote_only(reason: str, path: str) -> bool:
+    """``path`` is named, and every other named path is one of its directories (whose entries the write changed)."""
+    named = wrote_paths(reason)
+    return path in named and all(p == path or Path(p) in Path(path).parents for p in named)

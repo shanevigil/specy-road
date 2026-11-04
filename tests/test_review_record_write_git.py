@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
+from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step, wrote_only
 from tests.review_repo_helpers import git
 from tests.test_models_and_prompt import run_main
 
@@ -39,7 +39,7 @@ def test_review_delegate_cli_fails_an_index_only_write_and_files_no_verdict(tmp_
                          "--repo-root", str(repo)])
     assert e.value.code == 1
     run = json.loads(capsys.readouterr().out)
-    assert run["outcome"] == "review_failure" and run["reason"].startswith("review failure: the reviewer run wrote git index;")
+    assert run["outcome"] == "review_failure" and wrote_only(run["reason"], 'git index')
     assert not rf.review_path(repo, "M1.1", "opus").exists()
     if cmd[0] == "update-index":   # the index changed and the worktree did not: git status sees nothing either
         assert git(repo, "ls-files", "-v", "src/a.py").startswith("h ") and git(
@@ -90,7 +90,7 @@ def test_review_delegate_cli_fails_a_reviewer_created_hook_and_files_no_verdict(
     set_steps(repo, spec, {**verdict_step(repo), "write": {"path": str(hooks / "pre-commit"), "text": "#!/bin/sh\n"}})
     code, run = _delegate_cli(repo, capsys)
     assert code == 1 and run["outcome"] == "review_failure"
-    assert run["reason"].startswith("review failure: the reviewer run wrote .git/hooks/pre-commit;")
+    assert wrote_only(run["reason"], '.git/hooks/pre-commit')
     assert not rf.review_path(repo, "M1.1", "opus").exists()
 
 
@@ -108,7 +108,7 @@ def test_a_reviewer_in_a_linked_worktree_that_writes_git_metadata_files_no_verdi
     code, run = _delegate_cli(repo, capsys, "--worktree", str(wt))
     shown = ".git" if target == "pointer" else str(path)   # inside the worktree: relative; the common dir: absolute
     assert code == 1 and run["outcome"] == "review_failure"
-    assert run["reason"].startswith(f"review failure: the reviewer run wrote {shown};")
+    assert wrote_only(run["reason"], shown)
     assert not rf.review_path(repo, "M1.1", "opus").exists()
 
 
@@ -132,7 +132,7 @@ def test_review_delegate_cli_fails_a_reviewer_only_chmod_and_files_no_verdict(tm
     assert after.st_mode != before.st_mode                                                 # only the mode changed
     assert (after.st_size, after.st_mtime_ns, path.read_bytes()) == (before.st_size, before.st_mtime_ns, content)
     assert code == 1 and run["outcome"] == "review_failure"
-    assert run["reason"].startswith(f"review failure: the reviewer run wrote {shown};")
+    assert wrote_only(run["reason"], shown)
     assert not rf.review_path(repo, "M1.1", "opus").exists()
 
 
@@ -151,7 +151,7 @@ def test_review_delegate_cli_fails_a_reviewer_created_nested_git_and_files_no_ve
     code, run = _delegate_cli(repo, capsys)
     assert (repo / shown).exists()
     assert code == 1 and run["outcome"] == "review_failure"
-    assert run["reason"].startswith(f"review failure: the reviewer run wrote {shown};")
+    assert wrote_only(run["reason"], shown)
     assert not rf.review_path(repo, "M1.1", "opus").exists()
 
 
@@ -178,7 +178,7 @@ def test_review_delegate_cli_fails_an_identical_hard_link_replacement_and_files_
         before.st_mode, before.st_size, before.st_mtime_ns, content)          # all the old tuple compared
     assert after.st_ino == alias.stat().st_ino != before.st_ino and after.st_nlink == 2
     assert code == 1 and run["outcome"] == "review_failure"
-    assert run["reason"].startswith(f"review failure: the reviewer run wrote {shown};")
+    assert wrote_only(run["reason"], shown)
     assert not rf.review_path(repo, "M1.1", "opus").exists()
 
 
@@ -199,5 +199,20 @@ def test_review_delegate_cli_fails_an_identical_rewrite_with_its_mtime_restored_
                                      before.st_size, before.st_mtime_ns, content)   # all but the change time
     assert after.st_ctime_ns != before.st_ctime_ns
     assert code == 1 and run["outcome"] == "review_failure"
-    assert run["reason"].startswith("review failure: the reviewer run wrote src/a.py;")
+    assert wrote_only(run["reason"], 'src/a.py')
+    assert not rf.review_path(repo, "M1.1", "opus").exists()
+
+
+# --- directory metadata: a file created, written and deleted again is a write (Sol, 26f5cfb6) ----------------------
+
+@pytest.mark.parametrize("where", ["src", ".git/hooks", "work/reviews/M1.1/history"])
+def test_review_delegate_cli_fails_a_created_written_and_deleted_file_and_files_no_verdict(tmp_path: Path, capsys,
+                                                                                           where: str) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    (repo / where).mkdir(parents=True, exist_ok=True)                        # an existing directory, set up first
+    scratch = repo / where / "scratch.tmp"
+    set_steps(repo, spec, {**verdict_step(repo), "transient": str(scratch)})
+    code, run = _delegate_cli(repo, capsys)
+    assert not scratch.exists()                                              # nothing is left behind
+    assert code == 1 and run["outcome"] == "review_failure" and wrote_only(run["reason"], where)
     assert not rf.review_path(repo, "M1.1", "opus").exists()

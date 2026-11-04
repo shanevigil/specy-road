@@ -60,6 +60,12 @@ def _record(st: os.stat_result, path: str, is_link: bool) -> tuple[Any, ...]:
             _content(path, is_link))
 
 
+def _dir_record(st: os.stat_result) -> tuple[Any, ...]:
+    """One directory: identity, links, mode, mtime and change time. Creating, renaming or deleting an entry moves
+    its mtime and ctime, so a file the run created and deleted again still shows as a write of its directory."""
+    return ("dir", st.st_dev, st.st_ino, st.st_nlink, st.st_mode, st.st_mtime_ns, st.st_ctime_ns)
+
+
 def _git_marker(path: str, state: dict[str, Any]) -> None:
     """A nested checkout's ``.git``: a pointer file as any file, a directory as present only (its own repository's
     activity moves its times). Its appearing, changing or going away is a write."""
@@ -71,15 +77,21 @@ def _git_marker(path: str, state: dict[str, Any]) -> None:
     state[path] = ("checkout",) if is_dir else _record(st, path, os.path.islink(path))
 
 
-def _walk(base: Path, state: dict[str, Any], skip: frozenset[str] = frozenset()) -> None:
-    """Every file under ``base`` as :func:`_record` keeps it (identity, links, mode, size, mtime, content), ignored
-    ones included, but every path in ``skip`` (the checkout's own ``.git``, walked by :func:`_walk_git`). A nested
-    checkout (a directory holding ``.git``) is another repository: only its ``.git`` marker is recorded
+def _walk(base: Path, state: dict[str, Any], skip: frozenset[str] = frozenset(),
+          quiet: frozenset[str] = frozenset()) -> None:
+    """Every file under ``base`` as :func:`_record` keeps it (identity, links, mode, size, mtime, content), and
+    every directory, ``base`` included, as :func:`_dir_record` does, ignored ones included, but every path in
+    ``skip`` (the checkout's own ``.git``, walked by :func:`_walk_git`) and the own metadata of each directory in
+    ``quiet`` (:func:`snapshot`: entries are created there during an honest run), whose contents are still walked.
+    A nested checkout (a directory holding ``.git``) is another repository: only its ``.git`` marker is recorded
     (:func:`_git_marker`), so a reviewer-created ``.git`` file or ``git init`` anywhere is still a write."""
     stack = [str(base)]
     while stack:
+        d = stack.pop()
         try:
-            entries = list(os.scandir(stack.pop()))
+            if d not in quiet:
+                state[d] = _dir_record(os.stat(d, follow_symlinks=False))
+            entries = list(os.scandir(d))
         except OSError:   # unreadable, or removed while walking
             continue
         for e in entries:
@@ -99,20 +111,22 @@ def _walk(base: Path, state: dict[str, Any], skip: frozenset[str] = frozenset())
             state[e.path] = _record(st, e.path, e.is_symlink())
 
 
-def _walk_git(top: Path, state: dict[str, Any]) -> None:
+def _walk_git(top: Path, state: dict[str, Any], quiet: frozenset[str] = frozenset()) -> None:
     """The checkout's Git metadata: every file of its common Git directory (hooks, config, info, objects, refs,
     logs) and of its own worktree Git directory, and its ``.git`` pointer file in a linked worktree. Skipped: the
     other linked worktrees' directories under ``<common>/worktrees`` (other checkouts), and raw index bytes (this
     checkout's, which a read-only ``git status`` rewrites and :func:`snapshot` compares by its entries instead, and
-    the main checkout's when this one is linked)."""
+    the main checkout's when this one is linked). The directories holding those indexes are ``quiet``: a read-only
+    ``git status`` creates and renames ``index.lock`` there, so only their own metadata is left out."""
     def resolved(*args: str) -> Path | None:
         out = git_text(["rev-parse", "--path-format=absolute", *args], top)
         return Path(out).resolve() if out else None
     common, own, index = resolved("--git-common-dir"), resolved("--git-dir"), resolved("--git-path", "index")
     other = (common / "index", common / "worktrees") if common else ()   # the main checkout's index; other worktrees
     skip = frozenset(str(p) for p in (index, *other) if p)
+    quiet = quiet | frozenset(str(p.parent) for p in (index, common / "index" if common else None) if p)
     for d in dict.fromkeys(d for d in (common, own) if d):   # one directory when the checkout is the main one
-        _walk(d, state, skip)
+        _walk(d, state, skip, quiet)
     pointer = top / ".git"
     if pointer.is_file():
         st = pointer.stat()
@@ -138,8 +152,8 @@ class Snapshot:
 
 
 def snapshot(cwd: Path, reviews: Path, model: str) -> Snapshot:
-    """Every file of the checkout at ``cwd``, of its Git directories (:func:`_walk_git`) and of the hand-off
-    directory ``reviews``, plus every ref and the Git index. The index is compared by what it records (``ls-files --stage -v``:
+    """Every file and directory of the checkout at ``cwd``, of its Git directories (:func:`_walk_git`) and of the
+    hand-off directory ``reviews``, plus every ref and the Git index. The index is compared by what it records (``ls-files --stage -v``:
     each entry's mode, blob, stage and assume-unchanged / skip-worktree flag), not its bytes, which a read-only
     ``git status`` rewrites when it refreshes the stat cache."""
     top = Path(git_text(["rev-parse", "--show-toplevel"], cwd) or cwd).resolve()
@@ -148,10 +162,13 @@ def snapshot(cwd: Path, reviews: Path, model: str) -> Snapshot:
     state: dict[str, Any] = {"git refs": (git_text(["rev-parse", "HEAD"], top) or "") + "\n"
                              + (git_text(["for-each-ref", "--format=%(refname) %(objectname)"], top) or ""),
                              "git index": hashlib.sha256(index.encode()).hexdigest()}
-    _walk(top, state, frozenset({str(top / ".git")}))   # the checkout's own Git directory: _walk_git
-    _walk_git(top, state)
+    # The hand-off directory's own metadata moves during an honest run (the run record's temporary file, the log,
+    # Codex's -o file): its files and subdirectories are still compared.
+    quiet = frozenset({str(reviews)})
+    _walk(top, state, frozenset({str(top / ".git")}), quiet)   # the checkout's own Git directory: _walk_git
+    _walk_git(top, state, quiet)
     if top not in reviews.parents:   # a reviewer in a linked worktree: the hand-off directory is the main checkout's
-        _walk(reviews, state)
+        _walk(reviews, state, quiet=quiet)
     return Snapshot(state, {p: p.read_bytes() for p in _own_records(reviews, model)}, runtime_files(reviews, model), top)
 
 
@@ -161,4 +178,4 @@ def written(before: Snapshot, after: Snapshot) -> list[str]:
     keys = set(before.state) | set(after.state)
     changed = (k for k in keys if k not in before.exempt and before.state.get(k) != after.state.get(k))
     top = f"{before.top}{os.sep}"
-    return sorted(k.removeprefix(top) for k in changed)
+    return sorted("." if k == str(before.top) else k.removeprefix(top) for k in changed)
