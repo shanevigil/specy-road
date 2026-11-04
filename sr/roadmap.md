@@ -181,7 +181,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.72` | A reviewer run that ends without a record is reported as a failure | task | Agentic-led | Complete |
 | `M11.73` | specy-road ready warns when the leaf no longer merges cleanly | task | Agentic-led | Complete |
 | `M11.74` | Pickup and finish in one checkout take a shared lock in order | task | Agentic-led | Complete |
-| `M11.75` | Reviewer prompt asks for independent probes, not the executor's own checks | task | Agentic-led | Not Started |
+| `M11.75` | Reviewer prompt asks for independent probes, not the executor's own checks | task | Agentic-led | Complete |
 | `M11.76` | Every roster model reaches its profile notes | task | Agentic-led | Complete |
 | `M11.77` | A completed reviewer run does not report a missing record | task | Agentic-led | Complete |
 | `M11.78` | Review lessons: escaped defect classes feed every reviewer prompt | task | Agentic-led | Complete |

@@ -11,7 +11,9 @@ whose review loop is not converging and has no root-cause analysis for it is
 ``escalated`` (exit 1), with the trigger named (``review_rca``).
 ``review record`` validates one reviewer's notes, fills in the family from the
 roster, labels same-family independence, and files the record as
-``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``.
+``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``. It refuses an approve whose
+findings or notes name a defect with neither a ``required_changes`` entry nor a ``not a defect because`` line
+(:mod:`specy_road.review_record_rules`).
 ``review list`` prints the filed records, any RCA records, the escalation and the gate evaluation, and writes nothing.
 Both commands report the leaf's review rounds (distinct reviewed commits), the time from its first review to the latest,
 and each ``review delegate`` run with its commit; an older commit's record never reads as the current verdict.
@@ -30,8 +32,8 @@ from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.orchestration_config import substitute_for
 from specy_road.red_green import cmd_red_green
 from specy_road.review_files import (
-    HUMAN, REVIEW_LAUNCH_MODES, archive_review, executor_blocked_display_lines, latest_ready, list_ready,
-    list_reviews, load_review, node_ids_with_reviews, non_gating_verify_problems, render_front_matter,
+    REVIEW_LAUNCH_MODES, archive_review, executor_blocked_display_lines, latest_ready, list_ready,
+    list_reviews, node_ids_with_reviews, non_gating_verify_problems, render_front_matter,
     review_path, reviews_root, round_span, write_review,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
@@ -41,8 +43,9 @@ from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
 from specy_road.review_ready_merge import add_ready_parser
 from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
+from specy_road.review_record_rules import check_record
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
-from specy_road.review_target import (ReviewTarget, ReviewTargetError, milestone_open_problem, milestone_status,
+from specy_road.review_target import (ReviewTarget, ReviewTargetError, milestone_status,
                                       resolve_target, same_commit)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.session_presence import list_sessions
@@ -242,29 +245,13 @@ def _relabel_independence(root: Path, gate: GateResult) -> None:
             write_review(c.review.path, render_front_matter(c.review.data, c.review.body))
 
 
-def _check_record(ns: argparse.Namespace, root: Path, t: ReviewTarget) -> tuple[dict | None, str | None]:
-    if ns.model == HUMAN or milestone_open_problem(t):   # a milestone with an open leaf takes no record yet
-        return None, milestone_open_problem(t) or ("a human review is filed only by the interactive approve in "
-                                                   "specy-road mark-implementation-reviewed, so an agent cannot file one")
-    rec = load_review(Path(ns.file), acceptance_ids(t.node))
-    if not rec.ok:
-        return None, f"{ns.file}: " + "; ".join(rec.errors)
-    for key, want in (("node_id", ns.node_id), ("model", ns.model), ("verdict", ns.verdict)):
-        if rec.data.get(key) != want:
-            return None, f"{ns.file}: {key} is {rec.data.get(key)!r}, the command says {want!r}"
-    if not same_commit(root, rec.data["commit"], t.commit):
-        return None, (f"the record reviews {rec.data['commit']}, but the commit under review is "
-                      f"{t.commit} ({t.ref}). Re-review the current commit.")
-    return {"data": rec.data, "body": rec.body}, None
-
-
 def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     root = resolve_repo_root(ns)
     try:
         t = resolve_target(root, ns.node_id, ns.ref)
     except ReviewTargetError as e:
         return _fail(str(e))
-    rec, err = _check_record(ns, root, t)
+    rec, err = check_record(ns, root, t)
     if err:
         return _fail(err)
     gate = evaluate_gate(root, t.node, t.commit, branch=(t.entry or {}).get("branch"))
