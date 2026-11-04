@@ -3,7 +3,8 @@
 # Usage: sr/tools/pick.sh <NODE_ID> <worktree-dir-name> [model] [harness]
 set -u
 ID=$1; WT=$2; M=${3:-composer-2.5}; H=${4:-cursor}
-ROOT=/Users/savigil/WORKSPACE/specy-road; S=$ROOT/sr/tools/specy-road
+. "$(dirname "$0")/env.sh"
+S=$ROOT/sr/tools/specy-road
 cd "$ROOT" || exit 2
 $S do-next-available-task --under "$ID" >/dev/null 2>&1
 B=$(git branch --show-current)

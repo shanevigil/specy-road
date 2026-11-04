@@ -3,8 +3,7 @@
 # The create-or-resume wrapper from docs/orchestration-workers.md ("Roster setup"),
 # verified on Claude Code 2.1.312; re-check after upgrading.
 sid=$1 prompt=$2
-PATH=/Users/savigil/WORKSPACE/specy-road/sr/tools:/Users/savigil/WORKSPACE/specy-road/.conda/bin:$PATH
-export PATH
+. "$(dirname "$0")/env.sh"
 set -- -p --output-format stream-json --verbose --dangerously-skip-permissions --model claude-opus-5-5
 if ls "$HOME"/.claude/projects/*/"$sid".jsonl >/dev/null 2>&1; then
   exec claude "$@" --resume "$sid" < "$prompt"

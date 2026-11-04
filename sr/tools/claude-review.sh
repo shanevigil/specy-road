@@ -4,8 +4,7 @@
 # --add-dir and --allowedTools take several values and would swallow it. Runs on the subscription
 # login (--bare would need ANTHROPIC_API_KEY), so the launch mode is full.
 effort=$1 prompt=$2
-PATH=/Users/savigil/WORKSPACE/specy-road/sr/tools:/Users/savigil/WORKSPACE/specy-road/.conda/bin:$PATH
-export PATH
+. "$(dirname "$0")/env.sh"
 exec claude -p "$prompt" --model claude-opus-5-5 --effort "$effort" --permission-mode acceptEdits \
   --allowedTools "Read,Grep,Glob,Write,Edit,Bash" \
-  --add-dir /Users/savigil/WORKSPACE/specy-road/sr/work/reviews </dev/null
+  --add-dir "$REVIEWS" </dev/null

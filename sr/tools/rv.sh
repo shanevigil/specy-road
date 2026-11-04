@@ -3,7 +3,8 @@
 # Usage: sr/tools/rv.sh <NODE_ID> <worktree-dir-name>
 set -u
 ID=$1; WT=$2
-ROOT=/Users/savigil/WORKSPACE/specy-road; S=$ROOT/sr/tools/specy-road; LOG=$ROOT/work/grind-logs; mkdir -p "$LOG"
+. "$(dirname "$0")/env.sh"
+S=$ROOT/sr/tools/specy-road; LOG=$ROOT/work/grind-logs; mkdir -p "$LOG"
 cd "$ROOT" || exit 2
 # Real conflicts only: finish-this-task resolves the generated bookkeeping files itself.
 real_conflicts() { git -C "$1" merge-tree --write-tree --name-only origin/WIP/improvements-0-3-1 HEAD 2>/dev/null | sed -n '2,/^$/p' | grep -v -E '^$|^sr/roadmap/registry\.yaml$|^sr/roadmap-context\.md$|^sr/roadmap\.md$'; }

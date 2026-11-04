@@ -14,14 +14,14 @@ roster:
     harness_model: claude-opus-5-5
     billing_route: claude_subscription
     channels:
-      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/claude-worker.sh {session} {prompt}"
+      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/claude-worker.sh" {session} {prompt}'
   - id: claude-fable-5-1
     family: anthropic
     roles: [executor]
     harness: claude-code
     billing_route: claude_subscription
     channels:
-      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/fable-worker.sh {session} {prompt}"
+      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/fable-worker.sh" {session} {prompt}'
   - id: claude-opus-5-5-high
     family: anthropic
     roles: [executor]
@@ -35,32 +35,32 @@ roster:
     harness: cursor
     billing_route: cursor_subscription
     channels:
-      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/cursor-review.sh grok-4.7-high {prompt}"
+      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/cursor-review.sh" grok-4.7-high {prompt}'
   - id: claude-opus-5-5-review
     family: anthropic
     roles: [reviewer]
     profile: model-profiles/anthropic-claude/claude-opus-5-5.md
     harness: claude-code
     channels:
-      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/claude-review.sh medium \"<prompt>\""
+      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/claude-review.sh" medium "<prompt>"'
   - id: gpt-6.1-sol
     family: openai
     roles: [reviewer]
     harness: codex
     channels:
-      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/codex-review.sh gpt-6.1-sol \"<prompt>\""
+      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/codex-review.sh" gpt-6.1-sol "<prompt>"'
   - id: gpt-5.6-sol-medium
     family: openai
     roles: [reviewer]
     harness: codex
     channels:
-      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/codex-review.sh gpt-5.6-sol \"<prompt>\" medium"
+      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/codex-review.sh" gpt-5.6-sol "<prompt>" medium'
   - id: gpt-5.6-sol-low
     family: openai
     roles: [reviewer]
     harness: codex
     channels:
-      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/codex-review.sh gpt-5.6-sol \"<prompt>\" low"
+      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/codex-review.sh" gpt-5.6-sol "<prompt>" low'
   - id: cursor-grok-4.6-high
     family: xai
     roles: [reviewer]
@@ -71,7 +71,7 @@ roster:
     # checked by the maintainer 2026-11-04, so the approval counts as xai (M11.33 routing rule).
     pinned: true
     channels:
-      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/cursor-review.sh cursor-grok-4.6-high {prompt}"
+      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/cursor-review.sh" cursor-grok-4.6-high {prompt}'
   - id: composer-2.5
     family: cursor
     roles: [executor]
@@ -82,7 +82,7 @@ roster:
     harness: cursor
     billing_route: cursor_subscription
     channels:
-      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/cursor-review.sh gpt-5.6-sol-high {prompt}"
+      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/cursor-review.sh" gpt-5.6-sol-high {prompt}'
 policy:
   reviewers_required: 2
   reviewers_distinct_families: true
