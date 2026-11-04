@@ -4,7 +4,7 @@
 
 ## Round 7 (after the gpt-5.6-sol-medium block at 3b97f506)
 
-Each `required_changes` item and the change that answers it (commit 64cc7a6f):
+Each `required_changes` item and the change that answers it (commit ac1eb5c8):
 
 | # | Required change | Change |
 |---|---|---|
@@ -116,7 +116,7 @@ I ran `unexplained_defects` over the distinct approving records in the main chec
 
 ## Verification
 
-Round 7 (at 64cc7a6f):
+Round 7 (at ac1eb5c8):
 
 - `python -m pytest -q -n 4 tests/test_review_record_rules.py` → 76 passed
 - `python -m pytest -q -n 4 <the same 53 files as round 5>` → 715 passed
