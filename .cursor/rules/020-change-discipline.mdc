@@ -9,6 +9,7 @@ alwaysApply: true
 - Make the smallest change that satisfies the task.
 - Don’t rename/reformat/move files unless the task requires it.
 - Don’t introduce new tools/scripts when existing ones can be extended.
+- Never commit machine-, user- or developer-specific values (home or temp paths, hostnames); resolve them at run time.
 
 ## Adoption prompts (`suggested_prompts/`)
 

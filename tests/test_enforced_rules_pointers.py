@@ -101,6 +101,8 @@ def test_each_removed_sentence_is_a_pointer_to_an_enforcement_point(
 
 #: What the context meter reported for a fresh ``init project`` section before M5.4.
 _BEFORE_LINES, _BEFORE_BYTES = 52, 7679
+#: Rules added to the section since M5.4, each approved by the maintainer: the machine-specific values rule (2026-11-04).
+_ADDED_LINES, _ADDED_BYTES = 1, 119
 
 
 def test_the_meter_reports_a_shorter_section_than_before(tmp_path: Path, monkeypatch) -> None:
@@ -110,4 +112,4 @@ def test_the_meter_reports_a_shorter_section_than_before(tmp_path: Path, monkeyp
     run_init_project(tmp_path)
     codex = injected_context(tmp_path)["Codex"]
     section = next(f for f in codex if f.rel == "AGENTS.md")
-    assert section.block_lines < _BEFORE_LINES and section.block_size < _BEFORE_BYTES
+    assert section.block_lines < _BEFORE_LINES + _ADDED_LINES and section.block_size < _BEFORE_BYTES + _ADDED_BYTES

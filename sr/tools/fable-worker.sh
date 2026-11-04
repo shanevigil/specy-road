@@ -3,8 +3,8 @@
 # Same create-or-resume wrapper as claude-worker.sh (docs/orchestration-workers.md, "Roster setup"),
 # with the model pinned to claude-fable-5-1. Verified on Claude Code 2.1.312; re-check after upgrading.
 sid=$1 prompt=$2
-PATH=/Users/savigil/WORKSPACE/specy-road/sr/tools:/Users/savigil/WORKSPACE/specy-road/.conda/bin:/Users/savigil/.local/bin:/opt/homebrew/bin:$PATH
-export PATH
+PATH=$HOME/.local/bin:/opt/homebrew/bin:$PATH   # where the claude CLI may live outside the login PATH
+. "$(dirname "$0")/env.sh"
 set -- -p --output-format stream-json --verbose --dangerously-skip-permissions --model claude-fable-5-1
 if ls "$HOME"/.claude/projects/*/"$sid".jsonl >/dev/null 2>&1; then
   exec claude "$@" --resume "$sid" < "$prompt"
