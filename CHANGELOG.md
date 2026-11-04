@@ -156,6 +156,21 @@ body. Keep section bodies focused; link to PRs for detail.
     known-limitation note says a Codex executor cannot commit under the
     default `workspace-write` sandbox, with the `channels.cli` and
     `cli_resume` that grant the worktree's gitdir and the common `.git`.
+- **Review packets again show each verifier's last lines** (regression since
+  0.3.1rc2). The executor prompt told executors to write READY with
+  `specy-road ready --verify CMD=EXIT`, which records no output, so every
+  packet printed `(no output recorded)`. `ready` now takes `--run CMD`: it
+  runs the command from the current directory, records its exit and the last
+  20 lines of its output as `tail`, and refuses a non-zero exit, printing
+  that tail. The executor prompt and the grind pickup prompt both say to use
+  it; the pickup prompt keeps the template for `blocked_on`.
+- With `policy.signed_reviews: true`, the reviewer prompt's `review record`
+  command now carries `--sign-key <path to your private key>`, and
+  `handoff status` names `--sign-key` in its who-can-approve lines; before,
+  a reviewer that followed the prompt was refused.
+- `docs/grind-session.md` now says how to refresh `work/prompt-<ID>.md`
+  after a PM edits an in-flight leaf: delete it and resume with
+  `--resume-in-flight`, which rewrites a missing prompt and brief.
 
 ## [v0.3.1-rc2] - 2026-10-29
 
