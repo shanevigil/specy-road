@@ -20,6 +20,9 @@ informational only — it never causes a 412.
 
 from __future__ import annotations
 
+import contextlib
+import threading
+from collections.abc import Iterator
 from pathlib import Path
 
 from fastapi import Header, HTTPException
@@ -119,3 +122,41 @@ def require_pm_gui_write_header(
 ) -> None:
     """FastAPI dependency: require ``X-PM-Gui-Fingerprint`` before mutating repo state."""
     guard_pm_gui_write(get_repo_root(), x_pm_gui_fingerprint)
+
+
+_NODE_WRITE_LOCKS: dict[str, threading.Lock] = {}
+_NODE_WRITE_LOCKS_GUARD = threading.Lock()
+
+
+@contextlib.contextmanager
+def node_write_slot(
+    repo_root: Path, node_id: str, x_pm_gui_fingerprint: str | None
+) -> Iterator[None]:
+    """One write at a time per node; a second concurrent write gets **409**.
+
+    The fingerprint dependency runs before the handler, so two requests sent
+    with the same token both pass it. Run in parallel, a title PATCH renames
+    the planning sheet twice and the loser's rollback leaves the roadmap and
+    ``planning/`` disagreeing (``planning file missing`` / ``orphan planning
+    file``). The second request is refused instead of queued, and the token
+    is checked again while the slot is held so a request that waited past
+    another write still gets its 412.
+    """
+    with _NODE_WRITE_LOCKS_GUARD:
+        lock = _NODE_WRITE_LOCKS.setdefault(node_id, threading.Lock())
+    if not lock.acquire(blocking=False):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": (
+                    f"another save for node {node_id} is still running; this one "
+                    "was not applied. Wait for it to finish, refresh, and retry."
+                ),
+                "retryable": False,
+            },
+        )
+    try:
+        guard_pm_gui_write(repo_root, x_pm_gui_fingerprint)
+        yield
+    finally:
+        lock.release()

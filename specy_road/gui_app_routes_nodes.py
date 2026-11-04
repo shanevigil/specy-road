@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 
 from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, roadmap_dir
 from specy_road.bundled_scripts.roadmap_crud_ops import (
@@ -31,7 +31,11 @@ from specy_road.bundled_scripts.sync_planning_artifacts import sync_planning_art
 from specy_road.gui_app_helpers import get_repo_root, next_child_id
 from specy_road.gui_app_models import AddNodeBody, MoveOutlineBody, PatchBody, ReorderBody
 from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
-from specy_road.pm_gui_concurrency import require_pm_gui_write_header
+from specy_road.pm_gui_concurrency import (
+    PM_GUI_FINGERPRINT_HEADER,
+    node_write_slot,
+    require_pm_gui_write_header,
+)
 from specy_road.node_kinds import is_gate
 
 
@@ -176,14 +180,16 @@ def _api_patch_node(
     node_id: str,
     body: PatchBody,
     _pm: None = Depends(require_pm_gui_write_header),
+    x_pm_gui_fingerprint: str | None = Header(None, alias=PM_GUI_FINGERPRINT_HEADER),
 ) -> dict[str, str]:
     root = get_repo_root()
     _pm_milestone_lock_guard(root, node_id)
     pairs = [(p.key, p.value) for p in body.pairs]
-    try:
-        edit_node_set_pairs(root, node_id, pairs)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+    with node_write_slot(root, node_id, x_pm_gui_fingerprint):
+        try:
+            edit_node_set_pairs(root, node_id, pairs)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
     return {"ok": "true", "node_id": node_id}
 
 
