@@ -11,6 +11,12 @@
       "minLength": 1,
       "pattern": "^(?!/)(?!(.*/)?\\.\\.?(/|$))[A-Za-z0-9._/-]+$",
       "description": "Project-relative path of the repository's top directory, without '.' or '..' segments."
+    },
+    "envSetupPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)",
+      "description": "Project-relative file path; '../' reaches the git root when the project root is nested."
     }
   },
   "properties": {
@@ -111,6 +117,37 @@
             }
           }
         ]
+      }
+    },
+    "env_setup": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "description": "What a new leaf worktree gets when do-next-available-task --worktree or worker delegate creates it: copy names files (usually ignored, so git does not bring them) copied from the main checkout's project root, then cmd runs at the worktree's project root. A failure stops the pickup or launch with the command's output. doctor runs cmd in the main checkout. See docs/git-workflow.md.",
+      "properties": {
+        "cmd": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Shell command run at the new worktree's project root after the copies (e.g. uv sync --all-packages --all-groups --locked)."
+        },
+        "copy": {
+          "type": "array",
+          "description": "Files copied from the main checkout before cmd runs: a path (copied to the same path) or {from, to} (e.g. .env.example to .env).",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/envSetupPath" },
+              {
+                "type": "object",
+                "required": ["from", "to"],
+                "additionalProperties": false,
+                "properties": {
+                  "from": { "$ref": "#/$defs/envSetupPath" },
+                  "to": { "$ref": "#/$defs/envSetupPath" }
+                }
+              }
+            ]
+          }
+        }
       }
     },
     "grind_session_max_empty_retries": {
