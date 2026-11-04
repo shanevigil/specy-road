@@ -52,11 +52,22 @@ def _content(path: str, is_link: bool) -> str:
         return "unreadable"
 
 
+def _git_marker(path: str, state: dict[str, Any]) -> None:
+    """A nested checkout's ``.git``: a pointer file as any file, a directory as present only (its own repository's
+    activity moves its times). Its appearing, changing or going away is a write."""
+    try:
+        st = os.stat(path, follow_symlinks=False)
+    except OSError:
+        return
+    is_dir = os.path.isdir(path) and not os.path.islink(path)
+    state[path] = ("checkout",) if is_dir else (st.st_mode, st.st_size, st.st_mtime_ns, _content(path, os.path.islink(path)))
+
+
 def _walk(base: Path, state: dict[str, Any], skip: frozenset[str] = frozenset()) -> None:
     """``(mode, size, mtime, content digest)`` of every file under ``base`` (a ``chmod`` alone is a write), ignored
-    ones included; ``.git`` and nested
-    checkouts (a directory holding ``.git``) are other repositories' and are skipped (the Git directories are
-    walked on their own: :func:`_walk_git`), as is every path in ``skip``."""
+    ones included, but every path in ``skip`` (the checkout's own ``.git``, walked by :func:`_walk_git`). A nested
+    checkout (a directory holding ``.git``) is another repository: only its ``.git`` marker is recorded
+    (:func:`_git_marker`), so a reviewer-created ``.git`` file or ``git init`` anywhere is still a write."""
     stack = [str(base)]
     while stack:
         try:
@@ -65,11 +76,14 @@ def _walk(base: Path, state: dict[str, Any], skip: frozenset[str] = frozenset())
             continue
         for e in entries:
             try:
-                if e.path in skip or e.name == ".git" or (e.is_dir(follow_symlinks=False)
-                                                          and os.path.lexists(os.path.join(e.path, ".git"))):
+                if e.path in skip:
                     continue
                 if e.is_dir(follow_symlinks=False):
-                    stack.append(e.path)
+                    marker = os.path.join(e.path, ".git")
+                    if os.path.lexists(marker):
+                        _git_marker(marker, state)
+                    else:
+                        stack.append(e.path)
                     continue
                 st = e.stat(follow_symlinks=False)
             except OSError:
@@ -126,7 +140,7 @@ def snapshot(cwd: Path, reviews: Path, model: str) -> Snapshot:
     state: dict[str, Any] = {"git refs": (git_text(["rev-parse", "HEAD"], top) or "") + "\n"
                              + (git_text(["for-each-ref", "--format=%(refname) %(objectname)"], top) or ""),
                              "git index": hashlib.sha256(index.encode()).hexdigest()}
-    _walk(top, state)
+    _walk(top, state, frozenset({str(top / ".git")}))   # the checkout's own Git directory: _walk_git
     _walk_git(top, state)
     if top not in reviews.parents:   # a reviewer in a linked worktree: the hand-off directory is the main checkout's
         _walk(reviews, state)

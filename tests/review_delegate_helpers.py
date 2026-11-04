@@ -28,6 +28,7 @@ sid = sys.argv[-1]
 print(json.dumps({"type": "system", "subtype": "init", "session_id": sid, "model": "fake"}), flush=True)
 if step.get("write"):
     w = step["write"]
+    os.makedirs(os.path.dirname(w["path"]), exist_ok=True)       # a new directory too
     kept = os.stat(w["path"]) if w.get("keep_mtime") else None   # an overwrite that puts the times back
     open(w["path"], "w").write(w["text"])
     if kept:

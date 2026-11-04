@@ -290,9 +290,11 @@ specy-road decides the outcome:
 
 The check walks every file, so run reviewers where nothing else writes: a
 coordinator or executor editing the same checkout during the run, or another
-leaf's reviewer filing there, counts as this run's write. The walk skips `.git`
-and nested checkouts (a linked worktree under `work/.worktrees`, a nested
-repository), which are other checkouts. Two reviewer runs of one leaf share its
+leaf's reviewer filing there, counts as this run's write. The checkout's own
+`.git` is walked as Git metadata (above). The contents of a nested checkout (a
+linked worktree under `work/.worktrees`, a nested repository) are another
+checkout's and are skipped, but its `.git` marker is recorded, so a
+reviewer-created `.git` file or `git init` anywhere is a write. Two reviewer runs of one leaf share its
 hand-off directory, so they take turns: a second run while one holds
 `.review-run.lock` is refused at once. The reviewer's process gets
 `PYTHONDONTWRITEBYTECODE=1` and `PYTEST_ADDOPTS=-p no:cacheprovider`, so

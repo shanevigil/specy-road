@@ -134,3 +134,22 @@ def test_review_delegate_cli_fails_a_reviewer_only_chmod_and_files_no_verdict(tm
     assert code == 1 and run["outcome"] == "review_failure"
     assert run["reason"].startswith(f"review failure: the reviewer run wrote {shown};")
     assert not rf.review_path(repo, "M1.1", "opus").exists()
+
+
+# --- a reviewer-created nested .git: recorded, not skipped as another checkout (Sol, 3387a90d) -----------------------
+
+@pytest.mark.parametrize("how", ["git-file", "git-init"])
+def test_review_delegate_cli_fails_a_reviewer_created_nested_git_and_files_no_verdict(tmp_path: Path, capsys,
+                                                                                       how: str) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    if how == "git-file":   # a .git pointer file in a new directory, which would then read as a nested checkout
+        step, shown = {"write": {"path": str(repo / "work" / "hidden" / ".git"), "text": "gitdir: elsewhere\n"}}, \
+            "work/hidden/.git"
+    else:                   # a whole new repository inside the checkout
+        step, shown = {"git": ["init", "-q", "work/nested"]}, "work/nested/.git"
+    set_steps(repo, spec, {**verdict_step(repo), **step})
+    code, run = _delegate_cli(repo, capsys)
+    assert (repo / shown).exists()
+    assert code == 1 and run["outcome"] == "review_failure"
+    assert run["reason"].startswith(f"review failure: the reviewer run wrote {shown};")
+    assert not rf.review_path(repo, "M1.1", "opus").exists()
