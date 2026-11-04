@@ -39,10 +39,12 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.orchestration_role_env import harness_env
 from specy_road.review_files import reviews_dir
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
-from specy_road.reviewer_run_failure import (_now, _read_json, _save, capacity_error, close_run, gate_policy_summary,
-                                             record_reviewer_failure_event, run_path as _run_path, valid_record)
+from specy_road.reviewer_run_failure import capacity_error, gate_policy_summary, valid_record  # noqa: F401 — re-exported
+from specy_road.reviewer_run_failure import (_now, _read_json, _save, close_run, record_reviewer_failure_event,
+                                             run_path as _run_path, turn_capacity_error)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worker_adapters import ClaudeCode, Launch, Unsupported, adapter_for
+from specy_road.worker_lock import WorkerError
 from specy_road.worker_sessions import check_session_id
 
 RUN_PREFIX = "RUN-"
@@ -181,7 +183,7 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
         if turn["session_id"] and h.can_resume:
             session = check_session_id(h.harness, turn["session_id"])
         failed = turn["exit"] != 0 or bool(turn["errors"])
-        cap = capacity_error(turn["errors"] + turn["tail"]) if failed else None
+        cap = turn_capacity_error(turn["errors"], turn["tail"]) if failed else None
         said = cap or next(iter(turn["errors"]), "")
         run["attempts"].append({"at": _now(), "exit": turn["exit"], "capacity": bool(cap), "error": said[:300] or None})
         _save(path, run)
@@ -286,7 +288,7 @@ def cmd_review_delegate(ns: argparse.Namespace) -> int:
     try:
         run = delegate(root, ns.node_id, ns.model, ref=ns.ref, resume=ns.resume, retries=ns.retries,
                        backoff=ns.backoff, worktree=Path(ns.worktree) if ns.worktree else None)
-    except (DelegateError, ReviewTargetError) as e:
+    except (DelegateError, ReviewTargetError, WorkerError) as e:   # WorkerError: an unsafe recorded session id
         print(f"error: {e}", file=sys.stderr)
         return 1
     except Unsupported as e:
@@ -328,7 +330,8 @@ def add_parser(rsub: Any) -> None:
                     help=f"Capacity or rate-limit retries (default {DEFAULT_RETRIES})")
     sp.add_argument("--backoff", type=_seconds, default=DEFAULT_BACKOFF, metavar="SECONDS",
                     help=f"First retry's wait, doubled each time (default {DEFAULT_BACKOFF:g})")
-    sp.add_argument("--worktree", help="Run the reviewer in this checkout (default: this one's git root)")
+    sp.add_argument("--worktree", help="Run the reviewer in this checkout (default: a chore's worktree for a "
+                                       "chore slug, else this checkout's git root)")
     sp.add_argument("--json", action="store_true")
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_review_delegate)

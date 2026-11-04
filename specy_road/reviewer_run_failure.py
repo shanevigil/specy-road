@@ -14,9 +14,11 @@ from specy_road.review_target import ReviewTarget, same_commit
 
 RUN_PREFIX = "RUN-"
 #: What a provider says when it is out of capacity or the account is throttled (Anthropic 429/529
-#: ``overloaded_error``, OpenAI 429 / usage limit, Google ``RESOURCE_EXHAUSTED``).
-CAPACITY = re.compile(r"rate[ _-]?limit|usage limit|\b429\b|\b529\b|overloaded|capacity|too many requests"
-                      r"|quota|resource[ _-]?exhausted", re.IGNORECASE)
+#: ``overloaded_error``, OpenAI 429 / usage limit / ``insufficient_quota``, Google ``RESOURCE_EXHAUSTED``).
+#: Specific phrases only: a review that discusses "capacity" or "quota" is not an error.
+CAPACITY = re.compile(r"rate[ _-]?limit|usage limit|\b429\b|\b529\b|overloaded|too many requests"
+                      r"|(?:at|over|out of) capacity|insufficient[ _]quota|quota exceeded|exceeded your (?:current )?quota"
+                      r"|resource[ _-]?exhausted", re.IGNORECASE)
 
 
 def _now() -> str:
@@ -47,6 +49,27 @@ def capacity_error(texts: list[str]) -> str | None:
     return next((t for t in texts if CAPACITY.search(t)), None)
 
 
+def _last_plain_line(lines: list[str]) -> list[str]:
+    """The last non-empty output line that is not a JSON event, as a one-item list (or none)."""
+    for line in reversed(lines):
+        text = line.strip()
+        if not text:
+            continue
+        try:
+            json.loads(text)
+        except ValueError:
+            return [text]
+    return []
+
+
+def turn_capacity_error(errors: list[str], output: list[str]) -> str | None:
+    """A capacity error among the parsed error events, or on the last non-JSON output line.
+
+    Never the whole transcript: the reviewer's own text may say "rate limit" or "capacity".
+    """
+    return capacity_error(errors + _last_plain_line(output))
+
+
 def valid_record(repo_root: Path, t: ReviewTarget, model: str) -> tuple[bool, str]:
     """``(ok, why not)``: is there a valid ``REVIEW-<model>.md`` for the commit under review?"""
     rec = next((r for r in list_reviews(repo_root, t.node["id"], acceptance_ids(t.node))
@@ -65,7 +88,7 @@ def harness_error_line(*, exit_code: int | None, errors: list[str], tail: list[s
     """One line from the harness for a reviewer-failure event (capacity, login, exit, …)."""
     if exit_code == 0 and not errors and not fallback:
         return "no review record was filed"
-    cap = capacity_error(errors + tail)
+    cap = turn_capacity_error(errors, tail)
     if cap:
         return cap
     if errors:
@@ -145,7 +168,7 @@ def close_reviewer_cli_run(repo_root: Path, t: ReviewTarget, model: str, path: P
     prefix = f"harness exited {exit_code}" if exit_code != 0 else ""
     # A clean exit is an error only when no record for this commit exists after the run.
     filed = exit_code == 0 and valid_record(repo_root, t, model)[0]
-    run["attempts"] = [{"at": _now(), "exit": exit_code, "capacity": bool(capacity_error(output_lines)),
+    run["attempts"] = [{"at": _now(), "exit": exit_code, "capacity": bool(turn_capacity_error([], output_lines)),
                         "error": None if filed else
                         harness_error_line(exit_code=exit_code, errors=[], tail=tail, fallback=prefix)[:300] or None}]
     close_run(repo_root, t, model, run, exit_code=exit_code, errors=[], tail=output_lines, reason_prefix=prefix)
