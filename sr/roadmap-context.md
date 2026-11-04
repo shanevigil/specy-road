@@ -128,7 +128,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.18` Registry overlap warnings show only what concerns the command at hand `quieter-overlap-warnings` — task — **Complete**
   - `M11.19` Pickup never stashes work/ around the registry commit `pickup-no-work-stash` — task — **Complete**
   - `M11.20` orchestrate plan and validate say where the roster is read from `roster-source-explained` — task — **Complete**
-  - `M11.22` Worker worktrees can include nested sibling repositories `nested-repo-worktrees` — task — **Not Started**
+  - `M11.22` Worker worktrees can include nested sibling repositories `nested-repo-worktrees` — task — **Complete**
   - `M11.23` A custom launch command's permissions carry through resume `resume-keeps-permissions` — task — **Complete**
   - `M11.24` Executors and reviewers in a worktree can write and check the right places `worktree-handoff-writable` — task — **Complete**
   - `M11.25` finish-this-task says what merge mode will push before it pushes `merge-push-disclosure` — task — **Complete**
@@ -205,7 +205,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M11.22` on `feature/rm-nested-repo-worktrees` since 2026-11-03
 - `M11.62` on `feature/rm-headless-limits-denials` since 2026-11-03
 - `M11.75` on `feature/rm-reviewer-probe-rules` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03

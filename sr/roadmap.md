@@ -128,7 +128,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.18` | Registry overlap warnings show only what concerns the command at hand | task | Agentic-led | Complete |
 | `M11.19` | Pickup never stashes work/ around the registry commit | task | Agentic-led | Complete |
 | `M11.20` | orchestrate plan and validate say where the roster is read from | task | Agentic-led | Complete |
-| `M11.22` | Worker worktrees can include nested sibling repositories | task | Agentic-led | Not Started |
+| `M11.22` | Worker worktrees can include nested sibling repositories | task | Agentic-led | Complete |
 | `M11.23` | A custom launch command's permissions carry through resume | task | Agentic-led | Complete |
 | `M11.24` | Executors and reviewers in a worktree can write and check the right places | task | Agentic-led | Complete |
 | `M11.25` | finish-this-task says what merge mode will push before it pushes | task | Agentic-led | Complete |

@@ -16,6 +16,9 @@ from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, ope
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text, run
+from specy_road.nested_repos import (
+    NestedRepoError, add_nested_worktrees, align_nested_checkouts, in_nested, nested_prefixes, nested_worktree_dirs,
+)
 from specy_road.orchestrate_plan import ANY, is_available, may_handle, node_eligibility, node_sensitivity, unavailability_reason
 from specy_road.orchestration_config import harness_model, roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
@@ -171,6 +174,19 @@ def _brief_into(wt: Path, repo_root: Path, node_id: str, t) -> None:
         dest.write_text(render_brief(node_id, index(t.nodes), repo_root=repo_root, include_history=False), encoding="utf-8")
 
 
+def _nested_dirty(leaf_root: Path, repo_root: Path) -> list[str]:
+    """Tracked-modified and untracked paths in each nested repository under ``leaf_root`` (``nested_repos``),
+    git-root-relative: the worker edits those trees too, so they are checked as the main tree is."""
+    out: list[str] = []
+    for rel, d in nested_worktree_dirs(repo_root, leaf_root):
+        entries = status_entries(d)
+        if entries is None:
+            raise WorkerError(f"cannot read `git status` in {d}, so its uncommitted changes are unknown; "
+                              "repair that checkout, then delegate again")
+        out += sorted(f"{rel}/{p}" for _xy, p in entries)
+    return out
+
+
 def delegate(repo_root: Path, node_id: str, model: str | None, *, harness: str | None = None,
              worktree: Path | None = None, offline: bool = False) -> tuple[WorkerRecord, bool]:
     """``(record, created)``: an active worker on the leaf is returned, not duplicated.
@@ -213,15 +229,28 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
                    text: str, worktree: Path | None, offline: bool = False) -> WorkerRecord:
     branch = str(t.entry["branch"])
     wt = _worktree_for(repo_root, branch, str(t.node.get("codename") or node_id), worktree)
+    prefix = project_prefix(repo_root)
+    try:   # nested_repos: a leaf worktree gets its own worktrees of them; this checkout switches its own
+        if wt != git_root(repo_root):
+            add_nested_worktrees(repo_root, wt / prefix, branch, t.touch_zones)
+        else:
+            for line in align_nested_checkouts(repo_root, branch, t.touch_zones):
+                print(f"nested repo {line}", file=sys.stderr)
+    except NestedRepoError as e:
+        raise WorkerError(str(e)) from None
     # The worker edits this tree: uncommitted work in it could be overwritten, and
     # `reconcile` could not tell the worker's edits from it. Only the leaf's own
-    # untracked bookkeeping is exempt (pickup leaves the brief there untracked).
+    # untracked bookkeeping is exempt (pickup leaves the brief there untracked),
+    # and a nested repository's directory, which is its own repository and is
+    # checked on its own (_nested_dirty).
     entries = status_entries(wt)
     if entries is None:
         raise WorkerError(f"cannot read `git status` in {wt}, so its uncommitted changes are unknown; "
                           "repair that checkout, then delegate again")
-    prefix = project_prefix(repo_root)
-    dirty = sorted(p for xy, p in entries if not (xy == "??" and _bookkeeping(p, node_id, prefix)))
+    nested = nested_prefixes(repo_root)
+    dirty = sorted(p for xy, p in entries
+                   if not (xy == "??" and (_bookkeeping(p, node_id, prefix) or in_nested(p, nested))))
+    dirty += _nested_dirty(wt / prefix, repo_root)
     if dirty:
         raise WorkerError(f"{wt} has uncommitted changes the worker could overwrite: {', '.join(dirty)}; "
                           "commit or stash them, then delegate again")

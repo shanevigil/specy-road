@@ -40,18 +40,3 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: nested-repo-worktrees
-    node_id: M11.22
-    branch: feature/rm-nested-repo-worktrees
-    touch_zones:
-      - specy_road/git_workflow_config.py
-      - specy_road/worker_ops.py
-      - specy_road/worker_reconcile.py
-      - specy_road/finish_land_integration.py
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - docs/git-workflow.md
-      - tests/
-      - specy_road/bundled_scripts/review_packet.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
