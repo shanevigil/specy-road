@@ -53,8 +53,11 @@ def _content(path: str, is_link: bool) -> str:
 
 def _record(st: os.stat_result, path: str, is_link: bool) -> tuple[Any, ...]:
     """One file as the snapshot keeps it: its identity and links (device, inode, link count: a file swapped for a
-    hard link to an identical copy elsewhere differs), mode (a ``chmod`` alone differs), size, mtime and content."""
-    return (st.st_dev, st.st_ino, st.st_nlink, st.st_mode, st.st_size, st.st_mtime_ns, _content(path, is_link))
+    hard link to an identical copy elsewhere differs), mode (a ``chmod`` alone differs), size, mtime, change time
+    and content. A process can put the mtime back but not the change time (``st_ctime_ns`` on POSIX: inode change
+    time), so an identical-bytes rewrite with its mtime restored differs too."""
+    return (st.st_dev, st.st_ino, st.st_nlink, st.st_mode, st.st_size, st.st_mtime_ns, st.st_ctime_ns,
+            _content(path, is_link))
 
 
 def _git_marker(path: str, state: dict[str, Any]) -> None:

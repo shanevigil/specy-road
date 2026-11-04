@@ -276,9 +276,9 @@ specy-road decides the outcome:
   linked worktrees' directories and raw index bytes are left out), a ref
   (`HEAD`, a branch, a stash), or the Git index's entries (`git add`,
   `git update-index --assume-unchanged`; compared by `git ls-files --stage -v`,
-  so the stat refresh a read-only `git status` writes is not a write). Files are compared by identity (device, inode, link
-  count), permission mode and content (SHA-256) as well as size and mtime, so a same-length rewrite with its mtime put back counts. A
-  `REVIEW-<model>.md` it filed itself is put back as it was. Nothing is filed.
+  so the stat refresh a read-only `git status` writes is not a write). Files are compared by identity (device, inode, link count), permission mode,
+  change time (ctime, which a process cannot put back), content (SHA-256), size and mtime, so a rewrite with its mtime put back counts.
+  A `REVIEW-<model>.md` it filed itself is put back as it was. Nothing is filed.
 - **rerun request** — the output has no JSON object, its last object does not
   start a line, a later object was begun and left malformed or truncated (an
   earlier complete object never stands in for it), it does not match the schema,

@@ -180,3 +180,24 @@ def test_review_delegate_cli_fails_an_identical_hard_link_replacement_and_files_
     assert code == 1 and run["outcome"] == "review_failure"
     assert run["reason"].startswith(f"review failure: the reviewer run wrote {shown};")
     assert not rf.review_path(repo, "M1.1", "opus").exists()
+
+
+# --- change time: an identical-bytes rewrite with its mtime put back is a write (Sol, 06d90dba) ---------------------
+
+def test_review_delegate_cli_fails_an_identical_rewrite_with_its_mtime_restored_and_files_no_verdict(
+        tmp_path: Path, capsys) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    target = repo / "src" / "a.py"
+    assert git(repo, "ls-files", "src/a.py") == "src/a.py"                    # a tracked file
+    before, content = target.stat(), target.read_bytes()
+    set_steps(repo, spec, {**verdict_step(repo), "write": {"path": str(target), "text": content.decode(),
+                                                            "keep_mtime": True}})
+    code, run = _delegate_cli(repo, capsys)
+    after = target.stat()
+    assert (after.st_dev, after.st_ino, after.st_nlink, after.st_mode, after.st_size, after.st_mtime_ns,
+            target.read_bytes()) == (before.st_dev, before.st_ino, before.st_nlink, before.st_mode,
+                                     before.st_size, before.st_mtime_ns, content)   # all but the change time
+    assert after.st_ctime_ns != before.st_ctime_ns
+    assert code == 1 and run["outcome"] == "review_failure"
+    assert run["reason"].startswith("review failure: the reviewer run wrote src/a.py;")
+    assert not rf.review_path(repo, "M1.1", "opus").exists()
