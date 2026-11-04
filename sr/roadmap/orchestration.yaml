@@ -47,8 +47,10 @@ roster:
     family: openai
     roles: [reviewer]
     harness: codex
-    channels:
-      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/codex-review.sh" gpt-6.1-sol {prompt}'
+    harness_model: gpt-6.1-sol
+    # No channels.cli: specy-road runs Codex's own read-only reviewer command (M8.3). The workspace-write
+    # wrapper (sr/tools/codex-review.sh) makes Codex's Linux sandbox create and remove .codex/.git/.aws/.agents
+    # mount points in the checkout, which M8.3's post-run write check counts as reviewer writes.
   - id: gpt-5.6-sol-medium
     family: openai
     roles: [reviewer]
