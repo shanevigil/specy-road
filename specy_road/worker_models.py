@@ -5,8 +5,9 @@ A harness that routes models itself (Cursor's Auto, a cascade, its own critic) c
 ``system/init`` line names on its ``started`` event; the turn's ``usage`` event keeps both, and its summary, which
 ``worker sync`` prints, says when they differ. Split from :mod:`specy_road.worker_runner` for the file limit.
 
-A custom command runs as ``sh -c <command>``; its model is read only when the command is one simple command
-(:func:`command_model`), since in a list or pipeline a ``--model`` can belong to another program than the harness.
+A custom command runs as ``sh -c <command>``; its model is read only when the command is one simple command and
+the value is literal (:func:`command_model`): in a list or pipeline a ``--model`` can belong to another program than
+the harness, and ``"${MODEL:-auto}"`` is whatever the shell expands it to.
 The review gate reads a ``cursor`` entry's ``channels.cli`` the same way (``orchestration_config.entry_routing``).
 """
 
@@ -16,7 +17,7 @@ import re
 import shlex
 from typing import Any
 
-from specy_road.worker_adapter_parsers import model_from_argv
+from specy_road.worker_adapter_parsers import _WORD, model_from_argv
 from specy_road.worker_state import WorkerEvent
 
 #: Spans ``sh`` reads literally: single-quoted, double-quoted without a substitution inside, a backslash escape.
@@ -24,17 +25,27 @@ _LITERAL = re.compile(r"""'[^']*'|"(?:[^"\\`$]|\\.|\$(?!\())*"|\\.""", re.S)
 _REDIRECT_AMP = re.compile(r"[<>]&|&>")   # 2>&1, <&3, &>file: redirections, not a list or a background job
 #: Outside those spans: a list, pipeline, background job, subshell, newline or command substitution.
 _CONTROL = re.compile(r"[;&|()`\n]|\$\(")
+#: A shell word the shell passes on unchanged: model-id characters, bare, single-quoted or in plain double quotes.
+_LITERAL_WORD = re.compile(r"""(?:[\w.:/@+=,-]+|'[^']*'|"[\w.:/@+=,-]*")+""")
 
 
 def command_model(command: str) -> str | None:
-    """The ``--model`` / ``-m`` a shell command passes when it is one simple command (redirections allowed), else
-    ``None``: in ``printf --model x; agent -p {prompt}`` the flag never reaches the harness, so the model is unknown."""
-    if _CONTROL.search(_REDIRECT_AMP.sub(" ", _LITERAL.sub(" ", command))):
-        return None
+    """The ``--model`` / ``-m`` a shell command passes when it is one simple command (redirections allowed) and the
+    value's shell word is literal, else ``None``: in ``printf --model x; agent -p {prompt}`` the flag never reaches
+    the harness, and ``--model "$MODEL"`` passes whatever the shell expands, so the model is unknown."""
+    if _CONTROL.search(_REDIRECT_AMP.sub(" ", _LITERAL.sub(" ", command))) or _WORD.sub("", command).strip():
+        return None   # a list or pipeline, or an unbalanced quote
+    raw = _WORD.findall(command)   # shell words, quotes kept
     try:
-        return model_from_argv(shlex.split(command))
-    except ValueError:   # an unbalanced quote: no model can be read from it
+        words = [shlex.split(w)[0] for w in raw]
+    except ValueError:   # a trailing backslash: the last word cannot be read
         return None
+    model = model_from_argv(words)
+    if not model:
+        return None
+    at = next(i for i, w in enumerate(words) if w in ("--model", "-m") or w.startswith("--model="))
+    value = raw[at] if words[at].startswith("--model=") else raw[at + 1]
+    return model if _LITERAL_WORD.fullmatch(value) else None
 
 
 def launch_model(argv: list[str]) -> str | None:

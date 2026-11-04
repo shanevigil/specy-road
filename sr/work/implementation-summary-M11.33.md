@@ -2,7 +2,34 @@
 
 Implementation commit: `f116f383` on `feature/rm-dynamic-routing-reviewers` (base `232df5b8`); `5bd9b720` added this
 summary and the unbalanced-quote test case; `e7ef2a38` answered the block at `5bd9b720` (see "Review round 2"),
-and the round-3 commit (this summary's latest) answers the block at `e7ef2a38` (see "Review round 3").
+`9e27d32d` answered the block at `e7ef2a38` (see "Review round 3"), and the round-4 commit (this summary's latest)
+answers the block at `9e27d32d` (see "Review round 4").
+
+## Review round 4 — gpt-5.6-sol-medium block at `9e27d32d`
+
+1. **A shell-expanded model value is unknown (A2, A4).** Round 3's `command_model` took the word after `--model`
+   as written, so `agent -p --model "${MODEL:-auto}" {prompt}` read as the fixed model `${MODEL:-auto}`, although
+   `sh` passes `auto` with `MODEL` unset. The gate counted the Cursor approval, and the usage event recorded text
+   the harness never received.
+   - **Fix:** `command_model` now reads the command's raw shell words, quotes kept (`worker_adapter_parsers._WORD`,
+     the tokenizer the placeholder check uses). It returns the model only when the value's raw word is provably
+     literal (`_LITERAL_WORD`): model-id characters (`\w . : / @ + = , -`), bare, single-quoted or in double quotes
+     with nothing else inside.
+   - **Unknown (`None`):** `$VAR`, `${…}`, a glob (`*`, `?`, `[1m]`), `~`, an empty value, an unbalanced quote
+     (the parsers' `_WORD.sub` check, as `_tokens` does), and a word `shlex` cannot read (a trailing backslash).
+   - **Effect:** for a `cursor` entry, `entry_routing` then returns `dynamic`; for a worker launch,
+     `requested_model` is `null` and no mismatch is printed. Capturing the resolved value would need the harness's
+     own argv, which the wrapper does not see through `sh -c`, so the value stays unknown.
+   - **Regressions, public paths, `tests/test_dynamic_routing_reviewers.py`:**
+     - Gate: `agent -p --model "${MODEL:-auto}" {prompt}` does not count (the reviewer's case). Also covered:
+       `--model ""` does not count, a trailing backslash does not count, and `--model=gpt-5.6-sol` counts.
+     - `worker delegate` with `--model "${SR_UNSET_MODEL:-auto}"`: `requested_model` is `null`, `observed_model`
+       is `fake`, and `worker sync` prints no mismatch and not the unexpanded text.
+   - **Red-green:** at `9e27d32d` with the new test file, the expansion gate case, the empty-model gate case and the
+     expansion usage case fail (3 failed, 20 passed). The trailing-backslash case passes at both commits: it reaches
+     the new `except ValueError`.
+   - **Docs:** `docs/orchestration-models.md` states the literal-value rule in the `routing` row and the
+     `requested_model` sentence.
 
 ## Review round 3 — gpt-5.6-sol-medium block at `e7ef2a38`
 
@@ -131,6 +158,16 @@ Not changed, outside the zones, possible follow-ups:
 - `specy-road file-limits`, `ruff check specy_road tests scripts`, `python scripts/check_test_private_imports.py`,
   `specy-road validate`, `specy-road export --check`: exit 0.
 
+## Verification, round 4
+
+- `pytest -n 4 tests/test_dynamic_routing_reviewers.py tests/test_worker_cli.py tests/test_review_gate.py
+  tests/test_orchestration_config.py tests/test_worker_adapters.py tests/test_roster_harness_model.py`: 103 passed.
+- `pytest -n 4` over every `tests/test_worker*.py`: 259 passed. The run before it had 1 failure out of 259, and I
+  did not capture which test; in rounds 1 and 3 the only failure in this set was the
+  `test_message_while_running_queues_and_delivers` race that also fails at base.
+- `specy-road file-limits`, `ruff check specy_road tests scripts`, `python scripts/check_test_private_imports.py`,
+  `specy-road validate`: exit 0.
+
 ## Verification, round 3
 
 - `pytest -n 4 tests/test_dynamic_routing_reviewers.py tests/test_worker_cli.py tests/test_review_gate.py
@@ -145,11 +182,12 @@ Not changed, outside the zones, possible follow-ups:
 
 - `orchestration_config.entry_routing` — classifies an entry as fixed or dynamic, including the Cursor no-model/auto rule (A1, A4).
 - `orchestration_config.routing_problem` — the gate's reason an approval does not count toward distinct families (A1).
-- `except ValueError` around `shlex.split` (in `entry_routing` until round 3, now in `command_model`) — an unbalanced quote in a cursor `channels.cli` reads as no model (dynamic) instead of crashing the gate (the schema does not refuse such a command; only the launch does); reached by the unbalanced-quote case of the parametrized gate test.
+- `except ValueError` around `shlex.split` (in `entry_routing` until round 3, in `command_model` since) — unreadable command text reads as no model (dynamic) instead of crashing the gate (the schema does not refuse such a command; only the launch does); since round 4 it is reached by the trailing-backslash gate case (the unbalanced quote is caught first by the `_WORD.sub` check).
 - `review_gate._eligibility` gains a `repo_root` parameter and the `routing_problem` call (A1).
 - `worker_adapter_parsers.init_model` — the `model` a `system/init` line reports (A2).
 - `worker_models.launch_model` (round 2 in `worker_adapter_parsers`, moved in round 3) — the requested model of a launch, reading inside a custom `sh -c` command through `command_model` (A2); its `sh -c` branch is reached by the custom-cli test, the plain-argv branch by the flat-argv test.
-- `worker_models.command_model` with `_LITERAL`, `_REDIRECT_AMP`, `_CONTROL` — a shell command's `--model` only when it is one simple command, else unknown (A2, A4; review round 3); the list case is reached by both decoy regressions, the redirection allowance by the `2>&1` gate case, the `except ValueError` by the unbalanced-quote gate case.
+- `worker_models.command_model` with `_LITERAL`, `_REDIRECT_AMP`, `_CONTROL` — a shell command's `--model` only when it is one simple command, else unknown (A2, A4; review round 3); the list case is reached by both decoy regressions, the redirection allowance by the `2>&1` gate case.
+- Round 4 in `command_model`: `_LITERAL_WORD` and the literal-value check (reached by the `"${MODEL:-auto}"` gate and usage cases; the `--model=` branch by the `--model=gpt-5.6-sol` gate case); the `_WORD.sub` unbalanced-quote check (reached by the unbalanced-quote gate case); `except ValueError` for a word `shlex` cannot read (reached by the trailing-backslash gate case); `if not model` also refusing an empty value (reached by the `--model ""` gate case). Imports `_WORD` from `worker_adapter_parsers` rather than adding a second shell-word tokenizer.
 - New module `specy_road/worker_models.py`: `turn_models` (the turn's requested and observed model) and `mismatch_note` (the usage-summary suffix worker sync prints) (A2; split for the file limit).
 - `worker_runner`: `model` on the `launched` event detail; `model` on a worker `started` event from its init line; `requested_model` / `observed_model` in every usage event; the `OSError` path passes its own requested model (A2).
 - Schema: `rosterEntry.routing` (enum fixed|dynamic) and `rosterEntry.pinned` (boolean) (A1).
@@ -158,6 +196,7 @@ Not changed, outside the zones, possible follow-ups:
 - Test `tests/test_dynamic_routing_reviewers.py::test_usage_keeps_requested_and_observed_model_and_sync_flags_a_mismatch` (moved from `test_worker_cli.py` for its file limit) — parametrized match / mismatch through the real wrapper and `worker sync` output, argv `--model` (A2, A3).
 - Test `tests/test_dynamic_routing_reviewers.py::test_custom_cli_model_is_requested_and_sync_flags_a_mismatch` — parametrized match / mismatch / decoy-before-the-harness through `worker delegate` with a roster `channels.cli` (A2, review rounds 2 and 3).
 - Gate test cases (round 3): cursor `channels.cli` with a decoy `--model` before `agent` (dynamic) and with `2>&1` after an explicit model (fixed).
+- Gate test cases (round 4): `--model "${MODEL:-auto}"`, `--model ""` and a trailing backslash (dynamic); `--model=gpt-5.6-sol` (fixed). Usage test case (round 4): `--model "${SR_UNSET_MODEL:-auto}"` through `worker delegate` (`requested_model` null, no mismatch).
 - Touch zone: `specy_road/worker_models.py` added to M11.33 with `specy-road edit-node` (review round 2 item 2).
 - Extended expectations (no test loosened): `test_usage_events_per_turn_and_the_usage_command` now expects `requested_model: None, observed_model: "claude-opus-5-5"` in the Claude usage detail; `test_launch_events_ack_time_and_timeline` expects `model: None` in the `launched` detail (custom command).
 - Mocks: none.

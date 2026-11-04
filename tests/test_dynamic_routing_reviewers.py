@@ -48,6 +48,10 @@ def _gate(tmp_path: Path, rev: str, *, distinct: bool = True, rev_verdict: str =
     (""", harness: cursor, channels: {cli: "agent -p --model gpt-5.6-sol '{prompt}"}""", False),   # unbalanced quote
     (", harness: cursor, channels: {cli: 'printf %s --model gpt-5.6-sol >/dev/null; agent -p {prompt}'}", False),  # decoy
     (", harness: cursor, channels: {cli: 'agent -p --model gpt-5.6-sol {prompt} 2>&1'}", True),   # a redirection
+    (""", harness: cursor, channels: {cli: 'agent -p --model "${MODEL:-auto}" {prompt}'}""", False),  # sh expands it
+    (""", harness: cursor, channels: {cli: 'agent -p --model "" {prompt}'}""", False),            # an empty model
+    (", harness: cursor, channels: {cli: 'agent -p --model gpt-5.6-sol {prompt} \\'}", False),   # trailing backslash
+    (", harness: cursor, channels: {cli: 'agent -p --model=gpt-5.6-sol {prompt}'}", True),
     (", harness: cursor, harness_model: gpt-5.6-sol-high", True),
     (", harness: cursor, pinned: true", True),
 ])
@@ -93,12 +97,14 @@ def test_usage_keeps_requested_and_observed_model_and_sync_flags_a_mismatch(tmp_
     ("", "fake", "fake"),
     ("", "claude-sonnet-5-5", "claude-sonnet-5-5"),
     ("printf %s --model decoy >/dev/null; ", "claude-sonnet-5-5", None),   # two commands: which --model is unknown
+    ("", '"${SR_UNSET_MODEL:-auto}"', None),   # the shell expands it to auto: not a literal model
 ])
 def test_custom_cli_model_is_requested_and_sync_flags_a_mismatch(tmp_path: Path, capsys, prologue: str, told: str,
                                                                   requested: str | None) -> None:
     """M11.33 A2: a roster channels.cli that is one command passing its own --model (run as `sh -c`) records it as
     requested_model, and `worker sync` flags it when the harness's init line reports another (the fake harness
-    reports `fake`); in a command list the harness's model is unknown, so neither the decoy nor a mismatch is recorded."""
+    reports `fake`); in a command list, or when the shell expands the value, the harness's model is unknown, so
+    neither the decoy, the unexpanded text nor a mismatch is recorded."""
     script = tmp_path / "fake.py"
     script.write_text(FAKE)
     cli = f"{prologue}{sys.executable} {script} {{prompt}} --model {told}"
@@ -114,4 +120,4 @@ def test_custom_cli_model_is_requested_and_sync_flags_a_mismatch(tmp_path: Path,
     assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
     assert ("model mismatch: told claude-sonnet-5-5, harness reported fake" in out) is (requested == "claude-sonnet-5-5")
-    assert "decoy" not in out
+    assert "decoy" not in out and "SR_UNSET_MODEL" not in out
