@@ -57,13 +57,39 @@ def working_tree_clean(repo_root: Path, *, except_work: bool = False) -> bool:
     return not git_checked(args, repo_root)
 
 
+#: How many dirty paths a refusal lists before it summarises the rest as a count.
+UNCLEAN_PATHS_SHOWN = 20
+
+
+def dirty_paths(repo_root: Path, *, except_work: bool = False) -> list[str]:
+    """``git status --porcelain`` lines (status, then path) the clean-tree check sees."""
+    args = ["status", "--porcelain", *(_OUTSIDE_WORK if except_work else ())]
+    return [line for line in git_capture(repo_root, *args).splitlines() if line.strip()]
+
+
+def unclean_tree_details(paths: list[str], *, except_work: bool = False) -> list[str]:
+    """The paths that keep the tree unclean (at most 20, then a count) and how to clear them."""
+    lines = [f"  {p}" for p in paths[:UNCLEAN_PATHS_SHOWN]]
+    if len(paths) > UNCLEAN_PATHS_SHOWN:
+        lines.append(f"  … and {len(paths) - UNCLEAN_PATHS_SHOWN} more")
+    lines.append(
+        "  Clear them, then retry: commit (`git add <path> && git commit`), stash "
+        "(`git stash push -u -m <tag>`), or discard (`git restore <path>`; delete an untracked file)."
+    )
+    if except_work:
+        lines.append("  Changes under work/ are ignored by this check.")
+    return lines
+
+
 def assert_working_tree_clean(repo_root: Path, detail: str = "", *, except_work: bool = False) -> None:
-    """Exit 1 unless the working tree is clean."""
+    """Exit 1 unless the working tree is clean, naming the paths that are not."""
     if working_tree_clean(repo_root, except_work=except_work):
         return
     print(UNCLEAN_TREE_MESSAGE, file=sys.stderr)
     if detail:
         print(f"  {detail}", file=sys.stderr)
+    for line in unclean_tree_details(dirty_paths(repo_root, except_work=except_work), except_work=except_work):
+        print(line, file=sys.stderr)
     raise SystemExit(1)
 
 
