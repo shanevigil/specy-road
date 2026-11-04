@@ -38,6 +38,7 @@ def _gate(tmp_path: Path, rev: str, *, distinct: bool = True, rev_verdict: str =
     (", harness: cursor", False),                                 # A4: no harness_model, no profile: no --model
     (", harness: cursor, harness_model: auto", False),            # A4: Cursor's Auto
     (", harness: cursor, channels: {cli: 'agent -p {prompt}'}", False),
+    (""", harness: cursor, channels: {cli: "agent -p --model gpt-5.6-sol '{prompt}"}""", False),   # unbalanced quote
     (", harness: cursor, harness_model: gpt-5.6-sol-high", True),
     (", harness: cursor, pinned: true", True),
 ])
