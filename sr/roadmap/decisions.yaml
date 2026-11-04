@@ -128,5 +128,8 @@ entries:
     default_if_unanswered: hold the tag; finish every other release step so publishing
       takes minutes once answered
     asked: '2026-11-04'
-    status: open
+    status: closed
     needed_by: '2026-11-04'
+    answer: 'hold: no rc3 tag or publish for now; pre-release checks and fixes continue
+      on WIP/pre-release-checks (maintainer, 2026-11-04)'
+    closed: '2026-11-04T17:18:18+00:00'
