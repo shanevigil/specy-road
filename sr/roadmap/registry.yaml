@@ -31,3 +31,16 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
+  - codename: scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves
+    node_id: M12.3
+    branch: feature/rm-scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves
+    touch_zones:
+      - specy_road/bundled_scripts/chore_cli.py
+      - specy_road/bundled_scripts/validate_stale_commands.py
+      - specy_road/bundled_scripts/validate_roadmap.py
+      - docs/orchestration-chores.md
+      - specy_road/templates/project/
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
