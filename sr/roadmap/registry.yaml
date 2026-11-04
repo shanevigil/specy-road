@@ -42,6 +42,7 @@ entries:
       - specy_road/templates/project/
       - tests/
       - specy_road/bundled_scripts/chore_garden.py
+      - specy_road/agent_ignores.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
