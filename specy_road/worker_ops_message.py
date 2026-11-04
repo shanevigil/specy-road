@@ -17,6 +17,7 @@ from specy_road.worker_ops_slots import _slot_or_existing, _wrapper_gone
 from specy_road.worker_process import process_alive, require_branch
 from specy_road.worker_runner import spawn
 from specy_road.worker_sessions import check_session_id
+from specy_road.worker_turn_check import limit_gate
 from specy_road.worker_state import (
     FLAG_STALLED,
     WorkerError,
@@ -44,6 +45,7 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: boo
     _wrapper_gone(repo_root, rec)   # a crashed turn is recorded as failed, then resumed below like any failed one
     if rec.state == "terminated" or (rec.state == "failed" and not rec.provider_session_id):   # failed keeps its session
         raise WorkerError(f"{rec.worker_id} is {rec.state}, session {rec.provider_session_id or 'none'}; delegate again instead")
+    limit_gate(rec)   # paused by a usage limit: no turn before the reset (M8.2)
     if process_alive(rec, repo_root):
         if no_queue:
             raise WorkerError(f"{rec.worker_id} is still running (pid {rec.pid}); the CLI adapters cannot steer a live turn — "

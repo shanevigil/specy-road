@@ -58,7 +58,7 @@
       "parent_id": "M8",
       "planning_dir": "planning/M8.2_worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check_f4d6efe0-4286-44f8-a36e-d30947c401d6.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Worker adapters harden the launch and run a deterministic post-run check",
       "touch_zones": [
         "specy_road/worker_runner.py",
@@ -77,7 +77,9 @@
         "specy_road/worker_ops_launch.py",
         "specy_road/schemas/worker-record.schema.json",
         "specy_road/schemas/worker-event.schema.json",
-        "specy_road/worker_ops_message.py"
+        "specy_road/worker_ops_message.py",
+        "specy_road/worker_turn_check.py",
+        "specy_road/worker_orphans.py"
       ],
       "type": "task"
     },

@@ -6,10 +6,40 @@ Split from :mod:`specy_road.worker_adapters` for the file limit; callers reach i
 from __future__ import annotations
 
 import json
+import os
+import re
 from pathlib import Path
 
 from specy_road.worker_adapter_base import CODEX_POLICY, Adapter, Capabilities, Launch, Parsed, _model_flag
-from specy_road.worker_adapter_parsers import _json, _snip, _text, usage_fields
+from specy_road.worker_adapter_parsers import _json, _snip, _text, limit_detail, usage_fields
+
+#: Memories off on launch and resume, as config (``exec resume`` takes ``-c``): the feature and both of its
+#: switches (harness-facts: ``--disable memories`` is ``features.memories=false``; v2's key names are undocumented).
+CODEX_MEMORY_OFF = ("-c", "features.memories=false", "-c", "memories.use_memories=false",
+                    "-c", "memories.generate_memories=false")
+
+
+def codex_homes() -> Path:
+    """Where the per-profile ``CODEX_HOME`` directories live, one per model id the harness is told."""
+    return Path.home() / ".specy-road" / "codex-home"
+
+
+def profile_home(model: str | None) -> Path:
+    """The profile's own ``CODEX_HOME``: none of the user's config, memories or global AGENTS.md reaches the
+    worker, and its sessions stay apart. The user's ``auth.json`` is linked in, so the login carries over."""
+    home = codex_homes() / re.sub(r"[^A-Za-z0-9._-]", "_", model or "default")
+    home.mkdir(parents=True, exist_ok=True)
+    auth = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex") / "auth.json"
+    if auth.is_file() and not (home / "auth.json").exists() and not (home / "auth.json").is_symlink():
+        (home / "auth.json").symlink_to(auth)
+    return home
+
+
+def session_home(session_id: str) -> Path | None:
+    """The per-profile home whose ``sessions/`` holds the thread's rollout, so a resume finds it."""
+    root = codex_homes()
+    hits = sorted(root.glob(f"*/sessions/**/*{session_id}*.jsonl")) if root.is_dir() else []
+    return root / hits[0].relative_to(root).parts[0] if hits else None
 
 
 class Codex(Adapter):
@@ -25,7 +55,8 @@ class Codex(Adapter):
         if custom:
             return custom
         return Launch(["codex", "exec", "--json", *_model_flag("-m", model), *self.effort_flag(effort), *CODEX_POLICY,
-                       "-C", str(worktree), *self._add_dir(worktree, repo_root, node_id), "-"], stdin=_text(prompt_path))
+                       *CODEX_MEMORY_OFF, "-C", str(worktree), *self._add_dir(worktree, repo_root, node_id), "-"],
+                      stdin=_text(prompt_path), env={"CODEX_HOME": str(profile_home(model))})
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
@@ -35,9 +66,10 @@ class Codex(Adapter):
             return custom
         # Same policy as the launch, prompt on stdin again (128 KiB argv cap). `exec resume` takes neither --sandbox,
         # -C (the wrapper runs it in the worktree) nor a documented --add-dir, so the policy goes in as config overrides.
+        home = session_home(session_id) or profile_home(model)   # where the launch left the thread
         return Launch(["codex", "exec", "resume", "--json", *_model_flag("-m", model), *self.effort_flag(effort),
-                       *CODEX_POLICY, session_id, "-"],
-                      stdin=_text(prompt_path), session_id=session_id)
+                       *CODEX_POLICY, *CODEX_MEMORY_OFF, session_id, "-"],
+                      stdin=_text(prompt_path), session_id=session_id, env={"CODEX_HOME": str(home)})
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)
@@ -61,5 +93,16 @@ class Codex(Adapter):
             return Parsed("error", _snip(raw), detail={"message": raw})
         return None
 
+    def parse_events(self, line: str, launch: Launch) -> list[Parsed]:
+        out = super().parse_events(line, launch)
+        d = _json(line)
+        # A limit arrives as a failure whose text names the reset ("try again in/at"): read it, never the exit code.
+        limit = limit_detail(out[0].detail["message"], failed=True) if out and out[0].type == "error" and d else None
+        if limit:
+            out.append(Parsed("usage_limited", f"usage limit; resets {limit['reset_at'] or 'at an unstated time'}",
+                              detail={**limit, "source": f"codex {d.get('type')}"}))
+        return out
+
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:
-        return ["codex", "resume", session_id]
+        home = session_home(session_id)   # the worker's thread is in its profile's CODEX_HOME, not ~/.codex
+        return ["env", f"CODEX_HOME={home}", "codex", "resume", session_id] if home else ["codex", "resume", session_id]
