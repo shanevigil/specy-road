@@ -1,8 +1,9 @@
 """Lean changes and tests: the rule block, the role prompts, the packet note, the profile tendencies.
 
-Source: two lean-code research reports (2026-10-27). The managed block is injected
-into every adopter agent's context, so the section is pinned to its exact wording
-in the template, the bootstrap prompt and the toolkit's own AGENTS.md.
+Source: two lean-code research reports (2026-10-27). The rules file
+``.specyrd/AGENTS.md`` (the managed block until 2026-11-04) is what every adopter
+agent reads first, so the section is pinned to its exact wording there, in the
+bootstrap prompt and in the toolkit's own AGENTS.md.
 """
 
 from __future__ import annotations
@@ -13,13 +14,13 @@ from pathlib import Path
 from tests.review_repo_helpers import git, make_review_repo
 from tests.test_models_and_prompt import ROSTER, TEMPLATE_PROFILES
 
-from specy_road.agents_md_block import render_agents_lines
+from specy_road.agents_md_block import render_rules
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.bundled_scripts import role_prompt
 from specy_road.review_files import PACKET_NAME, reviews_dir
 
 REPO = Path(__file__).resolve().parent.parent
-BLOCK = "\n".join(render_agents_lines())
+BLOCK = render_rules()
 PROMPT = REPO / "suggested_prompts" / "bootstrap-agents-md.md"
 AGENTS = REPO / "AGENTS.md"
 HEADING = "## Lean changes and tests"

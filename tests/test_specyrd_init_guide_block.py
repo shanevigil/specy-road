@@ -118,14 +118,14 @@ def test_a_dry_run_previews_the_managed_blocks_and_writes_nothing(
 
 
 def test_the_guide_block_is_prefixed_in_a_nested_layout(tmp_path: Path) -> None:
-    """CLAUDE.md sits at the git root; its pointers name the project root."""
+    """CLAUDE.md sits at the git root; its imports and pointers name the project root."""
     (tmp_path / "sr" / "roadmap").mkdir(parents=True)
     (tmp_path / "sr" / "roadmap" / "manifest.json").write_text("{}", encoding="utf-8")
 
     lines = render_guide_lines("sr/")
 
-    assert any("sr/roadmap/manifest.json" in ln for ln in lines)
-    assert any("sr/roadmap-context.md" in ln for ln in lines)
+    assert "@sr/.specyrd/AGENTS.md" in lines and "@sr/.specyrd/AGENTS.team.md" in lines
+    assert any("`sr/.specyrd/AGENTS.local.md`" in ln for ln in lines)
     assert not any("{{PROJECT_PREFIX}}" in ln for ln in lines)
     assert not any("{{SPECYRD_VERSION}}" in ln for ln in lines)
     assert not any("<!--" in ln for ln in lines)   # provenance stays in the template

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from specy_road import __version__
 from specy_road.cli import REPLACED_COMMANDS, registered_agent_command_names
+from specy_road.harness_instruction_files import TEAM_MD
 from specy_road.managed_block import agent_file_lines_outside_block
 from specy_road.runtime_paths import git_root
 
@@ -311,7 +312,7 @@ def warn_unregistered_commands(root: Path) -> None:
     root = root.resolve()
     checkout = git_root(root) or root
     paths = dict.fromkeys(
-        base / name for base in (root, checkout) for name in ("AGENTS.md", "CLAUDE.md")
+        [*(base / name for base in (root, checkout) for name in ("AGENTS.md", "CLAUDE.md")), root / TEAM_MD]
     )
     for path in paths:
         if not path.is_file():

@@ -19,6 +19,16 @@ Run **`specy-road upgrade`** (`--dry-run` first). It runs `refresh-schemas` (`sc
 
 Four files are **yours**, and specy-road only maintains one delimited block inside each: `AGENTS.md`, `.gitignore`, `.cursorindexingignore`, and `CLAUDE.md`. Everything outside `>>> specy-road managed block <<<` is never read and never rewritten, with or without `--force`.
 
+## Agent rules
+
+Beside the project's `roadmap/` (in the nested layout, `sr/.specyrd/`, not this directory):
+
+- **`.specyrd/AGENTS.md`** is specy-road's: the full rules every agent follows. `specy-road upgrade` rewrites it whole; do not edit it. The `AGENTS.md` stub points at it and the `CLAUDE.md` block imports it.
+- **`.specyrd/AGENTS.team.md`** is yours and tracked: this repository's specy-road instructions from its developers and PMs. Created when missing, never rewritten, not recorded in `manifest.json`.
+- **`.specyrd/AGENTS.local.md`** is yours alone: personal notes, gitignored, never created for you.
+
+Both addenda add to the rules and never relax their floor.
+
 ## Generated files
 
 - **`roadmap.md`** — `specy-road export`. Generated **and committed**; `export --check` is the drift gate.

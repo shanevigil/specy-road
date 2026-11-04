@@ -19,6 +19,11 @@ from specy_road.bundled_scripts.planning_artifacts import split_frontmatter
 from specy_road.git_subprocess import git_stdout, git_text
 
 AGENTS_MD = "AGENTS.md"
+#: specy-road's own rules, which the ``AGENTS.md`` stub points at and ``CLAUDE.md`` imports;
+#: the tracked team addendum; and the personal, gitignored one. All under the project root.
+RULES_MD = f".specyrd/{AGENTS_MD}"
+TEAM_MD = ".specyrd/AGENTS.team.md"
+LOCAL_MD = ".specyrd/AGENTS.local.md"
 
 #: Codex, per directory from the git root down, takes the first non-empty of
 #: ``AGENTS.override.md`` then ``AGENTS.md``:
@@ -33,6 +38,11 @@ _CLAUDE_AGENTS_FALLBACK = (AGENTS_MD, f".claude/{AGENTS_MD}")
 #: Every ``.md`` below it, recursively, loads at launch beside ``.claude/CLAUDE.md``
 #: unless its frontmatter sets ``paths``: https://code.claude.com/docs/en/memory
 _CLAUDE_RULES = ".claude/rules"
+#: ``@path`` imports, outside code spans and fenced blocks, resolve relative to the importing
+#: file and nest up to four hops: https://code.claude.com/docs/en/memory
+_CLAUDE_IMPORT = re.compile(r"(?<!\w)@(~?[\w./-]+)")
+_CODE_SPAN = re.compile(r"`[^`]*`")
+CLAUDE_IMPORT_HOPS = 4
 #: "Claude Code skips a file over 4 MiB and loads none of it."
 CLAUDE_MAX_FILE_BYTES = 4 * 1024 * 1024
 #: Auto memory: Claude Code loads the first 200 lines or 25 KB of ``MEMORY.md``,
@@ -128,6 +138,41 @@ def claude_rules(start: Path, top: Path) -> list[Path]:
     dirs = [d for d in dirs_from_root(start) if d.is_relative_to(top)]
     rules = [p for d in dirs for p in sorted((d / _CLAUDE_RULES).rglob("*.md")) if p.is_file()]
     return [p for p in rules if not (_frontmatter(p) or {}).get("paths")]
+
+
+def _imports_in(path: Path) -> list[Path]:
+    """The existing files ``path`` imports with ``@path``, in order."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return []
+    found: list[Path] = []
+    fenced = False
+    for line in text.splitlines():
+        if line.lstrip().startswith(("```", "~~~")):
+            fenced = not fenced
+        if fenced or line.lstrip().startswith(("```", "~~~")):
+            continue
+        for m in _CLAUDE_IMPORT.finditer(_CODE_SPAN.sub("", line)):
+            target = Path(m.group(1)).expanduser()
+            found.append(target if target.is_absolute() else path.parent / target)
+    return [p for p in found if p.is_file()]
+
+
+def claude_imports(files: list[Path]) -> list[Path]:
+    """The files ``files`` pull in through ``@path`` imports, nested up to four hops, each once."""
+    seen = {p.resolve() for p in files}
+    out: list[Path] = []
+    frontier = list(files)
+    for _hop in range(CLAUDE_IMPORT_HOPS):
+        found = []
+        for path in (p for f in frontier for p in _imports_in(f)):
+            if path.resolve() not in seen:
+                seen.add(path.resolve())
+                found.append(path)
+        out.extend(found)
+        frontier = found
+    return out
 
 
 def claude_loads(path: Path) -> bool:

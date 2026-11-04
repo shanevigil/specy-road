@@ -81,3 +81,26 @@ def test_report_prints_one_line_per_harness_and_never_warns(repo: Path, capsys) 
     assert lines[2] == "context: Cursor reads AGENTS.md 1 lines, 9 bytes — 9 bytes per session; no documented limit"
     assert lines[3].endswith("— 40,010 bytes per session; no documented limit")
     assert err == ""
+
+
+def test_claude_code_counts_what_claude_md_imports_and_notes_the_rest(repo: Path, capsys) -> None:
+    """`@path` imports load with the file (relative to it, nested), except in code; the personal addendum is a note."""
+    home = repo.parent / "no-home"
+    _write(home, "notes.md", "# my notes\n")
+    _write(repo, AGENT_GUIDE, "# Claude\n@sr/.specyrd/AGENTS.md\n`@sr/fenced.md` is a mention\n```\n@sr/fenced.md\n```\n"
+                              "@sr/.specyrd/AGENTS.local.md and @missing.md, mail me@sr/fenced.md\n@~/notes.md\n")
+    _write(repo, "sr/.specyrd/AGENTS.md", "# rules\n@AGENTS.team.md\n")
+    _write(repo, "sr/.specyrd/AGENTS.team.md", "# team\n")
+    _write(repo, "sr/.specyrd/AGENTS.local.md", "# mine\n")
+    _write(repo, "sr/fenced.md", "# not imported\n")
+
+    assert _rels(repo / "sr", "Claude Code") == [AGENT_GUIDE, "sr/.specyrd/AGENTS.md", "sr/.specyrd/AGENTS.team.md"]
+    assert _rels(repo / "sr", "Codex") == [AGENTS_MD]
+    print_injected_context(repo / "sr")
+    out = capsys.readouterr().out
+    assert ("context: note — sr/.specyrd/AGENTS.local.md 1 lines, 7 bytes, personal and gitignored; "
+            "machine-local, not counted toward this repository's limit") in out
+    assert (f"context: note — {(home / 'notes.md').resolve().as_posix()} 1 lines, 11 bytes, imported by a "
+            "Claude Code file; machine-local") in out
+    (repo / "sr/.specyrd/AGENTS.md").write_bytes(b"\xff@AGENTS.team.md\n")   # unreadable: counted, imports nothing
+    assert _rels(repo / "sr", "Claude Code") == [AGENT_GUIDE, "sr/.specyrd/AGENTS.md"]

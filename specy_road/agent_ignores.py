@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from specy_road.harness_instruction_files import LOCAL_MD
 from specy_road.managed_block import CREATED, UNCHANGED, UPDATED, apply_managed_block
 
 CURSOR_INDEXING_IGNORE = ".cursorindexingignore"
@@ -78,6 +79,7 @@ GITIGNORE_LINES = [
     "work/brainstorm-*-prompt.md",
     "work/brainstorm-closed/*-prompt.md",
     "roadmap/orchestration.local.yaml",
+    LOCAL_MD,
 ]
 
 _GITIGNORE_NOTE = (
@@ -86,7 +88,8 @@ _GITIGNORE_NOTE = (
     "PR body re-inlines the brief and summary); review records (a commit would\n"
     "move the branch past the reviewed commit); session, worker and worktree\n"
     "state; brainstorm prompts; per-checkout orchestration availability overlay.\n"
-    "`.specyrd/manifest.json` stays tracked."
+    "Also never committed: .specyrd/AGENTS.local.md, your personal addendum to\n"
+    "specy-road's agent rules. `.specyrd/manifest.json` stays tracked."
 )
 
 
