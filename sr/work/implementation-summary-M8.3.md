@@ -355,6 +355,16 @@ Codex 0.166 sends `--output-schema` in OpenAI strict mode, and the API refused t
   - The three regressions for F1, F2 and F4 fail on `3e5894b5`.
   - `fake_reviewer_run`'s `run_logged` fake writes through the `RunLog`.
 
+## Fix round 4 (Sol's block at `08da7813`: F1, F2; Grok approved)
+
+- F1 (A1, quoted `agy` path): `reviewer_cli` inserts the Antigravity flags where `worker_adapter_base._program_end` says the first shell word ends. It reads the word as `shlex.split` does, so whitespace inside single or double quotes, or after a backslash, stays in the program path. The old `\s*\S+` match split `"tools with spaces/agy"` inside its quotes.
+- F2 (A3, later array): `json_object` also returns `None` when `review_record_write._later_array` finds a line after the final object that opens a JSON array. That covers any `[` that starts with a JSON value (`[1,`, `[1,,2]`, `[]`) or never closes (`[`, `[broken`), as a later `{` already did for objects. A closed bracket of prose after the answer (`[INFO] done`, `[the docs](x)`) is still permitted, like other trailing text. `_open_braces`' depth count moved into `_depth`, which both use. `docs/orchestration-reviewer-output.md` states the rule.
+- Tests:
+  - `test_malformed_output_is_a_rerun_request_never_a_verdict` gains five inputs: a valid verdict followed by `\n[`, `\n[1,`, `\n[broken`, `\n[1,,2]` and ` [`. Each is a rerun with no REVIEW file.
+  - `test_the_final_complete_json_object_of_a_message_is_the_answer` gains one assertion: prose brackets after the answer still leave the answer.
+  - `test_an_antigravity_review_delegate_passes_json_schema_and_files_structured_output` is parametrized over the program word: on PATH, double-quoted, single-quoted and backslash-escaped. The last three use a fake `agy` in a directory with spaces.
+  - The new cases fail on `08da7813`, except the prose guard, which passes there too.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
@@ -414,3 +424,4 @@ Codex 0.166 sends `--output-schema` in OpenAI strict mode, and the API refused t
 - Fix round 2: `_open_braces` counting `[`/`]` (Grok's A3 array finding); `review_delegate.delegate` writing the schema once before its snapshot, `write_schema`'s unchanged-text branch (reached by the extended lock test) and `OUTPUT_SCHEMA_NAME` dropped from `runtime_files` (Grok's A2 schema finding); `RootFence`'s `model` parameter and run-record entry, with its `OSError` branch for `run_default_reviewer`/`run_custom_reviewer` called without a run record (reached by `tests/test_headless_limits_denials.py::test_review_delegate_and_the_bare_reviewer_command_disable_background_tasks`) (Grok's A2 run-record finding). No new test function; three parametrized tests and the lock test extended.
 - WIP merge `458dca91`: the `rc and outcome.state == "rerun"` condition in `run_and_file` (WIP's last-line capacity rule), and the `say` step in `tests/review_delegate_helpers.FAKE` (WIP's capacity-wording test).
 - Fix round 3: `review_write_check.RunLog` (`open`, `write`, `changed`, `_bytes`) and `file_review`'s `log` parameter (F1); the per-attempt `prepare_harness_files` in `_attempts` (F2); the `sign_key` parameter of `_review_record`, `file_review`, `run_and_file`, `run_default_reviewer`, `run_custom_reviewer`, `run_cli_channel` and `delegate`, plus the `--sign-key` options of `review delegate` and `prompt` (F3); the lock in `role_prompt.main` with its `ReviewRunBusy` exit, `role_prompt._run`, and `delegate`'s lock moved before `_start` (F4). Removed: the lock and busy branch in `run_and_file`, the pre-lock unlinks, and `write_schema`'s unchanged-text branch. Tests: two new, two extended, one moved (named in that round's section).
+- Fix round 4: `worker_adapter_base._program_end` (F1: where the quoted or escaped program word ends); `review_record_write._later_array` with `_ARRAY_LINE` and `_JSON_VALUE` (F2: a later JSON array is a rerun request), and `_depth`, factored out of `_open_braces`. Tests: two extended, one parametrized (named in that round's section).

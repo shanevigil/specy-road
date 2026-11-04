@@ -14,7 +14,7 @@ reviewer command passes the harness's structured-output flag where there is one:
 | Codex | `codex exec --json -c sandbox_mode=read-only -c approval_policy=never --output-schema <file> -o <OUTPUT-<model>.json> -` | the `-o` file; a resume (which documents neither flag) its last `agent_message` |
 | Cursor | `agent -p --output-format stream-json --mode ask --trust` (no `--force`) | the `result` event's text |
 | Antigravity (`agy`, a `generic` entry) | its `channels.cli` or `access.cli`, with `--json-schema <schema file>`, `--output-format json`, `--sandbox` and `--print-timeout 30m` added after `agy` where absent; `--dangerously-skip-permissions` is refused | the envelope's `structured_output` |
-| anything else (`channels.cli`, `generic`) | as written | the output's last complete JSON object, which must start a line with no later `{` after it (a JSON envelope's `structured_output`) |
+| anything else (`channels.cli`, `generic`) | as written | the output's last complete JSON object, which must start a line with no later `{`, and no later line opening a JSON array (`[1,`, or a `[` never closed), after it (a JSON envelope's `structured_output`) |
 
 The schema file is `work/reviews/<NODE_ID>/review-output.schema.json`, in the
 form OpenAI's strict structured output takes, which Codex sends it in: every

@@ -134,6 +134,11 @@ def test_the_reviewer_process_writes_no_bytecode_or_pytest_cache() -> None:
     ('{"verdict": "approve"}', "does not match the review output schema"),
     ("[\nVERDICT", "ends with no JSON object"),           # a valid verdict after an unclosed array
     ("[\nVERDICT\n]", "ends with no JSON object"),        # a valid verdict inside an array
+    ("VERDICT\n[", "ends with no JSON object"),           # a valid verdict, then an array cut off or malformed
+    ("VERDICT\n[1,", "ends with no JSON object"),
+    ("VERDICT\n[broken", "ends with no JSON object"),
+    ("VERDICT\n[1,,2]", "ends with no JSON object"),
+    ("VERDICT [", "ends with no JSON object"),
 ])
 def test_malformed_output_is_a_rerun_request_never_a_verdict(tmp_path: Path, raw: str, why: str) -> None:
     repo, spec = delegate_repo(tmp_path)
@@ -180,6 +185,7 @@ def test_the_final_complete_json_object_of_a_message_is_the_answer() -> None:
     assert json_object('use {x} here, a stray }\n{"final": 2}') == {"final": 2}   # balanced prose, stray brace
     assert json_object('[\n{"final": 2}') is None and json_object('[\n{"final": 2}\n]') is None   # in an array
     assert json_object('see [the docs](x)\n{"final": 2}') == {"final": 2}       # balanced brackets in prose
+    assert json_object('{"final": 2}\n[INFO] done, see [the docs](x)') == {"final": 2}   # and after the answer
 
 
 def test_a_valid_object_followed_by_truncated_json_is_a_rerun_request_and_files_nothing(tmp_path: Path) -> None:
@@ -364,13 +370,21 @@ def test_the_shipped_agy_profile_gets_only_the_flags_it_lacks_as_a_reviewer(tmp_
     assert cli == profile.cli().replace("agy ", f"agy --json-schema {schema} --sandbox ", 1)   # keeps json and 60m
 
 
-def test_an_antigravity_review_delegate_passes_json_schema_and_files_structured_output(tmp_path: Path,
-                                                                                       monkeypatch) -> None:
-    repo = make_review_repo(tmp_path, orchestration=GENERIC.replace("{fake} {prompt}", 'agy -p "<prompt>"'))
+@pytest.mark.parametrize("bin_name,program", [
+    ("bin", lambda b: "agy"),                                          # found on PATH
+    ("tools with spaces", lambda b: f'"{b}/agy"'),                     # a quoted path with spaces stays one word
+    ("tools with spaces", lambda b: f"'{b}/agy'"),
+    ("tools with spaces", lambda b: f"{b}/agy".replace(" ", "\\ ")),
+], ids=["on-path", "double-quoted", "single-quoted", "backslash-escaped"])
+def test_an_antigravity_review_delegate_passes_json_schema_and_files_structured_output(tmp_path: Path, monkeypatch,
+                                                                                       bin_name: str,
+                                                                                       program) -> None:
+    bin_dir, spec = tmp_path / bin_name, tmp_path / "agy-spec.json"
+    cli = f'{program(bin_dir)} -p "<prompt>"'.replace("'", "''")      # in a single-quoted YAML string
+    repo = make_review_repo(tmp_path, orchestration=GENERIC.replace("{fake} {prompt}", cli))
     reviews = rf.reviews_dir(repo, "M1.1")
     reviews.mkdir(parents=True)
     (reviews / "PACKET.md").write_text("# Review packet\n")
-    bin_dir, spec = tmp_path / "bin", tmp_path / "agy-spec.json"
     bin_dir.mkdir()
     (bin_dir / "agy").write_text(FAKE_AGY.format(python=sys.executable))
     (bin_dir / "agy").chmod(0o755)

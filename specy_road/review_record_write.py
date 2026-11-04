@@ -195,10 +195,10 @@ def final_output(adapter: Any, text: str, output_file: Path | None = None) -> An
 def json_object(value: Any) -> dict[str, Any] | None:
     """``value`` if it is a dict, else the final JSON object of its text, or ``None``. The final object is the last
     complete top-level one; it must start a line (prose and a ```` ```json ```` fence may precede it), nothing
-    after it may open another (``{``): a truncated or malformed later object is a rerun request, never the earlier
-    one's verdict; and it must not sit inside an object or array left open before it (:func:`_open_braces`): a
-    complete object nested in malformed outer JSON, or in an array, is a rerun request too. Other trailing text (a closing fence, a harness's
-    status lines) is permitted."""
+    after it may open another object (``{``) or a JSON array (:func:`_later_array`): a truncated or malformed later
+    object or array is a rerun request, never the earlier one's verdict; and it must not sit inside an object or
+    array left open before it (:func:`_open_braces`): a complete object nested in malformed outer JSON, or in an
+    array, is a rerun request too. Other trailing text (a closing fence, a harness's status lines) is permitted."""
     if isinstance(value, dict):
         return value
     if not isinstance(value, str):
@@ -216,9 +216,32 @@ def json_object(value: Any) -> dict[str, Any] | None:
     if not spans:
         return None
     start, end, last = spans[-1]
-    if "{" in value[end:] or value[value.rfind("\n", 0, start) + 1:start].strip() or _open_braces(value, spans):
+    if ("{" in value[end:] or _later_array(value[end:]) or value[value.rfind("\n", 0, start) + 1:start].strip()
+            or _open_braces(value, spans)):
         return None
     return last
+
+
+_ARRAY_LINE = re.compile(r"^[ \t]*\[", re.M)
+_JSON_VALUE = re.compile(r"\s*(?:[\[{\"\-\d\]]|(?:true|false|null)\b)")
+
+
+def _later_array(tail: str) -> bool:
+    """Whether ``tail``, the text after the final object, has a line that starts a JSON array: one that opens with
+    a JSON value (complete or not: ``[1,``, ``[]``) or never closes (``[``, ``[broken``). A later array, like a
+    later object, is a rerun request; a closed bracket of prose (``[INFO] done``, ``[the docs](x)``) is not."""
+    for line in _ARRAY_LINE.finditer(tail):
+        at = line.end()
+        if _JSON_VALUE.match(tail, at) or _depth(tail[at - 1:]):
+            return True
+    return False
+
+
+def _depth(text: str, depth: int = 0) -> int:
+    """``depth`` after ``text``: ``{`` or ``[`` adds one, ``}`` or ``]`` takes one away but never below none."""
+    for ch in text:
+        depth = depth + 1 if ch in "{[" else max(0, depth - 1) if ch in "}]" else depth
+    return depth
 
 
 def _open_braces(value: str, spans: list[tuple[int, int, Any]]) -> bool:
@@ -228,9 +251,7 @@ def _open_braces(value: str, spans: list[tuple[int, int, Any]]) -> bool:
     object, or any array around it, does not."""
     depth, pos = 0, 0
     for begin, stop, _obj in spans:
-        for ch in value[pos:begin]:
-            depth = depth + 1 if ch in "{[" else max(0, depth - 1) if ch in "}]" else depth
-        pos = stop
+        depth, pos = _depth(value[pos:begin], depth), stop
     return depth > 0
 
 

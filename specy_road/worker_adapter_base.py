@@ -126,8 +126,23 @@ def reviewer_cli(cli: str, schema: Path | None) -> str:
     add = [] if not schema or "--json-schema" in named else ["--json-schema", shlex.quote(str(schema))]
     for flag, value in AGY_REVIEW_FLAGS:
         add += [flag, *([value] if value else [])] if flag not in named else []
-    head = re.match(r"\s*\S+", cli)
-    return cli[:head.end()] + "".join(f" {a}" for a in add) + cli[head.end():] if head and add else cli
+    end = _program_end(cli)
+    return cli[:end] + "".join(f" {a}" for a in add) + cli[end:] if add else cli
+
+
+def _program_end(cli: str) -> int:
+    """Where ``cli``'s first shell word ends, read as :func:`shlex.split` reads it: whitespace inside quotes or
+    after a backslash belongs to the word, so a quoted program path with spaces stays whole."""
+    i, quote = len(cli) - len(cli.lstrip()), None
+    while i < len(cli) and (quote or not cli[i].isspace()):
+        if cli[i] == "\\" and quote != "'":
+            i += 1
+        elif cli[i] == quote:
+            quote = None
+        elif not quote and cli[i] in "'\"":
+            quote = cli[i]
+        i += 1
+    return min(i, len(cli))
 
 
 def _bare(launch_mode: str) -> list[str]:
