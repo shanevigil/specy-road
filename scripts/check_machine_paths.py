@@ -27,12 +27,15 @@ _PATH_NAME = rf"(?!(?:{_NO_PERSON})(?![A-Za-z0-9._-])|<)[A-Za-z0-9._-]+"
 _DIR_NAME = rf"(?!(?:{_NO_PERSON})(?![A-Za-z0-9._]))[A-Za-z0-9._]+"
 
 PATTERN = re.compile(
-    rf"(?<![A-Za-z0-9._~%-])/(?:Users|home)/{_PATH_NAME}"   # not a URL path segment (example.com/home/...)
+    rf"/(?:Users|home)/{_PATH_NAME}"
     rf"|(?<![A-Za-z0-9])-(?:Users|home)-{_DIR_NAME}-"   # a project dir name, not prose
     rf"|[A-Za-z]:\\{{1,2}}(?i:users)\\{{1,2}}{_PATH_NAME}"
     r"|/(?:private/)?tmp/claude-\d"
     r"|-MacBook(?:-(?:Pro|Air))?(?:-\d+)?\.local\b"
 )
+#: A web URL (scheme://host/...), blanked before matching: its path names a site's page, not a machine.
+#: file:/// and file://localhost/ keep their path in scope.
+_WEB_URL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://(?!/|localhost/)[^\s\"'<>)\]`]*")
 
 
 def find_machine_paths(root: Path) -> list[str]:
@@ -45,7 +48,7 @@ def find_machine_paths(root: Path) -> list[str]:
         except UnicodeDecodeError:
             continue   # binary
         hits += [f"{name}:{n}: {line.strip()[:160]}" for n, line in enumerate(text.splitlines(), 1)
-                 if PATTERN.search(line)]
+                 if PATTERN.search(_WEB_URL.sub(" ", line))]
     return hits
 
 
