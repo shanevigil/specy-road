@@ -242,7 +242,14 @@
         "specy_road/bundled_scripts/worker_cli.py",
         "specy_road/cli.py",
         "docs/orchestration-workers.md",
-        "tests/"
+        "tests/",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/worker_ops_message.py",
+        "specy_road/worker_reconcile.py",
+        "specy_road/worker_orphans.py",
+        "specy_road/review_delegate.py",
+        "specy_road/cli_usage.py",
+        "docs/orchestration-chores.md"
       ],
       "type": "task"
     },
