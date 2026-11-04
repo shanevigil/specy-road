@@ -240,6 +240,27 @@ Required change → what changed:
   - File limits OK; ruff clean; private imports 0 new.
   - Red/green: with the fence result dropped and the Git roots quiet again, the `work/reviews/M1.1` and `.git` cases fail.
 
+## Round 13 (gpt-5.6-sol-medium's block at `a158edd9`; commit `1737539f`)
+
+Required change → what changed:
+
+- **"Make hand-off-root write detection observe a forbidden entry created/written/deleted in the same harness turn even when an allowed OUTPUT-<model>.json or notes-<model>.md transition also occurs."**
+  - Round 12's `RootFence` treated the root's move as explained when an allowed file appeared, went or was replaced, and that hid a forbidden transient file in the same turn. The exception is gone.
+  - The new `review_write_check.prepare_harness_files(reviews, model)` creates both allowed files before the first snapshot: `OUTPUT-<model>.json` emptied, replacing the old `unlink` so a stale answer still never stands in, and `notes-<model>.md` kept if present. It runs in `review_delegate.delegate` and in `review_record_write.run_and_file` (`prompt --channel cli`).
+  - Written in place during the turn, they change no entry of the root. `RootFence(root)` now compares the root's `(mtime, ctime, link count)` strictly before and after each turn: any move is a write, whatever else the turn wrote.
+  - `final_output` already treats an empty `-o` file as absent.
+  - Consequence: a harness that replaces its answer or notes by renaming a temporary file over them is reported as a write. Codex's `-o` and Claude's file tools are believed to write in place; that is not verified against live harnesses (see Not verified).
+  - `docs/orchestration-review.md` says so, within its 400 lines.
+- **"Add a public review-delegate or prompt --channel cli regression proving review_failure with no verdict filed for that combined case."**
+  - `test_review_delegate_cli_fails_a_transient_hand_off_file_beside_an_allowed_write` in `tests/test_review_record_write_git.py`, through `specy-road review delegate`, is parametrized over `notes-opus.md` and `OUTPUT-opus.json`. In one harness turn the fake reviewer writes the allowed file (draft notes, or the verdict JSON as Codex's `-o` answer) and creates, writes and deletes `scratch.tmp` in the hand-off root.
+  - The test confirms the allowed file holds what was written and the scratch file is gone, that the run is a `review_failure` naming `work/reviews/M1.1`, and that there is no `REVIEW-opus.md`.
+  - The companion `test_an_allowed_answer_or_notes_write_alone_is_still_filed` shows either allowed write on its own is still recorded. The existing notes-only and Codex `-o` end-to-end tests pass unchanged.
+- **Touch zones:** no new path.
+- **Verification:**
+  - `pytest -n 4` over the leaf's test files (`tests/test_review_record_write.py`, `tests/test_review_record_write_git.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_worker_adapters.py`, `tests/test_models_and_prompt.py`, `tests/test_prerelease_review.py`, `tests/test_review_rca.py`, `tests/test_role_prompt_file_limits.py`, `tests/test_resumed_delta_review.py`, `tests/test_chore_mode.py`, `tests/test_headless_limits_denials.py`): 200 passed.
+  - File limits OK; ruff clean; private imports 0 new.
+  - Red/green: with the three production files back at `a158edd9`, both combined cases fail and the allowed-only cases pass.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
@@ -270,6 +291,7 @@ Required change → what changed:
 - `st_ctime_ns` in `_record` (round 10): Sol's identical-rewrite finding.
 - `_dir_record`, `_walk`'s `quiet` set and `wrote_only` (round 11): directory metadata for Sol's create-and-delete finding.
 - `RootFence`, `harness_files`, `file_review`'s `fenced`, `_Harness.fenced`, `GIT_OPTIONAL_LOCKS=0` in `reviewer_env` and `wrote_paths` (round 12): Sol's hand-off-root and Git-root finding.
+- `prepare_harness_files`, and `RootFence` without exceptions (round 13): Sol's combined allowed-plus-forbidden finding.
 - `_git_marker`, and `_walk`'s top-level-only `.git` skip (round 8): Sol's nested-`.git` finding.
 - `st_mode` in the snapshot tuples, and the `review_write_check` module split (round 7): Sol's chmod finding, and the file limit.
 - `_walk_git` and `_walk`'s `skip` (round 6): Git metadata in the A2 snapshot. Its `resolved()` returns `None` when git can't answer.
