@@ -6,17 +6,17 @@
 - **`specy_road/bundled_scripts/worktree_cli.py`** (new): `specy-road worktree prune <ID> [--yes] [--repo-root]`. Prints the refusals and exits 1, or lists nested repos and ignored files. Without `--yes` it removes nothing and exits 0.
 - **`specy_road/cli.py`**: registers `worktree` in `_FORWARDED`.
 - **`docs/git-workflow.md`**: new "Retiring a leaf's worktree (`worktree prune`)" section, an index line in the agent quickstart, and the nested-repo "Removing the leaf's worktree" bullet now points to the command.
-- **`tests/test_worktree_prune.py`** (new): 17 tests.
+- **`tests/test_worktree_prune.py`** (new): 19 tests.
 
 ## Acceptance
 
-- **A1**: the command refuses unless both `feature/rm-<codename>` (when it exists locally) and the worktree's `HEAD` are ancestors of the integration ref. That ref is `base_ref`: `<remote>/<integration_branch>`, else the local branch. Nothing is fetched, so a stale ref can only make the check stricter. It also refuses on any non-ignored `git status` entry (tracked changes or untracked files) and on any stash whose subject is `WIP on <branch>:` / `On <branch>:` or `WIP on (no branch):` / `On (no branch):`. The stash stack is shared across worktrees, so "the worktree's stashes" means stashes made on the leaf's branch or on a detached `HEAD` (see Rework round 1). It lists `!!` entries from `git status --porcelain --ignored` and removes only with `--yes`. Tests: unmerged, merged locally but not pushed, tracked change, untracked file, stash, and clean (list without `--yes`, removal with it, branch kept).
+- **A1**: the command refuses unless both `feature/rm-<codename>` (when it exists locally) and the worktree's `HEAD` are ancestors of the integration ref. That ref is `base_ref`: `<remote>/<integration_branch>`, else the local branch. Nothing is fetched, so a stale ref can only make the check stricter. It also refuses on any non-ignored `git status` entry (tracked changes or untracked files) and on any stash whose subject does not name another branch. That covers stashes made on the leaf's branch, on a detached `HEAD`, or stored under a custom subject. The stash stack is shared across worktrees, so a stash is passed over only when git's own `WIP on <b>:` / `On <b>:` names some other branch `<b>` (see Rework rounds 1 and 2). It lists `!!` entries from `git status --porcelain --ignored` and removes only with `--yes`. Tests: unmerged, merged locally but not pushed, tracked change, untracked file, stash, and clean (list without `--yes`, removal with it, branch kept).
 - **A2**: for each `nested_repos` path that is a repository top inside the leaf worktree:
   - **Linked worktree vs full clone:** the type is decided by comparing its git common dir with the main checkout's copy.
-  - **Linked worktree:** it shares refs and stash with the copy, so only `HEAD` is checked. It must be contained in some `refs/heads` or `refs/remotes` of the copy. Only stashes made on the leaf's branch or on a detached `HEAD` count.
-  - **Full clone:** `HEAD` and every local branch tip must be contained in a branch or remote-tracking ref of the main checkout's copy, or in one of the clone's own remote-tracking refs. Any stash refuses.
+  - **Linked worktree:** it shares refs and stash with the copy, so only `HEAD` is checked. It must be contained in some `refs/heads` or `refs/remotes` of the copy. Stashes are judged as in A1.
+  - **Full clone:** `HEAD` and every local branch tip must be contained in a branch or remote-tracking ref of the main checkout's copy. The clone's own remote-tracking refs do not count, because they are deleted with it and may be stale (Rework round 2). Any stash refuses.
   - **All nested repos:** any non-ignored status entry refuses, and ignored files are added to the list.
-  - **Tests:** detached commit, edit and stash in a linked worktree; a stash made in the detached (uncovered) linked worktree; a commit on the leaf branch, which passes because that branch keeps it; clean removal of both linked worktrees, which leaves the copies' `worktree list` with one entry; and in a full clone, an unpushed branch refused until it is pushed to the copy, then removed, plus an edit and a stash.
+  - **Tests:** detached commit, edit and stash in a linked worktree; a stash made in the detached (uncovered) linked worktree; a commit on the leaf branch, which passes because that branch keeps it; clean removal of both linked worktrees, which leaves the copies' `worktree list` with one entry; and in a full clone, an unpushed branch refused until it is pushed to the copy, then removed; a branch held only by the clone's stale `origin/topic`, which is refused; plus an edit and a stash.
 
 ## Touch zones
 
@@ -40,6 +40,20 @@ Confirmed as listed: `specy_road/bundled_scripts/worktree_cli.py`, `specy_road/w
 - **Touch zones:** no file outside the touch zones was needed.
 - **Verification:** `python -m pytest -n 4 -q -p no:cacheprovider tests/test_worktree_prune.py` gives 17 passed. `specy-road file-limits` is OK, and `ruff check` on the changed Python files is clean.
 
+## Rework round 2 (review `gpt-5.6-sol-medium`, blocked at 0ec9498b)
+
+- **Required change 1** asked that linked-worktree stashes whose subject cannot be safely attributed refuse the prune, custom subjects included, with a public CLI test. Changes:
+  - **`specy_road/worktree_prune.py`:** `_stashes` turned around. For a linked worktree, every stash refuses unless git's own subject form (`WIP on <b>:` / `On <b>:`, matched by the new `_STASH_ON`) names a branch `<b>` other than the leaf's branch and `(no branch)`. A subject stored with `git stash store -m` that names no branch now refuses. A git ref name cannot contain `:`, so the captured name is exact.
+  - **Messages and docs:** the leaf worktree's refusal now reads `stashes that may be this worktree's: …`. The module docstring, help text and `docs/git-workflow.md` say the same.
+  - **Test:** `test_a_custom_subject_stash_refuses_but_another_branchs_does_not` is new. Through the CLI with `--yes`, a stash stored as `notes for later` refuses (exit 1), the main checkout's `On main: …` stash is not listed, and the worktree stays.
+- **Required change 2** asked that a clone's own remote-tracking refs not count as durable, with a public CLI test for a stale one. Changes:
+  - **`specy_road/worktree_prune.py`:** `_lost_tips` now counts only a branch or remote-tracking ref of the main checkout's copy. The clone's own `refs/remotes` check is removed, because those refs go with the clone and may be stale. This is the reviewer's conservative option. The refusal now reads `commits on no branch or remote-tracking ref of <copy>`.
+  - **Docs and help text** are updated to match.
+  - **Test:** `test_a_full_clone_branch_held_only_by_its_own_stale_remote_tracking_ref_is_refused` is new. The clone pushes `topic` to the copy, `topic` is then deleted in the copy, and the clone's `origin/topic` is left stale. The CLI with `--yes` exits 1, names `topic`, and leaves the clone and the leaf worktree in place.
+- **Red-green:** both new tests fail against `0ec9498b`'s `worktree_prune.py`: the CLI exits 0 and removes the worktree (2 failed). They pass with the fix.
+- **Touch zones:** no file outside the touch zones was needed.
+- **Verification:** `python -m pytest -n 4 -q -p no:cacheprovider tests/test_worktree_prune.py` gives 19 passed. `specy-road file-limits` is OK, and `ruff check` on the changed Python files is clean.
+
 ## Added
 
 ### Helpers
@@ -47,8 +61,8 @@ Confirmed as listed: `specy_road/bundled_scripts/worktree_cli.py`, `specy_road/w
 - `worktree_prune.PrunePlan`: carries the main root, worktree, branch, refusals, ignored paths and nested repos from the checks to the removal.
 - `worktree_prune.leaf_worktree`: resolves node id to codename, worktree path and branch, and refuses a path that is not a worktree of this repository.
 - `worktree_prune._status`: splits `git status --porcelain --ignored` into changed and ignored paths, leaving out nested repo directories. It reads raw stdout because `git_text` strips the leading space of ` M` lines.
-- `worktree_prune._stashes`: decides which stashes refuse. A clone refuses on any stash; a linked worktree on stashes made on the leaf's branch or on a detached `HEAD` (`(no branch)`).
-- `worktree_prune._held` / `_lost_tips`: find commits no branch or remote-tracking ref holds. Checking only tips is enough, because a contained tip keeps all of its ancestors.
+- `worktree_prune._STASH_ON` / `_stashes`: decide which stashes refuse. A clone refuses on any stash. A linked worktree refuses on every stash whose git-form subject does not name another branch; this covers the leaf's branch, `(no branch)` and custom subjects (round 2).
+- `worktree_prune._held` / `_lost_tips`: find commits no branch or remote-tracking ref of the main checkout's copy holds. A clone's own remote-tracking refs are not consulted (round 2). Checking only tips is enough, because a contained tip keeps all of its ancestors.
 - `worktree_prune._check_nested`: runs the A2 checks per nested repo, distinguishing linked worktrees from clones.
 - `worktree_prune.plan_prune` / `remove`: the A1 checks plus the removal (nested repos first).
 - `bundled_scripts/worktree_cli.py` (`cmd_prune`, `build_parser`, `main`): the CLI, shaped like `branches_cli.py`.
@@ -76,3 +90,5 @@ Confirmed as listed: `specy_road/bundled_scripts/worktree_cli.py`, `specy_road/w
 - `test_unsaved_work_in_a_nested_full_clone_is_refused` (2 cases: edit, stash): A2, full-clone refusals.
 - `test_a_stash_made_in_a_detached_nested_linked_worktree_refuses_the_prune`: rework round 1. A2, an `On (no branch):` stash in a detached linked nested worktree refuses, through `plan_prune` and through the CLI with `--yes`, which leaves both directories in place.
 - `test_a_plain_directory_at_a_nested_path_is_checked_as_part_of_the_worktree`: guards the skip so that a non-repository directory at a nested path is not passed over unchecked.
+- `test_a_custom_subject_stash_refuses_but_another_branchs_does_not`: rework round 2, item 1. A1, a stash with an unattributable subject refuses through the CLI with `--yes` and the worktree stays; another branch's stash is not listed.
+- `test_a_full_clone_branch_held_only_by_its_own_stale_remote_tracking_ref_is_refused`: rework round 2, item 2. A2, a branch held only by the clone's stale remote-tracking ref refuses through the CLI with `--yes`, and the clone and the leaf worktree stay.

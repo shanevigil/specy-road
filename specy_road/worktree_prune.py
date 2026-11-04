@@ -5,18 +5,19 @@ The leaf's worktree is ``work/.worktrees/<codename>`` in the main checkout, on
 worktree's ``HEAD`` are merged into the integration branch (the remote-tracking
 ref as it stands, else the local one; nothing is fetched) and the worktree has
 no uncommitted changes, no untracked files git does not ignore, and no stash
-made on the leaf's branch or on a detached ``HEAD``. Ignored files are deleted
+that could be its own (see below). Ignored files are deleted
 with it, so they are listed first.
 
 Each ``nested_repos`` repository inside the worktree is checked too. A linked
 worktree of the main checkout's copy shares its branches and stash, so only a
-``HEAD`` no branch or remote-tracking ref holds is at risk, and only stashes
-made on the leaf's branch or on a detached ``HEAD`` count (the stash stack is
-shared, and ``On (no branch):`` does not say which worktree made it, so any
-such stash refuses). A full clone loses its branches and stash with
-its directory, so each of its branch tips must be held by a branch of the main
-checkout's copy or by a remote-tracking ref (the clone's or the copy's), and any
-stash refuses.
+``HEAD`` no branch or remote-tracking ref holds is at risk. Its stash stack is
+shared too, so a stash refuses unless its subject names another branch: one made
+on the leaf's branch, on a detached ``HEAD`` (``On (no branch):`` does not say
+which worktree made it) or under a custom subject (``git stash store -m``)
+cannot be told apart from this worktree's. A full clone loses its branches,
+remote-tracking refs and stash with its directory, so each of its branch tips
+must be held by a branch or remote-tracking ref of the main checkout's copy, and
+any stash refuses.
 """
 
 from __future__ import annotations
@@ -76,12 +77,19 @@ def _status(d: Path, skip: tuple[str, ...] = ()) -> tuple[list[str], list[str]] 
     return changed, ignored
 
 
+_STASH_ON = re.compile(r"^(?:WIP on|On) ([^:]+):")   # git's own subjects; a branch name cannot hold ':'
+
+
 def _stashes(d: Path, branch: str, linked: bool) -> list[str]:
-    """Stash subjects that refuse: any for a clone; for a linked worktree (stash is shared), those made on
-    ``branch`` or on a detached ``HEAD``, which may be this worktree's (an uncovered nested repo is detached)."""
-    own = re.compile(rf"^(WIP on|On) ({re.escape(branch)}|\(no branch\)):")
+    """Stash subjects that refuse: any for a clone; for a linked worktree (stash is shared), every one whose
+    subject does not name another branch: made on ``branch``, on a detached ``HEAD`` (an uncovered nested
+    repo is detached) or under a custom subject could be this worktree's."""
+    def names_another_branch(subject: str) -> bool:
+        m = _STASH_ON.match(subject)
+        return bool(m) and m.group(1) not in (branch, "(no branch)")
+
     subjects = (git_text(["stash", "list", "--format=%gs"], d) or "").splitlines()
-    return [s for s in subjects if not linked or own.match(s)]
+    return [s for s in subjects if not (linked and names_another_branch(s))]
 
 
 def _held(repo: Path, sha: str, refs: list[str]) -> bool:
@@ -89,14 +97,17 @@ def _held(repo: Path, sha: str, refs: list[str]) -> bool:
 
 
 def _lost_tips(src: Path, d: Path, linked: bool) -> list[str]:
-    """``HEAD`` and, for a clone, each local branch whose tip no branch of ``src`` or remote-tracking ref holds."""
+    """``HEAD`` and, for a clone, each local branch whose tip no branch or remote-tracking ref of ``src`` holds.
+
+    A clone's own remote-tracking refs do not count: they go with its directory, and may be stale.
+    """
     names = ["HEAD"]
     if not linked:
         names += (git_text(["for-each-ref", "--format=%(refname:short)", "refs/heads"], d) or "").splitlines()
     lost = []
     for name in names:
         sha = git_text(["rev-parse", "--verify", "--quiet", f"{name}^{{commit}}"], d)
-        if sha and not (_held(src, sha, ["refs/heads", "refs/remotes"]) or _held(d, sha, ["refs/remotes"])):
+        if sha and not _held(src, sha, ["refs/heads", "refs/remotes"]):
             lost.append(f"{name} ({sha[:12]})")
     return lost
 
@@ -121,7 +132,8 @@ def _check_nested(plan: PrunePlan, main: Path, prefix: str) -> None:
         if stashes := _stashes(d, plan.branch, linked):
             plan.refusals.append(f"{label}: stashes: {'; '.join(stashes)}")
         if lost := _lost_tips(src, d, linked):
-            plan.refusals.append(f"{label}: commits on no branch of {src} or any remote: {', '.join(lost)}")
+            plan.refusals.append(f"{label}: commits on no branch or remote-tracking ref of {src}: "
+                                 f"{', '.join(lost)}")
 
 
 def plan_prune(root: Path, node_id: str) -> PrunePlan:
@@ -148,7 +160,7 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         if changed:
             plan.refusals.append(f"uncommitted or untracked: {', '.join(changed)}")
     if stashes := _stashes(wt, branch, linked=True):
-        plan.refusals.append(f"stashes made on {branch} or a detached HEAD: {'; '.join(stashes)}")
+        plan.refusals.append(f"stashes that may be this worktree's: {'; '.join(stashes)}")
     return plan
 
 

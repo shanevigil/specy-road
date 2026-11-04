@@ -57,10 +57,11 @@ def build_parser() -> argparse.ArgumentParser:
             "Remove work/.worktrees/<codename> for NODE_ID only when feature/rm-<codename> and the "
             "worktree's HEAD are merged into the integration branch (the remote-tracking ref as it "
             "stands; nothing is fetched) and it has no uncommitted changes, untracked non-ignored "
-            "files or stashes made on that branch or a detached HEAD. Each nested_repos repository "
-            "in it must also hold no uncommitted changes, stashes, or commits that no branch of the "
-            "main checkout's copy or remote-tracking ref holds. Lists the ignored files removal "
-            "deletes; removes only with --yes."
+            "files, or stashes whose subject does not name another branch. Each nested_repos "
+            "repository in it must also hold no uncommitted changes, stashes, or commits that no "
+            "branch or remote-tracking ref of the main checkout's copy holds (a full clone's own "
+            "remote-tracking refs do not count). Lists the ignored files removal deletes; removes "
+            "only with --yes."
         ),
     )
     prune.add_argument("node_id", metavar="NODE_ID")

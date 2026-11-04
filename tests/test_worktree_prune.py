@@ -70,7 +70,7 @@ def test_unknown_node_and_missing_worktree_are_errors(tmp_path: Path) -> None:
     (lambda wt: (wt / "src" / "a.py").write_text("a = 2\n"), "uncommitted or untracked: src/a.py"),
     (lambda wt: (wt / "notes.txt").write_text("x\n"), "uncommitted or untracked: notes.txt"),
     (lambda wt: ((wt / "src" / "a.py").write_text("a = 2\n"), git(wt, "stash", "push", "-q", "-m", "wip")),
-     f"stashes made on {FEATURE} or a detached HEAD: On {FEATURE}: wip"),
+     f"stashes that may be this worktree's: On {FEATURE}: wip"),
 ])
 def test_unsaved_work_in_the_worktree_is_refused(tmp_path: Path, make, why: str) -> None:
     root, wt = _leaf(tmp_path)
@@ -94,6 +94,23 @@ def test_clean_prune_lists_ignored_files_and_removes_only_with_yes(tmp_path: Pat
     assert done.returncode == 0, done.stderr
     assert not wt.exists()
     assert git(root, "branch", "--list", FEATURE)   # the branch is left for `branches prune`
+
+
+def test_a_custom_subject_stash_refuses_but_another_branchs_does_not(tmp_path: Path) -> None:
+    root, wt = _leaf(tmp_path)
+    _land(root, wt)
+    (root / "src").mkdir(exist_ok=True)
+    (root / "src" / "a.py").write_text("a = 9\n")
+    git(root, "stash", "push", "-q", "-m", "main checkout wip")   # On main: ...: not this worktree's
+    (wt / "src" / "a.py").write_text("a = 2\n")
+    sha = git(wt, "stash", "create")
+    git(wt, "stash", "store", "-m", "notes for later", sha)   # a subject that names no branch
+    git(wt, "checkout", "--", "src/a.py")
+    out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
+    assert out.returncode == 1
+    assert "stashes that may be this worktree's: notes for later" in out.stderr
+    assert "main checkout wip" not in out.stderr
+    assert wt.is_dir()
 
 
 def _nested_leaf(tmp_path: Path) -> tuple[Path, Path]:
@@ -179,6 +196,21 @@ def test_full_clone_branch_held_nowhere_is_refused_until_pushed(tmp_path: Path) 
     assert remove(plan_prune(root, "M1")) is None
     assert not wt.exists()
     assert git(root / UNCOVERED, "branch", "--list", "topic")
+
+
+def test_a_full_clone_branch_held_only_by_its_own_stale_remote_tracking_ref_is_refused(tmp_path: Path) -> None:
+    root, wt, clone = _clone_leaf(tmp_path)
+    git(clone, "checkout", "-q", "-b", "topic")
+    commit_file(clone, "core.py", "x = 8\n", "clone work")
+    git(clone, "push", "-q", "origin", "topic")
+    git(clone, "checkout", "-q", "main")
+    git(root / UNCOVERED, "branch", "-q", "-D", "topic")   # gone from the copy; the clone's origin/topic is stale
+    assert git(clone, "rev-parse", "--verify", "origin/topic")
+    out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
+    assert out.returncode == 1
+    assert f"nested repo {UNCOVERED} (full clone): commits on no branch or remote-tracking ref of" in out.stderr
+    assert "topic (" in out.stderr
+    assert clone.is_dir() and wt.is_dir()
 
 
 @pytest.mark.parametrize(("make", "why"), [
