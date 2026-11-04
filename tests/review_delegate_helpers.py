@@ -147,3 +147,31 @@ def wrote_only(reason: str, path: str) -> bool:
     """``path`` is named, and every other named path is one of its directories (whose entries the write changed)."""
     named = wrote_paths(reason)
     return path in named and all(p == path or Path(p) in Path(path).parents for p in named)
+
+
+def strict_problems(node: object, at: str = "") -> list[str]:
+    """Where ``node`` breaks OpenAI strict structured output (Codex ``--output-schema``): an object must require
+    every property and allow no others; ``propertyNames`` and ``patternProperties`` are refused."""
+    if isinstance(node, list):
+        return [p for i, v in enumerate(node) for p in strict_problems(v, f"{at}/{i}")]
+    if not isinstance(node, dict):
+        return []
+    out = [f"{at}: {k}" for k in ("propertyNames", "patternProperties") if k in node]
+    if node.get("type") == "object" and (set(node.get("required", [])) != set(node.get("properties", {}))
+                                         or node.get("additionalProperties") is not False):
+        out.append(f"{at}: not every property required, or other keys allowed")
+    return out + [p for k, v in node.items() for p in strict_problems(v, f"{at}/{k}")]
+
+
+FAKE_CODEX = '''#!{python}
+import json, os, sys
+spec = json.loads(open(os.environ["FAKE_CODEX_SPEC"]).read())
+open(spec["calls"], "w").write(json.dumps(sys.argv[1:]))
+sys.stdin.read()
+argv = sys.argv[1:]
+print(json.dumps({{"type": "thread.started", "thread_id": "t-1"}}), flush=True)
+print(json.dumps({{"type": "item.completed", "item": {{"type": "agent_message", "text": "see -o"}}}}), flush=True)
+if "-o" in argv:
+    open(argv[argv.index("-o") + 1], "w").write(json.dumps(spec["answer"]))
+print(json.dumps({{"type": "turn.completed", "usage": {{}}}}), flush=True)
+'''

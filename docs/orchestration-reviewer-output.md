@@ -16,7 +16,14 @@ reviewer command passes the harness's structured-output flag where there is one:
 | Antigravity (`agy`, a `generic` entry) | its `channels.cli` or `access.cli`, with `--json-schema <schema file>`, `--output-format json`, `--sandbox` and `--print-timeout 30m` added after `agy` where absent; `--dangerously-skip-permissions` is refused | the envelope's `structured_output` |
 | anything else (`channels.cli`, `generic`) | as written | the output's last complete JSON object, which must start a line with no later `{` after it (a JSON envelope's `structured_output`) |
 
-The schema file is `work/reviews/<NODE_ID>/review-output.schema.json`. After the
+The schema file is `work/reviews/<NODE_ID>/review-output.schema.json`, in the
+form OpenAI's strict structured output takes, which Codex sends it in: every
+object requires all of its properties and allows no others, so a field the
+prompt's schema leaves optional is required there and may be `null`, and
+`acceptance` names exactly the leaf's acceptance ids (strict mode refuses the
+record schema's free-key map and `propertyNames`). The other harnesses read the
+same file. specy-road drops those `null` fields before it checks the answer
+against the prompt's schema, so `null` and left out mean the same. After the
 run (`prompt --channel cli` or `review delegate`, default or custom command)
 specy-road decides the outcome:
 

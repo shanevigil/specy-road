@@ -10,7 +10,8 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-from tests.review_delegate_helpers import delegate_repo, fake_reviewer_run, set_steps, verdict_step, wrote_only
+from tests.review_delegate_helpers import (FAKE_CODEX, delegate_repo, fake_reviewer_run, set_steps, strict_problems,
+                                          verdict_step, wrote_only)
 from tests.review_repo_helpers import commit_file, git, make_review_repo, review_output
 from tests.test_models_and_prompt import run_main
 
@@ -155,6 +156,20 @@ def test_output_review_record_refuses_is_a_rerun_request(tmp_path: Path) -> None
     assert "Re-review the current commit" in run["reason"] and not _record(repo).exists()
 
 
+def test_an_answer_with_null_optional_fields_files_the_same_record_as_one_without(tmp_path: Path) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    plain = verdict_step(repo)["answer"]
+    nulls = {**plain, "toolkit_version": None, "model_version": None, "delta_from": None, "verify_pre_existing": None}
+    texts = []
+    for answer in (plain, nulls):
+        set_steps(repo, spec, {"answer": answer})
+        assert delegate(repo, "M1.1", "opus", sleep=lambda s: None)["outcome"] == "recorded"
+        texts.append(_record(repo).read_text(encoding="utf-8"))
+    assert texts[0] == texts[1] and "null" not in texts[1]
+    set_steps(repo, spec, {"answer": {**plain, "commit": None}})              # a required field stays required
+    assert delegate(repo, "M1.1", "opus", sleep=lambda s: None)["outcome"] == "rerun"
+
+
 def test_the_final_complete_json_object_of_a_message_is_the_answer() -> None:
     assert json_object({"a": 1}) == {"a": 1}
     assert json_object('Done.\n```json\n{"a": {"b": 1}}\n```\n') == {"a": {"b": 1}}
@@ -242,20 +257,6 @@ def test_codex_reviewer_runs_read_only_with_the_output_schema(tmp_path: Path) ->
     assert "sandbox_mode=read-only" in M87_NOTE.read_text(encoding="utf-8")
 
 
-FAKE_CODEX = '''#!{python}
-import json, os, sys
-spec = json.loads(open(os.environ["FAKE_CODEX_SPEC"]).read())
-open(spec["calls"], "w").write(json.dumps(sys.argv[1:]))
-sys.stdin.read()
-argv = sys.argv[1:]
-print(json.dumps({{"type": "thread.started", "thread_id": "t-1"}}), flush=True)
-print(json.dumps({{"type": "item.completed", "item": {{"type": "agent_message", "text": "see -o"}}}}), flush=True)
-if "-o" in argv:
-    open(argv[argv.index("-o") + 1], "w").write(json.dumps(spec["answer"]))
-print(json.dumps({{"type": "turn.completed", "usage": {{}}}}), flush=True)
-'''
-
-
 def test_a_codex_review_delegate_files_the_verdict_from_its_output_file(tmp_path: Path, monkeypatch) -> None:
     repo = make_review_repo(tmp_path, orchestration=(
         "version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
@@ -274,7 +275,10 @@ def test_a_codex_review_delegate_files_the_verdict_from_its_output_file(tmp_path
     run = delegate(repo, "M1.1", "sol", sleep=lambda s: None)
     assert run["state"] == "complete" and run["outcome"] == "recorded", run["reason"]
     argv = json.loads((tmp_path / "codex-calls.json").read_text())
-    assert "sandbox_mode=read-only" in argv and "--output-schema" in argv and "--force" not in argv
+    assert "sandbox_mode=read-only" in argv and "--force" not in argv
+    schema = json.loads(Path(argv[argv.index("--output-schema") + 1]).read_text())
+    assert strict_problems(schema) == []                                    # OpenAI strict mode accepts it
+    assert list(schema["properties"]["acceptance"]["properties"]) == ["A1", "A2"]   # the leaf's ids
     assert argv[argv.index("-o") + 1] == str(reviews / "OUTPUT-sol.json")
     rec = rf.load_review(rf.review_path(repo, "M1.1", "sol"), ["A1", "A2"])
     assert rec.ok and rec.data["verdict"] == "approve" and rec.data["launch_mode"] == "full"

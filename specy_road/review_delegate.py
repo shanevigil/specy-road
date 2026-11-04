@@ -124,12 +124,12 @@ class _Harness:
         if self.default:
             sid = session or (str(uuid.uuid4()) if isinstance(self.adapter, ClaudeCode) else None)
             reviews = reviews_dir(self.repo_root, self.node_id)
-            structured = {} if self.chore else {"schema": write_schema(reviews), "output": output_path(reviews, self.model)}
+            structured = {} if self.chore else {"schema": write_schema(self.repo_root, reviews), "output": output_path(reviews, self.model)}
             return self.adapter.reviewer_launch(prompt, self.api_id, reviews, self.effort,
                                                 session=(sid, session is not None) if sid else None, **structured)
         kw = {"node_id": self.node_id, "repo_root": self.repo_root, "launch_mode": self.mode, "effort": self.effort}
         # A custom command gets its program's structured-output flags (Antigravity `agy`: --json-schema).
-        cli = (reviewer_cli(self.cli, write_schema(reviews_dir(self.repo_root, self.node_id)))
+        cli = (reviewer_cli(self.cli, write_schema(self.repo_root, reviews_dir(self.repo_root, self.node_id)))
                if self.cli and not self.chore else self.cli)
         if session is not None:
             return self.adapter.resume(session, prompt, self.cwd, self.api_id, cli, **kw)

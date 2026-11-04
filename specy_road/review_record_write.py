@@ -49,6 +49,8 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
+from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.bundled_scripts.generate_brief import index, load_nodes
 from specy_road.review_files import render_front_matter, review_path
 from specy_road.review_write_check import (  # re-exported: the post-run write check lives there (file limit)
     LOCK_NAME,
@@ -84,11 +86,32 @@ def output_schema() -> dict[str, Any]:
             "properties": props, "$defs": base["$defs"]}
 
 
-def write_schema(reviews: Path) -> Path:
-    """``review-output.schema.json`` in the hand-off directory, for the harness flags that read a file."""
+def strict_schema(ids: list[str]) -> dict[str, Any]:
+    """:func:`output_schema` in OpenAI strict structured-output form, which Codex's ``--output-schema`` is sent in:
+    every object lists all its properties as required and allows no others, so an optional field becomes required
+    and may be ``null`` (:func:`drop_nulls` removes it again), and ``acceptance`` names exactly the leaf's ``ids``
+    (strict mode has no free-key map or ``propertyNames``). Anything it admits, less its nulls, is
+    :func:`output_schema`-valid but for the checks it cannot carry, which the validator still makes."""
+    base = output_schema()
+    props = {k: v if k in base["required"] else {"anyOf": [v, {"type": "null"}]} for k, v in base["properties"].items()}
+    acc = base["properties"]["acceptance"]
+    props["acceptance"] = {"type": "object", "description": acc["description"], "additionalProperties": False,
+                           "required": list(ids), "properties": {a: acc["additionalProperties"] for a in ids}}
+    return {**base, "required": list(props), "properties": props}
+
+
+def drop_nulls(data: dict[str, Any]) -> dict[str, Any]:
+    """``data`` without the optional fields :func:`strict_schema` let the reviewer answer ``null``."""
+    return {k: v for k, v in data.items() if v is not None or k in output_schema()["required"]}
+
+
+def write_schema(root: Path, reviews: Path) -> Path:
+    """``review-output.schema.json`` in the hand-off directory, for the harness flags that read a file: the
+    :func:`strict_schema` of the leaf the directory is named for, which Codex needs and the others accept."""
     path = reviews / OUTPUT_SCHEMA_NAME
     reviews.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(output_schema(), indent=2) + "\n", encoding="utf-8")
+    ids = acceptance_ids(index(load_nodes(root))[reviews.name])
+    path.write_text(json.dumps(strict_schema(ids), indent=2) + "\n", encoding="utf-8")
     return path
 
 
@@ -101,7 +124,8 @@ def schema_lines() -> list[str]:
     """The prompt's last section: the object to end the reply with."""
     return ["## Your final message: one JSON object", "",
             "End your reply with exactly one JSON object matching this schema, and nothing after it. `commit` is the "
-            "packet's **Commit under review**, quoted; `notes` holds your Markdown notes.", "",
+            "packet's **Commit under review**, quoted; `notes` holds your Markdown notes. A field the schema does not "
+            "require may be left out or `null`.", "",
             "```json", json.dumps(output_schema(), indent=2), "```", ""]
 
 
@@ -241,6 +265,7 @@ def file_review(root: Path, node_id: str, model: str, reviews: Path, *, output: 
         data = data["structured_output"]
     if data is None:
         return Outcome("rerun", "rerun requested: the reviewer's output ends with no JSON object")
+    data = drop_nulls(data)
     errors = [f"{'/'.join(map(str, e.path)) or '(root)'}: {e.message}"
               for e in Draft202012Validator(output_schema()).iter_errors(data)]
     if errors:

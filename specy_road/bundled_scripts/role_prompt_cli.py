@@ -39,7 +39,7 @@ def run_default_reviewer(prof: Profile | None, prompt_path: Path, root: Path, mo
     out.unlink(missing_ok=True)   # a stale answer never stands in for this run's
     session = (str(uuid.uuid4()), False) if harness == "claude-code" else None   # stream-json, to read the result
     launch = adapter.reviewer_launch(prompt_path, api_id, reviews, level, session=session,
-                                     schema=write_schema(reviews), output=out)
+                                     schema=write_schema(root, reviews), output=out)
     if harness == "claude-code":
         launch = replace(launch, env={**(launch.env or {}), **CLAUDE_REVIEWER_AVOID_ENV})   # as `review delegate`'s
         print("note: the reviewer runs with --bare (no repository hooks, MCP servers or CLAUDE.md), and bare mode "
@@ -54,7 +54,7 @@ def run_custom_reviewer(prof: Profile | None, cli: str, prompt_path: Path, root:
     """A roster ``channels.cli`` or profile ``access.cli`` reviewer, run as written plus its program's
     structured-output flags (:func:`reviewer_cli`), captured and filed like the default commands."""
     try:
-        cli = reviewer_cli(cli, write_schema(reviews))
+        cli = reviewer_cli(cli, write_schema(root, reviews))
     except Unsupported as e:
         print(f"error: {e}", file=sys.stderr)
         if transcript is not None:
