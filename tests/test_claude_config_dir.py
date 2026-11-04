@@ -1,4 +1,4 @@
-"""``CLAUDE_CONFIG_DIR`` selects the account whose transcripts and memory specy-road reads."""
+"""``CLAUDE_CONFIG_DIR`` selects the account whose user CLAUDE.md, transcripts and memory specy-road reads."""
 
 from __future__ import annotations
 
@@ -11,6 +11,8 @@ from pathlib import Path
 import pytest
 
 from specy_road import harness_instruction_files as hif
+from specy_road.agent_guide_block import AGENT_GUIDE
+from specy_road.agents_md_block import print_injected_context
 from specy_road.bundled_scripts import grind_session_implement as gsi
 from specy_road.claude_config import claude_projects_dir
 from specy_road.worker_adapter_claude import ClaudeCode
@@ -42,6 +44,27 @@ def test_an_empty_variable_means_the_default(tmp_path, monkeypatch) -> None:
 def test_the_variable_selects_the_account(tmp_path, monkeypatch) -> None:
     account = _account(tmp_path, monkeypatch)
     assert claude_projects_dir() == account / "projects"
+
+
+@pytest.mark.parametrize("value", ["~/account", "~nobody-xyz/account"])
+def test_the_variable_is_taken_literally(monkeypatch, value) -> None:
+    """No tilde expansion, as in the wrappers' ``${CLAUDE_CONFIG_DIR:-$HOME/.claude}``; an unknown user never raises."""
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", value)
+    assert claude_projects_dir() == Path(value) / "projects"
+
+
+def test_the_user_claude_md_comes_from_the_selected_account(tmp_path, monkeypatch, capsys) -> None:
+    account = _account(tmp_path, monkeypatch)
+    for root in (account, tmp_path / "home" / ".claude"):
+        root.mkdir(parents=True)
+        (root / AGENT_GUIDE).write_text("# user\n", encoding="utf-8")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    print_injected_context(repo)
+    out = capsys.readouterr().out
+    assert f"{(account / AGENT_GUIDE).resolve().as_posix()} 1 lines" in out
+    assert (tmp_path / "home" / ".claude").resolve().as_posix() not in out
 
 
 def test_an_explicit_home_ignores_the_variable(tmp_path, monkeypatch) -> None:
