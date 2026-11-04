@@ -255,15 +255,19 @@ def placeholder_sheet(root: Path, node: dict) -> str | None:
     return None
 
 
+def open_pickable_leaves(nodes: list[dict]) -> list[dict]:
+    """Pickable structural leaves that are neither ``Complete`` nor ``Cancelled``."""
+    leaves = structural_leaf_ids(nodes)
+    return [
+        n for n in nodes
+        if n.get("id") in leaves and is_pickable(n) and n.get("status") not in ("Complete", "Cancelled")
+    ]
+
+
 def unauthored_leaves(root: Path, nodes: list[dict]) -> dict[str, str]:
     """Open pickable leaves for which :func:`placeholder_sheet` gives a reason, id -> reason."""
-    leaves = structural_leaf_ids(nodes)
     out: dict[str, str] = {}
-    for n in nodes:
-        if n.get("id") not in leaves or not is_pickable(n):
-            continue
-        if n.get("status") in ("Complete", "Cancelled"):
-            continue
+    for n in open_pickable_leaves(nodes):
         reason = placeholder_sheet(root, n)
         if reason is not None:
             out[n["id"]] = reason
