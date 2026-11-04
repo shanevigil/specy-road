@@ -54,3 +54,18 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
+  - codename: dynamic-routing-reviewers
+    node_id: M11.33
+    branch: feature/rm-dynamic-routing-reviewers
+    touch_zones:
+      - specy_road/orchestration_config.py
+      - specy_road/review_gate.py
+      - specy_road/worker_adapter_parsers.py
+      - specy_road/worker_runner.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - docs/orchestration.md
+      - docs/orchestration-models.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
