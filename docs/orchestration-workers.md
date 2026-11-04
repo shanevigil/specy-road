@@ -358,11 +358,8 @@ every headless `claude -p --resume <id> "<prompt>"` run too (Claude Code
 | `cursor` | `agent create-chat` first (in the worktree), then `agent -p --resume <chat> --output-format stream-json --force --trust --model … --workspace <worktree> "<prompt>"`; never `-w`/`--worktree` (a `channels.cli` that passes it is refused). In a **linked** worktree it also passes `--add-dir` with the main checkout's `work/reviews/<ID>/` (an extra workspace root, from `agent --help`, 2026.10.22), on launch and resume. | chosen up front (`create-chat`) | `agent -p --resume <id> … --force --trust …` (print-mode resume with a new prompt is undocumented; verify on your install; the prompt is an argument, so a launch whose arguments exceed **100 KiB** is refused with the reason and the record marked `failed`) | unsupported | `agent --resume <id>` |
 | `generic` | `channels.cli` / profile `access.cli` with `{prompt}` (the prompt file path) or `<prompt>` (the prompt text, as the shipped profiles write it; the same 100 KiB argument limit applies); `{reviews_dir}` as for any `channels.cli` | none | unsupported | unsupported | none |
 
-**Known limitation (Codex inside Codex).** A `codex` worker that `worker delegate` launches from
-inside a coordinator's own `codex exec --sandbox workspace-write` session exits 1 before its first
-event (`failed to initialize in-process app-server client: Operation not permitted`, codex-cli
-0.165.0, 2026-11-04 replay): the coordinator's sandbox does not let the worker start its own. Run a
-Codex coordinator outside that sandbox, or delegate Codex workers from a terminal or another harness.
+**Known limitation (Codex inside Codex).** A `codex` worker delegated from inside a coordinator's own `codex exec --sandbox workspace-write` session exits 1 before its first event (`failed to initialize in-process app-server client: Operation not permitted`, codex-cli 0.165.0, 2026-11-04 replay).
+Run a Codex coordinator outside that sandbox, or delegate Codex workers from a terminal or another harness.
 
 Whatever the harness, the wrapper's own command line carries only the repo
 root, the worker id, a token and the path of a mode-0600 launch file under
