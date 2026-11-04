@@ -280,6 +280,24 @@ Required change → what changed:
   - File limits OK; ruff clean; private imports 0 new.
   - Red/green: without the `_open_braces` condition, the new regression and the unit test fail.
 
+## WIP merge `2012edce` (M11.75 reviewer probe rules, M11.77; commit `0d76d22f`)
+
+The leaf had been approved at `b8b7c294` and finished (`7ef16419`), but WIP moved and the branch no longer merged. Sol's old block at `322e41fd` was answered in round 2 and is not reopened here.
+
+- **`role_prompt.py`** (the only code conflict): `reviewer_lines` now returns the preamble, `REMOVED_TEXT_LINES`, M11.75's `PROBE_RULES_LINES`, `LAUNCH_MODE_LINES`, verify and lesson lines, the escalation note, then this leaf's `READ_BACK_LINES`/`PASTED_LINES`. Both sides' lines are in the prompt and in the same order they had.
+- **Bookkeeping:** `sr/roadmap/registry.yaml` and `sr/roadmap-context.md` are WIP's versions. Then the finish is re-applied: the M8.3 row is removed (it was the only entry, so `entries: []`, as in the project template), `M8.json` keeps M8.3 `Complete`, and `specy-road export` and `specy-road digest` were regenerated from `sr/`. The summary moves back from `work/done/` to `work/`, since the review packet reads it there; finish moves it again.
+- **`tests/test_run_record_no_false_failure.py` (M11.77): rewritten**, not deleted. Its old reviewer copied a hand-written `REVIEW-opus.md` into the hand-off directory, which M8.3 classes as a write violation. It also imported `_steps`, `_files_record`, `_roster` and `_repo`, which this branch replaced with the public `tests/review_delegate_helpers.py`. The four tests keep M11.77's intent on the structured-output path, with a `generic` entry (`GENERIC` from `tests/test_review_record_write.py`) whose `channels.cli` prints its final JSON:
+  - `prompt --channel cli` with a filed verdict: exit 0, `REVIEW-gem.md` filed, the run `complete` with no reason, no events, attempt error `None`, and no "no review record was filed" in `RUN-gem.json`;
+  - `prompt --channel cli` with no JSON: non-zero, nothing filed, the run `incomplete` with an attempt error and a `reviewer-failure` event (the old test pinned the "no review record was filed" text here; a run without JSON is now a rerun request, so only the failure is pinned);
+  - a verdict for an older commit: not filed, the run `incomplete`;
+  - `review delegate` with a filed verdict: `recorded`, and `RUN-gem.json` has no error.
+- **File limit:** the merge took `docs/orchestration-review.md` to 433 lines (this leaf +63 and WIP +33 over the merge base; the cap is 400). The "Reviewer output and the read-only check" body moved unchanged to the new **`docs/orchestration-reviewer-output.md`** (`0d76d22f`), and a short section with a link stays in its place. The two "(next section)" pointers above it now link there. Nothing else was removed. `docs/orchestration-reviewer-output.md` needs adding to the touch zones.
+- **Verification:**
+  - `pytest -q -n 4 -p no:cacheprovider` over `tests/test_review_record_write.py`, `tests/test_review_record_write_git.py`, `tests/test_review_delegate.py`, `tests/test_headless_limits_denials.py`, `tests/test_models_and_prompt.py`, `tests/test_review_record_rules.py`, `tests/test_run_record_no_false_failure.py` and every test module that imports `role_prompt` (38 files): 530 passed. There is no `tests/test_reviewer_probe_rules.py`; M11.75's tests are `tests/test_review_record_rules.py`, which is included.
+  - `tests/test_doc_links.py` and `tests/test_review_round6_docs.py` after the doc move: 15 passed.
+  - `specy-road file-limits`: OK after the move. `specy-road validate` from `sr/`: OK. `export --check` and `digest --check`: OK. `ruff` clean on the changed files; private imports 0 new.
+  - The merge commit itself was made with `git commit -F` on the staged merge result, because git refuses `--only` during a merge. Nothing outside the merge was staged.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
@@ -333,3 +351,4 @@ Required change → what changed:
   - Custom `channels.cli` under `prompt --channel cli`, filed or failed by its writes, and under `review delegate`.
   - `reviewer_cli` cases, and an Antigravity `review delegate` end to end through a fake `agy` that prints a pretty-printed envelope.
   - After the WIP merge: the shipped `agy-gemini-4-argon-high` profile's `access.cli` (already `--output-format json --print-timeout 60m`) gets only `--json-schema` and `--sandbox`.
+- WIP merge (`2012edce`, `0d76d22f`): `tests/test_run_record_no_false_failure.py` rewritten onto the public helpers and the structured-output path (M11.77's intent kept; its old self-filed record is a write violation now). `docs/orchestration-reviewer-output.md` (new): the moved section, for the file limit. No new code, branch or guard.
