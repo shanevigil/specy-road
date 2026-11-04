@@ -146,6 +146,36 @@ def test_an_existing_nested_worktree_in_the_wrong_state_is_refused(tmp_path: Pat
         add_nested_worktrees(repo, wt, "feature/rm-thing", ["docs"])
 
 
+def test_a_detached_nested_worktree_off_the_integration_tip_is_refused(tmp_path: Path) -> None:
+    repo, nested, wt, _wid = _leaf_worktree_delegate(tmp_path, UNCOVERED)
+    inner = wt / UNCOVERED
+    assert add_nested_worktrees(repo, wt, "feature/rm-thing", ["src"]) == []   # at the tip: kept
+    (nested / "core.py").write_text("x = 9\n", encoding="utf-8")
+    git(nested, "commit", "-qam", "the integration branch moves on")
+    git(nested, "push", "-q", "origin", "dev")
+    with pytest.raises(NestedRepoError, match="is detached at .*, not at the integration tip"):
+        add_nested_worktrees(repo, wt, "feature/rm-thing", ["src"])
+    git(inner, "checkout", "-q", "--detach", "origin/dev")   # back on the tip: accepted again
+    assert add_nested_worktrees(repo, wt, "feature/rm-thing", ["src"]) == []
+
+
+@pytest.mark.parametrize("dirt", ["tracked", "untracked"])
+def test_delegate_launches_nothing_over_a_dirty_nested_worktree(tmp_path: Path, capsys, dirt: str) -> None:
+    repo, _script = make_worker_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    add_nested_repo(repo, COVERED, "dev")
+    wt = repo / "work" / ".worktrees" / "thing"
+    git(repo, "worktree", "add", "-q", str(wt), "feature/rm-thing")
+    add_nested_worktrees(repo, wt, "feature/rm-thing", ["src"])
+    name = "core.py" if dirt == "tracked" else "scratch.txt"
+    (wt / COVERED / name).write_text("someone's unsaved work\n", encoding="utf-8")
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    err = capsys.readouterr().err
+    assert "uncommitted changes the worker could overwrite" in err and f"{COVERED}/{name}" in err
+    assert not ws.list_records(repo) and not (repo / "work" / "prompt-M1.1-executor-opus.md").exists()
+    assert (wt / COVERED / name).read_text(encoding="utf-8") == "someone's unsaved work\n"
+
+
 def test_reconcile_diffs_the_nested_repo_and_flags_edits_outside_the_zones(tmp_path: Path) -> None:
     repo, _nested, wt, wid = _leaf_worktree_delegate(tmp_path, COVERED)
     inner = wt / COVERED

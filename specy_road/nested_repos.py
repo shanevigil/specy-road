@@ -89,11 +89,14 @@ def _common_dir(repo: Path) -> Path | None:
     return Path(out).resolve() if out else None
 
 
-def existing_worktree_problem(src: Path, dest: Path, branch: str | None) -> str | None:
-    """Why ``dest``, already there, is not ``src``'s worktree on ``branch`` (detached when ``None``); else ``None``.
+def existing_worktree_problem(src: Path, dest: Path, branch: str | None, tip: str = "HEAD") -> str | None:
+    """Why ``dest``, already there, is not ``src``'s worktree on ``branch``, or detached at ``tip`` when
+    ``branch`` is ``None``; else ``None``.
 
     A directory left by a build or an earlier failed setup must not pass for
-    the worktree: the worker would edit something no branch carries.
+    the worktree: the worker would edit something no branch carries. A detached
+    one at another commit would show the worker code the integration tip does
+    not have. ``tip`` is the ref a new worktree would be made at, read in ``src``.
     """
     if not is_repo_top(dest):
         return f"{dest} exists but is not a git worktree"
@@ -104,6 +107,12 @@ def existing_worktree_problem(src: Path, dest: Path, branch: str | None) -> str 
         return f"{dest} has {current or 'a detached HEAD'} checked out, not {branch}"
     if not branch and current:
         return f"{dest} has {current} checked out; outside the touch zones it must be detached"
+    if not branch:
+        want, head = git_text(["rev-parse", "--verify", "--quiet", f"{tip}^{{commit}}"], src), \
+            git_text(["rev-parse", "HEAD"], dest)
+        if not want or head != want:
+            return (f"{dest} is detached at {(head or '?')[:12]}, not at the integration tip {tip} "
+                    f"({(want or '?')[:12]})")
     return None
 
 
@@ -125,13 +134,13 @@ def add_nested_worktrees(repo_root: Path, leaf_root: Path, branch: str, zones) -
             raise NestedRepoError(f"nested repo {nr.path!r} (roadmap/git-workflow.yaml): {src} is not "
                                   "the top of a git repository")
         covered = covers(zones, nr.path, prefix)
+        tip = base_ref(src, nr.remote, nr.integration_branch) or "HEAD"
         if dest.exists():
-            problem = existing_worktree_problem(src, dest, branch if covered else None)
+            problem = existing_worktree_problem(src, dest, branch if covered else None, tip)
             if problem:
                 raise NestedRepoError(f"nested repo {nr.path!r}: {problem}; remove it (`git -C {src} worktree "
                                       "remove <path>`, or delete the directory), then re-run")
             continue
-        tip = base_ref(src, nr.remote, nr.integration_branch) or "HEAD"
         if covered:
             how = f"on {branch}"
             args = [str(dest), branch] if _has_branch(src, branch) else ["-b", branch, str(dest), tip]
@@ -152,6 +161,16 @@ def announce_nested_worktrees(repo_root: Path, leaf_root: Path, branch: str, zon
             print(f"nested repo {line}")
     except NestedRepoError as e:
         print(f"warning: {e}; fix it, then `specy-road worker delegate` adds the missing worktrees")
+
+
+def nested_worktree_dirs(repo_root: Path, leaf_root: Path) -> list[tuple[str, Path]]:
+    """``(git-root-relative path, directory)`` of each nested repository present under ``leaf_root``.
+
+    What ``worker delegate`` checks for uncommitted work before a launch, as it checks the main tree.
+    """
+    prefix = project_prefix(repo_root)
+    return [(f"{prefix}{nr.path}", leaf_root / nr.path) for nr in nested_repos(repo_root)
+            if is_repo_top(leaf_root / nr.path)]
 
 
 def _merge_base(repo: Path, nr: NestedRepo, tip: str) -> str | None:

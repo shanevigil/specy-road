@@ -53,6 +53,20 @@ Call sites:
 
 No touch zones were added in this round. The new files are under `tests/`, and the rest are already-zoned files.
 
+## Review round 2 (gpt-5.6-sol-medium blocked e7cbab7b): item → change
+
+- **R5. A detached destination must be at the integration tip.**
+  - `add_nested_worktrees` now resolves the tip (`base_ref` of the nested repo, else `HEAD`) before it looks at the destination. It passes that tip to `existing_worktree_problem`, which for a detached destination compares the destination's `HEAD` with the tip's commit as read in the configured repository.
+  - A mismatch is refused ("… is detached at <sha>, not at the integration tip <ref> (<sha>)") with the same remove-and-rerun guidance.
+  - Regression: `test_a_detached_nested_worktree_off_the_integration_tip_is_refused`. The integration branch moves on, so the existing detached worktree is refused; detaching it at `origin/dev` makes it accepted again.
+- **R6. Delegate checks nested worktrees for uncommitted work.**
+  - `_launch_locked` adds `_nested_dirty(wt / prefix, repo_root)` to its dirty list. The new helper runs the same `status_entries` (tracked-modified and untracked, `--untracked-files=all`) in every nested repository present under the worker's tree (`nested_worktree_dirs`), and names each path git-root-relative.
+  - Any entry refuses the delegation with the existing "uncommitted changes the worker could overwrite" error, before the prompt is written or anything launches. An unreadable status is refused like the main tree's.
+  - This applies in the coordinator-checkout layout too, where the nested directories are the repositories themselves.
+  - Public regression: `test_delegate_launches_nothing_over_a_dirty_nested_worktree[tracked|untracked]`, through `worker delegate` on the CLI. It asserts exit 1, the path named, no worker record, no prompt file, and the dirty file untouched.
+
+No touch zones were added this round; both changes are in already-zoned files.
+
 ## Touch zones (final list)
 
 The originals plus these, added on this branch with `specy-road edit-node M11.22 --add touch_zones=…` (commit `0bdea0cf`), as the maintainer's note on the planning sheet allows:
@@ -73,6 +87,14 @@ The originals plus these, added on this branch with `specy-road edit-node M11.22
 - `sr/schemas/git-workflow.schema.json` is a copy for the toolkit's own `sr/` roadmap, outside the zones, and was not updated. `specy_road/templates/project/roadmap/git-workflow.yaml`, the commented template, has no `nested_repos` example, for the same reason.
 
 ## Verification
+
+Round 2 fixes, at the commit that adds this summary:
+
+- `pytest -n 4 tests/test_nested_repo_worktrees.py tests/test_nested_repo_finish.py`: 31 passed.
+- `specy-road file-limits`: OK.
+- `ruff check specy_road tests`: clean.
+- The 35 modules that exercise delegate or the promoted helpers (`pytest -n 4 <those files>`): 458 passed.
+- **Red-green.** `tests/test_nested_repo_worktrees.py` run against e7cbab7b in a temporary detached worktree (removed afterwards): 3 failed, the R5 test and both R6 cases.
 
 Round 1 fixes, at the commit that adds this summary:
 
@@ -113,6 +135,9 @@ Round 0 (47ca8cc6): full suite 3591 passed; validate and export --check OK.
 - Round 1: `_over_budget()` and the `max_diff_bytes` parameter of `nested_diff_section` / `_repo_lines` — R3: both packet budgets.
 - Round 1: `patch_name()` (was `_patch_name`, now `+` for `/`) and empty-segment normalisation in `nested_repos()` — R4: one patch name per repository.
 - Round 1: `tests/pickup_repo_helpers.py` (`make_pickup_project`, `run_specy_road`, `run_pickup`, `SHEET`, `FEATURE`) and `tests/worker_repo_helpers.py` (`make_worker_repo`, `worker_roster`, `FAKE`) — T1: promoted from the test modules, which re-import them under their old names.
+- Round 2: `tip` parameter and detached-HEAD comparison in `existing_worktree_problem` — R5: a detached destination must be at the tip a new worktree would use.
+- Round 2: `nested_worktree_dirs()` (nested_repos) and `_nested_dirty()` (worker_ops_launch) — R6: delegate's uncommitted-work check covers each nested repository under the worker's tree.
+- Round 2 tests: the detached-off-tip refusal (and its acceptance once re-detached), and the delegate refusal over a tracked or untracked change in a nested worktree.
 - Round 1 tests: the delegate public-boundary refusal of an ordinary directory, the wrong-state refusal, the gone-repository landing, the single-line byte cap, the colliding-path patches, and the `x//y` normalisation.
 - Tests: schema acceptance and refusals; defaults per entry; `covers` table.
 - Tests: pickup `--worktree` creates the nested worktree on the branch and detached.
