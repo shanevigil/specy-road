@@ -75,3 +75,5 @@ def test_pr_gated_state_names_both_branches_and_forbids_repick() -> None:
     assert "Do not re-pick" in out
     # Aborting here would delete the branch the work lives on.
     assert "abort-task-pickup" in out
+    # CR9: "finish and clean up" merged the branch by hand and pruned it.
+    assert "do not merge feature/rm-trash-soft-delete into dev yourself or delete it" in out

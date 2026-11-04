@@ -322,9 +322,9 @@ harnesses:
       label: documented
       source: docs/design-notes/harness-compatibility-triage.md
     hooks:
-      value: beforeShellExecution in .cursor/hooks.json answers allow or deny as JSON (failClosed true, or empty output fails open); also reads and merges .claude/settings.json hooks; preToolUse and postToolUse events also fire for subagents (2026.10.17); the preToolUse blocking contract is not documented
+      value: beforeShellExecution in .cursor/hooks.json answers allow or deny as JSON (failClosed true, or empty output fails open); also reads and merges .claude/settings.json hooks; preToolUse and postToolUse events also fire for subagents (2026.10.17); the preToolUse blocking contract is not documented. Project hooks load and block under agent -p --force, with or without --trust, an empty matcher matching every command; beforeShellExecution sees only the shell tool, so the agent's own file edit and delete tools pass it
       label: runtime
-      source: docs/optional-ai-tooling-patterns.md (Cursor CLI 2026.10.22, sandbox run 2026-10-28); https://cursor.com/docs/cli/changelog; 2026-11-02 triage F21
+      source: docs/optional-ai-tooling-patterns.md (Cursor CLI 2026.10.22, sandbox run 2026-10-28); https://cursor.com/docs/cli/changelog; 2026-11-02 triage F21; agent 2026.10.22-27dcf5f, composer-2.5, 2026-11-04 (a throwaway repo's appending hook fired under agent -p --force, and a deny hook blocked under -p --force --trust --workspace; the CR3 replay transcripts show the session guard rejecting git restore before the edit/delete tools discarded the files, docs/design-notes/context-regressions-2026-11-04-triage.md)
     git_actions:
       - action: -w / --worktree makes its own worktrees under ~/.cursor/worktrees
         switch: never pass -w/--worktree
