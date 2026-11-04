@@ -2,6 +2,21 @@
 
 **Merge (6efac279):** merged origin/WIP/improvements-0-3-1 (db320d0d). The reviewer prompt keeps this leaf's probe rules plus integration's `verify_cmd_lines` and `reviewer_lesson_lines`. `REMOVED_TEXT_LINES` (text unchanged) moved into `review_record_rules.py` to keep `role_prompt.py` at 397/400 lines. This leaf's two touch-zone additions now sit in M11.75's new chunk, `M11__fad495.json`. The round-2 and round-3 changes are intact. Checks at the merge: `pytest -n 4` on the 50 test files that import the changed modules → 650 passed; file-limits OK; validate OK.
 
+## Round 9 (after the gpt-5.6-sol-medium block at 1ee98232)
+
+Each `required_changes` item and the change that answers it (commit 837a05bf):
+
+| # | Required change | Change |
+|---|---|---|
+| 1a | Refuse an approve when a single clause before `not a defect because` contains a separately described defect that the reason does not explain | New `_second_observation()` in `specy_road/review_record_rules.py`, which `clause_problem` applies to the text each explanation covers. That is either the marker's own clause before the marker ("x, not a defect because y") or the clause just before an opening marker ("x; not a defect because y"). The text is split at commas and at "and", "but", "while", "whereas", "although", "though", "yet" and "plus", and more than one part may not be an observation. A part counts when it names a defect, or when it has three words or more and does not open with a word that carries on the same observation (`_CONTINUES`: so, which, because, rather, when, for, …). Sol's sentence is now refused as `says "valid input crashes"`. Still one observation: "The parser accepts malformed input, so invalid configuration reaches execution.", "The lock and the registry are both held", "It returns 0, 1 or 2", "…as missing, rather than crashing the gate". Rule 4 of the reviewer prompt and the docs say the covered text may not join a second observation with a comma or a conjunction. |
+| 1b | Public review-record regression with the cache-miss / valid-input-crash conjunction: exit 1, names the finding or notes line, no review or history write | `tests/test_review_record_rules.py::test_record_refuses_an_approve_whose_explained_clause_joins_a_second_defect` puts Sol's sentence on notes line 5, after a heading and a bare `A1: pass`. It asserts exit 1, `notes line 5 says "valid input crashes"`, no `REVIEW-opus.md` and no `history/`. `…_whose_explained_finding_joins_a_second_defect` does the same with it as `findings.correctness[0]`. `test_clause_problem` gains 9 cases: the conjunction in both marker forms, a comma splice, a second observation with no defect word, a reason ending in "is lost", and the forms above that still pass. |
+
+- **Also fixed while here:** in my first draft the reason check returned a matched defect word unwrapped when it began with "is " (for example "is lost"). The final code keeps the two checks separate, and a test case pins `says "is lost" in its reason`.
+- **Red-green:** the tests import nothing new, so they ran directly. With 1ee98232's `review_record_rules.py` swapped in temporarily (restored, checked with `cmp`), `pytest -n 4 tests/test_review_record_rules.py -k joins_a_second_defect` → 2 failed. At this commit → 2 passed.
+- **Unchanged:** all earlier tests pass as they were, and the docs' example notes still validate with no problems.
+- **Touch zones:** no file outside the zones was needed.
+- **For the coordinator:** each block from round 4 to round 9 has been a new free-text construction around the same A2 rule. Splitting at commas and conjunctions is now structural, but it is still a reading of English. A second defect joined by other syntax ("the cache miss is expected with valid input crashing too" has no comma or conjunction and names a defect, so it is caught; one that names no defect word and is joined without either is not) can still be found. If the loop goes on, I suggest the RCA/escalation path for M11.75's A2 wording rather than another text rule.
+
 ## Round 8 (after the gpt-5.6-sol-medium block at 94e1b120)
 
 Each `required_changes` item and the change that answers it (commit 8418e906):
@@ -131,6 +146,13 @@ I ran `unexplained_defects` over the distinct approving records in the main chec
 
 ## Verification
 
+Round 9 (at 837a05bf):
+
+- `python -m pytest -q -n 4 tests/test_review_record_rules.py` → 99 passed
+- `python -m pytest -q -n 4 <the same 53 files as round 5>` → 738 passed
+- `specy-road file-limits` → OK; `specy-road validate` → OK; `ruff check` (including C901) on the changed Python files → clean
+
+
 Round 8 (at 8418e906):
 
 - `python -m pytest -q -n 4 tests/test_review_record_rules.py` → 88 passed
@@ -196,6 +218,7 @@ Round 1:
 - `_QUALIFIER` (round 2) — the only words allowed between a negation and a defect word, so "no workaround for this bug" is not read as negated.
 - `defect_word` — decides for one line whether it names a defect, so findings entries and notes lines go through the same rule.
 - `note_problem` (round 5) — decides whether one notes line is an observation that needs a reason.
+- `_second_observation`, `_PARTS`, `_CONTINUES` (round 9) — the text one explanation covers may hold only one observation: comma- and conjunction-joined parts, skipping parts that carry on the one before.
 - `clause_problem`, `_CLAUSE_END`, `_observation`, `_named_defect` (round 8) — split a line or findings entry into clauses and pair each explanation with one observation; `_named_defect` is `defect_word`'s scan without its line-level skips, reused for clauses and reasons.
 - `explained`, `_EXPLAINED` (round 6) — the one check for a standalone marker with a reason, outside code spans, used by findings, `defect_word` and `note_problem`. From round 7 the reason must be on the same line.
 - `_ACCEPTANCE_RESULT`, `_RULE`, `_WORD` (round 5) — bare acceptance results, table separator rows and rules, and word counting, so those lines are not counted as observations.
@@ -215,9 +238,11 @@ Round 1:
 - `…::test_record_files_an_approve_whose_notes_explain_the_order_on_the_same_line` (round 4) — the same sentence with a same-line `Not a defect because …` is filed.
 - `…::test_record_refuses_an_approve_whose_notes_carry_an_unclassified_observation` (round 5) — the blocking reviewer's malformed-input sentence on notes line 5, through the CLI: exit 1, the line is named, the heading and bare result are not, and no review or history is written.
 - `…::test_record_refuses_an_approve_whose_marker_is_only_a_substring` (round 6) — the blocking reviewer's "xnot a defect becausey" finding, through the CLI: exit 1, `findings.correctness[0]` named, no review or history.
+- `…::test_record_refuses_an_approve_whose_explained_clause_joins_a_second_defect` (round 9) — the blocking reviewer's conjunction sentence on a notes line, through the CLI: exit 1, line named, no review or history.
+- `…::test_record_refuses_an_approve_whose_explained_finding_joins_a_second_defect` (round 9) — the same sentence as `findings.correctness[0]`.
 - `…::test_record_refuses_an_approve_whose_explanation_covers_only_one_observation` (round 8) — the blocking reviewer's cache-miss / valid-input-crash notes, through the CLI: exit 1, notes line 5 named, no review or history.
 - `…::test_record_files_an_approve_with_one_explanation_per_observation` (round 8) — two observations on one line, each with its own marker, are filed.
-- `…::test_clause_problem` (round 8, 10 cases) — the pairing rules, a defect in the reason, abbreviations, and a bare result before a clause.
+- `…::test_clause_problem` (round 8, 10 cases; 9 more in round 9) — the pairing rules, a defect in the reason, abbreviations, and a bare result before a clause.
 - `…::test_record_refuses_an_approve_whose_reason_is_on_the_next_line` (round 7) — the blocking reviewer's multiline finding, through the CLI: exit 1, `findings.correctness[0]` named, no review or history.
 - `…::test_explained` (round 6, 12 cases; 7 more in round 7 for line breaks) — the marker's boundary forms, rejected and accepted.
 - `…::test_note_problem` (round 5, 13 cases) — what counts as an observation line and what does not.
