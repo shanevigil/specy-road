@@ -8,9 +8,9 @@ reports. A review record counts only when all of these hold:
 * its ``commit`` is the commit under review — any later commit makes it stale,
   which is how "a substantive fix restarts both reviews" needs no extra state;
 * it is for this node, and no other record from the same model already counts;
-* its model is rostered with the ``reviewer`` role, or is the substitute in an
-  active substitution covering this node — its family always comes from the
-  roster, never from the file;
+* its model is rostered with the ``reviewer`` role, or is the substitute in an active substitution covering this
+  node — its family always comes from the roster, never from the file, and under ``reviewers_distinct_families``
+  an approval counts only from an entry whose routing is fixed or pinned (:func:`routing_problem`);
 * that model's roster ``may_process`` includes the node's sensitivity, as
   ``orchestrate plan`` and ``prompt`` require;
 * it attests a fresh session when policy requires one (``reviewer_resumed_delta`` waives
@@ -48,7 +48,7 @@ from specy_road.integrity import compare_integrity
 from specy_road.integrity_gate import integrity_gate_problems
 from specy_road.orchestrate_plan import entry_may_process, may_handle, node_sensitivity
 from specy_road.orchestration_config import (effective_config, family_of, is_rostered_reviewer, roster_entry,
-                                            substitute_for)
+                                            routing_problem, substitute_for)
 from specy_road.review_gate_ready import (  # noqa: F401 — public names re-exported
     TRIAL_MERGE_BOOKKEEPING, TrialMerge, is_trial_merge_bookkeeping, trial_merge, trial_merge_or_exit,
     write_human_approval)
@@ -186,7 +186,7 @@ def rerun_problem(policy: dict[str, Any], data: dict[str, Any]) -> str | None:
     return None
 
 
-def _eligibility(config: dict[str, Any], node: dict[str, Any], review: ReviewFile,
+def _eligibility(repo_root: Path, config: dict[str, Any], node: dict[str, Any], review: ReviewFile,
                  today: date | None) -> tuple[CountedReview | None, str | None]:
     model, node_id = review.data["model"], node["id"]
     sub = None
@@ -202,7 +202,7 @@ def _eligibility(config: dict[str, Any], node: dict[str, Any], review: ReviewFil
         return None, (f"{node_id} is {node_sensitivity(node)!r} and {model!r} may process only "
                       f"{entry_may_process(entry)} (roster may_process)")
     why = (rerun_problem(config["policy"], review.data) or notes_problem(review.data, review.body)
-           or _signature_problem(config, model, review))
+           or _signature_problem(config, model, review) or routing_problem(repo_root, config, review.data))
     family = family_of(config, model)
     why = why or (None if family else f"no family for {model!r}: add it to the roster")
     if why := fresh_session_problem(config["policy"], review.data, why):   # exactly FRESH_SESSION when alone
@@ -273,7 +273,7 @@ def prior_approvals(repo_root: Path, config: dict[str, Any], node: dict[str, Any
             counts[sha], r = False, latest.get(sha)
             base = full_sha(repo_root, r.data.get("delta_from")) if r else None
             counts[sha] = bool(r and r.data["verdict"] == "approve" and not review_semantic_errors(r.data, ids)
-                               and _eligibility(config, node, r, today)[0] is not None
+                               and _eligibility(repo_root, config, node, r, today)[0] is not None
                                and (not r.data.get("delta_from") or base in latest and counting(base)
                                     and not delta_problem(repo_root, node, base, r.data["commit"], config["policy"])))
         return counts[sha]
@@ -327,7 +327,7 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
             continue
         if not count_at_later_commit(result, repo_root, node, review):
             continue
-        counted, why = _eligibility(config, node, review, today)
+        counted, why = _eligibility(repo_root, config, node, review, today)
         if counted is not None and counted.verdict == "approve" and review.data.get("delta_from"):
             priors = prior_approvals(repo_root, config, node, review.data["model"], result.commit, today)
             why = _delta_why(repo_root, node, priors, review, result.commit, policy)

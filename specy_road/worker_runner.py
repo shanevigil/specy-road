@@ -27,10 +27,11 @@ from pathlib import Path
 from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
 from specy_road.orchestration_role_env import harness_env
 from specy_road.runtime_paths import project_prefix
-from specy_road.worker_adapter_parsers import USAGE_FIELDS, usage_text
+from specy_road.worker_adapter_parsers import USAGE_FIELDS, init_model, usage_text
 from specy_road.worker_adapters import ClaudeCode, Launch, adapter_for
 from specy_road.worker_exit import exit_event
 from specy_road.worker_lease import release_lease
+from specy_road.worker_models import launch_model, mismatch_note, turn_models
 from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified re-exported for existing callers
     argv_too_long,
     new_token,
@@ -226,7 +227,8 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
                 stdout=subprocess.PIPE, stderr=raw, text=True, encoding="utf-8", errors="replace",
             )
         except OSError as e:
-            _append_usage(repo_root, rec, {})   # the turn ends here too: nothing reported, so nulls
+            # The turn ends here too: nothing reported, so nulls; no `launched` event names its model.
+            _append_usage(repo_root, rec, {"requested_model": launch_model(launch.argv), "observed_model": None})
             watch.failed = f"cannot start {launch.argv[0]}: {e}"   # a failed turn: the post-run check runs here too
             close_turn(repo_root, rec, watch)   # (M8.2); the record still ends `failed` below
             append_event(repo_root, rec, "error", source="system", summary=f"cannot start {launch.argv[0]}: {e}",
@@ -244,7 +246,8 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
         mutate(repo_root, rec, seen)
         watch.proc = proc
         append_event(repo_root, rec, "launched", source="system", summary=f"started {launch.argv[0]} (pid {proc.pid})",
-                     detail={"argv0": launch.argv[0], "harness": rec.harness, "resumed": resumed})
+                     detail={"argv0": launch.argv[0], "harness": rec.harness, "resumed": resumed,
+                             "model": launch_model(launch.argv)})   # the model the harness is told, if any
         if launch.stdin is not None and proc.stdin:
             try:
                 proc.stdin.write(launch.stdin)
@@ -308,9 +311,10 @@ def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str, launch: Lau
         if parsed.session_id:
             # First seen wins; a later line (which the model controls) cannot move it.
             mutate(repo_root, rec, lambda r: setattr(r, "provider_session_id", r.provider_session_id or parsed.session_id))
+        model = init_model(line) if parsed.type == "started" else None   # the model the harness says it runs
         # Parsed from the harness's stdout, which the model controls: a claim, not a fact the wrapper observed.
         append_event(repo_root, rec, parsed.type, source="worker", authority="worker_suggestion",
-                     summary=parsed.summary, detail=parsed.detail)
+                     summary=parsed.summary, detail={**(parsed.detail or {}), "model": model} if model else parsed.detail)
         watch.observe(parsed)   # what the post-run check and the retry watchdog read
         if parsed.usage is not None:
             _append_usage(repo_root, rec, parsed.usage)
@@ -320,8 +324,8 @@ def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str, launch: Lau
 
 def _append_usage(repo_root: Path, rec: WorkerRecord, usage: dict) -> None:
     """The turn's ``usage`` event; a running session cost becomes this turn's, the version comes from ``started``."""
-    detail = {**dict.fromkeys(USAGE_FIELDS), **usage}
     events = events_since(repo_root, rec.worker_id)
+    detail = {**dict.fromkeys(USAGE_FIELDS), **turn_models(events), **usage}   # a turn that never launched sets its own
     total = detail.get("session_cost_usd")
     if total is not None:
         prev = next((e.detail["session_cost_usd"] for e in reversed(events) if e.type == "usage"
@@ -333,7 +337,7 @@ def _append_usage(repo_root: Path, rec: WorkerRecord, usage: dict) -> None:
                                           and e.source == "worker" and (e.detail or {}).get("version")), None)
     # Parsed from the harness's output, like the line it came from.
     append_event(repo_root, rec, "usage", source="worker", authority="worker_suggestion",
-                 summary=f"usage: {usage_text(detail)}", detail=detail)
+                 summary=f"usage: {usage_text(detail)}{mismatch_note(detail)}", detail=detail)
 
 
 def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], before_all: list[str],

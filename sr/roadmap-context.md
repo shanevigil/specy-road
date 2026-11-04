@@ -139,7 +139,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.30` Leaf worktrees get the project's environment set up `worktree-env-setup` — task — **Complete**
   - `M11.31` A safe command to retire a leaf worktree `worktree-prune` — task — **Complete**
   - `M11.32` Unpushed nested-repo commits are reported `nested-unpushed-report` — task — **Not Started**
-  - `M11.33` A reviewer whose harness routes models dynamically does not count as an independent family by default `dynamic-routing-reviewers` — task — **Not Started**
+  - `M11.33` A reviewer whose harness routes models dynamically does not count as an independent family by default `dynamic-routing-reviewers` — task — **Complete**
   - `M11.34` Open human decisions live in one tracked ledger and every question is self-contained `decision-ledger` — task — **Complete**
   - `M11.35` A roster entry maps to the harness's own model id, and a failed start says why `roster-harness-model-id` — task — **Complete**
   - `M11.36` A resumed reviewer session may approve a delta it was shown `resumed-delta-approval` — task — **Complete**
@@ -206,7 +206,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M11.32` on `feature/rm-nested-unpushed-report` since 2026-11-04
-- `M11.33` on `feature/rm-dynamic-routing-reviewers` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
 ## Reaching the detail behind this
