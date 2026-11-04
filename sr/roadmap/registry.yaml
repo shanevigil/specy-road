@@ -58,6 +58,8 @@ entries:
       - docs/orchestration-review.md
       - docs/design-notes/review-loop-rca.md
       - tests/
+      - specy_road/review_deferral.py
+      - specy_road/bundled_scripts/review_defer.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
