@@ -49,8 +49,9 @@ HOOKS: dict[str, HookAdapter] = {
   }
 }""",
         "Put the snippet in .claude/settings.json. Plain stdout would be added as context, so the hook prints "
-        "nothing. Whether UserPromptSubmit fires for the prompt of a `claude -p` run is unverified; it does "
-        "fire for a human's `claude --resume <id>` session, which is the case that matters.",
+        "nothing. UserPromptSubmit fires for a human's `claude --resume <id>` session, the case that matters, and "
+        "was observed to fire for every headless `claude -p --resume <id> \"<prompt>\"` run too (Claude Code "
+        "2.1.312 in the 2026-11-04 sandbox replay; also seen in the 2026-10-28 one).",
     ),
     "codex": HookAdapter(
         "codex", "session_id", None,

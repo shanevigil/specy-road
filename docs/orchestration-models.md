@@ -201,7 +201,7 @@ Each worker turn's `usage` event records `requested_model` (the `--model` the la
 `channels.cli`'s own when that is one simple command with a literal value; `null` when it passed none, its
 command is a list or pipeline, or the shell expands the value) and `observed_model` (the model the harness's `system/init` line named; Claude Code and
 Cursor print one, Codex does not), beside `harness_version`. When both are known
-and differ (ignoring case), the event's summary ends `model mismatch: told <requested>, harness reported
+and differ (ignoring case, and treating `-`, `_` and spaces alike, so Cursor's `Composer 2.5` matches `composer-2.5`), the event's summary ends `model mismatch: told <requested>, harness reported
 <observed>`, which `worker sync` prints. An alias the harness resolves to another id reads as a mismatch
 too.
 

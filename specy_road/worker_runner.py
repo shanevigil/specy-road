@@ -58,6 +58,7 @@ from specy_road.worker_state import (
     workers_lock,
 )
 from specy_road.worker_turn_check import PAUSED_BY_LIMIT, TurnWatch, close_turn
+from specy_road.worker_usage_delta import turn_usage
 
 
 def queue_worker_message(repo_root: Path, rec: WorkerRecord, text: str) -> WorkerRecord:
@@ -323,15 +324,10 @@ def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str, launch: Lau
 
 
 def _append_usage(repo_root: Path, rec: WorkerRecord, usage: dict) -> None:
-    """The turn's ``usage`` event; a running session cost becomes this turn's, the version comes from ``started``."""
+    """The turn's ``usage`` event; running session totals become this turn's, the version comes from ``started``."""
     events = events_since(repo_root, rec.worker_id)
-    detail = {**dict.fromkeys(USAGE_FIELDS), **turn_models(events), **usage}   # a turn that never launched sets its own
-    total = detail.get("session_cost_usd")
-    if total is not None:
-        prev = next((e.detail["session_cost_usd"] for e in reversed(events) if e.type == "usage"
-                     and (e.detail or {}).get("session_cost_usd") is not None), None)
-        # A lower total than the last one is a new session (a custom command without one): it counts whole.
-        detail["cost_usd"] = round(total - prev, 6) if prev is not None and prev <= total else total
+    # A turn that never launched sets its own models; a running session total becomes this turn's share.
+    detail = turn_usage({**dict.fromkeys(USAGE_FIELDS), **turn_models(events), **usage}, events)
     if detail["harness_version"] is None:
         detail["harness_version"] = next((str(e.detail["version"]) for e in reversed(events) if e.type == "started"
                                           and e.source == "worker" and (e.detail or {}).get("version")), None)
@@ -349,6 +345,7 @@ def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], be
     if not usage_logged:   # one usage event per turn: a harness that reported none gets nulls, not zeros
         _append_usage(repo_root, rec, {})
     ready = fresh_ready(repo_root, rec, before)
+    watch.exited(code)   # the check runs before the exit event: a failed exit is one of its findings
     paused = close_turn(repo_root, rec, watch)   # the post-run check (M8.2): a usage limit pauses, whatever the exit code
     exit_event(repo_root, rec, code, ready, before_all=before_all, log=log_path(repo_root, rec.worker_id),
                log_start=log_start)

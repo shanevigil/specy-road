@@ -128,8 +128,8 @@ def test_each_adapter_reports_turn_usage_in_one_shape() -> None:
     assert cc.parse(json.dumps(CLAUDE_RESULT)).usage == {"input_tokens": 38 + 67090 + 1224204, "cached_input_tokens": 1224204,
         "output_tokens": 13258, "reasoning_tokens": 4703, "cost_usd": 1.0474079, "cost_is_estimate": True, "num_turns": 19,
         "harness_version": None, "session_cost_usd": 1.0474079}   # input counts cache reads and writes; the wrapper takes the delta
-    assert cx.parse(json.dumps(CODEX_TURN)).usage == {"input_tokens": 14784, "cached_input_tokens": 12288, "output_tokens": 5,
-        "reasoning_tokens": 0, "cost_usd": None, "cost_is_estimate": None, "num_turns": None, "harness_version": None}
+    cx_tokens = {"input_tokens": 14784, "cached_input_tokens": 12288, "output_tokens": 5, "reasoning_tokens": 0}
+    assert cx.parse(json.dumps(CODEX_TURN)).usage == {**cx_tokens, "cost_usd": None, "cost_is_estimate": None, "num_turns": None, "harness_version": None, "session_usage": cx_tokens}   # the thread's running total too: the wrapper takes the delta
     assert cu.parse(json.dumps(CURSOR_RESULT)).usage == {"input_tokens": 9323 + 4864, "cached_input_tokens": 4864, "output_tokens": 25,
         "reasoning_tokens": None, "cost_usd": None, "cost_is_estimate": None, "num_turns": None, "harness_version": None}
     assert set(cu.parse(json.dumps({**CURSOR_RESULT, "usage": None})).usage.values()) == {None}   # constructed: no usage → nulls
