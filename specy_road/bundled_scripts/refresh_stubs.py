@@ -44,6 +44,11 @@ from specy_road.runtime_paths import (
     project_root,
     recorded_project_root,
 )
+from specy_road.bundled_scripts.refresh_stubs_report import (  # noqa: F401 — _old_command_stub, NEXT_STEP re-exported
+    NEXT_STEP,
+    old_command_stub as _old_command_stub,
+    report as _report,
+)
 from specy_road.managed_block import CREATED, REFUSED, UNCHANGED, UPDATED, resolves_outside
 from specy_road.specyrd_skills import SKIPPED, ensure_link, is_link_path, mirrored_copies, render_skill, skill_rel
 from specy_road.specyrd_init import (
@@ -58,7 +63,6 @@ from specy_road.specyrd_init import (
 )
 
 MANIFEST_REL = Path(".specyrd") / "manifest.json"
-NEXT_STEP = "Next: specy-road validate (specy-road upgrade runs the whole sequence)."
 README_REL = ".specyrd/README.md"
 
 
@@ -148,11 +152,6 @@ def _refresh_pack(
         else:
             declined.add(rel)
     return ours
-
-
-def _old_command_stub(rel: str) -> bool:
-    """A pre-0.3.0 harness command stub (not a `generic` pack's own commands dir)."""
-    return rel.startswith((".cursor/commands/", ".claude/commands/"))
 
 
 def _orphans(recorded: list[str], current: list[str], repo_root: Path) -> list[str]:
@@ -287,26 +286,6 @@ def _resolve_root(explicit: Path | None) -> Path:
     return (git_root(start) or start).resolve()
 
 
-def _report_orphans(orphans: list[str], *, dry_run: bool, pruned: bool) -> None:
-    if pruned:
-        verb = "would remove" if dry_run else "removed"
-        print("")
-        for rel in orphans:
-            print(f"{verb} {rel} (no longer installed)")
-        return
-    print("\nNo longer installed for this role (or a .cursor/.codex copy of a skill), left on disk for you to remove:")
-    for rel in orphans:
-        print(f"  {rel}")
-    if any(_old_command_stub(rel) for rel in orphans):
-        print(
-            "\nThe */commands/ files are the pre-0.3.0 command stubs. The same commands are now\n"
-            "skills under .agents/skills/ (one file read by Cursor, Codex, and Claude Code), so\n"
-            "delete the old stubs to avoid two /specyrd-… entries:\n  rm "
-            + " ".join(rel for rel in orphans if _old_command_stub(rel))
-        )
-    print("Rerun with --prune to delete every path listed above.")
-
-
 def _block_previews(repo_root: Path, prefix: str, tmp: Path) -> dict[str, str]:
     """Each managed-block file as a refresh would leave it, keyed by its report line; built under ``tmp``."""
     rels = [AGENT_GUIDE, CURSOR_INDEXING_IGNORE, GITIGNORE, *(f"{prefix}{r}" for r in AGENTS_FILES)]
@@ -337,29 +316,6 @@ def _print_diffs(repo_root: Path, written: list[str], prefix: str) -> list[str]:
                 (old or "").splitlines(keepends=True), new.splitlines(keepends=True),
                 fromfile="/dev/null" if old is None else f"a/{rel}", tofile=f"b/{rel}"))
     return rest
-
-
-def _report(written: list[str], orphans: list[str], *, dry_run: bool, pruned: bool = False,
-            footer: bool = True) -> None:
-    verb = "would write" if dry_run else "wrote"
-    old_stubs = [rel for rel in orphans if _old_command_stub(rel)]
-    if dry_run and old_stubs:
-        skills = len({Path(rel).stem for rel in old_stubs})
-        print(f"migration: {len(old_stubs)} command stubs (*/commands/) become {skills} skills under .agents/skills/")
-    for rel in written:
-        print(f"{verb} {rel}")
-    if orphans:
-        _report_orphans(orphans, dry_run=dry_run, pruned=pruned)
-    if not footer:
-        return
-    if dry_run:
-        print("\n(dry-run; no files written)")
-        return
-    print(
-        "\nStubs and managed blocks only. Your roadmap, planning sheets and "
-        "anything outside a managed block were not touched."
-        f"\n{NEXT_STEP}"
-    )
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -393,7 +349,7 @@ def main(argv: list[str] | None = None) -> None:
         return
     if args.diff:
         written = _print_diffs(root, written, prefix)
-    _report(written, orphans, dry_run=dry_run, pruned=args.prune)
+    _report(written, orphans, dry_run=dry_run, pruned=args.prune, repo_root=root)
 
 
 if __name__ == "__main__":
