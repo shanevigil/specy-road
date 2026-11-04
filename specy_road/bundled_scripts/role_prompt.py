@@ -54,7 +54,7 @@ import sys
 from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_prompt import SUBAGENT_LINE
-from specy_road.bundled_scripts.generate_brief import index, render_brief
+from specy_road.bundled_scripts.generate_brief import index, render_brief, verify_cmd_lines
 from specy_road.bundled_scripts.review_packet import build_packet
 from specy_road.bundled_scripts.role_prompt_cli import run_custom_reviewer, run_default_reviewer, run_plain_cli
 from specy_road.bundled_scripts.role_prompt_rca import (
@@ -85,6 +85,7 @@ from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_record_write import schema_lines
 from specy_road.review_gate import delta_basis
+from specy_road.review_lessons import reviewer_lesson_lines
 from specy_road.review_resumed_delta import resumed_delta_on
 from specy_road.review_rca import escalated_note, loop_state, rca_evidence, rca_preamble, rca_trigger
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
@@ -184,8 +185,8 @@ def reviewer_lines(root: Path, node_id: str, model: str, t: ReviewTarget, ref: s
         return [], None, err
     # reviewer_packet writes PACKET-<model>.md only for a delta round (and removes a stale one first)
     resumed = (reviews_dir(root, node_id) / f"PACKET-{model}.md").is_file() and resumed_delta_on(root)
-    return (reviewer_preamble(node_id, model, ref, resumed_delta=resumed) + REMOVED_TEXT_LINES
-            + LAUNCH_MODE_LINES + escalated_note(loop, node_id)
+    return (reviewer_preamble(node_id, model, ref, resumed_delta=resumed) + REMOVED_TEXT_LINES + LAUNCH_MODE_LINES
+            + verify_cmd_lines(root) + reviewer_lesson_lines(root) + escalated_note(loop, node_id)
             + (READ_BACK_LINES if read_back else PASTED_LINES)), packet, ""
 
 

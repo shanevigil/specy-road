@@ -69,8 +69,10 @@ _FORWARDED = {
     "review": "review_cli.py",
     "ready": "review_cli.py",
     "worker": "worker_cli.py",
+    "chore": "chore_cli.py",
     "orchestration": "orchestration_guard_cli.py",
     "decisions": "decisions_cli.py",
+    "lessons": "lessons_cli.py",
     "branches": "branches_cli.py",
 }
 
@@ -262,6 +264,11 @@ def _cmd_gui(rest: list[str]) -> None:
     p = argparse.ArgumentParser(prog="specy-road gui")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8765)
+    p.add_argument(
+        "--read-only",
+        action="store_true",
+        help="Serve every GET route and refuse every write route with 403.",
+    )
     add_repo_root_arg(p)
     ns = p.parse_args(rest)
     uvicorn_spec = importlib.util.find_spec("uvicorn")
@@ -289,6 +296,8 @@ def _cmd_gui(rest: list[str]) -> None:
     env = os.environ.copy()
     if ns.repo_root is not None:
         env["SPECY_ROAD_REPO_ROOT"] = str(ns.repo_root.resolve())
+    if ns.read_only:
+        env["SPECY_ROAD_GUI_READ_ONLY"] = "1"
     host, port_s = ns.host, str(ns.port)
     if ns.host == "0.0.0.0":
         display_host = "127.0.0.1"
@@ -352,9 +361,9 @@ def main(argv: list[str] | None = None) -> None:
         print(USAGE_TEXT)
         raise SystemExit(0)
     if argv[0] in ("--version", "-V", "version"):
-        from specy_road import __version__
+        from specy_road.toolkit_version import running_toolkit_version
 
-        print(f"specy-road {__version__}")
+        print(f"specy-road {running_toolkit_version()}")
         raise SystemExit(0)
     cmd, *rest = argv
     _maybe_warn_running_version_older(cmd, rest)

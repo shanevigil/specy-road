@@ -37,8 +37,10 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, load_chore
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text
+from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.orchestration_role_env import harness_env
 from specy_road.review_files import reviews_dir
@@ -55,6 +57,9 @@ from specy_road.worker_sessions import check_session_id
 RUN_PREFIX = "RUN-"
 DEFAULT_RETRIES = 3
 DEFAULT_BACKOFF = 30.0
+#: A chore reviewer's resume (chore_cli): it writes its own verdict file, so there is no JSON object to repeat.
+CHORE_RESUME_PROMPT = ("Continue the review from where you stopped. If you already filed your verdict, say so and "
+                       "stop.\n")
 RESUME_PROMPT = ("Continue the review from where you stopped. End your reply with the one JSON object the review "
                  "prompt's last section describes, repeated in full if you already gave it: specy-road files the "
                  "record from it.\n")
@@ -91,7 +96,7 @@ def _preflight(entry: dict[str, Any], cwd: Path) -> None:
 class _Harness:
     """One roster entry's way of starting and resuming a reviewer turn."""
 
-    def __init__(self, repo_root: Path, entry: dict[str, Any], node_id: str, cwd: Path) -> None:
+    def __init__(self, repo_root: Path, entry: dict[str, Any], node_id: str, cwd: Path, chore: bool = False) -> None:
         self.harness = str(entry.get("harness") or "generic")
         self.adapter = adapter_for(self.harness)
         prof = pinned_profile_for_entry(repo_root, entry)
@@ -100,12 +105,15 @@ class _Harness:
         self.cli = (entry.get("channels") or {}).get("cli")
         if not self.cli and self.harness == "generic" and prof is not None:
             self.cli = prof.cli()
-        api = prof.api_id if prof is not None else None
-        self.api_id = None if (api or "").strip().lower() in ("", "unknown") else api
+        api = prof.api_id if prof is not None else ""   # no profile and no harness_model: the harness's default
+        self.api_id = harness_model(entry, api)
         self.effort = prof.effort("reviewer") if prof is not None else None
         self.mode = prof.launch_mode() if prof is not None else "full"
         self.repo_root, self.node_id, self.cwd, self.model = repo_root, node_id, cwd, str(entry.get("id"))
-        self.default = self.harness != "generic" and not self.cli   # the adapter's own read-only reviewer command
+        # The adapter's own read-only reviewer command. A chore reviewer writes its verdict file itself (chore_cli),
+        # so it keeps the launch it had before M8.3: Claude Code's bare reviewer command, else the adapter's own.
+        self.chore = chore
+        self.default = self.harness != "generic" and not self.cli and (not chore or isinstance(self.adapter, ClaudeCode))
         self.launch_mode = "bare" if self.default and isinstance(self.adapter, ClaudeCode) else self.mode
         self.can_resume = self.adapter.caps.resume
 
@@ -114,12 +122,13 @@ class _Harness:
         if self.default:
             sid = session or (str(uuid.uuid4()) if isinstance(self.adapter, ClaudeCode) else None)
             reviews = reviews_dir(self.repo_root, self.node_id)
+            structured = {} if self.chore else {"schema": write_schema(reviews), "output": output_path(reviews, self.model)}
             return self.adapter.reviewer_launch(prompt, self.api_id, reviews, self.effort,
-                                                session=(sid, session is not None) if sid else None,
-                                                schema=write_schema(reviews), output=output_path(reviews, self.model))
+                                                session=(sid, session is not None) if sid else None, **structured)
         kw = {"node_id": self.node_id, "repo_root": self.repo_root, "launch_mode": self.mode, "effort": self.effort}
         # A custom command gets its program's structured-output flags (Antigravity `agy`: --json-schema).
-        cli = reviewer_cli(self.cli, write_schema(reviews_dir(self.repo_root, self.node_id))) if self.cli else self.cli
+        cli = (reviewer_cli(self.cli, write_schema(reviews_dir(self.repo_root, self.node_id)))
+               if self.cli and not self.chore else self.cli)
         if session is not None:
             return self.adapter.resume(session, prompt, self.cwd, self.api_id, cli, **kw)
         return self.adapter.launch(prompt, self.cwd, self.api_id, cli, **kw)
@@ -159,6 +168,8 @@ def _turn(h: _Harness, launch: Launch, log: Path) -> dict[str, Any]:
 def _start(repo_root: Path, t: ReviewTarget, model: str, ref: str | None, h: _Harness,
            resume: bool) -> tuple[str, str | None]:
     """``(prompt text, session to resume)``; refuses a resume the record cannot support."""
+    if not resume and t.node.get("chore"):
+        return chore_prompt(t.node["chore"], "reviewer", model, repo_root, commit=t.commit), None
     if not resume:
         text, _prof, err = build_prompt(repo_root, t.node["id"], role="reviewer", model=model, ref=ref)
         if err:
@@ -211,19 +222,21 @@ def _prompt_file(repo_root: Path, node_id: str, model: str, text: str, suffix: s
 
 
 def _close(repo_root: Path, t: ReviewTarget, model: str, run: dict[str, Any], path: Path, reason: str,
-           filed: Outcome) -> None:
-    """Close the run from its filing outcome and the last attempt. A recorded verdict goes through
-    :func:`close_run`; a review failure or rerun request is incomplete whatever older record is on file, with a
-    reviewer-failure event (M11.72) naming the harness's error, or the outcome when the harness ended cleanly."""
+           filed: Outcome | None) -> None:
+    """Close the run from its filing outcome and the last attempt. A recorded verdict, or a chore run (``filed``
+    is ``None``: its reviewer wrote its own verdict file), goes through :func:`close_run`; a review failure or rerun
+    request is incomplete whatever older record is on file, with a reviewer-failure event (M11.72) naming the
+    harness's error, or the outcome when the harness ended cleanly."""
     log = path.with_suffix(".log")
     tail = log.read_text(encoding="utf-8", errors="replace").splitlines()[-20:] if log.is_file() else []
     last = run["attempts"][-1] if run["attempts"] else {}
     errors = [last["error"]] if last.get("error") else []
-    run["outcome"] = filed.state
-    if filed.state == "recorded":
+    if filed is None or filed.state == "recorded":
+        if filed is not None:
+            run["outcome"] = filed.state
         close_run(repo_root, t, model, run, exit_code=last.get("exit"), errors=errors, tail=tail, reason_prefix=reason)
         return
-    run.update(state="incomplete", reason="; ".join(x for x in (reason, filed.reason) if x))
+    run.update(state="incomplete", outcome=filed.state, reason="; ".join(x for x in (reason, filed.reason) if x))
     harness_failed = errors or last.get("exit") not in (0, None)
     record_reviewer_failure_event(run, harness_error_line(exit_code=last.get("exit"), errors=errors, tail=tail,
                                                           fallback=filed.reason) if harness_failed else filed.reason)
@@ -232,18 +245,27 @@ def _close(repo_root: Path, t: ReviewTarget, model: str, run: dict[str, Any], pa
 def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = None, resume: bool = False,
              retries: int = DEFAULT_RETRIES, backoff: float = DEFAULT_BACKOFF, worktree: Path | None = None,
              sleep: Callable[[float], None] = time.sleep) -> dict[str, Any]:
-    """Run the reviewer until it ends or runs out of capacity retries; returns the run record."""
-    try:
-        t = resolve_target(repo_root, node_id, ref)
-    except ReviewTargetError as e:
-        raise DelegateError(str(e)) from None
+    """Run the reviewer until it ends or runs out of capacity retries; returns the run record.
+
+    ``node_id`` may be a chore slug started with ``--review`` (chore_cli): the reviewer runs in its worktree."""
+    chore = load_chore(repo_root, node_id)
+    if chore is not None:
+        if chore.get("closed_at") or not chore["review"]:
+            raise DelegateError(f"chore {node_id} is closed" if chore.get("closed_at")
+                                else f"chore {node_id} was started without --review")
+        t, worktree = chore_target(repo_root, chore), worktree or Path(chore["worktree"])
+    else:
+        try:
+            t = resolve_target(repo_root, node_id, ref)
+        except ReviewTargetError as e:
+            raise DelegateError(str(e)) from None
     entry = _entry(repo_root, model)
     cwd = (worktree or Path(git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root)).resolve()
-    h = _Harness(repo_root, entry, node_id, cwd)
+    h = _Harness(repo_root, entry, node_id, cwd, chore=chore is not None)
     text, session = _start(repo_root, t, model, ref, h, resume)
     _preflight(entry, cwd)
     prompts = (_prompt_file(repo_root, node_id, model, text),
-               _prompt_file(repo_root, node_id, model, RESUME_PROMPT, "-resume"))
+               _prompt_file(repo_root, node_id, model, CHORE_RESUME_PROMPT if chore else RESUME_PROMPT, "-resume"))
     path, reviews = run_path(repo_root, node_id, model), reviews_dir(repo_root, node_id)
     run = {"node_id": node_id, "model": model, "harness": h.harness, "ref": t.ref, "commit": t.commit,
            "state": "running", "session_id": session, "resumed": resume, "source": "review-delegate",
@@ -258,12 +280,13 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
         _save(path, run)
         output_path(reviews, model).unlink(missing_ok=True)   # a stale answer never stands in for this run's
         try:
-            before = snapshot(cwd, reviews, model)
+            # M8.3's read-only check and filing are for roadmap reviews; a chore reviewer files its own verdict file.
+            before = snapshot(cwd, reviews, model) if chore is None else None
             reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
-            filed = file_review(repo_root, node_id, model, reviews, before=before, after=snapshot(cwd, reviews, model),
-                                output=final_output(h.adapter, run_text(path.with_suffix(".log")),
-                                                    output_path(reviews, model)),
-                                ref=ref, launch_mode=h.launch_mode)
+            filed = None if before is None else file_review(
+                repo_root, node_id, model, reviews, before=before, after=snapshot(cwd, reviews, model),
+                output=final_output(h.adapter, run_text(path.with_suffix(".log")), output_path(reviews, model)),
+                ref=ref, launch_mode=h.launch_mode)
             _close(repo_root, t, model, run, path, reason, filed)
         except BaseException as e:   # an interrupt or a launch refusal still closes the record
             err = f"interrupted: {e or type(e).__name__}"

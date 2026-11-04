@@ -4,6 +4,10 @@ family: Google Gemini
 track: Argon (Gemini 4 frontier tier)
 model: Gemini 4 Argon
 api_id: gemini-4-argon
+aliases:
+  - gemini-4-argon-low
+  - gemini-4-argon-medium
+  - gemini-4-argon-high
 checkpoint: same-as-api_id
 alias_moves: unknown
 version_rank: latest

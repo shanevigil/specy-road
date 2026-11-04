@@ -1,0 +1,28 @@
+{
+  "_note": "Constructed from the documented field shapes, not captured: system/api_retry and result.permission_denials from code.claude.com/docs/en/headless (read 2026-11-03), the Claude limit text from tests/fixtures/claude_code_limits/timed_session_limit.txt, the Codex 'try again' failure from the harness-facts quota row. The M8.7 run could not trigger a live limit (docs/design-notes/M8.7-runtime-verification-harness-facts.md).",
+  "claude_denied": [
+    {"type": "system", "subtype": "init", "session_id": "3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50", "model": "claude-opus-5-5"},
+    {"type": "system", "subtype": "permission_denied", "session_id": "3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50"},
+    {"type": "result", "subtype": "success", "is_error": false, "result": "Done; the push was not allowed.", "session_id": "3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50",
+     "permission_denials": [{"tool_name": "Bash", "tool_use_id": "toolu_01", "tool_input": {"command": "git push origin HEAD"}}]}
+  ],
+  "claude_clean": [
+    {"type": "system", "subtype": "init", "session_id": "3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50", "model": "claude-opus-5-5"},
+    {"type": "result", "subtype": "success", "is_error": false, "result": "All done.", "session_id": "3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50", "permission_denials": []}
+  ],
+  "claude_limit_as_success": [
+    {"type": "system", "subtype": "init", "session_id": "3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50", "model": "claude-opus-5-5"},
+    {"type": "result", "subtype": "success", "is_error": false, "session_id": "3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50",
+     "result": "You've hit your Claude Code session limit. Your limit resets 1:20am (Europe/Amsterdam)."}
+  ],
+  "claude_rate_limit_retries": [
+    {"type": "system", "subtype": "init", "session_id": "3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50", "model": "claude-opus-5-5"},
+    {"type": "system", "subtype": "api_retry", "attempt": 1, "max_retries": 10, "retry_delay_ms": 300000, "error_status": 429, "error": "rate_limit", "uuid": "u1", "session_id": "3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50"},
+    {"type": "system", "subtype": "api_retry", "attempt": 2, "max_retries": 10, "retry_delay_ms": 300000, "error_status": 429, "error": "rate_limit", "uuid": "u2", "session_id": "3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50"},
+    {"type": "system", "subtype": "api_retry", "attempt": 3, "max_retries": 10, "retry_delay_ms": 300000, "error_status": 429, "error": "rate_limit", "uuid": "u3", "session_id": "3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50"}
+  ],
+  "codex_try_again": [
+    {"type": "thread.started", "thread_id": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"},
+    {"type": "turn.failed", "error": {"message": "You've hit your usage limit. Upgrade to Pro or try again in 1 hour 30 minutes."}}
+  ]
+}

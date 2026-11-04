@@ -17,6 +17,29 @@ The supported **PM dashboard** is a **FastAPI** server plus a **prebuilt React**
   Routes, both read-only, in [`specy_road/gui_app_routes_workers.py`](../specy_road/gui_app_routes_workers.py): `GET /api/workers` (one row per worker: id, node, harness, model, state, attempt, flags, last event, total cost) and `GET /api/workers/{id}/events` (that row plus `events`, `phases` in seconds and `usage` totals; 404 for an unknown id). The drawer reloads when opened and on **Refresh**.
 - **Last worked column:** the outline shows when each leaf was last worked on, **derived from git history** (no stored file) via the `activity` map on `GET /api/roadmap`; see [Archiving](archiving.md#last-worked-on).
 
+## Read-only JSON API
+
+Scripts may read the dashboard's state through these `GET` routes (all under `/api/`):
+
+| Route | Returns |
+| --- | --- |
+| `/health` | `{"status": "ok"}` |
+| `/repo` | repo root and settings id |
+| `/roadmap`, `/roadmap/fingerprint` | the graph with rollups and activity; the polling fingerprints |
+| `/governance-completion`, `/git-workflow-status` | vision/constitution completeness; branch and registry status |
+| `/planning/{node_id}/artifacts` | the node's planning sheet path and its ancestors' |
+| `/planning/file?path=…`, `/workspace/file?path=…` | `{path, content, content_hash}` for a planning file or a `shared/` file |
+| `/workspace/files?prefix=shared\|work` | file listing |
+| `/settings`, `/publish/status` | GUI settings (secrets masked); publish status |
+| `/archives`, `/archives/{id}`, `/archives/{id}/nodes` | archived subtrees |
+| `/brainstorm/sessions`, `/brainstorm/session` | brainstorm sessions |
+| `/workers`, `/workers/{id}/events` | worker rows and event logs |
+
+An unknown `/api/…` path returns a JSON `404` (`{"detail": "no API route …"}`), never the HTML shell.
+
+- **Safe saves:** `content_hash` is the sha256 of the file's bytes. Send it back as `X-Base-Content-Hash` on `PUT` to the same route; if the file changed on disk since, the save is refused with `409` and `detail.current_content` / `detail.content_hash`, and nothing is written. The UI sends it automatically and shows the conflict instead of overwriting. A `PUT` without the header writes unconditionally, as before.
+- **`specy-road gui --read-only`:** serves every `GET` and refuses every other method under `/api/` with `403`, including POSTs that only test settings. It does not switch off the opt-in background `git fetch` / integration auto-FF that `GET /api/roadmap` schedules (**Settings**; off by default).
+
 ## How to use it and install it
 
 - **End-user install + everyday usage** (consumer-side; `specy-road gui`):

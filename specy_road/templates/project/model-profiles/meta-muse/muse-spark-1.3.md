@@ -4,6 +4,13 @@ family: Meta Muse
 track: Spark
 model: Muse Spark 1.3
 api_id: muse-spark-1.3
+aliases:
+  - muse-spark-1.3-minimal
+  - muse-spark-1.3-low
+  - muse-spark-1.3-medium
+  - muse-spark-1.3-high
+  - muse-spark-1.3-xhigh
+  - muse-spark-1.3-max
 checkpoint: same-as-api_id
 alias_moves: 'no'
 version_rank: previous

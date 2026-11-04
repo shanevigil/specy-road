@@ -79,30 +79,36 @@ def _exists_at_commit(root: Path, commit: str, rel: str) -> bool:
     return git_ok(["cat-file", "-e", f"{commit}:{rel}"], top)[0]
 
 
+def _committed_or_disk(root: Path, commit: str, path: Path) -> str | None:
+    """``path``'s text at ``commit``, else on disk, else None."""
+    body = _show(root, commit, path.relative_to(root).as_posix())
+    if body is None and path.is_file():
+        body = path.read_text(encoding="utf-8")
+    return body
+
+
+def _packet_texts(root: Path, t: ReviewTarget, brief: str, node: dict, by_id: dict[str, dict]) -> list[str]:
+    """The brief, the implementation summary and the chain's planning sheets."""
+    summary = _committed_or_disk(root, t.commit, root / f"work/implementation-summary-{t.node_id}.md")
+    sheets = [_committed_or_disk(root, t.commit, s) for s in _chain_sheet_paths(node, root, by_id)]
+    return [brief] + [text for text in [summary, *sheets] if text]
+
+
+def _missing_refs(root: Path, commit: str, texts: list[str]) -> list[str]:
+    missing: list[str] = []
+    for text in texts:
+        for rel in _named_paths(text, root, commit):
+            if rel not in missing and not _exists_at_commit(root, commit, rel):
+                missing.append(rel)
+    return missing
+
+
 def uncommitted_refs_section(root: Path, t: ReviewTarget, brief: str, node: dict, by_id: dict[str, dict],
                              computed: str) -> list[str]:
     out = ["## Uncommitted references", ""]
     if not t.commit:
         return out + ["_(cannot compute: no commit under review)_", ""]
-    texts = [brief]
-    srel = f"work/implementation-summary-{t.node_id}.md"
-    summary = _show(root, t.commit, srel)
-    if summary is None and (root / srel).is_file():
-        summary = (root / srel).read_text(encoding="utf-8")
-    if summary:
-        texts.append(summary)
-    for sheet in _chain_sheet_paths(node, root, by_id):
-        rel = sheet.relative_to(root).as_posix()
-        body = _show(root, t.commit, rel)
-        if body is None and sheet.is_file():
-            body = sheet.read_text(encoding="utf-8")
-        if body:
-            texts.append(body)
-    missing: list[str] = []
-    for text in texts:
-        for rel in _named_paths(text, root, t.commit):
-            if rel not in missing and not _exists_at_commit(root, t.commit, rel):
-                missing.append(rel)
+    missing = _missing_refs(root, t.commit, _packet_texts(root, t, brief, node, by_id))
     out += [computed, ""]
     if not missing:
         return out + ["_none_", ""]

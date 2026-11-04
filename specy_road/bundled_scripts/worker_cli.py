@@ -19,8 +19,9 @@ from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload
 from specy_road.worker_adapters import ADAPTERS, Unsupported
 from specy_road.worker_hook import HOOKS
+from specy_road.worker_orphans import add_terminate, list_view, with_orphans
 from specy_road.worker_outbox import lookup_op
-from specy_road.worker_reconcile import sync_marks
+from specy_road.worker_reconcile import reconcile_lines, sync_marks
 from specy_road.worker_runner import log_path
 from specy_road.worker_sessions import render_command
 from specy_road.worker_state import (
@@ -105,7 +106,7 @@ def cmd_list(ns: argparse.Namespace) -> int:
     recs = list_records(root, active_only=not ns.all)
     if not recs:
         return _emit(ns, {"workers": []}, ["No workers under work/.workers/."])
-    return _emit(ns, {"workers": [_row(r) for r in recs]}, [_line(r, root) for r in recs])
+    return _emit(ns, *list_view(root, recs, _row, _line))   # held workers whose leaf is over are marked orphaned
 
 
 def cmd_status(ns: argparse.Namespace) -> int:
@@ -151,7 +152,7 @@ def cmd_sync(ns: argparse.Namespace) -> int:
         lines = ["No new worker events."]
     elif not ns.ack:
         lines.append("(re-run with --ack once handled)")
-    rc = _emit(ns, {"workers": delta, "acked": ns.ack}, lines)
+    rc = _emit(ns, *with_orphans(root, {"workers": delta, "acked": ns.ack}, lines))   # orphans, events or not
     return 2 if timed_out and not delta else rc
 
 
@@ -229,17 +230,9 @@ def cmd_adopt(ns: argparse.Namespace) -> int:
 
 def cmd_reconcile(ns: argparse.Namespace) -> int:
     def fn(root):
-        rec, delta = ops.reconcile(root, ns.worker_id)
+        rec, delta = ops.dismiss(root, ns.worker_id, ns.dismiss) if ns.dismiss is not None else ops.reconcile(root, ns.worker_id)
         return {**_row(rec), "delta": delta}
-    def render(o):
-        d = o["delta"]
-        lines = [f"{o['worker_id']}: {len(d['changed'])} path(s) changed since {(d['since'] or '?')[:12]}; "
-                 f"needs_reconcile={d['needs_reconcile']}"]
-        lines += [f"  OUTSIDE touch zones: {p}" for p in d["outside_touch_zones"]]
-        if d["contract_changed"]:
-            lines.append("  the leaf's brief changed since delegation")
-        return lines
-    return _mutate(ns, "reconcile", fn, render)
+    return _mutate(ns, "reconcile", fn, reconcile_lines, inputs={"dismiss": ns.dismiss} if ns.dismiss is not None else None)
 
 
 def cmd_open(ns: argparse.Namespace) -> int:
@@ -317,8 +310,8 @@ def build_parser() -> argparse.ArgumentParser:
     ws = w.add_subparsers(dest="worker_cmd", required=True)
 
     sp = ws.add_parser("delegate", help="Launch a worker for a claimed leaf and return at once")
-    sp.add_argument("node_id")
-    sp.add_argument("--model", required=True, help="Roster id (executor role)")
+    sp.add_argument("node_id", help="A claimed leaf, or a chore slug (`specy-road chore start`)")
+    sp.add_argument("--model", help="Roster id (executor role); a chore's default is its own --model")
     sp.add_argument("--harness", choices=HARNESSES, help="Override the roster entry's harness")
     sp.add_argument("--worktree", help="Run in this checkout (default: this one if it has the claim's branch, else a linked worktree)")
     _offline_arg(sp); sp.add_argument("--rework", action="store_true", help="Take over after blocking reviews or a terminated or failed worker")
@@ -353,12 +346,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_resume)
     sp = ws.add_parser("interrupt", help="Stop the current turn (declared unsupported by the CLI adapters)"); _w(sp, op=False)
     sp.set_defaults(func=cmd_interrupt)
-    sp = ws.add_parser("terminate", help="SIGTERM the worker and close its record"); _w(sp); sp.set_defaults(func=cmd_terminate)
-    sp = ws.add_parser("handoff", help="Lease the worker to a human and print the native resume command"); _w(sp)
-    sp.set_defaults(func=cmd_handoff)
+    add_terminate(ws, cmd_terminate, _emit)   # `terminate W`, or `--orphaned` for every held worker whose leaf is over
+    sp = ws.add_parser("handoff", help="Lease the worker to a human and print the native resume command"); _w(sp); sp.set_defaults(func=cmd_handoff)
     sp = ws.add_parser("reclaim", help="Take the lease back; record what the human did"); _w(sp)
     sp.add_argument("--note", metavar="TEXT"); sp.set_defaults(func=cmd_reclaim)
     sp = ws.add_parser("reconcile", help="Changed paths since the checkpoint vs the leaf's touch zones"); _w(sp)
+    sp.add_argument("--dismiss", metavar="REASON", help="Clear needs_reconcile, recording REASON as an event")
     sp.set_defaults(func=cmd_reconcile)
     sp = ws.add_parser("open", help="Where a human can look: worktree, log, resume command"); _w(sp, op=False)
     sp.set_defaults(func=cmd_open)

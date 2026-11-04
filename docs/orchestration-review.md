@@ -28,7 +28,9 @@ The newest valid `READY-<agent>.md` for the node's registered branch lists verif
 The same READY file may declare optional `blocked_on`: a list of `{acceptance, reason}` naming acceptance ids (`A1`…`An` from the brief) the executor could not meet without deleting, skipping or weakening an existing test, or raising a baseline or cap. While that READY is current at the commit under review, `handoff status` reports `executor_blocked` (ahead of `blocked` and `escalated`, whose records and problems stay listed), prints one line per entry as `A<n>: <reason>`, and the gate stays unmet until the coordinator resolves the block (for example by amending the leaf on the integration branch) and the executor hands off again without `blocked_on`. A `blocked_on` on a READY for an earlier commit does not bind later commits; they are judged on their own records.
 
 The gate passes when no counted review blocks and the counted approvals reach
-`reviewers_required` (by distinct family when configured). On success it sets
+`reviewers_required` (by distinct family when configured), and every
+`policy.strong_review` item the leaf's touch zones meet has a counted approval
+from a model it lists ([Strong review](#strong-review-for-high-risk-zones)). On success it sets
 `implementation_review: approved` in the registry and adds one
 `Reviewed-by: <model> (<family>) approve <commit>` trailer per approval to that
 commit.
@@ -327,6 +329,12 @@ bare`) and in `--json` as each review's `launch_mode`.
 
 `handoff status` lists each run under the node (`RUN-opus.json: incomplete run by opus at <sha>, session <id>: <reason>`, marked `not the commit under review` when it is for an older commit), and in `--json` as `review_runs`, each with `current`. An incomplete run at the commit under review is also a problem naming the command to re-run. A record left from an older commit is never shown as the current verdict: it is listed only as a problem (`reviewed <sha>, not the current commit — re-review`); without a claim each record line says the commit it reviewed (`at <sha>, not evaluated`), and `review list` marks one that is not the commit under review `stale`.
 
+## Project review lessons
+
+A defect class that escaped one review should be checked by every later one. `constraints/review-lessons.md` lists them (`init project` writes it with a short header): each top-level bullet under `## Lessons` is one entry, a one-line rule, with optional `Example:` and `From:` sub-bullets. Every reviewer prompt (`specy-road prompt --role reviewer`, and so `review delegate`) includes the entries under **Project review lessons**; with no file or no entries it has no such section, and an unreadable file is named in the prompt instead.
+
+`specy-road lessons add --rule "<one-line rule>" [--example "<text>"] [--from <NODE_ID>]` appends an entry at the end of `## Lessons` (creating the file from the bundled header when it is missing); `--from` records the leaf the defect escaped from. Line breaks in the rule or example are folded into one line. `specy-road lessons list` prints the entries in file order, or says the file does not exist. Commit the file like any other project file: a reviewer reads it from the checkout that builds its prompt.
+
 ## Changed paths in the review packet
 
 The packet's **Changed paths** section lists every path the diff changes and marks each one outside the touch zones. Those zones, also named in the header, are the claim row's `touch_zones` plus the node's `touch_zones` as committed at the commit under review, read from git. A zone added to the node on the feature branch therefore counts when the packet is built from a checkout on the integration branch. When the node cannot be read at that commit, the claim row's zones (else the node's in the working tree) are used.
@@ -371,3 +379,20 @@ tests:
 Each outcome is `pass`, `fail` (a failure in the call phase in pytest's JUnit XML) or `error` (a collection or setup error, or nothing ran: the node id was not found or every case skipped). A test the node lists in `planned_test_changes` (on the integration branch) as `preserve: <path>::<name>` must pass at base and at head; every other test under check must fail at base and pass at head. The command prints the same problems the gate would and exits 1 when there are any.
 
 With the policy on, the gate adds `red-green: missing` when the file is absent or unreadable, `red-green: stale (<sha>)` when its `commit` is not the commit under review (re-run the command after every new commit), and otherwise one problem per test that breaks the rule: `not-green: <id>` when it does not pass at head (or, for a `preserve` test, at base), else `not-red: <id>` when it does not fail at base. The tests under check are computed again from git, so a test left out of the record is a problem too. A test that errors at base (for example, its module cannot import the function the leaf adds) is not red: only an assertion that fails in the call phase is evidence. With the policy off or absent the gate ignores red-green evidence. This checks test-first evidence; it does not tell executors to work test-first. Design: [design-notes/regression-prevention.md](design-notes/regression-prevention.md).
+
+## Strong review for high-risk zones
+
+Some zones (the review gate itself, review records, worker launches) deserve a stronger reviewer than the rest, whoever the coordinator happens to pick. `policy.strong_review` in `roadmap/orchestration.yaml` (default empty), read from the integration branch like the rest of the policy, lists them:
+
+```yaml
+policy:
+  reviewers_required: 2
+  reviewers_distinct_families: true
+  strong_review:
+    - zones: [specy_road/review_gate.py, specy_road/schemas/]
+      require_one_of: [gpt-5.6-sol-medium, claude-opus-5-5-review]
+```
+
+Each item's `zones` are touch-zone paths or directory prefixes, and `require_one_of` names roster ids (`specy-road validate` refuses an id the roster does not have). An item applies to a leaf when one of the leaf's touch zones (its claim row's, the node's in the checkout running the command, and the node's as committed at the commit under review, so a zone the feature branch adds counts when the gate runs from the integration checkout) meets one of the item's zones: the same path, one a directory prefix of the other, or a glob zone matching the other; in a nested project either may be written from the git root or the project root. While an applicable item has no counted approval at the commit under review from a model it lists, the gate is not met, on top of `reviewers_required`: `handoff status`, `mark-implementation-reviewed` and `finish-this-task` name it as `strong_review[<n>] (zones: …): … need a counting approval from one of …, have none`. Only an approval the gate already counts satisfies an item, so a stale, ineligible or blocking record does not, and a substitute does only when its own id is listed. The interactive human approval closes the gate only when every unmet item lists `human`. While an item is unmet, each `handoff status` row that can still approve says whether its approval would satisfy it.
+
+`specy-road orchestrate plan` lists, under each ready leaf, every item its touch zones meet as `strong review strong_review[<n>] (zones: …): one approval from …; can satisfy it: …`, where the reviewers that can satisfy it are the listed models that are rostered reviewers (or active substitutes), available, allowed the leaf's sensitivity, and not its executor. It picks the best-ranked of them first, whatever its family, and the rest of the reviewers as usual; an item none of them can satisfy makes the leaf unstaffable (exit 1). The `--json` form carries the same as `strong_review` on each assignment.
