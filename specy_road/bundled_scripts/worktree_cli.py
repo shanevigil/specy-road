@@ -54,8 +54,9 @@ def build_parser() -> argparse.ArgumentParser:
     prune = wsub.add_parser(
         "prune",
         description=(
-            "Remove work/.worktrees/<codename> for NODE_ID only when feature/rm-<codename> and the "
-            "worktree's HEAD are merged into the integration branch (the remote-tracking ref as it "
+            "Remove work/.worktrees/<codename> for NODE_ID only when the worktree's HEAD and "
+            "feature/rm-<codename>, local and on the remote wherever they exist, are merged into the "
+            "integration branch (the remote-tracking ref as it "
             "stands; nothing is fetched) and it has no uncommitted changes, untracked non-ignored "
             "files, or stashes whose subject does not name another branch. Each nested_repos "
             "repository in it must also hold no uncommitted changes, stashes, or commits that no "

@@ -1,8 +1,8 @@
 """``specy-road worktree prune <ID>``: remove a leaf's worktree only when nothing in it would be lost.
 
 The leaf's worktree is ``work/.worktrees/<codename>`` in the main checkout, on
-``feature/rm-<codename>``. It is removed only when that branch and the
-worktree's ``HEAD`` are merged into the integration branch (the remote-tracking
+``feature/rm-<codename>``. It is removed only when the worktree's ``HEAD`` and
+that branch, local and remote-tracking wherever they exist, are merged into the integration branch (the remote-tracking
 ref as it stands, else the local one; nothing is fetched) and the worktree has
 no uncommitted changes, no untracked files git does not ignore, and no stash
 that could be its own (see below). Ignored files are deleted
@@ -30,7 +30,7 @@ from pathlib import Path
 from specy_road.bundled_scripts.grind_session_cleanup import merged_into
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.finish_implementation_check import base_ref
-from specy_road.git_subprocess import git_code, git_stdout, git_text, local_branch_exists
+from specy_road.git_subprocess import git_code, git_stdout, git_text
 from specy_road.git_workflow_config import load_git_workflow_config, resolve_integration_defaults
 from specy_road.nested_repos import _common_dir, is_repo_top, nested_repos
 from specy_road.review_files import reviews_root
@@ -160,9 +160,12 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
     if target is None:
         plan.refusals.append(f"neither {remote}/{base} nor a local {base} exists")
     else:
+        # Every leaf ref that exists, local and remote-tracking: either may hold work the other lacks, and
+        # with neither (the branch deleted after landing) the worktree's HEAD alone is checked.
         heads = [("the worktree's HEAD", git_text(["rev-parse", "HEAD"], wt) or "HEAD")]
-        if local_branch_exists(main, branch):
-            heads.append((branch, branch))
+        heads += [(label, ref) for label, ref in ((branch, f"refs/heads/{branch}"),
+                                                  (f"{remote}/{branch}", f"refs/remotes/{remote}/{branch}"))
+                  if git_text(["rev-parse", "--verify", "--quiet", ref], main)]
         plan.refusals += [f"{label} is not merged into {target}" for label, ref in heads
                           if not merged_into(main, ref, target)]
     _check_nested(plan, main, prefix)

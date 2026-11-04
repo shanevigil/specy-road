@@ -58,6 +58,29 @@ def test_merged_locally_but_not_pushed_is_refused(tmp_path: Path) -> None:
     assert "not merged into refs/remotes/origin/main" in _refusals(root)
 
 
+def test_an_unmerged_remote_leaf_branch_refuses_when_the_local_one_is_gone(tmp_path: Path) -> None:
+    root, wt = _leaf(tmp_path)
+    _land(root, wt)
+    commit_file(wt, "src/b.py", "b = 1\n", "pushed after landing")
+    git(wt, "push", "-q", "origin", FEATURE)
+    git(wt, "checkout", "-q", "--detach", "HEAD~1")   # back at the landed commit
+    git(root, "branch", "-q", "-D", FEATURE)
+    out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
+    assert out.returncode == 1
+    assert f"origin/{FEATURE} is not merged into refs/remotes/origin/main" in out.stderr
+    assert wt.is_dir()
+
+
+def test_with_both_leaf_refs_gone_a_merged_head_is_pruned(tmp_path: Path) -> None:
+    root, wt = _leaf(tmp_path)
+    _land(root, wt)
+    git(wt, "checkout", "-q", "--detach")
+    git(root, "branch", "-q", "-D", FEATURE)
+    out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
+    assert out.returncode == 0, out.stderr
+    assert not wt.exists()
+
+
 def test_unknown_node_and_missing_worktree_are_errors(tmp_path: Path) -> None:
     root = make_pickup_project(tmp_path)
     with pytest.raises(PruneError, match="no roadmap node 'M9'"):
