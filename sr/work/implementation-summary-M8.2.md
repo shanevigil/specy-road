@@ -28,6 +28,20 @@ Base: `a54c409b` (origin/WIP/improvements-0-3-1 after the M8.2 touch-zone update
 - **Merge of WIP for M11.69:** the conflict was in `worker_state.py`, where `WorkerRecord` keeps both `limit_reset_at` and M11.69's `unknown_fields`. `unknown_fields` stays last, so `load_record` and `to_dict` still treat `limit_reset_at` as a known field. No behaviour fix was needed: the leaf's tests, `test_schema_revision.py` and file-limits pass.
   - **Timing failure under load:** `test_spawn_returns_before_the_worker_ends_and_the_record_catches_up` failed once with the load average near 38. Timing a spawned turn in isolation showed this branch costs about 0.3 s more per turn than WIP's own checkout (0.6 s against 0.2–0.3 s): the post-run check's git reads and record writes. The test then passed twice in under 2 s, and passed in the full targeted run.
 
+## Round 5: fix for review gpt-5.6-sol-medium at `c2588247` (block)
+
+Required change (1), and where it is done (commit `2bfd8f5d`):
+- **Exactly one `post_run_check` per turn, clean turns included.** `close_turn` in `specy_road/worker_turn_check.py` now always appends one event.
+  - **Clean turn:** `detail: {"findings": []}` and the summary `post-run check: clean`.
+  - **Turn with findings:** unchanged, with the findings and their count.
+  - **Flag:** findings still set `post_run_findings`, and a clean turn still clears it. This covers every turn end: a harness that ran, the `OSError` start failure, and an already-`terminated` record.
+- **Runner-level clean-turn regression updated.** In `tests/test_worker_turn_check.py::test_claude_launch_and_resume_pass_mode_tools_and_no_prompts_and_a_denial_flags_the_worker`, the second turn is clean. The test now asserts it adds exactly one more `post_run_check` (two in all) with empty findings and the clean summary, and that the flag is cleared. Before, it asserted that no event was added.
+  - **Red-green:** it fails against `c2588247` (one event, not two) and passes on the fix.
+- **Tests that pin a clean turn's event order.** `test_run_records_session_id_events_and_a_clean_exit` and `test_the_wrapper_payload_carries_the_mode_and_records_the_mismatch` in `tests/test_worker_adapters.py` now include `post_run_check` before `completion`. The file stays at 400 lines.
+- **Docs and schema.** The post-run sentence in `docs/orchestration-workers.md` and the `post_run_check` description in `worker-event.schema.json` now say one event per turn, with empty findings when clean. Both are updated in place.
+- **Touch zones.** No file outside M8.2's zones was needed.
+- **Verification.** `pytest -n 4` over the leaf's tests passes (144 tests), as do the other worker and review round suites that read event sequences (105 tests). `specy-road file-limits` and `ruff` are clean.
+
 ## Round 4: fix for review gpt-5.6-sol-medium (block, again)
 
 - **Lost pre-turn work is a finding.** `git_findings` now compares the union of the starting and ending dirty-path keys, excluding expected bookkeeping. Before, it walked only the paths still dirty at the turn's end, so pre-turn work outside the zones that the turn restored or deleted left no finding.
@@ -146,6 +160,7 @@ Not changed, though they are now stale, because they are outside M8.2's zones:
 - `TurnWatch.failed` cleared by `turn_completed`: a launch-mode mismatch or a mid-turn Codex `error` followed by a completed turn is not a failed turn.
 - `TurnWatch.pending`: `rate_limit` retries that end the turn with no completed turn count as a limit.
 - `git_findings()` / `_outside_zones()`: A3's git half, reusing reconcile's `_bookkeeping` and `zone_matches`.
+- The clean `post_run_check` event in `close_turn` (round 5): the log shows the check ran on every turn.
 - `close_turn()`, with its `except Exception` guard: records findings, sets or clears the flag, sets `limit_reset_at`; the guard keeps a git failure from costing the turn its exit record.
 - `close_turn(..., pause=False)` and its calls on the start-failure and terminated paths (round 3): the check runs on every started turn's end without changing that path's terminal state.
 - `limit_gate()`: A1's "resume picks it up after the reset"; refuses before `limit_reset_at`.
