@@ -23,11 +23,22 @@ Not changed (outside zones, noted only): the `remove-dependency` argparse help i
 - Full suite `python -m pytest -q -n 4`: 3972 passed.
 - `specy-road file-limits`: OK.
 
+## Fix round 1
+
+Sol's review blocked `ca9615d8`; Grok approved it. Merged `origin/WIP/improvements-0-3-1` first (no conflicts). Fixes are in commit `e7352a26`.
+
+- **F1 (A4):** the unclean-tree hint's backticked commands all contained `<path>`/`<tag>`, so none of them ran in a shell. `unclean_tree_details()` now takes `repo_root` and prints a single concrete command, ``git -C <root> stash push -u -m 'specy-road: unclean tree' -- ':/' ':(exclude)work'``. Here `<root>` stands for the real path, shell-quoted. The pathspec is the one the check itself uses (the work/ exclude is dropped when the check does not ignore work/). Commit and discard are still mentioned, but as plain prose, not as commands to copy. Both mark-implementation-reviewed sites get this through `assert_working_tree_clean()`.
+- **Test integrity F1:** for the two dirty-tree cases, the parametrized CLI test now extracts the printed stash command and runs it through the shell. It then asserts that `git status` outside work/ is empty and retries the same CLI call, which must exit 0. The A2 tests assert that no `<path>`/`<tag>` remains.
+- **Test integrity F2:** removed every private cross-module import. `delegate_layout` now lives in `tests/review_repo_helpers.py`, and `test_prerelease_s5.py` is updated to use it. The leaf and milestone repos are built from the public `make_review_repo`, `make_milestone_repo` and `review_text`.
+- **Test integrity F3:** dropped the node_key removal case. `test_roadmap_crud_dependencies.py::test_add_remove_dependency_cli` covers it.
+- Verified with targeted pytest only (97 passed across the refusal, prerelease s5, git helpers, registry scope, mark-reviewed gate, milestone review, crud dependencies, abort, review hardening and finish command suites) and `specy-road file-limits` (OK).
+
 ## Added
 
 - `repo_ops.UNCLEAN_PATHS_SHOWN`: the 20-path cap from A2, named once.
 - `repo_ops.dirty_paths()`: the porcelain lines the clean check sees (raw stdout, so the first line's status column is kept), for A2.
-- `repo_ops.unclean_tree_details()`: formats the capped list and the clear-them hint, for A2. It is shared by every `assert_working_tree_clean()` caller.
+- `repo_ops.unclean_tree_details(repo_root, paths, *, except_work)`: formats the capped list and a runnable stash command (fix round 1), for A2. It is shared by every `assert_working_tree_clean()` caller.
+- `repo_ops.UNCLEAN_STASH_MESSAGE` (fix round 1): a fixed stash message so the printed command needs no placeholder.
 - Branch in `assert_working_tree_clean()`: prints the detail lines before exiting.
 - `roadmap_crud_dependency_ops._refuse_unlisted_dependency()`: the A1 exit-1 message that names the node's actual dependencies.
 - Branch in `cmd_remove_dependency()`: a ref already in the node's list is used as is, so a dangling key stays removable (keeps today's behaviour).
@@ -35,9 +46,11 @@ Not changed (outside zones, noted only): the `remove-dependency` argparse help i
 - `node_id` parameter and `shlex`/`rev-parse --show-toplevel` in `_exit_if_base_checked_out_elsewhere()`: names the brief the hint discards and quotes the worktree path git needs (A3).
 - `tests/test_refusals_name_their_fix.py`:
   - `test_each_refusal_exits_1_and_names_a_runnable_next_step` (parametrized over unlisted dependency, leaf approval on a dirty tree, milestone approval on a dirty tree, abort with the base held): A4's CLI test via `python -m specy_road.cli`.
-  - `test_remove_dependency_by_display_id_or_node_key` (display id and node_key): A1.
+  - `test_remove_dependency_by_display_id`: A1. The node_key case was dropped in fix round 1 (it is covered by `test_roadmap_crud_dependencies.py::test_add_remove_dependency_cli`).
   - `test_remove_dependency_not_listed_names_the_actual_ones`: A1, covering a node with dependencies and one with none.
   - `test_remove_dependency_unknown_ref_keeps_the_resolver_error`: A1's unresolvable argument.
   - `test_leaf_approval_lists_the_dirty_paths` and `test_milestone_approval_lists_the_dirty_paths` (1 and 25 paths): A2 at both sites. The leaf case also checks that `work/` files are not listed.
   - `test_abort_hint_removes_the_worktree_pickup_left`: A3. It runs the printed status and remove commands on a worktree holding an untracked `work/brief-M1.1.md`, and checks that a plain `git worktree remove` is refused there.
-- Mocks: none. The tests reuse the existing fixtures `crud_fixture_repo`/`run_crud`, `_repo`/`_record`/`_run`, `make_milestone_repo`/`_review`/`_mir` and `_delegate_layout`.
+- Local test helpers `_approve`, `_approved_leaf`, `_approved_milestone` and `_mark_reviewed` (fix round 1): build the review repos from public helpers, so no private names are imported from other test modules.
+- `tests/review_repo_helpers.delegate_layout` (fix round 1): moved from `tests/test_prerelease_s5.py::_delegate_layout`, whose three callers now use it.
+- Mocks: none.
