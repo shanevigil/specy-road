@@ -193,6 +193,7 @@ with it off, a present signature is still verified, so a tampered front matter n
 counts. `review record` also signs `notes_sha256`, the notes' hash, so a record whose
 notes changed, or a signed one without it, never counts. A human approving interactively passes `--sign-key` to
 `mark-implementation-reviewed`, with a `public_key` on the `human` entry; a wrong key is refused before any record is written.
+Every record `review record` or `mark-implementation-reviewed` files also carries `toolkit_version`, the specy-road build that wrote it (a reviewer-supplied value is overwritten); it is stamped before signing, so a signature covers it.
 
 The boundary is the key: run each reviewer with a private key the executor's
 process does not hold. Still self-attested: the session flags inside a signed record

@@ -19,7 +19,7 @@ Framing matters: later phases merge into `CLAUDE.md` / `.cursor` for **this repo
 ## Authoritative references
 
 1. **Consumer AGENTS template:** Same content as `specy-road init project` → `AGENTS.md` (load order + `specy-road brief` example).
-2. **Managed blocks** for consumer repos: the package ships `specy_road/templates/specyrd/agents-md-block.md` (the `AGENTS.md` section, Phase 3) and `specy_road/templates/specyrd/claude-md-block.md` (the optional `CLAUDE.md` section, written by `specyrd init --write-claude-md`). Both are **merged** between markers, never a wholesale replacement of this repo’s own `AGENTS.md` or `CLAUDE.md`.
+2. **Managed blocks** for consumer repos: the package ships `specy_road/templates/specyrd/agents-md-block.md` (the `AGENTS.md` section, Phase 3) and `specy_road/templates/specyrd/claude-md-block.md` (the optional `CLAUDE.md` section, written by `specyrd init --ai claude-code` and re-applied by `specy-road refresh-stubs` when the file exists). Both are **merged** between markers, never a wholesale replacement of this repo’s own `AGENTS.md` or `CLAUDE.md`.
 3. **Branching and registry:** `docs/git-workflow.md` (register on integration branch, then `feature/rm-<codename>`, touch zones).
 4. **Consumer boundary (copy-paste snippets):** Align with shipped stubs under `specy_road/templates/adoption/` in the package (`specy-road-consumer-claude-snippet.md`, `004-specy-road-consumer.mdc`) when merging the **specy-road (consumer)** section and optional Cursor rule—edit the consumer repo’s own files; do not treat those paths as the app’s source tree.
 
@@ -114,6 +114,8 @@ specyrd init --here --ai claude-code
 ```
 
 These install **stub** markdown commands that delegate to **`specy-road`** CLI—they do not redefine validation logic. See **`docs/contributor-guide.md`** (IDE stubs section) or the project `README` for `specyrd` options (`--dry-run`, `--force`, `--role`, generic `--ai-commands-dir`).
+
+Two opt-in `specyrd init` flags add guards rather than stubs: **`--install-orchestration-hooks`** merges the orchestration guard hooks into the harness config (`--ai claude-code`, `codex` or `cursor`), and **`--install-pre-push-hook`** installs `.git/hooks/pre-push`, which refuses pushes from `work/.worktrees/` worker checkouts (see the toolkit's `docs/orchestration-workers.md`). Mention them; do not install either unless the team asks.
 
 If skills already exist under `.agents/skills/` (or pre-0.3.0 stubs under `.cursor/commands/` or `.claude/commands/`), do not duplicate them; point at them and let `specy-road upgrade --prune` migrate old stubs to skills and delete the old ones.
 

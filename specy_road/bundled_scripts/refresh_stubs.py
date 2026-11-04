@@ -221,7 +221,7 @@ def refresh_stubs(
         all_recorded.update(current)   # what this pack just wrote is the kit's for the packs after it
         orphans.extend(_orphans(recorded, current, repo_root))
         # Refresh the block in a CLAUDE.md the consumer has; never create the
-        # file (`specyrd init` does that only with --write-claude-md).
+        # file (`specyrd init` does that only for --ai claude-code).
         if (repo_root / AGENT_GUIDE).is_file():
             apply_guide_and_report(
                 repo_root, prefix, written, agent=agent, dry_run=dry_run
