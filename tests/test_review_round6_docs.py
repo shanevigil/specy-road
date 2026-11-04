@@ -12,7 +12,7 @@ from specy_road.specyrd_init import run_init
 from specy_road.specyrd_skills import generated_match, render_skill
 
 REPO = Path(__file__).resolve().parent.parent
-BLOCK = REPO / "specy_road" / "templates" / "specyrd" / "agents-md-block.md"
+BLOCK = REPO / "specy_road" / "templates" / "specyrd" / "agents-rules.md"
 PROMPT = REPO / "suggested_prompts" / "bootstrap-agents-md.md"
 COMMANDS = REPO / "specy_road" / "templates" / "specyrd" / "commands"
 SKILL = Path(".agents/skills/specyrd-validate/SKILL.md")

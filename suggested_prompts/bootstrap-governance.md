@@ -49,7 +49,7 @@ Create or **replace placeholder content** at these paths (match the structure fr
 Either:
 
 - Run **`specy-road init project`** at `[REPO_ROOT]`** once** (use `--dry-run` first; use `--force` only if intentionally replacing an existing scaffold), **then** edit the governance files above; or  
-- If you cannot run `init project` itself, take the file list from **`specy-road init project --dry-run`** (it is the authoritative scaffold, and changes between versions) rather than a remembered set. Do not hand-copy `AGENTS.md`: its specy-road section is a managed block that `init project` and `specy-road refresh-stubs` write between markers, so run one of them to add it.
+- If you cannot run `init project` itself, take the file list from **`specy-road init project --dry-run`** (it is the authoritative scaffold, and changes between versions) rather than a remembered set. Do not hand-copy `AGENTS.md` or `.specyrd/AGENTS.md`: the first's specy-road section is a managed stub and the second is specy-road's own rules file, both written by `init project` and `specy-road refresh-stubs`, so run one of them to add them.
 
 If the user will run a **separate** prompt to build the full roadmap from existing notes, **do not** deeply author roadmap nodes here—keep a **minimal** graph that validates, or rely on `init project` and governance-only edits.
 

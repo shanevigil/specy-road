@@ -66,8 +66,8 @@ In the Notes app:
    `export --check` and `digest --check` exit 1 with `missing …` because the
    scaffold ships neither generated file (`roadmap.md`,
    `roadmap-context.md`); run `specy-road export` and `specy-road digest`
-   once, then both exit 0. `roadmap/orchestration.yaml`, `model-profiles/` and
-   the `AGENTS.md` managed block are present.
+   once, then both exit 0. `roadmap/orchestration.yaml`, `model-profiles/`, the `AGENTS.md`
+   managed stub, `.specyrd/AGENTS.md` and `.specyrd/AGENTS.team.md` are present.
 2. `specyrd init --ai cursor`, `--ai claude-code`, `--ai codex`: one
    `.agents/skills/<name>/SKILL.md` per command; `.claude/skills/<name>` is a
    symlink to it; `AGENTS.md` is unchanged (its block comes from step 1).
@@ -82,8 +82,8 @@ In the Notes app:
 5. **Upgrade from the last release.** In a scratch repo, scaffold with
    `specy-road==0.2.3` from PyPI in its own venv (`init project`, `specyrd
    init --ai claude-code`), commit, then switch to the candidate venv:
-   `refresh-stubs` gives a managed `AGENTS.md` block with a `## Lean changes
-   and tests` section and leaves every line outside the markers unchanged;
+   `refresh-stubs` gives a managed `AGENTS.md` stub and a `.specyrd/AGENTS.md` with a
+   `## Lean changes and tests` section, and leaves every line outside the markers unchanged;
    `refresh-schemas` and `refresh-profiles` add what is missing;
    `refresh-profiles --force <path>` brings a profile's `## Code and test
    tendencies`; `validate` exits 0 (with or without the CHANGELOG's

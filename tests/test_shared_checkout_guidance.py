@@ -1,9 +1,10 @@
 """The shared-checkout rule reaches every agent entry point, in one wording.
 
 Design note: docs/design-notes/agent-guidance-and-shared-checkouts.md. The
-scaffold AGENTS.md carries the full rule, the CLAUDE.md managed block a pointer
-to it, and the bootstrap prompt the same full rule, so an adopter who merges
-the prompt's bullets by hand gets the text the scaffold would have given them.
+rules file ``.specyrd/AGENTS.md`` carries the full rule, the ``AGENTS.md`` stub
+its core (the only part a Codex session is sure to read), the CLAUDE.md managed
+block an import of the rules file, and the bootstrap prompt the same full rule,
+so an adopter who merges the prompt's bullets by hand gets the scaffold's text.
 """
 
 from __future__ import annotations
@@ -11,10 +12,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from specy_road.agent_guide_block import render_guide_lines
-from specy_road.agents_md_block import render_agents_lines
+from specy_road.agents_md_block import render_agents_lines, render_rules
 
 REPO = Path(__file__).resolve().parent.parent
-AGENTS = "\n".join(render_agents_lines())
+AGENTS = render_rules()
 PROMPT = REPO / "suggested_prompts" / "bootstrap-agents-md.md"
 
 _SENTENCES = (
@@ -56,8 +57,12 @@ def test_suggested_prompts_index_lists_every_kept_prompt() -> None:
     assert "docs/orchestration.md" in text
 
 
-def test_claude_md_block_points_at_it() -> None:
-    text = "\n".join(render_guide_lines("sr/"))
-    assert "Other agents share this checkout" in text
-    assert "opt-in tool-call guard refuses stash, reset, branch switches and `-A`/`-a`" in text
-    assert "Full rule in `sr/AGENTS.md`" in text
+def test_claude_md_block_imports_it_and_the_agents_md_stub_keeps_its_core() -> None:
+    lines = render_guide_lines("sr/")
+    assert "@sr/.specyrd/AGENTS.md" in lines and "@sr/.specyrd/AGENTS.team.md" in lines
+    stub = "\n".join(render_agents_lines())
+    assert "other agents may be working here" in stub and "`git worktree list`" in stub
+    assert "discard changes (`git restore`, `git checkout -- <path>`)" in stub
+    assert "opt-in tool-call guard refuses all of these, and `git add -A`/`commit -a`" in stub
+    assert "never run `specy-road abort-task-pickup` as cleanup after `finish-this-task`" in stub
+    assert "commit only with `git commit --only <paths>`" in stub

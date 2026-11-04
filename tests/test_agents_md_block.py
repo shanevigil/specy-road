@@ -1,6 +1,8 @@
-"""The `AGENTS.md` managed block: specy-road owns a section, the project owns the file.
+"""The `AGENTS.md` managed stub and the files under `.specyrd/` it points at.
 
-Design: docs/design-notes/agent-guidance-and-shared-checkouts.md, decision 3.
+specy-road owns a section of `AGENTS.md` and the whole of `.specyrd/AGENTS.md`; the
+project owns the rest of `AGENTS.md` and `.specyrd/AGENTS.team.md`.
+Design: docs/design-notes/agent-guidance-and-shared-checkouts.md, decision 3 and 2026-11-04.
 Mirrors tests/test_specyrd_init_guide_block.py for `CLAUDE.md`.
 """
 
@@ -17,17 +19,22 @@ from specy_road.agents_md_block import (
     AGENTS_MD,
     CLAUDE_MD_TARGET_LINES,
     CODEX_PROJECT_DOC_MAX_BYTES,
+    LOCAL_MD,
+    RULES_MD,
+    TEAM_MD,
     agents_md_block_state,
+    apply_agents_files,
     apply_agents_md_block,
     print_injected_context,
     render_agents_lines,
+    render_rules,
     warn_if_agents_md_block_stale,
     warn_if_context_over_limits,
     warn_missing_load_order_paths,
 )
 from specy_road.bundled_scripts.refresh_stubs import refresh_stubs
 from specy_road.init_project import run_init_project
-from specy_road.managed_block import CREATED, HTML_COMMENT, UNCHANGED, UPDATED
+from specy_road.managed_block import CREATED, HTML_COMMENT, REFUSED, UNCHANGED, UPDATED
 from specy_road.specyrd_init import run_init
 
 TEMPLATES = Path(__file__).resolve().parent.parent / "specy_road" / "templates" / "specyrd"
@@ -48,8 +55,15 @@ def test_fresh_init_project_writes_agents_md_with_the_block(tmp_path: Path) -> N
     assert "specy-road managed block" in text
     assert f"Written by specy-road {__version__}" in text
     assert f"(minimum {__version__})" in text
-    assert "**Precedence.**" in text and "stop\nand ask a human" in text
-    assert "**Shared checkouts and other agents.**" in text
+    assert "**Read `.specyrd/AGENTS.md` before any roadmap, registry or git work:**" in text
+    assert "**Precedence.**" not in text   # the full rules live in the file specy-road owns
+    rules = (tmp_path / RULES_MD).read_text(encoding="utf-8")
+    assert rules == render_rules()
+    assert "**Precedence.**" in rules and "stop\nand ask a human" in rules
+    assert "**Shared checkouts and other agents.**" in rules
+    assert (tmp_path / TEAM_MD).read_text(encoding="utf-8").startswith("# specy-road: this repository's additions")
+    assert not (tmp_path / LOCAL_MD).exists()
+    assert LOCAL_MD in (tmp_path / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert agents_md_block_state(tmp_path) == "current"
 
 
@@ -84,6 +98,26 @@ def test_block_is_idempotent(tmp_path: Path) -> None:
     assert apply_agents_md_block(tmp_path) == UNCHANGED
 
 
+def test_rules_file_is_rewritten_and_the_team_addendum_never_is(tmp_path: Path) -> None:
+    assert apply_agents_files(tmp_path) == {AGENTS_MD: UPDATED, RULES_MD: CREATED, TEAM_MD: CREATED}
+    assert set(apply_agents_files(tmp_path).values()) == {UNCHANGED}
+    (tmp_path / RULES_MD).write_text("edited by hand\n", encoding="utf-8")
+    (tmp_path / TEAM_MD).write_text("# Ours\n- Deploys need a PM sign-off.\n", encoding="utf-8")
+    assert apply_agents_files(tmp_path) == {AGENTS_MD: UNCHANGED, RULES_MD: UPDATED, TEAM_MD: UNCHANGED}
+    assert (tmp_path / RULES_MD).read_text(encoding="utf-8") == render_rules()
+    assert (tmp_path / TEAM_MD).read_text(encoding="utf-8") == "# Ours\n- Deploys need a PM sign-off.\n"
+
+
+def test_rules_files_are_never_written_through_a_link_out_of_the_project(tmp_path: Path) -> None:
+    project, outside = tmp_path / "project", tmp_path / "elsewhere"
+    project.mkdir()
+    outside.mkdir()
+    (project / ".specyrd").symlink_to(outside, target_is_directory=True)
+    outcomes = apply_agents_files(project)
+    assert outcomes[RULES_MD] == REFUSED and outcomes[TEAM_MD] == REFUSED
+    assert not any(outside.iterdir())
+
+
 def test_dry_run_reports_without_writing(tmp_path: Path, capsys) -> None:
     assert run_init_project(tmp_path, dry_run=True) == 0
     assert "would write AGENTS.md (created)" in capsys.readouterr().out
@@ -93,13 +127,21 @@ def test_dry_run_reports_without_writing(tmp_path: Path, capsys) -> None:
 def test_validate_warning_states(tmp_path: Path, capsys) -> None:
     warn_if_agents_md_block_stale(tmp_path)
     assert "has no specy-road section" in capsys.readouterr().err
-    apply_agents_md_block(tmp_path)
+    apply_agents_files(tmp_path)
     warn_if_agents_md_block_stale(tmp_path)
     assert capsys.readouterr().err == ""
+    rules = tmp_path / RULES_MD
+    rules.write_text(render_rules().replace("floor", "ceiling"), encoding="utf-8")
+    warn_if_agents_md_block_stale(tmp_path)
+    assert f"{RULES_MD} differs from what specy-road {__version__} writes" in capsys.readouterr().err
+    rules.unlink()
+    warn_if_agents_md_block_stale(tmp_path)
+    assert f"{RULES_MD} is missing" in capsys.readouterr().err
     p = tmp_path / AGENTS_MD
     p.write_text(p.read_text(encoding="utf-8").replace("floor", "ceiling"), encoding="utf-8")
     warn_if_agents_md_block_stale(tmp_path)
-    assert f"differs from what specy-road {__version__} writes" in capsys.readouterr().err
+    assert f"{AGENTS_MD} has a specy-road section that differs from what specy-road {__version__} writes" \
+        in capsys.readouterr().err
 
 
 def test_validate_names_load_order_files_the_project_lacks(tmp_path: Path, capsys) -> None:
@@ -113,7 +155,7 @@ def test_validate_names_load_order_files_the_project_lacks(tmp_path: Path, capsy
     warn_missing_load_order_paths(tmp_path)
     err = capsys.readouterr().err
     assert err.count("\n") == 1
-    assert "names docs/supply-chain-security.md, shared/README.md, which do not exist" in err
+    assert f"the {RULES_MD} load order names docs/supply-chain-security.md, shared/README.md, which do not exist" in err
 
 
 def test_refresh_stubs_reapplies_the_block(tmp_path: Path) -> None:
@@ -312,15 +354,19 @@ def test_codex_meters_a_nonempty_override_instead_of_agents_md(tmp_path: Path, c
     assert "AGENTS.md" not in err
 
 
-def test_block_text_is_the_full_rule_set() -> None:
-    text = "\n".join(render_agents_lines())
-    for needle in ("### Load order", "## Finding things", "**Task pickup:**", "**Review roles:**",
-                   "**Running many leaves:**", "**When nothing is pickable:**"):
+def test_rules_file_is_the_full_rule_set_and_the_stub_points_at_it() -> None:
+    text = render_rules()
+    for needle in ("### Load order", "## Roadmap model", "## Finding things", "**Task pickup:**",
+                   "**Review roles:**", "**Running many leaves:**", "**When nothing is pickable:**",
+                   "`.specyrd/AGENTS.team.md`", "`.specyrd/AGENTS.local.md`", "never relax"):
         assert needle in text, needle
-    assert "<!--" not in text   # provenance stays in the template
+    stub = "\n".join(render_agents_lines())
+    for needle in ("`.specyrd/AGENTS.md`", "`.specyrd/AGENTS.team.md`", "`.specyrd/AGENTS.local.md`", "never relax"):
+        assert needle in stub, needle
+    assert "<!--" not in text and "<!--" not in stub   # provenance stays in the templates
 
 
-@pytest.mark.parametrize("name", ["agents-md-block.md", "claude-md-block.md"])
+@pytest.mark.parametrize("name", ["agents-md-block.md", "agents-rules.md", "claude-md-block.md"])
 def test_every_rule_in_a_block_template_is_followed_by_its_provenance(name: str) -> None:
     lines = (TEMPLATES / name).read_text(encoding="utf-8").splitlines()
     missing = []

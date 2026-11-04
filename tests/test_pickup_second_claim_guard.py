@@ -15,7 +15,7 @@ from pathlib import Path
 
 from tests.test_baseline_gate_cli import FEATURE, SHEET, _branches, _git, _pickup, _project, _run
 
-from specy_road.agents_md_block import render_agents_lines
+from specy_road.agents_md_block import render_rules
 from specy_road.bundled_scripts.do_next_task_args import parse_do_next_task_args
 from specy_road.bundled_scripts.planning_artifacts import expected_planning_rel
 
@@ -108,8 +108,8 @@ def test_a_leaf_finished_in_pr_mode_does_not_block_the_next_pickup(tmp_path: Pat
     assert "leaf-two" in _registry(root, "origin/main")
 
 
-def test_the_agents_md_stub_describes_pickups_exit_6_and_its_override() -> None:
-    line = next(ln for ln in render_agents_lines() if "**When nothing is pickable:**" in ln)
+def test_the_agent_rules_describe_pickups_exit_6_and_its_override() -> None:
+    line = next(ln for ln in render_rules().splitlines() if "**When nothing is pickable:**" in ln)
     assert "exit `6` is a claim this checkout holds" in line
     assert "`--allow-second-claim`" in line and "`--resume-in-flight` (grind)" in line
     assert parse_do_next_task_args(["--allow-second-claim"]).allow_second_claim

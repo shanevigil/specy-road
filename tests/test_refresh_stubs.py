@@ -79,7 +79,14 @@ def test_a_repo_without_a_stub_pack_still_gets_the_managed_blocks(tmp_path: Path
     assert "specy-road managed block" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
     assert ".specyrd/cache/" in (tmp_path / ".gitignore").read_text(encoding="utf-8")
     assert not (tmp_path / ".specyrd" / "manifest.json").exists()
+    assert not (tmp_path / "CLAUDE.md").exists()   # never created without the claude-code pack
     assert refresh_stubs(tmp_path) == ([], [])
+
+    # One the consumer has gets the block (so the @ imports) whichever packs are installed.
+    (tmp_path / "CLAUDE.md").write_text(CONSUMER_CLAUDE_MD, encoding="utf-8")
+    assert refresh_stubs(tmp_path)[0] == ["CLAUDE.md (updated)"]
+    claude = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
+    assert claude.startswith(CONSUMER_CLAUDE_MD) and "@.specyrd/AGENTS.md" in claude.splitlines()
 
 
 def test_a_manifest_without_packs_reports_no_stub_skew(tmp_path: Path) -> None:

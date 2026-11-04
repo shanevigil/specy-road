@@ -1,7 +1,9 @@
-"""Rules the CLI or the tool-call guard enforces are one-line pointers in the managed blocks (M5.4).
+"""Rules the CLI or the tool-call guard enforces are one-line pointers in the agent rules (M5.4).
 
 Every sentence taken out of a block is listed here with the pointer that replaced
 it and the test that proves the CLI enforces it, so no rule is dropped silently.
+The rules moved to ``.specyrd/AGENTS.md`` on 2026-11-04; the rows that pinned the
+``CLAUDE.md`` block now pin the ``AGENTS.md`` stub, which carries those core rules.
 """
 
 from __future__ import annotations
@@ -11,13 +13,12 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.agent_guide_block import render_guide_lines
-from specy_road.agents_md_block import injected_context, render_agents_lines
+from specy_road.agents_md_block import CLAUDE_MD_TARGET_LINES, injected_context, render_agents_lines, render_rules
 from specy_road.init_project import run_init_project
 
 REPO = Path(__file__).resolve().parent.parent
-AGENTS = "\n".join(render_agents_lines())
-CLAUDE = "\n".join(render_guide_lines())
+AGENTS = render_rules()
+STUB = "\n".join(render_agents_lines())
 
 #: (block, removed text, pointer that carries its fact now, ``tests/<file>::<test>`` that enforces it).
 #: One row per fact, so a pointer that drops a qualifier fails its own row.
@@ -71,14 +72,14 @@ REMOVED = [
     (AGENTS, "in a tree another session may be using; use your own",
      "The opt-in tool-call guard (`specy-road session guard`) refuses these while another session is live",
      "tests/test_tool_call_guard.py::test_deny_only_with_another_live_session"),
-    (CLAUDE, "commit by explicit path, never `-A`/`-a`;",
-     "opt-in tool-call guard refuses stash, reset, branch switches and `-A`/`-a`", "tests/test_tool_call_guard.py::test_destructive_commands_are_classified"),
-    (CLAUDE, "no stash, reset, or branch switches here", "branch switches and `-A`/`-a` while another session is live",
+    (STUB, "commit by explicit path, never `-A`/`-a`;",
+     "opt-in tool-call guard refuses all of these, and `git add -A`/`commit -a`", "tests/test_tool_call_guard.py::test_destructive_commands_are_classified"),
+    (STUB, "no stash, reset, or branch switches here", "`git add -A`/`commit -a`, while another session is live",
      "tests/test_tool_call_guard.py::test_deny_only_with_another_live_session"),
-    (CLAUDE, "Register the claim on the integration branch, then work on `feature/rm-<codename>`.",
+    (STUB, "Register the claim on the integration branch, then work on `feature/rm-<codename>`.",
      "`specy-road do-next-available-task` registers the claim on the integration branch, then creates "
      "`feature/rm-<codename>`", "tests/test_do_next_task_pickup.py::test_pickup_git_order_after_sync"),
-    (CLAUDE, "The branch name comes from the node's `codename`;",
+    (STUB, "The branch name comes from the node's `codename`;",
      "creates `feature/rm-<codename>`", "tests/test_do_next_task_pickup.py::test_pickup_git_order_after_sync"),
 ]
 
@@ -101,8 +102,13 @@ def test_each_removed_sentence_is_a_pointer_to_an_enforcement_point(
 
 #: What the context meter reported for a fresh ``init project`` section before M5.4.
 _BEFORE_LINES, _BEFORE_BYTES = 52, 7679
-#: Rules added to the section since M5.4, each approved by the maintainer: the machine-specific values rule (2026-11-04).
-_ADDED_LINES, _ADDED_BYTES = 1, 119
+#: The ``AGENTS.md`` stub that replaced the full section on 2026-11-04 (it was 52 lines, 7,797 bytes then).
+#: Codex reads only this, so a rule added to it needs the maintainer's approval and raises these.
+#: 17 / 2,063 since the review restored the discard and abort-after-finish rules (2026-11-04).
+_STUB_LINES, _STUB_BYTES = 17, 2063
+#: ``.specyrd/AGENTS.md`` when it was created (2026-11-04): the old section plus the non-Claude part of the
+#: old ``CLAUDE.md`` block. Claude Code imports it whole; Codex never reads it.
+_RULES_LINES, _RULES_BYTES = 68, 9107
 
 
 def test_the_meter_reports_a_shorter_section_than_before(tmp_path: Path, monkeypatch) -> None:
@@ -112,4 +118,12 @@ def test_the_meter_reports_a_shorter_section_than_before(tmp_path: Path, monkeyp
     run_init_project(tmp_path)
     codex = injected_context(tmp_path)["Codex"]
     section = next(f for f in codex if f.rel == "AGENTS.md")
-    assert section.block_lines < _BEFORE_LINES + _ADDED_LINES and section.block_size < _BEFORE_BYTES + _ADDED_BYTES
+    assert section.block_lines < _BEFORE_LINES and section.block_size < _BEFORE_BYTES
+    assert section.block_lines <= _STUB_LINES and section.block_size <= _STUB_BYTES
+    assert [f.rel for f in codex] == ["AGENTS.md"]   # the rules file costs Codex nothing
+
+
+def test_the_rules_file_stays_within_its_budget() -> None:
+    lines, size = len(AGENTS.splitlines()), len(AGENTS.encode("utf-8"))
+    assert lines <= _RULES_LINES and size <= _RULES_BYTES
+    assert lines < CLAUDE_MD_TARGET_LINES

@@ -10,7 +10,7 @@ order, and nothing else:
 
 1. ``refresh-schemas``  — ``schemas/``
 2. ``refresh-profiles`` — missing ``model-profiles/`` files, never overwriting
-3. shipped docs         — the ``docs/`` files the ``AGENTS.md`` load order names,
+3. shipped docs         — the ``docs/`` files the ``.specyrd/AGENTS.md`` load order names,
    when missing (never overwriting)
 4. ``refresh-stubs``    — IDE skills and the managed blocks (``--prune`` deletes
    the stubs this version no longer installs, and ``.cursor``/``.codex`` copies
@@ -31,11 +31,11 @@ import sys
 from pathlib import Path
 
 from specy_road import __version__
-from specy_road.agents_md_block import load_order_paths, render_agents_lines
+from specy_road.agents_md_block import load_order_paths, print_migration, render_rules
 from specy_road.bundled_scripts.digest_cli import cmd_digest
 from specy_road.bundled_scripts.refresh_profiles import refresh_profiles
 from specy_road.bundled_scripts.refresh_schemas import SCHEMAS_DIRNAME, missing_schema_names, refresh_schemas
-from specy_road.bundled_scripts.refresh_stubs import _report, _resolve_root, refresh_stubs
+from specy_road.bundled_scripts.refresh_stubs import _prefix, _report, _resolve_root, refresh_stubs
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.digest import DEFAULT_OUTPUT
 from specy_road.init_project import project_template_root
@@ -62,7 +62,7 @@ def copy_missing_docs(project: Path, *, dry_run: bool = False) -> list[str]:
     """
     src_root = project_template_root()
     copied: list[str] = []
-    for rel in load_order_paths(render_agents_lines()):
+    for rel in load_order_paths(render_rules().splitlines()):
         src, dst = src_root / rel, project / rel
         if not rel.startswith("docs/") or not src.is_file() or dst.exists() or dst.is_symlink():
             continue
@@ -96,11 +96,12 @@ def _refresh(project: Path, checkout: Path, *, dry_run: bool, prune: bool) -> No
     _section("shipped docs")
     docs = copy_missing_docs(project, dry_run=dry_run)
     for rel in docs:
-        print(f"{verb} {rel} (named in the AGENTS.md load order)")
+        print(f"{verb} {rel} (named in the .specyrd/AGENTS.md load order)")
     if not docs:
         print("every shipped doc the load order names is present")
 
     _section("refresh-stubs")
+    print_migration(project, _prefix(checkout, project))
     written, orphans = refresh_stubs(checkout, dry_run=dry_run, project=project, prune=prune)
     if written or orphans:
         _report(written, orphans, dry_run=dry_run, pruned=prune, footer=False)
