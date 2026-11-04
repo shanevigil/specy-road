@@ -2,7 +2,7 @@
 
 The skill templates and the ``AGENTS.md`` block say "see ``docs/X.md``", but
 ``docs/`` is the toolkit's, not the consumer's: ``init project`` ships only
-``docs/supply-chain-security.md``. In a consumer repo every other reference
+the files under ``templates/project/docs/`` (see ``SHIPPED_DOCS``). In a consumer repo every other reference
 named a file that does not exist (rc1 feedback: ``docs/brainstorming.md``).
 Rendering rewrites each one to the toolkit's GitHub copy at the installed
 version's tag, so the doc matches the CLI that wrote the skill.
@@ -11,13 +11,16 @@ version's tag, so the doc matches the CLI that wrote the skill.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from specy_road import __version__
 
 DOCS_URL = "https://github.com/shanevigil/specy-road/blob/{ref}/docs/{name}"
 
 #: Docs ``init project`` copies into the consumer repo; those references stay local.
-SHIPPED_DOCS = frozenset({"supply-chain-security.md"})
+SHIPPED_DOCS = frozenset(
+    p.name for p in (Path(__file__).parent / "templates" / "project" / "docs").glob("*.md")
+)
 
 _DOC_REF = re.compile(r"(?<![\w/.-])docs/([\w-]+\.md)")
 _RELEASE = re.compile(r"^(\d+\.\d+\.\d+)(?:(rc)(\d+))?$")
