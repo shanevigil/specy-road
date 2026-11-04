@@ -55,6 +55,7 @@ from specy_road.review_write_check import (  # re-exported: the post-run write c
     RootFence,
     Snapshot,
     harness_files,
+    prepare_harness_files,
     runtime_files,
     snapshot,
     written,
@@ -279,8 +280,9 @@ def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Pat
     try:
         with review_run_lock(reviews):
             log.touch()   # created now, so the turn's appends move nothing in the hand-off root
+            prepare_harness_files(reviews, model)   # and the answer and notes, written in place during the turn
             before = snapshot(root, reviews, model)
-            fence = RootFence(reviews, harness_files(reviews, model))
+            fence = RootFence(reviews)
             rc = run_logged(launch, adapter, root, log, transcript)
             outcome = file_review(root, reviews.name, model, reviews, before=before,
                                   after=snapshot(root, reviews, model),

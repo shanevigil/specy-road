@@ -221,3 +221,34 @@ def test_review_delegate_cli_fails_a_created_written_and_deleted_file_and_files_
     assert not scratch.exists()                                              # nothing is left behind
     assert code == 1 and run["outcome"] == "review_failure" and wrote_only(run["reason"], where)
     assert not rf.review_path(repo, "M1.1", "opus").exists()
+
+
+# --- an allowed answer or notes write in the same turn hides nothing (Sol, a158edd9) --------------------------------
+
+def _allowed_text(allowed: str, step: dict) -> str:
+    """What the harness writes there: the verdict JSON as Codex's ``-o`` answer, or draft notes."""
+    return json.dumps(step["answer"]) if allowed.startswith("OUTPUT-") else "draft\n"
+
+
+@pytest.mark.parametrize("allowed", ["notes-opus.md", "OUTPUT-opus.json"])
+def test_review_delegate_cli_fails_a_transient_hand_off_file_beside_an_allowed_write(tmp_path: Path, capsys,
+                                                                                     allowed: str) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    root, step = rf.reviews_dir(repo, "M1.1"), verdict_step(repo)
+    scratch, text = root / "scratch.tmp", _allowed_text(allowed, step)
+    set_steps(repo, spec, {**step, "write": {"path": str(root / allowed), "text": text},
+                           "transient": str(scratch)})                  # both in one harness turn
+    code, run = _delegate_cli(repo, capsys)
+    assert (root / allowed).read_text() == text and not scratch.exists()
+    assert code == 1 and run["outcome"] == "review_failure" and wrote_only(run["reason"], "work/reviews/M1.1")
+    assert not rf.review_path(repo, "M1.1", "opus").exists()
+
+
+@pytest.mark.parametrize("allowed", ["notes-opus.md", "OUTPUT-opus.json"])
+def test_an_allowed_answer_or_notes_write_alone_is_still_filed(tmp_path: Path, capsys, allowed: str) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    step = verdict_step(repo)
+    set_steps(repo, spec, {**step, "write": {"path": str(rf.reviews_dir(repo, "M1.1") / allowed),
+                                             "text": _allowed_text(allowed, step)}})
+    code, run = _delegate_cli(repo, capsys)
+    assert code == 0 and run["outcome"] == "recorded", run["reason"]

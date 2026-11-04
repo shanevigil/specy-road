@@ -45,8 +45,8 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.orchestration_role_env import harness_env
 from specy_road.review_files import reviews_dir
 from specy_road.review_record_write import (Outcome, ReviewRunBusy, RootFence, file_review, final_output,
-                                            harness_files, output_path, review_run_lock, reviewer_env, run_text,
-                                            snapshot, write_schema)
+                                            output_path, prepare_harness_files, review_run_lock, reviewer_env,
+                                            run_text, snapshot, write_schema)
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.reviewer_run_failure import (_now, _read_json, _save, capacity_error, close_run, gate_policy_summary,
                                              harness_error_line, record_reviewer_failure_event, run_path as _run_path,
@@ -144,7 +144,7 @@ def _turn(h: _Harness, launch: Launch, log: Path) -> dict[str, Any]:
     with log.open("a", encoding="utf-8") as raw:
         raw.write(f"[review delegate] {_now()} {launch.argv[0]}\n")
         # specy-road changes the hand-off root's entries only between turns: one moving during the turn is the harness's
-        fence = RootFence(reviews_dir(h.repo_root, h.node_id), harness_files(reviews_dir(h.repo_root, h.node_id), h.model))
+        fence = RootFence(reviews_dir(h.repo_root, h.node_id))
         try:
             proc = subprocess.Popen(launch.argv, cwd=h.cwd, env=env, text=True, encoding="utf-8",
                                     errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -284,7 +284,7 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
         raise DelegateError(str(e)) from None
     with lock:
         _save(path, run)
-        output_path(reviews, model).unlink(missing_ok=True)   # a stale answer never stands in for this run's
+        prepare_harness_files(reviews, model)   # the answer emptied (never a stale one), both written in place
         try:
             # M8.3's read-only check and filing are for roadmap reviews; a chore reviewer files its own verdict file.
             before = snapshot(cwd, reviews, model) if chore is None else None

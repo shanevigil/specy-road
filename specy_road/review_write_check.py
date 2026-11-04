@@ -173,41 +173,42 @@ def snapshot(cwd: Path, reviews: Path, model: str) -> Snapshot:
 
 
 def harness_files(reviews: Path, model: str) -> tuple[str, ...]:
-    """The files a reviewer's harness may create or replace in the hand-off root during its turn: Codex's ``-o``
-    answer and the reviewer's notes (the other :func:`runtime_files` are specy-road's, written between turns)."""
+    """The files a reviewer's harness may write in the hand-off root during its turn: Codex's ``-o`` answer and the
+    reviewer's notes (the other :func:`runtime_files` are specy-road's, written between turns)."""
     return (f"{OUTPUT_PREFIX}{model}.json", f"notes-{model}.md")
+
+
+def prepare_harness_files(reviews: Path, model: str) -> None:
+    """Create :func:`harness_files` before the run, the answer emptied (a stale one never stands in for this run's)
+    and the notes kept, so writing them in place during a turn changes no entry of the hand-off root and
+    :class:`RootFence` needs no exception for them."""
+    reviews.mkdir(parents=True, exist_ok=True)
+    answer, notes = (reviews / name for name in harness_files(reviews, model))
+    answer.write_text("", encoding="utf-8")
+    notes.touch()
 
 
 class RootFence:
     """The hand-off root's own metadata across one harness turn. specy-road changes that directory's entries only
-    between turns (the run record's rename, the schema file), so a move of its mtime, ctime or link count during the
-    turn is the harness's: a file created, renamed or deleted there. It is explained only by one of
-    :func:`harness_files` appearing, going or being replaced in the same turn (which then also hides any other such
-    change in that turn); otherwise :meth:`moved` is true and the run is a review failure."""
+    between turns (the run record's rename, the schema file), and the harness's own files exist before the turn
+    (:func:`prepare_harness_files`), so any move of its mtime, ctime or link count during the turn is a file
+    created, renamed or deleted there: :meth:`moved` is then true and the run is a review failure, whatever else
+    the turn wrote. A harness that replaces its answer or notes by renaming a temporary file over them is caught
+    too; both are written in place."""
 
-    def __init__(self, root: Path, allowed: tuple[str, ...]) -> None:
-        self.root, self.allowed = root, allowed
+    def __init__(self, root: Path) -> None:
+        self.root = root
         self.before = self._state()
 
-    def _state(self) -> tuple[Any, ...] | None:
+    def _state(self) -> tuple[int, int, int] | None:
         try:
             st = os.stat(self.root)
         except OSError:
             return None
-        ids = []
-        for name in self.allowed:
-            try:
-                f = os.stat(self.root / name, follow_symlinks=False)
-                ids.append((f.st_dev, f.st_ino))
-            except OSError:
-                ids.append(None)
-        return (st.st_mtime_ns, st.st_ctime_ns, st.st_nlink), tuple(ids)
+        return st.st_mtime_ns, st.st_ctime_ns, st.st_nlink
 
     def moved(self) -> bool:
-        after = self._state()
-        if after is None or self.before is None:
-            return after != self.before
-        return after[0] != self.before[0] and after[1] == self.before[1]
+        return self._state() != self.before
 
 
 def written(before: Snapshot, after: Snapshot) -> list[str]:
