@@ -1,5 +1,7 @@
 # Implementation summary: M11.75 — reviewer-probe-rules
 
+**Merge (6efac279):** merged origin/WIP/improvements-0-3-1 (db320d0d). The reviewer prompt keeps this leaf's probe rules plus integration's `verify_cmd_lines` and `reviewer_lesson_lines`. `REMOVED_TEXT_LINES` (text unchanged) moved into `review_record_rules.py` to keep `role_prompt.py` at 397/400 lines. This leaf's two touch-zone additions now sit in M11.75's new chunk, `M11__fad495.json`. The round-2 and round-3 changes are intact. Checks at the merge: `pytest -n 4` on the 50 test files that import the changed modules → 650 passed; file-limits OK; validate OK.
+
 ## Round 3 (after the gpt-5.6-sol-medium block at c5944c15)
 
 The block's `required_changes`: refuse an approve whose findings or notes plainly describe a defect even when they avoid the trigger vocabulary. Its example was a finding that read "Valid input raises ValueError, so the command exits 1 instead of filing the review." It also asked for a public-CLI regression using that wording, asserting that no review or history record is written and that the error names the offending finding. Commit c62f1cf9:
