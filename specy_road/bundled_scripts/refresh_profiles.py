@@ -12,7 +12,8 @@ take the toolkit's copy over yours.
 Two regions of ``model-profiles/`` are rendered from the harness facts fixture
 (:mod:`specy_road.harness_facts`): each profile's ``access.cli`` and the README's
 harness block. ``--check`` reports a hand edit to either as drift (exit 1) and a
-README that predates the block as behind; ``--render`` rewrites them. ``--capture
+README that predates the block as behind, and fails on a Codex memory override
+whose feature the accepted ``codex features list`` capture does not list; ``--render`` rewrites them. ``--capture
 <harness>`` classifies a new ``--version``/``--help`` capture against the accepted
 one and fails while a new workflow identifier has no relationship in the fixture;
 ``--accept`` then stores it as the accepted capture.
@@ -30,6 +31,7 @@ from specy_road import harness_facts as hf
 from specy_road.init_project import index_bundled_profile_names, project_template_root
 from specy_road.model_profiles import PROFILES_REL
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from specy_road.worker_adapter_codex import CODEX_MEMORY_OFF
 
 
 def bundled_profiles_dir() -> Path:
@@ -108,6 +110,16 @@ def _report(plan: hf.RenderPlan, *, check: bool) -> int:
     elif check:
         print("no drift from harness-facts.yaml")
     return 1 if check and drift else 0
+
+
+def _check_overrides() -> int:
+    """1 when a Codex memory override the launch passes names a feature the accepted capture does not list."""
+    capture = hf.read_capture(hf.bundled_captures_dir() / "codex")
+    unlisted = hf.unlisted_overrides(CODEX_MEMORY_OFF, capture)
+    for key in unlisted:
+        print(f"unlisted: codex -c {key}: the captured `codex features list` ({hf.CODEX_FEATURES_FILE}) does not "
+              "list its feature, so the launch would pass it and Codex ignore it", file=sys.stderr)
+    return 1 if unlisted else 0
 
 
 def _report_render(root: Path, plan: hf.RenderPlan, *, dry_run: bool) -> int:
@@ -200,7 +212,8 @@ def _parser() -> argparse.ArgumentParser:
     )
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--check", action="store_true",
-                      help="Report rendered regions that differ from harness-facts.yaml; exit 1 on drift. Writes nothing.")
+                      help="Report rendered regions that differ from harness-facts.yaml, and Codex memory overrides the "
+                           "captured features list does not list; exit 1 on either. Writes nothing.")
     mode.add_argument("--render", action="store_true",
                       help="Rewrite the rendered regions (each profile's access.cli, the README's harness block).")
     mode.add_argument("--capture", metavar="HARNESS",
@@ -240,7 +253,7 @@ def main(argv: list[str] | None = None) -> None:
         if args.check or args.render:
             plan = render_profiles(root, dry_run=args.check or args.dry_run)
             if args.check:
-                raise SystemExit(_report(plan, check=True))
+                raise SystemExit(max(_report(plan, check=True), _check_overrides()))
             raise SystemExit(_report_render(root, plan, dry_run=args.dry_run))
         _copy_missing(root, args)
         _report(hf.plan_render(root, hf.load_facts()), check=False)

@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -48,6 +49,8 @@ WORKFLOW_WORDS = (
     "goal", "loop", "queue", "persist", "gist", "fleet", "teleport", "remote", "spawn",
 )
 VERSION_FILE = "version.txt"
+#: The captured ``codex features list``: what a Codex ``-c`` override is checked against.
+CODEX_FEATURES_FILE = "inventory-features.txt"
 #: ``access:`` and its block mapping: every following line that is blank or indented.
 _ACCESS_BLOCK = re.compile(r"^access:[ \t]*(?:#[^\n]*)?$(?:\n(?:[ \t][^\n]*)?)*", re.MULTILINE)
 _CLI_LINE = re.compile(r"^  cli:[^\n]*$", re.MULTILINE)
@@ -354,6 +357,15 @@ def classify_capture(facts: dict[str, Any], harness_id: str, old: dict[str, str]
             diff.other.append(ident)
     diff.removed = sorted(before - after)
     return diff
+
+
+def unlisted_overrides(overrides: Sequence[str], capture: dict[str, str]) -> list[str]:
+    """The ``-c`` keys in ``overrides`` whose feature the captured ``codex features list`` does not list:
+    ``features.<name>`` names the feature, any other key the feature its table is named for
+    (``memories.use_memories``). Such a key would be passed and ignored, so ``refresh-profiles --check`` fails on it."""
+    listed = identifiers(CODEX_FEATURES_FILE, capture.get(CODEX_FEATURES_FILE, ""))
+    keys = [b.split("=", 1)[0] for a, b in zip(overrides, overrides[1:]) if a == "-c"]
+    return [k for k in keys if k.removeprefix("features.").split(".")[0] not in listed]
 
 
 def write_capture(directory: Path, capture: dict[str, str]) -> None:

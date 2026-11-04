@@ -22,18 +22,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: headless-limits-denials
-    node_id: M11.62
-    branch: feature/rm-headless-limits-denials
-    touch_zones:
-      - specy_road/worker_adapters.py
-      - specy_road/worker_adapter_parsers.py
-      - specy_road/worker_runner.py
-      - docs/orchestration-workers.md
-      - tests/
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: reviewer-probe-rules
     node_id: M11.75
     branch: feature/rm-reviewer-probe-rules
@@ -44,18 +32,44 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: nested-repo-worktrees
-    node_id: M11.22
-    branch: feature/rm-nested-repo-worktrees
+  - codename: worktree-env-setup
+    node_id: M11.30
+    branch: feature/rm-worktree-env-setup
     touch_zones:
       - specy_road/git_workflow_config.py
       - specy_road/worker_ops.py
-      - specy_road/worker_reconcile.py
-      - specy_road/finish_land_integration.py
+      - specy_road/bundled_scripts/do_next_task_pickup_helpers.py
+      - specy_road/bundled_scripts/doctor.py
       - specy_road/templates/project/schemas/git-workflow.schema.json
       - docs/git-workflow.md
       - tests/
-      - specy_road/bundled_scripts/review_packet.py
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: worktree-prune
+    node_id: M11.31
+    branch: feature/rm-worktree-prune
+    touch_zones:
+      - specy_road/bundled_scripts/worktree_cli.py
+      - specy_road/worktree_prune.py
+      - specy_road/cli.py
+      - docs/git-workflow.md
+      - tests/
+    started: '2026-11-03'
+    owner: savigil
+    implementation_review: pending
+  - codename: dynamic-routing-reviewers
+    node_id: M11.33
+    branch: feature/rm-dynamic-routing-reviewers
+    touch_zones:
+      - specy_road/orchestration_config.py
+      - specy_road/review_gate.py
+      - specy_road/worker_adapter_parsers.py
+      - specy_road/worker_runner.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - docs/orchestration.md
+      - docs/orchestration-models.md
+      - tests/
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending

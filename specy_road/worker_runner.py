@@ -28,7 +28,7 @@ from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
 from specy_road.orchestration_role_env import harness_env
 from specy_road.runtime_paths import project_prefix
 from specy_road.worker_adapter_parsers import USAGE_FIELDS, usage_text
-from specy_road.worker_adapters import Launch, adapter_for
+from specy_road.worker_adapters import ClaudeCode, Launch, adapter_for
 from specy_road.worker_exit import exit_event
 from specy_road.worker_lease import release_lease
 from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified re-exported for existing callers
@@ -265,7 +265,19 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
                 raw.write(f"[wrapper] could not record a line: {e}\n")
         code = proc.wait()
+    # A Claude result always carries usage, so none means no result line: a limit is then only in the transcript.
+    if code != 0 and not usage_logged and isinstance(adapter, ClaudeCode):
+        _transcript_limit(repo_root, rec, adapter, launch, watch)
     return _finish(repo_root, rec, code, before, before_all, usage_logged, watch, log_start)
+
+
+def _transcript_limit(repo_root: Path, rec: WorkerRecord, adapter: ClaudeCode, launch: Launch, watch: TurnWatch) -> None:
+    """Record a usage limit the session transcript names, for the post-run check to pause on."""
+    parsed = adapter.transcript_limit(launch.session_id or load_record(repo_root, rec.worker_id).provider_session_id)
+    if parsed:
+        append_event(repo_root, rec, parsed.type, source="worker", authority="worker_suggestion",
+                     summary=parsed.summary, detail=parsed.detail)
+        watch.observe(parsed)
 
 
 def _output_seen(repo_root: Path, rec: WorkerRecord, marked: float | None, now: float) -> float | None:

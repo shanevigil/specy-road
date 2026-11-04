@@ -128,7 +128,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.18` | Registry overlap warnings show only what concerns the command at hand | task | Agentic-led | Complete |
 | `M11.19` | Pickup never stashes work/ around the registry commit | task | Agentic-led | Complete |
 | `M11.20` | orchestrate plan and validate say where the roster is read from | task | Agentic-led | Complete |
-| `M11.22` | Worker worktrees can include nested sibling repositories | task | Agentic-led | Not Started |
+| `M11.22` | Worker worktrees can include nested sibling repositories | task | Agentic-led | Complete |
 | `M11.23` | A custom launch command's permissions carry through resume | task | Agentic-led | Complete |
 | `M11.24` | Executors and reviewers in a worktree can write and check the right places | task | Agentic-led | Complete |
 | `M11.25` | finish-this-task says what merge mode will push before it pushes | task | Agentic-led | Complete |
@@ -168,7 +168,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.59` | Split worker_ops and worker_adapters so parallel leaves stop colliding | task | Agentic-led | Complete |
 | `M11.60` | The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names | task | Agentic-led | Complete |
 | `M11.61` | The context meter counts Claude rules, auto memory, Cursor nested AGENTS.md and Copilot path instructions | task | Agentic-led | Complete |
-| `M11.62` | Headless runs report usage limits and denied actions instead of looking like success | task | Agentic-led | Not Started |
+| `M11.62` | Headless runs report usage limits and denied actions instead of looking like success | task | Agentic-led | Complete |
 | `M11.63` | do-next-available-task refuses a second claim in a checkout that already holds one | task | Agentic-led | Complete |
 | `M11.64` | abort-task-pickup treats untracked files the way pickup does | task | Agentic-led | Complete |
 | `M11.65` | why-blocked reports touch-zone holds from the plan | task | Agentic-led | Complete |

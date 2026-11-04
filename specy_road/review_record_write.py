@@ -229,7 +229,7 @@ def file_review(root: Path, node_id: str, model: str, reviews: Path, *, output: 
 
 
 def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path, transcript: list[str] | None = None) -> int:
-    """Run one reviewer turn with :func:`reviewer_env`, its raw output appended to ``log`` under a :data:`RUN_MARK`
+    """Run one reviewer turn with :func:`reviewer_env` (over the launch's own ``env``, e.g. M11.62's Claude avoid-list), its raw output appended to ``log`` under a :data:`RUN_MARK`
     line (and to ``transcript``, which ``prompt --channel cli``'s run record keeps: M11.72) and each event's
     summary echoed to stderr as it arrives; for ``prompt --channel cli``, whose terminal would otherwise show raw
     JSON lines."""
@@ -238,7 +238,8 @@ def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path, transcript: list
         raw.write(f"[review prompt] {datetime.now(timezone.utc).replace(microsecond=0).isoformat()} {launch.argv[0]}\n")
         try:
             proc = subprocess.Popen(launch.argv, cwd=cwd, text=True, encoding="utf-8", errors="replace",
-                                    env=reviewer_env(dict(os.environ)), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    env=reviewer_env({**os.environ, **(launch.env or {})}),
+                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                     stdin=subprocess.PIPE if launch.stdin is not None else subprocess.DEVNULL)
         except OSError as e:   # e.g. the harness is not on PATH
             print(f"error: could not launch {launch.argv[0]}: {e.strerror}", file=sys.stderr)

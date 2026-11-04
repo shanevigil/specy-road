@@ -13,7 +13,7 @@ from pathlib import Path
 from tests.review_repo_helpers import git, make_review_repo, review_output
 
 from specy_road import review_record_write
-from specy_road.bundled_scripts import role_prompt, role_prompt_cli
+from specy_road.bundled_scripts import role_prompt, role_prompt_cli, role_prompt_stream
 from specy_road.review_files import reviews_dir
 
 # Each call takes the next step of the spec; the call's argv is appended to `calls`.
@@ -120,7 +120,7 @@ def fake_reviewer_run(monkeypatch, answer: list[str] | None = None) -> list[dict
         return SimpleNamespace(stdin=stdin, stdout=iter(()), wait=lambda: 0)
 
     fake = SimpleNamespace(run=run, Popen=popen, PIPE=real_sp.PIPE, STDOUT=real_sp.STDOUT, DEVNULL=real_sp.DEVNULL)
-    for module in (role_prompt, role_prompt_cli):   # the preflight runs in one, the launched commands in the other
+    for module in (role_prompt, role_prompt_cli, role_prompt_stream):   # the preflight, the commands, the stream
         monkeypatch.setattr(module, "subprocess", fake)
 
     def logged(launch, adapter, cwd, log, transcript=None) -> int:
