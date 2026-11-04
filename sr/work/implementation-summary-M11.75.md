@@ -2,6 +2,20 @@
 
 **Merge (6efac279):** merged origin/WIP/improvements-0-3-1 (db320d0d). The reviewer prompt keeps this leaf's probe rules plus integration's `verify_cmd_lines` and `reviewer_lesson_lines`. `REMOVED_TEXT_LINES` (text unchanged) moved into `review_record_rules.py` to keep `role_prompt.py` at 397/400 lines. This leaf's two touch-zone additions now sit in M11.75's new chunk, `M11__fad495.json`. The round-2 and round-3 changes are intact. Checks at the merge: `pytest -n 4` on the 50 test files that import the changed modules → 650 passed; file-limits OK; validate OK.
 
+## Round 6 (after the gpt-5.6-sol-medium block at 8acfc13b)
+
+Each `required_changes` item and the change that answers it (commit 9d32d03c):
+
+| # | Required change | Change |
+|---|---|---|
+| 1a | Require the explanation marker to be an explicit, standalone `not a defect because` phrase, not an arbitrary substring | New `explained()` in `specy_road/review_record_rules.py`, using the regex `_EXPLAINED`. It requires the phrase with no word character or hyphen before "not", whitespace after "because", and then a reason, matched in any case. Code spans are removed first, because text in backticks quotes the marker rather than using it. It replaces the raw `NOT_A_DEFECT in text.lower()` checks in all three places: findings entries in `unexplained_defects`, `defect_word` and `note_problem`. Rejected: "xnot a defect becausey", "anot a defect because y", "not a defect becausey", "not-a defect because y", a bare "not a defect because" or "not a defect because.", and `` `not a defect because y` ``. Accepted: "…; not a defect because y.", "(not a defect because y)", ";not a defect because y", "NOT A DEFECT BECAUSE …". |
+| 1a | Preserve the prompt's same-line reason contract | Unchanged in substance: rule 4 of the reviewer prompt still says the line must carry `not a defect because <reason>`. It now adds "the phrase standing on its own and outside backticks, with the reason after it". `docs/orchestration-review.md` says the same and lists the forms that don't count. The A1 prompt test's pinned rule-4 text is untouched. |
+| 1b | Public-CLI regression with the substring-boundary finding: exit 1, identifies `findings.correctness[0]`, writes neither review nor history | `tests/test_review_record_rules.py::test_record_refuses_an_approve_whose_marker_is_only_a_substring` files an approve whose `findings.correctness[0]` is "The parser accepts malformed input; xnot a defect becausey is only a marker.". It asserts exit 1, `findings.correctness[0] ` in the error (the full message is `findings.correctness[0] says "defect"`), and that neither `REVIEW-opus.md` nor `history/` exists. `test_explained` (12 cases) pins the boundary forms above. |
+
+- **Red-green:** the test module imports the new `explained`, so a `-k` run against 8acfc13b's module would only be an ImportError. A standalone probe (in my scratchpad, not committed) ran that finding through `review record`. At 8acfc13b's `review_record_rules.py` it printed `exit 0 review True history True`; at this commit, `exit 1 review False history False`, naming `findings.correctness[0]`.
+- **Existing fixtures:** every test input that uses the marker writes it as a standalone phrase with a reason, so none needed changing. That includes the round-5 change to `test_review_round6_evidence.py`.
+- **Touch zones:** no file outside the zones was needed.
+
 ## Round 5 (after the gpt-5.6-sol-medium block at a6bf841d)
 
 Each `required_changes` item and the change that answers it (commit 3d15e799):
@@ -90,6 +104,13 @@ I ran `unexplained_defects` over the distinct approving records in the main chec
 
 ## Verification
 
+Round 6 (at 9d32d03c):
+
+- `python -m pytest -q -n 4 tests/test_review_record_rules.py` → 68 passed
+- `python -m pytest -q -n 4 <the same 53 files as round 5>` → 707 passed
+- `specy-road file-limits` → OK; `specy-road validate` → OK; `ruff check` on the changed Python files → clean
+
+
 Round 5 (at 3d15e799):
 
 - `python -m pytest -q -n 4 tests/test_review_record_rules.py` → 55 passed
@@ -134,6 +155,7 @@ Round 1:
 - `_QUALIFIER` (round 2) — the only words allowed between a negation and a defect word, so "no workaround for this bug" is not read as negated.
 - `defect_word` — decides for one line whether it names a defect, so findings entries and notes lines go through the same rule.
 - `note_problem` (round 5) — decides whether one notes line is an observation that needs a reason.
+- `explained`, `_EXPLAINED` (round 6) — the one check for a standalone marker with a reason, outside code spans, used by findings, `defect_word` and `note_problem`.
 - `_ACCEPTANCE_RESULT`, `_RULE`, `_WORD` (round 5) — bare acceptance results, table separator rows and rules, and word counting, so those lines are not counted as observations.
 - `unexplained_defects` — walks the findings entries and the notes lines (skipping fenced code) and labels each hit with where it is, so the message can say which. From round 3, every findings entry without the explanation line counts (`is a finding` when no word matches).
 - `approve_defect_problem` — the A2 refusal message; only for `verdict: approve`.
@@ -150,6 +172,8 @@ Round 1:
 - `…::test_record_refuses_an_approve_whose_notes_describe_a_write_order_race` (round 4) — the blocking reviewer's sentence on a notes line, through the CLI; no review or history record, and the error names `notes line 3`.
 - `…::test_record_files_an_approve_whose_notes_explain_the_order_on_the_same_line` (round 4) — the same sentence with a same-line `Not a defect because …` is filed.
 - `…::test_record_refuses_an_approve_whose_notes_carry_an_unclassified_observation` (round 5) — the blocking reviewer's malformed-input sentence on notes line 5, through the CLI: exit 1, the line is named, the heading and bare result are not, and no review or history is written.
+- `…::test_record_refuses_an_approve_whose_marker_is_only_a_substring` (round 6) — the blocking reviewer's "xnot a defect becausey" finding, through the CLI: exit 1, `findings.correctness[0]` named, no review or history.
+- `…::test_explained` (round 6, 12 cases) — the marker's boundary forms, rejected and accepted.
 - `…::test_note_problem` (round 5, 13 cases) — what counts as an observation line and what does not.
 - `…::test_record_files_an_approve_with_no_findings` — A2: a clean approve is filed (from round 5: a heading, bare `A1`/`A2: pass` results and one classified line).
 - `…::test_record_files_an_approve_that_says_why_it_is_not_a_defect` — the explanation line lets an approve through.
