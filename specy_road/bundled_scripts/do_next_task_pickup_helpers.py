@@ -158,7 +158,8 @@ def branch_fns(git_runner, base: str, wt: Path | None):
 
 
 def worktree_work_dir(repo_root: Path, wt: Path, brief_path: Path) -> tuple[Path, Path]:
-    """``(project root in wt, its work/)`` with the brief copied in: the leaf's agent runs there.
+    """``(project root in wt, its work/)`` with the brief moved in: the leaf's agent runs there, and finish
+    removes the brief from that tree only, so a copy left in this checkout's ``work/`` would outlive the leaf.
 
     The new worktree also gets ``env_setup`` (:mod:`specy_road.worktree_env`); a failure stops the
     pickup with the command's output, after the claim is pushed, so the claim and the worktree stay.
@@ -166,7 +167,7 @@ def worktree_work_dir(repo_root: Path, wt: Path, brief_path: Path) -> tuple[Path
     wt_root = wt / project_prefix(repo_root)
     work = wt_root / "work"
     work.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(brief_path, work / brief_path.name)
+    shutil.move(brief_path, work / brief_path.name)
     try:
         for line in setup_worktree_env(repo_root, wt_root):
             print(f"env_setup: {line}")

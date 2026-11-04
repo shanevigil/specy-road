@@ -16,7 +16,7 @@
       "type": "string",
       "minLength": 1,
       "pattern": "^(?!/)",
-      "description": "Project-relative file path; '../' reaches the git root when the project root is nested."
+      "description": "Project-relative file path. '../' may reach the git root when the project root is nested, and no further: a copy source outside the main checkout's git root, or a target outside the new worktree, is refused when the worktree is set up."
     }
   },
   "properties": {

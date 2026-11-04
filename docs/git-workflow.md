@@ -16,13 +16,13 @@
 - every `git-workflow.yaml` field, the `on_complete` modes and finish precedence → "Machine-readable contract (`roadmap/git-workflow.yaml`)"
 - `feature/rm-*` patterns and milestone rollups → "Branch naming"
 - the pre-claim checklist → "Before implementation"
-- the registration commit and `registry-prune` → "Registration commit (mandatory)"
+- the registration commit and `registry-prune` → "Registration commit (mandatory)" and "Releasing a claim whose branch is gone (`registry-prune`)"
 - touch zones and worktrees while implementing → "While working"
-- code in separately versioned repositories under the project root (`nested_repos`) → "Nested repositories"
-- a virtual environment and ignored files (`.python-version`, `.env`) in each new leaf worktree (`env_setup`) → "Worktree environment"
+- code in separately versioned repositories under the project root (`nested_repos`) → "Nested repositories (`nested_repos`)"
+- a virtual environment and ignored files (`.python-version`, `.env`) in each new leaf worktree (`env_setup`) → "Worktree environment (`env_setup`)"
 - landing, then revert vs follow-up → "Merge back" and "Correcting merged work: revert vs follow-up"
 - deleting merged `feature/rm-*` branches (`finish-this-task --delete-branch`, `branches prune`) → "Deleting merged feature branches"
-- removing one leaf's worktree safely (`worktree prune`) → "Retiring a leaf's worktree"
+- removing one leaf's worktree safely (`worktree prune`) → "Retiring a leaf's worktree (`worktree prune`)"
 - every leftover the loop leaves (branches, worktrees, registry rows, stashes) → "Finding leftovers: `doctor`"
 
 **Related:** [`dev-workflow.md`](dev-workflow.md), [`grind-session.md`](grind-session.md), [`pm-workflow.md`](pm-workflow.md), [`orchestration.md`](orchestration.md).
@@ -64,6 +64,10 @@ Optional field **`track_worker_logs`** (`"off"`, `"events"` or `"full"`; default
 Optional field **`nested_repos`** (list): separately versioned git repositories under the project root, each a project-relative path or `{path, integration_branch, remote}`; the worktree flow, `worker reconcile`, merge-mode finish and `review-packet` include them. See "Nested repositories" below.
 
 Optional field **`env_setup`** (`{cmd, copy}`): what a new leaf worktree gets when `do-next-available-task --worktree` or `worker delegate` creates it — ignored files copied from the main checkout, then a command run there. See "Worktree environment" below.
+
+Optional field **`baseline_cmd`** (string): a check command, such as `make test`, that `do-next-available-task` and `grind-session` run on the integration branch after the sync and before a leaf is claimed. A non-zero exit refuses the pickup, so a red base is fixed before a leaf inherits it; the command must only check (pickup also refuses when it moves `HEAD`, switches branch or changes files). `--baseline-cmd CMD` overrides it for one run (an empty value turns it off) and `--baseline-warn` downgrades a failure to a warning. See [`dev-workflow.md`](dev-workflow.md) (Baseline gate).
+
+Optional field **`prefer_agentic_pick_order`** (boolean, default **false**): when **true**, `do-next-available-task` and `grind-session` order each pickup tier (Blocked, MR-rejected, the rest) by `execution_milestone` — `Agentic-led`, then `Mixed`, then unset, then `Human-led` — and by outline order within each. It only reorders; eligibility is unchanged. `--prefer-agentic` / `--no-prefer-agentic` override it for one run.
 
 Optional fields **`grind_session_max_limit_waits`** (integer, default 3), **`grind_session_max_limit_wait_hours`** (number, default 6), **`grind_session_limit_wait_grace_seconds`** (integer, default 120) and **`grind_session_max_empty_retries`** (integer, default 2): bounds for a `grind-session` run whose `--implement-cmd` is the Claude CLI — how many times one leaf may wait out a usage limit, the ceiling on any single wait, the slack added after a stated reset, and how many times to re-run a hook killed from outside without printing anything. The matching CLI flags override this file. Ignored for any other implement command. See [grind-session.md](grind-session.md).
 
@@ -186,6 +190,8 @@ That is correct, and it is the most misread state in the workflow, because from 
 
 **Precedence for `finish-this-task`:** CLI **`--on-complete`** overrides **`work/.on-complete-<NODE_ID>.yaml`** (written by **`do-next-available-task`** for that task) overrides environment **`SPECY_ROAD_ON_COMPLETE`** overrides **`on_complete`** in this file, else **`pr`**.
 
+**`--on-complete` that changes the mode needs a person.** `finish-this-task` refuses an `--on-complete` value other than `pr` that differs from the mode it would use without the flag (the pickup's session file, then `SPECY_ROAD_ON_COMPLETE`, then this file), before anything is committed, and names the configured mode and where it came from. A person who wants that landing passes **`--override-on-complete`** as well; an agent asked to "finish and clean up" does not, and under `pr` it leaves the branch for its PR. Passing the configured value, or `pr`, needs no acknowledgement. `grind-session` is unaffected: its pickup writes its mode to the session file, which is what its finish compares against. This is a guard against a misread request, not an access control: an agent with shell access can still pass the flag, set the variable or edit this file.
+
 **`grind-session` refuses to run when that resolution lands on `pr`**, because `pr` never merges and the loop cannot see its own finished work on the next cycle. New scaffolds therefore write **`on_complete`** into this file explicitly rather than relying on the built-in default, so the mode is never implicit. See [grind-session.md](grind-session.md).
 
 **`do-next-available-task`:** On an interactive terminal, the command shows the resolved default and asks for **`pr`**, **`merge`**, or **`auto`** for **this task** (unless you pass **`--on-complete`**). Non-interactive runs use the default from the file/env without prompting.
@@ -290,10 +296,10 @@ env_setup:
   cmd: uv sync --all-packages --all-groups --locked
 ```
 
-- **When it runs.** `do-next-available-task --worktree` and `worker delegate` run it once, right after they create `work/.worktrees/<codename>`: every `copy` item first, from the main checkout's project root (also when `worker delegate` runs from a linked worktree, which lacks those ignored files) to the same project-relative path in the worktree (in the nested layout `../.python-version` is the git root's), then `cmd` at the worktree's project root. `worker delegate` runs it after adding the nested repositories' worktrees and before its uncommitted-work check, so whatever the setup writes must be ignored. Pickup runs it before adding them, so a command that needs a nested repository belongs to `worker delegate`, or rerun it in the worktree after pickup. A worktree that already exists, or a worker run in the main checkout itself, is never set up.
-- **A failure stops it.** A missing copy source, or a command exiting non-zero, stops the pickup or the launch with the command's output (stdout and stderr together). The worktree stays as it is and is not set up again by a later `worker delegate`: fix the cause and finish the setup there by hand, or remove the worktree (`git worktree remove`) and delegate again. A failed pickup has already pushed its claim.
+- **When it runs.** `do-next-available-task --worktree` and `worker delegate` run it once, right after they create `work/.worktrees/<codename>`: every `copy` item first, from the main checkout's project root (also when `worker delegate` runs from a linked worktree, which lacks those ignored files) to the same project-relative path in the worktree (in the nested layout `../.python-version` is the git root's; a source that climbs past the main checkout's git root, or a target that climbs past the new worktree, is refused with the entry named), then `cmd` at the worktree's project root. `worker delegate` runs it after adding the nested repositories' worktrees and before its uncommitted-work check, so whatever the setup writes must be ignored. Pickup runs it before adding them, so a command that needs a nested repository belongs to `worker delegate`, or rerun it in the worktree after pickup. A worktree that already exists, or a worker run in the main checkout itself, is never set up.
+- **A failure stops it.** A copy path outside its bound, a missing copy source, or a command exiting non-zero, stops the pickup or the launch with the command's output (stdout and stderr together). The worktree stays as it is and is not set up again by a later `worker delegate`: fix the cause and finish the setup there by hand, or remove the worktree (`git worktree remove`) and delegate again. A failed pickup has already pushed its claim.
 - **uv workspaces.** Use `uv sync --all-packages --all-groups --locked`. A plain `uv sync` in a workspace installs only the root package's dependencies and **removes every other member's packages** from the environment; `--locked` fails when `uv.lock` is out of date instead of rewriting it in the worktree.
-- **`doctor`** prints the configured setup, checks that each copy source exists in the main checkout and runs `cmd` there: a missing source or a failing command is an error (exit 1 after the listing). It also compares the Python of each linked worktree's `.venv` (from `.venv/pyvenv.cfg` at the worktree's project root, else its git root) with the main checkout's, major.minor, and warns on a mismatch whether or not `env_setup` is set.
+- **`doctor`** prints the configured setup, checks that each copy source exists in the main checkout (and stays inside its git root) and runs `cmd` there: a missing or out-of-bounds source or a failing command is an error (exit 1 after the listing). It also compares the Python of each linked worktree's `.venv` (from `.venv/pyvenv.cfg` at the worktree's project root, else its git root) with the main checkout's, major.minor, and warns on a mismatch whether or not `env_setup` is set.
 
 ## Merge back
 

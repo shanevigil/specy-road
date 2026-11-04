@@ -37,7 +37,7 @@ When this model runs as a roster **executor** on `codex`, the executor template 
 
 Orchestration guard hooks deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`.
 
-In a linked worktree, `sandbox_mode=workspace-write` denies writes to the git metadata under the main checkout's `.git/worktrees/`, also when that directory is passed with `--add-dir`, so the executor cannot commit [S1]. Give a Terra executor a launch that can write it.
+Under the default codex launch (`sandbox_mode=workspace-write`) an executor cannot commit [S1]: git metadata is read-only, in a linked worktree (its gitdir under the main checkout's `.git/worktrees/`, and the common `.git`) and in a plain checkout alike. Give a codex executor a `channels.cli` and `cli_resume` that add the worktree's gitdir and the common `.git` as writable roots (specy-road `docs/orchestration-workers.md`, Roster setup, "Known limitation").
 
 ## Strengths
 - Approved first round by both reviewers on two of two reviewed replays (M11.65, M11.77), where the landed Opus version of M11.65 needed a fix round [S1] (confidence: low, n = 2)

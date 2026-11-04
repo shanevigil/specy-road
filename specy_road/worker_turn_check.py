@@ -105,6 +105,12 @@ class TurnWatch:
             if detail.get("error") == "rate_limit":
                 self._watchdog(detail)
 
+    def exited(self, code: int) -> None:
+        """The harness's exit code, read before :func:`close_turn`: a non-zero exit (a SIGKILL included, which no
+        stream event reports) is a failed turn, unless a usage limit already explains the stop."""
+        if code != 0 and not self.failed and not (self.limit or self.pending):
+            self.failed = f"exit {code}"
+
     def _watchdog(self, detail: dict[str, Any]) -> None:
         delay = detail.get("retry_delay_ms")
         delay = delay / 1000 if isinstance(delay, (int, float)) and not isinstance(delay, bool) and delay > 0 else 0.0

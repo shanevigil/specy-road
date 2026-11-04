@@ -70,6 +70,142 @@ body. Keep section bodies focused; link to PRs for detail.
   output. A rejected push now also resets the local integration branch, so the
   re-run it names merges onto the new tip and checks it again.
 
+### Fixed
+
+- `nested_repos` in `roadmap/git-workflow.yaml`: two entries naming one
+  directory under different spellings (`svc` and `svc/`, or a string and an
+  object with the same path) passed the schema's `uniqueItems` and became two
+  rows, so every worktree pickup and `worker delegate` failed adding the second
+  worktree. Validation now reports the duplicate by name.
+- `env_setup.copy`: a `to` that climbed out of the new worktree, or a `from`
+  that climbed out of the main checkout's git root (`../../../.env`), was
+  copied unchecked. `setup_worktree_env` and `doctor` now refuse such an entry
+  by name; `../` still reaches the git root of a nested project root.
+- A fresh `specy-road init project` scaffold failed its own `specy-road
+  file-limits`: `model-profiles/README.md` had grown past the scaffold's
+  400-line `**/*.md` cap. The README now keeps the sources, roster and
+  upkeep notes; the research reference (role rankings, reviewer pairs,
+  cheap first passes, capacity, roster corrections, conflicting reports,
+  confidence and gaps) moved unchanged to
+  `docs/model-profiles-research-notes.md`. `refresh-profiles --render`
+  places a missing harness block before `## Keeping this current`. A test
+  scaffolds a project and runs `file-limits` on it.
+- The feature-sheet template's `## Tasks / checklist` pointed at the toolkit
+  doc `docs/roadmap-authoring.md`, which consumer repositories do not have,
+  so `review-packet` flagged an uncommitted reference on every leaf; it now
+  points at the acceptance criteria checklist in the scaffold's
+  `planning/README.md`.
+- `docs/dev-workflow.md` said a leaf with `acceptance` but a scaffold
+  planning sheet is picked with a warning; pickup skips it (as
+  `docs/roadmap-authoring.md` already said) unless
+  `--allow-scaffold-planning` is passed.
+- Pre-release core-code review fixes:
+  - `review check-pre-existing` took any non-zero exit on the integration tip
+    as proof a failure pre-existed, so a claim on a test file the leaf adds
+    (pytest exit 4) or a misspelt command (127) was recorded verified. Exits
+    126, 127 and pytest's 4 and 5 are now no evidence, and a command naming a
+    path the leaf has but the tip lacks is not run; both are recorded
+    `unverified` with the reason, which the gate shows.
+  - `review delegate` and `prompt --channel cli` read a capacity error from
+    the whole transcript, so a review that said "capacity" or "quota" was
+    retried and reported as a capacity failure. Only parsed error events and
+    the last non-JSON output line are read now, against specific phrases
+    (429, 529, rate limit, usage limit, overloaded, too many requests,
+    resource exhausted, at/over/out of capacity, quota exceeded).
+  - `review delegate` printed a traceback for an unsafe recorded session id;
+    it is now an `error:` line and exit 1. Its `--worktree` help names a
+    chore's worktree as the default for a chore slug.
+  - The repository lock (pickup, finish, abort) judged its holder and queue
+    by pid alone, and both survive a reboot, so a reused pid blocked every
+    pickup and finish until the two-hour timeout. Each entry now records its
+    process's start time, and a mismatch is stale; the timeout message names
+    the holder file. The fallback queue-ticket name ends with the process's
+    own pid, not its parent's.
+  - `registry-prune --remove` (and so `doctor --fix` for registry rows)
+    checked out and committed on the integration branch without the
+    repository lock; it now takes it.
+  - `doctor --fix` removed clean detached worktrees that land check,
+    `check-pre-existing`, nested land and the red/green check were still
+    using; it now leaves worktrees under those commands' temporary
+    directories.
+  - `worktree prune` printed a traceback when a nested full clone could not
+    be deleted, and removed a worktree a `running` worker was using; the
+    first is now an `error:` line, and the second refuses, naming the
+    worker.
+- Pre-release worker fixes (sandbox runbook §5 replay):
+  - `worker usage` counted a resumed Codex turn twice: `codex exec resume`
+    reports the thread's running token total, which was summed with the
+    earlier turns. The usage event now keeps that total as `session_usage`
+    (and the price estimate as `session_cost_usd`) and records the
+    difference from the previous turn, as Claude's session cost already was.
+  - A turn whose harness was killed (SIGKILL, or any non-zero exit no
+    usage limit explains) reported `post-run check: clean`, since the check
+    is written before the exit event; the check now records it as a failed
+    turn.
+  - Every Cursor `usage` event reported a false model mismatch
+    (`composer-2.5` against the harness's `Composer 2.5`); the comparison
+    now ignores case and treats `-`, `_` and spaces alike, and still reports
+    a different model.
+  - `do-next-available-task --worktree` left a copy of the brief in the
+    coordinator's `work/` that finish never removed; the brief is now moved
+    into the worktree, as documented.
+  - Docs: Codex and Cursor `cost_usd` is estimated from the roster
+    profile's prices, not `null`; the Claude Code hook was observed to fire
+    under `claude -p --resume` (2.1.312); the sandbox runbook's §5 9b(ii)
+    expects `worker resume` to reopen a failed worker's session; and a
+    known-limitation note says a Codex executor cannot commit under the
+    default `workspace-write` sandbox, with the `channels.cli` and
+    `cli_resume` that grant the worktree's gitdir and the common `.git`.
+- **Review packets again show each verifier's last lines** (regression since
+  0.3.1rc2). The executor prompt told executors to write READY with
+  `specy-road ready --verify CMD=EXIT`, which records no output, so every
+  packet printed `(no output recorded)`. `ready` now takes `--run CMD`: it
+  runs the command from the current directory, records its exit and the last
+  20 lines of its output as `tail`, and refuses a non-zero exit, printing
+  that tail. The executor prompt and the grind pickup prompt both say to use
+  it; the pickup prompt keeps the template for `blocked_on`.
+- With `policy.signed_reviews: true`, the reviewer prompt's `review record`
+  command now carries `--sign-key <path to your private key>`, and
+  `handoff status` names `--sign-key` in its who-can-approve lines; before,
+  a reviewer that followed the prompt was refused.
+- `docs/grind-session.md` now says how to refresh `work/prompt-<ID>.md`
+  after a PM edits an in-flight leaf: delete it and resume with
+  `--resume-in-flight`, which rewrites a missing prompt and brief.
+- Context-regression replay of 2026-11-04 (triage:
+  `docs/design-notes/context-regressions-2026-11-04-triage.md`):
+  - `finish-this-task --on-complete` silently outranked the committed
+    `on_complete`, so agents asked to "finish and clean up" landed PR-mode
+    leaves with `--on-complete merge --delete-branch`. A value other than
+    `pr` that differs from the mode finish would use without the flag (the
+    pickup's session file, `SPECY_ROAD_ON_COMPLETE`, then
+    `roadmap/git-workflow.yaml`) is now refused before anything is
+    committed, naming the configured mode, unless `--override-on-complete`
+    (a person's choice) is passed; this includes the repeat-finish landing
+    retry. The `pr` finish also says not to merge or delete the branch by
+    hand.
+  - The brainstorm round-1 prompt made a one-shot (headless) run stop after
+    `brainstorm start` waiting for frame answers, with no ideas recorded. It
+    now tells a run nobody can answer to record its proposed frame as
+    `assumed:` with `brainstorm frame`, continue, and list the assumptions
+    in its report; the brainstorm skill's description says to run `start`
+    before reading `roadmap-context.md`, `roadmap/` or `planning/`.
+  - Documented what the review gate cannot stop without
+    `policy.signed_reviews` (an agent with shell access impersonating an
+    approval) and the known limitation of a Codex worker launched from
+    inside a Codex coordinator's sandbox; the Cursor harness fact now
+    records that project hooks load under `agent -p --force`.
+- PM GUI edit dialog: a title change no longer loses planning-sheet text typed
+  right after it. The dialog autosaved from effects that re-armed on every
+  roadmap refresh, so one title edit could send two PATCHes that renamed the
+  sheet against each other (412, then 400 `planning file missing` / `orphan
+  planning file`), and sheet text went to the old path or was overwritten by
+  the reload, with no error shown. Saves now go through one queue per dialog:
+  one request at a time, a value is never sent twice, a title save adopts the
+  renamed sheet path and the new roadmap token before the sheet is saved, edits
+  still pending when the dialog closes are sent, and a failed save stays in the
+  footer until the field saves. The server refuses a second concurrent PATCH
+  for the same node with 409 instead of running both.
+
 ## [v0.3.1-rc2] - 2026-10-29
 
 Second prerelease for v0.3.1 (TestPyPI). Builds on rc1 with upgrade-path

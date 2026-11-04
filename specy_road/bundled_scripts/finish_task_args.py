@@ -52,7 +52,17 @@ def _add_landing_args(p: argparse.ArgumentParser) -> None:
             "Override completion workflow: pr, merge, or auto. "
             "merge lands on the integration branch and pushes it. "
             "Default: session file from do-next-available-task, then "
-            "roadmap/git-workflow.yaml / SPECY_ROAD_ON_COMPLETE."
+            "SPECY_ROAD_ON_COMPLETE / roadmap/git-workflow.yaml. A value other "
+            "than pr that differs from that default is refused unless "
+            "--override-on-complete is also passed."
+        ),
+    )
+    p.add_argument(
+        "--override-on-complete",
+        action="store_true",
+        help=(
+            "Acknowledge that --on-complete changes the repository's configured "
+            "landing mode. A person's choice: agents do not pass it on their own."
         ),
     )
     p.add_argument(

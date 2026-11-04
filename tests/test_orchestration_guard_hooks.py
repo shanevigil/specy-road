@@ -106,6 +106,47 @@ def test_orchestration_role_rules(role: str, command: str, blocked: bool) -> Non
     assert v.denied is blocked
 
 
+@pytest.mark.parametrize(
+    "command",
+    [
+        'sh -c "git commit -m x"',
+        'bash -lc "git push"',
+        'eval "git commit -m x"',
+        "echo $(git commit -m x)",
+        "echo `git commit -m x`",
+        'git -c alias.c="!git commit -m x" c',
+        "echo commit | xargs git",
+        'env -S "git commit -m x"',
+        "g=git; $g commit -m x",
+        "h=gh; $h pr create",
+        "python3 -c \"import subprocess; subprocess.run(['git','commit','-m','x'])\"",
+        'sh -c "gh pr create"',
+        'eval "$CMD" # runs git commit',
+        "$(git commit -m x",
+    ],
+)
+def test_orchestration_reviewer_denies_wrapped_git(command: str) -> None:
+    """Wrappers, substitutions, aliases and opaque shapes are judged by what they run (pre-release finding)."""
+    v = org.decide_role(command, role="reviewer")
+    assert v.denied, command
+    assert v.reason.startswith("orchestration guard (reviewer): ")
+    assert len(v.reason) > len("orchestration guard (reviewer): ")
+
+
+@pytest.mark.parametrize(
+    "command",
+    ["git status", "echo $(git log -1 --oneline)", 'sh -c "git diff --stat"', "git -c alias.s=status s",
+     "git fetch origin", "git show HEAD:a/$X", "$PYTHON -m pytest"],
+)
+def test_orchestration_reviewer_allows_wrapped_read_only_git(command: str) -> None:
+    assert not org.decide_role(command, role="reviewer").denied, command
+
+
+def test_orchestration_executor_may_commit_through_wrapper() -> None:
+    assert not org.decide_role('sh -c "git commit -m x --only foo.py"', role="executor").denied
+    assert org.decide_role('sh -c "git push origin main"', role="executor").denied
+
+
 @pytest.mark.parametrize("fmt", sorted(ADAPTERS))
 def test_orchestration_hook_adapters_block_like_their_harness(tmp_path: Path, fmt: str) -> None:
     repo = tmp_path

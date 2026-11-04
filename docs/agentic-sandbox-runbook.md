@@ -258,10 +258,10 @@ coordinator chat (any harness):
    under `sh -c` instead of exec-ing it) and `_finish` appends an `error`
    event (source `worker`, "exit -9; see <id>.log", `detail: {exit: -9,
    ready: …}`, with `137` in place of `-9` under dash) and sets the
-   worker `failed`, not `idle` — even if a READY was written. `worker
-   resume <W>` is then refused ("is failed; delegate again instead"), and
-   `worker delegate <ID>` launches a new worker. Pass: `worker events <W>`
-   and `worker status <W>` show exactly that.
+   worker `failed`, not `idle` — even if a READY was written. It keeps its
+   `provider_session_id`, so `worker resume <W>` reopens that session (same id
+   in the new `started` event); `worker delegate <ID>` instead launches a new
+   worker. Pass: `worker events <W>` and `worker status <W>` show exactly that.
 10. **Finish.** Review and `finish-this-task` the leaf as in §2 (with
     `on_complete: merge`; `pr` cannot land against a bare local remote),
     run **from the leaf's linked worktree** while the coordinator's checkout

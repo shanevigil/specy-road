@@ -150,10 +150,11 @@ def executor_preamble(node_id: str, model: str, zones: list[str], family_lock: s
         f"4. Write `{prefix}work/implementation-summary-{node_id}.md`, ending with an `## Added` inventory: every helper, "
         "branch or guard, mock and test you added, one line each with its reason (`none` under a heading is fine), "
         "and commit it by explicit path on this branch: it is what the reviewers judge, and finish deletes it from `work/`. "
-        f"Then write `READY-{model}.md` with `specy-road ready {node_id} --model={model} --verify '<cmd>=<exit>' ...`, "
-        f"one `--verify` per verifier or test you ran (`{model}` is your roster id, not an API model id). "
-        "It reads branch, commit (the one that adds the summary), base and changed paths from git, refuses a "
-        "non-zero `--verify`, and writes into "
+        f"Then write `READY-{model}.md` with `specy-road ready {node_id} --model={model} --run '<cmd>' ...`, "
+        f"one `--run` per verifier or test the brief names (`{model}` is your roster id, not an API model id). "
+        "It runs each from the current directory in the foreground and records its exit and the last lines of its "
+        "output, which the reviewers' packet shows; it reads branch, commit (the one that adds the summary), base "
+        "and changed paths from git, refuses a non-zero exit, and writes into "
         f"`{reviews or f'{prefix}work/reviews/{node_id}'}` "
         f"(the main checkout's {f'`{prefix}work/reviews/{node_id}`, ' if prefix else ''}directory, from any "
         "worktree). A check you made fail without the fix on purpose is not a verifier: pass it as "
@@ -172,9 +173,17 @@ def executor_preamble(node_id: str, model: str, zones: list[str], family_lock: s
     ]
 
 
-def reviewer_preamble(node_id: str, model: str, ref: str | None = None, *, resumed_delta: bool = False) -> list[str]:
+#: ``policy.signed_reviews`` is on: ``review record`` refuses an unsigned record.
+SIGN_KEY_ARG = " --sign-key <path to your private key>"
+SIGNED_LINE = ("`policy.signed_reviews` is on: `review record` refuses a record without `--sign-key`, the OpenSSH "
+               "private key whose public half is your roster entry's `public_key`.")
+
+
+def reviewer_preamble(node_id: str, model: str, ref: str | None = None, *, resumed_delta: bool = False,
+                      signed: bool = False) -> list[str]:
     """``resumed_delta``: the packet is ``model``'s delta packet and ``policy.reviewer_resumed_delta`` is on,
-    so the session that approved the delta's base may be resumed for it (M11.36)."""
+    so the session that approved the delta's base may be resumed for it (M11.36). ``signed``:
+    ``policy.signed_reviews`` is on, so the record command carries ``--sign-key``."""
     session = ("If you are the session that approved the commit this delta starts from, resumed for this round, "
                "set `fresh_session: false` (`policy.reviewer_resumed_delta` is on); otherwise this is a fresh "
                "session. Either way" if resumed_delta else "This is a fresh session;")
@@ -197,7 +206,8 @@ def reviewer_preamble(node_id: str, model: str, ref: str | None = None, *, resum
         "Write your verdict with the front matter in `work/review-record.template.md`, set `commit` to the "
         "packet's **Commit under review**, and file it:",
         f"`specy-road review record {node_id} --model {model} --verdict approve|block --file <notes.md>"
-        f"{f' --ref {ref}' if ref else ''}`.",
+        f"{f' --ref {ref}' if ref else ''}{SIGN_KEY_ARG if signed else ''}`.",
+        *([SIGNED_LINE] if signed else []),
         "`approve` may not carry a failing item or required changes. Do not edit code, and do not run "
         "`mark-implementation-reviewed` or `finish-this-task`.",
         "",

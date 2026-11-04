@@ -12,8 +12,8 @@ Four kinds, each its own section:
   integration branch contains or whose patch it has, the same test as a branch: how ``finish
   --delete-branch`` leaves a delegate worktree) or is merged, whether or not the branch itself is
   listed (a claimed branch whose leaf is not Complete stays), and every other detached worktree
-  (a review recipe's). ``--fix`` leaves a detached one with uncommitted changes, or with commits
-  no branch holds.
+  (a review recipe's). ``--fix`` leaves a detached one with uncommitted changes, with commits
+  no branch holds, or in a temporary directory another command may be using (:data:`TEMP_WORKTREES`).
 - registry rows on the integration branch whose branch is in neither this clone nor the remote
   (advisory, as in ``registry-prune``: another clone's claim looks the same until its branch is
   pushed), or whose leaf is Complete.
@@ -53,6 +53,9 @@ TOOLKIT_STASH = re.compile(r"^On [^:]+: specy-road: ")
 # commit-tree needs an identity, and a CI runner may have none configured.
 _PROBE_IDENT = ["-c", "user.name=specy-road", "-c", "user.email=doctor@specy-road.invalid"]
 SAME_PATCH = "merged (same patch content)"
+#: ``mkdtemp`` prefixes of the detached worktrees land check, check-pre-existing, nested land and red/green make.
+TEMP_WORKTREES = ("specy-road-land-check-", "specy-road-pre-existing-", "specy-road-nested-land-",
+                  "specy-road-red-green-")
 
 
 @dataclass
@@ -98,12 +101,8 @@ def merged_how(root: Path, ref: str, target: str) -> str | None:
 
 def _complete_leaves(nodes: list[dict]) -> dict[str, str]:
     parents = {n.get("parent_id") for n in nodes}
-    return {
-        n["codename"]: n["id"]
-        for n in nodes
-        if n.get("codename") and n.get("id") not in parents
-        and (n.get("status") or "").lower() == "complete"
-    }
+    return {n["codename"]: n["id"] for n in nodes if n.get("codename") and n.get("id") not in parents
+            and (n.get("status") or "").lower() == "complete"}
 
 
 def _branch_reason(ctx: _Ctx, ref: str, branch: str, node_id: str | None) -> tuple[str, bool]:
@@ -126,10 +125,7 @@ def _delete_local(root: Path, branch: str, sha: str | None) -> str | None:
 
 def _delete_remote(root: Path, branch: str, sha: str | None, remote: str) -> str | None:
     # Leased to the tip that was listed: a push since then is refused.
-    code, out = git_code(
-        ["push", remote, f"--force-with-lease=refs/heads/{branch}:{sha}", "--delete", branch],
-        root,
-    )
+    code, out = git_code(["push", remote, f"--force-with-lease=refs/heads/{branch}:{sha}", "--delete", branch], root)
     return f"left on {remote}. {out}" if code else None
 
 
@@ -196,7 +192,9 @@ def _ignored_note(path: Path) -> str:
 
 
 def _keep_detached(ctx: _Ctx, wt: dict[str, str]) -> str | None:
-    """Why ``--fix`` leaves a detached worktree: uncommitted changes, or a HEAD no ref holds (even a landed patch)."""
+    """Why ``--fix`` leaves a detached worktree: another command's, uncommitted changes, or a HEAD no ref holds."""
+    if Path(wt["worktree"]).parent.name.startswith(TEMP_WORKTREES):
+        return "a temporary worktree a running specy-road check may be using"
     if git_text(["status", "--porcelain"], Path(wt["worktree"])):
         return "uncommitted changes"
     refs = ["for-each-ref", "--count=1", "--contains", wt.get("HEAD", ""), "refs/heads", "refs/remotes"]

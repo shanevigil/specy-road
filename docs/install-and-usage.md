@@ -140,8 +140,8 @@ specy-road validate
 specy-road export
 ```
 
-`init project` writes `.gitignore`, `roadmap/`, `planning/`, `constitution/`,
-`constraints/`, `shared/`, `schemas/`, `work/`, `model-profiles/`, `vision.md`, and a
+`init project` writes `.gitignore`, `.cursorindexingignore`, `roadmap/`, `planning/`, `constitution/`, `constraints/`,
+`shared/`, `schemas/`, `work/`, `model-profiles/`, `research/`, `docs/` (`supply-chain-security.md`, `model-profiles-research-notes.md`), `vision.md`, and a
 specy-road section in `AGENTS.md` (a managed block: an `AGENTS.md` you already
 have keeps everything outside the markers). The roadmap starts with task M1.1,
 whose acceptance criteria and planning sheet are the setup steps above and more.

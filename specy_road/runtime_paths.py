@@ -72,6 +72,28 @@ def project_prefix(root: Path) -> str:
     return git_text(["rev-parse", "--show-prefix"], root) or ""
 
 
+def nested_repo_path(entry: object) -> str:
+    """A ``nested_repos`` entry's path with one spelling per directory: no empty segments, no trailing slash."""
+    raw = entry if isinstance(entry, str) else str((entry or {}).get("path", "") if isinstance(entry, dict) else "")
+    return "/".join(seg for seg in raw.split("/") if seg)
+
+
+def duplicate_nested_repo(data: dict) -> str | None:
+    """The validation error when two ``nested_repos`` entries name one directory, else ``None``.
+
+    The schema's ``uniqueItems`` compares spellings, so ``svc`` and ``svc/`` (or a string and an object
+    with the same path) would pass it and become two rows, and the second worktree add would fail on
+    the first's directory.
+    """
+    seen: dict[str, object] = {}
+    for item in data.get("nested_repos") or []:
+        path = nested_repo_path(item)
+        if path in seen:
+            return f"nested_repos: {item!r} names the same directory as {seen[path]!r} ({path}); list it once"
+        seen[path] = item
+    return None
+
+
 def rebase_to_project(repo_relative: str, prefix: str) -> str | None:
     """A path git reported, expressed relative to the project root.
 

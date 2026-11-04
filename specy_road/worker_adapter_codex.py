@@ -8,10 +8,12 @@ from __future__ import annotations
 import json
 import os
 import re
+from dataclasses import replace
 from pathlib import Path
 
 from specy_road.worker_adapter_base import CODEX_POLICY, Adapter, Capabilities, Launch, Parsed, _model_flag
 from specy_road.worker_adapter_parsers import _json, _snip, _text, limit_detail, usage_fields
+from specy_road.worker_usage_delta import SESSION_TOKENS
 
 #: Memories off on launch and resume, as config (``exec resume`` takes ``-c``): the feature and both of its
 #: switches (harness-facts: ``--disable memories`` is ``features.memories=false``; v2's key names are undocumented).
@@ -86,15 +88,20 @@ class Codex(Adapter):
                               detail={"message": text} if text else None)
             return Parsed("output", f"{item.get('type', 'item')} done")
         if t == "turn.completed":
-            return Parsed("turn_completed", "turn completed", detail={"usage": d.get("usage")},
-                          usage=usage_fields(d.get("usage")))
+            usage = usage_fields(d.get("usage"))
+            # The thread's running total on `exec resume`, not the turn's: the wrapper subtracts the last turn's
+            # (worker_usage_delta), as it does Claude's session cost.
+            usage["session_usage"] = {k: usage[k] for k in SESSION_TOKENS}
+            return Parsed("turn_completed", "turn completed", detail={"usage": d.get("usage")}, usage=usage)
         if t in ("turn.failed", "error"):
             raw = json.dumps(d.get("error") or d.get("message") or d)
             return Parsed("error", _snip(raw), detail={"message": raw})
         return None
 
     def parse_events(self, line: str, launch: Launch) -> list[Parsed]:
-        out = super().parse_events(line, launch)
+        # A price estimate from the running token total is the session's cost too: recorded the same way.
+        out = [replace(p, usage={**p.usage, "session_cost_usd": p.usage.get("cost_usd")}) if p.usage else p
+               for p in super().parse_events(line, launch)]
         d = _json(line)
         # A limit arrives as a failure whose text names the reset ("try again in/at"): read it, never the exit code.
         limit = limit_detail(out[0].detail["message"], failed=True) if out and out[0].type == "error" and d else None

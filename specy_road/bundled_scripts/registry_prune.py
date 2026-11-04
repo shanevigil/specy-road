@@ -26,6 +26,7 @@ from specy_road.bundled_scripts.repo_ops import git_run, sync_integration_branch
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.git_subprocess import local_branch_exists
 from specy_road.registry_yaml import read_registry, registry_path, write_registry
+from specy_road.repo_lock import pickup_finish_lock
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
@@ -166,18 +167,21 @@ def main(argv: list[str] | None = None) -> None:
         # Report against local state: read-only, and useful with no network.
         raise SystemExit(_report(root, read_registry(registry_path(root)), remote, base))
 
-    sync_integration_branch(
-        root,
-        base,
-        remote,
-        retry_hint="retry registry-prune",
-        clean_tree_detail=(
-            "Removing a registry claim commits on the integration branch."
-        ),
-    )
-    reg = read_registry(registry_path(root))
-    rows = _resolve_removals(root, reg, args.remove)
-    raise SystemExit(_remove_and_push(root, reg, rows, remote, base))
+    # It checks out and commits on the integration branch: not while a pickup, finish or abort does too.
+    with pickup_finish_lock(root, operation="registry-prune"):
+        sync_integration_branch(
+            root,
+            base,
+            remote,
+            retry_hint="retry registry-prune",
+            clean_tree_detail=(
+                "Removing a registry claim commits on the integration branch."
+            ),
+        )
+        reg = read_registry(registry_path(root))
+        rows = _resolve_removals(root, reg, args.remove)
+        code = _remove_and_push(root, reg, rows, remote, base)
+    raise SystemExit(code)
 
 
 if __name__ == "__main__":

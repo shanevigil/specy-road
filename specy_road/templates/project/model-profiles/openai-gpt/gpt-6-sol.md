@@ -38,6 +38,8 @@ When this model runs as a roster **executor** on `codex`, the executor template 
 
 Orchestration guard hooks deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`.
 
+Under the default codex launch (`sandbox_mode=workspace-write`) an executor cannot commit: git metadata is read-only, in a linked worktree (its gitdir under the main checkout's `.git/worktrees/`, and the common `.git`) and in a plain checkout alike. Give a codex executor a `channels.cli` and `cli_resume` that add the worktree's gitdir and the common `.git` as writable roots (specy-road `docs/orchestration-workers.md`, Roster setup, "Known limitation").
+
 ## Strengths
 - OpenAI positions GPT-6 Sol for complex coding and agentic workflows; the API exposes a 1.05M context window and 128K output limit [S8] (confidence: high)
 - Six effort settings, including a non-reasoning none setting and max, allow varying execution cost by role [S8, S1] (confidence: high)

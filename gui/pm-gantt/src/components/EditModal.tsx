@@ -27,6 +27,7 @@ import {
   splitByH2,
 } from "../planningSectionUtils";
 import { ROADMAP_NODE_STATUS_ORDERED } from "../roadmapNodeStatuses";
+import { EditModalSaveQueue } from "../editModalSaveQueue";
 import { MarkdownWorkspace } from "./MarkdownWorkspace";
 import { ModalFrame } from "./ModalFrame";
 import { PlanningSheetDiffPane } from "./PlanningSheetDiffPane";
@@ -84,8 +85,11 @@ type Props = {
   onClose: () => void;
   /** Open another task in a new dialog (dependency id). */
   onOpenNode?: (nodeId: string) => void;
-  /** Called after a successful autosave so the roadmap can refresh. */
-  onPersisted?: () => void;
+  /** Called after a successful save so the roadmap can refresh; the dialog
+   *  waits for the returned promise before its next save (new fingerprint). */
+  onPersisted?: () => void | Promise<void>;
+  /** A save that was still running when the dialog closed failed. */
+  onSaveErrorAfterClose?: (message: string) => void;
   /** localStorage key suffix for size/position (one per open dialog). */
   modalStorageKey: string;
   /** Global stacking order for this dialog (higher = on top). */
@@ -120,12 +124,6 @@ type Props = {
   /** Task is reduced to the bottom strip (content stays mounted). */
   minimized?: boolean;
   onMinimize?: () => void;
-};
-
-type SavedSnap = {
-  title: string;
-  path: string;
-  content: string;
 };
 
 /** Explicit first, then inherited-only ids (inherited list includes both). */
@@ -222,6 +220,7 @@ export function EditModal({
   onClose,
   onOpenNode,
   onPersisted,
+  onSaveErrorAfterClose,
   modalStorageKey,
   stackZIndex = 50,
   backdropPassThrough = false,
@@ -252,6 +251,8 @@ export function EditModal({
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  /** A save that did not reach disk; cleared only when that field saves. */
+  const [saveErr, setSaveErr] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [persistMsg, setPersistMsg] = useState<string | null>(null);
   const [scaffolding, setScaffolding] = useState(false);
@@ -270,12 +271,11 @@ export function EditModal({
   >([]);
   /** Bumps when the user changes selection in the review textarea (for Append selection). */
   const [reviewSelectionTick, setReviewSelectionTick] = useState(0);
-  /** Gate roadmap status (gates only); persisted via debounced patchNode. */
+  /** Gate roadmap status (gates only); saved through the save queue. */
   const [gateStatusDraft, setGateStatusDraft] = useState("Not Started");
 
   const reviewTextareaRef = useRef<HTMLTextAreaElement>(null);
   const sectionScrollRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const lastSavedGateStatusRef = useRef("");
 
   const titleConflict = useMemo(() => {
     if (!node) {
@@ -289,14 +289,118 @@ export function EditModal({
     return analyzeTitleConflict(title, node.id, allNodes);
   }, [allNodes, node, title]);
 
-  const lastSaved = useRef<SavedSnap>({
-    title: "",
-    path: "",
-    content: "",
+  // Latest props for the save queue's callbacks (it outlives re-renders).
+  const nodeIdRef = useRef(node?.id ?? "");
+  const onPersistedRef = useRef(onPersisted);
+  const onSaveErrorAfterCloseRef = useRef(onSaveErrorAfterClose);
+  const mountedRef = useRef(true);
+  /** Node id whose sheet this dialog has loaded (later loads keep the editor text). */
+  const hydratedNodeRef = useRef<string | null>(null);
+  useEffect(() => {
+    nodeIdRef.current = node?.id ?? "";
+    onPersistedRef.current = onPersisted;
+    onSaveErrorAfterCloseRef.current = onSaveErrorAfterClose;
   });
+
+  const [saveQueue] = useState(
+    () =>
+      new EditModalSaveQueue(
+        {
+          patchNode: (pairs) => patchNode(nodeIdRef.current, pairs),
+          resolveSheetPath: async () => {
+            const a = await fetchPlanningArtifacts(nodeIdRef.current);
+            const leaf = a.files || [];
+            const sheet = leaf.find((x) => x.role === "sheet") || leaf[0];
+            if (!sheet?.path) return null;
+            // Prime the content hash for the renamed file; the editor text stays.
+            if (sheet.exists !== false) await fetchPlanningFile(sheet.path);
+            return sheet.path;
+          },
+          saveSheet: (path, text) => savePlanningFile(path, text),
+          refresh: async () => {
+            await onPersistedRef.current?.();
+          },
+          onStatus: (s) => {
+            if (!mountedRef.current) {
+              if (s.state === "error") onSaveErrorAfterCloseRef.current?.(s.message);
+              return;
+            }
+            setSaveErr(s.state === "error" ? s.message : null);
+            setPersistMsg(
+              s.state === "saving" ? "Saving…" : s.state === "saved" ? "Saved." : null,
+            );
+          },
+          onSheetPathAdopted: (path) => setSheetPath(path),
+        },
+        { title: "", status: "", path: null, content: "" },
+      ),
+  );
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      // Closing must not drop a debounced edit: send it now.
+      void saveQueue.flush();
+    };
+  }, [saveQueue]);
+
+  useEffect(() => {
+    if (persistMsg !== "Saved.") return;
+    const t = window.setTimeout(() => setPersistMsg(null), 2000);
+    return () => window.clearTimeout(t);
+  }, [persistMsg]);
+
+  /** Load this node's sheet into the editor and the save queue. */
+  const loadSheet = useCallback(
+    async (path: string | null) => {
+      setSheetPath(path);
+      if (!path) {
+        setContent("");
+        saveQueue.resetSheet(null, "");
+        return;
+      }
+      setLoading(true);
+      try {
+        const f = await fetchPlanningFile(path);
+        setContent(f.content);
+        saveQueue.resetSheet(path, f.content);
+      } catch (e: unknown) {
+        setErr(String(e));
+        saveQueue.resetSheet(path, "");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [saveQueue],
+  );
 
   useEffect(() => {
     if (!node) return;
+    const nid = node.id;
+    if (hydratedNodeRef.current === nid) {
+      // planning_dir changed. A rename this dialog made was already adopted by
+      // the queue; anything else is picked up once in-flight saves finish.
+      if (node.planning_dir && node.planning_dir === saveQueue.sheetPath) return;
+      void saveQueue.whenIdle().then(async () => {
+        try {
+          const a = await fetchPlanningArtifacts(nid);
+          const leaf = a.files || [];
+          const path = (leaf.find((x) => x.role === "sheet") || leaf[0])?.path ?? null;
+          if (path === saveQueue.sheetPath) return;
+          if (saveQueue.hasUnsavedSheet()) {
+            if (path) await fetchPlanningFile(path);
+            saveQueue.adoptSheetPath(path);
+            setSheetPath(path);
+            return;
+          }
+          await loadSheet(path);
+        } catch (e: unknown) {
+          setErr(String(e));
+        }
+      });
+      return;
+    }
     setTitle(node.title || "");
     setErr(null);
     setPersistMsg(null);
@@ -306,8 +410,17 @@ export function EditModal({
     setShowRawCompare(false);
     setSectionChoices([]);
     setHydrated(false);
-    fetchPlanningArtifacts(node.id)
-      .then((a) => {
+    const gate = node.type === "gate";
+    const status = (node.status as string)?.trim() || "Not Started";
+    setGateStatusDraft(status);
+    saveQueue.reset({
+      title: node.title || "",
+      status: gate ? status : "",
+      path: null,
+      content: "",
+    });
+    fetchPlanningArtifacts(nid)
+      .then(async (a) => {
         const anc = (a.ancestor_planning_files || []).map((f) => ({
           path: f.path,
           exists: f.exists !== false,
@@ -315,30 +428,14 @@ export function EditModal({
         setAncestorFiles(anc);
         const leaf = a.files || [];
         const sheet = leaf.find((x) => x.role === "sheet") || leaf[0];
-        const nt = node.title || "";
-        if (sheet?.path) {
-          setSheetPath(sheet.path);
-          lastSaved.current = {
-            title: nt,
-            path: "",
-            content: "",
-          };
-        } else {
-          setSheetPath(null);
-          setContent("");
-          lastSaved.current = {
-            title: nt,
-            path: "",
-            content: "",
-          };
-          setHydrated(true);
-        }
+        await loadSheet(sheet?.path ?? null);
       })
-      .catch((e: unknown) => {
-        setErr(String(e));
+      .catch((e: unknown) => setErr(String(e)))
+      .finally(() => {
+        hydratedNodeRef.current = nid;
         setHydrated(true);
       });
-    // Re-fetch when server renames planning file (title → codename slug) or path otherwise changes.
+    // Re-fetch when the planning file is renamed (title → codename slug) or moves.
     // eslint-disable-next-line @eslint-react/exhaustive-deps
   }, [node?.id, node?.planning_dir]);
 
@@ -353,165 +450,24 @@ export function EditModal({
     // eslint-disable-next-line @eslint-react/exhaustive-deps -- global LLM settings; re-check only when switching tasks (id), not on node reference churn
   }, [node?.id]);
 
+  // Every content change (typing, review merges) goes through the queue; it
+  // ignores values it already has, so re-running this effect never re-saves.
   useEffect(() => {
-    if (!node) return;
-    if (!sheetPath) {
-      setContent("");
-      setHydrated(true);
-      return;
-    }
-    setLoading(true);
-    setHydrated(false);
-    fetchPlanningFile(sheetPath)
-      .then((f) => {
-        setContent(f.content);
-        lastSaved.current = {
-          ...lastSaved.current,
-          path: sheetPath,
-          content: f.content,
-        };
-      })
-      .catch((e: unknown) => setErr(String(e)))
-      .finally(() => {
-        setLoading(false);
-        setHydrated(true);
-      });
-    // eslint-disable-next-line @eslint-react/exhaustive-deps
-  }, [sheetPath, node?.id]);
+    if (!hydrated || loading || !sheetPath || readOnlyCheckout) return;
+    saveQueue.setContent(content);
+  }, [content, hydrated, loading, sheetPath, readOnlyCheckout, saveQueue]);
 
-  useEffect(() => {
-    if (!node || node.type !== "gate") return;
-    const s = (node.status as string)?.trim() || "Not Started";
-    setGateStatusDraft(s);
-    lastSavedGateStatusRef.current = s;
-    // eslint-disable-next-line @eslint-react/exhaustive-deps -- reset draft when switching rows; avoid clobbering in-progress edits on status-only server refresh
-  }, [node?.id, node?.type]);
+  const onTitleInput = (value: string) => {
+    setTitle(value);
+    if (!node || !hydrated || readOnlyCheckout) return;
+    saveQueue.setTitle(value, analyzeTitleConflict(value, node.id, allNodes).hasConflict);
+  };
 
-  useEffect(() => {
-    if (!hydrated || !node || loading) return;
-    if (node.type !== "gate") return;
-    if (readOnlyCheckout) return;
-    if (gateStatusDraft === lastSavedGateStatusRef.current) return;
-    setPersistMsg("Saving…");
-    const t = window.setTimeout(() => {
-      patchNode(node.id, [{ key: "status", value: gateStatusDraft }])
-        .then(() => {
-          lastSavedGateStatusRef.current = gateStatusDraft;
-          setPersistMsg("Saved.");
-          onPersisted?.();
-          window.setTimeout(() => setPersistMsg(null), 2000);
-        })
-        .catch((e: unknown) => {
-          if (e instanceof PmGuiConcurrencyError) {
-            void onConcurrencyConflict();
-            setErr(
-              "Roadmap changed elsewhere; refreshed. Re-apply gate status if needed.",
-            );
-            setPersistMsg(null);
-            return;
-          }
-          setErr(String(e));
-          setPersistMsg(null);
-        });
-    }, 500);
-    return () => window.clearTimeout(t);
-  }, [
-    gateStatusDraft,
-    hydrated,
-    node,
-    loading,
-    onPersisted,
-    readOnlyCheckout,
-    onConcurrencyConflict,
-  ]);
-
-  useEffect(() => {
-    if (!hydrated || !node || loading) return;
-    if (readOnlyCheckout) return;
-    if (titleConflict.hasConflict) return;
-    if (title === lastSaved.current.title) {
-      return;
-    }
-    setPersistMsg("Saving…");
-    const t = window.setTimeout(() => {
-      patchNode(node.id, [{ key: "title", value: title }])
-        .then(() => {
-          lastSaved.current = { ...lastSaved.current, title };
-          setPersistMsg("Saved.");
-          onPersisted?.();
-          window.setTimeout(() => setPersistMsg(null), 2000);
-        })
-        .catch((e: unknown) => {
-          if (e instanceof PmGuiConcurrencyError) {
-            void onConcurrencyConflict();
-            setErr(
-              "Roadmap changed elsewhere; refreshed. Re-apply your title if needed.",
-            );
-            setPersistMsg(null);
-            return;
-          }
-          setErr(String(e));
-          setPersistMsg(null);
-        });
-    }, 500);
-    return () => window.clearTimeout(t);
-  }, [
-    title,
-    hydrated,
-    node,
-    loading,
-    onPersisted,
-    titleConflict.hasConflict,
-    readOnlyCheckout,
-    onConcurrencyConflict,
-  ]);
-
-  useEffect(() => {
-    if (!hydrated || !node || loading || !sheetPath) return;
-    if (readOnlyCheckout) return;
-    if (
-      content === lastSaved.current.content &&
-      sheetPath === lastSaved.current.path
-    ) {
-      return;
-    }
-    setPersistMsg("Saving…");
-    const t = window.setTimeout(() => {
-      savePlanningFile(sheetPath, content)
-        .then(() => {
-          lastSaved.current = {
-            ...lastSaved.current,
-            content,
-            path: sheetPath,
-          };
-          setPersistMsg("Saved.");
-          onPersisted?.();
-          window.setTimeout(() => setPersistMsg(null), 2000);
-        })
-        .catch((e: unknown) => {
-          if (e instanceof PmGuiConcurrencyError) {
-            void onConcurrencyConflict();
-            setErr(
-              "Roadmap changed elsewhere; refreshed. Re-apply your planning edits if needed.",
-            );
-            setPersistMsg(null);
-            return;
-          }
-          setErr(String(e));
-          setPersistMsg(null);
-        });
-    }, 600);
-    return () => window.clearTimeout(t);
-  }, [
-    content,
-    sheetPath,
-    hydrated,
-    node,
-    loading,
-    onPersisted,
-    readOnlyCheckout,
-    onConcurrencyConflict,
-  ]);
+  const onGateStatusInput = (value: string) => {
+    setGateStatusDraft(value);
+    if (!node || !hydrated || readOnlyCheckout || node.type !== "gate") return;
+    saveQueue.setStatus(value);
+  };
 
   const depItems = useMemo(
     () =>
@@ -702,12 +658,11 @@ export function EditModal({
     if (!node || readOnlyCheckout) return;
     setScaffolding(true);
     setErr(null);
-    void scaffoldPlanning(node.id)
-      .then(() => {
-        onPersisted?.();
-        return fetchPlanningArtifacts(node.id);
-      })
-      .then((a) => {
+    const nid = node.id;
+    void scaffoldPlanning(nid)
+      .then(async () => {
+        await onPersisted?.();
+        const a = await fetchPlanningArtifacts(nid);
         const anc = (a.ancestor_planning_files || []).map((f) => ({
           path: f.path,
           exists: f.exists !== false,
@@ -715,24 +670,7 @@ export function EditModal({
         setAncestorFiles(anc);
         const leaf = a.files || [];
         const sheet = leaf.find((x) => x.role === "sheet") || leaf[0];
-        const nt = node.title || "";
-        if (sheet?.path) {
-          setSheetPath(sheet.path);
-          lastSaved.current = {
-            title: nt,
-            path: "",
-            content: "",
-          };
-        } else {
-          setSheetPath(null);
-          setContent("");
-          lastSaved.current = {
-            title: nt,
-            path: "",
-            content: "",
-          };
-          setHydrated(true);
-        }
+        await loadSheet(sheet?.path ?? null);
       })
       .catch((e: unknown) => {
         if (e instanceof PmGuiConcurrencyError) {
@@ -760,13 +698,15 @@ export function EditModal({
   })();
 
   const footer =
-    persistMsg || err ? (
+    saveErr || err || persistMsg ? (
       <>
-        {err ? (
-          <span style={{ color: "crimson" }}>{err}</span>
-        ) : (
-          <span>{persistMsg}</span>
-        )}
+        {saveErr ? (
+          <span role="alert" style={{ color: "crimson" }}>
+            {saveErr}
+          </span>
+        ) : null}
+        {err ? <span style={{ color: "crimson" }}>{err}</span> : null}
+        {!saveErr && !err ? <span>{persistMsg}</span> : null}
       </>
     ) : null;
 
@@ -880,8 +820,9 @@ export function EditModal({
           <input
             id={titleInputId}
             value={title}
-            readOnly={readOnlyCheckout}
-            onChange={(e) => setTitle(e.target.value)}
+            // Read-only until loaded: an edit before then would not be saved.
+            readOnly={readOnlyCheckout || !hydrated}
+            onChange={(e) => onTitleInput(e.target.value)}
             autoComplete="off"
             aria-invalid={titleConflict.hasConflict}
             aria-describedby={
@@ -910,9 +851,9 @@ export function EditModal({
             Status
             <select
               value={gateStatusDraft}
-              disabled={readOnlyCheckout}
+              disabled={readOnlyCheckout || !hydrated}
               aria-label="Gate roadmap status"
-              onChange={(e) => setGateStatusDraft(e.target.value)}
+              onChange={(e) => onGateStatusInput(e.target.value)}
             >
               {ROADMAP_NODE_STATUS_ORDERED.map((st) => (
                 <option key={st} value={st}>

@@ -3,6 +3,8 @@
 ``dev`` (the integration branch) has ``roadmap/manifest.json`` but not
 ``src/a.py``, which only the feature branch adds; both paths are relative, so
 each command also proves it ran at the project root of a checkout of ``dev``.
+A command naming ``src/a.py`` fails on ``dev`` only because the leaf adds it,
+so it is never evidence.
 """
 
 from __future__ import annotations
@@ -21,7 +23,7 @@ from specy_road.review_gate import evaluate_gate
 from specy_road.review_target import resolve_target
 
 ONE_AI = "version: 1\nroster:\n  - {id: opus, family: anthropic, roles: [reviewer]}\n"
-FAILS_ON_TIP = "test -f src/a.py"
+FAILS_ON_TIP = "test ! -f roadmap/manifest.json"
 PASSES_ON_TIP = "test -f roadmap/manifest.json"
 
 
@@ -102,3 +104,21 @@ def test_a_tip_that_moved_after_the_run_makes_the_claim_stale(tmp_path: Path) ->
     gate = _gate(repo)
     assert not gate.passed
     assert gate.problems()[-1].endswith(f"exited 1 (stale: {ran_on[:12]})")
+
+
+@pytest.mark.parametrize("cmd,why", [
+    ("test -f src/a.py", "names src/a.py, which {tip} does not have"),   # a file the leaf adds
+    ("python -m pytest -q src/a.py::test_x", "names src/a.py, which {tip} does not have"),
+    ("no-such-command-specy-road", "exit 127 (command not found) is no evidence"),
+    ("sh -c 'exit 4'", "exit 4 (pytest usage error or no such file) is no evidence"),
+])
+def test_a_failure_that_proves_nothing_about_the_tip_stays_unverified(tmp_path: Path, capsys, cmd: str,
+                                                                      why: str) -> None:
+    repo = _claimed_repo(tmp_path, cmd)
+    why = why.format(tip=git(repo, "rev-parse", "dev")[:12])
+    assert _check(repo) == 1
+    assert f"claim-unverified: {cmd} ({why})" in capsys.readouterr().out
+    assert _record(repo)["commands"][0]["unverified"] == why
+    gate = _gate(repo)
+    assert not gate.passed
+    assert gate.problems()[-1].endswith(f"verifier `{cmd}` exited 1 (unverified: {why})")

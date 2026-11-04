@@ -330,3 +330,20 @@ def test_fix_keeps_a_landed_patch_whose_commit_no_ref_holds(doctor_repo, capsys)
         "commits no branch holds, so --fix leaves it") for line in out.splitlines())
     assert "wt-landed" in git(repo, "worktree", "list")
     assert git(wt, "rev-parse", "HEAD") == head
+
+
+@pytest.mark.parametrize("prefix", doctor.TEMP_WORKTREES)
+def test_fix_leaves_a_temporary_worktree_another_command_is_using(doctor_repo, capsys, prefix: str) -> None:
+    """Land check, check-pre-existing, nested land and red/green each run in a clean detached worktree
+    under a mkdtemp directory and remove it themselves; doctor --fix must not pull it from under them."""
+    repo, _bare = doctor_repo
+    wt = repo.parent / f"{prefix}abc123" / "tree"
+    git(repo, "worktree", "add", "-q", "--detach", str(wt), "dev")
+
+    assert _exit(["--fix", "--yes", "--repo-root", str(repo)]) == 0
+
+    out = capsys.readouterr().out
+    assert any(line.startswith("[kept] ") and line.endswith(
+        "a temporary worktree a running specy-road check may be using, so --fix leaves it")
+        for line in out.splitlines())
+    assert str(wt) in git(repo, "worktree", "list") and wt.is_dir()
