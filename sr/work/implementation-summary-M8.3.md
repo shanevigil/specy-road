@@ -142,6 +142,27 @@ Required change → what changed:
   - File limits OK; ruff clean; private imports 0 new.
   - Red/green: with the old global `.git` skip restored, both cases fail.
 
+## Round 9 (gpt-5.6-sol-medium's block at `d5f3e39d`; commit `3453c6ad`)
+
+Required change → what changed:
+
+- **"Include stable file identity/link metadata in checkout, hand-off, Git-directory and linked-worktree .git-pointer snapshots."**
+  - New `review_write_check._record(st, path, is_link)` returns `(st_dev, st_ino, st_nlink, st_mode, st_size, st_mtime_ns, sha256)`. All three places that record a file use it:
+    - `_walk`: the checkout, the hand-off directory, and the common and worktree Git directories;
+    - `_git_marker`: a nested checkout's `.git` pointer file;
+    - the linked-worktree `.git` pointer in `_walk_git`.
+  - A file swapped for a hard link to an identical copy elsewhere now differs by inode and link count.
+  - `docs/orchestration-review.md` names identity among the compared fields.
+- **"Add a public review-delegate regression proving an identical hard-link replacement is review_failure with no verdict filed."**
+  - `test_review_delegate_cli_fails_an_identical_hard_link_replacement_and_files_no_verdict` in `tests/test_review_record_write_git.py`, through `specy-road review delegate`, covers the four areas: `src/a.py`, `work/reviews/M1.1/PACKET.md`, `.git/config`, and a linked worktree's `.git` with `--worktree`.
+  - Each time the fake reviewer copies the file outside every snapshotted tree with `shutil.copy2`, unlinks it, and hard-links the copy back. The test confirms that mode, size, mtime and content are unchanged, that the inode is now the outside alias's with link count 2, and that the run is a `review_failure` naming the path with no `REVIEW-opus.md`.
+  - The fake harness gained a `relink` step.
+- **Touch zones:** no new path.
+- **Verification:**
+  - `pytest -n 4` over the leaf's test files (`tests/test_review_record_write.py`, `tests/test_review_record_write_git.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_worker_adapters.py`, `tests/test_models_and_prompt.py`, `tests/test_prerelease_review.py`, `tests/test_review_rca.py`, `tests/test_role_prompt_file_limits.py`, `tests/test_resumed_delta_review.py`, `tests/test_chore_mode.py`): 182 passed.
+  - File limits OK; ruff clean; private imports 0 new.
+  - Red/green: with `_record` back to `(mode, size, mtime, sha256)`, all four hard-link cases fail.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
@@ -168,6 +189,7 @@ Required change → what changed:
 - `reviewer_env`: lets an honest Python test re-run write nothing.
 - `run_text`, `final_output`, `json_object`, the envelope unwrap in `file_review`: A1/A3 extraction.
 - `git index` entry in `snapshot` (round 4): Sol's A2 index finding.
+- `_record` (round 9): file identity and links in every snapshot entry, for Sol's hard-link finding.
 - `_git_marker`, and `_walk`'s top-level-only `.git` skip (round 8): Sol's nested-`.git` finding.
 - `st_mode` in the snapshot tuples, and the `review_write_check` module split (round 7): Sol's chmod finding, and the file limit.
 - `_walk_git` and `_walk`'s `skip` (round 6): Git metadata in the A2 snapshot. Its `resolved()` returns `None` when git can't answer.
