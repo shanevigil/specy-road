@@ -1,10 +1,9 @@
 """``specy-road worktree prune <ID>``: remove a leaf's worktree only when nothing in it would be lost.
 
 The leaf's worktree is ``work/.worktrees/<codename>`` in the main checkout, on
-``feature/rm-<codename>``. It is removed only when the worktree's ``HEAD`` and
-that branch, local and remote-tracking wherever they exist, are merged into
-``<remote>/<integration_branch>`` just fetched (``git fetch --prune``; a fetch
-that fails refuses) and the worktree has
+``feature/rm-<codename>``. It is removed only when the worktree's ``HEAD``,
+that branch (local, remote-tracking, and on the remote itself, wherever each
+exists) are merged into the remote's actual integration tip, and the worktree has
 no uncommitted changes, no untracked files git does not ignore, and no stash
 that could be its own (see below). Ignored files are deleted
 with it, so they are listed first.
@@ -30,7 +29,7 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.grind_session_cleanup import merged_into
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.git_subprocess import git_code, git_stdout, git_text
+from specy_road.git_subprocess import git_code, git_stdout, git_text, run
 from specy_road.git_workflow_config import load_git_workflow_config, resolve_integration_defaults
 from specy_road.nested_repos import _common_dir, is_repo_top, nested_repos
 from specy_road.review_files import reviews_root
@@ -147,6 +146,29 @@ def _check_nested(plan: PrunePlan, main: Path, prefix: str) -> None:
                                  f"{', '.join(lost)}")
 
 
+def _remote_heads(main: Path, remote: str, branches: list[str]) -> tuple[dict[str, str], str | None]:
+    """``({branch: sha}, None)``: the remote's actual tips of those of ``branches`` it has, with their commits here.
+
+    Read with ``ls-remote``, so neither stale remote-tracking refs nor a fetch refspec that leaves a
+    branch out can hide a peer's push; the commits are then fetched by branch name. ``({}, why)`` when
+    the remote, or any of those commits, cannot be read.
+    """
+    want = {f"refs/heads/{b}": b for b in branches}
+    r = run(["ls-remote", remote, *want], main)
+    if not r.ok:
+        return {}, f"cannot read {remote} (git ls-remote {remote}: {r.message})"
+    tips = {want[ref]: sha for sha, _, ref in (line.partition("\t") for line in r.out.splitlines()) if ref in want}
+    if tips:
+        code, out = git_code(["fetch", "--no-tags", "--no-write-fetch-head", remote,
+                              *(f"refs/heads/{b}" for b in tips)], main)
+        if code:
+            return {}, f"cannot fetch {', '.join(tips)} from {remote}: {out}"
+    missing = [b for b, sha in tips.items() if git_code(["cat-file", "-e", f"{sha}^{{commit}}"], main)[0]]
+    if missing:
+        return {}, f"the commits {remote} has at {', '.join(missing)} are not here after fetching them"
+    return tips, None
+
+
 def plan_prune(root: Path, node_id: str) -> PrunePlan:
     """What removing ``node_id``'s worktree would delete, and every reason it must not; :class:`PruneError` if absent."""
     main, wt, branch = leaf_worktree(root, node_id)
@@ -156,24 +178,25 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         plan.refusals.append(f"{cfg_err}; fix it, then re-run: without it the nested repositories cannot be checked")
         return plan
     base, remote, _warns = resolve_integration_defaults(main, explicit_base=None, explicit_remote=None)
-    target = f"refs/remotes/{remote}/{base}"
     # The remote's own tips, not remote-tracking refs as they last stood: a peer may have pushed to the
-    # leaf branch since they were merged. --prune drops a leaf branch deleted there after landing.
-    code, out = git_code(["fetch", "--prune", remote], main)
-    if code:
-        plan.refusals.append(f"cannot read {remote} (git fetch --prune {remote}: {out}); "
-                             "merged cannot be judged on stale refs")
-    elif not git_text(["rev-parse", "--verify", "--quiet", target], main):
+    # leaf branch since they were merged, and the fetch refspec may not cover it.
+    tips, why = _remote_heads(main, remote, [base, branch])
+    if why:
+        plan.refusals.append(f"{why}; merged cannot be judged without it")
+    elif base not in tips:
         plan.refusals.append(f"{remote} has no {base} to judge merged against")
     else:
-        # Every leaf ref that exists, local and remote-tracking: either may hold work the other lacks, and
-        # with neither (the branch deleted after landing) the worktree's HEAD alone is checked.
+        target = f"{remote}'s {base} ({tips[base][:12]})"
+        # Every leaf ref that exists, local, remote-tracking and on the remote: any may hold work the
+        # others lack, and with none (the branch deleted after landing) the worktree's HEAD alone is checked.
         heads = [("the worktree's HEAD", git_text(["rev-parse", "HEAD"], wt) or "HEAD")]
         heads += [(label, ref) for label, ref in ((branch, f"refs/heads/{branch}"),
                                                   (f"{remote}/{branch}", f"refs/remotes/{remote}/{branch}"))
                   if git_text(["rev-parse", "--verify", "--quiet", ref], main)]
+        if branch in tips:
+            heads.append((f"{branch} on {remote}", tips[branch]))
         plan.refusals += [f"{label} is not merged into {target}" for label, ref in heads
-                          if not merged_into(main, ref, target)]
+                          if not merged_into(main, ref, tips[base])]
     _check_nested(plan, main, prefix)
     state = _status(wt, tuple(f"{d.relative_to(wt).as_posix()}/" for _src, d, _linked in plan.nested))
     if state is None:

@@ -47,7 +47,7 @@ def _refusals(root: Path) -> str:
 def test_unmerged_branch_is_refused(tmp_path: Path) -> None:
     root, wt = _leaf(tmp_path)
     commit_file(wt, "src/a.py", "a = 1\n", "leaf work")
-    assert f"{FEATURE} is not merged into refs/remotes/origin/main" in _refusals(root)
+    assert f"{FEATURE} is not merged into origin's main" in _refusals(root)
     assert "the worktree's HEAD is not merged" in _refusals(root)
 
 
@@ -55,7 +55,7 @@ def test_merged_locally_but_not_pushed_is_refused(tmp_path: Path) -> None:
     root, wt = _leaf(tmp_path)
     commit_file(wt, "src/a.py", "a = 1\n", "leaf work")
     git(root, "merge", "-q", "--no-ff", "--no-edit", FEATURE)
-    assert "not merged into refs/remotes/origin/main" in _refusals(root)
+    assert "not merged into origin's main" in _refusals(root)
 
 
 def test_an_unmerged_remote_leaf_branch_refuses_when_the_local_one_is_gone(tmp_path: Path) -> None:
@@ -67,7 +67,7 @@ def test_an_unmerged_remote_leaf_branch_refuses_when_the_local_one_is_gone(tmp_p
     git(root, "branch", "-q", "-D", FEATURE)
     out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
     assert out.returncode == 1
-    assert f"origin/{FEATURE} is not merged into refs/remotes/origin/main" in out.stderr
+    assert f"origin/{FEATURE} is not merged into origin's main" in out.stderr
     assert wt.is_dir()
 
 
@@ -83,7 +83,24 @@ def test_a_peer_push_to_the_leaf_branch_after_it_merged_refuses(tmp_path: Path) 
     git(peer, "push", "-q", "origin", FEATURE)   # this checkout's origin/feature/rm-leaf-one is now stale
     out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
     assert out.returncode == 1
-    assert f"origin/{FEATURE} is not merged into refs/remotes/origin/main" in out.stderr
+    assert f"origin/{FEATURE} is not merged into origin's main" in out.stderr
+    assert wt.is_dir()
+
+
+def test_a_peer_push_outside_the_fetch_refspec_refuses(tmp_path: Path) -> None:
+    root, wt = _leaf(tmp_path)
+    _land(root, wt)
+    git(wt, "push", "-q", "origin", FEATURE)   # origin/feature/rm-leaf-one here: merged
+    git(root, "config", "remote.origin.fetch", "+refs/heads/main:refs/remotes/origin/main")   # main only
+    peer = tmp_path / "peer"
+    git(tmp_path, "clone", "-q", "-b", FEATURE, str(tmp_path / "origin.git"), str(peer))
+    git(peer, "config", "user.email", "p@e.com")
+    git(peer, "config", "user.name", "P")
+    commit_file(peer, "src/c.py", "c = 1\n", "peer work")
+    git(peer, "push", "-q", "origin", FEATURE)   # a plain fetch here would never see it
+    out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
+    assert out.returncode == 1
+    assert f"{FEATURE} on origin is not merged into origin's main" in out.stderr
     assert wt.is_dir()
 
 
@@ -92,7 +109,7 @@ def test_an_unreachable_remote_refuses(tmp_path: Path) -> None:
     _land(root, wt)
     git(root, "remote", "set-url", "origin", str(tmp_path / "gone.git"))
     out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
-    assert out.returncode == 1 and "cannot read origin (git fetch --prune origin" in out.stderr
+    assert out.returncode == 1 and "cannot read origin (git ls-remote origin" in out.stderr
     assert wt.is_dir()
 
 

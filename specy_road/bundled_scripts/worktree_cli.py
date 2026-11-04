@@ -55,10 +55,10 @@ def build_parser() -> argparse.ArgumentParser:
         "prune",
         description=(
             "Remove work/.worktrees/<codename> for NODE_ID only when the worktree's HEAD and "
-            "feature/rm-<codename>, local and on the remote wherever they exist, are merged into the "
-            "remote's integration branch, read by git fetch --prune (a failed fetch refuses), and it "
-            "has no uncommitted changes, untracked non-ignored "
-            "files, or stashes whose subject does not name another branch. Each nested_repos "
+            "feature/rm-<codename>, local, remote-tracking and on the remote wherever they exist, are "
+            "merged into the remote's actual integration tip (read with git ls-remote whatever the "
+            "fetch refspec says, its commits fetched by name; a remote that cannot be read refuses), and "
+            "it has no uncommitted changes, untracked non-ignored files, or stashes whose subject does not name another branch. Each nested_repos "
             "repository in it must also hold no uncommitted changes, stashes, or commits that no "
             "branch or remote-tracking ref of the main checkout's copy holds (a full clone's own "
             "branches and remote-tracking refs included). Lists each ignored file removal deletes, "
