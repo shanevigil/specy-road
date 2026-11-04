@@ -43,6 +43,7 @@ def _repo(tmp_path: Path, monkeypatch, mode: str) -> tuple[Path, Path]:
     git(bare, "symbolic-ref", "HEAD", "refs/heads/dev")
     git(repo, "remote", "add", "origin", str(bare))
     git(repo, "fetch", "-q", "origin")
+    git(repo, "remote", "set-head", "origin", "dev")   # as `git clone` records it; git < 2.48 fetch does not
     return repo, bare
 
 
