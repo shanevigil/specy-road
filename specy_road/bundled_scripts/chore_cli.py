@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from specy_road.finish_implementation_check import _clean
 from specy_road.git_subprocess import git_text, head_sha
 from specy_road.review_files import list_reviews, reviews_dir, reviews_root
 from specy_road.review_target import ReviewTarget
@@ -100,6 +101,8 @@ def start(repo_root: Path, slug: str, *, task: str, zones: list[str], review: bo
           model: str | None = None, harness: str | None = None, worktree: Path | None = None) -> dict[str, Any]:
     if not _SLUG.match(slug):
         raise WorkerError(f"{slug!r} is not a chore slug: lower-case letters, digits and '-', not starting with 'w-'")
+    if not zones or any(_clean(z) is None for z in zones):   # reconcile drops these, and no zones means unguarded
+        raise WorkerError(f"every --zone must name a path; got {zones!r}")
     if (chores_dir(repo_root) / f"{slug}.json").exists():
         raise WorkerError(f"chore {slug} already exists under {chores_dir(repo_root)}; pick another slug")
     wt = Path(worktree or git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root).resolve()
