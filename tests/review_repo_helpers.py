@@ -174,6 +174,7 @@ def prepare_layout_merge_mode_remote(
     git(bare, "symbolic-ref", "HEAD", "refs/heads/dev")
     git(git_top, "remote", "add", "origin", str(bare))
     git(git_top, "fetch", "-q", "origin")
+    git(git_top, "remote", "set-head", "origin", "dev")   # as clone does; fetch does it only from git 2.48
     return bare
 
 

@@ -75,6 +75,7 @@ def test_rerunning_finish_retries_a_failed_merge_landing(tmp_path: Path, monkeyp
     git(tmp_path, "clone", "-q", "--bare", str(repo), str(bare))
     git(repo, "remote", "add", "origin", str(bare))
     git(repo, "fetch", "-q", "origin")
+    git(repo, "remote", "set-head", "origin", "dev")   # as clone does; fetch does it only from git 2.48
     hook = bare / "hooks" / "pre-receive"
     hook.write_text("#!/bin/sh\nexit 1\n")   # the landing's push is refused
     hook.chmod(0o755)

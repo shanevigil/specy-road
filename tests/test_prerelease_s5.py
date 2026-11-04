@@ -35,6 +35,7 @@ def _delegate_layout(tmp_path: Path, monkeypatch) -> tuple[Path, Path, Path]:
     git(tmp_path, "clone", "-q", "--bare", str(repo), str(bare))
     git(repo, "remote", "add", "origin", str(bare))
     git(repo, "fetch", "-q", "origin")
+    git(repo, "remote", "set-head", "origin", "dev")   # as clone does; fetch does it only from git 2.48
     leaf = tmp_path / "leaf"
     git(repo, "worktree", "add", "-q", str(leaf), "feature/rm-thing")
     return repo, leaf, bare

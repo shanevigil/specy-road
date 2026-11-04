@@ -56,6 +56,7 @@ def make_pickup_project(tmp_path: Path, git_workflow_extra: str = "") -> Path:
     subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
     git(root, "remote", "add", "origin", str(origin))
     git(root, "push", "-q", "-u", "origin", "main")
+    git(root, "remote", "set-head", "origin", "main")   # as clone does; fetch does it only from git 2.48
     return root
 
 
