@@ -111,7 +111,8 @@ def test_claude_code_counts_what_claude_md_imports_and_notes_the_rest(repo: Path
     "```md\n~~~text\n@example.md\n~~~\n```\n",          # another fence character inside does not close it
     "````\n```\n@example.md\n```\n````\n",            # a shorter run inside does not close it
     "```\n@example.md\n``` not a closer\n```\n",       # a closer has nothing after the run
-], ids=["plain", "other-character-inside", "shorter-run-inside", "text-after-run"])
+    "1.  Example:\n\n    ```md\n    @example.md\n    ```\n\n2.  ",   # fences indented in a list item; @after.md is item 2
+], ids=["plain", "other-character-inside", "shorter-run-inside", "text-after-run", "list-indented"])
 def test_an_import_inside_a_fenced_example_is_not_counted(repo: Path, example: str) -> None:
     """CommonMark fences: only the opener's character, at least as long, with nothing after it, closes one."""
     _write(repo, AGENT_GUIDE, f"# Claude\n{example}@after.md\n")

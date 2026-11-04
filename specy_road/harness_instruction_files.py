@@ -41,7 +41,7 @@ _CLAUDE_RULES = ".claude/rules"
 #: ``@path`` imports, outside code spans and fenced blocks, resolve relative to the importing
 #: file and nest up to four hops: https://code.claude.com/docs/en/memory
 _CLAUDE_IMPORT = re.compile(r"(?<!\w)@(~?[\w./-]+)")
-_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+_FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")   # any indent, as validate_stale_commands: a list item indents its fences
 _CODE_SPAN = re.compile(r"`[^`]*`")
 CLAUDE_IMPORT_HOPS = 4
 #: "Claude Code skips a file over 4 MiB and loads none of it."
