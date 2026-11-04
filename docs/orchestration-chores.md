@@ -98,8 +98,8 @@ policy:
   garden_cadence_days: 14
 ```
 
-Each run records its date in `work/chores/garden.json` (gitignored, beside the
-chore records). With `policy.garden_cadence_days` set, `specy-road validate`
+Each run records its date in `work/chores/garden.json`, which the managed
+`.gitignore` block ignores (`specy-road refresh-stubs` adds the line to an older block). With `policy.garden_cadence_days` set, `specy-road validate`
 warns "gardening due: last run <date>, every N days; run `specy-road chore garden`"
 once more than N days have passed, or `never run` when there is no record. The
 warning is never fatal; unset, there is none.

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -163,7 +164,9 @@ def test_review_delegate_takes_a_chore_started_with_review(tmp_path: Path) -> No
 
 from datetime import date, timedelta  # noqa: E402
 
+from specy_road.agent_ignores import apply_agent_ignores  # noqa: E402
 from specy_road.bundled_scripts import chore_garden  # noqa: E402
+from specy_road.bundled_scripts.role_prompt_rca import dirty_check  # noqa: E402
 from specy_road.bundled_scripts.roadmap_load import load_roadmap  # noqa: E402
 
 _RULES = ("# Rules\n\nRead the docs.\n<!-- prevents: drift | enforced: advisory | ref: x -->\n"
@@ -179,12 +182,16 @@ _GARDEN_LINES = [
 
 
 def garden_repo(tmp_path: Path, *, tag: bool = True, cadence: int | None = None) -> Path:
-    """A repo on ``dev`` with one finding of each class in its last commit (``work/`` ignored)."""
+    """A repo on ``dev`` with one finding of each class in its last commit; ``.gitignore`` is the managed lines only."""
     repo = make_review_repo(tmp_path)
     git(repo, "checkout", "-q", "dev")
+    (repo / ".gitignore").unlink()
+    apply_agent_ignores(repo)                                             # as init project writes it
+    git(repo, "add", ".gitignore", ".cursorindexingignore")
+    git(repo, "commit", "-qm", "managed ignores")
     policy = "version: 1\npolicy:\n  ratchet_paths:\n    - constraints/base.txt\n" + (
         f"  garden_cadence_days: {cadence}\n" if cadence else "")
-    for rel, text in ((".gitignore", "work/\n"), ("roadmap/orchestration.yaml", policy), ("constraints/base.txt", "a\n")):
+    for rel, text in (("roadmap/orchestration.yaml", policy), ("constraints/base.txt", "a\n")):
         commit_file(repo, rel, text, f"add {rel}")
     if tag:
         git(repo, "tag", "v1")
@@ -206,7 +213,10 @@ def test_garden_prints_one_line_per_finding_and_writes_nothing_tracked(tmp_path:
     capsys.readouterr()
     assert run_chore_cli("chore", "garden", "--repo-root", str(repo)) == 0
     assert capsys.readouterr().out.splitlines() == _GARDEN_LINES
-    assert git(repo, "status", "--porcelain") == ""                       # the run record is under work/
+    assert git(repo, "status", "--porcelain", "--untracked-files=all") == ""   # the managed lines ignore the record
+    assert git(repo, "check-ignore", "work/chores/garden.json") == "work/chores/garden.json"
+    clean = subprocess.run(dirty_check("", "M1.1"), shell=True, cwd=repo, capture_output=True, text=True, check=True)
+    assert clean.stdout == ""                                             # delegate's clean-tree check passes
     assert json.loads(chore_garden.record_path(repo).read_text()) == {"last_run": date.today().isoformat()}
     assert run_chore_cli("chore", "garden", "--json", "--repo-root", str(repo)) == 0
     report = json.loads(capsys.readouterr().out)
