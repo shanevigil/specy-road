@@ -120,7 +120,8 @@
         "specy_road/review_delegate.py",
         "docs/orchestration-review.md",
         "specy_road/bundled_scripts/role_prompt_cli.py",
-        "specy_road/review_write_check.py"
+        "specy_road/review_write_check.py",
+        "docs/orchestration-reviewer-output.md"
       ],
       "type": "task"
     },

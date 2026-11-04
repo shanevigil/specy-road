@@ -8,7 +8,7 @@ One task (the child of this phase) does the setup; it goes through the same pick
 
 ## Tasks / checklist
 
-- [ ] Complete the setup task under this phase
+- [x] Complete the setup task under this phase
 - [x] Retitle this phase, or add the next one
 
 ## References
