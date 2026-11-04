@@ -298,6 +298,24 @@ The leaf had been approved at `b8b7c294` and finished (`7ef16419`), but WIP move
   - `specy-road file-limits`: OK after the move. `specy-road validate` from `sr/`: OK. `export --check` and `digest --check`: OK. `ruff` clean on the changed files; private imports 0 new.
   - The merge commit itself was made with `git commit -F` on the staged merge result, because git refuses `--only` during a merge. Nothing outside the merge was staged.
 
+## Fix round: Git metadata scope (coordinator, live failure at `f01824de`; commit `9b01c380`)
+
+- **Failure:** in the shared toolkit repository every review was filed as `review_failure` for `.git`, `.git/config` and `.git/logs/refs/heads/<other branches>`, all written by other processes (an IDE's git polling, other worktrees committing). `_walk_git` walked the whole common Git directory, its own directory metadata included, and `git refs` compared every ref.
+- **Fix:** `review_write_check._walk_git` now records only the checkout's own `HEAD` and `logs/HEAD` (from `--git-dir`), each reviewed branch's loose ref, reflog and `packed-refs` line, the shared `hooks/` and a linked worktree's `.git` pointer. `git refs` compares `HEAD` and the reviewed branch. The new `branches` names the reviewed branch: the one checked out, plus the local branch `ref` names (`review delegate` passes `t.ref`; `prompt --channel cli` passes `--ref`), so a reviewer on a detached quiet checkout that moves the leaf branch is still caught. Not recorded any more: the common directory's own metadata, `config`, `objects`, `FETCH_HEAD`, `ORIG_HEAD`, other branches' refs and reflogs, and other worktrees' directories. The worktree walk and its directory-metadata rule (Sol, `26f5cfb6`) are unchanged, and the index is still compared by its entries.
+- **Kept beyond the coordinator's list:** `hooks/`. A hook is code every checkout runs, other sessions rarely write it, and Sol's round-6 hook tests still pass. Dropping it is one line in `_walk_git` if the coordinator wants the narrower list.
+- **Tests changed to the new scope** (the coordinator asked for this change in behaviour):
+  - the index-only writes now report `{"git index"}` only, not also `.git`, since the Git directory root is no longer compared;
+  - the chmod and hard-link cases' `git-dir` target is `.git/HEAD` instead of `.git/config`;
+  - the transient-file case drops `where=".git"`, the Git directory root; `.git/hooks` stays;
+  - `test_a_commit_and_an_ignored_cache_count_as_writes_and_other_checkouts_do_not` now requires the reviewed branch's reflog among the writes, within `HEAD`'s reflog and the branch's ref and reflog, instead of any `.git/` path.
+- **Tests added:**
+  - `test_only_a_commit_on_the_reviewed_branch_fails_the_review_not_other_sessions_git_activity` covers two cases. In `other-worktree`, during the run another worktree commits on branch `other`, `config` is rewritten and an `index.lock` is created and removed in the common root; the review is `recorded`. In `reviewer`, a reviewer commit on the reviewed branch is a `review_failure` naming `git refs`, `.git/logs/HEAD` and the branch's reflog. Red/green: with the old `review_write_check.py`, the `other-worktree` case fails.
+  - `test_the_reviewed_branch_is_checked_when_the_reviewer_runs_on_a_detached_checkout`: an `update-ref` of the leaf branch from a detached worktree is a write.
+- **Docs:** `docs/orchestration-reviewer-output.md` states the scope. The module docstrings of `review_write_check` and `review_record_write` match.
+- **Verification:**
+  - `pytest -n 4 -p no:cacheprovider` over `tests/test_review_record_write.py`, `tests/test_review_record_write_git.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_review_file_case.py`, `tests/test_chore_mode.py`, `tests/test_headless_limits_denials.py`, `tests/test_orchestration_guard_hooks.py`, `tests/test_roster_harness_model.py` and `tests/test_run_record_no_false_failure.py`: 173 passed. These are every test module that imports `review_record_write`, which is the only importer of `review_write_check`, or `review_delegate`.
+  - `specy-road file-limits` OK; `ruff` clean on the changed files.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
@@ -352,3 +370,4 @@ The leaf had been approved at `b8b7c294` and finished (`7ef16419`), but WIP move
   - `reviewer_cli` cases, and an Antigravity `review delegate` end to end through a fake `agy` that prints a pretty-printed envelope.
   - After the WIP merge: the shipped `agy-gemini-4-argon-high` profile's `access.cli` (already `--output-format json --print-timeout 60m`) gets only `--json-schema` and `--sandbox`.
 - WIP merge (`2012edce`, `0d76d22f`): `tests/test_run_record_no_false_failure.py` rewritten onto the public helpers and the structured-output path (M11.77's intent kept; its old self-filed record is a write violation now). `docs/orchestration-reviewer-output.md` (new): the moved section, for the file limit. No new code, branch or guard.
+- Git-scope fix round (`9b01c380`): `review_write_check.branches` (the reviewed branch's ref names) and `_file` (one Git metadata file, absent means no entry), plus the `ref` parameter of `snapshot`, all for the coordinator's live shared-repository failure. Two tests are added; the existing tests changed are listed in that round's section.
