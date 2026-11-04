@@ -53,6 +53,8 @@ Call sites:
 
 No touch zones were added in this round. The new files are under `tests/`, and the rest are already-zoned files.
 
+- **Merge of `origin/WIP/improvements-0-3-1` (M8.2, commit d4d1097a):** one conflict, in `specy_road/worker_ops_launch.py`, resolved by keeping M8.2's `delegate(..., model: str | None, ...)` chore signature and this leaf's `_nested_dirty` helper above it. M8.2's chore path and the nested hooks in `_launch_locked` both survive; a chore's worktree gets the same nested handling as a leaf's. All three fix rounds are unchanged. `pytest -n 4` passed 36 tests in the two nested files and 606 in the 49 delegate, chore, pickup and helper modules.
+
 ## Review round 3 (gpt-5.6-sol-medium blocked 96053d7a): item → change
 
 - **(1) Delegate in the checkout already on the claim's branch.**
