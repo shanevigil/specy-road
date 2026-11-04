@@ -188,6 +188,13 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.79` Leaves that touch high-risk zones need a stronger reviewer `risk-tiered-review` — task — **Complete**
   - `M11.80` Executors and reviewers run tests with a bounded worker count `test-worker-cap` — task — **Complete**
   - `M11.82` The integration branch passes ruff again and the land check runs it `wip-ruff-clean` — task — **Complete**
+- `M12` Harness engineering: cheaper gates, clearer refusals, less drift `harness-engineering-cheaper-gates-clearer-refusals-less-drift` — phase — **Not Started**
+  - `M12.1` A review fix-round budget that defers new-input-class findings to a follow-up leaf `a-review-fix-round-budget-that-defers-new-input-class-findings-to-a-follow-up-leaf` — task — **Not Started**
+  - `M12.2` Every refusal names its fix `every-refusal-names-its-fix` — task — **Not Started**
+  - `M12.3` Scheduled gardening chores that find drift and open small chore leaves `scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves` — task — **Not Started**
+  - `M12.4` Quality signals agents and PMs read first `quality-signals-agents-and-pms-read-first` — milestone — **Not Started**
+    - `M12.4.1` Per-area quality scores in the digest from review history `per-area-quality-scores-in-the-digest-from-review-history` — task — **Not Started**
+    - `M12.4.2` A tracked tech-debt ledger that planning can turn into leaves `a-tracked-tech-debt-ledger-that-planning-can-turn-into-leaves` — task — **Not Started**
 
 ## Dependencies that were removed
 
