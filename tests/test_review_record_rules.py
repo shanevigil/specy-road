@@ -13,7 +13,7 @@ from tests.test_review_cli import ONE_AI
 
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.review_files import PACKET_NAME, review_path, reviews_dir
-from specy_road.review_record_rules import defect_word, note_problem, unexplained_defects
+from specy_road.review_record_rules import defect_word, explained, note_problem, unexplained_defects
 
 
 def test_reviewer_prompt_carries_the_four_probe_rules(tmp_path: Path) -> None:
@@ -185,6 +185,36 @@ def test_record_refuses_an_approve_whose_notes_carry_an_unclassified_observation
 ])
 def test_note_problem(line: str, why: str | None) -> None:
     assert note_problem(line) == why
+
+
+BOUNDARY_WORDING = "The parser accepts malformed input; xnot a defect becausey is only a marker."
+
+
+def test_record_refuses_an_approve_whose_marker_is_only_a_substring(tmp_path: Path, capsys) -> None:
+    """The marker must stand on its own with a reason after it; a substring inside other words is not one (round 6)."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, findings={"correctness": [BOUNDARY_WORDING]}) == 1
+    assert "findings.correctness[0] " in capsys.readouterr().err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+@pytest.mark.parametrize("text, ok", [
+    (BOUNDARY_WORDING, False),
+    ("x; anot a defect because y", False),
+    ("x; not a defect becausey", False),
+    ("x; not-a defect because y", False),
+    ("x; not a defect because", False),
+    ("x; not a defect because.", False),
+    ("x; `not a defect because y`", False),
+    ("x; not a defect because y.", True),
+    ("x (not a defect because y)", True),
+    ("x;not a defect because y", True),
+    ("x. Not  a defect because the CLI never passes it", True),
+    ("x; NOT A DEFECT BECAUSE it is intended", True),
+])
+def test_explained(text: str, ok: bool) -> None:
+    assert explained(text) is ok
 
 
 def test_record_files_an_approve_with_no_findings(tmp_path: Path, capsys) -> None:

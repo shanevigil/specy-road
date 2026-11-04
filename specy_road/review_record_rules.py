@@ -32,7 +32,8 @@ PROBE_RULES_LINES = [
     "4. List every defect your notes or findings describe under `required_changes` (and block), or explain on "
     f"that same line why it is not one, starting `{NOT_A_DEFECT}`. On an approve, `review record` treats every "
     "`findings` entry and every observation line of the notes as a possible defect, whatever its wording, and "
-    f"refuses the record unless that line says `{NOT_A_DEFECT} <reason>`. An observation line is any line of two "
+    f"refuses the record unless that line says `{NOT_A_DEFECT} <reason>`, the phrase standing on its own and "
+    "outside backticks, with the reason after it. An observation line is any line of two "
     "words or more outside code spans, other than a heading, a `>` quote, fenced code, a table separator row or "
     "horizontal rule, or a bare acceptance result such as `A1: pass`; so write each observation with its reason "
     "on the same line, and quote text or test output in backticks, a `>` line or fenced code.",
@@ -79,6 +80,14 @@ _QUALIFIER = (r"(?:other|more|new|real|known|actual|obvious|remaining|further|su
 _NEGATED = re.compile(r"\b(?:no|none|nothing|not(?:\s+an?)?|\w+n't|cannot|without|zero|never|rather\s+than|"
                       rf"instead\s+of)\s+(?:{_QUALIFIER}\s+){{0,3}}$", re.I)
 _CODE_SPAN = re.compile(r"`[^`]*`")
+# The explanation marker: the whole phrase standing alone (not "xnot a defect becausey") and followed by a reason
+# on the same line, outside code spans, which quote rather than explain.
+_EXPLAINED = re.compile(r"(?<![\w-])not\s+a\s+defect\s+because\s+\W*\w", re.I)
+
+
+def explained(text: str) -> bool:
+    """``text`` carries a standalone :data:`NOT_A_DEFECT` followed by a reason, outside code spans."""
+    return bool(_EXPLAINED.search(_CODE_SPAN.sub("", text)))
 # Lines of approve notes that carry no observation: a bare acceptance result ("- **A1:** pass", "| A1 | pass |")
 # and a table separator row or horizontal rule. Any other line of two words or more is an observation and needs a
 # NOT_A_DEFECT reason.
@@ -91,7 +100,7 @@ def defect_word(line: str) -> str | None:
     """The first word in ``line`` that names a defect, or ``None``; a line carrying :data:`NOT_A_DEFECT`,
     a heading, a ``>`` quote and code spans name none."""
     text = _CODE_SPAN.sub("", line).strip()
-    if NOT_A_DEFECT in text.lower() or text.startswith(("#", ">")):
+    if explained(text) or text.startswith(("#", ">")):
         return None
     for m in _DEFECT.finditer(text):
         if not _NEGATED.search(text[:m.start()]):
@@ -107,7 +116,7 @@ def note_problem(line: str) -> str | None:
     if word:
         return f'says "{word}"'
     text = _CODE_SPAN.sub("", line).strip()
-    if (NOT_A_DEFECT in text.lower() or text.startswith(("#", ">")) or _ACCEPTANCE_RESULT.match(text)
+    if (explained(text) or text.startswith(("#", ">")) or _ACCEPTANCE_RESULT.match(text)
             or _RULE.match(text) or len(_WORD.findall(text)) < 2):
         return None
     return "is an observation"
@@ -121,7 +130,7 @@ def unexplained_defects(data: dict[str, Any], body: str) -> list[str]:
     out = []
     for key, items in (data.get("findings") or {}).items():
         for i, item in enumerate(items or []):
-            if NOT_A_DEFECT not in str(item).lower():
+            if not explained(str(item)):
                 word = defect_word(str(item))
                 out.append(f'findings.{key}[{i}] ' + (f'says "{word}"' if word else "is a finding"))
     fenced = False
