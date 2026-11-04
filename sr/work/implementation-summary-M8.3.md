@@ -182,6 +182,31 @@ Required change → what changed:
   - File limits OK; ruff clean; private imports 0 new.
   - Red/green: without `st_ctime_ns` in `_record`, the new test fails.
 
+## Round 11 (gpt-5.6-sol-medium's block at `26f5cfb6`; commit `f0baf8c3`)
+
+Required change → what changed:
+
+- **"Include directory metadata in the checkout, hand-off, and Git-directory snapshots."**
+  - `review_write_check._walk` now records every directory it enters, its base included, as `_dir_record`: `("dir", st_dev, st_ino, st_nlink, st_mode, st_mtime_ns, st_ctime_ns)`. Creating, renaming or deleting an entry moves the directory's mtime and ctime, so a file created and deleted again still leaves a write.
+  - `written` shows the checkout root as `.`.
+  - Two directories have their own metadata left out (`quiet`), while their files and subdirectories are still compared:
+    - the hand-off directory root, where the run's own files appear during an honest run (the run record's `.tmp` and rename, `RUN-<model>.log`, Codex's `-o` file);
+    - each Git directory holding an index (this checkout's, and the main checkout's when this one is linked), where a read-only `git status` creates and renames `index.lock`.
+  - So a file created and deleted directly in the hand-off root or the Git directory root is still not seen. Its subdirectories (`history/`, `hooks/`, `refs/`, …) are.
+  - `docs/orchestration-review.md` says so, within its 400 lines.
+- **"Add a public review-delegate regression proving a reviewer-created, written, then deleted non-notes file is review_failure with no verdict filed."**
+  - `test_review_delegate_cli_fails_a_created_written_and_deleted_file_and_files_no_verdict` in `tests/test_review_record_write_git.py`, through `specy-road review delegate`, has three cases: `src/`, `.git/hooks/`, and the hand-off `history/`. Each time the fake reviewer creates, writes and deletes `scratch.tmp`.
+  - The test confirms nothing is left, that the run is a `review_failure` naming that directory, and that there is no `REVIEW-opus.md`.
+  - The fake harness gained a `transient` step.
+- **Tests adapted to the wider report:**
+  - A write now also names the directories whose entries it changed (`wrote src, src/a.py;`). The earlier write tests use the new public helper `wrote_only(reason, path)` in `tests/review_delegate_helpers.py`: the path must be named, and every other named path must be one of its directories, so the check is no looser.
+  - `test_a_commit_and_an_ignored_cache_count_as_writes_and_other_checkouts_do_not` now creates the hand-off directory before its first snapshot, as a run does.
+- **Touch zones:** no new path.
+- **Verification:**
+  - `pytest -n 4` over the leaf's test files (`tests/test_review_record_write.py`, `tests/test_review_record_write_git.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_worker_adapters.py`, `tests/test_models_and_prompt.py`, `tests/test_prerelease_review.py`, `tests/test_review_rca.py`, `tests/test_role_prompt_file_limits.py`, `tests/test_resumed_delta_review.py`, `tests/test_chore_mode.py`, `tests/test_headless_limits_denials.py`): 194 passed. That includes the honest `git status`, Codex `-o` and prompt-CLI runs, so there are no false failures from directory metadata.
+  - File limits OK; ruff clean; private imports 0 new.
+  - Red/green: without the directory records, all three new cases fail.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
@@ -210,6 +235,7 @@ Required change → what changed:
 - `git index` entry in `snapshot` (round 4): Sol's A2 index finding.
 - `_record` (round 9): file identity and links in every snapshot entry, for Sol's hard-link finding.
 - `st_ctime_ns` in `_record` (round 10): Sol's identical-rewrite finding.
+- `_dir_record`, `_walk`'s `quiet` set and `wrote_only` (round 11): directory metadata for Sol's create-and-delete finding.
 - `_git_marker`, and `_walk`'s top-level-only `.git` skip (round 8): Sol's nested-`.git` finding.
 - `st_mode` in the snapshot tuples, and the `review_write_check` module split (round 7): Sol's chmod finding, and the file limit.
 - `_walk_git` and `_walk`'s `skip` (round 6): Git metadata in the A2 snapshot. Its `resolved()` returns `None` when git can't answer.
