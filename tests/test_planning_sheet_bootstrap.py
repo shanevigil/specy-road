@@ -24,8 +24,9 @@ def test_render_feature_sheet_template_substitutes_node_id() -> None:
 
 def test_feature_sheet_template_points_to_the_acceptance_checklist() -> None:
     tasks = render_feature_sheet_template("M9.9").split("## Tasks / checklist", 1)[1].split("## References", 1)[0]
-    assert "`docs/roadmap-authoring.md` (Acceptance criteria checklist)" in tasks
-    doc = (Path(__file__).resolve().parents[1] / "docs" / "roadmap-authoring.md").read_text(encoding="utf-8")
+    assert "acceptance criteria checklist (see `planning/README.md`)" in tasks
+    assert "docs/roadmap-authoring.md" not in tasks
+    doc = (Path(__file__).resolve().parents[1] / "specy_road" / "templates" / "project" / "planning" / "README.md").read_text(encoding="utf-8")
     checklist = doc.split("**Acceptance criteria checklist.**", 1)[1].split("\n", 1)[0]
     for item in ("state what is out of scope", "bound concurrency and input classes", "name the observable check"):
         assert item in checklist
