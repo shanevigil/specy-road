@@ -113,6 +113,23 @@ def test_a_custom_subject_stash_refuses_but_another_branchs_does_not(tmp_path: P
     assert wt.is_dir()
 
 
+def test_the_dry_run_names_each_ignored_file_inside_an_ignored_directory(tmp_path: Path) -> None:
+    root, wt = _leaf(tmp_path)
+    commit_file(wt, ".gitignore", "build/\n", "ignore build output")
+    git(root, "merge", "-q", "--no-ff", "--no-edit", FEATURE)
+    git(root, "push", "-q", "origin", "main")
+    (wt / "build" / "deep").mkdir(parents=True)
+    (wt / "build" / "app.bin").write_text("x\n")
+    (wt / "build" / "deep" / "cache.db").write_text("x\n")
+    listed = run_specy_road(root, "worktree", "prune", "M1")
+    assert listed.returncode == 0, listed.stderr
+    assert "  build/app.bin\n" in listed.stdout and "  build/deep/cache.db\n" in listed.stdout
+    assert wt.is_dir()
+    done = run_specy_road(root, "worktree", "prune", "M1", "--yes")
+    assert done.returncode == 0, done.stderr
+    assert not wt.exists()
+
+
 def _nested_leaf(tmp_path: Path) -> tuple[Path, Path]:
     root, wt = _leaf(tmp_path, (COVERED, UNCOVERED))
     add_nested_worktrees(root, wt, FEATURE, ["src"])
@@ -246,4 +263,4 @@ def test_a_plain_directory_at_a_nested_path_is_checked_as_part_of_the_worktree(t
     (wt / UNCOVERED).mkdir()
     (wt / UNCOVERED / "notes.txt").write_text("x\n")   # ignored by the main repo: listed, not skipped
     plan = plan_prune(root, "M1")
-    assert plan.nested == [] and f"{UNCOVERED}/" in plan.ignored
+    assert plan.nested == [] and f"{UNCOVERED}/notes.txt" in plan.ignored

@@ -65,7 +65,9 @@ def leaf_worktree(root: Path, node_id: str) -> tuple[Path, Path, str]:
 
 def _status(d: Path, skip: tuple[str, ...] = ()) -> tuple[list[str], list[str]] | None:
     """``(changed or untracked, ignored)`` paths in ``d``, leaving out those under ``skip``; ``None`` if unreadable."""
-    out = git_stdout(["status", "--porcelain", "--ignored"], d)   # raw: the status column can start with a space
+    # raw: the status column can start with a space. --untracked-files=all names each file inside an
+    # untracked or ignored directory, so the list says exactly what removal deletes.
+    out = git_stdout(["status", "--porcelain", "--ignored", "--untracked-files=all"], d)
     if out is None:
         return None
     changed, ignored = [], []

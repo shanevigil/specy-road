@@ -60,8 +60,8 @@ def build_parser() -> argparse.ArgumentParser:
             "files, or stashes whose subject does not name another branch. Each nested_repos "
             "repository in it must also hold no uncommitted changes, stashes, or commits that no "
             "branch or remote-tracking ref of the main checkout's copy holds (a full clone's own "
-            "branches and remote-tracking refs included). Lists the ignored files removal deletes; removes "
-            "only with --yes."
+            "branches and remote-tracking refs included). Lists each ignored file removal deletes, "
+            "including those inside ignored directories; removes only with --yes."
         ),
     )
     prune.add_argument("node_id", metavar="NODE_ID")
