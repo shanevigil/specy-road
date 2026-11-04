@@ -153,3 +153,30 @@ def test_review_delegate_cli_fails_a_reviewer_created_nested_git_and_files_no_ve
     assert code == 1 and run["outcome"] == "review_failure"
     assert run["reason"].startswith(f"review failure: the reviewer run wrote {shown};")
     assert not rf.review_path(repo, "M1.1", "opus").exists()
+
+
+# --- file identity: an identical hard-link replacement is a write (Sol, d5f3e39d) ------------------------------------
+
+@pytest.mark.parametrize("area", ["checkout", "hand-off", "git-dir", "pointer"])
+def test_review_delegate_cli_fails_an_identical_hard_link_replacement_and_files_no_verdict(tmp_path: Path, capsys,
+                                                                                           area: str) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    extra: tuple[str, ...] = ()
+    if area == "pointer":
+        wt = tmp_path / "review-wt"
+        git(repo, "worktree", "add", "-q", "--detach", str(wt))
+        path, shown, extra = wt / ".git", ".git", ("--worktree", str(wt))
+    else:
+        rel = {"checkout": "src/a.py", "hand-off": "work/reviews/M1.1/PACKET.md", "git-dir": ".git/config"}[area]
+        path, shown = repo / rel, rel
+    alias = tmp_path / f"alias-{area}"                                        # outside every snapshotted tree
+    before, content = path.stat(), path.read_bytes()
+    set_steps(repo, spec, {**verdict_step(repo), "relink": {"path": str(path), "alias": str(alias)}})
+    code, run = _delegate_cli(repo, capsys, *extra)
+    after = path.stat()
+    assert (after.st_mode, after.st_size, after.st_mtime_ns, path.read_bytes()) == (
+        before.st_mode, before.st_size, before.st_mtime_ns, content)          # all the old tuple compared
+    assert after.st_ino == alias.stat().st_ino != before.st_ino and after.st_nlink == 2
+    assert code == 1 and run["outcome"] == "review_failure"
+    assert run["reason"].startswith(f"review failure: the reviewer run wrote {shown};")
+    assert not rf.review_path(repo, "M1.1", "opus").exists()

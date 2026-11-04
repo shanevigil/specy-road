@@ -33,6 +33,12 @@ if step.get("write"):
     open(w["path"], "w").write(w["text"])
     if kept:
         os.utime(w["path"], ns=(kept.st_atime_ns, kept.st_mtime_ns))
+if step.get("relink"):  # the file swapped for a hard link to an identical copy outside: same mode, size, mtime, bytes
+    import shutil
+    r = step["relink"]
+    shutil.copy2(r["path"], r["alias"])
+    os.unlink(r["path"])
+    os.link(r["alias"], r["path"])
 if step.get("chmod"):   # a permission change alone: content, size and mtime stay as they were
     os.chmod(step["chmod"], os.stat(step["chmod"]).st_mode ^ 0o100)
 if step.get("git"):   # a git command in the checkout the harness was started in (an index-only write)

@@ -2,8 +2,7 @@
 limit; callers reach these names through that module, whose docstring describes the outcomes.
 
 :func:`snapshot` records, before and after the run, every file of the checkout the reviewer ran in, of its Git
-directories (:func:`_walk_git`) and of the leaf's hand-off directory, each as ``(mode, size, mtime, content
-digest)``, plus every ref and the Git index's entries; :func:`written` names what changed, but the run's own
+directories (:func:`_walk_git`) and of the leaf's hand-off directory, each as :func:`_record` keeps it, plus every ref and the Git index's entries; :func:`written` names what changed, but the run's own
 :func:`runtime_files`.
 """
 
@@ -52,6 +51,12 @@ def _content(path: str, is_link: bool) -> str:
         return "unreadable"
 
 
+def _record(st: os.stat_result, path: str, is_link: bool) -> tuple[Any, ...]:
+    """One file as the snapshot keeps it: its identity and links (device, inode, link count: a file swapped for a
+    hard link to an identical copy elsewhere differs), mode (a ``chmod`` alone differs), size, mtime and content."""
+    return (st.st_dev, st.st_ino, st.st_nlink, st.st_mode, st.st_size, st.st_mtime_ns, _content(path, is_link))
+
+
 def _git_marker(path: str, state: dict[str, Any]) -> None:
     """A nested checkout's ``.git``: a pointer file as any file, a directory as present only (its own repository's
     activity moves its times). Its appearing, changing or going away is a write."""
@@ -60,11 +65,11 @@ def _git_marker(path: str, state: dict[str, Any]) -> None:
     except OSError:
         return
     is_dir = os.path.isdir(path) and not os.path.islink(path)
-    state[path] = ("checkout",) if is_dir else (st.st_mode, st.st_size, st.st_mtime_ns, _content(path, os.path.islink(path)))
+    state[path] = ("checkout",) if is_dir else _record(st, path, os.path.islink(path))
 
 
 def _walk(base: Path, state: dict[str, Any], skip: frozenset[str] = frozenset()) -> None:
-    """``(mode, size, mtime, content digest)`` of every file under ``base`` (a ``chmod`` alone is a write), ignored
+    """Every file under ``base`` as :func:`_record` keeps it (identity, links, mode, size, mtime, content), ignored
     ones included, but every path in ``skip`` (the checkout's own ``.git``, walked by :func:`_walk_git`). A nested
     checkout (a directory holding ``.git``) is another repository: only its ``.git`` marker is recorded
     (:func:`_git_marker`), so a reviewer-created ``.git`` file or ``git init`` anywhere is still a write."""
@@ -88,7 +93,7 @@ def _walk(base: Path, state: dict[str, Any], skip: frozenset[str] = frozenset())
                 st = e.stat(follow_symlinks=False)
             except OSError:
                 continue
-            state[e.path] = (st.st_mode, st.st_size, st.st_mtime_ns, _content(e.path, e.is_symlink()))
+            state[e.path] = _record(st, e.path, e.is_symlink())
 
 
 def _walk_git(top: Path, state: dict[str, Any]) -> None:
@@ -108,7 +113,7 @@ def _walk_git(top: Path, state: dict[str, Any]) -> None:
     pointer = top / ".git"
     if pointer.is_file():
         st = pointer.stat()
-        state[str(pointer)] = (st.st_mode, st.st_size, st.st_mtime_ns, _content(str(pointer), False))
+        state[str(pointer)] = _record(st, str(pointer), False)
 
 
 @dataclass
