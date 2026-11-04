@@ -31,6 +31,7 @@ from pathlib import Path
 
 from specy_road import __version__
 from specy_road.agent_guide_block import strip_provenance
+from specy_road.agents_md_report import MINIMAL, agents_block_mode, claude_reread, minimal_lines, print_rules_overlap, total
 from specy_road.digest import DEFAULT_OUTPUT as DIGEST
 from specy_road.doc_links import link_toolkit_docs
 from specy_road.harness_instruction_files import (
@@ -88,8 +89,11 @@ def _render(template: Path) -> str:
     return link_toolkit_docs(text.replace("{{SPECYRD_VERSION}}", __version__)).rstrip("\n") + "\n"
 
 
-def render_agents_lines() -> list[str]:
-    """The ``AGENTS.md`` stub: the pointer to :data:`RULES_MD` and the core rules."""
+def render_agents_lines(project_root: Path | None = None) -> list[str]:
+    """The ``AGENTS.md`` stub: the pointer to :data:`RULES_MD` and the core rules, or only the pointer
+    when the project sets ``agents_block: minimal`` (:func:`agents_block_mode`)."""
+    if project_root is not None and agents_block_mode(project_root) == MINIMAL:
+        return minimal_lines()
     return _render(_TEMPLATE).splitlines()
 
 
@@ -106,7 +110,7 @@ def apply_agents_md_block(project_root: Path, *, dry_run: bool = False) -> str:
     marked section.
     """
     path = project_root / AGENTS_MD
-    lines = render_agents_lines()
+    lines = render_agents_lines(project_root)
     if not path.is_file() and not path.is_symlink() and not dry_run:   # never write through a dangling link
         path.write_text(_H1, encoding="utf-8")
     return apply_managed_block(path, lines, style=HTML_COMMENT, dry_run=dry_run)
@@ -157,7 +161,7 @@ def agents_md_block_state(project_root: Path) -> str:
     block = _agents_block(project_root)
     if block is None:
         return "missing"
-    return "current" if block + "\n" == render_block(render_agents_lines(), style=HTML_COMMENT) else "stale"
+    return "current" if block + "\n" == render_block(render_agents_lines(project_root), style=HTML_COMMENT) else "stale"
 
 
 def warn_if_agents_md_block_stale(project_root: Path) -> None:
@@ -182,14 +186,16 @@ def warn_if_agents_md_block_stale(project_root: Path) -> None:
 
 
 def print_migration(project_root: Path, prefix: str = "") -> None:
-    """Say what a refresh moves out of a pre-stub ``AGENTS.md`` section; nothing when there is none.
+    """Before a refresh first writes :data:`RULES_MD`: its overlap with ``AGENTS.md``, and what moves out of a pre-stub section.
 
     A section with no rules file beside it is the full block older versions wrote.
     """
-    block = _agents_block(project_root)
-    if block is None or (project_root / RULES_MD).exists():
+    if (project_root / RULES_MD).exists():
         return
-    stub = render_block(render_agents_lines(), style=HTML_COMMENT)
+    print_rules_overlap(project_root, render_rules(), prefix)
+    if (block := _agents_block(project_root)) is None:
+        return
+    stub = render_block(render_agents_lines(project_root), style=HTML_COMMENT)
     print(
         f"migration: the specy-road section of {prefix}{AGENTS_MD} ({len(block.splitlines())} lines) becomes a "
         f"{len(stub.splitlines())}-line stub that points at {prefix}{RULES_MD}, which now holds the full rules "
@@ -350,14 +356,15 @@ def print_injected_context(project_root: Path) -> None:
     if codex:
         print(f"context: Codex reads {'; '.join(f.describe() for f in codex)} — "
               f"{sum(f.size for f in codex):,} of its {CODEX_PROJECT_DOC_MAX_BYTES:,}-byte "
-              "project_doc_max_bytes budget")
+              f"project_doc_max_bytes budget; {total(codex)}")
     if claude:
         print(f"context: Claude Code reads {'; '.join(f.describe() for f in claude)} — "
-              f"target under {CLAUDE_MD_TARGET_LINES} lines per file")
+              f"target under {CLAUDE_MD_TARGET_LINES} lines per file; {total(claude)}"
+              f"{claude_reread(_claude_files(root, top)[0], root, top)}")
     for harness in ("Cursor", "Copilot"):
         if meter[harness]:
             print(f"context: {harness} reads {'; '.join(f.describe() for f in meter[harness])} — "
-                  f"{sum(f.size for f in meter[harness]):,} bytes per session; no documented limit")
+                  f"no documented limit; {total(meter[harness])} per session")
         if harness == "Cursor" and (nested := cursor_nested_agents(root, top)):
             print(f"context: note — Cursor also applies {'; '.join(f.describe() for f in _measured(nested, top))} "
                   "when the agent edits a file below it; not counted per session")

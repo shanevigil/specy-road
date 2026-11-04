@@ -105,7 +105,8 @@ _BEFORE_LINES, _BEFORE_BYTES = 52, 7679
 #: The ``AGENTS.md`` stub that replaced the full section on 2026-11-04 (it was 52 lines, 7,797 bytes then).
 #: Codex reads only this, so a rule added to it needs the maintainer's approval and raises these.
 #: 17 / 2,063 since the review restored the discard and abort-after-finish rules (2026-11-04).
-_STUB_LINES, _STUB_BYTES = 17, 2063
+#: 18 / 2,260 since M13.3 A1 added the line saying why the floor is repeated (``agents_block: minimal`` drops it).
+_STUB_LINES, _STUB_BYTES = 18, 2260
 #: ``.specyrd/AGENTS.md`` when it was created (2026-11-04): the old section plus the non-Claude part of the
 #: old ``CLAUDE.md`` block. Claude Code imports it whole; Codex never reads it.
 _RULES_LINES, _RULES_BYTES = 68, 9107
