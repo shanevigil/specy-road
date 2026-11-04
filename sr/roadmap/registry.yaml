@@ -18,27 +18,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: headless-limits-denials
-    node_id: M11.62
-    branch: feature/rm-headless-limits-denials
-    touch_zones:
-      - specy_road/worker_adapters.py
-      - specy_road/worker_adapter_parsers.py
-      - specy_road/worker_runner.py
-      - docs/orchestration-workers.md
-      - tests/
-      - specy_road/worker_adapter_claude.py
-      - specy_road/orchestration_role_env.py
-      - specy_road/review_delegate.py
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/bundled_scripts/role_prompt_stream.py
-      - specy_road/harness_facts.py
-      - specy_road/bundled_scripts/refresh_profiles.py
-      - docs/orchestration-models.md
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-04T04:09:08+00:00'
   - codename: reviewer-probe-rules
     node_id: M11.75
     branch: feature/rm-reviewer-probe-rules

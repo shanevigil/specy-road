@@ -190,7 +190,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.62_headless-limits-denials_eda7b3fe-97ec-4eba-9a95-3df7ed230209.md",
       "sibling_order": 60,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Headless runs report usage limits and denied actions instead of looking like success",
       "touch_zones": [
         "specy_road/worker_adapters.py",
