@@ -49,3 +49,14 @@ Branch `feature/rm-scheduled-gardening-chores-that-find-drift-and-open-small-cho
 - `test_garden_is_not_a_chore_slug`: the reserved slug.
 - `test_validate_and_garden_share_the_scanner_and_only_garden_reads_docs` in `tests/test_validate_stale_commands.py`: `validate`'s path set is unchanged, garden reads `docs/**`, and both use the same scanner.
 - Mocks: none.
+
+## Fix round 1 (cursor-grok-4.6-high block at 6a837cf1)
+
+- **Correctness/regression:** `GITIGNORE_LINES` in `specy_road/agent_ignores.py` (added to the zones by the coordinator) now lists `work/chores/garden.json` and nothing else under `work/chores/`. Chore start/close records are left as they were; no doc says they are tracked or ignored, so this round does not decide that. Nested projects get `sr/work/chores/garden.json` through the existing `_prefixed` step, as the runtime dirs do. The block's note names the record. I did not add it to `RUNTIME_WORK_DIRS`, because that tuple also drives the directory list in the agents' prompt prose (`runtime_dirs_prose`). Once ignored, the record never shows in `git status`, so delegate's dirty check and the executor/reviewer preconditions pass. An older managed block gains the line through `specy-road refresh-stubs`, and the docs now say so. This toolkit's own root `.gitignore` block is outside the zones, so it gets the line on its next `refresh-stubs`.
+- **Test integrity:** `garden_repo()` no longer commits `work/`. It replaces `.gitignore` with what `apply_agent_ignores` writes (the managed block only, plus `.cursorindexingignore`). The A1 test now asserts empty `git status --porcelain --untracked-files=all`, that `git check-ignore work/chores/garden.json` succeeds, and that the public `dirty_check("", "M1.1")` clean-tree command prints nothing after a garden run. Red-green: with the `agent_ignores.py` change reverted, `test_garden_prints_one_line_per_finding_and_writes_nothing_tracked` fails.
+- **Docs:** the cadence paragraph now says the managed block ignores the record (not "gitignored").
+
+### Added (fix round 1)
+
+- `GITIGNORE_LINES` entry `work/chores/garden.json`, plus a line in the block's note: the review's required ignore rule.
+- In `garden_repo()`: the managed-ignore setup and the `check-ignore` and `dirty_check` assertions in the A1 test: lock the fix against the scaffold's real lines.
