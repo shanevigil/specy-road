@@ -4,6 +4,15 @@ family: SpaceXAI Grok
 track: none
 model: Grok 4.6
 api_id: grok-4.6
+aliases:
+  - cursor-grok-4.6-low
+  - cursor-grok-4.6-low-fast
+  - cursor-grok-4.6-medium
+  - cursor-grok-4.6-medium-fast
+  - cursor-grok-4.6-high
+  - cursor-grok-4.6-high-fast
+  - cursor-grok-4.6-xhigh
+  - cursor-grok-4.6-xhigh-fast
 checkpoint: same-as-api_id
 alias_moves: unknown
 version_rank: previous
@@ -26,6 +35,14 @@ role_fit:
   executor:    { score: 3, reason: 'CursorBench 4.0 High 40.4 percent, behind 4.7 and the leading models; vendor-reported gains over Grok 4.5 not independently verified', sources: [S8, S2] }
   reviewer:    { score: 3, reason: 'Neither run found reviewer-specific evidence; 4.7 improves verification', sources: [S2, S9] }
 ---
+## Orchestration: harness features to avoid
+
+| Feature | Switch |
+|---|---|
+| memory off | Claude `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`; Codex `--disable memories`; Cursor persist: no switch (never invoked) |
+| plan mode | never pass `--plan` |
+| worktree or cloud | never pass `--worktree` / `--cloud`; Cursor cloud handoff: never invoked |
+
 ## Strengths
 - 500K context and low/medium/high/xhigh reasoning effort [S11, S1] (confidence: high)
 - Standard short-context API pricing: $2 input, $0.50 cached input and $6 output per MTok [S11] (confidence: high)

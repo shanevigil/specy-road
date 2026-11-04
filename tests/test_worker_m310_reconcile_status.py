@@ -33,11 +33,11 @@ def worker_repo(tmp_path: Path) -> Path:
     return repo
 
 
-def nested_project(tmp_path: Path) -> tuple[Path, Path]:
-    """``(git root, project root)`` with the claim's branch checked out under ``sr/``."""
+def nested_project(tmp_path: Path, roster: str | None = None) -> tuple[Path, Path]:
+    """``(git root, project root)`` with the claim's branch checked out under ``sr/``; ``roster`` replaces the fake's."""
     script = tmp_path / "fake.py"
     script.write_text(FAKE)
-    flat = make_review_repo(tmp_path, orchestration=worker_roster(f"{sys.executable} {script} {{prompt}} {{session}}"))
+    flat = make_review_repo(tmp_path, orchestration=roster or worker_roster(f"{sys.executable} {script} {{prompt}} {{session}}"))
     top = tmp_path / "top"
     git(flat, "checkout", "-q", "dev")
     shutil.copytree(flat, top / "sr", ignore=shutil.ignore_patterns(".git"))
@@ -177,4 +177,4 @@ def test_finish_help_and_merge_notice(tmp_path: Path, capsys) -> None:
     )
     out = capsys.readouterr().out
     assert "will merge 'feature/rm-thing' into 'dev' and push origin/dev" in out
-    assert "local commit" in out and "not on origin/dev yet" in out
+    assert "The push will carry 4 commits (1 not from 'feature/rm-thing')." in out

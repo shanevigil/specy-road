@@ -51,6 +51,9 @@ pip install "specy-road[gui-next]"  # PM Gantt UI deps
 pip install "specy-road[review]"    # LLM review (`specy-road review-node`)
 ```
 
+On a maintainer machine use `pipx install specy-road` or `uv tool install specy-road`;
+check `which specy-road` and `specy-road --version`. Commands (not `--version`) warn when running older than `.specyrd/manifest.json` / `AGENTS.md`.
+
 ### Install a release candidate (TestPyPI)
 
 Prereleases (`X.Y.ZrcN`) publish to **TestPyPI**, not PyPI. Pin the exact
@@ -62,11 +65,8 @@ pip install --index-url https://test.pypi.org/simple/ \
             "specy-road==0.3.1rc1"
 ```
 
-**`--pre` is not needed when you pin an exact prerelease.** A specifier that
-names the prerelease itself (`==0.3.1rc1`) already permits it. Add `--pre` only
-when you are asking for *whatever the latest prerelease is* — an unpinned
-install, or `pip index versions specy-road`, both of which hide prereleases
-without it.
+**`--pre` is not needed when you pin an exact prerelease.** Add `--pre` only for
+an unpinned install or `pip index versions specy-road`.
 
 **`uv pip` needs one extra flag.** By default uv only considers versions from
 the first index that contains a package at all — that is PyPI, which has no
@@ -140,12 +140,10 @@ specy-road validate
 specy-road export
 ```
 
-`init project` writes `.gitignore`, `roadmap/`, `planning/`, `constitution/`,
-`constraints/`, `shared/`, `schemas/`, `work/`, `model-profiles/`, `vision.md`, and a
-specy-road section in `AGENTS.md` (a managed block: an `AGENTS.md` you already
-have keeps everything outside the markers). The roadmap starts with task M1.1,
-whose acceptance criteria and planning sheet are the setup steps above and more.
-It refuses to overwrite an existing scaffold unless you pass `--force` (`--dry-run` previews).
+`init project` writes `.gitignore`, `.cursorindexingignore`, `roadmap/`, `planning/`, `constitution/`, `constraints/`,
+`shared/`, `schemas/`, `work/`, `model-profiles/`, `research/`, `docs/` (`supply-chain-security.md`, `model-profiles-research-notes.md`), `vision.md`, a specy-road stub in `AGENTS.md` (a managed block: an `AGENTS.md` you already have keeps everything outside the markers),
+the rules it points at in `.specyrd/AGENTS.md`, and `.specyrd/AGENTS.team.md` for your team's own ([agent rules](optional-ai-tooling-patterns.md#agent-rules-agentsmd-and-specyrd)).
+The roadmap starts with task M1.1, whose acceptance criteria and planning sheet are the setup steps above and more. It refuses to overwrite an existing scaffold unless you pass `--force` (`--dry-run` previews).
 
 ### Keeping a consumer repo current after an upgrade
 
@@ -161,7 +159,7 @@ specy-road upgrade --prune        # write, delete stubs this version dropped, va
 ```
 
 `upgrade` runs `refresh-schemas`, `refresh-profiles`, a copy of each shipped doc
-the `AGENTS.md` load order names that you lack, and `refresh-stubs`, in that
+the `.specyrd/AGENTS.md` load order names that you lack, and `refresh-stubs`, in that
 order, then `validate` and `digest --check`, and ends with what is left for you:
 review the diff, commit the new untracked files, and run `specy-road digest` if
 the digest is missing or out of date (not `specy-road sync`, which also
@@ -188,18 +186,18 @@ Cursor and Codex and through a symlink per skill under `.claude/skills/` by
 Claude Code (or a flat directory for `--ai generic`), plus `.specyrd/README.md`.
 It rewrites exactly the paths `.specyrd/manifest.json` records as managed,
 installs stubs that shipped since you initialized, re-applies the managed
-blocks in `AGENTS.md`, `.gitignore`, `.cursorindexingignore` and `CLAUDE.md`,
+blocks in `AGENTS.md`, `.gitignore`, `.cursorindexingignore` and `CLAUDE.md`, rewrites `.specyrd/AGENTS.md`, creates `.specyrd/AGENTS.team.md` when it is missing,
 and bumps the recorded `specyrd_version`. `specy-road validate` warns while the
 manifest lags. In a repo with no stub pack it still re-applies the managed
 blocks, says no pack is installed, and creates no manifest.
 
 Stubs this version no longer installs for your recorded `--role` are **listed, not deleted**, unless you pass `--prune`. They are paths the
-manifest recorded as the kit's, so `--prune` deletes exactly the list shown
-(and a directory it leaves empty).
+manifest recorded as the kit's, so `--prune` deletes exactly the list shown (and a directory it leaves empty).
+Skills ship once, in `.agents/skills/` plus the `.claude/skills/` links; `specyrd init` writes nothing under `.cursor/` or `.codex/`. A `specyrd-*` copy of an installed skill under `.cursor/skills/`, `.codex/skills/` or `.cursor/commands/` makes Cursor or Codex, which already read `.agents/skills/`, load that skill twice: `validate` warns while one exists, and `--prune` also deletes each copy that is a link to the skill or a verbatim specyrd stub (one recorded for a `generic` pack is that pack's, not a copy). A copy you edited is named in the warning for you to delete.
 
 Once the upgrade is committed, `specy-road validate --strict` (exit 1 on any warning) can gate CI next to `export --check` and `digest --check`.
 
-`validate` also warns once per occurrence, naming the file line (`AGENTS.md:4`), when `AGENTS.md` or `CLAUDE.md` outside the managed block names an unregistered `specy-road` or `specyrd` subcommand. The same name on two lines is two warnings. A registered command never warns (`specy-road validate --strict`). These always warn, and they win over a noun phrase: a code span (a run of N backticks closed by the next run of exactly N), a fenced block, a command-led list item (the product name is the first token after the marker, optionally in code or emphasis, or only a run verb precedes it: `- specy-road frob --x`, `- Run specy-road frob`), a run verb (run, exec, execute, invoke, uvx), and a token followed by a flag, a path, a quoted argument, an id-like argument, or the word command or subcommand. A heading is not special (`# Please specy-road frob` warns). The only exclusion is a noun phrase: the product name is preceded by the, a, an, this, that, these, those, other, any, all, every, each, its, our, your, their, own, of, with, in, for, from, or about, and the token is followed by a plain word or nothing ("the specy-road toolkit is", "other specy-road formats", and a mid-sentence bullet such as "- **Adoption prompts** are kept aligned with other specy-road formats" do not warn). Scanning is line-based and best-effort: inline code spans on one line only; a fence closes only when the closing line uses the same fence character, is at least the opening length, and has nothing but whitespace after the run (" ```bash " does not close). Code spans that span lines are out of scope.
+`validate` also warns once per occurrence, naming the file line (`AGENTS.md:4`), when `AGENTS.md` or `CLAUDE.md` outside the managed block, or `.specyrd/AGENTS.team.md`, names an unregistered `specy-road` or `specyrd` subcommand. The same name on two lines is two warnings. A registered command never warns (`specy-road validate --strict`). A mention warns when it looks like a command invocation: inside a code span (a run of N backticks closed by the next run of exactly N) or a fenced block; on an open line after a run verb (run, exec, execute, invoke, uvx); as a command-led list item (the product name is the first token after the marker, optionally in code or emphasis, or only a run verb precedes it: `- specy-road frob --x`, `- Run specy-road frob`); or when the subcommand token is followed by a flag, a path, a quoted argument, an id-like argument, or the word command or subcommand (`Use the specy-road frob --flag`, `specy-road frob M1.2`). Plain prose does not warn (`trying specy-road here`, `when specy-road runs it`, `Then specy-road frob.`, `the specy-road toolkit is`, and a mid-sentence bullet such as "- **Adoption prompts** are kept aligned with other specy-road formats"). Scanning is line-based and best-effort: inline code spans on one line only; a fence closes only when the closing line uses the same fence character, is at least the opening length, and has nothing but whitespace after the run (" ```bash " does not close). Code spans that span lines are out of scope.
 
 #### Upgrading from 0.2.x
 
@@ -217,6 +215,7 @@ Once the upgrade is committed, `specy-road validate --strict` (exit 1 on any war
   the skills are untracked after the upgrade; add them.
 - **Text outside the managed blocks** (your `CLAUDE.md`, docs pinning a version
   or naming `.cursor/commands/`) is yours: search it for the old version.
+- **`AGENTS.md` keeps only a stub now.** The rules move to `.specyrd/AGENTS.md`; `upgrade` prints a `migration:` line and does it once ([what changes](optional-ai-tooling-patterns.md#agent-rules-agentsmd-and-specyrd)).
 
 **Neither `--force` is the tool for this.** `init project --force` overwrites
 every scaffold file, including `roadmap/manifest.json` and your phase chunks
@@ -261,7 +260,7 @@ specy-road sync
 
 Run all of these with `--repo-root /path/to/consumer/repo` if your shell is not already inside the consumer repo (for example when you're working in the toolkit clone and pointing at `playground/`).
 
-`validate` ends with one `context:` line per harness: the lines and bytes of each instruction file it injects into every session started in the project root, and of the specy-road section inside it. Codex reads, in each directory from the git root down, the first non-empty of `AGENTS.override.md` then `AGENTS.md`, and truncates them at its 32 KiB `project_doc_max_bytes` budget; Claude Code reads `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md` from the working directory up to the filesystem root (or `AGENTS.md` and `.claude/AGENTS.md` when none of those is present) and documents a target of under 200 lines per file. Only files inside the git root count toward those limits, so exceeding one there is a warning and `validate --strict` fails on it. Files outside the git root — ancestor instructions, `~/.claude/CLAUDE.md`, and `AGENTS.override.md` or `AGENTS.md` in the Codex home (`$CODEX_HOME`, else `~/.codex`) — are notes labelled user-level / machine-local and are never a warning.
+`validate` ends with one `context:` line per harness: the lines and bytes of each instruction file it injects into every session started in the project root, and of the specy-road section inside it. Claude Code's line includes each file a counted file pulls in with an `@path` import (outside code spans and fenced blocks, relative to the importing file, up to four hops), such as the `.specyrd/AGENTS.md` the `CLAUDE.md` stub imports; an import outside the git root, and `.specyrd/AGENTS.local.md` (personal, gitignored) whether imported or not, are machine-local notes, never counted. Codex reads, in each directory from the git root down, the first non-empty of `AGENTS.override.md` then `AGENTS.md` (none of the `.specyrd/` files), and truncates them at its 32 KiB `project_doc_max_bytes` budget; Claude Code reads `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md` from the working directory up to the filesystem root (or `AGENTS.md` and `.claude/AGENTS.md` when none of those is present), plus every `.md` under `.claude/rules/` (recursively) from the git root down whose frontmatter does not set `paths` (a path-scoped rule loads only when Claude works on a matching file, so it is not counted), and documents a target of under 200 lines per file. Claude Code skips an instruction file over 4 MiB and loads none of it, so such a file is never counted: inside the git root it is a warning, outside it a note. Cursor reads `AGENTS.md` and `CLAUDE.md` from the git root down plus the rules under `.cursor/rules/` whose frontmatter sets `alwaysApply: true` (a rule scoped by glob or description loads only when it matches, so it is not counted); a nested `AGENTS.md` elsewhere below the git root applies only when the agent edits a file below it, so those get a note, found with `git ls-files` (ignored directories are not searched), and are not counted; Copilot reads `AGENTS.md` and `.claude/CLAUDE.md` in the git root and the working directory plus `.github/copilot-instructions.md` and the path-specific `.github/instructions/**/*.instructions.md`. Neither documents a size limit, so their lines report a total and never warn. Only files inside the git root count toward those limits, so exceeding one there is a warning and `validate --strict` fails on it. Files outside the git root — ancestor instructions, `~/.claude/CLAUDE.md`, and `AGENTS.override.md` or `AGENTS.md` in the Codex home (`$CODEX_HOME`, else `~/.codex`) — are notes labelled user-level / machine-local and are never a warning. So is Claude Code's auto memory, `~/.claude/projects/<repo>/memory/MEMORY.md` (`<repo>` is the main checkout's path with each non-alphanumeric character replaced by `-`, so every worktree shares it): the note gives the file's size and the part Claude Code loads, its first 200 lines or 25 KB, whichever comes first. A global `AGENTS.override.md` in the Codex home gets a note of its own: every Codex session on the machine reads it in place of the `AGENTS.md` beside it.
 
 Shape the roadmap before authoring it: `specy-road brainstorm start --topic "…" --under <ID>`, hand the prompt to your agent, `next-round`, `recommend`, `evidence` + `verify`, then `accept` / `reject --reason` / `park` and `promote` ([brainstorming.md](brainstorming.md)).
 

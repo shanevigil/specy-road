@@ -23,20 +23,20 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from collections.abc import Callable
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime, timezone
-from functools import cache
 from pathlib import Path
 from typing import Any
 
 import yaml
-from jsonschema import Draft202012Validator
 
 from specy_road.git_subprocess import head_sha, run
 from specy_road.review_files import reviews_root  # noqa: F401 — re-exported for callers
-from specy_road.runtime_paths import specy_road_package_dir
+from specy_road.toolkit_version import running_toolkit_version
 from specy_road.worker_lock import WORKERS_DIRNAME, WorkerError, workers_dir, workers_lock  # noqa: F401 — re-exported
+from specy_road.worker_schema import schema_errors  # noqa: F401 — re-exported for callers
 
 HARNESSES = ("claude-code", "codex", "cursor", "generic")
 #: A worker in one of these is over for good. ``completed`` is not: it still
@@ -47,6 +47,8 @@ LEASE_HOLDERS = ("broker", "human", "native", "none")
 FLAG_EXTERNAL = "possibly_modified_externally"
 FLAG_RECONCILE = "needs_reconcile"
 FLAG_ORPHAN = "wrapper_gone_harness_alive"   # the wrapper died; its harness or process group did not
+FLAG_STALLED = "stalled"   # running, and no stdout for policy.stall_after_seconds; the next output line clears it
+MAILBOX_FLAG = "FLAG"   # work/.workers/FLAG: replaced by every append_event; `sync --wait` stats only this file
 _ID = re.compile(r"^w-[0-9]{4,}$")
 
 
@@ -80,13 +82,20 @@ class WorkerRecord:
     pgid: int | None = None           # the wrapper's process group (it is a session leader); terminate kills it
     harness_pid: int | None = None    # the harness child, while it runs
     harness_start: str | None = None  # the harness's start time (ps lstart): with the pid, its identity
+    last_output_at: str | None = None  # the harness's last stdout line (the turn's launch until one); stalled reads it
+    queued_message: str | None = None  # a follow-up from ``worker message`` while the wrapper was still running
+    limit_reset_at: str | None = None  # while paused_by_limit: when the usage limit lifts (worker_turn_check)
+    toolkit_version: str | None = None
+    unknown_fields: dict[str, Any] = field(default_factory=dict, repr=False)  # a newer schema's, kept on save
 
     @property
     def active(self) -> bool:
         return self.state not in TERMINAL_STATES
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        d = asdict(self)
+        unknown = d.pop("unknown_fields")
+        return {**d, **unknown}
 
 
 @dataclass
@@ -103,8 +112,7 @@ class WorkerEvent:
     op_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        d = {k: v for k, v in asdict(self).items() if v is not None}
-        return d
+        return {k: v for k, v in asdict(self).items() if v is not None}
 
 
 def _now() -> str:
@@ -136,20 +144,6 @@ def mutate(repo_root: Path, rec: WorkerRecord, fn: Callable[[WorkerRecord], None
     return rec
 
 
-@cache
-def _validator(name: str) -> Draft202012Validator:
-    path = specy_road_package_dir() / "schemas" / name
-    return Draft202012Validator(json.loads(path.read_text(encoding="utf-8")))
-
-
-def schema_errors(data: dict[str, Any], schema_name: str) -> list[str]:
-    out = []
-    for e in sorted(_validator(schema_name).iter_errors(data), key=lambda e: list(e.path)):
-        loc = "/".join(str(x) for x in e.path) if e.path else "(root)"
-        out.append(f"{loc}: {e.message}")
-    return out
-
-
 # --- paths -----------------------------------------------------------------
 
 def record_path(repo_root: Path, worker_id: str) -> Path:
@@ -173,7 +167,7 @@ def new_worker_id(repo_root: Path) -> str:
 def save_record(repo_root: Path, rec: WorkerRecord) -> Path:
     rec.updated = _now()
     data = rec.to_dict()
-    errs = schema_errors(data, "worker-record.schema.json")
+    errs = schema_errors(data, "worker-record.schema.json", repo_root, rec.branch)
     if errs:
         raise WorkerError(f"{rec.worker_id}: " + "; ".join(errs))
     path = record_path(repo_root, rec.worker_id)
@@ -192,10 +186,12 @@ def load_record(repo_root: Path, worker_id: str) -> WorkerRecord:
         raise WorkerError(f"{worker_id}: record is not valid YAML: {e}") from None
     if not isinstance(raw, dict):
         raise WorkerError(f"{worker_id}: record is not a mapping")
-    errs = schema_errors(raw, "worker-record.schema.json")
+    errs = schema_errors(raw, "worker-record.schema.json", repo_root, raw.get("branch"))
     if errs:
         raise WorkerError(f"{worker_id}: " + "; ".join(errs))
-    return WorkerRecord(**raw)
+    known = {f.name for f in fields(WorkerRecord)} - {"unknown_fields"}   # a field the branch's schema added
+    return WorkerRecord(**{k: v for k, v in raw.items() if k in known},
+                        unknown_fields={k: v for k, v in raw.items() if k not in known})
 
 
 def list_records(repo_root: Path, *, active_only: bool = False) -> list[WorkerRecord]:
@@ -230,7 +226,8 @@ def create_record(repo_root: Path, node_id: str, harness: str, model: str, workt
         rec = WorkerRecord(new_worker_id(repo_root), node_id, harness, model, str(Path(worktree).resolve()),
                            "starting", {"holder": lease, "since": now}, 0, max(attempts, default=0) + 1, 0,
                            now, now, branch=branch, contract_hash=contract_hash, billing_route=billing_route,
-                           started_head=head_sha(Path(worktree)))
+                           started_head=head_sha(Path(worktree)),
+                           toolkit_version=running_toolkit_version())
         save_record(repo_root, rec)
         append_event(repo_root, rec, "started", source="broker",
                      summary=f"delegated {node_id} to {harness}/{model} (attempt {rec.attempt})")
@@ -280,7 +277,24 @@ def append_event(repo_root: Path, rec: WorkerRecord, type_: str, *, source: str,
             f.write(json.dumps(data, sort_keys=True) + "\n")
         rec.last_event_seq = ev.seq
         save_record(repo_root, rec)
+        _write_atomic(workers_dir(repo_root) / MAILBOX_FLAG, f"{rec.worker_id} #{ev.seq} {ev.at}\n")
     return ev
+
+
+def flag_stamp(repo_root: Path) -> tuple[int, int] | None:
+    """The flag's ``(inode, mtime_ns)``, ``None`` before any event; replaced, so the inode moves where mtime is coarse."""
+    path = workers_dir(repo_root) / MAILBOX_FLAG
+    st = path.stat() if path.exists() else None
+    return (st.st_ino, st.st_mtime_ns) if st else None
+
+
+def wait_for_event(repo_root: Path, timeout: float, since: tuple[int, int] | None, interval: float = 0.25) -> bool:
+    """``True`` once the flag's stamp differs from ``since``, ``False`` after ``timeout`` seconds. A stat every
+    ``interval`` in the calling process: no OS watch API and no child, so nothing outlives the call (principle 5)."""
+    deadline = time.monotonic() + timeout
+    while flag_stamp(repo_root) == since and time.monotonic() < deadline:
+        time.sleep(interval)
+    return flag_stamp(repo_root) != since
 
 
 def _last_logged_seq(repo_root: Path, worker_id: str) -> int:
@@ -368,11 +382,8 @@ def record_intervention(repo_root: Path, rec: WorkerRecord, summary: str, *, sou
     """A human direction reached the worker: new epoch, one authoritative event."""
     with workers_lock(repo_root):
         mutate(repo_root, rec, lambda r: setattr(r, "instruction_epoch", r.instruction_epoch + 1))
-        return append_event(repo_root, rec, "intervention", source=source, authority="human_authoritative",
-                            summary=summary, detail=detail)
-
+        return append_event(repo_root, rec, "intervention", source=source, authority="human_authoritative", summary=summary, detail=detail)
 
 # The operations outbox lives in worker_outbox; re-exported here for callers.
-
 __all__ = [n for n in dir() if not n.startswith("_")]
 from specy_road.worker_outbox import begin_op, complete_op  # noqa: E402,F401 — re-exported for callers

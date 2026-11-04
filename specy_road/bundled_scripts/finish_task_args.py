@@ -52,7 +52,17 @@ def _add_landing_args(p: argparse.ArgumentParser) -> None:
             "Override completion workflow: pr, merge, or auto. "
             "merge lands on the integration branch and pushes it. "
             "Default: session file from do-next-available-task, then "
-            "roadmap/git-workflow.yaml / SPECY_ROAD_ON_COMPLETE."
+            "SPECY_ROAD_ON_COMPLETE / roadmap/git-workflow.yaml. A value other "
+            "than pr that differs from that default is refused unless "
+            "--override-on-complete is also passed."
+        ),
+    )
+    p.add_argument(
+        "--override-on-complete",
+        action="store_true",
+        help=(
+            "Acknowledge that --on-complete changes the repository's configured "
+            "landing mode. A person's choice: agents do not pass it on their own."
         ),
     )
     p.add_argument(
@@ -63,6 +73,18 @@ def _add_landing_args(p: argparse.ArgumentParser) -> None:
             "when its merge succeeds), delete the feature branch locally and "
             "on the remote. Refused under pr: there the branch is the only "
             "copy of the work until the PR merges."
+        ),
+    )
+    p.add_argument(
+        "--land-check-cmd",
+        default=None,
+        metavar="CMD",
+        help=(
+            "Shell command run at the project root of a detached worktree of "
+            "the local merge commit, before merge mode pushes it; a non-zero "
+            "exit pushes nothing and resets the integration branch. An empty "
+            "value skips the check for this run. Default: land_check_cmd in "
+            "roadmap/git-workflow.yaml. pr mode never runs it."
         ),
     )
 

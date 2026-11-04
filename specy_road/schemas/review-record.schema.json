@@ -13,10 +13,12 @@
     "node_id": { "type": "string", "minLength": 1 },
     "model": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$", "description": "Reviewer model id (roster id). human is written only by the interactive approve in mark-implementation-reviewed." },
     "family": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$", "description": "Filled from the roster by `specy-road review record`; the gate ignores this field and uses the roster." },
+    "toolkit_version": { "type": "string", "minLength": 1, "description": "The specy-road build that filed this record (``specy-road --version``)." },
     "model_version": { "type": "string", "minLength": 1 },
     "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
     "verdict": { "enum": ["approve", "block"] },
     "commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$", "description": "The commit reviewed (quote it). The gate counts a record only while this is the commit under review: the branch tip, skipping commits that touch only roadmap/registry.yaml." },
+    "delta_from": { "type": "string", "pattern": "^[0-9a-f]{7,40}$", "description": "Set (quoted) when the review read a delta packet: the earlier commit this reviewer approved, whose change since is all it reviewed. Under policy.delta_review the gate counts such an approval only when the same model's counting approval of this commit is on file and the delta still qualifies; omit it for a full review." },
     "acceptance": {
       "type": "object",
       "description": "Result per acceptance id from the brief (A1..An).",
@@ -37,12 +39,13 @@
     "commands_rerun": { "$ref": "#/$defs/notes", "description": "Commands the reviewer ran independently." },
     "verify_pre_existing": {
       "$ref": "#/$defs/notes",
-      "description": "Verifier commands from the READY file that already failed identically on the integration branch; only approving records count, and each failing READY verifier must be named by at least one approving reviewer before the gate can pass."
+      "description": "Verifier commands from the READY file that the reviewer claims already fail on the integration branch. Only approving records count, and a claim clears a failing READY verifier only after `specy-road review check-pre-existing` ran the command twice on the integration tip, both runs exited non-zero, and that tip is still current (work/reviews/<NODE_ID>/PRE-EXISTING.md)."
     },
     "required_changes": { "$ref": "#/$defs/notes" },
     "fresh_session": { "type": "boolean", "description": "The review ran in a session that saw only the review packet." },
     "authored_fix": { "type": "boolean", "description": "The reviewing session wrote any part of the change under review." },
     "is_coordinator": { "type": "boolean", "description": "The reviewing session is the coordinator's own session." },
+    "launch_mode": { "enum": ["full", "bare", "explicit"], "description": "How the reviewer's harness was started, from `specy-road review record --launch-mode`: full (it loaded the repository's hooks, MCP servers and instructions, as an interactive session does), bare (none of them: Claude Code --bare) or explicit (only the settings and MCP servers the command named). Optional; a record without it says nothing about the mode." },
     "independence": { "enum": ["distinct-family", "same-family"], "description": "Written by `specy-road review record` when policy requires distinct families." },
     "notes_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the Markdown notes below the front matter (line endings normalised, trailing whitespace dropped); written by `specy-road review record` and part of the signed bytes. The gate rejects a record whose body no longer matches, and a signed record without it." },
     "signature": { "type": "string", "minLength": 1, "description": "Base64 of the reviewer's OpenSSH signature (`ssh-keygen -Y sign`, namespace specy-road-review) over the canonical front matter (which includes notes_sha256); written by `specy-road review record --sign-key`. Verified against the roster entry's public_key." }

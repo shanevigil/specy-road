@@ -7,7 +7,7 @@
 
 **Must know without reading on:**
 - Feature work targets `dev`; `main` takes release-marker PRs only. Branch names must match `^(feature|fix|chore)/[a-z0-9]+(-[a-z0-9]+)*$`, and non-`chore/` PRs need a `Closes #N` / `Fixes #N` / `Refs #N` line.
-- Local CI parity before pushing: `pytest -q`, `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`, `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`, `specy-road file-limits`.
+- Local CI parity before pushing: `pytest -n auto -q`, `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`, `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`, `specy-road file-limits`.
 - After React/TypeScript changes, from `gui/pm-gantt/`: `npm ci && npm run lint && npm test && npm run build`.
 - Never run `specy-road init project` with no path in this repo; scaffold into `/tmp/specy-consumer-sandbox` or `playground/`.
 - Malicious code (supply-chain tampering, exfiltration, weakening the gates) means closure, a ban and a report; the maintainer may close any PR.
@@ -210,11 +210,13 @@ Run these from the toolkit repo root before pushing:
 
 The `--repo-root tests/fixtures/specy_road_dogfood` checks exercise the dogfood test fixture, not a canonical toolkit product roadmap.
 
+`tests/conftest.py` wires a **fixture-pollution guard** (`tests/fixture_guard.py`): pytest refuses to start while `git status --porcelain --ignored -- tests/fixtures` lists ignored paths (for example `.specyrd/cache` left by a manual CLI run), naming each path and `git clean -fdX tests/fixtures`, and fails the session if that status changes during the run. If you see either message, clean the tree before pushing.
+
 ```bash
 source .venv/bin/activate
 pip install -e ".[dev,gui-next]"
 specy-road --version   # which build you are actually running
-pytest -q
+pytest -n auto -q
 specy-road validate    --repo-root tests/fixtures/specy_road_dogfood
 specy-road export --check --repo-root tests/fixtures/specy_road_dogfood
 specy-road file-limits

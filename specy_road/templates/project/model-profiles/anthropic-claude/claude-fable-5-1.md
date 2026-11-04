@@ -4,6 +4,17 @@ family: Anthropic Claude
 track: Fable
 model: Claude Fable 5.1
 api_id: claude-fable-5-1
+aliases:
+  - claude-fable-5-1-low
+  - claude-fable-5-1-medium
+  - claude-fable-5-1-high
+  - claude-fable-5-1-xhigh
+  - claude-fable-5-1-max
+  - claude-fable-5-1-thinking-low
+  - claude-fable-5-1-thinking-medium
+  - claude-fable-5-1-thinking-high
+  - claude-fable-5-1-thinking-xhigh
+  - claude-fable-5-1-thinking-max
 checkpoint: same-as-api_id
 alias_moves: 'no'
 version_rank: latest
@@ -14,11 +25,13 @@ supersedes: claude-fable-5
 access:
   context_tokens: 1000000
   output_tokens: 128000
-  cli: claude -p "<prompt>"
+  cli: CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude -p "<prompt>"
   cli_verified_from: S4
   subagents: 'unknown Vendor and partner pages describe multi-hour autonomous work; a third party reports fewer parallel tool calls than Fable 5 [S2, S3]'
-  effort_controls: 'effort parameter, default high; mid-conversation effort change in beta; full level list not verified'
-  effort_map: { minimal: unknown, low: unknown, medium: unknown, high: high, max: unknown }
+  effort_controls: 'effort parameter, default high; mid-conversation effort change in beta; levels low, medium, high, xhigh, max [S11]'
+  effort_map: { minimal: unknown, low: unknown, medium: medium, high: high, max: unknown }
+  effort_by_role: { coordinator: medium, executor: high, reviewer: high }  # executor and reviewer at the documented default, coordinator one level below; reviewer kept, not lowered, by M10.6: docs/design-notes/reviewer-effort-study.md
+  launch_mode: full   # bare (--bare) drops hooks, skills, MCP and CLAUDE.md, and needs ANTHROPIC_API_KEY
 cost_usd_per_mtok: { input: 10.00, output: 50.00, cached_input: 0.25, fast_input: unknown, fast_output: unknown }
 data_handling: 'Anthropic designates Fable 5.1 a "Covered Model" with additional data retention, safety review and access policies wherever offered [S2]. Available on the Claude API, Amazon Bedrock (US geo and global inference profiles), Claude Platform on AWS (North America), Google Cloud and Microsoft Foundry [S1, S5]. Outputs carry content provenance (watermarking) [S1, S3]. Claude Mythos 5.1, the same model with fewer cyber and bio restrictions, is limited to verified organizations [S1]. Exact retention period: unknown. No local deployment.'
 role_fit:
@@ -26,6 +39,17 @@ role_fit:
   executor:    { score: 5, reason: 'Terminal-Bench 4.0 55.8 percent vs 42.0 for Fable 5 (vendor), first on AA Agentic Index (58.0)', sources: [S3, S6] }
   reviewer:    { score: 4, reason: 'Partner page reports it says when stuck instead of claiming success and is less likely to disable failing tests', sources: [S2] }
 ---
+## Orchestration: harness features to avoid
+
+When this model runs as a roster **executor** on `claude-code`, `worker delegate` exports in the process environment (via `harness_env`, not only `access.cli` / `specy-road prompt --channel cli`):
+
+| Feature | Switch |
+|---|---|
+| auto memory (shared by every worktree of a repository) | `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` |
+| background tasks and `/loop` wakeups | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` |
+
+Orchestration guard hooks (optional, `specyrd init --install-orchestration-hooks`) deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`.
+
 ## Strengths
 - Terminal-Bench 4.0: 55.8 percent vs 42.0 percent for Fable 5 and 52.3 percent for Opus 5 (vendor-reported); Anthropic reported Claude Mythos 5.1 (the same model with looser safeguards) at 60.9 percent and says the gap "reflects the tasks on which our earlier, less precise cyber safeguards intervened" [S3, S7] (confidence: medium)
 - First on the Artificial Analysis Agentic Index at 58.0 in an October 2026 aggregator [S6] (confidence: medium)
@@ -64,3 +88,4 @@ role_fit:
 - S8: Claude prompting best practices (over-engineering and self-check notes), Anthropic, accessed 2026-10-27, https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices, primary (lean-code reports)
 - S9: Not All Agents Are Equal: Code Quality and Post-Merge Maintenance Across Five Autonomous Coding Agents in the Wild, Kraishan, arXiv 2609.17598, 2026-09-12, https://arxiv.org/html/2609.17598, independent (lean-code reports)
 - S10: All Smoke, No Alarm: Oracle Signals in Agent-Authored Test Code, Banik, Chowdhury and Shamim, arXiv 2606.18168, 2026-06, https://arxiv.org/html/2606.18168v1, independent (lean-code reports)
+- S11: Effort, Anthropic, accessed 2026-11-01, https://platform.claude.com/docs/en/build-with-claude/effort, primary (M10.5 review)

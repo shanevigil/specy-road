@@ -3,13 +3,20 @@
 from __future__ import annotations
 
 import json
+import sys
+import threading
+import time
 from pathlib import Path
 
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
 
+from specy_road import git_workflow_config as gwc
+from specy_road import worker_adapters as wa
+from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
+from specy_road.bundled_scripts import worker_cli
 
 
 def _repo(tmp_path: Path) -> Path:
@@ -63,10 +70,56 @@ def test_events_are_sequenced_validated_and_read_back_after_a_fresh_load(tmp_pat
     assert ws.events_since(repo, rec.worker_id, 3) == []
     with pytest.raises(ws.WorkerError, match="type"):
         ws.append_event(repo, rec, "not-a-type", source="worker", summary="x")
+    ws.append_event(repo, rec, "launched", source="system", summary="up", detail={"argv0": "claude", "harness": "claude-code", "resumed": False})
+    ws.append_event(repo, rec, "first_output", source="system", summary="first line")
+    assert [e.type for e in ws.events_since(repo, rec.worker_id, 3)] == ["launched", "first_output"]
     # A corrupt line is skipped, not fatal.
     with ws.events_path(repo, rec.worker_id).open("a") as f:
         f.write("{not json\n")
-    assert len(ws.events_since(repo, rec.worker_id)) == 3
+    assert len(ws.events_since(repo, rec.worker_id)) == 5
+
+
+def test_every_event_replaces_the_mailbox_flag(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    assert ws.flag_stamp(repo) is None
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)   # its `started` event is the first
+    first = ws.flag_stamp(repo)
+    assert first is not None and (ws.workers_dir(repo) / "FLAG").read_text().startswith("w-0001 #1 ")
+    ws.append_event(repo, rec, "output", source="worker", summary="x")
+    assert ws.flag_stamp(repo) != first
+    assert (ws.workers_dir(repo) / "FLAG").read_text().startswith("w-0001 #2 ")
+
+
+def test_wait_for_event_returns_on_the_next_event_or_times_out(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    since = ws.flag_stamp(repo)
+    t0 = time.monotonic()
+    assert ws.wait_for_event(repo, 0.3, since) is False
+    assert 0.3 <= time.monotonic() - t0 < 2
+    writer = threading.Timer(0.4, lambda: ws.append_event(repo, rec, "output", source="worker", summary="late"))
+    writer.start()
+    t0 = time.monotonic()
+    try:
+        assert ws.wait_for_event(repo, 10, since) is True
+    finally:
+        writer.join()
+    assert time.monotonic() - t0 < 2   # within a poll of the write, not the 10 s timeout
+    assert ws.wait_for_event(repo, 10, None) is True   # the flag already changed since "no flag": no wait at all
+
+
+def test_sync_wait_ctrl_c_exits_130_without_a_traceback(tmp_path: Path, capsys, monkeypatch) -> None:
+    # Beside the wait itself: tests/test_worker_cli.py is at the file-line cap.
+    repo = _repo(tmp_path)
+
+    def interrupted(*_a):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(worker_cli, "wait_for_event", interrupted)
+    with pytest.raises(SystemExit) as e:
+        worker_cli.main(["worker", "sync", "--wait", "--repo-root", str(repo)])
+    assert e.value.code == 130
+    err = capsys.readouterr().err
+    assert "interrupted; nothing acknowledged" in err and "Traceback" not in err
 
 
 def test_lease_blocks_the_broker_until_reclaimed(tmp_path: Path) -> None:
@@ -140,3 +193,99 @@ def test_schemas_ship_in_the_package(tmp_path: Path) -> None:
     pkg = Path(ws.__file__).resolve().parent / "schemas"
     for name in ("worker-record.schema.json", "worker-event.schema.json"):
         assert json.loads((pkg / name).read_text())["title"].startswith("specy-road")
+
+
+def _track(repo: Path, line: str) -> None:
+    cfg = repo / "roadmap" / "git-workflow.yaml"
+    cfg.write_text("version: 1\nintegration_branch: dev\nremote: origin\n" + line, encoding="utf-8")
+
+
+@pytest.mark.parametrize(("line", "mode"), [("", "off"), ("track_worker_logs: off\n", "off"),
+                                            ('track_worker_logs: "off"\n', "off"),
+                                            ('track_worker_logs: "events"\n', "events"),
+                                            ("track_worker_logs: full\n", "full")])
+def test_track_worker_logs_accepts_off_events_and_full(tmp_path: Path, line: str, mode: str) -> None:
+    repo = _repo(tmp_path)
+    _track(repo, line)   # a bare `off` is YAML false: accepted as off
+    assert gwc.load_git_workflow_config(repo)[1] is None
+    assert gwc.track_worker_logs(repo) == mode
+
+
+@pytest.mark.parametrize("line", ["track_worker_logs: on\n", "track_worker_logs: Full\n",
+                                  'track_worker_logs: "raw"\n', "track_worker_logs: 1\n"])
+def test_track_worker_logs_rejects_any_other_value(tmp_path: Path, line: str) -> None:
+    repo = _repo(tmp_path)
+    _track(repo, line)
+    _data, err = gwc.load_git_workflow_config(repo)
+    assert err and "track_worker_logs" in err
+    assert gwc.track_worker_logs(repo) == "off"
+
+
+def _turn(repo: Path, rec) -> None:
+    wr.run(repo, rec.worker_id, wa.Launch([sys.executable, "-c", "import sys; print('out'); print('err', file=sys.stderr)"]))
+
+
+def _worker_in_linked_tree(tmp_path: Path) -> tuple[Path, Path, ws.WorkerRecord]:
+    repo = _repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    wt = tmp_path / "wt"
+    git(repo, "worktree", "add", "-q", str(wt), "feature/rm-thing")
+    return repo, wt, ws.create_record(repo, "M1.1", "generic", "m", wt, branch="feature/rm-thing")
+
+
+def test_events_mode_mirrors_the_event_log_into_the_workers_checkout(tmp_path: Path) -> None:
+    repo, wt, rec = _worker_in_linked_tree(tmp_path)
+    _track(repo, 'track_worker_logs: "events"\n')
+    _turn(repo, rec)
+    logs = wt / "work" / "worker-logs" / "M1.1"
+    src = ws.events_path(repo, rec.worker_id)
+    assert (logs / f"{rec.worker_id}.events.jsonl").read_bytes() == src.read_bytes()
+    assert not (logs / f"{rec.worker_id}.log").exists()        # the raw log only under full
+    assert not (repo / "work" / "worker-logs").exists()         # the worker's checkout, not the main one
+    ws.append_event(repo, rec, "message", source="orchestrator", summary="between turns")
+    _track(repo, 'track_worker_logs: "full"\n')
+    _turn(repo, rec)                                        # catches up from where the copy stopped
+    assert (logs / f"{rec.worker_id}.events.jsonl").read_bytes() == src.read_bytes()
+    assert (logs / f"{rec.worker_id}.log").read_bytes() == wr.log_path(repo, rec.worker_id).read_bytes()
+    assert "err" in (logs / f"{rec.worker_id}.log").read_text()
+
+
+def test_off_writes_nothing_outside_work_workers(tmp_path: Path) -> None:
+    repo, wt, rec = _worker_in_linked_tree(tmp_path)
+    _turn(repo, rec)   # no key: off
+    assert ws.events_path(repo, rec.worker_id).is_file()
+    assert not (wt / "work" / "worker-logs").exists() and not (repo / "work" / "worker-logs").exists()
+
+
+def test_a_leafs_own_worker_logs_neither_breach_zones_nor_block_redelegation(tmp_path: Path) -> None:
+    """R2: through `delegate`, `reconcile` and `terminate`, as the coordinator drives them."""
+    from specy_road import worker_ops as ops
+    from specy_road.agent_ignores import apply_agent_ignores
+    from tests.test_worker_cli import FAKE, wait_for_worker, worker_roster
+
+    script = tmp_path / "fake.py"
+    script.write_text(FAKE)
+    repo = make_review_repo(tmp_path, orchestration=worker_roster(f"{sys.executable} {script} {{prompt}} {{session}}"))
+    apply_agent_ignores(repo)   # work/.workers/ ignored, work/worker-logs/ not: the opted-in layout
+    _track(repo, 'track_worker_logs: "events"\n')
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "track worker logs")
+    rec, created = ops.delegate(repo, "M1.1", "opus")
+    assert created
+    wait_for_worker(repo, rec.worker_id)
+    own = f"work/worker-logs/M1.1/{rec.worker_id}.events.jsonl"
+    assert (repo / own).is_file()
+    _rec, delta = ops.reconcile(repo, rec.worker_id)
+    assert own in delta["untracked"] and own not in delta["untracked_outside_touch_zones"]
+    other = repo / "work" / "worker-logs" / "M1.2" / "w-0009.events.jsonl"   # another leaf's: not bookkeeping
+    other.parent.mkdir(parents=True)
+    other.write_text("{}\n")
+    _rec, delta = ops.reconcile(repo, rec.worker_id)
+    assert "work/worker-logs/M1.2/w-0009.events.jsonl" in delta["untracked_outside_touch_zones"]
+    ops.terminate(repo, rec.worker_id)
+    with pytest.raises(ws.WorkerError, match=r"uncommitted changes .*worker-logs/M1\.2/"):
+        ops.delegate(repo, "M1.1", "opus")
+    other.unlink()
+    again, created = ops.delegate(repo, "M1.1", "opus")   # this leaf's own logs do not block it
+    assert created and again.worker_id != rec.worker_id
+    wait_for_worker(repo, again.worker_id)

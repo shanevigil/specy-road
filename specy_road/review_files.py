@@ -34,6 +34,7 @@ from jsonschema import Draft202012Validator
 
 from specy_road.git_subprocess import git_text
 from specy_road.runtime_paths import specy_road_package_dir
+from specy_road.schema_revision import accepted_at_revision
 
 REVIEWS_REL = Path("work") / "reviews"
 READY_PREFIX = "READY-"
@@ -44,6 +45,9 @@ PACKET_NAME = "PACKET.md"
 #: The interactive approver. A solo maintainer both coordinates and reviews, so
 #: only this model may attest ``is_coordinator: true``.
 HUMAN = "human"
+#: How a reviewer's harness was started (``review record --launch-mode``): ``full`` loads the
+#: repository's hooks and MCP servers, ``bare`` none (Claude Code ``--bare``), ``explicit`` only what the command names.
+REVIEW_LAUNCH_MODES = ("full", "bare", "explicit")
 
 
 @dataclass
@@ -52,45 +56,54 @@ class ReviewFile:
     data: dict[str, Any]
     body: str
     errors: list[str] = field(default_factory=list)
+    on_disk: Path | None = None   # the file itself, when its name differs from ``path`` only in case
 
     @property
     def ok(self) -> bool:
         return not self.errors
 
 
-def reviews_root(repo_root: Path) -> Path:
-    """``work/reviews`` in the **main** worktree, whichever worktree asks.
-
-    ``work/reviews/`` is gitignored, so each linked worktree would otherwise
-    have its own empty copy: an executor in a worktree hands off into the
-    coordinator's checkout, and the gate run from that worktree must read the
-    same directory. Only a *linked* worktree is redirected (its git dir is not
-    the common one); a project nested below the git root (``sr/``) or a
-    fixture inside another checkout keeps its own ``work/``, at the same
-    place relative to the main worktree.
-    """
-    common = git_text(["rev-parse", "--path-format=absolute", "--git-common-dir"], repo_root)
-    gitdir = git_text(["rev-parse", "--path-format=absolute", "--git-dir"], repo_root)
-    top = git_text(["rev-parse", "--show-toplevel"], repo_root)
-    if not common or not gitdir or not top or Path(common).name != ".git" or Path(gitdir) == Path(common):
-        return repo_root / REVIEWS_REL
+def _main_checkout(top: Path) -> Path | None:
+    """The main worktree of the linked worktree at ``top``, from ``.git`` and ``commondir``: git is never run,
+    so a process git refuses to serve (a sandbox, an ownership check) finds what every other command does."""
     try:
-        prefix = Path(repo_root).resolve().relative_to(Path(top).resolve())
-    except ValueError:
-        return repo_root / REVIEWS_REL
-    return Path(common).parent / prefix / REVIEWS_REL
+        line = (top / ".git").read_text(encoding="utf-8").strip() if (top / ".git").is_file() else ""
+    except OSError:
+        return None
+    gitdir = Path(top, line.removeprefix("gitdir:").strip())   # absolute, or relative to top
+    try:
+        common = Path(gitdir, (gitdir / "commondir").read_text(encoding="utf-8").strip()).resolve()
+    except OSError:   # unreadable or absent: git's own <common>/worktrees/<name> layout, else not a worktree
+        common = gitdir.parent.parent.resolve() if gitdir.parent.name == "worktrees" else None
+    linked = line.startswith("gitdir:") and common and common.name == ".git"   # not bare, not a submodule
+    return common.parent if linked else None
+
+
+def reviews_root(repo_root: Path) -> Path:
+    """``work/reviews`` in the **main** worktree, whichever linked worktree asks: the one resolver, since
+    it is gitignored and each worktree would have its own empty copy. A project nested below the git root
+    (``sr/``) or a fixture inside another checkout keeps its own ``work/``, at the same place."""
+    here = Path(repo_root).resolve()
+    top = next((p for p in (here, *here.parents) if (p / ".git").exists()), None)   # git's own discovery
+    main = _main_checkout(top) if top else None
+    return main / here.relative_to(top) / REVIEWS_REL if main else repo_root / REVIEWS_REL
 
 
 def reviews_dir(repo_root: Path, node_id: str) -> Path:
     return reviews_root(repo_root) / node_id
 
 
-def ready_path(repo_root: Path, node_id: str, agent: str) -> Path:
-    return reviews_dir(repo_root, node_id) / f"{READY_PREFIX}{agent}.md"
-
-
 def review_path(repo_root: Path, node_id: str, model: str) -> Path:
     return reviews_dir(repo_root, node_id) / f"{REVIEW_PREFIX}{model}.md"
+
+
+def write_review(path: Path, text: str) -> None:
+    """Write ``path`` under its exact name; on macOS APFS writing over ``review-x.md`` would keep that name."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    for p in path.parent.iterdir():
+        if p.name.lower() == path.name.lower() and p.is_file():
+            p.unlink()
+    path.write_text(text, encoding="utf-8")
 
 
 @cache
@@ -99,12 +112,12 @@ def _validator(name: str) -> Draft202012Validator:
     return Draft202012Validator(json.loads(path.read_text(encoding="utf-8")))
 
 
-def _schema_errors(data: dict[str, Any], schema_name: str) -> list[str]:
+def _schema_errors(data: dict[str, Any], schema_name: str, path: Path) -> list[str]:
     out = []
     for e in sorted(_validator(schema_name).iter_errors(data), key=lambda e: list(e.path)):
         loc = "/".join(str(x) for x in e.path) if e.path else "(root)"
         out.append(f"{loc}: {e.message}")
-    return out
+    return [] if out and accepted_at_revision(data, f"schemas/{schema_name}", path, data.get("commit") or "") else out
 
 
 _SHA_KEYS = ("commit", "base")
@@ -161,7 +174,21 @@ def _read(path: Path) -> tuple[dict[str, Any], str, list[str]]:
     return data, body, []
 
 
-def load_ready(path: Path, node_id: str | None = None, branch: str | None = None) -> ReviewFile:
+def ready_semantic_errors(data: dict[str, Any], acceptance_ids: list[str] | None = None) -> list[str]:
+    """Rules the handoff schema cannot express. ``acceptance_ids`` comes from the brief."""
+    errs: list[str] = []
+    blocked = data.get("blocked_on") or []
+    if acceptance_ids is not None and blocked:
+        known = set(acceptance_ids)
+        for entry in blocked:
+            aid = entry.get("acceptance")
+            if aid not in known:
+                errs.append(f"blocked_on: {aid} not in the brief")
+    return errs
+
+
+def load_ready(path: Path, node_id: str | None = None, branch: str | None = None,
+               acceptance_ids: list[str] | None = None) -> ReviewFile:
     """Parse one READY file; with ``node_id`` / ``branch``, bind it to that provenance.
 
     A file under ``work/reviews/M1.1/`` whose front matter names another node
@@ -170,17 +197,17 @@ def load_ready(path: Path, node_id: str | None = None, branch: str | None = None
     """
     data, body, errs = _read(path)
     if not errs:
-        errs = _schema_errors(data, "handoff.schema.json")
+        errs = _schema_errors(data, "handoff.schema.json", path)
     if not errs and node_id is not None and data.get("node_id") != node_id:
         errs.append(f"node_id is {data.get('node_id')!r}, not {node_id!r} (misfiled hand-off)")
     if not errs and branch is not None and data.get("branch") != branch:
         errs.append(f"branch is {data.get('branch')!r}, not the registered {branch!r}")
+    if not errs:
+        errs = ready_semantic_errors(data, acceptance_ids)
     return ReviewFile(path, data, body, errs)
 
 
-def review_semantic_errors(
-    data: dict[str, Any], acceptance_ids: list[str] | None = None
-) -> list[str]:
+def review_semantic_errors(data: dict[str, Any], acceptance_ids: list[str] | None = None) -> list[str]:
     """Rules the schema cannot express. ``acceptance_ids`` comes from the brief."""
     errs = []
     if data.get("authored_fix"):
@@ -209,28 +236,43 @@ def review_semantic_errors(
 def load_review(path: Path, acceptance_ids: list[str] | None = None) -> ReviewFile:
     data, body, errs = _read(path)
     if not errs:
-        errs = _schema_errors(data, "review-record.schema.json")
+        errs = _schema_errors(data, "review-record.schema.json", path)
     if not errs:
         errs = review_semantic_errors(data, acceptance_ids)
     return ReviewFile(path, data, body, errs)
 
 
-def _files(repo_root: Path, node_id: str, prefix: str) -> list[Path]:
+def _files(repo_root: Path, node_id: str, prefix: str, any_case: bool = False) -> list[Path]:
     d = reviews_dir(repo_root, node_id)
     if not d.is_dir():
         return []
-    return sorted(p for p in d.glob(f"{prefix}*.md") if p.is_file())
+    fold = str.lower if any_case else str
+    return sorted(p for p in d.iterdir()
+                  if fold(p.name).startswith(fold(prefix)) and fold(p.suffix) == ".md" and p.is_file())
 
 
-def list_ready(repo_root: Path, node_id: str, branch: str | None = None) -> list[ReviewFile]:
+def list_ready(repo_root: Path, node_id: str, branch: str | None = None,
+               acceptance_ids: list[str] | None = None) -> list[ReviewFile]:
     """Every READY under the node's directory, bound to that node (and ``branch`` when known)."""
-    return [load_ready(p, node_id, branch) for p in _files(repo_root, node_id, READY_PREFIX)]
+    return [
+        load_ready(p, node_id, branch, acceptance_ids)
+        for p in _files(repo_root, node_id, READY_PREFIX)
+    ]
 
 
-def list_reviews(
-    repo_root: Path, node_id: str, acceptance_ids: list[str] | None = None
-) -> list[ReviewFile]:
-    return [load_review(p, acceptance_ids) for p in _files(repo_root, node_id, REVIEW_PREFIX)]
+def _canonical(r: ReviewFile) -> ReviewFile:
+    """Report a record filed under another case (``review-x.md``, ``REVIEW-x.MD``) as ``REVIEW-<model>.md``."""
+    name = f"{REVIEW_PREFIX}{r.data.get('model')}.md"
+    if name.lower() != r.path.name.lower():   # not this model's record: fix only the prefix and extension
+        name = REVIEW_PREFIX + r.path.stem[len(REVIEW_PREFIX):] + ".md"
+    if name != r.path.name:
+        r.path, r.on_disk = r.path.with_name(name), r.path
+    return r
+
+
+def list_reviews(repo_root: Path, node_id: str, acceptance_ids: list[str] | None = None) -> list[ReviewFile]:
+    """Every ``REVIEW-*.md``, its prefix matched in any case and reported under the canonical name."""
+    return [_canonical(load_review(p, acceptance_ids)) for p in _files(repo_root, node_id, REVIEW_PREFIX, True)]
 
 
 def archive_review(repo_root: Path, node_id: str, model: str, text: str) -> Path:
@@ -248,24 +290,47 @@ def list_review_history(repo_root: Path, node_id: str) -> list[ReviewFile]:
     return [load_review(p) for p in sorted(d.glob("*.md"))] if d.is_dir() else []
 
 
+def round_span(repo_root: Path, node_id: str) -> dict[str, Any]:
+    """Review rounds (distinct reviewed commits) and the time from the first filed review to the latest.
+
+    Read from ``history/`` (each copy is written once, so its mtime is its filing
+    time) plus each ``REVIEW-*.md`` with no copy there: ``REVIEW-human.md``, or one
+    written by hand.
+    """
+    seen, times = set(), []
+    for r, in_history in ([(r, True) for r in list_review_history(repo_root, node_id)]
+                          + [(r, False) for r in list_reviews(repo_root, node_id)]):
+        if not r.ok or r.data.get("node_id") != node_id:
+            continue
+        raw = r.data["commit"]   # a short and a full SHA of one commit are one round
+        sha = git_text(["rev-parse", "--verify", "--quiet", f"{raw}^{{commit}}"], repo_root) or raw
+        if in_history or (r.data["model"], sha) not in seen:   # not the live copy of an archived record
+            seen.add((r.data["model"], sha))
+            times.append((r.on_disk or r.path).stat().st_mtime)
+    rounds = len({sha for _model, sha in seen})
+    s = int(max(times) - min(times)) if len(times) > 1 else None
+    units = ((s // 86400, "d"), (s // 3600 % 24, "h"), (s // 60 % 60, "m")) if s is not None else ()
+    took = "n/a" if s is None else " ".join(f"{n}{u}" for n, u in units if n) or "under 1m"
+    return {"rounds": rounds, "elapsed_seconds": s, "line": f"rounds: {rounds}, first to latest: {took}"}
+
+
 def list_rcas(repo_root: Path, node_id: str) -> list[ReviewFile]:
     """``RCA-*.md`` records, schema-checked and bound to ``node_id``."""
     out = []
     for p in _files(repo_root, node_id, RCA_PREFIX):
         data, body, errs = _read(p)
-        errs = errs or _schema_errors(data, "rca-record.schema.json")
+        errs = errs or _schema_errors(data, "rca-record.schema.json", p)
         if not errs and data.get("node_id") != node_id:
             errs.append(f"node_id is {data.get('node_id')!r}, not {node_id!r}")
         out.append(ReviewFile(p, data, body, errs))
     return out
 
 
-def latest_ready(repo_root: Path, node_id: str, branch: str | None = None) -> ReviewFile | None:
+def latest_ready(repo_root: Path, node_id: str, branch: str | None = None,
+                 acceptance_ids: list[str] | None = None) -> ReviewFile | None:
     """The most recently modified valid READY file for this node (and ``branch``), if any."""
-    valid = [r for r in list_ready(repo_root, node_id, branch) if r.ok]
-    if not valid:
-        return None
-    return max(valid, key=lambda r: (r.path.stat().st_mtime, r.path.name))
+    valid = [r for r in list_ready(repo_root, node_id, branch, acceptance_ids) if r.ok]
+    return max(valid, key=lambda r: (r.path.stat().st_mtime, r.path.name), default=None)
 
 
 def failing_verifier_entries(ready: ReviewFile) -> list[dict[str, Any]]:
@@ -283,19 +348,16 @@ def pre_existing_cmds_from_approvals(approvals: list[Any]) -> set[str]:
 
 
 def verifier_gate_problems(ready: ReviewFile | None, approvals: list[Any]) -> list[str]:
-    """Failing READY verifiers with no approving review marking them pre-existing."""
-    if ready is None:
-        return []
-    failing = failing_verifier_entries(ready)
+    """Failing READY verifiers not cleared by an approving review's *verified* pre-existing claim.
+
+    A claim counts once ``review check-pre-existing`` reproduced it on the current
+    integration tip (:mod:`specy_road.review_pre_existing`).
+    """
+    failing = failing_verifier_entries(ready) if ready is not None else []
     if not failing:
         return []
-    covered = pre_existing_cmds_from_approvals(approvals)
-    name = ready.path.name
-    return [
-        f"{name} (executor-reported): verifier `{v['cmd']}` exited {v['exit']}"
-        for v in failing
-        if str(v["cmd"]) not in covered
-    ]
+    from specy_road.review_pre_existing import gate_problems  # it reads files through this module
+    return gate_problems(ready, failing, pre_existing_cmds_from_approvals(approvals))
 
 
 def non_gating_verify_problems(ready: ReviewFile | None) -> list[str]:
@@ -303,6 +365,27 @@ def non_gating_verify_problems(ready: ReviewFile | None) -> list[str]:
     if ready is None or ready.data.get("verify"):
         return []
     return [f"{ready.path.name} (executor-reported): no verifier evidence recorded (verify is empty)"]
+
+
+def executor_blocked_entries(ready: ReviewFile | None) -> list[dict[str, Any]]:
+    """Non-empty ``blocked_on`` on a READY file, when present."""
+    if ready is None:
+        return []
+    return list(ready.data.get("blocked_on") or [])
+
+
+def executor_blocked_display_lines(ready: ReviewFile | None) -> list[str]:
+    """One ``A<n>: <reason>`` line per ``blocked_on`` entry (handoff status)."""
+    return [f"{e['acceptance']}: {e['reason']}" for e in executor_blocked_entries(ready)]
+
+
+def executor_blocked_gate_problems(ready: ReviewFile | None) -> list[str]:
+    """Gate failures while the current READY declares ``blocked_on``."""
+    name = ready.path.name if ready else "READY"
+    return [
+        f"{name} (executor-blocked): blocked on {e['acceptance']}"
+        for e in executor_blocked_entries(ready)
+    ]
 
 
 def node_ids_with_reviews(repo_root: Path) -> list[str]:
@@ -313,7 +396,5 @@ def node_ids_with_reviews(repo_root: Path) -> list[str]:
 
 
 def render_front_matter(data: dict[str, Any], body: str = "") -> str:
-    import yaml
-
     head = yaml.safe_dump(data, sort_keys=False, allow_unicode=True).rstrip()
     return f"---\n{head}\n---\n{body}"

@@ -14,8 +14,12 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from specy_road.agent_guide_block import render_guide_lines
+from specy_road.agents_md_block import LOCAL_MD, RULES_MD, TEAM_MD, agents_md_block_state, render_rules
 from specy_road.bundled_scripts.upgrade import copy_missing_docs, run_upgrade
 from specy_road.init_project import run_init_project
+from specy_road.managed_block import HTML_COMMENT, render_block
+from specy_road.specyrd_init import run_init
 
 OLD_STUB = ".cursor/commands/specyrd-validate.md"
 SHIPPED_DOC = "docs/supply-chain-security.md"
@@ -51,7 +55,7 @@ def test_one_run_clears_every_upgrade_warning(tmp_path: Path, capsys) -> None:
     out, err = capsys.readouterr()
     assert "wrote schemas/orchestration.schema.json (new in this version)" in out
     assert "removed .cursor/commands/specyrd-validate.md" in out
-    assert f"wrote {SHIPPED_DOC} (named in the AGENTS.md load order)" in out
+    assert f"wrote {SHIPPED_DOC} (named in the .specyrd/AGENTS.md load order)" in out
     assert (root / SHIPPED_DOC).is_file()
     assert "OK: roadmap and registry validate." in out
     for warning in ("agents: warning", "schemas: warning", "specyrd: warning"):
@@ -106,3 +110,38 @@ def test_a_docs_link_out_of_the_repo_is_not_followed(tmp_path: Path, capsys) -> 
     assert copy_missing_docs(root) == []
     assert f"skipped {SHIPPED_DOC}" in capsys.readouterr().out
     assert not any(outside.iterdir())
+
+
+def test_upgrade_moves_the_full_agents_md_section_into_the_rules_file_once(tmp_path: Path, capsys) -> None:
+    """2026-11-04: an adopter's full AGENTS.md and CLAUDE.md sections become stubs; their own text stays."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    run_init_project(tmp_path)
+    run_init(target=tmp_path, agent="claude-code", dry_run=False, force=False, ai_commands_dir=None,
+             write_claude_md=True)
+    for rel in (RULES_MD, TEAM_MD):
+        (tmp_path / rel).unlink()
+    old = render_block(render_rules().splitlines(), style=HTML_COMMENT)   # the size of the section rc2 wrote
+    (tmp_path / "AGENTS.md").write_text(f"# Ours\n\nTeam text before.\n\n{old}\nTeam text after.\n", encoding="utf-8")
+    (tmp_path / "CLAUDE.md").write_text(f"# Claude\n\n{old}\nClaude text after.\n", encoding="utf-8")
+    (tmp_path / ".gitignore").write_text("", encoding="utf-8")
+    capsys.readouterr()
+
+    assert run_upgrade(tmp_path) == 0
+    out = capsys.readouterr().out
+    assert f"migration: the specy-road section of AGENTS.md ({len(old.splitlines())} lines) becomes a" in out
+    assert f"points at {RULES_MD}" in out and TEAM_MD in out and LOCAL_MD in out
+    agents = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert agents.startswith("# Ours\n\nTeam text before.\n") and agents.endswith("Team text after.\n")
+    assert agents_md_block_state(tmp_path) == "current"
+    claude = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
+    assert claude.startswith("# Claude\n") and claude.endswith("Claude text after.\n")
+    assert "@.specyrd/AGENTS.md" in claude.splitlines() and "\n".join(render_guide_lines()) in claude
+    assert (tmp_path / RULES_MD).read_text(encoding="utf-8") == render_rules()
+    assert (tmp_path / TEAM_MD).is_file() and not (tmp_path / LOCAL_MD).exists()
+    assert LOCAL_MD in (tmp_path / ".gitignore").read_text(encoding="utf-8").splitlines()
+
+    files = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file() and ".git" not in p.parts}
+    assert run_upgrade(tmp_path) == 0
+    out = capsys.readouterr().out
+    assert "migration:" not in out and "stubs and managed blocks already current" in out
+    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file() and ".git" not in p.parts} == files

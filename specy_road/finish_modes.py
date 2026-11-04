@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import shlex
 import sys
 from pathlib import Path
 from typing import NoReturn
@@ -15,7 +16,9 @@ from specy_road.finish_land_integration import (
     integration_worktree_problem,
     land_merge_feature_into_integration,
     print_merge_push_notice,
+    tracking_ref_snapshot,
 )
+from specy_road.finish_on_complete_override import OVERRIDE_FLAG, needs_override
 from specy_road.git_subprocess import git_ok
 from specy_road.on_complete_session import remove_on_complete_session
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
@@ -95,19 +98,35 @@ def print_pr_gated_state(
         "  Merging the PR is what closes the node on "
         f"{integration_branch}. Do not re-pick it,\n"
         "  and do not abort it — `abort-task-pickup` deletes the branch and "
-        "the work with it."
+        "the work with it.\n"
+        f"  Cleaning up stops here: do not merge {branch} into "
+        f"{integration_branch} yourself or delete it;\n"
+        "  the PR is the team's review step, and `branches prune --delete` "
+        "removes the branch once the PR has merged it."
     )
 
 
-def merge_landing_failed(ib: str, err_msg: str, *, delete_branch: bool = False) -> NoReturn:
-    """Exit 1 after a failed merge landing, naming the re-run that retries it."""
+def merge_landing_failed(
+    ib: str, err_msg: str, *, delete_branch: bool = False, land_check_cmd: str | None = None,
+    repo: Path | None = None,
+) -> NoReturn:
+    """Exit 1 after a failed merge landing, naming the re-run that retries it.
+
+    The re-run has no pickup session file (the bookkeeping commit removed it),
+    so when merge is not the configured mode the re-run names the
+    acknowledgement flag that mode needs.
+    """
     again = "specy-road finish-this-task --on-complete merge"
+    if repo is not None and needs_override(repo, "merge"):
+        again += f" {OVERRIDE_FLAG}"
     if delete_branch:
         again += " --delete-branch"
+    if land_check_cmd is not None:
+        again += f" --land-check-cmd {shlex.quote(land_check_cmd)}"
     print(f"\nerror: could not land merge to {ib}: {err_msg}", file=sys.stderr)
     print(
         "\n--on-complete merge cannot fall back to PR instructions. "
-        f"Fix the integration branch (see error above), then run `{again}` "
+        f"Fix what the error above names, then run `{again}` "
         "again on this branch: the bookkeeping is already committed, so it "
         "retries only the landing. Or rerun with --on-complete pr to open a "
         "PR instead.",
@@ -215,6 +234,7 @@ def refuse_unless_finish_tip(repo: Path, branch: str) -> None:
 
 def retry_merge_landing(
     repo: Path, *, branch: str, ib: str, remote: str, delete_branch: bool = False,
+    land_check_cmd: str | None = None,
 ) -> NoReturn:
     """Land a branch whose finish bookkeeping is committed but whose merge failed.
 
@@ -224,6 +244,7 @@ def retry_merge_landing(
     ``remote/ib``, including when an earlier run already got it there.
     """
     refuse_unless_finish_tip(repo, branch)
+    tracking_before = tracking_ref_snapshot(repo, remote=remote, integration_branch=ib)
     git_ok(["fetch", "-q", remote, ib], repo)
     if git_ok(["merge-base", "--is-ancestor", branch, f"refs/remotes/{remote}/{ib}"], repo)[0]:
         done = "" if delete_branch else "; nothing to do"
@@ -236,9 +257,13 @@ def retry_merge_landing(
     )
     ok, err_msg = land_merge_feature_into_integration(
         repo, remote=remote, integration_branch=ib, feature_branch=branch,
+        land_check_cmd=land_check_cmd, tracking_before=tracking_before,
     )
     if not ok:
-        merge_landing_failed(ib, err_msg, delete_branch=delete_branch)
+        merge_landing_failed(
+            ib, err_msg, delete_branch=delete_branch, land_check_cmd=land_check_cmd,
+            repo=repo,
+        )
     print(f"\n[ok] merged {branch} into {ib} and pushed to {remote}")
     if delete_branch:
         delete_landed_branch(repo, branch=branch, ib=ib, remote=remote)
@@ -276,6 +301,7 @@ def apply_on_complete_mode(
         remove_on_complete_session(sess_path)
         return
 
+    tracking_before = tracking_ref_snapshot(repo, remote=gw_remote, integration_branch=ib)
     print_merge_push_notice(
         repo, remote=gw_remote, integration_branch=ib, feature_branch=branch,
     )
@@ -284,6 +310,8 @@ def apply_on_complete_mode(
         remote=gw_remote,
         integration_branch=ib,
         feature_branch=branch,
+        land_check_cmd=args.land_check_cmd,
+        tracking_before=tracking_before,
     )
     if ok:
         print(f"\n[ok] merged {branch} into {ib} and pushed to {gw_remote}")
@@ -295,7 +323,10 @@ def apply_on_complete_mode(
     if on_mode == "merge":
         # F-012: --on-complete merge means MERGE. Do NOT print PR
         # instructions as a fallback — that's exactly the bug being fixed.
-        merge_landing_failed(ib, err_msg, delete_branch=args.delete_branch)
+        merge_landing_failed(
+            ib, err_msg, delete_branch=args.delete_branch,
+            land_check_cmd=args.land_check_cmd, repo=repo,
+        )
 
     print(
         f"\nerror: could not land merge to {ib}: {err_msg}",

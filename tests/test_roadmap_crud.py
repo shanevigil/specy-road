@@ -237,6 +237,43 @@ def test_list_nodes_cli(tmp_path: Path) -> None:
     assert "M99.1" in r.stdout
 
 
+def _write_registry_claim(tmp_path: Path, node_id: str, codename: str, branch: str, owner: str) -> None:
+    (tmp_path / "roadmap" / "registry.yaml").write_text(
+        f"""version: 1
+entries:
+  - codename: {codename}
+    node_id: {node_id}
+    branch: {branch}
+    owner: {owner}
+""",
+        encoding="utf-8",
+    )
+
+
+def test_list_nodes_marks_a_claimed_leaf_in_the_table_and_json(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    _write_registry_claim(
+        tmp_path,
+        "M99.1",
+        "one",
+        "feature/rm-one",
+        "Pat Example",
+    )
+    table = run_crud(tmp_path, "--repo-root", str(tmp_path), "list-nodes")
+    assert table.returncode == 0, table.stderr
+    assert "Not Started (claimed)" in table.stdout
+
+    listed = json.loads(
+        run_crud(tmp_path, "--repo-root", str(tmp_path), "list-nodes", "--json").stdout
+    )
+    claimed = next(n for n in listed if n["id"] == "M99.1")
+    assert claimed["claimed"] is True
+    assert claimed["branch"] == "feature/rm-one"
+    unclaimed = next(n for n in listed if n["id"] == "M99.2")
+    assert unclaimed["claimed"] is False
+    assert "branch" not in unclaimed
+
+
 def test_list_nodes_json_is_the_full_untruncated_list(tmp_path: Path) -> None:
     """The table cuts titles at 60 characters; --json is for scripts and keeps every field."""
     crud_fixture_repo(tmp_path)
@@ -256,6 +293,7 @@ def test_list_nodes_json_is_the_full_untruncated_list(tmp_path: Path) -> None:
     assert one["title"] == long_title
     assert one["chunk"] == "roadmap/phases/T.json"
     assert one["node_key"] == nodes[1]["node_key"] and one["rollup_status"] == "Complete"
+    assert one["claimed"] is False
     done = run_crud(tmp_path, "--repo-root", str(tmp_path), "list-nodes", "--json", "--status", "Complete")
     assert [n["id"] for n in json.loads(done.stdout)] == ["M99.1"]
 

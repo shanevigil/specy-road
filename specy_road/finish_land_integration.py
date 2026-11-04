@@ -20,6 +20,10 @@ delegate``'s layout: the coordinator's checkout on ``main``, the leaf in
 ``work/.worktrees/<codename>``), ``git checkout`` of it here is impossible, so
 the merge runs in that worktree instead -- only when it has no uncommitted
 changes to tracked files, so another checkout's work is never touched.
+
+Each ``nested_repos`` repository holding the feature branch is merged and
+pushed first (:mod:`specy_road.nested_repos`); a failure there returns before
+the main repository moves.
 """
 
 from __future__ import annotations
@@ -27,10 +31,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from specy_road.runtime_paths import git_root, project_prefix
+from specy_road.finish_land_check import resolve_land_check_cmd, run_land_check
 from specy_road.finish_land_deterministic import (
     merge_feature_deterministically,
 )
 from specy_road.git_subprocess import git_code, git_ok
+from specy_road.nested_repos import land_nested_branches
 
 
 def _ref_exists_local(repo: Path, ref: str) -> bool:
@@ -107,10 +113,48 @@ def integration_worktree_problem(repo: Path, integration_branch: str) -> str | N
     )
 
 
+def _reset_integration(tree: Path, integration_branch: str, pre: str) -> str:
+    """Put ``integration_branch`` (checked out in ``tree``) back at ``pre``; a note on failure."""
+    code, out = git_code(["reset", "--keep", pre], tree)
+    if code == 0:
+        return f"Local {integration_branch} is back at {pre[:12]}."
+    return f"Resetting local {integration_branch} to {pre[:12]} also failed: {out}"
+
+
+def tracking_ref_snapshot(repo: Path, *, remote: str, integration_branch: str) -> str:
+    """The commit ``remote/integration_branch`` names, or ``""`` when that ref does not exist.
+
+    Taken before finish's first fetch, so a failed land check can put the ref
+    back where finish found it.
+    """
+    ref = f"refs/remotes/{remote}/{integration_branch}"
+    ok, sha = git_ok(["rev-parse", "--verify", "--quiet", ref], repo)
+    return sha if ok else ""
+
+
+def _restore_tracking(tree: Path, remote: str, integration_branch: str, before: str) -> str:
+    """Put ``remote/integration_branch`` back at ``before`` (absent when ``""``); a note either way."""
+    ref = f"refs/remotes/{remote}/{integration_branch}"
+    code, out = git_code(["update-ref", ref, before] if before else ["update-ref", "-d", ref], tree)
+    if code != 0:
+        return f"Restoring {remote}/{integration_branch} also failed: {out}"
+    return f"{remote}/{integration_branch} is back at {before[:12] or 'its absence'}."
+
+
 def _merge_and_push(
-    tree: Path, *, remote: str, integration_branch: str, feature_branch: str
+    tree: Path, *, remote: str, integration_branch: str, feature_branch: str,
+    land_check_cmd: str | None = None, tracking_before: str = "",
 ) -> tuple[bool, str]:
-    """Fast-forward, merge and push ``integration_branch``, checked out in ``tree``."""
+    """Fast-forward, merge, land-check and push ``integration_branch``, checked out in ``tree``.
+
+    A failed land check or a rejected push resets the local integration branch
+    to where it was before this landing, so a re-run merges onto the remote's
+    new tip and checks that commit instead. The push is the compare-and-swap:
+    a tip that moved since the check makes it fail. A failed land check also
+    puts ``remote/integration_branch`` back at ``tracking_before``, undoing
+    finish's fetch, because it pushed nothing.
+    """
+    _ok, pre = git_ok(["rev-parse", "HEAD"], tree)
     rr = f"{remote}/{integration_branch}"
     if _ref_exists_local(tree, f"refs/remotes/{rr}"):
         code, out = git_code(["merge", "--ff-only", rr], tree)
@@ -127,11 +171,20 @@ def _merge_and_push(
     )
     if not ok:
         return False, out
+    if land_check_cmd:
+        problem = run_land_check(tree, land_check_cmd)
+        if problem is not None:
+            return False, (
+                f"{problem}\n  {_reset_integration(tree, integration_branch, pre)} "
+                f"{_restore_tracking(tree, remote, integration_branch, tracking_before)}"
+            )
     code, out = git_code(["push", remote, integration_branch], tree)
     if code != 0:
         return (
             False,
-            f"git push {remote} {integration_branch} failed (local merge may exist): {out}",
+            f"git push {remote} {integration_branch} failed: {out}\n  "
+            f"{_reset_integration(tree, integration_branch, pre)} If {rr} moved, "
+            "re-running merges onto its new tip and runs the land check again.",
         )
     return True, ""
 
@@ -152,22 +205,99 @@ def integration_commits_ahead_of_remote(
     return int(out.strip())
 
 
+def _ref_sha(repo: Path, ref: str) -> str | None:
+    ok, sha = git_ok(["rev-parse", "--verify", "--quiet", ref], repo)
+    return sha if ok else None
+
+
+def _is_ancestor(repo: Path, ancestor: str, descendant: str) -> bool:
+    ok, _ = git_ok(["merge-base", "--is-ancestor", ancestor, descendant], repo)
+    return ok
+
+
+def _rev_list_count(
+    repo: Path, tips: list[str], exclude: list[str] | None = None,
+) -> int:
+    """Count commits reachable from ``tips``, optionally excluding ``exclude``.
+
+    ``exclude is None`` counts the entire reachable set (no remote-tracking
+    baseline). Shared ancestry across ``tips`` is counted once.
+    """
+    args = ["rev-list", "--count", *tips]
+    if exclude is not None:
+        args += ["--not", *exclude]
+    code, out = git_code(args, repo)
+    if code != 0 or not out.strip().isdigit():
+        return 0
+    return int(out.strip())
+
+
+def _integration_tip_after_ff(
+    repo: Path, *, remote: str, integration_branch: str,
+) -> str | None:
+    """Integration ``HEAD`` after the landing's ``merge --ff-only`` to the tracking ref."""
+    local = _ref_sha(repo, f"refs/heads/{integration_branch}")
+    tracked = _ref_sha(repo, f"refs/remotes/{remote}/{integration_branch}")
+    if local and tracked:
+        if _is_ancestor(repo, local, tracked):
+            return tracked
+        if _is_ancestor(repo, tracked, local):
+            return local
+        return local
+    return local or tracked
+
+
+def _feature_merge_adds_commit(repo: Path, integration_tip: str, feature_branch: str) -> bool:
+    ok, _ = git_ok(["merge-base", "--is-ancestor", feature_branch, integration_tip], repo)
+    return not ok
+
+
+def merge_push_disclosure_counts(
+    repo: Path, *, remote: str, integration_branch: str, feature_branch: str,
+) -> tuple[int, int]:
+    """Return ``(total_commits_on_push, not_from_leaf)`` for merge-mode disclosure.
+
+    ``total`` is every commit newly reachable on the pushed integration ref:
+    local integration history, feature-only commits, and the landing merge
+    commit, with shared ancestry counted once. ``not_from_leaf`` is the subset
+    not reachable from ``feature_branch``.
+    """
+    integration_tip = _integration_tip_after_ff(
+        repo, remote=remote, integration_branch=integration_branch,
+    )
+    if integration_tip is None:
+        return 0, 0
+    tracked = _ref_sha(repo, f"refs/remotes/{remote}/{integration_branch}")
+    baseline = [tracked] if tracked is not None else None
+    not_from_exclude = [*(baseline or []), feature_branch]
+    not_from_leaf = _rev_list_count(repo, [integration_tip], exclude=not_from_exclude)
+    total = _rev_list_count(
+        repo, [integration_tip, feature_branch], exclude=baseline,
+    )
+    if _feature_merge_adds_commit(repo, integration_tip, feature_branch):
+        total += 1
+    return total, not_from_leaf
+
+
 def print_merge_push_notice(
     repo: Path, *, remote: str, integration_branch: str, feature_branch: str,
 ) -> None:
     """Tell the operator what merge mode will push before it runs."""
     git_code(["fetch", remote], repo)
-    ahead = integration_commits_ahead_of_remote(repo, remote=remote, integration_branch=integration_branch)
+    total, not_from_leaf = merge_push_disclosure_counts(
+        repo,
+        remote=remote,
+        integration_branch=integration_branch,
+        feature_branch=feature_branch,
+    )
     print(
         f"\nMerge mode will merge {feature_branch!r} into {integration_branch!r} "
         f"and push {remote}/{integration_branch}."
     )
-    if ahead is None:
-        return
-    word = "commit" if ahead == 1 else "commits"
+    total_word = "commit" if total == 1 else "commits"
     print(
-        f"  {ahead} local {word} on {integration_branch} are not on {remote}/{integration_branch} yet "
-        f"(in addition to this leaf's merge)."
+        f"  The push will carry {total} {total_word} "
+        f"({not_from_leaf} not from {feature_branch!r})."
     )
 
 
@@ -177,6 +307,8 @@ def land_merge_feature_into_integration(
     remote: str,
     integration_branch: str,
     feature_branch: str,
+    land_check_cmd: str | None = None,
+    tracking_before: str | None = None,
 ) -> tuple[bool, str]:
     """
     Fetch, checkout integration, fast-forward to remote tracking ref, merge feature,
@@ -184,10 +316,20 @@ def land_merge_feature_into_integration(
     integration branch checked out, merge and push there instead (refusing if
     it has uncommitted changes) and leave this checkout alone.
 
+    ``land_check_cmd`` is the ``--land-check-cmd`` value: ``None`` falls back
+    to ``land_check_cmd`` in ``roadmap/git-workflow.yaml``, ``""`` skips the
+    check (:mod:`specy_road.finish_land_check`). ``tracking_before`` is the
+    :func:`tracking_ref_snapshot` the caller took before its own first fetch;
+    ``None`` takes it here, before this function's fetch.
+
     Returns (True, "") on success, (False, message) on failure. Failure
     messages are structured so callers can surface a hard error rather than
     silently falling back to PR instructions (F-012).
     """
+    if tracking_before is None:
+        tracking_before = tracking_ref_snapshot(
+            repo, remote=remote, integration_branch=integration_branch,
+        )
     code, out = git_code(["fetch", remote], repo)
     if code != 0:
         return False, f"git fetch {remote} failed: {out}"
@@ -211,11 +353,18 @@ def land_merge_feature_into_integration(
     problem = integration_worktree_problem(repo, integration_branch)
     if problem is not None:
         return False, problem
+    # nested_repos: each nested branch lands first, so a failure there stops
+    # the landing before the main repository moves.
+    ok, err = land_nested_branches(repo, feature_branch)
+    if not ok:
+        return False, err
+    check = resolve_land_check_cmd(repo, cli=land_check_cmd)
     holder = integration_worktree(repo, integration_branch)
     if holder is not None:
         return _merge_and_push(
             holder_project_root(repo, holder), remote=remote,
             integration_branch=integration_branch, feature_branch=feature_branch,
+            land_check_cmd=check, tracking_before=tracking_before,
         )
 
     code, out = git_code(["checkout", integration_branch], repo)
@@ -224,6 +373,7 @@ def land_merge_feature_into_integration(
     ok, err = _merge_and_push(
         repo, remote=remote,
         integration_branch=integration_branch, feature_branch=feature_branch,
+        land_check_cmd=check, tracking_before=tracking_before,
     )
     code, out = git_code(["checkout", feature_branch], repo)
     if not ok:

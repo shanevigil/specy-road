@@ -11,6 +11,8 @@ import yaml
 from specy_road.bundled_scripts.do_next_task_self_heal import (
     attempt_self_cleanup,
     detect_stale_claims,
+    warn_about_stale_claims_before_pickup,
+    warn_unresolved_rollback,
 )
 
 
@@ -113,3 +115,79 @@ def test_detect_stale_claims_in_repo_with_no_branches(tmp_path: Path) -> None:
     # Only the feature/rm-* entry is considered; the malformed one is skipped.
     codenames = [e["codename"] for e in out]
     assert codenames == ["ghost"]
+
+
+def _repo_with_branch(tmp_path: Path, branch: str | None) -> Path:
+    """A repo with one commit and, when named, a local-only (unpushed) branch."""
+    subprocess.check_call(["git", "init", "-q"], cwd=tmp_path)
+    subprocess.check_call(["git", "config", "user.email", "t@e.com"], cwd=tmp_path)
+    subprocess.check_call(["git", "config", "user.name", "T"], cwd=tmp_path)
+    subprocess.check_call(["git", "commit", "-q", "--allow-empty", "-m", "init"], cwd=tmp_path)
+    if branch:
+        subprocess.check_call(["git", "branch", branch], cwd=tmp_path)
+    return tmp_path
+
+
+LIVE = {"codename": "live", "node_id": "M1.1", "branch": "feature/rm-live"}
+
+
+def test_a_local_only_branch_is_not_stale_and_prints_nothing(tmp_path: Path, capsys) -> None:
+    """Branches pushed only at merge exist locally alone; their claims are live."""
+    root = _repo_with_branch(tmp_path, "feature/rm-live")
+    reg = {"version": 1, "entries": [LIVE]}
+
+    assert detect_stale_claims(repo_root=root, reg=reg, remote="origin") == []
+    warn_about_stale_claims_before_pickup(repo_root=root, reg=reg, remote="origin")
+    assert capsys.readouterr().err == ""
+
+
+def test_a_remote_only_branch_is_not_stale(tmp_path: Path) -> None:
+    root = _repo_with_branch(tmp_path, None)
+    subprocess.check_call(
+        ["git", "update-ref", "refs/remotes/origin/feature/rm-live", "HEAD"], cwd=root,
+    )
+    reg = {"version": 1, "entries": [LIVE]}
+    assert detect_stale_claims(repo_root=root, reg=reg, remote="origin") == []
+
+
+def test_a_missing_branch_warns_and_names_both_refs_checked(tmp_path: Path, capsys) -> None:
+    root = _repo_with_branch(tmp_path, None)
+    reg = {"version": 1, "entries": [LIVE]}
+
+    warn_about_stale_claims_before_pickup(repo_root=root, reg=reg, remote="origin")
+
+    err = capsys.readouterr().err
+    assert "stale registry claim was left behind" in err
+    assert "local refs/heads/feature/rm-live (absent)" in err
+    assert "remote refs/remotes/origin/feature/rm-live (absent)" in err
+    assert "abort-task-pickup --force" in err
+    assert "confirm it is dead" in err
+
+
+def test_a_failed_rollback_with_a_local_branch_gives_no_fix_lines(tmp_path: Path, capsys) -> None:
+    root = _repo_with_branch(tmp_path, "feature/rm-live")
+
+    warn_unresolved_rollback(
+        repo_root=root, node_id="M1.1", codename="live",
+        branch="feature/rm-live", remote="origin",
+    )
+
+    err = capsys.readouterr().err
+    assert "not stale" in err
+    assert "stale registry claim" not in err
+    assert "abort-task-pickup" not in err
+    assert "registry.yaml" not in err
+
+
+def test_a_failed_rollback_with_no_branch_warns(tmp_path: Path, capsys) -> None:
+    root = _repo_with_branch(tmp_path, None)
+
+    warn_unresolved_rollback(
+        repo_root=root, node_id="M1.1", codename="live",
+        branch="feature/rm-live", remote="origin",
+    )
+
+    err = capsys.readouterr().err
+    assert "stale registry claim was left behind" in err
+    assert "automatic cleanup also failed" in err
+    assert "local refs/heads/feature/rm-live (absent)" in err

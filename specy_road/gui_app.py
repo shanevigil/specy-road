@@ -8,20 +8,40 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 
 from specy_road.gui_app_api import make_api_router  # noqa: E402
+from specy_road.gui_app_routes_workers import register_worker_routes
 
 _PKG_DIR = Path(__file__).resolve().parent
 _STATIC_DIR = _PKG_DIR / "pm_gantt_static"
 
+READ_ONLY_ENV = "SPECY_ROAD_GUI_READ_ONLY"
+_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+_ALL_METHODS = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 
-def create_app() -> FastAPI:
+
+def _register_read_only_guard(app: FastAPI) -> None:
+    @app.middleware("http")
+    async def refuse_writes(request: Request, call_next):  # type: ignore[no-untyped-def]
+        if request.method not in _SAFE_METHODS and request.url.path.startswith("/api/"):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "server is read-only (specy-road gui --read-only)"},
+            )
+        return await call_next(request)
+
+
+def create_app(read_only: bool | None = None) -> FastAPI:
+    if read_only is None:
+        read_only = os.environ.get(READ_ONLY_ENV) == "1"
     app = FastAPI(title="specy-road PM Gantt API", version="1.0.0")
+    if read_only:
+        _register_read_only_guard(app)
     app.add_middleware(
         CORSMiddleware,
         # Loopback only. The built UI is served from this same origin, so the
@@ -35,6 +55,14 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(make_api_router())
+    workers = APIRouter(prefix="/api")
+    register_worker_routes(workers)
+    app.include_router(workers)
+
+    # Registered before the SPA fallback so scripts get JSON, not the HTML shell.
+    @app.api_route("/api/{rest:path}", methods=_ALL_METHODS, include_in_schema=False)
+    def api_not_found(rest: str) -> None:
+        raise HTTPException(status_code=404, detail=f"no API route /api/{rest}")
 
     if _STATIC_DIR.is_dir():
         app.mount(

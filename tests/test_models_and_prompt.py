@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import NODE, git, make_review_repo
+from tests.review_repo_helpers import NODE, git, make_review_repo, shipped_anthropic_opus_cli_yaml_line
 
 from specy_road import model_profiles as mp
 from specy_road.bundled_scripts import models_cli, role_prompt
@@ -31,7 +31,7 @@ roster:
 """
 
 
-def _repo(tmp_path: Path) -> Path:
+def make_profile_repo(tmp_path: Path) -> Path:
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
     dest = repo / "model-profiles" / "anthropic-claude"
     dest.mkdir(parents=True)
@@ -44,13 +44,13 @@ def _repo(tmp_path: Path) -> Path:
     return repo
 
 
-def _commit_profile(repo: Path) -> None:
+def commit_profile(repo: Path) -> None:
     """Profiles are read from the integration branch (round 6, B5): land the edit on ``dev``."""
     git(repo, "commit", "-qam", "profile edit")
     git(repo, "update-ref", "refs/heads/dev", "HEAD")
 
 
-def _run(mod, *args: str) -> int:
+def run_main(mod, *args: str) -> int:
     with pytest.raises(SystemExit) as e:
         mod.main(list(args))
         raise SystemExit(0)
@@ -61,7 +61,7 @@ def _run(mod, *args: str) -> int:
 
 def test_every_shipped_profile_loads_and_is_schema_2() -> None:
     profiles = mp.list_profiles(TEMPLATE_PROFILES.parent)
-    assert len(profiles) == 16
+    assert [p.path for p in profiles] == sorted(p for p in TEMPLATE_PROFILES.rglob("*.md") if p.name != "README.md")
     bad = [(p.path.name, p.errors) for p in profiles if not p.ok]
     assert not bad, bad
     assert all(p.role_score("executor") is not None for p in profiles)
@@ -99,14 +99,27 @@ def test_broken_profile_reports_errors(tmp_path: Path) -> None:
     assert prof.for_id("x-high") is None
 
 
+def test_launch_mode_is_full_or_bare_and_absent_means_full(tmp_path: Path) -> None:
+    head = "---\nprofile_schema: 2\nfamily: f\nmodel: m\napi_id: m\nversion_rank: latest\nresearched: 2026-10-30\n"
+    p = tmp_path / "my-model.md"
+    for access, mode in (("{}", "full"), ("{launch_mode: full}", "full"), ("{launch_mode: bare}", "bare")):
+        p.write_text(head + f"access: {access}\nrole_fit: {{}}\n---\n")
+        prof = mp.load_profile(p)
+        assert prof.ok and prof.launch_mode() == mode
+    p.write_text(head + "access: {launch_mode: minimal}\nrole_fit: {}\n---\n")
+    assert mp.load_profile(p).errors == ["profile my-model: `access.launch_mode` must be full or bare, not 'minimal'"]
+    for name in ("claude-opus-5-5", "claude-fable-5-1"):   # the shipped Claude profiles pin the design intent
+        assert mp.load_profile(TEMPLATE_PROFILES / "anthropic-claude" / f"{name}.md").data["access"]["launch_mode"] == "full"
+
+
 # --- models CLI ---------------------------------------------------------------
 
 def test_models_list_json_shows_roster_and_unrostered(tmp_path: Path, capsys) -> None:
-    repo = _repo(tmp_path)
+    repo = make_profile_repo(tmp_path)
     extra = repo / "model-profiles" / "openai-gpt"
     extra.mkdir()
     shutil.copy(TEMPLATE_PROFILES / "openai-gpt" / "gpt-6.1-sol.md", extra)
-    assert _run(models_cli, "models", "list", "--json", "--repo-root", str(repo)) == 0
+    assert run_main(models_cli, "models", "list", "--json", "--repo-root", str(repo)) == 0
     out = json.loads(capsys.readouterr().out)
     rows = {r["id"]: r for r in out["roster"]}
     assert rows["opus"]["scores"] == {"coordinator": 5, "executor": 5, "reviewer": 4}
@@ -115,38 +128,62 @@ def test_models_list_json_shows_roster_and_unrostered(tmp_path: Path, capsys) ->
 
 
 def test_models_show_prints_fields_and_section(tmp_path: Path, capsys) -> None:
-    repo = _repo(tmp_path)
-    assert _run(models_cli, "models", "show", "opus", "--section", "Failure modes", "--repo-root", str(repo)) == 0
+    repo = make_profile_repo(tmp_path)
+    assert run_main(models_cli, "models", "show", "opus", "--section", "Failure modes", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
     assert "api_id: claude-opus-5-5" in out and "## Failure modes" in out and "mitigation in prompt" in out
-    assert _run(models_cli, "models", "show", "nope", "--repo-root", str(repo)) == 1
+    assert run_main(models_cli, "models", "show", "nope", "--repo-root", str(repo)) == 1
+
+
+def test_models_show_prints_a_bad_launch_mode_and_delegate_reads_a_good_one(tmp_path: Path, capsys,
+                                                                            monkeypatch) -> None:
+    from specy_road import worker_ops as ops  # noqa: PLC0415 — only this test needs the worker side
+    from specy_road import worker_state as ws  # noqa: PLC0415
+    repo = make_profile_repo(tmp_path)
+    launches = []
+    monkeypatch.setattr(ops, "spawn", lambda root, rec, launch, **kw: launches.append(launch))
+    rec, _ = ops.delegate(repo, "M1.1", "opus", harness="claude-code")
+    assert launches[0].launch_mode == "full" and "--bare" not in launches[0].argv
+    ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
+    ws.set_state(repo, rec, "idle", pid=None)
+    prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
+    prof_path.write_text(prof_path.read_text().replace("launch_mode: full", "launch_mode: bare", 1))
+    commit_profile(repo)
+    ops.message(repo, rec.worker_id, "go on")   # the resume reads the pinned profile again
+    assert launches[1].launch_mode == "bare" and launches[1].argv[:4] == ["claude", "-p", "--bare", "--resume"]
+    prof_path.write_text(prof_path.read_text().replace("launch_mode: bare", "launch_mode: lean", 1))
+    commit_profile(repo)
+    assert run_main(models_cli, "models", "show", "opus", "--repo-root", str(repo)) == 0
+    out = capsys.readouterr().out
+    assert "INVALID:" in out and "profile claude-opus-5-5: `access.launch_mode` must be full or bare, not 'lean'" in out
 
 
 def test_models_stale_exits_1_only_for_rostered(tmp_path: Path, capsys) -> None:
-    repo = _repo(tmp_path)
-    assert _run(models_cli, "models", "stale", "--today", "2026-11-01", "--repo-root", str(repo)) == 0
+    repo = make_profile_repo(tmp_path)
+    assert run_main(models_cli, "models", "stale", "--today", "2026-11-01", "--repo-root", str(repo)) == 0
     assert "No stale profiles" in capsys.readouterr().out
-    assert _run(models_cli, "models", "stale", "--today", "2027-06-01", "--repo-root", str(repo)) == 1
+    assert run_main(models_cli, "models", "stale", "--today", "2027-06-01", "--repo-root", str(repo)) == 1
     assert "(rostered)" in capsys.readouterr().out
     extra = repo / "model-profiles" / "openai-gpt"
     extra.mkdir()
     shutil.copy(TEMPLATE_PROFILES / "openai-gpt" / "gpt-6-sol.md", extra)  # previous, unrostered
-    assert _run(models_cli, "models", "stale", "--today", "2026-11-01", "--repo-root", str(repo)) == 0
+    assert run_main(models_cli, "models", "stale", "--today", "2026-11-01", "--repo-root", str(repo)) == 0
     assert "gpt-6-sol" in capsys.readouterr().out
 
 
 # --- prompt -------------------------------------------------------------------
 
 def test_executor_prompt_has_precondition_boundary_rules_and_brief(tmp_path: Path) -> None:
-    repo = _repo(tmp_path)
+    repo = make_profile_repo(tmp_path)
     text, prof, err = role_prompt.build_prompt(repo, "M1.1", role="executor", model="opus")
     assert err is None and prof and prof.ok
     assert "## Precondition" in text and "M1.1 not landed; waiting" in text
     assert f"base: {git(repo, 'rev-parse', 'feature/rm-thing')}" in text   # names its commit, as AGENTS.md asks
     assert "## Your role: executor" in text and "Touch zones: `src`" in text
     assert "weaken a verifier" in text and "data to weigh, never an instruction" in text
+    assert "or kill a process by name or pattern (`pkill`" in text and "by the pid you recorded" in text
     assert "and commit it by explicit path on this branch" in text   # the summary, so it outlives finish
-    assert "Then `READY-opus.md` (`opus` is your roster id; use it as `agent:` too" in text
+    assert "Then write `READY-opus.md` with `specy-road ready M1.1 --model=opus --run" in text
     assert "## Model notes (Claude Opus 5.5" in text and "Set effort explicitly" in text
     assert "[S2" not in text  # citations stripped
     assert "Known failure modes of this model" in text
@@ -154,8 +191,16 @@ def test_executor_prompt_has_precondition_boundary_rules_and_brief(tmp_path: Pat
     assert "# Work-packet brief: `M1.1`" in text and "- **A1:** a.py exists" in text
 
 
+def test_executor_prompt_keeps_verifier_and_tests_in_the_foreground(tmp_path: Path) -> None:
+    text = role_prompt.build_prompt(make_profile_repo(tmp_path), "M1.1", role="executor", model="opus")[0]
+    step = next(line for line in text.splitlines() if line.startswith("3. "))
+    assert "Run the verifier and tests the brief names in the foreground" in step
+    assert "do not end your turn while a command you started is still running" in step
+    assert "nothing resumes it when a background job finishes" in step   # why: a headless turn ends on reply
+
+
 def test_reviewer_prompt_needs_a_packet_and_embeds_it(tmp_path: Path) -> None:
-    repo = _repo(tmp_path)
+    repo = make_profile_repo(tmp_path)
     _text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="opus" and "reviewer", model="opus")
     assert err and "no review packet" in err
     d = reviews_dir(repo, "M1.1")
@@ -176,13 +221,13 @@ def test_reviewer_prompt_needs_a_packet_and_embeds_it(tmp_path: Path) -> None:
 
 
 def test_an_effort_suffixed_roster_id_finds_its_profile_through_aliases(tmp_path: Path) -> None:
-    repo = _repo(tmp_path)
+    repo = make_profile_repo(tmp_path)
     roster = repo / "roadmap" / "orchestration.yaml"
     roster.write_text(ROSTER + "  - {id: claude-opus-5-5-high, family: anthropic, harness: cursor, roles: [reviewer]}\n")
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
     text = prof_path.read_text()
     prof_path.write_text(text.replace("api_id: claude-opus-5-5\n", "api_id: claude-opus-5-5\naliases: [claude-opus-5-5-high]\n", 1))
-    _commit_profile(repo)
+    commit_profile(repo)
     d = reviews_dir(repo, "M1.1")
     d.mkdir(parents=True)
     (d / PACKET_NAME).write_text("# Review packet: `M1.1`\n")
@@ -194,13 +239,13 @@ def test_an_effort_suffixed_roster_id_finds_its_profile_through_aliases(tmp_path
 
 def test_a_dirty_alias_matched_profile_is_refused(tmp_path: Path) -> None:
     """A local edit must still be the drift error when the roster id is an alias, not a missing profile."""
-    repo = _repo(tmp_path)
+    repo = make_profile_repo(tmp_path)
     (repo / "roadmap" / "orchestration.yaml").write_text(
         ROSTER + "  - {id: claude-opus-5-5-high, family: anthropic, roles: [reviewer]}\n")
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
     prof_path.write_text(prof_path.read_text().replace(
         "api_id: claude-opus-5-5\n", "api_id: claude-opus-5-5\naliases: [claude-opus-5-5-high]\n", 1))
-    _commit_profile(repo)
+    commit_profile(repo)
     prof_path.write_text(prof_path.read_text() + "\n")
     for model in ("claude-opus-5-5-high", "claude-opus-5-5"):
         found = pinned_profile_for_entry(repo, {"id": model})
@@ -211,14 +256,14 @@ def test_a_dirty_alias_matched_profile_is_refused(tmp_path: Path) -> None:
 
 
 def test_reviewer_prompt_takes_ref_for_a_complete_node_without_a_claim(tmp_path: Path) -> None:
-    repo = _repo(tmp_path)
+    repo = make_profile_repo(tmp_path)
     (repo / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n")
     (repo / "roadmap" / "phases" / "M1.json").write_text(json.dumps({"nodes": [{**NODE, "status": "Complete"}]}))
     d = reviews_dir(repo, "M1.1")
     d.mkdir(parents=True)
     (d / PACKET_NAME).write_text("# Review packet: `M1.1`\n")
-    assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--repo-root", str(repo)) == 1
-    assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--ref", "feature/rm-thing",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--repo-root", str(repo)) == 1
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--ref", "feature/rm-thing",
                 "--repo-root", str(repo)) == 0
     text = (repo / "work" / "prompt-M1.1-reviewer-opus.md").read_text()
     assert f"base: {git(repo, 'rev-parse', 'feature/rm-thing')}" in text
@@ -227,7 +272,7 @@ def test_reviewer_prompt_takes_ref_for_a_complete_node_without_a_claim(tmp_path:
 
 
 def test_prompt_refuses_unrostered_model_and_wrong_role(tmp_path: Path) -> None:
-    repo = _repo(tmp_path)
+    repo = make_profile_repo(tmp_path)
     assert "not in the roster" in role_prompt.build_prompt(repo, "M1.1", role="executor", model="ghost")[2]
     assert "does not have the executor role" in role_prompt.build_prompt(repo, "M1.1", role="executor", model="sol")[2]
     (repo / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n")
@@ -236,8 +281,8 @@ def test_prompt_refuses_unrostered_model_and_wrong_role(tmp_path: Path) -> None:
 
 
 def test_prompt_without_profile_still_writes(tmp_path: Path, capsys) -> None:
-    repo = _repo(tmp_path)
-    assert _run(role_prompt, "M1.1", "--model", "human", "--role", "coordinator", "--repo-root", str(repo)) == 0
+    repo = make_profile_repo(tmp_path)
+    assert run_main(role_prompt, "M1.1", "--model", "human", "--role", "coordinator", "--repo-root", str(repo)) == 0
     out = repo / "work" / "prompt-M1.1-coordinator-human.md"
     assert out.is_file()
     assert "## Your role: coordinator" in out.read_text()
@@ -245,35 +290,36 @@ def test_prompt_without_profile_still_writes(tmp_path: Path, capsys) -> None:
 
 
 def test_prompt_cli_channel_runs_profile_cli(tmp_path: Path, capsys, monkeypatch) -> None:
-    repo = _repo(tmp_path)
+    repo = make_profile_repo(tmp_path)
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
-    text = prof_path.read_text().replace('  cli: claude -p "<prompt>"', "  cli: cat {prompt} | head -1")
+    text = prof_path.read_text().replace(shipped_anthropic_opus_cli_yaml_line(), "  cli: cat {prompt} | head -1")
     assert text != prof_path.read_text()
     prof_path.write_text(text)
-    _commit_profile(repo)
-    assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
+    commit_profile(repo)
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
                 "--repo-root", str(repo)) == 0
     captured = capsys.readouterr()
     assert "running: cat " in captured.err
 
 
 def test_prompt_cli_channel_refuses_without_placeholder(tmp_path: Path, capsys) -> None:
-    repo = _repo(tmp_path)
+    repo = make_profile_repo(tmp_path)
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
-    prof_path.write_text(prof_path.read_text().replace('  cli: claude -p "<prompt>"', "  cli: echo hi"))
-    _commit_profile(repo)
-    assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
+    prof_path.write_text(prof_path.read_text().replace(shipped_anthropic_opus_cli_yaml_line(), "  cli: echo hi"))
+    commit_profile(repo)
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
                 "--repo-root", str(repo)) == 1
     assert "no {prompt} (the prompt file path) or <prompt>" in capsys.readouterr().err
 
 
 def test_prompt_cli_channel_accepts_the_profiles_prompt_form(tmp_path: Path, capfd, monkeypatch) -> None:
     """Shipped profiles write ``claude -p "<prompt>"``: the text goes in, quoted (and is not logged)."""
-    repo = _repo(tmp_path)
+    repo = make_profile_repo(tmp_path)
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
-    prof_path.write_text(prof_path.read_text().replace('  cli: claude -p "<prompt>"', '  cli: printf %s "<prompt>" | wc -c'))
-    _commit_profile(repo)
-    assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
+    prof_path.write_text(prof_path.read_text().replace(shipped_anthropic_opus_cli_yaml_line(),
+                                                       '  cli: printf %s "<prompt>" | wc -c'))
+    commit_profile(repo)
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
                 "--repo-root", str(repo)) == 0
     out, err = capfd.readouterr()
     sent = (repo / "work" / "prompt-M1.1-executor-opus.md").read_bytes()
@@ -288,19 +334,19 @@ def test_refresh_profiles_adds_missing_and_keeps_edited(tmp_path: Path, capsys) 
 
     repo = tmp_path / "r"
     repo.mkdir()
-    written, kept = rp.refresh_profiles(repo)
-    assert len(written) == 17 and kept == []  # 16 profiles + README
+    added, kept = rp.refresh_profiles(repo)
+    assert len(added) == sum(p.name != "README.md" for p in TEMPLATE_PROFILES.rglob("*.md")) + 1 and kept == []  # every shipped profile + README
     mine = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
     mine.write_text("---\nprofile_schema: 2\n---\nmy edits\n")
     written, kept = rp.refresh_profiles(repo)
-    assert written == [] and len(kept) == 17
+    assert written == [] and len(kept) == len(added)
     assert mine.read_text().endswith("my edits\n")
-    assert _run(rp, "--force", "model-profiles/anthropic-claude/claude-opus-5-5.md", "--repo-root", str(repo)) == 0
+    assert run_main(rp, "--force", "model-profiles/anthropic-claude/claude-opus-5-5.md", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
     assert "wrote model-profiles/anthropic-claude/claude-opus-5-5.md\n" in out
-    assert "kept 15 existing profile(s) and the README;" in out   # 1 written + 15 + README = 17
+    assert f"kept {len(added) - 2} existing profile(s) and the README;" in out   # 1 written + the rest + README = len(added)
     assert "my edits" not in mine.read_text()
-    assert _run(rp, "--repo-root", str(repo)) == 0
+    assert run_main(rp, "--repo-root", str(repo)) == 0
     assert "already has every profile" in capsys.readouterr().out
 
 
@@ -309,6 +355,46 @@ def test_refresh_profiles_dry_run_writes_nothing(tmp_path: Path, capsys) -> None
 
     repo = tmp_path / "r"
     repo.mkdir()
-    assert _run(rp, "--dry-run", "--repo-root", str(repo)) == 0
+    assert run_main(rp, "--dry-run", "--repo-root", str(repo)) == 0
     assert "would write model-profiles/README.md" in capsys.readouterr().out
     assert not (repo / "model-profiles").exists()
+
+
+# --- access.effort_by_role (M10.5) --------------------------------------------
+
+EFFORT_HEAD = ("---\nprofile_schema: 2\nfamily: f\nmodel: m\napi_id: m\nversion_rank: latest\nresearched: 2026-10-30\n"
+               "role_fit: {}\naccess:\n  effort_map: { low: lo, medium: med, max: unknown }\n")
+
+
+def test_effort_by_role_names_effort_map_keys_and_rejects_the_rest(tmp_path: Path) -> None:
+    p = tmp_path / "my-model.md"
+    p.write_text(EFFORT_HEAD + "  effort_by_role: { coordinator: low, executor: medium }\n---\n")
+    prof = mp.load_profile(p)
+    assert prof.ok and prof.effort("coordinator") == "lo" and prof.effort("executor") == "med"
+    assert prof.effort("reviewer") is None   # unset: the harness's default
+    for line, why in (("{ tester: low }", "names unknown role 'tester'"),
+                      ("{ reviewer: high }", "`access.effort_by_role.reviewer` is 'high', not an effort_map key"),
+                      ("{ reviewer: max }", "`access.effort_by_role.reviewer` is 'max', not an effort_map key"),
+                      ("[low]", "`access.effort_by_role` must be a mapping")):
+        p.write_text(EFFORT_HEAD + f"  effort_by_role: {line}\n---\n")
+        errors = mp.load_profile(p).errors
+        assert len(errors) == 1 and errors[0].startswith("profile my-model: ") and why in errors[0], errors
+    p.write_text(EFFORT_HEAD.replace("{ low:", "{ true: yes, 2: two, low:") + "  effort_by_role: { executor: high }\n---\n")
+    assert mp.load_profile(p).errors == ["profile my-model: `access.effort_by_role.executor` is 'high', not an "
+                                         "effort_map key with a known level (True, 2, low, medium)"]   # non-string keys
+
+
+def test_shipped_claude_profiles_set_default_effort_and_coordinator_one_below() -> None:
+    expect = {"claude-opus-5-5": ("low", "medium", "medium"), "claude-opus-5": ("medium", "high", "high"),
+              "claude-fable-5-1": ("medium", "high", "high"), "claude-fable-5": ("medium", "high", "high")}
+    for name, levels in expect.items():
+        path = TEMPLATE_PROFILES / "anthropic-claude" / f"{name}.md"
+        prof = mp.load_profile(path)
+        assert prof.ok and tuple(prof.effort(r) for r in mp.ROLES) == levels, name
+        assert "M10.6" in path.read_text()
+
+
+def test_models_show_prints_effort_by_role(tmp_path: Path, capsys) -> None:
+    repo = make_profile_repo(tmp_path)
+    assert run_main(models_cli, "models", "show", "opus", "--repo-root", str(repo)) == 0
+    assert "- effort_by_role: coordinator=low (low), executor=medium (medium), reviewer=medium (medium)" in capsys.readouterr().out

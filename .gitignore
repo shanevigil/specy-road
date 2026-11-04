@@ -54,14 +54,23 @@ sample-apps/
 
 # >>> specy-road managed block — do not edit inside <<<
 # Written by specy-road at run time, never committed: derived caches for
-# `history`, `search` and `brainstorm`; review records (a commit would move
-# the branch past the reviewed commit); session, worker and worktree state;
-# brainstorm prompts. `.specyrd/manifest.json` stays tracked.
+# `history`, `search` and `brainstorm`; pickup and finish session files (a
+# PR body re-inlines the brief and summary); review records (a commit would
+# move the branch past the reviewed commit); session, worker and worktree
+# state; brainstorm prompts; per-checkout orchestration availability overlay.
+# Also never committed: .specyrd/AGENTS.local.md, your personal addendum to
+# specy-road's agent rules. `.specyrd/manifest.json` stays tracked.
 sr/.specyrd/cache/
+sr/work/.on-complete-*.yaml
+sr/work/prompt-*.md
+sr/work/pr-body-*.md
+sr/work/.milestone-session.yaml
 sr/work/reviews/
 sr/work/.sessions/
 sr/work/.workers/
 sr/work/.worktrees/
 sr/work/brainstorm-*-prompt.md
 sr/work/brainstorm-closed/*-prompt.md
+sr/roadmap/orchestration.local.yaml
+sr/.specyrd/AGENTS.local.md
 # >>> end specy-road managed block <<<

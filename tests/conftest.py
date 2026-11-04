@@ -10,7 +10,21 @@ from pathlib import Path
 
 import pytest
 
+from tests.fixture_guard import (
+    exit_if_ignored_fixtures_present,
+    fail_if_fixtures_status_changed,
+    record_session_start,
+)
 from tests.helpers import REPO
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    record_session_start(session, REPO)
+    exit_if_ignored_fixtures_present(REPO)
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    fail_if_fixtures_status_changed(session, REPO)
 
 
 @pytest.fixture(autouse=True)
@@ -26,6 +40,7 @@ def repo_root_env_never_leaks_in(monkeypatch: pytest.MonkeyPatch) -> None:
     # Set by worker_runner for the harness it launches; a suite run inside a worker would
     # otherwise see itself as a live worker in every guard and presence test.
     monkeypatch.delenv("SPECY_ROAD_WORKER_ID", raising=False)
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
 
 
 @pytest.fixture(autouse=True)
@@ -73,3 +88,22 @@ def history_cache_stays_out_of_the_source_tree(monkeypatch: pytest.MonkeyPatch) 
         return False  # inside the checkout: behave like an unwritable cache
 
     monkeypatch.setattr(history_index, "save_cache", guarded)
+
+
+@pytest.fixture(autouse=True)
+def codex_homes_stay_in_tmp(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A default Codex launch creates the profile's ``CODEX_HOME`` (and links the user's ``auth.json``):
+    never under the developer's own ``~/.specy-road``."""
+    import specy_road.worker_adapter_codex as codex
+
+    homes = tmp_path_factory.mktemp("codex-homes")
+    monkeypatch.setattr(codex, "codex_homes", lambda: homes)
+
+
+@pytest.fixture(autouse=True)
+def cursor_chats_are_never_created(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A default Cursor launch runs ``agent create-chat`` first: on a machine with Cursor's CLI that would create a
+    real chat per test. Every test gets a fixed id instead; the fake-binary test calls the real function."""
+    import specy_road.worker_adapter_cursor as cursor
+
+    monkeypatch.setattr(cursor, "create_chat", lambda worktree: "chat-under-test")

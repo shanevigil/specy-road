@@ -27,6 +27,7 @@ def test_init_project_scaffold_validates(tmp_path: Path) -> None:
     assert "Initialized specy-road layout" in r.stdout
     assert (tmp_path / "roadmap" / "manifest.json").is_file()
     assert (tmp_path / "AGENTS.md").is_file()
+    assert (tmp_path / "research" / "README.md").is_file()
     v = subprocess.run(
         [
             sys.executable,
@@ -60,3 +61,13 @@ def test_init_project_refuses_existing_manifest_without_force(tmp_path: Path) ->
     )
     assert r.returncode == 1
     assert "already exists" in (r.stderr or "")
+
+
+def test_init_project_scaffold_passes_its_own_file_limits(tmp_path: Path) -> None:
+    """A fresh scaffold must clear the caps its own ``constraints/file-limits.yaml`` sets (regressed in rc3)."""
+    env = script_subprocess_env()
+    subprocess.run([sys.executable, "-m", "specy_road.cli", "init", "project", str(tmp_path)],
+                   cwd=REPO, env=env, check=True, capture_output=True, text=True)
+    r = subprocess.run([sys.executable, "-m", "specy_road.cli", "file-limits", "--repo-root", str(tmp_path)],
+                       cwd=REPO, env=env, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr

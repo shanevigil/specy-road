@@ -164,7 +164,9 @@ def _merge_includes(root: Path, version: object, includes: list) -> dict:
 def load_roadmap(root: Path | None = None) -> dict:
     """
     Return ``{version, nodes}``. ``manifest.json`` lists ``.json`` chunk paths
-    under ``roadmap/`` (merged in ``includes`` order).
+    under ``roadmap/`` (merged in ``includes`` order). Each node is annotated
+    with computed ``rollup_status``; a milestone whose required full review is
+    pending stays non-Complete there (``policy.milestone_full_review``).
     """
     root = root or default_user_repo_root()
     mpath = discover_manifest_path(root)
@@ -178,7 +180,10 @@ def load_roadmap(root: Path | None = None) -> dict:
         )
     if not isinstance(includes, list):
         _fail(f"{mpath.relative_to(root)}: `includes` must be a list")
-    return _merge_includes(root, version, includes)
+    doc = _merge_includes(root, version, includes)
+    from specy_road.finish_ancestor_rollup import demote_pending_milestone_rollups
+    demote_pending_milestone_rollups(root, doc["nodes"])
+    return doc
 
 
 def _manifest_pure_includes(doc: dict) -> bool:

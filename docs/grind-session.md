@@ -51,13 +51,16 @@ Set it once in `roadmap/git-workflow.yaml` (`on_complete: merge`) or pass
 ## Planner first: `--plan`
 
 ```bash
-specy-road grind-session --plan --json            # machine-readable
+specy-road grind-session --plan --json            # machine-readable; --fields KEY,... keeps only those keys
 specy-road grind-session --plan                   # human-readable report
 specy-road grind-session --plan --under M10       # scope to a subtree
 ```
 
 `--plan` is **read-only**: it reads the local roadmap + registry and prints a
-classification plus a dependency **wave** layout. No git, no pickup.
+classification plus a dependency **wave** layout. No git, no pickup. With
+`--json`, `--fields KEY,...` prints only those top-level keys (no `event` or
+`ts`) — the keys of the shape below; an unknown key is an error (exit 2) that
+names the valid ones, and `--fields` is accepted only with `--plan --json`.
 
 ### What the planner reports
 
@@ -152,15 +155,12 @@ dispatched until `M10.5` completes.
     {"node_id": "M11.1", "codename": "…", "waiting_on": ["M10.5"], "reason": "dependency"}
   ],
   "active": [], "closed": ["M10.1", "M10.2"], "gated": [], "gates_open": [], "needs_codename": [], "unauthored": [],
-  "waves": [
-    {"index": 0, "node_ids": ["M10.3", "M10.4"]},
-    {"index": 1, "node_ids": ["M10.5"]},
-    {"index": 2, "node_ids": ["M11.1"]}
-  ],
+  "waves": [{"index": 0, "node_ids": ["M10.3", "M10.4"]}, {"index": 1, "node_ids": ["M10.5"]}, {"index": 2, "node_ids": ["M11.1"]}],
   "parallel_batches": [["M10.3", "M10.4"]], "zone_overlaps": [],
   "totals": {"ready": 2, "blocked": 2, "active": 0, "closed": 2, "gated": 0, "gates_open": 0, "needs_codename": 0, "waves": 3}
 }
 ```
+
 
 ## The loop
 
@@ -207,9 +207,9 @@ exclusive. Every leaf downstream of your in-flight one is blocked *on it*, so in
 a normal grind both buckets are non-empty when the loop stops, and only the claim
 tells you what to do next.
 
-**`--resume-in-flight`** turns the first case into a resumed cycle: the branch is
-checked out, the brief and prompt are restored if they went missing, and the leaf
-goes straight to implement and finish without a second pickup. Only claims
+**`--resume-in-flight`** turns the first case into a resumed cycle: the branch is checked out, the brief and prompt are restored if they went missing, and the leaf goes straight to implement and finish without a second pickup.
+**After a PM edits an in-flight leaf**, delete `work/prompt-<ID>.md` (and `work/brief-<ID>.md`) and resume: both are rewritten from the current graph and planning sheet; an existing one is kept, so a hand edit survives. (`specy-road prompt <ID> --role executor` writes a different file, `work/prompt-<ID>-executor-<model>.md`.)
+Only claims
 registered to a branch that **exists in this clone** qualify — a claim held by
 another lane reaches `active` through the shared registry or an *In Progress*
 status, and resuming one would put two implementers on the same node.
@@ -267,7 +267,7 @@ coordinator, and each call runs one phase and exits.
 
 ```bash
 specy-road grind-session --step pickup --json --on-complete merge   # -> picked | resumed
-# implement work/prompt-<ID>.md (a fresh sub-agent per leaf), verify, review
+# implement work/prompt-<ID>.md (a fresh sub-agent per leaf, or `worker delegate` + `worker sync --wait`), verify, review
 specy-road grind-session --step finish --json --until M7.6         # -> finished [+ stopped]
 ```
 
@@ -288,7 +288,7 @@ the agent decides when to stop. With the review gate on, the agent files an
 independent review and runs `mark-implementation-reviewed --yes` between
 implement and finish; see [orchestration.md](orchestration.md#unattended-loops).
 Any step that modifies files runs **before** review, because a later commit
-makes the reviews stale, so `--pre-finish-cmd` here should only check.
+makes the reviews stale, so `--pre-finish-cmd` here should only check. To wait for a delegated worker between steps, run `specy-road worker sync --wait` instead of a sleep loop: it returns on the worker's next event ([orchestration-workers.md](orchestration-workers.md#the-loop)).
 
 **Usage limits** are the agent harness's to handle. Claude Code 2.1.234+ waits
 out a limit in an interactive session and carries on when *Continue

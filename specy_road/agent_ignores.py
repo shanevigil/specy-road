@@ -24,7 +24,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from specy_road.managed_block import UNCHANGED, apply_managed_block
+from specy_road.harness_instruction_files import LOCAL_MD
+from specy_road.managed_block import CREATED, UNCHANGED, UPDATED, apply_managed_block
 
 CURSOR_INDEXING_IGNORE = ".cursorindexingignore"
 GITIGNORE = ".gitignore"
@@ -53,21 +54,42 @@ _INDEXING_NOTE = (
 # repo scaffolded before a path existed got it only by hand-editing .gitignore
 # (0.3 adopters had to add the work/ entries themselves). A committed review
 # file moves the branch past the commit the review read.
+#: The directories specy-road itself writes under work/ while it runs: review
+#: hand-offs, session presence, worker records and linked worktrees. A clone
+#: or worktree can hold them before any human edit, so the clean-tree checks
+#: (the executor and reviewer preconditions, delegate's uncommitted-work check,
+#: reconcile's breach list) leave them out, as git does once they are ignored.
+RUNTIME_WORK_DIRS = ("work/reviews/", "work/.sessions/", "work/.workers/", "work/.worktrees/")
+
+#: Session files the pickup and finish commands regenerate each cycle. These
+#: lived only in the template ``.gitignore``, so a repo with its own
+#: ``.gitignore`` (or a nested project, whose template copy sat where git
+#: never looked for the git root's paths) never received them.
+SESSION_WORK_FILES = (
+    "work/.on-complete-*.yaml",
+    "work/prompt-*.md",
+    "work/pr-body-*.md",
+    "work/.milestone-session.yaml",
+)
+
 GITIGNORE_LINES = [
     ".specyrd/cache/",
-    "work/reviews/",
-    "work/.sessions/",
-    "work/.workers/",
-    "work/.worktrees/",
+    *SESSION_WORK_FILES,
+    *RUNTIME_WORK_DIRS,
     "work/brainstorm-*-prompt.md",
     "work/brainstorm-closed/*-prompt.md",
+    "roadmap/orchestration.local.yaml",
+    LOCAL_MD,
 ]
 
 _GITIGNORE_NOTE = (
     "Written by specy-road at run time, never committed: derived caches for\n"
-    "`history`, `search` and `brainstorm`; review records (a commit would move\n"
-    "the branch past the reviewed commit); session, worker and worktree state;\n"
-    "brainstorm prompts. `.specyrd/manifest.json` stays tracked."
+    "`history`, `search` and `brainstorm`; pickup and finish session files (a\n"
+    "PR body re-inlines the brief and summary); review records (a commit would\n"
+    "move the branch past the reviewed commit); session, worker and worktree\n"
+    "state; brainstorm prompts; per-checkout orchestration availability overlay.\n"
+    "Also never committed: .specyrd/AGENTS.local.md, your personal addendum to\n"
+    "specy-road's agent rules. `.specyrd/manifest.json` stays tracked."
 )
 
 
@@ -85,17 +107,47 @@ def _prefixed(lines: list[str], prefix: str) -> list[str]:
     return [prefix + line for line in lines]
 
 
+def _seed(path: Path, text: str, dry_run: bool) -> bool:
+    """Start a missing ``path`` with ``text``; whether it was (or would be) new.
+
+    Never writes through a symlink, dangling or not; the block refuses it.
+    """
+    if not text or path.is_file() or path.is_symlink():
+        return False
+    if not dry_run:
+        try:
+            path.write_text(text, encoding="utf-8")
+        except OSError:
+            return False
+    return True
+
+
 def apply_agent_ignores(
-    git_root: Path, project_prefix: str = "", *, dry_run: bool = False
+    git_root: Path,
+    project_prefix: str = "",
+    *,
+    dry_run: bool = False,
+    gitignore_seed: str = "",
 ) -> dict[str, str]:
     """Write both managed blocks at the git root. Returns ``{filename: outcome}``.
 
     ``project_prefix`` is the project root's path within the checkout (``"sr/"``
     or ``""``), as returned by ``runtime_paths.project_prefix``.
 
+    ``gitignore_seed`` is text a missing ``.gitignore`` starts with, above the
+    block (``init project``'s commented template). The file is still reported
+    as created, so a dry run, which writes no seed, reports the same outcome.
+
     Both files belong to the consumer, so only the marked block is ever
     rewritten. Re-running is a no-op.
     """
+    seeded = _seed(git_root / GITIGNORE, gitignore_seed, dry_run)
+    gitignore = apply_managed_block(
+        git_root / GITIGNORE,
+        _prefixed(GITIGNORE_LINES, project_prefix),
+        note=_GITIGNORE_NOTE,
+        dry_run=dry_run,
+    )
     return {
         CURSOR_INDEXING_IGNORE: apply_managed_block(
             git_root / CURSOR_INDEXING_IGNORE,
@@ -103,17 +155,17 @@ def apply_agent_ignores(
             note=_INDEXING_NOTE,
             dry_run=dry_run,
         ),
-        GITIGNORE: apply_managed_block(
-            git_root / GITIGNORE,
-            _prefixed(GITIGNORE_LINES, project_prefix),
-            note=_GITIGNORE_NOTE,
-            dry_run=dry_run,
-        ),
+        GITIGNORE: CREATED if seeded and gitignore == UPDATED else gitignore,
     }
 
 
 def apply_and_report(
-    git_root: Path, prefix: str, written: list[str], *, dry_run: bool = False
+    git_root: Path,
+    prefix: str,
+    written: list[str],
+    *,
+    dry_run: bool = False,
+    gitignore_seed: str = "",
 ) -> None:
     """:func:`apply_agent_ignores`, appending a line per file actually changed.
 
@@ -122,7 +174,9 @@ def apply_and_report(
     computed and reported without writing, so a dry run previews these blocks
     instead of omitting them.
     """
-    outcomes = apply_agent_ignores(git_root, prefix, dry_run=dry_run)
+    outcomes = apply_agent_ignores(
+        git_root, prefix, dry_run=dry_run, gitignore_seed=gitignore_seed
+    )
     for name, outcome in sorted(outcomes.items()):
         if outcome != UNCHANGED:
             written.append(f"{name} ({outcome})")

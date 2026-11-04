@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from specy_road.bundled_scripts import do_next_prompt as dnp
+from specy_road.bundled_scripts import role_prompt
+from tests.test_models_and_prompt import commit_profile, make_profile_repo
 
 
 def test_write_agent_prompt_includes_leaf_execution_contract(
@@ -57,3 +59,19 @@ def test_write_agent_prompt_includes_leaf_execution_contract(
     assert "`git commit --only <paths>`), never `-A`, `-a`" in text
     assert "If this repo has a pre-commit hook" in text
     assert "the pre-commit hook validates" not in text
+    # M10.11: the harness-subagent paragraph, unconditionally (no model is known at pickup).
+    assert "\n\n" + dnp.SUBAGENT_LINE + "\n" in text
+
+
+def test_executor_prompt_has_the_subagent_paragraph_only_when_the_profile_says_yes(tmp_path: Path) -> None:
+    """M10.11 A2: `prompt --role executor` repeats the pickup paragraph, gated on `access.subagents`."""
+    repo = make_profile_repo(tmp_path)
+    assert dnp.SUBAGENT_LINE in role_prompt.build_prompt(repo, "M1.1", role="executor", model="opus")[0]   # "yes Vendor…"
+    assert dnp.SUBAGENT_LINE not in role_prompt.build_prompt(repo, "M1.1", role="coordinator", model="opus")[0]
+    prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
+    for value, expected in (("unknown No data found", False), ("yes", True), ("no", False)):   # bare yes/no: YAML bools
+        text = prof_path.read_text()
+        line = next(ln for ln in text.splitlines() if ln.startswith("  subagents:"))
+        prof_path.write_text(text.replace(line, f"  subagents: {value}", 1))
+        commit_profile(repo)
+        assert (dnp.SUBAGENT_LINE in role_prompt.build_prompt(repo, "M1.1", role="executor", model="opus")[0]) is expected, value

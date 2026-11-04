@@ -17,7 +17,6 @@ from specy_road.bundled_scripts import validate_roadmap as vr
 from specy_road.bundled_scripts.roadmap_load import annotate_rollup_status, load_roadmap
 from specy_road.bundled_scripts.validate_roadmap_checks import (
     run_validation,
-    touch_zone_overlap,
     validate_dependency_ids,
     validate_node_keys,
     validate_parents,
@@ -259,16 +258,6 @@ def test_validate_dependency_ids_rejects_missing_node_key() -> None:
     ]
     with pytest.raises(SystemExit):
         validate_dependency_ids(nodes)
-
-
-def test_touch_zone_overlap_warns_on_same_path(capsys) -> None:
-    entries = [
-        {"codename": "a", "touch_zones": ["src/"]},
-        {"codename": "b", "touch_zones": ["src/"]},
-    ]
-    touch_zone_overlap(entries)
-    err = capsys.readouterr().err
-    assert "overlap" in err.lower()
 
 
 def test_validate_script_rejects_registry_unknown_node_id(tmp_path: Path) -> None:

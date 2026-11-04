@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
@@ -19,10 +20,12 @@ from specy_road.specyrd_skills import (  # noqa: F401 — re-exported for refres
     _read_template,
     install_stubs as _append_command_stub_installs,
     managed_paths,
+    mirrored_copies,
     owned_paths,
 )
 from specy_road.runtime_paths import (
     discover_project_root,
+    git_root,
     prefix_within,
     recorded_project_root,
 )
@@ -249,6 +252,23 @@ def _write_readme_and_gui_stub(
     written.append(gui_display)
 
 
+def _maybe_install_specyrd_hooks(
+    repo_root: Path,
+    agent: str,
+    *,
+    install_guard_hooks: bool,
+    install_pre_push: bool,
+    dry_run: bool,
+    written: list[str],
+) -> None:
+    from specy_road.specyrd_hooks import install_orchestration_hooks, install_pre_push_hook
+
+    if install_guard_hooks and agent in ("claude-code", "codex", "cursor"):
+        install_orchestration_hooks(repo_root, agent, dry_run=dry_run, written=written)
+    if install_pre_push:
+        install_pre_push_hook(repo_root, dry_run=dry_run, written=written)
+
+
 def run_init(
     *,
     target: Path,
@@ -259,13 +279,13 @@ def run_init(
     role: str | None = None,
     write_claude_md: bool = False,
     gui_settings_stub: bool = False,
+    install_guard_hooks: bool = False,
+    install_pre_push: bool = False,
 ) -> InitResult:
     if agent not in AGENT_CHOICES:
         raise ValueError(f"unknown agent: {agent}")
     if role is not None and role not in ROLE_CHOICES:
-        raise ValueError(
-            f"unknown role: {role!r}; choose pm, dev, or both",
-        )
+        raise ValueError(f"unknown role: {role!r}; choose pm, dev, or both")
     if agent == "generic":
         if ai_commands_dir is None:
             raise ValueError("--ai-commands-dir is required when --ai generic")
@@ -273,21 +293,15 @@ def run_init(
     else:
         rel_dest = AGENT_REL_DEST[agent]
         assert rel_dest is not None
-
     repo_root = resolve_repo_root(target)
     if agent == "generic":
         rel_dest = _validate_generic_commands_dir(repo_root, rel_dest)
-
     written: list[str] = []
     skipped: list[str] = []
-
     manifest = _load_manifest(repo_root)
-
-    if role in ("pm", "dev"):
-        files_to_install = ROLE_COMMAND_FILES[role]
-    else:
-        files_to_install = COMMAND_FILES
+    files_to_install = ROLE_COMMAND_FILES[role] if role in ("pm", "dev") else COMMAND_FILES
     already_owned = {p for paths in (manifest.get("agents") or {}).values() for p in paths}
+
     _append_command_stub_installs(
         repo_root, rel_dest, files_to_install, force, dry_run, written, skipped, agent=agent,
         owned=already_owned,
@@ -311,12 +325,17 @@ def run_init(
     # Both managed blocks report under --dry-run too: a dry run that silently
     # omitted them is what let the CLAUDE.md overwrite go unnoticed.
     if write_claude_md:
-        apply_guide_and_report(
-            repo_root, prefix, written, agent=agent, dry_run=dry_run
-        )
+        apply_guide_and_report(repo_root, prefix, written, agent=agent, dry_run=dry_run)
     apply_and_report(repo_root, prefix, written, dry_run=dry_run)
     if project is not None:   # no roadmap yet: `init project` writes the block when it scaffolds one
         apply_agents_and_report(project, written, dry_run=dry_run, prefix=prefix)
+    elif write_claude_md and agent in GUIDE_AGENTS:   # the CLAUDE.md imports must name files that exist
+        apply_agents_and_report(repo_root, written, dry_run=dry_run, stub=False)
+
+    _maybe_install_specyrd_hooks(
+        repo_root, agent, install_guard_hooks=install_guard_hooks, install_pre_push=install_pre_push,
+        dry_run=dry_run, written=written,
+    )
 
     if not dry_run:
         _record_manifest(
@@ -346,3 +365,24 @@ def _record_manifest(
         manifest["role"] = role
     manifest["project_root"] = prefix.rstrip("/") or "."
     _save_manifest(repo_root, manifest)
+
+
+def warn_if_skills_mirrored(start: Path) -> None:
+    """One non-fatal line naming ``.cursor``/``.codex`` copies of the installed skills.
+
+    Cursor and Codex read ``.agents/skills`` already, so a copy loads each skill
+    twice. ``start`` may be the project root; the copies sit at the git root.
+    """
+    checkout = git_root(start) or start
+    managed = {p for paths in (_load_manifest(checkout).get("agents") or {}).values() for p in paths}
+    disposable, kept = mirrored_copies(checkout, COMMAND_FILES, managed)
+    if not disposable and not kept:
+        return
+    fix = "Run: specy-road upgrade --prune" if disposable else ""
+    if kept:
+        fix += ("; then delete " if fix else "Delete ") + f"{', '.join(kept)} by hand (not a verbatim specyrd copy)"
+    print(
+        f"skills: warning — {', '.join(disposable + kept)} duplicate{'s' if len(disposable + kept) == 1 else ''} "
+        f"skills in {SKILLS_REL}/, which Cursor and Codex already read, so each loads twice. {fix}",
+        file=sys.stderr,
+    )

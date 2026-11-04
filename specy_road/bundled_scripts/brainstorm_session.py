@@ -21,10 +21,7 @@ from typing import Any
 
 import yaml
 
-from specy_road.bundled_scripts.brainstorm_fields import (
-    extra_to_dict,
-    parse_extra,
-)
+from specy_road.bundled_scripts.brainstorm_fields import extra_to_dict, parse_extra
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 from specy_road.history_cache import CACHE_DIR, ensure_cache_dir
 from specy_road.worker_lock import _lock_file
@@ -37,12 +34,14 @@ SESSION_SUFFIX = ".yaml"
 PROMPT_SUFFIX = "-prompt.md"
 
 #: What an idea is, for the recommend pass and for `promote`'s node type.
-IDEA_KINDS = ("feature", "capability", "risk", "research", "experiment", "refactor", "platform")
-IDEA_STATUSES = ("proposed", "accepted", "rejected", "revised", "parked")
+IDEA_KINDS = ("feature", "capability", "risk", "research", "experiment", "refactor", "platform", "policy")
+#: ``merged`` is set only by ``brainstorm merge``, with ``merged_into`` / ``merged_from`` links.
+IDEA_STATUSES = ("proposed", "accepted", "rejected", "revised", "parked", "merged", "decided")
 RECOMMENDATIONS = ("strong", "consider", "park")
 MODES = ("brainstorm", "roadmap")
+FRAME_STATES = ("", "provisional", "confirmed")  # `frame --provisional` / `--confirm`; "" is never marked
 
-#: Ideas the converge pass keeps: `promote` turns exactly these into nodes.
+#: Ideas `promote` turns into nodes; ``decided`` ones (`brainstorm decide`) go into the anchor's sheet instead.
 PROMOTABLE_STATUSES = ("accepted",)
 
 #: What `slugify` can emit, and therefore all a slug is ever allowed to be.
@@ -81,41 +80,29 @@ def validate_slug(slug: str) -> str:
     if not cleaned:
         raise BrainstormError("session slug is empty")
     if len(cleaned) > SLUG_MAX_LEN:
-        raise BrainstormError(
-            f"session slug is longer than {SLUG_MAX_LEN} characters"
-        )
+        raise BrainstormError(f"session slug is longer than {SLUG_MAX_LEN} characters")
     if not SLUG_RE.match(cleaned):
-        raise BrainstormError(
-            f"invalid session slug {cleaned!r} — expected lowercase letters, "
-            "digits and single hyphens, as `slugify` produces"
-        )
+        raise BrainstormError(f"invalid session slug {cleaned!r} — expected lowercase letters, "
+                              "digits and single hyphens, as `slugify` produces")
     return cleaned
 
 
 def session_path(root: Path, slug: str) -> Path:
     """Path to ``work/brainstorm-<slug>.yaml``."""
-    safe = validate_slug(slug)
-    return work_dir(root) / f"{SESSION_PREFIX}{safe}{SESSION_SUFFIX}"
+    return work_dir(root) / f"{SESSION_PREFIX}{validate_slug(slug)}{SESSION_SUFFIX}"
 
 
 def prompt_path(root: Path, slug: str, pass_name: str = "") -> Path:
     """``work/brainstorm-<slug>-<pass>-prompt.md``, one per pass (regenerated, gitignored)."""
-    safe = validate_slug(slug)
     tag = f"-{pass_name}" if pass_name else ""
-    return work_dir(root) / f"{SESSION_PREFIX}{safe}{tag}{PROMPT_SUFFIX}"
+    return work_dir(root) / f"{SESSION_PREFIX}{validate_slug(slug)}{tag}{PROMPT_SUFFIX}"
 
 
 def list_slugs(root: Path) -> list[str]:
     """Slugs of every session in ``work/``, sorted."""
     base = work_dir(root)
-    if not base.is_dir():
-        return []
-    out = []
-    for p in base.glob(f"{SESSION_PREFIX}*{SESSION_SUFFIX}"):
-        name = p.name[len(SESSION_PREFIX):-len(SESSION_SUFFIX)]
-        if name:
-            out.append(name)
-    return sorted(out)
+    found = base.glob(f"{SESSION_PREFIX}*{SESSION_SUFFIX}") if base.is_dir() else ()
+    return sorted(name for p in found if (name := p.name[len(SESSION_PREFIX):-len(SESSION_SUFFIX)]))
 
 
 def resolve_slug(root: Path, slug: str | None) -> str:
@@ -128,15 +115,10 @@ def resolve_slug(root: Path, slug: str | None) -> str:
         return validate_slug(slug)
     found = list_slugs(root)
     if not found:
-        raise BrainstormError(
-            "no brainstorm sessions in work/ — start one with: "
-            "specy-road brainstorm start --topic '<question>'"
-        )
+        raise BrainstormError("no brainstorm sessions in work/ — start one with: "
+                              "specy-road brainstorm start --topic '<question>'")
     if len(found) > 1:
-        listed = ", ".join(found)
-        raise BrainstormError(
-            f"several brainstorm sessions open ({listed}) — pass --slug SLUG"
-        )
+        raise BrainstormError(f"several brainstorm sessions open ({', '.join(found)}) — pass --slug SLUG")
     return found[0]
 
 
@@ -153,8 +135,7 @@ class Idea:
     status: str = "proposed"
     recommendation: str | None = None
     promoted_node_key: str | None = None
-    # v2 (brainstorm_fields): provenance, structured evidence, clusters,
-    # critics, decision records. Omitted from the file when empty.
+    # v2 (brainstorm_fields), omitted from the file when empty: provenance, evidence, clusters, critics, decisions.
     origin: dict[str, str] | None = None
     cluster_id: str | None = None
     sources: list[dict[str, Any]] = field(default_factory=list)
@@ -165,20 +146,17 @@ class Idea:
     decision: dict[str, str] | None = None
     verdict_why: str = ""
     codename: str = ""
+    target_parent: str | None = None  # display id promote lands this idea under, instead of the anchor
+    # Merge links (`brainstorm merge`) and the gap marker (`add-idea --from-gap`), omitted when empty.
+    merged_into: list[str] = field(default_factory=list)
+    merged_from: list[str] = field(default_factory=list)
+    raised_in: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "id": self.id,
-            "title": self.title,
-            "rationale": self.rationale,
-            "kind": self.kind,
-            "effort": self.effort,
-            "evidence": list(self.evidence),
-            "status": self.status,
-            "recommendation": self.recommendation,
-            "promoted_node_key": self.promoted_node_key,
-            **extra_to_dict(self),
-        }
+        base = ("id", "title", "rationale", "kind", "effort", "evidence", "status", "recommendation",
+                "promoted_node_key")
+        return {**{k: getattr(self, k) for k in base}, "evidence": list(self.evidence),
+                **extra_to_dict(self), **{k: v for k in LINK_KEYS if (v := getattr(self, k))}}
 
 
 def _str_field(raw: dict[str, Any], key: str, default: str = "") -> str:
@@ -189,6 +167,20 @@ def _str_field(raw: dict[str, Any], key: str, default: str = "") -> str:
 def _opt_str_field(raw: dict[str, Any], key: str) -> str | None:
     v = raw.get(key)
     return v.strip() if isinstance(v, str) and v.strip() else None
+
+
+#: Idea keys kept beside the v2 fields: merge links and where a gap idea was raised.
+LINK_KEYS = ("merged_into", "merged_from", "raised_in")
+
+
+def _links(raw: dict[str, Any], ident: str) -> dict[str, Any]:
+    out: dict[str, Any] = {"raised_in": _opt_str_field(raw, "raised_in")}
+    for key in LINK_KEYS[:2]:
+        value = raw.get(key) or []
+        if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
+            raise BrainstormError(f"idea {ident}: {key} must be a list of idea ids")
+        out[key] = [v.strip() for v in value]
+    return out
 
 
 def idea_from_dict(raw: Any) -> Idea:
@@ -210,9 +202,7 @@ def idea_from_dict(raw: Any) -> Idea:
     if rec is not None and rec not in RECOMMENDATIONS:
         raise BrainstormError(f"idea {ident}: recommendation {rec!r} not one of {', '.join(RECOMMENDATIONS)}")
     ev_raw = raw.get("evidence")
-    evidence = [
-        e.strip() for e in ev_raw if isinstance(e, str) and e.strip()
-    ] if isinstance(ev_raw, list) else []
+    evidence = [e.strip() for e in ev_raw if isinstance(e, str) and e.strip()] if isinstance(ev_raw, list) else []
     return Idea(
         id=ident,
         title=title,
@@ -224,6 +214,7 @@ def idea_from_dict(raw: Any) -> Idea:
         recommendation=rec,
         promoted_node_key=_opt_str_field(raw, "promoted_node_key"),
         **parse_extra(raw, ident),
+        **_links(raw, ident),
     )
 
 
@@ -237,29 +228,24 @@ class BrainstormSession:
     # v2: the frame the PM agreed, the allocation grid, which diverge round
     # is current, the lens profile, and how many independent shards.
     frame: dict[str, str] = field(default_factory=dict)
+    frame_state: str = ""
+    frame_history: list[dict[str, str]] = field(default_factory=list)  # replaced answers: key, answer, replaced_at
     allocation: str = ""
     round: int = 1
     rounds: int = 2       # planned diverge rounds (`start --rounds`); next-round warns past it
     profile: str = "product"
     panel: int = 0
     count: int = 0        # `start --count`, so `frame` can rewrite panel shards at the same size
+    #: `brainstorm cluster`: CID -> {name, best, critic}; members are the ideas whose cluster_id is CID.
+    clusters: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        out = {
-            "version": SESSION_VERSION,
-            "slug": self.slug,
-            "topic": self.topic,
-            "under": self.under,
-            "mode": self.mode,
-            "round": self.round,
-            "rounds": self.rounds,
-            "profile": self.profile,
-        }
-        out.update({k: v for k, v in (("panel", self.panel), ("count", self.count)) if v})
-        if self.frame:
-            out["frame"] = dict(self.frame)
-        if self.allocation:
-            out["allocation"] = self.allocation
+        out = {"version": SESSION_VERSION, "slug": self.slug, "topic": self.topic, "under": self.under,
+               "mode": self.mode, "round": self.round, "rounds": self.rounds, "profile": self.profile}
+        out.update({k: v for k, v in (("panel", self.panel), ("count", self.count), ("frame", dict(self.frame)),
+                                       ("frame_state", self.frame_state), ("allocation", self.allocation),
+                                       ("frame_history", [dict(h) for h in self.frame_history]),
+                                       ("clusters", {cid: dict(c) for cid, c in self.clusters.items()})) if v})
         out["ideas"] = [i.to_dict() for i in self.ideas]
         return out
 
@@ -310,6 +296,21 @@ def _ideas_from_list(ideas_raw: Any) -> list[Idea]:
     return ideas
 
 
+def _clusters_from(raw: Any) -> dict[str, dict[str, Any]]:
+    """The ``clusters:`` mapping: string name and best, a role -> objection critic mapping."""
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for cid, body in raw.items():
+        if not isinstance(body, dict):
+            raise BrainstormError(f"cluster {cid}: expected a mapping of name, best, critic — edit the file")
+        entry: dict[str, Any] = {k: str(body[k]).strip() for k in ("name", "best") if body.get(k)}
+        if isinstance(body.get("critic"), dict) and body["critic"]:
+            entry["critic"] = {str(k): str(v) for k, v in body["critic"].items()}
+        out[str(cid)] = entry
+    return out
+
+
 def _session_from_dict(raw: Any, slug: str) -> BrainstormSession:
     if not isinstance(raw, dict):
         raise BrainstormError("not a YAML mapping — edit the file or move it out of work/")
@@ -317,13 +318,14 @@ def _session_from_dict(raw: Any, slug: str) -> BrainstormSession:
         raise BrainstormError(f"unsupported version {raw.get('version')!r} (expected {SESSION_VERSION}) "
                               "— upgrade specy-road or edit the file")
     mode = _str_field(raw, "mode", "brainstorm") or "brainstorm"
-    if mode not in MODES:
-        raise BrainstormError(f"mode {mode!r} not one of {', '.join(MODES)} "
-                              "— edit the file: use one of those or remove the key")
+    frame_state = _str_field(raw, "frame_state")
+    for key, value, allowed in (("mode", mode, MODES), ("frame_state", frame_state, FRAME_STATES)):
+        if value not in allowed:
+            raise BrainstormError(f"{key} {value!r} not one of {', '.join(filter(None, allowed))} "
+                                  "— edit the file: use one of those or remove the key")
     ideas = _ideas_from_list(raw.get("ideas"))
     frame = raw.get("frame") if isinstance(raw.get("frame"), dict) else {}
-    rnd = raw.get("round")
-    planned = raw.get("rounds")
+    rnd, planned = raw.get("round"), raw.get("rounds")
     file_slug = _str_field(raw, "slug")
     if file_slug and file_slug != slug:
         raise BrainstormError(f"says slug {file_slug!r}; a session file is named after its slug "
@@ -335,12 +337,15 @@ def _session_from_dict(raw: Any, slug: str) -> BrainstormSession:
         mode=mode,
         ideas=ideas,
         frame={str(k): str(v) for k, v in frame.items()},
+        frame_state=frame_state, frame_history=[{str(k): str(v) for k, v in h.items()}
+                                                for h in raw.get("frame_history") or [] if isinstance(h, dict)],
         allocation=_str_field(raw, "allocation"),
         round=rnd if isinstance(rnd, int) and rnd >= 1 else 1,
         rounds=planned if isinstance(planned, int) and planned >= 1 else 2,
         profile=_str_field(raw, "profile", "product") or "product",
         panel=raw.get("panel") if isinstance(raw.get("panel"), int) else 0,
         count=raw.get("count") if isinstance(raw.get("count"), int) and raw["count"] >= 1 else 0,
+        clusters=_clusters_from(raw.get("clusters")),
     )
 
 
@@ -349,34 +354,29 @@ def write_session(root: Path, session: BrainstormSession) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     # Temp file + replace: a panel shard reading mid-write sees the old or the new session, never half.
     tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    tmp.write_text(
-        yaml.dump(session.to_dict(), default_flow_style=False, allow_unicode=True, sort_keys=False),
-        encoding="utf-8",
-    )
+    tmp.write_text(yaml.dump(session.to_dict(), default_flow_style=False, allow_unicode=True, sort_keys=False),
+                   encoding="utf-8")
     os.replace(tmp, path)
     return path
 
 
 def add_idea(session: BrainstormSession, **fields: Any) -> Idea:
     """Append a new idea, allocating its id. Validates through ``idea_from_dict``."""
-    raw = {"id": session.next_idea_id(), **fields}
-    idea = idea_from_dict(raw)
+    idea = idea_from_dict({"id": session.next_idea_id(), **fields})
     session.ideas.append(idea)
     return idea
 
 
 def set_status(session: BrainstormSession, idea_id: str, status: str) -> Idea:
-    """Move one idea to ``status``, refusing to re-triage promoted ideas."""
+    """Move one idea to ``status``, refusing to re-triage promoted or merged ideas."""
     if status not in IDEA_STATUSES:
-        raise BrainstormError(
-            f"status {status!r} not one of {', '.join(IDEA_STATUSES)}"
-        )
+        raise BrainstormError(f"status {status!r} not one of {', '.join(IDEA_STATUSES)}")
     idea = session.by_id(idea_id)
     if idea.promoted_node_key:
-        raise BrainstormError(
-            f"idea {idea.id} is already on the roadmap as {idea.promoted_node_key} — "
-            "edit the node instead"
-        )
+        raise BrainstormError(f"idea {idea.id} is already on the roadmap as {idea.promoted_node_key} — "
+                              "edit the node instead")
+    if idea.status == "merged":
+        raise BrainstormError(f"idea {idea.id} is merged into {', '.join(idea.merged_into)} — triage that instead")
     idea.status = status
     return idea
 

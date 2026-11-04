@@ -3,8 +3,9 @@
 Split out of ``bundled_scripts/finish_task`` to keep that module under the
 repo's per-file line cap; the ``finish_*`` modules follow the same pattern.
 
-Nothing here touches the index. Tracked files are unlinked and their repo-
-relative paths returned, so the caller can fold the deletion into the
+Nothing here touches the index. Tracked session files are unlinked (or a
+tracked implementation summary is moved under ``work/done/``) and their repo-
+relative paths returned, so the caller can fold those changes into the
 bookkeeping commit it is already assembling — an unlinked-but-tracked path that
 never reaches a commit leaves a dirty worktree that the next checkout silently
 restores.
@@ -17,6 +18,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
 from specy_road.review_files import reviews_dir
 
 
@@ -69,6 +71,37 @@ def warn_if_pr_body_tracked(repo_root: Path) -> None:
     )
 
 
+def archived_implementation_summary_rel(node_id: str) -> str:
+    """Where finish keeps a committed implementation summary in history."""
+    return f"work/done/implementation-summary-{node_id}.md"
+
+
+def _archive_tracked_summary(root_r: Path, node_id: str) -> list[str]:
+    """Move a tracked summary to ``work/done/``; return paths for ``git add``."""
+    rel = f"work/implementation-summary-{node_id}.md"
+    if not is_git_tracked(root_r, rel):
+        return []
+    src = root_r / rel
+    if not src.is_file():
+        return []
+    dst_rel = archived_implementation_summary_rel(node_id)
+    ignored = subprocess.run(
+        ["git", "check-ignore", "-q", "--", dst_rel], cwd=root_r, check=False,
+    )
+    if ignored.returncode == 0:
+        print(
+            f"[warn] .gitignore covers {dst_rel}; not archiving the summary. "
+            "Add '!work/done/' after the rule that ignores it.",
+            file=sys.stderr,
+        )
+        return []
+    dst = root_r / dst_rel
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(src), str(dst))
+    print(f"[ok] archived {rel} to {dst_rel} (tracked — staging move)")
+    return [rel, dst_rel]
+
+
 def remove_work_file(root_r: Path, rel: str) -> bool | None:
     """Delete ``rel`` under the repo root. True when tracked, None when absent."""
     path = (root_r / rel).resolve()
@@ -109,11 +142,16 @@ def _keep_untracked_summary(root_r: Path, node_id: str) -> None:
 
 
 def cleanup_work_artifacts(repo_root: Path, node_id: str) -> list[str]:
-    """Remove the node's session documents; return tracked paths to stage as deletions."""
+    """Remove session documents; return repo-relative paths for the bookkeeping ``git add``."""
     need_add: list[str] = []
     root_r = repo_root.resolve()
     _keep_untracked_summary(root_r, node_id)
+    summary_rel = f"work/implementation-summary-{node_id}.md"
+    archived = _archive_tracked_summary(root_r, node_id)
+    need_add.extend(archived)
     for rel in work_artifact_rel_paths(node_id):
+        if archived and rel == summary_rel:
+            continue
         if remove_work_file(root_r, rel):
             need_add.append(rel)
     return need_add
@@ -139,3 +177,23 @@ def cleanup_session_sidecar(repo_root: Path, sess_path: Path | None) -> list[str
         # raising here would abort a half-applied bookkeeping phase.
         return []
     return [rel] if remove_work_file(root_r, rel) else []
+
+
+def worker_logs_to_stage(repo_root: Path, node_id: str) -> list[str]:
+    """``work/worker-logs/<NODE_ID>/`` to stage with the leaf when ``track_worker_logs`` is on.
+
+    Independent of ``--no-cleanup-work``, and never deleted: the logs are the
+    audit trail the project opted into, not session documents. A consumer
+    ``.gitignore`` that covers the directory wins; ``git add`` would refuse it.
+    """
+    rel = f"{WORKER_LOGS_REL}/{node_id}"
+    d = repo_root / rel
+    if track_worker_logs(repo_root) == "off" or not d.is_dir() or not any(d.iterdir()):
+        return []
+    ignored = subprocess.run(["git", "check-ignore", "-q", "--", rel], cwd=repo_root, check=False)
+    if ignored.returncode == 0:
+        print(f"[warn] track_worker_logs is on but .gitignore covers {rel}; not committing "
+              f"the worker logs. Add '!{WORKER_LOGS_REL}/' after the rule that ignores it.",
+              file=sys.stderr)
+        return []
+    return [rel]

@@ -116,6 +116,22 @@ def test_nested_layout_prefixes_the_gitignore_block_too(tmp_path: Path) -> None:
     text = (tmp_path / GITIGNORE).read_text(encoding="utf-8")
 
     assert "sr/.specyrd/cache/" in text
+    assert "sr/roadmap/orchestration.local.yaml" in text
+
+
+@pytest.mark.parametrize("prefix", ["", "sr/"])
+def test_orchestration_local_overlay_is_gitignored(tmp_path: Path, prefix: str) -> None:
+    """Per-checkout availability overlay must not be committable (flat or nested)."""
+    subprocess.run(["git", "-C", str(tmp_path), "init", "-q"], check=True, capture_output=True)
+    apply_agent_ignores(tmp_path, prefix)
+    overlay = tmp_path / prefix / "roadmap" / "orchestration.local.yaml"
+    overlay.parent.mkdir(parents=True, exist_ok=True)
+    overlay.write_text("roster: []\n", encoding="utf-8")
+    rel = f"{prefix}roadmap/orchestration.local.yaml"
+    assert subprocess.run(
+        ["git", "-C", str(tmp_path), "check-ignore", "-q", rel],
+        check=False,
+    ).returncode == 0
 
 
 def test_embedded_layout_is_byte_identical_to_before(tmp_path: Path) -> None:
@@ -151,3 +167,22 @@ def test_a_prefixed_block_actually_matches_in_git(tmp_path: Path) -> None:
         check=False,
     )
     assert proc.returncode == 0, "nested cache path should be gitignored"
+
+
+@pytest.mark.parametrize("prefix", ["", "sr/"])
+def test_worker_state_stays_ignored_and_worker_logs_never_are(tmp_path: Path, prefix: str) -> None:
+    """track_worker_logs changes no ignore rule: its mode is read at run time, never written here."""
+    subprocess.run(["git", "-C", str(tmp_path), "init", "-q"], check=True, capture_output=True)
+    apply_agent_ignores(tmp_path, prefix)
+
+    def ignored(rel: str) -> bool:
+        path = tmp_path / prefix / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("x", encoding="utf-8")
+        return subprocess.run(["git", "-C", str(tmp_path), "check-ignore", "-q", prefix + rel],
+                              check=False).returncode == 0
+
+    assert ignored("work/.workers/w-0001.events.jsonl")
+    assert ignored("work/.worktrees/thing/README.md")
+    assert not ignored("work/worker-logs/M1.1/w-0001.events.jsonl")
+    assert not ignored("work/worker-logs/M1.1/w-0001.log")

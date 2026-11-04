@@ -9,14 +9,21 @@ that fails records ``blocked``, never "fabricated": a paywall is not a lie.
 The connection is made to the address the host was checked at, with the
 hostname kept for SNI and certificate checking, so a rebinding name cannot
 move a hop onto a private address after the check.
+
+A ``repo`` source is checked without the network and without asking: the
+quote must appear in the cited file as it stood at the recorded commit
+(``git show``), on a span that covers the cited line when one was given.
+A search that found nothing has no quote and nothing to check.
 """
 
 from __future__ import annotations
 
 import re
 import sys
+from bisect import bisect_right
 from collections.abc import Callable
 from html import unescape
+from pathlib import Path
 from typing import Any
 
 import http.client
@@ -26,7 +33,10 @@ import ssl
 from urllib.parse import urljoin, urlsplit
 
 from specy_road.bundled_scripts.brainstorm_research import _is_off_host  # noqa: PLC2701 — same guard as the GUI
-from specy_road.bundled_scripts.brainstorm_session import BrainstormSession, Idea
+from specy_road.bundled_scripts.brainstorm_fields import REPO, is_no_result
+from specy_road.bundled_scripts.brainstorm_session import BrainstormError, BrainstormSession, Idea
+from specy_road.git_subprocess import git_ok, git_stdout, git_text, head_sha
+from specy_road.runtime_paths import git_root
 
 TIMEOUT_SECONDS = 20
 MAX_BYTES = 2_000_000
@@ -141,8 +151,88 @@ def _allowed(url: str) -> str | None:
     return None
 
 
-def check_source(source: dict[str, Any], fetch: Fetcher) -> str:
-    """The verification state for one source after a fetch."""
+def split_path(cited: str) -> tuple[str, int | None]:
+    """``file:line`` -> ``(file, line)``; a path with no line number cites the whole file."""
+    path, sep, line = cited.strip().rpartition(":")
+    return (path, int(line)) if sep and path and line.isdigit() and int(line) > 0 else (cited.strip(), None)
+
+
+def _blob(root: Path, commit: str, path: str) -> tuple[Path, str]:
+    """Where to run git, and the object name, for ``path`` at ``commit``.
+
+    A repo source's path is relative to the **git** root, which in a nested
+    layout (a project under ``sr/``) sits above the project root, so a file
+    outside the project can be cited. Git runs there and the name carries no
+    ``./``, which git would resolve against its working directory instead.
+    """
+    return git_root(root) or root, f"{commit}:{path.removeprefix('./')}"
+
+
+def repo_commit(root: Path, cited: str) -> str:
+    """The ``HEAD`` commit a repo source records; refuses a path that commit does not hold as a file."""
+    path, _line = split_path(cited)
+    commit = head_sha(root)
+    if not path or commit is None:
+        raise BrainstormError("--path FILE[:LINE] needs a git checkout with a commit to cite")
+    top, name = _blob(root, commit, path)
+    kind = git_text(["cat-file", "-t", name], top)
+    if kind is None:
+        raise BrainstormError(f"--path {path}: not in the HEAD commit {commit[:12]}; "
+                              "commit it first so verify can check the quote against it (the path is "
+                              "relative to the git root)")
+    if kind != "blob":
+        raise BrainstormError(f"--path {path}: a {kind} in the HEAD commit, not a file; cite a file")
+    return commit
+
+
+def quote_in_file(text: str, quote: str, line: int | None) -> bool:
+    """Whether ``quote`` (whitespace collapsed) appears in ``text`` on a span that covers ``line``."""
+    # Non-blank lines joined by one space (a quote may span a blank line), with each one's offset and number.
+    kept = [(n, flat) for n, raw in enumerate(text.splitlines(), 1) if (flat := _WS.sub(" ", raw).strip())]
+    starts, pos = [], 0
+    for _n, flat in kept:
+        starts.append(pos)
+        pos += len(flat) + 1
+    numbers = [n for n, _flat in kept]
+    joined, want = " ".join(flat for _n, flat in kept), _WS.sub(" ", quote).strip()
+    at = joined.find(want) if want else -1
+    while at >= 0:
+        first = numbers[bisect_right(starts, at) - 1]
+        last = numbers[bisect_right(starts, at + len(want) - 1) - 1]
+        if line is None or first <= line <= last:
+            return True
+        at = joined.find(want, at + 1)
+    return False
+
+
+def check_repo_source(source: dict[str, Any], root: Path | None) -> str:
+    """A repo source's state, read from its commit with no network.
+
+    ``not-found`` when the commit holds no file at the path (a directory is not
+    one); ``blocked`` when the commit is gone or the file cannot be read as text.
+    """
+    path, line = split_path(str(source.get("path", "")))
+    commit = str(source.get("commit", ""))
+    if root is None or not commit or not git_ok(["cat-file", "-e", f"{commit}^{{commit}}"], root)[0]:
+        return "blocked"
+    top, name = _blob(root, commit, path)
+    if git_text(["cat-file", "-t", name], top) != "blob":
+        return "not-found"
+    text = git_stdout(["cat-file", "blob", name], top)
+    if text is None:   # the file is there but did not read, e.g. not UTF-8: not evidence against the quote
+        return "blocked"
+    return "matched" if quote_in_file(text, str(source.get("quote", "")), line) else "not-found"
+
+
+def is_local(source: dict[str, Any]) -> bool:
+    """A source verify checks in this repository, without asking or fetching."""
+    return source.get("source_type") == REPO
+
+
+def check_source(source: dict[str, Any], fetch: Fetcher, *, root: Path | None = None) -> str:
+    """The verification state for one source after a fetch, or after a local read of a repo source."""
+    if is_local(source):
+        return check_repo_source(source, root)
     url = str(source.get("url", ""))
     why = _allowed(url)
     if why:
@@ -159,7 +249,9 @@ def check_source(source: dict[str, Any], fetch: Fetcher) -> str:
 
 
 def pending(ideas: list[Idea]) -> list[tuple[Idea, dict[str, Any]]]:
-    return [(i, s) for i in ideas for s in i.sources if s.get("verification", "unverified") == "unverified"]
+    """Unverified sources; a search that found nothing has no quote to check, so it is never pending."""
+    return [(i, s) for i in ideas for s in i.sources
+            if s.get("verification", "unverified") == "unverified" and not is_no_result(s)]
 
 
 def confirm(urls: list[str], *, yes: bool, stdin=None, out=None) -> bool:
@@ -178,11 +270,14 @@ def confirm(urls: list[str], *, yes: bool, stdin=None, out=None) -> bool:
     return answer in ("y", "yes")
 
 
-def verify_session(session: BrainstormSession, ideas: list[Idea], *, fetch: Fetcher | None = None) -> list[str]:
-    """Verify every unverified source on ``ideas``; returns one report line each."""
+def verify_session(session: BrainstormSession, ideas: list[Idea], *, fetch: Fetcher | None = None,
+                   root: Path | None = None, web: bool = True) -> list[str]:
+    """Verify every unverified source on ``ideas`` (only the repo ones unless ``web``); one report line each."""
     fetch = fetch or default_fetch   # resolved at call time so tests can swap it
     lines = []
     for idea, src in pending(ideas):
-        src["verification"] = check_source(src, fetch)
+        if not (web or is_local(src)):
+            continue
+        src["verification"] = check_source(src, fetch, root=root)
         lines.append(f"{idea.id} {src['verification']:<10} {src.get('url')}")
     return lines

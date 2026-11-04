@@ -3800,3 +3800,110 @@ ul.pm-tiptap-task-list > li.pm-tiptap-task-item > label > input[type="checkbox"]
   width: auto;
   min-width: 0;
 }
+
+/* Workers drawer (M10.12): phase bar, event list, stall markers. */
+.worker-section-title {
+  margin: 0.6rem 0 0.3rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.worker-detail {
+  min-width: 0;
+  overflow: auto;
+}
+
+.worker-phase-bar {
+  display: flex;
+  height: 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--row-parent-bg);
+}
+
+.worker-phase-seg--0 {
+  background: var(--bar-not-started);
+}
+
+.worker-phase-seg--1 {
+  background: var(--accent);
+}
+
+.worker-phase-seg--2 {
+  background: var(--bar-in-progress);
+}
+
+.worker-phase-seg--3 {
+  background: var(--bar-gate);
+}
+
+.worker-phase-legend {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.9rem;
+  font-size: 0.75rem;
+}
+
+.worker-phase-swatch {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-right: 0.3rem;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+.worker-stall-badge {
+  margin-left: 0.5rem;
+  padding: 0 0.4rem;
+  border-radius: 4px;
+  background: var(--bar-mr-pending);
+  color: #fff;
+  font-size: 0.75rem;
+}
+
+.worker-event-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-height: 50vh;
+  overflow: auto;
+  font-size: 0.78rem;
+}
+
+.worker-event {
+  display: grid;
+  grid-template-columns: 3rem 4.5rem 6.5rem 1fr;
+  gap: 0.4rem;
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.worker-event:last-child {
+  border-bottom: none;
+}
+
+.worker-event-seq,
+.worker-event-at {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.worker-event-summary {
+  overflow-wrap: anywhere;
+}
+
+.worker-event--tool .worker-event-type {
+  color: var(--accent);
+}
+
+.worker-event--stalled {
+  background: color-mix(in srgb, var(--bar-mr-pending) 15%, transparent);
+  border-left: 3px solid var(--bar-mr-pending);
+}

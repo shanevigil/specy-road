@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import dataclass
 from typing import Any
 
@@ -28,6 +29,16 @@ class Adapter:
     on_deny: Any
     config: str
     notes: str
+
+
+def print_answer(answer: tuple) -> int:
+    """Print an adapter's ``(stdout, stderr, exit)`` answer and return its exit status."""
+    out, err, code = answer
+    if out:
+        print(out)
+    if err:
+        print(err, file=sys.stderr)
+    return code
 
 
 def _bash_command(payload: dict[str, Any]) -> str | None:

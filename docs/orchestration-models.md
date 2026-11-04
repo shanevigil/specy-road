@@ -11,12 +11,19 @@ profiles, `specy-road models`, `specy-road prompt`, and
 `init project` scaffolds `model-profiles/` into your repo: one schema-2 profile
 per model (limits, prices, headless CLI, role scores, prompting rules, failure
 modes) and a README that ranks models by role and gives each one's roster
-`family`. A roster entry points at its profile with `profile:`, and names
+`family`. Pass `--profiles all` (the default) to copy every shipped profile,
+`--profiles none` for only `README.md` and `harness-facts.yaml`, or a
+comma-separated list of family directory names (for example `anthropic-claude`),
+file stems, or front-matter `api_id` values (always including those two files).
+Roster `family` values (`anthropic`, `openai`, …) are not accepted. A roster
+entry points at its profile with `profile:`, and names
 the `harness` (`claude-code`, `codex`, `cursor`, `generic`) that
 `specy-road worker delegate` launches it on — a Claude model under Cursor's
 agent is a `cursor` worker ([orchestration-workers.md](orchestration-workers.md)). A repo scaffolded
 by an older version gets them with `specy-road refresh-profiles`, which adds
-what is missing and never overwrites your edited copies. The facts come
+what is missing and never overwrites your edited copies (`--only` matches a
+front-matter `api_id` or file stem, and adds every matching missing profile).
+The facts come
 from model-run research no human has verified, so read the README's provenance
 section before copying a CLI line into production.
 
@@ -31,14 +38,97 @@ api_id: claude-opus-5-5
 aliases: [claude-opus-5-5-high, claude-opus-5-5-max]   # harness ids for this model
 ```
 
+A profile's `access.launch_mode` pins how much of its harness a Claude Code
+worker gets: `full` (the default when absent) or `bare`. Any other value makes
+the profile invalid, and `models show` prints the error naming the profile.
+
+```yaml
+access:
+  launch_mode: full   # bare (--bare) drops hooks, skills, MCP and CLAUDE.md, and needs ANTHROPIC_API_KEY
+```
+
+- **`full`** — `worker delegate` and `message`/`resume` never pass `--bare`, so
+  `claude -p` loads hooks, skills, custom commands, subagents, plugins, MCP
+  servers, auto memory and CLAUDE.md as an interactive session would. This is
+  the design intent (a worker keeps its harness's native tools), and the
+  shipped Claude profiles set it.
+- **`bare`** — the default command adds `--bare` on launch and on resume.
+  Bare mode never reads OAuth credentials or the keychain, so the worker needs
+  `ANTHROPIC_API_KEY` (or an `apiKeyHelper`) instead of your subscription
+  login; Bedrock, Google Cloud and Foundry credentials still work.
+
+A roster `channels.cli` is run as written: the mode adds no flag to it.
+
+A profile's `access.effort_by_role` sets the thinking budget per role. Each
+role names a key of the profile's `effort_map`, whose value is the model's own
+level; a role left out gets the harness's default:
+
+```yaml
+access:
+  effort_map: { minimal: low, low: low, medium: medium, high: high, max: max }
+  effort_by_role: { coordinator: low, executor: medium, reviewer: medium }
+```
+
+An unknown role, or a key that is not in `effort_map` or maps to `unknown`,
+makes the profile invalid, with an error naming it; `models show` prints the
+mapping as `role=key (level)`. The level reaches the harness as its own flag:
+
+| Harness | Flag |
+|---|---|
+| `claude-code` | `--effort <level>` |
+| `codex` | `-c model_reasoning_effort=<level>` |
+| `cursor`, `generic` | none (Cursor's model ids carry the effort, e.g. `claude-opus-5-5-high`) |
+
+- **Workers.** A worker is an executor: `worker delegate`, `message` and
+  `resume` add the executor's flag to the default Claude Code and Codex
+  commands, and every worker starts with `CLAUDE_CODE_EFFORT_LEVEL` removed from
+  its environment, so a shell setting cannot override the profile.
+- **Custom commands.** A roster `channels.cli` (or a profile `access.cli`) may
+  name `{effort}` as a whole argument; `worker delegate` and
+  `prompt --channel cli` replace it with the flag for the role's level (empty
+  when the profile sets none, or on Cursor). When the profile sets a level for
+  the role but the command names no `{effort}`, they print one note that the
+  command takes no effort and run it as written.
+
+The shipped Claude profiles set executor and reviewer to the model's documented
+default and the coordinator one level below. They stay there until measurement
+shows that a lower reviewer level keeps the same verdicts.
+Claude Code's headless docs say `--bare` "will become the default for `-p` in a
+future release" ([code.claude.com/docs/en/headless](https://code.claude.com/docs/en/headless),
+read 2026-11-01), so the mode is checked as well as set: the worker's `started`
+event records what the harness reported in its `system/init` line (`version`,
+`tools`, `mcp_servers`, `plugins`) and an `inferred_mode` — `bare` when the tool
+list is no more than `Bash`, `Read` and `Edit`, else `full`. When that differs
+from the profile's `launch_mode` the worker also records an `error` event naming
+both, which `worker sync` shows on the next turn. The check applies to a custom
+`channels.cli` too, since its output is still parsed as Claude Code's.
+
 The roster `id` stays the label review records and the gate count. When the
 `id` is one of the profile's aliases (found that way or named by `profile:`),
 the alias is what `worker delegate` passes the harness as the model, since it is
 the id the harness lists; otherwise the profile's `api_id` is, as before.
+An entry's `harness_model` overrides both: it is the id the harness CLI expects
+when the roster `id` is not one (`claude --model` takes `claude-opus-5-5`, not
+`claude-opus-5.5`), and the default commands pass it as `--model` / `-m` on
+launch and on resume alike. With no profile and no `harness_model`, the roster
+`id` itself is passed. `validate` warns about a `claude-code` entry whose `id`
+has a dot and no `harness_model`. When a worker exits non-zero before its
+first stream event, its `error` event quotes the harness's last error line from
+`work/.workers/<id>.log` (an HTTP 404 for an unknown model, say), not only the
+log's name.
+
+```yaml
+  - id: claude-opus-5.5
+    family: anthropic
+    roles: [executor]
+    harness: claude-code
+    harness_model: claude-opus-5-5
+```
 
 - `specy-road models list` — the roster as the gate sees it, with each entry's
-  profile, coordinator/executor/reviewer scores, and staleness; profiles no
-  entry uses are listed so you can roster them.
+  profile, coordinator/executor/reviewer scores, and staleness; roster ids that
+  match no profile are listed separately; profiles no entry uses are listed so
+  you can roster them.
 - `specy-road models show <id> [--section <name>]` — one profile's machine
   fields and a body section (default: Prompting rules).
 - `specy-road models stale [--max-age-days N]` — profiles researched too long
@@ -60,10 +150,11 @@ the id the harness lists; otherwise the profile's `api_id` is, as before.
   `--channel cli` runs the profile's `access.cli` (or the roster entry's
   `channels.cli`) after substituting one placeholder: `{prompt}` becomes the
   quoted **path** of the prompt file, `<prompt>` (the shipped profiles' form)
-  becomes the quoted prompt **text**. Either must be a whole shell argument on
+  becomes the quoted prompt **text**; an optional `{effort}` becomes the
+  harness's flag for the role's `effort_by_role` level. Either must be a whole shell argument on
   its own, optionally quoted as one (`"<prompt>"`). A placeholder inside a
   larger word is refused on purpose — `claude -p "$(cat {prompt})"` and
-  `--prompt={prompt}` are rejected before anything runs, because the quoting
+  `--prompt={prompt}` (or `--effort={effort}`) are rejected before anything runs, because the quoting
   the substitution adds would land inside still-open quotes where `$(…)`
   executes. Accepted headless forms (2026-10): `claude -p --model <id> < {prompt}`
   or `claude -p "<prompt>" --model <id>`, `codex exec -m <id> - < {prompt}`
@@ -75,6 +166,147 @@ the id the harness lists; otherwise the profile's `api_id` is, as before.
   It logs the command template, never the prompt text; when the operating
   system refuses to launch it (a `<prompt>` too long for a command line) it
   exits 1 with the reason — use `{prompt}` for long prompts.
+
+Each shipped profile includes **`## Orchestration: harness features to avoid`**: the harness
+capability specy-road turns off for executors (memory, background tasks, Codex `--disable …`, Cursor
+`/goal` and persist) and the switch the worker launch or `access.cli` applies. Optional
+**orchestration guard** hooks (`specyrd init --install-orchestration-hooks`, or
+`specy-road orchestration guard --format … --print-config`) deny role-inappropriate git and cloud
+commands; `worker delegate` / `review delegate` export `SPECY_ROAD_ORCHESTRATION_ROLE` so the
+installed command can read the role; pair them with the shared-checkout guard from
+`specy-road session guard --print-config`. The hook judges Bash tool calls only (including what
+`sh -c`, `eval`, `$(…)`, `xargs` and `!` git aliases run); it does not see file-edit tools.
+
+## Harnesses that route models
+
+The review gate takes a reviewer's family from its roster entry, not from what ran. Some harnesses choose
+the model themselves: Cursor's Auto (the default on a fresh Cursor CLI install), a cascade that tries a
+cheap model before a strong one, or a draft-critique-revision workflow that runs its own critic underneath.
+Such a harness can put the executor's family on the reviewer side without anyone seeing it. Two roster
+fields say so:
+
+| Key | Meaning |
+|---|---|
+| `routing` | `fixed` (the default): the harness runs the model it is told. `dynamic`: it may choose among models itself. A `cursor` entry told no model (no `harness_model`, a profile `api_id` of `unknown` or no profile, or a `channels.cli` without `--model`) or `auto` is `dynamic` whatever this says. A `channels.cli`'s `--model` is read only when it is one simple command (redirections such as `2>&1` allowed) and its value is literal (model-id characters, bare or quoted); in a list or pipeline (`;`, `&&`, `\|`, a newline, a subshell or `$(…)`) the flag may belong to another program, and a value the shell expands (`"${MODEL:-auto}"`, `$MODEL`, a glob, `~`) or an empty one is not the text written, so the model counts as unknown. |
+| `pinned` | `true` once the maintainer has checked that the harness honours the requested model (for Cursor: a model id that is not `auto`, with Auto turned off). Default `false`. |
+
+Under `policy.reviewers_distinct_families`, an approval from a `dynamic` entry that is not `pinned` does not
+count; a block from it still does, and with distinct families off its approval counts as any other.
+`handoff status` and `review list` name each approval this keeps out (`does not count — '<model>' runs on
+a harness that routes models dynamically …`). A harness's internal critic, however it reports, is
+supporting evidence for a reviewer, never a gate approval: only a review record filed by a rostered
+reviewer counts.
+
+Each worker turn's `usage` event records `requested_model` (the `--model` the launch passed, a roster
+`channels.cli`'s own when that is one simple command with a literal value; `null` when it passed none, its
+command is a list or pipeline, or the shell expands the value) and `observed_model` (the model the harness's `system/init` line named; Claude Code and
+Cursor print one, Codex does not), beside `harness_version`. When both are known
+and differ (ignoring case, and treating `-`, `_` and spaces alike, so Cursor's `Composer 2.5` matches `composer-2.5`), the event's summary ends `model mismatch: told <requested>, harness reported
+<observed>`, which `worker sync` prints. An alias the harness resolves to another id reads as a mismatch
+too.
+
+## Harness facts: what `refresh-profiles` renders
+
+`model-profiles/harness-facts.yaml` holds one record per harness a roster can
+name (`claude-code`, `codex`, `cursor`, `generic`): version, the adapter's headless
+command, the executor command template, session flags, a permission example,
+instruction files and their size guidance, skill directories, hooks, the git
+actions the harness can take on its own with the switch that keeps each off,
+model families, and quota behaviour. Every fact carries a label, `documented`,
+`runtime` or `unverified`, and the source for the first two;
+`schemas/harness-facts.schema.json` enforces the shape. Facts nobody has
+checked stay `unverified` until the runtime verification leaf (M8.7) replaces
+them. `generic` has no binary of its own (it runs the profile's `access.cli`),
+so its record renders no `access.cli`, has no `capture_commands`, and
+`--capture generic` needs `--from`.
+
+Two candidate profiles run other harnesses' CLIs through `generic`:
+`github-copilot/copilot-gemini-4-argon.md` (Copilot CLI, a one-shot reviewer
+that denies `git push`, `git commit`, `gh` and Copilot Memory) and
+`google-antigravity/agy-gemini-4-argon-high.md` (Antigravity `agy`, whose run
+succeeded only when the JSON envelope's `status` is `SUCCESS`: a soft-denied
+tool or a `--print-timeout` expiry still exits 0). Both were written from
+vendor documentation; their `runtime_checks` are `not run`, and neither
+harness has a facts record yet.
+
+Two parts of `model-profiles/` are rendered from it. A hand edit to either is
+drift:
+
+- each profile's `access.cli`, from the `executor_template` of the harness
+  whose `renders_cli_for` names the profile's `family` (`{api_id}` becomes the
+  profile's `api_id`);
+- the README's harness block, between the `harness facts` markers. A README
+  with neither marker is behind. One with only one marker, a repeated marker,
+  or the end before the start is drift: `--check` exits 1, and `--render`
+  leaves it byte for byte and exits 1.
+
+`--check` also exits 1 when a Codex memory override the worker launch passes
+(`-c features.memories=false`, `-c memories.…`) names a feature the accepted
+`codex features list` capture (`harness-captures/codex/inventory-features.txt`)
+does not list: Codex would take the key and ignore it.
+
+```bash
+specy-road refresh-profiles --check    # report drift (exit 1); a README older than the block is "behind" (exit 0)
+specy-road refresh-profiles --render   # rewrite the rendered regions; --dry-run lists them
+```
+
+`--render` rewrites only the shipped layout: a block-style `access:` whose
+children are one-line keys indented two spaces. It puts a removed `access.cli`
+back under `access:`. It writes a profile only when the result parses to the
+same front matter with just that value changed. Any other layout is left byte
+for byte as it was, and so is a profile whose front matter does not parse,
+which counts as drift. Examples are a folded or literal `cli`, a flow
+`access: { … }`, or another indentation. `--render` names each such profile and
+exits 1; fix it by hand or take the toolkit's copy with `--force`.
+
+A plain `refresh-profiles` still copies only missing files, and also prints
+any drift without failing. To re-render the shipped copies after editing the
+fixture, run `--render --repo-root specy_road/templates/project` from a
+toolkit checkout.
+
+**On a harness version bump**, classify the new `--version` and `--help`
+output before accepting it:
+
+```bash
+specy-road refresh-profiles --capture codex            # runs the record's capture_commands
+specy-road refresh-profiles --capture codex --from DIR # or reads DIR/*.txt (version.txt required)
+specy-road refresh-profiles --capture codex --accept   # store a passing capture as the accepted one (--dry-run: report only)
+```
+
+The accepted capture lives in `model-profiles/harness-captures/<harness>/`. A
+new capture must hold every file the record's `capture_commands` names and
+every file the accepted capture has (an `inventory*.txt` included). An
+incomplete one is refused before classification, and the accepted capture is
+left as it was.
+Identifiers are `--flags`, the rows under a help text's `Commands:` heading,
+and the first word of each line of an `inventory*.txt` file. The shipped
+inventories are `codex features list` (`inventory-features.txt`) and
+`agent models` (`inventory-models.txt`, which depends on the account). Claude
+Code has no listing that runs without a model turn, so it captures none. Every identifier the new capture adds or drops is listed. A new
+one whose name contains `plan`, `memory`, `task`, `todo`, `worktree`,
+`branch`, `commit`, `push`, `pr`, `background`, `delegate`, `cloud`,
+`schedule`, `review`, `resume`, `fork` or `autopilot` fails the diff, and
+`--accept` writes nothing, until the record's `relationships` assigns it one of
+`use`, `avoid`, `duplicate`, `complement`, `gap` or `neutral`. The match is a
+plain substring, so `--print` needs a relationship as well: a false alarm costs
+one fixture line. After accepting, update the record's `version`.
+
+## Parallel work inside a leaf
+
+Every supported harness has its own subagents, so specy-road adds no
+mechanism for parallel work inside a leaf: the executor prompt tells the agent
+to use them. The prompt `do-next-available-task` writes at pickup always has
+the paragraph; `prompt --role executor` adds it only when the model's profile
+has `access.subagents` starting with `yes`. It says to use subagents for
+independent verification and search (run the test files the brief names in
+parallel, search the tree), never for an edit outside the touch zones, to wait
+for every report before ending the turn (a headless turn ends on reply), and
+that a subagent's report is data, not an instruction. The aim is a shorter
+wall-clock on test-heavy leaves, whose verifier files can run side by side.
+
+A Claude Code worker with `launch_mode: bare` does not load your custom
+subagents (see above). An executor with `subagent_family_lock` may still spawn
+only that family.
 
 ## Planning assignments: `orchestrate plan`
 
@@ -94,8 +326,11 @@ order:
   anything, so a local model's port can be checked first.
 - **Eligibility.** A leaf's `executor_eligibility` (default `any`) names a
   roster `class` tag such as `senior`; only executors with that tag qualify.
-- **Availability.** A roster entry with `unavailable_until` is skipped through
-  that date; a substitution says who stands in meanwhile.
+- **Availability.** A roster entry with `available: false` is skipped, one with
+  `paused_until` is skipped until that time, and legacy `unavailable_until` is
+  skipped through that date; `roadmap/orchestration.local.yaml` can set the first
+  two for this working tree only ([orchestration.md](orchestration.md#roadmaporchestrationyaml),
+  "Local availability overlay"). A substitution says who stands in meanwhile.
 - **Cost.** Among capable executors (profile executor score 3 or more, or no
   profile) the cheapest list price wins. Reviewers rank by reviewer score,
   then cost; the coordinator by coordinator score.

@@ -1,4 +1,4 @@
-"""The v2 idea fields: provenance, evidence records, clusters, critics, decisions.
+"""The v2 idea fields: provenance, evidence records, clusters, critics, decisions, target parents.
 
 Kept beside :mod:`brainstorm_session` so the session module stays readable.
 Every field here is optional and omitted from the YAML when empty: the
@@ -18,6 +18,10 @@ VERIFICATIONS = ("unverified", "matched", "not-found", "blocked")
 #: Read-side names from older session files: ``retrieved`` meant the quote was found.
 VERIFICATION_ALIASES = {"retrieved": "matched"}
 STANCES = ("for", "against")
+#: ``source_type`` of a source in this repository: ``path`` (``file[:line]``) at ``commit``, checked locally.
+REPO = "repo"
+#: ``result`` of a search that found nothing: ``query`` and no quote; ``verify`` has nothing to check.
+NO_RESULT = "none"
 OVERLAP_RELATIONS = ("same-problem-same-solution", "same-problem-different-solution",
                      "prerequisite", "superseded", "adjacent")
 ORIGIN_KEYS = ("harness", "model", "lens", "round", "shard")
@@ -25,7 +29,7 @@ ORIGIN_KEYS = ("harness", "model", "lens", "round", "shard")
 EXTRA_DEFAULTS: dict[str, Any] = {
     "origin": None, "cluster_id": None, "sources": [], "overlap": [], "critic": None,
     "hypothesis": "", "assumptions": [], "decision": None, "verdict_why": "",
-    "codename": "",
+    "codename": "", "target_parent": None,
 }
 
 
@@ -63,17 +67,51 @@ def parse_overlap(text: str) -> dict[str, str]:
     return {"node_id": node, "relation": rel}
 
 
+def repo_locator(path: str, commit: str) -> str:
+    """The ``url`` a repo source carries, so every reader of ``url`` names it: ``repo:<path>@<short sha>``."""
+    return f"repo:{path}@{commit[:12]}"
+
+
+def no_result_locator(query: str) -> str:
+    """The ``url`` a search that found nothing carries: ``no-result:<query>``."""
+    return f"no-result:{query}"
+
+
+def is_no_result(source: dict[str, Any]) -> bool:
+    return source.get("result") == NO_RESULT
+
+
 def source_record(url: str, *, quote: str = "", supports: str = "", stance: str = "for",
                   tool: str = "", source_type: str = "", retrieved_at: str = "",
-                  verification: str = "unverified") -> dict[str, Any]:
+                  verification: str = "unverified", **located: str) -> dict[str, Any]:
+    """One source; ``located`` carries a repo source's ``path``/``commit`` or a null result's ``query``/``result``."""
     if not (url or "").strip():
         raise _error("--url is required: a source without a URL cannot be verified")
     if stance not in STANCES:
         raise _error(f"stance {stance!r} not one of {', '.join(STANCES)}")
     rec = {"url": url.strip(), "quote": quote.strip(), "supports": supports.strip(), "stance": stance,
            "tool": tool.strip(), "source_type": source_type.strip(), "retrieved_at": retrieved_at.strip(),
-           "verification": verification}
+           **{k: v.strip() for k, v in located.items()}, "verification": verification}
     return {k: v for k, v in rec.items() if v not in ("", None)}
+
+
+def _source(s: Any, ident: str) -> dict[str, Any]:
+    """One loaded source, validated; a repo source needs its path and commit, a null result its query."""
+    if not isinstance(s, dict) or not str(s.get("url", "")).strip():
+        raise _bad(ident, "each source needs a url")
+    v = s.get("verification", "unverified")
+    if isinstance(v, str):
+        v = VERIFICATION_ALIASES.get(v, v)
+    if v not in VERIFICATIONS:
+        raise _bad(ident, f"verification {v!r} not one of {', '.join(VERIFICATIONS)}")
+    stance = s.get("stance", "for")
+    if stance not in STANCES:
+        raise _bad(ident, f"stance {stance!r} not one of {', '.join(STANCES)}")
+    if s.get("source_type") == REPO and not (s.get("path") and s.get("commit")):
+        raise _bad(ident, f"a {REPO} source needs a path and a commit")
+    if is_no_result(s) and not s.get("query"):
+        raise _bad(ident, "a no-result source needs the query that found nothing")
+    return {k: v for k, v in {**s, "verification": v}.items() if v not in ("", None)}
 
 
 def parse_extra(raw: dict[str, Any], ident: str) -> dict[str, Any]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
@@ -84,23 +122,12 @@ def parse_extra(raw: dict[str, Any], ident: str) -> dict[str, Any]:  # noqa: C90
         out["origin"] = {str(k): str(v) for k, v in origin.items() if str(k) in ORIGIN_KEYS}
     elif isinstance(origin, str):
         out["origin"] = parse_origin(origin)
-    cluster = raw.get("cluster_id")
-    if isinstance(cluster, str) and cluster.strip():
-        out["cluster_id"] = cluster.strip()
+    for key in ("cluster_id", "target_parent"):
+        if isinstance(raw.get(key), str) and raw[key].strip():
+            out[key] = raw[key].strip()
     sources = raw.get("sources")
     if isinstance(sources, list):
-        for s in sources:
-            if not isinstance(s, dict) or not str(s.get("url", "")).strip():
-                raise _bad(ident, "each source needs a url")
-            v = s.get("verification", "unverified")
-            if isinstance(v, str):
-                v = VERIFICATION_ALIASES.get(v, v)
-            if v not in VERIFICATIONS:
-                raise _bad(ident, f"verification {v!r} not one of {', '.join(VERIFICATIONS)}")
-            stance = s.get("stance", "for")
-            if stance not in STANCES:
-                raise _bad(ident, f"stance {stance!r} not one of {', '.join(STANCES)}")
-            out["sources"].append({k: v for k, v in {**s, "verification": v}.items() if v not in ("", None)})
+        out["sources"] = [_source(s, ident) for s in sources]
     overlap = raw.get("overlap")
     if isinstance(overlap, list):
         for o in overlap:

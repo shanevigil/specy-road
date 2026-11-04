@@ -2,3 +2,5 @@
 version: 1
 integration_branch: main
 remote: origin
+# Matches roadmap/orchestration.yaml, which requires a reviewer: validate rejects the two disagreeing.
+require_implementation_review_before_finish: true

@@ -4,47 +4,22 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
 import time
 from pathlib import Path
 
 import pytest
+import yaml
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.review_repo_helpers import git
 
 from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
-from specy_road.bundled_scripts import review_cli, worker_cli
+from specy_road.bundled_scripts import review_cli, worker_cli, worker_cli_render as wcr
 
-FAKE = '''
-import json, sys, time
-spec = json.loads(open(sys.argv[1]).read()) if sys.argv[1].endswith(".json") else {"lines": [
-    {"type": "system", "subtype": "init", "session_id": "s-" + str(len(sys.argv)), "model": "fake"},
-    {"type": "result", "subtype": "success", "result": "done", "session_id": "s-" + str(len(sys.argv))}]}
-if spec.get("write"):                       # a READY written during the turn, as a real harness would
-    open(spec["write"]["path"], "w").write(spec["write"]["text"])
-for d in spec["lines"]:
-    print(json.dumps(d), flush=True)
-time.sleep(spec.get("sleep", 0))
-sys.exit(spec.get("exit", 0))
-'''
-
-
-def worker_roster(cli: str, *, max_workers: int = 2) -> str:
-    return (f"version: 1\nroster:\n  - {{id: human, family: human, roles: [coordinator, reviewer]}}\n"
-            f"  - {{id: opus, family: anthropic, roles: [executor, reviewer], harness: claude-code,\n"
-            f"     billing_route: claude_subscription, channels: {{cli: '{cli}'}}}}\n"
-            f"  - {{id: sol, family: openai, roles: [reviewer]}}\n"
-            f"policy: {{max_workers: {max_workers}}}\n")
-
-
-def _repo(tmp_path: Path, *, max_workers: int = 2) -> tuple[Path, Path]:
-    script = tmp_path / "fake.py"
-    script.write_text(FAKE)
-    repo = make_review_repo(tmp_path, orchestration=worker_roster(f"{sys.executable} {script} {{prompt}} {{session}}", max_workers=max_workers))
-    (repo / ".gitignore").write_text("work/\n")
-    git(repo, "add", ".gitignore")
-    git(repo, "commit", "-qm", "ignore work")
-    return repo, script
+# The fake harness and its repo live in worker_repo_helpers; the old private name
+# stays for the modules that import it from here.
+from tests.worker_repo_helpers import FAKE, make_worker_repo as _repo, worker_roster  # noqa: F401
 
 
 def run_worker_cli(*args: str) -> int:
@@ -122,6 +97,18 @@ def test_sync_delta_and_ack(tmp_path: Path, capsys) -> None:
     assert "completion" in capsys.readouterr().out
     assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0
     assert "No new worker events" in capsys.readouterr().out
+
+
+def test_sync_wait_ends_on_an_event_or_times_out_with_exit_2(tmp_path: Path, capsys) -> None:
+    repo, _ = _repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.set_state(repo, rec, "idle", pid=None)   # no wrapper to sweep: only the thread below writes events
+    assert run_worker_cli("worker", "sync", "--wait", "--ack", "--repo-root", str(repo)) == 0   # `started` is unacked: no wait
+    assert run_worker_cli("worker", "sync", "--wait", "--timeout", "0.3", "--repo-root", str(repo)) == 2
+    assert capsys.readouterr().out.endswith("No new worker events.\n")   # the empty delta
+    t0 = time.monotonic(); threading.Timer(0.5, lambda: ws.append_event(repo, rec, "output", source="worker", summary="mid-wait")).start()
+    assert run_worker_cli("worker", "sync", "--wait", "--timeout", "10", "--json", "--repo-root", str(repo)) == 0 and time.monotonic() - t0 < 3
+    assert [e["summary"] for e in json.loads(capsys.readouterr().out)["workers"][0]["events"]] == ["mid-wait"]
 
 
 def test_message_resume_lease_and_interrupt(tmp_path: Path, capsys) -> None:
@@ -206,7 +193,7 @@ def test_reconcile_flags_a_touch_zone_breach(tmp_path: Path, capsys) -> None:
     assert json.loads(capsys.readouterr().out)["delta"]["needs_reconcile"] is False
     (repo / "README.md").write_text("outside\n")
     (repo / "work" / "notes.md").write_text("under work/, but not the leaf's bookkeeping\n")
-    git(repo, "add", "-f", "work/notes.md")
+    git(repo, "add", "-f", "work/notes.md", "README.md")   # tracked: an untracked file is only a warning (M11.40)
     git(repo, "commit", "-qm", "worker notes")
     assert run_worker_cli("worker", "reconcile", "w-0001", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
@@ -257,3 +244,130 @@ def test_adopt_open_list_status_and_handoff_status(tmp_path: Path, capsys) -> No
     with pytest.raises(SystemExit):
         review_cli.main(["handoff", "status", "--json", "--repo-root", str(repo)])
     assert json.loads(capsys.readouterr().out)["workers"][0]["worker_id"] == "w-0001"
+
+
+def test_launch_events_ack_time_and_timeline(tmp_path: Path, capsys) -> None:
+    """A1: launched and first_output bracket the harness; A2: the ack is timed; A3: timeline per turn."""
+    repo, _ = _repo(tmp_path)
+    run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
+    wait_for_worker(repo, "w-0001")
+    evs = ws.events_since(repo, "w-0001")
+    types = [e.type for e in evs]
+    assert types[:3] == ["started", "launched", "first_output"] and types[-1] == "completion"
+    launched = evs[1]
+    assert launched.source == "system" and launched.authority == "system"
+    assert launched.detail == {"argv0": "sh", "harness": "claude-code", "resumed": False, "model": None}   # custom cli
+    assert evs[2].detail is None
+    capsys.readouterr()
+    # A3 by node id, before any ack: the last phase is unknown.
+    assert run_worker_cli("worker", "timeline", "M1.1", "--repo-root", str(repo)) == 0
+    out = capsys.readouterr().out.splitlines()
+    assert out[0].startswith("w-0001 M1.1 timeline") and len(out) == 5
+    assert out[1].startswith("  delegated -> launched: ") and out[1].endswith("s")
+    assert out[4] == "  end -> acked: unknown"
+    # A2: the ack records when, and the seq, without changing what sync returns.
+    assert run_worker_cli("worker", "sync", "--ack", "--json", "--repo-root", str(repo)) == 0
+    d = json.loads(capsys.readouterr().out)
+    assert d["acked"] is True and d["workers"][0]["events"][-1]["seq"] == len(evs)
+    marks = yaml.safe_load((ws.workers_dir(repo) / "sync.yaml").read_text())
+    assert marks["w-0001"]["seq"] == len(evs) and marks["w-0001"]["acked_at"] >= evs[-1].at   # ISO strings order
+    assert run_worker_cli("worker", "timeline", "w-0001", "--json", "--repo-root", str(repo)) == 0
+    t = json.loads(capsys.readouterr().out)
+    assert t["worker_id"] == "w-0001" and t["node_id"] == "M1.1"
+    assert all(isinstance(t["phases"][k], float) for k in ("delegated_to_launched", "launched_to_first_output",
+                                                          "first_output_to_end", "end_to_acked"))
+    # A resumed turn: launched says so, and the earlier ack does not count for the new turn's end.
+    assert run_worker_cli("worker", "message", "w-0001", "--text", "again", "--repo-root", str(repo)) == 0
+    wait_for_worker(repo, "w-0001")
+    capsys.readouterr()
+    second = [e for e in ws.events_since(repo, "w-0001") if e.type == "launched"]
+    assert len(second) == 2 and second[1].detail["resumed"] is True
+    assert run_worker_cli("worker", "timeline", "w-0001", "--json", "--repo-root", str(repo)) == 0
+    t = json.loads(capsys.readouterr().out)
+    assert t["phases"]["end_to_acked"] is None and isinstance(t["phases"]["first_output_to_end"], float)
+    assert run_worker_cli("worker", "timeline", "M9.9", "--repo-root", str(repo)) == 1
+    assert "no worker for M9.9" in capsys.readouterr().err
+
+
+def test_timeline_arithmetic_and_unknown_phases() -> None:
+    """The phase sums from a fixed log; a missing boundary reads unknown, an ack short of the end does not count."""
+    class Rec:
+        worker_id, node_id = "w-0007", "M2.1"
+    def ev(seq, at, type_, source="system", detail=None):
+        return {"seq": seq, "at": f"2026-10-30T10:00:{at:02d}+00:00", "type": type_, "source": source, "detail": detail}
+    log = [ev(1, 0, "started", "broker"), ev(2, 3, "launched"), ev(3, 5, "first_output"),
+           ev(4, 5, "started", "worker"), ev(5, 20, "turn_completed", "worker"),
+           ev(6, 21, "completion", "worker", {"exit": 0, "ready": True})]
+    t = wcr.timeline(Rec(), log, {"seq": 6, "acked_at": "2026-10-30T10:01:01+00:00"})
+    assert t["phases"] == {"delegated_to_launched": 3.0, "launched_to_first_output": 2.0,
+                           "first_output_to_end": 15.0, "end_to_acked": 41.0}
+    assert wcr.timeline_lines(t)[1:] == ["  delegated -> launched: 3s", "  launched -> first_output: 2s",
+                                         "  first_output -> end: 15s", "  end -> acked: 41s"]
+    # The ack reached seq 4 only: the turn's end was not acknowledged yet.
+    assert wcr.timeline(Rec(), log, {"seq": 4, "acked_at": "2026-10-30T10:00:30+00:00"})["phases"]["end_to_acked"] is None
+    # An error with an exit code ends the turn too; no first_output leaves its two phases unknown.
+    log2 = [ev(1, 0, "started", "broker"), ev(2, 2, "launched"), ev(3, 9, "error", "worker", {"exit": 1})]
+    assert wcr.timeline(Rec(), log2, None)["phases"] == {"delegated_to_launched": 2.0, "launched_to_first_output": None,
+                                                        "first_output_to_end": None, "end_to_acked": None}
+    # An adopted worker never launched anything: every phase unknown, and the lines say so.
+    t = wcr.timeline(Rec(), [ev(1, 0, "started", "broker"), ev(2, 1, "adopted", "orchestrator")], None)
+    assert set(t["phases"].values()) == {None} and all(line.endswith("unknown") for line in wcr.timeline_lines(t)[1:])
+
+
+def _turn(repo: Path, script: Path, rec: ws.WorkerRecord, lines: list[dict], *, exit_code: int = 0) -> None:
+    """One turn of the fake harness through the wrapper, printing ``lines``."""
+    from specy_road import worker_runner as wr
+    from specy_road.worker_adapters import Launch
+    spec = script.parent / f"turn-{rec.worker_id}-{ws.load_record(repo, rec.worker_id).last_event_seq}.json"
+    spec.write_text(json.dumps({"lines": lines, "exit": exit_code}))
+    wr.run(repo, rec.worker_id, Launch([sys.executable, str(script), str(spec)]))
+
+
+def test_usage_events_per_turn_and_the_usage_command(tmp_path: Path, capsys) -> None:
+    """M10.2 A2/A3: one usage event per turn end, Claude's running cost as a delta; `worker usage` per attempt and node."""
+    repo, script = _repo(tmp_path)
+    rec = json.loads((Path(__file__).parent / "fixtures/worker_usage/turn_end_lines.json").read_text())   # real, sanitized
+    init, first, resumed = rec["claude-code"]["lines"]   # one session: the resumed turn reports the session's whole total
+    claude = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    _turn(repo, script, claude, [init, first])
+    _turn(repo, script, claude, [init, resumed])
+    codex = ws.create_record(repo, "M1.1", "codex", "sol", repo)
+    _turn(repo, script, codex, rec["codex"]["lines"])
+    _turn(repo, script, codex, [{"type": "turn.failed", "error": {"message": "quota"}}], exit_code=1)   # constructed
+    cu = [e.detail for e in ws.events_since(repo, claude.worker_id) if e.type == "usage"]
+    assert [u["cost_usd"] for u in cu] == [1.0474079, 0.162736] and [u["session_cost_usd"] for u in cu] == [1.0474079, 1.2101441]
+    assert cu[1] == {"input_tokens": 380001, "cached_input_tokens": 376181, "output_tokens": 2849, "reasoning_tokens": 123,
+                     "cost_usd": 0.162736, "cost_is_estimate": True, "num_turns": 4, "harness_version": "2.1.312",
+                     "session_cost_usd": 1.2101441, "requested_model": None, "observed_model": "claude-opus-5-5"}
+    xu = [e for e in ws.events_since(repo, codex.worker_id) if e.type == "usage"]
+    assert xu[0].detail["reasoning_tokens"] == 0 and xu[0].detail["cost_usd"] is None
+    assert set(xu[1].detail.values()) == {None} and xu[1].authority == "worker_suggestion"   # nothing reported: nulls
+    capsys.readouterr()
+    assert run_worker_cli("worker", "usage", "M1.1", "--json", "--repo-root", str(repo)) == 0
+    d = json.loads(capsys.readouterr().out)
+    assert [(a["attempt"], a["harness"], a["model"], a["turns"], a["cost_usd"]) for a in d["attempts"]] == [
+        (1, "claude-code", "opus", 2, 1.210144), (2, "codex", "sol", 2, None)]
+    assert d["total"] == {"turns": 4, "input_tokens": 1686117, "cached_input_tokens": 1612673, "output_tokens": 16112,
+                          "reasoning_tokens": 4826, "cost_usd": 1.210144, "num_turns": 23, "cost_is_estimate": True}
+    assert run_worker_cli("worker", "usage", "M1.1", "--repo-root", str(repo)) == 0
+    assert capsys.readouterr().out.splitlines() == [
+        "M1.1 usage (2 attempt(s); ? = not reported)",
+        "  attempt 1 w-0001 claude-code 2.1.312/opus, 2 turn(s): in 1671333 (1600385 cached), out 16107, reasoning 4826, $1.2101 est.",
+        "  attempt 2 w-0002 codex/sol, 2 turn(s): in 14784 (12288 cached), out 5, reasoning 0, $?",
+        "  total, 4 turn(s): in 1686117 (1612673 cached), out 16112, reasoning 4826, $1.2101 est."]
+    assert run_worker_cli("worker", "usage", "w-0002", "--json", "--repo-root", str(repo)) == 0
+    assert json.loads(capsys.readouterr().out)["total"]["cost_usd"] is None
+    assert run_worker_cli("worker", "usage", "M9.9", "--repo-root", str(repo)) == 1
+
+
+def test_usage_event_schema_needs_every_field_nullable_never_missing() -> None:
+    """M10.2 A1: a usage event carries all eight fields; null is allowed, a missing field or a wrong type is not."""
+    from specy_road.worker_adapter_parsers import USAGE_FIELDS
+    ev = {"seq": 1, "worker_id": "w-0001", "at": "2026-11-01T00:00:00+00:00", "type": "usage", "source": "worker",
+          "authority": "worker_suggestion", "summary": "usage", "epoch": 0}
+    nulls = dict.fromkeys(USAGE_FIELDS)
+    assert ws.schema_errors({**ev, "detail": nulls}, "worker-event.schema.json") == []
+    assert ws.schema_errors({**ev, "detail": {**nulls, "input_tokens": 0, "cost_usd": 0.0}}, "worker-event.schema.json") == []
+    for bad in ({}, {**nulls, "output_tokens": "9"}, {k: v for k, v in nulls.items() if k != "num_turns"}):
+        assert ws.schema_errors({**ev, "detail": bad}, "worker-event.schema.json")
+    assert ws.schema_errors(ev, "worker-event.schema.json")   # no detail at all

@@ -28,13 +28,9 @@
 - rounds, panel, evidence, promote and the GUI → "6. Brainstorm v2"
 - hook-mode grind and the gate → "7. Grind and unattended loops"
 - what must be green before §A → "8. Close-out"
-- replaying `docs/context-regressions.yaml` on a harness or model upgrade, and its format → "9. Context regressions"
+- replaying `docs/context-regressions.yaml` on a harness or model upgrade, and its format → "9. Context regressions"; the opt-in context-feedback block and its triage rule → "10. Context feedback (pilot)"
 
 **Related:** [`release-runbook.md`](release-runbook.md), [`orchestration-workers.md`](orchestration-workers.md), [`brainstorming.md`](brainstorming.md), [`orchestration.md`](orchestration.md).
-
-The suite (`pytest`, ~2,100 tests) proves the toolkit's logic with fake
-harnesses and stub fetchers. Everything below needs a machine with the
-vendor CLIs installed and signed in, and is **not** claimed by any test.
 
 ## 0. Prerequisites
 
@@ -70,8 +66,8 @@ In the Notes app:
    `export --check` and `digest --check` exit 1 with `missing …` because the
    scaffold ships neither generated file (`roadmap.md`,
    `roadmap-context.md`); run `specy-road export` and `specy-road digest`
-   once, then both exit 0. `roadmap/orchestration.yaml`, `model-profiles/` and
-   the `AGENTS.md` managed block are present.
+   once, then both exit 0. `roadmap/orchestration.yaml`, `model-profiles/`, the `AGENTS.md`
+   managed stub, `.specyrd/AGENTS.md` and `.specyrd/AGENTS.team.md` are present.
 2. `specyrd init --ai cursor`, `--ai claude-code`, `--ai codex`: one
    `.agents/skills/<name>/SKILL.md` per command; `.claude/skills/<name>` is a
    symlink to it; `AGENTS.md` is unchanged (its block comes from step 1).
@@ -86,8 +82,8 @@ In the Notes app:
 5. **Upgrade from the last release.** In a scratch repo, scaffold with
    `specy-road==0.2.3` from PyPI in its own venv (`init project`, `specyrd
    init --ai claude-code`), commit, then switch to the candidate venv:
-   `refresh-stubs` gives a managed `AGENTS.md` block with a `## Lean changes
-   and tests` section and leaves every line outside the markers unchanged;
+   `refresh-stubs` gives a managed `AGENTS.md` stub and a `.specyrd/AGENTS.md` with a
+   `## Lean changes and tests` section, and leaves every line outside the markers unchanged;
    `refresh-schemas` and `refresh-profiles` add what is missing;
    `refresh-profiles --force <path>` brings a profile's `## Code and test
    tendencies`; `validate` exits 0 (with or without the CHANGELOG's
@@ -262,10 +258,10 @@ coordinator chat (any harness):
    under `sh -c` instead of exec-ing it) and `_finish` appends an `error`
    event (source `worker`, "exit -9; see <id>.log", `detail: {exit: -9,
    ready: …}`, with `137` in place of `-9` under dash) and sets the
-   worker `failed`, not `idle` — even if a READY was written. `worker
-   resume <W>` is then refused ("is failed; delegate again instead"), and
-   `worker delegate <ID>` launches a new worker. Pass: `worker events <W>`
-   and `worker status <W>` show exactly that.
+   worker `failed`, not `idle` — even if a READY was written. It keeps its
+   `provider_session_id`, so `worker resume <W>` reopens that session (same id
+   in the new `started` event); `worker delegate <ID>` instead launches a new
+   worker. Pass: `worker events <W>` and `worker status <W>` show exactly that.
 10. **Finish.** Review and `finish-this-task` the leaf as in §2 (with
     `on_complete: merge`; `pr` cannot land against a bare local remote),
     run **from the leaf's linked worktree** while the coordinator's checkout
@@ -394,3 +390,11 @@ and `expect`; an `expect` may name an outcome that fails the run outright)
 and `runs` (the first runs of the failure rule's sample).
 `tests/test_context_regressions.py` holds the schema and checks the file
 against it. Replace a case rather than adding an eleventh.
+
+## 10. Context feedback (pilot)
+
+Opt-in, outside every pass criterion. Render the executor prompts of §2.8, §4.2 and §5 with `--context-feedback`: the
+prompt then asks for three lines at the end of the summary, `missing:` / `wrong:` / `unused:`, each quoting the brief or
+prompt line or naming the turn, or `none`. Copy them into the evidence file with the prompt's `sha256`. **Triage rule:**
+act on an item only when it quotes a line or names a turn **and** recurs in another run or reproduces against the brief
+and the transcript; record offered / cited / reproduced per run. Hit rate and shipping decision: [`design-notes/context-feedback-pilot.md`](design-notes/context-feedback-pilot.md).

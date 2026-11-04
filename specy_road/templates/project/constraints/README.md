@@ -8,6 +8,7 @@ Operational rules that are **enforced** (or enforceable by CI), not aspirational
 | Max function length (**Python** `.py`; **TS/JS** `.ts` `.tsx` `.js` `.jsx` `.mjs`) | same | same |
 | Optional policy: excludes, overlays, advisory `hard_alerts` | same | same |
 | Roadmap graph | `roadmap/` JSON + `registry.yaml` | `specy-road validate` |
+| Defect classes every reviewer checks | [`review-lessons.md`](review-lessons.md) | `specy-road lessons list` |
 
 **Dependency and supply-chain policy** (Python/npm, advisory scans, review discipline) lives in [`docs/supply-chain-security.md`](../docs/supply-chain-security.md). Enforce it with your own CI jobs and lockfiles.
 

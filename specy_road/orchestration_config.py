@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import copy
 import json
-from datetime import date
+from datetime import date, datetime
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -18,10 +18,13 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from specy_road.git_subprocess import git_stdout
+from specy_road.schema_revision import accepted_at_revision
 
 _PACKAGE_DIR = Path(__file__).resolve().parent
 _ORCHESTRATION_SCHEMA = _PACKAGE_DIR / "templates" / "project" / "schemas" / "orchestration.schema.json"
 ORCHESTRATION_REL = Path("roadmap") / "orchestration.yaml"
+ORCHESTRATION_LOCAL_REL = Path("roadmap") / "orchestration.local.yaml"
+AVAILABILITY_OVERLAY_KEYS = frozenset({"available", "paused_until", "unavailable_until"})
 
 DEFAULT_POLICY: dict[str, Any] = {
     "reviewers_required": 1,
@@ -32,6 +35,10 @@ DEFAULT_POLICY: dict[str, Any] = {
     "max_workers": 2,
     "escalate_same_acceptance_blocks": 3,
     "escalate_review_rounds": 5,
+    "stall_after_seconds": 600,
+    "milestone_full_review": True,
+    "delta_review": True,
+    "reviewer_resumed_delta": False,
 }
 DEFAULT_CONFIG: dict[str, Any] = {
     "version": 1,
@@ -45,6 +52,10 @@ def orchestration_yaml_path(repo_root: Path) -> Path:
     return (repo_root / ORCHESTRATION_REL).resolve()
 
 
+def orchestration_local_path(repo_root: Path) -> Path:
+    return (repo_root / ORCHESTRATION_LOCAL_REL).resolve()
+
+
 @cache
 def _schema_validator() -> Draft202012Validator:
     """Compiled once per process; the schema ships inside the wheel."""
@@ -52,10 +63,17 @@ def _schema_validator() -> Draft202012Validator:
     return Draft202012Validator(schema)
 
 
-def validate_orchestration_dict(data: dict[str, Any]) -> str | None:
-    """Return error message if invalid, else None."""
+def validate_orchestration_dict(data: dict[str, Any], repo_root: Path | None = None,
+                                rev: str | None = None) -> str | None:
+    """Return error message if invalid, else None.
+
+    With ``repo_root``, the file was read at ``rev`` (the working tree when
+    ``None``), and the schema as a specy-road checkout has it there counts too:
+    a leaf that adds a policy key is valid against its own schema.
+    """
     errs = sorted(_schema_validator().iter_errors(data), key=lambda e: list(e.path))
-    if not errs:
+    sub = _ORCHESTRATION_SCHEMA.relative_to(_PACKAGE_DIR).as_posix()
+    if not errs or repo_root is not None and accepted_at_revision(data, sub, repo_root, rev):
         return None
     e = errs[0]
     loc = "/".join(str(x) for x in e.path) if e.path else "(root)"
@@ -71,8 +89,13 @@ def _dates_to_iso(raw: dict[str, Any]) -> None:
             if isinstance(sub.get(key), date):
                 sub[key] = sub[key].isoformat()
     for entry in raw.get("roster") or []:
-        if isinstance(entry, dict) and isinstance(entry.get("unavailable_until"), date):
-            entry["unavailable_until"] = entry["unavailable_until"].isoformat()
+        if not isinstance(entry, dict):
+            continue
+        for key in ("unavailable_until", "paused_until"):
+            if isinstance(entry.get(key), date):
+                entry[key] = entry[key].isoformat()
+            elif isinstance(entry.get(key), datetime):
+                entry[key] = entry[key].replace(microsecond=0).isoformat()
 
 
 def _semantic_error(raw: dict[str, Any]) -> str | None:
@@ -87,17 +110,43 @@ def _semantic_error(raw: dict[str, Any]) -> str | None:
                 f"substitutions/{i}/use: {sub.get('use')!r} must be a roster entry, "
                 "so its family comes from the roster and not from the review file"
             )
+    for i, item in enumerate((raw.get("policy") or {}).get("strong_review") or []):
+        if missing := [m for m in item.get("require_one_of") or [] if m not in ids]:
+            return f"policy/strong_review/{i}/require_one_of: {', '.join(map(repr, missing))} must be roster entries"
     return _date_error(raw)
+
+
+def _paused_until_error(loc: str, val: Any) -> str | None:
+    if val is None:
+        return None
+    s = str(val)
+    if len(s) == 10:
+        try:
+            date.fromisoformat(s)
+        except ValueError:
+            return f"{loc}: {val!r} is not a calendar date (YYYY-MM-DD)"
+        return None
+    try:
+        datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        return f"{loc}: {val!r} is not a date or datetime"
+    return None
 
 
 def _date_error(raw: dict[str, Any]) -> str | None:
     """The schema's ``\\d{4}-\\d{2}-\\d{2}`` admits ``2026-00-00``; these fields are compared as dates."""
     fields = [(f"roster/{i}/unavailable_until", e.get("unavailable_until"))
               for i, e in enumerate(raw.get("roster") or []) if isinstance(e, dict)]
+    fields += [(f"roster/{i}/paused_until", e.get("paused_until"))
+               for i, e in enumerate(raw.get("roster") or []) if isinstance(e, dict)]
     fields += [(f"substitutions/{i}/{k}", s.get(k))
                for i, s in enumerate(raw.get("substitutions") or []) if isinstance(s, dict)
                for k in ("decided", "expires")]
     for loc, val in fields:
+        if loc.endswith("paused_until"):
+            if err := _paused_until_error(loc, val):
+                return err
+            continue
         if val is None:
             continue
         try:
@@ -107,8 +156,80 @@ def _date_error(raw: dict[str, Any]) -> str | None:
     return None
 
 
-def parse_orchestration_text(text: str) -> tuple[dict[str, Any] | None, str | None]:
-    """Parse and validate the file's text. Returns (data, parse_or_schema_error)."""
+def _overlay_roster(path: Path) -> tuple[list[Any] | None, str | None]:
+    """The overlay file's ``roster`` list (empty when the file or key is), or an error."""
+    try:
+        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (yaml.YAMLError, ValueError) as e:
+        return None, f"YAML error in {ORCHESTRATION_LOCAL_REL}: {e}"
+    if raw is None:
+        return [], None
+    if not isinstance(raw, dict):
+        return None, f"{ORCHESTRATION_LOCAL_REL}: must be a mapping"
+    roster = raw.get("roster")
+    if roster is None:
+        return [], None
+    if not isinstance(roster, list):
+        return None, f"{ORCHESTRATION_LOCAL_REL}: roster must be a list"
+    return roster, None
+
+
+def _overlay_patch(i: int, entry: Any) -> tuple[dict[str, Any] | None, str | None]:
+    """One overlay roster entry's availability fields (None when it has none), or an error."""
+    if not isinstance(entry, dict):
+        return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i} must be a mapping"
+    if not entry.get("id"):
+        return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i}/id is required"
+    patch = {k: entry[k] for k in AVAILABILITY_OVERLAY_KEYS if k in entry}
+    if not patch:
+        return None, None
+    if "available" in patch and not isinstance(patch["available"], bool):
+        return None, f"{ORCHESTRATION_LOCAL_REL}: roster/{i}/available must be true or false"
+    _dates_to_iso({"roster": [patch]})
+    for key in ("paused_until", "unavailable_until"):
+        if err := _paused_until_error(f"{ORCHESTRATION_LOCAL_REL}/roster/{i}/{key}", patch.get(key)):
+            return None, err
+    return patch, None
+
+
+def load_availability_overlay(repo_root: Path) -> tuple[dict[str, dict[str, Any]] | None, str | None]:
+    """``roadmap/orchestration.local.yaml``: local roster availability overrides, not committed."""
+    path = orchestration_local_path(repo_root)
+    if not path.is_file():
+        return None, None
+    roster, err = _overlay_roster(path)
+    if err:
+        return None, err
+    out: dict[str, dict[str, Any]] = {}
+    for i, entry in enumerate(roster or []):
+        patch, err = _overlay_patch(i, entry)
+        if err:
+            return None, err
+        if patch:
+            out[str(entry["id"])] = patch
+    return out, None
+
+
+def apply_availability_overlay(config: dict[str, Any], overlay: dict[str, dict[str, Any]] | None) -> None:
+    """Merge overlay fields onto committed roster entries by ``id`` (in place)."""
+    if not overlay:
+        return
+    by_id = {str(e.get("id")): e for e in config.get("roster") or [] if e.get("id")}
+    for rid, patch in overlay.items():
+        entry = by_id.get(rid)
+        if entry is None:
+            continue
+        for key, val in patch.items():
+            if val is None:
+                entry.pop(key, None)
+            else:
+                entry[key] = val
+
+
+def parse_orchestration_text(text: str, repo_root: Path | None = None,
+                             rev: str | None = None) -> tuple[dict[str, Any] | None, str | None]:
+    """Parse and validate the file's text, read at ``rev`` of ``repo_root`` when given
+    (:func:`validate_orchestration_dict`). Returns (data, parse_or_schema_error)."""
     try:
         raw = yaml.safe_load(text)
     except (yaml.YAMLError, ValueError) as e:   # ValueError: an impossible date such as 2026-00-00
@@ -116,7 +237,7 @@ def parse_orchestration_text(text: str) -> tuple[dict[str, Any] | None, str | No
     if not isinstance(raw, dict):
         return None, f"{ORCHESTRATION_REL}: must be a mapping"
     _dates_to_iso(raw)
-    err = validate_orchestration_dict(raw) or _semantic_error(raw)
+    err = validate_orchestration_dict(raw, repo_root, rev) or _semantic_error(raw)
     if err:
         return None, f"{ORCHESTRATION_REL}: {err}"
     return raw, None
@@ -132,11 +253,11 @@ def load_orchestration_config(
     """
     if ref is not None:
         text = git_stdout(["show", f"{ref}:./{ORCHESTRATION_REL.as_posix()}"], repo_root)   # ./ = project-root relative
-        return (None, None) if text is None else parse_orchestration_text(text)
+        return (None, None) if text is None else parse_orchestration_text(text, repo_root, ref)
     path = orchestration_yaml_path(repo_root)
     if not path.is_file():
         return None, None
-    return parse_orchestration_text(path.read_text(encoding="utf-8"))
+    return parse_orchestration_text(path.read_text(encoding="utf-8"), repo_root)
 
 
 def effective_config(repo_root: Path, ref: str | None = None) -> tuple[dict[str, Any], str | None]:
@@ -148,12 +269,19 @@ def effective_config(repo_root: Path, ref: str | None = None) -> tuple[dict[str,
     refuse (the review gate does) instead of silently relaxing.
     """
     data, err = load_orchestration_config(repo_root, ref)
-    if err or data is None:
+    if err:
         return copy.deepcopy(DEFAULT_CONFIG), err
-    out = copy.deepcopy(data)
-    out["policy"] = {**DEFAULT_POLICY, **(data.get("policy") or {})}
-    out.setdefault("roster", [])
-    out.setdefault("substitutions", [])
+    if data is None:
+        out = copy.deepcopy(DEFAULT_CONFIG)
+    else:
+        out = copy.deepcopy(data)
+        out["policy"] = {**DEFAULT_POLICY, **(data.get("policy") or {})}
+        out.setdefault("roster", [])
+        out.setdefault("substitutions", [])
+    overlay, overlay_err = load_availability_overlay(repo_root)
+    if overlay_err:
+        return copy.deepcopy(DEFAULT_CONFIG), overlay_err
+    apply_availability_overlay(out, overlay)
     return out, None
 
 
@@ -162,6 +290,56 @@ def roster_entry(config: dict[str, Any], model_id: str) -> dict[str, Any] | None
         if entry.get("id") == model_id:
             return entry
     return None
+
+
+def harness_model(entry: dict[str, Any], profile_api_id: str | None = None) -> str | None:
+    """The model id a harness is told for roster ``entry``: its ``harness_model``, else the profile's ``api_id``,
+    else the roster ``id``. ``None`` (a profile whose ``api_id`` is ``unknown``) means the harness's default."""
+    if entry.get("harness_model"):
+        return str(entry["harness_model"])
+    if profile_api_id is not None:
+        return None if profile_api_id.strip().lower() in ("", "unknown") else profile_api_id
+    return str(entry["id"])
+
+
+def harness_model_warnings(config: dict[str, Any]) -> list[str]:
+    """Claude Code entries whose ``id`` has a dot and no ``harness_model``: ``claude --model`` ids use dashes."""
+    return [f"roster entry {e.get('id')!r} runs on claude-code and its id has a dot; set harness_model to the id "
+            "`claude --model` expects (e.g. claude-opus-5-5), or the default command may pass an unknown model"
+            for e in config.get("roster") or []
+            if e.get("harness") == "claude-code" and "." in str(e.get("id")) and not e.get("harness_model")]
+
+
+def entry_routing(repo_root: Path, entry: dict[str, Any]) -> str:
+    """``dynamic`` when the entry declares ``routing: dynamic``, or runs on ``cursor`` told no model or ``auto``
+    (fresh Cursor CLI installs route Auto): its ``channels.cli``'s ``--model`` when that is one simple command
+    (``worker_models.command_model``; a list or pipeline is unknown), else :func:`harness_model` with the committed
+    profile's ``api_id``, as ``review delegate`` passes it. Else ``fixed``."""
+    if entry.get("routing") == "dynamic":
+        return "dynamic"
+    if entry.get("harness") != "cursor":
+        return "fixed"
+    cli = (entry.get("channels") or {}).get("cli")
+    if cli:
+        from specy_road.worker_models import command_model  # noqa: PLC0415 — worker modules load late
+        model = command_model(cli)
+    else:
+        from specy_road.orchestration_pinned import pinned_profile_for_entry  # noqa: PLC0415 — it imports this module
+        prof = pinned_profile_for_entry(repo_root, entry)
+        model = harness_model(entry, prof.api_id if prof is not None and prof.ok else "")
+    return "dynamic" if model is None or model.strip().lower() == "auto" else "fixed"
+
+
+def routing_problem(repo_root: Path, config: dict[str, Any], data: dict[str, Any]) -> str | None:
+    """Why an approval does not count under ``reviewers_distinct_families``: its entry's harness routes models
+    dynamically (:func:`entry_routing`) and the entry is not ``pinned``, so the family behind it is not known."""
+    entry = roster_entry(config, data["model"]) or {}
+    if (data.get("verdict") != "approve" or not config["policy"].get("reviewers_distinct_families")
+            or entry.get("pinned") or entry_routing(repo_root, entry) == "fixed"):
+        return None
+    return (f"{data['model']!r} runs on a harness that routes models dynamically (routing: dynamic, or cursor with "
+            "no model or auto), so its family is not known; it counts toward distinct families only once its roster "
+            "entry sets pinned: true")
 
 
 def family_of(config: dict[str, Any], model_id: str) -> str | None:

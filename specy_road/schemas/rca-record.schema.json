@@ -15,10 +15,13 @@
       "required": ["rule", "round"],
       "additionalProperties": false,
       "properties": {
-        "rule": { "enum": ["same_acceptance", "review_rounds"] },
+        "rule": { "enum": ["same_acceptance", "same_family", "review_rounds", "forced"] },
         "acceptance_ids": { "type": "array", "items": { "$ref": "#/$defs/acceptanceId" } },
-        "round": { "type": "integer", "minimum": 1, "description": "Review rounds in the history when the prompt was built, as the prompt names it; the record resolves every round up to it. A round beyond the history makes the record invalid." }
-      }
+        "round": { "type": "integer", "minimum": 1, "description": "Review rounds in the history when the prompt was built, as the prompt names it; the record resolves every round up to it. A round beyond the history makes the record invalid." },
+        "reason": { "type": "string", "minLength": 1, "description": "Rule forced only: the reason the coordinator gave `prompt --role rca --force --reason`." }
+      },
+      "if": { "properties": { "rule": { "const": "forced" } } },
+      "then": { "required": ["reason"] }
     },
     "classification": {
       "type": "object",

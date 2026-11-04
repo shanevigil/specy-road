@@ -1,7 +1,7 @@
 """Read model profiles (``model-profiles/<family>/<api_id>.md``) for the roster.
 
 A profile is Markdown with a schema-2 YAML front matter (the machine part: ids,
-limits, prices, ``role_fit``, ``access.cli``, ``effort_map``) and body sections
+limits, prices, ``role_fit``, ``access.cli``, ``effort_map``, ``effort_by_role``, ``launch_mode``) and body sections
 (``## Strengths``, ``## Failure modes``, ``## Prompting rules``, …). The
 toolkit ships a canonical set and ``init project`` scaffolds them into the
 adopter's repo, where a roster entry's ``profile`` key points at one; the team
@@ -17,10 +17,13 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field, replace
 from datetime import date
+from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import yaml
+
+from specy_road.orchestration_config import load_orchestration_config
 
 PROFILES_REL = Path("model-profiles")
 PROFILE_SCHEMA = 2
@@ -28,6 +31,9 @@ PROFILE_SCHEMA = 2
 DEFAULT_MAX_AGE_DAYS = 180
 ROLES = ("coordinator", "executor", "reviewer")
 _REQUIRED = ("profile_schema", "family", "model", "api_id", "version_rank", "researched", "access", "role_fit")
+#: ``access.launch_mode``: ``full`` lets the harness discover its hooks, skills, MCP servers and
+#: CLAUDE.md; ``bare`` (Claude Code's ``--bare``) skips them. Absent means ``full``.
+LAUNCH_MODES = ("full", "bare")
 
 
 @dataclass
@@ -75,6 +81,21 @@ class Profile:
         access = self.data.get("access")
         cli = access.get("cli") if isinstance(access, dict) else None
         return None if not isinstance(cli, str) or cli.strip().lower() == "none" else cli
+
+    def launch_mode(self) -> str:
+        """``access.launch_mode``, ``full`` when absent (an invalid value is a profile error)."""
+        access = self.data.get("access")
+        return str((access.get("launch_mode") if isinstance(access, dict) else None) or "full")
+
+    def effort(self, role: str) -> str | None:
+        """The model's own effort level for ``role``: ``effort_map[effort_by_role[role]]``, else ``None``."""
+        access = self.data.get("access")
+        if not isinstance(access, dict) or not isinstance(access.get("effort_by_role"), dict) \
+                or not isinstance(access.get("effort_map"), dict):
+            return None
+        key = access["effort_by_role"].get(role)
+        level = access["effort_map"].get(key) if isinstance(key, str) else None
+        return str(level) if level is not None else None
 
     def bullets(self, section: str) -> list[str]:
         """The ``- `` items under ``## <section>``, without the dash."""
@@ -129,7 +150,24 @@ def _as_date(raw: Any) -> date | None:
         return None
 
 
-def _structure_errors(data: dict[str, Any]) -> list[str]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
+def _effort_errors(access: dict[str, Any], name: str) -> list[str]:
+    """``access.effort_by_role``: each role names an ``effort_map`` key with a known level."""
+    by_role = access["effort_by_role"]
+    if not isinstance(by_role, dict):
+        return [f"profile {name}: `access.effort_by_role` must be a mapping of role → effort_map key"]
+    levels = access.get("effort_map") if isinstance(access.get("effort_map"), dict) else {}
+    out = []
+    for role, key in by_role.items():
+        if role not in ROLES:
+            out.append(f"profile {name}: `access.effort_by_role` names unknown role {role!r}; "
+                       f"expected {', '.join(ROLES)}")
+        elif not isinstance(key, str) or key not in levels or str(levels[key]).lower() == "unknown":
+            out.append(f"profile {name}: `access.effort_by_role.{role}` is {key!r}, not an effort_map key "
+                       f"with a known level ({', '.join(str(k) for k, v in levels.items() if str(v).lower() != 'unknown')})")
+    return out
+
+
+def _structure_errors(data: dict[str, Any], name: str) -> list[str]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """Shapes the readers assume: wrong ones made ``profile_ok`` true and then raised."""
     out = []
     access = data.get("access")
@@ -140,6 +178,10 @@ def _structure_errors(data: dict[str, Any]) -> list[str]:  # noqa: C901 — base
             out.append("`access.cli` must be a string")
         if "effort_map" in access and not isinstance(access["effort_map"], dict):
             out.append("`access.effort_map` must be a mapping")
+        if "launch_mode" in access and access["launch_mode"] not in LAUNCH_MODES:
+            out.append(f"profile {name}: `access.launch_mode` must be full or bare, not {access['launch_mode']!r}")
+        if "effort_by_role" in access:
+            out += _effort_errors(access, name)
     fit = data.get("role_fit")
     if "role_fit" in data and not isinstance(fit, dict):
         out.append("`role_fit` must be a mapping of role → {score, reason}")
@@ -171,7 +213,7 @@ def parse_profile(path: Path, text: str) -> Profile:
     errors = [f"missing `{k}`" for k in _REQUIRED if k not in data]
     if data.get("profile_schema") != PROFILE_SCHEMA:
         errors.append(f"profile_schema is {data.get('profile_schema')!r}, expected {PROFILE_SCHEMA}")
-    return Profile(path, data, _sections(body), errors + _structure_errors(data))
+    return Profile(path, data, _sections(body), errors + _structure_errors(data, path.stem))
 
 
 def load_profile(path: Path) -> Profile:
@@ -212,6 +254,23 @@ def display_rel(repo_root: Path, path: Path) -> str:
         return str(path)
 
 
+def unmatched_roster_ids(
+    entries: list[dict[str, Any]],
+    resolve: Callable[[dict[str, Any]], Profile | None],
+) -> list[str]:
+    """Roster entry ``id`` values ``resolve(entry)`` could not match to any profile.
+
+    Entries with ``family: human`` are omitted: a person is not a model profile.
+    """
+    out: list[str] = []
+    for entry in entries:
+        if entry.get("family") == "human":
+            continue
+        if resolve(entry) is None:
+            out.append(entry["id"])
+    return out
+
+
 def profile_for_entry(repo_root: Path, entry: dict[str, Any]) -> Profile | None:
     """The roster entry's profile **from the working tree**: its ``profile`` path, else the first
     profile whose :meth:`Profile.for_id` matches its ``id``.
@@ -227,3 +286,43 @@ def profile_for_entry(repo_root: Path, entry: dict[str, Any]) -> Profile | None:
         prof = load_profile((repo_root / str(rel)).resolve())
         return prof.for_id(entry.get("id")) or prof
     return next((m for p in list_profiles(repo_root) if (m := p.for_id(entry.get("id")))), None)
+
+
+def closest_profile(model_id: str, profiles: list[Profile]) -> Profile | None:
+    """The profile with a name (``api_id``, file name or alias) most like ``model_id``, ``None`` without any."""
+    def score(p: Profile) -> float:
+        aliases = p.data.get("aliases") if isinstance(p.data.get("aliases"), list) else []
+        names = [str(p.data.get("api_id") or ""), p.path.stem, *map(str, aliases)]
+        return max(SequenceMatcher(None, model_id, n).ratio() for n in names)
+    return max(profiles, key=score, default=None)
+
+
+def _launchable(entry: dict[str, Any]) -> bool:
+    """The entry names a ``harness`` or a ``channels.cli``, so a worker can be started for it."""
+    channels = entry.get("channels")
+    return bool(entry.get("harness") or (isinstance(channels, dict) and channels.get("cli")))
+
+
+def roster_profile_gaps(repo_root: Path) -> list[tuple[bool, str]]:
+    """``(launchable, message)`` per working-tree roster entry with an ``executor`` or ``reviewer``
+    role that :func:`profile_for_entry` matches to no profile, naming the closest one: without a
+    match the profile's model notes never reach that entry's prompts. ``launchable`` is
+    :func:`_launchable`; an entry nothing can launch (the starter's placeholder) is only a notice."""
+    config, err = load_orchestration_config(repo_root)
+    if err or not config:
+        return []
+    entries = [e for e in config.get("roster") or []
+               if {"executor", "reviewer"} & set(e.get("roles") or [])]
+    missing = unmatched_roster_ids(entries, lambda entry: profile_for_entry(repo_root, entry))
+    profiles = list_profiles(repo_root) if missing else []
+    by_id = {e["id"]: e for e in entries}
+    out = []
+    for mid in missing:
+        near = closest_profile(str(mid), profiles)
+        hint = (f"closest profile is {display_rel(repo_root, near.path)} (api_id {near.data.get('api_id')}); "
+                "list the id in its `aliases` or give the entry `profile:`") if near else \
+            f"no profiles under {PROFILES_REL}/; add one or give the entry `profile:`"
+        out.append((_launchable(by_id[mid]),
+                    f"roster entry {mid!r} in roadmap/orchestration.yaml matches no model profile by api_id, "
+                    f"file name or alias, so its model notes never reach its prompts; {hint}"))
+    return out

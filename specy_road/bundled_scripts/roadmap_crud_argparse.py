@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import sys
+from pathlib import Path
 
 from specy_road.bundled_scripts.roadmap_crud_dependency_ops import (
     cmd_add_dependency,
@@ -10,8 +12,10 @@ from specy_road.bundled_scripts.roadmap_crud_dependency_ops import (
     cmd_list_dependencies,
     cmd_remove_dependency,
     cmd_set_dependencies,
+    resolve_dependency_refs,
 )
-from specy_road.bundled_scripts.roadmap_edit_fields import ROADMAP_NODE_STATUSES
+from specy_road.bundled_scripts.roadmap_edit_fields import LIST_KEYS, ROADMAP_NODE_STATUSES
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
 from specy_road.bundled_scripts.roadmap_crud_ops import (
     cmd_add,
@@ -20,6 +24,8 @@ from specy_road.bundled_scripts.roadmap_crud_ops import (
     cmd_list,
     cmd_set_gate_status,
     cmd_show,
+    repo_root,
+    unknown_node_msg,
 )
 from specy_road.runtime_paths import add_repo_root_arg
 
@@ -122,14 +128,77 @@ def _p_add(sub: argparse._SubParsersAction) -> None:
     sp.set_defaults(func=cmd_add)
 
 
+def _list_entries(root: Path, key: str, raw: str) -> list[str]:
+    """The stored entries one ``--add`` / ``--remove`` value names."""
+    if key == "touch_zones":
+        return [p.strip() for p in raw.split(",") if p.strip()]
+    if key == "dependencies":
+        return resolve_dependency_refs(root, [raw])
+    return [raw]
+
+
+def expand_list_edits(args: argparse.Namespace) -> bool:
+    """Turn ``--add`` / ``--remove`` into the whole ``--set`` list each touched field needs.
+
+    The merge reads the node's current list, so a caller widening one zone
+    need not restate the rest; the result goes through ``cmd_edit`` like any
+    ``--set``, so validation and the claim row's zones follow unchanged.
+    A duplicate add or a missing remove leaves the list as it is, with a note.
+    Returns ``False`` when nothing is left to write.
+    """
+    sets = list(getattr(args, "set", None) or [])
+    edits = [(op, item) for op in ("add", "remove") for item in getattr(args, op, None) or []]
+    args.set = sets
+    if not edits:
+        if not sets:
+            raise ValueError("edit-node needs at least one --set, --add or --remove")
+        return True
+    root = repo_root(args)
+    node = next((n for n in load_roadmap(root)["nodes"] if n.get("id") == args.node_id), None)
+    if node is None:
+        raise ValueError(unknown_node_msg(args.node_id))
+    set_keys = {s.partition("=")[0].strip() for s in sets}
+    lists: dict[str, list[str]] = {}
+    changed: set[str] = set()
+    for op, item in edits:
+        key, eq, raw = (part.strip() for part in item.partition("="))
+        if not eq or key not in LIST_KEYS or not raw:
+            raise ValueError(f"--{op} takes LIST_FIELD=ENTRY ({', '.join(LIST_KEYS)}), got {item!r}")
+        if key in set_keys:
+            raise ValueError(f"--set {key}= and --{op} {key}= in one edit; use one or the other")
+        cur = lists.setdefault(key, [str(x) for x in node.get(key) or []])
+        for entry in _list_entries(root, key, raw):
+            if (entry in cur) == (op == "add"):
+                state = "already lists" if op == "add" else "does not list"
+                print(f"[note] {args.node_id} {state} {key} entry {entry!r}; left as is", file=sys.stderr)
+                continue
+            if op == "add":
+                cur.append(entry)
+            else:
+                cur.remove(entry)
+            changed.add(key)
+    args.set = sets + [f"{k}={v}" for k in lists if k in changed for v in lists[k] or [""]]
+    return bool(args.set)
+
+
+def _cmd_edit_node(args: argparse.Namespace) -> None:
+    try:
+        if not expand_list_edits(args):
+            print(f"[ok] {args.node_id} unchanged")
+            return
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from None
+    cmd_edit(args)
+
+
 def _p_edit(sub: argparse._SubParsersAction) -> None:
-    sp = sub.add_parser("edit-node", help="Patch fields on a node (--set key=value)")
+    sp = sub.add_parser("edit-node", help="Patch fields on a node (--set key=value, --add/--remove list entries)")
     sp.add_argument("node_id", metavar="NODE_ID")
     sp.add_argument(
         "--set",
         dest="set",
         action="append",
-        required=True,
         metavar="KEY=VALUE",
         help=(
             "Field to set; repeatable. List fields (acceptance, risks, touch_zones, "
@@ -138,6 +207,17 @@ def _p_edit(sub: argparse._SubParsersAction) -> None:
             "'|' is not a separator. An empty value (acceptance=) removes the field."
         ),
     )
+    for op, verb in (("add", "Append"), ("remove", "Drop")):
+        sp.add_argument(
+            f"--{op}",
+            action="append",
+            metavar="KEY=ENTRY",
+            help=(
+                f"{verb} one entry of a list field (acceptance, risks, touch_zones, "
+                "dependencies) and keep the rest; repeatable. Not combined with --set "
+                "of the same field. dependencies takes a node_key or a display id."
+            ),
+        )
     sp.add_argument(
         "--sync-codename",
         action="store_true",
@@ -150,7 +230,7 @@ def _p_edit(sub: argparse._SubParsersAction) -> None:
             "mid-flight desynchronizes a live branch from its node."
         ),
     )
-    sp.set_defaults(func=cmd_edit)
+    sp.set_defaults(func=_cmd_edit_node)
 
 
 def _p_set_gate_status(sub: argparse._SubParsersAction) -> None:

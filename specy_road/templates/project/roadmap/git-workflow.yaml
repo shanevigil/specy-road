@@ -16,6 +16,11 @@ require_implementation_before_finish: true
 # Omit or set true for default; set false to keep those files (CLI --no-cleanup-work also skips).
 cleanup_work_artifacts_on_finish: true
 # Optional: merge_request_requires_manual_approval: true
+# Whether worker logs travel with the leaf: "off" (default; work/.workers/ stays
+# local), "events" (each worker's event log is mirrored to work/worker-logs/<NODE_ID>/
+# and committed by finish-this-task) or "full" (the raw output log too). Logs get
+# long, and full can add megabytes per leaf. Quote the value: bare off is YAML false.
+# track_worker_logs: "off"
 # How finish-this-task lands work: pr | merge | auto. Declared explicitly rather
 # than left to the built-in default so the mode is never implicit. Change this to
 # merge (or auto) before running grind-session: the loop refuses to start in pr

@@ -17,6 +17,7 @@ from specy_road.git_workflow_config import (
     should_cleanup_work_artifacts_on_finish,
 )
 from specy_road.finish_implementation_check import implementation_or_exit
+from specy_road.finish_task_gates import human_acceptance_or_exit
 from specy_road.planning_scaffold_check import scaffold_planning_or_exit
 from specy_road.review_gate import gate_holds_at_head_or_exit, review_required, trial_merge_or_exit
 from specy_road.finish_pr_body import pr_body_modes, write_pr_body
@@ -24,6 +25,7 @@ from specy_road.finish_work_artifacts import (
     cleanup_session_sidecar,
     cleanup_work_artifacts,
     warn_if_pr_body_tracked,
+    worker_logs_to_stage,
 )
 from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.finish_milestone_rollout import (
@@ -36,6 +38,8 @@ from specy_road.finish_modes import (
     delete_branch_preflight,
     merge_landing_preflight,
 )
+from specy_road.finish_pr_merge import pr_merge_integration_or_exit
+from specy_road.finish_on_complete_override import on_complete_override_or_exit
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context_for_finish
 from specy_road.generated_files import (
     GENERATED_COMMITTED,
@@ -49,6 +53,9 @@ from specy_road.on_complete_session import (
 )
 from specy_road.runtime_paths import resolve_repo_root
 from specy_road.bundled_scripts.repo_ops import current_branch, git_run
+from specy_road.repo_lock import pickup_finish_lock
+from specy_road.worker_orphans import end_finished_workers
+from specy_road.worker_state import WorkerError
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
 #: so the name exists at import. Resolving the real root here would make
@@ -81,11 +88,12 @@ def _resolve_context(
     *,
     delete_branch: bool = False,
     no_milestone_rollup: bool = False,
+    land_check_cmd: str | None = None,
 ) -> tuple[str, dict, dict, list[dict]]:
     """Return (codename, registry_doc, entry, nodes) or raise SystemExit."""
     return resolve_feature_rm_registry_context_for_finish(
         ROOT, branch, on_complete, delete_branch=delete_branch,
-        no_milestone_rollup=no_milestone_rollup,
+        no_milestone_rollup=no_milestone_rollup, land_check_cmd=land_check_cmd,
     )
 
 
@@ -150,7 +158,7 @@ def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
     """Resolve all main-time context in one call (keeps main() under cap)."""
     codename, reg, entry, nodes = _resolve_context(
         branch, args.on_complete, delete_branch=args.delete_branch,
-        no_milestone_rollup=args.no_milestone_rollup,
+        no_milestone_rollup=args.no_milestone_rollup, land_check_cmd=args.land_check_cmd,
     )
     node_id = entry["node_id"]
     node = next(n for n in nodes if n["id"] == node_id)
@@ -162,18 +170,16 @@ def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
     on_mode = resolve_on_complete(
         ROOT, cli=args.on_complete, session=session_oc,
     )
-    delete_branch_preflight(
-        on_mode,
-        delete_branch=args.delete_branch,
-        rollup=rollup_session_applies(
-            read_milestone_session(milestone_session_path(work_dir)),
-            skip=args.no_milestone_rollup,
-            node_id=node_id,
-            nodes=nodes,
-        ),
+    rollup = rollup_session_applies(
+        read_milestone_session(milestone_session_path(work_dir)),
+        skip=args.no_milestone_rollup,
+        node_id=node_id,
+        nodes=nodes,
     )
+    delete_branch_preflight(on_mode, delete_branch=args.delete_branch, rollup=rollup)
     trial_merge_or_exit(ROOT)
     scaffold_planning_or_exit(ROOT, node, allow=args.allow_scaffold_planning)
+    human_acceptance_or_exit(ROOT, node)
     _impl_review_or_exit(entry, node)
     ib, gw_remote, _gw = resolve_integration_defaults(
         ROOT, explicit_base=None, explicit_remote=None,
@@ -192,7 +198,7 @@ def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
         "codename": codename, "reg": reg, "entry": entry, "nodes": nodes,
         "node": node, "node_id": node_id, "work_dir": work_dir,
         "sess_path": sess_path, "on_mode": on_mode, "ib": ib,
-        "gw_remote": gw_remote,
+        "gw_remote": gw_remote, "rollup": rollup,
     }
 
 
@@ -251,7 +257,15 @@ def _bookkeeping_commit_phase(
     *,
     pr_body_path: Path | None = None,
     sess_path: Path | None = None,
+    pr_integration: tuple[str, str] | None = None,
 ) -> None:
+    """Commit the bookkeeping, then push under ``--push``.
+
+    ``pr_integration`` is ``(integration branch, remote)`` under
+    ``on_complete: pr``: before anything is pushed, the integration tip is
+    merged in when only bookkeeping conflicts, and finish exits 1 when
+    anything else does, so the PR never opens conflicted.
+    """
     changed_files = _update_chunk_status(node_id)
     for rel in complete_rolled_up_ancestors(ROOT, node_id):
         if rel not in changed_files:
@@ -276,20 +290,41 @@ def _bookkeeping_commit_phase(
     ):
         work_tracked_removals = cleanup_work_artifacts(ROOT, node_id)
     work_tracked_removals.extend(cleanup_session_sidecar(ROOT, sess_path))
+    changed_files.extend(worker_logs_to_stage(ROOT, node_id))
     changed_files.extend(_stageable_generated_files())
     changed_files.extend(work_tracked_removals)
     git_run(ROOT, "add", *changed_files)
     git_run(ROOT, "commit", "-m", f"chore(rm-{codename}): complete, deregister")
     print("\n[ok] bookkeeping committed")
+    if pr_integration is not None:
+        pr_merge_integration_or_exit(ROOT, branch=branch, ib=pr_integration[0], remote=pr_integration[1])
     if args.push:
         print(f"-> git push -u {args.remote} {branch}")
         git_run(ROOT, "push", "-u", args.remote, branch)
+
+
+def _end_leaf_workers(node_id: str) -> None:
+    """The finished leaf's idle and completed workers can get no fix round now: terminate them (each records a
+    ``terminated`` event) so their ``max_workers`` slots free. Best effort: a failure here never fails the finish."""
+    try:
+        ended = end_finished_workers(ROOT, node_id)
+    except (WorkerError, OSError) as e:
+        print(f"[warn] could not terminate {node_id}'s workers ({e}); "
+              "`specy-road worker terminate --orphaned` ends them once the leaf lands")
+        return
+    for rec, why in ended:
+        print(f"[ok] terminated worker {rec.worker_id}: {why}")
 
 
 def main(argv: list[str] | None = None) -> None:
     global ROOT
     args = parse_finish_args(argv if argv is not None else sys.argv[1:])
     ROOT = resolve_repo_root(args)
+    with pickup_finish_lock(ROOT, operation="finish-this-task"):
+        _finish_locked(args)
+
+
+def _finish_locked(args) -> None:
     branch = current_branch(ROOT)
     if not branch.startswith("feature/rm-"):
         print(
@@ -298,6 +333,10 @@ def main(argv: list[str] | None = None) -> None:
             file=sys.stderr,
         )
         raise SystemExit(1)
+    on_complete_override_or_exit(
+        ROOT, cli=args.on_complete, branch=branch,
+        acknowledged=args.override_on_complete,
+    )
 
     ctx = _resolve_main_context(args, branch)
     codename, reg, nodes = ctx["codename"], ctx["reg"], ctx["nodes"]
@@ -321,7 +360,9 @@ def main(argv: list[str] | None = None) -> None:
     _bookkeeping_commit_phase(
         args, codename, node_id, branch, reg,
         pr_body_path=pr_body_path, sess_path=sess_path,
+        pr_integration=(ib, gw_remote) if on_mode == "pr" and not ctx["rollup"] else None,
     )
+    _end_leaf_workers(node_id)
     mr_manual = merge_request_requires_manual_approval(ROOT)
 
     if try_milestone_rollup_finish(

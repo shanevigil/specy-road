@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI for `specy-road handoff status`, `specy-road review record` and `specy-road review list`.
+"""CLI for `specy-road handoff status`, `specy-road review record|list|delegate` and `specy-road ready`.
 
 ``handoff status`` is what a coordinator polls: for each node with a
 ``work/reviews/<NODE_ID>/`` directory it reports the READY hand-off, every
@@ -11,9 +11,12 @@ whose review loop is not converging and has no root-cause analysis for it is
 ``escalated`` (exit 1), with the trigger named (``review_rca``).
 ``review record`` validates one reviewer's notes, fills in the family from the
 roster, labels same-family independence, and files the record as
-``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``.
-``review list`` prints the filed records, any RCA records, the escalation and
-the gate evaluation, and writes nothing.
+``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``. It refuses an approve whose
+findings or notes name a defect with neither a ``required_changes`` entry nor a ``not a defect because`` line
+(:mod:`specy_road.review_record_rules`).
+``review list`` prints the filed records, any RCA records, the escalation and the gate evaluation, and writes nothing.
+Both commands report the leaf's review rounds (distinct reviewed commits), the time from its first review to the latest,
+and each ``review delegate`` run with its commit; an older commit's record never reads as the current verdict.
 """
 
 from __future__ import annotations
@@ -27,22 +30,23 @@ from typing import Any
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.orchestration_config import substitute_for
+from specy_road.red_green import cmd_red_green
 from specy_road.review_files import (
-    HUMAN,
-    archive_review,
-    latest_ready,
-    list_ready,
-    list_reviews,
-    load_review,
-    node_ids_with_reviews,
-    render_front_matter,
-    review_path,
-    non_gating_verify_problems,
+    REVIEW_LAUNCH_MODES, archive_review, executor_blocked_display_lines, latest_ready, list_ready,
+    list_reviews, node_ids_with_reviews, non_gating_verify_problems, render_front_matter,
+    review_path, reviews_root, round_span, write_review,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
+from specy_road.toolkit_version import stamp_review_toolkit_version
+from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states, gate_policy_summary
+from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
+from specy_road.review_ready_merge import add_ready_parser
+from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
+from specy_road.review_record_rules import check_record
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
-from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
+from specy_road.review_target import (ReviewTarget, ReviewTargetError, milestone_status,
+                                      resolve_target, same_commit)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.session_presence import list_sessions
 from specy_road.worker_state import list_records
@@ -64,34 +68,43 @@ def _state(root: Path, t: ReviewTarget, gate: GateResult, ready_commit: str | No
 def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, Any]:
     t = resolve_target(root, node_id, ref)
     branch = (t.entry or {}).get("branch")
+    aids = acceptance_ids(t.node)
     gate = evaluate_gate(root, t.node, t.commit, branch=branch)
-    ready = latest_ready(root, node_id, branch)
+    ready = latest_ready(root, node_id, branch, aids)
     ready_commit = ready.data["commit"] if ready else None
-    tm = trial_merge(root, t.ref, t.base_ref)
-    merge_problem = [tm.problem()] if tm and tm.problem() else []
+    # A current READY's blocked_on outranks reviewer blocks and escalation (A3).
+    blocked_lines = executor_blocked_display_lines(ready) if same_commit(root, ready_commit, t.commit) else []
     loop = loop_state(root, node_id)
     escalated = loop.escalation is not None and not gate.passed
+    state = "executor_blocked" if blocked_lines else "escalated" if escalated else _state(root, t, gate, ready_commit)
+    state, hints = milestone_status(t, state)
+    tm = trial_merge(root, t.ref, t.base_ref)
+    merge_problem = ([tm.problem()] if tm and tm.problem() else []) + hints
     return {
         "node_id": node_id,
-        "state": "escalated" if escalated else _state(root, t, gate, ready_commit),
+        "state": state,
         "escalation": loop.escalation.to_dict() if escalated else None,
         "ref": t.ref,
         "commit": gate.commit,
+        "executor_blocked": blocked_lines,
         "ready": [
             {"file": r.path.name, "commit": r.data.get("commit"), "errors": r.errors}
-            for r in list_ready(root, node_id, branch)
+            for r in list_ready(root, node_id, branch, aids)
         ],
         "reviews": [
             {"file": c.review.path.name, "model": c.model, "family": c.family,
              "verdict": c.verdict, "counted": True, "signed": bool(c.review.data.get("signature")),
+             "launch_mode": c.review.data.get("launch_mode"),
              "commands_rerun": list(c.review.data.get("commands_rerun") or [])}
             for c in gate.approvals + gate.blocks
         ],
-        "policy": gate.summary(),
+        "review_rounds": round_span(root, node_id),
+        "review_runs": (runs := run_states(root, node_id, gate.commit)),
+        "policy": gate_policy_summary(gate, runs), "reviewer_eligibility": reviewer_eligibility(root, t.node, gate, branch),
         "policy_met": gate.passed,
         "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
                         "blocking": tm.code_conflicts} if tm and tm.conflicts else None,
-        "problems": merge_problem + gate.problems() + non_gating_verify_problems(ready) + loop.problems(),
+        "problems": merge_problem + gate.problems() + non_gating_verify_problems(ready) + loop.problems() + run_problems(node_id, runs),
     }
 
 
@@ -106,14 +119,20 @@ def _render(st: dict[str, Any]) -> list[str]:
     for r in st["reviews"]:
         rerun = r.get("commands_rerun") or []
         extra = f"; reviewer re-ran {', '.join(rerun)!r}" if rerun else ""
-        lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']})"
-                     f"{' [signed]' if r['signed'] else ''}{extra}")
-    lines.append(f"  policy: {st['policy']}")
+        mode = f", launch mode {r['launch_mode']}" if r.get("launch_mode") else ""
+        at = "" if r["counted"] else f" at {str(r.get('commit') or '?')[:12]}, not evaluated"
+        lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']}){at}"
+                     f"{' [signed]' if r['signed'] else ''}{mode}{extra}")
+    lines += [f"  {line}" for line in run_lines(st.get("review_runs") or [])]
+    lines.append(f"  {st['review_rounds']['line']}")
+    lines += [f"  policy: {st['policy']}"] + eligibility_lines(st)   # who can still approve, when not met
     if tm := st.get("trial_merge"):
         kind = "" if tm["blocking"] else " (bookkeeping only, which does not block)"
         lines.append(f"  trial merge with {tm['ref']}: conflicts on {', '.join(tm['conflicts'])}{kind}")
     if st.get("escalation"):
         lines.append(_escalation_line(st["node_id"], st["escalation"]["describe"]))
+    for line in st.get("executor_blocked") or []:
+        lines.append(f"  {line}")
     lines += [f"  - {p}" for p in st["problems"]]
     return lines
 
@@ -157,9 +176,12 @@ def _unclaimed(root: Path, nid: str) -> dict[str, Any]:
         "ready": [{"file": r.path.name, "commit": r.data.get("commit"), "errors": r.errors} for r in ready],
         "reviews": [
             {"file": r.path.name, "model": r.data["model"], "family": r.data.get("family"),
-             "verdict": r.data["verdict"], "counted": False, "signed": bool(r.data.get("signature"))}
+             "verdict": r.data["verdict"], "counted": False, "signed": bool(r.data.get("signature")),
+             "launch_mode": r.data.get("launch_mode"), "commit": r.data.get("commit")}
             for r in reviews if r.ok
         ],
+        "review_rounds": round_span(root, nid),
+        "review_runs": run_states(root, nid, None),
         "policy": "not evaluated: no claim names the commit under review",
         "policy_met": False,
         "trial_merge": None,
@@ -196,7 +218,7 @@ def cmd_handoff_status(ns: argparse.Namespace) -> int:
             print("Workers: " + ", ".join(
                 f"{w.worker_id} ({w.node_id} {w.harness} {w.state}, lease {w.lease.get('holder')})" for w in workers))
         if not out:
-            print("No hand-offs under work/reviews/.")
+            print(f"No hand-offs under {reviews_root(root)}.")
         else:
             print("\n".join(line for st in out for line in _render(st)))
     # A sweep only reports. For one named node a polling script reads the exit:
@@ -204,7 +226,7 @@ def cmd_handoff_status(ns: argparse.Namespace) -> int:
     return _EXIT.get(out[0]["state"], 1) if ns.node_id else 0
 
 
-_EXIT = {"approved": 0, "complete_no_claim": 0, "unclaimed": 2, "error": 2}
+_EXIT = {"approved": 0, "complete_no_claim": 0, "unclaimed": 2, "error": 2, "executor_blocked": 1}
 
 
 def _fail(msg: str, code: int = 1) -> int:
@@ -220,23 +242,7 @@ def _relabel_independence(root: Path, gate: GateResult) -> None:
         label = "same-family" if shared else "distinct-family"
         if c.review.data.get("independence") != label:
             c.review.data["independence"] = label
-            c.review.path.write_text(render_front_matter(c.review.data, c.review.body), encoding="utf-8")
-
-
-def _check_record(ns: argparse.Namespace, root: Path, t: ReviewTarget) -> tuple[dict | None, str | None]:
-    if ns.model == HUMAN:
-        return None, ("a human review is filed only by the interactive approve in "
-                      "specy-road mark-implementation-reviewed, so an agent cannot file one")
-    rec = load_review(Path(ns.file), acceptance_ids(t.node))
-    if not rec.ok:
-        return None, f"{ns.file}: " + "; ".join(rec.errors)
-    for key, want in (("node_id", ns.node_id), ("model", ns.model), ("verdict", ns.verdict)):
-        if rec.data.get(key) != want:
-            return None, f"{ns.file}: {key} is {rec.data.get(key)!r}, the command says {want!r}"
-    if not same_commit(root, rec.data["commit"], t.commit):
-        return None, (f"the record reviews {rec.data['commit']}, but the commit under review is "
-                      f"{t.commit} ({t.ref}). Re-review the current commit.")
-    return {"data": rec.data, "body": rec.body}, None
+            write_review(c.review.path, render_front_matter(c.review.data, c.review.body))
 
 
 def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
@@ -245,7 +251,7 @@ def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline
         t = resolve_target(root, ns.node_id, ns.ref)
     except ReviewTargetError as e:
         return _fail(str(e))
-    rec, err = _check_record(ns, root, t)
+    rec, err = check_record(ns, root, t)
     if err:
         return _fail(err)
     gate = evaluate_gate(root, t.node, t.commit, branch=(t.entry or {}).get("branch"))
@@ -263,6 +269,9 @@ def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline
         return _fail(f"{ns.file}: does not count — {why}; list what you re-ran in commands_rerun")
     # The body's hash rides in the front matter, so a signature covers the notes too.
     data = {**rec["data"], "commit": gate.commit, NOTES_KEY: notes_digest(rec["body"])}
+    if ns.launch_mode:   # before signing: the signature covers it
+        data["launch_mode"] = ns.launch_mode
+    data = stamp_review_toolkit_version(data)
     if ns.sign_key:
         if not entry.get("public_key"):
             return _fail(f"--sign-key given, but the roster entry for {ns.model!r} has no public_key; "
@@ -280,9 +289,8 @@ def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline
                      f"for {ns.model!r} must carry the matching public_key")
     data["family"] = entry["family"]
     dest = review_path(root, ns.node_id, ns.model)
-    dest.parent.mkdir(parents=True, exist_ok=True)
     text = render_front_matter(data, rec["body"])
-    dest.write_text(text, encoding="utf-8")
+    write_review(dest, text)   # replaces a record filed as review-<model>.md, whatever the filesystem's case rules
     archive_review(root, ns.node_id, ns.model, text)
     print(f"Wrote {dest}")
     after = evaluate_gate(root, t.node, t.commit, branch=(t.entry or {}).get("branch"))
@@ -309,9 +317,12 @@ def cmd_review_list(ns: argparse.Namespace) -> int:
         print(f"No review records for {ns.node_id}.")
     for r in reviews:
         d = r.data
+        stale = t is not None and r.ok and not same_commit(root, d.get("commit"), t.commit)
         print(f"{r.path.name}: {d.get('verdict')} by {d.get('model')} ({d.get('family')}) "
               f"at {str(d.get('commit') or '?')[:12]}{' [signed]' if d.get('signature') else ''}"
-              + ("" if r.ok else f" — invalid: {'; '.join(r.errors)}"))
+              + ("" if r.ok else f" — invalid: {'; '.join(r.errors)}") + (" — stale: not the commit under review" if stale else ""))
+    print("\n".join(run_lines(run_states(root, ns.node_id, t.commit if t else None))) or "No delegated review runs.")
+    print(round_span(root, ns.node_id)["line"])
     loop = loop_state(root, ns.node_id)
     _print_rcas(loop)
     if t is None:
@@ -322,6 +333,8 @@ def cmd_review_list(ns: argparse.Namespace) -> int:
         print(f"gate at {t.ref} @ {(gate.commit or '?')[:12]}: {gate.summary()}")
         for p in gate.problems():
             print(f"  - {p}")
+        for line in milestone_status(t, "approved" if gate.passed else "waiting")[1]:
+            print(line)
     if loop.escalation and (t is None or not gate.passed):
         print(_escalation_line(ns.node_id, loop.escalation.describe()).strip())
     return 0
@@ -349,13 +362,20 @@ def build_parser() -> argparse.ArgumentParser:
     rec.add_argument("--file", required=True, help="Markdown with review-record front matter")
     rec.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
     rec.add_argument("--sign-key", metavar="PATH", help="Sign the record with this OpenSSH private key (ssh-keygen -Y sign)")
+    rec.add_argument("--launch-mode", choices=REVIEW_LAUNCH_MODES, help="How your harness was started; stored on the record")
     add_repo_root_arg(rec)
     rec.set_defaults(func=cmd_review_record)
-    ls = rsub.add_parser("list", help="Print a node's filed review records and the gate evaluation; writes nothing")
-    ls.add_argument("node_id")
-    ls.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
-    add_repo_root_arg(ls)
-    ls.set_defaults(func=cmd_review_list)
+    for name, about, fn in (("list", "Print a node's filed review records and the gate evaluation; writes nothing", cmd_review_list),
+                            ("check-pre-existing", "Re-run claimed pre-existing verifier failures twice on the integration tip",
+                             cmd_check_pre_existing),
+                            ("red-green", "Run the tests a leaf adds or changes at its merge base and at head", cmd_red_green)):
+        sp = rsub.add_parser(name, help=about)
+        sp.add_argument("node_id")
+        sp.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+        add_repo_root_arg(sp)
+        sp.set_defaults(func=fn)
+    add_delegate_parser(rsub)
+    add_ready_parser(sub)
     return p
 
 
@@ -363,7 +383,5 @@ def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     ns = build_parser().parse_args(argv)
     raise SystemExit(ns.func(ns))
-
-
 if __name__ == "__main__":
     main()

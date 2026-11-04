@@ -19,6 +19,7 @@
 - `execution_milestone` and sub-task tagging → "Execution type tagging"
 - the five questions a sheet answers, `## References`, vendor-neutral wording, spec types → "Writing implementable `agentic` tasks", "Stack-agnostic task language", "Spec crosswalk"
 - registry etiquette, the PM edit steps, export, CRUD, brief → "Multi-agent coordination", "PM editing workflow", "Generated index (`roadmap.md`)", "Tooling", "Registry and brief"
+- recurring deep research under `research/` and folding its findings into the roadmap → "Research register"
 
 **Related:** [`pm-workflow.md`](pm-workflow.md), [`dev-workflow.md`](dev-workflow.md), [`archiving.md`](archiving.md), [`git-workflow.md`](git-workflow.md).
 
@@ -113,9 +114,7 @@ Use the `notes` field (markdown string) for short context in the graph. **Vision
 - **Manifest** [`manifest.json`](../tests/fixtures/specy_road_dogfood/roadmap/manifest.json): keep small; limit from `roadmap_manifest_max_lines` in config.
 - **JSON chunks** under `roadmap/` (except `manifest.json`): may not exceed **`roadmap_json_chunk_max_lines`** (default **500**) unless the chunk contains **exactly one** node.
 
-[`registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) is separate from the graph and is not a merge chunk.
-
-Enforced by `specy-road validate` (via [`specy_road/bundled_scripts/roadmap_load.py`](../specy_road/bundled_scripts/roadmap_load.py)). Configure limits in [`constraints/file-limits.yaml`](../constraints/file-limits.yaml) in **your** project (or the toolkit’s [`constraints/file-limits.yaml`](../constraints/file-limits.yaml) when working on this repository).
+[`registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) is separate from the graph and is not a merge chunk. Enforced by `specy-road validate` (via [`specy_road/bundled_scripts/roadmap_load.py`](../specy_road/bundled_scripts/roadmap_load.py)). Configure limits in [`constraints/file-limits.yaml`](../constraints/file-limits.yaml) in **your** project (or the toolkit’s [`constraints/file-limits.yaml`](../constraints/file-limits.yaml) when working on this repository).
 
 **Canonical key order.** Every tool write (`add-node`, `edit-node`, the PM Gantt, `finish-this-task`, `rebalance-chunks`) re-renders the **whole** chunk it touches in one canonical form: a `{"nodes": [...]}` object, keys sorted alphabetically inside every node, 2-space indent, UTF-8, trailing newline. Nodes keep their chunk and their position in it; only the text changes. So the **first** tool edit of a hand-authored chunk rewrites all of it — every node's keys move, even though one field changed — and from then on diffs stay confined to the fields that actually changed. To take that one-time rewrite on purpose, in its own commit rather than inside an unrelated edit, run `specy-road rebalance-chunks --normalize [--dry-run]`: it rewrites every included chunk in canonical form without moving a node between or within chunks, leaves `manifest.json` alone, validates, and is a no-op when every chunk is already canonical.
 
@@ -146,7 +145,7 @@ Writes that add a node (`add-node`, PM Gantt add-task, `edit-node` when growth p
 
 1. **Reparent or reorder** via the PM UI or `specy-road` CRUD by editing **`parent_id`** and **`sibling_order`**. Do **not** mint new `node_key` values or rewrite **`dependencies`** unless you are splitting/merging nodes or intentionally changing gates.
 2. **Renumber display ids** when needed using outline renumber (e.g. full-tree rewrite from tree shape). Stable **`node_key`** and **`dependencies`** (UUID lists) stay the same; display **`id`** values update. Roots keep the project's numbering base: a roadmap with a root `M0` renumbers from `M0`, any other (such as the `init project` scaffold) from `M1`.
-3. **Planning sheets:** After **`id`** or codename changes, ensure each node’s **`planning_dir`** matches the canonical pattern (see [`planning_filename_for_node`](../specy_road/bundled_scripts/planning_artifacts.py)). Outline operations in this kit call [`sync_planning_artifacts`](../specy_road/bundled_scripts/sync_planning_artifacts.py) to rewrite paths and rename files under `planning/`. You can also use `specy-road scaffold-planning` for new sheets. Manual edits should end with `specy-road validate`.
+3. **Planning sheets:** After **`id`** or codename changes, ensure each node’s **`planning_dir`** matches the canonical pattern (see [`planning_filename_for_node`](../specy_road/bundled_scripts/planning_artifacts.py)). Outline operations in this kit call [`sync_planning_artifacts`](../specy_road/bundled_scripts/sync_planning_artifacts.py) to rewrite paths and rename files under `planning/`. You can also use `specy-road scaffold-planning` for new sheets. Manual edits should end with `specy-road validate`. **`specy-road do-next-available-task`** skips a leaf whose sheet still has scaffold-planning's or brainstorm promote's placeholder under **`## Intent`** or **`## Approach`**, even when the node has **`acceptance`** (same set as `grind-session --plan` / `orchestrate plan` list as `unauthored`); write those sections and commit the sheet, or pass **`--allow-scaffold-planning`** to pick anyway (finish still refuses unless that flag is passed there too). Leaves with no **`acceptance`** and a placeholder sheet are skipped separately; **`--allow-unauthored`** picks those. `specy-road validate` lists those as a stdout notice that **`--strict`** does not count, so planning roadmap-first passes the gate; **`--strict-authoring`** counts them as warnings again. `specy-road brief` prints one line, not the placeholder text, for a dependency or ancestor whose **`## Intent`** is still unwritten.
 4. **Registry:** Active entries must use the current display **`id`** in **`node_id`**. If you renumber **`id`**, update open claims or `specy-road validate` will fail with an unknown `node_id`.
 5. **Validate:** Run `specy-road validate` — it checks unique `id`/`node_key`, valid parents and dependency keys, DAG (no cycles), planning paths and filenames, and registry references.
 
@@ -200,14 +199,15 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 | `codename` | Kebab-case unique label for branch naming (`feature/rm-<codename>`). Required if registering work. Auto-derived from `title` when omitted, and re-derived when the title changes — **unless you chose it yourself**, in which case `edit-node --set title=…` keeps it and says so. Pass `--sync-codename` to re-derive anyway. It is the branch identity and the registry key, so renaming it mid-flight desynchronizes a live `feature/rm-*` from its node. |
 | `status` | `Not Started` / `In Progress` / `Complete` / `Blocked` |
 | `execution_milestone` | **Advisory** dominant work type: `Human-led` / `Agentic-led` / `Mixed`. Read by humans and by the PM UI; it does **not** gate pickup — use a `type: gate` dependency for that. |
-| `touch_zones` | Paths or globs, relative to the project root, that this node modifies (enables overlap detection). Zones may name files the work will create. `specy-road validate` warns when a zone on an In Progress or Blocked node matches nothing in the working tree (a typo or a moved path); Not Started and Complete nodes are not checked. Never shrink zones to quiet that warning: overlap detection needs them. `edit-node --set touch_zones=a,b` (commas or one `--set` per path). |
-| `dependencies` | **`node_key` UUIDs** of nodes that must reach `Complete` before this node starts (not display ids). `add-node --dependency` and `add-dependency` also accept a display id and store its `node_key`; `edit-node` and `set-dependencies` take keys. |
+| `touch_zones` | Paths or globs, relative to the **project root** or the **git root**, that this node modifies (enables overlap detection). In a nested layout (project under e.g. `sr/`), a zone may name project files either way — `schemas/` or `sr/schemas/` — and code outside the project only from the git root, e.g. `specy_road/bundled_scripts/`. **Choosing zones:** read the code before writing them. Name each file the change edits or creates, a directory when the work spans one (end a new one with `/`), or a glob such as `pkg/worker_ops_*.py` for a family of files — never a bare name prefix such as `pkg/worker_ops_`, which is read as a literal path and matches nothing. Add a module that imports a zoned file when the change alters what it calls: `specy-road brief` lists those importers under **Call sites** in its touch-zone section, and an executor stops for any file outside its zones. Zones may name files the work will create. `specy-road validate` reports every zone on an open node, Not Started included, that matches no tracked file (`git ls-files`) and is not a directory: a name prefix of tracked files gets a warning with the glob to use instead (shown by `add-node` and `edit-node` too), and a missing path or an unmatched glob is named in one notice with the advice to keep a zone that names a file the work will create — a notice, so `validate --strict` does not fail on new-file zones. `add-node` and `edit-node --set touch_zones=` print that line as a warning for the node they wrote. It also warns when a zone on an In Progress or Blocked node matches nothing in the working tree (a typo or a moved path); Complete nodes are not checked. Never shrink zones to quiet that warning: overlap detection needs them. `edit-node --set touch_zones=a,b` (commas or one `--set` per path) replaces the list; `edit-node --add touch_zones=docs` and `--remove touch_zones=src` change one entry and keep the rest (an entry already there, or one not there to remove, is left as is with a note). On a claimed leaf either form rewrites the claim's registry row to match. |
+| `dependencies` | **`node_key` UUIDs** of nodes that must reach `Complete` before this node starts (not display ids). `add-node --dependency`, `add-dependency` and `edit-node --add/--remove dependencies=…` also accept a display id and store its `node_key`; `edit-node --set` and `set-dependencies` take keys. |
 | `parallel_tracks` | Integer — number of independent workstreams within this node. |
 | `goal` | Concise statement of what the node achieves when complete. |
-| `acceptance` | List of observable acceptance criteria; a review attests each one as `A1`, `A2`, … Set them with one `--set` per criterion: `edit-node M1.2 --set acceptance='Saves offline' --set acceptance='Syncs on reconnect'`, or at creation with one `add-node --acceptance` per criterion. `\|` is not a separator: `acceptance=a\|b` is one criterion, and `validate` warns about it. With the review gate on, `validate` also warns on open leaves without any; a planning sheet whose checklist is still the template is the same debt and the same fix. |
+| `acceptance` | List of observable acceptance criteria; a review attests each one as `A1`, `A2`, … Set them with one `--set` per criterion: `edit-node M1.2 --set acceptance='Saves offline' --set acceptance='Syncs on reconnect'`, or at creation with one `add-node --acceptance` per criterion. `edit-node --add acceptance=…` / `--remove acceptance=…` change one criterion without restating the rest; the numbering of those after a removed one shifts. `\|` is not a separator: `acceptance=a\|b` is one criterion, and `validate` warns about it. With the review gate on, `validate` also warns on open leaves without any; a planning sheet whose checklist is still the template is the same debt and the same fix. A criterion only a person can satisfy (a named person approving wording, a link only they can supply) starts with `human:`, for example `--set acceptance='human: the maintainer approves the release note wording'`. Reviewers mark it `n/a` with the reason `human` instead of spending a run on it, and the review gate never counts it as a fail. `finish-this-task` refuses the leaf until the planning sheet records the decision as a line `A#: <decision, who and when>` in any section (a list marker or checkbox in front is fine, for example `- [x] A2: wording approved by the maintainer 2026-11-02`), committed on the branch. |
 | `sensitivity` | Data-sensitivity class of the node's inputs (default `public`). Only a roster model whose `may_process` lists it may execute or review the node; `specy-road prompt` refuses otherwise. See `docs/orchestration-models.md`. |
 | `executor_eligibility` | `any` (default) or a roster `class` tag such as `senior`; `specy-road orchestrate plan` assigns only a matching executor. |
-| `risks` | List of known risks or blockers to surface during planning (one `--set risks=…` per item). |
+| `planned_test_changes` | Test removals or weakenings the leaf is approved to make, one string per finding line exactly as `specy-road integrity <ID>` prints it (e.g. `removed-test: tests/test_x.py::test_old`). Author and approve it with the leaf, on the integration branch, **before pickup**: with `policy.integrity_gate: true` in `roadmap/orchestration.yaml` the review gate reads it from the integration branch, so it is the only way a test removal or weakening passes the gate, and a declaration made on the leaf branch does not count. A removal found mid-implementation is a `blocked_on` stop until the coordinator amends this field on the integration branch. See `docs/orchestration-review.md`. |
+| `risks` | List of known risks or blockers to surface during planning (one `--set risks=…` per item; `edit-node --add/--remove risks=…` changes one). |
 | `decision` | Architecture decision block (see below). |
 | `notes` | Free-form prose; rendered in exported markdown Notes section. |
 
@@ -271,8 +271,7 @@ An agent can implement without clarifying questions; every ambiguous noun resolv
 
 ### Five questions the planning sheet must answer
 
-These belong in the node's **planning sheet**, not in the node JSON — see the
-note below on why. A sheet that leaves one of them open is a planning gap.
+These belong in the node's **planning sheet**, not in the node JSON — see the note below on why. A sheet that leaves one of them open is a planning gap.
 
 | Question | Answers |
 |----------|---------|
@@ -282,8 +281,9 @@ note below on why. A sheet that leaves one of them open is a planning gap.
 | Constraints | Security, logging, performance, UX rules that bind the work. |
 | Dependencies | Prior sub-task, stub, or merged milestone required first. **Reference by codename or display id** — do not paraphrase the prerequisite's intent here; `specy-road brief` inlines each effective dependency's `## Intent` under section 6. |
 
-Worth adding when they apply: an observable **success signal**, and any
-**forbidden patterns** (e.g. "do not call the live service — use the stub").
+Worth adding when they apply: an observable **success signal**, and any **forbidden patterns** (e.g. "do not call the live service — use the stub").
+
+**Acceptance criteria checklist.** Reviewers judge each `acceptance` criterion as written, round after round, so bound it before pickup: (1) **state what is out of scope**: the inputs, paths, callers or platforms the leaf does not cover, rather than leaving them open; (2) **bound concurrency and input classes**: name the ones it handles (for example one writer at a time, ASCII names, files already on disk) and say that the rest are out of scope; (3) **name the observable check**: the test, command or output a reviewer reads to decide pass or fail. A criterion without these lets each review round find a new input class or a narrower race on it; that loop escalates in `specy-road handoff status`, and its root-cause analysis comes back as `specification`. The feature-sheet template's `## Tasks / checklist` points here.
 
 **Contract traceability:** Each `agentic` task should map to at least one contract doc under `shared/`, `docs/`, `specs/`, or `adr/`. If it cannot, the contract write-up may be missing — flag before writing the task.
 
@@ -291,8 +291,7 @@ Worth adding when they apply: an observable **success signal**, and any
 
 **Do not paraphrase upstream dependencies in this task's planning sheet.** `specy-road brief` carries `## 6. Dependency context (intent of upstream work)` with each effective dependency's `## Intent` block (or the gate equivalent) inlined verbatim. Restating that prose in `## Intent` or `## Approach` here just creates drift. Say *what must exist* (cited by codename or display id) under `## References`, and reserve your sheet's `## Intent` for **this** task's own outcome. Add a one-line clarification under `## Approach` only when something specific to *this* task is not covered by the dep's own intent (an integration seam, a contract version, a sequencing constraint), citing the dep by display id.
 
-**Example (JSON node excerpt).** The detail lives in the sheet at
-`planning_dir`; the node stays small. The dependency is M1.1's `node_key`:
+**Example (JSON node excerpt).** The detail lives in the sheet at `planning_dir`; the node stays small. The dependency is M1.1's `node_key`:
 
 ```json
 {
@@ -369,9 +368,7 @@ Multiple developers and multiple agents per developer are assumed.
 
 ## Generated index (`roadmap.md`)
 
-- [`roadmap.md`](../tests/fixtures/specy_road_dogfood/roadmap.md) — **generated** index table with **Gate** column. Do not edit by hand.
-
-Chunk files under [`roadmap/phases/`](../tests/fixtures/specy_road_dogfood/roadmap/phases/) are **source** (`.json` graph chunks).
+[`roadmap.md`](../tests/fixtures/specy_road_dogfood/roadmap.md) is a **generated** index table with a **Gate** column; do not edit it by hand. Chunk files under [`roadmap/phases/`](../tests/fixtures/specy_road_dogfood/roadmap/phases/) are **source** (`.json` graph chunks).
 
 Regenerate the index after editing chunks, and check that the committed index matches the merged graph (e.g. in CI):
 
@@ -390,8 +387,14 @@ PMs may use **`specy-road` CRUD commands** (`list-nodes`, `show-node`, `add-node
 
 ## Registry and brief
 
-Active work registration stays in [`roadmap/registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml). Bounded context for a single node:
+Active work registration stays in [`roadmap/registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml). Bounded context for a single node; its touch-zone section lists the modules that import each zoned Python file at `HEAD` (one level), marking those outside the zones:
 
 ```bash
 specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md
 ```
+
+## Research register
+
+Deep-research topics the project reruns on a schedule are tracked under `research/`, which `specy-road init project` scaffolds with a `README.md`. Each topic has a register entry, `research/<topic>.md`, whose YAML front matter records its `purpose`, the tracked `prompt` file (under `research/prompts/`; never `work/`, which is session scratch that `finish-this-task` cleans up), `cadence_days`, `last_run` (`YYYY-MM-DD`, empty until the first run) and `fed`, the roadmap node ids its findings created or changed. `specy-road validate` warns when an entry is past its cadence or has never run, when its prompt file does not exist or is outside `research/`, and when `cadence_days` or `last_run` cannot be read.
+
+**Fold the findings back in: research → brainstorm → promote.** Run the prompt in a deep-research tool, start a brainstorm on the report (`specy-road brainstorm start --topic "<topic> findings" --under <ID>`), add each actionable finding as an idea with its sources recorded through `add-evidence`, triage, and `specy-road brainstorm promote` the accepted ones into roadmap nodes ([`brainstorming.md`](brainstorming.md)). Then set the entry's `last_run` to the run date and add the promoted or edited node ids to `fed`.

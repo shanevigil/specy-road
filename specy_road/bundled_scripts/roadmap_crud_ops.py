@@ -16,12 +16,31 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import (
 )
 from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
 from specy_road.bundled_scripts.planning_sheet_bootstrap import plan_planning_sheet_for_new_node
+from specy_road.bundled_scripts.registry_claim_status import (
+    leaf_claim_entry,
+    list_nodes_json_row,
+    list_nodes_status_label,
+)
+from specy_road.bundled_scripts.registry_claim_zones import claim_zones_following
 from specy_road.bundled_scripts.roadmap_crud_prepare import ensure_codename_for_new_node, heal_before_mutation, next_sibling_order
+from specy_road.bundled_scripts.roadmap_crud_chunk_report import (
+    NodeChunkWriteReport,
+    heal_and_collect_paths,
+    plan_add_chunk_writes,
+    plan_edit_node_report,
+    print_node_chunk_write_report,
+    repo_rel,
+)
 from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_PATTERN, ID_PATTERN, apply_set, merge_set_pairs
 from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
 from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
+from specy_road.bundled_scripts.roadmap_gui_lib import registry_by_node_id
 from specy_road.bundled_scripts.roadmap_load import load_roadmap, validate_roadmap_line_limits
+from specy_road.bundled_scripts.touch_zone_tracked import warn_written_zones
+from specy_road.bundled_scripts.validate_registry_overlap import authoring_overlap_for_node
 from specy_road.bundled_scripts.validate_roadmap import validate_at
+from specy_road.milestone_subtree import structural_leaf_ids
+from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.runtime_paths import default_user_repo_root
 from specy_road.node_kinds import is_gate
 
@@ -63,14 +82,7 @@ def _archived_node_keys_quiet(root: Path) -> set[str]:
 
 
 def run_validate_raise(root: Path) -> None:
-    """Run roadmap + registry validation; raise ``ValueError`` with the errors on failure.
-
-    Both streams are captured: validation's ``OK: roadmap and registry
-    validate.`` would otherwise interleave with each mutation command's own
-    ``[ok]`` line, reading as if the command reported twice. Warnings pass
-    through as warnings rather than being folded into the raised message, so a
-    caller printing ``error: {message}`` does not relabel them.
-    """
+    """Run roadmap + registry validation; raise ``ValueError`` with errors on failure."""
     err = io.StringIO()
     out = io.StringIO()
     failed = False
@@ -101,28 +113,28 @@ def node_index_in_chunk(nodes_seq: list, node_id: str) -> int | None:
 
 
 def cmd_list(args: object) -> None:
-    """List nodes with both statuses.
-
-    ``STATUS`` is the node's own field as written in the chunk; ``ROLLUP`` is
-    what ``roadmap.md`` and the PM GUI show (a parent rolls up from its leaf
-    descendants). One unlabelled column let the two disagree silently.
-    ``--json`` prints each kept node whole (title untruncated) plus ``chunk``.
-    """
+    """List nodes with status, rollup, and chunk path."""
     root = repo_root(args)
     chunk_map = build_node_chunk_map(root)
+    nodes = load_roadmap(root)["nodes"]
+    by_reg = registry_by_node_id(read_registry(registry_path(root)))
+    leaf_ids = structural_leaf_ids(nodes)
     wanted = {s.lower() for s in (getattr(args, "status", None) or [])}
     rows = []
-    for n in sorted(load_roadmap(root)["nodes"], key=lambda x: natural_id_sort_key(x["id"])):
+    for n in sorted(nodes, key=lambda x: natural_id_sort_key(x["id"])):
         rollup = str(n.get("rollup_status") or n.get("status", ""))
         if not wanted or rollup.lower() in wanted:
             ch = chunk_map.get(n["id"])
-            rows.append((n, rollup, ch.relative_to(root).as_posix() if ch else None))
+            claim = leaf_claim_entry(n["id"], leaf_ids=leaf_ids, by_reg=by_reg)
+            rows.append((n, rollup, ch.relative_to(root).as_posix() if ch else None, claim))
     if getattr(args, "as_json", False):
-        print(json.dumps([{**n, "chunk": rel} for n, _, rel in rows], indent=2, ensure_ascii=False))
+        payload = [list_nodes_json_row(n, rel, claim) for n, _, rel, claim in rows]
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
         return
     print(f"{'ID':12}  {'TYPE':10}  {'STATUS':12}  {'ROLLUP':12}  TITLE  [CHUNK]")
-    for n, rollup, rel in rows:
-        print(f"{n['id']:12}  {n.get('type', ''):10}  {str(n.get('status', '')):12}  "
+    for n, rollup, rel, claim in rows:
+        status = list_nodes_status_label(n, claim)
+        print(f"{n['id']:12}  {n.get('type', ''):10}  {status:12}  "
               f"{rollup:12}  {str(n.get('title', ''))[:60]}  [{rel or '(unknown)'}]")
 
 
@@ -208,11 +220,25 @@ def cmd_add(args: object) -> None:
     from specy_road.bundled_scripts.roadmap_crud_dependency_ops import resolve_dependency_refs
     try:
         node["dependencies"] = resolve_dependency_refs(root, node["dependencies"])
+        heal_paths = heal_and_collect_paths(root)
+        ensure_codename_for_new_node(root, node)
+        parent_id = parent_val if isinstance(parent_val, str) else None
+        planned_sheet = plan_planning_sheet_for_new_node(root, node)
+        report = plan_add_chunk_writes(
+            root,
+            parent_id,
+            getattr(args, "chunk", None),
+            node,
+            planned_sheet=planned_sheet,
+            extra_paths=heal_paths,
+        )
         chunk_path = append_node_to_chunk(root, getattr(args, "chunk", None), node)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
-    print(f"[ok] appended node {nid} to {chunk_path.relative_to(root)}")
+    assert chunk_path.relative_to(root).as_posix() in report.written
+    print_node_chunk_write_report(report, verb="appended node")
+    warn_written_zones(nid, node.get("touch_zones"), root)
 
 
 def append_node_to_chunk(
@@ -234,9 +260,10 @@ def append_node_to_chunk(
     parent_id = parent_id_raw if isinstance(parent_id_raw, str) else None
     planned_sheet = plan_planning_sheet_for_new_node(root, node)
     extra = {planned_sheet[0]: planned_sheet[1]} if planned_sheet else None
-    return write_with_routing(
-        root, parent_id, chunk_arg, node, extra_files=extra, validate=validate,
-    )
+    with authoring_overlap_for_node(node):
+        return write_with_routing(
+            root, parent_id, chunk_arg, node, extra_files=extra, validate=validate,
+        )
 
 
 def _planning_rename_plan(
@@ -272,19 +299,9 @@ def edit_node_set_pairs(
     *,
     sync_codename: bool = False,
     notify: Callable[[str], None] | None = None,
-) -> None:
-    """
-    Patch whitelisted fields on a node, then save its chunk atomically.
-
-    Nothing reaches disk until the whole prospective graph validates: the chunk
-    write, any overflow relocation, and any planning-sheet rename are staged
-    together. Writing first and validating afterwards left a rejected edit — and
-    a half-renamed planning sheet — on disk, which blocked every later command
-    and made a multi-``--set`` batch impossible to reason about.
-
-    Raises ``ValueError`` on missing node, bad keys, or validation failure.
-    """
-    heal_before_mutation(root)
+) -> NodeChunkWriteReport:
+    """Patch whitelisted fields on a node, then save its chunk atomically."""
+    heal_paths = heal_and_collect_paths(root)
     chunk = find_chunk_path(root, node_id)
     if not chunk:
         raise ValueError(unknown_node_msg(node_id))
@@ -323,16 +340,22 @@ def edit_node_set_pairs(
             notify=notify,
         )
     rename = _planning_rename_plan(root, planning_dir_before, node.get("planning_dir"))
+    zones = node.get("touch_zones") if any(k == "touch_zones" for k, _ in pairs) else None
+    report = plan_edit_node_report(
+        root, node_id, chunk, nodes, [rename] if rename else None, zones,
+        heal_paths,
+    )
 
     from specy_road.bundled_scripts.roadmap_chunk_router import write_node_update
 
-    write_node_update(
-        root,
-        node_id,
-        chunk,
-        nodes,
-        renames=[rename] if rename else None,
-    )
+    with authoring_overlap_for_node(node, node_id=node_id):
+        with claim_zones_following(root, node_id, zones, notify=notify):
+            holding = write_node_update(
+                root, node_id, chunk, nodes, renames=[rename] if rename else None
+            )
+    holding_rel = repo_rel(root, holding)
+    assert holding_rel in report.written
+    return report
 
 
 def cmd_edit(args: object) -> None:
@@ -347,7 +370,7 @@ def cmd_edit(args: object) -> None:
         k, _, v = pair.partition("=")
         pairs.append((k.strip(), v.strip()))
     try:
-        edit_node_set_pairs(
+        report = edit_node_set_pairs(
             root,
             nid,
             merge_set_pairs(pairs),
@@ -357,9 +380,10 @@ def cmd_edit(args: object) -> None:
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from None
-    chunk = find_chunk_path(root, nid)
-    assert chunk is not None
-    print(f"[ok] updated {nid} in {chunk.relative_to(root)}")
+    print_node_chunk_write_report(report, verb="updated")
+    if any(k == "touch_zones" for k, _ in pairs):
+        edited = next((n for n in load_roadmap(root)["nodes"] if n.get("id") == nid), {})
+        warn_written_zones(nid, edited.get("touch_zones"), root)
 
 
 def cmd_set_gate_status(args: object) -> None:
@@ -379,19 +403,15 @@ def cmd_set_gate_status(args: object) -> None:
         )
         raise SystemExit(1)
     try:
-        edit_node_set_pairs(root, nid, [("status", args.status)])
+        report = edit_node_set_pairs(root, nid, [("status", args.status)])
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from None
-    chunk = find_chunk_path(root, nid)
-    assert chunk is not None
-    print(f"[ok] gate {nid} status -> {args.status} ({chunk.relative_to(root)})")
+    assert report.read_from is not None
+    print(f"[ok] gate {nid} status -> {args.status} ({report.read_from})")
 
 
-# Node removal lives in ``roadmap_crud_delete`` (per-file line cap). Re-exported
-# here so ``roadmap_crud_argparse``, the PM GUI routes, and tests keep one
-# import site. Imported at the bottom because that module imports back for
-# ``node_index_in_chunk`` / ``repo_root`` / ``unknown_node_msg``.
+# Re-exported from ``roadmap_crud_delete`` (import at bottom avoids a cycle).
 from specy_road.bundled_scripts.roadmap_crud_delete import (  # noqa: E402,F401
     can_hard_remove,
     cmd_archive,

@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from specy_road.agent_ignores import RUNTIME_WORK_DIRS
+from specy_road.git_workflow_config import WORKER_LOGS_REL
 from specy_road.model_profiles import Profile
 from specy_road.review_files import PACKET_NAME
 
@@ -41,9 +43,21 @@ _EXCESS_CHECKLIST = (
 )
 
 
-def dirty_check(prefix: str = "") -> str:
+def runtime_excludes(prefix: str) -> str:
+    """Pathspecs leaving out specy-road's own runtime directories (``RUNTIME_WORK_DIRS``): a fresh clone or
+    worktree holds them before any human edit, and a project scaffolded before they were ignored lists them."""
+    return " ".join(f"':(top,exclude){prefix}{d}'" for d in RUNTIME_WORK_DIRS)
+
+
+def runtime_dirs_prose(prefix: str) -> str:
+    return ", ".join(f"`{prefix}{d}`" for d in RUNTIME_WORK_DIRS if d != "work/reviews/")
+
+
+def dirty_check(prefix: str = "", node_id: str | None = None) -> str:
+    """The clean-tree check; with ``node_id``, that leaf's tracked worker logs (``track_worker_logs``) are left out too."""
+    logs = f" ':(top,exclude){prefix}{WORKER_LOGS_REL}/{node_id}/'" if node_id else ""
     return (f"git status --porcelain --untracked-files=all -- ':(top)' ':(top,exclude){prefix}work/brief-*.md' "
-            f"':(top,exclude){prefix}work/implementation-summary-*.md' ':(top,exclude){prefix}work/reviews/'")
+            f"':(top,exclude){prefix}work/implementation-summary-*.md' {runtime_excludes(prefix)}{logs}")
 
 
 def where(prefix: str) -> list[str]:
@@ -65,7 +79,9 @@ def reviewer_precondition(node_id: str, t, packet: Path, prefix: str) -> list[st
         f"':(top,exclude){work}/implementation-summary-{node_id}.md' "
         f"':(top,exclude){work}/prompt-{node_id}.md' "
         f"':(top,exclude){work}/prompt-{node_id}-*.md' "
-        f"':(top,exclude){work}/reviews/{node_id}/'"
+        f"':(top,exclude){work}/reviews/{node_id}/' "
+        f"':(top,exclude){prefix}{WORKER_LOGS_REL}/{node_id}/' "   # the wrapper mirrors these after READY
+        + runtime_excludes(prefix)
     )
     return [
         "## Precondition",
@@ -74,23 +90,31 @@ def reviewer_precondition(node_id: str, t, packet: Path, prefix: str) -> list[st
         f"changes you did not make, change nothing, reply exactly `{node_id} not landed; waiting`, and stop. Run that command in "
         f"the checkout that has `{branch}` checked out (`git worktree list` names it; usually the leaf's worktree, "
         "not the coordinator's main checkout); if none has it, skip it, since the packet names the commit you review. "
-        f"It leaves out only this leaf's `{work}/brief-{node_id}.md`, implementation summary, prompts and "
-        f"`{work}/reviews/{node_id}/` hand-offs; any other change, tracked or untracked, counts.",
+        f"It leaves out only this leaf's `{work}/brief-{node_id}.md`, implementation summary, prompts, "
+        f"`{work}/reviews/{node_id}/` hand-offs and `{prefix}{WORKER_LOGS_REL}/{node_id}/` worker logs, plus "
+        f"specy-road's own runtime state ({runtime_dirs_prose(prefix)}); any other change, tracked or untracked, "
+        "counts.",
         "",
         "The packet is gitignored, so file-search and glob tools may not list it: open that "
         f"absolute path directly (`ls {packet}`).",
         "",
+        f"**Writable root:** `{packet.parent}` is the one path you must be able to write. It is the main checkout's "
+        "hand-off directory, the same from every worktree; `review record` files your verdict there, so write your "
+        "notes there too, as `notes-<your roster id>.md` (a `REVIEW-` name would be read as a record). A harness sandboxed to the leaf's worktree must be launched with it as a writable "
+        "root (Claude Code, `codex exec` and Cursor `agent`: `--add-dir`), or the record cannot be filed.",
+        "",
     ]
 
 
-def precondition(role: str, node_id: str, t, packet: Path, prefix: str = "") -> list[str]:
+def precondition(role: str, node_id: str, t, packet: Path, prefix: str = "", forced: bool = False) -> list[str]:
+    """``forced``: an ``rca`` prompt a coordinator started with ``--force``, so the leaf is not ``escalated``."""
     branch = t.entry.get("branch") if t.entry else None
     if role == "reviewer":
         return reviewer_precondition(node_id, t, packet, prefix)
     if role == "executor":
         missing = (f"`{prefix}work/brief-{node_id}.md` does not exist, or the branch "
                    f"`{branch or 'feature/rm-<codename>'}` is not checked out")
-    elif role == "rca":
+    elif role == "rca" and not forced:
         missing = f"`specy-road handoff status {node_id}` does not report `escalated`"
     else:
         missing = f"the registry claim for `{node_id}` does not exist"
@@ -98,10 +122,11 @@ def precondition(role: str, node_id: str, t, packet: Path, prefix: str = "") -> 
         "## Precondition",
         "",
         *(where(prefix) if role == "executor" else []),
-        f"If {missing}, or `{dirty_check(prefix)}` lists changes you did not make, "
+        f"If {missing}, or `{dirty_check(prefix, node_id)}` lists changes you did not make, "
         f"change nothing, reply exactly `{node_id} not landed; waiting`, and stop. That command leaves out "
         f"only specy-road's bookkeeping (`{prefix}work/brief-*.md`, `{prefix}work/implementation-summary-*.md`, "
-        f"`{prefix}work/reviews/`); any other change, tracked or untracked, counts.",
+        f"`{prefix}work/reviews/`, this leaf's `{prefix}{WORKER_LOGS_REL}/{node_id}/`) and its runtime state "
+        f"({runtime_dirs_prose(prefix)}); any other change, tracked or untracked, counts.",
         "",
     ]
 
@@ -118,20 +143,29 @@ def executor_preamble(node_id: str, model: str, zones: list[str], family_lock: s
         "",
         "1. Read the brief and every file it names before editing.",
         "2. Change only files inside the touch zones; preserve behaviour unless an acceptance item changes it.",
-        "3. Run the verifier and tests the brief names. Commit by explicit path (`git commit --only <paths>`), never `-A`, `-a`, or a bare `git commit`.",
+        "3. Run the verifier and tests the brief names in the foreground, with a long timeout if your harness has one, "
+        "and do not end your turn while a command you started is still running: a headless turn ends when you reply, "
+        "and nothing resumes it when a background job finishes. "
+        "Commit by explicit path (`git commit --only <paths>`), never `-A`, `-a`, or a bare `git commit`.",
         f"4. Write `{prefix}work/implementation-summary-{node_id}.md`, ending with an `## Added` inventory: every helper, "
         "branch or guard, mock and test you added, one line each with its reason (`none` under a heading is fine), "
         "and commit it by explicit path on this branch: it is what the reviewers judge, and finish deletes it from `work/`. "
-        f"Then `READY-{model}.md` (`{model}` is your roster id; use it as `agent:` too, not an API model id; "
-        "`commit:` is the branch's last commit, the one that adds the summary) "
-        f"from `{prefix}work/handoff-ready.template.md` into "
+        f"Then write `READY-{model}.md` with `specy-road ready {node_id} --model={model} --run '<cmd>' ...`, "
+        f"one `--run` per verifier or test the brief names (`{model}` is your roster id, not an API model id). "
+        "It runs each from the current directory in the foreground and records its exit and the last lines of its "
+        "output, which the reviewers' packet shows; it reads branch, commit (the one that adds the summary), base "
+        "and changed paths from git, refuses a non-zero exit, and writes into "
         f"`{reviews or f'{prefix}work/reviews/{node_id}'}` "
-        f"(that is the main checkout's {f'`{prefix}work/reviews/{node_id}`, ' if prefix else ''}directory: "
-        "use it as written even if you are in a worktree).",
+        f"(the main checkout's {f'`{prefix}work/reviews/{node_id}`, ' if prefix else ''}directory, from any "
+        "worktree). A check you made fail without the fix on purpose is not a verifier: pass it as "
+        "`--red-green '<cmd>=<exit>'`.",
         "5. Stop.",
         "",
         "You may not: update roadmap status, mark review done, merge, push, start another leaf, weaken a verifier, "
-        "delete or loosen a failing test, add an exemption, broaden an ignore file, or edit acceptance text. "
+        "delete or loosen a failing test, add an exemption, broaden an ignore file, edit acceptance text, "
+        "or kill a process by name or pattern (`pkill`, `killall`, `kill` on `pgrep` output): other sessions share "
+        "this machine and their runs match the same pattern. Stop only a process you started, by the pid you recorded "
+        "when you started it. "
         "A needed change outside the touch zones stops this leaf: say which path and why, and stop.",
         "",
         DATA_LINE,
@@ -139,14 +173,30 @@ def executor_preamble(node_id: str, model: str, zones: list[str], family_lock: s
     ]
 
 
-def reviewer_preamble(node_id: str, model: str, ref: str | None = None) -> list[str]:
+#: ``policy.signed_reviews`` is on: ``review record`` refuses an unsigned record.
+SIGN_KEY_ARG = " --sign-key <path to your private key>"
+SIGNED_LINE = ("`policy.signed_reviews` is on: `review record` refuses a record without `--sign-key`, the OpenSSH "
+               "private key whose public half is your roster entry's `public_key`.")
+
+
+def reviewer_preamble(node_id: str, model: str, ref: str | None = None, *, resumed_delta: bool = False,
+                      signed: bool = False) -> list[str]:
+    """``resumed_delta``: the packet is ``model``'s delta packet and ``policy.reviewer_resumed_delta`` is on,
+    so the session that approved the delta's base may be resumed for it (M11.36). ``signed``:
+    ``policy.signed_reviews`` is on, so the record command carries ``--sign-key``."""
+    session = ("If you are the session that approved the commit this delta starts from, resumed for this round, "
+               "set `fresh_session: false` (`policy.reviewer_resumed_delta` is on); otherwise this is a fresh "
+               "session. Either way" if resumed_delta else "This is a fresh session;")
     return [
         "## Your role: reviewer",
         "",
-        f"You review leaf `{node_id}` from the packet below and nothing else. This is a fresh session; "
+        f"You review leaf `{node_id}` from the packet below and nothing else. {session} "
         "you did not write the change, and you are not the coordinator.",
         "",
-        "Judge each acceptance item `A#` in the brief as pass, fail, or n/a. Record findings under "
+        "Judge each acceptance item `A#` in the brief as pass, fail, or n/a. An item whose text starts with "
+        "`human:` needs a person, not a reviewer: mark it `n/a`, write `human` as its reason in your notes, "
+        "and never fail or block on it; finish-this-task holds the leaf until that decision is recorded on the "
+        "planning sheet. Record findings under "
         "correctness, regression, boundary (paths outside the touch zones), and test integrity "
         "(weakened or deleted tests). Re-run at least one verify command yourself and list it. "
         "Sections the packet marks as executor-asserted are claims; weigh them against the diff and "
@@ -156,7 +206,8 @@ def reviewer_preamble(node_id: str, model: str, ref: str | None = None) -> list[
         "Write your verdict with the front matter in `work/review-record.template.md`, set `commit` to the "
         "packet's **Commit under review**, and file it:",
         f"`specy-road review record {node_id} --model {model} --verdict approve|block --file <notes.md>"
-        f"{f' --ref {ref}' if ref else ''}`.",
+        f"{f' --ref {ref}' if ref else ''}{SIGN_KEY_ARG if signed else ''}`.",
+        *([SIGNED_LINE] if signed else []),
         "`approve` may not carry a failing item or required changes. Do not edit code, and do not run "
         "`mark-implementation-reviewed` or `finish-this-task`.",
         "",

@@ -15,6 +15,8 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import TYPE_CHECKING
 
+from specy_road.nested_repos import describe_unpushed
+
 if TYPE_CHECKING:  # annotations only: session_plan re-exports session_plan_to_dict from here
     from specy_road.bundled_scripts.session_plan import SessionPlan
 
@@ -101,6 +103,7 @@ def render_session_plan_text(plan: SessionPlan) -> str:
     lines.extend(_render_finished_on_branch(plan))
     lines.extend(_render_blocked(plan))
     lines.extend(_render_misc(plan))
+    lines.extend(_render_nested_unpushed(plan))
     return "\n".join(lines) + "\n"
 
 
@@ -234,8 +237,8 @@ def _render_misc(plan: SessionPlan) -> list[str]:
     lines: list[str] = []
     if plan.unauthored:
         lines.append(
-            "**Not ready — placeholder planning sheet, no acceptance "
-            "(pickup skips these; --allow-unauthored picks them):**"
+            "**Not ready — unwritten planning sheet "
+            "(pickup skips these):**"
         )
         lines.extend(f"- `{u.node_id}`: {u.reason}" for u in plan.unauthored)
         lines.append("")
@@ -247,8 +250,31 @@ def _render_misc(plan: SessionPlan) -> list[str]:
     return lines
 
 
-def session_plan_to_dict(plan: SessionPlan) -> dict:
-    """JSON-serializable view of a :class:`SessionPlan`."""
+def _render_nested_unpushed(plan: SessionPlan) -> list[str]:
+    """Nested-repository branches with commits no remote has: finish pushes only the leaf branch it lands."""
+    if not plan.nested_unpushed:
+        return []
+    lines = ["## Nested repos: commits no remote has", ""]
+    lines.extend(f"- {describe_unpushed(u)}" for u in plan.nested_unpushed)
+    lines.append("")
+    return lines
+
+
+#: Every top-level key of :func:`session_plan_to_dict`; ``--plan --json --fields`` picks from these.
+PLAN_FIELDS = (
+    "under", "ready", "blocked", "active", "closed", "gated", "gates_open", "needs_codename",
+    "waves", "parallel_batches", "zone_overlaps", "finished_unmerged", "finished_claimed",
+    "unauthored", "totals", "ready_execution", "prefer_agentic", "nested_unpushed",
+)
+
+
+def session_plan_to_dict(plan: SessionPlan, fields: list[str] | None = None) -> dict:
+    """JSON-serializable view of a :class:`SessionPlan`; ``fields`` keeps only those keys."""
+    full = _plan_dict(plan)
+    return {k: full[k] for k in fields} if fields else full
+
+
+def _plan_dict(plan: SessionPlan) -> dict:
     return {
         "under": plan.under,
         "ready": list(plan.ready),
@@ -267,4 +293,5 @@ def session_plan_to_dict(plan: SessionPlan) -> dict:
         "totals": dict(plan.totals),
         "ready_execution": {i: plan.ready_execution.get(i) for i in plan.ready},
         "prefer_agentic": plan.prefer_agentic,
+        "nested_unpushed": [dict(u) for u in plan.nested_unpushed],
     }

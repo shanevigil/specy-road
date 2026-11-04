@@ -8,6 +8,7 @@ import contextlib
 import re
 import shutil
 import sys
+from datetime import date
 from pathlib import Path
 
 import yaml
@@ -15,6 +16,7 @@ import yaml
 from specy_road import __version__
 from specy_road.bundled_scripts.refresh_schemas import warn_if_schemas_stale
 from specy_road.bundled_scripts.refresh_stubs import MANIFEST_REL, warn_if_stubs_stale
+from specy_road.bundled_scripts.planning_artifacts import split_frontmatter
 from specy_road.bundled_scripts.roadmap_chunk_utils import (
     discover_manifest_path,
     load_manifest_mapping,
@@ -37,11 +39,11 @@ from specy_road.bundled_scripts.validate_stale_commands import (
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.init_project import project_template_root
-from specy_road.orchestration_config import load_orchestration_config, orchestration_yaml_path
-from specy_road.orchestration_pinned import roster_source
+from specy_road.orchestration_config import harness_model_warnings, load_orchestration_config, orchestration_yaml_path
+from specy_road.orchestration_pinned import roster_report
 from specy_road.planning_scaffold_check import notice_complete_scaffold
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, git_root
-from specy_road.specyrd_init import _load_manifest
+from specy_road.specyrd_init import _load_manifest, warn_if_skills_mirrored
 from specy_road.bundled_scripts.validate_roadmap_checks import (
     cycle_check,
     load_schema,
@@ -56,8 +58,13 @@ from specy_road.bundled_scripts.validate_roadmap_checks import (
 )
 from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
 from specy_road.bundled_scripts.validate_self_heal import auto_heal_roadmap
+from specy_road.bundled_scripts.validate_registry_overlap import (
+    authoring_overlap_scope,
+    current_authoring_overlap_scope,
+)
 
 __all__ = [
+    "authoring_overlap_scope",
     "cycle_check",
     "pinned_version",
     "run_validation",
@@ -70,6 +77,7 @@ __all__ = [
     "unregistered_commands",
     "warn_stale_parent_status",
     "warn_if_pin_differs",
+    "warn_research_register",
     "warn_touch_zones_match_nothing",
     "warn_unregistered_commands",
 ]
@@ -115,6 +123,50 @@ def warn_if_pin_differs(start: Path) -> None:
     )
 
 
+def _register_entry_problems(root: Path, data: dict, today: date) -> list[str]:
+    """Why one register entry's front matter ``data`` needs attention; empty when it does not."""
+    problems = []
+    prompt = data.get("prompt")
+    if not isinstance(prompt, str) or not prompt.strip():
+        problems.append("no `prompt` file named")
+    elif not (root / prompt).is_file():
+        problems.append(f"prompt file {prompt} does not exist")
+    elif not (root / prompt).resolve().is_relative_to((root / "research").resolve()):
+        problems.append(f"prompt file {prompt} is not under research/; move it there so it is tracked")
+    cadence, last = data.get("cadence_days"), data.get("last_run")
+    if type(cadence) is not int or cadence < 1:
+        problems.append(f"`cadence_days` is not a whole number of days: {cadence!r}")
+    elif last is None:
+        problems.append("due: never run (`last_run` is empty)")
+    else:
+        try:
+            when = date.fromisoformat(str(last))
+        except ValueError:
+            return [*problems, f"`last_run` is not a date (YYYY-MM-DD): {last!r}"]
+        if (today - when).days > cadence:
+            problems.append(f"past its cadence: last run {when}, every {cadence} days")
+    return problems
+
+
+def warn_research_register(root: Path, today: date | None = None) -> None:
+    """One non-fatal line per ``research/<topic>.md`` register entry that needs attention.
+
+    An entry is due when more than ``cadence_days`` have passed since ``last_run``
+    (or it has never run). Its ``prompt`` must be a file under ``research/``:
+    a prompt in ``work/`` is scratch that ``finish-this-task`` may clean up.
+    """
+    research = root / "research"
+    if not research.is_dir():
+        return
+    for entry in sorted(research.glob("*.md")):
+        if entry.name == "README.md":
+            continue
+        data, _body = split_frontmatter(entry.read_text(encoding="utf-8"))
+        for why in _register_entry_problems(root, data, today or date.today()):
+            print(f"research: warning — research/{entry.name}: {why} (see research/README.md)",
+                  file=sys.stderr)
+
+
 def validate_git_workflow_contract(root: Path) -> None:
     """Validate ``roadmap/git-workflow.yaml`` if present.
 
@@ -141,19 +193,33 @@ def validate_git_workflow_contract(root: Path) -> None:
 def validate_orchestration_contract(root: Path) -> None:
     """Validate ``roadmap/orchestration.yaml`` if present.
 
-    A missing file is not a warning (``validate`` prints :data:`NO_ORCHESTRATION_NOTICE`):
+    No roster anywhere is not a warning (``validate`` prints :data:`NO_ORCHESTRATION_NOTICE`):
     it means the default review policy (one reviewer, any family), the
     scaffolded starter's policy, which ``--generate-orchestration`` writes as an editable file.
-    A file that is not what routing reads (absent on the integration branch,
-    or different there) is, as ``orchestrate plan`` says.
+    A roster routing does not read (edited, added or deleted in the working tree without a commit,
+    or added, deleted or changed on an unpushed local integration branch) is, as ``orchestrate plan`` says.
     """
-    _data, err = load_orchestration_config(root)
+    data, err = load_orchestration_config(root)
     if err:
         print(err, file=sys.stderr)
         raise SystemExit(1)
-    _ref, drift = roster_source(root)
-    if drift:
-        print(f"warning: {drift}", file=sys.stderr)
+    for note in harness_model_warnings(data or {}):
+        print(f"warning: {note}", file=sys.stderr)
+    report = roster_report(root)
+    if report.drift and not report.none_anywhere:   # no roster at all: the notice, not a warning
+        print(f"warning: {report.drift}", file=sys.stderr)
+
+
+def no_orchestration_notice(root: Path) -> str | None:
+    """:data:`NO_ORCHESTRATION_NOTICE`, plus where the roster is read from when routing finds none there either.
+
+    ``None`` when the integration ref has a roster: routing uses it, not the default policy, and the
+    working-tree deletion is the warning :func:`validate_orchestration_contract` printed.
+    """
+    report = roster_report(root)
+    if report.on_ref:
+        return None
+    return NO_ORCHESTRATION_NOTICE + (f"\nnotice: {report.drift}" if report.none_anywhere else "")
 
 
 NO_ORCHESTRATION_NOTICE = (
@@ -180,13 +246,15 @@ def validate_at(
     require_registry: bool = True,
     auto_heal: bool = True,
     show_all: bool = False,
+    strict_authoring: bool = False,
 ) -> None:
     """Validate roadmap + registry under ``root`` (repo root containing ``roadmap/``).
 
     F-006/F-008: self-heal pass runs first (silent fixes for missing
     codenames, deprecated fields). Pass ``auto_heal=False`` to disable,
     e.g. in a read-only CI drift check. ``show_all`` lists every unauthored
-    leaf instead of the first ten.
+    leaf instead of the first ten; ``strict_authoring`` reports them as
+    warnings rather than a notice.
     """
     reg_path = registry_path(root)
     if require_registry and not reg_path.is_file():
@@ -200,11 +268,13 @@ def validate_at(
     warn_if_pin_differs(root)
     warn_if_schemas_stale(root)
     warn_if_stubs_stale(root)
+    warn_if_skills_mirrored(root)
     warn_if_agents_md_block_stale(root)
     warn_missing_load_order_paths(root)
     warn_unregistered_commands(root)
     warn_if_context_over_limits(root)
     warn_if_generated_files_ignored(root)
+    warn_research_register(root)
 
     if auto_heal:
         changed, _logs = auto_heal_roadmap(root)
@@ -228,6 +298,8 @@ def validate_at(
         no_overlap_warn,
         repo_root=root,
         show_all=show_all,
+        overlap_scope=current_authoring_overlap_scope(),
+        strict_authoring=strict_authoring,
     )
 
 
@@ -251,8 +323,11 @@ def main() -> None:
         "--strict",
         action="store_true",
         help="Exit 1 when validation passes with warnings (or self-heal notes), "
-        "e.g. as a CI gate once an upgrade window closes.",
+        "e.g. as a CI gate once an upgrade window closes. Open leaves pickup skips as "
+        "unauthored (placeholder sheet, no acceptance) are a notice, not counted.",
     )
+    parser.add_argument("--strict-authoring", action="store_true",
+                        help="--strict, and count the unauthored-leaf notice as warnings too.")
     parser.add_argument(
         "--all",
         action="store_true",
@@ -275,14 +350,15 @@ def main() -> None:
             no_overlap_warn=args.no_overlap_warn,
             require_registry=True,
             show_all=args.all,
+            strict_authoring=args.strict_authoring,
         )
         notice_complete_scaffold(root, load_roadmap(root)["nodes"], show_all=args.all)
         if args.generate_orchestration:
             generate_orchestration(root)
-        elif not orchestration_yaml_path(root).is_file():
-            print(NO_ORCHESTRATION_NOTICE)   # stdout: a notice, which --strict does not count
+        elif not orchestration_yaml_path(root).is_file() and (notice := no_orchestration_notice(root)):
+            print(notice)   # stdout: a notice, which --strict does not count
         print_injected_context(root)
-    if args.strict and stderr.lines:
+    if (args.strict or args.strict_authoring) and stderr.lines:
         sys.stdout.flush()  # the OK line first, then why it does not count
         print(
             f"FAILED (--strict): validation passed with {stderr.lines} line(s) of warnings above.",

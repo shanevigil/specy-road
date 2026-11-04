@@ -8,74 +8,22 @@ the registry on the integration branch (local and pushed), and the branches.
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
-import sys
-import uuid
 from pathlib import Path
 
 import pytest
 
-from tests.helpers import SCHEMAS, script_subprocess_env
-
-from specy_road.bundled_scripts.planning_artifacts import expected_planning_rel
-
-SHEET = (
-    "## Intent\n\nThe export writes one row per node.\n\n"
-    "## Approach\n\nExtend the writer; a golden file test proves it.\n\n"
-    "## Tasks / checklist\n\n- [ ] …\n\n## References\n\n- Roadmap chunk for `M1`\n"
+# The project and CLI runners live in pickup_repo_helpers; the old private names
+# stay for the modules that import them from here.
+from tests.pickup_repo_helpers import (  # noqa: F401 — SHEET is re-exported
+    FEATURE, SHEET, make_pickup_project as _project, run_pickup as _pickup, run_specy_road as _run,
 )
-FEATURE = "feature/rm-leaf-one"
 
 
 def _git(root: Path, *args: str) -> str:
     return subprocess.run(
         ["git", "-C", str(root), *args], check=True, capture_output=True, text=True
     ).stdout.strip()
-
-
-def _project(tmp_path: Path, git_workflow_extra: str = "") -> Path:
-    """One authored leaf on ``main``, pushed to a bare ``origin``."""
-    root = tmp_path / "app"
-    (root / "roadmap" / "phases").mkdir(parents=True)
-    shutil.copytree(SCHEMAS, root / "schemas")
-    node = {
-        "id": "M1", "node_key": str(uuid.uuid5(uuid.NAMESPACE_URL, "M1")),
-        "codename": "leaf-one", "title": "Leaf one", "type": "task", "parent_id": None,
-        "sibling_order": 1, "status": "Not Started", "dependencies": [],
-        "touch_zones": ["src"],
-    }
-    node["planning_dir"] = expected_planning_rel(node)
-    (root / node["planning_dir"]).parent.mkdir(parents=True)
-    (root / node["planning_dir"]).write_text(SHEET, encoding="utf-8")
-    rm = root / "roadmap"
-    (rm / "manifest.json").write_text(json.dumps({"version": 1, "includes": ["phases/M1.json"]}))
-    (rm / "phases" / "M1.json").write_text(json.dumps({"nodes": [node]}))
-    (rm / "registry.yaml").write_text("version: 1\nentries: []\n")
-    (rm / "git-workflow.yaml").write_text(
-        "version: 1\nintegration_branch: main\nremote: origin\n" + git_workflow_extra
-    )
-    _git(root, "init", "-q", "-b", "main")
-    _git(root, "config", "user.email", "t@e.com")
-    _git(root, "config", "user.name", "T")
-    _git(root, "add", "-A")
-    _git(root, "commit", "-qm", "graph")
-    origin = tmp_path / "origin.git"
-    subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
-    _git(root, "remote", "add", "origin", str(origin))
-    _git(root, "push", "-q", "-u", "origin", "main")
-    return root
-
-
-def _run(root: Path, *argv: str) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", *argv, "--repo-root", str(root)],
-        cwd=root, env=script_subprocess_env(), capture_output=True, text=True,
-    )
-
-
-def _pickup(root: Path, *argv: str) -> subprocess.CompletedProcess:
-    return _run(root, "do-next-available-task", "--on-complete", "merge", *argv)
 
 
 def _claimed_on(root: Path, ref: str) -> bool:

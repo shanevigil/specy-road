@@ -4,6 +4,17 @@ family: Anthropic Claude
 track: Opus
 model: Claude Opus 5.5
 api_id: claude-opus-5-5
+aliases:
+  - claude-opus-5-5-low
+  - claude-opus-5-5-low-fast
+  - claude-opus-5-5-medium
+  - claude-opus-5-5-medium-fast
+  - claude-opus-5-5-high
+  - claude-opus-5-5-high-fast
+  - claude-opus-5-5-xhigh
+  - claude-opus-5-5-xhigh-fast
+  - claude-opus-5-5-max
+  - claude-opus-5-5-max-fast
 checkpoint: same-as-api_id
 alias_moves: 'no'
 version_rank: latest
@@ -14,11 +25,13 @@ supersedes: claude-opus-5
 access:
   context_tokens: 1000000
   output_tokens: 128000
-  cli: claude -p "<prompt>"
+  cli: CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude -p "<prompt>"
   cli_verified_from: S4
   subagents: yes Vendor guide describes multihour runs "with parallel subagents" and gives time-budget signals for multiagent harnesses; both runs report Claude Code subagent support and parallel delegation [S2]
   effort_controls: 'low, medium, high, xhigh, max (default medium; thinking always on)'
   effort_map: { minimal: low, low: low, medium: medium, high: high, max: max }
+  effort_by_role: { coordinator: low, executor: medium, reviewer: medium }  # executor and reviewer at the documented default, coordinator one level below; reviewer kept, not lowered, by M10.6: docs/design-notes/reviewer-effort-study.md
+  launch_mode: full   # bare (--bare) drops hooks, skills, MCP and CLAUDE.md, and needs ANTHROPIC_API_KEY
 cost_usd_per_mtok: { input: 4.00, output: 20.00, cached_input: 0.20, fast_input: 8.00, fast_output: 40.00 }
 data_handling: 'Served by Anthropic and on Amazon Bedrock (anthropic.claude-opus-5-5), Claude Platform on AWS, Google Cloud and Microsoft Foundry [S1], so a deployment can stay inside a customer''s existing cloud account. Commercial and API inputs and outputs are not used for model training by default; standard API retention is generally up to 30 days; contractual zero data retention is available for eligible enterprise and API arrangements; regional processing is available through supported cloud and platform configurations, including US-only inference at a premium [S13]. Opus 5.5 runs the same biology safeguards as Fable 5.1 plus cyber and reasoning-extraction classifiers [S2]. No local or open-weight deployment.'
 role_fit:
@@ -26,6 +39,17 @@ role_fit:
   executor:    { score: 5, reason: 'Both runs rate it strongest - vendor reports medium effort matches or beats Opus 5 at high on repository coding with fewer tokens, and independent CursorBench 4.0 and Terminal-Bench 4.0 results lead the field, at a higher unit price than GPT-6.1 Sol', sources: [S2, S8, S9] }
   reviewer:    { score: 4, reason: '(claude 4, chatgpt 5) Early testers reported more bugs caught and fewer false alarms than Opus 5, and the vendor stresses root-cause analysis, checking work and scope discipline, but both runs found only vendor-reported or thin reviewer-calibration evidence', sources: [S2, S9, S10] }
 ---
+## Orchestration: harness features to avoid
+
+When this model runs as a roster **executor** on `claude-code`, `worker delegate` exports in the process environment (via `harness_env`, not only `access.cli` / `specy-road prompt --channel cli`):
+
+| Feature | Switch |
+|---|---|
+| auto memory (shared by every worktree of a repository) | `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` |
+| background tasks and `/loop` wakeups | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` |
+
+Orchestration guard hooks (optional, `specyrd init --install-orchestration-hooks`) deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`.
+
 ## Strengths
 - At default medium effort, matches or beats Claude Opus 5 at high effort on multistep repository coding tasks, in fewer steps and tokens (Anthropic internal testing) [S2] (confidence: medium)
 - Generates output tokens more than 30 percent faster than Opus 5 and uses fewer tokens to finish the same kinds of tasks [S2] (confidence: high)

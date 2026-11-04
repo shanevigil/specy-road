@@ -24,7 +24,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_worker_cli import _repo
+from tests.test_worker_cli import _repo, wait_for_worker
 
 from specy_road import session_presence as sp
 from specy_road import tool_call_guard as tg
@@ -147,7 +147,7 @@ def test_a_non_string_hook_command_is_an_error_not_an_allow() -> None:
 
 # --- Gemini F2 ----------------------------------------------------------------
 
-def test_a_crashed_running_worker_cannot_be_handed_off_or_messaged(tmp_path: Path) -> None:
+def test_a_crashed_running_worker_cannot_be_handed_off_and_is_recorded_failed_before_a_message(tmp_path: Path) -> None:
     repo, _ = _repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
@@ -156,8 +156,10 @@ def test_a_crashed_running_worker_cannot_be_handed_off_or_messaged(tmp_path: Pat
         ops.handoff(repo, rec.worker_id)
     assert ws.load_record(repo, rec.worker_id).state == "failed"
     ws.set_state(repo, rec, "running", pid=999999)
-    with pytest.raises(ws.WorkerError, match="failed"):
-        ops.message(repo, rec.worker_id, "hi")
+    ops.message(repo, rec.worker_id, "hi")   # the crash is recorded, then its session resumes (M11.2)
+    types = [e.type for e in ws.events_since(repo, rec.worker_id)]
+    assert types.count("error") == 2 and types.index("message") > types.index("error")
+    assert wait_for_worker(repo, rec.worker_id).state == "idle"
 
 
 # --- Gemini F3 / Sol B2 ---------------------------------------------------------

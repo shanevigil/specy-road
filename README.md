@@ -19,6 +19,7 @@
 - **Right-sized context** — `specy-road brief` pulls the relevant planning sheets and contracts for one roadmap item instead of the whole repository story.
 - **Safer parallel work** — Stable IDs, **touch zones**, and `roadmap/registry.yaml` show who is working on what before files collide.
 - **Your tools, your workflow** — The kit is about roadmaps and specs, not a particular IDE or agent ritual. See [docs/philosophy-and-scope.md](docs/philosophy-and-scope.md).
+- **Governance, not another agent runner** — Other tools already drive coding-agent CLIs as workers. specy-road's part is the roadmap graph in the repo, separated roles with fresh-session distinct-family reviewers, reviews bound to a commit, and tracked files plus shell commands as the only surface. See [Where specy-road sits](docs/philosophy-and-scope.md#where-specy-road-sits).
 
 ## Getting started
 
@@ -52,6 +53,21 @@ pip install specy-road
 #   pip install "specy-road[review]"    # LLM review (`specy-road review-node`)
 ```
 
+On a maintainer laptop, prefer an isolated CLI install so a repo virtualenv
+does not shadow it:
+
+```bash
+pipx install specy-road
+# or: uv tool install specy-road
+which specy-road
+specy-road --version
+```
+
+If those disagree, or `specy-road --version` is older than your project's
+`.specyrd/manifest.json` / `AGENTS.md` minimum, an earlier `specy-road` on
+`PATH` is usually the cause — reinstall with `pipx` / `uv tool` and check
+`which` again.
+
 Release candidates (`X.Y.ZrcN`) publish to **TestPyPI** and need a different
 command — including one extra flag for `uv pip`. See
 [docs/install-and-usage.md](docs/install-and-usage.md#install-a-release-candidate-testpypi).
@@ -67,7 +83,7 @@ Consumer **`init project`**, `roadmap/git-workflow.yaml`, optional **`specyrd`**
 
 Typical path in an **application** repository after `specy-road init project`: roadmap and planning for direction and detail; validation, export, and briefs for engineering and agents; registry and branches for safe parallel work. Maintainers working on **this** toolkit follow [AGENTS.md](AGENTS.md), [docs/toolkit-development.md](docs/toolkit-development.md), and [docs/contributor-guide.md](docs/contributor-guide.md).
 
-1. **Bootstrap** — `specy-road init project` (once per repo) creates `constitution/`, `roadmap/`, `shared/`, `constraints/`, `schemas/`, `planning/`, `work/`, `model-profiles/`, and a managed specy-road section in `AGENTS.md`. Pass a subfolder — `specy-road init project sr` — to keep the whole tree out of the coding root; the layout is recorded in `.specyrd/manifest.json` so every command and the PM GUI resolve it without a flag. See [docs/pm-workflow.md](docs/pm-workflow.md).
+1. **Bootstrap** — `specy-road init project` (once per repo) creates `constitution/`, `roadmap/`, `shared/`, `constraints/`, `schemas/`, `planning/`, `work/`, `model-profiles/`, `research/`, two shipped `docs/` files, `vision.md`, a managed specy-road stub in `AGENTS.md` that points at the full agent rules in `.specyrd/AGENTS.md`, and `.specyrd/AGENTS.team.md` for your team's own (`--dry-run` lists every path). Pass a subfolder — `specy-road init project sr` — to keep the whole tree out of the coding root; the layout is recorded in `.specyrd/manifest.json` so every command and the PM GUI resolve it without a flag. See [docs/pm-workflow.md](docs/pm-workflow.md).
 2. **Author** — Edit JSON chunks under `roadmap/` (listed in `manifest.json`). See [docs/roadmap-authoring.md](docs/roadmap-authoring.md).
 3. **Validate** — `specy-road validate` (resolves the project from the recorded layout, `SPECY_ROAD_REPO_ROOT`, or the working directory; `--repo-root` overrides).
 4. **Publish views** — `specy-road export` regenerates `roadmap.md` from the merged graph.

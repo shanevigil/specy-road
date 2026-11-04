@@ -9,6 +9,7 @@ from specy_road.finish_work_artifacts import (
     cleanup_work_artifacts,
     warn_if_pr_body_tracked,
     work_artifact_rel_paths,
+    worker_logs_to_stage,
 )
 from specy_road.git_workflow_config import (
     cleanup_work_artifacts_on_finish,
@@ -81,15 +82,30 @@ def test_cleanup_work_artifacts_tracked_paths_returned(tmp_path) -> None:
         check=True,
         capture_output=True,
     )
+    (tmp_path / "work" / "implementation-summary-M1.1.md").write_text(
+        "summary body", encoding="utf-8"
+    )
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "add", "work/implementation-summary-M1.1.md"],
+        check=True,
+        capture_output=True,
+    )
     subprocess.run(
         ["git", "-C", str(tmp_path), "commit", "-m", "init"],
         check=True,
         capture_output=True,
     )
     tracked = cleanup_work_artifacts(tmp_path, "M1.1")
-    assert set(tracked) == {"work/brief-M1.1.md"}
+    assert set(tracked) == {
+        "work/brief-M1.1.md",
+        "work/implementation-summary-M1.1.md",
+        "work/done/implementation-summary-M1.1.md",
+    }
     assert not (tmp_path / "work" / "brief-M1.1.md").is_file()
     assert not (tmp_path / "work" / "prompt-M1.1.md").is_file()
+    assert not (tmp_path / "work" / "implementation-summary-M1.1.md").is_file()
+    done = tmp_path / "work" / "done" / "implementation-summary-M1.1.md"
+    assert done.read_text(encoding="utf-8") == "summary body"
 
 
 def test_cleanup_work_artifacts_on_finish_defaults_true(tmp_path) -> None:
@@ -183,3 +199,188 @@ def test_pr_body_warning_silent_when_nothing_is_tracked(tmp_path, capsys) -> Non
     (tmp_path / "work" / "pr-body-M1.1.md").write_text("x", encoding="utf-8")
     warn_if_pr_body_tracked(tmp_path)
     assert capsys.readouterr().err == ""
+
+
+def _logs_repo(root, mode: str | None) -> None:
+    _init_repo(root)
+    (root / "roadmap").mkdir()
+    (root / "roadmap" / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: main\nremote: origin\n"
+        + (f"track_worker_logs: {mode}\n" if mode else ""),
+        encoding="utf-8",
+    )
+    logs = root / "work" / "worker-logs" / "M1.1"
+    logs.mkdir(parents=True)
+    (logs / "w-0001.events.jsonl").write_text('{"seq": 1}\n', encoding="utf-8")
+
+
+def test_worker_logs_are_staged_when_tracked_and_survive_cleanup(tmp_path) -> None:
+    _logs_repo(tmp_path, '"events"')
+    staged = worker_logs_to_stage(tmp_path, "M1.1")
+    assert staged == ["work/worker-logs/M1.1"]
+    cleanup_work_artifacts(tmp_path, "M1.1")   # the session documents go; the logs are not among them
+    assert (tmp_path / "work" / "worker-logs" / "M1.1" / "w-0001.events.jsonl").is_file()
+    subprocess.run(["git", "-C", str(tmp_path), "add", *staged], check=True, capture_output=True)
+    names = subprocess.run(["git", "-C", str(tmp_path), "diff", "--cached", "--name-only"],
+                           check=True, capture_output=True, text=True).stdout.split()
+    assert names == ["work/worker-logs/M1.1/w-0001.events.jsonl"]
+
+
+def test_worker_logs_are_not_staged_when_off_or_absent(tmp_path) -> None:
+    for i, mode in enumerate((None, "off", '"off"')):   # absent, bare (YAML false), quoted
+        root = tmp_path / f"r{i}"
+        root.mkdir()
+        _logs_repo(root, mode)
+        assert worker_logs_to_stage(root, "M1.1") == []
+        assert worker_logs_to_stage(root, "M9.9") == []
+
+
+def test_worker_logs_a_consumer_ignores_are_skipped_with_a_warning(tmp_path, capsys) -> None:
+    _logs_repo(tmp_path, '"full"')
+    (tmp_path / ".gitignore").write_text("/work/*\n", encoding="utf-8")
+    assert worker_logs_to_stage(tmp_path, "M1.1") == []
+    assert "!work/worker-logs/" in capsys.readouterr().err
+
+
+READY_WRITER = """import sys
+open(sys.argv[1], "w").write(sys.argv[2])
+print("done", flush=True)
+"""
+
+
+def _status(check: str, where) -> str:
+    return subprocess.run(check, shell=True, cwd=where, capture_output=True, text=True, check=True).stdout
+
+
+def test_an_opted_in_completed_worker_goes_through_review_to_finish(tmp_path, monkeypatch, capsys) -> None:
+    """R1: the logs the wrapper mirrors after READY pass both clean-tree checks, and finish commits them."""
+    import re
+    import sys
+
+    import pytest
+
+    from tests.helpers import REPO
+    from tests.review_repo_helpers import make_review_repo, review_text
+    from tests.test_prerelease_s2 import ROSTER
+
+    from specy_road import worker_adapters as wa
+    from specy_road import worker_runner as wr
+    from specy_road import worker_state as ws
+    from specy_road.agent_ignores import apply_agent_ignores
+    from specy_road.bundled_scripts import finish_task
+    from specy_road.bundled_scripts import mark_implementation_reviewed as mir
+    from specy_road.bundled_scripts.role_prompt import build_prompt
+    from specy_road.bundled_scripts.role_prompt_rca import precondition
+    from specy_road.review_files import PACKET_NAME, reviews_dir
+    from specy_road.review_target import resolve_target
+
+    monkeypatch.setenv("PYTHONPATH", str(REPO))   # finish runs validate/export/digest as subprocesses
+    repo = make_review_repo(tmp_path, orchestration=ROSTER)
+    apply_agent_ignores(repo)
+    (repo / "roadmap" / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: dev\nremote: origin\n"
+        "require_implementation_review_before_finish: true\ntrack_worker_logs: \"events\"\n", encoding="utf-8")
+    (repo / "work").mkdir()
+    (repo / "work" / "implementation-summary-M1.1.md").write_text("## Added\n\nnone\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-qm", "executor: summary"], check=True)
+    head = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], check=True,
+                          capture_output=True, text=True).stdout.strip()
+    ready = reviews_dir(repo, "M1.1") / "READY-exec.md"
+    ready.parent.mkdir(parents=True)
+    script = tmp_path / "ready.py"
+    script.write_text(READY_WRITER)
+    base = subprocess.run(["git", "-C", str(repo), "rev-parse", "dev"], check=True,
+                          capture_output=True, text=True).stdout.strip()
+    text = (f"---\nnode_id: M1.1\nagent: exec\nbranch: feature/rm-thing\ncommit: \"{head}\"\n"
+            f"base: \"{base}\"\nchanged_paths: [src/a.py]\n---\n")
+    rec = ws.create_record(repo, "M1.1", "generic", "exec", repo, branch="feature/rm-thing")
+    wr.run(repo, rec.worker_id, wa.Launch([sys.executable, str(script), str(ready), text]))
+    assert ws.load_record(repo, rec.worker_id).state == "completed"
+    logs = f"work/worker-logs/M1.1/{rec.worker_id}.events.jsonl"
+    assert (repo / logs).is_file()   # written after READY, as R1 found
+
+    (reviews_dir(repo, "M1.1") / PACKET_NAME).write_text("# packet\n")
+    prompt, _prof, err = build_prompt(repo, "M1.1", role="reviewer", model="rev")
+    assert err is None
+    reviewer = re.search(r"or `(git status [^`]+)` lists changes you did not make", prompt).group(1)
+    executor = re.search(r"or `(git status [^`]+)` lists changes you did not make",
+                         "\n".join(precondition("executor", "M1.1", resolve_target(repo, "M1.1"), tmp_path))).group(1)
+    assert _status(reviewer, repo) == "" and _status(executor, repo) == ""
+    stray = repo / "work" / "worker-logs" / "M1.2" / "w-0009.events.jsonl"   # another leaf's logs still count
+    stray.parent.mkdir(parents=True)
+    stray.write_text("{}\n")
+    assert "work/worker-logs/M1.2/" in _status(reviewer, repo) and "work/worker-logs/M1.2/" in _status(executor, repo)
+    stray.unlink()
+    stray.parent.rmdir()
+
+    (reviews_dir(repo, "M1.1") / "REVIEW-human.md").write_text(review_text(head))
+    with pytest.raises(SystemExit) as e:
+        mir.main(["--yes", "--repo-root", str(repo)])
+        raise SystemExit(0)
+    assert (e.value.code or 0) == 0
+    with pytest.raises(SystemExit) as e:
+        finish_task.main(["--repo-root", str(repo)])
+        raise SystemExit(0)
+    assert (e.value.code or 0) == 0, capsys.readouterr().err
+    committed = subprocess.run(["git", "-C", str(repo), "show", "--name-only", "--format=%s", "HEAD"],
+                               check=True, capture_output=True, text=True).stdout
+    assert committed.startswith("chore(rm-thing): complete, deregister") and logs in committed
+    assert (repo / "work" / "done" / "implementation-summary-M1.1.md").read_text(
+        encoding="utf-8"
+    ) == "## Added\n\nnone\n"
+    assert not (repo / "work" / "implementation-summary-M1.1.md").exists()
+    assert "work/done/implementation-summary-M1.1.md" in committed.splitlines()
+
+
+def test_finish_archives_committed_summary_in_bookkeeping_commit(
+    tmp_path, monkeypatch,
+) -> None:
+    """A1: finish moves a tracked summary to work/done/ in the bookkeeping commit."""
+    import pytest
+
+    from tests.helpers import REPO
+    from tests.review_repo_helpers import git, make_review_repo, review_text
+
+    from specy_road.bundled_scripts import finish_task
+    from specy_road.bundled_scripts import mark_implementation_reviewed as mir
+    from specy_road.review_files import reviews_dir
+
+    monkeypatch.setenv("PYTHONPATH", str(REPO))
+    repo = make_review_repo(tmp_path)
+    (repo / "work").mkdir(exist_ok=True)
+    summary_text = "## Summary\n\nShipped.\n"
+    (repo / "work" / "implementation-summary-M1.1.md").write_text(
+        summary_text, encoding="utf-8"
+    )
+    (repo / "work" / "brief-M1.1.md").write_text("# brief\n", encoding="utf-8")
+    (repo / "work" / "prompt-M1.1.md").write_text("# prompt\n", encoding="utf-8")
+    git(repo, "add", "work/implementation-summary-M1.1.md")
+    git(repo, "commit", "-qm", "executor: summary")
+    head = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    (reviews_dir(repo, "M1.1") / "REVIEW-human.md").parent.mkdir(parents=True, exist_ok=True)
+    (reviews_dir(repo, "M1.1") / "REVIEW-human.md").write_text(review_text(head))
+    with pytest.raises(SystemExit) as e:
+        mir.main(["--yes", "--repo-root", str(repo)])
+        raise SystemExit(0)
+    assert (e.value.code or 0) == 0
+    with pytest.raises(SystemExit) as e:
+        finish_task.main(["--repo-root", str(repo)])
+        raise SystemExit(0)
+    assert (e.value.code or 0) == 0
+    done = repo / "work" / "done" / "implementation-summary-M1.1.md"
+    assert done.read_text(encoding="utf-8") == summary_text
+    assert not (repo / "work" / "implementation-summary-M1.1.md").exists()
+    assert not (repo / "work" / "brief-M1.1.md").exists()
+    names = subprocess.run(
+        ["git", "-C", str(repo), "show", "--name-only", "--format=", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.splitlines()
+    assert "work/done/implementation-summary-M1.1.md" in names

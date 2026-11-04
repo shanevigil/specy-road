@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -102,3 +103,41 @@ def test_strict_passes_a_fresh_scaffold(tmp_path: Path) -> None:
     assert r.stderr == ""
     assert "context: Codex reads AGENTS.md " in r.stdout
     assert "context: Claude Code reads AGENTS.md " in r.stdout
+
+
+def _add_placeholder_leaf(root: Path) -> None:
+    """``add-node`` writes the scaffold sheet and sets no acceptance: a leaf pickup skips as unauthored."""
+    r = subprocess.run(
+        [sys.executable, "-m", "specy_road.cli", "add-node", "--repo-root", str(root),
+         "--id", "M1.2", "--type", "task", "--title", "Later work", "--parent-id", "M1"],
+        cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True,
+    )
+    assert r.returncode == 0, r.stderr
+
+
+def test_a_placeholder_leaf_passes_the_starter_strict_check(tmp_path: Path) -> None:
+    """M11.46: planning roadmap-first leaves unauthored leaves open; the starter's validate --strict still passes."""
+    root = _scaffold(tmp_path)
+    _add_placeholder_leaf(root)
+    starter = json.loads((root / "roadmap" / "phases" / "M1.json").read_text(encoding="utf-8"))["nodes"][1]
+    assert starter["id"] == "M1.1" and "specy-road validate --strict passes" in starter["acceptance"][-1]
+
+    r = _validate(root, "--strict")
+
+    assert r.returncode == 0, r.stderr
+    assert r.stderr == ""
+    assert "notice: 1 open leaf/leaves have a placeholder planning sheet and no acceptance criteria" in r.stdout
+    assert "  M1.2: planning/M1.2_" in r.stdout
+
+
+def test_strict_authoring_counts_the_placeholder_leaf_again(tmp_path: Path) -> None:
+    root = _scaffold(tmp_path)
+    _add_placeholder_leaf(root)
+
+    r = _validate(root, "--strict-authoring")
+
+    assert r.returncode == 1
+    assert "warning: 1 open leaf/leaves have a placeholder planning sheet" in r.stderr
+    assert "(M1.2) has no acceptance criteria" in r.stderr
+    assert "FAILED (--strict)" in r.stderr
+    assert "OK: roadmap and registry validate." in r.stdout

@@ -12,7 +12,8 @@ from pathlib import Path
 
 from specy_road.cli_init_argparse import build_specy_road_init_parser
 from specy_road.cli_usage import USAGE_TEXT
-from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, resolve_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, project_root, resolve_repo_root
+from specy_road.version_skew import warn_if_running_version_older
 
 _PKG_DIR = Path(__file__).resolve().parent
 _PM_GANTT_INDEX = _PKG_DIR / "pm_gantt_static" / "index.html"
@@ -32,6 +33,8 @@ _SCRIPTS = {
     "registry-prune": "registry_prune.py",
     "mark-implementation-reviewed": "mark_implementation_reviewed.py",
     "review-packet": "review_packet.py",
+    "integrity": "integrity_cli.py",
+    "impact": "impact_cli.py",
     "prompt": "role_prompt.py",
     "finish-this-task": "finish_task.py",
     "grind-session": "grind_session.py",
@@ -64,8 +67,14 @@ _FORWARDED = {
     "orchestrate": "orchestrate_cli.py",
     "session": "session_cli.py",
     "review": "review_cli.py",
+    "ready": "review_cli.py",
     "worker": "worker_cli.py",
+    "chore": "chore_cli.py",
+    "orchestration": "orchestration_guard_cli.py",
+    "decisions": "decisions_cli.py",
+    "lessons": "lessons_cli.py",
     "branches": "branches_cli.py",
+    "worktree": "worktree_cli.py",
 }
 
 _CRUD_COMMANDS = (
@@ -147,7 +156,9 @@ def _run_init_cli(rest: list[str]) -> None:
     ns = p.parse_args(rest)
     if ns.init_cmd == "project":
         raise SystemExit(
-            run_init_project(ns.path, dry_run=ns.dry_run, force=ns.force)
+            run_init_project(
+                ns.path, dry_run=ns.dry_run, force=ns.force, profiles=ns.profiles
+            )
         )
     assert ns.init_cmd == "gui"
     if not ns.install_gui and not ns.reinstall_gui and not ns.build_gui:
@@ -254,6 +265,11 @@ def _cmd_gui(rest: list[str]) -> None:
     p = argparse.ArgumentParser(prog="specy-road gui")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8765)
+    p.add_argument(
+        "--read-only",
+        action="store_true",
+        help="Serve every GET route and refuse every write route with 403.",
+    )
     add_repo_root_arg(p)
     ns = p.parse_args(rest)
     uvicorn_spec = importlib.util.find_spec("uvicorn")
@@ -281,6 +297,8 @@ def _cmd_gui(rest: list[str]) -> None:
     env = os.environ.copy()
     if ns.repo_root is not None:
         env["SPECY_ROAD_REPO_ROOT"] = str(ns.repo_root.resolve())
+    if ns.read_only:
+        env["SPECY_ROAD_GUI_READ_ONLY"] = "1"
     host, port_s = ns.host, str(ns.port)
     if ns.host == "0.0.0.0":
         display_host = "127.0.0.1"
@@ -320,17 +338,36 @@ def _unknown_command(cmd: str) -> None:
     raise SystemExit(2)
 
 
+def _repo_root_from_argv(args: list[str]) -> Path | None:
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg.startswith("--repo-root="):
+            return Path(arg.split("=", 1)[1])
+        if arg == "--repo-root" and i + 1 < len(args):
+            return Path(args[i + 1])
+        i += 1
+    return None
+
+
+def _maybe_warn_running_version_older(cmd: str, rest: list[str]) -> None:
+    if cmd == "doctor" or cmd not in _known_commands():
+        return
+    warn_if_running_version_older(project_root(_repo_root_from_argv(rest)))
+
+
 def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ("-h", "--help"):
         print(USAGE_TEXT)
         raise SystemExit(0)
     if argv[0] in ("--version", "-V", "version"):
-        from specy_road import __version__
+        from specy_road.toolkit_version import running_toolkit_version
 
-        print(f"specy-road {__version__}")
+        print(f"specy-road {running_toolkit_version()}")
         raise SystemExit(0)
     cmd, *rest = argv
+    _maybe_warn_running_version_older(cmd, rest)
     if cmd in _SCRIPTS:
         _run(_SCRIPTS[cmd], rest)
     elif cmd in _CRUD_COMMANDS:

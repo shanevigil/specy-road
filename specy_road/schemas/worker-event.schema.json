@@ -10,12 +10,42 @@
     "seq": { "type": "integer", "minimum": 1 },
     "worker_id": { "type": "string", "pattern": "^w-[0-9]{4,}$" },
     "at": { "type": "string", "minLength": 1 },
-    "type": { "enum": ["started", "output", "turn_completed", "needs_input", "completion", "error", "message", "intervention", "handoff", "reclaim", "resumed", "interrupted", "terminated", "adopted", "reconcile"] },
+    "type": { "enum": ["started", "launched", "first_output", "output", "turn_completed", "needs_input", "completion", "error", "message", "message_queued", "intervention", "handoff", "reclaim", "resumed", "interrupted", "terminated", "adopted", "reconcile", "stalled", "usage", "api_retry", "permission_denied", "post_run_check", "usage_limited"], "description": "api_retry and permission_denied are parsed from the harness's stream (worker_suggestion); post_run_check is written exactly once per turn and lists the check's findings (an empty detail.findings for a clean turn); usage_limited records a usage limit recognised during the turn, with detail.reset_at (UTC ISO 8601 or null), detail.evidence and detail.source (the harness line it was read from, or watchdog when the retry watchdog stopped the harness); the turn then ends in paused_by_limit with the record's limit_reset_at set from it." },
     "source": { "enum": ["broker", "worker", "human", "orchestrator", "hook", "system"] },
     "authority": { "enum": ["human_authoritative", "orchestrator", "worker_suggestion", "system"], "description": "system = a lifecycle fact the toolkit itself observed (start, exit code, READY check); worker_suggestion = anything parsed from the harness's output (session ids, assistant text, tool summaries, its own result line)." },
     "summary": { "type": "string", "minLength": 1, "maxLength": 500 },
     "epoch": { "type": "integer", "minimum": 0, "description": "instruction_epoch of the worker when the event was written." },
     "detail": { "type": "object" },
     "op_id": { "type": "string", "minLength": 1 }
+  },
+  "if": { "properties": { "type": { "const": "usage" } }, "required": ["type"] },
+  "then": { "required": ["detail"], "properties": { "detail": { "$ref": "#/$defs/usage" } } },
+  "$defs": {
+    "usage": {
+      "description": "One turn's token counts and cost, the same shape for every harness. A field the harness did not report is null, never 0. input_tokens includes cached_input_tokens (tokens read from cache). cost_usd is this turn's: a harness that reports the session's running total (Claude Code; a Codex price estimate) also records it as session_cost_usd, and cost_usd is the difference from the previous usage event. Token counts are this turn's too: Codex reports the thread's running totals on a resume, recorded as session_usage, and the four counts are the difference from the previous usage event's (a lower total counts whole).",
+      "type": "object",
+      "required": ["input_tokens", "cached_input_tokens", "output_tokens", "reasoning_tokens", "cost_usd", "cost_is_estimate", "num_turns", "harness_version"],
+      "properties": {
+        "input_tokens": { "type": ["integer", "null"], "minimum": 0 },
+        "cached_input_tokens": { "type": ["integer", "null"], "minimum": 0 },
+        "output_tokens": { "type": ["integer", "null"], "minimum": 0 },
+        "reasoning_tokens": { "type": ["integer", "null"], "minimum": 0 },
+        "cost_usd": { "type": ["number", "null"], "minimum": 0 },
+        "cost_is_estimate": { "type": ["boolean", "null"], "description": "true for a client-side figure that can differ from the bill; null when there is no cost." },
+        "num_turns": { "type": ["integer", "null"], "minimum": 0, "description": "The harness's own count of model turns in this run, when it reports one." },
+        "harness_version": { "type": ["string", "null"] },
+        "session_cost_usd": { "type": ["number", "null"], "minimum": 0 },
+        "session_usage": {
+          "type": "object",
+          "description": "The session's running token totals as the harness reported them (Codex), before the difference was taken.",
+          "properties": {
+            "input_tokens": { "type": ["integer", "null"], "minimum": 0 },
+            "cached_input_tokens": { "type": ["integer", "null"], "minimum": 0 },
+            "output_tokens": { "type": ["integer", "null"], "minimum": 0 },
+            "reasoning_tokens": { "type": ["integer", "null"], "minimum": 0 }
+          }
+        }
+      }
+    }
   }
 }

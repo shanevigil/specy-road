@@ -1,12 +1,12 @@
-"""Find a leaf whose planning sheet is still the text the toolkit wrote, whatever its acceptance.
+"""Find a leaf whose planning sheet is still the text the toolkit wrote.
 
-Pickup skips such a leaf only when the node also has no ``acceptance``
-(``planning_sheet_bootstrap.placeholder_sheet``): criteria give an agent
-something to build from. The sheet is still unwritten, though, and a leaf that
-finishes with it leaves no record of what it set out to do. So
-``finish-this-task`` refuses it (``--allow-scaffold-planning`` opts out),
-pickup warns about it, and ``validate`` notes the Complete leaves that already
-went through.
+Pickup, ``grind-session --plan`` and ``orchestrate plan`` skip a leaf when
+:func:`pickup_unauthored_leaves` lists it (placeholder sheet with no
+``acceptance``, or scaffold/promote placeholder under ``## Intent`` /
+``## Approach`` even when ``acceptance`` is set). ``finish-this-task`` refuses
+the scaffold case too (``--allow-scaffold-planning`` opts out on finish and
+pickup). ``validate`` still lists only the no-``acceptance`` placeholders and
+notes ``Complete`` leaves that already shipped on a scaffold sheet.
 """
 
 from __future__ import annotations
@@ -14,11 +14,14 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
 from specy_road.bundled_scripts.planning_sheet_bootstrap import (
     PROMOTE_PLACEHOLDER,
     _scaffold_bodies,
     _section_bodies,
+    open_pickable_leaves,
+    placeholder_sheet,
 )
 from specy_road.milestone_subtree import structural_leaf_ids
 
@@ -38,6 +41,18 @@ def scaffold_sheet(root: Path, node: dict) -> str | None:
         return f"{rel} still has brainstorm promote's placeholder under ## Intent"
     left = [title for title, body in _scaffold_bodies().items() if body in bodies.get(title, "")]
     return f"{rel} still has scaffold-planning's placeholder under ## {left[0]}" if left else None
+
+
+def pickup_unauthored_leaves(root: Path, nodes: list[dict]) -> dict[str, str]:
+    """Open pickable leaves pickup skips for planning-sheet reasons, id -> reason."""
+    out: dict[str, str] = {}
+    for n in open_pickable_leaves(nodes):
+        reason = placeholder_sheet(root, n)
+        if reason is None and acceptance_ids(n):
+            reason = scaffold_sheet(root, n)
+        if reason is not None:
+            out[n["id"]] = reason
+    return out
 
 
 def scaffold_planning_or_exit(root: Path, node: dict, *, allow: bool) -> None:

@@ -4,18 +4,26 @@ from __future__ import annotations
 
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
 from specy_road.bundled_scripts.planning_artifacts import collect_planning_artifact_errors
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
+from specy_road.model_profiles import roster_profile_gaps
 from specy_road.review_gate import review_required
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.review_gate_agreement import gate_config_mismatch
+from specy_road.runtime_paths import default_user_repo_root, git_root
 
 from specy_road.bundled_scripts.brief_acceptance import warn_acceptance_merged, warn_acceptance_missing, warn_unauthored
 from specy_road.bundled_scripts.planning_sheet_bootstrap import unauthored_leaves
+from specy_road.bundled_scripts.touch_zone_tracked import warn_untracked_zones
 from specy_road.bundled_scripts.validate_touch_zones import warn_touch_zones_match_nothing
+from specy_road.bundled_scripts.validate_registry_overlap import (
+    AuthoringOverlapScope,
+    warn_registry_touch_zone_overlap,
+)
 from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
 from specy_road.node_kinds import is_gate
 
@@ -44,8 +52,6 @@ def validate_node_keys(nodes: list[dict]) -> None:
         )
         raise SystemExit(1)
     if len(keys) != len(set(keys)):
-        from collections import Counter
-
         dup = [k for k, v in Counter(keys).items() if v > 1]
         print(f"roadmap: duplicate node_key values: {dup}", file=sys.stderr)
         raise SystemExit(1)
@@ -190,6 +196,7 @@ def validate_codenames(nodes: list[dict]) -> None:
 
 def validate_required_planning_dirs(nodes: list[dict]) -> None:
     """Vision/phase/milestone/task/gate nodes must set planning_dir (one .md)."""
+    missing: list[tuple[str, str]] = []
     for n in nodes:
         t = n.get("type")
         if t not in ("vision", "phase", "milestone", "task", "gate"):
@@ -197,14 +204,18 @@ def validate_required_planning_dirs(nodes: list[dict]) -> None:
         pd = n.get("planning_dir")
         if isinstance(pd, str) and pd.strip():
             continue
-        nid = n.get("id", "?")
-        msg = (
+        missing.append((n.get("id", "?"), str(t)))
+    if not missing:
+        return
+    for nid, t in missing:
+        print(
             f"roadmap: node {nid} (type {t}): must set planning_dir to a "
             "repo-relative path to a single feature sheet, e.g. "
-            "planning/M1.1_slug_<node_key>.md"
+            "planning/M1.1_slug_<node_key>.md",
+            file=sys.stderr,
         )
-        print(msg, file=sys.stderr)
-        raise SystemExit(1)
+        print(f"  fix: specy-road scaffold-planning {nid}", file=sys.stderr)
+    raise SystemExit(1)
 
 
 def warn_stale_parent_status(nodes: list[dict]) -> None:
@@ -235,30 +246,6 @@ def warn_stale_parent_status(nodes: list[dict]) -> None:
             f"--set status={rollup}",
             file=sys.stderr,
         )
-
-
-def touch_zone_overlap(entries: list[dict]) -> None:
-    """Warn if entries share a touch zone path (heuristic)."""
-    for i, a in enumerate(entries):
-        za = sorted(a.get("touch_zones") or [])
-        for j in range(i + 1, len(entries)):
-            b = entries[j]
-            zb = sorted(b.get("touch_zones") or [])
-            for x in za:
-                for y in zb:
-                    y_base = y.rstrip("/")
-                    x_base = x.rstrip("/")
-                    nested = x.startswith(y_base + "/") or y.startswith(
-                        x_base + "/"
-                    )
-                    if x == y or nested:
-                        ac = a.get("codename")
-                        bc = b.get("codename")
-                        warn = (
-                            f"registry: warning — possible overlap '{x}' vs "
-                            f"'{y}' ({ac} vs {bc})"
-                        )
-                        print(warn, file=sys.stderr)
 
 
 #: Per-node fields computed in-memory by ``load_roadmap`` (e.g. by
@@ -301,6 +288,56 @@ def _validate_roadmap_and_registry_schemas(
     validate_schema(registry, load_schema(registry_schema), "registry.schema")
 
 
+def _validate_registry_entries(
+    registry: dict,
+    id_set: set[str],
+    id_to_type: dict[str, object],
+    *,
+    gate: bool,
+) -> None:
+    allowed_review = frozenset({"pending", "approved"})
+    for e in registry.get("entries") or []:
+        nid = e.get("node_id")
+        if nid and nid not in id_set:
+            cn = e.get("codename")
+            print(f"registry: entry {cn} references unknown node_id {nid}", file=sys.stderr)
+            raise SystemExit(1)
+        if nid and is_gate(id_to_type.get(nid)):
+            cn = e.get("codename")
+            print(
+                f"registry: entry {cn!r} must not reference a gate node "
+                f"(node_id {nid!r})",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+        if gate:
+            cn = e.get("codename")
+            rv = e.get("implementation_review")
+            if rv not in allowed_review:
+                print(
+                    f"registry: entry {cn!r}: when require_implementation_review_before_finish "
+                    f"is true, implementation_review must be 'pending' or 'approved' "
+                    f"(got {rv!r}).",
+                    file=sys.stderr,
+                )
+                raise SystemExit(1)
+
+
+def warn_authoring_gaps(
+    nodes: list[dict], root: Path, gate: bool, *, show_all: bool, strict_authoring: bool
+) -> None:
+    """The missing-acceptance warning and the unauthored-leaf block.
+
+    A leaf pickup skips as unauthored is planning still in progress, so unless
+    ``strict_authoring`` its block is a stdout notice that ``validate --strict``
+    does not count, and the missing-acceptance warning leaves it out rather
+    than name it a second time. With ``strict_authoring`` both stay warnings.
+    """
+    unauthored = unauthored_leaves(root, nodes)
+    warn_acceptance_missing(nodes, gate, skip=() if strict_authoring else unauthored)
+    warn_unauthored(unauthored, show_all=show_all, as_notice=not strict_authoring)
+
+
 def run_validation(
     roadmap: dict,
     registry: dict,
@@ -308,6 +345,8 @@ def run_validation(
     *,
     repo_root: Path | None = None,
     show_all: bool = False,
+    overlap_scope: AuthoringOverlapScope | None = None,
+    strict_authoring: bool = False,
 ) -> None:
     r = repo_root or default_user_repo_root()
     _validate_roadmap_and_registry_schemas(roadmap, registry, r)
@@ -315,8 +354,6 @@ def run_validation(
     nodes = roadmap["nodes"]
     ids = [n["id"] for n in nodes]
     if len(ids) != len(set(ids)):
-        from collections import Counter
-
         dup = [k for k, v in Counter(ids).items() if v > 1]
         print(f"roadmap: duplicate ids: {dup}", file=sys.stderr)
         raise SystemExit(1)
@@ -339,43 +376,24 @@ def run_validation(
 
     id_set = set(ids)
     id_to_type = {n["id"]: n.get("type") for n in nodes}
-    # The gate's own resolution (integration branch OR working tree, fail closed),
-    # so a feature-tree edit cannot silence this check or the acceptance warning.
     gate = review_required(r)
-    allowed_review = frozenset({"pending", "approved"})
-    for e in registry.get("entries") or []:
-        nid = e.get("node_id")
-        if nid and nid not in id_set:
-            cn = e.get("codename")
-            unk = f"registry: entry {cn} references unknown node_id {nid}"
-            print(unk, file=sys.stderr)
-            raise SystemExit(1)
-        if nid and is_gate(id_to_type.get(nid)):
-            cn = e.get("codename")
-            print(
-                f"registry: entry {cn!r} must not reference a gate node "
-                f"(node_id {nid!r})",
-                file=sys.stderr,
-            )
-            raise SystemExit(1)
-        if gate:
-            cn = e.get("codename")
-            rv = e.get("implementation_review")
-            if rv not in allowed_review:
-                print(
-                    f"registry: entry {cn!r}: when require_implementation_review_before_finish "
-                    f"is true, implementation_review must be 'pending' or 'approved' "
-                    f"(got {rv!r}).",
-                    file=sys.stderr,
-                )
-                raise SystemExit(1)
+    _validate_registry_entries(registry, id_set, id_to_type, gate=gate)
+    mismatch = gate_config_mismatch(r, gate_on=gate)
+    if mismatch:
+        print(f"roadmap: error — {mismatch}", file=sys.stderr)
+        raise SystemExit(1)
 
     warn_stale_parent_status(nodes)
-    warn_touch_zones_match_nothing(nodes, r)
-    warn_acceptance_missing(nodes, gate)
+    for launchable, msg in roster_profile_gaps(r):   # unlaunchable: a stdout notice --strict does not count
+        print(f"{'warning' if launchable else 'notice'}: {msg}", file=sys.stderr if launchable else sys.stdout)
+    warn_touch_zones_match_nothing(nodes, r, git_root=git_root(r) or r)
+    warn_untracked_zones(nodes, r)
+    warn_authoring_gaps(nodes, r, gate, show_all=show_all, strict_authoring=strict_authoring)
     warn_acceptance_merged(nodes)
-    warn_unauthored(unauthored_leaves(r, nodes), show_all=show_all)
-    if registry.get("entries") and not no_overlap_warn:
-        touch_zone_overlap(registry["entries"])
+    warn_registry_touch_zone_overlap(
+        registry.get("entries") or [],
+        no_overlap_warn=no_overlap_warn,
+        overlap_scope=overlap_scope,
+    )
 
     print("OK: roadmap and registry validate.")

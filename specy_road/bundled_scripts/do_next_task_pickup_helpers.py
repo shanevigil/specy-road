@@ -8,12 +8,13 @@ file-line constraint.
 from __future__ import annotations
 
 import datetime
+import shutil
 from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_prompt import write_agent_prompt
 from specy_road.bundled_scripts.do_next_task_self_heal import (
     attempt_self_cleanup,
-    emit_stale_claim_warning,
+    warn_unresolved_rollback,
 )
 from specy_road.bundled_scripts.generate_brief import index as make_index, render_brief
 from specy_road.git_subprocess import commits_behind, local_branch_exists
@@ -22,6 +23,9 @@ from specy_road.on_complete_session import (
     write_on_complete_session,
 )
 from specy_road.registry_yaml import write_registry
+from specy_road.runtime_paths import project_prefix
+from specy_road.worker_adapters import linked_worktree
+from specy_road.worktree_env import EnvSetupError, setup_worktree_env
 
 
 def write_brief(work_dir: Path, node: dict, nodes: list[dict]) -> Path:
@@ -98,6 +102,80 @@ def register_and_commit(
     git_runner("commit", "-m", commit_message, "--", str(registry_path))   # only the registry, whatever else is staged
 
 
+def refuse_linked_worktree(repo_root: Path, *, local: bool, worktree: bool) -> None:
+    """A pushing pickup belongs to the main checkout, never to a linked worktree.
+
+    Pickup checks out the integration branch and pushes it; inside a linked
+    worktree that means the worktree holds the integration branch and pushes,
+    which a worktree-per-leaf flow forbids. ``--local`` (no fetch, no push)
+    still runs here, as before.
+    """
+    if (local and not worktree) or not linked_worktree(repo_root):
+        return
+    raise SystemExit(
+        f"error: {repo_root} is a linked worktree; pickup here would check out and push "
+        "the integration branch from it.\n"
+        "  Run `specy-road do-next-available-task --worktree` from the main checkout: it "
+        "registers and pushes the claim there and checks the leaf's branch out in "
+        "work/.worktrees/<codename>.\n"
+        "  Or pass --local to claim in this worktree without fetching or pushing."
+    )
+
+
+def leaf_worktree_path(repo_root: Path, codename: str) -> Path:
+    """``work/.worktrees/<codename>``, refused before anything is claimed if it is already there."""
+    wt = repo_root / "work" / ".worktrees" / codename
+    if wt.exists():
+        raise SystemExit(
+            f"error: {wt} already exists. Remove it (git worktree remove) or land the "
+            "leaf it holds, then retry."
+        )
+    return wt
+
+
+def branch_fns(git_runner, base: str, wt: Path | None):
+    """``(create, adopt)`` for :func:`push_and_branch_with_self_heal`.
+
+    Without ``wt`` this checkout switches to the leaf's branch; with it the
+    branch goes into ``wt`` by ``git worktree add`` and this checkout stays on
+    ``base``.
+    """
+    def create(branch: str) -> None:
+        if wt is None:
+            git_runner("checkout", "-b", branch)
+            return
+        wt.parent.mkdir(parents=True, exist_ok=True)
+        git_runner("worktree", "add", "-b", branch, str(wt), base)
+
+    def adopt(branch: str) -> None:
+        if wt is None:
+            git_runner("checkout", branch)
+            return
+        wt.parent.mkdir(parents=True, exist_ok=True)
+        git_runner("worktree", "add", str(wt), branch)
+
+    return create, adopt
+
+
+def worktree_work_dir(repo_root: Path, wt: Path, brief_path: Path) -> tuple[Path, Path]:
+    """``(project root in wt, its work/)`` with the brief moved in: the leaf's agent runs there, and finish
+    removes the brief from that tree only, so a copy left in this checkout's ``work/`` would outlive the leaf.
+
+    The new worktree also gets ``env_setup`` (:mod:`specy_road.worktree_env`); a failure stops the
+    pickup with the command's output, after the claim is pushed, so the claim and the worktree stay.
+    """
+    wt_root = wt / project_prefix(repo_root)
+    work = wt_root / "work"
+    work.mkdir(parents=True, exist_ok=True)
+    shutil.move(brief_path, work / brief_path.name)
+    try:
+        for line in setup_worktree_env(repo_root, wt_root):
+            print(f"env_setup: {line}")
+    except EnvSetupError as e:
+        raise SystemExit(f"error: {e}") from None
+    return wt_root, work
+
+
 def announce_resumed_branch(repo_root: Path, branch: str, base: str) -> None:
     """Say plainly that this pickup adopted a branch rather than creating one."""
     print(f"branch {branch} already exists — checking it out instead of creating it")
@@ -166,7 +244,10 @@ def push_and_branch_with_self_heal(
                 git_runner=git_runner,
             )
             if not ok:
-                emit_stale_claim_warning(node_id, codename)
+                warn_unresolved_rollback(
+                    repo_root=repo_root, node_id=node_id, codename=codename,
+                    branch=branch, remote=remote,
+                )
         raise
 
 

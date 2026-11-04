@@ -101,7 +101,8 @@ def test_concurrent_messages_launch_one_turn(tmp_path: Path, monkeypatch) -> Non
     gate.set()
     for t in threads:
         t.join()
-    assert len(spawned) == 1 and len(errors) == 1 and "still running" in str(errors[0])
+    assert len(spawned) == 1 and len(errors) == 0
+    assert ws.load_record(repo, rec.worker_id).queued_message == "hi"
 
 
 def test_concurrent_reclaims_record_one_intervention(tmp_path: Path) -> None:

@@ -121,7 +121,7 @@ Use the **Gantt PM UI** (split outline + dependency timeline, drag-drop sibling 
 
 Steps 2–4 are new in 0.2.1. Before that the GUI read the environment variable and discovered upward while the CLI did neither, so the two could disagree about which tree they were looking at — and this page told you to set a variable the CLI ignored.
 
-**Two layouts, both supported**, chosen per project: **embedded**, with `roadmap/`, `planning/` and `shared/` at the repository root, or **nested**, with the same tree under a subfolder (`sr/`) so the coding root stays uncluttered. `specy-road init project sr` scaffolds the nested form and records it, after which every command resolves it with no flag from any working directory. Keep the two roots straight: the **git root** owns `.gitignore`, `.cursorindexingignore`, `.claude/` and `.cursor/`; the **project root** owns `roadmap/`, `planning/`, `shared/`, `work/`, `constitution/` and `constraints/`. Entries written to the first that name paths in the second are prefixed automatically. One consequence: `constraints/file-limits.yaml` is read from the project root, but its `applies_to_globs` resolve against the git root — so a glob stays `frontend/**/*.tsx` rather than `../frontend/**/*.tsx`.
+**Two layouts, both supported**, chosen per project: **embedded**, with `roadmap/`, `planning/` and `shared/` at the repository root, or **nested**, with the same tree under a subfolder (`sr/`) so the coding root stays uncluttered. `specy-road init project sr` scaffolds the nested form and records it, after which every command resolves it with no flag from any working directory. Keep the two roots straight: the **git root** owns `.gitignore`, `.cursorindexingignore`, `.claude/` and `.cursor/`; the **project root** owns `roadmap/`, `planning/`, `shared/`, `work/`, `constitution/` and `constraints/`. Entries written to the first that name paths in the second are prefixed automatically, so a nested project gets no `.gitignore` of its own: its run-time rules live in the git root's managed block. `init project` (and its `--dry-run`, line for line) names every path it creates or changes, including `AGENTS.md`, `.specyrd/manifest.json` and each ignore file's managed block. One consequence: `constraints/file-limits.yaml` is read from the project root, but its `applies_to_globs` resolve against the git root — so a glob stays `frontend/**/*.tsx` rather than `../frontend/**/*.tsx`.
 
 **One-time setup:** the wheel ships a built UI; from a **clone** with `gui/pm-gantt/`, `init gui --install-gui` also compiles that tree. After `pip install specy-road`:
 
@@ -270,7 +270,7 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 | `specy-road add-dependency M0.1.1 <NODE_KEY>`     | Append one **node_key** dependency if it is not already listed.                                                                            |
 | `specy-road remove-dependency M0.1.1 <NODE_KEY>`  | Remove one **node_key** dependency if present.                                                                                               |
 | `specy-road brief M0.1.1`                          | Show the same “brief” a developer sees for that item (good for spot checks). The brief carries `## 6. Dependency context (intent of upstream work)` with each effective dep's `## Intent` block — review it before authoring the planning sheet so you don't restate dep prose. |
-| `specy-road refresh-stubs --diff`                  | Preview a stub refresh after upgrading: a unified diff of every stub, skill, `.specyrd/README.md` and managed block (`AGENTS.md`, `CLAUDE.md`, `.gitignore`, `.cursorindexingignore`) it would change. Writes nothing (implies `--dry-run`). See [Keeping a consumer repo current](install-and-usage.md#keeping-a-consumer-repo-current-after-an-upgrade). |
+| `specy-road refresh-stubs --diff`                  | Preview a stub refresh after upgrading: a unified diff of every stub, skill, `.specyrd/README.md`, managed block (`AGENTS.md`, `CLAUDE.md`, `.gitignore`, `.cursorindexingignore`) and `.specyrd/AGENTS*.md` file it would change. Writes nothing (implies `--dry-run`). See [Keeping a consumer repo current](install-and-usage.md#keeping-a-consumer-repo-current-after-an-upgrade). |
 
 **Global option:** `--repo-root DIR` (must come **before** the command) if the project is not the current folder.
 
@@ -347,6 +347,19 @@ Resolve these **before** developers reach them:
 1. Open the blocking **`type: gate`** node.
 2. Record the outcome in the node’s `decision` block and, if needed, an ADR under `docs/adr/` and updates under `shared/`.
 3. Set the task status to `Complete`, then validate, export and digest.
+
+## Node status vs registry claim (one leaf, `on_complete: pr`)
+
+**Node `status`** lives in roadmap JSON; an active **registry claim** lives in `roadmap/registry.yaml` (`feature/rm-*`, `owner`, touch zones). Pickup adds the row on the integration branch; the chunk often stays **Not Started** until finish or a PM edit. The dashboard and **`list-nodes`** / **`brief`** show the claim beside that status.
+
+With **`on_complete: pr`** (default):
+
+1. **Pickup** — `do-next-available-task` registers on the integration branch, then **`feature/rm-<codename>`**.
+2. **Implement** — Commits on the feature branch; **`list-nodes`** shows **`(claimed)`**.
+3. **Finish** — On the feature branch, `finish-this-task` sets **`Complete`** and removes the registry row in that commit. Under **`pr`**, the integration branch still has the old status and **still lists the registry row**.
+4. **PR merge** — Reconciles **`Complete`** and drops the row. Until then, **leave the integration-branch row alone**; do not **`abort-task-pickup`** (it deletes the feature branch with the work).
+
+See [git-workflow.md](git-workflow.md) ("What `pr` leaves behind") and [dev-workflow.md](dev-workflow.md).
 
 ## Monitoring execution (not approving PRs)
 

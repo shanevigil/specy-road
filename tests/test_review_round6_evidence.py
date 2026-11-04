@@ -81,7 +81,7 @@ def test_uncommitted_rename_is_seen_by_reconcile(tmp_path: Path) -> None:
     assert wr._changed_since(repo, "HEAD") == ["docs/a.py", "src/a.py"]
     git(repo, "mv", "docs/a.py", "src/a.py")
     (repo / "src" / "a.py").rename(repo / "docs" / "a moved.py")   # unstaged delete + untracked file
-    assert wr._changed_since(repo, "HEAD") == ["docs/a moved.py", "src/a.py"]
+    assert wr._changed_since(repo, "HEAD") == ["src/a.py"]   # the untracked side is reported on its own (M11.40)
 
 
 def test_copy_is_reported_on_both_sides(tmp_path: Path) -> None:
@@ -163,13 +163,14 @@ def test_a_signed_record_binds_its_notes(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=_roster(pub))
     head = git(repo, "rev-parse", "HEAD")
     notes = tmp_path / "notes.md"
-    notes.write_text(review_text(head, model="opus") + "Looked at src/a.py.\n")
+    # M11.75: an approve's observation lines carry a same-line 'not a defect because' reason
+    notes.write_text(review_text(head, model="opus") + "Looked at src/a.py; not a defect because it is unchanged.\n")
     with pytest.raises(SystemExit) as e:
         review_cli.main(["review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
                          "--file", str(notes), "--sign-key", str(key), "--repo-root", str(repo)])
     assert (e.value.code or 0) == 0
     rec = load_review(review_path(repo, "M1.1", "opus"))
-    assert rec.data["notes_sha256"] == rs.notes_digest("notes\nLooked at src/a.py.\n")
+    assert rec.data["notes_sha256"] == rs.notes_digest("notes\nLooked at src/a.py; not a defect because it is unchanged.\n")
     assert evaluate_gate(repo, NODE, head).passed
     # The body is replaced, front matter untouched: no longer counts.
     _write(repo, rec.data, "Something else entirely.\n")

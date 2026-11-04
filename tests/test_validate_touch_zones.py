@@ -24,8 +24,14 @@ def _node(**over) -> dict:
     return base
 
 
-def _warn(nodes: list[dict], root: Path, capsys) -> str:
-    warn_touch_zones_match_nothing(nodes, root)
+def _warn(
+    nodes: list[dict],
+    project_root: Path,
+    capsys,
+    *,
+    git_root: Path | None = None,
+) -> str:
+    warn_touch_zones_match_nothing(nodes, project_root, git_root=git_root)
     return capsys.readouterr().err
 
 
@@ -199,3 +205,39 @@ def test_the_hint_does_not_invite_removing_zones(tmp_path: Path, capsys) -> None
 
     assert "do not remove zones just to silence this" in err
     assert "planning sheet" not in err
+
+
+@pytest.fixture
+def nested_project(tmp_path: Path) -> tuple[Path, Path]:
+    """``(git_root, project_root)`` with the project at ``sr/`` and code beside it."""
+    top = tmp_path / "checkout"
+    project = top / "sr"
+    project.mkdir(parents=True)
+    (top / "specy_road").mkdir()
+    (top / "specy_road" / "toolkit.py").write_text("# toolkit\n", encoding="utf-8")
+    return top, project
+
+
+def test_a_git_root_zone_outside_the_project_is_quiet(nested_project, capsys) -> None:
+    top, project = nested_project
+
+    assert _warn(
+        [_node(touch_zones=["specy_road/toolkit.py"])],
+        project,
+        capsys,
+        git_root=top,
+    ) == ""
+
+
+def test_a_misspelled_git_root_zone_still_warns(nested_project, capsys) -> None:
+    top, project = nested_project
+
+    err = _warn(
+        [_node(touch_zones=["specy_road/typo.py"])],
+        project,
+        capsys,
+        git_root=top,
+    )
+
+    assert "M1.1" in err
+    assert "specy_road/typo.py" in err

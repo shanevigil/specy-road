@@ -16,9 +16,10 @@ import re
 
 from specy_road.bundled_scripts.brainstorm_lenses import (
     DEFAULT_KINDS_BY_PROFILE,
-    DIRECTIONS,
-    OPERATORS,
+    directions_for,
     lenses_for,
+    operators_for,
+    served_answer,
 )
 from specy_road.bundled_scripts.brainstorm_session import IDEA_KINDS, BrainstormSession
 
@@ -106,6 +107,13 @@ def frame_lines(session: BrainstormSession) -> list[str]:
         "--answer \"not-the-question=...\" --answer \"assumed-vs-known=...\"",
         "```",
         "",
+        "**When no person can answer during this run** (a headless or one-shot "
+        "session, or the request was to produce the ideas now), do not stop to "
+        "wait for the PM: record your proposed answers with the command above, "
+        "every one the PM has not confirmed prefixed `assumed:` (a required key "
+        "included), go on to Step 2, and end your report by listing the "
+        "assumed answers so the PM can correct them with `brainstorm frame`.",
+        "",
     ]
     if session.frame:
         lines += ["Frame already recorded:", ""]
@@ -116,6 +124,7 @@ def frame_lines(session: BrainstormSession) -> list[str]:
 
 def allocation_lines(session: BrainstormSession, count: int, *, shard: bool = False) -> list[str]:
     lenses = lenses_for(session.profile)
+    served = served_answer(session.frame)
     if shard:
         # The session holds one allocation and `frame --allocation` replaces
         # it, so a shard that recorded its own would erase the others'.
@@ -150,15 +159,22 @@ def allocation_lines(session: BrainstormSession, count: int, *, shard: bool = Fa
         "",
         *plan,
         "",
-        "**Directions:** " + "; ".join(DIRECTIONS) + ".",
+        "**Directions:** " + "; ".join(directions_for(session.profile, served)) + ".",
         "",
         "**Lenses** (coverage scaffolding; one lens does not make an idea new):",
         "",
     ]
     lines += [f"- **{name}** — {how}" for name, how in lenses]
     lines += ["", "**Diversity operators** (these are what make the pool wide):", ""]
-    lines += [f"- **{name}** — {how}" for name, how in OPERATORS]
+    lines += [f"- **{name}** — {how}" for name, how in operators_for(session.profile, served)]
     lines.append("")
+    if not served:
+        lines += [
+            "The personas above are placeholders: draw them, and the segments, "
+            "from the frame's `served` answer once it is agreed, and leave out "
+            "anyone it says is not served.",
+            "",
+        ]
     if session.allocation:
         lines += ["Allocation already recorded:", "", "```", session.allocation, "```", ""]
     return lines
@@ -307,8 +323,11 @@ def shard_lines(session: BrainstormSession, shard: int, total: int) -> list[str]
         given = [f"- **Cell (from the recorded allocation):** {cell}"]
     else:
         # No allocation labels this shard: spread operators and directions by shard number.
-        op = OPERATORS[(shard - 1) % len(OPERATORS)]
-        direction = DIRECTIONS[(shard - 1) % len(DIRECTIONS)]
+        served = served_answer(session.frame)
+        operators = operators_for(session.profile, served)
+        directions = directions_for(session.profile, served)
+        op = operators[(shard - 1) % len(operators)]
+        direction = directions[(shard - 1) % len(directions)]
         given = [
             f"- **Direction:** {direction}",
             f"- **Operator:** {op[0]} — {op[1]}",

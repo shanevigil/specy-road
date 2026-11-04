@@ -60,6 +60,18 @@ def zone_matches(zone: str, path: str) -> bool:
     return path == zone or path.startswith(f"{zone}/")
 
 
+def in_zones(zones, path: str, prefix: str) -> bool:
+    """Whether a git-root-relative ``path`` falls inside any of ``zones``.
+
+    In a nested project a zone may name a project file from either root —
+    ``sr/schemas`` from the git root or ``schemas`` from the project root — so a
+    path under the project is tried in both forms. Code outside the project has
+    only its git-root name. ``prefix`` is :func:`project_prefix` of the project.
+    """
+    forms = {path, rebase_to_project(path, prefix) or path}
+    return any(zone_matches(z, f) for z in zones for f in forms)
+
+
 def base_ref(repo_root: Path, remote: str, integration_branch: str) -> str | None:
     """The ref to diff against: the remote-tracking branch, else the local one.
 
@@ -103,11 +115,12 @@ def implementation_paths(
     paths = changed_paths(repo_root, ref)
     if paths is None:
         return None
-    # Zones name project files project-relative and code outside a nested
-    # project git-root-relative, the same reading review-packet applies.
+    # The same reading review-packet applies; matches are reported project-relative.
     prefix = project_prefix(repo_root)
-    project_paths = [rebase_to_project(path, prefix) or path for path in paths]
-    return [p for p in project_paths if any(zone_matches(z, p) for z in cleaned)]
+    from specy_road.nested_repos import nested_zone_paths   # noqa: PLC0415 — nested_repos imports this module
+    # A leaf whose work lives in a nested repository (nested_repos) implemented it there.
+    return [rebase_to_project(p, prefix) or p for p in paths if in_zones(cleaned, p, prefix)] + \
+        nested_zone_paths(repo_root, cleaned)
 
 
 def implementation_gate_error(
@@ -130,7 +143,8 @@ def implementation_gate_error(
         f"under its declared touch zones ({listed}).\n"
         "  A claim is not an implementation — finishing here would mark the node "
         "Complete with no work behind it.\n"
-        "  If the work is real but lives elsewhere, fix the zones:\n"
+        "  If the work is real but lives elsewhere, fix the zones (edit-node also "
+        "rewrites this claim's registry row, which finish reads first):\n"
         f"    specy-road edit-node {node_id} --set touch_zones=<paths>\n"
         "  If the node genuinely needs no code change, pass "
         "--allow-empty-implementation.\n"

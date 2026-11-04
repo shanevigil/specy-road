@@ -80,6 +80,7 @@ def _attach_rollup(project: Path, tmp_path: Path) -> Path:
     git(bare, "symbolic-ref", "HEAD", "refs/heads/dev")
     git(project, "remote", "add", "origin", str(bare))
     git(project, "fetch", "-q", "origin")
+    git(project, "remote", "set-head", "origin", "dev")   # as clone does; fetch does it only from git 2.48
     return bare
 
 

@@ -53,9 +53,9 @@ def _prompt(repo: Path, pass_name: str) -> str:
     return (repo / "work" / f"brainstorm-{SLUG}-{pass_name}-prompt.md").read_text(encoding="utf-8")
 
 
-def test_skill_and_managed_block_say_to_start_before_reading_the_digest() -> None:
+def test_skill_and_agent_rules_say_to_start_before_reading_the_digest() -> None:
     skill = (ROOT / "specy_road/templates/specyrd/commands/specyrd-brainstorm.md").read_text(encoding="utf-8")
-    block = (ROOT / "specy_road/templates/specyrd/agents-md-block.md").read_text(encoding="utf-8")
+    block = (ROOT / "specy_road/templates/specyrd/agents-rules.md").read_text(encoding="utf-8")
     load_order_0 = next(ln for ln in block.splitlines() if ln.startswith("0. `roadmap-context.md`"))
     assert "run `brainstorm start` before reading this or anything else" in load_order_0
     head = skill.split("```bash")[0]
@@ -76,6 +76,25 @@ def test_round_one_frame_proposes_answers_over_the_canonical_keys(repo: Path) ->
     for key in ("metric", "tried", "fixed-or-choice", "do-nothing", "deadline", "budget"):
         assert f"- `{key}` — " in step1, key
     assert "--answer \"served=assumed: ...\"" in step1
+
+
+def test_a_run_nobody_can_answer_records_an_assumed_frame_and_goes_on(repo: Path) -> None:
+    """CR5/codex: a one-shot run stopped after `start` waiting for frame answers, 0 ideas."""
+    _start(repo)
+    step1 = " ".join(_prompt(repo, "r1").split("## Step 1")[1].split("## Step 2")[0].split())
+    assert "ask them to correct it" in step1   # interactive use keeps the question
+    headless = step1.split("**When no person can answer during this run**")[1]
+    assert "do not stop to wait for the PM" in headless
+    assert "prefixed `assumed:` (a required key included), go on to Step 2" in headless
+    assert "listing the assumed answers" in headless
+
+
+def test_the_skill_description_says_start_comes_before_any_roadmap_read() -> None:
+    """CR5/cursor read roadmap-context.md in the same step as the skill body."""
+    skill = (ROOT / "specy_road/templates/specyrd/commands/specyrd-brainstorm.md").read_text(encoding="utf-8")
+    desc = skill.split("description:", 1)[1].split("\n", 1)[0]
+    assert "Run `specy-road brainstorm start` first, before reading roadmap-context.md" in desc
+    assert "record your proposals as\n`assumed:` and continue" in skill
 
 
 def test_frame_rewrites_panel_shards_with_their_allocation_cells_and_the_frame(repo: Path) -> None:

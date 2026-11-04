@@ -33,12 +33,14 @@ does NOT gate pickup; --prefer-agentic only reorders.
 
 A leaf whose planning sheet is still the scaffold-planning or brainstorm promote
 placeholder, and whose node has no acceptance, is skipped with the reason
-printed; --allow-unauthored picks it anyway.
+printed; --allow-unauthored picks it anyway. A leaf with acceptance but an
+unwritten ## Intent or ## Approach is skipped too; --allow-scaffold-planning
+keeps the old warn-and-pick behaviour for that case.
 """
 
 
 def _add_claim_visibility_args(p: argparse.ArgumentParser) -> None:
-    """``--local`` and ``--owner``: who can see a claim, and who holds it (proposal §3.4)."""
+    """``--local``, ``--worktree``, ``--owner`` and ``--allow-second-claim``: who can see a claim, where its branch goes, who holds it."""
     p.add_argument(
         "--local",
         action="store_true",
@@ -50,10 +52,29 @@ def _add_claim_visibility_args(p: argparse.ArgumentParser) -> None:
         ),
     )
     p.add_argument(
+        "--worktree",
+        action="store_true",
+        help=(
+            "Run from the main checkout on the integration branch: register and push the "
+            "claim there as usual, then create the leaf's branch in a linked worktree at "
+            "work/.worktrees/<codename> instead of switching this checkout to it. The "
+            "brief, prompt and session file go in that worktree's work/."
+        ),
+    )
+    p.add_argument(
         "--owner",
         default=None,
         metavar="NAME",
         help="Who holds the claim, written to the registry row (default: git config user.name).",
+    )
+    p.add_argument(
+        "--allow-second-claim",
+        action="store_true",
+        help=(
+            "Claim another leaf although this checkout already holds one. Without it, "
+            "pickup exits 6 naming the held claim when the registry has a row whose "
+            "branch exists here and no other worktree has it checked out."
+        ),
     )
 
 
@@ -87,6 +108,28 @@ def _add_baseline_args(p: argparse.ArgumentParser) -> None:
         "--baseline-warn",
         action="store_true",
         help="Pick up even when the baseline command fails, with a warning.",
+    )
+
+
+def _add_planning_sheet_pick_flags(p: argparse.ArgumentParser) -> None:
+    p.add_argument(
+        "--allow-unauthored",
+        action="store_true",
+        help=(
+            "Also pick leaves whose planning sheet is still the scaffold-planning or "
+            "brainstorm promote placeholder and whose node has no acceptance "
+            "(skipped by default, with the reason printed)."
+        ),
+    )
+    p.add_argument(
+        "--allow-scaffold-planning",
+        action="store_true",
+        help=(
+            "Also pick leaves that have acceptance criteria but whose planning sheet "
+            "still has scaffold-planning's or brainstorm promote's placeholder under "
+            "## Intent or ## Approach (skipped by default; finish-this-task still "
+            "refuses unless this flag is passed there too)."
+        ),
     )
 
 
@@ -126,15 +169,7 @@ def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
             "(default appends common [skip ci] / [ci skip] / ***NO_CI*** markers)."
         ),
     )
-    p.add_argument(
-        "--allow-unauthored",
-        action="store_true",
-        help=(
-            "Also pick leaves whose planning sheet is still the scaffold-planning or "
-            "brainstorm promote placeholder and whose node has no acceptance "
-            "(skipped by default, with the reason printed)."
-        ),
-    )
+    _add_planning_sheet_pick_flags(p)
     _add_pick_order_arg(p)
     _add_baseline_args(p)
     _add_claim_visibility_args(p)
