@@ -68,7 +68,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M7.2` Run the harness-capabilities research and fold its findings `run-the-harness-capabilities-research-and-fold-its-findings` — task — **Not Started**
 - `M8` Harness compatibility `harness-compatibility` — phase — **Not Started**
   - `M8.1` Harness facts fixture drives model-profiles and executor templates, with a classified diff on version bumps `harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps` — task — **Complete**
-  - `M8.2` Worker adapters harden the launch and run a deterministic post-run check `worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` — task — **Not Started**
+  - `M8.2` Worker adapters harden the launch and run a deterministic post-run check `worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` — task — **Complete**
   - `M8.3` Reviewer runs are read-only and specy-road writes the review record from structured output `reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` — task — **Not Started**
   - `M8.4` Ship skills once and meter every file each harness injects `ship-skills-once-and-meter-every-file-each-harness-injects` — task — **Complete**
   - `M8.5` Guard hooks per harness and avoid lists in every model profile `guard-hooks-per-harness-and-avoid-lists-in-every-model-profile` — task — **Complete**
@@ -209,7 +209,6 @@ Do not pick these up.
 - `M11.62` on `feature/rm-headless-limits-denials` since 2026-11-03
 - `M11.75` on `feature/rm-reviewer-probe-rules` since 2026-11-03
 - `M11.79` on `feature/rm-risk-tiered-review` since 2026-11-03
-- `M8.2` on `feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` since 2026-11-03
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
 ## Reaching the detail behind this

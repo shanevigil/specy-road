@@ -18,33 +18,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check
-    node_id: M8.2
-    branch: feature/rm-worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check
-    touch_zones:
-      - specy_road/worker_runner.py
-      - specy_road/worker_ops.py
-      - specy_road/worker_reconcile.py
-      - specy_road/orchestration_config.py
-      - docs/orchestration-workers.md
-      - tests/
-      - specy_road/worker_adapter_base.py
-      - specy_road/worker_adapter_claude.py
-      - specy_road/worker_adapter_codex.py
-      - specy_road/worker_adapter_cursor.py
-      - specy_road/worker_adapter_parsers.py
-      - specy_road/worker_state.py
-      - specy_road/worker_ops_lifecycle.py
-      - specy_road/worker_ops_launch.py
-      - specy_road/schemas/worker-record.schema.json
-      - specy_road/schemas/worker-event.schema.json
-      - specy_road/worker_ops_message.py
-      - specy_road/worker_turn_check.py
-      - specy_road/worker_orphans.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-04T02:05:04+00:00'
   - codename: headless-limits-denials
     node_id: M11.62
     branch: feature/rm-headless-limits-denials
