@@ -33,9 +33,6 @@ PATTERN = re.compile(
     r"|/(?:private/)?tmp/claude-\d"
     r"|-MacBook(?:-(?:Pro|Air))?(?:-\d+)?\.local\b"
 )
-#: An http(s) URL, blanked before matching: its path names a site's page, not a machine. Every other scheme
-#: (file:, ssh:, vscode:, ...) can name a local or personal path and stays in scope.
-_WEB_URL = re.compile(r"(?i)\bhttps?://[^\s\"'<>)\]`]*")
 
 
 def find_machine_paths(root: Path) -> list[str]:
@@ -48,7 +45,7 @@ def find_machine_paths(root: Path) -> list[str]:
         except UnicodeDecodeError:
             continue   # binary
         hits += [f"{name}:{n}: {line.strip()[:160]}" for n, line in enumerate(text.splitlines(), 1)
-                 if PATTERN.search(_WEB_URL.sub(" ", line))]
+                 if PATTERN.search(line)]
     return hits
 
 
