@@ -31,7 +31,7 @@ from specy_road.bundled_scripts.grind_session_cleanup import merged_into
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.finish_implementation_check import base_ref
 from specy_road.git_subprocess import git_code, git_stdout, git_text, local_branch_exists
-from specy_road.git_workflow_config import resolve_integration_defaults
+from specy_road.git_workflow_config import load_git_workflow_config, resolve_integration_defaults
 from specy_road.nested_repos import _common_dir, is_repo_top, nested_repos
 from specy_road.review_files import reviews_root
 from specy_road.runtime_paths import project_prefix
@@ -151,6 +151,10 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
     """What removing ``node_id``'s worktree would delete, and every reason it must not; :class:`PruneError` if absent."""
     main, wt, branch = leaf_worktree(root, node_id)
     plan, prefix = PrunePlan(main, wt, branch), project_prefix(main)
+    _cfg, cfg_err = load_git_workflow_config(main)
+    if cfg_err:   # nested_repos would read as none, and their clones would go unchecked with the worktree
+        plan.refusals.append(f"{cfg_err}; fix it, then re-run: without it the nested repositories cannot be checked")
+        return plan
     base, remote, _warns = resolve_integration_defaults(main, explicit_base=None, explicit_remote=None)
     target = base_ref(main, remote, base)
     if target is None:

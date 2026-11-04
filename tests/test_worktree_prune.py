@@ -246,6 +246,22 @@ def test_a_full_clone_remote_tracking_ref_whose_branch_left_the_copy_is_refused(
     assert clone.is_dir() and wt.is_dir()
 
 
+@pytest.mark.parametrize("config", [
+    "version: 1\nintegration_branch: main\nnested_repos: [lib\n",   # does not parse
+    "version: 1\nintegration_branch: main\nremote: origin\nnested_repos:\n  - ../lib\n",   # fails the schema
+])
+def test_an_unreadable_git_workflow_config_refuses_and_keeps_a_nested_clone(tmp_path: Path, config: str) -> None:
+    root, wt, clone = _clone_leaf(tmp_path)
+    git(clone, "checkout", "-q", "-b", "topic")
+    sha = commit_file(clone, "core.py", "x = 10\n", "clone work held nowhere else")
+    (root / "roadmap" / "git-workflow.yaml").write_text(config)
+    out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
+    assert out.returncode == 1
+    assert "git-workflow.yaml" in out.stderr and "nested repositories cannot be checked" in out.stderr
+    assert clone.is_dir() and wt.is_dir()
+    assert git(clone, "rev-parse", "topic") == sha
+
+
 def _break_stash(git_dir: Path) -> None:
     """``refs/stash`` naming a missing object: ``git stash list`` fails, status and other refs still read."""
     (git_dir / "refs" / "stash").write_text("0123456789012345678901234567890123456789\n")
