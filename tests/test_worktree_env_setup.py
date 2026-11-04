@@ -18,6 +18,7 @@ from tests.worker_repo_helpers import make_worker_repo
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import doctor_env_setup as des
 from specy_road.git_workflow_config import validate_git_workflow_dict
+from specy_road.worktree_env import EnvSetupError, setup_worktree_env
 
 IGNORED = ".python-version\n.env\n.env.example\nenv-built\n"
 SETUP = ("env_setup:\n  cmd: echo built > env-built\n"
@@ -44,6 +45,50 @@ def test_schema_takes_a_command_and_copies() -> None:
     assert _cfg({"copy": [".python-version", {"from": ".env.example", "to": ".env"}, "../.python-version"]}) is None
     for bad in ({}, {"cmd": ""}, {"run": "x"}, {"copy": ["/etc/passwd"]}, {"copy": [{"from": "a"}]}, "uv sync"):
         assert _cfg(bad) is not None, bad
+
+
+# --- copy paths stay inside the worktree and the main checkout -----------------------------------
+
+
+def _nested_project(tmp_path: Path, copy: str) -> tuple[Path, Path]:
+    """``(project root, leaf project root)`` in the nested layout: the project at ``<git root>/sr``, one linked worktree."""
+    top = make_pickup_project(tmp_path)
+    project = top / "sr"
+    (project / "roadmap").mkdir(parents=True)
+    (project / "roadmap" / "git-workflow.yaml").write_text(
+        f"version: 1\nintegration_branch: main\nremote: origin\nenv_setup:\n  copy: [{copy}]\n", encoding="utf-8")
+    (top / ".python-version").write_text("3.12\n", encoding="utf-8")
+    (project / ".env").write_text("TOKEN=\n", encoding="utf-8")
+    (tmp_path / "secret").write_text("outside\n", encoding="utf-8")
+    lane = tmp_path / "lane"
+    git(top, "worktree", "add", "-q", "-b", "lane", str(lane))
+    return project, lane / "sr"
+
+
+def test_a_copy_may_climb_to_the_git_root_of_a_nested_project(tmp_path: Path) -> None:
+    project, leaf = _nested_project(tmp_path, "../.python-version")
+    assert setup_worktree_env(project, leaf) == ["copied ../.python-version"]
+    assert (leaf.parent / ".python-version").read_text(encoding="utf-8") == "3.12\n"   # the worktree's git root
+
+
+def test_a_copy_target_past_the_worktree_is_refused(tmp_path: Path) -> None:
+    project, leaf = _nested_project(tmp_path, "{from: .env, to: ../../.env}")
+    with pytest.raises(EnvSetupError, match=r"cannot copy to '\.\./\.\./\.env': .* outside the leaf worktree .*lane"):
+        setup_worktree_env(project, leaf)
+    assert not (tmp_path / ".env").exists()
+
+
+def test_a_copy_source_past_the_main_checkouts_git_root_is_refused(tmp_path: Path) -> None:
+    project, leaf = _nested_project(tmp_path, "{from: ../../secret, to: .env}")
+    with pytest.raises(EnvSetupError, match=r"cannot copy from '\.\./\.\./secret': .* outside the main checkout .*app"):
+        setup_worktree_env(project, leaf)
+    assert not (leaf / ".env").exists()
+
+
+def test_doctor_reports_a_copy_source_outside_the_git_root(tmp_path: Path, capsys) -> None:
+    project, _leaf = _nested_project(tmp_path, "../../secret")
+    assert des.report_env_setup(project) is True
+    assert "error: env_setup: cannot copy from '../../secret'" in capsys.readouterr().err
 
 
 # --- pickup (do-next-available-task --worktree) -------------------------------------------------

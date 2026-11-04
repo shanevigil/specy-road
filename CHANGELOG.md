@@ -70,6 +70,18 @@ body. Keep section bodies focused; link to PRs for detail.
   output. A rejected push now also resets the local integration branch, so the
   re-run it names merges onto the new tip and checks it again.
 
+### Fixed
+
+- `nested_repos` in `roadmap/git-workflow.yaml`: two entries naming one
+  directory under different spellings (`svc` and `svc/`, or a string and an
+  object with the same path) passed the schema's `uniqueItems` and became two
+  rows, so every worktree pickup and `worker delegate` failed adding the second
+  worktree. Validation now reports the duplicate by name.
+- `env_setup.copy`: a `to` that climbed out of the new worktree, or a `from`
+  that climbed out of the main checkout's git root (`../../../.env`), was
+  copied unchecked. `setup_worktree_env` and `doctor` now refuse such an entry
+  by name; `../` still reaches the git root of a nested project root.
+
 ## [v0.3.1-rc2] - 2026-10-29
 
 Second prerelease for v0.3.1 (TestPyPI). Builds on rc1 with upgrade-path

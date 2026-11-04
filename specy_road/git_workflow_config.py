@@ -12,6 +12,7 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from specy_road.git_subprocess import current_branch_name, git_ok, is_git_worktree
+from specy_road.runtime_paths import duplicate_nested_repo
 from specy_road.schema_revision import accepted_at_revision
 
 _PACKAGE_DIR = Path(__file__).resolve().parent
@@ -47,7 +48,7 @@ def validate_git_workflow_dict(data: dict[str, Any], repo_root: Path | None = No
     errs = sorted(v.iter_errors(data), key=lambda e: e.path)
     sub = _GIT_WORKFLOW_SCHEMA.relative_to(_PACKAGE_DIR).as_posix()
     if not errs or repo_root is not None and accepted_at_revision(data, sub, repo_root):
-        return None
+        return duplicate_nested_repo(data)   # what uniqueItems cannot see: svc and svc/
     e = errs[0]
     loc = "/".join(str(x) for x in e.path) if e.path else "(root)"
     return f"{loc}: {e.message}"
