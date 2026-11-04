@@ -2,6 +2,18 @@
 
 **Merge (6efac279):** merged origin/WIP/improvements-0-3-1 (db320d0d). The reviewer prompt keeps this leaf's probe rules plus integration's `verify_cmd_lines` and `reviewer_lesson_lines`. `REMOVED_TEXT_LINES` (text unchanged) moved into `review_record_rules.py` to keep `role_prompt.py` at 397/400 lines. This leaf's two touch-zone additions now sit in M11.75's new chunk, `M11__fad495.json`. The round-2 and round-3 changes are intact. Checks at the merge: `pytest -n 4` on the 50 test files that import the changed modules → 650 passed; file-limits OK; validate OK.
 
+## Round 7 (after the gpt-5.6-sol-medium block at 3b97f506)
+
+Each `required_changes` item and the change that answers it (commit 64cc7a6f):
+
+| # | Required change | Change |
+|---|---|---|
+| 1a | Reject a newline between "because" and its reason, so that only a same-line `not a defect because <reason>` counts | `_EXPLAINED` in `specy_road/review_record_rules.py` used `\s+`, which matches a line break. It now allows only spaces and tabs between the marker's words and between "because" and the reason. The punctuation allowed before the reason's first word excludes every line break that `str.splitlines` recognises: `\n`, `\r`, `\v`, `\f`, `\x1c`–`\x1e`, `\x85`, `\u2028` and `\u2029`. Sol's finding is now `findings.correctness[0] is a finding`. Still accepted: a tab, a dash, or a marker on the second line of a multi-line finding with its reason on that same line. The docs list "a reason that starts on the next line after 'because'" among the forms that don't count. The prompt's rule 4 already says "on the same line … with the reason after it" and is unchanged. |
+| 1b | Public-CLI regression with the observed multiline finding: exit 1, identifies `findings.correctness[0]`, writes neither review nor history | `tests/test_review_record_rules.py::test_record_refuses_an_approve_whose_reason_is_on_the_next_line` files an approve whose `findings.correctness[0]` is "The parser accepts malformed input; not a defect because\nthe parser is unreachable.". It asserts exit 1, `findings.correctness[0] ` in the error, and that neither `REVIEW-opus.md` nor `history/` exists. `test_explained` gains 7 cases: the multiline finding; `\r\n`, a break inside the phrase, `\u2028`, and "- \n" all rejected; a tab and an em dash accepted. |
+
+- **Red-green:** this time the test module imports nothing new, so it ran directly. With 3b97f506's `review_record_rules.py` swapped in temporarily (restored, checked with `cmp`), `pytest -n 4 tests/test_review_record_rules.py -k reason_is_on_the_next_line` → 1 failed. At this commit → 1 passed.
+- **Touch zones:** no file outside the zones was needed.
+
 ## Round 6 (after the gpt-5.6-sol-medium block at 8acfc13b)
 
 Each `required_changes` item and the change that answers it (commit 9d32d03c):
@@ -104,6 +116,13 @@ I ran `unexplained_defects` over the distinct approving records in the main chec
 
 ## Verification
 
+Round 7 (at 64cc7a6f):
+
+- `python -m pytest -q -n 4 tests/test_review_record_rules.py` → 76 passed
+- `python -m pytest -q -n 4 <the same 53 files as round 5>` → 715 passed
+- `specy-road file-limits` → OK; `specy-road validate` → OK; `ruff check` on the changed Python files → clean
+
+
 Round 6 (at 9d32d03c):
 
 - `python -m pytest -q -n 4 tests/test_review_record_rules.py` → 68 passed
@@ -155,7 +174,7 @@ Round 1:
 - `_QUALIFIER` (round 2) — the only words allowed between a negation and a defect word, so "no workaround for this bug" is not read as negated.
 - `defect_word` — decides for one line whether it names a defect, so findings entries and notes lines go through the same rule.
 - `note_problem` (round 5) — decides whether one notes line is an observation that needs a reason.
-- `explained`, `_EXPLAINED` (round 6) — the one check for a standalone marker with a reason, outside code spans, used by findings, `defect_word` and `note_problem`.
+- `explained`, `_EXPLAINED` (round 6) — the one check for a standalone marker with a reason, outside code spans, used by findings, `defect_word` and `note_problem`. From round 7 the reason must be on the same line.
 - `_ACCEPTANCE_RESULT`, `_RULE`, `_WORD` (round 5) — bare acceptance results, table separator rows and rules, and word counting, so those lines are not counted as observations.
 - `unexplained_defects` — walks the findings entries and the notes lines (skipping fenced code) and labels each hit with where it is, so the message can say which. From round 3, every findings entry without the explanation line counts (`is a finding` when no word matches).
 - `approve_defect_problem` — the A2 refusal message; only for `verdict: approve`.
@@ -173,7 +192,8 @@ Round 1:
 - `…::test_record_files_an_approve_whose_notes_explain_the_order_on_the_same_line` (round 4) — the same sentence with a same-line `Not a defect because …` is filed.
 - `…::test_record_refuses_an_approve_whose_notes_carry_an_unclassified_observation` (round 5) — the blocking reviewer's malformed-input sentence on notes line 5, through the CLI: exit 1, the line is named, the heading and bare result are not, and no review or history is written.
 - `…::test_record_refuses_an_approve_whose_marker_is_only_a_substring` (round 6) — the blocking reviewer's "xnot a defect becausey" finding, through the CLI: exit 1, `findings.correctness[0]` named, no review or history.
-- `…::test_explained` (round 6, 12 cases) — the marker's boundary forms, rejected and accepted.
+- `…::test_record_refuses_an_approve_whose_reason_is_on_the_next_line` (round 7) — the blocking reviewer's multiline finding, through the CLI: exit 1, `findings.correctness[0]` named, no review or history.
+- `…::test_explained` (round 6, 12 cases; 7 more in round 7 for line breaks) — the marker's boundary forms, rejected and accepted.
 - `…::test_note_problem` (round 5, 13 cases) — what counts as an observation line and what does not.
 - `…::test_record_files_an_approve_with_no_findings` — A2: a clean approve is filed (from round 5: a heading, bare `A1`/`A2: pass` results and one classified line).
 - `…::test_record_files_an_approve_that_says_why_it_is_not_a_defect` — the explanation line lets an approve through.
