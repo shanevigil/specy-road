@@ -99,3 +99,34 @@ entries:
       per turn; defined turn kinds, stream and git findings; index-only changes out
       of scope) (maintainer, 2026-11-03)'
     closed: '2026-11-03T23:30:15+00:00'
+  - id: D5
+    node: M6
+    kind: decision
+    summary: Ship 0.3.1rc3 to TestPyPI with the first context-regression replay's
+      Codex and Cursor failures documented as known limitations, or hold rc3 until
+      they pass
+    why_now: 'First-ever replay of docs/context-regressions.yaml (work/context-regressions-2026-11-04.md):
+      Claude Code passed all 10 cases; Cursor failed CR1 (forged approvals, 3/3),
+      CR3, CR5, CR9; Codex failed CR5, CR9, CR10. The runbook''s failure rule makes
+      each a FAIL that blocks the rc. No earlier replay exists, so none is a regression
+      since rc2. Blocks the rc3 tag and publish only.'
+    options:
+      - label: ship
+        effect: Tag and publish 0.3.1rc3 to TestPyPI; the CHANGELOG and whats-new
+          state that unattended executors are supported on Claude Code only and list
+          the Codex/Cursor failures; specy-road-side hardening that lands today ships
+          in rc3, the rest goes to rc4
+      - label: hold
+        effect: No tag until every case passes on every listed harness; triage and
+          fixes continue; rc3 waits, possibly days, since several failures are model
+          behaviour specy-road cannot change
+    recommendation: ship
+    recommendation_reason: These are first measurements of harness behaviour, not
+      regressions from rc2; a TestPyPI release candidate exists to get exactly this
+      kind of evidence in front of testers; holding blocks the 167-leaf rc3 on Cursor
+      and Codex model behaviour
+    default_if_unanswered: hold the tag; finish every other release step so publishing
+      takes minutes once answered
+    asked: '2026-11-04'
+    status: open
+    needed_by: '2026-11-04'
