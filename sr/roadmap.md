@@ -86,7 +86,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M9.9` | The executor prompt and the review packet list the Python tests that import the leaf's code | task | Agentic-led | Complete |
 | `M9.10` | Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head | task | Agentic-led | Complete |
 | `M9.11` | Touch-zone checks match project-relative and git-root-relative paths alike in a nested project | task | Agentic-led | Complete |
-| `M10` | Agent loop performance and observability | phase | — | Not Started |
+| `M10` | Agent loop performance and observability | phase | — | In Progress |
 | `M10.1` | Record phase timestamps in the event log and print a per-leaf timeline | task | Agentic-led | Complete |
 | `M10.2` | Normalised usage event in the worker log | task | Agentic-led | Complete |
 | `M10.3` | Replace per-worker polling with a single mailbox flag file and a foreground --wait | task | Agentic-led | Complete |
@@ -106,7 +106,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M10.17` | The review packet caps its inlined diff by bytes too and lists generated bundles by size only | task | Agentic-led | Complete |
 | `M10.18` | Review records are found and written with the canonical file name on case-insensitive filesystems | task | Agentic-led | Complete |
 | `M10.19` | The executor prompt forbids killing processes the executor did not start | task | Agentic-led | Complete |
-| `M10.20` | Pilot GPT-6.1 Terra as a lower-cost executor before rostering it | task | Agentic-led | Not Started |
+| `M10.20` | Pilot GPT-6.1 Terra as a lower-cost executor before rostering it | task | Agentic-led | Complete |
 | `M11` | rc2 field feedback: worktrees, workers and the review loop | phase | Agentic-led | Not Started |
 | `M11.1` | In a git worktree, every command resolves work/ paths the same way and a sandboxed reviewer can file its record | task | Agentic-led | Complete |
 | `M11.2` | worker message resumes a failed or stalled worker whose native session id is known | task | Agentic-led | Complete |
