@@ -25,6 +25,7 @@ from specy_road.bundled_scripts.grind_session_cleanup import (
     merged_into,
 )
 from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
+from specy_road.cli_entry import run_cli
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_code, git_text
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
@@ -176,9 +177,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    argv = list(sys.argv[1:] if argv is None else argv)
-    ns = build_parser().parse_args(argv)
-    raise SystemExit(ns.func(ns))
+    run_cli(build_parser, argv)
 
 
 if __name__ == "__main__":
