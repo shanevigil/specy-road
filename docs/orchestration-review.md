@@ -68,6 +68,8 @@ An evaluation of reviewer effectiveness on the 0.3.1 line found that the approvi
 - a table separator row or horizontal rule;
 - a bare acceptance result such as `- **A1:** pass` or `| A1 | pass |`.
 
+One explanation covers one observation. A line or findings entry is split into clauses at `.`, `!`, `?` or `;` before whitespace (not after "e.g.", "i.e.", "etc.", "vs." or "cf."). A marker covers the clause it ends ("x, not a defect because y"), or, when it opens its clause, the one clause just before it ("x; not a defect because y", "x. Not a defect because y"). Any other clause on the line that names a defect or is an observation fails on its own: "The cache miss is expected; not a defect because the fallback handles it. Separately, valid input crashes." is refused as `says "valid input crashes"`. A reason that itself names a defect ("…because the fallback handles it, and valid input crashes") is refused as `says "…" in its reason`. Keep each reason to one clause.
+
 So approve notes look like this:
 
 ```markdown

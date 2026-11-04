@@ -36,7 +36,9 @@ PROBE_RULES_LINES = [
     "outside backticks, with the reason after it. An observation line is any line of two "
     "words or more outside code spans, other than a heading, a `>` quote, fenced code, a table separator row or "
     "horizontal rule, or a bare acceptance result such as `A1: pass`; so write each observation with its reason "
-    "on the same line, and quote text or test output in backticks, a `>` line or fenced code.",
+    "on the same line, and quote text or test output in backticks, a `>` line or fenced code. One explanation "
+    "covers one observation, the sentence or clause it ends or the one just before it: give each observation its "
+    "own, and keep each reason to one clause that names no defect itself.",
     "",
 ]
 # Executors once deleted unrelated docstrings and messages to stay under a line cap; reviewers caught it a round late.
@@ -96,9 +98,21 @@ def explained(text: str) -> bool:
 # Lines of approve notes that carry no observation: a bare acceptance result ("- **A1:** pass", "| A1 | pass |")
 # and a table separator row or horizontal rule. Any other line of two words or more is an observation and needs a
 # NOT_A_DEFECT reason.
-_ACCEPTANCE_RESULT = re.compile(r"^[-*+|\s]*[*_]*A[1-9]\d*[*_\s]*[:|\u2014\u2013-]?[*_\s]*(?:pass|n/a)[*_\s.|]*$", re.I)
+_ACCEPTANCE_RESULT = re.compile(r"^[-*+|\s]*[*_]*A[1-9]\d*[*_\s]*[:|\u2014\u2013-]?[*_\s]*(?:pass|n/a)"
+                                r"[*_\s.,;|]*$", re.I)
 _RULE = re.compile(r"^[\s|:*_-]*$")
 _WORD = re.compile(r"[A-Za-z][\w'-]*")
+
+
+# A clause ends at ., !, ?, or ; before whitespace, except after a common abbreviation ("e.g. the lock").
+_CLAUSE_END = re.compile(r"(?<!\be\.g\.)(?<!\bi\.e\.)(?<!\betc\.)(?<!\bvs\.)(?<!\bcf\.)(?<=[.!?;])\s+", re.I)
+
+
+def _named_defect(text: str) -> str | None:
+    for m in _DEFECT.finditer(text):
+        if not _NEGATED.search(text[:m.start()]):
+            return m.group(1)
+    return None
 
 
 def defect_word(line: str) -> str | None:
@@ -107,37 +121,65 @@ def defect_word(line: str) -> str | None:
     text = _CODE_SPAN.sub("", line).strip()
     if explained(text) or text.startswith(("#", ">")):
         return None
-    for m in _DEFECT.finditer(text):
-        if not _NEGATED.search(text[:m.start()]):
-            return m.group(1)
-    return None
+    return _named_defect(text)
+
+
+def _observation(clause: str) -> str | None:
+    """Why one clause would need a reason: it names a defect, or it has two words or more and is not a bare
+    acceptance result or a table separator row or horizontal rule."""
+    word = _named_defect(clause)
+    if word:
+        return f'says "{word}"'
+    if _ACCEPTANCE_RESULT.match(clause.strip()) or _RULE.match(clause) or len(_WORD.findall(clause)) < 2:
+        return None
+    return "is an observation"
+
+
+def clause_problem(text: str) -> str | None:
+    """Why ``text`` (a notes line or a findings entry, code spans ignored) is not fully explained, or ``None``.
+    One explanation covers one observation: the clause it ends ("x, not a defect because y"), or, when the marker
+    opens its clause, the one clause just before it ("x; not a defect because y", "x. Not a defect because y").
+    Any other clause that would need a reason fails, and so does a reason that itself names a defect."""
+    pending = None
+    for clause in _CLAUSE_END.split(_CODE_SPAN.sub("", text).strip()):
+        m = _EXPLAINED.search(clause)
+        if not m:
+            if pending:
+                return pending
+            pending = _observation(clause)
+            continue
+        if pending and _observation(clause[:m.start()]):   # this marker explains its own clause, not the last
+            return pending
+        pending = None
+        word = _named_defect(clause[m.end() - 1:])   # the reason, from its first word character
+        if word:
+            return f'says "{word}" in its reason'
+    return pending
 
 
 def note_problem(line: str) -> str | None:
     """Why one line of approve notes needs a :data:`NOT_A_DEFECT` reason, or ``None``: ``says "<word>"`` when
-    it names a defect, else ``is an observation`` when it has two words or more outside code spans and is not a
-    heading, a ``>`` quote, a bare acceptance result or a table separator row or horizontal rule."""
-    word = defect_word(line)
-    if word:
-        return f'says "{word}"'
+    a clause names a defect, else ``is an observation`` when a clause has two words or more outside code spans
+    and is not a bare acceptance result or a table separator row or horizontal rule (:func:`clause_problem`).
+    Headings and ``>`` quotes are skipped."""
     text = _CODE_SPAN.sub("", line).strip()
-    if (explained(text) or text.startswith(("#", ">")) or _ACCEPTANCE_RESULT.match(text)
-            or _RULE.match(text) or len(_WORD.findall(text)) < 2):
+    if text.startswith(("#", ">")):
         return None
-    return "is an observation"
+    return clause_problem(text)
 
 
 def unexplained_defects(data: dict[str, Any], body: str) -> list[str]:
     """``<where> says "<word>"`` for each findings entry and notes line that names a defect without a
     :data:`NOT_A_DEFECT` line; fenced code in the notes is skipped. A word list cannot catch every way of
     describing a defect, so every findings entry (``<where> is a finding``) and every observation line of the
-    notes (``<where> is an observation``, :func:`note_problem`) without that line counts, whatever its wording."""
+    notes (``<where> is an observation``, :func:`note_problem`) without that line counts, whatever its wording.
+    Each explanation covers one observation (:func:`clause_problem`)."""
     out = []
     for key, items in (data.get("findings") or {}).items():
         for i, item in enumerate(items or []):
-            if not explained(str(item)):
-                word = defect_word(str(item))
-                out.append(f'findings.{key}[{i}] ' + (f'says "{word}"' if word else "is a finding"))
+            why = clause_problem(str(item)) or (None if explained(str(item)) else "is a finding")
+            if why:
+                out.append(f"findings.{key}[{i}] " + why.replace("is an observation", "is a finding"))
     fenced = False
     for n, line in enumerate(body.splitlines(), 1):
         if line.lstrip().startswith(("```", "~~~")):

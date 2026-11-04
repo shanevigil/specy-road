@@ -13,7 +13,7 @@ from tests.test_review_cli import ONE_AI
 
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.review_files import PACKET_NAME, review_path, reviews_dir
-from specy_road.review_record_rules import defect_word, explained, note_problem, unexplained_defects
+from specy_road.review_record_rules import clause_problem, defect_word, explained, note_problem, unexplained_defects
 
 
 def test_reviewer_prompt_carries_the_four_probe_rules(tmp_path: Path) -> None:
@@ -234,6 +234,47 @@ def test_record_refuses_an_approve_whose_reason_is_on_the_next_line(tmp_path: Pa
 ])
 def test_explained(text: str, ok: bool) -> None:
     assert explained(text) is ok
+
+
+TWO_OBSERVATIONS = ("The cache miss is expected; not a defect because the cache fallback handles that miss. "
+                    "Separately, valid input crashes and loses the review.")
+
+
+def test_record_refuses_an_approve_whose_explanation_covers_only_one_observation(tmp_path: Path, capsys) -> None:
+    """One explanation covers one observation; a second defect on the same line needs its own (round 8)."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, notes=f"## Acceptance\n\n- **A1:** pass\n\n{TWO_OBSERVATIONS}\n") == 1
+    err = capsys.readouterr().err
+    assert 'notes line 5 says "valid input crashes"' in err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+def test_record_files_an_approve_with_one_explanation_per_observation(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    notes = ("The cache miss is expected; not a defect because the cache fallback handles that miss. "
+             "Empty input is refused; not a defect because the brief asks for that.\n")
+    assert _record(repo, notes=notes) == 0
+    assert review_path(repo, "M1.1", "opus").is_file()
+
+
+@pytest.mark.parametrize("text, why", [
+    (TWO_OBSERVATIONS, 'says "valid input crashes"'),
+    ("Valid input crashes. The cache miss is expected, not a defect because the fallback handles it.",
+     'says "Valid input crashes"'),
+    ("The cache miss is expected; not a defect because the fallback handles it, and valid input crashes.",
+     'says "valid input crashes" in its reason'),
+    ("The lock is held; the cache is cold; not a defect because both are expected.", "is an observation"),
+    ("The cache miss is expected; not a defect because the fallback handles it.", None),
+    ("The cache miss is expected, not a defect because the fallback handles it.", None),
+    ("Advisory: x. Not a defect because no caller reaches it.", None),
+    ("x y; not a defect because e.g. the lock is held.", None),
+    ("- **A1:** pass; the prompt renders; not a defect because it matches.", None),
+    ("The cache miss is expected; not a defect because it is handled. Empty input is refused; not a defect "
+     "because the brief asks for that.", None),
+])
+def test_clause_problem(text: str, why: str | None) -> None:
+    assert clause_problem(text) == why
 
 
 def test_record_files_an_approve_with_no_findings(tmp_path: Path, capsys) -> None:
