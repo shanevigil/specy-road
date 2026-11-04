@@ -123,6 +123,25 @@ Required change → what changed:
   - File limits OK; ruff clean; private imports 0 new.
   - Red/green: without `st_mode` in the two snapshot tuples, all four chmod cases fail.
 
+## Round 8 (gpt-5.6-sol-medium's block at `3387a90d`; commit `3d2a7670`)
+
+Required change → what changed:
+
+- **"Make the checkout snapshot record reviewer-created nested .git files, while continuing to handle the checkout's actual Git directory through _walk_git."**
+  - `review_write_check._walk` no longer skips every entry named `.git`. `snapshot` passes the checkout's own top-level `.git` in `skip`, because `_walk_git` already walks it: the common and worktree Git directories and the pointer.
+  - A nested checkout (a directory holding `.git`) still has its contents skipped as another repository's. Its `.git` marker is now recorded by the new `_git_marker`: a pointer file by `(mode, size, mtime, sha256)`, and a `.git` directory as present only, since that repository's own activity moves its times.
+  - So a reviewer-created `.git` file, which would also turn its new directory into an apparent nested checkout, or a `git init`, is a write. The existing nested-worktree case (`test_a_commit_and_an_ignored_cache_count_as_writes_and_other_checkouts_do_not`) still passes: edits inside an existing nested checkout aren't counted.
+  - `docs/orchestration-review.md` says so.
+- **"Add a public-interface regression proving such a write is review_failure with no verdict filed."**
+  - `test_review_delegate_cli_fails_a_reviewer_created_nested_git_and_files_no_verdict` in `tests/test_review_record_write_git.py`, through `specy-road review delegate`, has two cases: a reviewer that writes `work/hidden/.git` into a new directory, and one that runs `git init work/nested`.
+  - Each is a `review_failure` naming the `.git` path, with no `REVIEW-opus.md`.
+  - The fake harness's `write` step now creates missing parent directories.
+- **Touch zones:** no new path; `specy_road/review_write_check.py` was added in round 7.
+- **Verification:**
+  - `pytest -n 4` over the leaf's test files (`tests/test_review_record_write.py`, `tests/test_review_record_write_git.py`, `tests/test_review_delegate.py`, `tests/test_review_files.py`, `tests/test_worker_adapters.py`, `tests/test_models_and_prompt.py`, `tests/test_prerelease_review.py`, `tests/test_review_rca.py`, `tests/test_role_prompt_file_limits.py`, `tests/test_resumed_delta_review.py`, `tests/test_chore_mode.py`): 178 passed.
+  - File limits OK; ruff clean; private imports 0 new.
+  - Red/green: with the old global `.git` skip restored, both cases fail.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
@@ -149,6 +168,7 @@ Required change → what changed:
 - `reviewer_env`: lets an honest Python test re-run write nothing.
 - `run_text`, `final_output`, `json_object`, the envelope unwrap in `file_review`: A1/A3 extraction.
 - `git index` entry in `snapshot` (round 4): Sol's A2 index finding.
+- `_git_marker`, and `_walk`'s top-level-only `.git` skip (round 8): Sol's nested-`.git` finding.
 - `st_mode` in the snapshot tuples, and the `review_write_check` module split (round 7): Sol's chmod finding, and the file limit.
 - `_walk_git` and `_walk`'s `skip` (round 6): Git metadata in the A2 snapshot. Its `resolved()` returns `None` when git can't answer.
 - `_content` (round 3): the content digest in the A2 snapshot. Its `OSError` branch covers a file removed mid-walk or without read permission. `json_object`'s final-object rule (round 3): A3.
