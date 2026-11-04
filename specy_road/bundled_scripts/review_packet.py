@@ -358,7 +358,7 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
         changed,
         test_integrity_section(root, t),
         tests_at_risk_section(root, t),
-        _diff(root, t, paths, max_diff_lines, max_diff_bytes, f"DIFF-{prior.data['model']}.patch" if prior else DIFF_NAME) + nested_diff_section(root, t, max_diff_lines),
+        _diff(root, t, paths, max_diff_lines, max_diff_bytes, f"DIFF-{prior.data['model']}.patch" if prior else DIFF_NAME) + nested_diff_section(root, t, max_diff_lines, max_diff_bytes),
         ["## Verifier output", ""] + _ready_verify(root, t) + _run_verify(root, verify_cmds, t),
     ]
     return "\n".join("\n".join(p) for p in parts).rstrip() + "\n"

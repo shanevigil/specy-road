@@ -48,7 +48,8 @@ def nested_repos(repo_root: Path) -> list[NestedRepo]:
     out = []
     for item in data.get("nested_repos") or []:
         spec = {"path": item} if isinstance(item, str) else item
-        out.append(NestedRepo(spec["path"].strip("/"), spec.get("integration_branch", data["integration_branch"]),
+        path = "/".join(seg for seg in spec["path"].split("/") if seg)   # one spelling per directory
+        out.append(NestedRepo(path, spec.get("integration_branch", data["integration_branch"]),
                               spec.get("remote", data["remote"])))
     return out
 
@@ -83,6 +84,29 @@ def _has_branch(repo: Path, branch: str) -> bool:
     return git_ok(["show-ref", "--verify", "--quiet", f"refs/heads/{branch}"], repo)[0]
 
 
+def _common_dir(repo: Path) -> Path | None:
+    out = git_text(["rev-parse", "--path-format=absolute", "--git-common-dir"], repo)
+    return Path(out).resolve() if out else None
+
+
+def existing_worktree_problem(src: Path, dest: Path, branch: str | None) -> str | None:
+    """Why ``dest``, already there, is not ``src``'s worktree on ``branch`` (detached when ``None``); else ``None``.
+
+    A directory left by a build or an earlier failed setup must not pass for
+    the worktree: the worker would edit something no branch carries.
+    """
+    if not is_repo_top(dest):
+        return f"{dest} exists but is not a git worktree"
+    if _common_dir(dest) != _common_dir(src):
+        return f"{dest} is a worktree of another repository, not of {src}"
+    current = git_text(["branch", "--show-current"], dest) or ""
+    if branch and current != branch:
+        return f"{dest} has {current or 'a detached HEAD'} checked out, not {branch}"
+    if not branch and current:
+        return f"{dest} has {current} checked out; outside the touch zones it must be detached"
+    return None
+
+
 def add_nested_worktrees(repo_root: Path, leaf_root: Path, branch: str, zones) -> list[str]:
     """Give each nested repository a worktree at its path under ``leaf_root``; one line per worktree made.
 
@@ -90,19 +114,25 @@ def add_nested_worktrees(repo_root: Path, leaf_root: Path, branch: str, zones) -
     themselves live; ``leaf_root`` the project root inside the leaf's worktree.
     A repository the zones cover gets ``branch`` (created at its integration
     tip, or the existing branch); any other one a detached HEAD at that tip.
-    One already there is left alone, so a re-run adds only what is missing.
-    Nothing is fetched: the tip is the remote-tracking ref as it stands.
+    One already there in that state is left alone, so a re-run adds only what
+    is missing; one in any other state (:func:`existing_worktree_problem`) is
+    refused. Nothing is fetched: the tip is the remote-tracking ref as it stands.
     """
     prefix, made = project_prefix(repo_root), []
     for nr in nested_repos(repo_root):
         src, dest = repo_root / nr.path, leaf_root / nr.path
-        if dest.exists():
-            continue
         if not is_repo_top(src):
             raise NestedRepoError(f"nested repo {nr.path!r} (roadmap/git-workflow.yaml): {src} is not "
                                   "the top of a git repository")
+        covered = covers(zones, nr.path, prefix)
+        if dest.exists():
+            problem = existing_worktree_problem(src, dest, branch if covered else None)
+            if problem:
+                raise NestedRepoError(f"nested repo {nr.path!r}: {problem}; remove it (`git -C {src} worktree "
+                                      "remove <path>`, or delete the directory), then re-run")
+            continue
         tip = base_ref(src, nr.remote, nr.integration_branch) or "HEAD"
-        if covers(zones, nr.path, prefix):
+        if covered:
             how = f"on {branch}"
             args = [str(dest), branch] if _has_branch(src, branch) else ["-b", branch, str(dest), tip]
         else:
@@ -220,15 +250,21 @@ def _land_one(repo: Path, nr: NestedRepo, feature_branch: str) -> str | None:
 def land_nested_branches(repo_root: Path, feature_branch: str) -> tuple[bool, str]:
     """Merge and push ``feature_branch`` in every nested repository that has it, before the main repository.
 
-    ``(True, "")`` when each landed or had nothing to land; the first failure
-    stops here, so the main repository has not moved. Repositories already
-    landed stay landed: a re-run skips them.
+    ``(True, "")`` when each landed or had nothing to land (a repository
+    without the branch); the first failure stops here, so the main repository
+    has not moved. A configured path that is not a repository is a failure,
+    not nothing to land: whether it held the leaf's work cannot be told.
+    Repositories already landed stay landed: a re-run skips them.
     """
     for nr in nested_repos(repo_root):
         repo = repo_root / nr.path
-        if not (is_repo_top(repo) and _has_branch(repo, feature_branch)):
+        if not is_repo_top(repo):
+            err = (f"{repo} is not the top of a git repository (roadmap/git-workflow.yaml names it), so its "
+                   "leaf branch cannot be landed; restore it or drop it from nested_repos")
+        elif not _has_branch(repo, feature_branch):
             continue
-        err = _land_one(repo, nr, feature_branch)
+        else:
+            err = _land_one(repo, nr, feature_branch)
         if err:
             return False, (f"nested repo {nr.path!r}: {err}. The main repository was not merged; "
                            "fix it there, then re-run (nested repos already landed are skipped)")

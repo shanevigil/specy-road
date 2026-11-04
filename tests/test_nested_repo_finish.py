@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import shutil
+
 import pytest
 
 from tests.review_repo_helpers import commit_file, git, make_review_repo
@@ -22,20 +24,27 @@ from specy_road.nested_repos import land_nested_branches
 BRANCH = "feature/rm-thing"
 
 
-def _repo(tmp_path: Path, rel: str = COVERED) -> tuple[Path, Path]:
-    """``(repo on the feature branch, nested repo on dev with the leaf branch committed)``."""
+def _repos(tmp_path: Path, *rels: str, text: str = "x = 2\n") -> tuple[Path, list[Path]]:
+    """``(repo on the feature branch, each nested repo on dev with the leaf branch committed)``; the leaf's
+    ``core.py`` is ``text``, prefixed with the repository's path so each diff is its own."""
     repo = make_review_repo(tmp_path)
     git(repo, "checkout", "-q", "dev")
-    nested = add_nested_repo(repo, rel, "dev")
+    nested = [add_nested_repo(repo, rel, "dev") for rel in rels]
     git(repo, "checkout", "-q", BRANCH)
     git(repo, "merge", "-q", "--no-edit", "dev")
     bare = tmp_path / "remote.git"
     git(tmp_path, "clone", "-q", "--bare", str(repo), str(bare))
     git(repo, "remote", "add", "origin", str(bare))
     git(repo, "fetch", "-q", "origin")
-    git(nested, "checkout", "-q", "-b", BRANCH)
-    commit_file(nested, "core.py", "x = 2\n", "leaf work in the nested repo")
-    git(nested, "checkout", "-q", "dev")
+    for rel, n in zip(rels, nested):
+        git(n, "checkout", "-q", "-b", BRANCH)
+        commit_file(n, "core.py", (f"# {rel}\n" if len(rels) > 1 else "") + text, "leaf work in the nested repo")
+        git(n, "checkout", "-q", "dev")
+    return repo, nested
+
+
+def _repo(tmp_path: Path, rel: str = COVERED, text: str = "x = 2\n") -> tuple[Path, Path]:
+    repo, (nested,) = _repos(tmp_path, rel, text=text)
     return repo, nested
 
 
@@ -75,6 +84,18 @@ def test_a_nested_conflict_stops_before_the_main_repository_moves(tmp_path: Path
     assert len(git(nested, "worktree", "list").splitlines()) == 1   # the temporary worktree is gone
 
 
+def test_a_configured_repo_that_is_gone_stops_the_landing_before_the_main_repository(tmp_path: Path) -> None:
+    repo, nested = _repo(tmp_path)
+    main_before = _origin_tip(repo)
+    shutil.rmtree(nested)   # whether it held the leaf's work can no longer be told
+    ok, err = _land(repo)
+    assert not ok
+    assert f"nested repo {COVERED!r}" in err and "not the top of a git repository" in err
+    assert "main repository was not merged" in err
+    assert _origin_tip(repo) == main_before
+    assert git(repo, "branch", "--show-current") == BRANCH
+
+
 def test_a_repo_without_the_leaf_branch_is_left_alone(tmp_path: Path) -> None:
     repo, nested = _repo(tmp_path)
     git(nested, "branch", "-q", "-D", BRANCH)
@@ -105,8 +126,26 @@ def test_review_packet_caps_a_long_nested_diff(tmp_path: Path) -> None:
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], max_diff_lines=2)
     section = text.split("## Nested repositories", 1)[1]
     assert "Diff capped at 2 lines" in section
-    patch = repo / "work" / "reviews" / "M1.1" / "DIFF-nested-src-engine.patch"
+    patch = repo / "work" / "reviews" / "M1.1" / "DIFF-nested-src+engine.patch"
     assert "+x = 2" in patch.read_text(encoding="utf-8")
+
+
+def test_review_packet_caps_a_long_single_line_nested_diff_by_bytes(tmp_path: Path) -> None:
+    repo, _nested = _repo(tmp_path, text="x = '" + "a" * 5000 + "'\n")
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], max_diff_lines=0, max_diff_bytes=100)
+    section = text.split("## Nested repositories", 1)[1].split("## Verifier output", 1)[0]
+    assert "Diff capped at 100 bytes" in section and "a" * 200 not in section
+    patch = repo / "work" / "reviews" / "M1.1" / "DIFF-nested-src+engine.patch"
+    assert "a" * 5000 in patch.read_text(encoding="utf-8")
+
+
+def test_capped_nested_diffs_of_paths_that_flatten_alike_keep_their_own_patch(tmp_path: Path) -> None:
+    repo, _nested = _repos(tmp_path, "a/b", "a-b")
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], max_diff_lines=1)
+    reviews = repo / "work" / "reviews" / "M1.1"
+    for rel, name in (("a/b", "DIFF-nested-a+b.patch"), ("a-b", "DIFF-nested-a-b.patch")):
+        assert f"`{reviews / name}`" in text
+        assert f"+# {rel}\n" in (reviews / name).read_text(encoding="utf-8")
 
 
 def test_review_packet_has_no_nested_section_without_the_config(tmp_path: Path) -> None:

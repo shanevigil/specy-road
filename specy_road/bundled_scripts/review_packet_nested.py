@@ -25,17 +25,26 @@ NOTE = ("_Computed by review-packet from each nested repository's git (`nested_r
         "integration branch. Paths are project-relative._")
 
 
-def _patch_name(nr: NestedRepo) -> str:
-    return "DIFF-nested-" + nr.path.replace("/", "-") + ".patch"
+def patch_name(nr: NestedRepo) -> str:
+    """``DIFF-nested-<path>.patch`` with ``/`` as ``+``: no path ``nested_repos`` accepts has a ``+``, so two
+    repositories never share a name (``a/b`` and ``a-b`` would, were ``/`` written ``-``)."""
+    return "DIFF-nested-" + nr.path.replace("/", "+") + ".patch"
+
+
+def _over_budget(diff: str, max_diff_lines: int, max_diff_bytes: int) -> list[str]:
+    """The packet budgets ``diff`` exceeds (``0`` = no cap), as the main diff applies them."""
+    lines, size = diff.count("\n"), len(diff.encode())
+    return ([f"{max_diff_lines} lines"] if max_diff_lines and lines > max_diff_lines else []) + \
+        ([f"{max_diff_bytes} bytes"] if max_diff_bytes and size > max_diff_bytes else [])
 
 
 def _repo_lines(root: Path, t: ReviewTarget, nr: NestedRepo, branch: str, zones: list[str],
-                max_diff_lines: int) -> list[str]:
+                max_diff_lines: int, max_diff_bytes: int) -> list[str]:
     """One repository's subsection: changed paths with outside-zone marks, then its diff (or where it was written)."""
     from specy_road.bundled_scripts.review_packet import _fence   # noqa: PLC0415 — review_packet imports this module
 
     out = [f"### `{nr.path}`", ""]
-    patch = reviews_dir(root, t.node_id) / _patch_name(nr)
+    patch = reviews_dir(root, t.node_id) / patch_name(nr)
     patch.unlink(missing_ok=True)   # only a capped section names one
     rng = branch_diff_range(root, nr, branch)
     if rng is None:
@@ -49,16 +58,17 @@ def _repo_lines(root: Path, t: ReviewTarget, nr: NestedRepo, branch: str, zones:
     if not paths:
         return out + ["- _none_", ""]
     diff = git_stdout(["diff", rng], repo) or ""
-    if max_diff_lines and diff.count("\n") > max_diff_lines:
+    over = _over_budget(diff, max_diff_lines, max_diff_bytes)
+    if over:
         patch.parent.mkdir(parents=True, exist_ok=True)
         patch.write_text(diff, encoding="utf-8")
-        return out + ["", f"**Diff capped at {max_diff_lines} lines** ({diff.count(chr(10))} lines): "
-                      f"the full diff is at `{patch}`.", ""]
+        return out + ["", f"**Diff capped at {' and '.join(over)}** ({diff.count(chr(10))} lines, "
+                      f"{len(diff.encode())} bytes): the full diff is at `{patch}`.", ""]
     return out + [""] + _fence(diff, "diff")
 
 
-def nested_diff_section(root: Path, t: ReviewTarget, max_diff_lines: int) -> list[str]:
-    """The section, or nothing when no nested repository is configured."""
+def nested_diff_section(root: Path, t: ReviewTarget, max_diff_lines: int, max_diff_bytes: int) -> list[str]:
+    """The section, or nothing when no nested repository is configured; each diff within both packet budgets."""
     repos = nested_repos(root)
     if not repos:
         return []
@@ -66,5 +76,5 @@ def nested_diff_section(root: Path, t: ReviewTarget, max_diff_lines: int) -> lis
     zones = [z.strip().strip("/") for z in t.review_zones if isinstance(z, str) and z.strip()]
     out = ["## Nested repositories", "", NOTE, ""]
     for nr in repos:
-        out += _repo_lines(root, t, nr, branch, zones, max_diff_lines)
+        out += _repo_lines(root, t, nr, branch, zones, max_diff_lines, max_diff_bytes)
     return out

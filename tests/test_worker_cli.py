@@ -11,42 +11,15 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.review_repo_helpers import git
 
 from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import review_cli, worker_cli, worker_cli_render as wcr
 
-FAKE = '''
-import json, sys, time
-spec = json.loads(open(sys.argv[1]).read()) if sys.argv[1].endswith(".json") else {"lines": [
-    {"type": "system", "subtype": "init", "session_id": "s-" + str(len(sys.argv)), "model": "fake"},
-    {"type": "result", "subtype": "success", "result": "done", "session_id": "s-" + str(len(sys.argv))}]}
-if spec.get("write"):                       # a READY written during the turn, as a real harness would
-    open(spec["write"]["path"], "w").write(spec["write"]["text"])
-for d in spec["lines"]:
-    print(json.dumps(d), flush=True)
-time.sleep(spec.get("sleep", 0))
-sys.exit(spec.get("exit", 0))
-'''
-
-
-def worker_roster(cli: str, *, max_workers: int = 2) -> str:
-    return (f"version: 1\nroster:\n  - {{id: human, family: human, roles: [coordinator, reviewer]}}\n"
-            f"  - {{id: opus, family: anthropic, roles: [executor, reviewer], harness: claude-code,\n"
-            f"     billing_route: claude_subscription, channels: {{cli: '{cli}'}}}}\n"
-            f"  - {{id: sol, family: openai, roles: [reviewer]}}\n"
-            f"policy: {{max_workers: {max_workers}}}\n")
-
-
-def _repo(tmp_path: Path, *, max_workers: int = 2) -> tuple[Path, Path]:
-    script = tmp_path / "fake.py"
-    script.write_text(FAKE)
-    repo = make_review_repo(tmp_path, orchestration=worker_roster(f"{sys.executable} {script} {{prompt}} {{session}}", max_workers=max_workers))
-    (repo / ".gitignore").write_text("work/\n")
-    git(repo, "add", ".gitignore")
-    git(repo, "commit", "-qm", "ignore work")
-    return repo, script
+# The fake harness and its repo live in worker_repo_helpers; the old private name
+# stays for the modules that import it from here.
+from tests.worker_repo_helpers import FAKE, make_worker_repo as _repo, worker_roster  # noqa: F401
 
 
 def run_worker_cli(*args: str) -> int:

@@ -25,6 +25,34 @@ Call sites:
 
 **A3 — review-packet.** The new `specy_road/bundled_scripts/review_packet_nested.py` renders a `## Nested repositories` section after `## Diff`. For each configured repository it lists the changed paths (project-relative, with outside-zone marks judged as the main repo's are) and the diff `<merge base>...<leaf branch>`, using the local branch first and the remote-tracking one second. A diff past `--max-diff-lines` goes to `work/reviews/<id>/DIFF-nested-<path>.patch` instead. The section is absent when `nested_repos` is not configured. `review_packet.py` was at its 400-line cap. It gained one import line, and the existing two-line `_diff(...)` entry became one line, so the file stays at 400.
 
+## Review round 1 (gpt-5.6-sol-medium blocked 47ca8cc6): item → change
+
+- **R1. An existing destination is verified, not trusted.**
+  - `add_nested_worktrees` checks a destination that already exists with the new `existing_worktree_problem`. The destination must be the top of a git worktree with the same `--git-common-dir` as the configured repository, and must be on the leaf's branch when the zones cover it, detached otherwise. Anything else raises `NestedRepoError` naming the problem and how to remove it.
+  - Delegate turns that into a `WorkerError` (exit 1, nothing launched). Pickup prints it as a warning, because its claim is already pushed.
+  - The configured repository itself is now checked before the existing-destination branch too.
+  - Public-boundary regression: `test_delegate_refuses_an_ordinary_directory_where_the_nested_worktree_goes`, through `worker delegate` on the CLI with an ordinary directory at `<leaf>/src/engine`. Plus `test_an_existing_nested_worktree_in_the_wrong_state_is_refused` for the branch/detached state.
+- **R2. A missing or invalid repository fails the landing.**
+  - `land_nested_branches` now tells two cases apart. A configured path that is not the top of a git repository is a failure ("not the top of a git repository … restore it or drop it from nested_repos"), and `land_merge_feature_into_integration` returns it before the main checkout or merge. A valid repository without the leaf's branch is still skipped.
+  - Regression: `test_a_configured_repo_that_is_gone_stops_the_landing_before_the_main_repository` asserts that `origin/dev` of the main repo is unchanged and the checkout stays on the feature branch.
+- **R3. Both budgets apply to nested diffs.**
+  - `build_packet` passes `max_diff_bytes` to `nested_diff_section`, and `_repo_lines` applies both budgets through `_over_budget` (`0` means no cap, as in the main diff). The "capped" line names each budget the diff exceeded.
+  - `review_packet.py` stays at 400 lines: only the arguments of the existing call changed.
+  - Regression: `test_review_packet_caps_a_long_single_line_nested_diff_by_bytes`, with a 5,000-byte one-line diff under `max_diff_lines=0, max_diff_bytes=100`.
+- **R4. Patch names no longer collide.**
+  - `patch_name` writes `/` as `+`. No path the schema accepts contains `+`, so the mapping is injective: `a/b` becomes `DIFF-nested-a+b.patch` and `a-b` becomes `DIFF-nested-a-b.patch`.
+  - `nested_repos()` also normalises empty segments (`x//y/` → `x/y`), so one directory has one name.
+  - Regressions: `test_capped_nested_diffs_of_paths_that_flatten_alike_keep_their_own_patch` (both repositories capped; each patch holds its own diff) and the `x//y` case in `test_entries_default_to_the_main_repositorys_branch_and_remote`. The existing cap test now expects `DIFF-nested-src+engine.patch`.
+- **T1. Fixtures are promoted, not imported privately.**
+  - `_project`, `_run` and `_pickup` (with `SHEET` and `FEATURE`) moved verbatim from `tests/test_baseline_gate_cli.py` into the new `tests/pickup_repo_helpers.py`, as `make_pickup_project`, `run_specy_road` and `run_pickup`.
+  - `FAKE`, `worker_roster` and `_repo` moved verbatim from `tests/test_worker_cli.py` into the new `tests/worker_repo_helpers.py`, with `_repo` renamed `make_worker_repo`.
+  - Each source module re-imports them under the old names, so the 25+ existing importers are unchanged and no setup is duplicated.
+  - The nested tests use only public names: `make_pickup_project`, `run_pickup`, `make_worker_repo`, `run_worker_cli`, `wait_for_worker`, `ops.delegate`, `wrc.reconcile`, the CLI.
+  - The `add_nested_repo` fixture now accepts a second repository (it appends to the list, and its bare origin is named with `+`) for R4.
+- **Docs.** `docs/git-workflow.md` "Nested repositories" now states the R1 refusal, the R2 failure versus skip, and R3/R4 (both budgets, the `+` in patch names).
+
+No touch zones were added in this round. The new files are under `tests/`, and the rest are already-zoned files.
+
 ## Touch zones (final list)
 
 The originals plus these, added on this branch with `specy-road edit-node M11.22 --add touch_zones=…` (commit `0bdea0cf`), as the maintainer's note on the planning sheet allows:
@@ -46,11 +74,16 @@ The originals plus these, added on this branch with `specy-road edit-node M11.22
 
 ## Verification
 
-- `pytest -n auto`: 3591 passed, 2 skipped.
-- `ruff check specy_road tests`: clean.
+Round 1 fixes, at the commit that adds this summary:
+
+- `pytest -n 4 tests/test_nested_repo_worktrees.py tests/test_nested_repo_finish.py`: 28 passed.
 - `specy-road file-limits`: OK.
-- `specy-road validate` and `specy-road export --check` (the `sr/` project): OK.
-- New tests: `tests/test_nested_repo_worktrees.py` and `tests/test_nested_repo_finish.py`, 23 tests.
+- `ruff check specy_road tests`: clean.
+- The 29 modules that use the promoted helpers (`pytest -n 4 <those files>`): 364 passed.
+- **Red-green.** The two new test files, run against 47ca8cc6 in a temporary detached worktree (removed afterwards), fail 7 tests: the R1 pair, R2, R3, R4, the renamed-patch cap test, and the `x//y` defaults case.
+- **Full suite (`pytest -n auto`), run twice on a heavily loaded machine** (586 s and 590 s, against 205 s earlier). Each run had 1 failure, in a different worker timing test each time: `test_worker_faults.py::test_output_clears_a_stall_shorter_than_the_write_window`, then `test_worker_queue_message.py::test_message_while_running_queues_and_delivers`. Each passes when rerun outside the full suite, and neither touches nested repositories. I did not pass the full suite as a `--verify`, because neither run exited 0.
+
+Round 0 (47ca8cc6): full suite 3591 passed; validate and export --check OK.
 
 ## Added
 
@@ -75,6 +108,12 @@ The originals plus these, added on this branch with `specy-road edit-node M11.22
 - `specy_road/bundled_scripts/review_packet_nested.py` (`nested_diff_section`, `_repo_lines`, `_patch_name`) — A3: the packet section; lazily imports `review_packet._fence` (circular otherwise).
 - Schema: `nested_repos` property and `$defs/nestedRepoPath` — the config shape and path safety.
 - Tests: `add_nested_repo` fixture helper — one nested repository with its own bare origin, ignored and configured.
+- Round 1: `existing_worktree_problem()` / `_common_dir()` — R1: an existing destination must be that repository's worktree in the required state.
+- Round 1: missing-repository branch in `land_nested_branches` — R2: a configured path that is no repository fails before the main repository moves.
+- Round 1: `_over_budget()` and the `max_diff_bytes` parameter of `nested_diff_section` / `_repo_lines` — R3: both packet budgets.
+- Round 1: `patch_name()` (was `_patch_name`, now `+` for `/`) and empty-segment normalisation in `nested_repos()` — R4: one patch name per repository.
+- Round 1: `tests/pickup_repo_helpers.py` (`make_pickup_project`, `run_specy_road`, `run_pickup`, `SHEET`, `FEATURE`) and `tests/worker_repo_helpers.py` (`make_worker_repo`, `worker_roster`, `FAKE`) — T1: promoted from the test modules, which re-import them under their old names.
+- Round 1 tests: the delegate public-boundary refusal of an ordinary directory, the wrong-state refusal, the gone-repository landing, the single-line byte cap, the colliding-path patches, and the `x//y` normalisation.
 - Tests: schema acceptance and refusals; defaults per entry; `covers` table.
 - Tests: pickup `--worktree` creates the nested worktree on the branch and detached.
 - Tests: delegate adds the nested worktree, a re-run is a no-op, and a non-repository path is refused.
