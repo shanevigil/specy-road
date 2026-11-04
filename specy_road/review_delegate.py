@@ -116,7 +116,7 @@ class _Harness:
 def _turn(h: _Harness, launch: Launch, log: Path) -> dict[str, Any]:
     """Run one turn to its end; ``exit``, the reported ``session_id`` and the ``errors`` it printed."""
     out: dict[str, Any] = {"exit": None, "session_id": None, "errors": [], "tail": []}
-    env = harness_env(os.environ, "reviewer")
+    env = harness_env(os.environ, "reviewer", harness=h.harness)
     with log.open("a", encoding="utf-8") as raw:
         raw.write(f"[review delegate] {_now()} {launch.argv[0]}\n")
         try:
