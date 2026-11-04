@@ -11,6 +11,13 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+### Fixed
+
+- Claude transcript and memory lookups honour `CLAUDE_CONFIG_DIR`: the worker
+  wrappers, usage-limit detection from a transcript, the `MEMORY.md` context
+  line and `grind-session`'s session lookup all read `~/.claude/projects`, so
+  under another account a worker started fresh instead of resuming.
+
 ### Added
 
 - `policy.red_green` in `roadmap/orchestration.yaml` (default false) and

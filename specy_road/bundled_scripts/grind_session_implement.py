@@ -29,6 +29,7 @@ from specy_road.claude_code_limits import (
     classify_limit,
     unrecognized_message,
 )
+from specy_road.claude_config import claude_projects_dir
 
 #: Slack after the stated reset, because clocks disagree by a little.
 GRACE_SECONDS = 120
@@ -159,11 +160,11 @@ def _project_dir_name(path: str) -> str:
 def latest_session_id(repo_root: Path) -> str | None:
     """Newest Claude transcript for this repo, when Claude printed no id.
 
-    Claude Code stores transcripts per project under ``~/.claude/projects``, in a
+    Claude Code stores transcripts per project under ``<config dir>/projects``, in a
     directory named for the project path with separators replaced. Matching on
     the repo root beats trusting whichever session was globally most recent.
     """
-    root = Path.home() / ".claude" / "projects"
+    root = claude_projects_dir()
     if not root.is_dir():
         return None
     # Claude Code replaces every non-alphanumeric character in the path, not
