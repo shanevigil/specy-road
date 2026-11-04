@@ -126,10 +126,13 @@ def _write_file(project_root: Path, rel: str, text: str, *, replace: bool, dry_r
     return outcome
 
 
-def apply_agents_files(project_root: Path, *, dry_run: bool = False) -> dict[str, str]:
-    """The ``AGENTS.md`` stub, the rules file, and the team addendum when missing: ``{rel: outcome}``."""
-    return {
-        AGENTS_MD: apply_agents_md_block(project_root, dry_run=dry_run),
+def apply_agents_files(project_root: Path, *, dry_run: bool = False, stub: bool = True) -> dict[str, str]:
+    """The ``AGENTS.md`` stub, the rules file, and the team addendum when missing: ``{rel: outcome}``.
+
+    ``stub=False`` leaves ``AGENTS.md`` alone: what the ``CLAUDE.md`` imports need in a repo with no project yet.
+    """
+    outcomes = {AGENTS_MD: apply_agents_md_block(project_root, dry_run=dry_run)} if stub else {}
+    return outcomes | {
         RULES_MD: _write_file(project_root, RULES_MD, render_rules(), replace=True, dry_run=dry_run),
         TEAM_MD: _write_file(project_root, TEAM_MD, _TEAM_TEMPLATE.read_text(encoding="utf-8"),
                              replace=False, dry_run=dry_run),
@@ -233,9 +236,9 @@ def warn_missing_load_order_paths(project_root: Path) -> None:
 
 
 def apply_agents_and_report(project_root: Path, written: list[str], *, dry_run: bool = False,
-                            prefix: str = "") -> None:
+                            prefix: str = "", stub: bool = True) -> None:
     """``prefix`` is the project's path under the git root, so a nested layout reports ``sr/AGENTS.md``."""
-    for rel, outcome in apply_agents_files(project_root, dry_run=dry_run).items():
+    for rel, outcome in apply_agents_files(project_root, dry_run=dry_run, stub=stub).items():
         if outcome != UNCHANGED:
             written.append(f"{prefix}{rel} ({outcome})")
 
@@ -288,7 +291,7 @@ def _claude_files(root: Path, top: Path) -> tuple[list[Path], list[Path]]:
     imported = claude_imports(own)
     personal = (root / LOCAL_MD).resolve()
     counted = [p for p in imported if inside(p, top) and p.resolve() != personal and claude_loads(p)]
-    return own + counted, [p for p in imported if not inside(p, top)]
+    return own + counted, [p for p in imported if not inside(p, top) and claude_loads(p)]
 
 
 def injected_context(project_root: Path) -> dict[str, list[InjectedFile]]:

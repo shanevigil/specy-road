@@ -130,9 +130,13 @@ def test_claude_file_over_4_mib_is_reported_not_loaded_never_counted(repo: Path,
     _write(repo, AGENT_GUIDE, "x" * (CLAUDE_MAX_FILE_BYTES + 1))
     _write(repo, ".claude/rules/at-cap.md", "x" * CLAUDE_MAX_FILE_BYTES)
     _write(home, f".claude/{AGENT_GUIDE}", "y" * (CLAUDE_MAX_FILE_BYTES + 1))
-    assert _rels(repo, "Claude Code") == [".claude/rules/at-cap.md"]
+    _write(repo, "CLAUDE.local.md", "@big.md\n")   # an import too large to load: skipped, and its own imports unread
+    _write(repo, "big.md", "@child.md\n" + "x" * CLAUDE_MAX_FILE_BYTES)
+    _write(repo, "child.md", "# never loaded\n")
+    assert _rels(repo, "Claude Code") == ["CLAUDE.local.md", ".claude/rules/at-cap.md"]
     warn_if_context_over_limits(repo)
     err = capsys.readouterr().err
+    assert f"context: warning — big.md is {CLAUDE_MAX_FILE_BYTES + 10:,} bytes, over Claude Code's 4 MiB" in err
     assert (f"context: warning — {AGENT_GUIDE} is {CLAUDE_MAX_FILE_BYTES + 1:,} bytes, over Claude Code's 4 MiB "
             "limit, so Claude Code loads none of it; its sessions here never see it.") in err
     assert ".claude/rules/at-cap.md is" not in err

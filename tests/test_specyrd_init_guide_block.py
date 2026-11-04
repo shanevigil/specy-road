@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 
 from specy_road.agent_guide_block import render_guide_lines
+from specy_road.agents_md_block import render_rules
 from specy_road.managed_block import MARKER_START
 from specy_road.specyrd_init import InitResult, run_init
 
@@ -53,6 +54,13 @@ def test_specyrd_init_creates_claude_md_when_absent(tmp_path: Path) -> None:
     p = tmp_path / "CLAUDE.md"
     assert p.is_file()
     assert "AGENTS.md" in p.read_text(encoding="utf-8")
+    # No project here, so no AGENTS.md stub, but the files the block @-imports exist.
+    rules, team = tmp_path / ".specyrd/AGENTS.md", tmp_path / ".specyrd/AGENTS.team.md"
+    assert rules.read_text(encoding="utf-8") == render_rules() and team.is_file()
+    assert not (tmp_path / "AGENTS.md").exists()
+    team.write_text("# Ours\n", encoding="utf-8")
+    _init_claude(tmp_path)
+    assert team.read_text(encoding="utf-8") == "# Ours\n"   # the team addendum is never rewritten
 
 
 def test_force_never_replaces_a_hand_authored_claude_md(tmp_path: Path) -> None:

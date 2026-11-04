@@ -34,7 +34,7 @@ import tempfile
 from pathlib import Path
 
 from specy_road import __version__
-from specy_road.agent_guide_block import AGENT_GUIDE, apply_agent_guide_block, apply_guide_and_report
+from specy_road.agent_guide_block import AGENT_GUIDE, apply_agent_guide_block
 from specy_road.agents_md_block import AGENTS_FILES, apply_agents_and_report, apply_agents_files, print_migration
 from specy_road.agent_ignores import CURSOR_INDEXING_IGNORE, GITIGNORE, apply_agent_ignores, apply_and_report
 from specy_road.runtime_paths import (
@@ -220,15 +220,15 @@ def refresh_stubs(
                                 all_recorded, dry_run=dry_run, written=written)
         all_recorded.update(current)   # what this pack just wrote is the kit's for the packs after it
         orphans.extend(_orphans(recorded, current, repo_root))
-        # Refresh the block in a CLAUDE.md the consumer has; never create the
-        # file (`specyrd init` does that only for --ai claude-code).
-        if (repo_root / AGENT_GUIDE).is_file():
-            apply_guide_and_report(
-                repo_root, prefix, written, agent=agent, dry_run=dry_run
-            )
         if not dry_run:
             agents[agent] = current
 
+    # Refresh or insert the block in a CLAUDE.md the consumer has, whatever the packs;
+    # never create the file (only `specyrd init --ai claude-code` does).
+    if (repo_root / AGENT_GUIDE).is_file():
+        outcome = apply_agent_guide_block(repo_root, prefix, dry_run=dry_run)
+        if outcome != UNCHANGED:
+            written.append(f"{AGENT_GUIDE} ({outcome})")
     apply_and_report(repo_root, prefix, written, dry_run=dry_run)
     apply_agents_and_report(repo_root / prefix if prefix else repo_root, written, dry_run=dry_run, prefix=prefix)
 

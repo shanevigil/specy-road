@@ -329,6 +329,8 @@ def run_init(
     apply_and_report(repo_root, prefix, written, dry_run=dry_run)
     if project is not None:   # no roadmap yet: `init project` writes the block when it scaffolds one
         apply_agents_and_report(project, written, dry_run=dry_run, prefix=prefix)
+    elif write_claude_md and agent in GUIDE_AGENTS:   # the CLAUDE.md imports must name files that exist
+        apply_agents_and_report(repo_root, written, dry_run=dry_run, stub=False)
 
     _maybe_install_specyrd_hooks(
         repo_root, agent, install_guard_hooks=install_guard_hooks, install_pre_push=install_pre_push,

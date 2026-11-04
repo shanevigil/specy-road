@@ -160,7 +160,10 @@ def _imports_in(path: Path) -> list[Path]:
 
 
 def claude_imports(files: list[Path]) -> list[Path]:
-    """The files ``files`` pull in through ``@path`` imports, nested up to four hops, each once."""
+    """The files ``files`` pull in through ``@path`` imports, nested up to four hops, each once.
+
+    A file too large to load is listed but not followed: Claude Code never reads its imports.
+    """
     seen = {p.resolve() for p in files}
     out: list[Path] = []
     frontier = list(files)
@@ -171,7 +174,7 @@ def claude_imports(files: list[Path]) -> list[Path]:
                 seen.add(path.resolve())
                 found.append(path)
         out.extend(found)
-        frontier = found
+        frontier = [p for p in found if claude_loads(p)]
     return out
 
 
@@ -181,8 +184,9 @@ def claude_loads(path: Path) -> bool:
 
 
 def claude_skipped(start: Path, top: Path) -> list[Path]:
-    """Every Claude instruction file present here that is too large for Claude Code to load."""
-    found = [*claude_paths(start), *claude_rules(start, top), user_claude_path()]
+    """Every Claude instruction file present here, or imported by one, that is too large for Claude Code to load."""
+    found = [p for p in (*claude_paths(start), *claude_rules(start, top), user_claude_path()) if p.is_file()]
+    found += claude_imports([p for p in found if claude_loads(p)])
     skipped = {p.resolve(): p for p in found if p.is_file() and not claude_loads(p)}
     return list(skipped.values())
 

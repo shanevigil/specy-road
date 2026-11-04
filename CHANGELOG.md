@@ -81,17 +81,20 @@ body. Keep section bodies focused; link to PRs for detail.
 
 - specy-road's agent rules move out of your `AGENTS.md` into
   `.specyrd/AGENTS.md` under the project root, a file specy-road owns and
-  `upgrade` rewrites whole. The managed block in `AGENTS.md` becomes a 16-line
-  stub (was 52): a pointer to that file and the addenda, plus six rules that
+  `upgrade` rewrites whole. The managed block in `AGENTS.md` becomes a 17-line
+  stub (was 52): a pointer to that file and the addenda, plus seven rules that
   prevent damage if an agent never opens it (the floor, the shared checkout,
-  git writes, claims only through `do-next-available-task`, never reviewing your
-  own leaf, never hand-editing generated files). Codex reads only `AGENTS.md`,
+  git writes including discarding changes, claims only through
+  `do-next-available-task`, never `abort-task-pickup` after `finish-this-task`,
+  never reviewing your own leaf, never hand-editing generated files). Codex reads only `AGENTS.md`,
   so the stub is what every Codex session is sure to see. The `CLAUDE.md` block
   becomes `@.specyrd/AGENTS.md` and `@.specyrd/AGENTS.team.md` imports, which
   Claude Code loads with the file, plus a note that Claude Code skips
   `AGENTS.md` while `CLAUDE.md` exists. **On upgrade:** the first
   `specy-road upgrade` (or `refresh-stubs`) prints a `migration:` line,
-  replaces both old blocks with the stubs, writes `.specyrd/AGENTS.md` and
+  replaces both old blocks with the stubs (an existing `CLAUDE.md` gets its
+  block whichever stub packs are installed; only `--ai claude-code` creates the
+  file, and then also writes the two files it imports), writes `.specyrd/AGENTS.md` and
   `.specyrd/AGENTS.team.md`, and adds the `.gitignore` line; text outside the
   markers is untouched, anything added inside the old markers is replaced (see
   `git diff`), and a second run changes nothing. Commit the two new files.

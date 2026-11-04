@@ -7,7 +7,7 @@
 
 **Must know without reading on:**
 - Nothing here is part of the specy-road contract; the canonical invocations are `specy-road validate|brief|export|file-limits`, and tracked docs win over any harness memory or rule.
-- `specyrd init [PATH] --ai cursor|claude-code|codex|generic` installs one skill per command under `.agents/skills/<name>/SKILL.md` plus managed blocks in `.gitignore`, `.cursorindexingignore` and `CLAUDE.md`; `specy-road init project` keeps the specy-road section of `AGENTS.md`. Upgrade with `specy-road refresh-stubs`, not `init --force`.
+- `specyrd init [PATH] --ai cursor|claude-code|codex|generic` installs one skill per command under `.agents/skills/<name>/SKILL.md` plus managed blocks in `.gitignore`, `.cursorindexingignore` and `CLAUDE.md`; `specy-road init project` keeps the specy-road section of `AGENTS.md`, now a short stub that points at `.specyrd/AGENTS.md`, where the full rules live. Upgrade with `specy-road refresh-stubs`, not `init --force`.
 - Hooks are not installed for you: `specy-road session guard --format claude-code|codex|cursor --print-config` prints the shared-checkout guard snippet, `specy-road worker hook --format … --print-config` the intervention witness.
 - specy-road ships no MCP server; agents reach it through the skills and the CLI.
 
@@ -46,9 +46,9 @@ Three files belong to **you**, and `specyrd init` only maintains one delimited b
 | --- | --- |
 | `.gitignore` | `.specyrd/cache/` (derived, disposable indexes) |
 | `.cursorindexingignore` | archived and duplicated material, excluded from the IDE index but still readable |
-| `CLAUDE.md` | the specy-road load order, roadmap model, and non-negotiables (`--ai claude-code`) |
+| `CLAUDE.md` | `@` imports of `.specyrd/AGENTS.md` and `.specyrd/AGENTS.team.md` (`--ai claude-code`) |
 
-`specy-road init project` keeps the specy-road section of `AGENTS.md` the same way (load order, task loop, review roles, shared-checkout rules). Everything outside those markers is never read and never rewritten, with or without `--force`. Re-running is a no-op when the block is already current, and `--dry-run` reports what each block would do.
+`specy-road init project` keeps the specy-road section of `AGENTS.md` the same way; what each block holds and which files specy-road owns is in [Agent rules: `AGENTS.md` and `.specyrd/`](#agent-rules-agentsmd-and-specyrd). Everything outside those markers is never read and never rewritten, with or without `--force`. Re-running is a no-op when the block is already current, and `--dry-run` reports what each block would do.
 
 See `.specyrd/README.md` after init for a short pointer (and `manifest.json` for which packs were applied).
 
@@ -91,12 +91,12 @@ specy-road keeps its agent rules in files it owns, and only a short marked stub 
 | File | Whose | Written by |
 | ---- | ----- | ---------- |
 | `.specyrd/AGENTS.md` | specy-road's: the full rules (load order, task loop, review, lean changes) | `init project`, rewritten whole by every `upgrade` / `refresh-stubs` |
-| `AGENTS.md` | yours, except one managed block: a pointer to `.specyrd/AGENTS.md` and six core rules | `init project`; `upgrade` rewrites only the block |
-| `CLAUDE.md` | yours, except one managed block: `@.specyrd/AGENTS.md` and `@.specyrd/AGENTS.team.md` imports | `specyrd init --ai claude-code`; `upgrade` rewrites only the block |
+| `AGENTS.md` | yours, except one managed block: a pointer to `.specyrd/AGENTS.md` and seven core rules | `init project`; `upgrade` rewrites only the block |
+| `CLAUDE.md` | yours, except one managed block: `@.specyrd/AGENTS.md` and `@.specyrd/AGENTS.team.md` imports | `specyrd init --ai claude-code` (the only command that creates the file); `upgrade` inserts or rewrites only the block in an existing file, whichever stub packs are installed |
 | `.specyrd/AGENTS.team.md` | yours (tracked): this repository's specy-road instructions from devs and PMs | created once when missing; never rewritten, not in `.specyrd/manifest.json` |
 | `.specyrd/AGENTS.local.md` | yours alone (gitignored): personal specy-road notes | never created; `init` adds it to `.gitignore` |
 
-Paths sit under the project root (`sr/.specyrd/…` in the nested layout). Codex loads only `AGENTS.md`, so the stub's core rules (the floor, the shared checkout, git writes, claims, review, generated files) are all a Codex session is sure to see; Claude Code loads the rules through the import. Both addenda add to the rules and never relax their floor.
+Paths sit under the project root (`sr/.specyrd/…` in the nested layout). Codex loads only `AGENTS.md`, so the stub's core rules (the floor, the shared checkout, git writes, claims, no abort after finish, review, generated files) are all a Codex session is sure to see; Claude Code loads the rules through the import. Both addenda add to the rules and never relax their floor.
 
 **Upgrading from a full section.** Before 2026-11-04 the whole rule set sat in the `AGENTS.md` block, with a second copy in `CLAUDE.md`'s. The first `upgrade` after that prints a `migration:` line, replaces both blocks with the stubs, writes `.specyrd/AGENTS.md` and (when missing) `.specyrd/AGENTS.team.md`, and adds `.specyrd/AGENTS.local.md` to the `.gitignore` block. Text outside the markers is untouched, and a second run changes nothing. Anything you had added *inside* the old markers is replaced, as on every refresh: `git diff` shows it, and `.specyrd/AGENTS.team.md` is where it belongs now. Commit the two new files.
 

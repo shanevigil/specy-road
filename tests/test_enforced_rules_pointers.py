@@ -73,8 +73,8 @@ REMOVED = [
      "The opt-in tool-call guard (`specy-road session guard`) refuses these while another session is live",
      "tests/test_tool_call_guard.py::test_deny_only_with_another_live_session"),
     (STUB, "commit by explicit path, never `-A`/`-a`;",
-     "opt-in tool-call guard refuses stash, reset, branch switches and `-A`/`-a`", "tests/test_tool_call_guard.py::test_destructive_commands_are_classified"),
-    (STUB, "no stash, reset, or branch switches here", "branch switches and `-A`/`-a` while another session is live",
+     "opt-in tool-call guard refuses all of these, and `git add -A`/`commit -a`", "tests/test_tool_call_guard.py::test_destructive_commands_are_classified"),
+    (STUB, "no stash, reset, or branch switches here", "`git add -A`/`commit -a`, while another session is live",
      "tests/test_tool_call_guard.py::test_deny_only_with_another_live_session"),
     (STUB, "Register the claim on the integration branch, then work on `feature/rm-<codename>`.",
      "`specy-road do-next-available-task` registers the claim on the integration branch, then creates "
@@ -104,7 +104,8 @@ def test_each_removed_sentence_is_a_pointer_to_an_enforcement_point(
 _BEFORE_LINES, _BEFORE_BYTES = 52, 7679
 #: The ``AGENTS.md`` stub that replaced the full section on 2026-11-04 (it was 52 lines, 7,797 bytes then).
 #: Codex reads only this, so a rule added to it needs the maintainer's approval and raises these.
-_STUB_LINES, _STUB_BYTES = 16, 1811
+#: 17 / 2,063 since the review restored the discard and abort-after-finish rules (2026-11-04).
+_STUB_LINES, _STUB_BYTES = 17, 2063
 #: ``.specyrd/AGENTS.md`` when it was created (2026-11-04): the old section plus the non-Claude part of the
 #: old ``CLAUDE.md`` block. Claude Code imports it whole; Codex never reads it.
 _RULES_LINES, _RULES_BYTES = 68, 9107

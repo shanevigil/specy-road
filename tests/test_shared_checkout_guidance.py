@@ -62,5 +62,7 @@ def test_claude_md_block_imports_it_and_the_agents_md_stub_keeps_its_core() -> N
     assert "@sr/.specyrd/AGENTS.md" in lines and "@sr/.specyrd/AGENTS.team.md" in lines
     stub = "\n".join(render_agents_lines())
     assert "other agents may be working here" in stub and "`git worktree list`" in stub
-    assert "opt-in tool-call guard refuses stash, reset, branch switches and `-A`/`-a`" in stub
+    assert "discard changes (`git restore`, `git checkout -- <path>`)" in stub
+    assert "opt-in tool-call guard refuses all of these, and `git add -A`/`commit -a`" in stub
+    assert "never run `specy-road abort-task-pickup` as cleanup after `finish-this-task`" in stub
     assert "commit only with `git commit --only <paths>`" in stub

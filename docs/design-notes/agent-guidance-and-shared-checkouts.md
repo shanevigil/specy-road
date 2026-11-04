@@ -99,19 +99,21 @@ decided:
    non-Claude part of the `CLAUDE.md` block (roadmap model, docs win, common
    commands). `upgrade` rewrites it whole. Provenance comments stay in the
    template and are stripped when rendered; the floor rule (decision 4) is in it.
-2. **`AGENTS.md` keeps a 16-line stub**: a pointer ("read `.specyrd/AGENTS.md`
-   before any roadmap, registry or git work"), the addenda, and six rules
+2. **`AGENTS.md` keeps a 17-line stub**: a pointer ("read `.specyrd/AGENTS.md`
+   before any roadmap, registry or git work"), the addenda, and seven rules
    picked by the damage they prevent if an agent never opens the file. Codex
    loads only `AGENTS.md`/`AGENTS.override.md` and has no import, so this is
    all a Codex session is sure to see:
    - *floor* — without it an addendum or project rule reads as permission to
      relax the rest;
    - *shared checkout* (`git status`, `git worktree list`, own worktree) and
-     *git writes* (`git commit --only`, no stash/reset/clean/rebase/amend/branch
+     *git writes* (`git commit --only`, no stash/reset/discard/clean/rebase/amend/branch
      switch) — the 2026-10-26 incident: lost or captured uncommitted work that
      nothing can recover;
    - *claims only through `do-next-available-task`*, never a hand-edited
      registry — two agents implementing one leaf;
+   - *never `abort-task-pickup` after `finish-this-task`* — under
+     `on_complete: pr` it deletes the only branch holding the finished work;
    - *never review or approve your own leaf* — work merged with no independent
      review;
    - *generated files are regenerated, not hand-edited* — edits silently lost
