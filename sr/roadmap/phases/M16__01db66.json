@@ -1,0 +1,154 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "AGENTS.md is the only agent entry; CLAUDE.md is at most about 15 lines that point to it plus Claude-specific notes; branch policy and the version-numbers rule each appear in one place and are linked elsewhere",
+        "The load order is task-conditional: always purpose, principles and constraints; then by task (orchestration or review, roadmap data, dependencies or release, the dogfood fixture, sr/ roadmap work); supply-chain-security.md is not in the default order, here or in the consumer agents-rules template",
+        "A test sums the default start-up reading for this repo and for a freshly initialised consumer repo and fails above about 400 lines",
+        "The shipped agents-rules.md loses its provenance comments and cites only files an adopter has",
+        "Expected net line delta: docs about -200"
+      ],
+      "codename": "agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer",
+      "dependencies": [
+        "42e6f078-5c8e-4ac2-b6bc-519cdac7c399"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.30",
+      "node_key": "01db66ad-a91c-48e3-953e-4083f5f14a13",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.30_agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer_01db66ad-a91c-48e3-953e-4083f5f14a13.md",
+      "sibling_order": 31,
+      "status": "Not Started",
+      "title": "AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer",
+      "touch_zones": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "docs/toolkit-development.md",
+        "specy_road/templates/project/",
+        "docs/context-regressions.yaml",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "docs/design-notes/ moves out of docs/ (live design notes kept, historical triage notes and verbatim research archived under sr/ or removed), and its file-limit overrides go",
+        "orchestration-workers, orchestration-roster and orchestration-chores merge into one workers reference; architecture folds into roadmap-authoring, install-release-candidates into install-and-usage, pm-gui-brainstorm and pm-llm-review into pm-gui; optional-ai-tooling-patterns becomes a short pointer",
+        "No doc outside CHANGELOG, pyproject and one install section names a specific release candidate; README's setup steps describe skills, not slash-command stubs; templates cite no doc an adopter cannot open",
+        "The `[gui-next]` extra stays as an alias of `[gui]` for one release with a note (project.version untouched); every moved doc's inbound links resolve (link check test)",
+        "Expected net line delta: docs about -1,500 in docs/ (archived text excluded)"
+      ],
+      "codename": "docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra",
+      "dependencies": [
+        "01db66ad-a91c-48e3-953e-4083f5f14a13"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.31",
+      "node_key": "a0733044-eec3-4411-bec8-e6f31fac6456",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.31_docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra_a0733044-eec3-4411-bec8-e6f31fac6456.md",
+      "sibling_order": 32,
+      "status": "Not Started",
+      "title": "Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra",
+      "touch_zones": [
+        "docs/",
+        "design-notes/",
+        "README.md",
+        "pyproject.toml",
+        "constraints/file-limits.yaml",
+        "specy_road/templates/project/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "bootstrap-roadmap creates nodes with add-node, edit-node and scaffold-planning instead of hand-written UUID JSON, and says to resolve validate warnings as well as errors",
+        "Every doc a prompt cites is either shipped by init project or named with where an adopter finds it (installed package or toolkit repository); the governance deliverables table includes orchestration.yaml, model-profiles/ and review-lessons.md",
+        "bootstrap-agents-md links the rules file instead of restating it, states the step order consistently with the other prompts, and covers the nested (sr/-style) layout and running from the git root",
+        "A test checks that every command and flag a prompt names exists in the parity inventory (M16.0)",
+        "Expected net line delta: prompts about -60"
+      ],
+      "codename": "suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout",
+      "dependencies": [
+        "ca41116c-978b-4215-a69e-2f52400009fa",
+        "01db66ad-a91c-48e3-953e-4083f5f14a13",
+        "a0733044-eec3-4411-bec8-e6f31fac6456"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.32",
+      "node_key": "98d51a48-dcd5-419f-bc34-16ae75aef21b",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.32_suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout_98d51a48-dcd5-419f-bc34-16ae75aef21b.md",
+      "sibling_order": 33,
+      "status": "Not Started",
+      "title": "suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout",
+      "touch_zones": [
+        "suggested_prompts/",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Starts only after a release that shipped the aliases (the maintainer names it in this sheet); then every command alias, config-form fallback, deprecated policy and import shim added in M16 is removed, with REPLACED_COMMANDS keeping a one-line pointer for each removed name",
+        "lean_metrics --check against the M16.2 baseline shows: package lines down at least 15%, at most 50 top-level commands, suite time not worse than baseline, coverage at or above the floor; the baseline is regenerated and committed",
+        "Parity transcripts are regenerated once, and the diff shows only the removed aliases",
+        "Expected net line delta: package about -300"
+      ],
+      "codename": "after-the-next-release-delete-the-deprecated-aliases-and-shims-and-check-the-end-state-targets",
+      "dependencies": [
+        "b5ca5d95-58a9-472c-9f90-0004d0fbd46f",
+        "fcb9f89a-2bad-423c-8d52-eb748967a367",
+        "ca41116c-978b-4215-a69e-2f52400009fa",
+        "74ac34a2-084a-4dd3-84ec-ac37b20dd983",
+        "51f22f17-0d11-4dc4-8709-d39d406991c5",
+        "67af8a9a-a8ef-4724-9702-be691a497a55",
+        "a536eb60-74a5-4a71-9556-d9cb752c881b",
+        "275b701c-4eb9-4214-ae77-7ab34a7d197a",
+        "5fa51e45-9e09-4119-826d-43c6d304f243",
+        "7b52d543-e78c-4e74-bcd1-24d5a8b3034b",
+        "79115c79-0035-4781-9d38-d5a3b117631d",
+        "98d51a48-dcd5-419f-bc34-16ae75aef21b"
+      ],
+      "execution_milestone": "Mixed",
+      "id": "M16.33",
+      "node_key": "ed19381c-5265-4909-a70c-f9c5a9cf1853",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.33_after-the-next-release-delete-the-deprecated-aliases-and-shims-and-check-the-end-state-targets_ed19381c-5265-4909-a70c-f9c5a9cf1853.md",
+      "sibling_order": 34,
+      "status": "Not Started",
+      "title": "After the next release: delete the deprecated aliases and shims, and check the end-state targets",
+      "touch_zones": [
+        "specy_road/",
+        "docs/",
+        "suggested_prompts/",
+        "constraints/lean-baseline.json",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "This sheet lists every held feature leaf with the M16 leaf that absorbs or supersedes it, or a recommendation (keep in place, fold into a named M16 leaf, park to the post-M16 intake, or drop)",
+        "The maintainer records a decision per leaf in this sheet; the planner applies it with edit-node (dependencies, acceptance or status) and nothing else",
+        "No held leaf's status changes and no held leaf is started before its decision is recorded",
+        "Expected net line delta: 0"
+      ],
+      "codename": "triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf",
+      "dependencies": [],
+      "execution_milestone": "Human-led",
+      "id": "M16.34",
+      "node_key": "eaee2f90-4953-4580-b772-570043326e4b",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.34_triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf_eaee2f90-4953-4580-b772-570043326e4b.md",
+      "sibling_order": 35,
+      "status": "Not Started",
+      "title": "Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf",
+      "touch_zones": [
+        "sr/roadmap/",
+        "sr/planning/"
+      ],
+      "type": "task"
+    }
+  ]
+}
