@@ -37,8 +37,10 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import io
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -52,7 +54,7 @@ from specy_road.agents_md_block import load_order_paths, print_migration, render
 from specy_road.bundled_scripts.digest_cli import cmd_digest
 from specy_road.bundled_scripts.refresh_profiles import refresh_profiles, selection_notice
 from specy_road.bundled_scripts.refresh_schemas import SCHEMAS_DIRNAME, missing_schema_names, refresh_schemas
-from specy_road.bundled_scripts.refresh_stubs import _prefix, _report, _resolve_root, refresh_stubs
+from specy_road.bundled_scripts.refresh_stubs import _block_previews, _prefix, _report, _resolve_root, refresh_stubs
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.digest import DEFAULT_OUTPUT
 from specy_road.file_limits_engine import build_overlay_match_sets, collect_tracked_files, line_count, resolve_limits
@@ -189,32 +191,48 @@ def _apply(project: Path, checkout: Path, *, prune: bool) -> None:
     _report_line_caps(before, _capped_lines(project))
 
 
-def _copy_checkout(checkout: Path, project: Path, dest: Path) -> None:
-    """Copy what the refreshes and validate read into ``dest``: git's tracked and
-    unignored files plus every ``.specyrd/`` file, without ``.git`` or the project's ``work/``.
+def _preview_files(checkout: Path, project: Path) -> dict[Path, Path]:
+    """``{path in the preview tree: the regular file whose bytes it gets}``.
 
-    A link into the checkout is re-pointed into the copy, so a write through it
-    lands in the copy and never in the checkout.
+    The inputs are git's tracked and unignored files, every ``.specyrd/`` file,
+    and the managed-block files ``refresh-stubs`` previews (``_block_previews``'s
+    selection, ignored or not), without ``.git`` or the project's ``work/``. Every
+    link is followed to the file or directory it names, so the preview tree
+    holds only regular files and no write in it can reach the checkout.
     """
     work = project / "work"
     listed = git_text(["ls-files", "-z", "--cached", "--others", "--exclude-standard"], checkout)
     rels = {Path(r) for r in (listed or "").split("\0") if r}
     if listed is None:
         rels = {p.relative_to(checkout) for p in checkout.rglob("*") if p.is_file() or p.is_symlink()}
-    rels |= {p.relative_to(checkout) for d in {checkout, project} for p in (d / ".specyrd").rglob("*")
-             if p.is_file()}
+    rels |= {p.relative_to(checkout) for d in {checkout, project} for p in (d / ".specyrd").rglob("*")}
+    with tempfile.TemporaryDirectory() as scratch:   # _block_previews writes its previews here only
+        blocks = _block_previews(checkout, _prefix(checkout, project), Path(scratch))
+    rels |= {Path(entry.partition(" (")[0]) for entry in blocks}
+    files: dict[Path, Path] = {}
     for rel in rels:
-        src, dst = checkout / rel, dest / rel
-        if ".git" in rel.parts or src.is_relative_to(work) or not (src.is_file() or src.is_symlink()):
+        src = checkout / rel
+        if ".git" in rel.parts or src.is_relative_to(work):
             continue
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        if src.is_symlink():
-            target = Path(os.readlink(src))
-            if target.is_absolute() and target.is_relative_to(checkout):
-                target = dest / target.relative_to(checkout)
-            dst.symlink_to(target)
-        else:
-            shutil.copy2(src, dst)
+        if src.is_file():
+            files[rel] = src
+        elif src.is_dir():   # a link to a directory: git lists it as one entry
+            seen: set[str] = set()
+            for dirpath, dirs, names in os.walk(src, followlinks=True):
+                seen.add(os.path.realpath(dirpath))
+                dirs[:] = [d for d in dirs if os.path.realpath(os.path.join(dirpath, d)) not in seen]
+                for name in names:
+                    full = Path(dirpath) / name
+                    if full.is_file():
+                        files[rel / full.relative_to(src)] = full
+    return files
+
+
+def _copy_checkout(files: dict[Path, Path], dest: Path) -> None:
+    """Write ``files`` into ``dest`` as regular files, then commit them once in a fresh git repo."""
+    for rel, src in files.items():
+        (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest / rel)   # follows links: the copy is the content, never the link
     # validate reads git (tracked files for touch zones, ignore rules): one commit of the copy.
     for cmd in (["init", "-q"], ["add", "-A"],
                 ["-c", "user.name=specy-road", "-c", "user.email=upgrade@specy-road.invalid",
@@ -222,19 +240,44 @@ def _copy_checkout(checkout: Path, project: Path, dest: Path) -> None:
         subprocess.run(["git", "-C", str(dest), *cmd], check=False, capture_output=True)
 
 
+def _fingerprint(checkout: Path, files: dict[Path, Path]) -> dict[str, str]:
+    """What the dry run must leave as it was: git's status (ignored files too) and each preview input's hash.
+
+    ``--no-optional-locks`` keeps ``git status`` from rewriting the index, so this writes nothing.
+    """
+    status = git_text(["--no-optional-locks", "status", "--porcelain=v1", "-z", "--ignored"], checkout) or ""
+    out = {f"status {entry}": "" for entry in status.split("\0") if entry}
+    for rel, src in files.items():
+        try:
+            out[rel.as_posix()] = hashlib.sha256(src.read_bytes()).hexdigest()
+        except OSError:
+            out[rel.as_posix()] = "unreadable"
+    return out
+
+
 def _dry_run(project: Path, checkout: Path, *, prune: bool) -> int:
     """List what the refreshes would write, then validate a temporary copy with them applied."""
     _refresh(project, checkout, dry_run=True, prune=prune)
     _section("applying the refreshes to a temporary copy, then validating it")
+    files = _preview_files(checkout, project)
+    before_run = _fingerprint(checkout, files)
     with tempfile.TemporaryDirectory(prefix="specy-road-upgrade-") as tmp:
         copy = Path(tmp).resolve()
-        _copy_checkout(checkout, project, copy)
+        _copy_checkout(files, copy)
         copy_project = copy / project.relative_to(checkout)
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             before = _capped_lines(copy_project)
             _refresh(copy_project, copy, dry_run=False, prune=prune)
         _report_line_caps(before, _capped_lines(copy_project))
         valid, _digest_ok = _check(copy_project)
+    after_run = _fingerprint(checkout, files)
+    changed = sorted({k.removeprefix("status ")[3:] if k.startswith("status ") else k
+                      for k in before_run.keys() ^ after_run.keys()}
+                     | {k for k in before_run.keys() & after_run.keys() if before_run[k] != after_run[k]})
+    if changed:
+        print(f"error: dry run modified {', '.join(changed)} in {checkout}; this is a bug in specy-road upgrade,"
+              " please report it", file=sys.stderr)
+        return 2
     print("\n(dry-run; no files written in the checkout. The exit code is validate's on the copy.)")
     return 0 if valid else 1
 
@@ -259,7 +302,7 @@ def _print_other_worktrees(checkout: Path) -> None:
     _section("other worktrees")
     for path, branch in others:
         print(f"{path} ({branch}): not upgraded; it still has the old managed files while sharing this install."
-              f" Run there: cd {path} && specy-road upgrade")
+              f" Run there: cd {shlex.quote(path)} && specy-road upgrade")
 
 
 def run_upgrade(repo_root: Path | None, *, dry_run: bool = False, prune: bool = False) -> int:
