@@ -132,3 +132,14 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
+  - codename: the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes
+    node_id: M14.11
+    branch: feature/rm-the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes
+    touch_zones:
+      - specy_road/bundled_scripts/role_prompt_rework.py
+      - specy_road/worker_ops_message.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
