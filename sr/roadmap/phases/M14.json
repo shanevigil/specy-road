@@ -230,7 +230,8 @@
         "specy_road/review_usage.py",
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/bundled_scripts/worker_cli_render.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/worker_cli.py"
       ],
       "type": "task"
     },
