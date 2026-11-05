@@ -148,7 +148,7 @@ Other inputs checked:
   that are symlinks resolving to their main-checkout source (rework R3).
 - `worktree_env.link_target`: the link's place in the leaf, parent resolved and bounded, final component not
   followed; refuses `..`, the worktree top and newlines (rework R1, R2).
-- `worktree_env.exclude_pattern`: escapes gitignore pattern syntax (`\\ * ? [ ] ! #`, trailing spaces) in an exclude line (rework R2, fix round 1).
+- `worktree_env.exclude_pattern`: escapes gitignore pattern syntax (`\ * ? [ ] ! #`, trailing spaces) in an exclude line (rework R2, fix round 1).
 - `worktree_env.exclude_links`: appends anchored exclude lines to the common `info/exclude` (A2).
 - `worktree_env.link_into`: makes the symlinks, with bound/missing/exists guards (A2). It was split out of
   `setup_worktree_env` for C901.
@@ -173,7 +173,7 @@ Other inputs checked:
   - `test_a_project_missing_from_the_enclosing_worktree_is_not_redirected_to_the_main_checkout`: rework R4.
   - `test_link_refuses_a_parent_that_is_a_symlink_out_of_the_worktree`: rework R1, no external write.
   - `test_link_excludes_a_name_with_pattern_characters_literally`: rework R2, clean status and exact-name match
-    (fix round 1 adds `!`, `#`, `]` and `\\`).
+    (fix round 1 adds `!`, `#`, `]` and `\`).
   - `test_link_refuses_dot_dot_out_of_place`: fix round 1, `..` entries.
   - `test_an_absolute_link_path_is_refused_by_the_schema_and_by_the_link_guard`: fix round 1, absolute entries.
   - `test_a_source_that_is_a_symlink_links_its_resolved_target`: fix round 1, symlinked sources.
