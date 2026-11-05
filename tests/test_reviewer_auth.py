@@ -20,10 +20,9 @@ from specy_road.reviewer_auth import (
 from specy_road.worker_adapter_base import REVIEWER_DISALLOWED, REVIEWER_NO_WRITES, STDIN_INSTRUCTION
 from specy_road.worker_adapter_claude import ClaudeCode
 from tests.review_delegate_helpers import fake_reviewer_run
-from tests.review_repo_helpers import git, review_output
+from tests.review_repo_helpers import claude_code_reviewer_repo, git, review_output
 from tests.test_models_and_prompt import commit_profile, run_main
 from tests.test_orchestrate_plan import plan_repo
-from tests.test_review_files import _claude_code_reviewer_repo
 
 SECRET = "sk-ant-m15-2-do-not-print"
 HELPER = "echo sk-ant-HELPERSECRET"
@@ -138,7 +137,7 @@ def _argv(calls: Path) -> list[list[str]]:
 def test_delegate_explicit_without_a_key_records_the_mode_and_prints_the_note(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     _isolate(monkeypatch, tmp_path)
-    repo = _claude_code_reviewer_repo(tmp_path)
+    repo = claude_code_reviewer_repo(tmp_path)
     recorded = _fake_claude(monkeypatch, tmp_path)
     run = delegate(repo, "M1.1", "opus", retries=0, backoff=0, sleep=lambda _s: None)
     argv = _argv(recorded)
@@ -151,7 +150,7 @@ def test_delegate_explicit_without_a_key_records_the_mode_and_prints_the_note(
 def test_delegate_bare_with_a_key_prints_the_note_and_hides_the_key(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     _isolate(monkeypatch, tmp_path, key=SECRET)
-    repo = _claude_code_reviewer_repo(tmp_path)
+    repo = claude_code_reviewer_repo(tmp_path)
     recorded = _fake_claude(monkeypatch, tmp_path)
     run = delegate(repo, "M1.1", "opus", retries=0, backoff=0, sleep=lambda _s: None)
     argv = _argv(recorded)
@@ -166,7 +165,7 @@ def test_forced_bare_without_a_key_refuses_before_a_run_record(
     from specy_road.bundled_scripts import review_cli, role_prompt
 
     _isolate(monkeypatch, tmp_path)
-    repo = _claude_code_reviewer_repo(tmp_path)
+    repo = claude_code_reviewer_repo(tmp_path)
     _force_bare(repo)
     recorded = _fake_claude(monkeypatch, tmp_path)
     assert run_main(review_cli, "review", "delegate", "M1.1", "--model", "opus", "--retries", "0",
@@ -188,7 +187,7 @@ def test_prompt_explicit_mode_is_recorded_and_a_helper_selects_bare_without_prin
     from specy_road.bundled_scripts import role_prompt
 
     _isolate(monkeypatch, tmp_path)
-    repo = _claude_code_reviewer_repo(tmp_path)
+    repo = claude_code_reviewer_repo(tmp_path)
     answer = review_output(git(repo, "rev-parse", "HEAD"), model="opus")
     calls = fake_reviewer_run(monkeypatch, [json.dumps({"type": "result", "subtype": "success", "result": "done",
                                                         "structured_output": answer})])

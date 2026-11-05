@@ -34,6 +34,7 @@ Left unchanged, outside the zones:
 - `claude_reviewer_auth_notices` — one `reviewer auth:` line per forced, unauthenticated claude-code reviewer entry, skipping `channels.cli` and non-reviewers.
 - `stamp_reviewer_auth_notices` — attaches each notice to the first assignment that staffs that roster id, so the existing plan renderer prints it once.
 - `_run_launch_mode` — carries the decided mode from `run_default_reviewer` to `close_cli_review_run`, which writes it on the RUN record.
+- `claude_code_reviewer_repo` — public fixture in `tests/review_repo_helpers.py` (moved from a `_`-prefixed function in `tests/test_review_files.py`) so both the launch-argv tests and the reviewer-auth tests share it without importing a private name.
 - `_isolate` — drops `ANTHROPIC_API_KEY` and points `CLAUDE_CONFIG_DIR` at an empty directory so the developer's login cannot flip the mode.
 - `_force_bare` — sets the pinned profile's `launch_mode` to `bare` and commits it, the way a roster forces bare.
 - `_fake_claude` — a `claude` on `PATH` that records argv and exits, so a launch is observable without replacing `Popen` (git still uses the real one).
