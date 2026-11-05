@@ -208,3 +208,20 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
+  - codename: per-area-quality-scores-in-the-digest-from-review-history
+    node_id: M12.4.1
+    branch: feature/rm-per-area-quality-scores-in-the-digest-from-review-history
+    touch_zones:
+      - specy_road/digest.py
+      - specy_road/bundled_scripts/digest_cli.py
+      - specy_road/review_rca.py
+      - specy_road/orchestration_config.py
+      - docs/orchestration-review.md
+      - tests/
+      - specy_road/orchestrate_plan.py
+      - specy_road/review_gate.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - specy_road/review_tally.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
