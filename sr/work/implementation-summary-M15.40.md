@@ -25,6 +25,8 @@ These are as listed. The new module `specy_road/finish_bookkeeping_undo.py` was 
 
 **Round 4:** the undo restores exactly the pre-finish working-tree state of every captured path, tracked or not. The snapshot also records `("absent", b"")` for a cleanup path that did not exist. After a successful reset, `undo_bookkeeping` sets every entry to its captured state (bytes, link, or absent), so a locally modified tracked brief, prompt or summary gets its modified bytes back, not HEAD's. When the checkout or reset fails, writing a tracked path would block the `git reset --keep` the report names. So only untracked paths are written, and a tracked path whose captured bytes differ from `pre_sha` (`_differs_from`, via `git hash-object`) is saved to a temp copy. The report then names the copy and says to put it back after the reset.
 
+**Round 5:** one state function, `_path_state`, reads a path as absent, file bytes or link target without following links (`None` for a directory). The snapshot and `_restore` both use it. `_restore` compares the current state with the snapshot entry, returns when they match, and otherwise unlinks whatever is there (never following a link, and raising rather than removing a directory) and recreates exactly the snapshot state. That covers a tracked symlink the reset left at its committed target, which Grok's probe found, and every other kind or content mismatch.
+
 ## Probes
 
 Class 1, multi-line text on an outcome `error:` line:
@@ -63,6 +65,15 @@ Class 5 (round 4), a captured path whose pre-finish state differs from what the 
 - Untracked work files, symlink targets and worker logs: unchanged behaviour, now on the same "captured state" rule. Existing tests pass.
 - The session sidecar: it is in `cleanup_paths`, so the same rule applies. Covered.
 
+Class 6 (round 5), a path whose current state differs from the snapshot in a way a kind-only check misses:
+- Tracked symlink edited locally to another target, then a successful reset (Grok's probe): restored to the snapshotted target. Fixed; `test_undo_restores_the_exact_pre_finish_state[changed-link-tracked]` (red before, green after).
+- Untracked symlink, with a different link at the path when the undo runs: replaced. Fixed; `[changed-link-untracked]` (red before, green after).
+- File with other bytes, tracked or untracked: replaced. Covered by `[changed-file-*]` (passed before, since files were always rewritten).
+- Unchanged states (`[unchanged-*]`): left untouched, as the equal-state early return; pass.
+- Wrong kind at the path (file where a link was, or the reverse) and something present that was absent before: the same unlink-and-recreate branch. The `absent` check in every case asserts the prompt stays absent.
+- A directory at the path: raises `IsADirectoryError` and is reported as not restored, with a saved copy, never removed recursively. Covered by `test_restore_failure_after_reset_saves_a_copy`.
+- The snapshot side: it uses the same `_path_state`, so capture and comparison cannot disagree on kind or link target.
+
 ## Added
 
 - `specy_road/finish_bookkeeping_undo.py` `BookkeepingSnapshot`: holds the pre-bookkeeping sha and the bytes of the files to restore.
@@ -96,3 +107,6 @@ Class 5 (round 4), a captured path whose pre-finish state differs from what the 
 - Round 4: `undo_bookkeeping` writes every entry after a successful reset, not only untracked ones.
 - Round 4: the reset-failure report tells the user to put the saved files back after the reset.
 - Round 4 tests: `test_locally_modified_tracked_documents_come_back_as_they_were` (public CLI, rejected push) and `test_reset_failure_saves_modified_tracked_documents`. Red-green: both fail against the round-3 `finish_bookkeeping_undo.py`.
+- Round 5: `_path_state`, the one no-follow reader of a path's state, used by both the snapshot and the restore.
+- Round 5: `_restore` rewritten as compare, then unlink and recreate, one rule for every kind; a directory raises instead of being removed.
+- Round 5 tests: `test_undo_restores_the_exact_pre_finish_state`, parametrized tracked/untracked x file/link x changed/unchanged (8 cases), with the test-local helpers `_state`, `_put` and `_KINDS`.

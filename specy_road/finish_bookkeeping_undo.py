@@ -66,13 +66,9 @@ def snapshot_bookkeeping(
         rels.extend(p.relative_to(root).as_posix() for p in sorted(logs.rglob("*")))
     entries: dict[str, tuple[str, str | bytes]] = {}
     for rel in rels:
-        path = root / rel
-        if path.is_symlink():
-            entries[rel] = ("link", os.readlink(path))
-        elif path.is_file():
-            entries[rel] = ("file", path.read_bytes())
-        elif not os.path.lexists(path):
-            entries[rel] = ("absent", b"")
+        state = _path_state(root / rel)
+        if state is not None:
+            entries[rel] = state
     return BookkeepingSnapshot(branch=branch, pre_sha=sha, entries=entries)
 
 
@@ -87,15 +83,37 @@ def merge_undo_snapshot(repo: Path, branch: str, ctx: dict) -> BookkeepingSnapsh
     return snapshot_bookkeeping(repo, branch=branch, node_id=ctx["node_id"], sess_path=ctx["sess_path"])
 
 
+def _path_state(path: Path) -> tuple[str, str | bytes] | None:
+    """``path`` as a snapshot entry, never following a link; ``None`` for a directory or other kind."""
+    if path.is_symlink():
+        return ("link", os.readlink(path))
+    if not os.path.lexists(path):
+        return ("absent", b"")
+    if path.is_file():
+        return ("file", path.read_bytes())
+    return None
+
+
 def _restore(root: Path, rel: str, entry: tuple[str, str | bytes]) -> None:
+    """Make ``rel`` exactly ``entry``: unchanged when it already is, else remove what is there and recreate it.
+
+    One rule for every kind: a link with another target, a file with other
+    bytes, the wrong kind, or something that was not there before is unlinked
+    (never followed) and the snapshot state written. A directory in the way
+    raises, so nothing is removed recursively.
+    """
     path = root / rel
-    path.parent.mkdir(parents=True, exist_ok=True)
+    if _path_state(path) == entry:
+        return
+    if os.path.lexists(path):
+        if not path.is_symlink() and path.is_dir():
+            raise IsADirectoryError(f"{rel} is a directory")
+        path.unlink()
     kind, value = entry
-    if os.path.lexists(path) and (kind == "absent" or path.is_symlink() != (kind == "link")):
-        path.unlink()   # the wrong kind of entry (or one that was not there) goes first
+    if kind != "absent":
+        path.parent.mkdir(parents=True, exist_ok=True)
     if kind == "link":
-        if not os.path.lexists(path):
-            os.symlink(value, path)
+        os.symlink(value, path)
     elif kind == "file":
         path.write_bytes(value)
 

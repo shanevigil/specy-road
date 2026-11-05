@@ -292,3 +292,67 @@ def test_reset_failure_saves_modified_tracked_documents(tmp_path: Path, capsys) 
     err = capsys.readouterr().err
     assert f"saved at {saved}" in err
     assert f"run `git reset --keep {snap.pre_sha}`, put each saved file named above back at its path," in err
+
+
+def _state(path: Path) -> tuple[str, str | bytes]:
+    """What is at ``path``, without following a link."""
+    if path.is_symlink():
+        return ("link", os.readlink(path))
+    return ("file", path.read_bytes()) if path.exists() else ("absent", b"")
+
+
+_KINDS = {"file": (("file", b"committed A\n"), ("file", b"local B\n")),
+          "link": (("link", "../tgt-a"), ("link", "../tgt-b"))}
+
+
+def _put(path: Path, state: tuple[str, str | bytes]) -> None:
+    if os.path.lexists(path):
+        path.unlink()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if state[0] == "link":
+        path.symlink_to(state[1])
+    else:
+        path.write_bytes(state[1])
+
+
+@pytest.mark.parametrize("tracked", [True, False], ids=["tracked", "untracked"])
+@pytest.mark.parametrize("kind", ["file", "link"])
+@pytest.mark.parametrize("changed", [True, False], ids=["changed", "unchanged"])
+def test_undo_restores_the_exact_pre_finish_state(tmp_path: Path, tracked: bool, kind: str, changed: bool) -> None:
+    """Review round 4: whatever the reset or a later write left at the path, the undo puts back the snapshot state.
+
+    tracked: committed as A; ``changed`` edits it locally to B before finish
+    (so the reset brings back A, which is wrong). untracked: B before finish;
+    ``changed`` leaves A there after the bookkeeping commit. Links compare by target.
+    """
+    repo = tmp_path / "s"
+    repo.mkdir()
+    git(repo, "init", "-q", "-b", "feature/rm-x")
+    git(repo, "config", "user.email", "t@e.com")
+    git(repo, "config", "user.name", "T")
+    commit_file(repo, "f.txt", "1\n", "base")
+    brief = repo / "work" / "brief-X.md"
+    committed, local = _KINDS[kind]
+    if tracked:
+        _put(brief, committed)
+        git(repo, "add", "work/brief-X.md")
+        git(repo, "commit", "-qm", "track brief")
+        if changed:
+            _put(brief, local)
+    else:
+        _put(brief, local)
+    before = _state(brief)
+    snap = snapshot_bookkeeping(repo, branch="feature/rm-x", node_id="X", sess_path=None)
+    assert snap is not None and snap.entries["work/brief-X.md"] == before
+    if tracked:
+        git(repo, "rm", "-qf", "work/brief-X.md")
+    else:
+        brief.unlink()
+    commit_file(repo, "f.txt", "2\n", "chore(rm-x): complete, deregister")
+    if not tracked and changed:
+        _put(brief, committed)   # something else at the path when the undo runs
+    outcome = undo_bookkeeping(repo, snap)
+    assert outcome.git_error is None and not outcome.unrestored
+    assert git(repo, "rev-parse", "HEAD") == snap.pre_sha
+    assert _state(brief) == before
+    assert _state(repo / "work" / "prompt-X.md") == ("absent", b"")
