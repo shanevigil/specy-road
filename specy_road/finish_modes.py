@@ -9,7 +9,9 @@ from pathlib import Path
 from typing import NoReturn
 
 from specy_road.bundled_scripts.grind_session_cleanup import delete_merged_branch
-from specy_road.finish_bookkeeping_undo import BookkeepingSnapshot, undo_bookkeeping
+from specy_road.finish_bookkeeping_undo import (
+    BookkeepingSnapshot, UndoOutcome, one_line, undo_bookkeeping, undo_report,
+)
 from specy_road.finish_land_deterministic import codename_from_branch
 from specy_road.runtime_paths import project_prefix
 from specy_road.finish_land_integration import (
@@ -107,22 +109,28 @@ def print_pr_gated_state(
     )
 
 
+def landing_error_line(ib: str, err_msg: str) -> str:
+    """The one outcome line; a multi-line reason goes to stdout in full first (M15.40 A1)."""
+    if "\n" in err_msg.strip():
+        print(f"\nlanding to {ib} failed:\n" + "\n".join(f"  {ln}" for ln in err_msg.strip().splitlines()))
+    sys.stdout.flush()
+    return f"\nerror: could not land merge to {ib}: {one_line(err_msg)}"
+
+
 def merge_landing_failed(
     ib: str, err_msg: str, *, delete_branch: bool = False, land_check_cmd: str | None = None,
-    repo: Path | None = None, undo: tuple[str, str | None] | None = None,
+    repo: Path | None = None, undo: UndoOutcome | None = None,
 ) -> NoReturn:
     """Exit 1 after a failed merge landing, naming the re-run that retries it.
 
-    ``undo`` is ``(pre-bookkeeping sha, why the undo failed or None)`` when this
-    run undid its own bookkeeping commit (M15.40): the next command is then a
-    plain ``finish-this-task`` (naming the merge override when merge is not the
-    configured mode), after ``git reset --keep <sha>`` when the undo failed.
-    Without it the branch is one an earlier finish already committed,
-    and the re-run has no pickup session file (the bookkeeping commit removed
-    it), so when merge is not the configured mode the re-run names the
+    ``undo`` is what this run's undo of its own bookkeeping commit did (M15.40);
+    :func:`undo_report` turns it into the next commands. The re-run is then a
+    plain ``finish-this-task``, naming the merge override when merge is not the
+    configured mode. Without it the branch is one an earlier finish already
+    committed, and the re-run has no pickup session file (the bookkeeping commit
+    removed it), so when merge is not the configured mode the re-run names the
     acknowledgement flag that mode needs.
     """
-    sys.stdout.flush()
     again = "specy-road finish-this-task"
     override = repo is not None and needs_override(repo, "merge")
     if undo is None or override:   # after an undo, merge is re-chosen only when it was an override
@@ -133,22 +141,17 @@ def merge_landing_failed(
         again += " --delete-branch"
     if land_check_cmd is not None:
         again += f" --land-check-cmd {shlex.quote(land_check_cmd)}"
-    print(f"\nerror: could not land merge to {ib}: {err_msg}", file=sys.stderr)
+    print(landing_error_line(ib, err_msg), file=sys.stderr)
     if undo is None:
-        state = ("the bookkeeping is already committed, so it retries only the landing. "
-                 "Or rerun with --on-complete pr to open a PR instead.")
-    elif undo[1] is None:
-        state = ("this run undid its bookkeeping commit (the branch, its registry claim "
-                 "and work files are as they were before finish), so it runs the whole "
-                 "finish again.")
+        state = (f"run `{again}` again on this branch: the bookkeeping is already committed, so it "
+                 "retries only the landing. Or rerun with --on-complete pr to open a PR instead.")
     else:
-        print(f"\nerror: could not undo the bookkeeping commit: {undo[1]}", file=sys.stderr)
-        state = (f"first put the branch back with `git reset --keep {undo[0]}` (the "
-                 "bookkeeping commit is still on it), then the re-run runs the whole finish.")
+        undo_error, state = undo_report(undo, again)
+        if undo_error is not None:
+            print(undo_error, file=sys.stderr)
     print(
         "\n--on-complete merge cannot fall back to PR instructions. "
-        f"Fix what the error above names, then run `{again}` again on this branch: "
-        + state,
+        "Fix what the error above names, then " + state,
         file=sys.stderr,
     )
     raise SystemExit(1)
@@ -357,14 +360,10 @@ def apply_on_complete_mode(
         merge_landing_failed(
             ib, err_msg, delete_branch=args.delete_branch,
             land_check_cmd=args.land_check_cmd, repo=repo,
-            undo=None if undo is None else (undo.pre_sha, undo_bookkeeping(repo, undo)),
+            undo=None if undo is None else undo_bookkeeping(repo, undo),
         )
 
-    sys.stdout.flush()   # M15.40: the error follows the land check output under a shared pipe
-    print(
-        f"\nerror: could not land merge to {ib}: {err_msg}",
-        file=sys.stderr,
-    )
+    print(landing_error_line(ib, err_msg), file=sys.stderr)   # M15.40: after the check output
     # on_mode == "auto": fall back to PR tail only here.
     print(
         "\n(auto) Merge to integration failed — use PR/MR or fix locally "
