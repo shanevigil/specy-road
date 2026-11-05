@@ -60,8 +60,6 @@ def derive_codename_with_collision_suffix(
     if not uncapped:
         return None
     slug = cap_codename_slug(uncapped)
-    if not slug:
-        return None
     if slug not in existing:
         return slug
 

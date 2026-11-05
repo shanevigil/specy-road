@@ -13,8 +13,6 @@ def cap_codename_slug(slug: str, *, max_chars: int = CODENAME_MAX_CHARS) -> str:
     if len(s) <= max_chars:
         return s
     parts = [p for p in s.split("-") if p]
-    if not parts:
-        return ""
     if len(parts) == 1:
         return parts[0][:max_chars].rstrip("-")
     kept: list[str] = []
