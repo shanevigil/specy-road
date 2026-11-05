@@ -122,3 +122,14 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
+  - codename: upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap
+    node_id: M13.2
+    branch: feature/rm-upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap
+    touch_zones:
+      - specy_road/bundled_scripts/upgrade.py
+      - specy_road/file_limits_engine.py
+      - tests/
+      - specy_road/templates/project/constraints/file-limits.yaml
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
