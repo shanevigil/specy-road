@@ -145,18 +145,33 @@ def cmd_add_dependency(args: object) -> None:
     print(f"[ok] added {dep_key!r} to {nid} in {chunk.relative_to(root)}")
 
 
+def _refuse_unlisted_dependency(root: Path, nid: str, ref: str, cur: list[str]) -> None:
+    """Exit 1 naming what ``nid`` does depend on, so the caller can pick the right one."""
+    ids = {n.get("node_key"): n.get("id") for n in load_roadmap(root)["nodes"]}
+    listed = ", ".join(f"{ids.get(k) or '?'} ({k})" for k in cur) or "none"
+    print(f"error: {nid} does not list dependency {ref!r}; its dependencies: {listed}.", file=sys.stderr)
+    print(f"  See them with `specy-road list-dependencies {nid}`, then retry with one listed there.",
+          file=sys.stderr)
+    raise SystemExit(1)
+
+
 def cmd_remove_dependency(args: object) -> None:
     root = repo_root(args)
     nid = args.node_id
-    dep_key = args.dep_node_key
     rec = merged_node_by_id(root, nid)
     if not rec:
         print(f"error: {unknown_node_msg(nid)}", file=sys.stderr)
         raise SystemExit(1)
     cur = [str(x) for x in (rec.get("dependencies") or []) if x]
+    ref = args.dep_node_key
+    try:   # a listed key the roadmap no longer has stays removable by that key
+        dep_key = ref if ref in cur else resolve_dependency_refs(root, [ref])[0]
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        print(f"  See what {nid} depends on with `specy-road list-dependencies {nid}`.", file=sys.stderr)
+        raise SystemExit(1) from None
     if dep_key not in cur:
-        print(f"[ok] {nid} did not list dependency {dep_key!r}")
-        return
+        _refuse_unlisted_dependency(root, nid, ref, cur)
     new_keys = [x for x in cur if x != dep_key]
     try:
         edit_node_set_pairs(
