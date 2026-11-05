@@ -78,6 +78,7 @@ _FORWARDED = {
     "lessons": "lessons_cli.py",
     "branches": "branches_cli.py",
     "worktree": "worktree_cli.py",
+    **dict.fromkeys(("indent", "outdent", "group-nodes"), "roadmap_outline_group.py"),
 }
 
 _CRUD_COMMANDS = (

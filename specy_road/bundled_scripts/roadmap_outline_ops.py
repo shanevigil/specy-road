@@ -156,7 +156,7 @@ def move_node_outline(
     new_id: str | None = None,
     fill_gaps: bool = False,
     renumber_outline: bool = False,
-) -> None:
+) -> dict[str, str]:
     """
     Reparent ``node_key`` under ``new_parent_id`` (None = root) at sibling index ``new_index``.
     Subtree moves with the node. Renumbers only the moved subtree, like the
@@ -167,11 +167,12 @@ def move_node_outline(
     staged together and validated before any of them reaches disk. This used to
     persist all three and validate afterwards, so a rejected move left the
     roadmap unloadable — the same defect ``edit-node`` was fixed for in
-    ``v0.1.4``. See ``bundled_scripts/roadmap_move_node.py``.
+    ``v0.1.4``. See ``bundled_scripts/roadmap_move_node.py``. Returns the
+    ``old -> new`` id map.
     """
     from specy_road.bundled_scripts.roadmap_move_node import move_node
 
-    move_node(
+    return move_node(
         root,
         node_key,
         new_parent_id,
@@ -180,6 +181,17 @@ def move_node_outline(
         new_id=new_id,
         fill_gaps=fill_gaps,
     )
+
+
+def print_id_map(old_to_new: dict[str, str]) -> bool:
+    """Print the ids that changed; return whether any did."""
+    renamed = {o: n for o, n in old_to_new.items() if o != n}
+    if not renamed:
+        return False
+    print("\nDisplay ids changed (an id is a position, not an identity):")
+    for old, new in sorted(renamed.items()):
+        print(f"  {old} -> {new}")
+    return True
 
 
 def _load_with_node(repo_root: Path, node_id: str) -> tuple[list[dict], dict[str, dict]]:
@@ -193,14 +205,14 @@ def _load_with_node(repo_root: Path, node_id: str) -> tuple[list[dict], dict[str
 
 def apply_indent(
     repo_root: Path, node_id: str, *, renumber_outline: bool = False
-) -> bool:
-    """Nest under the sibling above (same parent). Returns False if no-op."""
+) -> dict[str, str] | None:
+    """Nest under the sibling above (same parent). Returns the id map, None if no-op."""
     nodes, by_id = _load_with_node(repo_root, node_id)
     new_parent = indent_parent_id(by_id, node_id)
     if new_parent is None:
-        return False
+        return None
     if not can_indent_to_parent(nodes, by_id, node_id, new_parent):
-        return False
+        return None
     nk = by_id[node_id]["node_key"]
     sibs = [
         n["id"]
@@ -208,35 +220,33 @@ def apply_indent(
         if (n.get("parent_id") or None) == new_parent and n["id"] != node_id
     ]
     sibs.sort(key=lambda x: sibling_sort_key(x, by_id))
-    move_node_outline(
+    return move_node_outline(
         repo_root, nk, new_parent, len(sibs), renumber_outline=renumber_outline
     )
-    return True
 
 
 def apply_outdent(
     repo_root: Path, node_id: str, *, renumber_outline: bool = False
-) -> bool:
-    """Become sibling after former parent. Returns False if no-op."""
+) -> dict[str, str] | None:
+    """Become sibling after former parent. Returns the id map, None if no-op."""
     nodes, by_id = _load_with_node(repo_root, node_id)
     target = outdent_parent_id(by_id, node_id)
     if target is None:
-        return False
+        return None
     n = by_id[node_id]
     parent_of = n.get("parent_id")
     if not parent_of:
-        return False
+        return None
     new_parent_id = None if target == "" else target
     gp_sibs = ordered_sibling_ids(nodes, new_parent_id, by_id)
     pi = gp_sibs.index(parent_of)
-    move_node_outline(
+    return move_node_outline(
         repo_root,
         n["node_key"],
         new_parent_id,
         pi + 1,
         renumber_outline=renumber_outline,
     )
-    return True
 
 
 def sync_registry_node_ids(root: Path, old_to_new: dict[str, str]) -> None:

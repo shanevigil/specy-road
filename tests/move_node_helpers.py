@@ -101,6 +101,17 @@ def run_move_node(tmp: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def run_cli(tmp: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    """Run a `specy-road` command through the real dispatcher, on ``tmp``."""
+    return subprocess.run(
+        [sys.executable, "-m", "specy_road.cli", *args, "--repo-root", str(tmp)],
+        cwd=tmp,
+        capture_output=True,
+        text=True,
+        env=script_subprocess_env(),
+    )
+
+
 def nodes_by_key(root: Path) -> dict[str, dict]:
     return {n["node_key"]: n for n in load_roadmap(root)["nodes"]}
 
@@ -110,6 +121,16 @@ def set_zones(root: Path, zones_by_id: dict[str, list[str]]) -> None:
     nodes = load_json_chunk(chunk)
     for n in nodes:
         n["touch_zones"] = zones_by_id.get(n["id"], n["touch_zones"])
+    write_json_chunk(chunk, nodes)
+
+
+def lock_milestone(root: Path, node_key: str) -> None:
+    """Put the node's subtree under an active milestone execution."""
+    chunk = root / "roadmap" / "phases" / "T.json"
+    nodes = load_json_chunk(chunk)
+    for n in nodes:
+        if n["node_key"] == node_key:
+            n["milestone_execution"] = {"state": "active"}
     write_json_chunk(chunk, nodes)
 
 
@@ -152,6 +173,16 @@ def wide_fixture(dest: Path) -> None:
         "    branch: feature/rm-inner-four\n",
         encoding="utf-8",
     )
+
+
+def tree_bytes(root: Path) -> dict[str, bytes]:
+    """Every file a roadmap write can touch, by path."""
+    return {
+        p.relative_to(root).as_posix(): p.read_bytes()
+        for folder in ("roadmap", "planning")
+        for p in (root / folder).rglob("*")
+        if p.is_file()
+    }
 
 
 def ids_by_key(root: Path) -> dict[str, str]:
