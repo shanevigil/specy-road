@@ -5,7 +5,8 @@ tests, reading loose acceptance text in the leaf's favour, and naming real defec
 "advisory" or "non-blocking", or describing a crash, lost data or refused valid input, while approving.
 :data:`PROBE_RULES_LINES` goes into every reviewer prompt; :func:`check_record` is the record check for
 ``specy-road review record``, which also refuses an approve with a findings entry, or notes that name a
-defect or describe a concrete failure, with neither a ``required_changes`` entry nor a :data:`NOT_A_DEFECT` line.
+defect or describe a concrete failure, with neither a ``required_changes`` entry nor a :data:`NOT_A_DEFECT` line,
+and an approve with no ``acceptance`` entry for an unplanned test removal (:mod:`specy_road.integrity_removals`).
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.integrity_removals import REQUIRED_HEADING, missing_removal_entries, target_unplanned_removals
 from specy_road.review_files import HUMAN, load_review
 from specy_road.review_target import ReviewTarget, milestone_open_problem, same_commit
 
@@ -248,7 +250,21 @@ def check_record(ns: argparse.Namespace, root: Path, t: ReviewTarget) -> tuple[d
     if not same_commit(root, rec.data["commit"], t.commit):
         return None, (f"the record reviews {rec.data['commit']}, but the commit under review is "
                       f"{t.commit} ({t.ref}). Re-review the current commit.")
-    why = approve_defect_problem(rec.data, rec.body)
+    why = approve_defect_problem(rec.data, rec.body) or unplanned_removal_problem(root, t, rec.data)
     if why:
         return None, f"{ns.file}: {why}"
     return {"data": rec.data, "body": rec.body}, None
+
+
+def unplanned_removal_problem(root: Path, t: ReviewTarget, data: dict[str, Any]) -> str | None:
+    """Why an approve has no acceptance entry for an unplanned test removal, or ``None``; ``policy.integrity_gate``
+    plays no part."""
+    if data.get("verdict") != "approve":
+        return None
+    missing = missing_removal_entries(data.get("acceptance") or {}, target_unplanned_removals(root, t))
+    if not missing:
+        return None
+    keys = ", ".join(f'"{line}": pass' for line in missing)
+    return (f"verdict: approve without the packet's '{REQUIRED_HEADING}' entries: {'; '.join(missing)} "
+            f"(not in {t.node_id}'s planned_test_changes). Add {keys} to acceptance if the acceptance and the "
+            "diff justify each, or block with a required_changes entry")

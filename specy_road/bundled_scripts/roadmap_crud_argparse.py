@@ -116,6 +116,14 @@ def _p_add(sub: argparse._SubParsersAction) -> None:
         default=[],
         help="One acceptance criterion; repeat for each ('|' is not a separator).",
     )
+    sp.add_argument(
+        "--planned-test-change",
+        dest="planned_test_change",
+        action="append",
+        default=[],
+        help="One approved test removal or weakening, as `specy-road integrity` prints it "
+             "(removed-test: tests/test_x.py::test_old); repeat for each.",
+    )
     sp.add_argument("--sensitivity", default=None, help="Data-sensitivity class (default public); see roadmap/orchestration.yaml may_process")
     sp.add_argument("--executor-eligibility", dest="executor_eligibility", default=None, help="any (default) or a roster class tag such as senior")
     sp.add_argument(
@@ -202,7 +210,7 @@ def _p_edit(sub: argparse._SubParsersAction) -> None:
         metavar="KEY=VALUE",
         help=(
             "Field to set; repeatable. List fields (acceptance, risks, touch_zones, "
-            "dependencies) take one --set per item: --set acceptance='Saves offline' "
+            "dependencies, planned_test_changes) take one --set per item: --set acceptance='Saves offline' "
             "--set acceptance='Syncs on reconnect'. touch_zones also splits on commas; "
             "'|' is not a separator. An empty value (acceptance=) removes the field."
         ),
@@ -214,7 +222,7 @@ def _p_edit(sub: argparse._SubParsersAction) -> None:
             metavar="KEY=ENTRY",
             help=(
                 f"{verb} one entry of a list field (acceptance, risks, touch_zones, "
-                "dependencies) and keep the rest; repeatable. Not combined with --set "
+                "dependencies, planned_test_changes) and keep the rest; repeatable. Not combined with --set "
                 "of the same field. dependencies takes a node_key or a display id."
             ),
         )
