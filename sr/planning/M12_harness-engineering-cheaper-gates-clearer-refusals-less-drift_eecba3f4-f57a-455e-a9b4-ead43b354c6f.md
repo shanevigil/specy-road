@@ -15,6 +15,8 @@ Make the harness around agents cheaper to run and harder to drift, using what th
 - [ ] M12.2 — the three rc3 refusals print a runnable next step; rule documented and tested.
 - [ ] M12.3 — `chore garden` scans, idempotent `--open-chores`, cadence warning.
 - [ ] M12.4 — quality signals milestone (M12.4.1 per-area scores, M12.4.2 debt ledger).
+- [ ] M12.5 — automatic cleanup of landed leaves and stale worktrees, saving hand-off files first.
+- [ ] M12.6 — (low priority) command parsers reachable; stale-flag scan.
 - Out of scope: changing escalation thresholds or the review gate's approval rules beyond the deferral in M12.1; automatic code fixes from any scan; hosted dashboards.
 
 ## References
