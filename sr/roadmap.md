@@ -193,7 +193,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M12.2` | Every refusal names its fix | task | Agentic-led | Complete |
 | `M12.3` | Scheduled gardening chores that find drift and open small chore leaves | task | Agentic-led | Complete |
 | `M12.4` | Quality signals agents and PMs read first | milestone | — | Not Started |
-| `M12.4.1` | Per-area quality scores in the digest from review history | task | Agentic-led | Not Started |
+| `M12.4.1` | Per-area quality scores in the digest from review history | task | Agentic-led | Complete |
 | `M12.4.2` | A tracked tech-debt ledger that planning can turn into leaves | task | Agentic-led | Not Started |
 | `M12.4.3` | Per-model review evidence: block rate and overturned approvals feed orchestrate plan | task | Agentic-led | Not Started |
 | `M12.5` | The orchestrator cleans up landed leaves and stale worktrees automatically, saving hand-off files first | task | Agentic-led | Not Started |
@@ -226,7 +226,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M14.7` | session end finds this agent's session by worktree and branch when the derived id has no record | task | Agentic-led | Complete |
 | `M14.8` | The implementation-zone check runs before a review is spent, and knows about sibling repositories | task | Agentic-led | Not Started |
 | `M14.9` | review rca launches the root-cause analyst like review delegate, and says what to do when no analyst is available | task | Agentic-led | Not Started |
-| `M14.10` | Escalation recognises a converging loop and handoff status shows the findings trend | task | Agentic-led | Not Started |
+| `M14.10` | Escalation recognises a converging loop and handoff status shows the findings trend | task | Agentic-led | Complete |
 | `M14.11` | The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes | task | Agentic-led | Complete |
 | `M15` | rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction | phase | — | Not Started |
 | `M15.1` | RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command | task | Agentic-led | Complete |

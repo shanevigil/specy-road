@@ -35,11 +35,16 @@ DEFAULT_POLICY: dict[str, Any] = {
     "max_workers": 2,
     "escalate_same_acceptance_blocks": 3,
     "escalate_review_rounds": 5,
+    "escalate_when_converging": False,
     "stall_after_seconds": 600,
     "milestone_full_review": True,
     "delta_review": True,
     "reviewer_resumed_delta": False,
     "worktree_sweep": "off",
+    "quality_window": 50,
+    "quality_area_depth": 1,
+    "quality_threshold": 0.5,
+    "quality_routing": False,
 }
 DEFAULT_CONFIG: dict[str, Any] = {
     "version": 1,

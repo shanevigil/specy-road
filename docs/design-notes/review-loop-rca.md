@@ -77,6 +77,36 @@ Counting restarts after each analysis: an RCA record resolves every round up
 to the round it names, so a leaf that keeps stalling after a fix escalates
 again only after another 3 (same criterion) or 5 (total) rounds.
 
+### Converging loops are not escalated by round count
+
+Counting rounds does not tell a stuck loop from one that is finishing. In
+one reported run the blocking findings per round fell 13, 2, 2, 1, 0, every
+acceptance item passed from round 2, and round 4 blocked only on a private
+test import, yet the loop was escalated ("openai reviewers blocked the last 3
+rounds") and an RCA was recommended. So the trend is now a signal
+(`specy_road/review_trend.py`):
+
+- **Findings per round:** every item in the four finding categories
+  (correctness, regression, boundary, test_integrity) of each blocking record
+  at that round, summed across records; plus the acceptance ids it fails.
+  There is no severity weighting.
+- **Converging:** over the last `escalate_same_acceptance_blocks` rounds since
+  the last analysis, the count never rose, fell at least once, and the latest
+  round fails no acceptance id. Fewer than that many rounds since the last
+  analysis (or a threshold of 1, or a round whose count is unknown) is not
+  enough evidence, so the loop is not converging and nothing is deferred:
+  with `escalate_review_rounds: 2`, counts 5, 1 still escalate at round 2.
+- **Effect:** while converging, the `same_family` and `review_rounds` rules
+  do not escalate; `same_acceptance` (which cannot fire while acceptance
+  passes), a forced analysis and the fix-round budget (`max_fix_rounds`)
+  still apply. `handoff status` prints `findings by round: 13, 2, 2, 1, 0;
+  acceptance all pass since round 2`, adds `converging; escalation deferred`
+  when a rule was held back, and `--json` carries the per-round list under
+  `findings_trend`.
+- **Default change:** `policy.escalate_when_converging` defaults to false,
+  which changes behaviour for existing projects; set it to true to escalate
+  regardless of trend, as before. A flat or rising series still escalates.
+
 ## Adopted: protocol
 
 1. **Detect.** `handoff status` and `review list` compute the triggers from

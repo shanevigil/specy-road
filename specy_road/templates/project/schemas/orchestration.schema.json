@@ -105,6 +105,10 @@
           "minimum": 1,
           "description": "A leaf's review loop is escalated for root-cause analysis after this many review rounds since its last analysis. Default 5."
         },
+        "escalate_when_converging": {
+          "type": "boolean",
+          "description": "When false (the default), a converging loop (over the last escalate_same_acceptance_blocks rounds the blocking-finding count never rose and fell at least once, and the latest round fails no acceptance id) is not escalated by the same_family or review_rounds rule; `handoff status` says 'converging; escalation deferred'. same_acceptance, forced analyses and max_fix_rounds still apply. True restores the earlier behaviour, which escalated regardless of trend; projects that relied on it must set true. Default false."
+        },
         "max_fix_rounds": {
           "type": "integer",
           "minimum": 1,
@@ -130,6 +134,26 @@
         "reviewer_resumed_delta": {
           "type": "boolean",
           "description": "When true, reviewer_fresh_session is waived for a record naming delta_from: the reviewer that approved delta_from may be resumed in that same session to review the delta since and file fresh_session: false. Such an approval still counts only under the delta_review rules; a resumed full review, and any other record with fresh_session: false, is still refused. Default false."
+        },
+        "quality_window": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "How many of the most recently landed leaves (finish merges, in first-parent order) the digest's \"Quality by area\" section and quality_routing count. Default 50."
+        },
+        "quality_area_depth": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "How many leading path components of a touch zone (relative to the project root) name its area in \"Quality by area\". Default 1 (the top-level directory)."
+        },
+        "quality_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "An area whose block rate (share of its tallied leaves with at least one blocking review round) exceeds this is flagged: listed first in the digest's \"Quality by area\" section, and routed under quality_routing. Default 0.5."
+        },
+        "quality_routing": {
+          "type": "boolean",
+          "description": "When true, orchestrate plan asks for one reviewer from the strong set (every require_one_of in strong_review) on each ready leaf whose touch zones fall in a flagged area. Advisory: the review gate does not require it. Default false."
         },
         "red_green": {
           "type": "boolean",
