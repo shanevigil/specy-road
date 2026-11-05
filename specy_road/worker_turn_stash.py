@@ -15,6 +15,11 @@ StashEntry = tuple[str, str]  # (commit hash, subject from ``git stash list --fo
 _ON = re.compile(r"^On (.+?): ", re.IGNORECASE)
 _WIP = re.compile(r"^WIP on (.+?): ", re.IGNORECASE)
 
+_UNKNOWN_STASH_SUMMARY = (
+    "stash state unknown: git stash list could not be read at the start or end of the turn "
+    "(the stack is shared by every worktree of the repository)"
+)
+
 
 def stash_branch(subject: str) -> str | None:
     """The branch named in a stash subject, or ``None`` when the subject does not use the usual forms."""
@@ -22,7 +27,8 @@ def stash_branch(subject: str) -> str | None:
         branch = m.group(1).strip()
         return None if branch.startswith("(") else branch
     if m := _WIP.match(subject):
-        return m.group(1).strip()
+        branch = m.group(1).strip()
+        return None if branch.startswith("(") else branch
     return None
 
 
@@ -55,8 +61,6 @@ def _legacy_stash_summary(subject: str) -> str:
 
 
 def _attribute_owner(repo_root: Path, owner: WorkerRecord, stash_hash: str, subject: str) -> None:
-    if stash_hash in _attributed_hashes(repo_root, owner.worker_id):
-        return
     finding: dict[str, Any] = {"kind": "stash_rule_violation", "summary": _rule_summary(subject),
                                 "stash_hash": stash_hash, "subject": subject}
     append_event(repo_root, owner, "post_run_check", source="system",
@@ -65,33 +69,39 @@ def _attribute_owner(repo_root: Path, owner: WorkerRecord, stash_hash: str, subj
     add_flag(repo_root, owner, _FLAG_POST_RUN)
 
 
+def _decide_stash_hash_change(repo_root: Path, rec: WorkerRecord, stash_hash: str,
+                              subject: str) -> list[dict[str, Any]]:
+    """Observer findings for one added or removed hash; all attribution paths go through here."""
+    branch = stash_branch(subject)
+    if branch is None:
+        return [{"kind": "stash", "summary": _legacy_stash_summary(subject), "subject": subject}]
+    owner = _owner(repo_root, branch)
+    if owner is None:
+        return [{"kind": "stash", "summary": _legacy_stash_summary(subject), "subject": subject}]
+    if stash_hash in _attributed_hashes(repo_root, owner.worker_id):
+        return []
+    if owner.worker_id == rec.worker_id:
+        return [{"kind": "stash_rule_violation", "summary": _rule_summary(subject),
+                 "stash_hash": stash_hash, "subject": subject}]
+    _attribute_owner(repo_root, load_record(repo_root, owner.worker_id), stash_hash, subject)
+    return [{"kind": "stash_other", "summary": f"stash change on {owner.worker_id}'s branch ({branch!r}): "
+                                                f"{subject!r}",
+              "worker_id": owner.worker_id, "branch": branch, "stash_hash": stash_hash}]
+
+
 def stash_findings(repo_root: Path, rec: WorkerRecord, before: tuple[StashEntry, ...] | None,
                    after: tuple[StashEntry, ...] | None) -> list[dict[str, Any]]:
     """Stash-list deltas for this turn: attribute to the branch owner, notes for innocent observers."""
-    before_map = dict(before or ())
-    after_map = dict(after or ())
-    changed = sorted(set(before_map) | set(after_map))
+    if before is None or after is None:
+        if before != after:
+            return [{"kind": "stash", "summary": _UNKNOWN_STASH_SUMMARY}]
+        return []
+    before_map = dict(before)
+    after_map = dict(after)
     out: list[dict[str, Any]] = []
-    for stash_hash in changed:
+    for stash_hash in sorted(set(before_map) | set(after_map)):
         if before_map.get(stash_hash) == after_map.get(stash_hash):
             continue
         subject = after_map.get(stash_hash) or before_map.get(stash_hash) or ""
-        branch = stash_branch(subject)
-        if branch is None:
-            out.append({"kind": "stash", "summary": _legacy_stash_summary(subject), "subject": subject})
-            continue
-        owner = _owner(repo_root, branch)
-        if owner is None:
-            out.append({"kind": "stash", "summary": _legacy_stash_summary(subject), "subject": subject})
-            continue
-        if owner.worker_id == rec.worker_id:
-            out.append({"kind": "stash_rule_violation", "summary": _rule_summary(subject),
-                        "stash_hash": stash_hash, "subject": subject})
-            continue
-        if stash_hash in _attributed_hashes(repo_root, owner.worker_id):
-            continue
-        _attribute_owner(repo_root, load_record(repo_root, owner.worker_id), stash_hash, subject)
-        out.append({"kind": "stash_other", "summary": f"stash change on {owner.worker_id}'s branch ({branch!r}): "
-                                                     f"{subject!r}",
-                    "worker_id": owner.worker_id, "branch": branch, "stash_hash": stash_hash})
+        out.extend(_decide_stash_hash_change(repo_root, rec, stash_hash, subject))
     return out
