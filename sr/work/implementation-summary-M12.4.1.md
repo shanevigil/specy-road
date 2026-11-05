@@ -2,7 +2,7 @@
 
 ## Summary
 
-Each leaf's gate commit (`mark-implementation-reviewed`) now ends with a `Review-tally: <ID> rounds=<n> blocks=<b> integrity=<i> rca=<r> findings=<cat>:<n>,…` trailer. The trailer is built in the new `specy_road/review_tally.py` from the leaf's local review records (`review_rca.loop_state`), the RCA records and `specy-road integrity`. `roadmap-context.md` gains a "Quality by area" section. It reads **only** those trailers from tracked git history (`git log --topo-order` from HEAD), so `digest --check` gives the same result on every checkout and in CI. For each touch-zone area (first `quality_area_depth` path components, relative to the project), it shows these numbers over the last `quality_window` landed leaves:
+Each leaf's gate commit (`mark-implementation-reviewed`) now ends with a `Review-tally: <ID> rounds=<n> blocks=<b> integrity=<i> rca=<r> findings=<cat>:<n>,…` trailer (fix round 1 adds `approvals=<a>`). The trailer is built in the new `specy_road/review_tally.py` from the leaf's local review records (`review_rca.loop_state`), the RCA records and `specy-road integrity`. `roadmap-context.md` gains a "Quality by area" section. It reads **only** those trailers from tracked git history (`git log --topo-order` from HEAD), so `digest --check` gives the same result on every checkout and in CI. For each touch-zone area (first `quality_area_depth` path components, relative to the project), it shows these numbers over the last `quality_window` landed leaves:
 
 - leaves landed
 - leaves with no tally (left out of the rates)
@@ -66,8 +66,8 @@ Final touch zones are the brief's list. `specy_road/review_rca.py`, `specy_road/
 
 ## Verification
 
-- `pytest -n 4`: 4033 passed.
-- `specy-road digest --check` (this repo) and `specy-road digest --check --repo-root tests/fixtures/specy_road_dogfood`: both OK.
+- Round 0: `pytest -n 4`: 4033 passed, and both `digest --check` runs passed.
+- Fix round 1 (targeted only, per the coordinator): 171 passed across `test_digest.py`, `test_digest_quality.py`, `test_review_tally.py`, `test_mark_implementation_reviewed_gate.py`, `test_orchestrate_plan.py`, `test_finish_land_regenerates.py`, `test_generated_files.py`, `test_orchestration_config.py`, `test_strong_review.py`, `test_milestone_full_review.py`, `test_review_hardening.py` and `test_integrity_gate.py`. `digest --check` on this repo now reports the expected drift explained under Fix round 1.
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: OK (pre-existing warnings only).
 - `specy-road file-limits`: OK.
 - Red-green: with the `tally_trailers` call removed from `mark_implementation_reviewed.py`, `tests/test_review_tally.py::test_mark_implementation_reviewed_writes_the_tally_after_the_reviewed_by_lines` fails; with it, the test passes.
@@ -76,7 +76,7 @@ Final touch zones are the brief's list. `specy_road/review_rca.py`, `specy_road/
 
 1. `git diff ab4c6382~1 -- specy_road/review_gate.py` is empty.
 2. Read `specy_road/review_tally.py` top to bottom: write side (`leaf_tally` → `tally_trailers`), then read side (`gate_history` → `_window` → `area_quality`).
-3. `tests/test_digest.py` (quality block) pins:
+3. `tests/test_digest_quality.py` pins:
    - the section's rows
    - flagged-first ordering
    - window and threshold policy
@@ -126,7 +126,7 @@ Inventory from the earlier rounds:
 - `digest._section_quality` and `_MAX_AREAS = 30`: the digest section, bounded in length. Its `except Exception` guard keeps history context from ever failing the digest.
 - `assign_leaf(flagged=)` and the `flagged_areas` call in `build_orchestration_plan`: A3 routing.
 - Four `DEFAULT_POLICY` keys and schema properties: the policy knobs, with defaults from the planning sheet.
-- Tests in `tests/test_digest.py`, with helpers `_gate_commit`, `_quality` and `_history` (A1/A2):
+- Tests now in `tests/test_digest_quality.py`, with helpers `_gate_commit`, `_quality` and `_history` (A1/A2):
   - `test_quality_section_lists_flagged_areas_first_with_their_numbers`
   - `test_quality_policy_sets_window_and_threshold`
   - `test_quality_section_is_byte_identical_across_runs_clocks_and_checkouts`
