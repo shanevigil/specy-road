@@ -26,18 +26,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts
-    node_id: M13.8
-    branch: feature/rm-a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts
-    touch_zones:
-      - specy_road/behaviour_changes.py
-      - specy_road/version_pin.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - tests/
-      - docs/roadmap-authoring.md
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: linked-worktrees-resolve-root-and-symlinked-envs
     node_id: M15.21
     branch: feature/rm-linked-worktrees-resolve-root-and-symlinked-envs
