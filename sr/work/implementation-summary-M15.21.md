@@ -161,6 +161,17 @@ file under `main\ncheckout/.git` is found and the lane's status is clean. Red-gr
 - Fix round 2, `exclude_links` reads exclude file lines with `splitlines`: those are patterns, not git output, and a
   link name with a newline is refused, so no line holds one.
 
+## Probes
+
+R1 class: a filesystem path read from git output as text, then split on newlines or stripped.
+
+- `_worktree_and_common_dir` combined `--show-toplevel --git-common-dir` with `splitlines`: reproduced wrong root with checkout name `main\ncheckout`; fixed with two `git_path` queries.
+- `worktree_env.exclude_links` (`--git-path info/exclude` via `git_text`): trailing whitespace on the path would be lost; now `git_path`; exclude file found under `main\ncheckout/.git` in the newline test.
+- `worker_ops_launch` clean-tree (`status_entries`, `-z`): NUL-separated paths; safe; unchanged.
+- `runtime_paths.git_root` / `project_prefix` (`git_text`, strip only): embedded newline in path survives; pre-leaf; unchanged.
+- `exclude_links` reading `info/exclude` with `splitlines`: file content is patterns, not git path output; link names with newlines refused at setup; unchanged behaviour.
+- Public `project_root()` from linked worktree `lane` with `SPECY_ROAD_REPO_ROOT` naming `main\ncheckout`: returns `lane`, silent (test `test_a_checkout_path_with_a_newline_resolves_the_enclosing_worktree`).
+
 ## Verification
 
 - Full suite `pytest -n 4`: 4035 passed (after the rework).
