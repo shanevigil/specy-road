@@ -107,7 +107,8 @@ entries:
       - tests/
     started: '2026-11-05'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-05T11:31:32+00:00'
   - codename: notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice
     node_id: M13.9
     branch: feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice
