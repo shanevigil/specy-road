@@ -199,7 +199,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.1_rc-install-docs-cover-extras-and-direct-wheel-url_f11ae6a1-4e8d-43f8-9aed-391000c71679.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command",
       "touch_zones": [
         "docs/install-and-usage.md",
