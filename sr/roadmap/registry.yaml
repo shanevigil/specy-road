@@ -163,3 +163,20 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules
+    node_id: M13.12
+    branch: feature/rm-quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules
+    touch_zones:
+      - specy_road/bundled_scripts/touch_zone_tracked.py
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
+      - specy_road/agent_ignores.py
+      - specy_road/templates/project/.gitignore
+      - tests/
+      - specy_road/context_notice_cache.py
+      - specy_road/agents_md_block.py
+      - specy_road/bundled_scripts/validate_roadmap.py
+      - specy_road/ignore_report.py
+      - specy_road/bundled_scripts/validate_notices.py
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
