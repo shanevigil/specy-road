@@ -1,66 +1,48 @@
 # Implementation summary: M13.8
 
-## What changed
-
-- **A1** — `specy_road/behaviour_changes.py`: `BehaviourChange` (`since`, `command`, `flags`, `now`, optional `contradicts`, optional `current`, `command_anchor`) and `CATALOGUE` with five entries (four cited cases plus pickup `--base` for A4).
-- **A2** — `specy_road/agent_text_report.py`: `warn_contradicted_instructions` reports contradicting agent text outside managed blocks; report only.
-- **A3** — Pin helpers in `specy_road/version_pin.py`, re-exported from `validate_roadmap.py`; one call from `validate_at`.
-- **A4** — Pickup `--base` entry; `docs/roadmap-authoring.md` steps 3–4 reordered (400 lines).
-
 ## Touch zones
 
-Unchanged from the brief: `specy_road/behaviour_changes.py`, `specy_road/agent_text_report.py`, `specy_road/version_pin.py`, `specy_road/bundled_scripts/validate_roadmap.py`, `tests/`, `docs/roadmap-authoring.md`.
+`specy_road/behaviour_changes.py`, `specy_road/agent_text_report.py`, `specy_road/version_pin.py`, `specy_road/bundled_scripts/validate_roadmap.py`, `tests/`, `docs/roadmap-authoring.md`.
 
-## Fix round 3 (grok-4.7-low on cb9c72c)
+## Fix round 4 (gpt-6.1-sol-low on 71846ea6, after WIP merge)
 
-**Class (A2 minimum): stale patterns required extra words beyond the cited flag pairing.** `mark-implementation-reviewed` needed approve/tests-pass/your-own in addition to `--yes`; `finish-this-task` needed always/every-time/must-pass in addition to `--on-complete merge|auto`. Grok's reproductions (`Pass --yes to … mark-implementation-reviewed after the checks` and `` `finish-this-task --on-complete auto` lands the work ``) printed no notice.
+**R1 class:** word-presence `current` silencers (`independent`, `recorded`, `integration branch`) suppressed explicitly stale instructions. **Design:** replace with structural positive patterns (never/only-when/refused-when/hook chains/integration-before-feature/closes-the-gate/has-no-`--yes`/etc.).
 
-**Class (A4 commandless init-era copy): `contradicted_by` always required a command token.** Sentences such as "The first commit on the feature branch registers the work in registry.yaml." returned False.
+**R2 class:** adjacent physical lines merged into one sentence when no sentence punctuation between them. **Design:** per-line matching when two or more directive lines each match independently; otherwise keep wrapped-sentence matching.
 
-**Design (same classes everywhere):**
+**R3 class:** command anchor required `specy-road` or backticks. **Design:** also accept bare `\b<command>\b` token.
 
-1. **A2 minimum `contradicts`.** `--yes` alone (with command anchor) and `--on-complete merge|auto` alone (with command anchor).
-2. **`current` silencers expanded** so toolkit docs that document correct use of those flags still pass `test_the_toolkit_s_own_current_guidance_gets_zero_notices` (never/only when/independent/recorded; `handoff status` / `review-packet` in hook scripts; `merge|pr` mode lists; bare `specy-road finish-this-task --on-complete merge` example lines).
-3. **`command_anchor=False` on the `--base` entry only** so init-era first-commit-on-feature-branch prose matches without naming `do-next-available-task`; `current` still silences integration-branch-first wording (Sol R1).
-4. **Code fences are one paragraph** (not one line each) so multi-line shell examples such as orchestration's pre-finish hook are read with their `handoff status` / `review-packet` context on earlier lines in the same fence.
+## Fix round: probes
 
-Sol R1/R2 regressions from fix round 2 are unchanged: command anchor on entries 1–4, near-miss corpus (19 cases), integration-branch-first sentence silent.
-
-| Entry | Anchor | Stale (`contradicts`) | Current (`current`) | New positives |
-|---|---|---|---|---|
-| `--yes` | command | `--yes` | never, only when, independent, recorded, handoff status, review-packet, … | Grok after-the-checks line; CITED[0] still hits (approve + when tests pass) |
-| `--on-complete` | command | `--on-complete merge\|auto` | override, recorded, refuse, merge\|pr, bare merge example line, … | Grok auto lands line; CITED[1] still hits (always + merge) |
-| `--base` | optional | first commit + register + claim term | integration branch, `--base` | Commandless feature-branch sentence (Grok A4) |
-
-## Probes
-
-- Grok A2 reproduction strings: both print one notice via `warn_contradicted_instructions` — pass.
-- Grok A4 commandless feature-branch sentence: prints one notice — pass.
-- Sol R1 integration-branch-first sentence: no notice — pass.
-- Sol R2 pickup-truck + claim insurance sentence: no notice — pass.
-- `test_the_toolkit_s_own_current_guidance_gets_zero_notices` over `docs/*.md`, templates, `AGENTS.md`: no hits after fence join and expanded `current` — pass.
-- `test_toolkit_docs_and_templates_do_not_say_the_first_commit_registers_the_work`: no hits — pass.
-- Entries 1–4 with command anchor: unrelated lines without `specy-road <cmd>` or backtick command still never match — checked via near-miss corpus.
-- `--local` / `--delete-branch` entries: unchanged contradicts; still require command anchor — checked via CITED and near-miss tests.
-- Multi-entry line (finish on-complete + never deletes branch): one notice with both behaviours — pass.
+- Sol R1 integration-branch-first sentence — no notice.
+- Sol R2 pickup-truck + claim insurance sentence — no notice.
+- gpt-6.1-sol-low R1 three stale examples (recorded mode override, without independent review, feature-branch register after integration) — one notice each.
+- gpt-6.1-sol-low R2 adjacent merge/auto directive lines — notices at lines 1 and 2.
+- gpt-6.1-sol-low R3 `Run mark-implementation-reviewed --yes after the tests pass.` — one notice.
+- Zero-notice corpus (`docs/*.md`, templates, `AGENTS.md`) — no hits.
+- Wrapped stale sentence test and cited five-notice fixture — pass.
+- Near-miss corpus (19 lines) — no notices.
 
 ## Verification
 
-- `python -m pytest -n 4 -q tests/test_behaviour_changes.py tests/test_validate_roadmap.py tests/test_validate_stale_commands.py`
-- `specy-road file-limits`
+- `python -m pytest -n 4 -q $(rg -l '…behaviour_changes|agent_text_report|version_pin|validate_roadmap…' tests)` — 283 passed
+- `python -m pytest -n 4 -q tests/test_behaviour_changes.py` — 36 passed
+- `specy-road file-limits` — OK
 
 ## Added
 
 ### Helpers
-- `BehaviourChange.command_anchor`: when false, `--base` entry matches commandless init-era prose (fix round 3).
+- `agent_text_report._is_directive_line`, `_record` — classify standalone directive lines and merge hits per source line (R2).
 
 ### Branches and guards
-- `behaviour_changes`: A2-minimum `contradicts` for `--yes` and `--on-complete merge|auto`; expanded `current` for toolkit zero-notice corpus (fix round 3).
-- `agent_text_report._paragraphs`: accumulate lines inside a code fence into one paragraph (fix round 3).
+- `BehaviourChange.contradicted_by`: bare command token in anchor (R3).
+- `current` patterns: structural positive guidance per entry, not vocabulary-only (R1).
+- `contradicted_lines`: two-or-more directive hits per paragraph use per-line attribution; otherwise sentence wrap (R2).
 
 ### Mocks
 - none
 
 ### Tests
-- `test_a2_a4_minimum_stale_pairings_print_a_notice` (3 parametrized Grok reproductions): pins A2/A4 minimum reporting (fix round 3).
-- `test_a_code_fence_is_one_paragraph`: renamed from fence-per-line test; still asserts a bare merge example in a one-line fence is not reported (fix round 3).
+- `test_explicitly_stale_instructions_are_reported_despite_guidance_vocabulary` — R1 regressions (3 lines from review notes).
+- `test_adjacent_directive_lines_each_get_a_notice` — R2 regression.
+- `test_bare_command_name_in_prose_is_anchored` — R3 regression.
