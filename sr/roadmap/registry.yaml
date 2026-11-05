@@ -144,7 +144,8 @@ entries:
       - specy_road/schemas/handoff.schema.json
     started: '2026-11-05'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-05T10:32:48+00:00'
   - codename: stash-changes-attributed-to-the-owning-branch
     node_id: M15.25
     branch: feature/rm-stash-changes-attributed-to-the-owning-branch
