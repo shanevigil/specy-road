@@ -8,8 +8,8 @@ named project-relative in the worker's tree, as `zone_matches` compares them, an
 | Class | What |
 |---|---|
 | `harness` | `.claude/settings*.json`, `.claude/hooks/**`, `.codex/**`, `.cursor/*.json`, `.cursor/hooks/**`, at the git root and the project root |
-| `git_hook` | the hooks directory, read from the filesystem only: `<common-git-dir>/hooks`, `<worktree-gitdir>/hooks` and each `core.hooksPath` value the config files below set (relative to the checkout), all of them always, since an `includeIf` condition is not evaluated; direct regular-file names with sha256, not recursive, or the one marker `capped` past 200 children |
-| `git_config` | the bytes of the common `config`, of `config.worktree` and of every file they name by `include.path` or `includeIf.*.path` (conditions not evaluated, followed to git's depth of 10), parsed as git-config(1) reads them, a byte-order mark, quoting, escapes, comments and continued lines included; a change is always reported by digest, so a value read wrongly can only add a watched hooks directory (`specy_road/git_config_text.py`, no git command); the finding also names the changed values of `core.hooksPath`, `core.fsmonitor`, `core.sshCommand`, `include.path` and `includeIf.*.path` |
+| `git_hook` | the hooks directories: the one git names at the turn's start (`rev-parse --git-path hooks`, asked before the executor acts), plus `<common-git-dir>/hooks`, `<worktree-gitdir>/hooks` and each `core.hooksPath` value read from the config files below (relative to the checkout); after the turn read from the filesystem only, direct regular-file names with sha256, not recursive, or the one marker `capped` past 200 children |
+| `git_config` | the bytes of every config file git names at the turn's start (`config --list --show-origin --includes`: global, system, the common `config`, `config.worktree` and their includes, conditions evaluated), plus the common `config`, `config.worktree` and every file they name by `include.path` or `includeIf.*.path` as `specy_road/git_config_text.py` reads them (conditions not evaluated, git's depth of 10); after the turn read from the filesystem only, no git command. The finding also names the changed values of `core.hooksPath`, `core.fsmonitor`, `core.sshCommand`, `include.path` and `includeIf.*.path` |
 | `policy_tree` | `roadmap/orchestration.yaml`, `roadmap/orchestration.local.yaml`, `roadmap/git-workflow.yaml` in the tree |
 | `policy_blob` | the same three as blobs at the local integration branch tip (no fetch), so a roster commit made from another checkout shows |
 | `registry` | each `roadmap/registry.yaml` `entries` item whose `node_id` is another leaf |
@@ -28,6 +28,15 @@ file that is also a new escaping symlink, a hooks directory inside `.claude/hook
 listed first in the table. It sets the sticky `steering_changed`
 flag (`worker status --json` `flags`, `handoff status --json` `workers[].flags`); `worker reconcile W` lists the
 findings and clears it.
+
+**What git is asked, and when.** Git is asked only at the turn's start, before the executor acts, which hooks
+directory and config files it uses; after the turn those files and directories are compared from the filesystem.
+The text parser (`specy_road/git_config_text.py`: a byte-order mark, CRLF, quoting, escapes, comments and continued
+lines as git reads them) only adds candidates to what git named, so it does not decide coverage. Its limit: a hooks
+directory or config file git would use only because of a change made during the turn is not watched itself; the
+change that points git there is, by its file's digest. The check fails closed: with no snapshot from the turn's start
+(it could not be taken) or a git-steering comparison that fails, a `check_error` is recorded and no post-turn git
+command runs.
 
 **Outside detection:** there is no directory walk for symlinks, so a link under a gitignored path, or one created
 and removed within one turn, is not seen; neither is a change made and reverted within one turn. Other workers and

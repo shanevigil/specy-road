@@ -16,6 +16,7 @@ import yaml
 
 from tests.review_repo_helpers import commit_file, delegate_layout, git, make_review_repo
 
+from specy_road import steering_paths
 from specy_road import worker_adapters as wa
 from specy_road import worker_reconcile as wrc
 from specy_road import worker_state as ws
@@ -115,6 +116,7 @@ HOOKS_CONFIGS = {   # name: (hooks directory name, text added to the common conf
     "trailing_comment": ("hooks", "[core]\n\thooksPath = {d} # managed by ops\n", False),
     "quoted_hash_then_comment": ("hooks #x;y", '[core]\n\thooksPath = "{d}" ; note\n', False),
     "escaped_quote_and_continuation": ('ho"oks', '[core]\n\thooksPath = "{d_escaped}"\n', False),
+    "crlf_continuation": ("customhooks", "[core]\r\n\thooksPath = {d_crlf}\r\n", False),   # CRLF lines, \\<CRLF> joins
     "bom_prefixed_config": ("hooks", "[core]\n\thooksPath = {d}\n", True),   # the first section, after the BOM
     # {d} is set only under a condition that does not hold: git keeps the default hooks directory
     "nonmatching_conditional_include": ("hooks", '[includeIf "gitdir:/nowhere/"]\n\tpath = {other}\n', False),
@@ -130,7 +132,9 @@ def test_a_hook_in_the_hooks_directory_git_uses_is_found_however_the_config_read
     other = tmp_path / "other.gitconfig"
     other.write_text(f"[core]\n\thooksPath = {d}\n")
     escaped = str(d).replace('"', '\\"')
-    added = text.format(d=d, other=other, d_escaped=escaped[:len(escaped) // 2] + "\\\n" + escaped[len(escaped) // 2:])
+    half = len(str(d)) // 2
+    added = text.format(d=d, other=other, d_escaped=escaped[:len(escaped) // 2] + "\\\n" + escaped[len(escaped) // 2:],
+                        d_crlf=str(d)[:half] + "\\\r\n" + str(d)[half:])
     config = p["repo"] / ".git" / "config"
     config.write_text("\ufeff" + added + config.read_text() if bom else config.read_text() + added)   # BOM, then the section
     # git's own reading, conditions evaluated, names the directory the turn writes a hook into
@@ -138,7 +142,7 @@ def test_a_hook_in_the_hooks_directory_git_uses_is_found_however_the_config_read
     hooks = Path(used.stdout.strip()) if used.returncode == 0 else p["repo"] / ".git" / "hooks"
     assert (hooks == d) is (name != "nonmatching_conditional_include")
     if hooks == d:   # and the check's parse of the file agrees with git's
-        assert [v for k, v in parse_config(config.read_text()) if k == "core.hookspath"] == [str(d)]
+        assert [v for k, v in parse_config(config.read_bytes().decode()) if k == "core.hookspath"] == [str(d)]
     rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
     found = _turn(p["repo"], rec, lambda: _write(hooks / "pre-commit", "#!/bin/sh\n"))
     [steer] = [f for f in found if f["kind"] == "steering_file"]
@@ -146,15 +150,27 @@ def test_a_hook_in_the_hooks_directory_git_uses_is_found_however_the_config_read
     assert "git_probes_skipped" in {f["kind"] for f in found}
 
 
-def test_a_changed_fsmonitor_is_reported_before_any_git_command_could_run_it(tmp_path: Path) -> None:
+@pytest.mark.parametrize("snapshot", ["taken", "unavailable"])
+def test_a_changed_fsmonitor_is_reported_before_any_git_command_could_run_it(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, snapshot: str) -> None:
+    """With no steering snapshot from the turn's start (whatever failed), the check fails closed: no git probe."""
     p = _layout(tmp_path)
     sentinel = tmp_path / "fsmonitor-ran"
     rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
+    if snapshot == "unavailable":
+        def fail(_scope):
+            raise OSError("the snapshot could not be taken")
+        monkeypatch.setattr(steering_paths, "file_snapshot", fail)
     found = _turn(p["repo"], rec, lambda: git(p["leaf"], "config", "core.fsmonitor", f"touch {sentinel}"))
-    [steer] = [f for f in found if f["kind"] == "steering_file"]
-    assert steer["class"] == "git_config" and steer["path"].endswith("/.git/config")
-    assert "core.fsmonitor=unset" in steer["before"] and f"core.fsmonitor=touch {sentinel}" in steer["after"]
-    assert "git_probes_skipped" in {f["kind"] for f in found} and not sentinel.exists()
+    assert not sentinel.exists()
+    if snapshot == "unavailable":
+        [error] = found
+        assert error["kind"] == "check_error" and "git probes skipped" in error["summary"]
+    else:
+        [steer] = [f for f in found if f["kind"] == "steering_file"]
+        assert steer["class"] == "git_config" and steer["path"].endswith("/.git/config")
+        assert "core.fsmonitor=unset" in steer["before"] and f"core.fsmonitor=touch {sentinel}" in steer["after"]
+        assert "git_probes_skipped" in {f["kind"] for f in found}
     subprocess.run(["git", "status"], cwd=p["leaf"], capture_output=True, check=False)
     assert sentinel.exists()   # the scenario is real: the probe the check skipped would have run it
 

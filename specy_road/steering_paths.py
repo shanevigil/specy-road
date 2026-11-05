@@ -25,13 +25,13 @@ import fnmatch
 import hashlib
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from specy_road.git_config_text import read_chain
+from specy_road.git_config_text import git_reads, read_chain
 from specy_road.git_subprocess import run
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.review_files import READY_PREFIX, REVIEWS_REL
@@ -93,6 +93,11 @@ def _value(path: Path) -> str:
         return ABSENT
 
 
+def _resolved(path: Path) -> Path:
+    """``path`` resolved without raising: a link loop or a missing part (an executor can make either) stays as named."""
+    return Path(os.path.realpath(path))
+
+
 def _real(path: Path) -> Path:
     """``path`` with its parent resolved and its last component kept: a link is recorded, not followed."""
     return Path(os.path.realpath(path.parent)) / path.name
@@ -113,16 +118,16 @@ def _gitdirs(top: Path) -> tuple[Path, Path] | None:
     """``(worktree gitdir, common git dir)`` of the checkout at ``top``, read from ``.git`` without running git."""
     dotgit = top / ".git"
     if dotgit.is_dir():
-        return dotgit.resolve(), dotgit.resolve()
+        return _resolved(dotgit), _resolved(dotgit)
     try:
         line = dotgit.read_text(encoding="utf-8").strip()
     except OSError:
         return None
     if not line.startswith("gitdir:"):
         return None
-    gitdir = (top / line.removeprefix("gitdir:").strip()).resolve()
+    gitdir = _resolved(top / line.removeprefix("gitdir:").strip())
     try:
-        common = (gitdir / (gitdir / "commondir").read_text(encoding="utf-8").strip()).resolve()
+        common = _resolved(gitdir / (gitdir / "commondir").read_text(encoding="utf-8").strip())
     except OSError:
         common = gitdir
     return gitdir, common
@@ -150,6 +155,8 @@ class Scope:
     m_top: Path
     integration_branch: str
     links: tuple[str, ...]
+    #: per checkout top, what git itself said it reads at the turn's start (:func:`git_reads`)
+    git_known: dict[Path, tuple[list[Path], list[Path]]] = field(default_factory=dict, compare=False)
 
     @property
     def tops(self) -> list[Path]:
@@ -164,11 +171,12 @@ class Scope:
 
 
 def scope_for(repo_root: Path, worktree: Path, node_id: str) -> Scope:
-    m_root = main_project_root(Path(repo_root)).resolve()
-    m_top = git_top(m_root)
+    """The worker's scope, taken at the turn's start: the only time git is asked what it reads."""
+    m_root = _resolved(main_project_root(Path(repo_root)))
+    m_top, w_top = git_top(m_root), git_top(Path(worktree))
     ib = resolve_integration_defaults(m_root, explicit_base=None, explicit_remote=None)[0]
-    return Scope(node_id, prefix_within(m_top, m_root), git_top(Path(worktree)), m_top, ib,
-                 tuple(link_paths(env_setup_config(m_root))))
+    return Scope(node_id, prefix_within(m_top, m_root), w_top, m_top, ib, tuple(link_paths(env_setup_config(m_root))),
+                 {top: git_reads(top) for top in dict.fromkeys((w_top, m_top))})
 
 
 def _add(snap: Snapshot, scope: Scope, path: Path, cls: str, value: str | None = None, name: str | None = None) -> None:
@@ -213,25 +221,25 @@ def _hooks_dir(snap: Snapshot, scope: Scope, d: Path) -> None:
 
 
 def git_snapshot(scope: Scope) -> Snapshot:
-    """Git steering, from the filesystem only (:mod:`specy_road.git_config_text`): every config file git reads
-    (the common ``config``, ``config.worktree`` and what they include), and the hooks directories:
-    ``<common>/hooks``, ``<worktree-gitdir>/hooks`` and each ``core.hooksPath`` value any of them sets (relative
-    to the checkout). The defaults are always watched: which ``hooksPath`` git uses can depend on an
-    ``includeIf`` condition this snapshot does not evaluate, so it watches every candidate instead of choosing."""
+    """Git steering, from the filesystem only: the config files and hooks directories git named at the turn's
+    start (``scope.git_known``), plus, as candidates from :mod:`specy_road.git_config_text`, the common
+    ``config``, ``config.worktree`` and every file they include (conditions not evaluated), ``<common>/hooks``,
+    ``<worktree-gitdir>/hooks`` and each ``core.hooksPath`` value read (relative to the checkout)."""
     snap: Snapshot = {}
     for top in scope.tops:
         dirs = _gitdirs(top)
         if dirs is None:
             continue
         gitdir, common = dirs
-        hooks: list[Path] = []
-        for start in dict.fromkeys((common / "config", common / "config.worktree", gitdir / "config.worktree")):
+        known_hooks, known_files = scope.git_known.get(top, ([], []))
+        hooks = [*known_hooks, common / "hooks", gitdir / "hooks"]
+        for start in dict.fromkeys((*known_files, common / "config", common / "config.worktree", gitdir / "config.worktree")):
             for path, data, pairs in read_chain(start):
                 real = _real(path)
                 snap.setdefault(str(real), Entry(scope.display(real), "git_config", _sha(data),
                                                  tuple(sorted(watched_values(pairs).items()))))
-                hooks += [(top / os.path.expanduser(v)).resolve() for k, v in pairs if k == "core.hookspath" and v]
-        for d in dict.fromkeys([common / "hooks", gitdir / "hooks", *hooks]):
+                hooks += [top / os.path.expanduser(v) for k, v in pairs if k == "core.hookspath" and v]
+        for d in dict.fromkeys(_resolved(h) for h in hooks):
             _hooks_dir(snap, scope, d)
     return snap
 
@@ -244,7 +252,8 @@ def _registry(snap: Snapshot, scope: Scope) -> None:
             doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         except (OSError, yaml.YAMLError):
             continue
-        for item in (doc.get("entries") or []) if isinstance(doc, dict) else []:
+        entries = doc.get("entries") if isinstance(doc, dict) else None
+        for item in entries if isinstance(entries, list) else []:   # any other shape: no rows to watch
             if not isinstance(item, dict) or str(item.get("node_id")) == scope.node_id:
                 continue
             key = f"{path}#{item.get('node_id')}#{item.get('codename')}"
@@ -266,14 +275,14 @@ def _env_bin(snap: Snapshot, scope: Scope) -> None:
     """Each ``env_setup.link`` path's ``bin/`` entries in each checkout (the worker's link and its main-checkout
     source are one real directory): name, type, link text, resolved regular-file sha256."""
     for top, rel in ((top, rel) for top in scope.tops for rel in scope.links):
-        bin_dir = (top / scope.prefix / rel).resolve() / "bin"
+        bin_dir = _resolved(top / scope.prefix / rel) / "bin"
         try:
             kids = sorted(bin_dir.iterdir())
         except OSError:
             continue
         for k in kids:
             if k.is_symlink():
-                target = k.resolve()
+                target = _resolved(k)
                 value = f"link:{os.readlink(k)}" + (f"@{_value(target)}" if target.is_file() else "")
             else:
                 value = _value(k) if k.is_file() else "dir" if k.is_dir() else "other"
@@ -363,7 +372,7 @@ class SteeringWatch:
         if git_ok:
             for path, target in sorted(self._porcelain_links(worktree_dirty).items()):
                 old = self.links.get(path)
-                if old != target and not Path(path).resolve().is_relative_to(self.scope.w_top):
+                if old != target and not _resolved(Path(path)).is_relative_to(self.scope.w_top):
                     out.append(finding(self.scope.display(_real(Path(path))), "symlink",
                                        f"link:{old}" if old is not None else ABSENT, f"link:{target}"))
         return out

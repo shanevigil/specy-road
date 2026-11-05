@@ -227,13 +227,14 @@ def close_turn(repo_root: Path, rec: WorkerRecord, watch: TurnWatch, *, pause: b
 
 
 def _turn_findings(repo_root: Path, rec: WorkerRecord, watch: TurnWatch) -> list[dict[str, Any]]:
-    """The turn's findings. Git steering is compared first, from the
-    filesystem: when it changed (or cannot be compared), no post-turn git command runs."""
-    found, steer, sw = watch.stream_findings(), [], watch.steering
-    if sw is None:
-        found.append({"kind": "check_error", "summary": f"steering files not checked: {watch.steering_error}"})
+    """The turn's findings. Git steering is compared first, from the filesystem; the check fails closed: when
+    git steering changed, or cannot be compared (no snapshot from the turn's start, or the comparison failed),
+    no post-turn git command runs."""
+    found, sw = watch.stream_findings(), watch.steering
     try:
-        steer = sw.git_changes() if sw else []
+        if sw is None:
+            raise RuntimeError(f"no snapshot from the turn's start ({watch.steering_error})")
+        steer = sw.git_changes()
     except Exception as e:  # noqa: BLE001 — the check must never cost the turn its exit record
         found.append({"kind": "check_error", "summary": f"git steering not checked: {e}; git probes skipped"})
         return found
@@ -246,13 +247,11 @@ def _turn_findings(repo_root: Path, rec: WorkerRecord, watch: TurnWatch) -> list
             found += git_findings(repo_root, rec, watch.before, after)
         except Exception as e:  # noqa: BLE001
             found.append({"kind": "check_error", "summary": f"git state not checked: {e}"})
-    if sw is not None:
-        try:
-            steer += sw.rest_changes(after.dirty if after else None, git_ok=after is not None)
-        except Exception as e:  # noqa: BLE001
-            found.append({"kind": "check_error", "summary": f"steering files not checked: {e}"})
-        return sw.merged(found, steer)
-    return found
+    try:
+        steer += sw.rest_changes(after.dirty if after else None, git_ok=after is not None)
+    except Exception as e:  # noqa: BLE001
+        found.append({"kind": "check_error", "summary": f"steering files not checked: {e}"})
+    return sw.merged(found, steer)
 
 
 def limit_gate(rec: WorkerRecord, now: datetime | None = None) -> None:

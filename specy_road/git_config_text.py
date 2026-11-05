@@ -9,9 +9,12 @@ escapes ``"``, ``\\``, ``n``, ``t`` and ``b`` and joins a line it ends. ``includ
 ``includeIf.<condition>.path`` are followed, conditions not evaluated, to git's depth of 10; a relative path is
 relative to the including file, ``~`` is expanded. A malformed line is skipped, where git would refuse the file.
 
-What depends on the parse is bounded: a config file's change is always reported by its bytes' digest, and the
-hooks directories watched are the defaults plus every ``core.hooksPath`` value read (steering_paths.git_snapshot),
-so a value read wrongly or a condition not evaluated can only add a watched directory, never drop the default one.
+The parser is not what decides coverage. At the turn's start, before the executor acts, :func:`git_reads` asks git
+itself which hooks directory it uses and which config files it reads (includes and their conditions evaluated);
+those are watched whatever this parser makes of the files. After the turn only files are read: each watched config
+file's change is reported by the digest of its bytes, and the parser only adds candidates (the default hooks
+directories, every ``core.hooksPath`` value and every include it finds). Its limit: a directory or file git would
+use only because of a change made during the turn is not watched itself; that change is, by its file's digest.
 
 Split from :mod:`specy_road.steering_paths` for the file limit.
 """
@@ -20,6 +23,9 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+
+from specy_road.git_subprocess import run
+from specy_road.runtime_paths import git_path
 
 #: git's own include depth limit.
 MAX_INCLUDE_DEPTH = 10
@@ -77,7 +83,7 @@ def _value(text: str, i: int) -> tuple[str, int]:
 
 def parse_config(text: str) -> list[tuple[str, str]]:
     """``(key, value)`` per variable, in file order; ``key`` is ``section[.subsection].name``."""
-    text = text.removeprefix("\ufeff")   # git skips a UTF-8 byte-order mark
+    text = text.removeprefix("\ufeff").replace("\r\n", "\n")   # git skips a UTF-8 BOM and reads CRLF as LF
     out: list[tuple[str, str]] = []
     section, i, n = "", 0, len(text)
     while i < n:
@@ -118,3 +124,14 @@ def read_chain(path: Path, depth: int = 0) -> list[tuple[Path, bytes, list[tuple
         for inc in _includes(pairs):
             out += read_chain(path.parent / os.path.expanduser(inc), depth + 1)
     return out
+
+
+def git_reads(top: Path) -> tuple[list[Path], list[Path]]:
+    """``(hooks directories, config files)`` git uses in the checkout at ``top``, asked of git itself: run only
+    at a turn's start, before the executor acts (``rev-parse --git-path hooks``; ``config --list --show-origin
+    --includes``, whose origins are the files read, global and system ones included)."""
+    hooks = git_path(["rev-parse", "--path-format=absolute", "--git-path", "hooks"], top)
+    r = run(["config", "--list", "--show-origin", "--includes", "--name-only", "-z"], top)
+    origins = r.out.split("\0")[0::2] if r.ok else []
+    files = [top / os.path.expanduser(o.removeprefix("file:")) for o in origins if o.startswith("file:")]
+    return ([hooks] if hooks else []), list(dict.fromkeys(files))
