@@ -255,7 +255,7 @@ def test_post_run_check_reports_branch_stash_porcelain_and_commits_outside_the_z
         "git checkout -q -b elsewhere", "echo stray > stray.txt"])
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
     assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(_prompt(tmp_path), repo, "m", None)) == 0
-    assert _findings(repo, rec.worker_id) == {"branch", "stash", "porcelain", "committed_outside_zones"}
+    assert _findings(repo, rec.worker_id) == {"branch", "stash_rule_violation", "porcelain", "committed_outside_zones"}
     [check] = _events(repo, rec.worker_id, "post_run_check")
     by_kind = {f["kind"]: f for f in check.detail["findings"]}
     assert by_kind["porcelain"]["paths"] == ["stray.txt"] and by_kind["committed_outside_zones"]["paths"] == ["docs/y.md"]

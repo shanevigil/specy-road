@@ -33,6 +33,7 @@ from specy_road.runtime_paths import project_prefix, rebase_to_project
 from specy_road.worker_adapter_base import Parsed
 from specy_road.worker_reconcile import _bookkeeping
 from specy_road.worker_state import WorkerError, WorkerRecord, add_flag, append_event, clear_flag, mutate, status_entries
+from specy_road.worker_turn_stash import stash_findings
 
 #: The record state of a worker whose last turn stopped at a usage limit; resumable after ``limit_reset_at``.
 PAUSED_BY_LIMIT = "paused_by_limit"
@@ -47,7 +48,7 @@ class GitState:
     """What the post-run check compares; ``None`` where git could not answer."""
     head: str | None
     branch: str | None
-    stash: tuple[str, ...] | None
+    stash: tuple[tuple[str, str], ...] | None   # each stash entry's hash and subject (%H %gs)
     dirty: dict[str, str] | None   # each modified or untracked path and :func:`_content` of it
 
 
@@ -64,10 +65,20 @@ def _content(worktree: Path, rel: str) -> str:
 
 
 def git_state(worktree: Path) -> GitState:
-    stash = run(["stash", "list", "--format=%H"], worktree)
+    stash = run(["stash", "list", "--format=%H %gs"], worktree)
+    pairs: tuple[tuple[str, str], ...] | None = None
+    if stash.ok:
+        parsed: list[tuple[str, str]] = []
+        for line in stash.out.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            h, _, subject = line.partition(" ")
+            if h:
+                parsed.append((h, subject))
+        pairs = tuple(parsed)
     entries = status_entries(worktree)
-    return GitState(head_sha(worktree), git_text(["branch", "--show-current"], worktree),
-                    tuple(stash.out.split()) if stash.ok else None,
+    return GitState(head_sha(worktree), git_text(["branch", "--show-current"], worktree), pairs,
                     {p: _content(worktree, p) for _xy, p in entries} if entries is not None else None)
 
 
@@ -170,9 +181,7 @@ def git_findings(repo_root: Path, rec: WorkerRecord, before: GitState) -> list[d
         elif outside := _outside_zones(repo_root, rec, before.head, after.head, expected):
             out.append({"kind": "committed_outside_zones", "paths": outside,
                         "summary": "committed outside the touch zones: " + ", ".join(outside[:10])})
-    if after.stash != before.stash:
-        out.append({"kind": "stash", "summary": "stash list changed during the turn (the stack is shared by every "
-                                                "worktree of the repository)"})
+    out.extend(stash_findings(repo_root, rec, before.stash, after.stash))
     if after.dirty is None:
         out.append({"kind": "porcelain", "summary": "git status could not be read after the turn"})
     else:   # every path dirty at either end: new, changed, or gone (deleted, restored or committed) during the turn
@@ -200,10 +209,14 @@ def close_turn(repo_root: Path, rec: WorkerRecord, watch: TurnWatch, *, pause: b
         found.append({"kind": "usage_limit", "summary": f"usage limit ({limit.get('source')}); resets "
                                                         f"{limit.get('reset_at') or 'at an unstated time'}", **limit})
     # Exactly one event per turn, a clean one included (empty findings): the log shows the check ran.
-    append_event(repo_root, rec, "post_run_check", source="system", detail={"findings": found},
+    detail: dict[str, Any] = {"findings": found}
+    attributed = [f["stash_hash"] for f in found if isinstance(f.get("stash_hash"), str)]
+    if attributed:
+        detail["attributed_stash_hashes"] = attributed
+    append_event(repo_root, rec, "post_run_check", source="system", detail=detail,
                  summary=(f"post-run check: {len(found)} finding(s): " + "; ".join(f["summary"] for f in found))
                  if found else "post-run check: clean")
-    if found:
+    if found and any(f.get("kind") != "stash_other" for f in found):
         add_flag(repo_root, rec, FLAG_POST_RUN)
     else:
         clear_flag(repo_root, rec, FLAG_POST_RUN)
