@@ -214,7 +214,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.40_finish-merge-failure-reports-and-undoes-bookkeeping_78805bfe-0798-47a0-8ace-cdc0caebd261.md",
       "sibling_order": 40,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "finish-this-task: a failed merge landing reports after the land check output and undoes its bookkeeping commit",
       "touch_zones": [
         "specy_road/bundled_scripts/finish_task.py",
