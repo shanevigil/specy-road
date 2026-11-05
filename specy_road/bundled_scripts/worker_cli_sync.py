@@ -90,7 +90,7 @@ def cmd_sync(ns: argparse.Namespace, *, emit) -> int:
     elif not ns.ack:
         lines.append("(re-run with --ack once handled)")
     rc = emit(ns, *with_orphans(root, {"workers": delta, "acked": ns.ack}, lines))
-    return 2 if timed_out and not delta else rc
+    return 2 if timed_out else rc
 
 
 def add_sync_parser(ws, cmd_sync_fn, add_repo_root_arg) -> None:

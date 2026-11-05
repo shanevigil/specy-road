@@ -31,7 +31,22 @@ No zone additions or removals beyond the new sync module and doc.
 ## Verification
 
 - `specy-road file-limits`
-- `python -m pytest -q -n 4 tests/test_worker_sync_m15_13.py tests/test_pickup_orchestration_hint.py tests/test_worker_cli.py tests/test_worker_state.py tests/test_rework_findings_in_prompt.py`
+- `python -m pytest -q -n 4 tests/test_worker_sync_m15_13.py tests/test_pickup_orchestration_hint.py tests/test_worker_cli.py tests/test_worker_state.py tests/test_rework_findings_in_prompt.py tests/test_rework_rca.py`
+- `ruff check specy_road tests scripts`
+
+## Fix round (grok-4.7-low)
+
+- **`cmd_sync` exit code:** `--wait` success is only when the wait condition is met (`wait_for_sync` returns true). Exit 2 when `timed_out`, even if the final delta lists other unacknowledged events (unmatched `--until` types).
+- **READY-only test:** `worker resume W --ready-only` via CLI; assert `work/prompt-W-ready-only-*.md` content matches `READY_ONLY_PROMPT` (no patch of `_send`).
+
+## Probes
+
+- **`cmd_sync` return when `timed_out` and non-empty delta:** only path is `return 2 if timed_out else rc`; reviewed `worker_cli_sync.cmd_sync` — fixed class, no other branches.
+- **`--wait` without `--until` on timeout:** `timed_out` true, empty delta → exit 2; covered by existing `test_sync_wait_ends_on_an_event_or_times_out_with_exit_2`.
+- **`wait_for_sync` / `wait_for_typed_event`:** still return bool “condition met”; exit code derived only in `cmd_sync` — checked both helpers, unchanged contract.
+- **Other CLI commands with `--timeout`:** only `worker sync` parser defines `--timeout` with `--wait`; no parallel exit-code pattern in touch zones.
+- **READY-only prompt assertion surface:** `worker_ops_message._send` writes `work/prompt-{id}-{kind}-{n}.md` before spawn; CLI test reads that path — checked `resume` and `run_worker_cli` path, no `_`-prefixed test imports or patches.
+- **Parametrized `--until` values:** `completion`, `error`, `intervention`, comma lists — condition met, timeout empty, timeout with output-only delta.
 
 ## Added
 
