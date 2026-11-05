@@ -11,6 +11,26 @@
       "title": "rc4 stabilization: fixes filed after the themed-milestone rule",
       "touch_zones": [],
       "type": "phase"
+    },
+    {
+      "acceptance": [
+        "test_message_while_running_queues_and_delivers polls until the second completion event is recorded and the worker record is no longer running, within the same 30-second deadline; it still asserts queued_message is None, state idle, the message and resumed events, and the follow-up prompt file",
+        "No product code changes and no assertion is removed or weakened; the root cause (the completion event is written before the record leaves running) is stated in the test's comment",
+        "The test passes 20 consecutive runs under pytest -n auto with a parallel CPU load (for example pytest-repeat or a loop), recorded in the sheet"
+      ],
+      "codename": "queue-message-test-waits-for-idle",
+      "dependencies": [],
+      "id": "M21.8",
+      "node_key": "9a94e9ff-94d7-4166-bb4a-fbe6ba5d6daf",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.8_queue-message-test-waits-for-idle_9a94e9ff-94d7-4166-bb4a-fbe6ba5d6daf.md",
+      "sibling_order": 7,
+      "status": "Not Started",
+      "title": "The queued-message worker test waits for the idle state, not just the second completion event",
+      "touch_zones": [
+        "tests/test_worker_queue_message.py"
+      ],
+      "type": "task"
     }
   ]
 }

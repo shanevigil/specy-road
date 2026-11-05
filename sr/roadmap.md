@@ -157,5 +157,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.5` | apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once | task | Agentic-led | Not Started |
 | `M21.6` | validate and add-dependency catch cycles made through inherited group dependencies | task | Agentic-led | Not Started |
 | `M21.7` | Executors cannot change the files that steer harnesses and specy-road unnoticed | task | Agentic-led | Not Started |
+| `M21.8` | The queued-message worker test waits for the idle state, not just the second completion event | task | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
