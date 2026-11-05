@@ -23,6 +23,10 @@ No other paths were required. `review_record_write._review_record` already calls
 - M15.33 tests call `run_review_cli` from `tests.review_delegate_helpers` instead of a private `_run` import.
 - Restored the three signing/write comments beside their operations in `run_review_record`.
 
+## Fix round (Grok block on `0975ddd9`)
+
+- Removed unused `ReviewRecordTrace.target_resolved` alias (only `roster_resolved` is used).
+
 ## Probes
 
 - Unrostered model with a missing notes path: roster check runs first; no `REJECTED-*.md` and no reviews directory (`test_unrostered_model_with_missing_notes_writes_no_marker`).
@@ -31,6 +35,7 @@ No other paths were required. `review_record_write._review_record` already calls
 - `review list --json` payload includes the same `refused` entry as handoff status JSON (`test_handoff_status_and_list_show_refused_text_and_json`).
 - Milestone with open leaves before roster lookup: returns `milestone_open_problem` without a marker (`test_an_unfinished_milestone_is_not_awaiting_its_full_review`).
 - Delegate and direct `review record` refusals after roster resolution: still write markers (`test_delegated_refusal_writes_the_same_marker`, existing A1 tests).
+- Repo-wide search for `target_resolved` callers before removal: only the dead alias in `review_rejected.py`; no external references.
 
 ## Added
 

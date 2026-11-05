@@ -133,9 +133,6 @@ class ReviewRecordTrace:
         self.commit = commit
         self._active = True
 
-    def target_resolved(self, commit: str | None) -> None:
-        self.roster_resolved(commit)
-
 
 def _review_record_setup(ns: Any, root: Path, trace: ReviewRecordTrace, fail: Any) -> tuple[Any, Any, dict] | int:
     try:
