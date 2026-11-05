@@ -124,3 +124,9 @@ R8 class: a fallback for a notice that is not `reviewer auth: <id> ...`. No call
 
 - `stamp_reviewer_auth_notices` callers under `specy_road/` and `tests/`. Result: production passes `claude_reviewer_auth_notices`, and the one test passes that same list. The length check is gone. The id is `note.split()[2]`.
 - Other parsing of a notice in this change. Result: none. The plan test counts the prefix; it does not extract an id from a short string.
+
+R9 class: a bare `reviewer_launch` argv pin that reads the process account. `apiKeyHelper` in `HOME/.claude/settings.json`, with no `ANTHROPIC_API_KEY`, inserts `--settings` and shifts the pinned slices.
+
+- `test_bare_reviewer_launch_tracks_a_session_only_when_asked`. Result: it now points `HOME` and `CLAUDE_CONFIG_DIR` at empty tmp dirs and deletes `ANTHROPIC_API_KEY`. The pinned slices stay `[--bare, --session-id, s1, --output-format, stream-json]` and `[--resume, s1]`.
+- Every other test in `tests/test_review_delegate.py`. Result: they launch through `channels.cli` (the fake command as written) or do not launch. None calls `reviewer_launch`, so none reads that settings file. Left unchanged.
+- Every `reviewer_launch` call in `tests/test_reviewer_auth.py`. Result: `test_each_mode_keeps_the_restrictions_and_explicit_argv_has_no_bare` calls bare mode but finds flags by name (`--disallowedTools`, `--json-schema`, `--add-dir`), so an inserted `--settings` does not move those slices. `test_prompt_explicit_mode_is_recorded_and_a_helper_selects_bare_without_printing_it` calls `_isolate` first, then points the helper at that empty config dir on purpose. The delegate and prompt tests in that file call `_isolate` before they launch. None of them pins the session slice. Left unchanged.
