@@ -156,3 +156,19 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
+  - codename: planned-test-changes-editable-and-removals-surfaced
+    node_id: M15.18
+    branch: feature/rm-planned-test-changes-editable-and-removals-surfaced
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_edit_fields.py
+      - specy_road/bundled_scripts/roadmap_crud_argparse.py
+      - specy_road/integrity.py
+      - specy_road/integrity_removals.py
+      - specy_road/bundled_scripts/roadmap_edit_list_fields.py
+      - specy_road/bundled_scripts/review_packet.py
+      - specy_road/bundled_scripts/review_packet_observed.py
+      - docs/acceptance-evidence.md
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
