@@ -18,7 +18,7 @@
       "node_key": "511edd44-2972-41b1-8639-3e686acdf63a",
       "parent_id": "M16",
       "planning_dir": "planning/M16.45_milestone-and-planning-command-groups-and-archive-hard-remove-replaces-archive-node_511edd44-2972-41b1-8639-3e686acdf63a.md",
-      "sibling_order": 47,
+      "sibling_order": 46,
       "status": "Not Started",
       "title": "milestone and planning command groups, and archive --hard-remove replaces archive-node",
       "touch_zones": [
@@ -57,7 +57,7 @@
       "node_key": "449eeb3e-1874-4b25-841c-2b1fed8e2363",
       "parent_id": "M16",
       "planning_dir": "planning/M16.52_checks-entries-scoped-to-touch-zones-block-a-merge-when-they-fail-held-m15-23-s-purpose_449eeb3e-1874-4b25-841c-2b1fed8e2363.md",
-      "sibling_order": 48,
+      "sibling_order": 47,
       "status": "Not Started",
       "title": "checks: entries scoped to touch zones block a merge when they fail (held M15.23's purpose)",
       "touch_zones": [
@@ -88,7 +88,7 @@
       "node_key": "d0c0d4f8-0294-4c8d-8d1d-e52dee8d3291",
       "parent_id": "M16",
       "planning_dir": "planning/M16.46_worker-ops-parts-and-the-worker-siblings-fold-into-their-parents-and-the-module-class-swap-goes_d0c0d4f8-0294-4c8d-8d1d-e52dee8d3291.md",
-      "sibling_order": 49,
+      "sibling_order": 48,
       "status": "Not Started",
       "title": "worker_ops parts and the worker siblings fold into their parents, and the module-class swap goes",
       "touch_zones": [
@@ -117,7 +117,7 @@
       "node_key": "e8394512-cb8d-4a53-9206-936dbe2a67d2",
       "parent_id": "M16",
       "planning_dir": "planning/M16.47_one-check-assignment-decides-eligibility-for-every-launch-and-for-the-gate_e8394512-cb8d-4a53-9206-936dbe2a67d2.md",
-      "sibling_order": 50,
+      "sibling_order": 49,
       "status": "Not Started",
       "title": "One check_assignment decides eligibility for every launch and for the gate",
       "touch_zones": [
@@ -146,7 +146,7 @@
       "node_key": "b198c24c-78e4-4336-8b94-1289d80826de",
       "parent_id": "M16",
       "planning_dir": "planning/M16.48_the-guard-classifier-becomes-three-rule-tables-with-every-verdict-unchanged_b198c24c-78e4-4336-8b94-1289d80826de.md",
-      "sibling_order": 51,
+      "sibling_order": 50,
       "status": "Not Started",
       "title": "The guard classifier becomes three rule tables with every verdict unchanged",
       "touch_zones": [
@@ -172,7 +172,7 @@
       "node_key": "24c28b1f-7b6d-4f86-8a89-a6963d9eb65d",
       "parent_id": "M16",
       "planning_dir": "planning/M16.49_chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte_24c28b1f-7b6d-4f86-8a89-a6963d9eb65d.md",
-      "sibling_order": 52,
+      "sibling_order": 51,
       "status": "Not Started",
       "title": "Chore, decision and lesson records share internal adapters and keep their files byte for byte",
       "touch_zones": [
@@ -203,7 +203,7 @@
       "node_key": "6434cf7b-842b-4532-96e3-1821655a5fb5",
       "parent_id": "M16",
       "planning_dir": "planning/M16.50_grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade_6434cf7b-842b-4532-96e3-1821655a5fb5.md",
-      "sibling_order": 53,
+      "sibling_order": 52,
       "status": "Not Started",
       "title": "Grind settings move under grind: in git-workflow.yaml, migrated by upgrade",
       "touch_zones": [
@@ -233,7 +233,7 @@
       "node_key": "93190765-913e-4da9-b5c5-70c258e2c285",
       "parent_id": "M16",
       "planning_dir": "planning/M16.51_the-review-packet-fragments-fold-into-review-packet_93190765-913e-4da9-b5c5-70c258e2c285.md",
-      "sibling_order": 54,
+      "sibling_order": 53,
       "status": "Not Started",
       "title": "The review packet fragments fold into review_packet",
       "touch_zones": [
@@ -259,7 +259,7 @@
       "node_key": "840167f3-ec33-428a-86cc-e6ea639f8d6b",
       "parent_id": "M16",
       "planning_dir": "planning/M16.54_tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support_840167f3-ec33-428a-86cc-e6ea639f8d6b.md",
-      "sibling_order": 55,
+      "sibling_order": 54,
       "status": "Not Started",
       "title": "Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support",
       "touch_zones": [
@@ -284,7 +284,7 @@
       "node_key": "41b1d9c3-a6d6-4cc4-adf1-b365ed06b0f9",
       "parent_id": "M16",
       "planning_dir": "planning/M16.55_tests-per-leaf-and-per-round-test-files-fold-into-the-file-for-the-module-or-flow-they-test_41b1d9c3-a6d6-4cc4-adf1-b365ed06b0f9.md",
-      "sibling_order": 56,
+      "sibling_order": 55,
       "status": "Not Started",
       "title": "Tests: per-leaf and per-round test files fold into the file for the module or flow they test",
       "touch_zones": [
@@ -308,7 +308,7 @@
       "node_key": "e4706b28-6e79-40f8-9042-cb4e6cfff1e9",
       "parent_id": "M16",
       "planning_dir": "planning/M16.56_tests-apply-the-dedupe-worklist-for-review-gate_e4706b28-6e79-40f8-9042-cb4e6cfff1e9.md",
-      "sibling_order": 57,
+      "sibling_order": 56,
       "status": "Not Started",
       "title": "Tests: apply the dedupe worklist for review gate",
       "touch_zones": [
@@ -333,7 +333,7 @@
       "node_key": "21cc96e6-1e15-425e-a4b0-9c821fe30c55",
       "parent_id": "M16",
       "planning_dir": "planning/M16.57_tests-apply-the-dedupe-worklist-for-worker_21cc96e6-1e15-425e-a4b0-9c821fe30c55.md",
-      "sibling_order": 58,
+      "sibling_order": 57,
       "status": "Not Started",
       "title": "Tests: apply the dedupe worklist for worker",
       "touch_zones": [
@@ -359,7 +359,7 @@
       "node_key": "25cffd57-e38b-4ebf-a4c0-d2edea799baa",
       "parent_id": "M16",
       "planning_dir": "planning/M16.59_tests-apply-the-dedupe-worklist-for-the-rest_25cffd57-e38b-4ebf-a4c0-d2edea799baa.md",
-      "sibling_order": 60,
+      "sibling_order": 59,
       "status": "Not Started",
       "title": "Tests: apply the dedupe worklist for the rest",
       "touch_zones": [
@@ -385,7 +385,7 @@
       "node_key": "e99367d9-1efa-4aec-850b-bd88121d9757",
       "parent_id": "M16",
       "planning_dir": "planning/M16.60_tests-five-named-properties-replace-the-single-input-tests-they-cover_e99367d9-1efa-4aec-850b-bd88121d9757.md",
-      "sibling_order": 61,
+      "sibling_order": 60,
       "status": "Not Started",
       "title": "Tests: five named properties replace the single-input tests they cover",
       "touch_zones": [
@@ -405,7 +405,7 @@
       "node_key": "ba91d59c-88b5-417e-893b-9948a9431ecb",
       "parent_id": "M16",
       "planning_dir": "planning/M16.61_gate-the-release-that-shipped-the-m16-aliases-is-out-and-the-maintainer-closes-the-alias-window_ba91d59c-88b5-417e-893b-9948a9431ecb.md",
-      "sibling_order": 62,
+      "sibling_order": 61,
       "status": "Not Started",
       "title": "Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window",
       "touch_zones": [],
@@ -430,7 +430,7 @@
       "node_key": "d0c9dfae-8a1b-46f5-9e40-0686ecb1a67d",
       "parent_id": "M16",
       "planning_dir": "planning/M16.62_after-the-alias-window-delete-the-deprecated-command-aliases-config-form-fallbacks-and-re-export-shims_d0c9dfae-8a1b-46f5-9e40-0686ecb1a67d.md",
-      "sibling_order": 63,
+      "sibling_order": 62,
       "status": "Not Started",
       "title": "After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims",
       "touch_zones": [
@@ -460,7 +460,7 @@
       "node_key": "bdf86710-8da3-4c1b-a1db-c11e0a5c1613",
       "parent_id": "M16",
       "planning_dir": "planning/M16.3_delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step_bdf86710-8da3-4c1b-a1db-c11e0a5c1613.md",
-      "sibling_order": 4,
+      "sibling_order": 3,
       "status": "Not Started",
       "title": "Delete dead and unwired code from a decided list, and add vulture as an advisory CI step",
       "touch_zones": [

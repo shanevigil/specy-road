@@ -28,7 +28,7 @@
       "node_key": "b7db8132-bda6-4fb9-8a71-3932fde03766",
       "parent_id": "M16",
       "planning_dir": "planning/M16.0_parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs_b7db8132-bda6-4fb9-8a71-3932fde03766.md",
-      "sibling_order": 1,
+      "sibling_order": 0,
       "status": "Not Started",
       "title": "Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs",
       "touch_zones": [
@@ -52,7 +52,7 @@
       "node_key": "de3d165f-d76a-4430-b54e-9dea18809691",
       "parent_id": "M16",
       "planning_dir": "planning/M16.1_parity-harness-a-review-gate-decision-table-covering-every-review-policy_de3d165f-d76a-4430-b54e-9dea18809691.md",
-      "sibling_order": 2,
+      "sibling_order": 1,
       "status": "Not Started",
       "title": "Parity harness: a review-gate decision table covering every review policy",
       "touch_zones": [
@@ -81,7 +81,7 @@
       "node_key": "fce532e1-9ed0-4da1-9f16-2465c6e73df0",
       "parent_id": "M16",
       "planning_dir": "planning/M16.2_baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down_fce532e1-9ed0-4da1-9f16-2465c6e73df0.md",
-      "sibling_order": 3,
+      "sibling_order": 2,
       "status": "Not Started",
       "title": "Baseline metrics, a coverage floor in CI, and the M16 working rules written down",
       "touch_zones": [
@@ -110,7 +110,7 @@
       "node_key": "95c1e571-3280-4f29-893b-f8e891092e78",
       "parent_id": "M16",
       "planning_dir": "planning/M16.4_shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers_95c1e571-3280-4f29-893b-f8e891092e78.md",
-      "sibling_order": 5,
+      "sibling_order": 4,
       "status": "Not Started",
       "title": "Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers",
       "touch_zones": [
@@ -150,7 +150,7 @@
       "node_key": "34598a66-ab29-4a34-aea5-919d3970cbce",
       "parent_id": "M16",
       "planning_dir": "planning/M16.5_one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready_34598a66-ab29-4a34-aea5-919d3970cbce.md",
-      "sibling_order": 6,
+      "sibling_order": 5,
       "status": "Not Started",
       "title": "One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready",
       "touch_zones": [
@@ -182,7 +182,7 @@
       "node_key": "8ae7a813-4e43-4590-9f7d-d20b1691dbce",
       "parent_id": "M16",
       "planning_dir": "planning/M16.6_the-29-package-imported-library-modules-move-out-of-bundled-scripts_8ae7a813-4e43-4590-9f7d-d20b1691dbce.md",
-      "sibling_order": 7,
+      "sibling_order": 6,
       "status": "Not Started",
       "title": "The 29 package-imported library modules move out of bundled_scripts",
       "touch_zones": [
@@ -209,7 +209,7 @@
       "node_key": "6902ede7-bde3-4667-b192-366c09681589",
       "parent_id": "M16",
       "planning_dir": "planning/M16.7_commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals_6902ede7-bde3-4667-b192-366c09681589.md",
-      "sibling_order": 8,
+      "sibling_order": 7,
       "status": "Not Started",
       "title": "Commands run in the CLI's process: no python -m re-launch, no cwd globals",
       "touch_zones": [
@@ -250,7 +250,7 @@
       "node_key": "c840cf76-95c4-4688-a587-3bc06824fad5",
       "parent_id": "M16",
       "planning_dir": "planning/M16.8_ruff-quality-baseline_c840cf76-95c4-4688-a587-3bc06824fad5.md",
-      "sibling_order": 9,
+      "sibling_order": 8,
       "status": "Not Started",
       "title": "Ruff quality rule families and the 100-character width with shrink-only baselines, and the consumer file-limit default decided",
       "touch_zones": [
@@ -289,7 +289,7 @@
       "node_key": "d9fbe9b7-3b23-4095-9bf5-a8da923d2075",
       "parent_id": "M16",
       "planning_dir": "planning/M16.9_fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents_d9fbe9b7-3b23-4095-9bf5-a8da923d2075.md",
-      "sibling_order": 10,
+      "sibling_order": 9,
       "status": "Not Started",
       "title": "Fold the cap-driven splits in pickup and finish into their parents",
       "touch_zones": [
@@ -322,7 +322,7 @@
       "node_key": "3793b31b-d61a-460f-a4b2-23f9af3f1350",
       "parent_id": "M16",
       "planning_dir": "planning/M16.10_one-llm-client-module-replaces-the-provider-code-inside-review-node_3793b31b-d61a-460f-a4b2-23f9af3f1350.md",
-      "sibling_order": 11,
+      "sibling_order": 10,
       "status": "Not Started",
       "title": "One LLM client module replaces the provider code inside review_node",
       "touch_zones": [
@@ -356,7 +356,7 @@
       "node_key": "b5ca5d95-58a9-472c-9f90-0004d0fbd46f",
       "parent_id": "M16",
       "planning_dir": "planning/M16.11_doctor-prune-is-the-one-cleanup-path-branches-prune-registry-prune-and-the-grind-cleanup-become-aliases_b5ca5d95-58a9-472c-9f90-0004d0fbd46f.md",
-      "sibling_order": 12,
+      "sibling_order": 11,
       "status": "Not Started",
       "title": "doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases",
       "touch_zones": [
@@ -396,7 +396,7 @@
       "node_key": "fcb9f89a-2bad-423c-8d52-eb748967a367",
       "parent_id": "M16",
       "planning_dir": "planning/M16.12_upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update_fcb9f89a-2bad-423c-8d52-eb748967a367.md",
-      "sibling_order": 13,
+      "sibling_order": 12,
       "status": "Not Started",
       "title": "upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update",
       "touch_zones": [
@@ -433,7 +433,7 @@
       "node_key": "ca41116c-978b-4215-a69e-2f52400009fa",
       "parent_id": "M16",
       "planning_dir": "planning/M16.13_review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session_ca41116c-978b-4215-a69e-2f52400009fa.md",
-      "sibling_order": 14,
+      "sibling_order": 13,
       "status": "Not Started",
       "title": "review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session",
       "touch_zones": [
@@ -470,7 +470,7 @@
       "node_key": "086cd41a-9d4b-4377-8ebd-ee563a0d20df",
       "parent_id": "M16",
       "planning_dir": "planning/M16.58_tests-apply-the-dedupe-worklist-for-pickup-and-finish_086cd41a-9d4b-4377-8ebd-ee563a0d20df.md",
-      "sibling_order": 59,
+      "sibling_order": 58,
       "status": "Not Started",
       "title": "Tests: apply the dedupe worklist for pickup and finish",
       "touch_zones": [

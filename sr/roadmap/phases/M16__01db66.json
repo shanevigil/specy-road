@@ -17,7 +17,7 @@
       "node_key": "01db66ad-a91c-48e3-953e-4083f5f14a13",
       "parent_id": "M16",
       "planning_dir": "planning/M16.30_agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer_01db66ad-a91c-48e3-953e-4083f5f14a13.md",
-      "sibling_order": 31,
+      "sibling_order": 30,
       "status": "Not Started",
       "title": "AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer",
       "touch_zones": [
@@ -52,7 +52,7 @@
       "node_key": "a0733044-eec3-4411-bec8-e6f31fac6456",
       "parent_id": "M16",
       "planning_dir": "planning/M16.31_docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra_a0733044-eec3-4411-bec8-e6f31fac6456.md",
-      "sibling_order": 32,
+      "sibling_order": 31,
       "status": "Not Started",
       "title": "Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra",
       "touch_zones": [
@@ -86,7 +86,7 @@
       "node_key": "98d51a48-dcd5-419f-bc34-16ae75aef21b",
       "parent_id": "M16",
       "planning_dir": "planning/M16.32_suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout_98d51a48-dcd5-419f-bc34-16ae75aef21b.md",
-      "sibling_order": 33,
+      "sibling_order": 32,
       "status": "Not Started",
       "title": "suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout",
       "touch_zones": [
@@ -113,7 +113,7 @@
       "node_key": "ed19381c-5265-4909-a70c-f9c5a9cf1853",
       "parent_id": "M16",
       "planning_dir": "planning/M16.33_rc5-close-lean-metrics-measured-against-the-baseline_ed19381c-5265-4909-a70c-f9c5a9cf1853.md",
-      "sibling_order": 34,
+      "sibling_order": 33,
       "status": "Not Started",
       "title": "rc5 close: lean metrics measured against the baseline",
       "touch_zones": [
@@ -137,7 +137,7 @@
       "node_key": "eaee2f90-4953-4580-b772-570043326e4b",
       "parent_id": "M16",
       "planning_dir": "planning/M16.34_triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf_eaee2f90-4953-4580-b772-570043326e4b.md",
-      "sibling_order": 35,
+      "sibling_order": 34,
       "status": "Not Started",
       "title": "Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf",
       "touch_zones": [
@@ -162,7 +162,7 @@
       "node_key": "2fcf08ee-20e7-4751-a9ab-e64e163f5e2a",
       "parent_id": "M16",
       "planning_dir": "planning/M16.53_tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold_2fcf08ee-20e7-4751-a9ab-e64e163f5e2a.md",
-      "sibling_order": 36,
+      "sibling_order": 35,
       "status": "Not Started",
       "title": "Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold",
       "touch_zones": [
@@ -187,7 +187,7 @@
       "node_key": "3b4b0524-3dc1-4acb-9d9f-1b8fd01be350",
       "parent_id": "M16",
       "planning_dir": "planning/M16.35_git-queries-and-registry-i-o-go-through-one-helper-each_3b4b0524-3dc1-4acb-9d9f-1b8fd01be350.md",
-      "sibling_order": 37,
+      "sibling_order": 36,
       "status": "Not Started",
       "title": "Git queries and registry I/O go through one helper each",
       "touch_zones": [
@@ -230,7 +230,7 @@
       "node_key": "d0dc4b2c-781d-42f3-82a3-29b6468abebe",
       "parent_id": "M16",
       "planning_dir": "planning/M16.36_a-shrink-only-layering-gate-records-the-import-cycles-and-package-to-entry-point-imports_d0dc4b2c-781d-42f3-82a3-29b6468abebe.md",
-      "sibling_order": 38,
+      "sibling_order": 37,
       "status": "Not Started",
       "title": "A shrink-only layering gate records the import cycles and package-to-entry-point imports",
       "touch_zones": [
@@ -258,7 +258,7 @@
       "node_key": "c1383fd3-04bc-447c-971b-3a03e0eb3608",
       "parent_id": "M16",
       "planning_dir": "planning/M16.37_break-the-45-module-import-cycle-through-the-graph-loader-the-brief-and-validate_c1383fd3-04bc-447c-971b-3a03e0eb3608.md",
-      "sibling_order": 39,
+      "sibling_order": 38,
       "status": "Not Started",
       "title": "Break the 45-module import cycle through the graph loader, the brief and validate",
       "touch_zones": [
@@ -285,7 +285,7 @@
       "node_key": "cf05fbd9-5071-4aca-a730-53a36d888301",
       "parent_id": "M16",
       "planning_dir": "planning/M16.38_break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli_cf05fbd9-5071-4aca-a730-53a36d888301.md",
-      "sibling_order": 40,
+      "sibling_order": 39,
       "status": "Not Started",
       "title": "Break the 25-module import cycle between roadmap CRUD, worker ops and the chore CLI",
       "touch_zones": [
@@ -314,7 +314,7 @@
       "node_key": "955ec135-b330-402f-ab9f-6f1fed66614c",
       "parent_id": "M16",
       "planning_dir": "planning/M16.39_every-command-exposes-build-parser-imports-lazily-and-shares-the-common-argument-helpers_955ec135-b330-402f-ab9f-6f1fed66614c.md",
-      "sibling_order": 41,
+      "sibling_order": 40,
       "status": "Not Started",
       "title": "Every command exposes build_parser(), imports lazily and shares the common argument helpers",
       "touch_zones": [
@@ -343,7 +343,7 @@
       "node_key": "3ae67e69-01ea-46bc-a70c-2642964c6e0c",
       "parent_id": "M16",
       "planning_dir": "planning/M16.40_one-specyerror-base-for-the-15-error-classes-printed-and-turned-into-an-exit-code-once_3ae67e69-01ea-46bc-a70c-2642964c6e0c.md",
-      "sibling_order": 42,
+      "sibling_order": 41,
       "status": "Not Started",
       "title": "One SpecyError base for the 15 error classes, printed and turned into an exit code once",
       "touch_zones": [
@@ -371,7 +371,7 @@
       "node_key": "b89bc064-4355-4957-85d6-31504463269f",
       "parent_id": "M16",
       "planning_dir": "planning/M16.41_nested-repo-landing-folds-into-nested-repos-breaking-its-cycle-and-the-two-session-file-readers-become-one_b89bc064-4355-4957-85d6-31504463269f.md",
-      "sibling_order": 43,
+      "sibling_order": 42,
       "status": "Not Started",
       "title": "Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one",
       "touch_zones": [
@@ -402,7 +402,7 @@
       "node_key": "9ca08f50-6df0-4f3e-bf0b-8770bc8d260f",
       "parent_id": "M16",
       "planning_dir": "planning/M16.43_the-brainstorm-cli-becomes-two-modules-and-the-three-managed-block-writers-share-one-engine_9ca08f50-6df0-4f3e-bf0b-8770bc8d260f.md",
-      "sibling_order": 44,
+      "sibling_order": 43,
       "status": "Not Started",
       "title": "The brainstorm CLI becomes two modules and the three managed-block writers share one engine",
       "touch_zones": [
@@ -431,7 +431,7 @@
       "node_key": "631269e6-5224-413a-8fe5-37f46b27a16b",
       "parent_id": "M16",
       "planning_dir": "planning/M16.44_fold-the-remaining-single-importer-siblings-from-the-code-report-s-misc-list_631269e6-5224-413a-8fe5-37f46b27a16b.md",
-      "sibling_order": 45,
+      "sibling_order": 44,
       "status": "Not Started",
       "title": "Fold the remaining single-importer siblings from the code report's misc list",
       "touch_zones": [
@@ -473,7 +473,7 @@
       "node_key": "af6d3c1a-cccf-481d-ab9f-503e834b47d7",
       "parent_id": "M16",
       "planning_dir": "planning/M16.42_fold-the-pm-ui-server-and-roadmap-crud-splits-after-the-orchestration-snapshot-is-fixed_af6d3c1a-cccf-481d-ab9f-503e834b47d7.md",
-      "sibling_order": 46,
+      "sibling_order": 45,
       "status": "Not Started",
       "title": "Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed",
       "touch_zones": [
