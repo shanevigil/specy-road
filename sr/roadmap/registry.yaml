@@ -51,16 +51,6 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote
-    node_id: M13.1
-    branch: feature/rm-say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote
-    touch_zones:
-      - specy_road/version_skew.py
-      - specy_road/bundled_scripts/doctor.py
-      - tests/
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end
     node_id: M13.7
     branch: feature/rm-clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end
@@ -85,18 +75,7 @@ entries:
       - docs/install-and-usage.md
       - tests/
       - specy_road/agents_md_report.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: safe-release-candidate-install-recipe-pipx-and-uv-tool-upgrades-and-checking-which-binary-is-on-path
-    node_id: M13.6
-    branch: feature/rm-safe-release-candidate-install-recipe-pipx-and-uv-tool-upgrades-and-checking-which-binary-is-on-path
-    touch_zones:
-      - docs/install-and-usage.md
-      - docs/release-runbook.md
-      - docs/supply-chain-security.md
-      - README.md
-      - tests/
+      - specy_road/bundled_scripts/refresh_stubs.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -118,6 +97,49 @@ entries:
       - specy_road/nested_repos_land.py
       - specy_road/templates/project/schemas/git-workflow.schema.json
       - docs/git-workflow.md
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch
+    node_id: M14.2
+    branch: feature/rm-doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch
+    touch_zones:
+      - specy_road/bundled_scripts/doctor.py
+      - specy_road/doctor_worktrees.py
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap
+    node_id: M13.2
+    branch: feature/rm-upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap
+    touch_zones:
+      - specy_road/bundled_scripts/upgrade.py
+      - specy_road/file_limits_engine.py
+      - tests/
+      - specy_road/templates/project/constraints/file-limits.yaml
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: upgrade-guide-moving-to-the-split-rules-files-previewing-an-uninstalled-version-telling-old-installs-apart
+    node_id: M13.10
+    branch: feature/rm-upgrade-guide-moving-to-the-split-rules-files-previewing-an-uninstalled-version-telling-old-installs-apart
+    touch_zones:
+      - docs/upgrading.md
+      - docs/install-and-usage.md
+      - CHANGELOG.md
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes
+    node_id: M14.11
+    branch: feature/rm-the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes
+    touch_zones:
+      - specy_road/bundled_scripts/role_prompt_rework.py
+      - specy_road/worker_ops_message.py
+      - specy_road/bundled_scripts/worker_cli.py
       - tests/
     started: '2026-11-04'
     owner: savigil
