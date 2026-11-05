@@ -202,7 +202,8 @@ entries:
       - tests/
     started: '2026-11-04'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-05T06:50:22+00:00'
   - codename: a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked
     node_id: M13.4
     branch: feature/rm-a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked
