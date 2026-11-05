@@ -171,7 +171,7 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: approved
-    implementation_review_at: '2026-11-05T19:37:08+00:00'
+    implementation_review_at: '2026-11-05T19:37:32+00:00'
   - codename: derived-codename-capped-so-planning-names-fit
     node_id: M15.38
     branch: feature/rm-derived-codename-capped-so-planning-names-fit
