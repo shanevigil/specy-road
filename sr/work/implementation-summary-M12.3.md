@@ -102,3 +102,38 @@ Not scanned, because A1 does not name them: `.claude/CLAUDE.md`, `CLAUDE.local.m
 - `chore_garden._numbered_lines()`: garden's whole-file line source, numbered as git numbers lines; it returns nothing for a missing or non-UTF-8 file (R4, audit).
 - `ratchet_findings` `policy_source` guard and note: an unreadable policy is no longer a silent clean scan (audit).
 - Tests: `test_garden_reports_mentions_inside_managed_blocks_and_validate_still_skips_them`, `test_garden_line_numbers_count_only_newlines`, `test_garden_says_why_when_the_ratchet_policy_is_unreadable`, and the `_garden_json` helper. All three tests fail with `chore_garden.py` at the round-2 commit.
+
+## Fix round 4 (gpt-6.1-sol block, R5; coordinator RCA class B)
+
+- **Write path:** `open_chores` no longer builds nodes itself (`append_node_to_chunk`, `new_node_key`, `next_sibling_order`, its own parent and lock checks are all gone). It runs the `add-node` command: `chore_garden._add_node` calls `roadmap_crud.main(["--repo-root", root, "add-node", ...])`, the same entry point as `specy-road add-node`. So `cmd_add` makes every check from one place: id pattern, duplicate id, parent exists (`_resolve_parent`), milestone lock (`_refuse_if_milestone_locked`), codename pattern, sibling order, codename and planning-sheet derivation, chunk routing, and the post-write validation for unique titles, codenames and title slugs. No `add-node` check needed factoring out, because its CLI entry is callable as is; `roadmap_crud_ops.py` (outside the zones) is unchanged. The one thing `add-node` does not do is choose an id (`--id` is required), so garden passes `next_child_id(nodes, under)`, the allocator brainstorm promotion uses. `add-node`'s write report on stdout is discarded. A refusal (exit 1) becomes `error: --under <P>: add-node refused the <class> leaf: <its reason>. Pass another --under parent, or fix what add-node names, then run again.` and garden exits 1. The explicit lock and parent checks from round 2 are removed, since `add-node` makes them.
+- **Identity and numbering:** `chore_garden._generation(cls, codename, title)` names a node's generation when its codename is `garden-<cls>` or `garden-<cls>-N`, or its title is `<class title>` or `<class title> (N)`. The unnumbered form is generation 1. A node is a garden leaf of the class when either field says so, under any parent. **Idempotency:** while any *live* (`load_roadmap`, so not archived) leaf of the class is not Complete, garden adds nothing and prints that leaf's id. **Next generation:** the highest generation across all live nodes (any status) and every archived node (`archive_index.iter_archived_summaries`; archived summaries keep the title, not the codename), plus 1. Survivors are never counted.
+- **Deleted nodes:** `archive-node --hard-remove` removes a node and leaves no ledger, so no "deleted but indexed" state exists. A deleted leaf's title and codename are free again, so reusing its number cannot collide.
+
+## Fix round 4: lifecycle audit
+
+All rows run through the public CLI (`chore garden --open-chores --under …`); setup uses `edit-node`, `add-node` and `archive`. Ids are as in the tests, under `M1.1` unless noted. Only the stale-command class is shown; the other classes behave the same.
+
+| Row | State before the run | Expected result | Test |
+| --- | --- | --- | --- |
+| 1 | no prior leaf | **add** `M1.1.1`, `Garden: stale command mentions`, codename `garden-stale-command` (generation 1, no suffix) | `test_chore_mode.py::test_open_chores_adds_one_leaf_per_class_then_nothing` |
+| 2 | open leaf (Not Started) | **skip**, printing `stale-command: M1.1.1 is still open; added nothing`; roadmap byte-identical | same test, second run |
+| 3 | In Progress / claimed leaf | **skip**, printing its id; byte-identical | `test_chore_garden_lifecycle.py::test_in_progress_leaf_is_skipped` |
+| 4 | Complete leaf (generation 1) | **add** the next child id, `… (2)`, `garden-stale-command-2` | `test_complete_then_archived_takes_the_next_unused_number` (first half) |
+| 5 | Complete then archived: 1 archived, 2 Complete (**R5**) | **add** exactly `… (3)`, `garden-stale-command-3`; the second run **skips**, printing gen 3's id; byte-identical | `test_complete_then_archived_takes_the_next_unused_number` |
+| 6 | gaps: 1 archived, 2 Complete, 3 open | **skip**, printing gen 3's id; once 3 is Complete, **add** `… (4)` | `test_generations_with_gaps_skip_the_open_one_then_number_past_the_highest` |
+| 7 | leaf hand-edited: title changed, codename kept; or codename changed, title kept | **skip**, printing its id (either field keeps the identity) | `test_hand_edited_leaf_keeps_its_identity_by_codename_or_title` |
+| 7b | leaf hand-edited: title and codename both changed | it is no longer a garden leaf: **add** generation 1 under the freed name (`garden-stale-command`) | same test |
+| 8 | garden leaf under a different parent (`M1.1`), run with `--under M2` | open: **skip**, printing the `M1.1.x` id; Complete: **add** `M2.1`, `… (2)` | `test_leaf_under_another_parent_counts` |
+| 9 | parent in a milestone whose execution is `active` / `pending_mr` | **refuse**: exit 1, `add-node refused the stale-command leaf: roadmap node 'M1.1' is inside milestone subtree …. Pass another --under parent, or fix what add-node names, then run again.`; roadmap and planning byte-identical | `test_milestone_locked_parent_is_refused[active,pending_mr]` |
+| 10 | parent missing (`--under M9`) | **refuse**: exit 1, `add-node refused the stale-command leaf: parent_id 'M9' not found in roadmap. Pass another --under parent, …`; byte-identical | `test_missing_parent_is_refused` |
+
+Refusals happen on the first class's `add-node`, before anything is written. With `chore_garden.py` at the round-3 commit, six of the eight lifecycle tests fail. Rows 5, 6 and 7 fail on numbering or identity, and rows 9 and 10 fail on the message. Rows 3 and 8 are behaviour the old code already had.
+
+### Added / removed (fix round 4)
+
+- `chore_garden._generation()`: one rule for a garden leaf's identity and generation, by codename or title (row 7) and readable from archived summaries (rows 5 and 6).
+- `chore_garden._add_node()`: runs the `add-node` command and returns its refusal; this replaces the custom node write (class B root cause).
+- `open_chores` rewritten: live-only idempotency, numbering at max + 1 over live and archived nodes, and `add-node` refusals turned into `WorkerError`.
+- Removed from `open_chores`: `append_node_to_chunk`, `new_node_key`, `next_sibling_order`, the round-2 parent-exists check and the `assert_pm_nodes_not_milestone_locked` call (`add-node` makes both checks).
+- New `tests/test_chore_garden_lifecycle.py`: the rows above. It replaces `test_chore_mode.py::test_open_chores_files_a_numbered_leaf_once_the_last_is_complete` (row 4, which edited JSON by hand) and `::test_open_chores_refuses_a_parent_in_a_locked_milestone` (row 9, whose message changed). Both rows are covered there through the public CLI.
+- No new production module: `chore_garden.py` stays under the cap.
