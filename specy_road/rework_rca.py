@@ -21,7 +21,15 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from specy_road.review_deferral import marker_path
-from specy_road.review_files import HISTORY_DIRNAME, RCA_PREFIX, REVIEW_PREFIX, ReviewFile, list_rcas, reviews_dir
+from specy_road.review_files import (
+    HISTORY_DIRNAME,
+    RCA_PREFIX,
+    READY_PREFIX,
+    REVIEW_PREFIX,
+    ReviewFile,
+    list_rcas,
+    reviews_dir,
+)
 from specy_road.review_rca import loop_state
 
 
@@ -44,13 +52,14 @@ def filed_at(r: ReviewFile) -> int:
 
 
 def _record_files(root: Path, node_id: str) -> list[Path]:
-    """``RCA-*.md``, ``REVIEW-*.md`` (prefix in any case, as :func:`review_files.list_reviews` matches it) and
-    ``history/*.md``: every record file the rework section loads."""
+    """``RCA-*.md``, ``READY-*.md`` (``loop_state`` reads them for the RCA's parties), ``REVIEW-*.md`` (prefix
+    in any case, as :func:`review_files.list_reviews` matches it) and ``history/*.md``: every record file the
+    rework section loads. ``DEFERRAL-*.yaml`` is left out: its loader already reports undecodable bytes."""
     d = reviews_dir(root, node_id)
     if not d.is_dir():
         return []
     top = [p for p in d.iterdir() if p.is_file() and p.suffix.lower() == ".md"
-           and (p.name.startswith(RCA_PREFIX) or p.name.lower().startswith(REVIEW_PREFIX.lower()))]
+           and (p.name.startswith((RCA_PREFIX, READY_PREFIX)) or p.name.lower().startswith(REVIEW_PREFIX.lower()))]
     h = d / HISTORY_DIRNAME
     return sorted(top) + (sorted(h.glob("*.md")) if h.is_dir() else [])
 

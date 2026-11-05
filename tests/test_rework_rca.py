@@ -176,7 +176,7 @@ def test_rca_with_invalid_utf8_refuses_delegate_rework_through_the_cli(tmp_path:
     assert f"**The rework records could not be read:** {bad} cannot be read as UTF-8" in _rework(repo)
 
 
-@pytest.mark.parametrize("rel", ["REVIEW-opus.md", "history/20261104T000000000000Z-opus.md"])
+@pytest.mark.parametrize("rel", ["REVIEW-opus.md", "READY-opus.md", "history/20261104T000000000000Z-opus.md"])
 def test_any_undecodable_record_file_the_rework_reads_is_named(repo: Path, rel: str) -> None:
     """R2's class: every record file the rework section loads is decoded at the boundary, not only RCA files."""
     _block(repo, 1, X)
