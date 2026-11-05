@@ -16,28 +16,6 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: project-preferences-local-decisions-footer-summary-landing
-    node_id: M15.22
-    branch: feature/rm-project-preferences-local-decisions-footer-summary-landing
-    touch_zones:
-      - specy_road/decisions.py
-      - specy_road/decisions_local.py
-      - specy_road/bundled_scripts/decisions_cli.py
-      - specy_road/finish_pr_body.py
-      - specy_road/git_workflow_config.py
-      - specy_road/workflow_prefs.py
-      - specy_road/bundled_scripts/do_next_prompt.py
-      - specy_road/finish_modes.py
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - docs/git-workflow-preferences.md
-      - tests/
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/agent_ignores.py
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - specy_road/finish_land_local.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: file-limits-baseline-and-upgrade-report
     node_id: M15.7
     branch: feature/rm-file-limits-baseline-and-upgrade-report

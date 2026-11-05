@@ -9,6 +9,7 @@ from specy_road.agent_ignores import RUNTIME_WORK_DIRS
 from specy_road.git_workflow_config import WORKER_LOGS_REL
 from specy_road.model_profiles import Profile
 from specy_road.review_files import PACKET_NAME
+from specy_road.workflow_prefs import SUMMARY_LOCAL, implementation_summary_rule, summary_handling
 
 _CITE = re.compile(r"\s*\[S\d+(?:,\s*S\d+)*\]")
 DATA_LINE = (
@@ -131,9 +132,16 @@ def precondition(role: str, node_id: str, t, packet: Path, prefix: str = "", for
     ]
 
 
+_COMMIT_SUMMARY = ("and commit it by explicit path on this branch: it is what the reviewers judge, and finish deletes "
+                   "it from `work/`.")
+
+
 def executor_preamble(node_id: str, model: str, zones: list[str], family_lock: str | None = None,
                       reviews: Path | None = None, prefix: str = "") -> list[str]:
     z = ", ".join(f"`{x}`" for x in zones) or "_(none declared — propose them in your summary)_"
+    # ``reviews`` is <main checkout's project root>/work/reviews/<id>: the hand-off destination only. The
+    # summary rule is the leaf's own, read in the checkout holding its branch (``leaf_root``), not main's.
+    rule = implementation_summary_rule(reviews.parents[2], node_id)
     lock = ([f"You may spawn sub-agents only of family `{family_lock}`; fanning out to another vendor "
              "defeats the reason you were chosen.", ""] if family_lock else [])
     return lock + [
@@ -149,11 +157,12 @@ def executor_preamble(node_id: str, model: str, zones: list[str], family_lock: s
         "Commit by explicit path (`git commit --only <paths>`), never `-A`, `-a`, or a bare `git commit`.",
         f"4. Write `{prefix}work/implementation-summary-{node_id}.md`, ending with an `## Added` inventory: every helper, "
         "branch or guard, mock and test you added, one line each with its reason (`none` under a heading is fine), "
-        "and commit it by explicit path on this branch: it is what the reviewers judge, and finish deletes it from `work/`. "
+        f"{summary_handling(rule) if rule == SUMMARY_LOCAL else _COMMIT_SUMMARY} "
         f"Then write `READY-{model}.md` with `specy-road ready {node_id} --model={model} --run '<cmd>' ...`, "
         f"one `--run` per verifier or test the brief names (`{model}` is your roster id, not an API model id). "
         "It runs each from the current directory in the foreground and records its exit and the last lines of its "
-        "output, which the reviewers' packet shows; it reads branch, commit (the one that adds the summary), base "
+        "output, which the reviewers' packet shows; it reads branch, commit "
+        f"({'your last one' if rule == SUMMARY_LOCAL else 'the one that adds the summary'}), base "
         "and changed paths from git, refuses a non-zero exit, and writes into "
         f"`{reviews or f'{prefix}work/reviews/{node_id}'}` "
         f"(the main checkout's {f'`{prefix}work/reviews/{node_id}`, ' if prefix else ''}directory, from any "

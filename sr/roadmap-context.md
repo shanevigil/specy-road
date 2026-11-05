@@ -250,7 +250,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.19` Cursor worker cost is estimated when the harness reports a display name for the rostered model `cursor-cost-with-display-name-models` — task — **Complete**
   - `M15.20` Touch zones that miss what acceptance needs are flagged at plan time, and the brief's zone section stays short `zones-missing-what-acceptance-needs-flagged` — task — **Not Started**
   - `M15.21` Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments `linked-worktrees-resolve-root-and-symlinked-envs` — task — **Complete**
-  - `M15.22` Project preferences the workflow respects: local decisions, a PR body footer, the summary commit rule, and local landing for the root repository `project-preferences-local-decisions-footer-summary-landing` — task — **Not Started**
+  - `M15.22` Project preferences the workflow respects: local decisions, a PR body footer, the summary commit rule, and local landing for the root repository `project-preferences-local-decisions-footer-summary-landing` — task — **Complete**
   - `M15.23` A project declares its merge-blocking CI commands per touch zone; ready always runs them and the review packet shows their result at the reviewed commit `ci-gates-run-by-ready-and-shown-in-the-packet` — task — **Not Started**
   - `M15.24` ready does not record false evidence: a passing run whose output shows a failed command is flagged, and --run-argv runs a command without a shell `ready-flags-failure-tails-and-takes-argv` — task — **Complete**
   - `M15.25` A change to the shared stash is attributed to the worker whose branch made it, not to whichever worker's turn ended while the entry existed `stash-changes-attributed-to-the-owning-branch` — task — **Not Started**
@@ -319,7 +319,6 @@ Do not pick these up.
 - `M14.5` on `feature/rm-an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it` since 2026-11-05
 - `M15.2` on `feature/rm-claude-code-reviewer-works-on-a-subscription-login` since 2026-11-05
 - `M15.20` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
-- `M15.22` on `feature/rm-project-preferences-local-decisions-footer-summary-landing` since 2026-11-04
 - `M15.25` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M15.26` on `feature/rm-claims-with-no-worker-are-reported-and-never-hold-slots` since 2026-11-05
 - `M15.27` on `feature/rm-cursor-usage-sums-segments-and-flags-undercounts` since 2026-11-05
@@ -331,9 +330,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 36 | 32 | 10.75 | 100% | 9 | 1 |
-| `specy_road` **flagged** | 47 | 42 | 9.80 | 100% | 9 | 1 |
-| `tests` **flagged** | 49 | 44 | 9.80 | 100% | 9 | 1 |
+| `docs` **flagged** | 36 | 31 | 9.40 | 100% | 10 | 1 |
+| `specy_road` **flagged** | 47 | 41 | 8.83 | 100% | 10 | 1 |
+| `tests` **flagged** | 49 | 43 | 8.83 | 100% | 10 | 1 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
 | `gui` | 1 | 1 | — | — | 0 | 0 |
