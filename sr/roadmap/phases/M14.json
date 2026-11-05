@@ -117,12 +117,11 @@
     },
     {
       "acceptance": [
-        "With `grind.auto_fix: true` (git-workflow.schema.json, default false) the M18.20 loop sends one fix round for each blocking review at a claim's branch tip: `worker message --fix-round` to the leaf's resumable worker, else `worker delegate --rework`; at most one round per blocked commit, and none while a review of that leaf or its worker is running",
-        "The cap is `policy.max_fix_rounds`, counted as `handoff status` counts it; `grind.auto_fix: true` with max_fix_rounds unset is a validate error naming both keys; when the budget is spent the loop sends no round, appends `<ID>  # parked after <n> fix rounds at <sha>` to work/grind-hold.txt and emits a `parked` event carrying fix_round_budget's `next` and `next_why`",
-        "A round counts as done only when the branch tip moved past the blocked commit and READY names the new tip; a worker that ends without moving the tip gets no second automatic round for that commit, and the loop emits `fix_round_no_change`",
-        "When handoff status's next step for the leaf is a root-cause analysis, the loop sends no fix round and emits `escalated` with the printed command; it launches no analyst (M18.10)",
-        "Tests with a stub harness: a block triggers one round; a second tick at the same commit sends none; a running review defers the round; a spent budget parks the leaf with the hold line; an unchanged tip gives fix_round_no_change; an escalated leaf gives escalated. Out of scope: the fix-round prompt text (M14.11, M18.15)",
-        "Estimated net line change (informational, not a gate): package about +120, tests about +150"
+        "With `grind.auto_fix: true` (git-workflow.schema.json, default false) the M18.20 loop sends one fix round per blocked commit (a claim's branch tip with a blocking gate-counted review): `worker message --fix-round` to the leaf's resumable worker, else `worker delegate --rework`, under M18.20's zone-reservation rule, and none while a review of that leaf or its worker is running; before dispatch it appends a `fix_round_sent` event carrying the blocked SHA and an operation id, and a restarted loop that finds that event reconciles the round (worker running, READY, moved tip) instead of sending it again",
+        "The cap is `policy.max_fix_rounds`, counted as `review status` counts it; `grind.auto_fix: true` with max_fix_rounds unset is a validate error naming both keys and `grind-session` refuses to start with exit 2 naming both; when `review status --json` state is `fix_round_budget_spent` the loop sends no round, appends `<ID>  # parked after <n> fix rounds at <sha>` to work/grind-hold.txt and emits one `parked` event carrying fix_round_budget's `next` and `next_why`, and no `escalated` event",
+        "A round counts as done only when the branch tip moved past the blocked commit and READY names the new tip; a worker turn that ends without moving the tip gets no second automatic round for that commit, and the loop emits `fix_round_no_change` once for that commit; when `review status --json` state is `escalated` the loop sends no fix round and emits one `escalated` event with the printed command, launching no analyst (M18.10)",
+        "Tests through the public CLI with a stub harness and a fixed clock: a block triggers one round and a second tick at the same commit sends none; a running review and a running worker each defer the round; restarts after dispatch with a running worker, a stale READY, a moved tip without READY and READY at the new tip each send no second round; a spent budget parks the leaf with the hold line and no escalated event; an unchanged tip gives one fix_round_no_change over several ticks; an escalated leaf gives escalated; auto_fix without max_fix_rounds exits 2. Out of scope: the fix-round prompt text (M14.11, M18.15)",
+        "Estimated net line change (informational, not a gate): package about +150, tests about +200"
       ],
       "codename": "auto-fix-rounds",
       "dependencies": [
@@ -149,12 +148,12 @@
     },
     {
       "acceptance": [
-        "A version-2 roster entry's `run:` block for claude-code or codex may list `accounts:` (each {id, dir, weight >= 0}); the adapter sets the harness's account directory variable (CLAUDE_CONFIG_DIR for claude-code, CODEX_HOME for codex) to `dir`; `accounts` on another harness, a duplicate id or a dir that does not exist is a validate error naming the entry; the roster holds directories only, never credentials",
-        "`worker delegate` picks, among accounts with weight > 0 that are not paused, the one with the lowest (launches + 1) / weight, records `account` in the worker record (worker-record.schema.json) and counts launches in work/.workers/account-counts.json; weight 0 drains an account (no new sessions)",
-        "`worker message` and `worker resume` use the account recorded on the worker (the one holding its native session); when that account is drained, paused or no longer listed, they start a fresh session with the same worker id on a picked account and print one line saying so",
-        "A worker turn that fails with a usage-limit error (the classification M18.10 adds) records that account as paused_until (the reset time from the output, else one hour later) in the gitignored orchestration.local.yaml overlay, and `worker resume` of that worker re-sends the turn once on another account; while every account of an entry is paused the entry is unavailable to orchestrate assign",
-        "Tests with stub harness outputs: weights 60/40 over ten delegates give 6 and 4; a resume stays on its account; a drained account starts a fresh session elsewhere; a usage-limit failure pauses the account and the re-send uses the other; all accounts paused makes the entry unavailable; docs show a two-account entry",
-        "Estimated net line change (informational, not a gate): package about +220, tests about +200"
+        "A version-2 roster entry's `run:` block for claude-code or codex may list `accounts:` (orchestration.schema.json: each {id, dir, weight >= 0}); claude-code launches with CLAUDE_CONFIG_DIR set to `dir`; codex keeps its isolated per-profile CODEX_HOME, one per model and account, linking only that account's auth.json and keeping the native sandbox, approval and memory overrides on launch and resume; `accounts` on another harness, a duplicate id or a dir that does not exist is a validate error naming the entry; the roster holds directories only, never credentials",
+        "`worker delegate` picks, among accounts with weight > 0 that are not paused, the one with the lowest (launches + 1) / weight, a tie going to the account listed first; it records `account` in the worker record (worker-record.schema.json) and counts launches in work/.workers/account-counts.json under a file lock so concurrent delegates lose no count; weight 0 drains an account (no new sessions); with no usable account it refuses, naming the entry",
+        "`worker message` and `worker resume` use the account recorded on the worker; when that account is drained, paused or no longer listed and another usable account exists, they start a fresh session with the same worker id and the original turn prompt on a picked account, bypassing only the old account's paused_by_limit wait, and print one line saying so; with no usable account they refuse and launch nothing",
+        "A worker turn that fails with a usage-limit error (M18.10's classification) writes `accounts: {<account id>: {paused_until}}` on that entry's roster patch in the gitignored roadmap/orchestration.local.yaml (the reset time from the output, else one hour later), which orchestration_config.py validates and merges without changing the entry-level available, paused_until and unavailable_until patches; an expired pause is ignored; `worker resume` re-sends that turn once on another usable account; an account pause never sets entry-level `available: false`, and the entry is unavailable to orchestrate assign only while every account with weight > 0 is paused",
+        "Tests with stub harness outputs: weights 60/40 over ten sequential delegates give 6 and 4; table rows for an equal-score tie, all weights 0, all paused, an expired pause and a removed account; two delegates released together by a process barrier record two launches; a resume stays on its account; a drained account starts a fresh session elsewhere; a usage-limit failure pauses only that account, keeps an unrelated roster patch, and the re-send uses the other account; all accounts paused makes the entry unavailable; a codex launch whose account dir holds a sentinel config.toml and AGENTS.md uses neither; docs show a two-account entry",
+        "Estimated net line change (informational, not a gate): package about +260, tests about +260"
       ],
       "codename": "executor-account-pools",
       "dependencies": [
@@ -173,6 +172,7 @@
       "touch_zones": [
         "specy_road/orchestration/roster/",
         "specy_road/orchestration/workers/",
+        "specy_road/orchestration_config.py",
         "specy_road/availability_overlay.py",
         "specy_road/templates/project/schemas/orchestration.schema.json",
         "specy_road/schemas/worker-record.schema.json",
@@ -186,12 +186,11 @@
     },
     {
       "acceptance": [
-        "A reviewer `channels.cli` (or M16.63 `run:` command) may name `{answer}`: specy-road passes a fresh path outside the checked tree (answer_scratch, as for native codex `-o`) and files that file's content as the final answer under review_answer's strict rule; the command's stdout and stderr then go to RUN-<model>.log only and are never parsed as the answer; without `{answer}` today's rule holds",
-        "With `{answer}`, an empty or missing answer file is a rerun request that says so and quotes the transcript's last 20 lines, so a provider usage-limit or capacity message is visible; the native codex, cursor and claude-code reviewer commands are unchanged",
-        "validate warns, naming the entry and the replacement, for a reviewer command that passes the prompt as text (`<prompt>`) rather than `{prompt}` (Linux caps one argument at 128 KiB) and for a codex reviewer command run with `workspace-write` (its Linux sandbox writes mount points that the post-run write check refuses)",
-        "docs/orchestration-reviewer-output.md documents `{answer}` with one wrapper example per CLI (codex with `-o {answer}`; cursor and claude writing their last JSON object to `{answer}` and printing the rest)",
-        "Tests: a wrapper that narrates and writes a valid answer file files the record; an empty answer file is a rerun with the transcript tail; a `<prompt>` reviewer entry and a workspace-write codex entry each get one warning",
-        "Estimated net line change (informational, not a gate): package about +100, tests about +120"
+        "A reviewer `channels.cli` (or M16.63 `run:` command) may name `{answer}`, which joins PLACEHOLDERS and substitute_prompt in worker_adapter_parsers.py: specy-road passes a fresh path from answer_scratch outside the checked tree and files that attempt's file as the final answer under review_answer's strict rule; the command's stdout and stderr go to RUN-<model>.log only and are never parsed as the answer, even when they hold a schema-valid one; without `{answer}` today's rule holds, and the native codex, cursor and claude-code reviewer commands are unchanged",
+        "The answer file is read only as a regular file in that attempt's scratch directory, opened without following symlinks; a missing, empty or whitespace-only file, a symlink, a directory, an unreadable file, or content that is not exactly one complete schema-valid JSON object is a rerun request that files no review, names the case and quotes the transcript's last 20 lines; the post-run write check still runs before filing, and each attempt gets a fresh path so an earlier attempt's answer is never reused",
+        "validate warns, naming the entry and the replacement, for a reviewer command that passes the prompt as text (`<prompt>`) rather than `{prompt}` (Linux caps one argument at 128 KiB) and for a codex reviewer command run with `workspace-write` (its Linux sandbox writes mount points that the post-run write check refuses); docs/orchestration-reviewer-output.md documents `{answer}` with one wrapper example per CLI (codex with `-o {answer}`; cursor and claude writing their last JSON object to `{answer}` and printing the rest)",
+        "Tests through `review delegate` with a stub CLI: a wrapper that narrates and writes a valid answer file files the record; missing, whitespace-only, prose-wrapped JSON, two objects, an array, schema-invalid, deeply nested and symlinked answer files each file no record and give a rerun quoting the transcript tail; an empty answer file with a schema-valid approve on stdout files nothing; a retry whose second attempt writes nothing files nothing; a `<prompt>` reviewer entry and a workspace-write codex entry each get one warning",
+        "Estimated net line change (informational, not a gate): package about +120, tests about +160"
       ],
       "codename": "reviewer-answer-file",
       "dependencies": [
@@ -207,7 +206,8 @@
       "status": "Not Started",
       "title": "A channels.cli reviewer writes its final answer to a file specy-road names, and its transcript is kept beside the run record",
       "touch_zones": [
-        "specy_road/orchestration/",
+        "specy_road/worker_adapter_parsers.py",
+        "specy_road/orchestration/workers/",
         "specy_road/review_answer.py",
         "specy_road/review_delegate.py",
         "specy_road/bundled_scripts/validate_roadmap.py",
@@ -219,11 +219,11 @@
     },
     {
       "acceptance": [
-        "`grind.append_only` (git-workflow.schema.json: a list of repo-relative file paths, default empty; the project template and sr/roadmap/git-workflow.yaml list CHANGELOG.md) names files that leaves only add lines to; one rule in shared_zones.py makes a zone equal to an append-only path overlap nothing, and grind-session --plan's parallel batches, validate's registry overlap warning and the M18.20 scheduler use it; a directory zone that contains the path still overlaps as today",
-        "When finish-this-task's merge conflicts only in append-only paths (besides the generated files it already resolves) and in each one both sides only added lines relative to the merge base, finish keeps the integration side's added lines followed by the branch's and completes the merge; when either side deleted or changed a base line, it refuses as today, naming the file",
+        "`grind.append_only` (git-workflow.schema.json: a list of repo-relative file paths, default empty; the project template and sr/roadmap/git-workflow.yaml list CHANGELOG.md) names files that leaves only add lines to; one rule in shared_zones.py makes a zone equal to an append-only path overlap nothing, and every overlap reader that calls shared_zones (grind-session --plan's parallel batches, validate's registry overlap warning, the M18.20 scheduler) gets it; a directory zone that contains the path still overlaps as today",
+        "One pure-additions classifier, shared by review_gate_ready.trial_merge and finish's deterministic resolver (finish_land_deterministic.py), treats an append-only path as resolvable when both sides only added lines relative to the merge base: trial_merge leaves it out of code_conflicts, so review status and M18.24's review run do not refuse it, and finish keeps the integration side's added lines followed by the branch's and completes the merge; when either side deleted or changed a base line the path stays a code conflict and finish refuses as today, naming the file, with refs and worktrees unchanged",
         "validate notices an append-only entry that is a directory or matches no tracked file, naming it",
-        "Tests: two leaves zoning CHANGELOG.md fall in one parallel batch; both add entries under the same heading and land in turn with both entries kept; a branch that edits an existing CHANGELOG.md line is refused; a directory entry gets the notice",
-        "Estimated net line change (informational, not a gate): package about +90, tests about +120"
+        "Tests through `grind-session --plan`, validate and the public finish CLI: two leaves zoning CHANGELOG.md fall in one parallel batch, validate's overlap warning agrees, and a directory zone containing it still overlaps; two branches each adding an entry under the same heading, the second not containing the first's landing, land in turn with both entries kept integration side first and the base lines byte-identical, and the second's trial merge reports no code conflict; integration-side replacement, integration-side deletion, branch-side replacement, branch-side deletion, and an append-only conflict mixed with an ordinary-file conflict each refuse with refs and worktrees unchanged; a directory entry gets the notice",
+        "Estimated net line change (informational, not a gate): package about +130, tests about +180"
       ],
       "codename": "append-only-zone-paths",
       "dependencies": [
@@ -240,12 +240,13 @@
       "title": "Append-only zone paths such as CHANGELOG.md do not serialize leaves, and finish merges their added lines",
       "touch_zones": [
         "specy_road/shared_zones.py",
-        "specy_road/orchestration/grind/",
+        "specy_road/review_gate_ready.py",
+        "specy_road/finish_land_deterministic.py",
+        "specy_road/finish_land_integration.py",
         "specy_road/bundled_scripts/validate_registry_overlap.py",
         "specy_road/git_workflow_config.py",
         "specy_road/templates/project/schemas/git-workflow.schema.json",
         "specy_road/templates/project/roadmap/git-workflow.yaml",
-        "specy_road/finish_land_integration.py",
         "sr/roadmap/git-workflow.yaml",
         "docs/grind-session.md",
         "docs/git-workflow.md",

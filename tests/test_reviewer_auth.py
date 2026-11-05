@@ -200,7 +200,7 @@ def test_forced_bare_without_a_key_refuses_before_a_run_record(
     err = capsys.readouterr().err
     assert all(fix in err for fix in FIXES) and _argv(recorded) == [] and _reviews(repo) == before
     prompt_calls = fake_reviewer_run(monkeypatch)
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
                     "--repo-root", str(repo)) == 1
     err = capsys.readouterr().err
     assert all(fix in err for fix in FIXES) and _reviews(repo) == before
@@ -216,7 +216,7 @@ def test_prompt_explicit_mode_is_recorded_and_a_helper_selects_bare_without_prin
     answer = review_output(git(repo, "rev-parse", "HEAD"), model="opus")
     calls = fake_reviewer_run(monkeypatch, [json.dumps({"type": "result", "subtype": "success", "result": "done",
                                                         "structured_output": answer})])
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
                     "--repo-root", str(repo)) == 0
     argv = next(c["cmd"] for c in calls if list(c["cmd"][:2]) == ["claude", "-p"])
     assert "--bare" not in argv and "--setting-sources" in argv and "--mcp-config" not in argv
@@ -233,7 +233,7 @@ def test_prompt_explicit_mode_is_recorded_and_a_helper_selects_bare_without_prin
     assert direct.argv[direct.argv.index("--settings") + 1] == str(settings)
     assert "--bare" in direct.argv and HELPER not in " ".join(direct.argv)
     calls.clear()
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
                     "--repo-root", str(repo)) == 0
     argv = next(c["cmd"] for c in calls if list(c["cmd"][:2]) == ["claude", "-p"])
     captured = capsys.readouterr()
