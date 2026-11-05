@@ -36,7 +36,7 @@ from specy_road.bundled_scripts.do_next_available import (
     _statuses_by_node_key,
 )
 from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys, natural_id_sort_key
-from specy_road.bundled_scripts.session_plan_render import session_plan_to_dict, split_on_zone_overlap
+from specy_road.bundled_scripts.session_plan_render import DEFAULT_SHARED_ZONES, session_plan_to_dict, split_on_zone_overlap
 from specy_road.milestone_subtree import subtree_node_ids
 from specy_road.milestone_subtree import leaf_ids_under_parent, structural_leaf_ids
 from specy_road.node_kinds import is_gate
@@ -95,6 +95,7 @@ class SessionPlan:
     prefer_agentic: bool = False
     #: ``nested_repos.unpushed_branches``: filled by ``session_plan_git`` (this module reads no git).
     nested_unpushed: list[dict] = field(default_factory=list)
+    shared_zones: tuple[str, ...] = DEFAULT_SHARED_ZONES  # ``shared_zones.resolve_shared_zones``
 
 
 # ---------------------------------------------------------------------------
@@ -323,7 +324,7 @@ def _compute_waves(nodes: list[dict], ctx: dict) -> list[Wave]:
     return waves
 
 
-def _parallel_batches(waves: list[Wave], ready_order: list[str]) -> list[list[str]]:
+def _parallel_batches(waves: list[Wave], ready_order: list[str], shared=DEFAULT_SHARED_ZONES) -> list[list[str]]:
     """Per wave, the ready+unclaimed leaves an orchestrator can dispatch now.
 
     Ordered as pickup will actually claim them (tier, then roadmap outline
@@ -339,7 +340,7 @@ def _parallel_batches(waves: list[Wave], ready_order: list[str]) -> list[list[st
             (nid for nid in w.node_ids if nid in position),
             key=position.__getitem__,
         )
-        out.extend(split_on_zone_overlap(dispatchable, w.touch_zones))
+        out.extend(split_on_zone_overlap(dispatchable, w.touch_zones, shared))
     return out
 
 
@@ -355,6 +356,7 @@ def compute_session_plan(
     under: str | None = None,
     unauthored: dict[str, str] | None = None,
     prefer_agentic: bool = False,
+    shared_zones: tuple[str, ...] = DEFAULT_SHARED_ZONES,
 ) -> SessionPlan:
     """``unauthored`` (id -> reason, from ``planning_sheet_bootstrap.unauthored_leaves``)
     moves those leaves from ``ready`` to ``unauthored``; the caller reads the sheets.
@@ -364,7 +366,7 @@ def compute_session_plan(
     )
     buckets = ctx["buckets"]
     waves = _compute_waves(nodes, ctx)
-    batches = _parallel_batches(waves, buckets["ready"])
+    batches = _parallel_batches(waves, buckets["ready"], shared_zones)
     ready_ids = set(buckets["ready"])
     plan = SessionPlan(
         under=under,
@@ -381,7 +383,7 @@ def compute_session_plan(
         ready_execution={
             n["id"]: n.get("execution_milestone") for n in nodes if n.get("id") in ready_ids
         },
-        prefer_agentic=prefer_agentic,
+        prefer_agentic=prefer_agentic, shared_zones=tuple(shared_zones),
     )
     plan.totals = {
         "ready": len(plan.ready),

@@ -27,11 +27,11 @@ from pathlib import Path
 from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
 from specy_road.orchestration_role_env import harness_env
 from specy_road.runtime_paths import project_prefix
-from specy_road.worker_adapter_parsers import USAGE_FIELDS, init_model, usage_text
+from specy_road.worker_adapter_parsers import USAGE_FIELDS, init_model
 from specy_road.worker_adapters import ClaudeCode, Launch, adapter_for
 from specy_road.worker_exit import exit_event
 from specy_road.worker_lease import release_lease
-from specy_road.worker_models import launch_model, mismatch_note, turn_models
+from specy_road.worker_models import launch_model, turn_models, usage_event
 from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified re-exported for existing callers
     argv_too_long,
     new_token,
@@ -333,7 +333,7 @@ def _append_usage(repo_root: Path, rec: WorkerRecord, usage: dict) -> None:
                                           and e.source == "worker" and (e.detail or {}).get("version")), None)
     # Parsed from the harness's output, like the line it came from.
     append_event(repo_root, rec, "usage", source="worker", authority="worker_suggestion",
-                 summary=f"usage: {usage_text(detail)}{mismatch_note(detail)}", detail=detail)
+                 **usage_event(repo_root, detail))
 
 
 def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], before_all: list[str],
