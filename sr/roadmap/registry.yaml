@@ -64,7 +64,8 @@ entries:
       - specy_road/bundled_scripts/validate_notices.py
     started: '2026-11-05'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-05T11:03:04+00:00'
   - codename: stash-changes-attributed-to-the-owning-branch
     node_id: M15.25
     branch: feature/rm-stash-changes-attributed-to-the-owning-branch
