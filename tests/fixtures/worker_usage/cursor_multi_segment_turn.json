@@ -1,62 +1,61 @@
 {
-  "_provenance": "Observed Composer 2.5 worker logs under sr/work/.workers/ (including w-0063.log, w-0056.log, 2026-11-05): usage objects appear only on type result lines with inputTokens, outputTokens, cacheReadTokens and cacheWriteTokens; no mid-turn type usage lines were present in those logs. Mid-turn type usage lines below are synthetic (per-segment counts for A2); the terminal result usage object matches w-0056.log result #7 (sanitized ids only).",
+  "_provenance": "Sanitized excerpt of one agent turn from a Composer 2.5 worker log (type, subtype, session_id, usage only). Source: a real composer-2.5 turn on this toolkit's own grind.",
   "session_id": "<session>",
-  "expected_output_tokens": 32236,
-  "segment_output_tokens": [7200, 8400, 6500, 10136],
+  "expected_output_tokens": 44158,
   "lines": [
     {
       "type": "system",
-      "subtype": "init",
-      "session_id": "<session>"
-    },
-    {
-      "type": "usage",
       "session_id": "<session>",
-      "usage": {
-        "inputTokens": 12000,
-        "outputTokens": 7200,
-        "cacheReadTokens": 450000,
-        "cacheWriteTokens": 0
-      }
+      "subtype": "init"
     },
     {
       "type": "tool_call",
-      "subtype": "started",
-      "session_id": "<session>"
+      "session_id": "<session>",
+      "subtype": "started"
     },
     {
       "type": "tool_call",
-      "subtype": "completed",
-      "session_id": "<session>"
+      "session_id": "<session>",
+      "subtype": "started"
     },
     {
-      "type": "usage",
+      "type": "tool_call",
       "session_id": "<session>",
-      "usage": {
-        "inputTokens": 8000,
-        "outputTokens": 8400,
-        "cacheReadTokens": 520000,
-        "cacheWriteTokens": 0
-      }
+      "subtype": "completed"
     },
     {
-      "type": "usage",
+      "type": "tool_call",
       "session_id": "<session>",
-      "usage": {
-        "inputTokens": 6000,
-        "outputTokens": 6500,
-        "cacheReadTokens": 610000,
-        "cacheWriteTokens": 0
-      }
+      "subtype": "started"
+    },
+    {
+      "type": "tool_call",
+      "session_id": "<session>",
+      "subtype": "started"
+    },
+    {
+      "type": "tool_call",
+      "session_id": "<session>",
+      "subtype": "started"
+    },
+    {
+      "type": "tool_call",
+      "session_id": "<session>",
+      "subtype": "started"
+    },
+    {
+      "type": "tool_call",
+      "session_id": "<session>",
+      "subtype": "completed"
     },
     {
       "type": "result",
-      "subtype": "success",
       "session_id": "<session>",
+      "subtype": "success",
       "usage": {
-        "inputTokens": 39394,
-        "outputTokens": 10136,
-        "cacheReadTokens": 561056,
+        "inputTokens": 131947,
+        "outputTokens": 44158,
+        "cacheReadTokens": 10979712,
         "cacheWriteTokens": 0
       }
     }

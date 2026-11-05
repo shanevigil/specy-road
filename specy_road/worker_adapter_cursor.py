@@ -2,13 +2,19 @@
 
 Split from :mod:`specy_road.worker_adapters` for the file limit; callers reach it through that module.
 
-Usage combining (one turn, several usage-bearing stream lines):
+Usage combining (one turn, several usage-bearing stream lines), as observed on Composer 2.5
+worker logs from this toolkit's grind: one ``result`` line per turn carries
+``usage`` with ``inputTokens``, ``outputTokens``, ``cacheReadTokens`` and ``cacheWriteTokens``;
+those logs had no mid-turn ``type: usage`` lines.
 
-- ``type: usage`` without ``subtype: session`` — per-segment counts (summed).
-- ``type: usage`` with ``subtype: session`` — session running total for token keys (last line wins).
-- ``assistant`` / ``message.usage`` — per-segment (summed).
-- ``result`` / ``usage`` — per-segment unless the usage object sets ``\"total\": true``, then session running total.
-- When the stream cannot mark session totals, segment lines are summed; never infer running totals from monotonic numbers.
+When several usage-bearing lines appear in one turn:
+
+- ``type: usage`` without ``subtype: session``, ``assistant`` / ``message.usage``, and
+  ``result`` / ``usage`` without ``total: true`` — per-segment counts (summed).
+- ``type: usage`` with ``subtype: session``, or ``result`` / ``usage`` with ``total: true`` —
+  session running total: the **last** such line is the turn's usage; every token key comes from
+  that line (omitted keys stay null). Earlier segment lines are ignored once a session line exists.
+- Never infer running totals from monotonic token values.
 """
 
 from __future__ import annotations
@@ -66,23 +72,16 @@ def combine_cursor_turn_usage(entries: list[UsageEntry]) -> dict[str, Any]:
     """One turn's token counts from every usage-bearing line Cursor printed for it."""
     if not entries:
         return usage_fields(None)
-    segments = [fields for fields, kind in entries if kind == "segment"]
     sessions = [fields for fields, kind in entries if kind == "session"]
-    if sessions and not segments:
-        out = dict(sessions[-1])
+    if sessions:
+        out = usage_fields(None)
+        out.update(sessions[-1])
         su = {k: out[k] for k in _TOKEN_KEYS if out.get(k) is not None}
         if su:
             out["session_usage"] = su
         return _merge_meta(out, entries)
+    segments = [fields for fields, kind in entries if kind == "segment"]
     out = _sum_segment_fields(segments) if segments else usage_fields(None)
-    if sessions:
-        last = sessions[-1]
-        su = {k: last[k] for k in _TOKEN_KEYS if last.get(k) is not None}
-        for k in _TOKEN_KEYS:
-            if last.get(k) is not None:
-                out[k] = last[k]
-        if su:
-            out["session_usage"] = su
     return _merge_meta(out, entries)
 
 

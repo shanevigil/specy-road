@@ -21,9 +21,12 @@ from specy_road.worker_usage_plausibility import (
 FIXTURE = Path(__file__).parent / "fixtures/worker_usage/cursor_multi_segment_turn.json"
 
 
-def _entry(out: int, *, session: bool = False) -> tuple[dict, str]:
+def _entry(out: int, *, session: bool = False, cached: int | None = None) -> tuple[dict, str]:
     kind = "session" if session else "segment"
-    return ({"output_tokens": out, "input_tokens": 1}, kind)
+    fields: dict = {"output_tokens": out, "input_tokens": 1}
+    if cached is not None:
+        fields["cached_input_tokens"] = cached
+    return (fields, kind)
 
 
 def test_combine_cursor_turn_usage_sums_per_segment_lines_even_when_outputs_increase() -> None:
@@ -38,17 +41,30 @@ def test_combine_cursor_turn_usage_keeps_a_session_marked_running_total_at_its_l
     assert out["session_usage"]["output_tokens"] == 300
 
 
-def test_combine_cursor_turn_usage_sums_segments_then_applies_a_session_marked_line() -> None:
-    entries = [_entry(1000), _entry(2000), _entry(5000, session=True)]
+def test_combine_cursor_turn_usage_uses_only_the_last_session_line_when_segments_are_also_present() -> None:
+    entries = [_entry(1000), _entry(2000), _entry(5000, session=True, cached=None)]
     out = combine_cursor_turn_usage(entries)
     assert out["output_tokens"] == 5000
-    assert out["session_usage"]["output_tokens"] == 5000
+    assert out["cached_input_tokens"] is None
 
 
-def test_combine_cursor_turn_usage_sums_the_multi_segment_fixture_shape() -> None:
+def test_parse_session_marked_result_drops_prior_segment_counts_for_omitted_keys() -> None:
+    cu = reset_cursor_adapter_via_init()
+    cu.parse(json.dumps({"type": "system", "subtype": "init", "session_id": "s"}))
+    cu.parse(json.dumps({"type": "assistant", "session_id": "s",
+                         "message": {"content": [], "usage": {"outputTokens": 40, "inputTokens": 1, "cacheReadTokens": 5}}}))
+    usage = cu.parse(json.dumps({"type": "result", "subtype": "success", "session_id": "s",
+                                 "usage": {"total": True, "outputTokens": 7, "inputTokens": 2}})).usage
+    assert usage["output_tokens"] == 7 and usage["cached_input_tokens"] is None
+
+
+def test_the_recorded_fixture_matches_the_sanitized_real_turn_result_usage() -> None:
     spec = json.loads(FIXTURE.read_text())
-    entries = [({"output_tokens": n, "input_tokens": 1}, "segment") for n in spec["segment_output_tokens"]]
-    assert combine_cursor_turn_usage(entries)["output_tokens"] == spec["expected_output_tokens"]
+    cu = reset_cursor_adapter_via_init()
+    for ln in spec["lines"][:-1]:
+        cu.parse(json.dumps({**ln, "session_id": "s-1"}))
+    usage = cu.parse(json.dumps({**spec["lines"][-1], "session_id": "s-1"})).usage
+    assert usage["output_tokens"] == spec["expected_output_tokens"]
 
 
 def test_merge_cursor_result_usage_keeps_num_turns_from_the_result_line() -> None:
@@ -64,8 +80,7 @@ def test_a_single_result_with_num_turns_keeps_the_count() -> None:
     assert usage["output_tokens"] == 25 and usage["num_turns"] == 4
 
 
-def test_a_multi_segment_cursor_turn_records_the_sum_of_every_usage_line(tmp_path: Path) -> None:
-    """Every usage-bearing stream line counts; worker usage matches the fixture total, not the last segment alone."""
+def test_a_long_cursor_turn_from_the_fixture_records_result_usage_in_the_worker(tmp_path: Path) -> None:
     spec = json.loads(FIXTURE.read_text())
     lines = [{**ln, "session_id": "s-1"} for ln in spec["lines"]]
     repo, script = make_worker_repo(tmp_path)
