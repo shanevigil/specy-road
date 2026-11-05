@@ -137,6 +137,9 @@ M15.11 behaviour (`models roster`, profile check, `--spread`, coordinator line) 
 - `pinned_profile_for_entry` — uses `profile_value_form_problem` / `profile_value_problem` only; no raw-path load
   after normalized form pass.
 
+Pre-land gate: `_invalid_explicit_profile`, `_worktree_profile_for_entry`, and `_integration_profile_for_entry`
+split from `pinned_profile_for_entry` (ruff C901; behaviour unchanged).
+
 ## Added
 
 - `specy_road/roster_generate.py`: `ROSTER_FAMILY` (profile family → roster family, from the profiles README);
@@ -155,7 +158,9 @@ M15.11 behaviour (`models roster`, profile check, `--spread`, coordinator line) 
 
   Reason: A2 and A4, the 400-line cap on `orchestrate_plan.py`, and WIP merge with M15.10.
 - `specy_road/orchestration_pinned.py`: escape + form checks; `profile_value_problem` when a well-formed explicit
-  path is absent from the relevant source; `_pinned_at` when the ref has the blob. Reason: A2 and fix rounds.
+  path is absent from the relevant source; `_pinned_at` when the ref has the blob;
+  `_invalid_explicit_profile`, `_worktree_profile_for_entry`, `_integration_profile_for_entry` (pre-land C901).
+  Reason: A2 and fix rounds.
 - `specy_road/orchestrate_plan.py`: the `spread` and `roster_from_worktree` parameters and the leaf-order index;
   re-exports from `orchestrate_assign`. Reason: A4 and M15.10 dry-run merge.
 - `specy_road/bundled_scripts/orchestrate_cli.py`: the `--spread` flag and the `this session` render. Reason: A4.

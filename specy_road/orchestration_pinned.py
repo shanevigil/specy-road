@@ -227,33 +227,29 @@ def _pinned_for_id(repo_root: Path, sha: str, path: str, ref: str, model_id: Any
     return pinned.for_id(model_id)
 
 
-def pinned_profile_for_entry(repo_root: Path, entry: dict[str, Any], *, worktree: bool = False) -> Profile | None:
-    """The roster entry's profile as committed on the integration branch (working tree outside git, or
-    with ``worktree=True``, the dry run :func:`pinned_config` describes).
+def _invalid_explicit_profile(repo_root: Path, rel: Any) -> Profile | None:
+    """A refused profile for an explicit ``profile:`` value, or ``None`` when path checks pass."""
+    if not rel:
+        return None
+    why = profile_rel_problem(repo_root, str(rel))
+    if why:
+        return Profile(repo_root / str(rel), {}, errors=[why])
+    why = profile_value_form_problem(repo_root, rel)
+    if why:
+        return Profile(repo_root / str(rel), {}, errors=[why])
+    return None
 
-    ``profile:`` names the path; without it a committed profile whose ``api_id``,
-    file name or ``aliases`` include the entry's ``id`` is used, as :func:`profile_for_entry` does.
-    """
-    rel = entry.get("profile")
-    if rel:
-        why = profile_rel_problem(repo_root, str(rel))
+
+def _worktree_profile_for_entry(repo_root: Path, entry: dict[str, Any], rel: Any) -> Profile | None:
+    if rel and not (repo_root / str(rel)).is_file():
+        why = profile_value_problem(repo_root, rel)
         if why:
             return Profile(repo_root / str(rel), {}, errors=[why])
-        why = profile_value_form_problem(repo_root, rel)
-        if why:
-            return Profile(repo_root / str(rel), {}, errors=[why])
-    if worktree:
-        if rel and not (repo_root / str(rel)).is_file():
-            why = profile_value_problem(repo_root, rel)
-            if why:
-                return Profile(repo_root / str(rel), {}, errors=[why])
-        return profile_for_entry(repo_root, entry)
-    ref, err = policy_source(repo_root)
-    if err:
-        return Profile(repo_root / str(entry.get("profile") or entry.get("id")), {}, errors=[err])
-    if ref is None:
-        return profile_for_entry(repo_root, entry)
-    sha = full_sha(repo_root, ref) or ref
+    return profile_for_entry(repo_root, entry)
+
+
+def _integration_profile_for_entry(repo_root: Path, entry: dict[str, Any], rel: Any, ref: str,
+                                   sha: str) -> Profile | None:
     if rel:
         rel_posix = Path(str(rel)).as_posix()
         if _blob(repo_root, sha, rel_posix) is None and not (repo_root / rel).is_file():
@@ -265,4 +261,25 @@ def pinned_profile_for_entry(repo_root: Path, entry: dict[str, Any], *, worktree
     paths = _committed_profile_paths(str(repo_root), sha)
     return next((m for path in paths
                  if (m := _pinned_for_id(repo_root, sha, path, ref, entry.get("id")))), None)
+
+
+def pinned_profile_for_entry(repo_root: Path, entry: dict[str, Any], *, worktree: bool = False) -> Profile | None:
+    """The roster entry's profile as committed on the integration branch (working tree outside git, or
+    with ``worktree=True``, the dry run :func:`pinned_config` describes).
+
+    ``profile:`` names the path; without it a committed profile whose ``api_id``,
+    file name or ``aliases`` include the entry's ``id`` is used, as :func:`profile_for_entry` does.
+    """
+    rel = entry.get("profile")
+    if bad := _invalid_explicit_profile(repo_root, rel):
+        return bad
+    if worktree:
+        return _worktree_profile_for_entry(repo_root, entry, rel)
+    ref, err = policy_source(repo_root)
+    if err:
+        return Profile(repo_root / str(entry.get("profile") or entry.get("id")), {}, errors=[err])
+    if ref is None:
+        return profile_for_entry(repo_root, entry)
+    sha = full_sha(repo_root, ref) or ref
+    return _integration_profile_for_entry(repo_root, entry, rel, ref, sha)
 
