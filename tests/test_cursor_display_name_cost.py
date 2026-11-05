@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_cursor_usage_cost import PROFILES, _priced_repo
+from tests.test_cursor_usage_cost import PROFILES, priced_repo
 from tests.test_worker_adapters import CLAUDE_RESULT, CURSOR_RESULT, FULL_INIT
 
 from specy_road import worker_runner as wr
@@ -107,7 +107,7 @@ policy: {}
 def test_claude_turn_without_a_harness_cost_is_roster_priced_unless_a_real_mismatch(
         tmp_path: Path, reported: str, priced: bool) -> None:
     """A Claude result with no ``total_cost_usd`` gets the roster fill; a real mismatch drops it, a name does not."""
-    repo = _priced_repo(tmp_path, CLAUDE_ROSTER, ("anthropic-claude/claude-opus-5-5.md",))
+    repo = priced_repo(tmp_path, CLAUDE_ROSTER, ("anthropic-claude/claude-opus-5-5.md",))
     result = {k: v for k, v in CLAUDE_RESULT.items() if k != "total_cost_usd"}
     ev = _run_turn(repo, "claude-code", "claude-opus-5-5", [{**FULL_INIT, "model": reported}, result])
     assert ("model mismatch" not in ev.summary) is priced

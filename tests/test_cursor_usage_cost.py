@@ -51,7 +51,7 @@ policy: {}
 """
 
 
-def _priced_repo(tmp_path: Path, roster: str, profiles: tuple[str, ...]) -> Path:
+def priced_repo(tmp_path: Path, roster: str, profiles: tuple[str, ...]) -> Path:
     repo = make_review_repo(tmp_path, orchestration=roster)
     for rel in profiles:
         dest = repo / "model-profiles" / rel
@@ -64,11 +64,11 @@ def _priced_repo(tmp_path: Path, roster: str, profiles: tuple[str, ...]) -> Path
 
 
 def _cursor_repo(tmp_path: Path) -> Path:
-    return _priced_repo(tmp_path, CURSOR_ROSTER, ("cursor-composer/composer-2.5.md", "cursor-composer/composer-2.md"))
+    return priced_repo(tmp_path, CURSOR_ROSTER, ("cursor-composer/composer-2.5.md", "cursor-composer/composer-2.md"))
 
 
 def _codex_repo(tmp_path: Path) -> Path:
-    return _priced_repo(tmp_path, CODEX_ROSTER, ("openai-gpt/gpt-6.1-sol.md",))
+    return priced_repo(tmp_path, CODEX_ROSTER, ("openai-gpt/gpt-6.1-sol.md",))
 
 
 def _cursor_workspace(tmp_path: Path, layout: str) -> tuple[Path, Path]:
