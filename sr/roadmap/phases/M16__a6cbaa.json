@@ -393,7 +393,8 @@
         "specy_road/bundled_scripts/roadmap_layout.py",
         "specy_road/bundled_scripts/roadmap_crud_dependency_ops.py",
         "docs/roadmap-authoring.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/effective_dependency_checks.py"
       ],
       "type": "task"
     },
