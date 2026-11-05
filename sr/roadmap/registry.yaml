@@ -171,22 +171,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: derived-codename-capped-so-planning-names-fit
-    node_id: M15.38
-    branch: feature/rm-derived-codename-capped-so-planning-names-fit
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_edit_fields.py
-      - specy_road/bundled_scripts/roadmap_crud_prepare.py
-      - specy_road/bundled_scripts/validate_self_heal.py
-      - specy_road/bundled_scripts/roadmap_crud_ops.py
-      - specy_road/bundled_scripts/planning_artifacts.py
-      - docs/roadmap-authoring.md
-      - tests/
-      - specy_road/bundled_scripts/roadmap_codename_cap.py
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-05T17:13:27+00:00'
   - codename: finish-merge-failure-reports-and-undoes-bookkeeping
     node_id: M15.40
     branch: feature/rm-finish-merge-failure-reports-and-undoes-bookkeeping
