@@ -119,6 +119,168 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "The managed block template (specy_road/templates/specyrd/agents-rules.md) gains a 'Recording human decisions' rule: when the human makes a decision, names an open item (options, recommendation, needed-by) or states a standing rule in chat, the agent records it at once with specy-road decisions add (kind decision, human-action or preference) instead of prose, and searches the ledger before asking; a test pins the rule text",
+        "The coordinator prompt's ledger section and specyrd-orchestrate.md each gain one line saying to run decisions add whenever the human decides something unprompted, not only when answering an open question; tests pin both lines",
+        "digest writes an 'Open human decisions' section to roadmap-context.md listing open decision and human-action entries from the tracked roadmap/decisions.yaml only (never decisions.local.yaml), in needed-by order, each with id, node, summary and needed-by; at most 10 entries then one '+N more: specy-road decisions list' line; no section when none are open; digest --check passes twice in a row on a fixture",
+        "review status <ID> ends with the open decision and human-action entries whose node is that leaf or one of its ancestors, with needed-by; it prints nothing extra when there are none and its exit codes are unchanged",
+        "decisions add --help marks each flag the schema requires for a kind (for --kind decision: --recommendation, --recommendation-reason, --default and the others the schema's kind conditional lists) as required for that kind, and an add missing them fails with one message naming every missing flag; tests cover the help text and the error",
+        "Estimated net line change (informational, not a gate): package about +70, templates and docs about +15"
+      ],
+      "codename": "decisions-discoverable",
+      "dependencies": [
+        "ca41116c-978b-4215-a69e-2f52400009fa",
+        "24c28b1f-7b6d-4f86-8a89-a6963d9eb65d",
+        "01db66ad-a91c-48e3-953e-4083f5f14a13",
+        "67af8a9a-a8ef-4724-9702-be691a497a55"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M19.14",
+      "node_key": "f7c19a16-7c01-4b3e-a0fb-71bed2355a7e",
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.14_decisions-discoverable_f7c19a16-7c01-4b3e-a0fb-71bed2355a7e.md",
+      "sibling_order": 13,
+      "status": "Not Started",
+      "title": "Human decisions get recorded and shown: agent rule, digest, review status and decisions add --help",
+      "touch_zones": [
+        "specy_road/templates/specyrd/agents-rules.md",
+        "specy_road/templates/specyrd/commands/specyrd-orchestrate.md",
+        "specy_road/orchestration/records/",
+        "specy_road/bundled_scripts/decisions_cli.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/digest.py",
+        "docs/orchestration.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "decisions.schema.json (bundled and sr/schemas copy) allows an optional top-level id_prefix (starts with a letter, same characters as id); new entries of every kind get <id_prefix><n>, or DEC-<n> when id_prefix is unset, where n is one past the highest trailing number on any id in the tracked and local ledgers; --id still overrides",
+        "Existing ids are never rewritten: on a fixture ledger with D1 to D4 and P1, decisions list leaves the file byte-identical, close and --supersedes accept the old ids, and decisions add writes DEC-5",
+        "decisions add prints one warning (the write still happens, exit 0) when the new id appears as a whole word in constitution/, constraints/, the root AGENTS.md or planning/*.md, naming up to 5 file:line hits and suggesting --id or id_prefix; no warning when it appears nowhere",
+        "docs/orchestration.md's ledger section and decisions add --help describe id_prefix and the DEC- default; tests cover the default, a configured prefix, the mixed old ledger, and the warning with and without a hit",
+        "Estimated net line change (informational, not a gate): package about +50"
+      ],
+      "codename": "decision-id-prefix",
+      "dependencies": [
+        "24c28b1f-7b6d-4f86-8a89-a6963d9eb65d",
+        "ca41116c-978b-4215-a69e-2f52400009fa"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M19.15",
+      "node_key": "ecffb9b3-294e-4eae-af06-0ad3967581e4",
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.15_decision-id-prefix_ecffb9b3-294e-4eae-af06-0ad3967581e4.md",
+      "sibling_order": 14,
+      "status": "Not Started",
+      "title": "Decision ids take a project prefix (default DEC-) and warn when a new id already appears in governance files",
+      "touch_zones": [
+        "specy_road/orchestration/records/",
+        "specy_road/decisions_local.py",
+        "specy_road/bundled_scripts/decisions_cli.py",
+        "specy_road/templates/project/schemas/decisions.schema.json",
+        "sr/schemas/decisions.schema.json",
+        "docs/orchestration.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When a leaf's planning sheet has a '## Acceptance criteria' section, validate prints one notice if its items differ from the node's acceptance after normalising (list markers, checkboxes, backticks, case, whitespace and trailing punctuation removed), listing the lines only in the node and the lines only in the sheet; no notice when they match or the section is absent; validate's exit code is unchanged",
+        "For each type: gate node, validate prints one notice per own dependency whose display id or codename appears as a whole word in neither the gate's acceptance nor its sheet, naming the gate, the dependency and the sheet's '## Criteria to clear' section",
+        "add-dependency on a gate node prints one reminder line after a successful write naming the gate, the new dependency and the two places to name it; a non-gate target prints no line; roadmap_crud_dependency_ops.py gains only a call line",
+        "No edit-node --sync-sheet is added (the sheet records why); docs/roadmap-authoring.md documents both notices; tests cover a matching sheet, a drifted sheet with a line moved from node to sheet, a sheet without the section, gate dependencies named in acceptance, in the sheet and in neither, and add-dependency on a gate and a non-gate",
+        "Estimated net line change (informational, not a gate): package about +90"
+      ],
+      "codename": "sheet-acceptance-drift",
+      "dependencies": [
+        "631269e6-5224-413a-8fe5-37f46b27a16b"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M19.16",
+      "node_key": "18f70c81-b662-4c53-a442-40f2e95f2c8a",
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.16_sheet-acceptance-drift_18f70c81-b662-4c53-a442-40f2e95f2c8a.md",
+      "sibling_order": 15,
+      "status": "Not Started",
+      "title": "validate notices sheet acceptance that drifted from the node, and gate dependencies the gate never names",
+      "touch_zones": [
+        "specy_road/bundled_scripts/validate_sheet_drift.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/bundled_scripts/roadmap_crud_dependency_ops.py",
+        "docs/roadmap-authoring.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "validate_self_heal's deprecated list becomes a table pairing each stripped field with a one-line replacement (agentic_checklist and agentic_checklist.contract_citation: cite contracts in the planning sheet's ## References; execution_subtask: the Execution type tagging table in docs/roadmap-authoring.md); which fields are stripped is unchanged",
+        "validate prints one notice per hit when a file under constitution/ or constraints/, or the root AGENTS.md outside its managed specy-road block, names a field from that table as a whole word (dotted form included): '<file>:<line> names <field>, which validate strips from roadmap chunks; use <replacement>'; no file is edited and the exit code is unchanged",
+        "Tests: a principles.md requiring agentic_checklist.contract_citation gives one notice with the replacement; a constraints file naming execution_subtask gives one; the field inside the managed block, clean files and the dogfood fixture give none; docs/roadmap-authoring.md says validate reports such governance text",
+        "Estimated net line change (informational, not a gate): package about +45"
+      ],
+      "codename": "governance-deprecated-fields",
+      "dependencies": [
+        "631269e6-5224-413a-8fe5-37f46b27a16b"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M19.17",
+      "node_key": "b9ab3530-504b-4d7c-a9da-77b84c842d79",
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.17_governance-deprecated-fields_b9ab3530-504b-4d7c-a9da-77b84c842d79.md",
+      "sibling_order": 16,
+      "status": "Not Started",
+      "title": "validate notices governance files that require a field validate strips, and names the replacement",
+      "touch_zones": [
+        "specy_road/bundled_scripts/validate_self_heal.py",
+        "specy_road/bundled_scripts/validate_governance_fields.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "docs/roadmap-authoring.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "decisions.schema.json (bundled and sr/schemas copy) adds kind scope, which requires node (the last ratified phase or milestone) and forbids the decision-only and preference-only fields; decisions add --kind scope <NODE> --summary records it, --supersedes closes the earlier scope entry in the same write, and the newest open scope entry is the boundary",
+        "validate prints one notice listing the nodes beyond the boundary (the later siblings, in outline order, of the boundary node and of each of its ancestors, without their descendants), naming the scope entry id and saying to record a new scope entry to extend it; none without a scope entry or when nothing lies beyond; a boundary naming a missing node is a warning; validate's exit code is unchanged",
+        "digest adds one line to M19.14's open-decisions section: 'Scope ratified through <node> (<entry id>); beyond it: <ids>'; no line without a scope entry; digest --check passes twice in a row on a fixture",
+        "The 'Recording human decisions' rule gains one sentence on recording a scope ratification with --kind scope, and docs/orchestration.md documents the kind; tests cover schema accept and reject, a boundary at a phase and at a milestone, no entry, a superseded boundary and a missing node",
+        "Estimated net line change (informational, not a gate): package about +90"
+      ],
+      "codename": "scope-boundary",
+      "dependencies": [
+        "f7c19a16-7c01-4b3e-a0fb-71bed2355a7e",
+        "24c28b1f-7b6d-4f86-8a89-a6963d9eb65d",
+        "ca41116c-978b-4215-a69e-2f52400009fa",
+        "631269e6-5224-413a-8fe5-37f46b27a16b"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M19.18",
+      "node_key": "a964c8cc-6a70-4c32-8d78-19fdcb479544",
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.18_scope-boundary_a964c8cc-6a70-4c32-8d78-19fdcb479544.md",
+      "sibling_order": 17,
+      "status": "Not Started",
+      "title": "A ratified scope boundary in the decisions ledger, with validate and digest notices for phases beyond it",
+      "touch_zones": [
+        "specy_road/templates/project/schemas/decisions.schema.json",
+        "sr/schemas/decisions.schema.json",
+        "specy_road/orchestration/records/",
+        "specy_road/bundled_scripts/decisions_cli.py",
+        "specy_road/scope_boundary.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/digest.py",
+        "specy_road/templates/specyrd/agents-rules.md",
+        "docs/orchestration.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }

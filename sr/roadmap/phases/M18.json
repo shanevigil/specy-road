@@ -190,6 +190,40 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "orchestrate plan applies each active preference with a role and no applies_to: a preferred model that passes check_assignment for the leaf is picked first for that role, the text plan prints 'applied <pref id>: <model> as <role> on <leaf>', and --json lists it under preferences_applied; any other active preference stays under preferences_not_applied with one reason (applies_to set, not rostered, unavailable, or ineligible with the first refusal)",
+        "A preference never makes an ineligible model eligible, never breaks independence, distinct families or strong review, and never changes the reviewer count; with no active preference the plan output is unchanged (parity row)",
+        "review delegate's --model becomes optional: without it, review delegate launches the first reviewer orchestrate plan picks for the leaf that has not filed a review at the commit under review and prints which preference, if any, chose it; with --model it behaves as today and prints one notice when an applicable reviewer preference names a different model",
+        "The coordinator ledger lines and specyrd-orchestrate.md say which preferences the plan applies and that the coordinator applies the rest, instead of saying the plan never applies them; tests with a stub harness cover applied, each not-applied reason, no preference, and review delegate with and without --model",
+        "Estimated net line change (informational, not a gate): package about +90"
+      ],
+      "codename": "plan-applies-preferences",
+      "dependencies": [
+        "67af8a9a-a8ef-4724-9702-be691a497a55",
+        "e8394512-cb8d-4a53-9206-936dbe2a67d2",
+        "24c28b1f-7b6d-4f86-8a89-a6963d9eb65d"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M18.19",
+      "node_key": "1fea55d6-5e9c-481f-8fd9-a6ee6cc4f995",
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.19_plan-applies-preferences_1fea55d6-5e9c-481f-8fd9-a6ee6cc4f995.md",
+      "sibling_order": 18,
+      "status": "Not Started",
+      "title": "orchestrate plan and review delegate apply reviewer preferences from the decisions ledger and say when they do",
+      "touch_zones": [
+        "specy_road/orchestration/",
+        "specy_road/orchestration/records/",
+        "specy_road/review_delegate.py",
+        "specy_road/bundled_scripts/orchestrate_cli.py",
+        "specy_road/templates/specyrd/commands/specyrd-orchestrate.md",
+        "docs/orchestration.md",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
