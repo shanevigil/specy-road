@@ -8,16 +8,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 
 | ID | Title | Type | Gate | Status |
 |----|-------|------|------|--------|
-| `M14` | Nested repos and review-gate integrity | phase | — | Not Started |
-| `M14.1` | Approvals never carry across unreviewed changes in a sibling repository | task | Agentic-led | Not Started |
-| `M14.2` | doctor never offers to remove a live leaf's worktree or branch | task | Agentic-led | Complete |
-| `M14.3` | worktree prune refuses to delete another repository's worktree or checkout | task | Agentic-led | Complete |
-| `M14.4` | nested_repos that a project can adopt without pushing: local landing, local base, sibling diffs and checks | milestone | — | In Progress |
-| `M14.4.1` | Per nested repository, land by push, locally or by hand, and base worktrees on the remote or local tip | task | Agentic-led | Complete |
-| `M14.6` | Reviewer usage is visible: review usage, reviewers in the node total, RUN logs kept per round | task | Agentic-led | Complete |
-| `M14.7` | session end finds this agent's session by worktree and branch when the derived id has no record | task | Agentic-led | Complete |
-| `M14.10` | Escalation recognises a converging loop and handoff status shows the findings trend | task | Agentic-led | Complete |
-| `M14.11` | The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes | task | Agentic-led | Complete |
 | `M15` | rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction | phase | — | Not Started |
 | `M15.1` | RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command | task | Agentic-led | Complete |
 | `M15.2` | A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch | task | Agentic-led | Complete |
@@ -120,6 +110,12 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.67` | move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit | task | Agentic-led | Complete |
 | `M16.68` | finish resolves roadmap chunk conflicts the branch only inherited | task | Agentic-led | Not Started |
 | `M16.69` | Cursor workers launch sandboxed without --force unless the roster opts in | task | Agentic-led | Not Started |
+| `M16.70` | move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree | task | Agentic-led | Not Started |
+| `M16.71` | CLI indent, outdent and group-nodes re-level siblings in one transaction validated once | task | Agentic-led | Not Started |
+| `M16.72` | Opt-in rewrite of prose id references after a move, and a standalone rename-refs | task | Agentic-led | Not Started |
+| `M16.73` | remove-node deletes an empty never-started node and names every blocker otherwise | task | Agentic-led | Not Started |
+| `M16.74` | apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once | task | Agentic-led | Not Started |
+| `M16.75` | validate and add-dependency catch cycles made through inherited group dependencies | task | Agentic-led | Not Started |
 | `M17` | 0.3.2: PM GUI shows orchestration and worktree state | phase | Human-led | Not Started |
 | `M17.1` | 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface | gate | Human-led | Not Started |
 | `M18` | Orchestration and review-loop features (after 0.3.1) | phase | — | Not Started |
@@ -140,6 +136,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M18.15` | --rework carries blocks at the branch tip as required changes, lists older blocks as possibly resolved, and takes a coordinator note placed above the reviews | task | Agentic-led | Not Started |
 | `M18.16` | A review that stops before filing leaves a trace: every reviewer channel opens a RUN record, and review list shows started but not filed | task | Agentic-led | Not Started |
 | `M18.17` | Under delta review, one approval per round still checks the whole leaf against the merge base on a fixed checklist | task | Agentic-led | Not Started |
+| `M18.18` | Plan review after planning, and a staleness check before pickup | task | Agentic-led | Not Started |
 | `M19` | Adopter-project features: upgrade, agent-file layering, planning hygiene, project tooling (after 0.3.1) | phase | — | Not Started |
 | `M19.1` | Configurable code-analysis tools | task | — | Not Started |
 | `M19.2` | Research reminders leave validate | task | — | Not Started |
@@ -154,5 +151,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M19.11` | Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored | task | Agentic-led | Not Started |
 | `M19.12` | List shipped nodes with no result after N days | milestone | Agentic-led | Not Started |
 | `M19.13` | Store a pointer and a human verdict for outcomes, never the metric itself | milestone | Agentic-led | Not Started |
+| `M20` | Agent safety and governance posture (after 0.3.1) | phase | — | Not Started |
+| `M20.1` | Posture advisor: plan the M20 leaves from the research | task | Human-led | Not Started |
+| `M20.2` | Probe each reviewer harness for instruction-file leakage into fresh sessions | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

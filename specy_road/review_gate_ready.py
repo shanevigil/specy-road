@@ -20,6 +20,7 @@ from specy_road.orchestration_config import effective_config, roster_entry
 from specy_road.review_files import (
     HUMAN, READY_PREFIX, load_ready, render_front_matter, review_path, reviews_dir, write_review,
 )
+from specy_road.sibling_repos import sibling_heads_field
 from specy_road.toolkit_version import stamp_review_toolkit_version
 from specy_road.ready_run_checks import prepare_live_runs, run_argv, run_check
 from specy_road.review_policy_ref import policy_source
@@ -225,7 +226,7 @@ def cmd_ready(ns: argparse.Namespace) -> int:
     if changed is None:
         return _refuse(f"git cannot list the paths changed in {t.base[:12]}...{t.commit[:12]}")
     data = {"node_id": ns.node_id, "agent": ns.model, "branch": branch, "commit": t.commit, "base": t.base,
-            "changed_paths": changed, "verify": verify}
+            "changed_paths": changed, "verify": verify, **sibling_heads_field(root)}
     body = ready_body(red_green, ns.note)
     if errs := _ready_errors(render_front_matter(data, body), ns.node_id, t):
         return _refuse("; ".join(errs))

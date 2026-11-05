@@ -153,6 +153,42 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "An opt-in `policy.plan_review` (off by default; advisory or required) validates against orchestration.schema.json; with it off, pickup and `review delegate` behave as before; with required, a leaf with no plan review at its current acceptance, zones and dependencies, or with unanswered findings, is not pickable",
+        "Stage (a): a plan mode of `review delegate` takes the new or changed leaf ids and launches rostered reviewers (distinct families, fresh bare sessions, the same launch and filing as code review) on only those leaves' brief, sheet, acceptance, zones and dependencies; each reviewer files a plan-review record with fixed rows (per acceptance line a paraphrase and checkable yes/no; contradictions between lines; files the acceptance names that the zones miss; open-ended detection rules; scope bounded; dependencies right) and a fingerprint of the acceptance, zones and dependencies it read; the planner answers each finding in the record (amended, or not a defect because <reason>)",
+        "Stage (b): pickup runs a deterministic staleness check and warns, never refuses: acceptance, zones or dependencies differ from the plan review's fingerprint; a dependency that landed since the review changed files inside the leaf's zones; a zone matches no tracked file; plan-review findings are unanswered",
+        "Tests with a stub reviewer: a vague fixture leaf (an uncheckable line, two contradicting lines, a named file outside zones, an unbounded detection rule) gets each of those rows flagged and a clear one gets none; each stage (b) condition warns and pickup proceeds; required blocks pickup until answered; off is a no-op; docs/orchestration-review.md documents both stages"
+      ],
+      "codename": "plan-review-and-pickup-staleness",
+      "dependencies": [
+        "5fa51e45-9e09-4119-826d-43c6d304f243",
+        "67af8a9a-a8ef-4724-9702-be691a497a55"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M18.18",
+      "node_key": "b6c7464a-7e83-4834-a862-9c8a6ecc9af4",
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.18_plan-review-and-pickup-staleness_b6c7464a-7e83-4834-a862-9c8a6ecc9af4.md",
+      "sibling_order": 17,
+      "status": "Not Started",
+      "title": "Plan review after planning, and a staleness check before pickup",
+      "touch_zones": [
+        "specy_road/review_delegate.py",
+        "specy_road/review_delegate_packet.py",
+        "specy_road/review_answer.py",
+        "specy_road/plan_review.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/bundled_scripts/do_next_task_leaf_guards.py",
+        "specy_road/orchestration/roster/",
+        "specy_road/orchestration_config.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "specy_road/schemas/",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
