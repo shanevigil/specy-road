@@ -40,8 +40,9 @@ PROBE_RULES_LINES = [
     "horizontal rule, or a bare acceptance result such as `A1: pass`; so write each observation with its reason "
     "on the same line, and quote text or test output in backticks, a `>` line or fenced code. One explanation "
     "covers one observation, the sentence or clause it ends or the one just before it, and that text may not join a "
-    "second observation with a comma or a conjunction: give each observation its own, and keep each reason to one "
-    "clause that names no defect itself.",
+    "second observation with a conjunction such as `but` or `while`; a comma or `and` joins a second observation "
+    "only when the part after it names a defect, so a list is one observation. Give each observation its own "
+    "explanation, and keep each reason to one clause that names no defect itself.",
     "",
 ]
 # Executors once deleted unrelated docstrings and messages to stay under a line cap; reviewers caught it a round late.
@@ -167,15 +168,21 @@ def _parts(text: str) -> list[tuple[str, str]]:
 
 
 def _second_observation(text: str) -> str | None:
-    """Why ``text``, which one explanation covers, holds more than one observation, or ``None``. A part counts when
-    it names a defect, or has three words or more and does not carry on the part before it. The answer names the
-    word that joins the second observation to the first and quotes both parts."""
+    """Why ``text``, which one explanation covers, holds more than one observation, or ``None``. A part joined by a
+    comma or "and" counts only when it names a defect (a list is one observation); any other part counts when it
+    names a defect, or has three words or more and does not carry on the part before it. The first part counts
+    from two words when a comma or "and" part names a defect ("X fails and Y crashes"). The answer names the word
+    that joins the second observation to the first and quotes both parts."""
+    parts = [(joiner, part, _named_defect(part)) for joiner, part in _parts(text)]
+    listed = any(word and joiner.lower() in (",", "and") for joiner, _part, word in parts)
     found = []   # (why, joining word, part)
-    for i, (joiner, part) in enumerate(_parts(text)):
-        word = _named_defect(part)
+    for i, (joiner, part, word) in enumerate(parts):
         if word:
             found.append((f'says "{word}"', joiner, part))
-        elif len(_WORD.findall(part)) >= 3 and (i == 0 or not _CONTINUES.match(part)):
+        elif i == 0 and len(_WORD.findall(part)) >= (2 if listed else 3):
+            found.append(("is an observation", joiner, part))
+        elif (i and joiner.lower() not in (",", "and") and len(_WORD.findall(part)) >= 3
+              and not _CONTINUES.match(part)):
             found.append(("is an observation", joiner, part))
     if len(found) < 2:
         return None

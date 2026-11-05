@@ -143,13 +143,13 @@ ONE_AI = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinat
 
 def test_refusal_quotes_a_two_clause_line_and_the_rule(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
-    line = "The cache is cold and the lock is held, not a defect because both are expected."
+    line = "The cache is cold and the lock leaks, not a defect because both are expected."
     assert _record(repo, f"## Acceptance\n\n- **A1:** pass\n\n{line}\n") == 1
     err = capsys.readouterr().err
     assert "verdict: approve refused: each line below has no required_changes entry and no 'not a defect because'" \
            " line" in err
-    assert (f'notes line 5 is an observation, two observations joined by "and": "The cache is cold" and '
-            f'"the lock is held": {line}') in err
+    assert (f'notes line 5 says "leaks", two observations joined by "and": "The cache is cold" and '
+            f'"the lock leaks": {line}') in err
     assert not review_path(repo, "M1.1", "opus").exists()
 
 
@@ -185,9 +185,9 @@ def test_a_conjunction_inside_quotes_is_not_a_split_point(line: str) -> None:
 
 
 def test_the_reported_shape_is_refused_with_the_word_and_both_parts() -> None:
-    line = "The packet compares base and HEAD of the leaf branch, not a defect because that is the brief's range."
-    assert clause_problem(line) == ('is an observation, two observations joined by "and": "The packet compares '
-                                    'base" and "HEAD of the leaf branch"')
+    line = "The packet compares base and HEAD of the leaf branch crashes, not a defect because that is the brief's range."
+    assert clause_problem(line) == ('says "crashes", two observations joined by "and": "The packet compares '
+                                    'base" and "HEAD of the leaf branch crashes"')
 
 
 # A5 — a failed run superseded by a record filed later at the same commit
@@ -254,16 +254,18 @@ _REAL = [
                          "dropped."]}, "",
      'findings.test_integrity[0] says "was dropped" in its reason: The packet\'s test-integrity section lists no '
      'removals not a defect because no test was dropped.'),
-    # M12.5 grok-4.7-low, notes line 3: joined by "and"
+    # M12.5 grok-4.7-low, notes line 3: joined by "and", which names no defect, so one observation (M15.37)
     ({}, "## Acceptance\nA1: pass.\nA2: pass. Refusals print one reason line and leave the worktree in place not a "
          "defect because `test_cleanup_refuses_and_removes_nothing` covers unmerged files.\n",
-     'notes line 3 is an observation, two observations joined by "and": "Refusals print one reason line" and '
-     '"leave the worktree in place": A2: pass. Refusals print one reason line and leave the worktree in place'),
+     None),
 ]
 
 
 @pytest.mark.parametrize("findings, notes, want", _REAL)
-def test_a_real_refusal_names_its_trigger_and_quotes_the_line(findings: dict, notes: str, want: str) -> None:
+def test_a_real_refusal_names_its_trigger_and_quotes_the_line(findings: dict, notes: str, want: str | None) -> None:
     why = approve_defect_problem({"verdict": "approve", "findings": findings}, notes)
+    if want is None:   # a line the M15.37 rule accepts
+        assert why is None
+        return
     assert why is not None and why.startswith("verdict: approve refused: each line below has no required_changes")
     assert f"\n  {want}" in why
