@@ -9,7 +9,7 @@ from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_code, git_text
 from specy_road.review_files import REVIEWS_REL, ReviewFile
 from specy_road.runtime_paths import project_prefix, rebase_to_project
-from specy_road.review_target import same_commit
+from specy_road.review_target import full_sha
 from specy_road.sibling_repos import Sibling, sibling_repos
 
 CARRY_NOTE = "; approvals still count (only planning or review bookkeeping changed since the reviewed commit)"
@@ -66,10 +66,27 @@ def heads_problem(recorded: dict[str, str] | None, siblings: list[Sibling]) -> s
     return f"sibling repositories have uncommitted changes ({', '.join(dirty)})" if dirty else None
 
 
+def review_commit(result: Any, repo_root: Path, review: ReviewFile) -> str | None:
+    """The full sha of ``review``'s recorded commit (``None``: not a commit here), resolved once per gate
+    evaluation and kept on ``result``; every comparison and display of a record's commit goes through it."""
+    cache = getattr(result, "review_commits", None)
+    if cache is None:
+        cache = result.review_commits = {}
+    if review.path not in cache:
+        cache[review.path] = full_sha(repo_root, str(review.data["commit"]))
+    return cache[review.path]
+
+
+def _shown(result: Any, review: ReviewFile) -> str:
+    """``review``'s commit as the policy line shows it: twelve characters of the resolved sha, else the record's."""
+    sha = (getattr(result, "review_commits", None) or {}).get(review.path)
+    return sha[:12] if sha else f"{review.data['commit']} (not a commit in this repository)"
+
+
 def _refuse(result: Any, review: ReviewFile, why: str) -> bool:
     d = review.data
     result.carry_refused = [*(getattr(result, "carry_refused", None) or []),
-                            f"{d['model']}'s {d['verdict']} at {str(d['commit'])[:12]} is stale: {why}"]
+                            f"{d['model']}'s {d['verdict']} at {_shown(result, review)} is stale: {why}"]
     result.stale.append(review)
     return False
 
@@ -83,12 +100,14 @@ def count_at_later_commit(result: Any, repo_root: Path, node: dict[str, Any], re
     bookkeeping carry never applies. Each refusal's reason is listed in ``result.carry_refused`` for
     :func:`policy_line`.
     """
-    siblings = _siblings(result, repo_root)
+    siblings, sha = _siblings(result, repo_root), review_commit(result, repo_root, review)
+    if sha is None:
+        return _refuse(result, review, "re-review the commit under review")
     if why := heads_problem(review.data.get("sibling_heads"), siblings):
         return _refuse(result, review, why)
-    if same_commit(repo_root, review.data["commit"], result.commit):
+    if sha == result.commit:
         return True
-    if only_planning_or_review_bookkeeping_since(repo_root, node, review.data["commit"], result.commit):
+    if only_planning_or_review_bookkeeping_since(repo_root, node, sha, result.commit):
         if not siblings:
             result.bookkeeping_carry = True
             return True
@@ -104,8 +123,9 @@ def policy_line(gate: Any) -> str:
     line = gate.summary()
     if gate.approvals:
         head, sep, rest = line.partition(",")
-        listed = ", ".join(f"{a.model}@{str(a.review.data['commit'])[:12]}" + (
-            "" if (gate.commit or "").startswith(str(a.review.data["commit"])) else " carried from an older commit")
+        commits = getattr(gate, "review_commits", None) or {}
+        listed = ", ".join(f"{a.model}@{_shown(gate, a.review)}" + (
+            "" if commits.get(a.review.path) == gate.commit else " carried from an older commit")
             for a in gate.approvals)
         line = f"{head} ({listed}){sep}{rest}"
     return "; ".join([line, *(getattr(gate, "carry_refused", None) or [])])

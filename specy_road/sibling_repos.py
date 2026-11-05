@@ -29,10 +29,20 @@ class Sibling:
     dirty: bool
 
 
+def literal_pathspec(path: str) -> str:
+    """``path`` as a git pathspec that matches only itself: ``*``, ``?``, ``[`` and ``]`` are not globs."""
+    return f":(literal){path}"
+
+
 def _untracked_by_root(project_root: Path, rel: str) -> bool:
-    if not git_text(["ls-files", "--", rel], project_root):
+    """The root repository tracks nothing at ``rel``, or ignores it.
+
+    ``check-ignore`` takes paths, not pathspecs (it refuses ``:(literal)``), so ``rel`` goes to it as is;
+    ``--no-index`` lets it answer for a path the index also tracks.
+    """
+    if not git_text(["ls-files", "--", literal_pathspec(rel)], project_root):
         return True
-    return git_code(["check-ignore", "-q", "--", rel], project_root)[0] == 0
+    return git_code(["check-ignore", "-q", "--no-index", "--", rel], project_root)[0] == 0
 
 
 def sibling_repos(project_root: Path) -> list[Sibling]:

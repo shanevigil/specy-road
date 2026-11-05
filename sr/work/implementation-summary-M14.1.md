@@ -20,7 +20,7 @@ Implementation commits: `2c9aa33f`, plus a test-helper follow-up.
 
 ## Verification
 
-- `pytest tests/test_sibling_repo_approvals.py tests/test_sheet_edits_keep_approvals.py`: 28 passed (fix round 2); with the gate, review CLI, ready and delta-review tests, 87 passed.
+- `pytest tests/test_sibling_repo_approvals.py tests/test_sheet_edits_keep_approvals.py`: 28 passed (fix round 3); with the gate, review CLI, ready, delta, resumed-delta and milestone-review tests, 122 passed.
 - `pytest -n 4`: 4453 passed.
 - `specy-road validate|export --check|digest --check --repo-root tests/fixtures/specy_road_dogfood`, `specy-road file-limits`, and `ruff check` on the changed files: all OK.
 
@@ -37,7 +37,23 @@ Implementation commits: `2c9aa33f`, plus a test-helper follow-up.
 - Fix (design, no new branch): `heads_problem(recorded, current)` now runs first, before the same-commit, carry and stale paths. An approval counts or carries only while the current sibling map (which siblings, each HEAD, all clean) equals the recorded one exactly. Records without `sibling_heads` are not checked (the legacy rule): they count at the same root commit, and they carry only when no sibling exists (A2 unchanged).
 - Red-green: with the pre-fix `review_bookkeeping.py`, `[removed-summary-only]` passed the gate (the hole). `[added|moved|renamed-summary-only]` were already stale under A2 and failed only on the reason text.
 
+## Fix round 3 (gpt-6.1-sol-low block on 20168981, F1 and F2)
+
+- Merged `origin/WIP/improvements-0-3-1` first. It merged cleanly and touched no zoned file.
+- F1 class: **a filesystem path passed to git as a pathspec** (glob characters match other paths). Fix: one helper, `sibling_repos.literal_pathspec()` (`:(literal)<path>`), used for `ls-files`. `check-ignore` takes paths, not pathspecs (it refuses `:(literal)`, checked by hand), so its argument was already literal. It now passes `--no-index`: without it, `check-ignore` never reports a tracked path, so A1's "ignores" case for a tracked-and-ignored repository could never fire.
+- F2 class: **a stored commit compared or shown without resolving it.** Fix: one resolver, `review_bookkeeping.review_commit()` (`full_sha`, i.e. `git rev-parse --verify <sha>^{commit}`), runs once per record per gate evaluation and is kept on the result. The same-commit test, the bookkeeping range, the carried marker and every displayed commit (`policy_line`, refusal reasons through `_shown()`) use it. A record whose commit does not resolve is refused and says so: "<model>'s <verdict> at <sha> (not a commit in this repository) is stale: re-review".
+- Red-green: all seven new tests fail with the round-2 `sibling_repos.py` and `review_bookkeeping.py` and pass with the fix.
+
 ## Probes
+
+- Pathspec uses in this leaf's diff: `sibling_repos._untracked_by_root` (`ls-files`, now literal; `check-ignore`, which takes plain paths). There are none in `review_bookkeeping.py`, whose `diff_paths` and `rev-list` take commit ranges, now resolved, or in the READY, review-record and validate changes, which only call `sibling_heads_field()` and `warn_unconfigured_sibling_repos()`. Result: one place, fixed.
+- Sibling names with `[ ]`, `*` and `?` beside a tracked path they would glob-match (`app[1]`/`app1`, `app*`/`appx/kept.txt`, `app?`/`appz`, `[ab]`/`a`): each is detected, recorded in `sibling_heads`, named once by validate, and refuses the carry after sibling-only rework. All four rows failed before the fix.
+- A directory the root tracked, then made its own repository and ignored: listed as a sibling (it failed before `--no-index`).
+- Stored-commit uses in this leaf: the same-commit test, the `only_planning_or_review_bookkeeping_since` range, the carried marker, the `policy_line` display and the refusal reasons all go through `review_commit()`.
+- A 7-character legacy record counts and shows 12 characters in `policy_line` and `handoff status`.
+- A record whose commit does not resolve (`deadbee`): stale, and the policy line says it is not a commit in this repository.
+- Recorded `sibling_heads` values are written as full shas from `rev-parse HEAD` and compared as strings. A hand-abbreviated value would not match, so the approval is refused (fails closed). Accepted.
+- `delta_from` and `prior_approvals` (in `review_gate.py`, outside the zones) already resolve with `full_sha`. Not changed.
 
 - Every path in `count_at_later_commit` (same commit, bookkeeping carry, plain stale): the map check now runs before all three. Covered by the 5×2 parametrized test (unchanged, added, removed, head moved, renamed × same root commit, summary-only root commit); only unchanged at the same commit counts.
 - A sibling removed so that none remain, plus a summary-only root commit (the reported hole): stale.
@@ -64,9 +80,13 @@ Implementation commits: `2c9aa33f`, plus a test-helper follow-up.
 - `review_bookkeeping._siblings()`: finds siblings once per gate evaluation (cheap gate).
 - `review_bookkeeping.heads_problem()`: says why recorded sibling HEADs no longer hold (A3).
 - `review_bookkeeping._refuse()`: marks a review stale and records the reason for the policy line (A2/A3).
+- `sibling_repos.literal_pathspec()`: the single way this leaf hands a filesystem path to git as a pathspec (F1, round 3).
+- `review_bookkeeping.review_commit()`: the single resolver for a record's stored commit, cached per gate evaluation (F2, round 3).
+- `review_bookkeeping._shown()`: twelve characters of the resolved sha, or the record's value marked as not a commit (F2, round 3).
 - `review_bookkeeping.policy_line()`: the `policy:` line with model@commit and the carried markers (A5).
 
 ### Branches and guards
+- `count_at_later_commit`: a record whose commit does not resolve is refused with a reason (F2, round 3).
 - `count_at_later_commit`: on every path (same commit or later), a stale verdict when the recorded sibling map differs from the current one or a sibling is dirty (A3, fix round 2).
 - `count_at_later_commit`: a bookkeeping-only range with siblings present is refused instead of carried (A2).
 - `sibling_repos` skips `.git`, `work`, `node_modules`, symlinks and configured nested repos, does not descend into a found repository, and returns none outside a git checkout (A1).
@@ -86,6 +106,11 @@ Implementation commits: `2c9aa33f`, plus a test-helper follow-up.
 - `test_recorded_sibling_heads_must_still_hold_at_the_same_root_commit`: `review record` writes `sibling_heads`; a dirty or moved sibling makes the approval stale (A3).
 - `test_a_record_without_sibling_heads_counts_only_at_the_same_root_commit`: covers A3's legacy-record rule.
 - `test_an_approval_counts_only_while_the_recorded_sibling_map_holds[change×root]`: unchanged, added, removed, moved or renamed × same or summary-only root commit (F1).
+- `test_a_sibling_named_with_glob_characters_beside_a_tracked_match[4 rows]`: covers detection, `sibling_heads`, the validate warning and the carry refusal for glob-character names (F1, round 3).
+- `test_a_tracked_and_ignored_directory_repository_is_a_sibling`: A1's "ignores" case (F1 audit, round 3).
+- `test_a_seven_character_legacy_commit_shows_twelve_characters`: F2 (round 3).
+- `test_a_record_whose_commit_does_not_resolve_says_so`: F2's "if it can't be resolved, say so" (round 3).
+- `_glob_escaped()` (test helper): writes a `.gitignore` pattern that matches only the sibling's own name.
 - `test_a_record_without_sibling_heads_carries_when_no_sibling_remains`: the legacy rule holds after the F1 reordering.
 - `_change_siblings()` (test helper): applies one sibling-map change for the parametrized test.
 - `test_ready_writes_sibling_heads`: READY carries `sibling_heads` (A3).

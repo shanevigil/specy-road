@@ -18,6 +18,11 @@ from specy_road.review_gate import evaluate_gate
 from specy_road.sibling_repos import sibling_repos
 
 
+def _glob_escaped(rel: str) -> str:
+    """``rel`` as a ``.gitignore`` pattern that matches only itself."""
+    return "".join(f"\\{c}" if c in "[]*?" else c for c in rel)
+
+
 def _sibling(repo: Path, rel: str = "app", ignore: bool = True) -> Path:
     """A separate git repository at ``rel`` under ``repo``, with one commit; ignored by ``repo`` by default."""
     sib = repo / rel
@@ -28,7 +33,7 @@ def _sibling(repo: Path, rel: str = "app", ignore: bool = True) -> Path:
     commit_file(sib, "code.py", "x = 1\n", "sibling code")
     if ignore:
         with (repo / ".gitignore").open("a", encoding="utf-8") as f:
-            f.write(f"{rel}/\n")
+            f.write(f"{_glob_escaped(rel)}/\n")
         commit_file(repo, ".gitignore", (repo / ".gitignore").read_text(), "ignore sibling")
     return sib
 
@@ -218,3 +223,58 @@ def test_validate_warns_once_naming_the_siblings(tmp_path: Path, capsys, sibling
         assert "(app, libs/core)" in lines[0] and "docs/git-workflow.md" in lines[0] and "nested_repos" in lines[0]
     else:
         assert lines == []
+
+
+@pytest.mark.parametrize("name, tracked", [("app[1]", "app1"), ("app*", "appx/kept.txt"), ("app?", "appz"),
+                                           ("[ab]", "a")])
+def test_a_sibling_named_with_glob_characters_beside_a_tracked_match(tmp_path: Path, capsys, name: str,
+                                                                     tracked: str) -> None:
+    """A tracked path the sibling's name would match as a glob does not hide the sibling (F1, fix round 3)."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    commit_file(repo, tracked, "tracked\n", "a tracked path the name matches as a glob")
+    sib = _sibling(repo, name)
+    assert [(s.path, s.head) for s in sibling_repos(repo)] == [(name, git(sib, "rev-parse", "HEAD"))]
+    assert run_review_cli("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+                          "--file", str(notes_file(repo)), "--repo-root", str(repo)) == 0
+    assert load_review(review_path(repo, "M1.1", "opus")).data["sibling_heads"] == {name: git(sib, "rev-parse", "HEAD")}
+    capsys.readouterr()
+    validate_roadmap.validate_at(repo, auto_heal=False)
+    lines = [ln for ln in capsys.readouterr().err.splitlines() if "not configured in nested_repos" in ln]
+    assert len(lines) == 1 and f"({name})" in lines[0]
+    commit_file(sib, "code.py", "x = 'unreviewed'\n", "rework in sibling only")
+    commit_file(repo, "work/implementation-summary-M1.1.md", "# Summary\n", "summary only")
+    g = _gate(repo)
+    assert not g.passed and len(g.stale) == 1
+
+
+def test_a_tracked_and_ignored_directory_repository_is_a_sibling(tmp_path: Path) -> None:
+    """A1's 'ignores or does not track': a directory the root tracked, then made its own repository and ignored."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    commit_file(repo, "app/.keep", "", "tracked before it became a repository")
+    git(repo / "app", "init", "-q", "-b", "main")
+    commit_file(repo, ".gitignore", (repo / ".gitignore").read_text() + "app/\n", "ignore it")
+    assert git(repo, "ls-files", "app")                  # the root still tracks a path there
+    assert [s.path for s in sibling_repos(repo)] == ["app"]
+
+
+def test_a_seven_character_legacy_commit_shows_twelve_characters(tmp_path: Path, capsys) -> None:
+    """A counted record whose commit is abbreviated is resolved before the policy line shows it (F2, fix round 3)."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    full = git(repo, "rev-parse", "HEAD")
+    _approve(repo, "opus")
+    p = review_path(repo, "M1.1", "opus")
+    p.write_text(p.read_text().replace(full, full[:7]))
+    g = _gate(repo)
+    assert g.passed
+    assert policy_line(g).startswith(f"1/1 approvals (opus@{full[:12]}), 0 block(s): met")
+    assert handoff_status_node(repo, capsys)["policy"].startswith(f"1/1 approvals (opus@{full[:12]})")
+
+
+def test_a_record_whose_commit_does_not_resolve_says_so(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "REVIEW-opus.md").write_text(review_text("deadbee", model="opus"))
+    g = _gate(repo)
+    assert not g.passed and len(g.stale) == 1
+    assert "opus's approve at deadbee (not a commit in this repository) is stale: re-review" in policy_line(g)
