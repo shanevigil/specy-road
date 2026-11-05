@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -10,8 +11,9 @@ import pytest
 import yaml
 
 from tests.helpers import BUNDLED_SCRIPTS, script_subprocess_env
+from tests.milestone_repo_helpers import land_leaf, make_milestone_repo, merge_leaf, set_status
 from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
-from tests.test_models_and_prompt import make_profile_repo
+from tests.test_models_and_prompt import ROSTER, make_profile_repo
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.bundled_scripts import review_packet as rp
@@ -119,8 +121,8 @@ def test_packet_reads_the_plan_from_the_integration_branch(tmp_path: Path) -> No
     assert HEADING not in rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
 
 
-def _record(repo: Path, verdict: str, acceptance: dict[str, str]) -> int:
-    data = yaml.safe_load(review_text(git(repo, "rev-parse", "HEAD"), model="opus", verdict=verdict).split("---")[1])
+def _record(repo: Path, verdict: str, acceptance: dict[str, str], rev: str = "HEAD") -> int:
+    data = yaml.safe_load(review_text(git(repo, "rev-parse", rev), model="opus", verdict=verdict).split("---")[1])
     data["acceptance"].update(acceptance)
     p = repo.parent / "notes-opus.md"
     p.write_text("---\n" + yaml.safe_dump(data, sort_keys=False) + "---\nnotes\n")
@@ -182,12 +184,25 @@ def test_packet_with_an_explicit_base_still_reads_the_plan_from_the_integration_
     assert _record(repo, "approve", {}) == 0   # the record check agrees with the packet
 
 
+def test_plan_is_read_at_the_reviewed_commit_after_the_leaf_moves_its_chunk(tmp_path: Path) -> None:
+    """Reviewed from dev, whose checkout still has M1.1 in ``phases/M1.json``, after the leaf moved it (RC1, round 2)."""
+    repo = make_profile_repo(tmp_path)
+    _remove_old_test(repo)
+    rm = repo / "roadmap"
+    node = json.loads((rm / "phases" / "M1.json").read_text())["nodes"][0]
+    node["planned_test_changes"] = [OLD]
+    (rm / "phases" / "M1b.json").write_text(json.dumps({"nodes": [node]}), encoding="utf-8")
+    (rm / "phases" / "M1.json").write_text(json.dumps({"nodes": []}), encoding="utf-8")
+    (rm / "manifest.json").write_text(json.dumps({"version": 1, "includes": ["phases/M1.json", "phases/M1b.json"]}))
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "move M1.1 to M1b.json and authorize removing test_old")
+    git(repo, "checkout", "-q", "dev")
+    assert HEADING not in rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    assert _record(repo, "approve", {}, rev="feature/rm-thing") == 0
+
+
 def _milestone_with_a_removal(tmp_path: Path) -> Path:
     """Milestone ``M2``: leaf ``M2.1`` (alpha) deletes ``test_old`` from a test file dev had; both leaves landed."""
-    from tests.test_milestone_full_review import _land_leaf, _merge_leaf, _set_status, make_milestone_repo
-
-    from tests.test_models_and_prompt import ROSTER
-
     root = make_milestone_repo(tmp_path, orchestration=ROSTER, land=False)
     commit_file(root, "tests/test_ms.py", "def test_keep():\n    assert 1\n\n\ndef test_old():\n    assert 1\n",
                 "baseline tests")
@@ -195,10 +210,10 @@ def _milestone_with_a_removal(tmp_path: Path) -> Path:
     commit_file(root, "roadmap/registry.yaml", "version: 1\nentries: []\n# alpha\n",
                 "chore(rm-alpha): register as in-progress")
     commit_file(root, "tests/test_ms.py", "def test_keep():\n    assert 1\n", "drop test_old")
-    _set_status(root, "M2.1", "Complete")
+    set_status(root, "M2.1", "Complete")
     git(root, "commit", "-qam", "chore(rm-alpha): complete, deregister")
-    _merge_leaf(root, "M2.1")
-    _land_leaf(root, "M2.2")
+    merge_leaf(root, "M2.1")
+    land_leaf(root, "M2.2")
     return root
 
 

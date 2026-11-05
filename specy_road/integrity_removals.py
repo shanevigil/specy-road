@@ -25,7 +25,7 @@ from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at
 from specy_road.finish_implementation_check import base_ref
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.integrity import compare_integrity
-from specy_road.review_target import ReviewTarget, node_at
+from specy_road.review_target import ReviewTarget, leaf_descendants
 
 REQUIRED_HEADING = "Required check: unplanned test removal"
 REMOVAL_KINDS = ("removed-test", "removed-test-file", "new-skip", "assert-loss")
@@ -51,19 +51,21 @@ def integration_ref(root: Path) -> str | None:
     return base_ref(root, remote, ib)
 
 
-def _plan(nodes: list[dict] | None, ids: set[str]) -> set[str]:
-    return {s for n in nodes or [] if n.get("id") in ids for s in n.get("planned_test_changes") or [] if isinstance(s, str)}
+def _plan_at(root: Path, ref: str, node_id: str, milestone: bool) -> set[str]:
+    """``planned_test_changes`` of ``node_id`` (and, for a milestone, its leaves) in the roadmap committed at ``ref``."""
+    nodes = load_roadmap_nodes_at_ref(root, ref) or []
+    ids = {node_id, *(n["id"] for n in leaf_descendants(nodes, node_id))} if milestone else {node_id}
+    return {s for n in nodes if n.get("id") in ids for s in n.get("planned_test_changes") or [] if isinstance(s, str)}
 
 
 def planned_for_target(root: Path, t: ReviewTarget) -> set[str]:
     """``planned_test_changes`` on the integration branch and at the reviewed commit, together.
 
-    For a milestone, the node's and its leaves' lists.
+    For a milestone, the node's and its leaves' lists. Each side is the roadmap (manifest, chunks and graph)
+    as committed at that ref, never the checkout's: a leaf may move its node to another chunk.
     """
-    ids = {t.node_id, *(t.leaf_ids if t.milestone else [])}
-    at_commit = _plan([n for i in ids if (n := node_at(root, i, t.commit))], ids)
-    ref = integration_ref(root)
-    return at_commit | (_plan(load_roadmap_nodes_at_ref(root, ref), ids) if ref else set())
+    refs = [r for r in (t.commit, integration_ref(root)) if r]
+    return set().union(*(_plan_at(root, r, t.node_id, t.milestone) for r in refs))
 
 
 def missing_removal_entries(acceptance: dict, removals: list[str]) -> list[str]:
