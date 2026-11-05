@@ -270,3 +270,78 @@ def test_the_dogfood_fixture_digest_is_committed_and_current() -> None:
         f"{DEFAULT_OUTPUT} has drifted from the fixture roadmap. "
         "Run: specy-road digest --repo-root tests/fixtures/specy_road_dogfood"
     )
+
+
+# --- quality by area ---------------------------------------------------------
+
+
+def _gate_commit(repo: Path, codename: str, tally: str | None = None) -> None:
+    """A leaf's gate commit as mark-implementation-reviewed writes it: a registry-only change, a tally trailer."""
+    with (repo / "roadmap" / "registry.yaml").open("a", encoding="utf-8") as fh:
+        fh.write(f"# gate {codename}\n")
+    trailers = "Reviewed-by: human (human) approve abc1234" + (f"\nReview-tally: {tally}" if tally else "")
+    commit(repo, f"chore(rm-{codename}): mark implementation reviewed\n\n{trailers}")
+
+
+def _quality(text: str) -> list[str]:
+    lines = text.splitlines()
+    if "## Quality by area" not in lines:
+        return []
+    start = lines.index("## Quality by area")
+    return [ln for ln in lines[start:] if ln.startswith("| `")]
+
+
+def _history(repo: Path) -> None:
+    _gate_commit(repo, "api-contract-outline")   # landed before tallies existed: shared/, no tally
+    _gate_commit(repo, "contracts-bootstrap",
+                 "M0.1 rounds=3 blocks=2 integrity=1 rca=1 findings=correctness:2")
+    _gate_commit(repo, "roadmap-ci", "M0.2 rounds=1 blocks=0 integrity=0 rca=0 findings=none")
+
+
+def test_quality_section_lists_flagged_areas_first_with_their_numbers(repo: Path) -> None:
+    _history(repo)
+    rows = _quality(render_digest(repo))
+    assert rows == [
+        "| `shared` **flagged** | 2 | 1 | 3.00 | 100% | 1 | 1 |",
+        "| `roadmap` | 1 | 0 | 1.00 | 0% | 0 | 0 |",
+        "| `schemas` | 2 | 0 | 2.00 | 50% | 1 | 1 |",   # 50% is not above the default 0.5
+    ]
+    text = render_digest(repo)
+    assert headings(text)[-2:] == ["Quality by area", "Reaching the detail behind this"]
+
+
+def test_quality_policy_sets_window_and_threshold(repo: Path) -> None:
+    _history(repo)
+    orch = repo / "roadmap" / "orchestration.yaml"
+    orch.write_text(orch.read_text().replace(
+        "  reviewer_fresh_session: true\n",
+        "  reviewer_fresh_session: true\n  quality_window: 2\n  quality_threshold: 0.4\n"))
+    # The window is the newest two leaves (M0.2, M0.1); the untallied M0.3 falls out of it.
+    assert _quality(render_digest(repo)) == [
+        "| `schemas` **flagged** | 2 | 0 | 2.00 | 50% | 1 | 1 |",
+        "| `shared` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 1 |",
+        "| `roadmap` | 1 | 0 | 1.00 | 0% | 0 | 0 |",
+    ]
+
+
+def test_quality_section_is_byte_identical_across_runs_clocks_and_checkouts(
+    repo: Path, tmp_path: Path, monkeypatch
+) -> None:
+    _history(repo)
+    first = render_digest(repo)
+    # Local review records are gitignored and only exist where the loop ran; they must not matter.
+    history = repo / "work" / "reviews" / "M0.2" / "history"
+    history.mkdir(parents=True)
+    (history / "001.md").write_text("---\nverdict: block\n---\n", encoding="utf-8")
+    monkeypatch.setattr("time.time", lambda: 4_000_000_000.0)
+    assert render_digest(repo) == first
+    clone = tmp_path / "clone"
+    git(tmp_path, "clone", "-q", str(repo), str(clone))
+    clear_memo()
+    assert _quality(render_digest(clone)) == _quality(first) != []
+
+
+def test_no_tallied_history_prints_no_quality_section(repo: Path) -> None:
+    assert "Quality by area" not in render_digest(repo)
+    _gate_commit(repo, "api-contract-outline")   # only pre-tally gate commits: nothing to rate
+    assert "Quality by area" not in headings(render_digest(repo))

@@ -61,6 +61,7 @@ from specy_road.review_files import (HUMAN, PACKET_NAME, ReviewFile, executor_bl
 from specy_road.review_policy_ref import committed_yaml as _committed_yaml, policy_source
 from specy_road.review_resumed_delta import FRESH_SESSION, fresh_only_note, fresh_session_problem
 from specy_road.review_strong import human_closes_strong, strong_problem, touch_zones, unmet_strong
+from specy_road.review_tally import tally_trailers
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
 from specy_road.runtime_paths import project_prefix, rebase_to_project
 
@@ -117,7 +118,7 @@ class GateResult:
     ineligible: list[tuple[ReviewFile, str]] = field(default_factory=list)
     verifier_problems: list[str] = field(default_factory=list)
     config_error: str | None = None
-    bookkeeping_carry: bool = False; config: dict[str, Any] = field(default_factory=dict)
+    bookkeeping_carry: bool = False; config: dict[str, Any] = field(default_factory=dict); repo_root: Path | None = None
     strong_unmet: list[tuple[int, dict[str, Any]]] = field(default_factory=list)   # unmet policy.strong_review items
 
     @property
@@ -317,7 +318,7 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
         required=int(policy["reviewers_required"]),
         distinct_families=bool(policy["reviewers_distinct_families"]),
         config_error=err,
-        config=config,
+        config=config, repo_root=repo_root,
     )
     for review in list_reviews(repo_root, node["id"], acceptance_ids(node)):
         if review.ok and review.data.get("node_id") != node["id"]:
@@ -373,12 +374,10 @@ def human_approval_completes(repo_root: Path, gate: GateResult, node: dict[str, 
 
 
 def commit_trailers(gate: GateResult) -> list[str]:
-    """``Reviewed-by`` lines for the gate commit: the durable record of who approved."""
-    return [
-        f"Reviewed-by: {a.model} ({a.family}) approve {gate.commit}"
-        + (f" [substitute for {a.substitution['slot']}]" if a.substitution else "")
-        for a in gate.approvals
-    ]
+    """``Reviewed-by`` lines for the gate commit: the durable record of who approved; then its ``Review-tally``."""
+    return [f"Reviewed-by: {a.model} ({a.family}) approve {gate.commit}"
+            + (f" [substitute for {a.substitution['slot']}]" if a.substitution else "")
+            for a in gate.approvals] + tally_trailers(gate)
 
 
 def gate_holds_at_head_or_exit(repo_root: Path, node: dict[str, Any]) -> None:

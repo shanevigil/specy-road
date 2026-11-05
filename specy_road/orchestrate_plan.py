@@ -32,7 +32,9 @@ Rules, in the order they apply:
 * **Strong review.** Each ``policy.strong_review`` item the leaf's touch zones
   meet (:mod:`specy_road.review_strong`) is listed with the reviewers that can
   satisfy it, and its best-ranked one is picked first, whatever its family;
-  an item none of them can satisfy makes the leaf unstaffable.
+  an item none of them can satisfy makes the leaf unstaffable. With
+  ``policy.quality_routing`` on, each flagged area (:mod:`specy_road.review_tally`)
+  the leaf's zones fall in adds one more item over the strong set.
 
 The human's routing preferences (``kind: preference`` in ``roadmap/decisions.yaml``)
 are never applied here: the plan lists every active one under
@@ -58,6 +60,7 @@ from specy_road.model_profiles import Profile
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry, roster_source
 from specy_road.orchestration_config import active_substitutions
 from specy_road.review_strong import applicable_items, item_label
+from specy_road.review_tally import flagged_areas, quality_review
 from specy_road.runtime_paths import project_prefix
 
 DEFAULT_SENSITIVITY = "public"
@@ -329,11 +332,16 @@ def _pick_coordinator(cands: list[Candidate], a: Assignment, today: date | None)
 
 
 def assign_leaf(node: dict[str, Any], cands: list[Candidate], config: dict[str, Any],
-                today: date | None = None, drift: str | None = None, prefix: str = "") -> Assignment:
-    """``prefix``: :func:`project_prefix`, so a strong-review zone written from either root meets the leaf's."""
+                today: date | None = None, drift: str | None = None, prefix: str = "",
+                flagged: set[str] | None = None) -> Assignment:
+    """``prefix``: :func:`project_prefix`, so a strong-review zone written from either root meets the leaf's.
+    ``flagged``: the areas ``policy.quality_routing`` routes a strong reviewer to (:mod:`specy_road.review_tally`)."""
     a = Assignment(node["id"], node_sensitivity(node), node_eligibility(node))
     a.strong_review = [{"item": item_label(i, item), "require_one_of": list(item["require_one_of"])}
                        for i, item in applicable_items(config["policy"], node.get("touch_zones"), prefix)]
+    items, notes = quality_review(config["policy"], node.get("touch_zones"), flagged or set(), prefix)
+    a.strong_review += items
+    a.notes += notes
     _pick_executor(cands, a, today, drift)
     _pick_reviewers(cands, a, config, today)
     _pick_coordinator(cands, a, today)
@@ -363,7 +371,8 @@ def build_orchestration_plan(root: Path, *, under: str | None = None,
     cands = [Candidate(e, pinned_profile_for_entry(root, e)) for e in config.get("roster") or []]
     ref, drift = roster_source(root)
     prefix = project_prefix(root)
-    batches = [[assign_leaf(by_id[nid], cands, config, today, drift, prefix) for nid in batch if nid in by_id]
+    flagged = flagged_areas(root, nodes, config["policy"])
+    batches = [[assign_leaf(by_id[nid], cands, config, today, drift, prefix, flagged) for nid in batch if nid in by_id]
                for batch in sp.parallel_batches]
     prefs, pref_err = plan_preferences(root, today)
     return OrchestrationPlan(under, dict(config["policy"]), batches,
