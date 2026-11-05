@@ -198,6 +198,53 @@ def test_cli_end_with_a_new_derived_id_ends_the_session_on_this_worktree(tmp_pat
     assert sp.list_sessions(repo) == []
 
 
+def test_cli_touch_from_subdirectory_then_derived_end_with_another_worktree(
+    tmp_path: Path, capsys, monkeypatch,
+) -> None:
+    repo = make_review_repo(tmp_path)
+    git(repo, "branch", "-q", "feature/rm-wt2")
+    wt2 = tmp_path / "wt2"
+    git(repo, "worktree", "add", "-q", str(wt2), "feature/rm-wt2")
+    monkeypatch.setenv("USER", "iris")
+    monkeypatch.delenv("SPECY_ROAD_AGENT_ID", raising=False)
+    monkeypatch.setattr(sp.os, "getsid", lambda _pid: 101)
+    monkeypatch.chdir(repo)
+    assert _cli("session", "start", "--path", "src", "--repo-root", str(repo)) == 0
+    capsys.readouterr()
+    sp.start_session(repo, "iris-wt2", paths=["docs"], worktree=wt2)
+    monkeypatch.setattr(sp.os, "getsid", lambda _pid: 202)
+    monkeypatch.chdir(repo / "src")
+    assert _cli("session", "touch", "--repo-root", str(repo)) == 0
+    capsys.readouterr()
+    main = sp.load_session(sp.session_path(repo, "iris-s101"))
+    assert main is not None and main.worktree == str(sp.git_worktree_top(repo))
+    monkeypatch.setattr(sp.os, "getsid", lambda _pid: 303)
+    assert _derived_end(repo, monkeypatch, 303) == 0
+    out = capsys.readouterr().out
+    assert "iris-s101" in out and "worktree and branch" in out
+    assert [s.agent for s in sp.list_sessions(repo)] == ["iris-wt2"]
+
+
+def test_cli_start_from_subdirectory_then_derived_end(tmp_path: Path, capsys, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path)
+    git(repo, "branch", "-q", "feature/rm-wt2")
+    wt2 = tmp_path / "wt2"
+    git(repo, "worktree", "add", "-q", str(wt2), "feature/rm-wt2")
+    monkeypatch.setenv("USER", "jake")
+    monkeypatch.delenv("SPECY_ROAD_AGENT_ID", raising=False)
+    monkeypatch.setattr(sp.os, "getsid", lambda _pid: 401)
+    monkeypatch.chdir(repo / "src")
+    assert _cli("session", "start", "--path", "src", "--repo-root", str(repo)) == 0
+    capsys.readouterr()
+    sp.start_session(repo, "jake-wt2", paths=["docs"], worktree=wt2)
+    monkeypatch.setattr(sp.os, "getsid", lambda _pid: 402)
+    monkeypatch.chdir(repo / "docs")
+    assert _derived_end(repo, monkeypatch, 402) == 0
+    out = capsys.readouterr().out
+    assert "jake-s401" in out and "worktree and branch" in out
+    assert [s.agent for s in sp.list_sessions(repo)] == ["jake-wt2"]
+
+
 def test_cli_touch_with_a_new_derived_id_renews_the_session_on_this_worktree(
     tmp_path: Path, capsys, monkeypatch,
 ) -> None:

@@ -139,6 +139,12 @@ def list_sessions(repo_root: Path, *, live_only: bool = True, now: datetime | No
     return [s for s in out if s.is_live(now)] if live_only else out
 
 
+def git_worktree_top(cwd: Path) -> Path:
+    """Resolved checkout top for ``cwd`` (including when ``cwd`` is already the top)."""
+    top = git_text(["rev-parse", "--show-toplevel"], cwd) or ""
+    return Path(top).resolve() if top else cwd.resolve()
+
+
 def own_live_sessions(repo_root: Path) -> list[Session]:
     """Live records this user started in this checkout: what ``session end`` falls back on
     when a harness ran ``start`` and ``end`` in different POSIX sessions."""
@@ -148,11 +154,11 @@ def own_live_sessions(repo_root: Path) -> list[Session]:
 
 def own_session_here(repo_root: Path, *, worktree: Path | None = None) -> Session | None:
     """Among this user's live sessions, the one for this git top and branch, when unique."""
-    here = Path(git_text(["rev-parse", "--show-toplevel"], worktree or repo_root) or "").resolve()
+    here = git_worktree_top(worktree or repo_root)
     branch = git_text(["branch", "--show-current"], here) or None
     matches = [
         s for s in own_live_sessions(repo_root)
-        if s.worktree and Path(s.worktree).resolve() == here and s.branch == branch
+        if s.worktree and git_worktree_top(Path(s.worktree)) == here and s.branch == branch
     ]
     return matches[0] if len(matches) == 1 else None
 
@@ -171,7 +177,7 @@ def start_session(repo_root: Path, agent: str, *, paths: list[str] | None, note:
         paths = list(old.paths) if old else []
     now = _now()
     old = load_session(path) if path.is_file() else None
-    wt = (worktree or repo_root).resolve()
+    wt = git_worktree_top(worktree or repo_root)
     s = Session(agent, git_text(["branch", "--show-current"], wt) or None, str(wt),
                 sorted({p.strip().strip("/") for p in paths if p.strip()}),
                 old.started if old else now.isoformat(), now.isoformat(),

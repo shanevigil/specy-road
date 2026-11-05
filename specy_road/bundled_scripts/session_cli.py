@@ -51,10 +51,7 @@ def _presence_agent(root: Path, ns: argparse.Namespace) -> str:
     agent = _agent(ns)
     if ns.session_cmd != "touch" or ns.agent or env_agent_id():
         return agent
-    try:
-        if session_path(root, agent).is_file():
-            return agent
-    except ValueError:
+    if session_path(root, agent).is_file():
         return agent
     here = own_session_here(root, worktree=Path.cwd())
     return here.agent if here else agent
