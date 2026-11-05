@@ -301,6 +301,8 @@ def _ready_verify(root: Path, t: ReviewTarget) -> list[str]:
     for v in entries:
         mark = "  **← verifier failed**" if v["exit"] != 0 else ""
         out.append(f"### `{v['cmd']}` → exit {v['exit']}{mark}")
+        if w := v.get("warning"):
+            out.append(f"**Warning:** {w}")
         out += [""] + _fence(v.get("tail") or "(no output recorded)")
     return out
 

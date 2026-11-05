@@ -138,3 +138,63 @@ def test_ready_run_refuses_a_failing_command_with_its_tail_and_writes_nothing(tm
     git(repo, "checkout", "-q", "-b", "feature/other")   # a cheap refusal comes before any command runs
     assert _cli("ready", "M1.1", "--model", "opus", "--run", "touch ran", "--repo-root", str(repo)) == 1
     assert "not the registered" in capsys.readouterr().err and not (tmp_path / "ran").exists()
+
+
+def test_ready_run_warns_when_exit_zero_but_tail_shows_cannot_open(tmp_path: Path, monkeypatch, capsys) -> None:
+    """A loop whose middle step fails with cannot open but the last step succeeds still exits 0."""
+    repo = make_review_repo(tmp_path)
+    monkeypatch.chdir(repo)
+    capsys.readouterr()
+    cmd = (
+        'bash -c \'for step in fail ok; do '
+        'if [ "$step" = fail ]; then sh -c ": < /no/such/file" 2>&1 || true; else echo all_ok; fi; done\''
+    )
+    assert _cli("ready", "M1.1", "--model", "opus", "--run", cmd, "--verify", "ruff .=0",
+                "--repo-root", str(repo)) == 0
+    err = capsys.readouterr().err
+    r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
+    assert r.ok, r.errors
+    run_row = r.data["verify"][-1]
+    assert run_row["exit"] == 0 and "cannot open" in run_row["warning"]
+    assert f"warning: {run_row['warning']}" in err
+    text = review_packet.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    assert f"**Warning:** {run_row['warning']}" in text
+    assert "all_ok" in text
+
+
+def test_ready_run_clean_tail_has_no_warning(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    monkeypatch.chdir(repo)
+    capsys.readouterr()
+    assert _cli("ready", "M1.1", "--model", "opus", "--run", "echo clean", "--verify", "ruff .=0",
+                "--repo-root", str(repo)) == 0
+    err = capsys.readouterr().err
+    r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
+    assert r.ok and "warning" not in r.data["verify"][-1]
+    assert "warning:" not in err
+    text = review_packet.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    section = text.split("### `echo clean` → exit 0", 1)[1].split("###", 1)[0]
+    assert "**Warning:**" not in section
+
+
+def test_ready_run_argv_without_shell_and_refuses_bad_json(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    monkeypatch.chdir(repo)
+    script = "import sys; print(sys.argv[1:])"
+    argv_json = json.dumps(["python3", "-c", script, "$f has spaces"])
+    capsys.readouterr()
+    assert _cli("ready", "M1.1", "--model", "opus", "--run-argv", argv_json, "--verify", "ruff .=0",
+                "--repo-root", str(repo)) == 0
+    r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
+    assert r.ok, r.errors
+    row = r.data["verify"][-1]
+    assert row["cmd"] == 'python3 -c \'import sys; print(sys.argv[1:])\' \'$f has spaces\''
+    assert "$f has spaces" in row["tail"]
+    before_verify = r.data["verify"]
+    capsys.readouterr()
+    assert _cli("ready", "M1.1", "--model", "opus", "--run-argv", "not-json", "--repo-root", str(repo)) == 1
+    assert "not valid JSON" in capsys.readouterr().err
+    assert load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing").data["verify"] == before_verify
+    capsys.readouterr()
+    assert _cli("ready", "M1.1", "--model", "opus", "--run-argv", "[]", "--repo-root", str(repo)) == 1
+    assert "non-empty JSON array" in capsys.readouterr().err
