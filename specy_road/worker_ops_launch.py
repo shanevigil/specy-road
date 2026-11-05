@@ -17,6 +17,7 @@ from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, ope
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text, run
+from specy_road.harness_binary import entry_binary
 from specy_road.nested_repos import (
     NestedRepoError, add_nested_worktrees, align_nested_checkouts, in_nested, nested_prefixes, nested_worktree_dirs,
 )
@@ -295,9 +296,10 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
         _brief_into(wt, repo_root, node_id, t)
     cli, api_id, mode, effort = _cli_for(repo_root, entry, harness)
     _report_cli(entry, harness, cli)
+    harness_bin = entry_binary(harness, entry, default=not cli)   # refused here when not found, not exit 127
     reviews_dir(repo_root, node_id).mkdir(parents=True, exist_ok=True)   # a harness may refuse an --add-dir that is missing
     launch = worker_env(adapter_for(harness).launch(prompt, wt, api_id, cli, node_id=node_id, repo_root=repo_root,
-                                                    launch_mode=mode, effort=effort), wt / prefix)
+                                                    launch_mode=mode, effort=effort, harness_bin=harness_bin), wt / prefix)
     rec = create_record(repo_root, node_id, harness, model, wt, branch=branch,
                         contract_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
                         billing_route=entry.get("billing_route"))
