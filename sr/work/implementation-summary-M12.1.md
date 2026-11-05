@@ -201,3 +201,48 @@ I attacked the check through the public `review defer` and `evaluate_gate`. Each
   - `tests/test_review_defer_rounds.py`: the new module, holding the fix-round-1 and fix-round-2 regressions.
   - Helper `_forge_closed_deferral`, a hand-written closed decision plus marker for gate probes.
   - The four round-2 tests named above.
+
+## Fix round 3
+
+This round answers cursor-grok-4.6-high's block of `95e82986` (R1). It was preceded by a merge of `origin/WIP/improvements-0-3-1`; the fix commit is `2c0dd06e`.
+
+- **R1.** `_next_for` now checks for the marker of the covering `defer_findings` record. When that record is applied, `next` is `None`, and `next_why` reads "`RCA-n.md` is applied (`DEFERRAL-n.yaml`); the blocks it did not defer are fixed in this leaf…".
+  - `review_cli` reports `fix_round_budget_spent` only when there is a `next` to run. Otherwise the leaf shows its gate state: `blocked` while sonnet's block counts.
+  - A new forced RCA is not named in that case. `prompt --role rca --force` refuses until another review round lands, because the applied RCA covers the latest round.
+  - Pinned through `handoff status` (JSON and text) in `test_defer_applies_and_resolves_only_that_reviewers_block_at_that_commit`.
+- **Docs.** `docs/orchestration-review.md` now lists every next step and says each runs as printed, or that none exists after the deferral is applied.
+- **Tests.** Four tests fail at `95e82986` and pass now: the R1 pin, plus three `test_round3_*` tests in `tests/test_review_defer_rounds.py`. The targeted run is 151 passed. `specy-road file-limits` is OK, ruff is clean, and `check_test_private_imports` exits 0.
+- **Earlier tests changed:**
+  - `test_budget_spent_names_the_rca_then_the_defer_command` now files a round with a real finding. Before, the status named `review defer` for a record that command refuses (the same defect as R1).
+  - `test_r4_a_non_defer_rca_names_a_runnable_step_for_its_action` now rosters `composer` as an executor. Its reviewer case now expects `review-packet`.
+  - The R4 `decisions add` call now runs through this checkout's CLI, not the `specy-road` on PATH. That one runs the WIP checkout, whose schema lacks `max_fix_rounds`.
+
+### Fix round 3: next-step audit
+
+I checked each state `fix_round_budget` can report. `test_round3_every_next_step_runs_or_is_absent` runs every `next` command exactly as printed, through `python -c "from specy_road.cli import main"` on this checkout, and requires exit 0.
+
+1. **No RCA covers the latest round.** `next`: `specy-road prompt <ID> --role rca --force --reason 'fix-round budget spent' --model <analyst>`. The analyst is the first rostered non-human reviewer that has neither implemented nor reviewed the leaf. The command runs and exits 0; a forced RCA is accepted whenever a round exists since the last analysis, which holds because no RCA covers the latest round. **Defect found and fixed:** with no such reviewer, the old command contained a literal `MODEL`, which cannot run. It now names a `decisions add` for a human (`test_round3_no_independent_analyst_names_a_human_decision`).
+2. **A covering RCA that does not recommend deferral:**
+   - `continue_with_class_fix`, `restart_executor_fresh`, `fix_tests`, `fix_environment`: `next` is an executor prompt for the latest READY's agent; it runs and exits 0. **Defect found and fixed:** an agent without the executor role in the roster was named, and `prompt` refuses it. Such an agent now gets the `decisions add` fallback (`test_round3_a_ready_agent_without_the_executor_role_is_not_named`).
+   - `change_or_reprompt_reviewer`: `next` is the reviewer prompt for the latest blocking reviewer. **Defect found and fixed:** without `PACKET.md`, `prompt --role reviewer` refuses. `next` is now `specy-road review-packet <ID>` (it runs, exit 0), then the reviewer prompt (it runs, exit 0).
+   - `amend_criterion`, `split_leaf`, `escalate_human`: `next` is a complete `specy-road decisions add <ID> --kind decision …`. It runs, exits 0, and records an open decision for a human.
+3. **An unapplied defer RCA.** `next` is `specy-road review defer <ID> --rca <file>`, but only when `applicable_record()` (the same checks the command runs before writing) accepts the record. The command is human-only: it needs a TTY, which the test supplies, and then it applies with exit 0. **Defect found and fixed:** a record `review defer` would refuse was still named. It now gets the `decisions add` fallback, and `next_why` quotes the refusal.
+4. **An applied defer RCA with counted blocks remaining** (R1). `next` is `None` and the state is `blocked` (exit 1); no command is known to fail. Progress comes from fixing the remaining blocks in this leaf. After the next review round, the budget rules apply again and name a new forced RCA if no record covers that round.
+5. **An applied defer RCA with no blocks.** `next` is `None`, and the state is the gate's own (`in-review`/`waiting`/`approved`), never `fix_round_budget_spent`, because that state needs a counted block. Pinned in the audit test after the apply.
+
+### Added (fix round 3)
+- `review_deferral._human_decision`: the one `decisions add` builder, used by the RCA-action fallback and the no-analyst case.
+- `review_defer.applicable_record`: renamed from `_checked_record` (now public), so the budget step pre-checks a deferral exactly as the command does.
+- Guards in `_next_for` / `fix_round_budget`:
+  - an applied marker gives no next step;
+  - a refused deferral gives a human decision;
+  - an agent without the executor role is not named;
+  - a missing packet gives `review-packet` first;
+  - no analyst gives a human decision.
+- `review_cli`: the spent state requires a non-null `next`.
+- Test helpers `_runs`, `_cli` and `_this_checkout`: run a printed command through this checkout's package.
+- Tests:
+  - `test_round3_every_next_step_runs_or_is_absent`
+  - `test_round3_a_ready_agent_without_the_executor_role_is_not_named`
+  - `test_round3_no_independent_analyst_names_a_human_decision`
+  - The R1 status assertions in `test_defer_applies_and_resolves_only_that_reviewers_block_at_that_commit`.
