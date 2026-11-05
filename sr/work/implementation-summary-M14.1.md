@@ -44,6 +44,12 @@ Implementation commits: `2c9aa33f`, plus a test-helper follow-up.
 - F2 class: **a stored commit compared or shown without resolving it.** Fix: one resolver, `review_bookkeeping.review_commit()` (`full_sha`, i.e. `git rev-parse --verify <sha>^{commit}`), runs once per record per gate evaluation and is kept on the result. The same-commit test, the bookkeeping range, the carried marker and every displayed commit (`policy_line`, refusal reasons through `_shown()`) use it. A record whose commit does not resolve is refused and says so: "<model>'s <verdict> at <sha> (not a commit in this repository) is stale: re-review".
 - Red-green: all seven new tests fail with the round-2 `sibling_repos.py` and `review_bookkeeping.py` and pass with the fix.
 
+## Merge with WIP (M13.12 and others), and the codex output schema
+
+- `validate_roadmap.py` conflict: both sides are kept. The single `warn_*` loop stays in the same order, with WIP's `report_context_warnings(root, warn_if_context_over_limits)` in the context-limits slot and `warn_unconfigured_sibling_repos` last; the file is 356 lines. No roadmap bookkeeping file conflicted in either merge.
+- WIP's strict codex output schema is built from `review-record.schema.json` and cannot express the `sibling_heads` map (`propertyNames` and an open `additionalProperties`). `sibling_heads` is written by `review record`, never by the reviewer, so it is now in `FILLED_BY_SPECY_ROAD` (`specy_road/review_answer.py`, added to the zones by the coordinator). That makes three codex tests pass again. `tests/test_review_record_write.py::test_the_output_schema_is_the_record_schema_less_what_specy_road_fills` pins that exact set, so it now lists `sibling_heads` too; the assertion is still exact.
+- Final touch zones: as in the brief, plus `specy_road/review_answer.py`.
+
 ## Probes
 
 - Pathspec uses in this leaf's diff: `sibling_repos._untracked_by_root` (`ls-files`, now literal; `check-ignore`, which takes plain paths). There are none in `review_bookkeeping.py`, whose `diff_paths` and `rev-list` take commit ranges, now resolved, or in the READY, review-record and validate changes, which only call `sibling_heads_field()` and `warn_unconfigured_sibling_repos()`. Result: one place, fixed.
@@ -92,6 +98,7 @@ Implementation commits: `2c9aa33f`, plus a test-helper follow-up.
 - `sibling_repos` skips `.git`, `work`, `node_modules`, symlinks and configured nested repos, does not descend into a found repository, and returns none outside a git checkout (A1).
 
 ### Schema
+- `review_answer.FILLED_BY_SPECY_ROAD` gained `sibling_heads`, so the reviewer output and the strict codex schema leave it out, and only `review record` writes it.
 - An optional `sibling_heads` object in `handoff.schema.json` (`$defs.siblingHeads`) and `review-record.schema.json` (A3).
 
 ### Test helpers
