@@ -110,3 +110,15 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
+  - codename: per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip
+    node_id: M14.4.1
+    branch: feature/rm-per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip
+    touch_zones:
+      - specy_road/nested_repos.py
+      - specy_road/nested_repos_land.py
+      - specy_road/templates/project/schemas/git-workflow.schema.json
+      - docs/git-workflow.md
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
