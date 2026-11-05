@@ -148,3 +148,31 @@ def test_review_list_json_exits_nonzero_on_target_resolution_errors(tmp_path: Pa
     out = capsys.readouterr()
     assert out.err.startswith("error:")
     assert json.loads(out.out)["error"]
+
+
+def test_a_lowercase_review_record_suppresses_the_refusal(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    reviews = reviews_dir(repo, "M1.1")
+    head = git(repo, "rev-parse", "HEAD")
+    write_rejected(reviews, "opus", head, "error: still blocked")
+    (reviews / "review-opus.md").write_text(review_text(head, model="opus"), encoding="utf-8")
+    st = _status(repo, capsys)
+    assert not st.get("refused")
+    listed = _list_json(repo, capsys)
+    assert not listed.get("refused")
+
+
+def test_invalid_utf8_rejected_marker_is_unreadable_in_status_interfaces(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    reviews = reviews_dir(repo, "M1.1")
+    reviews.mkdir(parents=True, exist_ok=True)
+    bad = reviews / "REJECTED-opus.md"
+    bad.write_bytes(b"---\ncommit: abc\nrefused_at: 2026-01-01T00:00:00+00:00\n---\n\xff\xfe\n")
+    line = f"marker unreadable: {bad}"
+    run_review_cli("review", "list", "M1.1", "--repo-root", str(repo))
+    assert line in capsys.readouterr().out
+    capsys.readouterr()
+    run_review_cli("handoff", "status", "M1.1", "--repo-root", str(repo))
+    assert line in capsys.readouterr().out
+    listed = _list_json(repo, capsys)
+    assert line in listed["refused_unreadable"]

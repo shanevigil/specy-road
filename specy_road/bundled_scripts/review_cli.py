@@ -292,7 +292,7 @@ def _print_review_list_text(root: Path, ns: argparse.Namespace, t: ReviewTarget 
             print(f"  - {p}")
         for line in milestone_status(t, "approved" if gate.passed else "waiting")[1]:
             print(line)
-    if loop.escalation and (t is None or gate is None or not gate.passed):
+    if loop.escalation and (t is None or not gate.passed):
         print(_escalation_line(ns.node_id, loop.escalation.describe()).strip())
     return 0
 

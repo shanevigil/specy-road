@@ -32,6 +32,16 @@ No other paths were required. `review_record_write._review_record` already calls
 - `read_rejected_marker` validates YAML and mapping front matter; malformed files become a `marker unreadable: <path>` line while status commands continue.
 - `review list --json` exits 1 when `review_list_payload` carries an `error`, matching text mode.
 
+## WIP merge (note 505, `de590732`)
+
+- Merged `origin/WIP/improvements-0-3-1` (M14.1 sibling-repo approvals). `review_cli.py` keeps the thin `cmd_review_record` → `run_review_record`; M14.1’s `sibling_heads_field(root)` and `gate_policy_summary(after, [])` live in `review_rejected.py` so record signing still covers sibling heads.
+
+## Fix round (Sol-low block on `de590732`)
+
+- `rejected_state` uses `list_reviews` (case-insensitive prefix) to detect a current valid record for the model at the gate commit, not only `review_path(...).is_file()`.
+- `read_rejected_marker` treats any read or YAML parse failure (including `UnicodeDecodeError`) as `marker unreadable: <path>`; absent paths still return `None`.
+- Removed unreachable `gate is None` from the escalation guard in `_print_review_list_text` (`t is None` already short-circuits).
+
 ## Probes
 
 - Unrostered model with a missing notes path: roster check runs first; no `REJECTED-*.md` and no reviews directory (`test_unrostered_model_with_missing_notes_writes_no_marker`).
@@ -43,6 +53,9 @@ No other paths were required. `review_record_write._review_record` already calls
 - Repo-wide search for `target_resolved` callers before removal: only the dead alias in `review_rejected.py`; no external references.
 - Sequence-valued and malformed YAML `REJECTED-*.md` on disk: `review list` and `handoff status` print `marker unreadable: …` and complete (`test_malformed_rejected_marker_is_reported_without_breaking_list`).
 - Unknown node and bad `--ref` with `review list --json`: exit 1 with JSON `error` and stderr `error:` (`test_review_list_json_exits_nonzero_on_target_resolution_errors`).
+- Lowercase `review-<model>.md` at the gate commit with a valid record: `refused` omitted in handoff JSON and list JSON (`test_a_lowercase_review_record_suppresses_the_refusal`); canonical-path-only check would have left the marker visible.
+- `REJECTED-*.md` with invalid UTF-8: `marker unreadable` on text list, handoff status, and `refused_unreadable` in list JSON (`test_invalid_utf8_rejected_marker_is_unreadable_in_status_interfaces`); other marker readers only call `read_rejected_marker` / `unreadable_rejected_lines`.
+- Escalation line when `t is None`: condition is `t is None or not gate.passed`; `gate` is assigned only in the `else` branch, so no other `gate is None` paths in `review_cli.py`.
 
 ## Added
 

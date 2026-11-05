@@ -13,7 +13,7 @@ from typing import Any
 import yaml
 
 from specy_road.orchestration_config import substitute_for
-from specy_road.review_files import archive_review, render_front_matter, review_path, reviews_dir, write_review
+from specy_road.review_files import archive_review, list_reviews, render_front_matter, review_path, reviews_dir, write_review
 from specy_road.review_gate import evaluate_gate, rerun_problem
 from specy_road.review_record_rules import check_record
 from specy_road.reviewer_run_failure import gate_policy_summary
@@ -67,27 +67,25 @@ def read_rejected_marker(path: Path) -> tuple[dict[str, Any], str] | str | None:
     """Read ``REJECTED-*.md`` front matter.
 
     Returns ``(data, body)`` when valid, ``None`` when the file is absent or not a marker block, or a single
-    ``marker unreadable: <path>`` line when YAML is malformed or front matter is not a mapping with ``commit`` and
-    ``refused_at``.
+    ``marker unreadable: <path>`` line when the file cannot be read or parsed as expected.
     """
+    if not path.is_file():
+        return None
     try:
         text = path.read_text(encoding="utf-8")
-    except OSError:
-        return None
-    if not text.startswith("---\n"):
-        return None
-    parts = text.split("---\n", 2)
-    if len(parts) < 3:
-        return f"marker unreadable: {path}"
-    try:
+        if not text.startswith("---\n"):
+            return None
+        parts = text.split("---\n", 2)
+        if len(parts) < 3:
+            return f"marker unreadable: {path}"
         loaded = yaml.safe_load(parts[1])
-    except yaml.YAMLError:
+        if not isinstance(loaded, dict):
+            return f"marker unreadable: {path}"
+        if not loaded.get("commit") or not loaded.get("refused_at"):
+            return f"marker unreadable: {path}"
+        return loaded, parts[2]
+    except (OSError, UnicodeDecodeError, yaml.YAMLError):
         return f"marker unreadable: {path}"
-    if not isinstance(loaded, dict):
-        return f"marker unreadable: {path}"
-    if not loaded.get("commit") or not loaded.get("refused_at"):
-        return f"marker unreadable: {path}"
-    return loaded, parts[2]
 
 
 def unreadable_rejected_lines(reviews: Path) -> list[str]:
@@ -127,12 +125,10 @@ def rejected_state(reviews: Path, model: str, commit: str | None,
     if not same_commit(root, data.get("commit"), commit):
         return None
     node_id = reviews.name
-    rec = review_path(root, node_id, model)
-    if rec.is_file():
-        from specy_road.review_files import load_review
-
-        review = load_review(rec)
-        if review.ok and same_commit(root, review.data.get("commit"), commit):
+    for rec in list_reviews(root, node_id):
+        if rec.data.get("model") != model:
+            continue
+        if rec.ok and same_commit(root, rec.data.get("commit"), commit):
             return None
     when = _parse_when(data.get("refused_at"))
     if when is None:
