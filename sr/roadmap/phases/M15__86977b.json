@@ -109,7 +109,11 @@
         "specy_road/zone_coverage.py",
         "specy_road/orchestrate_plan.py",
         "specy_road/bundled_scripts/brief_call_sites.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/session_plan_git.py",
+        "specy_road/bundled_scripts/session_plan.py",
+        "specy_road/bundled_scripts/session_plan_render.py",
+        "specy_road/bundled_scripts/orchestrate_cli.py"
       ],
       "type": "task"
     },
@@ -172,6 +176,35 @@
         "specy_road/templates/project/schemas/git-workflow.schema.json",
         "docs/git-workflow-preferences.md",
         "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The 'Install a release candidate (TestPyPI)' section moves to docs/install-release-candidates.md; docs/install-and-usage.md keeps a two-line pointer with the same anchor text and stays within 400 lines, and every link to the old anchor (docs/upgrading.md, docs/release-runbook.md) points at the new file",
+        "The new doc shows installing an RC with an extra ([gui] as the example) for pip, pipx and uv tool from the sha256-checked wheel, and the direct-wheel-URL form (\"specy-road[gui] @ https://test-files.pythonhosted.org/.../specy_road-<ver>-py3-none-any.whl\") for uv tool and pipx, with how its sha256 is checked; it says that uv tool keeps a URL in its receipt, unlike a local wheel path that later disappears",
+        "It states that TestPyPI is never an index for extras or dependencies, in any form (--index-url, --extra-index-url, uv --index or --extra-index-url, any index strategy such as unsafe-best-match or first-index), because a squatted dependency name there can outrank PyPI and its setup.py runs; it names no third-party package or uploader",
+        "The extras list in install docs names every key of [project.optional-dependencies] in pyproject.toml except dev (today [gui] is missing); a test reads pyproject.toml and fails when an extra is not named in docs/install-and-usage.md or docs/install-release-candidates.md",
+        "docs/release-runbook.md A.3 step 5 (Announce the RC) says the announcement carries the filled-in pip, pipx and uv tool commands, with [gui], and the wheel's direct URL and sha256; the human publishing the release posts them. release-runbook.md stays within its 900-line override by rewording, not adding net lines. Out of scope: an rc-install-command CLI command, and changing what CI publishes"
+      ],
+      "codename": "rc-install-docs-cover-extras-and-direct-wheel-url",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.1",
+      "node_key": "f11ae6a1-4e8d-43f8-9aed-391000c71679",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.1_rc-install-docs-cover-extras-and-direct-wheel-url_f11ae6a1-4e8d-43f8-9aed-391000c71679.md",
+      "sibling_order": 1,
+      "status": "Not Started",
+      "title": "RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command",
+      "touch_zones": [
+        "docs/install-and-usage.md",
+        "docs/install-release-candidates.md",
+        "docs/upgrading.md",
+        "docs/release-runbook.md",
+        "tests/",
+        "README.md",
+        "docs/supply-chain-security.md"
       ],
       "type": "task"
     }
