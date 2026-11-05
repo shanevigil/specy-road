@@ -382,6 +382,193 @@ Required change → what changed:
   - Red/green: with this round's production changes reverted, 4 of the 5 new cases fail (the lock, both prompt-CLI cases, the null-text resume); the control passes either way.
 - **Touch zones:** no new path. `reviewer_run_failure.py` (`close_reviewer_cli_run`, `close_run`) is outside the zones and unchanged; the closure is corrected after it, from `role_prompt.py`.
 
+## Rework (reopened 2026-11-04): design pass
+
+The maintainer reopened M8.3 after five Sol rounds, each of which found a new input class. The coordinator's RCA: the answer extractor and the write check were each built from special cases. This pass answers Sol's F1–F3 on `27d39730` by replacing both mechanisms, and the run closure, with one rule each. Commits: `052823ab` merges WIP; `73b0fea1` is the design pass.
+
+### WIP merge (`052823ab`)
+
+`git fetch origin && git merge origin/WIP/improvements-0-3-1`. There were three conflicts:
+- `specy_road/worker_adapter_claude.py`: an import conflict only. WIP added `claude_projects_dir`; this leaf added `REVIEWER_DISALLOWED`. Both imports are kept, and the merged file equals WIP's plus this leaf's reviewer changes.
+- `sr/roadmap-context.md`, `sr/roadmap/registry.yaml`: these are WIP-maintained bookkeeping (the generated digest and the claim registry), so they were taken from WIP.
+
+The 12 adapter, review and prompt test files then gave 218 passed.
+
+### 1. One final-answer extractor (F3 and past A3 rounds)
+
+- **Adapters map, they don't decide.** `Adapter.final_message(line)` is gone. Each adapter implements `Adapter.messages(lines, output) -> list[Message] | None` in `worker_adapter_base`. A `Message` is `(body, terminal)`, where `body` is a dict (structured output the harness validated), text, or `None` (no answer). `None` means the output has none of the harness's events: a `generic` harness or a plain-text wrapper, whose whole output is one terminal message.
+  - **Claude** (`CLAUDE_EVENTS`): `assistant` → intermediate. `result` → terminal: `structured_output` if a dict, else `result`; `None` if `is_error`.
+  - **Codex** (`CODEX_EVENTS`): `agent_message` → intermediate. `turn.completed` makes the turn's last message terminal, or adds a terminal `None` if the turn had none. The body is the `-o` file when Codex wrote one, else that message's text. `turn.failed` → terminal `None`.
+  - **Cursor** (`CURSOR_EVENTS`): like Claude, without structured output.
+  - **Antigravity**: a `generic` entry, so its whole output is the message. The envelope's `structured_output` is unwrapped by the extractor, unambiguously: the output schema forbids that key.
+- **One function decides.** That function is `specy_road/review_answer.final_answer(adapter, text, output) -> dict | Rerun` (new module). Rules:
+  - only the last message counts, and it must be terminal;
+  - `None`, empty text, or text that does not end with one top-level JSON object (`text_object`) is a rerun request;
+  - a non-object is a rerun request;
+  - so is an object that fails `output_schema()` once its nulls are dropped;
+  - no earlier message or earlier attempt is ever read: `run_text` returns only the last attempt's output, and Codex's `-o` file is removed before every attempt.
+- **`text_object` replaces `json_object`, `_later_array`, `_depth` and `_open_braces`.** It has one rule with three conditions: the object starts a line, it runs to the end of the text (only a closing fence may follow), and no `{` or `[` before it is left open. A later object, a later array, a trailer and an object nested in malformed JSON all fail the "runs to the end" condition, not a dedicated check.
+- `file_review` now takes `answer` (`dict | Rerun`), not raw output. The schema check moved into the extractor.
+
+**Shape table** (`final_answer` through each real adapter; all in `tests/test_review_answer.py::test_the_last_terminal_message_is_the_answer_or_a_rerun`, ids `harness:shape`):
+
+| Harness | Shape | Result | Test |
+|---|---|---|---|
+| Claude | valid (`structured_output`) | answer | `[claude-code:valid structured]` |
+| Claude | valid (text `result`, prose before) | answer | `[claude-code:valid text]` |
+| Claude | null `result` | rerun: no answer | `[claude-code:null]` |
+| Claude | error result (`is_error`, valid text) | rerun: no answer | `[claude-code:error result]` |
+| Claude | empty | rerun: empty | `[claude-code:empty]` |
+| Claude | non-JSON | rerun: no JSON object | `[claude-code:non-JSON]` |
+| Claude | schema-invalid | rerun: schema | `[claude-code:schema-invalid]` |
+| Claude | multiple terminals: valid, then null | rerun: no answer | `[claude-code:multiple: valid then null]` |
+| Claude | multiple terminals: null, then valid | answer (the last) | `[claude-code:multiple: null then valid]` |
+| Claude | truncated (init, assistant, no `result`) | rerun: no final message | `[claude-code:truncated]` |
+| Claude | plain-text wrapper | answer | `[claude-code:plain-text wrapper]` |
+| Codex | valid (`-o` file at `turn.completed`) | answer | `[codex:valid -o file]` |
+| Codex | valid (resume, last `agent_message`) | answer | `[codex:valid message (resume: no -o)]`; end to end `tests/test_review_record_write_closure.py::test_a_codex_resume_whose_last_answer_event_has_no_text_is_a_rerun[False]` |
+| Codex | null `text` | rerun: no answer | `[codex:null]`; end to end `…closure.py::test_a_codex_resume_whose_last_answer_event_has_no_text_is_a_rerun[True]` (Sol F3) |
+| Codex | no message in the turn | rerun: no answer | `[codex:no message in the turn]` |
+| Codex | `turn.failed` | rerun: no answer | `[codex:turn failed]` |
+| Codex | empty | rerun: empty | `[codex:empty]` |
+| Codex | empty `-o` file | judged by the message | `[codex:empty -o file falls to the message]` |
+| Codex | non-JSON | rerun: no JSON object | `[codex:non-JSON]` |
+| Codex | schema-invalid | rerun: schema | `[codex:schema-invalid]` |
+| Codex | multiple: valid, then null message | rerun: no answer | `[codex:multiple: valid then null message]` |
+| Codex | multiple terminals: valid turn, then null turn | rerun: no answer | `[codex:multiple: valid turn then null turn]` |
+| Codex | truncated after a valid message | rerun: no final message | `[codex:truncated after a valid message]`; `tests/test_review_answer.py::test_the_answer_file_counts_only_for_a_turn_that_completed` |
+| Codex | a failed fresh turn's `-o`, then a resumed turn | rerun (stale `-o` never read) | `…closure.py::test_a_retried_codex_turn_never_files_the_failed_fresh_turns_answer_file` |
+| Codex | plain-text wrapper | answer | `[codex:plain-text wrapper]` |
+| Cursor | valid | answer | `[cursor:valid]` |
+| Cursor | null | rerun: no answer | `[cursor:null]` |
+| Cursor | error result | rerun: no answer | `[cursor:error result]` |
+| Cursor | empty | rerun: empty | `[cursor:empty]` |
+| Cursor | non-JSON | rerun: no JSON object | `[cursor:non-JSON]` |
+| Cursor | schema-invalid | rerun: schema | `[cursor:schema-invalid]` |
+| Cursor | multiple terminals: valid, then error | rerun: no answer | `[cursor:multiple: valid then error]` |
+| Cursor | truncated | rerun: no final message | `[cursor:truncated]` |
+| Cursor | plain-text wrapper | answer | `[cursor:plain-text wrapper]` |
+| Antigravity | valid envelope (pretty-printed) | answer | `[generic:antigravity valid]` |
+| Antigravity | null `structured_output` | rerun: no answer | `[generic:antigravity null]` |
+| Antigravity | empty output | rerun: empty | `[generic:antigravity empty output]` |
+| Antigravity | non-JSON | rerun: no JSON object | `[generic:antigravity non-JSON]` |
+| Antigravity | schema-invalid | rerun: schema | `[generic:antigravity schema-invalid]` |
+| Antigravity | multiple: valid, then null envelope | rerun: no answer | `[generic:antigravity: valid, then a null envelope]` |
+| Antigravity | multiple: valid, then truncated envelope | rerun: no JSON object | `[generic:antigravity: valid, then a truncated envelope]` |
+| Antigravity | truncated | rerun: no JSON object | `[generic:antigravity truncated]` |
+
+The text rule's own cases (fence, prose before, CRLF, trailer, later object or array, nesting) are in `tests/test_review_answer.py::test_a_messages_text_must_end_with_one_top_level_json_object`.
+
+### 2. A write check with no exemptions (F1)
+
+- **Removed:** `runtime_files` (the exemption list), `harness_files`/`prepare_harness_files`, `RootFence`, the `quiet` set for the hand-off directory, `Snapshot.exempt`, `OUTPUT_PREFIX`/`output_path`, and the notes allowance. `.review-run.lock` stays non-exempt, as in round 5.
+- **One rule:** every snapshotted path is compared. The files specy-road itself writes in the tree during the run are `OwnFile`s:
+  - each exists before the first snapshot and is written in place, so no directory entry moves;
+  - `written(before, after, own)` compares each one's identity and mode (device, inode, link count, mode) like any file, and its content by `OwnFile.changed()`: SHA-256 of what it held at the start plus every byte specy-road wrote since;
+  - `OwnFile.rewrite` first checks that nothing else changed the file, so a tamper that specy-road's own overwrite would erase is still kept (`tampered`).
+
+**What the check snapshots, and how:**
+
+| Path | How |
+|---|---|
+| Every file of the checkout the reviewer runs in, ignored and `work/` files included (the hand-off directory too when inside it) | entry `(dev, ino, nlink, mode, size, mtime_ns, ctime_ns, sha256)` (`_record`) |
+| Every directory of the checkout, the checkout and hand-off root included | `(dev, ino, nlink, mode, mtime_ns, ctime_ns)` (`_dir_record`): a file created, renamed or deleted there is a write |
+| The hand-off directory, when outside the checkout (reviewer in a linked worktree) | the same, walked separately |
+| A nested checkout's `.git` marker | a pointer file as `_record`; a directory as present only (its contents are another repository's) |
+| Own Git dir `HEAD`, `logs/HEAD`; reviewed branch's loose ref, reflog, `packed-refs` line; shared `hooks/` (walked); a linked worktree's `.git` pointer | `_record` (packed-refs: its matching lines) |
+| `HEAD` and the reviewed branch's commit | `git refs`: resolved ids |
+| The Git index | `git index`: SHA-256 of `ls-files --stage -v -z` (entries, not bytes) |
+| `RUN-<model>.log` (both CLIs) and `RUN-<model>.json` (`review delegate`) | identity and mode as above; content by `OwnFile` (specy-road's expected hash) |
+
+**What specy-road writes during a run, and where:**
+
+| File | When | Where | Check |
+|---|---|---|---|
+| `.review-run.lock` | created and locked before the first snapshot; never written | hand-off directory | compared like any file (F1) |
+| `review-output.schema.json` | before the first snapshot | hand-off directory | compared like any file |
+| prompt files `work/prompt-*.md` | before the first snapshot | checkout | compared like any file |
+| `RUN-<model>.json` | created before the first snapshot; `review delegate` rewrites it in place after each attempt (was tmp + rename); the final update comes after the last snapshot | hand-off directory | `OwnFile` |
+| `RUN-<model>.log` | created (`touch`) before the first snapshot; appended to during each turn | hand-off directory | `OwnFile` |
+| Codex's `-o` answer | during the fresh turn, by the harness | private `tempfile.TemporaryDirectory` (`answer_scratch`), removed with the run | outside the tree; removed before every attempt; read only at `turn.completed` |
+| `notes-<model>.md`, `REVIEW-<model>.md`, `history/` | after the last snapshot (`file_review`) | hand-off directory | after the check |
+| prompt-CLI log rewrite and the final run-record update | after the last snapshot (`close_cli_review_run`, `delegate`'s `finally`) | hand-off directory | after the check |
+
+- **Nothing is exempt.** Scope limits that are not exemptions:
+  - the parts of the Git directories `_walk_git` leaves out, because other sessions of the repository write there;
+  - nested checkouts' contents (other repositories);
+  - the scratch directory, which is outside the tree: what a reviewer could put there is at most its own answer, which it gives anyway, and it is read only at a completed turn.
+- **Behaviour changes, by design:**
+  - The reviewer may no longer write `notes-<model>.md`; its notes travel in the JSON (`notes`), and the prompt now says "Write no file at all". A2 ("any file other than its notes" is a failure) still holds; the check is stricter than A2 requires.
+  - `OUTPUT-<model>.json` in the hand-off directory is no longer written by anyone, so a write there is a failure.
+- **Known limit:** if `TMPDIR` lies inside the checkout, Codex's answer write is reported as a write. That is a false failure, never a false pass.
+
+### 3. The filing outcome is never dropped (F2)
+
+- **The one close function** is `review_record_write.close_review_run(repo_root, t, model, run, filed: Outcome, *, reason, errors, tail)`. `filed` is required and typed, and `Outcome.state` is `Literal["recorded", "rerun", "review_failure"]`, plus `exit` (the harness's exit code). Only `recorded` goes to `close_run`, which still validates the record; anything else becomes `incomplete` with `outcome`, a reason and a reviewer-failure event, whatever older record exists. `close_run`'s fallback to an older valid record can no longer be reached by a launched reviewer's filing.
+- **Callers:**
+  - `review delegate._close` (a roadmap review), and `delegate`'s interrupt handler, which passes `Outcome("rerun", "interrupted: …", exit=None)`, chore runs included;
+  - `prompt --channel cli` through `role_prompt_cli.close_cli_review_run`, for every exit, an interrupt included.
+  The only `close_run` caller left is a chore's completed run, which files nothing: under M8.2 its reviewer writes its own verdict file.
+- **Every exit of `prompt --channel cli` returns an `Outcome`.** Its reviewer path is now `role_prompt_cli.run_reviewer_channel(...) -> Outcome`, so there's nothing for a caller to forget:
+  - a failed preflight, a refused `agy` flag, and a missing or malformed cli are rerun requests with an exit code;
+  - `run_default_reviewer`, `run_custom_reviewer` and `run_and_file` return the filing.
+  `run_cli_channel` is now for non-reviewer roles only; `preflight` and `resolve_cli` are shared helpers. `role_prompt` no longer calls `reviewer_run_failure.close_reviewer_cli_run` or `fail_reviewer_cli_run`. Both are now unused and stay in `reviewer_run_failure.py`, which is outside the touch zones; delete them in a follow-up if wanted.
+- **Regressions** (`tests/test_review_record_write_closure.py`):
+  - `test_prompt_cli_keeps_a_failed_filing_incomplete_beside_an_older_record_of_the_commit[rerun|review_failure]` (from round 5);
+  - new: `test_prompt_cli_that_sends_nothing_stays_incomplete_beside_an_older_record_of_the_commit[preflight|interrupt]`. On the pre-design code (HEAD `052823ab`) the preflight case fails, because the run ends `complete`. The interrupt case fails there only because it patches the new entry point.
+
+### Probes (inputs checked and found safe)
+
+- **Extractor:** everything in the table above, plus direct probes:
+  - CRLF output: a plain answer passes, and a CRLF closing fence now passes too. It was a false rerun before the `rstrip` fix and is now tested.
+  - Claude `structured_output` that is a list → the same `result` message's text.
+  - Codex `agent_message` with integer text → rerun (not an object).
+  - Codex `reasoning` item or `error` event around the answer → answer (neither is a message).
+  - An envelope whose `structured_output` is a JSON string → rerun.
+  - A nested envelope → rerun (schema).
+  - A stray `{"type": "assistant"}` line before a plain answer on a Claude entry → rerun (a native stream with no terminal message).
+  - A BOM before the answer → rerun.
+  - Whitespace-only output → rerun (empty).
+- **Write check:** direct `OwnFile` probes in a scratch repository:
+  - honest appends and rewrite → no write;
+  - a foreign append to the log → the log;
+  - the record deleted, then rewritten by specy-road → the record and its directory;
+  - a chmod of the record → the record;
+  - the record tampered, then rewritten by specy-road → the record.
+  Plus through `review delegate`: the parametrized `test_a_run_that_writes_anything_is_a_review_failure_and_files_nothing` (tracked file, untracked `work/`, ignored hand-off file, schema, `RUN-opus.json`, `RUN-opus.log`, `notes-opus.md`, `.review-run.lock`); `test_review_delegate_cli_fails_a_notes_or_answer_write_in_the_hand_off_directory` (alone, or with a transient file); the lock overwrite; and every earlier round's git, chmod, hard-link, ctime, transient and nested-`.git` cases, unchanged and passing.
+- **Close:** `recorded` → complete. Rerun, review failure, failed preflight and interrupt beside an older record → incomplete with an event (tests above). Capacity retries exhausted → incomplete with the capacity reason (`tests/test_review_delegate.py::test_capacity_retries_are_bounded_and_end_incomplete`). Usage limit under `prompt --channel cli` → the event names it (`test_prompt_cli_channel_records_usage_limit_and_shows_it_on_the_gate_line`). Chore run → still judged by its own verdict file (`tests/test_chore_mode.py`).
+- **Red/green:**
+  - without `delegate`'s per-attempt removal of the answer file, `test_a_retried_codex_turn_never_files_the_failed_fresh_turns_answer_file` fails;
+  - without `OwnFile.rewrite`'s tamper check, the `RUN-opus.json` case of `test_a_run_that_writes_anything_is_a_review_failure_and_files_nothing` fails;
+  - on the pre-design production code, the preflight close case fails.
+
+### Tests changed by this design (not loosened)
+
+- `tests/test_review_record_write.py`:
+  - `test_the_reviewers_own_notes_are_the_one_write_allowed` is removed, and `notes-opus.md` and `.review-run.lock` are added to the write-failure parametrization: the allowance is gone by design;
+  - `RUN-opus.json` is now named by its own path, since there is no fence;
+  - `test_the_final_complete_json_object_of_a_message_is_the_answer` moved to `tests/test_review_answer.py` as `text_object` cases. Its two trailer expectations (`tokens used`, `[INFO] done` after the answer) became rerun requests; the prompt already said "nothing after it";
+  - the Codex `-o` assertion now requires the file outside the checkout and the hand-off directory, removed after the run;
+  - the commit/cache test now appends the log through `OwnFile`, and also expects the hand-off directory's new entry.
+- `tests/test_review_record_write_git.py`: the two "allowed answer or notes write" tests became `test_review_delegate_cli_fails_a_notes_or_answer_write_in_the_hand_off_directory`, alone or with a transient file.
+- `tests/test_review_delegate.py`:
+  - `test_a_retry_never_files_an_earlier_attempts_answer` now has the failed attempt print its verdict, since an in-tree `OUTPUT-opus.json` write is now a review failure; the stale `-o` case is the new Codex test above;
+  - the interrupt test patches `run_reviewer_channel`.
+- `tests/test_headless_limits_denials.py`: `run_default_reviewer(...).state == "rerun"` (it returns an `Outcome`).
+- `tests/review_delegate_helpers.py`: the fake prints no init event on a `plain` step, since a plain-text harness has no event stream; `fake_reviewer_run` no longer patches `role_prompt.subprocess`, which `role_prompt` no longer uses.
+
+### Verification
+
+- Targeted: `pytest -q -n 4 -p no:cacheprovider` over the 21 files named in READY: 382 passed. A wider run with 8 more importer files also passed (496), before the last two test additions.
+- `specy-road file-limits` OK. `ruff check specy_road tests scripts` clean. Private imports 0 new.
+- The full suite was not run, per the maintainer's rule.
+
+### Touch zones
+
+- **New module: `specy_road/review_answer.py`** (the extractor and the output schema it validates against; `review_record_write` re-exports `output_schema`, `drop_nulls`, `final_answer`, `Rerun`, `text_object`). Please add it to M8.3's zones.
+- `tests/test_review_answer.py` is under `tests/`.
+- Unchanged and outside the zones: `specy_road/reviewer_run_failure.py`. Its `close_reviewer_cli_run` and `fail_reviewer_cli_run` are now unused.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
@@ -443,3 +630,11 @@ Required change → what changed:
 - Fix round 3: `review_write_check.RunLog` (`open`, `write`, `changed`, `_bytes`) and `file_review`'s `log` parameter (F1); the per-attempt `prepare_harness_files` in `_attempts` (F2); the `sign_key` parameter of `_review_record`, `file_review`, `run_and_file`, `run_default_reviewer`, `run_custom_reviewer`, `run_cli_channel` and `delegate`, plus the `--sign-key` options of `review delegate` and `prompt` (F3); the lock in `role_prompt.main` with its `ReviewRunBusy` exit, `role_prompt._run`, and `delegate`'s lock moved before `_start` (F4). Removed: the lock and busy branch in `run_and_file`, the pre-lock unlinks, and `write_schema`'s unchanged-text branch. Tests: two new, two extended, one moved (named in that round's section).
 - Fix round 4: `worker_adapter_base._program_end` (F1: where the quoted or escaped program word ends); `review_record_write._later_array` with `_ARRAY_LINE` and `_JSON_VALUE` (F2: a later JSON array is a rerun request), and `_depth`, factored out of `_open_braces`. Tests: two extended, one parametrized (named in that round's section).
 - Fix round 5: `review_record_write.close_unfiled` (F2: the failure branch of `review_delegate._close`, moved for reuse); `run_and_file`'s `filed` parameter, threaded through `run_cli_channel`, `run_default_reviewer` and `run_custom_reviewer` (F2: the filing outcome reaches the prompt-CLI closure); `role_prompt_cli.close_unfiled_cli_run` and its already-incomplete branch (F2: no second event when `close_run` already recorded one); the `""` return of Codex's, Claude's and Cursor's `final_message` (F3: an answer event with no answer replaces an earlier one). Removed: `.review-run.lock` from `runtime_files` (F1). Tests: `tests/test_review_record_write_closure.py` (new: the lock overwrite, the prompt-CLI rerun/review-failure beside an older record, the Codex resume with a null last answer and its control). No new mock or guard.
+- Design pass (`73b0fea1`):
+  - `worker_adapter_base.Message` and `native_events`, `Adapter.messages` (generic: `None`), and the Claude, Codex and Cursor `messages` with `CLAUDE_EVENTS`, `CODEX_EVENTS` and `CURSOR_EVENTS`: each adapter maps its stream to `(body, terminal)` (replaces `final_message`).
+  - `specy_road/review_answer.py`: `final_answer`, `Rerun`, `text_object` and `_open` (the one extractor; replaces `final_output`, `json_object`, `_later_array`, `_depth` and `_open_braces`), with `output_schema`, `drop_nulls`, `FILLED_BY_SPECY_ROAD` and `NOTES_DESCRIPTION` moved from `review_record_write`.
+  - `review_write_check.OwnFile` (`RunLog` generalized, plus `rewrite` with its tamper check) and `written`'s `own` parameter with `_IDENTITY`: specy-road's own files compared by content. Removed: `runtime_files`, `harness_files`, `prepare_harness_files`, `RootFence`, `quiet`, `Snapshot.exempt`, `OUTPUT_PREFIX`.
+  - `review_record_write.answer_scratch`: Codex's `-o` file outside the tree. `close_review_run` and `Outcome.exit` with the `Literal` state: the one close (replaces `close_unfiled`). `run_and_file` returns `Outcome` and takes `output`; `file_review` takes `answer` and `own`.
+  - `review_delegate`: `_Harness.output` and `.record`, the per-attempt answer-file removal, the in-place record rewrite, the log `touch` before the snapshot, and `_close`/interrupt through `close_review_run`.
+  - `role_prompt_cli`: `run_reviewer_channel` (the reviewer path, an `Outcome` on every exit), `preflight` and `resolve_cli` (shared with `run_cli_channel`), `close_cli_review_run` (replaces `close_unfiled_cli_run` and the use of `close_reviewer_cli_run`/`fail_reviewer_cli_run`), and `READ_BACK_HARNESSES` (moved from `role_prompt`).
+  - Tests: `tests/test_review_answer.py` (new; the shape table and the text rule); in `tests/test_review_record_write_closure.py`, `FAKE_CODEX_TURNS`/`_codex` (a fake Codex with a fresh failing turn and a resumed turn), `test_a_retried_codex_turn_never_files_the_failed_fresh_turns_answer_file` and `test_prompt_cli_that_sends_nothing_stays_incomplete_beside_an_older_record_of_the_commit`. No new mock beyond the fake harness binaries and the interrupt `monkeypatch`.
