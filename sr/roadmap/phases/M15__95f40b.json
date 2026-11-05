@@ -45,7 +45,8 @@
         "specy_road/review_rejected.py",
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/review_run_status.py",
-        "tests/"
+        "tests/",
+        "specy_road/orphaned_claims.py"
       ],
       "type": "task"
     },
