@@ -202,7 +202,7 @@ def _p_edit(sub: argparse._SubParsersAction) -> None:
         metavar="KEY=VALUE",
         help=(
             "Field to set; repeatable. List fields (acceptance, risks, touch_zones, "
-            "dependencies) take one --set per item: --set acceptance='Saves offline' "
+            "dependencies, planned_test_changes) take one --set per item: --set acceptance='Saves offline' "
             "--set acceptance='Syncs on reconnect'. touch_zones also splits on commas; "
             "'|' is not a separator. An empty value (acceptance=) removes the field."
         ),
@@ -214,7 +214,7 @@ def _p_edit(sub: argparse._SubParsersAction) -> None:
             metavar="KEY=ENTRY",
             help=(
                 f"{verb} one entry of a list field (acceptance, risks, touch_zones, "
-                "dependencies) and keep the rest; repeatable. Not combined with --set "
+                "dependencies, planned_test_changes) and keep the rest; repeatable. Not combined with --set "
                 "of the same field. dependencies takes a node_key or a display id."
             ),
         )
