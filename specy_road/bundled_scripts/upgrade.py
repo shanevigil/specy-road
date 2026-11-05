@@ -57,6 +57,7 @@ from specy_road.bundled_scripts.refresh_stubs import _prefix, _report, _resolve_
 from specy_road.bundled_scripts.upgrade_plan import Mirror, apply_plan, conflicts, make_plan
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.digest import DEFAULT_OUTPUT
+from specy_road.file_limits_baseline import failure_hint, file_limits_failure_count
 from specy_road.file_limits_engine import build_overlay_match_sets, collect_tracked_files, line_count, resolve_limits
 from specy_road.git_subprocess import git_text
 from specy_road.init_project import project_template_root
@@ -164,18 +165,47 @@ def _check(project: Path) -> tuple[bool, bool]:
     return valid, cmd_digest(ns) == 0
 
 
+def _file_limits_cfg(project: Path) -> dict | None:
+    cfg_path = project / "constraints" / "file-limits.yaml"
+    try:
+        cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) if cfg_path.is_file() else None
+    except (OSError, yaml.YAMLError):
+        cfg = None
+    return cfg if isinstance(cfg, dict) else None
+
+
+def _file_limits_failure_count(project: Path) -> int | None:
+    cfg = _file_limits_cfg(project)
+    if cfg is None:
+        return None
+    return file_limits_failure_count(source_scan_root(project), cfg)
+
+
+def _report_file_limits_after_upgrade(project: Path, before: int | None, after: int | None) -> None:
+    if after is None:
+        return
+    _section("file-limits")
+    if before is not None:
+        print(f"failures before upgrade: {before}")
+        print(f"failures after upgrade: {after}")
+    else:
+        print(f"failures: {after}")
+    if after:
+        rel = (project / "constraints" / "file-limits.yaml").relative_to(project).as_posix()
+        print(
+            "Measurement rules may have changed with this specy-road version; "
+            + failure_hint(rel)
+        )
+
+
 def _capped_lines(project: Path) -> dict[str, tuple[int, int]]:
     """``{path: (lines, cap)}`` for every file the project's ``constraints/file-limits.yaml`` caps.
 
     Read the way ``specy-road file-limits`` reads it: globs anchored at the
     source scan root, overlays applied, git-ignored files skipped.
     """
-    cfg_path = project / "constraints" / "file-limits.yaml"
-    try:
-        cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) if cfg_path.is_file() else None
-    except (OSError, yaml.YAMLError):
-        cfg = None
-    if not isinstance(cfg, dict):
+    cfg = _file_limits_cfg(project)
+    if cfg is None:
         return {}
     root = source_scan_root(project)
     overlays = build_overlay_match_sets(root, cfg)
@@ -276,6 +306,7 @@ def run_upgrade(repo_root: Path | None, *, dry_run: bool = False, prune: bool = 
     print_install_report()
     if dry_run:
         return _dry_run(project, checkout, prune=prune)
+    limits_before = _file_limits_failure_count(project)
     _apply(project, checkout, prune=prune)
     valid, digest_ok = _check(project)
     _section("next")
@@ -288,6 +319,7 @@ def run_upgrade(repo_root: Path | None, *, dry_run: bool = False, prune: bool = 
     for step in steps:
         print(f"- {step}")
     _print_other_worktrees(checkout)
+    _report_file_limits_after_upgrade(project, limits_before, _file_limits_failure_count(project))
     return 0 if valid else 1
 
 
