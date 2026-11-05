@@ -29,7 +29,6 @@ import argparse
 import contextlib
 import json
 import math
-import os
 import subprocess
 import sys
 import time
@@ -44,12 +43,11 @@ from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text
 from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
-from specy_road.orchestration_role_env import harness_env
 from specy_road.review_files import reviews_dir
-from specy_road.review_answer import events
-from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, ReviewRunBusy, answer_scratch, append_log,
-                                            close_review_run, file_review, final_answer, review_run_lock, reviewer_env,
-                                            run_text, snapshot, write_schema)
+from specy_road.review_answer import stream_lines
+from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, ReviewRunBusy, answer_scratch, attempt_text,
+                                            close_review_run, delegate_turn, file_review, final_answer, review_run_lock,
+                                            snapshot, write_schema)
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.review_usage import add_parser as add_usage_parser, archive_round
 from specy_road.reviewer_run_failure import capacity_error, gate_policy_summary, valid_record  # noqa: F401 — re-exported
@@ -143,38 +141,6 @@ class _Harness:
         return self.adapter.launch(prompt, self.cwd, self.api_id, cli, **kw)
 
 
-def _turn(h: _Harness, launch: Launch) -> dict[str, Any]:
-    """Run one turn to its end; ``exit``, the reported ``session_id`` and the ``errors`` it printed."""
-    out: dict[str, Any] = {"exit": None, "session_id": None, "errors": [], "tail": []}
-    # the role and the harness's avoid-list for installed guard hooks (M8.5, M11.62), no caches (M8.3)
-    env = reviewer_env(harness_env(os.environ, "reviewer", harness=h.harness))
-    with append_log(h.log) as raw:   # never through a symlink (review_write_check)
-        raw.write(f"[review delegate] {_now()} {launch.argv[0]}\n")
-        try:
-            proc = subprocess.Popen(launch.argv, cwd=h.cwd, env=env, text=True, encoding="utf-8",
-                                    errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                    stdin=subprocess.PIPE if launch.stdin is not None else subprocess.DEVNULL)
-        except OSError as e:
-            out.update(exit=127, errors=[f"cannot start {launch.argv[0]}: {e}"])
-            return out
-        if launch.stdin is not None and proc.stdin:
-            try:
-                proc.stdin.write(launch.stdin)
-                proc.stdin.close()
-            except OSError as e:   # the harness quit before reading its prompt
-                raw.write(f"[review delegate] harness closed stdin early: {e}\n")
-        assert proc.stdout is not None
-        for line in proc.stdout:
-            raw.write(line)
-            out["tail"] = [*out["tail"][-19:], line.strip()]
-            for ev in events(h.adapter, line, launch):   # total: untrusted output (review_answer)
-                out["session_id"] = ev.session_id or out["session_id"]
-                if ev.type == "error":
-                    out["errors"].append(str((ev.detail or {}).get("message") or ev.summary))
-        out["exit"] = proc.wait()
-    return out
-
-
 def _start(repo_root: Path, t: ReviewTarget, model: str, ref: str | None, h: _Harness,
            resume: bool) -> tuple[str, str | None]:
     """``(prompt text, session to resume)``; refuses a resume the record cannot support."""
@@ -210,14 +176,16 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
         if h.output is not None:
             h.output.unlink(missing_ok=True)
         launch = h.launch(prompts[1] if session else prompts[0], session)
-        turn = _turn(h, launch)
+        turn = delegate_turn(h.adapter, h.harness, h.log, h.cwd, launch)
         run["session_id"] = turn["session_id"] or launch.session_id or run["session_id"]
         if turn["session_id"] and h.can_resume:
             session = check_session_id(h.harness, turn["session_id"])
         failed = turn["exit"] != 0 or bool(turn["errors"])
         cap = turn_capacity_error(turn["errors"], turn["tail"]) if failed else None
         said = cap or next(iter(turn["errors"]), "")
-        run["attempts"].append({"at": _now(), "exit": turn["exit"], "capacity": bool(cap), "error": said[:300] or None})
+        run["attempts"].append({"at": _now(), "exit": turn["exit"], "capacity": bool(cap), "error": said[:300] or None,
+                                "log_start": turn["log_start"], "log_end": turn["log_end"],   # the span run_text reads
+                                "log_sha256": turn["log_sha256"]})
         if path.is_symlink():   # replaced below, never followed; the tripwire still reports it (review_write_check)
             h.replaced.append(path)
         save_run(path, run)
@@ -241,9 +209,8 @@ def _close(repo_root: Path, t: ReviewTarget, model: str, run: dict[str, Any], pa
     """Close the run from its filing outcome and the last attempt (:func:`close_review_run`). A chore run files
     nothing (``filed`` is ``None``: its reviewer wrote its own verdict file, M8.2), so ``close_run`` judges it by
     that file."""
-    log = path.with_suffix(".log")
-    tail = log.read_text(encoding="utf-8", errors="replace").split("\n")[-20:] if log.is_file() else []
     last = run["attempts"][-1] if run["attempts"] else {}
+    tail = stream_lines(attempt_text(path.with_suffix(".log"), last))[-20:]   # the last attempt only
     errors = [last["error"]] if last.get("error") else []
     if filed is None:
         close_run(repo_root, t, model, run, exit_code=last.get("exit"), errors=errors, tail=tail, reason_prefix=reason)
@@ -299,7 +266,8 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
             before = snapshot(cwd, reviews, model) if chore is None else None
             reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
             filed = None if before is None else file_review(
-                repo_root, node_id, model, reviews, answer=final_answer(h.adapter, run_text(log), answer),
+                repo_root, node_id, model, reviews, answer=final_answer(
+                    h.adapter, attempt_text(log, run["attempts"][-1] if run["attempts"] else {}), answer),
                 before=before, after=snapshot(cwd, reviews, model, before).with_symlinks(h.replaced), ref=ref,
                 launch_mode=h.launch_mode, sign_key=sign_key)
             _close(repo_root, t, model, run, path, reason, filed)

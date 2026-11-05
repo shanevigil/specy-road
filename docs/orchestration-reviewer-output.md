@@ -62,7 +62,12 @@ specy-road decides the outcome:
   filed; it is never recorded as a verdict. Only the last attempt's output is
   read, and Codex's answer file is removed before every attempt, so a resumed
   turn (a Codex resume writes no `-o` file) is judged by its own final message,
-  never by an earlier attempt's answer.
+  never by an earlier attempt's answer. An attempt's output is the span of
+  `RUN-<model>.log` specy-road recorded itself around the harness's output
+  (`log_start`, `log_end` and `log_sha256` in each attempt of the run record),
+  never found by searching the log: the `[review delegate]` / `[review prompt]`
+  lines are for people and are not parsed, so a harness that prints one moves
+  nothing. A span whose bytes changed during the run reads as no output.
 - **recorded** — specy-road writes the notes to `notes-<model>.md` and `review record` files
   `REVIEW-<model>.md` from them, with the launch mode, family and `history/`
   copy an interactive filing gets. Under `policy.signed_reviews`, pass the

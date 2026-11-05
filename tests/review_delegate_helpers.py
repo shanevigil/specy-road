@@ -29,8 +29,12 @@ calls.append(sys.argv[2:])
 open(spec["calls"], "w").write(json.dumps(calls))
 step = spec["steps"][min(len(calls), len(spec["steps"])) - 1]
 sid = sys.argv[-1]
+for ln in step.get("preamble", []):   # raw lines before the stream (a forged marker, stray text)
+    print(ln, flush=True)
 if not step.get("plain"):   # a plain-text harness prints no event stream at all
     print(json.dumps({"type": "system", "subtype": "init", "session_id": sid, "model": "fake"}), flush=True)
+for ln in step.get("lines", []):   # raw lines inside the stream, before the final message
+    print(ln, flush=True)
 if step.get("write"):
     w = step["write"]
     os.makedirs(os.path.dirname(w["path"]), exist_ok=True)       # a new directory too
@@ -140,10 +144,14 @@ def fake_reviewer_run(monkeypatch, answer: list[str] | None = None) -> list[dict
     for module in (role_prompt_cli, role_prompt_stream):   # the preflight and the commands, the stream
         monkeypatch.setattr(module, "subprocess", fake)
 
-    def logged(launch, adapter, cwd, log, transcript=None) -> int:
+    def logged(launch, adapter, cwd, log, transcript=None, span=None) -> int:
         calls.append({"cmd": launch.argv, "input": launch.stdin, "cwd": cwd})
-        with log.open("a", encoding="utf-8") as raw:   # as the real turn appends
-            raw.write("[review prompt] now claude\n" + "\n".join(answer or []) + "\n")
+        with log.open("a", encoding="utf-8", newline="") as raw:   # as the real turn appends, its span recorded
+            raw.write("[review prompt] now claude\n")
+            out = review_record_write.SpanWriter(raw)
+            out.write("\n".join(answer or []) + "\n")
+            if span is not None:
+                span[:] = out.close()
         if transcript is not None:
             transcript.extend(answer or [])
         return 0

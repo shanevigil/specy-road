@@ -126,7 +126,8 @@ def test_run_text_keeps_a_raw_u2028_and_delegate_files_the_answer(tmp_path: Path
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
     log = rf.reviews_dir(repo, "M1.1") / "RUN-opus.log"
     assert "\u2028" in log.read_text(encoding="utf-8")                      # the harness's line kept it raw
-    assert "\u2028" in run_text(log)
+    last = run["attempts"][-1]
+    assert "\u2028" in run_text(log, last["log_start"], last["log_end"])
     assert run["outcome"] == "recorded", run["reason"]
     assert "\u2028" in (rf.reviews_dir(repo, "M1.1") / "notes-opus.md").read_text(encoding="utf-8")
     assert git(repo, "status", "--porcelain", "src") == ""

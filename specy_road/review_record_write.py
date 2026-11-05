@@ -31,10 +31,10 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import io
 import json
 import os
-import re
 import subprocess
 import sys
 import tempfile
@@ -61,10 +61,9 @@ from specy_road.review_write_check import (  # re-exported: the post-run write c
     snapshot,
     written,
 )
-from specy_road.reviewer_run_failure import close_run, harness_error_line, record_reviewer_failure_event
+from specy_road.orchestration_role_env import harness_env
+from specy_road.reviewer_run_failure import _now, close_run, harness_error_line, record_reviewer_failure_event
 
-#: The line each reviewer turn's raw output starts under in ``RUN-<model>.log``; the last one opens this turn.
-RUN_MARK = re.compile(r"^\[review (delegate|prompt)\] ")
 
 
 def strict_schema(ids: list[str], removals: list[str] | tuple[str, ...] = ()) -> dict[str, Any]:
@@ -166,14 +165,49 @@ def reviewer_env(env: dict[str, str]) -> dict[str, str]:
             "GIT_OPTIONAL_LOCKS": "0"}
 
 
-def run_text(log: Path) -> str:
-    """This turn's raw output: the log after its last :data:`RUN_MARK` line."""
+def log_offset(raw: Any) -> int:
+    """Where the next byte goes in the run log open as ``raw`` (:func:`append_log`): its size after a flush. An
+    attempt's span is two of these, taken by specy-road around the harness's output (:func:`run_text`)."""
+    raw.flush()
+    return os.fstat(raw.fileno()).st_size
+
+
+def run_text(log: Path, start: int, end: int, digest: str | None = None) -> str:
+    """One attempt's raw output: exactly the log's bytes ``[start, end)``, offsets specy-road took itself before
+    the harness started and after it ended (:func:`log_offset`; ``review delegate`` keeps them in each attempt of
+    the run record). Nothing the harness prints can create, move or hide an attempt boundary: the marker lines
+    specy-road writes are outside the span and only for people reading the log. ``digest`` is the SHA-256 of the
+    bytes specy-road wrote there (:class:`SpanWriter`): a span whose bytes differ (the log cut, rewritten or
+    appended to by anyone else during the run), or a log shorter than ``end``, gives no output, so a rerun request."""
     try:
-        lines = stream_lines(log.read_text(encoding="utf-8", errors="replace"))
+        with log.open("rb") as f:
+            if os.fstat(f.fileno()).st_size < end:
+                return ""
+            f.seek(start)
+            data = f.read(max(0, end - start))
     except OSError:
         return ""
-    start = max((i + 1 for i, line in enumerate(lines) if RUN_MARK.match(line)), default=0)
-    return "\n".join(lines[start:])
+    if digest is not None and hashlib.sha256(data).hexdigest() != digest:
+        return ""
+    return data.decode("utf-8", errors="replace")
+
+
+class SpanWriter:
+    """Writes one attempt's output to the run log and keeps its span: ``start`` and ``end`` offsets (:func:`log_offset`)
+    and the SHA-256 of every byte written in between, all specy-road's own state (:func:`run_text`)."""
+
+    def __init__(self, raw: Any) -> None:
+        self.raw, self.start, self.end = raw, log_offset(raw), log_offset(raw)
+        self._sha = hashlib.sha256()
+
+    def write(self, text: str) -> None:
+        self.raw.write(text)
+        self._sha.update(text.encode("utf-8"))
+
+    def close(self) -> list[Any]:
+        """``[start, end, digest]``, the arguments :func:`run_text` takes after the log."""
+        self.end = log_offset(self.raw)
+        return [self.start, self.end, self._sha.hexdigest()]
 
 
 @dataclass(frozen=True)
@@ -238,13 +272,18 @@ def file_review(root: Path, node_id: str, model: str, reviews: Path, *, answer: 
     return Outcome("recorded", "", review_path(root, node_id, model))
 
 
-def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path, transcript: list[str] | None = None) -> int:
-    """Run one reviewer turn with :func:`reviewer_env` (over the launch's own ``env``, e.g. M11.62's Claude avoid-list), its raw output appended to ``log`` under a :data:`RUN_MARK`
-    line (and to ``transcript``, which ``prompt --channel cli``'s run record keeps: M11.72) and each event's
-    summary echoed to stderr as it arrives; for ``prompt --channel cli``, whose terminal would otherwise show raw
-    JSON lines."""
+def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path, transcript: list[str] | None = None,
+               span: list[int] | None = None) -> int:
+    """Run one reviewer turn with :func:`reviewer_env` (over the launch's own ``env``, e.g. M11.62's Claude
+    avoid-list), its raw output appended to ``log`` after a marker line for people (and to ``transcript``, which
+    ``prompt --channel cli``'s run record keeps: M11.72) and each event's summary echoed to stderr as it arrives.
+    ``span`` gets the output's ``[start, end]`` offsets in the log (:func:`run_text`)."""
+    span = span if span is not None else []
     with append_log(log) as raw:   # never through a symlink
         raw.write(f"[review prompt] {datetime.now(timezone.utc).replace(microsecond=0).isoformat()} {launch.argv[0]}\n")
+        out = SpanWriter(raw)
+        span[:] = [out.start, out.start, None]
+        note = ""
         try:
             proc = subprocess.Popen(launch.argv, cwd=cwd, text=True, encoding="utf-8", errors="replace",
                                     env=reviewer_env({**os.environ, **(launch.env or {})}),
@@ -260,15 +299,64 @@ def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path, transcript: list
                 proc.stdin.write(launch.stdin)
                 proc.stdin.close()
             except OSError as e:   # the harness quit before reading its prompt
-                raw.write(f"[harness closed stdin early: {e}]\n")
+                note = f"[harness closed stdin early: {e}]\n"
         assert proc.stdout is not None
         for line in proc.stdout:
-            raw.write(line)
+            out.write(line)
             if transcript is not None:
                 transcript.append(line.rstrip("\n"))
             for ev in events(adapter, line, launch):   # total: untrusted output (review_answer)
                 print(f"{ev.type}: {ev.summary}", file=sys.stderr)
-        return proc.wait()
+        rc = proc.wait()
+        span[:] = out.close()
+        raw.write(note)   # specy-road's own note, after the span
+        return rc
+
+
+def delegate_turn(adapter: Any, harness: str, log: Path, cwd: Path, launch: Any) -> dict[str, Any]:
+    """``review delegate``'s reviewer turn, run to its end: ``exit``, the reported ``session_id``, the ``errors`` it
+    printed, the last lines (``tail``) and its log span (``log_start``, ``log_end``, ``log_sha256``: :func:`run_text`)."""
+    out: dict[str, Any] = {"exit": None, "session_id": None, "errors": [], "tail": []}
+    # the role and the harness's avoid-list for installed guard hooks (M8.5, M11.62), no caches (M8.3)
+    env = reviewer_env(harness_env(os.environ, "reviewer", harness=harness))
+    with append_log(log) as raw:   # never through a symlink (review_write_check)
+        raw.write(f"[review delegate] {_now()} {launch.argv[0]}\n")   # for people; never parsed
+        span = SpanWriter(raw)   # the attempt's span: specy-road's own offsets and digest
+        out.update(log_start=span.start, log_end=span.start, log_sha256=None)
+        note = ""
+        try:
+            proc = subprocess.Popen(launch.argv, cwd=cwd, env=env, text=True, encoding="utf-8",
+                                    errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    stdin=subprocess.PIPE if launch.stdin is not None else subprocess.DEVNULL)
+        except OSError as e:
+            out.update(exit=127, errors=[f"cannot start {launch.argv[0]}: {e}"])
+            return out
+        if launch.stdin is not None and proc.stdin:
+            try:
+                proc.stdin.write(launch.stdin)
+                proc.stdin.close()
+            except OSError as e:   # the harness quit before reading its prompt
+                note = f"[review delegate] harness closed stdin early: {e}\n"
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            span.write(line)
+            out["tail"] = [*out["tail"][-19:], line.strip()]
+            for ev in events(adapter, line, launch):   # total: untrusted output (review_answer)
+                out["session_id"] = ev.session_id or out["session_id"]
+                if ev.type == "error":
+                    out["errors"].append(str((ev.detail or {}).get("message") or ev.summary))
+        out["exit"] = proc.wait()
+        out["log_start"], out["log_end"], out["log_sha256"] = span.close()
+        raw.write(note)   # specy-road's own note, after the span
+    return out
+
+
+def attempt_text(log: Path, attempt: dict[str, Any]) -> str:
+    """An attempt's output: the log span specy-road recorded in its own attempt entry (:func:`run_text`); none when
+    the attempt has no span (it never launched)."""
+    if "log_start" not in attempt:
+        return ""
+    return run_text(log, attempt["log_start"], attempt["log_end"], attempt.get("log_sha256"))
 
 
 def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Path, ref: str | None = None,
@@ -281,8 +369,9 @@ def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Pat
     last, the outcome line (but a rerun request after a failed harness), which the reviewer-failure event names."""
     path = reviews / f"RUN-{model}.log"
     before = snapshot(root, reviews, model)
-    rc = run_logged(launch, adapter, root, path, transcript)
-    outcome = file_review(root, reviews.name, model, reviews, answer=final_answer(adapter, run_text(path), output),
+    span: list[Any] = [0, 0, None]
+    rc = run_logged(launch, adapter, root, path, transcript, span)
+    outcome = file_review(root, reviews.name, model, reviews, answer=final_answer(adapter, run_text(path, *span), output),
                           before=before, after=snapshot(root, reviews, model, before), ref=ref,
                           launch_mode=launch.launch_mode, sign_key=sign_key)
     print(f"{outcome.state}: {outcome.path or outcome.reason}", file=sys.stderr)

@@ -887,6 +887,43 @@ WIP merged first (`--no-edit`), no conflicts.
 - A name clash: `review_usage._log_turns` has a parameter named `events`, so the helper is imported there as `safe_events`. Caught by `test_review_usage`.
 - Verification: 70 importer test files, `pytest -q -n 4 -p no:cacheprovider`: 1096 passed. `ruff check specy_road tests scripts`: clean. `file-limits`: OK. `export --check`: OK.
 
+## Fix round 6 (Sol-low block at `aabe0a67`: F1, attempt boundaries; maintainer root-cause decision)
+
+WIP merged first (`--no-edit`), no conflicts.
+
+- **Class (root cause):** control flow decided by text the harness controls. `run_text` found the current attempt by searching the log for its last `[review delegate]` / `[review prompt]` line. A harness that printed one after malformed output threw that output away, and the valid JSON after it was filed as an approve.
+- **Design:** attempt boundaries are specy-road's own state.
+  - `review_record_write.SpanWriter` sits between the harness's stdout and the run log. It takes `log_start` (the log's size after specy-road's own marker line, `log_offset`), hashes every byte specy-road writes for the attempt, and on close returns `[log_start, log_end, sha256]`.
+  - `review delegate` keeps that span in each entry of `RUN-<model>.json` (`log_start`, `log_end`, `log_sha256`). `prompt --channel cli` gets it from `run_logged` (a new `span` out-parameter).
+  - `run_text(log, start, end, digest)` reads exactly those bytes. If the log is now shorter than `end`, or the bytes differ from the digest (cut, rewritten or appended to by anyone else during the run), it reads as no output, so a rerun request.
+  - `RUN_MARK` and all marker parsing are **deleted**. Marker lines stay in the log for people, outside every span. specy-road's "harness closed stdin early" note is now written after the span closes.
+  - The last attempt's span also drives `_close`'s error tail (`attempt_text`), which used to be the whole log's last 20 lines.
+  - For the file limit, `review_delegate._turn` moved beside `run_logged` as `review_record_write.delegate_turn` (same body; it now uses `SpanWriter`). `attempt_text` sits next to it.
+- **Docs:** `docs/orchestration-reviewer-output.md` states the span rule.
+- **Tests:** `tests/test_review_attempt_span.py` (new, 15 cases).
+  - Forged markers of both kinds:
+    - **middle** (a truncated event, a forged marker, then a valid result) and **end** (a valid result, then a forged marker): a rerun, incomplete, no record;
+    - **start** (before the stream, with stray text): the same outcome as without the marker;
+    - **followed by valid JSON on a plain harness**: a rerun, while the same JSON alone is filed;
+    - **`prompt --channel cli`**, generic and claude-code: a rerun, an incomplete run record, no record.
+  - **Truncated log:** the reviewer empties `RUN-opus.log` mid-run; the digest refuses the span; a rerun, no record.
+  - **`run_text` unit:** the forged marker is data inside the span; a wrong digest or too short a log gives no output.
+  - **Two real attempts:** the spans are disjoint and increasing, kept in the run record; attempt 1's said verdict is only in its own span; attempt 2 (forged marker plus malformed output) gives a rerun.
+  - The fake gained `preamble` and `lines` steps. `fake_reviewer_run` fills the span through `SpanWriter`.
+
+## Probes (fix round 6)
+
+- `grep RUN_MARK|\[review (delegate|prompt)\]` over `specy_road` and `tests`: no parser is left. The markers are written in two places (`delegate_turn`, `run_logged`), always outside the span.
+- Readers of attempt output: `final_answer`'s input (delegate and prompt-cli) and `_close`'s tail now take spans. The prompt-cli transcript is specy-road's in-memory copy of the lines it read (state, not log text). `review usage` sums usage over the round's whole log; it is informational, decides nothing, and has no marker parsing.
+- Session id (from harness events): it decides which session a retry resumes. It is validated by `check_session_id` (format), and a resume is refused for another harness or commit. Bounded, and specy-road checks it.
+- Capacity error (from the attempt's errors and its last plain line): it decides retry or stop. Bounded by `--retries`, and now read from the last attempt's span only.
+- Verdict and commit: taken only from the schema-checked final answer (the total boundary). `review record` checks the commit against specy-road's resolved target, and the approve rules and unplanned-removal entries.
+- Run state: from `file_review`'s outcome (tripwire, then the answer, then `review record`), never from harness text. The `RUN-<model>.json` content is excluded from the tripwire, but specy-road rewrites it at the end of every run (`save_run`), so a reviewer's edit there does not survive.
+- A launch that fails (`OSError`): the span is empty, so a rerun. A symlinked log (`append_log` to `/dev/null`): the span is empty or does not match, so no output, and the tripwire reports the link.
+- Honest runs: the digest matches. Text is written with `newline=""` and UTF-8, so the hashed bytes are the bytes in the file. The 71 importer test files pass unchanged apart from the helper.
+- Chore reviewers (M8.2) still judge by their own verdict file through `close_run`. That is unchanged and outside M8.3's filing path.
+- Verification: 71 importer test files, `pytest -q -n 4 -p no:cacheprovider`: 1111 passed. `ruff check specy_road tests scripts` (plus `--select F401,F821` on the moved code): clean. `file-limits`: OK (`review_delegate.py` 368 lines, `review_record_write.py` 382). `export --check`: OK.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
