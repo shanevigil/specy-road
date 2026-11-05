@@ -1,7 +1,8 @@
 """Attribute shared-stash list changes to the worker whose branch owns each entry (M15.25).
 
 Turn boundaries compare ``git stash list`` only. A stash pushed and popped entirely inside
-another worker's turn leaves identical start/end lists, so that action is not detected.
+another worker's turn is not visible to those snapshots and is not detected (A3 documented
+limit, pinned by one test).
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from typing import Any
 from specy_road.worker_state import WorkerRecord, add_flag, append_event, events_since, list_records, load_record
 
 _FLAG_POST_RUN = "post_run_findings"
+_NOTE_KIND = "stash_other"
 
 StashEntry = tuple[str, str]  # (commit hash, subject from ``git stash list --format=%gs``)
 
@@ -34,6 +36,11 @@ def stash_branch(subject: str) -> str | None:
         branch = m.group(1).strip()
         return None if branch.startswith("(") else branch
     return None
+
+
+def post_run_check_flags_worker(findings: list[dict[str, Any]]) -> bool:
+    """Whether this turn's ``post_run_check`` sets ``post_run_findings`` (notes alone do not)."""
+    return bool(findings) and any(f.get("kind") != _NOTE_KIND for f in findings)
 
 
 def _attributed_hashes(repo_root: Path, worker_id: str) -> set[str]:
@@ -79,7 +86,7 @@ def _attribute_owner(repo_root: Path, owner: WorkerRecord, stash_hash: str, subj
 
 def _decide_stash_hash_change(repo_root: Path, rec: WorkerRecord, stash_hash: str,
                               subject: str) -> list[dict[str, Any]]:
-    """Observer findings for one added or removed hash; all attribution paths go through here."""
+    """Findings for one list delta; owner flagged on their record, observer noted or flagged here."""
     branch = stash_branch(subject)
     if branch is None:
         return [{"kind": "stash", "summary": _legacy_stash_summary(subject), "subject": subject}]
@@ -92,9 +99,9 @@ def _decide_stash_hash_change(repo_root: Path, rec: WorkerRecord, stash_hash: st
         return [{"kind": "stash_rule_violation", "summary": _rule_summary(subject),
                  "stash_hash": stash_hash, "subject": subject}]
     _attribute_owner(repo_root, load_record(repo_root, owner.worker_id), stash_hash, subject)
-    return [{"kind": "stash_other", "summary": f"stash change on {owner.worker_id}'s branch ({branch!r}): "
-                                                f"{subject!r}",
-              "worker_id": owner.worker_id, "branch": branch, "stash_hash": stash_hash}]
+    return [{"kind": _NOTE_KIND, "summary": f"stash change on {owner.worker_id}'s branch ({branch!r}): "
+                                           f"{subject!r}",
+             "worker_id": owner.worker_id, "branch": branch, "stash_hash": stash_hash}]
 
 
 def stash_findings(repo_root: Path, rec: WorkerRecord, before: tuple[StashEntry, ...] | None,

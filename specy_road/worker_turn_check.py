@@ -33,7 +33,7 @@ from specy_road.runtime_paths import project_prefix, rebase_to_project
 from specy_road.worker_adapter_base import Parsed
 from specy_road.worker_reconcile import _bookkeeping
 from specy_road.worker_state import WorkerError, WorkerRecord, add_flag, append_event, clear_flag, mutate, status_entries
-from specy_road.worker_turn_stash import stash_findings
+from specy_road.worker_turn_stash import post_run_check_flags_worker, stash_findings
 
 #: The record state of a worker whose last turn stopped at a usage limit; resumable after ``limit_reset_at``.
 PAUSED_BY_LIMIT = "paused_by_limit"
@@ -211,7 +211,7 @@ def close_turn(repo_root: Path, rec: WorkerRecord, watch: TurnWatch, *, pause: b
     append_event(repo_root, rec, "post_run_check", source="system", detail={"findings": found},
                  summary=(f"post-run check: {len(found)} finding(s): " + "; ".join(f["summary"] for f in found))
                  if found else "post-run check: clean")
-    if found:
+    if post_run_check_flags_worker(found):
         add_flag(repo_root, rec, FLAG_POST_RUN)
     else:
         clear_flag(repo_root, rec, FLAG_POST_RUN)

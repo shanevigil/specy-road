@@ -10,7 +10,7 @@ from tests.review_repo_helpers import commit_file, git, make_review_repo
 
 from specy_road import worker_state as ws
 from specy_road import worker_turn_check as tc
-from specy_road.worker_turn_stash import stash_branch, stash_findings
+from specy_road.worker_turn_stash import post_run_check_flags_worker, stash_branch, stash_findings
 
 _HASH = "2afd3b089e9aa06b729d8c791db744a3f174e6bb"
 _SUBJECT = "On feature/rm-thing: a-wip"
@@ -36,6 +36,21 @@ def test_stash_branch_reads_on_and_wip_subjects() -> None:
 
 
 @pytest.mark.parametrize(
+    "findings,expect_flag",
+    [
+        ([], False),
+        ([{"kind": "stash_other"}], False),
+        ([{"kind": "stash_rule_violation"}], True),
+        ([{"kind": "stash", "summary": "stash state unknown: x"}], True),
+        ([{"kind": "stash_other"}, {"kind": "permission_denied"}], True),
+    ],
+    ids=["empty", "observer_note", "owner_violation", "unknown_snapshot", "note_plus_denial"],
+)
+def test_post_run_check_flags_worker(findings: list[dict], expect_flag: bool) -> None:
+    assert post_run_check_flags_worker(findings) is expect_flag
+
+
+@pytest.mark.parametrize(
     "before,after",
     [
         (None, ((_HASH, _SUBJECT),)),
@@ -50,24 +65,27 @@ def test_unknown_stash_snapshot_yields_one_finding_and_no_owner_events(
     found = stash_findings(repo, rec_b, before, after)
     assert len(found) == 1 and found[0]["kind"] == "stash"
     assert "stash state unknown" in found[0]["summary"]
+    assert post_run_check_flags_worker(found)
     assert not [e for e in ws.events_since(repo, rec_a.worker_id, 0) if e.type == "post_run_check"]
 
 
 @pytest.mark.parametrize(
-    "observer,expect_kind,expect_owner_events",
+    "observer,expect_kind,expect_owner_events,expect_observer_flag",
     [
-        ("self", "stash_rule_violation", 0),
-        ("other", "stash_other", 1),
+        ("self", "stash_rule_violation", 0, True),
+        ("other", "stash_other", 1, False),
     ],
     ids=["own_branch", "another_workers_branch"],
 )
 def test_stash_hash_change_on_known_snapshots(
-        tmp_path: Path, observer: str, expect_kind: str, expect_owner_events: int) -> None:
+        tmp_path: Path, observer: str, expect_kind: str, expect_owner_events: int,
+        expect_observer_flag: bool) -> None:
     repo, rec_a, rec_b = _two_workers(tmp_path)
     rec = rec_a if observer == "self" else rec_b
     entry = ((_HASH, _SUBJECT),)
     found = stash_findings(repo, rec, (), entry)
     assert len(found) == 1 and found[0]["kind"] == expect_kind
+    assert post_run_check_flags_worker(found) is expect_observer_flag
     owner_checks = [e for e in ws.events_since(repo, rec_a.worker_id, 0) if e.type == "post_run_check"]
     assert len(owner_checks) == expect_owner_events
 
@@ -91,7 +109,7 @@ def test_another_workers_stash_pop_during_observer_turn_flags_owner_not_observer
     watch = tc.TurnWatch(repo, rec_b)
     git(repo, "stash", "pop", "-q")
     tc.close_turn(repo, rec_b, watch)
-    assert tc.FLAG_POST_RUN in ws.load_record(repo, rec_b.worker_id).flags
+    assert tc.FLAG_POST_RUN not in ws.load_record(repo, rec_b.worker_id).flags
     rec_a = ws.load_record(repo, rec_a.worker_id)
     assert tc.FLAG_POST_RUN in rec_a.flags
     a_checks = [e for e in ws.events_since(repo, rec_a.worker_id, 0) if e.type == "post_run_check"]
@@ -99,7 +117,7 @@ def test_another_workers_stash_pop_during_observer_turn_flags_owner_not_observer
 
 
 def test_ephemeral_stash_push_pop_during_observer_turn_is_not_detected(tmp_path: Path) -> None:
-    """Push+pop inside B's turn: list snapshots match, so nothing is attributed (documented limit)."""
+    """A3 limit: push+pop inside B's turn is not visible to turn-boundary stash snapshots."""
     repo, rec_a, rec_b = _two_workers(tmp_path)
     watch = tc.TurnWatch(repo, rec_b)
     (repo / "src" / "a.py").write_text("print('a')\nstashed\n")
@@ -118,7 +136,7 @@ def test_another_workers_stash_add_flags_owner_and_notes_observer(tmp_path: Path
     (repo / "src" / "a.py").write_text("print('a')\nstashed\n")
     git(repo, "stash", "push", "-q", "-m", "a-wip")
     tc.close_turn(repo, rec_b, watch)
-    assert tc.FLAG_POST_RUN in ws.load_record(repo, rec_b.worker_id).flags
+    assert tc.FLAG_POST_RUN not in ws.load_record(repo, rec_b.worker_id).flags
     [check] = [e for e in ws.events_since(repo, rec_b.worker_id, 0) if e.type == "post_run_check"]
     assert check.detail["findings"][0]["kind"] == "stash_other"
     assert check.detail["findings"][0]["worker_id"] == rec_a.worker_id
@@ -153,4 +171,5 @@ def test_stash_with_no_matching_worker_keeps_stash_finding_on_observer(tmp_path:
     after = tc.git_state(repo)
     found = stash_findings(repo, rec, before.stash, after.stash)
     assert len(found) == 1 and found[0]["kind"] == "stash"
+    assert post_run_check_flags_worker(found)
     assert "notes for later" in found[0]["summary"]
