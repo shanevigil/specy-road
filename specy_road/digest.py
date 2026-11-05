@@ -246,21 +246,20 @@ def _section_claims(root: Path) -> list[str]:
 
 def _section_quality(root: Path, nodes: list[dict[str, Any]]) -> list[str]:
     """Which areas keep costing extra review, from the ``Review-tally`` trailers in tracked history only."""
-    from specy_road.orchestration_config import effective_config
-    from specy_road.review_tally import area_quality
+    from specy_road.review_tally import area_quality, quality_policy
 
-    policy = effective_config(root)[0]["policy"]
     try:
-        areas = area_quality(root, nodes, policy)
+        policy = quality_policy(root)   # as committed at HEAD: a local overlay never changes this section
+        areas = area_quality(root, nodes)
     except Exception:  # noqa: BLE001 - history is context, never fatal
         return []
     if not areas:
         return []
-    threshold = float(policy.get("quality_threshold", 0.5))
+    threshold = float(policy["quality_threshold"])
     out = [
         "## Quality by area",
         "",
-        f"Review cost of the last {int(policy.get('quality_window') or 50)} landed leaves, per touch-zone area, "
+        f"Review cost of the last {int(policy['quality_window'])} completed leaves, per touch-zone area, "
         "from the `Review-tally` trailers on their gate commits. Block rate is the share of tallied leaves "
         f"with at least one blocking round; areas above {threshold:.0%} are **flagged** and listed first. "
         "Plan tighter acceptance there.",

@@ -6,16 +6,30 @@ from datetime import date
 from pathlib import Path
 
 from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
-from tests.test_mark_implementation_reviewed_gate import _repo as _mir_repo, _run as _mir_run
 from tests.test_orchestrate_plan import ROSTER, only_assignment, plan_repo
 
 from specy_road import orchestrate_plan as op
+from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.review_files import reviews_dir
-from specy_road.review_gate import evaluate_gate
+from specy_road.review_gate import evaluate_gate, write_human_approval
 from specy_road.review_tally import leaf_areas, parse_tally, tally_trailers
 
 
-TALLY = "Review-tally: M1.1 rounds=2 blocks=1 integrity=0 rca=0 findings=boundary:1,correctness:2"
+TALLY = "Review-tally: M1.1 rounds=2 blocks=1 approvals=1 integrity=0 rca=0 findings=boundary:1,correctness:2"
+
+
+def _gate_repo(tmp_path: Path) -> Path:
+    """A review repo on its feature branch with the summary mark-implementation-reviewed reads."""
+    repo = make_review_repo(tmp_path)
+    (repo / "work").mkdir(exist_ok=True)
+    (repo / "work" / "implementation-summary-M1.1.md").write_text("## Summary\nDid it.\n", encoding="utf-8")
+    return repo
+
+
+def _mark_reviewed(repo: Path) -> list[str]:
+    """Run the public gate command unattended; the trailer lines of the commit it makes."""
+    mir.main(["--yes", "--repo-root", str(repo)])
+    return git(repo, "log", "-1", "--format=%B").strip().splitlines()[-2:]
 
 
 def _two_rounds(repo: Path) -> str:
@@ -36,15 +50,26 @@ def test_tally_trailer_counts_the_leafs_review_records(tmp_path: Path) -> None:
     gate = evaluate_gate(repo, NODE, _two_rounds(repo))
     assert gate.passed, gate.problems()
     assert tally_trailers(repo, gate) == [TALLY]
-    assert parse_tally(TALLY) == ("M1.1", {"rounds": 2, "blocks": 1, "integrity": 0, "rca": 0})
+    assert parse_tally(TALLY) == ("M1.1", {"rounds": 2, "blocks": 1, "approvals": 1, "integrity": 0, "rca": 0})
 
 
 def test_mark_implementation_reviewed_writes_the_tally_after_the_reviewed_by_lines(tmp_path: Path) -> None:
-    repo = _mir_repo(tmp_path)
+    repo = _gate_repo(tmp_path)
     head = _two_rounds(repo)
-    assert _mir_run(repo, "--yes") == 0
-    assert git(repo, "log", "-1", "--format=%B").strip().splitlines()[-2:] == [
-        f"Reviewed-by: human (human) approve {head}", TALLY]
+    assert _mark_reviewed(repo) == [f"Reviewed-by: human (human) approve {head}", TALLY]
+
+
+def test_a_human_approval_with_no_history_copy_is_one_round(tmp_path: Path) -> None:
+    """write_human_approval files only REVIEW-human.md, as the interactive approval does: the gate counts it, so
+    the tally does too."""
+    repo = _gate_repo(tmp_path)
+    head = git(repo, "rev-parse", "HEAD")
+    write_human_approval(repo, NODE, head, None)
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+    assert _mark_reviewed(repo) == [
+        f"Reviewed-by: human (human) approve {head}",
+        "Review-tally: M1.1 rounds=1 blocks=0 approvals=1 integrity=0 rca=0 findings=none",
+    ]
 
 
 def test_parse_tally_rejects_a_malformed_line() -> None:
@@ -68,7 +93,10 @@ def _routing_repo(tmp_path: Path, routing: bool) -> Path:
     with (repo / "roadmap" / "registry.yaml").open("a", encoding="utf-8") as fh:
         fh.write("# gate\n")
     git(repo, "commit", "-qam", "chore(rm-thing): mark implementation reviewed\n\n"
-        "Review-tally: M1.1 rounds=2 blocks=1 integrity=0 rca=0 findings=none")
+        "Review-tally: M1.1 rounds=2 blocks=1 approvals=1 integrity=0 rca=0 findings=none")
+    with (repo / "roadmap" / "registry.yaml").open("a", encoding="utf-8") as fh:
+        fh.write("# done\n")
+    git(repo, "commit", "-qam", "chore(rm-thing): complete, deregister")
     return repo
 
 

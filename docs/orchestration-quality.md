@@ -4,12 +4,39 @@ Which areas of a project keep costing extra review, recorded on tracked gate com
 
 ## The `Review-tally` trailer
 
-`mark-implementation-reviewed` adds a `Review-tally: <NODE_ID> rounds=<n> blocks=<b> integrity=<i> rca=<r> findings=<category>:<n>,…` trailer to the leaf's gate commit (`specy_road/review_tally.py`): its review rounds, rounds with a blocking record, findings per category over the latest record per model each round, `specy-road integrity` findings between the integration branch's merge base and the approved commit, and RCA escalations (valid RCA records plus one still open). The gitignored `work/reviews/<ID>/` records are only its source; the digest section and routing below read the trailers from tracked git history, so every checkout and CI get the same numbers.
+`mark-implementation-reviewed` adds a `Review-tally: <NODE_ID> rounds=<n> blocks=<b> approvals=<a> integrity=<i> rca=<r> findings=<category>:<n>,…` trailer to the leaf's gate commit, after the `Reviewed-by` lines (`specy_road/review_tally.py`). The records it counts are the review history plus every record the passing gate counted, so an interactive human approval (`REVIEW-human.md`, which has no history copy) is a round. A round is one commit, with the latest record per model at it. The trailer records:
+
+- review rounds
+- rounds with a blocking record
+- approvals the gate counted
+- findings per category
+- `specy-road integrity` findings between the integration branch's merge base and the approved commit
+- RCA escalations (valid RCA records plus one still open)
+
+The gitignored `work/reviews/<ID>/` records are only its source. The digest section and routing below read the trailers from tracked git history.
 
 ## The digest section
 
-`roadmap-context.md` gains a "Quality by area" section once a leaf in the window carries a tally. An area is the first `quality_area_depth` path components (default 1) of a touch zone, relative to the project root; a leaf counts once per distinct area. The window is the last `quality_window` (default 50) distinct leaves with a gate commit, in `git log --topo-order` order from HEAD, that are leaves of the live graph with touch zones. Per area it lists leaves landed, leaves with no tally (landed before the trailer existed; left out of every rate), mean review rounds, block rate (share of tallied leaves with at least one blocking round), integrity findings and RCA escalations. Areas whose block rate exceeds `quality_threshold` (default 0.5) are marked **flagged** and listed first; ties sort by area name. No gate commit with a tally prints no section, and nothing in it depends on the clock.
+Every input is tracked, so every checkout and CI get the same bytes for the same `HEAD`:
+
+| Input | Source |
+| --- | --- |
+| Completed leaves | Each codename's `chore(rm-<codename>): complete, deregister` commit (written by `finish-this-task`) reachable from `HEAD`, in `git log --topo-order --full-history` order. A node's status is never read, so a leaf approved but not finished is not counted. |
+| Touch zones | The live graph. For a leaf no longer live (archived), the graph as committed at its completion commit. |
+| Tally | The newest `Review-tally` trailer on the codename's gate commit. A completed leaf without one landed before the trailer existed and counts as **no tally**. |
+| Policy | `quality_window`, `quality_area_depth` and `quality_threshold` from `roadmap/orchestration.yaml` as committed at `HEAD`. Never the working tree or `orchestration.local.yaml`. |
+
+The window is the last `quality_window` (default 50) completed leaves with touch zones. An area is the first `quality_area_depth` path components (default 1) of a touch zone, relative to the project root, and a leaf counts once per distinct area. Each area's row shows:
+
+- leaves landed
+- leaves with no tally (left out of every rate)
+- mean review rounds
+- block rate (share of tallied leaves with at least one blocking round)
+- integrity findings
+- RCA escalations
+
+An area with no tallied leaves shows `—` for its rates. Areas whose block rate exceeds `quality_threshold` (default 0.5) are marked **flagged** and listed first, and ties sort by area name. With no completed leaf there is no section. Nothing in the section depends on the clock.
 
 ## Routing (`policy.quality_routing`)
 
-With `policy.quality_routing: true` (default false), `orchestrate plan` adds a `quality_routing (area: <area>)` strong-review item to each ready leaf whose zones fall in a flagged area, satisfied by one reviewer from the strong set (every `require_one_of` in `strong_review`); with no strong set it adds a note instead. The review gate does not require it.
+With `policy.quality_routing: true` (default false), `orchestrate plan` adds a `quality_routing (area: <area>)` strong-review item to each ready leaf with a zone that is a flagged area or lies under one. One reviewer from the strong set (every `require_one_of` in `strong_review`) satisfies it. With no strong set, the plan adds a note instead. The review gate does not require the item.

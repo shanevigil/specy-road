@@ -379,7 +379,7 @@ def build_orchestration_plan(root: Path, *, under: str | None = None, today: dat
              for e in config.get("roster") or []]
     ref, drift = (WORKTREE_REF, None) if roster_from_worktree else roster_source(root)
     prefix = project_prefix(root)
-    flagged = flagged_areas(root, nodes, config["policy"])
+    flagged = flagged_areas(root, config["policy"])
     batches = [[assign_leaf(by_id[nid], cands, config, today, drift, prefix, flagged) for nid in batch if nid in by_id]
                for batch in sp.parallel_batches]
     prefs, pref_err = plan_preferences(root, today)
