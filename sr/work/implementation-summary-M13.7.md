@@ -348,3 +348,70 @@ The conflict was one line in `_block_previews`. The resolution keeps both sides:
 - this branch's `(path, text)` preview values (fix round 2, R2).
 
 After the merge, the full suite (`pytest -n 4`) gave 4148 passed and 1 failed: `tests/test_worker_queue_message.py::test_message_while_running_queues_and_delivers`, a timing assertion (`idle` vs `running`). That file passed 6/6 on each of three reruns. Compared with the integration tip, the merge differs only in this leaf's own files.
+
+## Fix round 6
+
+This round addresses Sol's (gpt-6.1-sol) block on c366c94f, R1 (A2). It starts with a merge of `origin/WIP/improvements-0-3-1` (`542229f5`, clean). The code is commit `45d839f8`; the docs line is `8af46df0`.
+
+**Class:** a tracked file that a rule this update added reaches, but that the report leaves out because of how "new" is measured. Round 4 measured it as *ignored after and not before*. That drops a tracked file an older rule already ignored (Sol's case: `work/*.md` already present, new `work/prompt-*.md`). A2 never narrows the tracked list to newly ignored paths.
+
+**Design change: attribution, measured by git.** After the write, `git check-ignore --no-index -v -z --stdin` runs on every tracked file (`git ls-files -c -z`). Its `source`, `linenum` and `pattern` output is read as bytes. A tracked file is listed when:
+- the source is the top-level `.gitignore`, and
+- the line number is one of the lines the update added, meaning lines of the new file that are not a line of the old one (a trailing CR is ignored, so a CRLF file rewritten as LF is not "all new").
+
+The untracked "now hidden" list is unchanged: the observed before/after visibility difference. `observe()` now records the shown files and the old `.gitignore` bytes. The dry-run estimate applies the same attribution against the scratch copy and keeps its label. The 20-entry cap, the `git rm --cached` hint, the skip-on-error line and the index are all unchanged.
+
+**Known limit:** git names one deciding rule, the last match with nested files ahead of the root. A tracked file is therefore not listed when, in the same root `.gitignore`, an older rule after the block also matches it, or when a nested `.gitignore` decides it. That is git's own answer to "which rule ignores it". It is pinned by test case "r5 older rule after the block decides".
+
+**Tests:**
+- Case "r3 tracked already ignored" now expects `work/prompt-a.md` and `work/prompt-tracked.md` listed as tracked.
+- New case "r5 tracked by an older rule only": `work/old.md` is not listed.
+- New case "r5 older rule after the block decides": nothing is listed.
+- The real-run test asserts that the listed tracked set equals the expected set and lies within what git ignores. It no longer compares against a set difference.
+- New test `test_the_dry_run_estimate_lists_what_the_real_run_reports` runs every case dry and requires the estimate's lines to equal the real run's, so Sol's case has dry-run coverage.
+- `tests/test_m13_7_notices.py` reached 402 lines, so the symlinked-`.gitignore` tests (round 5) moved unchanged to the new file `tests/test_m13_7_gitignore_symlinks.py`.
+
+**Red-green:** with `ignore_report.py` from `542229f5`, the 2 "r3 tracked already ignored" cases (real and dry) fail; all 51 pass on `45d839f8`.
+
+## Probes
+
+Each probe below ran dry and real, checked that the index was unchanged, and compared the dry listing with the real one. The probe script was `/tmp/m137_probe2.py`; it is not committed. All 14 agree between dry and real.
+
+- Sol's case (older `work/*.md`, new `work/prompt-*.md`): the tracked file is listed. Fixed; test case r3.
+- Tracked file matched only by an older root rule: not listed. Test case r5.
+- Older root rule after the block matching the tracked file: not listed, because git attributes it to the later rule. This is the known limit; test case r5.
+- Older rule in a nested `work/.gitignore`: not listed (git attributes it to the nested file). Same limit.
+- Older rule in `info/exclude`: listed, because the root `.gitignore` outranks it.
+- Older rule in `core.excludesFile`: listed.
+- CRLF `.gitignore` with an older rule: listed under the block rule, and the old lines are not counted as added.
+- A user line identical to a shipped rule already in the file: not listed, because it is not a new rule (as in round 1).
+- `init project` seed carrying a rule: listed under the block's rule.
+- Tracked names with a space, `β`, a leading `#` or `!`: listed exactly, since NUL-split bytes are used throughout.
+- `core.ignorecase=true` with `work/Prompt-T.md`: listed.
+- Negation of the tracked file after the block: not listed, because the deciding rule is the `!` line.
+- No `.gitignore` before the update: listed.
+- Top-level `.gitignore` that is a symlink: nothing listed, since git does not read it.
+- Nested project prefix `sr/`: `sr/work/prompt-t.md` listed.
+- 25 tracked matches: 20 listed, then `… and 5 more` and the hint.
+
+**Verification:**
+- Targeted run (refresh_stubs, agents_md_block, agents_md_report, agent_ignores, both M13.7 files, init_project_gitignore, init_project_reports, session_presence, upgrade, specyrd_init): passed.
+- Docs tests for `install-and-usage`: passed.
+- `specy-road file-limits`: OK.
+- `ruff`: clean.
+
+### Added (fix round 6)
+
+- `ignore_report._shown`: the shown-untracked listing, shared by `observe` and `observed`.
+- `ignore_report._top_ignore`: the top-level `.gitignore` bytes, the baseline for "added lines".
+- `ignore_report._deciding`: the `check-ignore -v` records with source and line number. `_ignored` is now a view over it.
+- `ignore_report._added_lines`: line numbers of the lines the update added, with a trailing CR ignored.
+- `ignore_report._tracked_under_new_rules`: the attribution, used by both the real run and the estimate (R1).
+- Removed: the tracked half of `observe()` (`ls-files -c -i`) and the before/after tracked difference.
+- `tests/test_m13_7_notices.py`:
+  - cases "r5 tracked by an older rule only" and "r5 older rule after the block decides";
+  - r3 expectation updated;
+  - `test_the_dry_run_estimate_lists_what_the_real_run_reports` (all cases).
+- `tests/test_m13_7_gitignore_symlinks.py` (new file): the round-5 symlink tests, moved for the 400-line cap.
+- `docs/install-and-usage.md`: the one line now says how the tracked notice is decided.
+- Mocks: none.
