@@ -311,7 +311,7 @@ bare`) and in `--json` as each review's `launch_mode`.
 ## Reviewer output and the read-only check
 
 A launched reviewer ends its reply with one JSON object and specy-road files the
-record from it. A run that writes anything but its notes is a review failure, and
+record from it. A run that writes anything (its notes go in the JSON) is a review failure, and
 missing or malformed output is a rerun request, never a verdict. The schema, each
 harness's flags, the outcomes and what the write check compares are in
 [orchestration-reviewer-output.md](orchestration-reviewer-output.md).

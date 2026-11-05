@@ -10,10 +10,9 @@ import os
 import re
 from dataclasses import replace
 from pathlib import Path
-from typing import Any
 
-from specy_road.worker_adapter_base import (CODEX_POLICY, CODEX_REVIEW_POLICY, Adapter, Capabilities, Launch, Parsed,
-                                         _model_flag)
+from specy_road.worker_adapter_base import (CODEX_POLICY, CODEX_REVIEW_POLICY, Adapter, Capabilities, Launch, Message,
+                                         Parsed, _model_flag, native_events)
 from specy_road.worker_adapter_parsers import _json, _snip, _text, limit_detail, usage_fields
 from specy_road.worker_usage_delta import SESSION_TOKENS
 
@@ -21,6 +20,10 @@ from specy_road.worker_usage_delta import SESSION_TOKENS
 #: switches (harness-facts: ``--disable memories`` is ``features.memories=false``; v2's key names are undocumented).
 CODEX_MEMORY_OFF = ("-c", "features.memories=false", "-c", "memories.use_memories=false",
                     "-c", "memories.generate_memories=false")
+
+#: ``codex exec --json``'s event types: an output with none of them is a plain-text wrapper's.
+CODEX_EVENTS = frozenset({"thread.started", "turn.started", "turn.completed", "turn.failed", "item.started",
+                          "item.updated", "item.completed", "error"})
 
 
 def codex_homes() -> Path:
@@ -89,13 +92,24 @@ class Codex(Adapter):
                        *CODEX_REVIEW_POLICY, *(["--output-schema", str(schema)] if schema else []),
                        *(["-o", str(output)] if output else []), "-"], stdin=_text(prompt_path))
 
-    def final_message(self, line: str) -> Any:
-        d = _json(line)
-        item = (d or {}).get("item") or {}
-        if (d or {}).get("type") != "item.completed" or item.get("type") != "agent_message":
+    def messages(self, lines: list[str], output: Path | None = None) -> list[Message] | None:
+        """Each completed ``agent_message`` a message; ``turn.completed`` makes the turn's last one terminal (none:
+        a terminal ``None``), its body the ``-o`` file when Codex wrote one (``output``: the same final message,
+        shaped by ``--output-schema``); ``turn.failed`` is a terminal ``None``."""
+        events = native_events(lines, CODEX_EVENTS)
+        if not events:
             return None
-        text = item.get("text")
-        return text if isinstance(text, str) else ""   # an answer event without an answer replaces any earlier one
+        out: list[Message] = []
+        for d in events:
+            item = d.get("item") or {}
+            if d["type"] == "item.completed" and item.get("type") == "agent_message":
+                out.append(Message(item.get("text"), False))
+            elif d["type"] in ("turn.completed", "turn.failed"):
+                last = out.pop() if out and not out[-1].terminal else Message(None, True)
+                saved = output.read_text(encoding="utf-8", errors="replace") if output and output.is_file() else ""
+                body = None if d["type"] == "turn.failed" else saved if saved.strip() else last.body
+                out.append(Message(body, True))
+        return out
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)

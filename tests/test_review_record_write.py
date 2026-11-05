@@ -19,8 +19,7 @@ from specy_road import review_files as rf
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.model_profiles import load_profile
 from specy_road.review_delegate import DelegateError, delegate
-from specy_road.review_record_write import (json_object, output_schema, review_run_lock, reviewer_env, snapshot,
-                                            written)
+from specy_road.review_record_write import OwnFile, output_schema, review_run_lock, reviewer_env, snapshot, written
 from specy_road.worker_adapters import Codex, Cursor, Unsupported, reviewer_cli
 
 M87_NOTE = Path(__file__).resolve().parents[1] / "docs" / "design-notes" / "M8.7-runtime-verification-harness-facts.md"
@@ -30,17 +29,19 @@ def _record(repo: Path) -> Path:
     return rf.review_path(repo, "M1.1", "opus")
 
 
-# --- A2: a run that writes anything but its notes ------------------------------------------------------------
+# --- A2: a run that writes anything at all ------------------------------------------------------------------
 
 @pytest.mark.parametrize("rel,named", [
     ("src/a.py", None),                                         # a tracked file
     ("work/unrelated-output.txt", None),                        # an untracked file in the project's work/
     ("work/reviews/M1.1/scratch.md", None),                     # an ignored file, in the hand-off directory itself
     ("work/reviews/M1.1/review-output.schema.json", None),      # the schema specy-road wrote before the run
-    ("work/reviews/M1.1/RUN-opus.json", "work/reviews/M1.1"),   # the run record: the fence names the hand-off dir
+    ("work/reviews/M1.1/RUN-opus.json", None),                  # the run record specy-road rewrites in place
     ("work/reviews/M1.1/RUN-opus.log", None),                   # the transcript specy-road appends to, rewritten
+    ("work/reviews/M1.1/notes-opus.md", None),                  # its notes: they travel in the JSON object
+    ("work/reviews/M1.1/.review-run.lock", None),               # the run lock
 ])
-def test_a_run_that_writes_anything_but_its_notes_is_a_review_failure_and_files_nothing(tmp_path: Path, rel: str,
+def test_a_run_that_writes_anything_is_a_review_failure_and_files_nothing(tmp_path: Path, rel: str,
                                                                                        named: str | None) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, {**verdict_step(repo), "write": {"path": str(repo / rel), "text": "x = 2\n"}})
@@ -65,14 +66,6 @@ def test_a_same_length_rewrite_with_its_mtime_put_back_is_a_review_failure(tmp_p
     assert not _record(repo).exists()
 
 
-def test_the_reviewers_own_notes_are_the_one_write_allowed(tmp_path: Path) -> None:
-    repo, spec = delegate_repo(tmp_path)
-    notes = rf.reviews_dir(repo, "M1.1") / "notes-opus.md"
-    set_steps(repo, spec, {**verdict_step(repo), "write": {"path": str(notes), "text": "draft\n"}})
-    run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
-    assert run["state"] == "complete" and run["outcome"] == "recorded", run["reason"]
-
-
 def test_a_run_that_files_its_own_record_is_a_review_failure_and_the_record_is_put_back(tmp_path: Path) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, verdict_step(repo, "block"))
@@ -94,16 +87,19 @@ def test_a_commit_and_an_ignored_cache_count_as_writes_and_other_checkouts_do_no
     nested.mkdir(parents=True)
     (nested / ".git").write_text("gitdir: elsewhere\n")                   # a linked worktree: another checkout
     reviews.mkdir(parents=True, exist_ok=True)                              # set up before the run, as specy-road does
+    (reviews / "RUN-opus.log").touch()
     before = snapshot(repo, reviews, "opus")
     (nested / "edit.py").write_text("theirs\n")
     assert written(before, snapshot(repo, reviews, "opus")) == []
-    (repo / "work" / "reviews" / "M1.1" / "RUN-opus.log").write_text("the run's own log\n")
-    assert written(before, snapshot(repo, reviews, "opus")) == []
+    log = OwnFile(reviews / "RUN-opus.log")                                 # the run's own log, appended in place
+    with log.open() as f:
+        log.write(f, "the run's own log\n")
+    assert written(before, snapshot(repo, reviews, "opus"), (log,)) == []
     git(repo, "commit", "-q", "--allow-empty", "-m", "reviewer commit")
     (repo / "work" / "reviews" / "M1.1" / "RUN-sol.log").write_text("not this run's\n")
-    wrote = written(before, snapshot(repo, reviews, "opus"))
-    assert {"git refs", "work/reviews/M1.1/RUN-sol.log"} <= set(wrote)
-    meta = set(wrote) - {"git refs", "work/reviews/M1.1/RUN-sol.log"}   # the reviewed branch's reflog and ref file
+    wrote = written(before, snapshot(repo, reviews, "opus"), (log,))
+    assert {"git refs", "work/reviews/M1.1/RUN-sol.log", "work/reviews/M1.1"} <= set(wrote)   # and its new entry
+    meta = set(wrote) - {"git refs", "work/reviews/M1.1/RUN-sol.log", "work/reviews/M1.1"}   # branch reflog and ref
     branch = git(repo, "symbolic-ref", "HEAD")
     assert f".git/logs/{branch}" in meta and meta <= {".git/logs/HEAD", f".git/logs/{branch}", f".git/{branch}"}
 
@@ -170,22 +166,6 @@ def test_an_answer_with_null_optional_fields_files_the_same_record_as_one_withou
     assert texts[0] == texts[1] and "null" not in texts[1]
     set_steps(repo, spec, {"answer": {**plain, "commit": None}})              # a required field stays required
     assert delegate(repo, "M1.1", "opus", sleep=lambda s: None)["outcome"] == "rerun"
-
-
-def test_the_final_complete_json_object_of_a_message_is_the_answer() -> None:
-    assert json_object({"a": 1}) == {"a": 1}
-    assert json_object('Done.\n```json\n{"a": {"b": 1}}\n```\n') == {"a": {"b": 1}}
-    assert json_object('{"draft": 1}\nthen\n{"final": 2}') == {"final": 2}
-    assert json_object('{"final": 2}\ntokens used\n1,234') == {"final": 2}   # a harness trailer may follow
-    assert json_object("no object here") is None and json_object(None) is None
-    assert json_object('{"final": 2}\n{"verdict": ') is None                 # a later object was cut off
-    assert json_object('{"final": 2}\n{"x": {"y": 1}') is None               # not its complete inner object
-    assert json_object('see {"final": 2}') is None                           # the answer starts its own line
-    assert json_object('{"wrapper": "draft",\n{"final": 2}') is None         # nested in an unterminated object
-    assert json_object('use {x} here, a stray }\n{"final": 2}') == {"final": 2}   # balanced prose, stray brace
-    assert json_object('[\n{"final": 2}') is None and json_object('[\n{"final": 2}\n]') is None   # in an array
-    assert json_object('see [the docs](x)\n{"final": 2}') == {"final": 2}       # balanced brackets in prose
-    assert json_object('{"final": 2}\n[INFO] done, see [the docs](x)') == {"final": 2}   # and after the answer
 
 
 def test_a_valid_object_followed_by_truncated_json_is_a_rerun_request_and_files_nothing(tmp_path: Path) -> None:
@@ -284,7 +264,8 @@ def test_a_codex_review_delegate_files_the_verdict_from_its_output_file(tmp_path
     schema = json.loads(Path(argv[argv.index("--output-schema") + 1]).read_text())
     assert strict_problems(schema) == []                                    # OpenAI strict mode accepts it
     assert list(schema["properties"]["acceptance"]["properties"]) == ["A1", "A2"]   # the leaf's ids
-    assert argv[argv.index("-o") + 1] == str(reviews / "OUTPUT-sol.json")
+    out = Path(argv[argv.index("-o") + 1])                                  # a private scratch file, removed after
+    assert repo not in out.parents and reviews not in out.parents and not out.exists()
     rec = rf.load_review(rf.review_path(repo, "M1.1", "sol"), ["A1", "A2"])
     assert rec.ok and rec.data["verdict"] == "approve" and rec.data["launch_mode"] == "full"
 

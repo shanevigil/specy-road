@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step, wrote_only
+from tests.review_delegate_helpers import delegate_repo, delegate_roster, set_steps, verdict_step, wrote_only
 from tests.review_repo_helpers import git, make_review_repo, review_output
 from tests.test_models_and_prompt import run_main
 
@@ -61,42 +61,95 @@ def test_prompt_cli_keeps_a_failed_filing_incomplete_beside_an_older_record_of_t
     assert said in capsys.readouterr().err
 
 
-FAKE_CODEX_RESUME = '''#!{python}
+@pytest.mark.parametrize("how", ["preflight", "interrupt"])
+def test_prompt_cli_that_sends_nothing_stays_incomplete_beside_an_older_record_of_the_commit(
+        tmp_path: Path, monkeypatch, how: str) -> None:
+    """Every close path of ``prompt --channel cli`` passes a filing outcome: a failed preflight (nothing sent) and an
+    interrupt are incomplete with a reviewer-failure event, never complete on the strength of an older record."""
+    stop = tmp_path / "stop"
+    roster = delegate_roster("{fake} {prompt} {session_flag}").replace(
+        "harness: claude-code,", f"harness: claude-code, preflight: 'test ! -e {stop}',")
+    repo, spec = delegate_repo(tmp_path, roster)
+    set_steps(repo, spec, verdict_step(repo))
+    assert delegate(repo, "M1.1", "opus", sleep=lambda _s: None)["outcome"] == "recorded"   # the older record
+    if how == "preflight":
+        stop.write_text("")                                                    # the preflight now fails
+    else:
+        def interrupted(*_a, **_k):
+            raise KeyboardInterrupt
+        monkeypatch.setattr(role_prompt, "run_reviewer_channel", interrupted)
+    with pytest.raises((SystemExit, KeyboardInterrupt)) as e:
+        role_prompt.main(["M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+                          "--repo-root", str(repo)])
+    assert how == "interrupt" or e.value.code == 1
+    run = load_run(repo, "M1.1", "opus")
+    assert run["source"] == "prompt-cli" and run["state"] == "incomplete" and run["outcome"] == "rerun"
+    said = "preflight failed" if how == "preflight" else "interrupted"
+    assert said in run["reason"] and run["events"][-1]["type"] == "reviewer-failure"
+
+
+FAKE_CODEX_TURNS = '''#!{python}
 import json, os, sys
 spec = json.loads(open(os.environ["FAKE_CODEX_SPEC"]).read())
-open(spec["calls"], "w").write(json.dumps(sys.argv[1:]))
+argv = sys.argv[1:]
+open(spec["calls"], "a").write(json.dumps(argv) + "\\n")
 sys.stdin.read()
-print(json.dumps({{"type": "item.completed", "item": {{"type": "agent_message", "text": json.dumps(spec["answer"])}}}}))
-if spec["null_last"]:   # the terminal answer event carries no answer
-    print(json.dumps({{"type": "item.completed", "item": {{"type": "agent_message", "text": None}}}}))
+if "-o" in argv:   # a fresh turn: writes the verdict to -o, then fails on capacity, so specy-road resumes
+    open(argv[argv.index("-o") + 1], "w").write(json.dumps(spec["answer"]))
+    print(json.dumps({{"type": "thread.started", "thread_id": spec["sid"]}}))
+    print("ERROR: 429 Too Many Requests", flush=True)
+    sys.exit(1)
+for text in spec["resume_texts"]:   # a resumed turn (no -o): these agent messages, then the turn ends
+    print(json.dumps({{"type": "item.completed", "item": {{"type": "agent_message", "text": text}}}}))
 print(json.dumps({{"type": "turn.completed", "usage": {{}}}}), flush=True)
 '''
+
+
+def _codex(tmp_path: Path, monkeypatch, **spec: object) -> tuple[Path, str, Path]:
+    """``(repo, the commit, the calls file)`` for a codex reviewer ``sol`` run by :data:`FAKE_CODEX_TURNS`."""
+    repo = make_review_repo(tmp_path, orchestration=(
+        "version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+        "  - {id: sol, family: openai, roles: [reviewer], harness: codex}\n"))
+    rf.reviews_dir(repo, "M1.1").mkdir(parents=True)
+    (rf.reviews_dir(repo, "M1.1") / "PACKET.md").write_text("# Review packet\n")
+    head, bin_dir, calls = git(repo, "rev-parse", "HEAD"), tmp_path / "bin", tmp_path / "codex-calls.jsonl"
+    bin_dir.mkdir()
+    (bin_dir / "codex").write_text(FAKE_CODEX_TURNS.format(python=sys.executable))
+    (bin_dir / "codex").chmod(0o755)
+    (tmp_path / "codex-spec.json").write_text(json.dumps({"calls": str(calls), "sid": str(uuid.uuid4()),
+                                                          "answer": review_output(head, model="sol"), **spec}))
+    monkeypatch.setenv("FAKE_CODEX_SPEC", str(tmp_path / "codex-spec.json"))
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+    return repo, head, calls
 
 
 @pytest.mark.parametrize("null_last", [True, False])
 def test_a_codex_resume_whose_last_answer_event_has_no_text_is_a_rerun(tmp_path: Path, monkeypatch,
                                                                        null_last: bool) -> None:
-    repo = make_review_repo(tmp_path, orchestration=(
-        "version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
-        "  - {id: sol, family: openai, roles: [reviewer], harness: codex}\n"))
-    rf.reviews_dir(repo, "M1.1").mkdir(parents=True)
-    head, sid = git(repo, "rev-parse", "HEAD"), str(uuid.uuid4())
+    sid = str(uuid.uuid4())
+    repo, head, calls = _codex(tmp_path, monkeypatch, resume_texts=["VERDICT", None] if null_last else ["VERDICT"])
+    verdict = json.dumps(review_output(head, model="sol"))
+    spec = json.loads((tmp_path / "codex-spec.json").read_text())
+    spec["resume_texts"] = [verdict if t == "VERDICT" else t for t in spec["resume_texts"]]
+    (tmp_path / "codex-spec.json").write_text(json.dumps(spec))
     save_run(run_path(repo, "M1.1", "sol"), {"node_id": "M1.1", "model": "sol", "harness": "codex", "commit": head,
                                              "session_id": sid, "state": "incomplete", "attempts": [], "events": []})
-    bin_dir, spec = tmp_path / "bin", tmp_path / "codex-spec.json"
-    bin_dir.mkdir()
-    (bin_dir / "codex").write_text(FAKE_CODEX_RESUME.format(python=sys.executable))
-    (bin_dir / "codex").chmod(0o755)
-    spec.write_text(json.dumps({"calls": str(tmp_path / "codex-calls.json"), "null_last": null_last,
-                                "answer": review_output(head, model="sol")}))
-    monkeypatch.setenv("FAKE_CODEX_SPEC", str(spec))
-    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
     run = delegate(repo, "M1.1", "sol", resume=True, sleep=lambda _s: None)
-    argv = json.loads((tmp_path / "codex-calls.json").read_text())
+    (argv,) = [json.loads(line) for line in calls.read_text().splitlines()]
     assert argv[:2] == ["exec", "resume"] and sid in argv and "-o" not in argv   # a resume: no -o file
     if null_last:
         assert run["outcome"] == "rerun" and run["state"] == "incomplete"
-        assert "no JSON object" in run["reason"]
+        assert "carries no answer" in run["reason"]
         assert not rf.review_path(repo, "M1.1", "sol").exists()
     else:   # the same earlier answer, last: filed
         assert run["outcome"] == "recorded", run["reason"]
+
+
+def test_a_retried_codex_turn_never_files_the_failed_fresh_turns_answer_file(tmp_path: Path, monkeypatch) -> None:
+    repo, _head, calls = _codex(tmp_path, monkeypatch, resume_texts=["not a verdict"])
+    run = delegate(repo, "M1.1", "sol", retries=1, backoff=0, sleep=lambda _s: None)
+    fresh, resumed = [json.loads(line) for line in calls.read_text().splitlines()]
+    assert "-o" in fresh and resumed[:2] == ["exec", "resume"]               # the -o answer was written, then retried
+    assert [a["capacity"] for a in run["attempts"]] == [True, False]
+    assert run["outcome"] == "rerun" and "no JSON object" in run["reason"]
+    assert not rf.review_path(repo, "M1.1", "sol").exists()

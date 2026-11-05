@@ -159,7 +159,7 @@ def test_review_delegate_and_the_bare_reviewer_command_disable_background_tasks(
     fake = _harness(tmp_path, monkeypatch, "claude", lines=[INIT])
     delegate(repo, "M1.1", "opus", retries=0, backoff=0, sleep=lambda _s: None)
     # M8.3: 0 only when a record was filed; this fake prints no verdict, so the run is a rerun request (1).
-    assert run_default_reviewer(None, _prompt(tmp_path), repo, "m", reviews, None) == 1
+    assert run_default_reviewer(None, _prompt(tmp_path), repo, "m", reviews, None).state == "rerun"
     # --bare already keeps auto memory off; background work would hold `claude -p` open up to 10 minutes idle.
     assert _envs(fake) == [{"CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": None}] * 2
 

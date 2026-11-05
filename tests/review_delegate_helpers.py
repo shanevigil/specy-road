@@ -25,7 +25,8 @@ calls.append(sys.argv[2:])
 open(spec["calls"], "w").write(json.dumps(calls))
 step = spec["steps"][min(len(calls), len(spec["steps"])) - 1]
 sid = sys.argv[-1]
-print(json.dumps({"type": "system", "subtype": "init", "session_id": sid, "model": "fake"}), flush=True)
+if not step.get("plain"):   # a plain-text harness prints no event stream at all
+    print(json.dumps({"type": "system", "subtype": "init", "session_id": sid, "model": "fake"}), flush=True)
 if step.get("write"):
     w = step["write"]
     os.makedirs(os.path.dirname(w["path"]), exist_ok=True)       # a new directory too
@@ -127,12 +128,12 @@ def fake_reviewer_run(monkeypatch, answer: list[str] | None = None) -> list[dict
         return SimpleNamespace(stdin=stdin, stdout=iter(()), wait=lambda: 0)
 
     fake = SimpleNamespace(run=run, Popen=popen, PIPE=real_sp.PIPE, STDOUT=real_sp.STDOUT, DEVNULL=real_sp.DEVNULL)
-    for module in (role_prompt, role_prompt_cli, role_prompt_stream):   # the preflight, the commands, the stream
+    for module in (role_prompt_cli, role_prompt_stream):   # the preflight and the commands, the stream
         monkeypatch.setattr(module, "subprocess", fake)
 
     def logged(launch, adapter, cwd, log, transcript=None) -> int:
         calls.append({"cmd": launch.argv, "input": launch.stdin, "cwd": cwd})
-        with log.open() as raw:   # through the RunLog, as the real turn writes
+        with log.open() as raw:   # through the OwnFile, as the real turn writes
             log.write(raw, "[review prompt] now claude\n" + "\n".join(answer or []) + "\n")
         if transcript is not None:
             transcript.extend(answer or [])

@@ -224,35 +224,26 @@ def test_review_delegate_cli_fails_a_created_written_and_deleted_file_and_files_
     assert not rf.review_path(repo, "M1.1", "opus").exists()
 
 
-# --- an allowed answer or notes write in the same turn hides nothing (Sol, a158edd9) --------------------------------
+# --- no write is allowed: the former notes and answer exemptions are writes too (Sol, a158edd9; design pass) ----------
 
-def _allowed_text(allowed: str, step: dict) -> str:
-    """What the harness writes there: the verdict JSON as Codex's ``-o`` answer, or draft notes."""
-    return json.dumps(step["answer"]) if allowed.startswith("OUTPUT-") else "draft\n"
+def _former_allowed_text(name: str, step: dict) -> str:
+    """What a harness would write there: the verdict JSON as the old in-tree Codex ``-o`` answer, or draft notes."""
+    return json.dumps(step["answer"]) if name.startswith("OUTPUT-") else "draft\n"
 
 
-@pytest.mark.parametrize("allowed", ["notes-opus.md", "OUTPUT-opus.json"])
-def test_review_delegate_cli_fails_a_transient_hand_off_file_beside_an_allowed_write(tmp_path: Path, capsys,
-                                                                                     allowed: str) -> None:
+@pytest.mark.parametrize("transient", [False, True])
+@pytest.mark.parametrize("name", ["notes-opus.md", "OUTPUT-opus.json"])
+def test_review_delegate_cli_fails_a_notes_or_answer_write_in_the_hand_off_directory(tmp_path: Path, capsys,
+                                                                                    name: str, transient: bool) -> None:
     repo, spec = delegate_repo(tmp_path)
     root, step = rf.reviews_dir(repo, "M1.1"), verdict_step(repo)
-    scratch, text = root / "scratch.tmp", _allowed_text(allowed, step)
-    set_steps(repo, spec, {**step, "write": {"path": str(root / allowed), "text": text},
-                           "transient": str(scratch)})                  # both in one harness turn
+    scratch, text = root / "scratch.tmp", _former_allowed_text(name, step)
+    set_steps(repo, spec, {**step, "write": {"path": str(root / name), "text": text},
+                           **({"transient": str(scratch)} if transient else {})})   # alone, or with a transient file
     code, run = _delegate_cli(repo, capsys)
-    assert (root / allowed).read_text() == text and not scratch.exists()
-    assert code == 1 and run["outcome"] == "review_failure" and wrote_only(run["reason"], "work/reviews/M1.1")
+    assert (root / name).read_text() == text and not scratch.exists()
+    assert code == 1 and run["outcome"] == "review_failure" and f"work/reviews/M1.1/{name}" in wrote_paths(run["reason"])
     assert not rf.review_path(repo, "M1.1", "opus").exists()
-
-
-@pytest.mark.parametrize("allowed", ["notes-opus.md", "OUTPUT-opus.json"])
-def test_an_allowed_answer_or_notes_write_alone_is_still_filed(tmp_path: Path, capsys, allowed: str) -> None:
-    repo, spec = delegate_repo(tmp_path)
-    step = verdict_step(repo)
-    set_steps(repo, spec, {**step, "write": {"path": str(rf.reviews_dir(repo, "M1.1") / allowed),
-                                             "text": _allowed_text(allowed, step)}})
-    code, run = _delegate_cli(repo, capsys)
-    assert code == 0 and run["outcome"] == "recorded", run["reason"]
 
 
 # --- scope: other sessions of the same repository are not the reviewer's writes (live failure at f01824de) ------------

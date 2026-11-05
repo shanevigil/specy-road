@@ -7,7 +7,6 @@ Split from :mod:`specy_road.worker_adapters` for the file limit; its docstring d
 
 from __future__ import annotations
 
-import re
 import shlex
 import uuid
 from dataclasses import dataclass, replace
@@ -17,6 +16,7 @@ from typing import Any
 from specy_road.git_subprocess import git_text
 from specy_road.worker_adapter_parsers import (
     _SESSION,
+    _json,
     _snip,
     _tokens,
     apply_roster_price_estimate,
@@ -36,6 +36,21 @@ class Capabilities:
     handoff: bool
     events: bool
     notes: str
+
+
+@dataclass(frozen=True)
+class Message:
+    """One message of a reviewer's turn, as :meth:`Adapter.messages` maps the harness's stream: ``body`` is the
+    harness-validated structured output (a dict), the message text, or ``None`` when the event carries no answer
+    (a ``null`` text, an error result); ``terminal`` when the harness marks it the turn's final answer.
+    :func:`specy_road.review_answer.final_answer` reads only the last one."""
+    body: Any
+    terminal: bool
+
+
+def native_events(lines: list[str], types: frozenset[str]) -> list[dict[str, Any]]:
+    """The output lines that are this harness's JSON events (a ``type`` in ``types``), in order."""
+    return [d for d in map(_json, lines) if d is not None and d.get("type") in types]
 
 
 @dataclass(frozen=True)
@@ -177,11 +192,10 @@ class Adapter:
         has none: it runs its ``channels.cli`` and its final message is parsed as plain JSON."""
         raise Unsupported(f"{self.harness}: no default reviewer command; set the roster's channels.cli")
 
-    def final_message(self, line: str) -> Any:
-        """The reviewer's final answer when ``line`` is an answer event (a dict for harness-validated structured
-        output, else the message text; ``""`` for an answer event with no valid answer, such as a ``null`` text or
-        an error result, so it replaces any earlier answer of the turn and the run is a rerun request); ``None`` for
-        any other line, and always for ``generic``, whose whole output is the message."""
+    def messages(self, lines: list[str], output: Path | None = None) -> list[Message] | None:
+        """A reviewer turn's messages in order, mapped from this harness's event stream (``lines``, the turn's
+        output; ``output``, the file a harness writes its final message to). ``None`` when the output holds none of
+        its events: a ``generic`` harness or a plain-text wrapper, whose whole output is the one final message."""
         return None
 
     def parse(self, line: str) -> Parsed | None:

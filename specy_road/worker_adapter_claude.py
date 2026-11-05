@@ -13,13 +13,16 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.claude_config import claude_projects_dir
-from specy_road.worker_adapter_base import (REVIEWER_DISALLOWED, STDIN_INSTRUCTION, Adapter, Capabilities, Launch, Parsed,
-                                         _bare, _model_flag)
+from specy_road.worker_adapter_base import (REVIEWER_DISALLOWED, STDIN_INSTRUCTION, Adapter, Capabilities, Launch, Message,
+                                         Parsed, _bare, _model_flag, native_events)
 from specy_road.worker_adapter_parsers import _init_detail, _json, _snip, _text, limit_detail, usage_fields
 
 #: The executor's tools, listed rather than left to the mode: since 2.1.302 ``claude -p`` silently denies a tool
 #: nothing approved, and ``acceptEdits`` approves no shell command beyond the read-only and filesystem sets.
 EXECUTOR_TOOLS = "Read,Edit,Write,Glob,Grep,Bash"
+#: ``claude -p --output-format stream-json``'s event types (``json`` prints the ``result`` alone): none means a
+#: plain-text wrapper.
+CLAUDE_EVENTS = frozenset({"system", "assistant", "user", "result"})
 #: An executor's permissions, the same on launch and resume: the mode, the allow-list, and no prompts (anything
 #: still unresolved is denied and Claude is told not to retry; the denial shows in the stream, see ``parse_events``).
 #: ``--allowedTools`` takes several values, so a single-value flag follows it before the instruction.
@@ -74,14 +77,17 @@ class ClaudeCode(Adapter):
                        "--add-dir", str(reviews)],
                       stdin=_text(prompt_path), session_id=session[0] if session else None, launch_mode="bare")
 
-    def final_message(self, line: str) -> Any:
-        d = _json(line)
-        if not d or d.get("type") != "result":
+    def messages(self, lines: list[str], output: Path | None = None) -> list[Message] | None:
+        """Each ``assistant`` event an intermediate message (never the answer), each ``result`` event a terminal
+        one: its ``structured_output`` (set when ``--json-schema`` validated the answer), else its ``result`` text;
+        ``None`` for an error result."""
+        events = native_events(lines, CLAUDE_EVENTS)
+        if not events:
             return None
-        structured = d.get("structured_output")   # set when --json-schema validated the answer
-        if isinstance(structured, dict):
-            return structured
-        return d["result"] if isinstance(d.get("result"), str) else ""   # no answer: replaces any earlier one
+        return [Message(None, False) if d["type"] != "result" else
+                Message(None if d.get("is_error") else d["structured_output"]
+                        if isinstance(d.get("structured_output"), dict) else d.get("result"), True)
+                for d in events if d["type"] in ("assistant", "result")]
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)

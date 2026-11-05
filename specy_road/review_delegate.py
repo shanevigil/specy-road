@@ -34,6 +34,7 @@ import sys
 import time
 import uuid
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -44,13 +45,12 @@ from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.orchestration_role_env import harness_env
 from specy_road.review_files import reviews_dir
-from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, ReviewRunBusy, RootFence, RunLog,
-                                            close_unfiled, file_review, final_output, output_path, prepare_harness_files,
-                                            review_run_lock, reviewer_env, run_text, snapshot, write_schema)
+from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, OwnFile, ReviewRunBusy, answer_scratch,
+                                            close_review_run, file_review, final_answer, review_run_lock, reviewer_env,
+                                            run_text, snapshot, write_schema)
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.reviewer_run_failure import capacity_error, gate_policy_summary, valid_record  # noqa: F401 — re-exported
-from specy_road.reviewer_run_failure import (_now, _read_json, close_run, harness_error_line,
-                                             record_reviewer_failure_event, run_path as _run_path, save_run,
+from specy_road.reviewer_run_failure import (_now, _read_json, close_run, run_path as _run_path, save_run,
                                              turn_capacity_error)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worker_adapters import ClaudeCode, Launch, Unsupported, adapter_for, reviewer_cli
@@ -119,14 +119,15 @@ class _Harness:
         self.default = self.harness != "generic" and not self.cli and (not chore or isinstance(self.adapter, ClaudeCode))
         self.launch_mode = "bare" if self.default and isinstance(self.adapter, ClaudeCode) else self.mode
         self.can_resume = self.adapter.caps.resume
-        self.fenced = False   # a RootFence saw the hand-off root move during one of this run's turns
+        self.output: Path | None = None   # answer_scratch's file: where a fresh Codex turn writes its answer (-o)
+        self.record: OwnFile | None = None   # the run record, rewritten in place between turns (not for a chore)
 
     def launch(self, prompt: Path, session: str | None) -> Launch:
         """A fresh turn, or a resume of ``session`` (an id the harness reported)."""
         if self.default:
             sid = session or (str(uuid.uuid4()) if isinstance(self.adapter, ClaudeCode) else None)
             reviews = reviews_dir(self.repo_root, self.node_id)
-            structured = {} if self.chore else {"schema": reviews / OUTPUT_SCHEMA_NAME, "output": output_path(reviews, self.model)}
+            structured = {} if self.chore else {"schema": reviews / OUTPUT_SCHEMA_NAME, "output": self.output}
             return self.adapter.reviewer_launch(prompt, self.api_id, reviews, self.effort,
                                                 session=(sid, session is not None) if sid else None, **structured)
         kw = {"node_id": self.node_id, "repo_root": self.repo_root, "launch_mode": self.mode, "effort": self.effort}
@@ -145,8 +146,6 @@ def _turn(h: _Harness, launch: Launch) -> dict[str, Any]:
     env = reviewer_env(harness_env(os.environ, "reviewer", harness=h.harness))
     with h.log.open() as raw:
         h.log.write(raw, f"[review delegate] {_now()} {launch.argv[0]}\n")
-        # specy-road changes the hand-off root's entries only between turns: one moving during the turn is the harness's
-        fence = RootFence(reviews_dir(h.repo_root, h.node_id), h.model)
         try:
             proc = subprocess.Popen(launch.argv, cwd=h.cwd, env=env, text=True, encoding="utf-8",
                                     errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -169,7 +168,6 @@ def _turn(h: _Harness, launch: Launch) -> dict[str, Any]:
                 if ev.type == "error":
                     out["errors"].append(str((ev.detail or {}).get("message") or ev.summary))
         out["exit"] = proc.wait()
-    h.fenced = h.fenced or fence.moved()
     return out
 
 
@@ -204,8 +202,9 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
     """
     reason = ""
     for n in range(retries + 1):
-        # each attempt's answer starts empty: a resumed turn (a Codex resume writes no -o file) never files an earlier one's
-        prepare_harness_files(reviews_dir(h.repo_root, h.node_id), h.model)
+        # each attempt's answer starts absent: a resumed turn (a Codex resume writes no -o file) never files an earlier one's
+        if h.output is not None:
+            h.output.unlink(missing_ok=True)
         launch = h.launch(prompts[1] if session else prompts[0], session)
         turn = _turn(h, launch)
         run["session_id"] = turn["session_id"] or launch.session_id or run["session_id"]
@@ -215,7 +214,8 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
         cap = turn_capacity_error(turn["errors"], turn["tail"]) if failed else None
         said = cap or next(iter(turn["errors"]), "")
         run["attempts"].append({"at": _now(), "exit": turn["exit"], "capacity": bool(cap), "error": said[:300] or None})
-        save_run(path, run)
+        # a filed review's record is rewritten in place: the write check compares specy-road's own files by content
+        h.record.rewrite(json.dumps(run, indent=2) + "\n") if h.record else save_run(path, run)
         if not cap:
             return f"harness exited {turn['exit']}: {said[:200] or 'no error text'}" if failed else ""
         reason = f"capacity error after {n + 1} attempt(s): {cap[:200]}"
@@ -233,20 +233,18 @@ def _prompt_file(repo_root: Path, node_id: str, model: str, text: str, suffix: s
 
 def _close(repo_root: Path, t: ReviewTarget, model: str, run: dict[str, Any], path: Path, reason: str,
            filed: Outcome | None) -> None:
-    """Close the run from its filing outcome and the last attempt. A recorded verdict, or a chore run (``filed``
-    is ``None``: its reviewer wrote its own verdict file), goes through :func:`close_run`; a review failure or rerun
-    request is incomplete whatever older record is on file, with a reviewer-failure event (M11.72) naming the
-    harness's error, or the outcome when the harness ended cleanly."""
+    """Close the run from its filing outcome and the last attempt (:func:`close_review_run`). A chore run files
+    nothing (``filed`` is ``None``: its reviewer wrote its own verdict file, M8.2), so ``close_run`` judges it by
+    that file."""
     log = path.with_suffix(".log")
     tail = log.read_text(encoding="utf-8", errors="replace").splitlines()[-20:] if log.is_file() else []
     last = run["attempts"][-1] if run["attempts"] else {}
     errors = [last["error"]] if last.get("error") else []
-    if filed is None or filed.state == "recorded":
-        if filed is not None:
-            run["outcome"] = filed.state
+    if filed is None:
         close_run(repo_root, t, model, run, exit_code=last.get("exit"), errors=errors, tail=tail, reason_prefix=reason)
         return
-    close_unfiled(run, filed, reason, exit_code=last.get("exit"), errors=errors, tail=tail)
+    close_review_run(repo_root, t, model, run, replace(filed, exit=last.get("exit")), reason=reason, errors=errors,
+                     tail=tail)
 
 
 def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = None, resume: bool = False,
@@ -276,7 +274,8 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
         lock.enter_context(review_run_lock(reviews))
     except ReviewRunBusy as e:
         raise DelegateError(str(e)) from None
-    with lock:
+    with lock, answer_scratch(model) as answer:
+        h.output = None if chore else answer
         text, session = _start(repo_root, t, model, ref, h, resume)
         _preflight(entry, cwd)
         prompts = (_prompt_file(repo_root, node_id, model, text),
@@ -286,22 +285,22 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
                "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
                "log": str(path.with_suffix(".log"))}
         save_run(path, run)
+        log = path.with_suffix(".log")
+        log.touch()   # before the snapshot: the run's appends and record rewrites then change no directory entry
         try:
             # M8.3's read-only check and filing are for roadmap reviews; a chore reviewer files its own verdict file.
             if chore is None:
                 write_schema(repo_root, reviews)   # before the snapshot: the reviewer must not change it
             before = snapshot(cwd, reviews, model, t.ref) if chore is None else None
-            h.log = RunLog(path.with_suffix(".log"))
+            h.log, h.record = OwnFile(log), OwnFile(path) if chore is None else None
             reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
             filed = None if before is None else file_review(
-                repo_root, node_id, model, reviews, before=before, after=snapshot(cwd, reviews, model, t.ref),
-                output=final_output(h.adapter, run_text(path.with_suffix(".log")), output_path(reviews, model)),
-                ref=ref, launch_mode=h.launch_mode, fenced=h.fenced, log=h.log, sign_key=sign_key)
+                repo_root, node_id, model, reviews, answer=final_answer(h.adapter, run_text(log), answer),
+                before=before, after=snapshot(cwd, reviews, model, t.ref), own=(h.log, h.record), ref=ref,
+                launch_mode=h.launch_mode, sign_key=sign_key)
             _close(repo_root, t, model, run, path, reason, filed)
         except BaseException as e:   # an interrupt or a launch refusal still closes the record
-            err = f"interrupted: {e or type(e).__name__}"
-            run.update(state="incomplete", reason=err)
-            record_reviewer_failure_event(run, err)
+            close_review_run(repo_root, t, model, run, Outcome("rerun", f"interrupted: {e or type(e).__name__}", exit=None))
             raise
         finally:
             run["ended_at"] = _now()

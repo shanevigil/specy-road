@@ -1,27 +1,35 @@
 """The commands ``specy-road prompt --channel cli`` runs (split from :mod:`role_prompt` for the file limit).
 
-A reviewer runs its harness's read-only reviewer command (:func:`run_default_reviewer`) or its own command with its
-program's structured-output flags (:func:`run_custom_reviewer`), captured and filed by
-:func:`specy_road.review_record_write.run_and_file` (M8.3); any other role runs its command as written
-(:func:`run_plain_cli`). With a ``transcript``, the output is also collected for the run record (M11.72).
+A reviewer goes through :func:`run_reviewer_channel`, which always returns the run's filing
+(:class:`~specy_road.review_record_write.Outcome`): its harness's read-only reviewer command
+(:func:`run_default_reviewer`) or its own command with its program's structured-output flags
+(:func:`run_custom_reviewer`), captured and filed by :func:`specy_road.review_record_write.run_and_file` (M8.3), or
+a rerun request when nothing could be sent; :func:`close_cli_review_run` closes its run record from that filing.
+Any other role runs its command as written (:func:`run_plain_cli`). With a ``transcript``, the output is also
+collected for the run record (M11.72).
 """
 
 from __future__ import annotations
 
-import json
 import shlex
 import subprocess
 import sys
 import uuid
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 from specy_road.bundled_scripts.role_prompt_stream import stream_and_capture
 from specy_road.model_profiles import Profile
 from specy_road.orchestration_role_env import CLAUDE_REVIEWER_AVOID_ENV
-from specy_road.review_record_write import Outcome, close_unfiled, output_path, run_and_file, write_schema
-from specy_road.reviewer_run_failure import save_run
-from specy_road.worker_adapters import ADAPTERS, Launch, Unsupported, reviewer_cli, substitute_prompt
+from specy_road.review_record_write import Outcome, answer_scratch, close_review_run, run_and_file, write_schema
+from specy_road.review_target import ReviewTarget
+from specy_road.reviewer_run_failure import _now, _read_json, harness_error_line, save_run, turn_capacity_error
+from specy_road.worker_adapter_parsers import effort_note
+from specy_road.worker_adapters import ADAPTERS, Launch, Unsupported, placeholder_problem, reviewer_cli, substitute_prompt
+
+#: Reviewer harnesses whose default command specy-road launches, reads back and files from.
+READ_BACK_HARNESSES = ("claude-code", "codex", "cursor")
 
 
 def _shown(argv: list[str]) -> str:
@@ -29,32 +37,82 @@ def _shown(argv: list[str]) -> str:
     return shlex.join(a if len(a) <= 200 else f"<{len(a)} chars>" for a in argv)
 
 
+def preflight(cmd: str | None, root: Path) -> int:
+    """Run the roster's ``preflight`` (proposal §3.6: e.g. confirm which process owns a local model's port) before
+    anything else is even inspected; its exit code, 0 when there is none."""
+    if not cmd:
+        return 0
+    print(f"preflight: {cmd}", file=sys.stderr)
+    rc = subprocess.run(cmd, shell=True, cwd=root, check=False).returncode
+    if rc != 0:
+        print(f"error: preflight failed (exit {rc}); nothing was sent", file=sys.stderr)
+    return rc
+
+
+def resolve_cli(prof: Profile | None, entry_cli: str | None, harness: str | None,
+                level: str | None) -> tuple[str | None, list[str], str]:
+    """``(cli, effort flags, error)``: the roster's ``channels.cli`` (it wins, as ``worker delegate`` has it), else
+    the profile's ``access.cli``; ``error`` when there is none or it is malformed."""
+    cli = entry_cli or (prof.cli() if prof else None)
+    if not cli:
+        return None, [], "--channel cli needs a roster `channels.cli` or an `access.cli` in the model's profile"
+    why = placeholder_problem(cli)
+    if why:
+        return None, [], f"the cli has {why}: {cli}"
+    note = effort_note(cli, level)
+    if note:
+        print(note, file=sys.stderr)
+    return cli, ADAPTERS.get(harness or "generic", ADAPTERS["generic"]).effort_flag(level), ""
+
+
+def run_reviewer_channel(prof: Profile | None, prompt_path: Path, root: Path, entry: dict[str, Any], model: str,
+                         reviews: Path, ref: str | None, transcript: list[str],
+                         sign_key: Path | None = None) -> Outcome:
+    """``prompt --role reviewer --channel cli``: the roster ``entry``'s reviewer, run and filed; every way out is an
+    :class:`Outcome`, a rerun request (``exit`` 1, or the preflight's) when nothing could be sent."""
+    rc = preflight(entry.get("preflight"), root)
+    if rc:
+        return Outcome("rerun", f"rerun requested: preflight failed (exit {rc}); nothing was sent", exit=rc)
+    harness, entry_cli = entry.get("harness"), (entry.get("channels") or {}).get("cli")
+    level = prof.effort("reviewer") if prof else None
+    if harness in READ_BACK_HARNESSES and not entry_cli:
+        return run_default_reviewer(prof, prompt_path, root, model, reviews, level, harness, ref, transcript, sign_key)
+    cli, effort, err = resolve_cli(prof, entry_cli, harness, level)
+    if err:
+        print(f"error: {err}", file=sys.stderr)
+        transcript.append(f"error: {err}")
+        return Outcome("rerun", f"rerun requested: {err}", exit=1)
+    return run_custom_reviewer(prof, str(cli), prompt_path, root, model, reviews, ref, harness, effort, transcript,
+                               sign_key)
+
+
 def run_default_reviewer(prof: Profile | None, prompt_path: Path, root: Path, model: str | None, reviews: Path,
                          level: str | None, harness: str = "claude-code", ref: str | None = None,
-                         transcript: list[str] | None = None, sign_key: Path | None = None,
-                         filed: list[Outcome] | None = None) -> int:
+                         transcript: list[str] | None = None, sign_key: Path | None = None) -> Outcome:
     """The harness's own read-only reviewer command (Claude Code bare, with ``--add-dir`` for the hand-off
     directory), its final JSON filed as the record (:func:`~specy_road.review_record_write.file_review`, signed
-    with ``sign_key``, its outcome appended to ``filed``); 0 only when a record was filed. ``transcript`` collects the output for the run record
-    (M11.72). The caller holds the leaf's run lock (the answer is emptied under it)."""
+    with ``sign_key``). ``transcript`` collects the output for the run record (M11.72). The caller holds the
+    leaf's run lock. Codex writes its answer (``-o``) to an :func:`answer_scratch` file outside the checked tree."""
     api_id = prof.api_id if prof is not None else model
     api_id = None if (api_id or "").strip().lower() in ("", "unknown") else api_id   # unknown: the harness default
-    adapter, out = ADAPTERS[harness], output_path(reviews, str(model))
+    adapter = ADAPTERS[harness]
     session = (str(uuid.uuid4()), False) if harness == "claude-code" else None   # stream-json, to read the result
-    launch = adapter.reviewer_launch(prompt_path, api_id, reviews, level, session=session,
-                                     schema=write_schema(root, reviews), output=out)
-    if harness == "claude-code":
-        launch = replace(launch, env={**(launch.env or {}), **CLAUDE_REVIEWER_AVOID_ENV})   # as `review delegate`'s
-        print("note: the reviewer runs with --bare (no repository hooks, MCP servers or CLAUDE.md), and bare mode "
-              "never reads your subscription login: it needs ANTHROPIC_API_KEY (or an apiKeyHelper)", file=sys.stderr)
-    print(f"running: {_shown(launch.argv)}" + (f" < {prompt_path}" if launch.stdin is not None else ""), file=sys.stderr)
-    return run_and_file(launch, adapter, root, str(model), reviews, ref, transcript, sign_key, filed)
+    with answer_scratch(str(model)) as out:
+        launch = adapter.reviewer_launch(prompt_path, api_id, reviews, level, session=session,
+                                         schema=write_schema(root, reviews), output=out)
+        if harness == "claude-code":
+            launch = replace(launch, env={**(launch.env or {}), **CLAUDE_REVIEWER_AVOID_ENV})   # as `review delegate`'s
+            print("note: the reviewer runs with --bare (no repository hooks, MCP servers or CLAUDE.md), and bare mode "
+                  "never reads your subscription login: it needs ANTHROPIC_API_KEY (or an apiKeyHelper)",
+                  file=sys.stderr)
+        print(f"running: {_shown(launch.argv)}" + (f" < {prompt_path}" if launch.stdin is not None else ""),
+              file=sys.stderr)
+        return run_and_file(launch, adapter, root, str(model), reviews, ref, transcript, sign_key, out)
 
 
 def run_custom_reviewer(prof: Profile | None, cli: str, prompt_path: Path, root: Path, model: str, reviews: Path,
                         ref: str | None, harness: str | None, effort: list[str],
-                        transcript: list[str] | None = None, sign_key: Path | None = None,
-                        filed: list[Outcome] | None = None) -> int:
+                        transcript: list[str] | None = None, sign_key: Path | None = None) -> Outcome:
     """A roster ``channels.cli`` or profile ``access.cli`` reviewer, run as written plus its program's
     structured-output flags (:func:`reviewer_cli`), captured and filed like the default commands."""
     try:
@@ -63,29 +121,31 @@ def run_custom_reviewer(prof: Profile | None, cli: str, prompt_path: Path, root:
         print(f"error: {e}", file=sys.stderr)
         if transcript is not None:
             transcript.append(f"error: {e}")
-        return 1
+        return Outcome("rerun", f"rerun requested: {e}", exit=1)
     # The template, not the expansion: "<prompt>" would echo the whole brief.
     print(f"running: {cli} (prompt: {prompt_path})", file=sys.stderr)
     launch = Launch(["sh", "-c", substitute_prompt(cli, prompt_path, effort=effort)],
                     launch_mode=prof.launch_mode() if prof is not None else "full")
     return run_and_file(launch, ADAPTERS.get(harness or "generic", ADAPTERS["generic"]), root, model, reviews, ref,
-                        transcript, sign_key, filed)
+                        transcript, sign_key)
 
 
-def close_unfiled_cli_run(path: Path, filed: list[Outcome]) -> None:
-    """After ``close_reviewer_cli_run``, which takes any valid record of the commit as success: a run whose filing
-    was a review failure or rerun request stays incomplete with its reviewer-failure event even when an older
-    record of the commit is on file (:func:`~specy_road.review_record_write.close_unfiled`, as ``review delegate``
-    closes one). A run already incomplete has its event; it gets the ``outcome``."""
-    if not filed or filed[-1].state == "recorded":
-        return
-    run = json.loads(path.read_text(encoding="utf-8"))
-    if run.get("state") == "incomplete":
-        run["outcome"] = filed[-1].state
-    else:
-        log = Path(run.get("log") or path.with_suffix(".log"))
-        tail = log.read_text(encoding="utf-8", errors="replace").splitlines()[-20:] if log.is_file() else []
-        close_unfiled(run, filed[-1], exit_code=(run.get("attempts") or [{}])[-1].get("exit"), errors=[], tail=tail)
+def close_cli_review_run(root: Path, t: ReviewTarget, model: str, path: Path, filed: Outcome,
+                         transcript: list[str]) -> None:
+    """Finish ``prompt --channel cli``'s reviewer run record from its filing (an interrupt passes a rerun request):
+    the transcript as the log, one attempt, and :func:`~specy_road.review_record_write.close_review_run`."""
+    run = _read_json(path) or {}
+    log = Path(run.get("log") or path.with_suffix(".log"))
+    log.parent.mkdir(parents=True, exist_ok=True)
+    log.write_text("\n".join(transcript) + ("\n" if transcript else ""), encoding="utf-8")
+    tail = [ln.strip() for ln in transcript[-20:] if ln.strip()]
+    failed = filed.exit not in (0, None)
+    run["attempts"] = [{"at": _now(), "exit": filed.exit, "capacity": bool(turn_capacity_error([], transcript)),
+                        "error": None if filed.state == "recorded" else harness_error_line(
+                            exit_code=filed.exit, errors=[], tail=tail, fallback=filed.reason)[:300] or None}]
+    close_review_run(root, t, model, run, filed, reason=f"harness exited {filed.exit}" if failed else "",
+                     tail=transcript)
+    run["ended_at"] = _now()
     save_run(path, run)
 
 

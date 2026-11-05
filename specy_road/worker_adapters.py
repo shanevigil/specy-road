@@ -25,8 +25,9 @@ on a new repo.
 
 A reviewer gets its own command (:meth:`Adapter.reviewer_launch`), read-only on every harness that has one:
 Claude Code ``--bare`` with ``--disallowedTools`` for commits, pushes and ``gh``; Codex ``sandbox_mode=read-only``;
-Cursor ``--mode ask --trust`` without ``--force``. Its final message is the review as JSON
-(:meth:`Adapter.final_message`), which :mod:`specy_road.review_record_write` files as the record. A reviewer's
+Cursor ``--mode ask --trust`` without ``--force``. Its final message is the review as JSON: each adapter maps its
+stream to ordered messages (:meth:`Adapter.messages`), :func:`specy_road.review_answer.final_answer` reads the last,
+and :mod:`specy_road.review_record_write` files it as the record. A reviewer's
 custom command goes through :func:`reviewer_cli`, which gives Antigravity's ``agy`` (a ``generic`` harness) its
 ``--json-schema`` and read-only flags.
 """
@@ -44,6 +45,7 @@ from specy_road.worker_adapter_base import (  # re-exported
     Adapter,
     Capabilities,
     Launch,
+    Message,
     Parsed,
     Unsupported,
     _bare,

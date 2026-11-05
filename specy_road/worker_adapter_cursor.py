@@ -8,11 +8,14 @@ from __future__ import annotations
 import shlex
 import subprocess
 from pathlib import Path
-from typing import Any
 
-from specy_road.worker_adapter_base import Adapter, Capabilities, Launch, Parsed, Unsupported, _model_flag
+from specy_road.worker_adapter_base import (Adapter, Capabilities, Launch, Message, Parsed, Unsupported, _model_flag,
+                                         native_events)
 from specy_road.worker_adapter_parsers import _json, _snip, _text, usage_fields
 from specy_road.worker_sessions import session_id_problem
+
+#: ``agent -p --output-format stream-json``'s event types (``tool_call`` included): none means a plain-text wrapper.
+CURSOR_EVENTS = frozenset({"system", "user", "assistant", "tool_call", "result"})
 
 
 def create_chat(worktree: Path) -> str:
@@ -85,12 +88,15 @@ class Cursor(Adapter):
                        *_model_flag("--model", model), _text(prompt_path)],
                       session_id=session[0] if resume else None)
 
-    def final_message(self, line: str) -> Any:
-        d = _json(line)
-        if not d or d.get("type") != "result":
+    def messages(self, lines: list[str], output: Path | None = None) -> list[Message] | None:
+        """Each ``assistant`` event an intermediate message (never the answer), each ``result`` event a terminal one
+        (its text; ``None`` for an error result)."""
+        events = native_events(lines, CURSOR_EVENTS)
+        if not events:
             return None
-        result = d.get("result")   # an error or no text: no answer, which replaces any earlier one
-        return result if isinstance(result, str) and not d.get("is_error") else ""
+        return [Message(None, False) if d["type"] != "result" else
+                Message(None if d.get("is_error") else d.get("result"), True)
+                for d in events if d["type"] in ("assistant", "result")]
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)

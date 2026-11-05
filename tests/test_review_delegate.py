@@ -74,10 +74,9 @@ def test_a_capacity_error_is_retried_with_backoff_and_resumes_the_session(tmp_pa
 
 def test_a_retry_never_files_an_earlier_attempts_answer(tmp_path: Path) -> None:
     repo, spec = delegate_repo(tmp_path)
-    answer = reviews_dir(repo, "M1.1") / "OUTPUT-opus.json"   # the -o file a fresh Codex turn writes
-    first = {"write": {"path": str(answer), "text": json.dumps(verdict_step(repo)["answer"])}, "error": CAPACITY,
-             "exit": 1}
-    set_steps(repo, spec, first, {"raw": "not a verdict"})    # the resumed attempt writes no -o file
+    # the first attempt says a valid verdict, then fails on capacity; only the last attempt's output is read
+    first = {"say": json.dumps(verdict_step(repo)["answer"]), "error": CAPACITY, "exit": 1}
+    set_steps(repo, spec, first, {"raw": "not a verdict"})
     run = delegate(repo, "M1.1", "opus", retries=1, backoff=0, sleep=lambda _s: None)
     assert len(fake_calls(spec)) == 2 and run["outcome"] == "rerun"
     assert not (reviews_dir(repo, "M1.1") / "REVIEW-opus.md").exists()
@@ -272,7 +271,7 @@ def test_prompt_cli_exception_closes_the_run_incomplete(tmp_path: Path, monkeypa
     def boom(*_a, **_k):
         raise RuntimeError("harness exploded")
 
-    monkeypatch.setattr(role_prompt, "run_cli_channel", boom)
+    monkeypatch.setattr(role_prompt, "run_reviewer_channel", boom)
     with pytest.raises(RuntimeError, match="harness exploded"):
         role_prompt.main(["M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
                           "--repo-root", str(repo)])

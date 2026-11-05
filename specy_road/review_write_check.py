@@ -4,7 +4,11 @@ limit; callers reach these names through that module, whose docstring describes 
 :func:`snapshot` records, before and after the run, every file of the checkout the reviewer ran in, of its Git
 metadata a reviewer of this leaf could change (:func:`_walk_git`) and of the leaf's hand-off directory, each as
 :func:`_record` keeps it, plus ``HEAD``, the reviewed branch and the Git index's entries; :func:`written` names what
-changed, but the run's own :func:`runtime_files`.
+changed. Nothing is exempt: the files specy-road itself writes in that tree during the run, the transcript and
+``review delegate``'s run record (:class:`OwnFile`), exist before the first snapshot and are written in place, so
+no directory entry moves, and are compared by content against what specy-road wrote. Its other run files live
+outside the tree (Codex's ``-o`` answer: a private temporary directory) or are only created before and written after
+the run (the lock, the prompt, the schema; the notes and the record).
 """
 
 from __future__ import annotations
@@ -19,18 +23,7 @@ from specy_road.git_subprocess import git_stdout, git_text
 from specy_road.review_files import HISTORY_DIRNAME, REVIEW_PREFIX
 
 OUTPUT_SCHEMA_NAME = "review-output.schema.json"
-OUTPUT_PREFIX = "OUTPUT-"
 LOCK_NAME = ".review-run.lock"
-
-
-def runtime_files(reviews: Path, model: str) -> frozenset[str]:
-    """The files a reviewer run may change: its notes and what the adapter writes during the run (the run
-    record ``review_delegate.RUN_PREFIX`` names and its temporary copy, the raw log and Codex's ``-o`` file).
-    Prompts, packets, the output schema and :data:`LOCK_NAME` (created and locked, never written, before the
-    run starts) are not among them, so a change to them is the reviewer's."""
-    names = (f"notes-{model}.md", f"RUN-{model}.json", f"RUN-{model}.json.tmp", f"RUN-{model}.log",
-             f"{OUTPUT_PREFIX}{model}.json")
-    return frozenset(str(reviews / n) for n in names)
 
 
 def _own_records(reviews: Path, model: str) -> list[Path]:
@@ -79,20 +72,17 @@ def _git_marker(path: str, state: dict[str, Any]) -> None:
     state[path] = ("checkout",) if is_dir else _record(st, path, os.path.islink(path))
 
 
-def _walk(base: Path, state: dict[str, Any], skip: frozenset[str] = frozenset(),
-          quiet: frozenset[str] = frozenset()) -> None:
+def _walk(base: Path, state: dict[str, Any], skip: frozenset[str] = frozenset()) -> None:
     """Every file under ``base`` as :func:`_record` keeps it (identity, links, mode, size, mtime, content), and
     every directory, ``base`` included, as :func:`_dir_record` does, ignored ones included, but every path in
-    ``skip`` (the checkout's own ``.git``, scoped by :func:`_walk_git`) and the own metadata of each directory in
-    ``quiet`` (:func:`snapshot`: entries are created there during an honest run), whose contents are still walked.
+    ``skip`` (the checkout's own ``.git``, scoped by :func:`_walk_git`).
     A nested checkout (a directory holding ``.git``) is another repository: only its ``.git`` marker is recorded
     (:func:`_git_marker`), so a reviewer-created ``.git`` file or ``git init`` anywhere is still a write."""
     stack = [str(base)]
     while stack:
         d = stack.pop()
         try:
-            if d not in quiet:
-                state[d] = _dir_record(os.stat(d, follow_symlinks=False))
+            state[d] = _dir_record(os.stat(d, follow_symlinks=False))
             entries = list(os.scandir(d))
         except OSError:   # unreadable, or removed while walking
             continue
@@ -161,11 +151,10 @@ def _walk_git(top: Path, state: dict[str, Any], refs: list[str]) -> None:
 
 @dataclass
 class Snapshot:
-    """What a reviewer run could write; ``records`` keeps this model's own record bytes, ``exempt``
-    :func:`runtime_files`, ``top`` the checkout walked."""
+    """What a reviewer run could write; ``records`` keeps this model's own record bytes, ``top`` the checkout
+    walked."""
     state: dict[str, Any]
     records: dict[Path, bytes] = field(default_factory=dict)
-    exempt: frozenset[str] = frozenset()
     top: Path = Path()
 
     def restore(self, reviews: Path, model: str) -> None:
@@ -190,75 +179,31 @@ def snapshot(cwd: Path, reviews: Path, model: str, ref: str | None = None) -> Sn
     heads = [git_text(["rev-parse", "-q", "--verify", r], top) or "" for r in refs]
     state: dict[str, Any] = {"git refs": "\n".join([git_text(["rev-parse", "HEAD"], top) or "", *refs, *heads]),
                              "git index": hashlib.sha256(index.encode()).hexdigest()}
-    # The hand-off directory's own metadata moves between harness turns (the run record's temporary file and
-    # rename): its files and subdirectories are compared here, and its own metadata during each turn by RootFence.
-    quiet = frozenset({str(reviews)})
-    _walk(top, state, frozenset({str(top / ".git")}), quiet)   # the checkout's own Git directory: _walk_git
+    _walk(top, state, frozenset({str(top / ".git")}))   # the checkout's own Git directory: _walk_git
     _walk_git(top, state, refs)
     if top not in reviews.parents:   # a reviewer in a linked worktree: the hand-off directory is the main checkout's
-        _walk(reviews, state, quiet=quiet)
-    return Snapshot(state, {p: p.read_bytes() for p in _own_records(reviews, model)}, runtime_files(reviews, model), top)
+        _walk(reviews, state)
+    return Snapshot(state, {p: p.read_bytes() for p in _own_records(reviews, model)}, top)
 
 
-def harness_files(reviews: Path, model: str) -> tuple[str, ...]:
-    """The files a reviewer's harness may write in the hand-off root during its turn: Codex's ``-o`` answer and the
-    reviewer's notes (the other :func:`runtime_files` are specy-road's, written between turns)."""
-    return (f"{OUTPUT_PREFIX}{model}.json", f"notes-{model}.md")
-
-
-def prepare_harness_files(reviews: Path, model: str) -> None:
-    """Create :func:`harness_files` before the run, the answer emptied (a stale one never stands in for this run's)
-    and the notes kept, so writing them in place during a turn changes no entry of the hand-off root and
-    :class:`RootFence` needs no exception for them."""
-    reviews.mkdir(parents=True, exist_ok=True)
-    answer, notes = (reviews / name for name in harness_files(reviews, model))
-    answer.write_text("", encoding="utf-8")
-    notes.touch()
-
-
-class RootFence:
-    """The hand-off root's own metadata, and ``model``'s run record, across one harness turn. specy-road changes
-    that directory's entries and writes the run record (``RUN-<model>.json``, exempt from :func:`written` because
-    ``review delegate`` saves it between turns) only between turns, and the harness's own files exist before the
-    turn (:func:`prepare_harness_files`), so any move of the root's mtime, ctime or link count during the turn is a
-    file created, renamed or deleted there, and any change to the run record is the harness's: :meth:`moved` is
-    then true and the run is a review failure, whatever else the turn wrote. A harness that replaces its answer or
-    notes by renaming a temporary file over them is caught too; both are written in place."""
-
-    def __init__(self, root: Path, model: str) -> None:
-        self.root, self.run = root, root / f"RUN-{model}.json"
-        self.before = self._state()
-
-    def _state(self) -> tuple[Any, ...] | None:
-        try:
-            st = os.stat(self.root)
-        except OSError:
-            return None
-        try:
-            run = _record(os.stat(self.run), str(self.run), False)
-        except OSError:   # no run record: run_default_reviewer and run_custom_reviewer called without one
-            run = None
-        return st.st_mtime_ns, st.st_ctime_ns, st.st_nlink, run
-
-    def moved(self) -> bool:
-        return self._state() != self.before
-
-
-class RunLog:
-    """``RUN-<model>.log`` across a run. specy-road appends the harness's output to it during each turn, so
-    :func:`written` does not compare it; every byte specy-road appends goes through :meth:`write` instead, and
-    :meth:`changed` is true when the file is anything but what it held when the run began plus those bytes: the
-    harness rewrote, truncated, removed or appended to it."""
+class OwnFile:
+    """A file specy-road writes in the checked tree during a run: the transcript ``RUN-<model>.log``, appended to
+    during each turn (:meth:`open`, :meth:`write`), and ``review delegate``'s ``RUN-<model>.json``, rewritten between
+    turns (:meth:`rewrite`). It exists before the run's first snapshot and is written in place, so no directory entry
+    moves; :func:`written` compares its identity and mode like any file's, and its content with :meth:`changed`:
+    true when it is anything but what it held when the run began plus what specy-road wrote since (the harness
+    rewrote, truncated, removed or appended to it), or when :meth:`rewrite` found it changed before overwriting."""
 
     def __init__(self, path: Path) -> None:
         self.path = path
         self.digest = hashlib.sha256(self._bytes())
+        self.tampered = False
 
     def _bytes(self) -> bytes:
-        return self.path.read_bytes() if self.path.is_file() else b""   # removed: specy-road's lines are gone
+        return self.path.read_bytes() if self.path.is_file() else b""   # removed: specy-road's bytes are gone
 
     def open(self) -> Any:
-        """The log for appending, untranslated (``newline=""``), so the bytes written are the bytes hashed."""
+        """The file for appending, untranslated (``newline=""``), so the bytes written are the bytes hashed."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         return self.path.open("a", encoding="utf-8", newline="")
 
@@ -266,14 +211,30 @@ class RunLog:
         f.write(text)
         self.digest.update(text.encode("utf-8"))
 
+    def rewrite(self, text: str) -> None:
+        """Replace the content in place; a change since specy-road's last write is kept as :attr:`tampered`."""
+        self.tampered = self.tampered or self.changed()
+        with self.path.open("w", encoding="utf-8", newline="") as f:
+            f.write(text)
+        self.digest = hashlib.sha256(text.encode("utf-8"))
+
     def changed(self) -> bool:
-        return hashlib.sha256(self._bytes()).digest() != self.digest.digest()
+        return self.tampered or hashlib.sha256(self._bytes()).digest() != self.digest.digest()
 
 
-def written(before: Snapshot, after: Snapshot) -> list[str]:
-    """Each path (or ``git refs``, ``git index``) added, removed or changed between the two snapshots, but the run's own
-    :func:`runtime_files`; shown relative to the checkout when it is inside it."""
+#: The leading :func:`_record` fields specy-road's in-place writes leave alone: device, inode, link count, mode.
+_IDENTITY = 4
+
+
+def written(before: Snapshot, after: Snapshot, own: tuple[OwnFile, ...] = ()) -> list[str]:
+    """Each path (or ``git refs``, ``git index``) added, removed or changed between the two snapshots; an
+    :class:`OwnFile` by identity and mode here and by :meth:`OwnFile.changed` for its content. Shown relative to
+    the checkout when it is inside it."""
+    mine = {str(o.path.resolve()): o for o in own}
     keys = set(before.state) | set(after.state)
-    changed = (k for k in keys if k not in before.exempt and before.state.get(k) != after.state.get(k))
+    changed = [k for k in keys if (before.state.get(k) != after.state.get(k) if k not in mine else
+                                   (before.state.get(k) or ())[:_IDENTITY] != (after.state.get(k) or ())[:_IDENTITY]
+                                   or mine[k].changed())]
+    changed += [p for p, o in mine.items() if p not in keys and o.changed()]
     top = f"{before.top}{os.sep}"
-    return sorted("." if k == str(before.top) else k.removeprefix(top) for k in changed)
+    return sorted({"." if k == str(before.top) else k.removeprefix(top) for k in changed})
