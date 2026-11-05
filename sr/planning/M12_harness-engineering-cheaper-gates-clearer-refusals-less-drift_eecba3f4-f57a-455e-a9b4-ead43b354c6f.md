@@ -25,3 +25,5 @@ Make the harness around agents cheaper to run and harder to drift, using what th
 - `work/coordinator-rough-edges.md` (maintainer notes, untracked) — source of the loop and refusal problems
 - `docs/orchestration-review.md`, `docs/orchestration-chores.md`, `docs/design-notes/review-loop-rca.md`
 - No `shared/` contract applies.
+
+- Closed 2026-11-05: every remaining leaf is Complete; unstarted work moved to M18/M19 (themed-milestone restructure). Recorded Complete without policy.milestone_full_review, as for M5-M11 (decision D6).

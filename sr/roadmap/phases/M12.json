@@ -7,7 +7,7 @@
       "node_key": "eecba3f4-f57a-455e-a9b4-ead43b354c6f",
       "planning_dir": "planning/M12_harness-engineering-cheaper-gates-clearer-refusals-less-drift_eecba3f4-f57a-455e-a9b4-ead43b354c6f.md",
       "sibling_order": 11,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Harness engineering: cheaper gates, clearer refusals, less drift",
       "touch_zones": [],
       "type": "phase"
@@ -109,7 +109,7 @@
       "parent_id": "M12",
       "planning_dir": "planning/M12.4_quality-signals-agents-and-pms-read-first_d62cb8f1-75ca-44d3-92a1-a58037bf4dcc.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Quality signals agents and PMs read first",
       "touch_zones": [],
       "type": "milestone"

@@ -10,7 +10,6 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 
 - `M1` Adopt specy-road `adopt-specy-road` — phase — **Complete**
   - `M1.1` Set up the project's specy-road basics `project-setup` — task — **Complete**
-- `M2` Outcome record pilot `outcome-record-pilot` — phase — **Not Started**
 - `M3` 0.3.1 pre-final fixes from rc1 feedback `pre-final-fixes` — phase — **Complete**
   - `M3.1` Refuse to pick up leaves whose planning sheet is still a placeholder `unauthored-leaf-guard` — task — **Complete**
   - `M3.2` handoff status reports review records without a claim `handoff-local-records` — task — **Complete**
@@ -186,13 +185,13 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.79` Leaves that touch high-risk zones need a stronger reviewer `risk-tiered-review` — task — **Complete**
   - `M11.80` Executors and reviewers run tests with a bounded worker count `test-worker-cap` — task — **Complete**
   - `M11.82` The integration branch passes ruff again and the land check runs it `wip-ruff-clean` — task — **Complete**
-- `M12` Harness engineering: cheaper gates, clearer refusals, less drift `harness-engineering-cheaper-gates-clearer-refusals-less-drift` — phase — **In Progress**
+- `M12` Harness engineering: cheaper gates, clearer refusals, less drift `harness-engineering-cheaper-gates-clearer-refusals-less-drift` — phase — **Complete**
   - `M12.1` A review fix-round budget that defers new-input-class findings to a follow-up leaf `a-review-fix-round-budget-that-defers-new-input-class-findings-to-a-follow-up-leaf` — task — **Complete**
   - `M12.2` Every refusal names its fix `every-refusal-names-its-fix` — task — **Complete**
   - `M12.3` Scheduled gardening chores that find drift and open small chore leaves `scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves` — task — **Complete**
-  - `M12.4` Quality signals agents and PMs read first `quality-signals-agents-and-pms-read-first` — milestone — **In Progress**
+  - `M12.4` Quality signals agents and PMs read first `quality-signals-agents-and-pms-read-first` — milestone — **Complete**
     - `M12.4.1` Per-area quality scores in the digest from review history `per-area-quality-scores-in-the-digest-from-review-history` — task — **Complete**
-- `M13` rc3 adopter feedback: upgrade and adoption friction `rc3-adopter-feedback-upgrade-and-adoption-friction` — phase — **In Progress**
+- `M13` rc3 adopter feedback: upgrade and adoption friction `rc3-adopter-feedback-upgrade-and-adoption-friction` — phase — **Complete**
   - `M13.1` Say which install is running and flag managed blocks an older version wrote `say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote` — task — **Complete**
   - `M13.2` upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap `upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap` — task — **Complete**
   - `M13.3` A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates `a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates` — task — **Complete**

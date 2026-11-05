@@ -1,18 +1,6 @@
 {
   "nodes": [
     {
-      "codename": "outcome-record-pilot",
-      "dependencies": [],
-      "id": "M2",
-      "node_key": "e714fb81-efa5-4501-b0b0-e346b331a368",
-      "planning_dir": "planning/M2_outcome-record-pilot_e714fb81-efa5-4501-b0b0-e346b331a368.md",
-      "sibling_order": 1,
-      "status": "Not Started",
-      "title": "Outcome record pilot",
-      "touch_zones": [],
-      "type": "phase"
-    },
-    {
       "acceptance": [
         "roadmap-context.md has an 'Outcomes due' section listing Complete nodes whose outcome.check_after has elapsed since completion with no result",
         "The completion date comes from the history index, not a new field",
