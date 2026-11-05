@@ -62,7 +62,7 @@ Quieter, accurate validate notices. Commits `36e8aabf` and `cc417326`, then a fi
 - `_patterns` against git itself: a scratch repo with lines ` lead`, `trail   `, `esc\ `, `\!bang` and `cr\r`. `git check-ignore -v --no-index` printed ` lead`, `trail`, `esc\ `, `\!bang` and `cr`; `_patterns` returned the same five strings.
 - Leading space, escaped trailing space, `\!` vs `!`, and `\#` vs a `#` comment: no notice. Test: `test_patterns_git_reads_differently_are_not_repeats`.
 - Trailing unescaped spaces plus CRLF: still counted as a repeat, as git reads it. Test: `test_trailing_unescaped_spaces_and_a_crlf_are_what_git_drops`.
-- A lone `\r` mid-line: one pattern, no false repeat. Test: `test_a_lone_carriage_return_does_not_split_a_line`. It would fail with the earlier `read_text`.
+- A lone `\r` mid-line: one pattern, no false repeat. Now covered by the `lone-cr-does-not-split` row of `test_the_notice_reads_gitignore_as_git_does`; the standalone test was removed in fix round 6. It would fail with the earlier `read_text`.
 - Other places in the change where gitignore text is compared:
   - `ignore_report._added_lines` (M13.7): existing code; this leaf changed only the printing. Unchanged.
   - `agent_ignores`: this leaf changed only the note text. Unchanged.
@@ -125,6 +125,17 @@ Quieter, accurate validate notices. Commits `36e8aabf` and `cc417326`, then a fi
   - `ignore_report` (M13.7, existing; this leaf changed only the printed command lines) and `agent_ignores` (note text only) read no patterns for comparison here.
   - `managed_block` locates the markers by substring, so a BOM before the first line does not move them.
 
+## Fix round 6 (review `gpt-6.1-sol-low` on `d56acefc`)
+
+- **Class: a standalone test duplicating a row of the parametrized table** (same bytes, same assertion). Removed `test_a_lone_carriage_return_does_not_split_a_line`; the `lone-cr-does-not-split` row covers it. Nothing else changed.
+
+## Probes (fix round 6)
+
+- `test_a_lone_carriage_return_does_not_split_a_line` vs the `lone-cr-does-not-split` row: identical bytes (`x\rwork/reviews/\n` above the block) and the same assertion (no output). Removed.
+- `test_patterns_git_reads_differently_are_not_repeats` vs the table: it puts four patterns in one file at once (leading space, escaped trailing space, `\!`, `\#`). No row uses the same bytes. Kept; changing it is out of scope for this round.
+- `test_trailing_unescaped_spaces_and_a_crlf_are_what_git_drops` vs the table: it combines trailing spaces and CRLF on one line (`work/reviews/   \r\n`). The `crlf` and `trailing-unescaped-spaces-trimmed` rows each test one of them. Not identical; kept.
+- The other M13.12 test files (`test_m13_12_context_cache.py`, `test_m13_12_untrack_command.py`): no parametrized tables, and no two tests share both input and assertion.
+
 ## Verification
 
 - `python -m pytest -q -n 4`: 4409 passed, 1 failed before the `test_validate_strict.py` update. All 7 tests in that file pass after it. After the fix round and the merge: 4459 passed.
@@ -152,7 +163,7 @@ Quieter, accurate validate notices. Commits `36e8aabf` and `cc417326`, then a fi
 - Guard in `_record`: bytes comparison (no decode), and `OSError` suppressed on read and on write or remove. Any unreadable hash is a miss.
 - Test `test_the_notice_reads_gitignore_as_git_does` (fix round 5): one row per item of the `.gitignore` reading rule, BOM included (A4).
 - `validate_notices._trim_trailing_spaces`: git's trailing-space rule, so `_patterns` reads lines as git does (fix round 2, A4).
-- Tests `test_patterns_git_reads_differently_are_not_repeats`, `test_trailing_unescaped_spaces_and_a_crlf_are_what_git_drops`, `test_a_lone_carriage_return_does_not_split_a_line`: A4 pattern equality as git reads it (fix round 2).
+- Tests `test_patterns_git_reads_differently_are_not_repeats`, `test_trailing_unescaped_spaces_and_a_crlf_are_what_git_drops`: A4 pattern equality as git reads it (fix round 2).
 - Tests in `tests/test_m13_12_context_cache.py`: invalid UTF-8, truncated, directory as the hash file, file as the cache dir, mode 000; no flag never folds; the flag folds one report only.
 - Tests in `tests/test_m13_12_quieter_notices.py`: 85-node bounded line pinned exactly; the 10 cap with per-status counts; `show_all` lists 85; `.gitignore` comment in a repo with no stub pack, plus the template; the tracked-match command and hint; two repeats pin the notice and the file is unchanged; no repeats prints nothing; context first, unchanged and changed runs; uncached (upgrade / `--context`) always full; no warnings prints nothing.
 - Mocks: none (the context tests use a small fake `warn` callable that prints to stderr).

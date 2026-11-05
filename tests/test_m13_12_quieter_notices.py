@@ -187,15 +187,6 @@ def test_trailing_unescaped_spaces_and_a_crlf_are_what_git_drops(tmp_path: Path,
     assert "block repeats: work/reviews/. They can be removed" in capsys.readouterr().out
 
 
-def test_a_lone_carriage_return_does_not_split_a_line(tmp_path: Path, capsys) -> None:
-    """Git splits only on ``\\n``: ``x\\rwork/reviews/`` is one pattern, not a repeat of ``work/reviews/``."""
-    apply_agent_ignores(tmp_path)
-    path = tmp_path / GITIGNORE
-    path.write_bytes(b"x\rwork/reviews/\n" + path.read_bytes())
-    notice_repeated_ignore_patterns(tmp_path)
-    assert capsys.readouterr().out == ""
-
-
 # The complete rule for reading a .gitignore (validate_notices._patterns), one row per item:
 # (bytes above the block, extra lines inside the block, patterns the notice must name).
 GIT_READS = {
