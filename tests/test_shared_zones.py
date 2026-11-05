@@ -12,6 +12,7 @@ from specy_road.bundled_scripts.session_plan_render import (
     zone_overlaps,
 )
 from specy_road.bundled_scripts.validate_registry_overlap import (
+    AuthoringOverlapScope,
     touch_zone_overlap,
     warn_registry_touch_zone_overlap,
 )
@@ -120,3 +121,33 @@ def test_validate_reads_the_configured_shared_zones(tmp_path: Path, capsys) -> N
     repo = _repo(tmp_path, "grind:\n  shared_zones: []\n")
     warn_registry_touch_zone_overlap(_entries(), no_overlap_warn=False, overlap_scope=None, repo_root=repo)
     assert "shared zone 'planning/'" in capsys.readouterr().err
+
+
+_ALIASED = [
+    {"node_id": "M1.1", "codename": "a", "touch_zones": _SHARED + ["planning/same.md", "src/1.py"]},
+    {"node_id": "M1.2", "codename": "b", "touch_zones": _SHARED + ["./planning/same.md", "src/2.py"]},
+]
+
+
+def test_same_file_spelled_two_ways_warns_scoped_and_unscoped_and_splits(capsys) -> None:
+    warn_registry_touch_zone_overlap(_ALIASED, no_overlap_warn=False, overlap_scope=None)
+    err = capsys.readouterr().err
+    assert err.count("possible overlap") == 1
+    assert "'planning/same.md' vs './planning/same.md' (a vs b)" in err
+    scope = AuthoringOverlapScope("b", "M1.2", _ALIASED[1]["touch_zones"])
+    warn_registry_touch_zone_overlap(_ALIASED, no_overlap_warn=False, overlap_scope=scope)
+    err = capsys.readouterr().err
+    assert err.count("possible overlap") == 1
+    assert "(b vs a)" in err
+    plan = _plan([e["touch_zones"] for e in _ALIASED])
+    assert plan.parallel_batches == [["M1.1"], ["M1.2"]]
+
+
+def test_registry_broad_zone_spelled_two_ways_is_summarized_once(capsys) -> None:
+    touch_zone_overlap([
+        {"codename": "a", "touch_zones": ["src/", "src/a.py"]},
+        {"codename": "b", "touch_zones": ["./src/", "src/b.py"]},
+    ])
+    err = capsys.readouterr().err
+    assert err.count("possible overlap") == 1
+    assert "shared zone 'src/' (claims: a, b)" in err

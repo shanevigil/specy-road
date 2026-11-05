@@ -9,7 +9,13 @@ from contextvars import ContextVar
 from pathlib import Path
 from typing import NamedTuple
 
-from specy_road.shared_zones import DEFAULT_SHARED_ZONES, resolve_shared_zones, shared_ignores
+from specy_road.shared_zones import (
+    DEFAULT_SHARED_ZONES,
+    norm_zone,
+    paths_overlap,
+    resolve_shared_zones,
+    shared_ignores,
+)
 
 AuthoringOverlapScope = NamedTuple(
     "AuthoringOverlapScope",
@@ -48,27 +54,20 @@ def current_authoring_overlap_scope() -> AuthoringOverlapScope | None:
     return _authoring_overlap_scope.get()
 
 
-def _touch_zones_clash(x: str, y: str) -> bool:
-    y_base = y.rstrip("/")
-    x_base = x.rstrip("/")
-    nested = x.startswith(y_base + "/") or y.startswith(x_base + "/")
-    return x == y or nested
-
-
 def _is_broad_touch_zone(zone: str) -> bool:
-    return zone.endswith("/")
+    return zone.strip().endswith("/")
 
 
 def _in_broad_zone_tree(path: str, broad_zone: str) -> bool:
-    base = broad_zone.rstrip("/")
-    return path == broad_zone or path.startswith(base + "/")
+    base, p = norm_zone(broad_zone), norm_zone(path)
+    return p == base or p.startswith(base + "/")
 
 
 def _clash_suppressed_by_broad_summary(
     x: str, y: str, summarized_broad: set[str]
 ) -> bool:
     """True when the clash is already covered by a shared-directory summary."""
-    if x == y and not _is_broad_touch_zone(x):
+    if norm_zone(x) == norm_zone(y) and not _is_broad_touch_zone(x):
         return False
     for zone in summarized_broad:
         if _in_broad_zone_tree(x, zone) and _in_broad_zone_tree(y, zone):
@@ -77,8 +76,9 @@ def _clash_suppressed_by_broad_summary(
 
 
 def _counted_clash(x: str, y: str, shared: Iterable[str]) -> bool:
-    """A clash that is not only through a shared zone (:mod:`specy_road.shared_zones`)."""
-    return _touch_zones_clash(x, y) and not shared_ignores(x, y, shared)
+    """A clash by the plan's normalized rule (``./a`` is ``a``) that is not only
+    through a shared zone (:mod:`specy_road.shared_zones`)."""
+    return paths_overlap(x, y) and not shared_ignores(x, y, shared)
 
 
 def _first_independent_pair_clash(
@@ -123,7 +123,7 @@ def _broad_zone_summaries(
         cn = entry.get("codename") or "?"
         for zone in entry.get("touch_zones") or []:
             if _is_broad_touch_zone(zone) and not shared_ignores(zone, zone, shared):
-                exact.setdefault(zone, set()).add(cn)
+                exact.setdefault(norm_zone(zone) + "/", set()).add(cn)
     return sorted(
         (zone, sorted(_claims_in_broad_zone_tree(entries, zone)))
         for zone, owners in exact.items()
