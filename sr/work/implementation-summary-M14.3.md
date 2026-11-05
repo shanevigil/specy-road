@@ -222,6 +222,93 @@ was not run.
 - A configured clone's submodule (`.git/modules/sub`) still refuses as before (probe `/tmp/m143probe`).
 - The existing `test_worktree_prune.py` ls-remote assertion passes unmodified. No test was loosened.
 
+## Fix round 4: complete delete set (commit 405c5bae, after merging origin/WIP/improvements-0-3-1)
+
+**Class:** something removal deletes implicitly, without naming it, that the scan never walked. Round 3
+derived the delete set from the paths `remove()` passes to git. But `git worktree remove` also deletes
+the worktree's administrative directory, `<common dir>/worktrees/<name>/`, which lives outside the
+worktree.
+
+**Design change:**
+- `deletions(nested, main, worktree)`, in the new module `specy_road/worktree_delete_set.py`, returns
+  every step `remove()` takes. For each step it lists every directory that step deletes, each with the
+  entries that count as that directory's own git files.
+- `plan_prune()` walks exactly those directories (`walk_foreign(steps)`).
+- `remove()` recomputes the same list and executes it step by step. If any directory cannot be
+  determined, it refuses.
+- Nothing else in the module decides what gets deleted.
+- Branch and other refs in the owner's common directory are not files of any step and are not
+  deleted; the per-leaf branch is left for `finish` and cleanup.
+- The walk rule is the same as before: bytes paths, symlinks not followed, unreadable directories
+  refuse. A directory is foreign when it holds a `.git` entry or a `HEAD` + `objects/` + `refs/` layout,
+  unless it is a delete-set directory and those entries are all among its own git files.
+  Nothing below a delete-set directory is ever exempt.
+
+| Delete-set member | Derived from | Own git files (exempt in that directory itself only) | Test |
+|---|---|---|---|
+| Leaf worktree directory | `plan.worktree`; removed by `git -C <main> worktree remove --force` | `.git` (its link file) | `test_every_directory_of_every_kind_prune_deletes_is_scanned`, and all earlier foreign tests |
+| Leaf administrative directory | `git rev-parse --absolute-git-dir` in the leaf, which reads its `.git` file. Accepted only when its parent is `<--git-common-dir>/worktrees`; otherwise a refusal | `_ADMIN_OWN`: `HEAD`, `ORIG_HEAD`, `FETCH_HEAD`, `MERGE_HEAD`, `CHERRY_PICK_HEAD`, `REVERT_HEAD`, `AUTO_MERGE`, `BISECT_LOG`, `gitdir`, `commondir`, `index`, `locked`, `config.worktree`, `logs`, `refs`, `modules`, `rebase-merge`, `rebase-apply`, `sequencer` (no `.git`, no `objects`) | `test_a_foreign_worktree_in_the_leafs_administrative_directory_refuses_and_survives` (R1 regression), and the all-kinds test |
+| Configured linked nested worktree | `plan.nested` with `linked`; removed by `git -C <main copy> worktree remove --force` | `.git` | all-kinds test |
+| Its administrative directory | the same derivation, in that worktree | `_ADMIN_OWN` | all-kinds test |
+| Configured full clone | `plan.nested`, not linked; removed by `shutil.rmtree` | `.git` | all-kinds test; `test_a_foreign_worktree_inside_a_configured_nested_clone_refuses_and_survives` |
+| Its `.git` directory | `<clone>/.git` (inside the clone, so walked with it) | `HEAD`, `objects`, `refs` | all-kinds test; `test_a_foreign_worktree_inside_a_configured_clones_git_directory_refuses_and_survives` |
+
+**Tests** in `tests/test_worktree_prune_foreign.py`:
+- `test_every_directory_of_every_kind_prune_deletes_is_scanned` builds a leaf with a configured linked
+  worktree (`src/engine`) and a configured full clone (`lib`). In each of the six delete-set
+  directories it plants a checkout at depth 1, a checkout at depth 3 and another repository's linked
+  worktree at depth 2: 18 plants in all. It asserts:
+  - `plan.foreign` is exactly those 18;
+  - direct `remove(plan)` refuses;
+  - preview and `--yes` both exit 1 and name every plant;
+  - every plant, both nested repos and the leaf survive.
+- `test_a_foreign_worktree_in_the_leafs_administrative_directory_refuses_and_survives` (R1) plants a
+  linked worktree of another repository, with one unpushed commit on `topic`, and a checkout under
+  `logs/` in the leaf's admin directory. It asserts:
+  - the directory, owner, branch and private commits of each are named;
+  - preview and `--yes` both exit 1, and direct `remove(plan)` refuses;
+  - every directory survives.
+
+**Results:**
+- Red/green: with `worktree_prune.py` at `60a4d9e8`, these two tests fail and the other 11 pass.
+- With the fix, `python -m pytest -q -n 4 tests/test_worktree_prune.py tests/test_worktree_prune_foreign.py
+  tests/test_nested_repo_worktrees.py tests/test_nested_unpushed_report.py` passes.
+- `specy-road file-limits` is OK and `ruff` is clean.
+
+**New file outside the listed touch zones:** `specy_road/worktree_delete_set.py`.
+- It was needed because `worktree_prune.py` reached 420 lines, over the 400 cap.
+- It holds the bytes git helpers (`git_run`, `git_out`, `git_path`, `common_dir`, `is_repo_top`),
+  `cmd`, `Deletion`, `deletions`, `walk_foreign` and `foreign_refusal`. They were moved from
+  `worktree_prune.py` and renamed public.
+- Please add it to M14.3's touch zones.
+- Round 3's invariants 2 (bytes) and 3 (`shlex.join`) now span both files.
+
+### Probes (round 4)
+
+- **Everything `git worktree remove` deletes:** the worktree directory and `<common>/worktrees/<name>`.
+  Both are now in the delete set, for the leaf and for every configured linked worktree.
+- **What `shutil.rmtree` deletes:** the clone directory, `.git` included. In the set.
+- **Leaf admin directory, foreign linked worktree and checkout:** both refuse, and all survive
+  (R1 regression).
+- **The other five delete-set directories at depths 1 to 3:** all 18 plants refuse, and all survive
+  (all-kinds test).
+- **Submodule inside the leaf:** its repository lives at `<admin>/modules/vendor` and now refuses as a
+  bare clone, besides `vendor/` itself. Both are deleted with the worktree, so this is correct (probe
+  `/tmp/m143p4`).
+- **Common directory** (`<main>/.git`, objects and branches): outside the delete set and not walked;
+  `git worktree remove` does not delete it.
+- **Admin directory not where git keeps one** (a `.git` file pointing elsewhere): a refusal in
+  `plan_prune`, and `remove()` refuses too. Not exercised by a test, since `leaf_worktree` and
+  `_check_nested` already require a linked worktree of the expected repository.
+- **A `.git` planted directly in an admin directory:** `.git` is not in `_ADMIN_OWN`, so that admin
+  directory itself refuses as foreign.
+- **Per-worktree refs and reflogs** (`refs/bisect`, `refs/worktree`, `logs/`) in an admin directory:
+  deleted with it, as before. They are not repositories, and the scan checks their contents only for
+  repositories.
+- **Callers of the moved helpers:** `worktree_prune.py` imports them from `worktree_delete_set.py`, and
+  `worktree_cli.py` is unchanged. A grep of both modules for `git_text|git_stdout|git_code|run(` shows
+  only `git_run`'s `subprocess.run`.
+
 ## Deletion-path audit (updated in fix rounds 2 and 3)
 
 `remove()` deletes, in order: each configured nested repo (`git -C <copy> worktree remove --force` for a
@@ -241,7 +328,7 @@ non-empty. Before any of this, the plan refuses on a running worker, an unreadab
 | Leaf worktree tracked files at `HEAD` | git refs | HEAD and the leaf branch (local, remote-tracking, and on the remote via `ls-remote`) must be merged into the remote's integration tip |
 | Leaf modified, staged (including renames) or untracked non-ignored files | `git status -z`, read as bytes | "uncommitted or untracked" refusal |
 | Leaf ignored files | `git status -z`, read as bytes | listed one by one in the preview; deleted only with `--yes` (by design) |
-| Leaf admin dir `.git/worktrees/<name>` (`HEAD`, index) | git | HEAD merged check; index changes caught by status |
+| Leaf admin dir `<common>/worktrees/<name>` (and each configured linked worktree's) | `deletions()` via `--absolute-git-dir` (round 4) | walked for foreign repositories like the rest; HEAD merged check; index changes caught by status |
 | Configured nested linked worktree | `nested_repos` config + `is_repo_top` | its status, its stash (any whose subject does not name another branch), and its HEAD must be held by a branch or remote-tracking ref of the copy |
 | Configured nested full clone | `nested_repos` config + `is_repo_top` | its status, any stash, and every branch and remote-tracking tip must be held by the copy's refs |
 
@@ -302,4 +389,12 @@ commits, hooks and config.
 - Round 3 invariants: `_deleted()` is the single list that `remove()` deletes and `_walk_foreign()` walks. `remove()` was rewritten to loop over it (invariant 1).
 - Round 3 invariants: `_walk_foreign(roots)` walks every root, skips nested ones, and exempts only the roots and their own `.git` entries.
 - Test `test_every_foreign_repository_in_anything_removal_deletes_refuses_at_any_depth`: pins invariant 1.
+- Round 4: new module `specy_road/worktree_delete_set.py`, holding the helpers moved to keep `worktree_prune.py` under the cap.
+- Round 4: `Deletion` and `deletions()`, the one complete delete set that both the scan and `remove()` read. It includes each linked worktree's administrative directory (R1).
+- Round 4: `_ADMIN_OWN`, `_TOP_OWN` and `_GIT_DIR_OWN`, the explicit own-git-file exemptions, each applying to its directory itself only.
+- Round 4: the refusal when a linked worktree's administrative directory is not under `<common dir>/worktrees`. It goes into `plan_prune`'s refusals and `remove()` refuses on it too.
+- Round 4: `remove()` executes `deletions()` instead of its own list.
+- Round 4 test helpers `_admin()` and `_shown()`.
+- Test `test_a_foreign_worktree_in_the_leafs_administrative_directory_refuses_and_survives`: R1.
+- Test `test_every_directory_of_every_kind_prune_deletes_is_scanned`: the property test across all six delete-set members.
 - Mocks: none.
