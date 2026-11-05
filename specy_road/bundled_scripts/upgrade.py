@@ -106,19 +106,7 @@ def copy_missing_docs(project: Path, *, dry_run: bool = False, declined: list[st
 _DECLINED = {"refused": "refuse", "skipped": "skip", "failed": "fail"}
 
 
-def _refresh(
-    project: Path,
-    checkout: Path,
-    *,
-    preview: bool,
-    prune: bool,
-    existence_project: Path | None = None,
-) -> dict[str, str]:
-    """Run the refreshes for real on ``checkout`` (the plan's mirror); ``preview`` changes only the wording.
-
-    Returns ``{checkout-relative path: refuse | skip | fail}`` for each path they left as it was.
-    """
-    verb = "would write" if preview else "wrote"
+def _report_schemas(project: Path, verb: str) -> None:
     _section("refresh-schemas")
     new = {f"{SCHEMAS_DIRNAME}/{name}" for name in missing_schema_names(project)}
     schemas = refresh_schemas(project)
@@ -127,6 +115,8 @@ def _refresh(
     if not schemas:
         print("schemas/ already current")
 
+
+def _report_profiles(project: Path, verb: str) -> None:
     _section("refresh-profiles")
     profiles, kept = refresh_profiles(project)
     for rel in profiles:
@@ -135,10 +125,12 @@ def _refresh(
     if notice:
         print(notice)
 
+
+def _report_shipped_docs(project: Path, verb: str, existence_root: Path) -> list[str]:
     _section("shipped docs")
     declined_docs: list[str] = []
     docs = copy_missing_docs(project, declined=declined_docs)
-    templates = missing_work_template_rels(existence_project or project)
+    templates = missing_work_template_rels(existence_root)
     for rel in docs:
         print(f"{verb} {rel} (named in the .specyrd/AGENTS.md load order)")
     for rel in templates:
@@ -147,7 +139,12 @@ def _refresh(
         print("every shipped doc the load order names is present")
     if not templates:
         print("every work template prompts reference is present")
+    return declined_docs
 
+
+def _report_stubs_declined(
+    project: Path, checkout: Path, *, preview: bool, prune: bool, declined_docs: list[str],
+) -> dict[str, str]:
     _section("refresh-stubs")
     print_migration(project, _prefix(checkout, project))
     written, orphans = refresh_stubs(checkout, project=project, prune=prune)
@@ -162,6 +159,25 @@ def _refresh(
         if sep and action:
             declined[rel] = action
     return declined
+
+
+def _refresh(
+    project: Path,
+    checkout: Path,
+    *,
+    preview: bool,
+    prune: bool,
+    existence_project: Path | None = None,
+) -> dict[str, str]:
+    """Run the refreshes for real on ``checkout`` (the plan's mirror); ``preview`` changes only the wording.
+
+    Returns ``{checkout-relative path: refuse | skip | fail}`` for each path they left as it was.
+    """
+    verb = "would write" if preview else "wrote"
+    _report_schemas(project, verb)
+    _report_profiles(project, verb)
+    declined_docs = _report_shipped_docs(project, verb, existence_project or project)
+    return _report_stubs_declined(project, checkout, preview=preview, prune=prune, declined_docs=declined_docs)
 
 
 def _check(project: Path) -> tuple[bool, bool]:
