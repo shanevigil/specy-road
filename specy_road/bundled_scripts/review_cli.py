@@ -9,6 +9,8 @@ review. Records with no registry claim are listed without a commit unless
 is Complete, 1 when it is not met, and 2 when it cannot be determined. A leaf
 whose review loop is not converging and has no root-cause analysis for it is
 ``escalated`` (exit 1), with the trigger named (``review_rca``).
+With ``policy.max_fix_rounds`` set, a leaf that spent that many blocking rounds is ``fix_round_budget_spent``
+(exit 1) with its next command; ``review defer`` applies an RCA's deferral (:mod:`review_defer`, human-only).
 ``review record`` validates one reviewer's notes, fills in the family from the
 roster, labels same-family independence, and files the record as
 ``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``. It refuses an approve whose
@@ -43,6 +45,8 @@ from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
 from specy_road.review_ready_merge import add_ready_parser
 from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
+from specy_road.review_next_step import fix_round_budget
+from specy_road.bundled_scripts.review_defer import add_parser as add_defer_parser
 from specy_road.review_record_rules import check_record
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
 from specy_road.review_target import (ReviewTarget, ReviewTargetError, milestone_status,
@@ -76,7 +80,10 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
     blocked_lines = executor_blocked_display_lines(ready) if same_commit(root, ready_commit, t.commit) else []
     loop = loop_state(root, node_id)
     escalated = loop.escalation is not None and not gate.passed
-    state = "executor_blocked" if blocked_lines else "escalated" if escalated else _state(root, t, gate, ready_commit)
+    budget = fix_round_budget(root, gate.config, loop, node_id, bool(gate.blocks))   # None: max_fix_rounds unset
+    spent = bool(budget and budget["spent"])   # spent and a counted review still blocks
+    state = ("executor_blocked" if blocked_lines else "fix_round_budget_spent" if spent
+             else "escalated" if escalated else _state(root, t, gate, ready_commit))
     state, hints = milestone_status(t, state)
     tm = trial_merge(root, t.ref, t.base_ref)
     merge_problem = ([tm.problem()] if tm and tm.problem() else []) + hints
@@ -104,6 +111,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         "policy_met": gate.passed,
         "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
                         "blocking": tm.code_conflicts} if tm and tm.conflicts else None,
+        **({"fix_round_budget": budget} if budget else {}),
         "problems": merge_problem + gate.problems() + non_gating_verify_problems(ready) + loop.problems() + run_problems(node_id, runs),
     }
 
@@ -131,6 +139,10 @@ def _render(st: dict[str, Any]) -> list[str]:
         lines.append(f"  trial merge with {tm['ref']}: conflicts on {', '.join(tm['conflicts'])}{kind}")
     if st.get("escalation"):
         lines.append(_escalation_line(st["node_id"], st["escalation"]["describe"]))
+    if st["state"] == "fix_round_budget_spent":
+        b = st["fix_round_budget"]
+        lines.append(f"  fix_round_budget_spent: {b['blocking_rounds']} blocking round(s), policy.max_fix_rounds "
+                     f"{b['max_fix_rounds']}; {b['next_why']}; next: `{b['next']}`")
     for line in st.get("executor_blocked") or []:
         lines.append(f"  {line}")
     lines += [f"  - {p}" for p in st["problems"]]
@@ -375,6 +387,7 @@ def build_parser() -> argparse.ArgumentParser:
         add_repo_root_arg(sp)
         sp.set_defaults(func=fn)
     add_delegate_parser(rsub)
+    add_defer_parser(rsub)
     add_ready_parser(sub)
     return p
 

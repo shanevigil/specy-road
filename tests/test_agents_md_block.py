@@ -183,19 +183,21 @@ def test_context_meter_reports_what_each_harness_reads(tmp_path: Path, capsys, m
     agents = (f"AGENTS.md 6 lines, {len(HAND_AUTHORED)} bytes; "
               f"sr/AGENTS.md 4 lines, {size + 8} bytes (specy-road section 3 lines, {size} bytes)")
 
+    total = f"total 10 lines, {len(HAND_AUTHORED) + size + 8:,} bytes"
     print_injected_context(tmp_path / "sr")
     assert capsys.readouterr().out == (
         f"context: Codex reads {agents} — {len(HAND_AUTHORED) + size + 8:,} of its 32,768-byte "
-        "project_doc_max_bytes budget\n"
-        f"context: Claude Code reads {agents} — target under 200 lines per file\n"
-        f"context: Cursor reads {agents} — {len(HAND_AUTHORED) + size + 8:,} bytes per session; no documented limit\n"
-        f"context: Copilot reads {agents} — {len(HAND_AUTHORED) + size + 8:,} bytes per session; no documented limit\n"
+        f"project_doc_max_bytes budget; {total}\n"
+        f"context: Claude Code reads {agents} — target under 200 lines per file; {total}\n"
+        f"context: Cursor reads {agents} — no documented limit; {total} per session\n"
+        f"context: Copilot reads {agents} — no documented limit; {total} per session\n"
     )
 
     (tmp_path / AGENT_GUIDE).write_text("# Claude\n\n", encoding="utf-8")
     print_injected_context(tmp_path / "sr")
     assert capsys.readouterr().out.splitlines()[1] == (
-        "context: Claude Code reads CLAUDE.md 2 lines, 10 bytes — target under 200 lines per file"
+        "context: Claude Code reads CLAUDE.md 2 lines, 10 bytes — target under 200 lines per file; "
+        "total 2 lines, 10 bytes"
     )
 
 
@@ -233,7 +235,7 @@ def test_dot_claude_claude_md_suppresses_the_agents_fallback(tmp_path: Path, cap
     assert out[1] == (
         f"context: Claude Code reads .claude/CLAUDE.md {text.count(chr(10))} lines, "
         f"{len(text.encode())} bytes (specy-road section 3 lines, {len(block.encode())} bytes) "
-        "— target under 200 lines per file"
+        f"— target under 200 lines per file; total 4 lines, {len(text.encode())} bytes"
     )
 
 
