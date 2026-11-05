@@ -153,17 +153,3 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: finish-merge-failure-reports-and-undoes-bookkeeping
-    node_id: M15.40
-    branch: feature/rm-finish-merge-failure-reports-and-undoes-bookkeeping
-    touch_zones:
-      - specy_road/bundled_scripts/finish_task.py
-      - specy_road/finish_modes.py
-      - specy_road/finish_land_check.py
-      - specy_road/finish_work_artifacts.py
-      - specy_road/finish_bookkeeping_undo.py
-      - docs/dev-workflow.md
-      - tests/
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending

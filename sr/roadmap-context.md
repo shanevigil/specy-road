@@ -264,7 +264,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.37` Review notes: a part joined by a comma or 'and' is a second observation only when it names a defect `comma-or-and-part-counts-only-when-it-names-a-defect` — task — **Not Started**
   - `M15.38` add-node caps a title-derived codename at 64 characters so the planning file name fits `derived-codename-capped-so-planning-names-fit` — task — **Complete**
   - `M15.39` A roadmap write that fails part-way restores every file it changed `failed-roadmap-write-restores-every-file` — task — **Complete**
-  - `M15.40` finish-this-task: a failed merge landing reports after the land check output and undoes its bookkeeping commit `finish-merge-failure-reports-and-undoes-bookkeeping` — task — **Not Started**
+  - `M15.40` finish-this-task: a failed merge landing reports after the land check output and undoes its bookkeeping commit `finish-merge-failure-reports-and-undoes-bookkeeping` — task — **Complete**
 - `M16` lean core: harden and optimize code and docs, all delivered functionality kept `lean-core` — phase — **Not Started**
   - `M16.0` Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs `parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs` — task — **Not Started**
   - `M16.1` Parity harness: a review-gate decision table covering every review policy `parity-harness-a-review-gate-decision-table-covering-every-review-policy` — task — **Not Started**
@@ -407,7 +407,6 @@ Do not pick these up.
 - `M15.32` on `feature/rm-archived-summary-exempt-from-file-limits` since 2026-11-05
 - `M15.33` on `feature/rm-refused-review-record-leaves-a-trace` since 2026-11-05
 - `M15.37` on `feature/rm-comma-or-and-part-counts-only-when-it-names-a-defect` since 2026-11-05
-- `M15.40` on `feature/rm-finish-merge-failure-reports-and-undoes-bookkeeping` since 2026-11-05
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 
 ## Quality by area
@@ -416,9 +415,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 30 | 22 | 6.75 | 100% | 14 | 1 |
-| `specy_road` **flagged** | 47 | 31 | 5.38 | 88% | 22 | 3 |
-| `tests` **flagged** | 50 | 34 | 5.38 | 88% | 22 | 3 |
+| `docs` **flagged** | 30 | 21 | 6.56 | 100% | 15 | 2 |
+| `specy_road` **flagged** | 47 | 30 | 5.35 | 88% | 23 | 4 |
+| `tests` **flagged** | 50 | 33 | 5.35 | 88% | 23 | 4 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
