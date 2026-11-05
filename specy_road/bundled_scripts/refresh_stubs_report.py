@@ -31,9 +31,9 @@ def resolve_linked(written: list[str], repo_root: Path | None) -> list[str]:
 
     Entries are ``"<rel>"`` or ``"<rel> (<outcome>)"``. Two entries whose parent
     directories resolve to the same place are one file: it is listed under its
-    real path with ``(<link> → <target>)`` appended. A skill link that *is* the
-    real directory of a file listed through the symlink (``.claude/skills/<name>``
-    when ``.agents/skills`` links there) is that same skill, and is dropped: a
+    real path with ``(<link> → <target>)`` appended. A skill-folder entry that *is*
+    the real directory of a listed file is that same skill and is dropped, in
+    either direction (``.agents/skills`` → ``.claude/skills`` or the reverse): a
     real run reports it unchanged, so the dry run reports the same lines.
     """
     if repo_root is None:
@@ -44,19 +44,29 @@ def resolve_linked(written: list[str], repo_root: Path | None) -> list[str]:
         rel = entry.partition(" (")[0]
         link = _linked_dir(repo_root, Path(rel))
         entries.append((entry, (repo_root / rel).parent.resolve() / Path(rel).name, link))
-    linked_dirs = {real.parent for _, real, link in entries if link is not None}
+    parents = {real.parent for _, real, _ in entries}
+    linked_parents = {real.parent for _, real, link in entries if link is not None}
+    # A directory entry that is the real folder of a listed file is that file's
+    # skill, whichever way the symlink points. A real run never lists it.
+    folded = {real for _, real, link in entries if real in parents and (link is not None or real in linked_parents)}
     lines: dict[Path, list[str]] = {}
     for entry, real, link in entries:
-        _, sep, rest = entry.partition(" (")
-        if link is None and real in linked_dirs:
+        if real in folded:
             continue
+        _, sep, rest = entry.partition(" (")
         if link is None or not real.is_relative_to(root):
             lines.setdefault(real, [entry, ""])
             continue
-        target = (repo_root / link).resolve().relative_to(root).as_posix()
         line = lines.setdefault(real, [f"{real.relative_to(root).as_posix()}{sep}{rest}", ""])
-        line[1] = f" ({link.as_posix()} → {target})"
+        line[1] = _link_note(repo_root, link)
     return [base + note for base, note in lines.values()]
+
+
+def _link_note(repo_root: Path, link: Path) -> str:
+    """`` (<link> → <target>)``; the target is absolute when it lies outside the repository."""
+    root, target = repo_root.resolve(), (repo_root / link).resolve()
+    shown = target.relative_to(root).as_posix() if target.is_relative_to(root) else target.as_posix()
+    return f" ({link.as_posix()} → {shown})"
 
 
 def report_orphans(orphans: list[str], *, dry_run: bool, pruned: bool) -> None:

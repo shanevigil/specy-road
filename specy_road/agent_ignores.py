@@ -22,9 +22,11 @@ pointer-breaking problem — so it is steered by ``CLAUDE.md`` guidance instead.
 
 from __future__ import annotations
 
+import subprocess
+import tempfile
 from pathlib import Path
 
-from specy_road.git_subprocess import git_text
+from specy_road.git_subprocess import git_stdout
 from specy_road.harness_instruction_files import LOCAL_MD
 from specy_road.managed_block import CREATED, UNCHANGED, UPDATED, apply_managed_block
 
@@ -175,7 +177,7 @@ def apply_and_report(
     computed and reported without writing, so a dry run previews these blocks
     instead of omitting them.
     """
-    matches = _new_rule_matches(git_root, prefix)   # before the write: --exclude-standard still sees them
+    matches = _new_rule_matches(git_root, prefix)   # before the write, so a dry run lists the same paths
     outcomes = apply_agent_ignores(
         git_root, prefix, dry_run=dry_run, gitignore_seed=gitignore_seed
     )
@@ -193,12 +195,16 @@ HIDDEN_NOTE = "untracked; now hidden from git status"
 
 
 def _new_rule_matches(git_root: Path, prefix: str) -> list[tuple[str, str, str]]:
-    """``(path, rule, note)`` for files already in the tree that a rule new to ``.gitignore`` matches.
+    """``(path, rule, note)`` for files already in the tree that a rule new to ``.gitignore`` decides.
 
-    A rule is new when no line of the current ``.gitignore`` is that rule.
-    Tracked files stay tracked (an ignore rule never untracks); untracked ones
-    not already ignored are the ones the rule newly hides. Nothing outside a
-    git checkout.
+    A rule is new when no line of the current ``.gitignore`` is that rule. Git
+    itself judges each path, with ``check-ignore``: the new rules are offered as
+    ``core.excludesFile``, below every ``.gitignore`` in precedence, so a later
+    ``!negation`` already in the file, or a pattern that does not cross ``/``,
+    leaves the path visible and unlisted. Tracked files stay tracked (an ignore
+    rule never untracks); untracked ones git shows today are the ones newly
+    hidden. Runs before the write, so a dry run lists the same paths. Nothing
+    outside a git checkout.
     """
     path = git_root / GITIGNORE
     if not (git_root / ".git").exists():
@@ -207,12 +213,39 @@ def _new_rule_matches(git_root: Path, prefix: str) -> list[tuple[str, str, str]]
         have = {ln.strip() for ln in path.read_text(encoding="utf-8").splitlines()} if path.is_file() else set()
     except (OSError, UnicodeDecodeError):
         return []
-    found: list[tuple[str, str, str]] = []
-    for rule in (r for r in _prefixed(GITIGNORE_LINES, prefix) if r not in have):
-        for args, note in ((["ls-files"], TRACKED_NOTE), (["ls-files", "--others", "--exclude-standard"], HIDDEN_NOTE)):
-            out = git_text([*args, "--", rule], git_root)
-            found += [(f, rule, note) for f in (out or "").splitlines() if f]
-    return found
+    rules = [r for r in _prefixed(GITIGNORE_LINES, prefix) if r not in have]
+    tracked = _ls_files(git_root, [])
+    untracked = _ls_files(git_root, ["--others", "--exclude-standard"])
+    if not rules or not (tracked or untracked):
+        return []
+    with tempfile.TemporaryDirectory() as tmp:
+        excludes = Path(tmp) / "new-rules"
+        excludes.write_text("\n".join(rules) + "\n", encoding="utf-8")
+        decided = _check_ignore(git_root, excludes, tracked + untracked)
+    return [(f, decided[f], note) for paths, note in ((tracked, TRACKED_NOTE), (untracked, HIDDEN_NOTE))
+            for f in paths if f in decided]
+
+
+def _ls_files(git_root: Path, args: list[str]) -> list[str]:
+    out = git_stdout(["ls-files", "-z", *args], git_root)
+    return [f for f in (out or "").split("\0") if f]
+
+
+def _check_ignore(git_root: Path, excludes: Path, paths: list[str]) -> dict[str, str]:
+    """``{path: rule}`` for each path a rule in ``excludes`` ignores, as git decides it."""
+    try:
+        r = subprocess.run(
+            ["git", "-c", f"core.excludesFile={excludes}", "check-ignore", "--no-index", "-v", "-z", "--stdin"],
+            cwd=git_root, input="\0".join(paths) + "\0", capture_output=True, text=True, check=False, timeout=60,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    fields = r.stdout.split("\0")
+    decided: dict[str, str] = {}
+    for source, _line, rule, path in zip(*[iter(fields)] * 4):
+        if Path(source) == excludes and not rule.startswith("!"):
+            decided[path] = rule
+    return decided
 
 
 def print_new_rule_matches(matches: list[tuple[str, str, str]]) -> None:
