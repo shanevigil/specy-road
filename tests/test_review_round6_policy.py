@@ -192,16 +192,16 @@ def test_refresh_profiles_refuses_a_symlinked_destination(tmp_path: Path) -> Non
     outside.mkdir()
     os.symlink(outside, repo / "model-profiles")
     with pytest.raises(ValueError, match="symlink"):
-        refresh_profiles(repo)
+        refresh_profiles(repo, profiles="all")
     assert not list(outside.rglob("*.md"))
     (repo / "model-profiles").unlink()
     (repo / "model-profiles").mkdir()
     os.symlink(outside, repo / "model-profiles" / "anthropic-claude")
     with pytest.raises(ValueError, match="symlink"):
-        refresh_profiles(repo)
+        refresh_profiles(repo, profiles="all")
     assert not list(outside.rglob("*.md"))
     (repo / "model-profiles" / "anthropic-claude").unlink()
-    written, _ = refresh_profiles(repo)
+    written, _ = refresh_profiles(repo, profiles="all")
     assert written and all((repo / w).is_file() for w in written)
 
 

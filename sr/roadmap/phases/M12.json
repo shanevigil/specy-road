@@ -60,7 +60,7 @@
       "parent_id": "M12",
       "planning_dir": "planning/M12.2_every-refusal-names-its-fix_019f02ac-24a8-4304-a329-62cc61629c79.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Every refusal names its fix",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_dependency_ops.py",
