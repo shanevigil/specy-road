@@ -123,29 +123,6 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: parallel-pr-leaves-reconcile-bookkeeping-by-rule
-    node_id: M15.4
-    branch: feature/rm-parallel-pr-leaves-reconcile-bookkeeping-by-rule
-    touch_zones:
-      - specy_road/reconcile_branch.py
-      - specy_road/finish_pr_merge.py
-      - specy_road/cli.py
-      - specy_road/cli_usage.py
-      - specy_road/bundled_scripts/do_next_task.py
-      - specy_road/bundled_scripts/do_next_task_register.py
-      - docs/git-workflow.md
-      - docs/git-workflow-parallel-prs.md
-      - specy_road/templates/specyrd/commands/specyrd-finish.md
-      - tests/
-      - specy_road/bundled_scripts/reconcile_branch_cli.py
-      - specy_road/bundled_scripts/do_next_task_pickup_helpers.py
-      - specy_road/bundled_scripts/abort_task_pickup.py
-      - specy_road/bundled_scripts/abort_task_pickup_own_commit.py
-      - specy_road/bundled_scripts/do_next_task_self_heal.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-05T08:11:24+00:00'
   - codename: a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked
     node_id: M13.4
     branch: feature/rm-a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked
