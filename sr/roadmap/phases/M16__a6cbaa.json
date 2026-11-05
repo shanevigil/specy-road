@@ -111,7 +111,8 @@
       "codename": "ready-to-tag-0-3-1",
       "dependencies": [
         "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0",
-        "4830d6a5-8004-46b8-b748-e7194f614aa2"
+        "4830d6a5-8004-46b8-b748-e7194f614aa2",
+        "f0e9d130-9b74-479d-a401-ccee402e63a4"
       ],
       "execution_milestone": "Human-led",
       "id": "M16.66",
@@ -145,6 +146,29 @@
         "specy_road/bundled_scripts/roadmap_move_node.py",
         "specy_road/bundled_scripts/roadmap_outline_renumber.py",
         "docs/roadmap-authoring.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When finish-this-task's merge into the integration branch conflicts in roadmap chunk files (roadmap/phases/*.json), roadmap/manifest.json or roadmap.md, and the feature branch made no roadmap edit of its own (its diff against the merge base in those files equals what it inherited from earlier merges of the integration branch), finish resolves them to the integration branch's version, as it already does for registry.yaml and roadmap-context.md, and then re-runs export/digest so the generated files match",
+        "When the branch did change roadmap content itself, finish refuses with one error line naming each such file and the next command, and leaves no bookkeeping commit (M15.40's undo); it never silently drops the branch's own roadmap edit",
+        "Tests: a leaf branch that only merged the integration branch earlier lands cleanly after the integration branch moved or archived nodes in the same chunk; a branch with its own roadmap edit in the chunk is refused with the file named. Out of scope: merging two real roadmap edits"
+      ],
+      "codename": "finish-resolves-inherited-roadmap-conflicts",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.68",
+      "node_key": "f0e9d130-9b74-479d-a401-ccee402e63a4",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.68_finish-resolves-inherited-roadmap-conflicts_f0e9d130-9b74-479d-a401-ccee402e63a4.md",
+      "sibling_order": 69,
+      "status": "Not Started",
+      "title": "finish resolves roadmap chunk conflicts the branch only inherited",
+      "touch_zones": [
+        "specy_road/finish_land_deterministic.py",
+        "specy_road/milestone_rollup_git.py",
         "tests/"
       ],
       "type": "task"

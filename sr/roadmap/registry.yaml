@@ -100,6 +100,7 @@ entries:
       - tests/
       - docs/orchestration-workers.md
       - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/bundled_scripts/orchestrate_cli.py
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending

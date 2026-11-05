@@ -41,7 +41,8 @@
         "docs/orchestration-models.md",
         "tests/",
         "docs/orchestration-workers.md",
-        "specy_road/bundled_scripts/role_prompt.py"
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/orchestrate_cli.py"
       ],
       "type": "task"
     },
