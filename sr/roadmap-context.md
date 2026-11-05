@@ -321,6 +321,7 @@ Do not pick these up.
 - `M15.25` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
+- `M15.9` on `feature/rm-harness-launches-survive-large-prompts-and-binaries-off-path` since 2026-11-05
 
 ## Quality by area
 
