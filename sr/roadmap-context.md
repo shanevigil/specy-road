@@ -20,7 +20,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M14.11` The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes `the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes` — task — **Complete**
 - `M15` rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction `rc3-multi-harness-adoption-friction` — phase — **Not Started**
   - `M15.1` RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command `rc-install-docs-cover-extras-and-direct-wheel-url` — task — **Complete**
-  - `M15.2` A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch `claude-code-reviewer-works-on-a-subscription-login` — task — **Not Started**
+  - `M15.2` A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch `claude-code-reviewer-works-on-a-subscription-login` — task — **Complete**
   - `M15.3` prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged `prompt-channel-cli-launches-nothing-without-run` — task — **Not Started**
   - `M15.4` Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current `parallel-pr-leaves-reconcile-bookkeeping-by-rule` — task — **Complete**
   - `M15.6` The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes `rework-prompt-carries-the-accepted-rca` — task — **Complete**
@@ -165,8 +165,8 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
-- 2026-11-05 `M15.30` stopped depending on `2535829e-6a0d-40e3-aa42-9b0506bb9fe9` (no longer live)
 - 2026-11-05 `M16.18` stopped depending on `M16.47 One check_assignment decides eligibility for every launch and for the gate`
+- 2026-11-05 `M18.17` stopped depending on `2535829e-6a0d-40e3-aa42-9b0506bb9fe9` (no longer live)
 - 2026-11-05 `M16.12` stopped depending on `M16.7 Commands run in the CLI's process: no python -m re-launch, no cwd globals`
 - 2026-11-05 `M16.12` stopped depending on `M16.10 One LLM client module replaces the provider code inside review_node`
 - 2026-11-05 `M16.15` stopped depending on `M16.1 Parity harness: a review-gate decision table covering every review policy`
@@ -215,7 +215,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M14.1` on `feature/rm-approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` since 2026-11-05
-- `M15.2` on `feature/rm-claude-code-reviewer-works-on-a-subscription-login` since 2026-11-05
 - `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
 - `M15.32` on `feature/rm-archived-summary-exempt-from-file-limits` since 2026-11-05
 - `M15.33` on `feature/rm-refused-review-record-leaves-a-trace` since 2026-11-05
@@ -231,12 +230,16 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 29 | 20 | 6.56 | 100% | 15 | 2 |
-| `specy_road` **flagged** | 47 | 29 | 5.17 | 83% | 23 | 4 |
-| `tests` **flagged** | 50 | 32 | 5.17 | 83% | 23 | 4 |
+| `docs` **flagged** | 36 | 32 | 10.75 | 100% | 9 | 1 |
+| `specy_road` **flagged** | 47 | 42 | 9.80 | 100% | 9 | 1 |
+| `tests` **flagged** | 49 | 44 | 9.80 | 100% | 9 | 1 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
+| `gui` | 1 | 1 | — | — | 0 | 0 |
+| `research` | 1 | 1 | — | — | 0 | 0 |
+| `roadmap` | 2 | 2 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
+| `schemas` | 1 | 1 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
