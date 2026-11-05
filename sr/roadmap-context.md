@@ -119,7 +119,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.5` apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once `apply-restructure-ops` — task — **Not Started**
   - `M21.6` validate and add-dependency catch cycles made through inherited group dependencies `inherited-dep-cycles` — task — **Complete**
   - `M21.7` Executors cannot change the files that steer harnesses and specy-road unnoticed `steering-file-guard` — task — **Not Started**
-  - `M21.8` The queued-message worker test waits for the idle state, not just the second completion event `queue-message-test-waits-for-idle` — task — **Not Started**
+  - `M21.8` The queued-message worker test waits for the idle state, not just the second completion event `queue-message-test-waits-for-idle` — task — **Complete**
   - `M21.9` A freshly initialized project passes its own checks `init-passes-own-checks` — task — **Not Started**
   - `M21.10` doctor works in a repo with no remote `doctor-without-a-remote` — task — **Not Started**
   - `M21.11` Help text names installed commands `help-names-installed-commands` — task — **Not Started**
@@ -241,7 +241,6 @@ Do not pick these up.
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.1` on `feature/rm-move-node-chosen-id` since 2026-11-05
 - `M21.7` on `feature/rm-steering-file-guard` since 2026-11-05
-- `M21.8` on `feature/rm-queue-message-test-waits-for-idle` since 2026-11-05
 
 ## Quality by area
 
@@ -249,11 +248,12 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 29 | 17 | 5.75 | 83% | 15 | 3 |
+| `docs` **flagged** | 28 | 16 | 5.75 | 83% | 15 | 3 |
+| `planning` **flagged** | 1 | 0 | 3.00 | 100% | 0 | 0 |
 | `specy_road` **flagged** | 47 | 23 | 4.88 | 79% | 23 | 6 |
-| `tests` **flagged** | 50 | 26 | 4.88 | 79% | 23 | 6 |
+| `tests` **flagged** | 50 | 25 | 4.80 | 80% | 23 | 6 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
-| `README.md` | 2 | 2 | — | — | 0 | 0 |
+| `README.md` | 1 | 1 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
 
