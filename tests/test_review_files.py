@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_delegate_helpers import fake_reviewer_run
+from tests.review_repo_helpers import claude_code_reviewer_repo
 
 from specy_road import review_files as rf
 
@@ -222,28 +223,16 @@ def test_review_record_stores_launch_mode_and_status_prints_it(tmp_path: Path, c
                          "--file", str(notes), "--launch-mode", "trusted"])
 
 
-def _claude_code_reviewer_repo(tmp_path: Path, channels: str = "") -> Path:
-    from tests.test_models_and_prompt import commit_profile, make_profile_repo
-
-    repo = make_profile_repo(tmp_path)
-    roster = repo / "roadmap" / "orchestration.yaml"
-    roster.write_text(roster.read_text().replace(
-        "    roles: [coordinator, executor, reviewer]\n",
-        f"    roles: [coordinator, executor, reviewer]\n    harness: claude-code\n{channels}"))
-    commit_profile(repo)
-    d = rf.reviews_dir(repo, "M1.1")
-    d.mkdir(parents=True)
-    (d / rf.PACKET_NAME).write_text("# Review packet: `M1.1`\n")
-    return repo
-
-
 def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, capsys, monkeypatch) -> None:
     from specy_road.bundled_scripts import role_prompt
     from specy_road.worker_adapters import STDIN_INSTRUCTION
     from tests.review_repo_helpers import git, review_output
     from tests.test_models_and_prompt import run_main
 
-    repo = _claude_code_reviewer_repo(tmp_path)
+    repo = claude_code_reviewer_repo(tmp_path)
+    secret = "sk-ant-m15-2-do-not-print"
+    monkeypatch.setenv("ANTHROPIC_API_KEY", secret)   # bare only with a key; isolate from the developer environment
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "empty-claude-config"))
     answer = review_output(git(repo, "rev-parse", "HEAD"), model="opus")
     calls = fake_reviewer_run(monkeypatch, [json.dumps({"type": "result", "subtype": "success", "result": "done",
                                                 "structured_output": answer})])
@@ -269,8 +258,15 @@ def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, cap
     prompt = repo / "work" / "prompt-M1.1-reviewer-opus.md"
     assert call["input"] == prompt.read_text() and call["cwd"] == repo
     assert "**specy-road files your record.**" in call["input"]
-    err = capsys.readouterr().err
+    captured = capsys.readouterr()
+    err = captured.err
     assert "--bare" in err and "ANTHROPIC_API_KEY" in err and "recorded: " in err
+    assert secret not in err and secret not in captured.out
+    assert secret not in " ".join(call["cmd"]) and secret not in (call.get("input") or "")
+    run = json.loads((rf.reviews_dir(repo, "M1.1") / "RUN-opus.json").read_text())
+    assert run["launch_mode"] == "bare" and secret not in json.dumps(run)
+    log = (rf.reviews_dir(repo, "M1.1") / "RUN-opus.log").read_text()
+    assert secret not in log
     # M8.3 A1: specy-road filed the record from the structured output, launch mode included.
     rec = rf.load_review(rf.review_path(repo, "M1.1", "opus"), ["A1", "A2"])
     assert rec.ok and rec.data["launch_mode"] == "bare" and rec.data["family"] == "anthropic"
@@ -281,7 +277,7 @@ def test_claude_code_reviewer_with_channels_cli_runs_it_as_written(tmp_path: Pat
     from specy_road.bundled_scripts import role_prompt
     from tests.test_models_and_prompt import run_main
 
-    repo = _claude_code_reviewer_repo(tmp_path, '    channels: {cli: "cat {prompt} | head -1"}\n')
+    repo = claude_code_reviewer_repo(tmp_path, '    channels: {cli: "cat {prompt} | head -1"}\n')
     calls = fake_reviewer_run(monkeypatch)
     assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
                     "--repo-root", str(repo)) == 1   # M8.3: captured, and `cat | head` prints no verdict
@@ -294,7 +290,7 @@ def test_claude_code_reviewer_with_channels_cli_runs_it_as_written(tmp_path: Pat
 def test_reviewer_prompt_asks_for_launch_mode(tmp_path: Path) -> None:
     from specy_road.bundled_scripts import role_prompt
 
-    repo = _claude_code_reviewer_repo(tmp_path)
+    repo = claude_code_reviewer_repo(tmp_path)
     text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="reviewer", model="opus")
     assert err is None and "Add `--launch-mode full|bare|explicit` to that `review record` command" in text
     assert "--launch-mode" not in role_prompt.build_prompt(repo, "M1.1", role="executor", model="opus")[0]

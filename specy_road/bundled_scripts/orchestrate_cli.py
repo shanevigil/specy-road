@@ -49,6 +49,7 @@ def render(plan: OrchestrationPlan, needs_approach: str | None = None) -> list[s
                      + ", ".join(plan.local_roster))
     if plan.roster_drift:
         lines.append(f"! {plan.roster_drift}")
+    lines += plan.reviewer_auth_notices   # one per forced-bare entry, whether or not a leaf staffs it
     if not plan.batches:
         lines.append("no ready leaves to assign"
                      + (f" ({len(plan.blocked)} blocked, {len(plan.active)} active)" if plan.blocked or plan.active else ""))

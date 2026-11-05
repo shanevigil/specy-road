@@ -20,7 +20,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M14.11` | The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes | task | Agentic-led | Complete |
 | `M15` | rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction | phase | — | Not Started |
 | `M15.1` | RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command | task | Agentic-led | Complete |
-| `M15.2` | A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch | task | Agentic-led | Not Started |
+| `M15.2` | A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch | task | Agentic-led | Complete |
 | `M15.3` | prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged | task | Agentic-led | Not Started |
 | `M15.4` | Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current | task | Agentic-led | Complete |
 | `M15.6` | The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes | task | Agentic-led | Complete |
@@ -40,7 +40,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.26` | A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim | task | Agentic-led | Complete |
 | `M15.27` | worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length | task | Agentic-led | Complete |
 | `M15.31` | A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported | task | Agentic-led | Not Started |
-| `M15.32` | An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure | task | Agentic-led | Not Started |
+| `M15.32` | An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure | task | Agentic-led | Complete |
 | `M15.33` | A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed | task | Agentic-led | Not Started |
 | `M15.34` | The executor prompt states the test rules that the reviewer's excess checklist enforces | task | Agentic-led | Complete |
 | `M15.35` | The review packet never lists .git or a path under it as an uncommitted reference | task | Agentic-led | Complete |
@@ -118,6 +118,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.65` | End-to-end pass on the toolkit and a feedback-and-fix round before 0.3.1 | task | Human-led | Not Started |
 | `M16.66` | Gate: ready to tag 0.3.1 | gate | Human-led | Not Started |
 | `M16.67` | move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit | task | Agentic-led | Complete |
+| `M16.68` | finish resolves roadmap chunk conflicts the branch only inherited | task | Agentic-led | Not Started |
+| `M16.69` | Cursor workers launch sandboxed without --force unless the roster opts in | task | Agentic-led | Not Started |
 | `M17` | 0.3.2: PM GUI shows orchestration and worktree state | phase | Human-led | Not Started |
 | `M17.1` | 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface | gate | Human-led | Not Started |
 | `M18` | Orchestration and review-loop features (after 0.3.1) | phase | — | Not Started |
