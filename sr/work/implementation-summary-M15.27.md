@@ -33,6 +33,7 @@ No per-segment vs running-total distinction appears in observed logs; combining 
 - `_usage_total` with unmarked executor + reviewer — combined JSON/text omit the flag.
 - Reviewer-only node total (no executor usage events) — no `possible_undercount` on combined total.
 - Merge regression class (helper import trapped in embedded harness string) — `test_worker_queue_message.py`: `make_worker_repo` at module scope; `FAKE_SLOW` omits it; `rg 'FAKE.*make_worker_repo'` across `tests/` — no other embedded-script traps.
+- Duplicate coverage class (11/13/17 output tokens → 41) — `test_cursor_usage_segments.py`: dropped direct `sum_cursor_turn_usage` test; `test_cursor_parse_sums_when_intermediate_usage_lines_exist` keeps the same inputs via `Cursor.parse`; no other tests repeat that triple.
 
 ## Verification
 

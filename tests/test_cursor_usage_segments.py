@@ -44,11 +44,6 @@ def test_sanitize_excerpt_turn_keeps_every_usage_bearing_line_in_order() -> None
     assert expected_output_tokens(excerpt) == 41
 
 
-def test_sum_cursor_turn_usage_sums_when_a_turn_has_several_usage_lines() -> None:
-    parts = [usage_fields({"outputTokens": 11}), usage_fields({"outputTokens": 13}), usage_fields({"outputTokens": 17})]
-    assert sum_cursor_turn_usage(parts)["output_tokens"] == 41
-
-
 def test_the_real_fixture_has_one_usage_bearing_line_and_pins_result_output_tokens() -> None:
     spec = json.loads(FIXTURE.read_text())
     assert spec["usage_bearing_lines"] == 1
