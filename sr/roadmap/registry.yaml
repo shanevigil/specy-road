@@ -165,3 +165,11 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: queue-message-test-waits-for-idle
+    node_id: M21.8
+    branch: feature/rm-queue-message-test-waits-for-idle
+    touch_zones:
+      - tests/test_worker_queue_message.py
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
