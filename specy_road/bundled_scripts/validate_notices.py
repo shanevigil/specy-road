@@ -5,8 +5,10 @@ Notices go to stdout, so ``validate --strict`` does not count them as warnings.
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
+from specy_road.context_notice_cache import fold_next_report, report_context_warnings
 from specy_road.finish_ancestor_rollup import held_milestones, milestone_review_hold_notice
 from specy_road.managed_block import MARKER_END, MARKER_START
 from specy_road.runtime_paths import git_root
@@ -20,6 +22,22 @@ def notice_milestone_review_holds(root: Path, nodes: list[dict]) -> None:
     """
     for nid, why in held_milestones(root, nodes).items():
         print(milestone_review_hold_notice(nid, why))
+
+
+__all__ = ["notice_milestone_review_holds", "notice_repeated_ignore_patterns", "parse_validate_args",
+           "report_context_warnings"]
+
+
+def parse_validate_args(parser: argparse.ArgumentParser) -> argparse.Namespace:
+    """The ``validate`` CLI's arguments, with ``--context``; folds this run's unchanged ``context:`` warnings unless it is given.
+
+    Lives here so the options M13.12 adds stay out of ``validate_roadmap.py``.
+    """
+    parser.add_argument("--context", action="store_true",
+                        help="Print the context: warnings in full even when unchanged since the last validate.")
+    args = parser.parse_args()
+    fold_next_report(not args.context)
+    return args
 
 
 def _patterns(text: str) -> list[str]:

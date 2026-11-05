@@ -54,8 +54,7 @@ from specy_road.bundled_scripts.validate_roadmap_checks import (
     warn_touch_zones_match_nothing,
 )
 from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
-from specy_road.bundled_scripts.validate_notices import notice_milestone_review_holds, notice_repeated_ignore_patterns
-from specy_road.context_notice_cache import report_context_warnings
+from specy_road.bundled_scripts.validate_notices import notice_milestone_review_holds, notice_repeated_ignore_patterns, parse_validate_args, report_context_warnings
 from specy_road.bundled_scripts.validate_self_heal import auto_heal_roadmap
 from specy_road.bundled_scripts.validate_registry_overlap import (
     authoring_overlap_scope,
@@ -206,7 +205,6 @@ def validate_at(
     auto_heal: bool = True,
     show_all: bool = False,
     strict_authoring: bool = False,
-    context_cache: bool = False,
 ) -> None:
     """Validate roadmap + registry under ``root`` (repo root containing ``roadmap/``).
 
@@ -214,8 +212,7 @@ def validate_at(
     codenames, deprecated fields). Pass ``auto_heal=False`` to disable,
     e.g. in a read-only CI drift check. ``show_all`` lists every unauthored
     leaf instead of the first ten; ``strict_authoring`` reports them as
-    warnings rather than a notice; ``context_cache`` folds unchanged ``context:``
-    warnings into one line (the ``validate`` CLI; ``upgrade`` prints them in full).
+    warnings rather than a notice.
     """
     reg_path = registry_path(root)
     if require_registry and not reg_path.is_file():
@@ -233,7 +230,7 @@ def validate_at(
     warn_if_agents_md_block_stale(root)
     warn_missing_load_order_paths(root)
     warn_unregistered_commands(root)
-    report_context_warnings(root, warn_if_context_over_limits, cached=context_cache)
+    report_context_warnings(root, warn_if_context_over_limits)
     warn_if_generated_files_ignored(root)
     warn_research_register(root)
     warn_garden_due(root)
@@ -297,11 +294,8 @@ def main() -> None:
         action="store_true",
         help="List every open leaf with a placeholder planning sheet and no acceptance "
         "(do-next-available-task skips them), not just the first ten, and every Complete "
-        "leaf whose planning sheet is still the scaffold, and every node whose touch zones "
-        "match no tracked file, not just ten.",
+        "leaf whose planning sheet is still the scaffold.",
     )
-    parser.add_argument("--context", action="store_true",
-                        help="Print the context: warnings in full even when unchanged since the last validate.")
     parser.add_argument(
         "--generate-orchestration",
         action="store_true",
@@ -309,7 +303,7 @@ def main() -> None:
         "that init project writes, when the file does not exist.",
     )
     add_repo_root_arg(parser)
-    args = parser.parse_args()
+    args = parse_validate_args(parser)
     root = (args.repo_root or default_user_repo_root()).resolve()
     with _counting_stderr() as stderr:
         validate_at(
@@ -318,7 +312,6 @@ def main() -> None:
             require_registry=True,
             show_all=args.all,
             strict_authoring=args.strict_authoring,
-            context_cache=not args.context,
         )
         notice_complete_scaffold(root, load_roadmap(root)["nodes"], show_all=args.all)
         if args.generate_orchestration:
