@@ -191,7 +191,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M12` | Harness engineering: cheaper gates, clearer refusals, less drift | phase | — | Not Started |
 | `M12.1` | A review fix-round budget that defers new-input-class findings to a follow-up leaf | task | Agentic-led | Not Started |
 | `M12.2` | Every refusal names its fix | task | Agentic-led | Complete |
-| `M12.3` | Scheduled gardening chores that find drift and open small chore leaves | task | Agentic-led | Not Started |
+| `M12.3` | Scheduled gardening chores that find drift and open small chore leaves | task | Agentic-led | Complete |
 | `M12.4` | Quality signals agents and PMs read first | milestone | — | Not Started |
 | `M12.4.1` | Per-area quality scores in the digest from review history | task | Agentic-led | Not Started |
 | `M12.4.2` | A tracked tech-debt ledger that planning can turn into leaves | task | Agentic-led | Not Started |
