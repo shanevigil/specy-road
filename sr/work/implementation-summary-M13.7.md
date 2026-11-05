@@ -210,3 +210,84 @@ This round addresses Sol's (gpt-6.1-sol) block on 4a1551f5, R1–R3, after mergi
 - `tests/test_m13_7_notices.py::test_a_tracked_file_an_older_rule_already_ignores_is_still_listed` (dry and real): R1, with the index unchanged.
 - `tests/test_m13_7_notices.py::test_a_git_dir_from_a_hook_does_not_point_the_scratch_repo_at_the_checkout`: the env guard.
 - Mocks: `monkeypatch.setenv` for `GIT_DIR`/`GIT_WORK_TREE` in that one test, to reproduce a hook environment.
+
+## Fix round 4: design change
+
+This round answers Sol's (gpt-6.1-sol) block on 625acb89 (R1: an ignored nested `.gitignore` was not copied into the scratch repository) with the design change the maintainer chose. The code change is commit `a5a25fe1`, made after merging `origin/WIP/improvements-0-3-1`.
+
+The new module `specy_road/ignore_report.py` (167 lines) is outside the listed zones; please add it. All the note logic lives there, so `agent_ignores.py` shrinks to 198 lines with no scratch code. `docs/install-and-usage.md` (one line, under `refresh-stubs`) is also outside the zones; the maintainer asked for it in this round.
+
+### Real-run contract (refresh-stubs, upgrade, init: any run that writes)
+
+1. **Run condition:** only when the dry outcome of `apply_agent_ignores` says `.gitignore` will be created or updated, and the root is a git checkout.
+2. **Before the write:** `observe()` records, in the real checkout and from git's NUL-split byte output:
+   - (a) `git ls-files -o --exclude-standard -z`, the untracked files git shows;
+   - (b) `git ls-files -c -i --exclude-standard -z`, the tracked files git ignores.
+3. **The write:** the same `apply_agent_ignores(...)` call as the base, unconditional and unchanged.
+4. **After the write:** `observed()` records (a) and (b) again.
+   - **Now hidden** = in (a) before and not in (a) after.
+   - **Still tracked under a new rule** = in (b) after and not in (b) before. A tracked file an older rule already ignored is therefore *not* listed; this replaces the round-3 contract.
+   - The rule shown beside each path comes from `git check-ignore --no-index -v` in the real checkout.
+5. **Output:**
+   - The header is `.gitignore: new rules match files already in the tree (nothing was untracked):`.
+   - At most 20 paths, then `… and N more`.
+   - When a tracked path is listed, one more line: `to stop tracking one of the files above: git rm --cached <path>`. The round brief said to keep this hint, but no such hint existed before; I added it, and it suggests a command without running it.
+6. **Advisory guarantee:** any failure in either capture or the rule lookup, whether an `OSError`, a non-zero git exit, a timeout or a decode error, prints exactly one line, `ignore check skipped: <reason>`, and never lists invented matches. The write happens either way.
+
+Nothing is predicted. Rule order, nested and self-ignored `.gitignore` files, `info/exclude`, `core.ignorecase` and the global excludes file are all read by git itself.
+
+### Dry-run contract (`--dry-run`, `--diff`)
+
+- **Label:** the header is `estimated (dry run): .gitignore's new rules would match files already in the tree (nothing is untracked); the real run reports exactly what changed:`.
+- **How it is estimated:** in a throwaway `git init` directory, `estimate()` copies:
+  - the top-level `.gitignore`;
+  - the `.gitignore` in **every ancestor directory of every candidate path, ignored or not** (the R1 fix);
+  - `info/exclude`.
+
+  It passes the checkout's `core.ignorecase` and `core.excludesFile`. It then asks `check-ignore` about tracked files and shown untracked files, applies the real update code, and asks again. The same tracked and now-hidden definitions apply.
+- **No further inputs:** it does not try to reproduce anything else.
+- **Known limits:** documented in one paragraph of the `ignore_report` module docstring and one line in `docs/install-and-usage.md`. The estimate can differ from the real run when git reads an input it does not copy, or when files change between the two runs.
+- **Same guarantee:** the advisory skip-line guarantee is identical to the real run's.
+
+### Tests merged or removed
+
+Merged into one parametrized test, `test_the_real_run_reports_exactly_the_visibility_change_git_shows`, with 12 cases. Each case asserts that the listed now-hidden set equals both the `git status --porcelain -z -uall` change and an explicit expected set. It asserts the same for the listed tracked set against the `ls-files -c -i --exclude-standard` change, and that `git ls-files -s` (the index) is unchanged. The merged tests were:
+- `test_a_new_ignore_rule_lists_tracked_and_untracked_matches` → case "plain";
+- `test_a_path_the_new_rule_only_matches_as_a_pathspec_is_not_called_hidden` → "r1 pathspec-only match";
+- `test_a_later_negation_keeps_the_file_visible_and_unlisted` → "r1 negation after block";
+- `test_a_negation_before_the_block_loses_to_the_new_rule_and_is_listed` → "r2 negation before block";
+- `test_the_hidden_list_is_exactly_what_git_status_stops_showing` (4 probes) → "r2 crlf", "r2 no trailing newline", "r2 odd names", "r2 nested project";
+- `test_ignorecase_from_the_checkout_is_honoured` → "r3 ignorecase";
+- `test_a_tracked_file_an_older_rule_already_ignores_is_still_listed` → "r3 tracked already ignored". The contract changed, so it is now expected **not** to be listed.
+
+New cases in the same test: "r3 info/exclude" and "r4 self-ignored nested .gitignore" (Sol's R1 layout: only `prompt-hide.md` is hidden).
+
+`test_an_unreadable_nested_gitignore_skips_the_note_but_not_the_writes` was split in two. In the real run git warns and carries on, so an unreadable nested file no longer causes a skip there.
+- `test_a_failed_git_capture_skips_the_note_and_the_writes_still_happen` (dry and real): a `.git` file pointing at a missing git directory. Both managed files are still written, and the output is the single skip line.
+- `test_an_unreadable_nested_gitignore_skips_the_estimate` (dry run).
+
+**Also new:** `test_the_dry_run_is_labelled_an_estimate_and_gets_the_self_ignored_nested_case_right`. It checks the label, the R1 layout in the dry run, that nothing is written, and that the dry run's paths, rules and notes equal the real run's.
+
+**Kept, updated:** `test_the_match_list_stops_at_the_limit_then_counts` now expects the hint line last.
+
+**Kept unchanged:** `test_rules_already_in_the_file_are_not_new` and `test_a_git_dir_from_a_hook_does_not_point_the_scratch_repo_at_the_checkout`.
+
+**Red-green:** with the test file on 625acb89 (header constants inlined, because the module did not exist), 4 fail: "r4 self-ignored nested", "r3 tracked already ignored", the estimate-label test and the limit/hint test. All pass on a5a25fe1.
+
+**Verification:**
+- Targeted run, 37 files: the round-3 selection plus the tests that reference `install-and-usage`. 722 passed.
+- `specy-road file-limits`: OK.
+- `ruff check`: clean.
+
+### Added (fix round 4)
+
+- `specy_road/ignore_report.py` (new module): holds the observed note and the dry-run estimate, so `agent_ignores.py` keeps only the writes.
+- `observe` and `observed`: the real-run before/after measurement in the checkout, as bytes split on NUL.
+- `estimate` and `_ancestor_ignores`: the dry-run estimate, copying every ancestor `.gitignore` of each candidate path (R1).
+- `attempt`: turns any capture failure into the skip reason (advisory guarantee).
+- `print_matches`: the real and estimate headers, the cap and the untrack hint.
+- `_paths` and `_stdin`: NUL/bytes conversion for git input and output.
+- Kept from round 3, moved here: `IgnoreCheckSkipped`, `_git` (now bytes), `_ignored`, `_ignore_config` and the `_REPO_ENV` filter.
+- Removed: `_scratch`, `_tracked_matches`, `_newly_hidden` and the old `_new_rule_matches`.
+- Tests: listed above.
+- Mocks: none new.
