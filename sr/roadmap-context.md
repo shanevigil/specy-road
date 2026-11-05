@@ -263,38 +263,72 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M16.0` Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs `parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs` — task — **Not Started**
   - `M16.1` Parity harness: a review-gate decision table covering every review policy `parity-harness-a-review-gate-decision-table-covering-every-review-policy` — task — **Not Started**
   - `M16.2` Baseline metrics, a coverage floor in CI, and the M16 working rules written down `baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down` — task — **Not Started**
-  - `M16.3` Delete dead and unwired code, and add vulture as an advisory CI step `delete-dead-and-unwired-code-and-add-vulture-as-an-advisory-ci-step` — task — **Not Started**
-  - `M16.4` Shared helpers for time, atomic writes, git queries and registry I/O replace their copies `shared-helpers-for-time-atomic-writes-git-queries-and-registry-i-o-replace-their-copies` — task — **Not Started**
+  - `M16.3` Delete dead and unwired code from a decided list, and add vulture as an advisory CI step `delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step` — task — **Not Started**
+  - `M16.4` Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers `shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers` — task — **Not Started**
   - `M16.5` One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready `one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready` — task — **Not Started**
-  - `M16.6` Library code moves out of bundled_scripts, the two large import cycles are broken, and a layering gate keeps them broken `library-code-moves-out-of-bundled-scripts-the-two-large-import-cycles-are-broken-and-a-layering-gate-keeps-them-broken` — task — **Not Started**
-  - `M16.7` Commands run in-process with lazy imports, one error type and shared argument helpers `commands-run-in-process-with-lazy-imports-one-error-type-and-shared-argument-helpers` — task — **Not Started**
+  - `M16.6` The 29 package-imported library modules move out of bundled_scripts `the-29-package-imported-library-modules-move-out-of-bundled-scripts` — task — **Not Started**
+  - `M16.7` Commands run in the CLI's process: no python -m re-launch, no cwd globals `commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals` — task — **Not Started**
   - `M16.8` A 100-character line-width rule with a shrink-only baseline, and the consumer file-limit default decided `a-100-character-line-width-rule-with-a-shrink-only-baseline-and-the-consumer-file-limit-default-decided` — task — **Not Started**
-  - `M16.9` Fold the cap-driven splits in pickup, finish, milestone and the PM UI server into their parents `fold-the-cap-driven-splits-in-pickup-finish-milestone-and-the-pm-ui-server-into-their-parents` — task — **Not Started**
-  - `M16.10` Fold brainstorm, agent-file and miscellaneous splits, and extract one LLM client from review_node `fold-brainstorm-agent-file-and-miscellaneous-splits-and-extract-one-llm-client-from-review-node` — task — **Not Started**
+  - `M16.9` Fold the cap-driven splits in pickup and finish into their parents `fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents` — task — **Not Started**
+  - `M16.10` One LLM client module replaces the provider code inside review_node `one-llm-client-module-replaces-the-provider-code-inside-review-node` — task — **Not Started**
   - `M16.11` doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases `doctor-prune-is-the-one-cleanup-path-branches-prune-registry-prune-and-the-grind-cleanup-become-aliases` — task — **Not Started**
   - `M16.12` upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update `upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update` — task — **Not Started**
-  - `M16.13` Command groups and renames: milestone, planning, archive --deep, review status, decisions --kind lesson, presence `command-groups-and-renames-milestone-planning-archive-deep-review-status-decisions-kind-lesson-presence` — task — **Not Started**
-  - `M16.14` One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd and carries per-zone merge-blocking gates `one-checks-block-replaces-baseline-cmd-land-check-cmd-and-verify-cmd-and-carries-per-zone-merge-blocking-gates` — task — **Not Started**
+  - `M16.13` review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session `review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session` — task — **Not Started**
+  - `M16.14` One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points `one-checks-block-replaces-baseline-cmd-land-check-cmd-and-verify-cmd-with-the-same-commands-at-the-same-points` — task — **Not Started**
   - `M16.15` Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI `orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui` — task — **Not Started**
-  - `M16.16` Worker runtime moves into orchestration/workers, the worker_ops facade and its module-class swap go `worker-runtime-moves-into-orchestration-workers-the-worker-ops-facade-and-its-module-class-swap-go` — task — **Not Started**
-  - `M16.17` Roster, model profiles, planning and role prompts move into orchestration, with one eligibility check for every launch `roster-model-profiles-planning-and-role-prompts-move-into-orchestration-with-one-eligibility-check-for-every-launch` — task — **Not Started**
-  - `M16.18` Shared-checkout guard and session presence move into orchestration, and the guard classifier becomes table-driven `shared-checkout-guard-and-session-presence-move-into-orchestration-and-the-guard-classifier-becomes-table-driven` — task — **Not Started**
-  - `M16.19` Grind session, its plan, chores, decisions and lessons move into orchestration, and grind settings live under grind: `grind-session-its-plan-chores-decisions-and-lessons-move-into-orchestration-and-grind-settings-live-under-grind` — task — **Not Started**
+  - `M16.16` Worker runtime moves into orchestration/workers with import-path edits only `worker-runtime-moves-into-orchestration-workers-with-import-path-edits-only` — task — **Not Started**
+  - `M16.17` Roster, model profiles, harness facts, orchestrate and role prompts move into orchestration `roster-model-profiles-harness-facts-orchestrate-and-role-prompts-move-into-orchestration` — task — **Not Started**
+  - `M16.18` Shared-checkout guard and session presence move into orchestration `shared-checkout-guard-and-session-presence-move-into-orchestration` — task — **Not Started**
+  - `M16.19` Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings `grind-session-and-its-plan-move-into-orchestration-read-the-index-and-the-snapshot-and-fold-their-cap-siblings` — task — **Not Started**
   - `M16.20` Review-policy evidence: how often each optional review policy changed a gate outcome `review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` — task — **Not Started**
-  - `M16.21` Fold the review gate, packet and escalation fragments, and deprecate the policies the evidence did not keep `fold-the-review-gate-packet-and-escalation-fragments-and-deprecate-the-policies-the-evidence-did-not-keep` — task — **Not Started**
-  - `M16.22` Post-fix refactor gate: ready and the review packet report the complexity delta, and policy can block on growth `post-fix-refactor-gate-ready-and-the-review-packet-report-the-complexity-delta-and-policy-can-block-on-growth` — task — **Not Started**
-  - `M16.23` Tests: shared fixtures in tests/support replace copied helpers and cross-test-file imports `tests-shared-fixtures-in-tests-support-replace-copied-helpers-and-cross-test-file-imports` — task — **Not Started**
-  - `M16.24` Tests: one file per module or flow, named for behaviour, in unit, flows, cli, gui and repo lanes `tests-one-file-per-module-or-flow-named-for-behaviour-in-unit-flows-cli-gui-and-repo-lanes` — task — **Not Started**
-  - `M16.25` Tests: remove duplicates and fold single-input regressions into tables, with no coverage drop `tests-remove-duplicates-and-fold-single-input-regressions-into-tables-with-no-coverage-drop` — task — **Not Started**
-  - `M16.26` Tests: public seams replace private-name patches, property tests cover parsers and transforms, no wall-clock sleeps `tests-public-seams-replace-private-name-patches-property-tests-cover-parsers-and-transforms-no-wall-clock-sleeps` — task — **Not Started**
-  - `M16.27` Tests: fill the milestone, outline and edit-field coverage gaps `tests-fill-the-milestone-outline-and-edit-field-coverage-gaps` — task — **Not Started**
-  - `M16.28` Tests: a CLI smoke lane of at most 50 subprocess tests, everything else in-process, full suite under 35 s `tests-a-cli-smoke-lane-of-at-most-50-subprocess-tests-everything-else-in-process-full-suite-under-35-s` — task — **Not Started**
+  - `M16.21` Fold the review gate and escalation fragments, and mark the policies the evidence did not keep as deprecated `fold-the-review-gate-and-escalation-fragments-and-mark-the-policies-the-evidence-did-not-keep-as-deprecated` — task — **Not Started**
+  - `M16.22` Post-fix refactor gate: ready and the review packet report any complexity growth, and policy can block on it `post-fix-refactor-gate-ready-and-the-review-packet-report-any-complexity-growth-and-policy-can-block-on-it` — task — **Not Started**
+  - `M16.23` Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them `tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them` — task — **Not Started**
+  - `M16.24` Tests: files move into unit, flows, cli, gui and repo lanes, moves only `tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only` — task — **Not Started**
+  - `M16.25` Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it `tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it` — task — **Not Started**
+  - `M16.26` Tests: public seams replace private-name patches, and no test sleeps on the wall clock `tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock` — task — **Not Started**
+  - `M16.27` Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold `tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold` — task — **Not Started**
+  - `M16.28` Tests: a CLI smoke lane of at most 50 subprocess items, everything else in process, suite time halved `tests-a-cli-smoke-lane-of-at-most-50-subprocess-items-everything-else-in-process-suite-time-halved` — task — **Not Started**
   - `M16.29` Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions `constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions` — task — **Not Started**
   - `M16.30` AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer `agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer` — task — **Not Started**
   - `M16.31` Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra `docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra` — task — **Not Started**
   - `M16.32` suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout `suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout` — task — **Not Started**
-  - `M16.33` After the next release: delete the deprecated aliases and shims, and check the end-state targets `after-the-next-release-delete-the-deprecated-aliases-and-shims-and-check-the-end-state-targets` — task — **Not Started**
+  - `M16.33` rc5 close: lean metrics checked against the baseline and the sum of the leaf budgets `rc5-close-lean-metrics-checked-against-the-baseline-and-the-sum-of-the-leaf-budgets` — task — **Not Started**
   - `M16.34` Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf `triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf` — task — **Not Started**
+  - `M16.53` Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold `tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold` — task — **Not Started**
+  - `M16.35` Git queries and registry I/O go through one helper each `git-queries-and-registry-i-o-go-through-one-helper-each` — task — **Not Started**
+  - `M16.36` A shrink-only layering gate records the import cycles and package-to-entry-point imports `a-shrink-only-layering-gate-records-the-import-cycles-and-package-to-entry-point-imports` — task — **Not Started**
+  - `M16.37` Break the 45-module import cycle through the graph loader, the brief and validate `break-the-45-module-import-cycle-through-the-graph-loader-the-brief-and-validate` — task — **Not Started**
+  - `M16.38` Break the 25-module import cycle between roadmap CRUD, worker ops and the chore CLI `break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli` — task — **Not Started**
+  - `M16.39` Every command exposes build_parser(), imports lazily and shares the common argument helpers `every-command-exposes-build-parser-imports-lazily-and-shares-the-common-argument-helpers` — task — **Not Started**
+  - `M16.40` One SpecyError base for the 15 error classes, printed and turned into an exit code once `one-specyerror-base-for-the-15-error-classes-printed-and-turned-into-an-exit-code-once` — task — **Not Started**
+  - `M16.41` Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one `nested-repo-landing-folds-into-nested-repos-breaking-its-cycle-and-the-two-session-file-readers-become-one` — task — **Not Started**
+  - `M16.43` The brainstorm CLI becomes two modules and the three managed-block writers share one engine `the-brainstorm-cli-becomes-two-modules-and-the-three-managed-block-writers-share-one-engine` — task — **Not Started**
+  - `M16.44` Fold the remaining single-importer siblings from the code report's misc list `fold-the-remaining-single-importer-siblings-from-the-code-report-s-misc-list` — task — **Not Started**
+  - `M16.42` Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed `fold-the-pm-ui-server-and-roadmap-crud-splits-after-the-orchestration-snapshot-is-fixed` — task — **Not Started**
+  - `M16.45` milestone and planning command groups, and archive --hard-remove replaces archive-node `milestone-and-planning-command-groups-and-archive-hard-remove-replaces-archive-node` — task — **Not Started**
+  - `M16.52` checks: entries scoped to touch zones block a merge when they fail (held M15.23's purpose) `checks-entries-scoped-to-touch-zones-block-a-merge-when-they-fail-held-m15-23-s-purpose` — task — **Not Started**
+  - `M16.46` worker_ops parts and the worker siblings fold into their parents, and the module-class swap goes `worker-ops-parts-and-the-worker-siblings-fold-into-their-parents-and-the-module-class-swap-goes` — task — **Not Started**
+  - `M16.47` One check_assignment decides eligibility for every launch and for the gate `one-check-assignment-decides-eligibility-for-every-launch-and-for-the-gate` — task — **Not Started**
+  - `M16.48` The guard classifier becomes three rule tables with every verdict unchanged `the-guard-classifier-becomes-three-rule-tables-with-every-verdict-unchanged` — task — **Not Started**
+  - `M16.49` Chore, decision and lesson records share internal adapters and keep their files byte for byte `chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte` — task — **Not Started**
+  - `M16.50` Grind settings move under grind: in git-workflow.yaml, migrated by upgrade `grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade` — task — **Not Started**
+  - `M16.51` The review packet fragments fold into review_packet `the-review-packet-fragments-fold-into-review-packet` — task — **Not Started**
+  - `M16.54` Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support `tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support` — task — **Not Started**
+  - `M16.55` Tests: per-leaf and per-round test files fold into the file for the module or flow they test `tests-per-leaf-and-per-round-test-files-fold-into-the-file-for-the-module-or-flow-they-test` — task — **Not Started**
+  - `M16.56` Tests: apply the dedupe worklist for review gate `tests-apply-the-dedupe-worklist-for-review-gate` — task — **Not Started**
+  - `M16.57` Tests: apply the dedupe worklist for worker `tests-apply-the-dedupe-worklist-for-worker` — task — **Not Started**
+  - `M16.58` Tests: apply the dedupe worklist for pickup and finish `tests-apply-the-dedupe-worklist-for-pickup-and-finish` — task — **Not Started**
+  - `M16.59` Tests: apply the dedupe worklist for the rest `tests-apply-the-dedupe-worklist-for-the-rest` — task — **Not Started**
+  - `M16.60` Tests: five named properties replace the single-input tests they cover `tests-five-named-properties-replace-the-single-input-tests-they-cover` — task — **Not Started**
+  - `M16.61` Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window `gate-the-release-that-shipped-the-m16-aliases-is-out-and-the-maintainer-closes-the-alias-window` — gate — **Not Started**
+  - `M16.62` After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims `after-the-alias-window-delete-the-deprecated-command-aliases-config-form-fallbacks-and-re-export-shims` — task — **Not Started**
+
+## Open gates
+
+Work behind these is deliberately held back until they clear.
+
+- `M16.61 Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window` — **Not Started**
 
 ## Dependencies that were removed
 
@@ -316,6 +350,7 @@ Do not pick these up.
 - `M13.9` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M14.1` on `feature/rm-approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` since 2026-11-05
 - `M14.5` on `feature/rm-an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it` since 2026-11-05
+- `M15.17` on `feature/rm-review-friction-packet-and-record` since 2026-11-05
 - `M15.2` on `feature/rm-claude-code-reviewer-works-on-a-subscription-login` since 2026-11-05
 - `M15.20` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M15.25` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
