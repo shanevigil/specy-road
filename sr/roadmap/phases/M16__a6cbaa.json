@@ -177,7 +177,8 @@
       "touch_zones": [
         "specy_road/finish_land_deterministic.py",
         "specy_road/milestone_rollup_git.py",
-        "tests/"
+        "tests/",
+        "specy_road/finish_land_roadmap_graph.py"
       ],
       "type": "task"
     },

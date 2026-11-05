@@ -120,6 +120,7 @@ entries:
       - specy_road/finish_land_deterministic.py
       - specy_road/milestone_rollup_git.py
       - tests/
+      - specy_road/finish_land_roadmap_graph.py
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
