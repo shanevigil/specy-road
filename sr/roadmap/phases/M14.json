@@ -44,9 +44,9 @@
     },
     {
       "acceptance": [
-        "doctor does not list as merged, and --fix never removes, a worktree or branch whose branch has an open registry claim or a running or resumable worker record; the finding, if any, says 'live: claimed by <node>' or 'live: worker <W>' and has no fix",
-        "A branch counts as merged only when it has at least one commit of its own (its reflog shows a commit after creation, or its tip is not the commit it was created at); a branch with no commits yet is reported as 'no commits yet', never as merged; a test creates a claimed worktree on a fresh branch and asserts doctor --fix leaves it",
-        "doctor.py stays within 400 lines: the worktree findings move to specy_road/doctor_worktrees.py. Out of scope: changing what doctor reports for unclaimed merged branches with commits"
+        "doctor does not list as merged, and --fix never removes, a worktree or branch whose branch has an open registry claim or a running or resumable worker record; the finding, if any, says 'live: claimed by <node>' or 'live: worker <W>' and has no fix; precedence of the live reason is claim, then worker, then session (a session alone still protects a worktree with no claim or worker)",
+        "A branch counts as merged only with positive evidence of commits of its own on that exact ref: a commit/merge/cherry-pick reflog entry after the ref was (re)created, or a finish merge commit naming the branch, with creation-only or rename-only reflog evidence for the current ref taking precedence over any historical evidence for an earlier branch of the same name; a provably fresh branch (local or remote) is reported as 'no commits yet', never as merged; a test creates a claimed worktree on a fresh branch and asserts doctor --fix leaves it",
+        "doctor.py stays within 400 lines: the worktree findings move to specy_road/doctor_worktrees.py. Deliberate change (planner, 2026-11-04): an unclaimed branch contained in the integration branch whose own-commit evidence is unavailable (expired reflog, fresh clone, remote-only ref) is still reported as merged, with the reason 'no local evidence of own commits', but doctor --fix offers no automatic removal for it; unclaimed merged branches with positive evidence keep the current report and fix. Classification is one table in code (inputs: live source, evidence kind, containment, ref kind) with a parametrized test over every row"
       ],
       "codename": "doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch",
       "dependencies": [],
