@@ -236,7 +236,7 @@ Merged `origin/WIP/improvements-0-3-1` first. It was clean, and WIP added tests 
 - Fix round 4: `review delegate`'s custom commands have no bypass check. Outside the zones and out of A5's scope; not changed (as in earlier rounds).
 - Fix round 4: text specy-road substitutes into the command after the check (`{prompt}`, `"<prompt>"`, `{effort}`): the prompt goes in as one quoted argument or a file path, and the effort flags come from fixed adapter tables, so neither adds roster-controlled words.
 - Fix round 4: an unbalanced quote is still refused (existing test).
-- Fix round 4: complexity. `bypass_problem` has no new branch, and there is no `noqa: C901` in the zoned files (grep).
+- Fix round 4: complexity. `bypass_problem` has no new branch, and this leaf adds no `noqa: C901` (grep of the diff from the base adds none). The one in the zones, on `role_prompt.build_prompt`, predates this leaf as its baseline marker and is unchanged.
 
 ## Final touch zones
 
