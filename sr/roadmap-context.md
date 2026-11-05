@@ -252,7 +252,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.21` Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments `linked-worktrees-resolve-root-and-symlinked-envs` — task — **Complete**
   - `M15.22` Project preferences the workflow respects: local decisions, a PR body footer, the summary commit rule, and local landing for the root repository `project-preferences-local-decisions-footer-summary-landing` — task — **Not Started**
   - `M15.23` A project declares its merge-blocking CI commands per touch zone; ready always runs them and the review packet shows their result at the reviewed commit `ci-gates-run-by-ready-and-shown-in-the-packet` — task — **Not Started**
-  - `M15.24` ready does not record false evidence: a passing run whose output shows a failed command is flagged, and --run-argv runs a command without a shell `ready-flags-failure-tails-and-takes-argv` — task — **Not Started**
+  - `M15.24` ready does not record false evidence: a passing run whose output shows a failed command is flagged, and --run-argv runs a command without a shell `ready-flags-failure-tails-and-takes-argv` — task — **Complete**
   - `M15.25` A change to the shared stash is attributed to the worker whose branch made it, not to whichever worker's turn ended while the entry existed `stash-changes-attributed-to-the-owning-branch` — task — **Not Started**
   - `M15.26` A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim `claims-with-no-worker-are-reported-and-never-hold-slots` — task — **Not Started**
   - `M15.27` worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length `cursor-usage-sums-segments-and-flags-undercounts` — task — **Not Started**
@@ -284,7 +284,6 @@ Do not pick these up.
 - `M15.13` on `feature/rm-worker-loop-friction-sync-until-and-ready-only-resume` since 2026-11-04
 - `M15.20` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M15.22` on `feature/rm-project-preferences-local-decisions-footer-summary-landing` since 2026-11-04
-- `M15.24` on `feature/rm-ready-flags-failure-tails-and-takes-argv` since 2026-11-05
 - `M15.25` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M15.27` on `feature/rm-cursor-usage-sums-segments-and-flags-undercounts` since 2026-11-05
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -296,17 +295,16 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 34 | 32 | 4.00 | 100% | 0 | 0 |
-| `specy_road` **flagged** | 47 | 45 | 4.00 | 100% | 0 | 0 |
-| `tests` **flagged** | 49 | 47 | 4.00 | 100% | 0 | 0 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
+| `docs` | 33 | 33 | — | — | 0 | 0 |
 | `gui` | 1 | 1 | — | — | 0 | 0 |
 | `research` | 1 | 1 | — | — | 0 | 0 |
 | `roadmap` | 2 | 2 | — | — | 0 | 0 |
-| `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 | `schemas` | 1 | 1 | — | — | 0 | 0 |
+| `specy_road` | 47 | 47 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
+| `tests` | 49 | 49 | — | — | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

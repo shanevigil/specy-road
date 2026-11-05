@@ -262,7 +262,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.24_ready-flags-failure-tails-and-takes-argv_4bbfe087-bdb9-4cff-8e15-8cb0badedabc.md",
       "sibling_order": 24,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "ready does not record false evidence: a passing run whose output shows a failed command is flagged, and --run-argv runs a command without a shell",
       "touch_zones": [
         "specy_road/ready_run_checks.py",
