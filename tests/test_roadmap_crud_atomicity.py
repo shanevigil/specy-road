@@ -22,8 +22,8 @@ from specy_road.bundled_scripts.roadmap_crud_ops import (
     delete_roadmap_node_hard,
     edit_node_set_pairs,
 )
-from specy_road.bundled_scripts.roadmap_codename_cap import CODENAME_MAX_CHARS, cap_codename_slug
-from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
+from specy_road.bundled_scripts.roadmap_codename_cap import cap_codename_slug
+from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_MAX_CHARS, title_to_codename
 from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
 
 NK_PHASE = "20000000-0000-4000-8000-000000000001"

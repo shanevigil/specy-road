@@ -15,7 +15,7 @@ from specy_road.bundled_scripts.roadmap_node_keys import NODE_KEY_PATTERN
 ID_PATTERN = re.compile(r"^M[0-9]+(\.[0-9]+)*$")
 CODENAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
-from specy_road.bundled_scripts.roadmap_codename_cap import cap_codename_slug, codename_length_error, derived_codename_from_title  # noqa: E402
+from specy_road.bundled_scripts.roadmap_codename_cap import CODENAME_MAX_CHARS, cap_codename_slug, codename_length_error, derived_codename_from_title  # noqa: E402
 
 def title_to_codename(title: str, *, max_words: int | None = None) -> str:
     """
