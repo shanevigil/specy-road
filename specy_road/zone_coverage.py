@@ -1,21 +1,4 @@
-"""Plan-time check: acceptance criteria that name repo paths the leaf's zones do not cover.
-
-**Path candidates (best-effort, false negatives accepted).** A token is considered
-only when it contains ``/`` or ends in a known file suffix (``.py``, ``.md``,
-``.json``, ``.yaml``, ``.yml``, ``.toml``, ``.ts``, ``.tsx``, ``.sh``, ``.txt``,
-``.cfg``, ``.ini``), and either:
-
-* it appears in backticks, or
-* it is a bare word that starts with a top-level directory name from ``git ls-tree``
-  at ``ref`` or ends in one of those suffixes.
-
-Prose such as ``input/output`` or ``M12/M13`` is ignored unless it meets that rule.
-An existing candidate is a tracked blob or a directory prefix of one. A missing
-candidate adds :data:`NEW_OUTSIDE` only when it has a known suffix or its parent
-directory already contains tracked files. Compared to touch zones via
-:func:`specy_road.finish_implementation_check.in_zones`. Used by ``orchestrate plan``
-and ``grind-session --plan``.
-"""
+"""Plan-time zone coverage warnings for orchestrate plan and grind-session --plan."""
 
 from __future__ import annotations
 
@@ -29,11 +12,11 @@ from specy_road.runtime_paths import project_prefix, rebase_to_project
 
 NEW_OUTSIDE = "new file outside zones"
 BEST_EFFORT_HINT = (
-    "best-effort path detection (backticks, bare tokens under a tracked top-level "
-    "dir or with a known suffix only; other slash phrases are ignored)"
+    "best-effort path detection; misses are accepted — see uncovered_acceptance_paths"
 )
 _BACKTICK = re.compile(r"`([^`]+)`")
 _SLASH_TOKEN = re.compile(r"(?<![\w./-])([A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+)(?![\w./-])")
+_BARE_DIR = re.compile(r"(?<![\w./-])([A-Za-z0-9_.-]+/)(?![\w./-])")
 _KNOWN_SUFFIXES = (
     ".py", ".md", ".json", ".yaml", ".yml", ".toml", ".ts", ".tsx", ".sh", ".txt", ".cfg", ".ini",
 )
@@ -64,12 +47,6 @@ def _has_known_suffix(path: str) -> bool:
     return PurePosixPath(path).suffix.lower() in _KNOWN_SUFFIXES
 
 
-def _shape_ok(path: str, *, had_slash: bool, backtick: bool, top_dirs: set[str]) -> bool:
-    if had_slash or "/" in path or _has_known_suffix(path):
-        return True
-    return backtick and path in top_dirs
-
-
 def _top_level_dirs(tracked: set[str]) -> set[str]:
     return {p.split("/", 1)[0] for p in tracked if p}
 
@@ -85,7 +62,7 @@ def _path_forms(path: str, prefix: str) -> set[str]:
 
 
 def _exists(path: str, tracked: set[str], prefix: str) -> bool:
-    """True when ``path`` is a tracked blob or a directory prefix of one."""
+    """Tracked file, or directory that contains a tracked path (with or without trailing ``/``)."""
     for form in _path_forms(path, prefix):
         if form in tracked:
             return True
@@ -95,41 +72,32 @@ def _exists(path: str, tracked: set[str], prefix: str) -> bool:
     return False
 
 
-def _path_candidate(
-    path: str, *, had_slash: bool, backtick: bool, top_dirs: set[str],
-) -> bool:
-    if not _shape_ok(path, had_slash=had_slash, backtick=backtick, top_dirs=top_dirs):
-        return False
-    if backtick:
-        return True
-    head = path.split("/", 1)[0]
-    return head in top_dirs or _has_known_suffix(path)
-
-
-def _report_as_new(path: str, tracked: set[str], prefix: str) -> bool:
-    if _has_known_suffix(path):
-        return True
-    parent = PurePosixPath(path).parent
-    if str(parent) in (".", ""):
-        return False
-    return _exists(str(parent), tracked, prefix)
-
-
 def _tokens(line: str) -> list[tuple[str, bool, bool]]:
+    """``(normalized path, backtick, had_trailing_slash)``."""
     seen: set[str] = set()
     out: list[tuple[str, bool, bool]] = []
-    for raw in _BACKTICK.findall(line):
+
+    def add(raw: str, backtick: bool) -> None:
         parsed = _normalize(raw)
         if parsed and parsed[0] not in seen:
             seen.add(parsed[0])
-            out.append((parsed[0], True, parsed[1]))
+            out.append((parsed[0], backtick, parsed[1]))
+
+    for raw in _BACKTICK.findall(line):
+        add(raw, True)
     scrub = _BACKTICK.sub(" ", line)
     for raw in _SLASH_TOKEN.findall(scrub):
-        parsed = _normalize(raw)
-        if parsed and parsed[0] not in seen:
-            seen.add(parsed[0])
-            out.append((parsed[0], False, parsed[1]))
+        add(raw, False)
+    for raw in _BARE_DIR.findall(scrub):
+        add(raw, False)
     return out
+
+
+def _is_candidate(path: str, *, backtick: bool, had_slash: bool, top_dirs: set[str]) -> bool:
+    if backtick:
+        return "/" in path or had_slash or _has_known_suffix(path)
+    head = path.split("/", 1)[0]
+    return head in top_dirs or _has_known_suffix(path)
 
 
 def _tracked_paths(root: Path, ref: str) -> set[str] | None:
@@ -143,24 +111,6 @@ def _tracked_paths(root: Path, ref: str) -> set[str] | None:
     return paths
 
 
-def _label_for_candidate(
-    path: str,
-    *,
-    zones: list[str],
-    prefix: str,
-    tree: set[str],
-    labels: list[str],
-) -> bool:
-    """Append an uncovered label when needed; return whether to set ``new_outside``."""
-    if in_zones(zones, path, prefix):
-        return False
-    if _exists(path, tree, prefix):
-        if path not in labels:
-            labels.append(path)
-        return False
-    return _report_as_new(path, tree, prefix)
-
-
 def uncovered_acceptance_paths(
     root: Path,
     node: dict,
@@ -168,7 +118,23 @@ def uncovered_acceptance_paths(
     ref: str = "HEAD",
     tracked: set[str] | None = None,
 ) -> list[str]:
-    """Labels for path candidates acceptance names that no touch zone covers."""
+    """Return warning labels for acceptance path candidates outside the leaf's touch zones.
+
+    **Best-effort path rule (A1; false negatives accepted).** From each acceptance line:
+
+    * **Backtick candidate:** the quoted span contains ``/`` or ends in a known suffix
+      (``.py``, ``.md``, ``.json``, ``.yaml``, ``.yml``, ``.toml``, ``.ts``, ``.tsx``,
+      ``.sh``, ``.txt``, ``.cfg``, ``.ini``). Always treated as a path candidate.
+    * **Bare candidate:** a bare token starts with a tracked top-level directory name
+      at ``ref`` or ends in one of those suffixes (includes bare ``docs/`` when ``docs``
+      is tracked).
+    * **Ignored:** other prose (``input/output``, ``read/write``, ``M12/M13``, URLs, …).
+
+    For each candidate not covered by a touch zone: if it is an existing tracked file
+    or directory (with or without a trailing ``/`` on the token), list that path; otherwise
+    list :data:`NEW_OUTSIDE` once per leaf (nonexistent backtick paths such as
+    ``brand/newdir`` count as new even when no parent directory is tracked yet).
+    """
     zones = _zones(node)
     lines = _acceptance(node)
     if not lines:
@@ -182,9 +148,14 @@ def uncovered_acceptance_paths(
     new_outside = False
     for line in lines:
         for path, backtick, had_slash in _tokens(line):
-            if not _path_candidate(path, had_slash=had_slash, backtick=backtick, top_dirs=top_dirs):
+            if not _is_candidate(path, backtick=backtick, had_slash=had_slash, top_dirs=top_dirs):
                 continue
-            if _label_for_candidate(path, zones=zones, prefix=prefix, tree=tree, labels=labels):
+            if in_zones(zones, path, prefix):
+                continue
+            if _exists(path, tree, prefix):
+                if path not in labels:
+                    labels.append(path)
+            else:
                 new_outside = True
     if new_outside and NEW_OUTSIDE not in labels:
         labels.append(NEW_OUTSIDE)
