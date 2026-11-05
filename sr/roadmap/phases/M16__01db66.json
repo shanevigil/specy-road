@@ -2,9 +2,9 @@
   "nodes": [
     {
       "acceptance": [
-        "AGENTS.md is the only agent entry; CLAUDE.md points to it and holds only Claude-specific notes (about 20 lines, an estimate, not a gate); branch policy and the version-numbers rule each appear in one place and are linked elsewhere",
+        "AGENTS.md is the only agent entry; CLAUDE.md points to it and holds only Claude-specific notes (about 20 lines, an estimate, not a gate); branch policy and the version-numbers rule each appear in one place, and every other copy (including .cursor/rules/027-version-numbers-require-human.mdc and .cursor/rules/030-git-workflow-management.mdc) is replaced with a link to it",
         "The load order is task-conditional: always purpose, principles and constraints; then by task (orchestration or review, roadmap data, dependencies or release, the dogfood fixture, sr/ roadmap work); supply-chain-security.md is not in the default order, here or in the consumer agents-rules template",
-        "tests/test_agent_start_up_reading.py fails when a file in the default load order is missing or when the default start-up reading totals more than 400 lines, for this repo and for a freshly initialised consumer repo, and prints each total; CLAUDE.md's size (about 20 lines) is printed as a soft check, not enforced",
+        "tests/test_agent_start_up_reading.py counts the unique files in the unconditional start-up closure (AGENTS.md, the entry stubs and the always-applied managed rule files, each once per repo; task-conditional references excluded), prints the counted paths and each total, and fails when a file in the default load order is missing or the total is over 400 lines, for this repo and for a freshly initialised consumer repo; CLAUDE.md's size (about 20 lines) is printed as a soft check, not enforced",
         "The shipped agents-rules.md loses its provenance comments and cites only files an adopter has",
         "Estimated net line change (informational, not a gate): docs about -200"
       ],
@@ -26,46 +26,9 @@
         "docs/toolkit-development.md",
         "specy_road/templates/specyrd/agents-rules.md",
         "docs/context-regressions.yaml",
-        "tests/test_agent_start_up_reading.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "Each file in docs/design-notes/ gets the disposition in this sheet's table (move to design-notes/ at the root, or archive to sr/design-notes-archive/); the design-notes file-limit overrides go",
-        "orchestration-workers, orchestration-roster and orchestration-chores merge into one workers reference; architecture folds into roadmap-authoring and install-release-candidates into install-and-usage; pm-gui-brainstorm and pm-llm-review are appended to pm-gui.md as new sections (its existing sections belong to the PM GUI work in phase M17); optional-ai-tooling-patterns becomes a short pointer",
-        "No doc outside CHANGELOG, pyproject and one install section names a specific release candidate; README's setup steps describe skills, not slash-command stubs; templates cite no doc an adopter cannot open",
-        "The `[gui-next]` extra stays as an alias of `[gui]` for one release with a note (project.version untouched); every moved doc's inbound links resolve (link-check test)",
-        "The roster part of the workers reference (from today's orchestration-roster.md) documents an entry as two groups: core fields (id, family, roles, may_process, public_key, available, paused_until, unavailable_until, family_pinned) that the gate, eligibility and the local overlay read, and the `run:` block chosen by `run.harness`, with M16.63's per-harness field table and one example per harness; the version-1 form is named as deprecated until M16.62",
-        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
-        "Estimated net line change (informational, not a gate): docs about -1,500 in docs/ (archived text excluded)",
-        "Stale notes found by the 2026-11-05 milestone audit (sr/work/milestone-audit-2026-11-05.md) are fixed: the 'Deferred past 0.3.1rc2' note is removed from M5.4, M5.6, M5.7, M5.8, M7.1, M7.2 and M8.1–M8.7; the held/proposed/'do not pick up' notes on M9, M9.1 and M9.10 and M10's 'acceptance and touch zones still to author' become a one-line landed note; M10.20's sheet drops 'deferred until after rc3'; regression-prevention.md marks 'Open decision: what green means' and 'M9.10 stays proposed' settled (M9.1 and M9.10 landed; M16.14's checks: block); the scaffold phase sheets of M7, M8, M9 and M10 get Intent and Approach, and phases M7–M11 get a goal, both from the audit's Purpose lines"
-      ],
-      "codename": "docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra",
-      "dependencies": [
-        "01db66ad-a91c-48e3-953e-4083f5f14a13",
-        "7b52d543-e78c-4e74-bcd1-24d5a8b3034b",
-        "c840cf76-95c4-4688-a587-3bc06824fad5"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M16.31",
-      "node_key": "a0733044-eec3-4411-bec8-e6f31fac6456",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.31_docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra_a0733044-eec3-4411-bec8-e6f31fac6456.md",
-      "sibling_order": 31,
-      "status": "Not Started",
-      "title": "Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra",
-      "touch_zones": [
-        "docs/",
-        "design-notes/",
-        "sr/design-notes-archive/",
-        "README.md",
-        "pyproject.toml",
-        "constraints/file-limits.yaml",
-        "specy_road/templates/project/",
-        "CHANGELOG.md",
-        "sr/roadmap/phases/",
-        "sr/planning/"
+        "tests/test_agent_start_up_reading.py",
+        ".cursor/rules/027-version-numbers-require-human.mdc",
+        ".cursor/rules/030-git-workflow-management.mdc"
       ],
       "type": "task"
     },
@@ -74,7 +37,7 @@
         "bootstrap-roadmap creates nodes with add-node, edit-node and scaffold-planning instead of hand-written UUID JSON, and says to resolve validate warnings as well as errors",
         "Every doc a prompt cites is either shipped by init project or named with where an adopter finds it (installed package or toolkit repository); the governance deliverables table includes orchestration.yaml, model-profiles/ and review-lessons.md",
         "bootstrap-agents-md links the rules file instead of restating it, states the step order consistently with the other prompts, and covers the nested (sr/-style) layout and running from the git root",
-        "tests/test_suggested_prompts_commands.py checks that every command and flag a prompt names exists in the parity inventory (M16.0) as a canonical name, not an alias",
+        "tests/test_suggested_prompts_commands.py checks the invocations in shell fences and single-line code spans that begin with `specy-road` or `specyrd`: it tokenises them with shlex, stops at a shell operator or a bare --, skips documented placeholders, and fails when a command path or option is not in the parity inventory (M16.0) as a canonical name",
         "Estimated net line change (informational, not a gate): prompts about -60"
       ],
       "codename": "suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout",
@@ -100,7 +63,7 @@
         "`lean_metrics --check` prints package, test and docs lines and files, the C901 and long-line counts, and the command and alias counts against the M16.2 baseline, beside the sum of the leaves' informational estimates; none of the line numbers fails the check",
         "The canonical command count is at most 56 and the alias count is printed; coverage is at or above fail_under; M16.28's suite-time result holds",
         "This sheet lists, for M16.62, every deprecated form still accepted at rc5 with the notice it prints: the tests/parity/command_map.yaml rows, the old checks keys and the review-before-finish switch (M16.14), the four grind_session_* keys (M16.50), the version-1 roster form (M16.63), the `[gui-next]` extra (M16.31) and the re-exports kept by M16.6; each has its CHANGELOG [Unreleased] entry",
-        "The baseline is regenerated and committed as the rc5 end state, and the summary states the source lines, command count, test count and suite time reached",
+        "The M16.2 baseline stays as committed; the rc5 measurements are committed as a separate end-state section of constraints/lean-baseline.json that names the baseline commit, and the summary states the source lines, command count, test count and suite time reached",
         "Estimated net line change (informational, not a gate): package 0"
       ],
       "codename": "rc5-close-lean-metrics-measured-against-the-baseline",
@@ -118,7 +81,8 @@
       "title": "rc5 close: lean metrics measured against the baseline",
       "touch_zones": [
         "scripts/lean_metrics.py",
-        "constraints/lean-baseline.json"
+        "constraints/lean-baseline.json",
+        "sr/planning/M16.33_rc5-close-lean-metrics-measured-against-the-baseline_ed19381c-5265-4909-a70c-f9c5a9cf1853.md"
       ],
       "type": "task"
     },

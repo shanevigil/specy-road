@@ -72,6 +72,54 @@
         "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "Each file in docs/design-notes/ gets the disposition in this sheet's table (move to design-notes/ at the root, or archive to sr/design-notes-archive/); the design-notes file-limit overrides go",
+        "orchestration-workers, orchestration-roster and orchestration-chores merge into one workers reference; architecture folds into roadmap-authoring and install-release-candidates into install-and-usage; pm-gui-brainstorm and pm-llm-review are appended to pm-gui.md as new sections (its existing sections belong to the PM GUI work in phase M17); optional-ai-tooling-patterns becomes a short pointer",
+        "A test fails when README.md or a file under docs/ matches `\\d+\\.\\d+\\.\\d+rc\\d+`, except the install section of docs/install-and-usage.md and docs/release-runbook.md (worked release examples); CHANGELOG.md and pyproject.toml are not scanned; README's setup steps describe skills, not slash-command stubs; templates cite no doc an adopter cannot open",
+        "The `[gui-next]` extra stays as an alias of `[gui]` for one release with a note (project.version untouched); every moved doc's inbound links resolve, checked by tests/test_docs_links.py; a test that opens a moved doc's path (test_review_rca, test_review_record_write, test_roster_generate, test_docs_install_extras, and any other the sheet's disposition table lists) changes only that path",
+        "The roster part of the workers reference (from today's orchestration-roster.md) documents an entry as two groups: core fields (id, family, roles, may_process, public_key, available, paused_until, unavailable_until, family_pinned, class, subagent_family_lock) that the gate, eligibility and the local overlay read, and the `run:` block chosen by `run.harness`, with M16.63's per-harness field table and one example per harness; the version-1 form is named as deprecated until M16.62",
+        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
+        "Estimated net line change (informational, not a gate): docs about -1,500 in docs/ (archived text excluded)",
+        "Stale notes found by the 2026-11-05 milestone audit (sr/work/milestone-audit-2026-11-05.md) are fixed: the 'Deferred past 0.3.1rc2' note is removed from M5.4, M5.6, M5.7, M5.8, M7.1, M7.2 and M8.1–M8.7; the held/proposed/'do not pick up' notes on M9, M9.1 and M9.10 and M10's 'acceptance and touch zones still to author' become a one-line landed note; M10.20's sheet drops 'deferred until after rc3'; regression-prevention.md marks 'Open decision: what green means' and 'M9.10 stays proposed' settled (M9.1 and M9.10 landed; M16.14's checks: block); the scaffold phase sheets of M7, M8, M9 and M10 get Intent and Approach, and phases M7–M11 get a goal, both from the audit's Purpose lines"
+      ],
+      "codename": "docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra",
+      "dependencies": [
+        "01db66ad-a91c-48e3-953e-4083f5f14a13",
+        "7b52d543-e78c-4e74-bcd1-24d5a8b3034b",
+        "c840cf76-95c4-4688-a587-3bc06824fad5"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.31",
+      "node_key": "a0733044-eec3-4411-bec8-e6f31fac6456",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.31_docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra_a0733044-eec3-4411-bec8-e6f31fac6456.md",
+      "sibling_order": 31,
+      "status": "Not Started",
+      "title": "Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra",
+      "touch_zones": [
+        "docs/",
+        "design-notes/",
+        "sr/design-notes-archive/",
+        "README.md",
+        "pyproject.toml",
+        "constraints/file-limits.yaml",
+        "specy_road/templates/project/",
+        "CHANGELOG.md",
+        "sr/roadmap/phases/",
+        "sr/planning/",
+        "tests/test_docs_links.py",
+        "tests/test_review_rca.py",
+        "tests/test_review_record_write.py",
+        "tests/test_roster_generate.py",
+        "tests/test_docs_install_extras.py",
+        "sr/roadmap/archive/chunks/",
+        "sr/roadmap/archive/planning/",
+        "sr/roadmap.md",
+        "sr/roadmap-context.md"
+      ],
+      "type": "task"
     }
   ]
 }

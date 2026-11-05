@@ -296,7 +296,7 @@
       "acceptance": [
         "tests/support/ provides a `roadmap_repo` builder (manifest, chunks, planning sheets, registry, git-workflow.yaml, deterministic node keys), a session-cached git repo and bare remote template copied per test, in-process `run_cli(argv)` and `run_cli_subprocess(argv)`, `dogfood_copy`, `api_client` and a fake harness, each with its own test",
         "test_worker_cli, test_models_and_prompt, test_orchestrate_plan and test_roadmap_crud, and the files that import from them, use tests/support instead of importing from each other",
-        "Collected test ids are unchanged apart from moved helpers, and the covered-arc set (lean_metrics --contexts) is unchanged at the same production commit",
+        "Existing test item ids are unchanged apart from moved helpers; the support-primitive tests A1 adds are listed separately in the summary; the covered-arc set of production code (lean_metrics --contexts) does not shrink at the same production commit",
         "Estimated net line change (informational, not a gate): tests about -600"
       ],
       "codename": "tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them",
@@ -318,19 +318,23 @@
         "tests/test_models_and_prompt.py",
         "tests/test_orchestrate_plan.py",
         "tests/test_roadmap_crud.py",
-        "tests/"
+        "tests/",
+        "scripts/line_width_baseline.json",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "Test files move with `git mv` into tests/unit, tests/flows/<area>, tests/cli, tests/gui and tests/repo per a mapping file tests/support/layout.csv committed first in this leaf; only moves and import fixes",
+        "Test files move with `git mv` into tests/unit, tests/flows/<area>, tests/cli, tests/gui and tests/repo per a mapping file tests/support/layout.csv committed first in this leaf; only moves, import fixes, and replacing `Path(__file__).parents[N]` repo-root assumptions with tests/support's REPO helper; assertions and fixture contents unchanged; entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json change only by the layout.csv path mapping",
         "Collected test count and covered-arc set unchanged; test ids change only by path",
         "Estimated net line change (informational, not a gate): tests about -50"
       ],
       "codename": "tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only",
       "dependencies": [
-        "840167f3-ec33-428a-86cc-e6ea639f8d6b"
+        "840167f3-ec33-428a-86cc-e6ea639f8d6b",
+        "a0733044-eec3-4411-bec8-e6f31fac6456"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.24",
@@ -341,14 +345,17 @@
       "status": "Not Started",
       "title": "Tests: files move into unit, flows, cli, gui and repo lanes, moves only",
       "touch_zones": [
-        "tests/"
+        "tests/",
+        "scripts/line_width_baseline.json",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "scripts/test_dedupe_worklist.py reads the lean_metrics --contexts output and writes tests/support/dedupe/review-gate.csv, worker.csv, pickup-finish.csv and rest.csv: the identical-arc groups and the pairs with Jaccard 0.95 or more, each with a proposed action (delete, fold or keep) and, for delete or fold, the surviving test and the assertion it makes that covers the removed one",
-        "The worklists are committed and no test changes in this leaf; the coordinator sets planned_test_changes on M16.56 to M16.59 from them before pickup",
+        "scripts/test_dedupe_worklist.py reads the lean_metrics --contexts output (its commit recorded in each file) and writes candidate rows to tests/support/dedupe/review-gate.csv, worker.csv, pickup-finish.csv and rest.csv: the identical-arc groups and the pairs with Jaccard 0.95 or more, by stable test item id. The executor then records for every candidate an action (delete, fold or keep) and, for delete or fold, the surviving test, the assertion in it that covers the removed one and the fold destination; reviewers check those columns, and an undecided row is keep",
+        "No removal row in any worklist targets another row's surviving test; this leaf commits the four worklists and changes no test and no roadmap node; the planner sets planned_test_changes on M16.56 to M16.59 from them after this leaf merges, outside its diff",
         "Estimated net line change (informational, not a gate): scripts about +150"
       ],
       "codename": "tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it",
@@ -371,8 +378,8 @@
     },
     {
       "acceptance": [
-        "No test monkeypatches or imports a `_`-prefixed name (from about 100 patches in 25 files); the runner, the clock (M16.4), the LLM client factory (M16.10) and the process command-line reader are public injection points; constraints/test-private-imports-baseline.txt is empty",
-        "No test calls `time.sleep`; stall and timeout tests use the injectable clock",
+        "Before edits, this sheet lists each reference in constraints/test-private-imports-baseline.txt with its resolution: a public seam in a named production module, or the test rewritten to a public interface; production code changes only in the modules that list names, and only to add those seams (expected: the runner, the clock (M16.4), the LLM client factory (M16.10) and the process command-line reader); no test monkeypatches or imports a `_`-prefixed name, and the baseline file is empty",
+        "Logical timeout and stall tests use the injectable clock instead of `time.sleep`; real process and race tests synchronise with explicit events or bounded waits; the child-process blocking fixtures that still sleep are listed in a committed allowlist, and a test fails on `time.sleep` in tests/ outside it",
         "Estimated net line change (informational, not a gate): tests about -500; package about +30 (seams)"
       ],
       "codename": "tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock",
@@ -392,7 +399,8 @@
         "specy_road/clock.py",
         "specy_road/orchestration/workers/",
         "specy_road/llm_client.py",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "specy_road/"
       ],
       "type": "task"
     },
@@ -425,7 +433,7 @@
         "At most 50 collected test items start `specy-road`, `specyrd` or `python -m specy_road` in a subprocess, counted per item by a test hook; git commands and worker child processes are not counted, and real worker-process and race tests stay as they are",
         "All other CLI tests call `main(argv)` in process through tests/support run_cli",
         "Repo-consistency tests still run in CI (in a separate job if moved)",
-        "The median of three full-suite runs with the M16.2 settings is at most half the M16.2 baseline time; 35 s is printed by lean_metrics and not gated; coverage stays at or above fail_under",
+        "The median of three full-suite runs with the M16.2 settings, on the machine M16.2 recorded, is at most half the M16.2 baseline time and is recorded in the summary; suite time is never a CI failure; 35 s is printed by lean_metrics and not gated; coverage stays at or above fail_under",
         "Estimated net line change (informational, not a gate): tests about -500"
       ],
       "codename": "tests-a-cli-smoke-lane-of-at-most-50-subprocess-items-everything-else-in-process-suite-time-halved",

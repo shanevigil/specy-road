@@ -86,8 +86,8 @@
     },
     {
       "acceptance": [
-        "An end-to-end pass on the toolkit, run from a wheel built from the branch head in a clean virtual environment, follows this sheet's checklist (install, init project, the M16.0 leaf loop with on_complete merge and pr, upgrade on an rc3-shaped and an rc5-shaped repo, worker and review delegate on one leaf per harness the maintainer has, grind-session on the dogfood fixture, doctor --prune, the PM GUI server's read-only routes, and validate, export --check and digest --check on sr/ and the dogfood fixture); each step's result is recorded in this sheet",
-        "Every failure, and every feedback item the maintainer collects in this round, is an intake entry in this sheet with a disposition: fix before 0.3.1 (a new M16 leaf that M16.66 depends on, added by the planner) or after (post-M16 intake)",
+        "Before the pass, this sheet commits the E1-E8 checklist with each step's commands or routes and its expected result, and records which harness logins the maintainer has. The pass runs from a wheel built from the branch head in a clean virtual environment and covers: install, init project, the M16.0 leaf loop with on_complete merge and pr, upgrade on an rc3-shaped and an rc5-shaped repo, worker delegate and review delegate once each on claude-code, codex and cursor (or one sheet line per harness recording that the maintainer has no login for it), grind-session on the dogfood fixture, doctor --prune, the PM GUI server's read-only routes named in the checklist, and validate, export --check and digest --check on sr/ and the dogfood fixture; each step's result is recorded, and a skipped step names its reason and the maintainer's disposition",
+        "Every failure, and every feedback item the maintainer collects in this round, is an intake entry in this sheet with disposition `fix-before-0.3.1` or `after`; this leaf adds no roadmap node: the planner adds each fix leaf and its M16.66 dependency afterwards",
         "This leaf changes no product code; fixes land in their own leaves",
         "Estimated net line change (informational, not a gate): 0"
       ],

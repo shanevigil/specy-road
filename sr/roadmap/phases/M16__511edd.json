@@ -216,7 +216,7 @@
     },
     {
       "acceptance": [
-        "No test module imports from another `test_*.py` (from 98), the `*_repo_helpers.py` modules and the 53 byte-identical helper groups are replaced by tests/support, and no test writes manifest.json by hand (from 41 files); a grep test enforces all three",
+        "No test module imports a module whose name starts with `test_`; no file matches `*_repo_helpers.py`; outside tests/support's roadmap_repo builder and a committed allowlist of intentional malformed or raw-file manifest cases, no test file writes manifest.json via `write_text` or `json.dump`; a grep test fails on any of the three. The helper groups to replace (the report's 53 byte-identical groups) are listed in this sheet with their tests/support destination before edits, and each row is replaced",
         "Collected test ids unchanged apart from moved helpers; covered-arc set unchanged; slow (over 1 s) and repo-consistency tests carry markers",
         "Estimated net line change (informational, not a gate): tests about -1,400"
       ],
@@ -234,14 +234,17 @@
       "title": "Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support",
       "touch_zones": [
         "tests/support/",
-        "tests/"
+        "tests/",
+        "scripts/line_width_baseline.json",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "The per-leaf and per-round files listed in this sheet (file names carrying a roadmap id, round, slice or finding id, listed by a committed grep before pickup) fold into the module or flow file they test; a file is not folded only for having few tests",
-        "No test or file name carries a round, slice or roadmap id; finding ids survive only as comments or parametrize ids",
+        "Before edits, this sheet commits the manifest: every test path matching `(?i)(^|[/_])(m\\d+(\\.\\d+)*|round\\d+|slice\\d+|finding[-_]?\\w+)([._/]|$)`, its destination module or flow file, and each test function renamed; those files fold into their destinations; a file is not folded only for having few tests",
+        "Only names listed in that manifest are renamed; finding ids survive only as comments or parametrize ids; entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json change only by the manifest's path mapping",
         "Collected test count and covered-arc set unchanged; renamed test ids equal this leaf's planned_test_changes",
         "Estimated net line change (informational, not a gate): tests about -250"
       ],
@@ -258,7 +261,10 @@
       "status": "Not Started",
       "title": "Tests: per-leaf and per-round test files fold into the file for the module or flow they test",
       "touch_zones": [
-        "tests/"
+        "tests/",
+        "scripts/line_width_baseline.json",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
@@ -317,7 +323,7 @@
         "Applies exactly the rows of tests/support/dedupe/rest.csv: a delete only where the row names the surviving test and the assertion it makes, a fold into a parametrised table, and keep rows untouched",
         "The covered-arc set of the subsystem's modules is unchanged and total coverage stays at or above fail_under; removed and renamed test ids equal this leaf's planned_test_changes",
         "Tables this leaf creates assert structured results, not message text",
-        "One table asserts that every refusal message names its fix; it is the only place refusal prose is asserted",
+        "Refusal cases that rest.csv folds into one table carry a committed remediation substring each (a table in this sheet); existing public-output parity fixtures are unchanged; this leaf adds no other refusal case",
         "Estimated net line change (informational, not a gate): tests about -3,000"
       ],
       "codename": "tests-apply-the-dedupe-worklist-for-the-rest",
@@ -347,8 +353,7 @@
       ],
       "codename": "tests-five-named-properties-replace-the-single-input-tests-they-cover",
       "dependencies": [
-        "2f89d103-fb28-4584-a17e-3364cc5b1a99",
-        "a0733044-eec3-4411-bec8-e6f31fac6456"
+        "2f89d103-fb28-4584-a17e-3364cc5b1a99"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.60",
@@ -383,7 +388,8 @@
     },
     {
       "acceptance": [
-        "Every row of tests/parity/command_map.yaml, the old config forms (baseline_cmd, land_check_cmd, verify_cmd, the review-before-finish switch, the four grind_session_* keys and the version-1 roster form with `pinned`) with their validate notices and dual-read paths (orchestration.schema.json then accepts only version 2), and every re-export listed in M16.6's sheet are removed",
+        "Every row of tests/parity/command_map.yaml, the old config forms (baseline_cmd, land_check_cmd, verify_cmd, the review-before-finish switch, the four grind_session_* keys and the version-1 roster form with `pinned`) with their validate notices and dual-read paths (orchestration.schema.json then accepts only version 2), every re-export listed in M16.6's sheet, and the `[gui-next]` extra in pyproject.toml with its compatibility note (project.version untouched) are removed",
+        "Normal config readers accept only the current forms; upgrade keeps its legacy-input migration parsers, and after this leaf the rc3- and rc5-shaped fixtures still migrate with upgrade",
         "A removed command name exits with code 2 and one stderr line naming its replacement (REPLACED_COMMANDS)",
         "Deprecated review policies are not removed here",
         "Goldens are regenerated once and their diff shows only the removed aliases and notices",
@@ -409,7 +415,8 @@
         "suggested_prompts/",
         "tests/parity/",
         "tests/",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "pyproject.toml"
       ],
       "type": "task"
     },
