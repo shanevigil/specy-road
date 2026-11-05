@@ -145,16 +145,19 @@ project:
 - **Budget.** `policy.max_fix_rounds` (unset: no budget, nothing changes)
   counts the leaf's blocking rounds. Once spent while a review still blocks,
   `handoff status` reports `fix_round_budget_spent` and names the next command:
-  a forced RCA while none covers the latest round, then `review defer`.
+  a forced RCA while none covers the latest round, then a command that
+  advances that RCA's action (`review defer` for `defer_findings`).
 - **Input class.** A short free-text label the analyst writes per finding; it
   is stored, never inferred. Two match when equal after lower-casing and
   collapsing whitespace; there is no fuzzy or semantic matching.
 - **The rule.** A finding may be deferred only when its input class matches
-  none an earlier RCA record (`deferred_findings` or a disposition's
-  `input_class`) or applied deferral of the leaf named, and it is not a
+  none an RCA record or applied deferral from an earlier round named
+  (`deferred_findings` or a disposition's `input_class`), and it is not a
   `correctness` finding on an acceptance id an earlier round marked `pass`. A
   class seen before means the loop is circling, and a regression on a passing
-  criterion is this leaf's to fix; neither leaves the leaf.
+  criterion is this leaf's to fix; neither leaves the leaf. A record must
+  cover every finding of each block it names, so a deferral never hides the
+  rest of a block.
 - **Applying it.** `specy-road review defer <ID> --rca <record>` is
   human-only (an interactive terminal, no `--yes`). It refuses the whole record
   when any item breaks the rule; otherwise it adds the follow-up leaf beside
@@ -162,8 +165,9 @@ project:
   `roadmap/decisions.yaml` naming every deferred finding, the follow-up leaf
   and the approver, and writes `DEFERRAL-<round>.yaml` beside the record.
 - **Audit trail and gate.** RCA record → decision entry → follow-up leaf. The
-  gate stops counting a block only when a marker names its reviewer and commit
-  and the decision is closed; another reviewer's block, or the same reviewer's
+  gate stops counting a block only when a marker names its reviewer and commit,
+  covers all of its findings, and the decision is closed (the ledger is read
+  only then); another reviewer's block, or the same reviewer's
   on a later commit, still counts.
 
 ## Deferred

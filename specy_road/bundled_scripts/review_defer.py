@@ -24,7 +24,8 @@ from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
 from specy_road.decisions import add_entry, close_entry
 from specy_road.git_subprocess import git_text
 from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
-from specy_road.review_deferral import deferral_problems, list_applied, marker_path, write_marker
+from specy_road.bundled_scripts.roadmap_chunk_atomic import TreeSnapshot
+from specy_road.review_deferral import coverage_problems, deferral_problems, list_applied, marker_path, write_marker
 from specy_road.review_files import reviews_dir
 from specy_road.review_rca import loop_state
 from specy_road.review_target import full_sha
@@ -41,13 +42,24 @@ def _approver(root: Path) -> str | None:
     return f"{name} <{email}>" if name and email else name or email or None
 
 
+def _norm(text: str) -> str:
+    return " ".join(str(text).split())
+
+
+def _follow_up_problems(items: list[dict[str, Any]]) -> list[str]:
+    """Every follow-up title and acceptance line, normalised, must be non-empty before any node is written."""
+    return [f"deferred_findings[{i}] ({x['reviewer']} @ {str(x['commit'])[:12]}): {key} is empty once "
+            "whitespace is collapsed" for i, x in enumerate(items)
+            for key in ("follow_up_title", "follow_up_acceptance") if not _norm(x[key])]
+
+
 def _add_follow_ups(root: Path, parent: str | None, items: list[dict[str, Any]]) -> dict[str, str]:
-    """One ``Not Started`` task per distinct follow-up title, beside the leaf; title -> new id."""
+    """One ``Not Started`` task per distinct normalised follow-up title, beside the leaf; title -> new id."""
     groups: dict[str, list[str]] = {}
     for x in items:
-        lines = groups.setdefault(x["follow_up_title"].strip(), [])
-        if x["follow_up_acceptance"].strip() not in lines:
-            lines.append(x["follow_up_acceptance"].strip())
+        lines = groups.setdefault(_norm(x["follow_up_title"]), [])
+        if _norm(x["follow_up_acceptance"]) not in lines:
+            lines.append(_norm(x["follow_up_acceptance"]))
     ids = {}
     for title, acceptance in groups.items():
         node = {"id": next_child_id(load_roadmap(root)["nodes"], parent), "node_key": new_node_key(),
@@ -70,12 +82,16 @@ def _checked_record(root: Path, node_id: str, rca_arg: str) -> tuple[Any, str | 
         return None, f"{rca.path.name} recommends {rca.data['recommended_action']['type']}, not defer_findings"
     if marker_path(root, node_id, rca.path.name).exists():
         return None, f"{rca.path.name} is already applied ({marker_path(root, node_id, rca.path.name).name})"
-    others, applied = [r for r in loop.rcas if r is not rca], list_applied(root, node_id)
-    problems = [p for x in rca.data["deferred_findings"] for p in deferral_problems(loop.rounds, others, applied, x)]
+    rnd = int(rca.data["trigger"]["round"])   # only records and deferrals from earlier rounds are evidence
+    others = [r for r in loop.rcas if r is not rca and r.ok and int(r.data["trigger"]["round"]) < rnd]
+    applied = [(n, m) for n, m in list_applied(root, node_id) if int(m.get("round") or 0) < rnd]
+    items = rca.data["deferred_findings"]
+    problems = [p for x in items for p in deferral_problems(loop.rounds, others, applied, x)]
+    problems += coverage_problems(loop.rounds, items) + _follow_up_problems(items)
     if problems:
         return None, (f"{rca.path.name} cannot be applied; nothing was written. A finding on an input class an "
                       "earlier round named, or a correctness finding on an acceptance id an earlier round "
-                      "passed, is fixed in this leaf:\n" + "\n".join(f"  - {p}" for p in problems))
+                      "passed, is fixed in this leaf, and so is the rest of a block it does not list:\n" + "\n".join(f"  - {p}" for p in problems))
     return rca, None
 
 
@@ -108,26 +124,16 @@ def cmd_review_defer(ns: argparse.Namespace) -> int:
     if input(f"Apply as {approver}? [y/N] ").strip().lower() not in ("y", "yes"):
         print("Aborted (nothing written).")
         return 0
+    snap = TreeSnapshot((root / "roadmap", root / "planning"))   # a failed apply leaves nothing behind
     try:
-        ids = _add_follow_ups(root, parent if isinstance(parent, str) else None, items)
-    except (ValueError, SystemExit) as e:
-        return _fail(f"could not add the follow-up leaf: {e}")
-    answer = f"Deferred by {approver} from {rca.path.name}: " + "; ".join(
-        f"{x['finding']} (input class {x['input_class']!r}) -> {ids[x['follow_up_title'].strip()]}" for x in items)
-    entry = add_entry(
-        root, node_id=ns.node_id, kind="decision",
-        summary=f"Defer {len(items)} review finding(s) of {ns.node_id} to {', '.join(sorted(set(ids.values())))}",
-        why_now=f"{rca.path.name} recommends defer_findings: {rca.data['recommended_action']['instructions']}",
-        options=[{"label": "defer", "effect": "the follow-up leaf owns the findings; the gate stops counting "
-                  "those blocks at their commit"},
-                 {"label": "keep fixing", "effect": "the findings stay must-fix in this leaf"}],
-        recommendation="defer", recommendation_reason="the findings name input classes no earlier round named",
-        default_if_unanswered="keep fixing")
-    close_entry(root, entry["id"], answer, sheet_text=None, ledger_only=True)
+        entry, ids = _record(root, ns.node_id, rca, parent if isinstance(parent, str) else None, approver)
+    except (ValueError, OSError, SystemExit) as e:
+        snap.restore()
+        return _fail(f"could not apply {rca.path.name}; nothing was written: {e}")
     marker = marker_path(root, ns.node_id, rca.path.name)
     write_marker(marker, {
-        "node_id": ns.node_id, "rca": rca.path.name, "decision": entry["id"], "approver": approver,
-        "follow_up": sorted(set(ids.values())),
+        "node_id": ns.node_id, "rca": rca.path.name, "round": int(rca.data["trigger"]["round"]),
+        "decision": entry["id"], "approver": approver, "follow_up": sorted(set(ids.values())),
         "deferred": [{"reviewer": x["reviewer"], "commit": full_sha(root, x["commit"]) or x["commit"],
                       "finding": x["finding"], "category": x["category"], "acceptance_id": x["acceptance_id"],
                       "input_class": x["input_class"]} for x in items]})
@@ -135,6 +141,25 @@ def cmd_review_defer(ns: argparse.Namespace) -> int:
     print("  Commit roadmap/ (the follow-up leaf and decisions.yaml), then "
           f"`specy-road handoff status {ns.node_id}`.")
     return 0
+
+
+def _record(root: Path, node_id: str, rca: Any, parent: str | None, approver: str) -> tuple[dict, dict[str, str]]:
+    """The roadmap writes: the follow-up leaves, then the closed decision naming them; ``(entry, ids)``."""
+    items = rca.data["deferred_findings"]
+    ids = _add_follow_ups(root, parent, items)
+    answer = f"Deferred by {approver} from {rca.path.name}: " + "; ".join(
+        f"{x['finding']} (input class {x['input_class']!r}) -> {ids[_norm(x['follow_up_title'])]}" for x in items)
+    entry = add_entry(
+        root, node_id=node_id, kind="decision",
+        summary=f"Defer {len(items)} review finding(s) of {node_id} to {', '.join(sorted(set(ids.values())))}",
+        why_now=f"{rca.path.name} recommends defer_findings: {rca.data['recommended_action']['instructions']}",
+        options=[{"label": "defer", "effect": "the follow-up leaf owns the findings; the gate stops counting "
+                  "those blocks at their commit"},
+                 {"label": "keep fixing", "effect": "the findings stay must-fix in this leaf"}],
+        recommendation="defer", recommendation_reason="the findings name input classes no earlier round named",
+        default_if_unanswered="keep fixing")
+    close_entry(root, entry["id"], answer, sheet_text=None, ledger_only=True)
+    return entry, ids
 
 
 def add_parser(rsub: Any) -> None:

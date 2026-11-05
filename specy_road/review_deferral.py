@@ -13,13 +13,14 @@ deferring reviewer's block at that commit as resolved, and nothing else
 
 from __future__ import annotations
 
+import shlex
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import yaml
 
 from specy_road.decisions import decisions_path, read_decisions
-from specy_road.review_files import RCA_PREFIX, ReviewFile, reviews_dir
+from specy_road.review_files import HUMAN, RCA_PREFIX, ReviewFile, latest_ready, reviews_dir
 from specy_road.review_target import same_commit
 
 if TYPE_CHECKING:   # review_gate imports this module
@@ -72,6 +73,30 @@ def deferral_problems(rounds: list[Round], rcas: list[ReviewFile], applied: list
     return out
 
 
+def uncovered(record: dict[str, Any], items: list[dict[str, Any]]) -> list[str]:
+    """What a blocking record names that ``items`` (its reviewer's deferred findings at its commit) leave open:
+    each failed acceptance id no item names, and each findings category with more findings than items."""
+    ids = {x.get("acceptance_id") for x in items}
+    out = [f"{a}: fail" for a, v in sorted((record.get("acceptance") or {}).items()) if v == "fail" and a not in ids]
+    for cat, found in (record.get("findings") or {}).items():
+        if len(found or []) > (n := sum(1 for x in items if x.get("category") == cat)):
+            out.append(f"{len(found) - n} {cat} finding(s)")
+    return out
+
+
+def coverage_problems(rounds: list[Round], items: list[dict[str, Any]]) -> list[str]:
+    """Per (reviewer, commit) the items name: the findings of that block the items leave undeferred."""
+    out = []
+    for reviewer, commit in dict.fromkeys((x["reviewer"], str(x["commit"])) for x in items):
+        idx = _round_of(rounds, commit)
+        rec = next((r for r in rounds[idx].records if r.data["model"] == reviewer), None) if idx is not None else None
+        group = [x for x in items if x["reviewer"] == reviewer and str(x["commit"]) == commit]
+        if rec is not None and (left := uncovered(rec.data, group)):
+            out.append(f"{reviewer} @ {commit[:12]}: deferring would leave {', '.join(left)} of that block "
+                       "undeferred; list every finding of the block, or fix it in this leaf")
+    return out
+
+
 def marker_path(repo_root: Path, node_id: str, rca_name: str) -> Path:
     """``DEFERRAL-<round>.yaml`` beside ``RCA-<round>.md`` (gitignored, like the records it qualifies)."""
     return reviews_dir(repo_root, node_id) / f"{DEFERRAL_PREFIX}{Path(rca_name).stem.removeprefix(RCA_PREFIX)}.yaml"
@@ -96,41 +121,79 @@ def write_marker(path: Path, data: dict[str, Any]) -> None:
     path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 
 
-def deferred_by(repo_root: Path, node_id: str, model: str, commit: str) -> str | None:
-    """The closed decision that deferred ``model``'s block at ``commit``, else ``None``."""
-    closed = {e.get("id") for e in read_decisions(decisions_path(repo_root)).get("entries") or []
-              if isinstance(e, dict) and e.get("status") == "closed" and e.get("node") == node_id}
-    for _name, m in list_applied(repo_root, node_id):
-        if m.get("decision") in closed and any(
-                x.get("reviewer") == model and same_commit(repo_root, str(x.get("commit")), commit)
-                for x in m.get("deferred") or []):
-            return str(m["decision"])
-    return None
+def _closed_decisions(repo_root: Path, node_id: str) -> set[str]:
+    """Closed decision ids of the node; an unreadable ledger closes nothing, so every block keeps counting."""
+    try:
+        doc = read_decisions(decisions_path(repo_root))
+    except (OSError, yaml.YAMLError):
+        return set()
+    entries = doc.get("entries") if isinstance(doc, dict) else None
+    return {e.get("id") for e in entries or [] if isinstance(e, dict) and e.get("status") == "closed"
+            and e.get("node") == node_id}
 
 
 def apply_deferrals(repo_root: Path, result: GateResult) -> None:
-    """Move each counted block an applied, closed deferral names (reviewer and commit) to ``ineligible``."""
+    """Move a counted block to ``ineligible`` when closed, applied deferrals name its reviewer and commit and
+    cover every finding it names (:func:`uncovered`). Without a marker naming the block, the ledger is not read."""
+    applied = list_applied(repo_root, result.node_id) if result.blocks else []
+    closed: set[str] | None = None
     for b in list(result.blocks):
-        decision = deferred_by(repo_root, result.node_id, b.model, b.review.data["commit"])
-        if decision:
+        named = [(m.get("decision"), x) for _n, m in applied for x in m.get("deferred") or []
+                 if x.get("reviewer") == b.model and same_commit(repo_root, str(x.get("commit")), b.review.data["commit"])]
+        if not named:
+            continue
+        closed = _closed_decisions(repo_root, result.node_id) if closed is None else closed
+        items = [x for d, x in named if d in closed]
+        if items and not uncovered(b.review.data, items):
             result.blocks.remove(b)
-            result.ineligible.append((b.review, f"deferred by {decision}"))
+            result.ineligible.append((b.review, "deferred by " + ", ".join(dict.fromkeys(
+                str(d) for d, _x in named if d in closed))))
 
 
-def fix_round_budget(policy: dict[str, Any], loop: LoopState, node_id: str) -> dict[str, Any] | None:
-    """``None`` when ``policy.max_fix_rounds`` is unset; else the blocking rounds, whether the budget is
-    spent, and the command that resolves it: the RCA when none covers the latest round, else the deferral."""
-    budget = policy.get("max_fix_rounds")
+_EXECUTOR_ACTIONS = ("continue_with_class_fix", "restart_executor_fresh", "fix_tests", "fix_environment")
+
+
+def _next_for(node_id: str, rca: ReviewFile, loop: LoopState, executor: str | None) -> tuple[str, str]:
+    """``(command, why)`` that advances a covering RCA's recommended action; the command is runnable as printed."""
+    action, name = rca.data["recommended_action"], rca.path.name
+    why = f"{name} recommends {action['type']}: {action['instructions']}"
+    if action["type"] == "defer_findings":
+        return f"specy-road review defer {node_id} --rca {shlex.quote(str(rca.path))}", why
+    blockers = [r.data["model"] for r in loop.rounds[-1].records if r.data["verdict"] == "block"] if loop.rounds else []
+    if action["type"] in _EXECUTOR_ACTIONS and executor:
+        return f"specy-road prompt {node_id} --role executor --model {shlex.quote(executor)}", why
+    if action["type"] == "change_or_reprompt_reviewer" and blockers:
+        return f"specy-road prompt {node_id} --role reviewer --model {shlex.quote(blockers[0])}", why
+    return " ".join(["specy-road decisions add", node_id, "--kind decision", "--summary",
+                     shlex.quote(f"{name}: {action['type']}"), "--why", shlex.quote(why),
+                     "--option", shlex.quote(f"apply|{action['instructions']}"),
+                     "--option", shlex.quote("decline|keep the current review loop"),
+                     "--recommendation apply --recommendation-reason", shlex.quote(f"root-cause analysis {name}"),
+                     "--default decline"]), why + " (a human applies it)"
+
+
+def fix_round_budget(repo_root: Path, config: dict[str, Any], loop: LoopState,
+                     node_id: str) -> dict[str, Any] | None:
+    """``None`` when ``policy.max_fix_rounds`` is unset; else the blocking rounds, whether the budget is spent,
+    and the next step: the RCA when none covers the latest round, else what advances that RCA's action.
+    ``next`` is a command only; ``next_why`` explains it."""
+    from specy_road.review_rca import rca_parties   # review_rca -> review_files; keep this module light
+
+    budget = (config.get("policy") or {}).get("max_fix_rounds")
     if budget is None:
         return None
+    parties = rca_parties(repo_root, node_id, loop)
+    analyst = next((e["id"] for e in config.get("roster") or [] if "reviewer" in (e.get("roles") or [])
+                    and e.get("id") not in parties and e.get("id") != HUMAN), None)
+    ready = latest_ready(repo_root, node_id)
     blocking = sum(1 for rnd in loop.rounds if any(r.data["verdict"] == "block" for r in rnd.records))
     covering = [r for r in loop.rcas if r.ok and int(r.data["trigger"]["round"]) >= len(loop.rounds)]
     if not covering:
-        nxt = (f"specy-road prompt {node_id} --role rca --force --reason \"fix-round budget spent\" "
-               "--model <reviewer that has not reviewed it>")
-    elif covering[-1].data["recommended_action"]["type"] == "defer_findings":
-        nxt = f"specy-road review defer {node_id} --rca {covering[-1].path}"
+        nxt = (f"specy-road prompt {node_id} --role rca --force --reason 'fix-round budget spent' "
+               f"--model {shlex.quote(analyst) if analyst else 'MODEL'}")
+        why = "no root-cause analysis covers the latest round" + (
+            "" if analyst else "; MODEL: a rostered reviewer that neither implemented nor reviewed the leaf")
     else:
-        nxt = f"specy-road review list {node_id} ({covering[-1].path.name} recommends " \
-              f"{covering[-1].data['recommended_action']['type']})"
-    return {"max_fix_rounds": int(budget), "blocking_rounds": blocking, "spent": blocking >= int(budget), "next": nxt}
+        nxt, why = _next_for(node_id, covering[-1], loop, ready.data.get("agent") if ready else None)
+    return {"max_fix_rounds": int(budget), "blocking_rounds": blocking, "spent": blocking >= int(budget),
+            "next": nxt, "next_why": why}

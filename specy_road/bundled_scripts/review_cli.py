@@ -80,7 +80,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
     blocked_lines = executor_blocked_display_lines(ready) if same_commit(root, ready_commit, t.commit) else []
     loop = loop_state(root, node_id)
     escalated = loop.escalation is not None and not gate.passed
-    budget = fix_round_budget(gate.config.get("policy") or {}, loop, node_id)   # None unless max_fix_rounds is set
+    budget = fix_round_budget(root, gate.config, loop, node_id)   # None unless max_fix_rounds is set
     spent = bool(budget and budget["spent"] and gate.blocks)
     state = ("executor_blocked" if blocked_lines else "fix_round_budget_spent" if spent
              else "escalated" if escalated else _state(root, t, gate, ready_commit))
@@ -142,7 +142,7 @@ def _render(st: dict[str, Any]) -> list[str]:
     if st["state"] == "fix_round_budget_spent":
         b = st["fix_round_budget"]
         lines.append(f"  fix_round_budget_spent: {b['blocking_rounds']} blocking round(s), policy.max_fix_rounds "
-                     f"{b['max_fix_rounds']}; next: `{b['next']}`")
+                     f"{b['max_fix_rounds']}; {b['next_why']}; next: `{b['next']}`")
     for line in st.get("executor_blocked") or []:
         lines.append(f"  {line}")
     lines += [f"  - {p}" for p in st["problems"]]
