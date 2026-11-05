@@ -415,3 +415,25 @@ Each probe below ran dry and real, checked that the index was unchanged, and com
 - `tests/test_m13_7_gitignore_symlinks.py` (new file): the round-5 symlink tests, moved for the 400-line cap.
 - `docs/install-and-usage.md`: the one line now says how the tracked notice is decided.
 - Mocks: none.
+
+## Precheck fix: no private test imports
+
+The coordinator's precheck flagged `tests/test_m13_7_gitignore_symlinks.py` (round 6). It imported the underscore-prefixed `_listed`, `_repo_with_prompts`, `_shown` and `_write` from `tests/test_m13_7_notices.py`. Commit `46507ea0` fixes it:
+
+- **New module `tests/m13_7_ignore_helpers.py`:** holds the shared helpers under public names: `git`, `repo_with_prompts`, `write`, `shown` and `listed`.
+- **Both test files:** now import from that module. Their local copies are removed.
+- **Renamed locals:** the local variable that held the earlier `git status` set is renamed `was_shown`, so it no longer shadows `shown()`.
+- **Unused import:** `subprocess` is dropped from `test_m13_7_notices.py`.
+- **Assertions:** unchanged.
+
+**Probes:**
+- Added test lines in this branch's diff that import an underscore name from a test module: none remain from M13.7. The other lines found came in with WIP merges and are not this leaf's.
+- `scripts/check_test_private_imports.py`: exit 0, with no M13.7 entries.
+- `specy-road file-limits`: OK.
+- `ruff`: clean.
+- Targeted run, the same 13 files as the round-6 READY: 185 passed.
+
+### Added (precheck fix)
+
+- `tests/m13_7_ignore_helpers.py`: public helpers shared by the two M13.7 ignore test files. It replaces the cross-module private imports.
+- Mocks: none.
