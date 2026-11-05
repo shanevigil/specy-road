@@ -328,3 +328,18 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
+  - codename: zones-missing-what-acceptance-needs-flagged
+    node_id: M15.20
+    branch: feature/rm-zones-missing-what-acceptance-needs-flagged
+    touch_zones:
+      - specy_road/zone_coverage.py
+      - specy_road/orchestrate_plan.py
+      - specy_road/bundled_scripts/brief_call_sites.py
+      - tests/
+      - specy_road/bundled_scripts/session_plan_git.py
+      - specy_road/bundled_scripts/session_plan.py
+      - specy_road/bundled_scripts/session_plan_render.py
+      - specy_road/bundled_scripts/orchestrate_cli.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
