@@ -37,7 +37,7 @@ Notes for reviewers:
 - On this repo's own `sr/` roadmap the ready leaves still serialize because nearly
   all of them name `tests/`. That overlap is real, not a shared-documentation zone.
 - **Rework (R1, `gpt-6.1-sol`).** The registry path no longer has its own raw-string
-  clash test: `_counted_clash` uses `shared_zones.paths_overlap`, the plan's normalized
+  clash test (superseded by fix round 1, below): `_counted_clash` uses `shared_zones.paths_overlap`, the plan's normalized
   rule, so `planning/same.md` vs `./planning/same.md` warns in validate (scoped and
   unscoped) exactly where the plan splits. `_touch_zones_clash` is removed; the
   broad-summary helpers (`_is_broad_touch_zone`, `_in_broad_zone_tree`, the equality
@@ -51,35 +51,82 @@ Notes for reviewers:
 Class of R1: two spellings of one path (`./` prefix, trailing `/`, surrounding
 whitespace) compared as raw strings in an overlap check.
 
-- `validate_registry_overlap._counted_clash` (scoped and unscoped paths): was raw; now `paths_overlap`. Regression test covers both paths plus the plan split.
+- `validate_registry_overlap._counted_clash` (scoped and unscoped paths): was raw; now `paths_overlap`. Regression test covers both paths plus the plan split. Superseded in fix round 1: now `zones_overlap`.
 - `_in_broad_zone_tree` / `_clash_suppressed_by_broad_summary` / `_claims_in_broad_zone_tree`: were raw; now normalized (else `./src/a.py` would escape a `src/` summary).
 - `_broad_zone_summaries` key: was raw (`./src/` and `src/` two keys, no summary); now normalized; test `test_registry_broad_zone_spelled_two_ways_is_summarized_once`.
 - `_is_broad_touch_zone`: now strips whitespace before the trailing-`/` check.
-- `shared_zones.shared_ignores` / `effective_overlap` / `ignored_shared_zones` and `session_plan_render.zone_clash`: already normalized via `norm_zone`; no change.
+- `shared_zones.shared_ignores` / `effective_overlap` / `ignored_shared_zones` and `session_plan_render.zone_clash`: already normalized via `norm_zone`; no change. (Fix round 1 folds these into `zones_overlap`.)
 - Configured `grind.shared_zones` values (e.g. `./notes/`): matched through `norm_zone`; no change.
 - Other `rstrip("/")` zone code in `specy_road/` (`touch_zone_tracked.py`, `validate_touch_zones.py`): tracked-file checks, not overlap; out of this class.
 - Red-green: both new tests fail against the previous `validate_registry_overlap.py` (exit 1), pass with the fix.
 
+## Fix round 1: one overlap rule
+
+Merged `origin/WIP/improvements-0-3-1` first (`d643aebb`). Class: the plan and
+validate each had their own copy of the overlap comparison, so any spelling one
+normalized and the other did not made them disagree. Removed by construction:
+
+- `shared_zones.zones_overlap(a, b, shared)` is the only overlap comparison. It
+  normalizes both zones with `norm_zone` (POSIX `normpath`: strips spaces and `./`,
+  collapses `//` and `x/../`; keeps the trailing `/` of a directory zone), checks
+  containment with `in_zone_tree`, then applies the shared-zone rule (`is_shared_zone`).
+- Plan: `effective_overlap` (used by `session_plan_render.zone_clash`) calls it.
+  Validate: `_first_independent_pair_clash` and `_first_touch_zone_clash` call it.
+- Deleted: `shared_zones.paths_overlap`, `shared_zones.shared_ignores`,
+  `validate_registry_overlap._counted_clash` and its local `_in_broad_zone_tree`
+  (replaced by `shared_zones.in_zone_tree`). The broad-summary key is `norm_zone(zone)`.
+- `test_plan_and_validate_apply_one_overlap_rule` feeds each pair to the plan,
+  unscoped validate and scoped validate, and asserts all three agree with the expected answer.
+
+Pairs checked (a, b → overlap), default shared zones `planning/`, `shared/`; all three callers agree on each:
+
+- `src/a.py` vs `./src/a.py` → yes
+- `src/a.py` vs `src/a.py` → yes
+- `src/` vs `src` → yes
+- `src/` vs `./src/` → yes
+- `src/` vs `src/a.py` → yes
+- `./src/` vs `src/a/b.py` → yes
+- `src/a/../b.py` vs `src/b.py` → yes
+- `src//b.py` vs `src/b.py` → yes
+- ` src/b.py ` vs `src/b.py` → yes
+- `src/a.py` vs `src/b.py` → no
+- `src-old/x.py` vs `src/` → no
+- `planning/` vs `planning/x.md` → no (shared)
+- `./planning/` vs `planning/x.md` → no (shared)
+- `planning` vs `planning/x.md` → no (shared, no trailing slash)
+- `planning/` vs `planning/` → no (shared)
+- `shared/` vs `./shared//` → no (shared)
+- `planning/x.md` vs `./planning/x.md` → yes
+- `planning/x.md` vs `planning//x.md` → yes
+- `planning/a/../x.md` vs `planning/x.md` → yes
+- `planning/x.md` vs `planning/y.md` → no
+- `shared/api/` vs `shared/api/x.md` → yes (subdirectory under a shared zone)
+- `shared/api/` vs `shared/web/` → no
+
+Red-green: against the previous tip (`5159ce9f`) 4 of these pairs fail (the `//` and
+`x/../` ones); against the reviewed commit `70f35d8d`, 11 tests in the file fail.
+
 ## Verification
 
-- `python -m pytest -q -n 4 tests/test_shared_zones.py tests/test_registry_overlap_warnings.py tests/test_session_plan_touch_zones.py tests/test_session_plan.py tests/test_session_plan_git.py tests/test_why_blocked_plan_holds.py tests/test_orchestrate_plan.py tests/test_grind_session.py tests/test_validate_roadmap.py tests/test_refresh_schemas.py tests/test_schema_revision.py tests/test_pick_ordering.py tests/test_grind_session_in_flight.py tests/test_grind_session_step.py tests/test_unauthored_leaf_guard.py`: 213 passed
+- `python -m pytest -q -n 4 tests/test_shared_zones.py tests/test_registry_overlap_warnings.py tests/test_session_plan_touch_zones.py tests/test_session_plan.py tests/test_session_plan_git.py tests/test_why_blocked_plan_holds.py tests/test_orchestrate_plan.py tests/test_grind_session.py tests/test_validate_roadmap.py tests/test_refresh_schemas.py tests/test_schema_revision.py tests/test_pick_ordering.py tests/test_grind_session_in_flight.py tests/test_grind_session_step.py tests/test_unauthored_leaf_guard.py`: 235 passed (fix round 1)
 - `specy-road file-limits`: OK. `ruff check` on the changed files: clean. `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: exit 0.
 
 ## Added
 
 - `shared_zones.DEFAULT_SHARED_ZONES`: the default set the acceptance names (`planning/`, `shared/`).
-- `shared_zones.norm_zone`: moved from `session_plan_render._norm_zone` so both callers normalize the same way.
+- `shared_zones.norm_zone`: moved from `session_plan_render._norm_zone`; fix round 1 makes it POSIX-normalize (`//`, `x/../`) and keep a directory's trailing `/`.
+- `shared_zones.zone_key` / `in_zone_tree` / `is_shared_zone` (fix round 1): the pieces of the one rule; `in_zone_tree` also replaces the registry's own `_in_broad_zone_tree`.
+- `shared_zones.zones_overlap` (fix round 1): the single overlap comparison both the plan and validate call.
 - `shared_zones.resolve_shared_zones`: reads `grind.shared_zones`; default on missing or unreadable config.
-- `shared_zones.paths_overlap`: the existing plan overlap rule (same path or directory prefix), moved out of `zone_clash`.
-- `shared_zones.shared_ignores`: the A1 rule (either zone is itself a shared zone, so the overlap does not count).
 - `shared_zones.effective_overlap`: first overlapping pair after the shared rule; used by `zone_clash`.
 - `shared_zones.ignored_shared_zones`: which shared zones the split actually ignored, for A3's output.
 - `session_plan_render.shared_zones_ignored` + JSON key `shared_zones_ignored` + one text line in `_render_zone_overlaps`: A3 (plan names ignored zones once).
 - `shared` parameter on `zone_clash` / `split_on_zone_overlap` / `_parallel_batches`, `shared_zones` kwarg on `compute_session_plan` and field on `SessionPlan`: carry the configured set; `session_plan_git` rebuilds batches with it.
-- `validate_registry_overlap._counted_clash` (normalized `paths_overlap`, replacing the removed raw `_touch_zones_clash`; R1) and `shared` parameter on `touch_zone_overlap` / helpers, `repo_root` on `warn_registry_touch_zone_overlap`: A2 (validate applies the same rule from config).
+- Registry clash checks call `shared_zones.zones_overlap` (fix round 1; the raw `_touch_zones_clash` and the interim `_counted_clash` are removed) and `shared` parameter on `touch_zone_overlap` / helpers, `repo_root` on `warn_registry_touch_zone_overlap`: A2 (validate applies the same rule from config).
 - Guard in `_broad_zone_summaries`: skip the "shared zone" summary line for configured shared zones.
 - `norm_zone` in `_in_broad_zone_tree`, `_clash_suppressed_by_broad_summary`, `_broad_zone_summaries` key, `.strip()` in `_is_broad_touch_zone`: R1 class (one path spelled two ways) in the summary path.
 - Schema `grind.shared_zones` (object, `additionalProperties: false`): A1 schema-check.
 - Mocks: none.
 - Tests (`tests/test_shared_zones.py`): 30-leaf single batch and one-time ignored-zones line; same planning sheet kept apart; code overlap still splits next to shared zones; `shared_zones=()` restores the plain rule; config default/override/empty/schema rejection; registry warning ignores shared zones (unscoped and scoped); registry warning keeps the same planning sheet; validate reads configured zones via `repo_root`.
 - Tests (rework, `tests/test_shared_zones.py`): `test_same_file_spelled_two_ways_warns_scoped_and_unscoped_and_splits` (R1: `planning/same.md` vs `./planning/same.md` warns once unscoped, once scoped, and the plan splits); `test_registry_broad_zone_spelled_two_ways_is_summarized_once` (summary key normalized).
+- Tests (fix round 1, `tests/test_shared_zones.py`): `test_plan_and_validate_apply_one_overlap_rule`, parametrized over 22 zone pairs; the plan, unscoped validate and scoped validate must all agree.
