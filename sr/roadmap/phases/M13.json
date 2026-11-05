@@ -7,7 +7,7 @@
       "node_key": "2fe2e067-75bb-4527-8c7a-3e5a54e32e71",
       "planning_dir": "planning/M13_rc3-adopter-feedback-upgrade-and-adoption-friction_2fe2e067-75bb-4527-8c7a-3e5a54e32e71.md",
       "sibling_order": 12,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "rc3 adopter feedback: upgrade and adoption friction",
       "touch_zones": [],
       "type": "phase"
@@ -25,7 +25,7 @@
       "node_key": "0df02f07-4621-455d-83a3-155de03dadb8",
       "parent_id": "M13",
       "planning_dir": "planning/M13.1_say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote_0df02f07-4621-455d-83a3-155de03dadb8.md",
-      "sibling_order": 1,
+      "sibling_order": 0,
       "status": "Complete",
       "title": "Say which install is running and flag managed blocks an older version wrote",
       "touch_zones": [
@@ -53,7 +53,7 @@
       "node_key": "1726dab4-730d-414d-a79d-fef0b03b8983",
       "parent_id": "M13",
       "planning_dir": "planning/M13.2_upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap_1726dab4-730d-414d-a79d-fef0b03b8983.md",
-      "sibling_order": 2,
+      "sibling_order": 1,
       "status": "Complete",
       "title": "upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap",
       "touch_zones": [
@@ -80,7 +80,7 @@
       "node_key": "6069463a-3a1a-4778-853a-a4dffb1a1ede",
       "parent_id": "M13",
       "planning_dir": "planning/M13.3_a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates_6069463a-3a1a-4778-853a-a4dffb1a1ede.md",
-      "sibling_order": 3,
+      "sibling_order": 2,
       "status": "Complete",
       "title": "A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates",
       "touch_zones": [
@@ -108,7 +108,7 @@
       "node_key": "d46518be-f58a-450d-a52f-cd6b08817346",
       "parent_id": "M13",
       "planning_dir": "planning/M13.4_a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked_d46518be-f58a-450d-a52f-cd6b08817346.md",
-      "sibling_order": 4,
+      "sibling_order": 3,
       "status": "Complete",
       "title": "A milestone held for its full review says so in validate, list-nodes and why-blocked",
       "touch_zones": [
@@ -135,7 +135,7 @@
       "node_key": "c35736be-a985-4dec-a66d-00d52d2f0ab5",
       "parent_id": "M13",
       "planning_dir": "planning/M13.5_refresh-profiles-installs-only-the-profiles-the-roster-names-and-suggests-the-alias-for-a-near-miss_c35736be-a985-4dec-a66d-00d52d2f0ab5.md",
-      "sibling_order": 5,
+      "sibling_order": 4,
       "status": "Complete",
       "title": "refresh-profiles installs only the profiles the roster names, and suggests the alias for a near miss",
       "touch_zones": [
@@ -160,7 +160,7 @@
       "node_key": "0f32efb8-3780-4e45-8fbc-333b064e5a9c",
       "parent_id": "M13",
       "planning_dir": "planning/M13.6_safe-release-candidate-install-recipe-pipx-and-uv-tool-upgrades-and-checking-which-binary-is-on-path_0f32efb8-3780-4e45-8fbc-333b064e5a9c.md",
-      "sibling_order": 6,
+      "sibling_order": 5,
       "status": "Complete",
       "title": "Safe release-candidate install recipe, pipx and uv tool upgrades, and checking which binary is on PATH",
       "touch_zones": [
@@ -186,7 +186,7 @@
       "node_key": "bf5ffc69-0d63-4e1c-9159-7ba00872b009",
       "parent_id": "M13",
       "planning_dir": "planning/M13.7_clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end_bf5ffc69-0d63-4e1c-9159-7ba00872b009.md",
-      "sibling_order": 7,
+      "sibling_order": 6,
       "status": "Complete",
       "title": "Clearer notices: symlinked skill dirs, new ignore rules over tracked files, and session end",
       "touch_zones": [
@@ -214,7 +214,7 @@
       "node_key": "f7af5b48-1dd5-41f8-a55b-781cd48a8c18",
       "parent_id": "M13",
       "planning_dir": "planning/M13.8_a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts_f7af5b48-1dd5-41f8-a55b-781cd48a8c18.md",
-      "sibling_order": 8,
+      "sibling_order": 7,
       "status": "Complete",
       "title": "A behaviour-change catalogue, and validate reports project agent text it contradicts",
       "touch_zones": [
@@ -241,11 +241,11 @@
         "f7af5b48-1dd5-41f8-a55b-781cd48a8c18"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M13.9",
+      "id": "M19.7",
       "node_key": "3b109b88-7434-4fcd-8a4c-064f5830eff6",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.9_notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice_3b109b88-7434-4fcd-8a4c-064f5830eff6.md",
-      "sibling_order": 9,
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.7_notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice_3b109b88-7434-4fcd-8a4c-064f5830eff6.md",
+      "sibling_order": 6,
       "status": "Not Started",
       "title": "Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice",
       "touch_zones": [
@@ -273,7 +273,7 @@
       "node_key": "30507388-ed3e-439c-bbf9-0ae841070bab",
       "parent_id": "M13",
       "planning_dir": "planning/M13.10_upgrade-guide-moving-to-the-split-rules-files-previewing-an-uninstalled-version-telling-old-installs-apart_30507388-ed3e-439c-bbf9-0ae841070bab.md",
-      "sibling_order": 10,
+      "sibling_order": 8,
       "status": "Complete",
       "title": "Upgrade guide: moving to the split rules files, previewing an uninstalled version, telling old installs apart",
       "touch_zones": [
@@ -298,11 +298,11 @@
         "3b109b88-7434-4fcd-8a4c-064f5830eff6"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M13.11",
+      "id": "M19.8",
       "node_key": "614bae1a-02e5-4266-be5c-f567e95c5a54",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.11_upgrade-says-what-changed-for-this-repo-behaviour-changes-a-pin-below-the-new-minimum-the-new-files-and-duplicated-paragraphs_614bae1a-02e5-4266-be5c-f567e95c5a54.md",
-      "sibling_order": 11,
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.8_upgrade-says-what-changed-for-this-repo-behaviour-changes-a-pin-below-the-new-minimum-the-new-files-and-duplicated-paragraphs_614bae1a-02e5-4266-be5c-f567e95c5a54.md",
+      "sibling_order": 7,
       "status": "Not Started",
       "title": "upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs",
       "touch_zones": [
@@ -332,7 +332,7 @@
       "node_key": "538b8591-af5b-4a0c-8b37-d3d988eb9a5f",
       "parent_id": "M13",
       "planning_dir": "planning/M13.12_quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules_538b8591-af5b-4a0c-8b37-d3d988eb9a5f.md",
-      "sibling_order": 12,
+      "sibling_order": 9,
       "status": "Complete",
       "title": "Quieter, accurate validate notices: untracked touch zones, the managed .gitignore comment, and tracked files under new ignore rules",
       "touch_zones": [
@@ -368,11 +368,11 @@
         "f11ae6a1-4e8d-43f8-9aed-391000c71679"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M13.13",
+      "id": "M19.9",
       "node_key": "bd6783a8-ba79-4012-86ed-e2d0f9bbed31",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.13_upgrade-prompt-writes-an-agent-upgrade-prompt-filled-in-from-this-repo_bd6783a8-ba79-4012-86ed-e2d0f9bbed31.md",
-      "sibling_order": 13,
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.9_upgrade-prompt-writes-an-agent-upgrade-prompt-filled-in-from-this-repo_bd6783a8-ba79-4012-86ed-e2d0f9bbed31.md",
+      "sibling_order": 8,
       "status": "Not Started",
       "title": "upgrade --prompt writes an agent upgrade prompt filled in from this repo",
       "touch_zones": [

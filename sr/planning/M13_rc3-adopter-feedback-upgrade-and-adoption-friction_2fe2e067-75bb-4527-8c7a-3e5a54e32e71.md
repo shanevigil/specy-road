@@ -25,3 +25,5 @@ Remove the friction two adopters hit upgrading from 0.3.1rc2 to rc3: not knowing
 - Roadmap chunk for `M13` (`roadmap/phases/M13.json`)
 - `specy_road/bundled_scripts/upgrade.py`, `docs/install-and-usage.md`
 - No `shared/` contract applies.
+
+- Closed 2026-11-05: every remaining leaf is Complete; unstarted work moved to M18/M19 (themed-milestone restructure). Recorded Complete without policy.milestone_full_review, as for M5-M11 (decision D6).

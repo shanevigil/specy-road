@@ -82,7 +82,7 @@ def test_integration_branch_present_finds_local_branch(tmp_path: Path) -> None:
     assert ok2 is False
 
 
-def _merge_mode_finish_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
+def merge_mode_finish_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
     monkeypatch.setenv("PYTHONPATH", str(REPO))
     repo = make_review_repo(tmp_path)
     git(repo, "checkout", "-q", "dev")
@@ -161,7 +161,7 @@ def test_merge_push_disclosure_counts_when_tracking_ref_is_absent(
 def test_finish_merge_prints_push_disclosure_for_unrelated_dev_commit(
     tmp_path: Path, monkeypatch,
 ) -> None:
-    repo, bare = _merge_mode_finish_repo(tmp_path, monkeypatch)
+    repo, bare = merge_mode_finish_repo(tmp_path, monkeypatch)
     git(repo, "checkout", "-q", "dev")
     base = git(repo, "rev-parse", "HEAD")
     git(repo, "commit", "--allow-empty", "-qm", "unrelated on dev")
