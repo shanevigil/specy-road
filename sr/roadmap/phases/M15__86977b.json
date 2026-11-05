@@ -310,7 +310,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.26_claims-with-no-worker-are-reported-and-never-hold-slots_4bd33f34-dd57-4ef9-a511-27051f646dd2.md",
       "sibling_order": 26,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim",
       "touch_zones": [
         "specy_road/worker_orphans.py",

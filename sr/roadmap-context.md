@@ -254,7 +254,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.23` A project declares its merge-blocking CI commands per touch zone; ready always runs them and the review packet shows their result at the reviewed commit `ci-gates-run-by-ready-and-shown-in-the-packet` — task — **Not Started**
   - `M15.24` ready does not record false evidence: a passing run whose output shows a failed command is flagged, and --run-argv runs a command without a shell `ready-flags-failure-tails-and-takes-argv` — task — **Complete**
   - `M15.25` A change to the shared stash is attributed to the worker whose branch made it, not to whichever worker's turn ended while the entry existed `stash-changes-attributed-to-the-owning-branch` — task — **Not Started**
-  - `M15.26` A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim `claims-with-no-worker-are-reported-and-never-hold-slots` — task — **Not Started**
+  - `M15.26` A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim `claims-with-no-worker-are-reported-and-never-hold-slots` — task — **Complete**
   - `M15.27` worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length `cursor-usage-sums-segments-and-flags-undercounts` — task — **Complete**
   - `M15.28` --rework carries blocks at the branch tip as required changes, lists older blocks as possibly resolved, and takes a coordinator note placed above the reviews `rework-carries-current-blocks-and-a-coordinator-note` — task — **Not Started**
   - `M15.29` A review that stops before filing leaves a trace: every reviewer channel opens a RUN record, and review list shows started but not filed `every-reviewer-channel-leaves-a-run-record` — task — **Not Started**
@@ -319,7 +319,6 @@ Do not pick these up.
 - `M15.2` on `feature/rm-claude-code-reviewer-works-on-a-subscription-login` since 2026-11-05
 - `M15.20` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M15.25` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
-- `M15.26` on `feature/rm-claims-with-no-worker-are-reported-and-never-hold-slots` since 2026-11-05
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 
 ## Quality by area
@@ -328,11 +327,12 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 35 | 30 | 9.40 | 100% | 10 | 1 |
-| `specy_road` **flagged** | 47 | 39 | 8.50 | 100% | 11 | 3 |
-| `tests` **flagged** | 49 | 41 | 8.50 | 100% | 11 | 3 |
+| `docs` **flagged** | 34 | 32 | 4.00 | 100% | 0 | 0 |
+| `specy_road` **flagged** | 47 | 45 | 4.00 | 100% | 0 | 0 |
+| `tests` **flagged** | 49 | 47 | 4.00 | 100% | 0 | 0 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
+| `gui` | 1 | 1 | — | — | 0 | 0 |
 | `research` | 1 | 1 | — | — | 0 | 0 |
 | `roadmap` | 2 | 2 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
