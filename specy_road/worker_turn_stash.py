@@ -1,10 +1,7 @@
 """Attribute shared-stash list changes to the worker whose branch owns each entry (M15.25).
 
-``git stash list`` at turn boundaries misses a push immediately followed by a pop: the
-stack matches at start and end. ``refs/stash`` reflog drops popped entries, so it does
-not help. Popped stash commits stay ``unreachable`` until gc; when the list snapshot
-is unchanged we diff ``git fsck --unreachable`` at turn start and end and attribute new
-``On …:`` / ``WIP on …:`` commits through the same per-hash decision path as list deltas.
+Turn boundaries compare ``git stash list`` only. A stash pushed and popped entirely inside
+another worker's turn leaves identical start/end lists, so that action is not detected.
 """
 
 from __future__ import annotations
@@ -13,7 +10,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-from specy_road.git_subprocess import run
 from specy_road.worker_state import WorkerRecord, add_flag, append_event, events_since, list_records, load_record
 
 _FLAG_POST_RUN = "post_run_findings"
@@ -40,30 +36,16 @@ def stash_branch(subject: str) -> str | None:
     return None
 
 
-def unreachable_commits(worktree: Path) -> frozenset[str] | None:
-    """Commit hashes reported unreachable by ``git fsck``, or ``None`` when fsck could not run."""
-    r = run(["fsck", "--unreachable", "--no-progress"], worktree)
-    if not r.ok:
-        return None
-    out: set[str] = set()
-    for line in r.out.splitlines():
-        parts = line.split()
-        if len(parts) >= 3 and parts[0] == "unreachable" and parts[1] == "commit":
-            out.add(parts[2])
-    return frozenset(out)
-
-
-def _commit_subject(worktree: Path, commit: str) -> str | None:
-    r = run(["show", "-s", "--format=%s", commit], worktree)
-    return r.out.strip() if r.ok and r.out.strip() else None
-
-
 def _attributed_hashes(repo_root: Path, worker_id: str) -> set[str]:
     out: set[str] = set()
     for ev in events_since(repo_root, worker_id):
         if ev.type != "post_run_check" or not ev.detail:
             continue
-        for h in ev.detail.get("attributed_stash_hashes") or ():
+        detail = ev.detail
+        for f in detail.get("findings") or ():
+            if isinstance(f, dict) and isinstance(f.get("stash_hash"), str):
+                out.add(f["stash_hash"])
+        for h in detail.get("attributed_stash_hashes") or ():
             if isinstance(h, str):
                 out.add(h)
     return out
@@ -115,39 +97,8 @@ def _decide_stash_hash_change(repo_root: Path, rec: WorkerRecord, stash_hash: st
               "worker_id": owner.worker_id, "branch": branch, "stash_hash": stash_hash}]
 
 
-def _list_delta_findings(repo_root: Path, rec: WorkerRecord, before_map: dict[str, str],
-                         after_map: dict[str, str]) -> list[dict[str, Any]]:
-    out: list[dict[str, Any]] = []
-    for stash_hash in sorted(set(before_map) | set(after_map)):
-        if before_map.get(stash_hash) == after_map.get(stash_hash):
-            continue
-        subject = after_map.get(stash_hash) or before_map.get(stash_hash) or ""
-        out.extend(_decide_stash_hash_change(repo_root, rec, stash_hash, subject))
-    return out
-
-
-def _ephemeral_unreachable_findings(repo_root: Path, rec: WorkerRecord, worktree: Path,
-                                    before_map: dict[str, str], after_map: dict[str, str],
-                                    before_unreachable: frozenset[str] | None,
-                                    after_unreachable: frozenset[str] | None) -> list[dict[str, Any]]:
-    if before_unreachable is None or after_unreachable is None:
-        return []
-    listed = set(before_map) | set(after_map)
-    out: list[dict[str, Any]] = []
-    for stash_hash in sorted(after_unreachable - before_unreachable):
-        if stash_hash in listed:
-            continue
-        subject = _commit_subject(worktree, stash_hash)
-        if not subject or stash_branch(subject) is None:
-            continue
-        out.extend(_decide_stash_hash_change(repo_root, rec, stash_hash, subject))
-    return out
-
-
 def stash_findings(repo_root: Path, rec: WorkerRecord, before: tuple[StashEntry, ...] | None,
-                   after: tuple[StashEntry, ...] | None, *, worktree: Path | None = None,
-                   before_unreachable: frozenset[str] | None = None,
-                   after_unreachable: frozenset[str] | None = None) -> list[dict[str, Any]]:
+                   after: tuple[StashEntry, ...] | None) -> list[dict[str, Any]]:
     """Stash-list deltas for this turn: attribute to the branch owner, notes for innocent observers."""
     if before is None or after is None:
         if before != after:
@@ -155,9 +106,10 @@ def stash_findings(repo_root: Path, rec: WorkerRecord, before: tuple[StashEntry,
         return []
     before_map = dict(before)
     after_map = dict(after)
-    out = _list_delta_findings(repo_root, rec, before_map, after_map)
-    if before_map != after_map or worktree is None:
-        return out
-    out.extend(_ephemeral_unreachable_findings(repo_root, rec, worktree, before_map, after_map,
-                                               before_unreachable, after_unreachable))
+    out: list[dict[str, Any]] = []
+    for stash_hash in sorted(set(before_map) | set(after_map)):
+        if before_map.get(stash_hash) == after_map.get(stash_hash):
+            continue
+        subject = after_map.get(stash_hash) or before_map.get(stash_hash) or ""
+        out.extend(_decide_stash_hash_change(repo_root, rec, stash_hash, subject))
     return out
