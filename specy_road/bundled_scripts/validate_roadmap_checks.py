@@ -9,6 +9,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
+from specy_road.bundled_scripts.effective_dependency_checks import cycle_check, effective_cycle_check
 from specy_road.bundled_scripts.planning_artifacts import collect_planning_artifact_errors
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 from specy_road.roster_profile_check import report_roster_profiles
@@ -98,35 +99,6 @@ def validate_dependency_ids(
             msg = f"roadmap: node {nid} depends on missing node_key {dep}"
             print(msg, file=sys.stderr)
             raise SystemExit(1)
-
-
-def cycle_check(nodes: list[dict]) -> None:
-    """DFS cycle detection on dependency edges."""
-    by_key = {n["node_key"]: n for n in nodes}
-    visited: set[str] = set()
-    stack: set[str] = set()
-
-    def visit(nk: str) -> None:
-        if nk in stack:
-            n = by_key.get(nk, {})
-            msg = (
-                f"roadmap: dependency cycle involving "
-                f"{n.get('id', nk)}"
-            )
-            print(msg, file=sys.stderr)
-            raise SystemExit(1)
-        if nk in visited:
-            return
-        stack.add(nk)
-        for dep in by_key[nk].get("dependencies") or []:
-            if dep in by_key:
-                visit(dep)
-        stack.remove(nk)
-        visited.add(nk)
-
-    for nk in by_key:
-        if nk not in visited:
-            visit(nk)
 
 
 def validate_parents(nodes: list[dict]) -> None:
@@ -363,6 +335,7 @@ def run_validation(
     validate_gates(nodes)
     validate_dependency_ids(nodes, r)
     cycle_check(nodes)
+    effective_cycle_check(nodes)
     validate_unique_titles(nodes)
     validate_unique_title_slugs(nodes)
     validate_codenames(nodes)
