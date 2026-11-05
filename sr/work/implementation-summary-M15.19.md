@@ -21,6 +21,12 @@ Dots count as separators rather than being removed. That keeps the existing `com
 
 **Final touch zones:** `specy_road/model_names.py`, `specy_road/worker_models.py`, `specy_road/worker_adapter_parsers.py`, `specy_road/worker_runner.py`, `tests/`.
 
+## Fix round 2: test hygiene (T1)
+
+- I merged `origin/WIP/improvements-0-3-1` first. It changed only roadmap files.
+- `tests/test_cursor_usage_cost.py::_priced_repo` is renamed to the public `priced_repo`. Both test files use it, and no assertion changed.
+- `grep -rn "import _\|from tests.* import _" tests/` still finds `_`-prefixed imports, but only in files this leaf does not touch (`test_worker_orphans.py`, `test_grind_session_cleanup.py`, `test_review_round6_*.py`, `test_sheet_edits_keep_approvals.py`, `test_dependency_rollup_satisfaction.py`). Every `+` import line in this branch's `tests/` diff against the WIP line is now free of them.
+
 ## Fix round 1: cost sources
 
 I merged `origin/WIP/improvements-0-3-1` first (`aebacb19`). It changed none of the cost-path files: `worker_adapter_*.py`, `worker_models.py`, `worker_runner.py`, `worker_usage_delta.py`, `model_names.py`. R1 itself landed in `bf6c83d4`. This round adds the audit below and one test for its last uncovered row.
@@ -74,7 +80,7 @@ Out of scope: reasoning-token counts the harness does not report.
 - `worker_adapter_parsers.ROSTER_PRICED` marker, set by `apply_roster_price_estimate` and popped by `usage_event`: the only signal that a cost came from the roster (R1).
 - `tests/test_cursor_display_name_cost.py::test_real_mismatch_keeps_a_cost_the_harness_reported`: a Claude turn told `claude-sonnet-5-5` whose init reports `claude-opus-5-5` and whose result has `total_cost_usd: 0.01`; it keeps that cost beside the mismatch note (R1).
 - `tests/test_cursor_display_name_cost.py::test_claude_turn_without_a_harness_cost_is_roster_priced_unless_a_real_mismatch` (2 cases): a Claude result with no `total_cost_usd` is roster-priced; a real mismatch drops that estimate, a naming-only difference keeps it (fix round 1, the cost-source audit's uncovered row).
-- `tests/test_cursor_display_name_cost.py::CLAUDE_ROSTER`: a one-entry claude-code roster for that test.
+- `tests/test_cursor_display_name_cost.py::CLAUDE_ROSTER`: a one-entry claude-code roster for that test, built with the public `tests.test_cursor_usage_cost.priced_repo` (renamed from `_priced_repo` in fix round 2).
 - `tests/test_cursor_display_name_cost.py::_run_turn`: a shared fake-harness turn runner, so the cursor and claude-code run tests use one path.
 - `tests/test_cursor_display_name_cost.py::test_display_name_is_the_rostered_slug_and_the_turn_is_priced`: cursor init (`Grok 4.6 High`) plus the recorded result line; no note, and the cost is estimated (A1).
 - `tests/test_cursor_display_name_cost.py::test_real_mismatch_keeps_the_note_and_leaves_cost_unknown`: init `Composer 2.5`; the note is printed, the cost is `$?` and the detail cost is null (A2).
