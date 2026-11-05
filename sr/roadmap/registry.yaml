@@ -171,3 +171,16 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: help-names-installed-commands
+    node_id: M21.11
+    branch: feature/rm-help-names-installed-commands
+    touch_zones:
+      - specy_road/cli.py
+      - specy_road/cli_usage.py
+      - specy_road/bundled_scripts/roadmap_crud_argparse.py
+      - specy_road/bundled_scripts/do_next_task_args.py
+      - tests/test_cli_help_text.py
+      - CHANGELOG.md
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending

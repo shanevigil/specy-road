@@ -240,6 +240,7 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.1` on `feature/rm-move-node-chosen-id` since 2026-11-05
+- `M21.11` on `feature/rm-help-names-installed-commands` since 2026-11-05
 - `M21.7` on `feature/rm-steering-file-guard` since 2026-11-05
 - `M21.9` on `feature/rm-init-passes-own-checks` since 2026-11-05
 
