@@ -80,7 +80,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.19_cursor-cost-with-display-name-models_ff8e2df5-393e-4d32-8576-03103c4c052f.md",
       "sibling_order": 19,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Cursor worker cost is estimated when the harness reports a display name for the rostered model",
       "touch_zones": [
         "specy_road/worker_models.py",
