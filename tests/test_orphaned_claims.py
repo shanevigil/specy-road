@@ -9,13 +9,16 @@ import pytest
 import specy_road
 import yaml
 
+import specy_road.worker_adapter_cursor as cursor
+from specy_road import worker_ops as ops
+from specy_road import worker_state as ws
 from specy_road.bundled_scripts import review_cli, worker_cli
 from specy_road.bundled_scripts.grind_session_events import EventEmitter
 from specy_road.orphaned_claims import orphaned_claims, report_lines, stays_claimed
 from specy_road.review_files import reviews_dir
 from specy_road.review_target import resolve_target
 from specy_road.session_presence import start_session
-from specy_road import worker_state as ws
+from specy_road.worker_adapters import Unsupported
 from tests.review_repo_helpers import git, make_review_repo
 from tests.worker_repo_helpers import make_worker_repo
 
@@ -102,6 +105,51 @@ def test_orchestrate_delegate_step_says_to_resolve_the_claim() -> None:
     text = (Path(specy_road.__file__).parent / "templates" / "specyrd" / "commands" / "specyrd-orchestrate.md").read_text()
     assert ("If delegate fails, the leaf stays claimed with no worker: resolve it with "
             "`specy-road worker delegate <ID>` or `specy-road abort-task-pickup` before the next pickup.") in text
+
+
+def _boom(exc: BaseException):
+    def raise_it(*_a, **_k):
+        raise exc
+    return raise_it
+
+
+@pytest.mark.parametrize("kind, code", [
+    ("unsupported", 2), ("worker_error", 1), ("os_error", 1),
+    ("max_workers", 1), ("usage_limit", 1), ("other", 1),
+])
+def test_every_claimed_delegate_failure_names_how_to_resolve_it(tmp_path: Path, monkeypatch, capsys, kind: str, code: int) -> None:
+    """One exit path: a missing agent, a roster or slot or usage-limit refusal, an OSError, or anything else."""
+    note = stays_claimed("M1.1")
+    if kind == "unsupported":
+        repo = make_review_repo(tmp_path, orchestration=(
+            "version: 1\nroster:\n  - {id: opus, family: openai, roles: [executor], harness: cursor}\n"
+            "policy: {max_workers: 2}\n"))
+        monkeypatch.setattr(cursor, "create_chat", _boom(Unsupported(
+            "cursor: `agent create-chat` did not run: agent absent")))
+    else:
+        repo, _ = make_worker_repo(tmp_path)
+        exc = {
+            "worker_error": ws.WorkerError("roster refused"),
+            "os_error": OSError("agent absent"),
+            "max_workers": ws.WorkerError("2 workers active, policy max_workers is 2"),
+            "usage_limit": ws.WorkerError("paused by a usage limit until 2026-11-05T12:00:00+00:00"),
+            "other": RuntimeError("boom"),
+        }[kind]
+        monkeypatch.setattr(ops, "delegate", _boom(exc))
+    assert _exit(["worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)]) == code
+    err = capsys.readouterr().err
+    assert note in err
+    assert {
+        "unsupported": "agent create-chat", "worker_error": "roster refused", "os_error": "agent absent",
+        "max_workers": "max_workers", "usage_limit": "usage limit", "other": "boom",
+    }[kind] in err
+
+
+def test_a_non_delegate_unexpected_error_still_propagates(tmp_path: Path, monkeypatch) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    monkeypatch.setattr(ops, "sweep_stalled", _boom(RuntimeError("boom")))
+    with pytest.raises(RuntimeError, match="boom"):
+        worker_cli.main(["worker", "list", "--repo-root", str(repo)])
 
 
 def test_an_unclaimed_or_non_delegate_failure_has_no_claim_hint(tmp_path: Path, capsys) -> None:
