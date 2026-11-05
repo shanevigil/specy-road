@@ -173,6 +173,33 @@
         "specy_road/bundled_scripts/finish_task.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road models stats prints per reviewer model, over the last N recorded reviews (default 50): reviews, block rate, approvals overturned (another model blocked the same commit and the leaf then changed), mean probes per approve (M14.5 when present) and mean commands_rerun lines, from local review records and the tracked Review-tally trailers M12.4.1 adds",
+        "With policy.evidence_scoring on (default off), orchestrate plan lowers a reviewer's score when its overturned-approval rate exceeds a policy threshold and says so in the plan; off leaves plans unchanged; a test pins both",
+        "Out of scope: the digest (per-area scores are M12.4.1) and changing the roster automatically"
+      ],
+      "codename": "per-model-review-evidence-block-rate-and-overturned-approvals-feed-orchestrate-plan",
+      "dependencies": [
+        "46ce74ef-458b-401f-8abd-93e6a99b28c1"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M12.4.3",
+      "node_key": "8c379af0-d7a8-409e-8537-225ae30a782f",
+      "parent_id": "M12.4",
+      "planning_dir": "planning/M12.4.3_per-model-review-evidence-block-rate-and-overturned-approvals-feed-orchestrate-plan_8c379af0-d7a8-409e-8537-225ae30a782f.md",
+      "sibling_order": 3,
+      "status": "Not Started",
+      "title": "Per-model review evidence: block rate and overturned approvals feed orchestrate plan",
+      "touch_zones": [
+        "specy_road/review_model_stats.py",
+        "specy_road/orchestrate_plan.py",
+        "specy_road/bundled_scripts/models_cli.py",
+        "docs/orchestration-models.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
