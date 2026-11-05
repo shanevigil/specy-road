@@ -19,6 +19,13 @@ body. Keep section bodies focused; link to PRs for detail.
   under another account a worker started fresh instead of resuming. The context
   meter's user `CLAUDE.md` now comes from the same directory, and the value is
   taken literally (a `~` in it is not expanded, as in the shell wrappers).
+- Help text names only what a pip install has: `specy-road --help` points
+  add-node and scaffold-planning at `specy-road <cmd> -h` instead of
+  `python specy_road/bundled_scripts/...` paths, and the `gui` line names
+  `specy-road init gui --install-gui` (the old `init --install-gui` was refused
+  by the init parser). Every bundled subcommand's `usage:` line reads
+  `specy-road <cmd>` rather than its module file name, and help that cited a
+  `docs/*.md` file a pip install lacks now links the published copy.
 
 ### Added
 
