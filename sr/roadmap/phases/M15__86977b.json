@@ -85,7 +85,8 @@
         "specy_road/worker_models.py",
         "specy_road/worker_adapter_parsers.py",
         "specy_road/model_names.py",
-        "tests/"
+        "tests/",
+        "specy_road/worker_runner.py"
       ],
       "type": "task"
     },

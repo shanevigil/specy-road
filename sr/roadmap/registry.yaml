@@ -188,6 +188,7 @@ entries:
       - specy_road/worker_adapter_parsers.py
       - specy_road/model_names.py
       - tests/
+      - specy_road/worker_runner.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
