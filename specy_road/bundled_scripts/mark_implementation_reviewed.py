@@ -8,7 +8,7 @@ an interactive approval files ``REVIEW-human.md`` and closes the gate in one
 step. ``--yes`` never creates a review: it only commits an approval the
 recorded reviews already earned, so an unattended coordinator cannot approve
 its own work. The approving reviews are written as ``Reviewed-by`` trailers on
-the registry commit.
+the registry commit, followed by the leaf's ``Review-tally`` (``review_tally``).
 
 With a milestone id it closes that milestone's full review instead: the same gate
 at the integration tip, then the milestone and the stale ancestors above it are
@@ -34,6 +34,7 @@ from specy_road.review_gate import (
     trial_merge_or_exit,
     write_human_approval,
 )
+from specy_road.review_tally import tally_trailers
 from specy_road.review_target import is_milestone, milestone_close_problem, resolve_target_or_exit
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_ancestor_rollup import complete_reviewed_milestone
@@ -384,7 +385,7 @@ def main(argv: list[str] | None = None) -> None:
 
     # work/ changes stay where they are: the registry commit names its one path.
     assert_working_tree_clean(ROOT, except_work=True)
-    _commit_registry_approved(codename, reg, commit_trailers(gate))
+    _commit_registry_approved(codename, reg, commit_trailers(gate) + tally_trailers(ROOT, gate))
 
 
 if __name__ == "__main__":

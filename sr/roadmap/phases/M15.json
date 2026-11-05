@@ -201,7 +201,8 @@
         "specy_road/bundled_scripts/validate_file_limits.py",
         "specy_road/bundled_scripts/upgrade.py",
         "docs/file-limits.md",
-        "tests/"
+        "tests/",
+        "specy_road/file_limits_baseline_yaml.py"
       ],
       "type": "task"
     },
