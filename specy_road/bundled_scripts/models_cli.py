@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""CLI for `specy-road models list|show|stale`.
+"""CLI for `specy-road models list|show|stale|roster`.
 
 ``list`` is the roster as the gate sees it — each entry's family, roles, and
-whether its profile loads — plus any profile no roster entry points at.
+whether its profile loads — plus any profile no roster entry points at. It names
+the ref the roster was read from and, when the working tree's roster differs,
+the added, removed and changed entry ids as ``uncommitted roster changes``.
 ``show`` prints one profile's machine fields and a chosen body section.
 ``stale`` names profiles whose research is too old, superseded, or served
 under a moving alias (proposal §7.3), and exits 1 when any rostered model is.
+``roster`` prints roster entries built from the shipped profiles (or adds them with ``--write``).
 """
 
 from __future__ import annotations
@@ -26,7 +29,8 @@ from specy_road.model_profiles import (
     unmatched_roster_ids,
 )
 from specy_road.orchestration_config import roster_entry
-from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
+from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry, roster_diff, roster_source
+from specy_road.roster_generate import RosterError, format_entries, missing_profile_files, roster_entries, write_entries
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
@@ -64,12 +68,16 @@ def _roster_rows(root: Path) -> tuple[list[dict[str, Any]], list[Profile], list[
 def cmd_list(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     rows, unrostered, missing, err = _roster_rows(root)
+    ref = roster_source(root)[0]
+    diff, diff_err = roster_diff(root)
     if ns.json:
-        print(json.dumps({"roster": rows, "unmatched_roster_ids": missing,
+        print(json.dumps({"roster_ref": ref, "uncommitted_roster_changes": diff,
+                          "roster": rows, "unmatched_roster_ids": missing,
                           "unrostered_profiles": [display_rel(root, p.path) for p in unrostered]}, indent=2))
         return 0
     if err:
         print(f"warning: {err}; showing the default roster", file=sys.stderr)
+    print("roster: roadmap/orchestration.yaml " + (f"at {ref}" if ref else "in the working tree (not a git checkout)"))
     for r in rows:
         scores = "/".join(str(r["scores"].get(x, "?")) for x in ROLES) if r["scores"] else "no profile"
         flag = "" if r["profile_ok"] or r["profile"] is None else "  INVALID: " + "; ".join(r["errors"])
@@ -79,11 +87,27 @@ def cmd_list(ns: argparse.Namespace) -> int:
         print(f"\n{len(missing)} roster id(s) match no profile (add `profile:` or list the id in a profile's `aliases`):")
         for mid in missing:
             print(f"  {mid}")
+    changes = _diff_lines(ref, diff, diff_err)
+    if changes:
+        print("\n" + "\n".join(changes))
     if unrostered:
         print(f"\n{len(unrostered)} profile(s) not in the roster (add an entry with `profile:` to use one):")
         for p in unrostered:
             print(f"  {display_rel(root, p.path)}")
     return 0
+
+
+def _diff_lines(ref: str | None, diff: dict[str, Any] | None, err: str | None) -> list[str]:
+    """``uncommitted roster changes``: the working tree's entries that routing (reading ``ref``) does not see."""
+    if err:
+        return [f"uncommitted roster changes: not compared ({err})"]
+    if not diff:
+        return []
+    lines = [f"uncommitted roster changes (working tree vs {ref}; routing reads {ref} until they land):"]
+    lines += [f"  added: {i}" for i in diff["added"]]
+    lines += [f"  removed: {i}" for i in diff["removed"]]
+    lines += [f"  changed: {i} ({', '.join(fields)})" for i, fields in diff["changed"].items()]
+    return lines
 
 
 def _find(root: Path, model_id: str) -> Profile | None:
@@ -166,6 +190,28 @@ def cmd_stale(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline 2026-10
     return 1 if any(p.path in rostered for p, _ in stale) else 0
 
 
+def cmd_roster(ns: argparse.Namespace) -> int:
+    root = resolve_repo_root(ns)
+    requests = [(role, pid) for role in ROLES for pid in getattr(ns, role) or []]
+    if not requests:
+        print("error: name at least one profile with --executor, --reviewer or --coordinator", file=sys.stderr)
+        return 2
+    try:
+        entries = roster_entries(requests)
+        if not ns.write:
+            print(format_entries(entries), end="")
+        else:
+            added, skipped = write_entries(root, entries)
+            print(f"added to roadmap/orchestration.yaml: {', '.join(added) or 'none'}"
+                  + (f"; already rostered: {', '.join(skipped)}" if skipped else ""))
+    except RosterError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    for note in missing_profile_files(root, entries):
+        print(f"note: {note}", file=sys.stderr)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="specy-road")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -190,6 +236,14 @@ def build_parser() -> argparse.ArgumentParser:
     st.add_argument("--json", action="store_true")
     add_repo_root_arg(st)
     st.set_defaults(func=cmd_stale)
+
+    ro = msub.add_parser("roster", help="Roster entries from the shipped profiles, in the form validate accepts")
+    for role in ROLES:
+        ro.add_argument(f"--{role}", action="append", metavar="PROFILE_ID",
+                        help=f"A profile id (file name, api_id or alias) to roster as {role}; repeatable")
+    ro.add_argument("--write", action="store_true", help="Add the entries to roadmap/orchestration.yaml")
+    add_repo_root_arg(ro)
+    ro.set_defaults(func=cmd_roster)
     return p
 
 

@@ -37,10 +37,9 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path, split_frontmatter
 from specy_road.bundled_scripts.planning_sheet_bootstrap import (
-    PROMOTE_PLACEHOLDER,
-    _scaffold_bodies,
     feature_sheet_level2_titles,
     gate_sheet_level2_titles,
+    sheet_placeholder,
 )
 from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys
 from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
@@ -94,13 +93,12 @@ def extract_intent_block(planning_text: str, node_type: str | None) -> str | Non
 def is_placeholder_intent(body: str) -> bool:
     """Whether an ``## Intent`` body is still scaffold-planning's or brainstorm promote's placeholder.
 
-    The same two placeholders pickup's unauthored check looks for
-    (``planning_sheet_bootstrap.placeholder_sheet``), matched on collapsed
-    whitespace the same way.
+    Uses :func:`planning_sheet_bootstrap.sheet_placeholder` on the Intent body
+    alone so brief swaps stay aligned with pickup when promote's line moves
+    sections (including ``LEGACY_PROMOTE_PLACEHOLDER`` under ``## Intent``).
     """
-    flat = " ".join(body.split())
-    scaffold = _scaffold_bodies().get("Intent")
-    return PROMOTE_PLACEHOLDER in flat or bool(scaffold and scaffold in flat)
+    found = sheet_placeholder({"Intent": " ".join(body.split())})
+    return found is not None and found[1] == "Intent"
 
 
 def unwritten_sheet_line(node: dict) -> str:

@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import re
 import shutil
 import sys
 from datetime import date
@@ -13,9 +12,8 @@ from pathlib import Path
 
 import yaml
 
-from specy_road import __version__
 from specy_road.bundled_scripts.refresh_schemas import warn_if_schemas_stale
-from specy_road.bundled_scripts.refresh_stubs import MANIFEST_REL, warn_if_stubs_stale
+from specy_road.bundled_scripts.refresh_stubs import warn_if_stubs_stale
 from specy_road.bundled_scripts.planning_artifacts import split_frontmatter
 from specy_road.bundled_scripts.roadmap_chunk_utils import (
     discover_manifest_path,
@@ -33,6 +31,7 @@ from specy_road.agents_md_block import (
     warn_missing_load_order_paths,
 )
 from specy_road.bundled_scripts.validate_stale_commands import unregistered_commands, warn_unregistered_commands
+from specy_road.version_pin import pinned_version, warn_if_pin_differs
 from specy_road.bundled_scripts.chore_garden import warn_garden_due
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
@@ -40,8 +39,8 @@ from specy_road.init_project import project_template_root
 from specy_road.orchestration_config import harness_model_warnings, load_orchestration_config, orchestration_yaml_path
 from specy_road.orchestration_pinned import roster_report
 from specy_road.planning_scaffold_check import notice_complete_scaffold
-from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, git_root
-from specy_road.specyrd_init import _load_manifest, warn_if_skills_mirrored
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from specy_road.specyrd_init import warn_if_skills_mirrored
 from specy_road.bundled_scripts.validate_roadmap_checks import (
     cycle_check,
     load_schema,
@@ -55,6 +54,7 @@ from specy_road.bundled_scripts.validate_roadmap_checks import (
     warn_touch_zones_match_nothing,
 )
 from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
+from specy_road.bundled_scripts.validate_notices import notice_milestone_review_holds
 from specy_road.bundled_scripts.validate_self_heal import auto_heal_roadmap
 from specy_road.bundled_scripts.validate_registry_overlap import (
     authoring_overlap_scope,
@@ -79,46 +79,6 @@ __all__ = [
     "warn_touch_zones_match_nothing",
     "warn_unregistered_commands",
 ]
-
-
-_REQUIREMENT_PIN = re.compile(
-    r"^\s*specy[-_.]road\s*(?:\[[^\]]*\])?\s*==\s*([^\s;#,]+)", re.IGNORECASE
-)
-
-
-def pinned_version(start: Path) -> tuple[str, str] | None:
-    """``(version, where declared)`` for the specy-road this checkout pins, or None.
-
-    A ``pin`` in ``.specyrd/manifest.json`` wins; otherwise the first
-    ``specy-road==`` line in a ``requirements*.txt`` at the checkout root.
-    """
-    checkout = git_root(start) or start
-    pin = _load_manifest(checkout).get("pin")
-    if isinstance(pin, str) and pin.strip():
-        return pin.strip(), str(MANIFEST_REL)
-    for req in sorted(checkout.glob("requirements*.txt")):
-        try:
-            lines = req.read_text(encoding="utf-8").splitlines()
-        except (OSError, UnicodeDecodeError):
-            continue
-        for line in lines:
-            m = _REQUIREMENT_PIN.match(line)
-            if m:
-                return m.group(1), req.name
-    return None
-
-
-def warn_if_pin_differs(start: Path) -> None:
-    """One non-fatal line when the running specy-road is not the version the repo pins."""
-    found = pinned_version(start)
-    if found is None or found[0] == __version__:
-        return
-    pin, where = found
-    print(
-        f"specy-road: warning — this repo pins specy-road {pin} ({where}) but {__version__} "
-        f"is running. If the upgrade is deliberate, update the pin; otherwise install {pin}.",
-        file=sys.stderr,
-    )
 
 
 def _register_entry_problems(root: Path, data: dict, today: date) -> list[str]:
@@ -300,6 +260,7 @@ def validate_at(
         overlap_scope=current_authoring_overlap_scope(),
         strict_authoring=strict_authoring,
     )
+    notice_milestone_review_holds(root, roadmap["nodes"])
 
 
 def main() -> None:

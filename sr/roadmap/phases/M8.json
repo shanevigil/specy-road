@@ -86,8 +86,8 @@
     {
       "acceptance": [
         "The reviewer prompt asks for a final JSON object matching the review-record schema (Claude --json-schema, Codex --output-schema, Antigravity --json-schema; plain final-message JSON elsewhere) and the adapter writes work/reviews/<ID>/REVIEW-<model>.md from it",
-        "A reviewer run that writes any file other than its notes is reported as a review failure",
-        "A malformed or missing structured output is reported as a rerun request, never recorded as a verdict",
+        "Reviewer runs cannot write review records or repository state, by prevention: specy-road files REVIEW-<model>.md from the run's structured output (A1), and each adapter's reviewer launch gives the reviewer no write access to work/reviews/<ID>/ or the repository (Codex sandbox_mode=read-only; Cursor --mode ask without --force; Claude Code with Write, Edit and NotebookEdit disallowed beside the git commit/push and gh bans of A4); tests pin each argv. After the run a tripwire reports a review failure when the leaf worktree's git status shows a changed tracked file or a new untracked file, or when work/reviews/<ID>/ gains or changes (by content hash) any file other than the reviewer's notes and the run files specy-road itself writes. Out of scope and documented as such: identical-byte rewrites, writes undone before the run ends, metadata-only changes and git internals; the tripwire is not a security boundary, prevention is",
+        "Only the final turn's last terminal message counts: it must be one complete JSON object that validates against the review-record schema. A missing, empty, null, non-JSON or schema-invalid final message, or any unparseable event line inside the final turn, is a rerun request; an earlier answer is never used and nested or partial objects are never salvaged. Each adapter declares its turn boundary and terminal message in one table, with a test per row",
         "The default Claude Code reviewer launch, which runs --bare and so fires no hook, passes --disallowedTools \"Bash(git commit *)\" \"Bash(git push *)\" \"Bash(gh *)\" beside its allowed tools; a test pins the argv.",
         "Cursor reviewer runs drop --force and pass --mode ask --trust, and Codex reviewer runs use sandbox_mode=read-only with the verdict taken from --output-schema / -o, so docs/design-notes/M8.7-runtime-verification-harness-facts.md ('Review-only runs omit --force') matches the code; tests pin both argv."
       ],
@@ -122,7 +122,10 @@
         "specy_road/bundled_scripts/role_prompt_cli.py",
         "specy_road/review_answer.py",
         "specy_road/review_delegate.py",
-        "specy_road/review_write_check.py"
+        "specy_road/review_write_check.py",
+        "specy_road/reviewer_run_failure.py",
+        "specy_road/review_usage.py",
+        "specy_road/worker_adapter_parsers.py"
       ],
       "type": "task"
     },

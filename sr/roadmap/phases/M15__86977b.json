@@ -6,7 +6,8 @@
         "The 'named in the packet but not at commit' warning skips paths git ignores (git check-ignore) and planning-sheet globs that match no file, printing one summary count instead; a test with an ignored build path asserts no warning",
         "The packet's 'new suppressions' line numbers are the lines in the file at the commit under review; a test with a suppression added after unrelated edits pins the numbers",
         "When review record refuses an approve over the 'not a defect because' rule, it prints each offending line (number and text) and the rule in one sentence; tests for a two-clause line and a missing-marker line",
-        "review list (rendered in review_cli.py, 387 lines, so the marking lives in review_run_status.py) and handoff status mark a failed or incomplete RUN-<model> record as superseded when a valid REVIEW-<model> was filed later at the same commit by any route, as stale-commit records are marked. Out of scope: changing the explanation rule itself"
+        "review list (rendered in review_cli.py, 387 lines, so the marking lives in review_run_status.py) and handoff status mark a failed or incomplete RUN-<model> record as superseded when a valid REVIEW-<model> was filed later at the same commit by any route, as stale-commit records are marked. Out of scope: changing the explanation rule beyond the quoted-span exception in A6",
+        "The approve rule's refusal for a line that joins two observations names the joining word and quotes both parts (the trigger is _second_observation in review_record_rules.py, which splits on ' and ' and similar conjunctions); conjunctions inside double-quoted, single-quoted or backtick spans are not split points, as code spans are already skipped; tests: a one-observation line whose ' and ' sits inside quotes or backticks is accepted, the reported shape ('not a defect because base and HEAD ...') is accepted or refused with the word and both parts named, and a line joining two independent observations with ' and ' is still refused"
       ],
       "codename": "review-friction-packet-and-record",
       "dependencies": [
@@ -47,7 +48,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.18_planned-test-changes-editable-and-removals-surfaced_52977306-d74f-402c-bd68-2f53de204394.md",
       "sibling_order": 18,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "planned_test_changes can be edited after pickup, and an unplanned test removal is a required reviewer check",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_edit_fields.py",
@@ -80,7 +81,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.19_cursor-cost-with-display-name-models_ff8e2df5-393e-4d32-8576-03103c4c052f.md",
       "sibling_order": 19,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Cursor worker cost is estimated when the harness reports a display name for the rostered model",
       "touch_zones": [
         "specy_road/worker_models.py",
@@ -114,7 +115,8 @@
         "specy_road/bundled_scripts/session_plan_git.py",
         "specy_road/bundled_scripts/session_plan.py",
         "specy_road/bundled_scripts/session_plan_render.py",
-        "specy_road/bundled_scripts/orchestrate_cli.py"
+        "specy_road/bundled_scripts/orchestrate_cli.py",
+        "specy_road/orchestrate_assign.py"
       ],
       "type": "task"
     },
@@ -179,7 +181,8 @@
         "tests/",
         "specy_road/bundled_scripts/role_prompt_rca.py",
         "specy_road/agent_ignores.py",
-        "specy_road/bundled_scripts/validate_roadmap_checks.py"
+        "specy_road/bundled_scripts/validate_roadmap_checks.py",
+        "specy_road/finish_land_local.py"
       ],
       "type": "task"
     },
@@ -199,7 +202,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.1_rc-install-docs-cover-extras-and-direct-wheel-url_f11ae6a1-4e8d-43f8-9aed-391000c71679.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command",
       "touch_zones": [
         "docs/install-and-usage.md",
@@ -209,6 +212,230 @@
         "tests/",
         "README.md",
         "docs/supply-chain-security.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "ci_gates in roadmap/git-workflow.yaml is schema-checked (git-workflow.schema.json has additionalProperties false, so the key is added there): a list of {name, cmd, paths}, name matching [A-Za-z0-9._-]+, cmd a non-empty string, paths an optional list of globs matched against the leaf's changed paths as touch zones are (finish_implementation_check.in_zones), no paths meaning every leaf; new specy_road/ci_gates.py reads it (git_workflow_config.py is at 396 lines and gains nothing) and refuses a duplicate name, naming it; tests for a valid list, a missing cmd (schema error) and a duplicate name",
+        "specy-road ready runs every gate whose paths match at least one path the READY records as changed (base...HEAD), from the project root as land_check_cmd runs, after the cheap refusals and after the executor's own --run commands, whether or not the executor passed any; each result is a verify row carrying gate: <name>; a non-zero exit refuses with the gate's name and output tail and never suggests --red-green; a gate skipped because no changed path matches is named in the READY body as skipped; tests with a fake failing gate, a passing gate, and a gate skipped by paths",
+        "The review packet gains a CI gates section (new specy_road/bundled_scripts/review_packet_ci_gates.py; review_packet.py, 392 lines, changes only one call line) listing every declared gate that applies to the leaf with its exit and tail from the READY when the READY commit is the commit under review, and in bold 'missing from READY' or 'not run at the commit under review' otherwise; one test per state",
+        "verify_cmd_lines (verify_cmd_config.py), which the executor brief and the reviewer prompt already carry, adds one sentence naming the leaf's applicable gates and saying a missing, stale or failing gate blocks; the project template git-workflow.yaml gains a commented ci_gates example, and new docs/git-workflow-ci-gates.md documents the key. Out of scope: running gates inside the review gate or at landing (land_check_cmd stays), auto-fix modes, per-gate timeouts, and declaring this toolkit's own gates in sr/roadmap/git-workflow.yaml (coordinator bookkeeping after landing)"
+      ],
+      "codename": "ci-gates-run-by-ready-and-shown-in-the-packet",
+      "dependencies": [
+        "4bbfe087-bdb9-4cff-8e15-8cb0badedabc"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.23",
+      "node_key": "2535829e-6a0d-40e3-aa42-9b0506bb9fe9",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.23_ci-gates-run-by-ready-and-shown-in-the-packet_2535829e-6a0d-40e3-aa42-9b0506bb9fe9.md",
+      "sibling_order": 23,
+      "status": "Not Started",
+      "title": "A project declares its merge-blocking CI commands per touch zone; ready always runs them and the review packet shows their result at the reviewed commit",
+      "touch_zones": [
+        "specy_road/ci_gates.py",
+        "specy_road/review_gate_ready.py",
+        "specy_road/ready_run_checks.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/bundled_scripts/review_packet_ci_gates.py",
+        "specy_road/verify_cmd_config.py",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "specy_road/templates/project/roadmap/git-workflow.yaml",
+        "docs/git-workflow-ci-gates.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "run_check moves from review_gate_ready.py to new specy_road/ready_run_checks.py (review_gate_ready.py imports it); a --run that exits 0 but whose recorded tail has a line containing one of 'cannot open', 'command not found', 'No such file or directory' or 'Permission denied' (case-sensitive, one constant in that module) gets warning: '<that line>' on its verify row; ready prints the warning on stderr and still writes the READY",
+        "The review packet shows that warning in bold under the verifier's heading (review_packet.py, 392 lines, grows by at most two lines in _ready_verify); a test reproduces the reported shape (a loop whose earlier step fails with \"cannot open\" and whose last step succeeds, so the exit is 0) and asserts the warning in the READY and the packet, and a clean run carries none",
+        "ready --run-argv '<JSON array of strings>' (repeatable) runs that argv without a shell, records cmd as shlex.join(argv), and is otherwise a --run (same refusal on a non-zero exit, same warning); a value that is not a non-empty JSON array of strings is refused before anything runs; a test passes an argument containing $f and spaces and asserts the program receives it unexpanded. Out of scope: refusing on a marker (it is a warning), scanning beyond the recorded tail, --verify CMD=EXIT rows (they have no output), and markers beyond the four listed"
+      ],
+      "codename": "ready-flags-failure-tails-and-takes-argv",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.24",
+      "node_key": "4bbfe087-bdb9-4cff-8e15-8cb0badedabc",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.24_ready-flags-failure-tails-and-takes-argv_4bbfe087-bdb9-4cff-8e15-8cb0badedabc.md",
+      "sibling_order": 24,
+      "status": "Not Started",
+      "title": "ready does not record false evidence: a passing run whose output shows a failed command is flagged, and --run-argv runs a command without a shell",
+      "touch_zones": [
+        "specy_road/ready_run_checks.py",
+        "specy_road/review_gate_ready.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "tests/",
+        "specy_road/schemas/handoff.schema.json"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The post-run check reads git stash list with each entry's hash and subject; new specy_road/worker_turn_stash.py parses the branch from a subject of the form 'On <branch>: <message>' or 'WIP on <branch>: <message>' for every entry added or removed during the turn; worker_turn_check.py changes only GitState's stash field and its one stash comparison",
+        "An entry on the turn's own worker's branch is a stash_rule_violation finding that quotes the subject and says the executor prompt forbids stashing, and flags that worker (post_run_findings); an entry on another worker's branch (any worker record with that branch) appends a post_run_check event with a stash_rule_violation finding to that worker's record and flags it, while this turn records an unflagged stash_other note naming that worker; each stash hash is attributed to its owner at most once, so a second observer adds no second event; an entry whose subject names no branch, or a branch no worker has, keeps today's stash finding on this worker with the subject quoted",
+        "Tests: worker A stashes and pops during worker B's turn, so A is flagged and B is not; A's own turn stashing flags A; an entry with no matching worker keeps today's finding. Out of scope: preventing the stash (the tool-call guard already denies git stash where installed) and stashes inside nested repositories"
+      ],
+      "codename": "stash-changes-attributed-to-the-owning-branch",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.25",
+      "node_key": "795d8d86-f245-463f-92cd-0351c0930b41",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.25_stash-changes-attributed-to-the-owning-branch_795d8d86-f245-463f-92cd-0351c0930b41.md",
+      "sibling_order": 25,
+      "status": "Not Started",
+      "title": "A change to the shared stash is attributed to the worker whose branch made it, not to whichever worker's turn ended while the entry existed",
+      "touch_zones": [
+        "specy_road/worker_turn_check.py",
+        "specy_road/worker_turn_stash.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "policy.max_workers counts only live workers: states starting, running, idle and paused_by_limit (a session that can still be resumed); completed, failed and terminated records never take a slot, whatever their leaf's state (worker_orphans.holding_slots and _slot_or_existing in worker_ops_slots.py); the refusal's breakdown lists only counted workers; tests: 19 completed or failed records plus one running worker with max_workers 2 leave a slot free, and two running workers refuse",
+        "New specy_road/orphaned_claims.py lists every registry claim with no live worker (as above) on its leaf, no live session on its branch (session_presence.list_sessions), and no valid READY at its branch tip, each with its age (from the branch's last commit, else the registry row's started date) and the commands that resolve it: specy-road worker delegate <ID> to resume work, or specy-road abort-task-pickup to release it; handoff status prints the list (review_cli.py, 400 lines, does not grow: an existing line is folded) and doctor prints it as a report-only section that --fix never acts on; tests: a claim with a failed worker and no READY is listed, and claims with a running worker, a live session or a READY at the tip are not",
+        "When worker delegate fails after the leaf is claimed (a slot refusal, a usage limit, a launch error), its error ends with '<ID> stays claimed with no worker: retry `specy-road worker delegate <ID>` or release it with `specy-road abort-task-pickup`' (worker_cli.py, 397 lines, changes one existing line); grind-session's hook_failed line for phase implement (grind_session_events.py, today 'phase=implement node=<ID> rc=<n>') adds that the leaf stays claimed and the same two commands, pinned by a test; the orchestrate command's delegate step (specyrd-orchestrate.md) says to resolve such a claim before the next pickup. Out of scope: rolling back the claim or removing the worktree automatically, and claims held by another clone (doctor's registry section covers rows with no branch)"
+      ],
+      "codename": "claims-with-no-worker-are-reported-and-never-hold-slots",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.26",
+      "node_key": "4bd33f34-dd57-4ef9-a511-27051f646dd2",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.26_claims-with-no-worker-are-reported-and-never-hold-slots_4bd33f34-dd57-4ef9-a511-27051f646dd2.md",
+      "sibling_order": 26,
+      "status": "Not Started",
+      "title": "A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim",
+      "touch_zones": [
+        "specy_road/worker_orphans.py",
+        "specy_road/worker_ops_slots.py",
+        "specy_road/orphaned_claims.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/bundled_scripts/grind_session_events.py",
+        "specy_road/templates/specyrd/commands/specyrd-orchestrate.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A sanitized fixture under tests/fixtures/ holds a multi-segment Cursor stream-json turn (only type, subtype, session_id and usage fields kept; no prompt or content text), taken from a real long turn's worker log; the implementation summary states which line types carry usage and whether each count is per segment or a running total, as observed in that fixture",
+        "The cursor adapter counts every usage-bearing line of a turn: per-segment counts are summed and a running total is taken once at its last value, so the turn's usage, as worker usage sums it, equals the turn's real total; a test with the fixture asserts output_tokens equal the sum of the segments, and a single-result short turn keeps today's numbers",
+        "worker usage (and --json, as possible_undercount: true) marks a turn as 'possible undercount' when it lasted 20 minutes or more (from its start event to its usage event) and reported fewer than 300 output tokens per minute, both constants in new specy_road/worker_usage_plausibility.py; tests: the reported shape (6,092 s, 10,136 output tokens) is marked and a 5-minute turn with 17,000 is not. Out of scope: other harnesses' parsers, diff size as a signal, and correcting the recorded cost"
+      ],
+      "codename": "cursor-usage-sums-segments-and-flags-undercounts",
+      "dependencies": [
+        "ff8e2df5-393e-4d32-8576-03103c4c052f"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.27",
+      "node_key": "eb4e416f-8d09-49b7-9da4-c4b90bb83145",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.27_cursor-usage-sums-segments-and-flags-undercounts_eb4e416f-8d09-49b7-9da4-c4b90bb83145.md",
+      "sibling_order": 27,
+      "status": "Not Started",
+      "title": "worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length",
+      "touch_zones": [
+        "specy_road/worker_adapter_cursor.py",
+        "specy_road/worker_usage_plausibility.py",
+        "specy_road/bundled_scripts/worker_cli_render.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "rework_lines and rework_check apply review list's staleness rule (same_commit with the branch tip): blocks at the tip are listed as today; blocks at an earlier commit follow under '### Earlier blocks (possibly resolved)', each with its commit and required changes and one sentence telling the executor to confirm each is addressed by a later commit and say so in the implementation summary; the stderr note reads 'carries N blocking review(s) at the tip and M earlier (possibly resolved)'; earlier blocks alone still count as something to rework from",
+        "worker delegate --rework --note <file> copies the file to work/reviews/<NODE_ID>/REWORK-NOTE.md stamped with the branch tip's sha; the ## Rework section carries it under '### Coordinator directive', after the accepted RCA when one is carried and before the reviews, only while the branch tip is that sha, so a note never reaches a later rework after a new commit; --note without --rework, or a missing or empty file, is refused before any launch; --op-id binds the note's text, not its path",
+        "worker_cli.py (397 lines) does not grow: delegate's parser and cmd_delegate move to new specy_road/bundled_scripts/worker_cli_delegate.py. Tests: the reported case (one block at an earlier commit fixed by a later commit, one block at the tip) lists one tip block and one possibly-resolved block; a note appears above the reviews and is dropped after a new commit; a leaf with only tip blocks and no note gets today's prompt byte for byte. Out of scope: deciding whether a later commit resolved an earlier block (the reviewer does) and RCA carrying (M15.6)"
+      ],
+      "codename": "rework-carries-current-blocks-and-a-coordinator-note",
+      "dependencies": [
+        "c80c3636-1dd9-4001-8520-f0c4e6402be4",
+        "c740f23d-72c3-41de-88c6-0ee0a7663ce4"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.28",
+      "node_key": "2a7c0c08-cd90-436c-b2f9-64bd05627b8a",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.28_rework-carries-current-blocks-and-a-coordinator-note_2a7c0c08-cd90-436c-b2f9-64bd05627b8a.md",
+      "sibling_order": 28,
+      "status": "Not Started",
+      "title": "--rework carries blocks at the branch tip as required changes, lists older blocks as possibly resolved, and takes a coordinator note placed above the reviews",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt_rework.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/bundled_scripts/worker_cli_delegate.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road prompt --role reviewer with --channel paste or --channel subagent writes RUN-<model>.json at the commit under review with state started and source prompt-paste or prompt-subagent (reviewer_run_failure.py gains the writer beside open_reviewer_cli_run; role_prompt.py changes only its call line), and prints on stderr that a reviewer stopped by a rate or usage limit should be re-dispatched or waited out, since specy-road does not retry these channels",
+        "New specy-road review start <NODE_ID> --model <id> writes the same marker (source review-start) for a reviewer launched any other way, refusing a model that is not a roster reviewer; its parser lives in new specy_road/bundled_scripts/review_cli_start.py, and review_cli.py (400 lines) does not grow",
+        "review list and handoff status show a started RUN with no REVIEW-<model> at the same commit as 'started <age> ago, not filed', and as superseded once a REVIEW-<model> is filed at that commit by any route (review_run_status.py, from M15.17); tests: a paste-channel marker with no record, the same after a record is filed, and a review start marker. Out of scope: retrying subagent or paste runs, detecting the limit itself, and changing review delegate's capacity retry"
+      ],
+      "codename": "every-reviewer-channel-leaves-a-run-record",
+      "dependencies": [
+        "86977bbe-582b-4434-8c5e-56ec9669a5a5",
+        "2278f4ad-6118-44da-bca8-39d904afee8d"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.29",
+      "node_key": "e716461f-1e04-4374-a33b-18028d5c4db3",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.29_every-reviewer-channel-leaves-a-run-record_e716461f-1e04-4374-a33b-18028d5c4db3.md",
+      "sibling_order": 29,
+      "status": "Not Started",
+      "title": "A review that stops before filing leaves a trace: every reviewer channel opens a RUN record, and review list shows started but not filed",
+      "touch_zones": [
+        "specy_road/reviewer_run_failure.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/bundled_scripts/review_cli_start.py",
+        "specy_road/review_run_status.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "policy.full_leaf_checklist (boolean, default false) is schema-checked in orchestration.yaml; when true, the review gate at a commit needs, among its counting approvals, at least one full review (no delta_from) whose record carries full_leaf_checklist with ci_gates, dropped_text and test_diff each pass or n/a, and otherwise reports 'no full-leaf checklist approval at this commit'; the rule lives in new specy_road/review_gate_checklist.py and review_gate.py (398 lines) changes only one call line; review-record.schema.json (additionalProperties false) gains the optional key",
+        "The full packet gains a Full-leaf checklist section (new specy_road/bundled_scripts/review_packet_checklist.py; review_packet.py changes only one call line): CI gates points at the CI gates section (M15.23) for this commit; dropped text lists lines removed in merge-base...commit, outside Markdown files, that are comments (#, // or /* after indentation) or contain a quoted string, at most 50 with a count of the rest; test diff lists the test files changed and the integrity report's removed or renamed tests; a delta packet carries one line saying another reviewer must file the checklist this round when no checklist approval is on file",
+        "New docs/orchestration-full-leaf-checklist.md documents the policy and the record key. Tests: a delta approval plus a full approval with a passing checklist meets the gate; two delta approvals do not, with the message; a checklist with a fail item does not count; with the policy off the gate is unchanged. Out of scope: choosing which reviewer files the checklist (the coordinator does), and changing delta_review's qualifying rules"
+      ],
+      "codename": "one-full-leaf-checklist-review-per-round",
+      "dependencies": [
+        "2535829e-6a0d-40e3-aa42-9b0506bb9fe9",
+        "46ce74ef-458b-401f-8abd-93e6a99b28c1"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.30",
+      "node_key": "6c8427bd-d786-4c08-baff-ef876a273f9f",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.30_one-full-leaf-checklist-review-per-round_6c8427bd-d786-4c08-baff-ef876a273f9f.md",
+      "sibling_order": 30,
+      "status": "Not Started",
+      "title": "Under delta review, one approval per round still checks the whole leaf against the merge base on a fixed checklist",
+      "touch_zones": [
+        "specy_road/review_gate.py",
+        "specy_road/review_gate_checklist.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "specy_road/schemas/review-record.schema.json",
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/bundled_scripts/review_packet_checklist.py",
+        "docs/orchestration-full-leaf-checklist.md",
+        "tests/"
       ],
       "type": "task"
     }

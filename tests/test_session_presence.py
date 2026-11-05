@@ -145,7 +145,10 @@ def test_cli_start_prints_the_id_to_export(tmp_path: Path, capsys, monkeypatch) 
     monkeypatch.setenv("USER", "erin")
     monkeypatch.setattr(sp.os, "getsid", lambda _pid: 101)
     assert _cli("session", "start", "--path", "src", "--repo-root", str(repo)) == 0
-    assert "export SPECY_ROAD_AGENT_ID=erin-s101\n" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert out.startswith("session erin-s101:")
+    assert "export SPECY_ROAD_AGENT_ID=erin-s101\n" in out
+    assert out.index("erin-s101") < out.index("export SPECY_ROAD_AGENT_ID=")
 
 
 def test_cli_end_with_a_new_derived_id_ends_the_users_only_live_session(tmp_path: Path, capsys, monkeypatch) -> None:
@@ -157,7 +160,7 @@ def test_cli_end_with_a_new_derived_id_ends_the_users_only_live_session(tmp_path
     monkeypatch.setenv("USER", "frank")
     assert _derived_end(repo, monkeypatch, 202) == 0
     out = capsys.readouterr().out
-    assert "session frank-s101: ended (no record for frank-s202" in out
+    assert out.startswith("ended your only live session frank-s101 here (this shell's id frank-s202 has no record)\n")
     assert [s.agent for s in sp.list_sessions(repo)] == ["gina-s303"]
     assert _derived_end(repo, monkeypatch, 202) == 0           # none left: the old answer
     assert "session frank-s202: no record" in capsys.readouterr().out
@@ -172,6 +175,90 @@ def test_cli_end_with_a_new_derived_id_lists_several_and_ends_none(tmp_path: Pat
     err = capsys.readouterr().err
     assert "you have 2 live sessions here" in err and "frank-s101" in err and "frank-s102" in err
     assert len(sp.list_sessions(repo)) == 2
+
+
+def test_cli_end_with_a_new_derived_id_ends_the_session_on_this_worktree(tmp_path: Path, capsys, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path)
+    git(repo, "branch", "-q", "feature/rm-wt2")
+    wt2 = tmp_path / "wt2"
+    git(repo, "worktree", "add", "-q", str(wt2), "feature/rm-wt2")
+    monkeypatch.setenv("USER", "frank")
+    sp.start_session(repo, "frank-s101", paths=["src"], worktree=repo)
+    sp.start_session(repo, "frank-s201", paths=["docs"], worktree=wt2)
+    assert len(sp.list_sessions(repo)) == 2
+    monkeypatch.chdir(repo)
+    assert _derived_end(repo, monkeypatch, 999) == 0
+    out = capsys.readouterr().out
+    assert "ended frank-s101: the only live session for this worktree and branch" in out
+    assert [s.agent for s in sp.list_sessions(repo)] == ["frank-s201"]
+    monkeypatch.chdir(wt2)
+    assert _derived_end(repo, monkeypatch, 888) == 0
+    out = capsys.readouterr().out
+    assert "frank-s201" in out and "has no record" in out
+    assert sp.list_sessions(repo) == []
+
+
+def test_cli_touch_from_subdirectory_then_derived_end_with_another_worktree(
+    tmp_path: Path, capsys, monkeypatch,
+) -> None:
+    repo = make_review_repo(tmp_path)
+    git(repo, "branch", "-q", "feature/rm-wt2")
+    wt2 = tmp_path / "wt2"
+    git(repo, "worktree", "add", "-q", str(wt2), "feature/rm-wt2")
+    monkeypatch.setenv("USER", "iris")
+    monkeypatch.delenv("SPECY_ROAD_AGENT_ID", raising=False)
+    monkeypatch.setattr(sp.os, "getsid", lambda _pid: 101)
+    monkeypatch.chdir(repo)
+    assert _cli("session", "start", "--path", "src", "--repo-root", str(repo)) == 0
+    capsys.readouterr()
+    sp.start_session(repo, "iris-wt2", paths=["docs"], worktree=wt2)
+    monkeypatch.setattr(sp.os, "getsid", lambda _pid: 202)
+    monkeypatch.chdir(repo / "src")
+    assert _cli("session", "touch", "--repo-root", str(repo)) == 0
+    capsys.readouterr()
+    main = sp.load_session(sp.session_path(repo, "iris-s101"))
+    assert main is not None and main.worktree == str(sp.git_worktree_top(repo))
+    monkeypatch.setattr(sp.os, "getsid", lambda _pid: 303)
+    assert _derived_end(repo, monkeypatch, 303) == 0
+    out = capsys.readouterr().out
+    assert "iris-s101" in out and "worktree and branch" in out
+    assert [s.agent for s in sp.list_sessions(repo)] == ["iris-wt2"]
+
+
+def test_cli_start_from_subdirectory_then_derived_end(tmp_path: Path, capsys, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path)
+    git(repo, "branch", "-q", "feature/rm-wt2")
+    wt2 = tmp_path / "wt2"
+    git(repo, "worktree", "add", "-q", str(wt2), "feature/rm-wt2")
+    monkeypatch.setenv("USER", "jake")
+    monkeypatch.delenv("SPECY_ROAD_AGENT_ID", raising=False)
+    monkeypatch.setattr(sp.os, "getsid", lambda _pid: 401)
+    monkeypatch.chdir(repo / "src")
+    assert _cli("session", "start", "--path", "src", "--repo-root", str(repo)) == 0
+    capsys.readouterr()
+    sp.start_session(repo, "jake-wt2", paths=["docs"], worktree=wt2)
+    monkeypatch.setattr(sp.os, "getsid", lambda _pid: 402)
+    monkeypatch.chdir(repo / "docs")
+    assert _derived_end(repo, monkeypatch, 402) == 0
+    out = capsys.readouterr().out
+    assert "jake-s401" in out and "worktree and branch" in out
+    assert [s.agent for s in sp.list_sessions(repo)] == ["jake-wt2"]
+
+
+def test_cli_touch_with_a_new_derived_id_renews_the_session_on_this_worktree(
+    tmp_path: Path, capsys, monkeypatch,
+) -> None:
+    repo = make_review_repo(tmp_path)
+    monkeypatch.setenv("USER", "helen")
+    monkeypatch.delenv("SPECY_ROAD_AGENT_ID", raising=False)
+    monkeypatch.setattr(sp.os, "getsid", lambda _pid: 101)
+    sp.start_session(repo, "helen-s101", paths=["src"], worktree=repo)
+    monkeypatch.setattr(sp.os, "getsid", lambda _pid: 202)
+    monkeypatch.chdir(repo)
+    assert _cli("session", "touch", "--repo-root", str(repo)) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("session helen-s101:")
+    assert [s.agent for s in sp.list_sessions(repo)] == ["helen-s101"]
 
 
 def test_cli_end_with_an_explicit_id_never_falls_back(tmp_path: Path, capsys, monkeypatch) -> None:

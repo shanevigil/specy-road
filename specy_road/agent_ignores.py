@@ -25,7 +25,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from specy_road.harness_instruction_files import LOCAL_MD
+from specy_road.ignore_report import MATCH_LIMIT, attempt, estimate, observe, observed, print_matches  # noqa: F401 — MATCH_LIMIT re-exported
 from specy_road.managed_block import CREATED, UNCHANGED, UPDATED, apply_managed_block
+from specy_road.written_entry import Written
 
 CURSOR_INDEXING_IGNORE = ".cursorindexingignore"
 GITIGNORE = ".gitignore"
@@ -176,10 +178,24 @@ def apply_and_report(
     stays next to the thing being reported. Under ``dry_run`` the outcomes are
     computed and reported without writing, so a dry run previews these blocks
     instead of omitting them.
+
+    When ``.gitignore`` changes in a git checkout, a note lists the files the
+    new rules reach (:mod:`specy_road.ignore_report`): observed by git before
+    and after a real write, estimated and labelled so in a dry run. It is
+    advisory: a failure prints ``ignore check skipped: <reason>`` and the
+    write is the same call either way.
     """
+    noted = (git_root / ".git").exists() and apply_agent_ignores(
+        git_root, prefix, dry_run=True, gitignore_seed=gitignore_seed)[GITIGNORE] in (CREATED, UPDATED)
+    if noted:
+        before = attempt(lambda: estimate(git_root, prefix, gitignore_seed, apply_agent_ignores)
+                         if dry_run else observe(git_root))
     outcomes = apply_agent_ignores(
         git_root, prefix, dry_run=dry_run, gitignore_seed=gitignore_seed
     )
+    if noted and outcomes[GITIGNORE] in (CREATED, UPDATED):
+        changed = before if dry_run or isinstance(before, str) else attempt(lambda: observed(git_root, before))
+        print_matches(changed, estimated=dry_run)
     for name, outcome in sorted(outcomes.items()):
         if outcome != UNCHANGED:
-            written.append(f"{name} ({outcome})")
+            written.append(Written(name, outcome))
