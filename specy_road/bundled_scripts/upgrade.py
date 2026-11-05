@@ -33,7 +33,7 @@ from pathlib import Path
 from specy_road import __version__
 from specy_road.agents_md_block import load_order_paths, print_migration, render_rules
 from specy_road.bundled_scripts.digest_cli import cmd_digest
-from specy_road.bundled_scripts.refresh_profiles import refresh_profiles
+from specy_road.bundled_scripts.refresh_profiles import refresh_profiles, selection_notice
 from specy_road.bundled_scripts.refresh_schemas import SCHEMAS_DIRNAME, missing_schema_names, refresh_schemas
 from specy_road.bundled_scripts.refresh_stubs import _prefix, _report, _resolve_root, refresh_stubs
 from specy_road.bundled_scripts.validate_roadmap import validate_at
@@ -87,11 +87,12 @@ def _refresh(project: Path, checkout: Path, *, dry_run: bool, prune: bool) -> No
         print("schemas/ already current")
 
     _section("refresh-profiles")
-    profiles, _kept = refresh_profiles(project, dry_run=dry_run)
+    profiles, kept = refresh_profiles(project, dry_run=dry_run)
     for rel in profiles:
         print(f"{verb} {rel}")
-    if not profiles:
-        print("model-profiles/ already has every profile this version ships")
+    notice = selection_notice(profiles, kept, roster=True)
+    if notice:
+        print(notice)
 
     _section("shipped docs")
     docs = copy_missing_docs(project, dry_run=dry_run)
