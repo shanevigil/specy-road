@@ -139,7 +139,7 @@
       "parent_id": "M16",
       "planning_dir": "planning/M16.67_move-node-keeps-other-ids_4830d6a5-8004-46b8-b748-e7194f614aa2.md",
       "sibling_order": 68,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_move_node.py",
