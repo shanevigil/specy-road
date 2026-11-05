@@ -17,6 +17,7 @@ from specy_road.bundled_scripts.roadmap_crud_dependency_ops import (
 from specy_road.bundled_scripts.roadmap_edit_fields import LIST_KEYS, ROADMAP_NODE_STATUSES
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
+from specy_road.bundled_scripts.roadmap_crud_delete import cmd_remove_node
 from specy_road.bundled_scripts.roadmap_crud_ops import (
     cmd_add,
     cmd_archive,
@@ -345,6 +346,23 @@ def _p_archive(sub: argparse._SubParsersAction) -> None:
     sp.set_defaults(func=cmd_archive)
 
 
+def _p_remove_node(sub: argparse._SubParsersAction) -> None:
+    sp = sub.add_parser(
+        "remove-node",
+        help=(
+            "Remove a never-started leaf and its planning sheet when nothing "
+            "blocks it (status, registry claim, children, dependents)."
+        ),
+    )
+    sp.add_argument("node_id", metavar="NODE_ID")
+    sp.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Run the same checks and print what would be removed; write nothing",
+    )
+    sp.set_defaults(func=cmd_remove_node)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="PM-oriented roadmap CRUD: list/show/add/edit/archive nodes.",
@@ -362,4 +380,5 @@ def build_parser() -> argparse.ArgumentParser:
     _p_remove_dependency(sub)
     _p_apply(sub)
     _p_archive(sub)
+    _p_remove_node(sub)
     return p

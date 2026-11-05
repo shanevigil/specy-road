@@ -427,5 +427,8 @@ def cmd_set_gate_status(args: object) -> None:
 from specy_road.bundled_scripts.roadmap_crud_delete import (  # noqa: E402,F401
     can_hard_remove,
     cmd_archive,
+    cmd_remove_node,
     delete_roadmap_node_hard,
+    remove_node_blockers,
+    remove_roadmap_node,
 )
