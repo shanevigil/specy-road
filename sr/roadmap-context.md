@@ -226,7 +226,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M14.7` session end finds this agent's session by worktree and branch when the derived id has no record `session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record` — task — **Complete**
   - `M14.8` The implementation-zone check runs before a review is spent, and knows about sibling repositories `the-implementation-zone-check-runs-before-a-review-is-spent-and-knows-about-sibling-repositories` — task — **Not Started**
   - `M14.9` review rca launches the root-cause analyst like review delegate, and says what to do when no analyst is available `review-rca-launches-the-root-cause-analyst-like-review-delegate-and-says-what-to-do-when-no-analyst-is-available` — task — **Not Started**
-  - `M14.10` Escalation recognises a converging loop and handoff status shows the findings trend `escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend` — task — **Not Started**
+  - `M14.10` Escalation recognises a converging loop and handoff status shows the findings trend `escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend` — task — **Complete**
   - `M14.11` The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes `the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes` — task — **Complete**
 - `M15` rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction `rc3-multi-harness-adoption-friction` — phase — **Not Started**
   - `M15.1` RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command `rc-install-docs-cover-extras-and-direct-wheel-url` — task — **Complete**
@@ -279,13 +279,31 @@ Do not pick these up.
 - `M12.4.1` on `feature/rm-per-area-quality-scores-in-the-digest-from-review-history` since 2026-11-04
 - `M12.5` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M13.12` on `feature/rm-quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules` since 2026-11-05
-- `M14.10` on `feature/rm-escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend` since 2026-11-04
 - `M15.13` on `feature/rm-worker-loop-friction-sync-until-and-ready-only-resume` since 2026-11-04
 - `M15.20` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M15.21` on `feature/rm-linked-worktrees-resolve-root-and-symlinked-envs` since 2026-11-04
 - `M15.22` on `feature/rm-project-preferences-local-decisions-footer-summary-landing` since 2026-11-04
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
+
+## Quality by area
+
+Review cost of the last 50 completed leaves, per touch-zone area, from the `Review-tally` trailers on their gate commits. Block rate is the share of tallied leaves with at least one blocking round; areas above 50% are **flagged** and listed first. Plan tighter acceptance there.
+
+| Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
+| --- | --- | --- | --- | --- | --- | --- |
+| `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
+| `README.md` | 1 | 1 | — | — | 0 | 0 |
+| `docs` | 34 | 34 | — | — | 0 | 0 |
+| `gui` | 1 | 1 | — | — | 0 | 0 |
+| `research` | 1 | 1 | — | — | 0 | 0 |
+| `roadmap` | 3 | 3 | — | — | 0 | 0 |
+| `schemas` | 2 | 2 | — | — | 0 | 0 |
+| `specy_road` | 48 | 48 | — | — | 0 | 0 |
+| `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
+| `tests` | 49 | 49 | — | — | 0 | 0 |
+
+Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
 ## Reaching the detail behind this
 
