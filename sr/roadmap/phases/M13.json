@@ -84,7 +84,8 @@
         "specy_road/templates/specyrd/claude-md-block.md",
         "suggested_prompts/bootstrap-agents-md.md",
         "docs/install-and-usage.md",
-        "tests/"
+        "tests/",
+        "specy_road/agents_md_report.py"
       ],
       "type": "task"
     },

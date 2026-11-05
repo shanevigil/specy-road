@@ -106,6 +106,7 @@ entries:
       - suggested_prompts/bootstrap-agents-md.md
       - docs/install-and-usage.md
       - tests/
+      - specy_road/agents_md_report.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
