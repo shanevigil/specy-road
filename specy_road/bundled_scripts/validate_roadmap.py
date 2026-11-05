@@ -40,6 +40,7 @@ from specy_road.orchestration_config import harness_model_warnings, load_orchest
 from specy_road.orchestration_pinned import roster_report
 from specy_road.planning_scaffold_check import notice_complete_scaffold
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from specy_road.sibling_repos import warn_unconfigured_sibling_repos
 from specy_road.specyrd_init import warn_if_skills_mirrored
 from specy_road.bundled_scripts.validate_roadmap_checks import (
     cycle_check,
@@ -223,17 +224,11 @@ def validate_at(
     discover_manifest_path(root)
     validate_git_workflow_contract(root)
     validate_orchestration_contract(root)
-    warn_if_pin_differs(root)
-    warn_if_schemas_stale(root)
-    warn_if_stubs_stale(root)
-    warn_if_skills_mirrored(root)
-    warn_if_agents_md_block_stale(root)
-    warn_missing_load_order_paths(root)
-    warn_unregistered_commands(root)
-    warn_if_context_over_limits(root)
-    warn_if_generated_files_ignored(root)
-    warn_research_register(root)
-    warn_garden_due(root)
+    for warn in (warn_if_pin_differs, warn_if_schemas_stale, warn_if_stubs_stale, warn_if_skills_mirrored,
+                 warn_if_agents_md_block_stale, warn_missing_load_order_paths, warn_unregistered_commands,
+                 warn_if_context_over_limits, warn_if_generated_files_ignored, warn_research_register,
+                 warn_garden_due, warn_unconfigured_sibling_repos):
+        warn(root)
 
     if auto_heal:
         changed, _logs = auto_heal_roadmap(root)
