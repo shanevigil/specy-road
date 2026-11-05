@@ -98,19 +98,38 @@ def readme_upgrade_step_labels(readme_text: str) -> tuple[str, ...]:
     return UPGRADE_STEP_LABELS
 
 
-def missing_work_template_rels(existence_root: Path) -> list[str]:
-    """Project-relative paths of referenced work templates the tree lacks."""
+def work_template_ship_plan(project_root: Path) -> tuple[list[str], list[str]]:
+    """Project-relative template paths to copy vs refused (symlink outside the repo).
+
+    Refusal is decided before any write or ``would write`` / ``wrote`` claim.
+    """
     ship = bundled_work_template_names() & referenced_work_template_names()
-    missing: list[str] = []
+    to_copy: list[str] = []
+    refused: list[str] = []
     for name in sorted(ship):
         rel = f"{_WORK.as_posix()}/{name}"
-        path = existence_root / rel
+        path = project_root / rel
         if path.exists() or path.is_symlink():
             continue
         src = project_template_root() / _WORK / name
-        if src.is_file():
-            missing.append(rel)
-    return missing
+        if not src.is_file():
+            continue
+        if resolves_outside(project_root, path):
+            refused.append(rel)
+        else:
+            to_copy.append(rel)
+    return to_copy, refused
+
+
+def missing_work_template_rels(existence_root: Path) -> list[str]:
+    """Project-relative paths of referenced work templates the tree lacks and can receive."""
+    to_copy, _refused = work_template_ship_plan(existence_root)
+    return to_copy
+
+
+def work_template_skip_message(rel: str) -> str:
+    """Same wording ``copy_missing_docs`` uses for an out-of-repo symlink."""
+    return f"skipped {rel} (a symlink leads outside the repository)"
 
 
 def copy_missing_work_templates(
@@ -128,12 +147,12 @@ def copy_missing_work_templates(
     ``project`` (defaults to the same root).
     """
     exists_at = existence_root or project
+    to_copy, _refused = work_template_ship_plan(exists_at)
     copied: list[str] = []
-    for rel in missing_work_template_rels(exists_at):
+    for rel in to_copy:
         src = project_template_root() / rel
         dst = project / rel
         if resolves_outside(project, dst):
-            print(f"skipped {rel} (a symlink leads outside the repository)")
             continue
         if not dry_run:
             dst.parent.mkdir(parents=True, exist_ok=True)

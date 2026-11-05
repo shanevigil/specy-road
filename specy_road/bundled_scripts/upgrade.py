@@ -62,7 +62,11 @@ from specy_road.git_subprocess import git_text
 from specy_road.init_project import project_template_root
 from specy_road.managed_block import resolves_outside
 from specy_road.runtime_paths import add_repo_root_arg, git_root, project_root, source_scan_root
-from specy_road.upgrade_templates import copy_missing_work_templates, missing_work_template_rels
+from specy_road.upgrade_templates import (
+    copy_missing_work_templates,
+    work_template_ship_plan,
+    work_template_skip_message,
+)
 from specy_road.version_skew import print_install_report
 
 CHECKLIST = (
@@ -130,14 +134,16 @@ def _report_shipped_docs(project: Path, verb: str, existence_root: Path) -> list
     _section("shipped docs")
     declined_docs: list[str] = []
     docs = copy_missing_docs(project, declined=declined_docs)
-    templates = missing_work_template_rels(existence_root)
+    to_copy, refused = work_template_ship_plan(existence_root)
     for rel in docs:
         print(f"{verb} {rel} (named in the .specyrd/AGENTS.md load order)")
-    for rel in templates:
+    for rel in to_copy:
         print(f"{verb} {rel} (work template referenced by prompts)")
+    for rel in refused:
+        print(work_template_skip_message(rel))
     if not docs:
         print("every shipped doc the load order names is present")
-    if not templates:
+    if not to_copy and not refused:
         print("every work template prompts reference is present")
     return declined_docs
 

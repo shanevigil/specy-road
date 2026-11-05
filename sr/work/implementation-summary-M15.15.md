@@ -2,14 +2,16 @@
 
 ## Summary
 
-`specy-road upgrade` now ships missing `work/*.template.md` files that prompt builders and specyrd command stubs reference, after the mirrored refresh plan is applied (the plan mirror skips `work/`, so templates copy in a post-`apply_plan` step). The `.specyrd/README.md` upgrade paragraph lists the same six steps as `upgrade --help`.
+`specy-road upgrade` ships missing `work/*.template.md` files that prompt builders and specyrd command stubs reference, after the mirrored refresh plan is applied (the plan mirror skips `work/`, so templates copy in a post-`apply_plan` step). The `.specyrd/README.md` upgrade paragraph lists the same six steps as `upgrade --help`.
+
+**Fix round (R1):** `work_template_ship_plan()` decides copy vs out-of-repo refusal (via `resolves_outside`) before any `would write` / `wrote` line or copy. `_report_shipped_docs` and `copy_missing_work_templates` both use that plan so preview, real upgrade, and dry-run agree.
 
 ## Changes
 
-- **`specy_road/upgrade_templates.py`** (new): discovers bundled and prompt-referenced templates, compares README step labels to `UPGRADE_STEP_LABELS`, and copies missing templates without overwriting.
-- **`specy_road/bundled_scripts/upgrade.py`**: docstring step 3 renamed to “shipped docs and templates”; shipped-docs section lists missing work templates; `_apply` / dry-run temp copy call `copy_missing_work_templates` after `apply_plan`.
-- **`specy_road/templates/specyrd/dot-specyrd/README.md`**: “Updating after pip install” lists all upgrade steps including shipped docs and templates, validate, and digest `--check`.
-- **`tests/test_upgrade_work_templates.py`**: A1–A3 coverage (reference set, upgrade copy, no overwrite, dry-run output, README/help parity).
+- **`specy_road/upgrade_templates.py`**: `work_template_ship_plan()`, shared skip message, `copy_missing_work_templates` copies only the plan’s copy list.
+- **`specy_road/bundled_scripts/upgrade.py`**: shipped-docs reporting uses the plan; helpers split for ruff C901.
+- **`specy_road/templates/specyrd/dot-specyrd/README.md`**: upgrade step list matches `--help`.
+- **`tests/test_upgrade_work_templates.py`**: A1–A3, README parity, external-`work/` symlink regression via `run_upgrade`.
 
 ## Touch zones (confirmed)
 
@@ -22,17 +24,21 @@
 
 ```bash
 pytest tests/test_upgrade_work_templates.py tests/test_upgrade.py tests/test_upgrade_parity.py tests/test_upgrade_plan_parity.py tests/test_upgrade_preview.py -n 4 -q
+ruff check specy_road tests scripts
+specy-road file-limits
 ```
+
+## Probes
+
+- **Class: missing template path blocked by `resolves_outside` but still advertised as a write** — checked `_report_shipped_docs`, `copy_missing_work_templates`, and dry-run post-`apply_plan` copy; all routed through `work_template_ship_plan()` so refused paths never get write claims (fixed).
+- **Class: external `work/` directory symlink (target outside git root)** — checked `work_template_ship_plan` and `run_upgrade` dry + real; only skip lines, external dir stays empty (test `test_external_work_symlink_reports_skipped_not_write`).
+- **Class: per-file dangling `work/*.template.md` symlink** — checked `work_template_ship_plan` treats existing symlink as present, so not in copy or refuse lists; `copy_missing_work_templates` still skips overwrite (unchanged, matches reviewer probe).
+- **Class: shipped `docs/` symlink outside repo** — checked `copy_missing_docs` still skips before append to `declined_docs` and does not append to copied list (unchanged; same message shape via `work_template_skip_message`).
+- **Class: upgrade mirror skips `work/`** — checked post-`apply_plan` copy still uses real `existence_root` for the plan and sandbox only for bytes (unchanged design; no plan stale conflicts).
 
 ## Added
 
-- `specy_road/upgrade_templates.py` — module for template discovery, README/help step labels, and copy-when-missing.
-- `UPGRADE_STEP_LABELS` — canonical ordered step names shared by tests, README parser, and help docstring.
-- `bundled_work_template_names()` — lists shipped `work/*.template.md` basenames.
-- `referenced_work_template_names()` — greps `do_next_prompt.py`, `role_prompt*.py`, and `templates/specyrd/commands/*.md`.
-- `upgrade_help_step_labels()` / `readme_upgrade_step_labels()` — parity check inputs for A2.
-- `missing_work_template_rels()` — paths to add without writing (mirror-safe listing during refresh).
-- `copy_missing_work_templates()` — post-plan copy with optional `existence_root` for dry-run sandbox.
-- `existence_project` closure in `_plan()` — lists missing templates against the real checkout while refresh runs on the mirror.
-- Post-`apply_plan` template copy in `_apply` and `_dry_run` — avoids upgrade-plan conflicts on skipped `work/`.
-- `tests/test_upgrade_work_templates.py` — five tests for A1–A3 and README/help alignment; no new mocks.
+- `work_template_ship_plan()` — single copy vs refuse decision before claims or writes (R1).
+- `work_template_skip_message()` — shared skip wording with shipped docs.
+- `test_external_work_symlink_reports_skipped_not_write` — `run_upgrade` regression for external `work/` symlink (parametrized dry + real).
+- (Prior leaf) `UPGRADE_STEP_LABELS`, discovery helpers, README/help parsers, post-`apply_plan` copy, `_report_*` refresh helpers, five other tests in `test_upgrade_work_templates.py`.

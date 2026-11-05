@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
+
+import pytest
 
 from specy_road.bundled_scripts import upgrade
 from specy_road.bundled_scripts.upgrade import run_upgrade
@@ -14,6 +17,7 @@ from specy_road.upgrade_templates import (
     readme_upgrade_step_labels,
     referenced_work_template_names,
     upgrade_help_step_labels,
+    work_template_skip_message,
 )
 from tests.upgrade_repo_helpers import old_repo
 
@@ -60,6 +64,30 @@ def test_dry_run_lists_work_templates_it_would_add(tmp_path: Path, capsys) -> No
     out = capsys.readouterr().out
     for name in referenced_work_template_names():
         assert f"would write work/{name} (work template referenced by prompts)" in out
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_external_work_symlink_reports_skipped_not_write(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], dry_run: bool,
+) -> None:
+    """R1: missing templates under an external ``work/`` symlink are skipped only."""
+    repo = tmp_path / "repo"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    root = old_repo(repo)
+    work = root / "work"
+    shutil.rmtree(work)
+    work.symlink_to(outside, target_is_directory=True)
+
+    capsys.readouterr()
+    assert run_upgrade(root, dry_run=dry_run, prune=True) == 0
+    out = capsys.readouterr().out
+    verb = "would write" if dry_run else "wrote"
+    for name in referenced_work_template_names():
+        rel = f"work/{name}"
+        assert work_template_skip_message(rel) in out
+        assert f"{verb} {rel} (work template referenced by prompts)" not in out
+    assert not any(outside.iterdir())
 
 
 def test_dot_specyrd_readme_upgrade_steps_match_upgrade_help() -> None:
