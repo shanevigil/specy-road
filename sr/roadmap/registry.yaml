@@ -23,6 +23,7 @@ entries:
       - specy_road/review_write_check.py
       - specy_road/reviewer_run_failure.py
       - specy_road/review_usage.py
+      - specy_road/worker_adapter_parsers.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
@@ -41,42 +42,6 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: per-area-quality-scores-in-the-digest-from-review-history
-    node_id: M12.4.1
-    branch: feature/rm-per-area-quality-scores-in-the-digest-from-review-history
-    touch_zones:
-      - specy_road/digest.py
-      - specy_road/bundled_scripts/digest_cli.py
-      - specy_road/review_rca.py
-      - specy_road/orchestration_config.py
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/orchestrate_plan.py
-      - specy_road/review_gate.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - specy_road/review_tally.py
-      - specy_road/bundled_scripts/mark_implementation_reviewed.py
-      - docs/orchestration-quality.md
-      - specy_road/orchestrate_assign.py
-      - sr/roadmap-context.md
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend
-    node_id: M14.10
-    branch: feature/rm-escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend
-    touch_zones:
-      - specy_road/review_rca.py
-      - specy_road/review_trend.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_status_render.py
-      - specy_road/orchestration_config.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - docs/design-notes/review-loop-rca.md
-      - tests/
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: worker-loop-friction-sync-until-and-ready-only-resume
     node_id: M15.13
     branch: feature/rm-worker-loop-friction-sync-until-and-ready-only-resume
@@ -92,6 +57,7 @@ entries:
       - tests/
       - specy_road/worker_ops_message.py
       - specy_road/worker_runner_ready.py
+      - specy_road/worker_ops_launch.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -129,6 +95,7 @@ entries:
       - specy_road/bundled_scripts/role_prompt_rca.py
       - specy_road/agent_ignores.py
       - specy_road/bundled_scripts/validate_roadmap_checks.py
+      - specy_road/finish_land_local.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -142,6 +109,7 @@ entries:
       - specy_road/bundled_scripts/upgrade.py
       - docs/file-limits.md
       - tests/
+      - specy_road/file_limits_baseline_yaml.py
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
@@ -177,6 +145,67 @@ entries:
       - specy_road/bundled_scripts/validate_roadmap.py
       - specy_road/ignore_report.py
       - specy_road/bundled_scripts/validate_notices.py
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
+  - codename: ready-flags-failure-tails-and-takes-argv
+    node_id: M15.24
+    branch: feature/rm-ready-flags-failure-tails-and-takes-argv
+    touch_zones:
+      - specy_road/ready_run_checks.py
+      - specy_road/review_gate_ready.py
+      - specy_road/bundled_scripts/review_packet.py
+      - tests/
+      - specy_road/schemas/handoff.schema.json
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
+  - codename: stash-changes-attributed-to-the-owning-branch
+    node_id: M15.25
+    branch: feature/rm-stash-changes-attributed-to-the-owning-branch
+    touch_zones:
+      - specy_road/worker_turn_check.py
+      - specy_road/worker_turn_stash.py
+      - tests/
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
+  - codename: cursor-usage-sums-segments-and-flags-undercounts
+    node_id: M15.27
+    branch: feature/rm-cursor-usage-sums-segments-and-flags-undercounts
+    touch_zones:
+      - specy_road/worker_adapter_cursor.py
+      - specy_road/worker_usage_plausibility.py
+      - specy_road/bundled_scripts/worker_cli_render.py
+      - tests/
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
+  - codename: notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice
+    node_id: M13.9
+    branch: feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice
+    touch_zones:
+      - specy_road/agent_text_report.py
+      - specy_road/templates/specyrd/agents-rules.md
+      - tests/
+      - specy_road/agents_md_block.py
+      - specy_road/bundled_scripts/upgrade.py
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
+  - codename: approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository
+    node_id: M14.1
+    branch: feature/rm-approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository
+    touch_zones:
+      - specy_road/review_bookkeeping.py
+      - specy_road/sibling_repos.py
+      - specy_road/review_gate_ready.py
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/schemas/review-record.schema.json
+      - specy_road/schemas/handoff.schema.json
+      - specy_road/bundled_scripts/validate_roadmap.py
+      - tests/
+      - specy_road/reviewer_run_failure.py
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
