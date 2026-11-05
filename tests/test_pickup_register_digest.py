@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import yaml
+
 from tests.helpers import REPO, script_subprocess_env
 
 
@@ -73,3 +75,66 @@ def test_abort_drops_a_local_register_commit_that_carries_the_digest(tmp_path: P
     assert _git(app, "rev-parse", "HEAD") == pushed
     assert _git(remote, "rev-parse", "main") == pushed
     assert _git(app, "branch", "--list", "feature/rm-*") == ""
+
+
+def _digest_check_at_origin_main(app: Path, snapshot: Path) -> None:
+    subprocess.run(
+        ["git", "worktree", "remove", "-q", "--force", str(snapshot)],
+        cwd=app, check=False, capture_output=True,
+    )
+    _git(app, "fetch", "-q", "origin")
+    _git(app, "worktree", "add", "-q", "--detach", str(snapshot), "origin/main")
+    try:
+        assert _cli(snapshot, "digest", "--check").returncode == 0
+    finally:
+        subprocess.run(
+            ["git", "worktree", "remove", "-q", "--force", str(snapshot)],
+            cwd=app, check=False, capture_output=True,
+        )
+
+
+def test_abort_after_pushed_pickup_regenerates_the_digest_on_integration(tmp_path: Path) -> None:
+    """R3: removing a pushed claim must leave digest --check passing locally and on the remote."""
+    remote, app = _app(tmp_path)
+
+    assert _cli(app, "do-next-available-task").returncode == 0
+    assert _cli(app, "digest", "--check").returncode == 0
+
+    assert _cli(app, "abort-task-pickup").returncode == 0
+
+    _git(app, "checkout", "-q", "main")
+    assert _cli(app, "digest", "--check").returncode == 0
+    assert _git(app, "rev-parse", "main") == _git(remote, "rev-parse", "main")
+    _digest_check_at_origin_main(app, tmp_path / "origin-main-digest")
+
+
+def _reject_first_integration_push(bare: Path, marker: Path) -> None:
+    hook = bare / "hooks" / "pre-receive"
+    hook.write_text(
+        "#!/bin/sh\n"
+        f"if [ ! -f {marker} ]; then touch {marker}; exit 1; fi\n"
+        "exit 0\n",
+    )
+    hook.chmod(0o755)
+
+
+def test_failed_pickup_self_heal_leaves_integration_digest_current(tmp_path: Path) -> None:
+    """R4: a one-time rejected registration push must not publish a stale digest on self-heal."""
+    remote, app = _app(tmp_path)
+    marker = tmp_path / "saw_push"
+    _reject_first_integration_push(remote, marker)
+
+    r = _cli(app, "do-next-available-task")
+
+    assert r.returncode == 1, r.stderr
+    _git(app, "checkout", "-q", "main")
+    assert _cli(app, "digest", "--check").returncode == 0
+    assert _git(app, "rev-parse", "main") == _git(remote, "rev-parse", "main")
+    _digest_check_at_origin_main(app, tmp_path / "self-heal-origin-main")
+    reg = yaml.safe_load(
+        subprocess.run(
+            ["git", "--git-dir", str(remote), "show", "main:roadmap/registry.yaml"],
+            check=True, capture_output=True, text=True,
+        ).stdout,
+    )
+    assert reg.get("entries") == []

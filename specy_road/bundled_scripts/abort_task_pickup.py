@@ -254,6 +254,8 @@ def _drop_local_registration(remote: str, base: str, branch: str) -> None:
 
 
 def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None:
+    from specy_road.bundled_scripts.do_next_task_register import regenerated_tracked_paths
+
     reg = read_registry(registry_path(ROOT))
     entries = reg.get("entries") or []
     if not next((e for e in entries if e.get("codename") == codename), None):
@@ -270,8 +272,9 @@ def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None
     reg["entries"] = [e for e in entries if e.get("codename") != codename]
     _save_registry(reg)
     rel_reg = str(registry_path(ROOT).relative_to(ROOT))
-    git_run(ROOT, "add", rel_reg)
-    git_run(ROOT, "commit", "-m", f"chore(rm-{codename}): abort task pickup")
+    paths = [rel_reg, *regenerated_tracked_paths(ROOT)]
+    git_run(ROOT, "add", *paths)
+    git_run(ROOT, "commit", "-m", f"chore(rm-{codename}): abort task pickup", "--", *paths)
     print(f"-> git push {remote} {base}")
     git_run(ROOT, "push", remote, base)
 

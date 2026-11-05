@@ -64,7 +64,10 @@ def reconcile_branch(repo: Path, *, ib: str, remote: str, codename: str | None =
         return _err(f"HEAD is {branch}, but that leaf's branch is feature/rm-{codename}.")
     if git_text(["status", "--porcelain", "--untracked-files=no"], repo):
         return _err(f"{branch} has uncommitted tracked changes; commit or discard them, then retry.")
-    git_ok(["fetch", "-q", remote, ib], repo)
+    fetched, fetch_detail = git_ok(["fetch", "-q", remote, ib], repo)
+    if not fetched:
+        detail = fetch_detail or "git fetch failed"
+        return _err(f"could not fetch {remote}/{ib}: {detail}")
     ref = base_ref(repo, remote, ib)
     if ref is None:
         return _err(f"neither {remote}/{ib} nor {ib} exists here.")
@@ -75,8 +78,8 @@ def reconcile_branch(repo: Path, *, ib: str, remote: str, codename: str | None =
         return _err(f"could not merge {ref} into {branch}: {problem}. The merge was aborted and "
                     f"{branch} is unchanged; resolve code conflicts by hand (`git merge {ref}`).")
     if git_text(["rev-parse", "HEAD"], repo) == pre:
-        print(f"[ok] {branch} already contains {ref}; nothing to do")
-        return 0
+        print(f"[ok] {branch} already contains {ref}; nothing to merge")
+        return _push(repo, branch)
     print(f"[ok] merged {ref} into {branch}: roadmap/registry.yaml resolved by rule, "
           "roadmap.md and roadmap-context.md regenerated")
     return _push(repo, branch)

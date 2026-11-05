@@ -158,3 +158,57 @@ def test_reconcile_refuses_off_a_leaf_branch_and_on_the_wrong_leaf(tmp_path: Pat
     assert "feature/rm-one" in capsys.readouterr().err
     r = _cli(wt, "reconcile-branch", "M1.2")
     assert r.returncode == 0, r.stderr
+
+
+def test_reconcile_refuses_when_fetch_fails_and_leaves_head(tmp_path: Path, capsys) -> None:
+    """R1: a stale remote-tracking ref must not merge when fetch cannot reach the integration tip."""
+    root, wt = _two_pr_leaves(tmp_path, shared_code=False)
+    remote = tmp_path / "origin.git"
+    commit_file(root, "src/after_first_merge.py", "y = 1\n", "dev: move after first PR")
+    git(root, "push", "-q", "origin", "dev")
+    head = git(wt, "rev-parse", "HEAD")
+    remote_feature = git(wt, "rev-parse", "origin/feature/rm-two")
+    stale_dev = git(wt, "rev-parse", "origin/dev")
+    git(wt, "remote", "set-url", "origin", str(tmp_path / "missing-fetch.git"))
+    git(wt, "remote", "set-url", "--push", "origin", str(remote))
+
+    assert reconcile_branch(wt, ib="dev", remote="origin") == 1
+
+    err = capsys.readouterr().err
+    assert "could not fetch" in err
+    assert git(wt, "rev-parse", "HEAD") == head
+    assert git(wt, "rev-parse", "origin/dev") == stale_dev
+    assert git(wt, "rev-parse", "origin/feature/rm-two") == remote_feature
+
+
+def _reject_feature_two_push(bare: Path) -> Path:
+    hook = bare / "hooks" / "pre-receive"
+    hook.write_text(
+        "#!/bin/sh\n"
+        "while read old new ref; do\n"
+        "  case $ref in refs/heads/feature/rm-two) exit 1 ;; esac\n"
+        "done\n"
+        "exit 0\n",
+    )
+    hook.chmod(0o755)
+    return hook
+
+
+def test_reconcile_retries_push_when_merge_is_already_committed(tmp_path: Path, capsys) -> None:
+    """R2: after a rejected push, a retry must still update the upstream branch."""
+    root, wt = _two_pr_leaves(tmp_path, shared_code=False)
+    remote = tmp_path / "origin.git"
+    hook = _reject_feature_two_push(remote)
+    remote_before = git(wt, "rev-parse", "origin/feature/rm-two")
+
+    assert reconcile_branch(wt, ib="dev", remote="origin") == 1
+    assert "pushing it to origin failed" in capsys.readouterr().err
+    local_merge = git(wt, "rev-parse", "HEAD")
+    assert local_merge != remote_before
+    assert git(wt, "rev-parse", "origin/feature/rm-two") == remote_before
+
+    hook.unlink()
+    capsys.readouterr()
+    assert reconcile_branch(wt, ib="dev", remote="origin") == 0
+    assert "already contains" in capsys.readouterr().out
+    assert git(wt, "rev-parse", "origin/feature/rm-two") == local_merge
