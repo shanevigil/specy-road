@@ -108,6 +108,7 @@ entries:
       - specy_road/bundled_scripts/role_prompt_rca.py
       - specy_road/agent_ignores.py
       - specy_road/bundled_scripts/validate_roadmap_checks.py
+      - specy_road/finish_land_local.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
