@@ -12,4 +12,11 @@ fi
 if [ -f "$prompt" ]; then
   prompt="Your complete prompt is in the file $prompt. Read that file first, in full, then follow it exactly; it says what to review and where to write your record."
 fi
-exec agent -p --force --model "$model" --output-format text "$prompt"
+mkdir -p "$REVIEWS/.transcripts"
+side="$REVIEWS/.transcripts/cursor-$(date +%Y%m%dT%H%M%S)-$$.log"
+# Since M8.3 the channel output must be one JSON object: keep the raw text in a side file and print only the
+# last top-level JSON object of the answer (the model sometimes narrates before it).
+agent -p --force --model "$model" --output-format text "$prompt" > "$side" 2>&1
+rc=$?
+python3 "$(dirname "$0")/last-json.py" < "$side"
+exit $rc
