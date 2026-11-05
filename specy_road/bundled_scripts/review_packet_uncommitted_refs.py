@@ -16,6 +16,13 @@ UNCOMMITTED_REF_NOTE = ("_The brief, a planning sheet or the implementation summ
                         "are not in the tree at the commit under review (untracked or uncommitted). Commit them "
                         "before reviewers start._")
 _GLOB = re.compile(r"[*?[]")
+_QUERY = re.compile(r"\?\w+=")   # a link's query string ("x.md?plain=1"), not a glob's ?
+
+
+def is_glob(text: str) -> bool:
+    """True if ``text`` is a glob (``*``, ``?`` or ``[...]``): kept whole when a path is extracted, and matched
+    against files rather than looked up."""
+    return bool(_GLOB.search(text))
 _LINK = re.compile(r"\]\(\s*([^)\s#]+)")
 _CODE = re.compile(r"`([^`\n]+)`")
 _BRANCH = frozenset({"feature", "fix", "chore", "hotfix", "WIP", "release", "origin", "refs", "heads", "remotes"})
@@ -37,7 +44,7 @@ def _named_repo_path(token: str, root: Path, commit: str) -> str | None:
     raw = (token or "").strip().replace("\\", "/")
     if not raw or raw.startswith(("http://", "https://", "git@", "mailto:")):
         return None
-    raw = raw.split()[0].split("?")[0].split("#")[0]
+    raw = _QUERY.split(raw.split()[0])[0].split("#")[0]
     raw = raw.split("::", 1)[0]          # pytest node id: path::name
     raw = re.sub(r":\d+$", "", raw)      # editor / compiler :line
     while raw.startswith("./") or raw.startswith("../"):
@@ -48,14 +55,14 @@ def _named_repo_path(token: str, root: Path, commit: str) -> str | None:
     if "/" not in raw:
         if "." not in raw and raw not in _ROOT:
             return None
-        return raw if raw in _ROOT or _present(root, commit, raw) else None
+        return raw if raw in _ROOT or is_glob(raw) or _present(root, commit, raw) else None
     head, last = raw.split("/", 1)[0], raw.rsplit("/", 1)[-1]
     ext = last.rsplit(".", 1)[-1] if "." in last else ""
-    if head in _BRANCH or not last or (last not in _ROOT and not ext.isalpha()):
+    if head in _BRANCH or not last or (last not in _ROOT and not ext.isalpha() and not is_glob(last)):
         return None
     if head in _TOP:
         return raw
-    return raw if _present(root, commit, head) and _present(root, commit, raw) else None
+    return raw if _present(root, commit, head) and (is_glob(raw) or _present(root, commit, raw)) else None
 
 
 def _named_paths(text: str, root: Path, commit: str) -> list[str]:
@@ -122,7 +129,7 @@ def _missing_refs(root: Path, commit: str, texts: list[str]) -> tuple[list[str],
         for rel in _named_paths(text, root, commit):
             if rel in missing or rel in skipped or _exists_at_commit(root, commit, rel):
                 continue
-            if _GLOB.search(rel):
+            if is_glob(rel):
                 if not _glob_matches(root, commit, rel):
                     skipped.add(rel)
             elif _ignored(root, rel):

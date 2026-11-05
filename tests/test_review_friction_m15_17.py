@@ -81,15 +81,18 @@ def test_packet_does_not_warn_about_an_ignored_build_path(tmp_path: Path, capsys
     commit_file(repo, ".gitignore", (repo / ".gitignore").read_text() + "build/\n", "ignore build")
     (repo / "build").mkdir()
     (repo / "build" / "out.js").write_text("x\n")
-    _cite(repo, "The bundle lands in `build/out.js` and the sheets match `planning/M9_*.md`; "
-                "also `shared/missing.md`.")
+    # every glob form counts: *, ?, [...], a glob extension, and a top-level glob with no directory
+    globs = ["planning/M9_*.md", "planning/M9_?.md", "planning/M9_[ab].md", "planning/M9.m?", "NOTES?.md"]
+    _cite(repo, "The bundle lands in `build/out.js` and the sheets match "
+                + ", ".join(f"`{g}`" for g in globs) + "; also `shared/missing.md`.")
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
     err = capsys.readouterr().err
-    assert "build/out.js" not in err and "planning/M9_*.md" not in err
+    assert "build/out.js" not in err and not any(g in err for g in globs)
     block = text.split("## Uncommitted references\n", 1)[1].split("\n## Changed paths\n", 1)[0]
-    assert "- `shared/missing.md`" in block and "build/out.js" not in block and "planning/M9_" not in block
+    assert "- `shared/missing.md`" in block and "build/out.js" not in block and "planning/M9" not in block
+    assert "NOTES" not in block
     assert "warning: `shared/missing.md` is named in the packet but not at commit" in err   # still warned
-    assert err.count("note: 2 path(s) named in the packet but not at commit") == 1
+    assert err.count(f"note: {1 + len(globs)} path(s) named in the packet but not at commit") == 1
 
 
 def test_a_glob_that_matches_a_committed_file_is_not_missing(tmp_path: Path, capsys) -> None:

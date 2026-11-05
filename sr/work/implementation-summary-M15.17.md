@@ -32,6 +32,26 @@ Required change: `test_two_independent_observations_joined_by_and_are_still_refu
 - `test_a_conjunction_inside_quotes_is_not_a_split_point` (4 inputs): these test quoted spans (A6), which no `test_clause_problem` row covers. I kept them.
 - `test_a_real_refusal_names_its_trigger_and_quotes_the_line`: this checks the whole `approve_defect_problem` message, not `clause_problem`, so it is not a duplicate. I kept it.
 
+## Fix round 2 (gpt-6.1-sol-low)
+
+Required change (A2): path extraction dropped planning globs that contain `?`, so an unmatched `?` pattern never reached the summary count. `review_packet_uncommitted_refs.py` now has one predicate, `is_glob` (`*`, `?` or `[...]`), used both when extracting a path and when matching it against files. As a result:
+- A `?` is split off as a query string only when it starts one (`?name=`), via `_QUERY`.
+- A glob in the last segment passes the extension check.
+- A glob is kept without being looked up as a literal path, both at the top level (no `/`) and under a directory outside `_TOP`.
+
+The existing empty-glob test now cites `*`, `?`, `[ab]`, a glob extension and a top-level glob, and asserts the count of 6 (1 ignored path + 5 globs). Run against the round-1 source it fails; with the fix it passes.
+
+## Probes (fix round 2)
+
+- Class: a glob token that path extraction drops or treats as a literal before the glob check runs.
+- `raw.split("?")` (query stripping): it dropped every `?` glob. Fixed: only a `?name=` query is stripped. Tested with `planning/M9_?.md`.
+- The extension check `ext.isalpha()`: it dropped a glob extension (`planning/M9.m?`). Fixed with `is_glob(last)`. Tested.
+- A top-level token with no `/`: it was looked up as a literal and dropped (`NOTES?.md`). Fixed: a glob is kept. Tested.
+- A directory outside `_TOP`: the glob was looked up as a literal path, so a glob under a directory present on disk was dropped. Fixed: a glob is kept once its directory is present. Not tested, but it is the same predicate on the same line pattern.
+- `[...]`: it already survived extraction, because `_LINK` and `_CODE` keep `[`. It is now asserted (`planning/M9_[ab].md`).
+- `_missing_refs`: now uses the same `is_glob`. A matching glob is still present (`test_a_glob_that_matches_a_committed_file_is_not_missing` passes).
+- Existing path-noise tests (`test_review_packet.py`, including `docs/x.md#anchor`): pass. `#` stripping is unchanged.
+
 ## Touch zones (final)
 
 These are the zones as listed. I edited `review_delegate.py`, `review_delegate_packet.py` (new), `review_run_status.py` (new), `review_record_rules.py`, `bundled_scripts/review_packet_uncommitted_refs.py` and `tests/`. I did not need to change `integrity.py`, `review_record_write.py` or `bundled_scripts/review_cli.py`. Note that `file_review` in `review_record_write.py` still keeps only the last 400 characters of a refusal in the run reason, so a delegated run's reason shows the quoted lines but may cut off the rule sentence.
