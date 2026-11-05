@@ -280,6 +280,7 @@ Do not pick these up.
 - `M13.12` on `feature/rm-quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules` since 2026-11-05
 - `M13.9` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M14.1` on `feature/rm-approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` since 2026-11-05
+- `M14.5` on `feature/rm-an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it` since 2026-11-05
 - `M15.13` on `feature/rm-worker-loop-friction-sync-until-and-ready-only-resume` since 2026-11-04
 - `M15.20` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M15.21` on `feature/rm-linked-worktrees-resolve-root-and-symlinked-envs` since 2026-11-04

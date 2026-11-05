@@ -209,3 +209,17 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it
+    node_id: M14.5
+    branch: feature/rm-an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it
+    touch_zones:
+      - specy_road/review_record_rules.py
+      - specy_road/review_eligible.py
+      - specy_road/schemas/review-record.schema.json
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - docs/orchestration-review.md
+      - tests/
+      - specy_road/review_gate.py
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
