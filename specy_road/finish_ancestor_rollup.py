@@ -121,10 +121,47 @@ def demote_pending_milestone_rollups(repo_root: Path, nodes: list[dict]) -> None
             n["rollup_status"] = "In Progress"
 
 
-def milestone_review_next_steps(node_id: str) -> str:
-    return (f"  Next, once this branch has landed: specy-road review-packet {node_id}; each reviewer: "
+def _review_commands(node_id: str) -> str:
+    return (f"specy-road review-packet {node_id}; each reviewer: "
             f"specy-road review record {node_id} --model <id> --verdict approve|block --file <notes.md>; "
-            f"then specy-road mark-implementation-reviewed {node_id} (policy.milestone_full_review)")
+            f"then specy-road mark-implementation-reviewed {node_id}")
+
+
+def milestone_review_next_steps(node_id: str) -> str:
+    return f"  Next, once this branch has landed: {_review_commands(node_id)} (policy.milestone_full_review)"
+
+
+def held_milestones(repo_root: Path, nodes: list[dict]) -> dict[str, str]:
+    """``{milestone id: hold reason}`` for each milestone whose leaves are all Complete but which is held."""
+    from specy_road.bundled_scripts.roadmap_load import compute_rollup_status
+
+    leaf = compute_rollup_status(nodes)
+    out: dict[str, str] = {}
+    for n in nodes:
+        nid = n.get("id")
+        if isinstance(nid, str) and leaf.get(nid) == "Complete" and n.get("status") != "Complete":
+            why = milestone_review_hold(repo_root, nodes, nid)
+            if why:
+                out[nid] = why
+    return out
+
+
+def milestone_review_hold_notice(node_id: str, why: str) -> str:
+    """The notice validate and why-blocked print for a held milestone: the reason and the three ways out.
+
+    A hold whose review target cannot be resolved does not demote the rollup
+    (see :func:`demote_pending_milestone_rollups`), so it gets one line only.
+    """
+    if why.startswith(UNRESOLVABLE_HOLD):
+        return (f"milestone review: notice — {node_id}: {why} (policy.milestone_full_review); "
+                "its rollup follows its leaves")
+    return "\n".join([
+        f"milestone review: notice — {node_id} is held at In Progress: every leaf is Complete but {why} "
+        "(policy.milestone_full_review). Ways out:",
+        f"  1. Review it: {_review_commands(node_id)}",
+        f"  2. Record it Complete: specy-road edit-node {node_id} --set status=Complete",
+        "  3. Turn the hold off: set policy.milestone_full_review: false in roadmap/orchestration.yaml",
+    ])
 
 
 def _print_hold(repo_root: Path, nodes: list[dict]) -> Callable[[str], str | None]:

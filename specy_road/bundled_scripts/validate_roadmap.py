@@ -55,6 +55,7 @@ from specy_road.bundled_scripts.validate_roadmap_checks import (
     warn_touch_zones_match_nothing,
 )
 from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
+from specy_road.bundled_scripts.validate_notices import notice_milestone_review_holds
 from specy_road.bundled_scripts.validate_self_heal import auto_heal_roadmap
 from specy_road.bundled_scripts.validate_registry_overlap import (
     authoring_overlap_scope,
@@ -300,6 +301,7 @@ def validate_at(
         overlap_scope=current_authoring_overlap_scope(),
         strict_authoring=strict_authoring,
     )
+    notice_milestone_review_holds(root, roadmap["nodes"])
 
 
 def main() -> None:

@@ -57,7 +57,7 @@
       "parent_id": "M14",
       "planning_dir": "planning/M14.2_doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch_1c9269b9-323f-428a-9400-86738a763124.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "doctor never offers to remove a live leaf's worktree or branch",
       "touch_zones": [
         "specy_road/bundled_scripts/doctor.py",
@@ -79,12 +79,13 @@
       "parent_id": "M14",
       "planning_dir": "planning/M14.3_worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout_0562a77e-5ed0-48f3-9ab0-b119f9424629.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "worktree prune refuses to delete another repository's worktree or checkout",
       "touch_zones": [
         "specy_road/worktree_prune.py",
         "specy_road/bundled_scripts/worktree_cli.py",
-        "tests/"
+        "tests/",
+        "specy_road/worktree_delete_set.py"
       ],
       "type": "task"
     },
@@ -223,7 +224,7 @@
       "parent_id": "M14",
       "planning_dir": "planning/M14.6_reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round_41e2d7f0-c541-4c5e-b9b2-d16f2c131997.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Reviewer usage is visible: review usage, reviewers in the node total, RUN logs kept per round",
       "touch_zones": [
         "specy_road/review_delegate.py",
@@ -250,7 +251,7 @@
       "parent_id": "M14",
       "planning_dir": "planning/M14.7_session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record_9fbad01b-0e89-45bd-a951-702227d79f31.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "session end finds this agent's session by worktree and branch when the derived id has no record",
       "touch_zones": [
         "specy_road/bundled_scripts/session_cli.py",

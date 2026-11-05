@@ -198,7 +198,11 @@ def reviewer_preamble(node_id: str, model: str, ref: str | None = None, *, resum
         "and never fail or block on it; finish-this-task holds the leaf until that decision is recorded on the "
         "planning sheet. Record findings under "
         "correctness, regression, boundary (paths outside the touch zones), and test integrity "
-        "(weakened or deleted tests). Re-run at least one verify command yourself and list it. "
+        "(weakened or deleted tests). When the packet has a `## Required check: unplanned test removal` "
+        "section, your `acceptance` needs an entry for each line it lists, keyed by that line exactly "
+        "(`\"removed-test: tests/test_x.py::test_old\": pass`), whatever `policy.integrity_gate` says: give it only "
+        "when an acceptance item and the diff justify the removal, else block; `review record` refuses an approve "
+        "without them. Re-run at least one verify command yourself and list it. "
         "Sections the packet marks as executor-asserted are claims; weigh them against the diff and "
         "your own re-run, not on their own.",
         "",

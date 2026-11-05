@@ -21,8 +21,9 @@
     "delta_from": { "type": "string", "pattern": "^[0-9a-f]{7,40}$", "description": "Set (quoted) when the review read a delta packet: the earlier commit this reviewer approved, whose change since is all it reviewed. Under policy.delta_review the gate counts such an approval only when the same model's counting approval of this commit is on file and the delta still qualifies; omit it for a full review." },
     "acceptance": {
       "type": "object",
-      "description": "Result per acceptance id from the brief (A1..An).",
-      "propertyNames": { "pattern": "^A[1-9][0-9]*$" },
+      "description": "Result per acceptance id from the brief (A1..An), plus one entry per line the packet lists under 'Required check: unplanned test removal', keyed by that integrity line exactly (e.g. \"removed-test: tests/test_x.py::test_old\": pass; only pass, since an unjustified removal is a block with a required_changes entry).",
+      "propertyNames": { "pattern": "^(A[1-9][0-9]*|(removed-test|removed-test-file|new-skip|assert-loss): \\S.*)$" },
+      "patternProperties": { "^(removed-test|removed-test-file|new-skip|assert-loss): ": { "const": "pass", "description": "The reviewer checked this unplanned removal against the acceptance and the diff and finds it justified; otherwise block with a required_changes entry." } },
       "additionalProperties": { "enum": ["pass", "fail", "n/a"] }
     },
     "findings": {

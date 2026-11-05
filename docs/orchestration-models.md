@@ -109,7 +109,7 @@ the alias is what `worker delegate` passes the harness as the model, since it is
 the id the harness lists; otherwise the profile's `api_id` is, as before.
 An entry's `harness_model` overrides both: it is the id the harness CLI expects
 when the roster `id` is not one (`claude --model` takes `claude-opus-5-5`, not
-`claude-opus-5.5`), and the default commands pass it as `--model` / `-m` on
+a label like `opus-main`), and the default commands pass it as `--model` / `-m` on
 launch and on resume alike. With no profile and no `harness_model`, the roster
 `id` itself is passed. `validate` warns about a `claude-code` entry whose `id`
 has a dot and no `harness_model`. When a worker exits non-zero before its
@@ -118,7 +118,7 @@ first stream event, its `error` event quotes the harness's last error line from
 log's name.
 
 ```yaml
-  - id: claude-opus-5.5
+  - id: opus-main
     family: anthropic
     roles: [executor]
     harness: claude-code
@@ -129,6 +129,9 @@ log's name.
   profile, coordinator/executor/reviewer scores, and staleness; roster ids that
   match no profile are listed separately; profiles no entry uses are listed so
   you can roster them.
+- `specy-road models roster --executor <profile-id> --reviewer <profile-id> [--write]`
+  — roster entries filled from the shipped profiles, in the form `validate`
+  accepts; see [orchestration-roster.md](orchestration-roster.md).
 - `specy-road models show <id> [--section <name>]` — one profile's machine
   fields and a body section (default: Prompting rules).
 - `specy-road models stale [--max-age-days N]` — profiles researched too long
@@ -311,7 +314,7 @@ only that family.
 ## Planning assignments: `orchestrate plan`
 
 ```bash
-specy-road orchestrate plan [PARENT] [--json] [--today YYYY-MM-DD]
+specy-road orchestrate plan [PARENT] [--spread] [--json] [--today YYYY-MM-DD]
 ```
 
 For each ready leaf, in the same dependency batches `grind-session --plan`
@@ -331,17 +334,27 @@ order:
   skipped through that date; `roadmap/orchestration.local.yaml` can set the first
   two for this working tree only ([orchestration.md](orchestration.md#roadmaporchestrationyaml),
   "Local availability overlay"). A substitution says who stands in meanwhile.
+  The same file can add entries for this clone under `roster_add`, labelled
+  `[local]` ([orchestration-roster.md](orchestration-roster.md#local-roster-entries-roster_add)).
 - **Cost.** Among capable executors (profile executor score 3 or more, or no
-  profile) the cheapest list price wins. Reviewers rank by reviewer score,
-  then cost; the coordinator by coordinator score.
+  profile) the cheapest list price wins; `--spread` instead takes them
+  round-robin by leaf order ([orchestration-roster.md](orchestration-roster.md)).
+  Reviewers rank by reviewer score, then cost; the coordinator by coordinator
+  score, and with no rostered coordinator the plan prints `coordinator: this session`.
 - **Independence.** The executor's model is never offered as its own
   reviewer, and with `reviewers_distinct_families` one reviewer per family.
   An executor with `subagent_family_lock` is told in its prompt which family
   it may spawn.
 
+`--roster-from-worktree` plans with the working tree's roster as a dry run that
+nothing may launch from, and `models list` names the ref it read and any
+uncommitted roster changes ([orchestration-roster.md](orchestration-roster.md)).
+
 Exit 1 when any ready leaf cannot be staffed, with the reason under `!`, so a
 coordinator script stops before dispatching. A roster entry whose profile is
-invalid is reported and assigned no role, since `prompt` would refuse it. Set a
+invalid is reported and assigned no role, since `prompt` would refuse it; a
+`profile:` that names no file reads `invalid profile: <value>, accepted form
+<form>`, and the `may_process` hint that only follows from that drop is left out. Set a
 leaf's `sensitivity` and `executor_eligibility` with `specy-road edit-node <ID> --set sensitivity=restricted`
 or on `add-node`; both default to `public` and `any`. Repos scaffolded before
 0.3.0 run `specy-road refresh-schemas` once so `validate` accepts the fields.
