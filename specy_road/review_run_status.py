@@ -12,7 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from specy_road.review_files import list_reviews
+from specy_road.review_files import list_reviews, reviews_dir
+from specy_road.review_rejected import REJECTED_PREFIX, rejected_state
 from specy_road.review_target import same_commit
 
 
@@ -40,3 +41,37 @@ def superseded_by(repo_root: Path, node_id: str, run: dict[str, Any]) -> str | N
                 and int((rec.on_disk or rec.path).stat().st_mtime) >= int(since)):
             return rec.path.name
     return None
+
+
+def refused_text(age: str, reason: str) -> str:
+    return f"record refused {age} ago: {reason}"
+
+
+def refused_by_model(repo_root: Path, node_id: str, commit: str | None) -> dict[str, dict[str, str]]:
+    """Each model with an active ``REJECTED-<model>.md`` at ``commit``: ``age`` and ``reason`` (first line)."""
+    if not commit:
+        return {}
+    reviews = reviews_dir(repo_root, node_id)
+    if not reviews.is_dir():
+        return {}
+    out: dict[str, dict[str, str]] = {}
+    for path in sorted(reviews.glob(f"{REJECTED_PREFIX}*.md")):
+        model = path.name[len(REJECTED_PREFIX): -len(".md")]
+        state = rejected_state(reviews, model, commit, repo_root)
+        if state:
+            age, reason = state
+            out[model] = {"age": age, "reason": reason}
+    return out
+
+
+def extend_handoff_refused(st: dict[str, Any], lines: list[str]) -> None:
+    fams = {r["model"]: r["family"] for r in st.get("reviewer_eligibility") or []}
+    for model, info in sorted((st.get("refused") or {}).items()):
+        fam = fams.get(model)
+        pre = f"{model} ({fam}): " if fam else f"{model}: "
+        lines.append(f"  {pre}{refused_text(info['age'], info['reason'])}")
+
+
+def print_refused_list(repo_root: Path, node_id: str, commit: str | None) -> None:
+    for model, info in refused_by_model(repo_root, node_id, commit).items():
+        print(f"REJECTED-{model}.md: {refused_text(info['age'], info['reason'])}")
