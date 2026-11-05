@@ -3,7 +3,7 @@
 ## Agent quickstart
 
 **Use this doc when:** the user asks to publish a specy-road RC or final release, or a release workflow failed and you need the recovery step.
-**Not for:** day-to-day branching and PR conventions ([`contributor-guide.md`](contributor-guide.md)) or installing an RC as a consumer ([`install-and-usage.md`](install-and-usage.md#install-a-release-candidate-testpypi)).
+**Not for:** day-to-day branching and PR conventions ([`contributor-guide.md`](contributor-guide.md)) or installing an RC as a consumer ([`install-release-candidates.md`](install-release-candidates.md)).
 
 **Must know without reading on:**
 - The user chooses the version (step 2.2); never bump, tag or name a release branch without the exact number in this conversation.
@@ -316,7 +316,7 @@ dependency resolve from TestPyPI ([supply-chain-security.md](supply-chain-securi
 An exact prerelease pin needs no `--pre`; asking for the *latest* prerelease
 does, which is why §A.1 uses it against an unpinned name. The consumer-facing
 recipe (pip, uv, pipx and uv tool) is
-[install-and-usage.md](install-and-usage.md#install-a-release-candidate-testpypi).
+[install-release-candidates.md](install-release-candidates.md).
 Point adopters there rather than at this runbook; A.3 step 5 announces it.
 
 ### A.1 Pre-flight verification (the verify-then-cut pattern)
@@ -369,7 +369,7 @@ Add a CHANGELOG block at the top (above `## [Unreleased]`):
 
 First prerelease for v0.2.0. Routed to TestPyPI by
 release-publish.yml. Install with the TestPyPI recipe in
-docs/install-and-usage.md ("Install a release candidate");
+docs/install-release-candidates.md;
 wheel sha256 `<from A.3 step 4>`.
 
 ### Headline changes vs v0.1.0
@@ -505,12 +505,12 @@ After the merge:
    wheel in the publish run's `dist/` and on TestPyPI's file listing
    (`https://test.pypi.org/project/specy-road/0.2.0rc1/#files`).
 
-5. **Announce the RC.** The announcement (GitHub Release notes, chat, or
-   mail) carries the recipe from
-   [install-and-usage.md](install-and-usage.md#install-a-release-candidate-testpypi)
-   with the exact version filled in (`pip download --no-deps` of the pin
-   from TestPyPI, `sha256sum`, `pip install --no-deps` of the wheel, then
-   its dependencies from PyPI only) and the wheel's sha256 from step 4.
+5. **Announce the RC.** The human publishing the release posts the
+   announcement (GitHub Release notes, chat, or mail). It carries the
+   filled-in pip, pipx and uv tool commands, with `[gui]`, from
+   [install-release-candidates.md](install-release-candidates.md), and the
+   wheel's direct `test-files.pythonhosted.org` URL and its sha256 from
+   step 4, so adopters copy them and never use TestPyPI as an index.
 
 ### A.4 Cleanup
 
