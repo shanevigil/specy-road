@@ -260,3 +260,23 @@ def shipped_anthropic_opus_cli_yaml_line() -> str:
     path = Path(__file__).resolve().parent.parent / "specy_road" / "templates" / "project" / "model-profiles"
     text = (path / "anthropic-claude" / "claude-opus-5-5.md").read_text(encoding="utf-8")
     return next(line for line in text.splitlines() if line.startswith("  cli: "))
+
+
+def claude_code_reviewer_repo(tmp_path: Path, channels: str = "") -> Path:
+    """A profile repo whose opus entry is a claude-code reviewer, with a review packet already filed.
+
+    ``channels`` is extra roster YAML inserted after ``harness: claude-code`` (a ``channels.cli`` line).
+    """
+    from specy_road import review_files as rf
+    from tests.test_models_and_prompt import commit_profile, make_profile_repo
+
+    repo = make_profile_repo(tmp_path)
+    roster = repo / "roadmap" / "orchestration.yaml"
+    roster.write_text(roster.read_text().replace(
+        "    roles: [coordinator, executor, reviewer]\n",
+        f"    roles: [coordinator, executor, reviewer]\n    harness: claude-code\n{channels}"))
+    commit_profile(repo)
+    d = rf.reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True)
+    (d / rf.PACKET_NAME).write_text("# Review packet: `M1.1`\n")
+    return repo
