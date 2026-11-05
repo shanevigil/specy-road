@@ -62,6 +62,12 @@ def _alias(tmp: Path) -> Path:
     return root
 
 
+def _hardlink_alias(tmp: Path) -> Path:
+    root = old_repo(tmp)
+    os.link(root / "AGENTS.md", root / "CLAUDE.md")
+    return root
+
+
 def _skill_outside(tmp: Path) -> Path:
     root = old_repo(tmp / "repo")
     (tmp / "outside.md").write_text("old skill\n", encoding="utf-8")
@@ -107,6 +113,7 @@ def _nested(tmp: Path) -> Path:
 
 LAYOUTS: dict[str, Callable[[Path], Path]] = {
     "claude-md-aliases-agents-md": _alias,
+    "agents-md-and-claude-md-hard-linked": _hardlink_alias,
     "canonical-skill-linked-outside": _skill_outside,
     "agents-md-linked-outside": _agents_outside,
     "ignored-claude-md": _ignored_claude,
@@ -121,19 +128,22 @@ def test_dry_run_copy_and_real_checkout_end_byte_identical(
 ) -> None:
     project = LAYOUTS[layout](tmp_path)
     checkout = _top(project)
-    seen: list[dict[str, tuple]] = []
-    monkeypatch.setattr(upgrade, "validate_at", lambda at: seen.append(_tree(_top(at))))
+    dry_trees: list[dict[str, tuple]] = []
+    real_trees: list[dict[str, tuple]] = []
     untouched = _tree(checkout)
 
+    monkeypatch.setattr(upgrade, "validate_at", lambda at: dry_trees.append(_tree(_top(at))))
     dry = run_upgrade(project, dry_run=True)
     assert "dry run modified" not in capsys.readouterr().err
     assert _tree(checkout) == untouched
+
+    monkeypatch.setattr(upgrade, "validate_at", lambda at: real_trees.append(_tree(_top(at))))
     real = run_upgrade(project)
 
     assert dry == real == 0
-    assert len(seen) == 2
-    assert seen[0] == seen[1]
-    assert seen[1] != untouched   # the upgrade wrote something, so the comparison is not vacuous
+    assert dry_trees and real_trees
+    assert dry_trees[-1] == real_trees[-1]
+    assert real_trees[-1] != untouched   # the upgrade wrote something, so the comparison is not vacuous
 
 
 def _exits(root: Path, validate: Callable[[Path], None], capsys, monkeypatch: pytest.MonkeyPatch) -> list[tuple]:
@@ -149,6 +159,22 @@ def _exits(root: Path, validate: Callable[[Path], None], capsys, monkeypatch: py
             assert _tree(root) == before
         outcomes.append((code, [line for line in err.splitlines() if line.startswith("error:")]))
     return outcomes
+
+
+def test_sol_low_f1_hard_linked_agents_and_claude_see_the_same_bytes_in_both(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``os.link(AGENTS.md, CLAUDE.md)``: both names must stay byte-identical after refresh in dry and real."""
+    root = _hardlink_alias(tmp_path)
+
+    def validate(at: Path) -> None:
+        if (at / "AGENTS.md").read_bytes() != (at / "CLAUDE.md").read_bytes():
+            print("error: hard-linked AGENTS.md and CLAUDE.md differ", file=sys.stderr)
+            raise SystemExit(1)
+
+    dry, real = _exits(root, validate, capsys, monkeypatch)
+
+    assert dry == real == (0, [])
 
 
 def test_sol_f1_an_alias_fails_the_claude_import_check_in_both(

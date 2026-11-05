@@ -99,6 +99,7 @@ class Mirror:
         self.repo, self.outside = dest.resolve() / "repo", dest.resolve() / "outside"
         self.states: dict[str, State] = {}
         self._links: list[tuple[Path, Path]] = []
+        self._hardlinks: dict[tuple[int, int], Path] = {}   # (dev, ino) -> first sandbox path for this inode
 
     def to_sandbox(self, real: Path) -> Path:
         if real.is_relative_to(self.checkout):
@@ -111,6 +112,7 @@ class Mirror:
         return Path("/") / path.relative_to(self.outside)
 
     def build(self) -> Mirror:
+        self._hardlinks.clear()
         self.outside.mkdir(parents=True)
         self._copy_dir(self.checkout, self.repo)
         made: list[tuple[Path, Path, Path]] = []
@@ -154,7 +156,16 @@ class Mirror:
         self.states[str(src)] = state(src)
         dst.parent.mkdir(parents=True, exist_ok=True)
         try:
-            shutil.copy2(src, dst)
+            st = os.lstat(src)
+            if stat.S_ISREG(st.st_mode):
+                key = (st.st_dev, st.st_ino)
+                if key in self._hardlinks:
+                    os.link(self._hardlinks[key], dst)
+                else:
+                    shutil.copy2(src, dst)
+                    self._hardlinks[key] = dst
+            else:
+                shutil.copy2(src, dst)
         except PermissionError:   # unreadable: unreadable in the sandbox too, so every reader fails alike
             dst.touch()
             dst.chmod(src.stat().st_mode & 0o777)
