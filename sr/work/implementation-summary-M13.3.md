@@ -55,3 +55,43 @@ Maintainer principle (2026-11-04): the root `AGENTS.md` and `CLAUDE.md` belong t
 - Verified with the targeted tests (81 passed) and `specy-road file-limits` (OK).
 
 Added in this round: none; one test assertion was removed because the line it checked no longer exists.
+
+## Fix round 2 (Sol R1–R3)
+
+I first merged `origin/WIP/improvements-0-3-1`. Code commit: see `git log` (message "M13.3 fix round 2").
+
+- **R1:** heading extraction now follows CommonMark ATX: up to three spaces of indent, a space or tab after the `#` run, and an optional closing `#` run.
+- **R2:** fenced code is skipped, for both backtick and tilde fences of length 3 or more. A fence closes only on the same character, at least as long, with nothing after it. An unclosed fence runs to the end of the file, as CommonMark says.
+- **R3:** `claude_reread` counts every `@` import line, including two in the same importer. The total stays deduplicated because `claude_imports` lists each file once.
+
+**What I reused:** `normalize_heading` (`specy_road/text_sections.py`) for case and whitespace folding; it replaces my `_key`. The fence logic comes from the CommonMark helpers in `bundled_scripts/validate_stale_commands.py` (`_fence_marker`, `_fence_closes`, `_opening_is_code_span`), imported lazily as `decisions._unfenced_lines` does. I could not call `_unfenced_lines` itself because it drops the line numbers the notice prints. I also could not use `text_sections.LEVEL2_RE`, because it matches level 2 only and allows any indent.
+
+### Fix round 2: probes
+
+Each probe below runs through `refresh-stubs` in `test_refresh_stubs_names_only_real_matching_headings`, as a parametrized case.
+
+| Probe | Result | Case |
+|---|---|---|
+| Three-space-indented `   ## Task loop` | matched | `indent-3`; R1, failed before |
+| Fenced `## Task loop` | not matched | `fenced`; R2, failed before |
+| Mixed tilde/backtick fences, a longer opener, and a shorter or different closer that does not close | handled | `fence-kinds`; failed before |
+| Setext `Task loop` / `---------` | matched, as a level-2 heading | `setext`; was missed before, real defect fixed |
+| Setext `===` | ignored, like ATX `#` (level 1 is a title) | consistent with ATX, no change |
+| Trailing `#`'s (`## Task loop ##`) and a tab after the run | matched | `tab-closing-run`; already worked; `## C#` keeps its `#` |
+| 4-space or tab-indented `## …` | code, not a heading | `indented-code`; already worked |
+| Unclosed fence | everything after it is code | `unclosed-fence`; matched before, real defect fixed |
+| `---` after a list item or a blank line | thematic break, not a heading | `thematic-break`; checked so the setext support does not over-match |
+
+R3 has its own case, `one-importer-twice`, in `test_claude_code_total_counts_a_doubly_imported_file_once`; it failed before.
+
+The full block and its 17/2063 budget have no diff from base.
+
+Verification: the targeted pytest command in READY (121 passed), `ruff`, and `specy-road file-limits` (OK).
+
+### Added in round 2
+
+- `_ATX`, `_ATX_ANY`, `_SETEXT_2`, `_CODE_INDENT`, `_LIST_OR_QUOTE` regexes: CommonMark heading, paragraph-end and code rules for R1 and the setext probe.
+- The `_headings` fence and paragraph state machine: R2, setext and unclosed fences.
+- Removed `_key` in favour of `normalize_heading`.
+- Tests: `test_refresh_stubs_names_only_real_matching_headings`, with 8 parametrized cases. The R3 test is now parametrized, with a new `one-importer-twice` case.
+- Mocks: none.
