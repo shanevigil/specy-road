@@ -90,6 +90,7 @@ def _routing_repo(tmp_path: Path, routing: bool) -> Path:
     repo = plan_repo(tmp_path, roster=ROSTER.replace(
         "policy: {reviewers_required: 2, reviewers_distinct_families: true}\n", policy))
     # M1.1 (zone src) landed once before with a blocking round: the src area is flagged.
+    git(repo, "checkout", "-q", "-B", "feature/rm-thing")
     with (repo / "roadmap" / "registry.yaml").open("a", encoding="utf-8") as fh:
         fh.write("# gate\n")
     git(repo, "commit", "-qam", "chore(rm-thing): mark implementation reviewed\n\n"
@@ -97,6 +98,8 @@ def _routing_repo(tmp_path: Path, routing: bool) -> Path:
     with (repo / "roadmap" / "registry.yaml").open("a", encoding="utf-8") as fh:
         fh.write("# done\n")
     git(repo, "commit", "-qam", "chore(rm-thing): complete, deregister")
+    git(repo, "checkout", "-q", "dev")
+    git(repo, "merge", "-q", "--no-ff", "-m", "Merge branch 'feature/rm-thing' into dev", "feature/rm-thing")
     return repo
 
 

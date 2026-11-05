@@ -50,6 +50,34 @@ Two further changes:
 - Runtime: `specy-road digest` on `sr/` (50 completed leaves) runs in about 1.75 s.
 - `specy-road file-limits`: OK. `tests/test_digest.py` would have hit 418 lines, so the quality tests moved to the new `tests/test_digest_quality.py`.
 
+## Fix round 3: population is the finish merge
+
+The reviewer `gpt-6.1-sol-low` blocked `15d36eb7` on A1 (R1): a reverted `complete, deregister` still counted, because eligibility was "a completion commit reachable from `HEAD`". This branch has a real instance: a failed finish committed `7876cf91`, and `15d36eb7` reverts it. The class is "a bookkeeping commit standing in for a landing". A revert, a finish that never merged and a branch merged some other way all reach it. Per the coordinator, the population is now defined by construction, without reading bookkeeping commits at all:
+
+- **Completed leaf.** A finish merge, `Merge branch 'feature/rm-<codename>' into <integration branch>` (the subject `finish_land_deterministic` writes; the branch is the one `roadmap/git-workflow.yaml` names at `HEAD`), on `HEAD`'s first-parent history (`completed_leaves`). `mark implementation reviewed`, `complete, deregister` and node status never decide it.
+- **Reverts.** A finish merge undone by a `git revert` reachable from `HEAD` is skipped; a reverted revert lands it again (`_reverted`, newest first).
+- **Order.** First-parent order of the finish merges, newest first. This replaces round 2's gate-commit order, as the coordinator asked ("in history order").
+- **Tally.** The newest `Review-tally` trailer on the codename's gate commit among the commits its finish merge brought in, `<merge>^1..<merge>^2` (`merge_tally`). This reads the leaf branch only for its trailer, never to decide whether the leaf landed. The trailer exists nowhere else.
+- **Why `HEAD`, not the remote ref.** The digest must be a function of `HEAD` alone (`digest --check` on every checkout). On the integration branch `HEAD`'s first-parent line *is* the integration ref's. On a leaf branch, the line below its fork point is the integration branch's, so it shows the leaves landed before it branched; the leaf's own commits never match the subject. `finish` re-renders the digest after its merge commit exists (`_reconcile_digest`), so the landing merge counts in the digest it lands.
+- **Docs.** `docs/orchestration-quality.md`: the Completed leaves, Order, Touch zones and Tally rows. `orchestration.schema.json`: the `quality_window` description. `review_tally.py`: module docstring.
+
+### Probes
+
+- Reverted completion on the leaf branch, never merged (this branch's case): not counted, on the branch and after a non-finish merge into `main`. `test_a_reverted_completion_on_a_branch_does_not_count`. Fails on the round-2 code, passes now.
+- Reverted finish merge (`git revert -m 1`), window of one: not counted, and the older landed leaf fills the window; reverting the revert counts it again. `test_a_reverted_finish_merge_does_not_count_or_evict`. Fails on the round-2 code, passes now.
+- Finish merge made on a side branch, reaching `main` only as a second parent: not counted. `test_a_finish_merge_off_the_first_parent_line_does_not_count`. Fails on the round-2 code, passes now.
+- Normal landings, history order: `test_landed_leaves_count_newest_finish_merge_first` (gate A, gate B, land B, land A: A is newest). Passes.
+- Landing with no gate commit: counted, no tally. `test_a_landing_without_a_gate_commit_counts_with_no_tally`. Passes.
+- Gate without a landing: `test_a_gated_leaf_that_has_not_completed_is_not_counted_and_evicts_nothing` and the legacy test, unchanged. Pass.
+- TREESAME finish merge (claim, approve, deregister nets zero): `--first-parent` without a pathspec keeps it. `test_a_leaf_whose_branch_nets_no_change_under_the_project_still_counts`, unchanged. Passes.
+- Archived leaf: zones from the graph at the finish merge. `test_an_archived_completed_leaf_keeps_its_place_in_the_window`. Passes.
+- Merge into a branch other than the integration branch named at `HEAD` (for example git's default `Merge branch 'feature/rm-other' into feature/rm-mine` inside a leaf branch): skipped by the `into` check. No test pins this check on its own.
+- Readers of the population: `_window` is the only caller of `completed_leaves`; the digest and `quality_routing` reach it through `area_quality`. `test_review_tally.py`'s routing repo now lands through a finish merge into `dev`, its integration branch.
+- This repo: `completed_leaves(Path('sr'))` returns 169 leaves, and this leaf is not among them (its completion was reverted and it has no finish merge).
+- Not counted, by this definition: a leaf landed by a hosted PR merge (`Merge pull request #…`) or by squash or rebase. `finish`'s local landing always writes the subject above. I did not widen the match.
+- `sr/roadmap-context.md` on this branch now drifts from `digest --check` (the population changed). It is generated and outside the touch zones; `finish` re-renders it after the landing merge.
+- Private cross-module test imports: none added. `tests/test_review_tally.py` needs no new import.
+
 ## Fix round 2: window order
 
 The reviewer `gpt-6.1-sol-low` blocked `9535b15a` with one finding, R1: the window followed completion-commit order, but the planning sheet specifies gate-commit order. With a window of one, the sequence gate A, gate B, complete B, complete A selected A instead of B. (`cursor-grok-4.6-high` approved `9535b15a`; `gpt-6.1-sol`'s R1–R6 apply to `052cad44` and were fixed in round 1.)
@@ -91,6 +119,7 @@ Final touch zones are the brief's list. `specy_road/review_rca.py`, `specy_road/
 ## Verification
 
 - Round 0: `pytest -n 4`: 4033 passed, and both `digest --check` runs passed.
+- Fix round 3 (targeted only): 190 passed across those files plus `test_validate_file_limits.py` and `test_finish_land_deterministic.py`; `ruff check specy_road tests scripts` and `specy-road file-limits` pass. Red-green: the three new population regressions fail with the round-2 `review_tally.py` and pass now.
 - Fix round 2 (targeted only): 173 passed across the same twelve files.
 - Fix round 1 (targeted only, per the coordinator): 171 passed across `test_digest.py`, `test_digest_quality.py`, `test_review_tally.py`, `test_mark_implementation_reviewed_gate.py`, `test_orchestrate_plan.py`, `test_finish_land_regenerates.py`, `test_generated_files.py`, `test_orchestration_config.py`, `test_strong_review.py`, `test_milestone_full_review.py`, `test_review_hardening.py` and `test_integrity_gate.py`. `digest --check` on this repo now reports the expected drift explained under Fix round 1.
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: OK (pre-existing warnings only).
@@ -110,6 +139,21 @@ Final touch zones are the brief's list. `specy_road/review_rca.py`, `specy_road/
 4. `tests/test_review_tally.py` pins the trailer's counts, the end-to-end gate commit, and routing on and off.
 
 ## Added
+
+Fix round 3 changes:
+
+- `_FINISH`, `_REVERTS`: the finish-merge subject and the `git revert` body line. They replace `_SUBJECT` and `_DONE`.
+- `_reverted(root)`: commits a revert reachable from `HEAD` undid; a reverted revert does not count.
+- `completed_leaves(root)`: now `(codename, finish merge)` from `HEAD`'s first-parent history into the integration branch named at `HEAD`, minus reverted merges. Replaces the bookkeeping-commit scan and gate-commit ordering.
+- `merge_tally(root, codename, merge)`: the newest trailer on the codename's gate commit within `<merge>^1..<merge>^2`; called by `_window` only for leaves in the window.
+- `tests/test_digest_quality.py`:
+  - helpers `finish_merge` and `land` (public; `land` replaces `_land`): branch, gate, complete, and the finish merge. The merge uses `-X ours`, keeping the integration side of `registry.yaml` as finish does.
+  - `test_a_reverted_completion_on_a_branch_does_not_count` (coordinator test 1)
+  - `test_a_reverted_finish_merge_does_not_count_or_evict` (reviewer R1: revert with a bounded window)
+  - `test_a_finish_merge_off_the_first_parent_line_does_not_count` (coordinator test 2)
+  - `test_landed_leaves_count_newest_finish_merge_first` (coordinator test 3); replaces `test_the_window_follows_gate_order_not_completion_order`, whose gate-order rule the coordinator replaced
+  - `test_a_landing_without_a_gate_commit_counts_with_no_tally`; replaces `test_a_completion_without_a_gate_commit_sits_where_it_completed`
+- `tests/test_review_tally.py`: `_routing_repo` lands its prior leaf through a finish merge into `dev`.
 
 Fix round 2 changes:
 

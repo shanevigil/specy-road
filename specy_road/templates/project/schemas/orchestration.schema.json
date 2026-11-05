@@ -134,7 +134,7 @@
         "quality_window": {
           "type": "integer",
           "minimum": 1,
-          "description": "How many of the most recently landed leaves (in gate-commit order) the digest's \"Quality by area\" section and quality_routing count. Default 50."
+          "description": "How many of the most recently landed leaves (finish merges, in first-parent order) the digest's \"Quality by area\" section and quality_routing count. Default 50."
         },
         "quality_area_depth": {
           "type": "integer",

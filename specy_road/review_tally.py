@@ -7,12 +7,17 @@ the same ``HEAD``:
   (:func:`tally_trailers`). Its rounds, blocks, findings and approvals come from the review history merged with the
   very records the passing gate counted (so an interactive human approval with no history copy is a round), plus
   test-integrity findings and RCA escalations.
-* **Population.** A completed leaf is one whose ``chore(rm-<codename>): complete, deregister`` commit (written by
-  ``finish-this-task`` before it lands) is reachable from ``HEAD`` — never a node's status. The window is the last
-  ``quality_window`` of them in gate-commit order: where each one's newest gate commit sits in ``git log
-  --topo-order`` (its completion commit when it has no gate commit) (:func:`completed_leaves`).
+* **Population.** A completed leaf is a **finish merge**: a ``Merge branch 'feature/rm-<codename>' into
+  <integration branch>`` commit (as ``finish-this-task`` writes it, the branch named by ``roadmap/git-workflow.yaml``
+  at ``HEAD``) on ``HEAD``'s first-parent history, which on the integration branch is that branch's own line. A
+  merge reachable only through a side branch does not count, nor one a ``git revert`` reachable from ``HEAD``
+  undid. Bookkeeping commits (``mark implementation reviewed``, ``complete, deregister``) and node status never
+  decide it. The window is the last ``quality_window`` of them in first-parent order, newest first
+  (:func:`completed_leaves`).
 * **Zones.** The live graph's touch zones for the codename; for a leaf no longer live (archived), the graph as
-  committed at its completion commit.
+  committed at its finish merge.
+* **Tally.** The newest ``Review-tally`` trailer on the codename's gate commit among the commits its finish merge
+  brought in (:func:`merge_tally`).
 * **No tally.** A completed leaf whose gate commit carries no trailer (landed before it existed) counts as landed
   and is left out of every rate.
 * **Policy.** ``quality_window``, ``quality_area_depth`` and ``quality_threshold`` are read from
@@ -31,9 +36,10 @@ from specy_road.git_subprocess import git_stdout, git_text
 from specy_road.runtime_paths import project_prefix, rebase_to_project
 
 TRAILER = "Review-tally"
-#: The subjects ``mark-implementation-reviewed`` and ``finish-this-task`` give a leaf's gate and completion commits.
-_SUBJECT = re.compile(r"^chore\(rm-(?P<codename>[^)\s]+)\): (?P<what>mark implementation reviewed|complete, deregister)$")
-_GATE, _DONE = "mark implementation reviewed", "complete, deregister"
+#: The subject ``finish-this-task`` gives the merge that lands a leaf (``finish_land_deterministic``).
+_FINISH = re.compile(r"^Merge branch 'feature/rm-(?P<codename>[^']+)' into (?P<into>\S+)$")
+_REVERTS = re.compile(r"^This reverts commit (?P<sha>[0-9a-f]{40})\b", re.M)
+_GATE = "mark implementation reviewed"
 _TALLY = re.compile(rf"^{TRAILER}: (?P<node>\S+) (?P<fields>.*)$")
 _FIELD = re.compile(r"(?P<key>[a-z_]+)=(?P<value>\S*)")
 _COUNTS = ("rounds", "blocks", "approvals", "integrity", "rca")
@@ -112,30 +118,47 @@ def quality_policy(root: Path) -> dict[str, Any]:
     return {**DEFAULT_POLICY, **((data or {}).get("policy") or {} if not err else {})}
 
 
-def completed_leaves(root: Path) -> list[tuple[str, str, dict[str, int] | None]]:
-    """``(codename, completion commit, tally or None)`` per distinct codename whose completion commit is reachable
-    from ``HEAD``, newest first in **gate-commit order**: each leaf sits where its newest gate commit sits in
-    ``git log --topo-order``, so a leaf approved later but finished earlier is still the newer one. A completion with
-    no gate commit (landed without the review gate) sits where its completion commit does. The tally is that gate
-    commit's trailer. Empty when git cannot answer."""
-    # --full-history: under a pathspec git otherwise follows only one parent of a merge it finds TREESAME, which
-    # would drop every completion that landed on the other side of a feature merge.
-    out = git_stdout(["log", "--topo-order", "--full-history", "--format=%x1e%H%x1f%B", f"--grep={_GATE}",
-                      f"--grep={_DONE}", "--", "."], root) or ""
-    done: dict[str, tuple[int, str]] = {}                        # codename -> (log position, completion commit)
-    gates: dict[str, tuple[int, dict[str, int] | None]] = {}     # codename -> (log position, tally)
-    for pos, chunk in enumerate(out.split("\x1e")[1:]):
+def _reverted(root: Path) -> set[str]:
+    """Commits whose effect a ``git revert`` reachable from ``HEAD`` undid; a reverted revert restores its target."""
+    out = git_stdout(["log", "--topo-order", "--format=%x1e%H%x1f%B", "--grep=This reverts commit", "HEAD"], root)
+    undone: set[str] = set()
+    for chunk in (out or "").split("\x1e")[1:]:   # newest first: a revert is always newer than what it reverts
         sha, _, body = chunk.partition("\x1f")
+        m = _REVERTS.search(body)
+        if m and sha not in undone:
+            undone.add(m["sha"])
+    return undone
+
+
+def completed_leaves(root: Path) -> list[tuple[str, str]]:
+    """``(codename, finish merge)`` per distinct codename, newest first, from ``HEAD``'s first-parent history into
+    the integration branch named at ``HEAD``; a reverted merge is skipped. Empty when git cannot answer."""
+    from specy_road.review_policy_ref import WORKFLOW_REL, committed_yaml
+
+    into = str(committed_yaml(root, "HEAD", WORKFLOW_REL).get("integration_branch") or "main")
+    # No pathspec: under one, --first-parent drops a merge that is TREESAME to its first parent under the project.
+    out = git_stdout(["log", "--first-parent", "--format=%H%x1f%s", "--grep=^Merge branch 'feature/rm-", "HEAD"],
+                     root)
+    undone = _reverted(root)
+    leaves: dict[str, str] = {}
+    for line in (out or "").splitlines():
+        sha, _, subject = line.partition("\x1f")
+        m = _FINISH.match(subject)
+        if m and m["into"] == into and sha not in undone and m["codename"] not in leaves:
+            leaves[m["codename"]] = sha
+    return list(leaves.items())
+
+
+def merge_tally(root: Path, codename: str, merge: str) -> dict[str, int] | None:
+    """The newest tally on ``codename``'s gate commit among the commits ``merge`` brought in; ``None`` without one."""
+    subject = f"chore(rm-{codename}): {_GATE}"
+    out = git_stdout(["log", "--topo-order", "--format=%x1e%B", "--fixed-strings", f"--grep={subject}",
+                      f"{merge}^1..{merge}^2"], root)
+    for body in (out or "").split("\x1e")[1:]:
         lines = body.strip().splitlines()
-        m = _SUBJECT.match(lines[0]) if lines else None
-        if not m:
-            continue
-        seen = done if m["what"] == _DONE else gates
-        if m["codename"] not in seen:   # newest first: keep the first one met
-            seen[m["codename"]] = (pos, sha) if m["what"] == _DONE else (
-                pos, next((t[1] for t in map(parse_tally, lines) if t), None))
-    order = sorted(done, key=lambda name: (gates.get(name, done[name])[0], name))
-    return [(name, done[name][1], gates[name][1] if name in gates else None) for name in order]
+        if lines and lines[0] == subject:
+            return next((t[1] for t in map(parse_tally, lines) if t), None)
+    return None
 
 
 def leaf_areas(zones: Iterable[Any] | None, depth: int, prefix: str = "") -> list[str]:
@@ -189,12 +212,12 @@ def _window(root: Path, nodes: list[dict[str, Any]], size: int) -> list[tuple[li
     parents = {n.get("parent_id") for n in nodes}
     live = {n["codename"]: n for n in nodes if n.get("codename") and n.get("id") not in parents}
     out: list[tuple[list[str], dict[str, int] | None]] = []
-    for codename, sha, counts in completed_leaves(root):
+    for codename, sha in completed_leaves(root):
         node = live.get(codename)
-        if node is None:   # archived (or renamed) since: its zones as committed when it completed
+        if node is None:   # archived (or renamed) since: its zones as committed when it landed
             node = next((n for n in load_roadmap_nodes_at_ref(root, sha) or [] if n.get("codename") == codename), None)
         if node and node.get("touch_zones"):
-            out.append((list(node["touch_zones"]), counts))
+            out.append((list(node["touch_zones"]), merge_tally(root, codename, sha)))
             if len(out) >= size:
                 break
     return out

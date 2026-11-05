@@ -21,10 +21,10 @@ Every input is tracked, so every checkout and CI get the same bytes for the same
 
 | Input | Source |
 | --- | --- |
-| Completed leaves | Each codename whose `chore(rm-<codename>): complete, deregister` commit (written by `finish-this-task`) is reachable from `HEAD`. A node's status is never read, so a leaf approved but not finished is not counted. |
-| Order | Gate-commit order: where the leaf's newest `mark implementation reviewed` commit sits in `git log --topo-order --full-history`, newest first. A leaf approved later but finished earlier is still the newer one. A completion with no gate commit sits where its completion commit does. |
-| Touch zones | The live graph. For a leaf no longer live (archived), the graph as committed at its completion commit. |
-| Tally | The newest `Review-tally` trailer on the codename's gate commit. A completed leaf without one landed before the trailer existed and counts as **no tally**. |
+| Completed leaves | Each finish merge, `Merge branch 'feature/rm-<codename>' into <integration branch>` (as `finish-this-task` writes it; the branch named by `roadmap/git-workflow.yaml` at `HEAD`), on `HEAD`'s first-parent history: on the integration branch, its own line. A finish merge reachable only through a side branch does not count, and neither does one a `git revert` reachable from `HEAD` undid (a reverted revert lands it again). Bookkeeping commits (`mark implementation reviewed`, `complete, deregister`) and node status are never read, so an approved, finished-but-unmerged or reverted leaf is not counted. On a leaf's own branch the line below its fork point is the integration branch's, so it sees the leaves landed before it branched. |
+| Order | First-parent order of the finish merges, newest first. A codename landed twice counts once, at its newest merge. |
+| Touch zones | The live graph. For a leaf no longer live (archived), the graph as committed at its finish merge. |
+| Tally | The newest `Review-tally` trailer on the codename's gate commit among the commits its finish merge brought in. A landed leaf without one landed before the trailer existed (or without the gate) and counts as **no tally**. |
 | Policy | `quality_window`, `quality_area_depth` and `quality_threshold` from `roadmap/orchestration.yaml` as committed at `HEAD`. Never the working tree or `orchestration.local.yaml`. |
 
 The window is the last `quality_window` (default 50) completed leaves with touch zones, in that order. An area is the first `quality_area_depth` path components (default 1) of a touch zone, relative to the project root, and a leaf counts once per distinct area. Each area's row shows:
