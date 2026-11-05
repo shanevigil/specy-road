@@ -41,15 +41,33 @@ def _normalize(token: str) -> str | None:
     return t.removeprefix("./").rstrip("/") or None
 
 
+def _path_forms(path: str, prefix: str) -> set[str]:
+    forms = {path}
+    if prefix:
+        forms.add(f"{prefix}{path}")
+        rebased = rebase_to_project(path, prefix)
+        if rebased:
+            forms.add(rebased)
+    return forms
+
+
+def _exists(path: str, tracked: set[str], prefix: str) -> bool:
+    """True when ``path`` is a tracked blob or a directory prefix of one."""
+    for form in _path_forms(path, prefix):
+        if form in tracked:
+            return True
+        head = f"{form}/"
+        if any(p.startswith(head) for p in tracked):
+            return True
+    return False
+
+
 def _path_like(token: str, tracked: set[str], prefix: str) -> bool:
     if "/" in token:
         return True
     if PurePosixPath(token).suffix.lower() in _KNOWN_SUFFIXES:
         return True
-    forms = {token, f"{prefix}{token}" if prefix else token}
-    if prefix:
-        forms.add(rebase_to_project(token, prefix) or token)
-    return any(f in tracked for f in forms)
+    return _exists(token, tracked, prefix)
 
 
 def _tokens(line: str) -> list[str]:
@@ -80,16 +98,6 @@ def _tracked_paths(root: Path, ref: str) -> set[str] | None:
     return paths
 
 
-def _exists(path: str, tracked: set[str], prefix: str) -> bool:
-    forms = {path}
-    if prefix:
-        forms.add(f"{prefix}{path}")
-        rebased = rebase_to_project(path, prefix)
-        if rebased:
-            forms.add(rebased)
-    return any(f in tracked for f in forms)
-
-
 def uncovered_acceptance_paths(
     root: Path,
     node: dict,
@@ -99,8 +107,9 @@ def uncovered_acceptance_paths(
 ) -> list[str]:
     """Labels for paths acceptance names that no touch zone covers.
 
-    Existing repo paths are listed by path; non-existent paths with no zone
-    prefix are grouped as :data:`NEW_OUTSIDE`.
+    Existing repo paths (files or directories that contain tracked files) are
+    listed by path; wholly new paths with no zone prefix are grouped as
+    :data:`NEW_OUTSIDE`.
     """
     zones = _zones(node)
     lines = _acceptance(node)

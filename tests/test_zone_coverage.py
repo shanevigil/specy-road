@@ -6,6 +6,8 @@ import json
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from specy_road import orchestrate_plan as op
 from specy_road.bundled_scripts import orchestrate_cli
 from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
@@ -56,6 +58,58 @@ def test_nonexistent_path_outside_zones_is_new_file_outside_zones(tmp_path: Path
     git(repo, "commit", "-qm", "acceptance")
 
     assert uncovered_acceptance_paths(repo, _node(repo)) == [NEW_OUTSIDE]
+
+
+@pytest.mark.parametrize(
+    ("token", "tracked", "zones", "want", "avoid"),
+    [
+        ("docs", {"docs/readme.md"}, ["src/"], {"docs"}, set()),
+        ("docs/", {"docs/readme.md"}, ["src/"], {"docs"}, set()),
+        ("docs/api", {"docs/api/schema.json"}, ["src/"], {"docs/api"}, {NEW_OUTSIDE}),
+        ("docs/outside.md", {"docs/outside.md"}, ["src/"], {"docs/outside.md"}, set()),
+        ("brand/new/module.py", set(), ["src/"], {NEW_OUTSIDE}, {"brand/new/module.py"}),
+        (
+            "src/new/file.py",
+            {"src/old.py"},
+            ["src/"],
+            set(),
+            {NEW_OUTSIDE, "src/new/file.py"},
+        ),
+    ],
+)
+def test_existence_classifies_tracked_dirs_files_and_new_paths(
+    token: str,
+    tracked: set[str],
+    zones: list[str],
+    want: set[str],
+    avoid: set[str],
+) -> None:
+    node = {"acceptance": [f"Update `{token}`"], "touch_zones": zones}
+    labels = set(uncovered_acceptance_paths(Path("/tmp"), node, tracked=tracked))
+    assert want <= labels
+    assert not labels & avoid
+
+
+def test_mixed_acceptance_lists_dirs_files_and_new_outside_only_once(tmp_path: Path) -> None:
+    repo = plan_repo(tmp_path, roster=ROSTER)
+    chunk = repo / "roadmap" / "phases" / "M1.json"
+    data = json.loads(chunk.read_text(encoding="utf-8"))
+    data["nodes"][0]["touch_zones"] = ["src/"]
+    data["nodes"][0]["acceptance"] = [
+        "Touch `docs/`, `docs/outside.md`, `docs/api`, `src/brand_new.py`, and `brand/new/module.py`",
+    ]
+    chunk.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    (repo / "docs" / "outside.md").parent.mkdir(parents=True, exist_ok=True)
+    (repo / "docs" / "outside.md").write_text("# x\n", encoding="utf-8")
+    (repo / "docs" / "api").mkdir(parents=True, exist_ok=True)
+    (repo / "docs" / "api" / "schema.json").write_text("{}\n", encoding="utf-8")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "docs tree")
+
+    labels = uncovered_acceptance_paths(repo, _node(repo))
+
+    assert set(labels) == {"docs", "docs/outside.md", "docs/api", NEW_OUTSIDE}
+    assert labels.count(NEW_OUTSIDE) == 1
 
 
 def test_orchestrate_plan_warns_once_per_leaf(tmp_path: Path, capsys) -> None:
