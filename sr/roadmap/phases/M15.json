@@ -449,7 +449,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.15_upgrade-ships-the-templates-prompts-reference_035cb961-9771-46ae-a5e5-a378ea914e01.md",
       "sibling_order": 15,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "upgrade ships the work/ templates every prompt references, and the .specyrd README matches upgrade's steps",
       "touch_zones": [
         "specy_road/bundled_scripts/upgrade.py",
