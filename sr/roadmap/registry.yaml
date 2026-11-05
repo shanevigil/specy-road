@@ -183,3 +183,15 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
+  - codename: linked-worktrees-resolve-root-and-symlinked-envs
+    node_id: M15.21
+    branch: feature/rm-linked-worktrees-resolve-root-and-symlinked-envs
+    touch_zones:
+      - specy_road/runtime_paths.py
+      - specy_road/worker_ops_launch.py
+      - specy_road/worktree_env.py
+      - docs/orchestration-worktrees.md
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
