@@ -61,17 +61,6 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: refresh-profiles-installs-only-the-profiles-the-roster-names-and-suggests-the-alias-for-a-near-miss
-    node_id: M13.5
-    branch: feature/rm-refresh-profiles-installs-only-the-profiles-the-roster-names-and-suggests-the-alias-for-a-near-miss
-    touch_zones:
-      - specy_road/bundled_scripts/refresh_profiles.py
-      - specy_road/model_profiles.py
-      - tests/
-      - specy_road/bundled_scripts/upgrade.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end
     node_id: M13.7
     branch: feature/rm-clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end
@@ -81,6 +70,7 @@ entries:
       - specy_road/bundled_scripts/session_cli.py
       - tests/
       - specy_road/bundled_scripts/refresh_stubs_report.py
+      - specy_road/written_entry.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -106,6 +96,28 @@ entries:
       - docs/release-runbook.md
       - docs/supply-chain-security.md
       - README.md
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout
+    node_id: M14.3
+    branch: feature/rm-worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout
+    touch_zones:
+      - specy_road/worktree_prune.py
+      - specy_road/bundled_scripts/worktree_cli.py
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip
+    node_id: M14.4.1
+    branch: feature/rm-per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip
+    touch_zones:
+      - specy_road/nested_repos.py
+      - specy_road/nested_repos_land.py
+      - specy_road/templates/project/schemas/git-workflow.schema.json
+      - docs/git-workflow.md
       - tests/
     started: '2026-11-04'
     owner: savigil

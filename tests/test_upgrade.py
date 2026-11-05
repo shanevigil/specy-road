@@ -67,6 +67,19 @@ def test_one_run_clears_every_upgrade_warning(tmp_path: Path, capsys) -> None:
     assert (root / "roadmap" / "manifest.json").read_text(encoding="utf-8") == roadmap_before
 
 
+def test_no_roster_upgrade_writes_only_the_readme_and_names_profiles_all_on_every_run(tmp_path: Path, capsys) -> None:
+    """M13.5 A1: with no roster, upgrade adds only model-profiles/README.md and, on the first run and a
+    repeat, names `--profiles all` instead of claiming every shipped profile is present."""
+    root = _old_repo(tmp_path)
+    (root / "roadmap" / "orchestration.yaml").unlink()
+    hint = "`specy-road refresh-profiles --profiles all` adds every one"
+    for _run in range(2):
+        assert run_upgrade(root) == 0
+        out = capsys.readouterr().out
+        assert hint in out and "every profile this version ships" not in out
+        assert [p.name for p in (root / "model-profiles").rglob("*.md")] == ["README.md"]
+
+
 def test_a_missing_digest_is_a_next_step_not_a_failure(tmp_path: Path, capsys) -> None:
     root = _old_repo(tmp_path)
 

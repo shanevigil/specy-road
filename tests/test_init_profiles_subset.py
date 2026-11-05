@@ -142,5 +142,5 @@ def test_refresh_profiles_without_only_still_adds_every_missing(tmp_path: Path) 
         f"model-profiles/{p.relative_to(src).as_posix()}"
         for p in sorted(src.rglob("*.md"))
     ]
-    written, kept = rp.refresh_profiles(repo)
+    written, kept = rp.refresh_profiles(repo, profiles="all")
     assert written == expected and kept == []
