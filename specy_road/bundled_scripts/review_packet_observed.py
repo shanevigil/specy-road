@@ -3,7 +3,7 @@
 ``## Test integrity`` lists every ``specy-road integrity`` finding for the commit
 under review. When one of them removes or weakens a test and the node's
 ``planned_test_changes`` does not list it, ``## Required check: unplanned test
-removal`` follows, whatever ``policy.integrity_gate`` says, and ``review record``
+removal`` follows, for a leaf or a milestone and whatever ``policy.integrity_gate`` says, and ``review record``
 refuses an approve without an ``acceptance`` entry for each line
 (:mod:`specy_road.integrity_removals`, M15.18).
 """
@@ -29,7 +29,7 @@ def test_integrity_section(root: Path, t: ReviewTarget) -> list[str]:
 def integrity_sections(root: Path, t: ReviewTarget) -> list[str]:
     """``## Test integrity``, then the required check when a removal or weakening is unplanned."""
     findings = _findings(root, t)
-    removals = [] if t.milestone or not findings else unplanned_removals(findings, planned_for_target(root, t))
+    removals = [] if not findings else unplanned_removals(findings, planned_for_target(root, t))
     return _integrity_block(t, findings) + (unplanned_removal_lines(t, removals) if removals else [])
 
 

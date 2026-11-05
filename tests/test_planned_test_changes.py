@@ -166,3 +166,70 @@ def test_reviewer_prompt_requires_the_entry_whatever_integrity_gate_says(tmp_pat
     assert err is None
     assert f"`{HEADING}` section, your `acceptance` needs an entry for each line" in text
     assert "whatever `policy.integrity_gate` says" in text
+
+
+def test_packet_with_an_explicit_base_still_reads_the_plan_from_the_integration_branch(tmp_path: Path) -> None:
+    """``--base`` moves the diff range only; authorization made on dev after that base still counts (RC1)."""
+    repo = make_profile_repo(tmp_path)
+    _remove_old_test(repo)
+    diff_base = git(repo, "merge-base", "dev", "feature/rm-thing")
+    git(repo, "checkout", "-q", "dev")
+    _plan_on_branch(repo)   # on dev only, after the diff base
+    git(repo, "checkout", "-q", "feature/rm-thing")
+    for base in (None, diff_base):
+        text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], base=base)
+        assert OLD in text.split("## Test integrity\n", 1)[1] and HEADING not in text, base
+    assert _record(repo, "approve", {}) == 0   # the record check agrees with the packet
+
+
+def _milestone_with_a_removal(tmp_path: Path) -> Path:
+    """Milestone ``M2``: leaf ``M2.1`` (alpha) deletes ``test_old`` from a test file dev had; both leaves landed."""
+    from tests.test_milestone_full_review import _land_leaf, _merge_leaf, _set_status, make_milestone_repo
+
+    from tests.test_models_and_prompt import ROSTER
+
+    root = make_milestone_repo(tmp_path, orchestration=ROSTER, land=False)
+    commit_file(root, "tests/test_ms.py", "def test_keep():\n    assert 1\n\n\ndef test_old():\n    assert 1\n",
+                "baseline tests")
+    git(root, "checkout", "-q", "-b", "feature/rm-alpha", "dev")
+    commit_file(root, "roadmap/registry.yaml", "version: 1\nentries: []\n# alpha\n",
+                "chore(rm-alpha): register as in-progress")
+    commit_file(root, "tests/test_ms.py", "def test_keep():\n    assert 1\n", "drop test_old")
+    _set_status(root, "M2.1", "Complete")
+    git(root, "commit", "-qam", "chore(rm-alpha): complete, deregister")
+    _merge_leaf(root, "M2.1")
+    _land_leaf(root, "M2.2")
+    return root
+
+
+def _milestone_record(root: Path, tmp_path: Path, acceptance: dict[str, str]) -> int:
+    data = {"node_id": "M2", "model": "sol", "date": "2026-11-04", "verdict": "approve",
+            "commit": git(root, "rev-parse", "dev"), "acceptance": acceptance,
+            "findings": {"correctness": [], "regression": [], "boundary": [], "test_integrity": []},
+            "commands_rerun": [], "required_changes": [], "fresh_session": True, "authored_fix": False,
+            "is_coordinator": False}
+    notes = tmp_path / "notes-sol.md"
+    notes.write_text("---\n" + yaml.safe_dump(data, sort_keys=False) + "---\nnotes\n")
+    with pytest.raises(SystemExit) as e:
+        review_cli.main(["review", "record", "M2", "--model", "sol", "--verdict", "approve", "--file", str(notes),
+                         "--repo-root", str(root)])
+    return e.value.code or 0
+
+
+def test_milestone_review_gets_the_required_check_for_an_unplanned_removal(tmp_path: Path, capsys) -> None:
+    """No milestone exception (RC2): the full review's packet and record enforce the check."""
+    root = _milestone_with_a_removal(tmp_path)
+    line = "removed-test: tests/test_ms.py::test_old"
+    section = rp.build_packet(root, "M2", ref=None, verify_cmds=[]).split(HEADING, 1)[1].split("\n## ", 1)[0]
+    assert f"- `{line}`" in section
+    assert _milestone_record(root, tmp_path, {}) == 1
+    assert REQUIRED_HEADING in capsys.readouterr().err
+    assert _milestone_record(root, tmp_path, {line: "pass"}) == 0
+
+
+def test_milestone_review_takes_a_leaf_plan_on_the_integration_branch(tmp_path: Path) -> None:
+    root = _milestone_with_a_removal(tmp_path)
+    _crud(root, "edit-node", "M2.1", "--add", "planned_test_changes=removed-test: tests/test_ms.py::test_old")
+    git(root, "commit", "-qam", "authorize removing test_old")
+    assert HEADING not in rp.build_packet(root, "M2", ref=None, verify_cmds=[])
+    assert _milestone_record(root, tmp_path, {}) == 0
