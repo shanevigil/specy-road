@@ -33,7 +33,7 @@ These are the zones as widened by the coordinator, all used: `roadmap_edit_field
   - `integrity_removals.unplanned_removals`: keeps the removal and weakening lines a plan doesn't list.
   - `integrity_removals.planned_for_target`: the plan from the integration branch and the reviewed commit, combined (for a milestone, over the node and its leaves).
   - `integrity_removals.integration_ref`: the integration branch's ref, resolved independently of any diff base.
-  - `integrity_removals._plan`: the union of `planned_test_changes` over a set of node ids.
+  - `integrity_removals._plan_at`: `planned_test_changes` of the node (and, for a milestone, its leaves) in the roadmap committed at one ref, via `load_roadmap_nodes_at_ref`.
   - `integrity_removals.target_unplanned_removals`: what `review record` checks, for any target kind; returns nothing when a commit is missing.
   - `integrity_removals.missing_removal_entries`: the removal lines a record's `acceptance` has no entry for.
   - `review_packet_observed.integrity_sections`: the integrity block plus the required check, computing integrity only once.
@@ -45,7 +45,7 @@ These are the zones as widened by the coordinator, all used: `roadmap_edit_field
   - `roadmap_crud_argparse`: `--planned-test-change` on `add-node`; the list-field help text for `edit-node` now names the field.
   - `roadmap_crud_ops.cmd_add`: one field-list entry that stores the new flag's values.
   - Schema: a `patternProperties` entry (`const: pass`) and a wider `propertyNames` pattern for removal keys.
-- **Tests:** 14 new tests in `tests/test_planned_test_changes.py`, covering edit-node set/add/remove plus validate on a claimed leaf; add-node with and without the flag plus validate; item stripping; which lines count as unplanned; the packet's heading for an unlisted removal and its absence for one listed on the leaf branch or the integration branch; record refusal, then filing with the entry; the plan on the integration branch with an explicit `--base`; a milestone's unplanned and leaf-planned removals through `review-packet` and `review record`; a block filed without the entry and a `fail` entry refused; an approve filed when the removal is planned; the reviewer prompt text.
+- **Tests:** 15 new tests in `tests/test_planned_test_changes.py`, covering edit-node set/add/remove plus validate on a claimed leaf; add-node with and without the flag plus validate; item stripping; which lines count as unplanned; the packet's heading for an unlisted removal and its absence for one listed on the leaf branch or the integration branch; record refusal, then filing with the entry; the plan on the integration branch with an explicit `--base`; a milestone's unplanned and leaf-planned removals through `review-packet` and `review record`; the plan read at the reviewed commit when the review runs from dev after the leaf moved its chunk; a block filed without the entry and a `fail` entry refused; an approve filed when the removal is planned; the reviewer prompt text.
 - **Mocks:** none.
 
 ## Fix round 1
@@ -86,3 +86,34 @@ A milestone that has a registry claim (a branch) resolves as a leaf. There is no
 - Reviewer prompt (`role_prompt_rca.py`): it has no milestone condition, and its text is keyed on the packet heading.
 - `review_files.py` comment: the phrase is restored, and the file is 400 lines (`specy-road file-limits` OK).
 - Targeted suite: the 67 test files importing `integrity_removals`, `review_packet`, `review_files`, `review_record_rules`, `review_cli` or `integrity_gate` give 1004 passed.
+
+## Fix round 2
+
+Commit `e35ebab5` fixes Sol's round-2 RC1 and RC2 on `4377030a`.
+
+- **RC1, class: "a roadmap read that depends on the working checkout".** `planned_for_target` read the reviewed commit's node through `node_at()`. That function picks the chunk path from the checkout, so a review run from dev after the leaf moved M1.1 to a new chunk found nothing. Now both sides (the reviewed commit and the integration ref) load the whole roadmap at that ref with `load_roadmap_nodes_at_ref`. A milestone's leaf ids also come from each ref's graph (`leaf_descendants` on those nodes), not from `t.nodes`.
+- **RC2:** the milestone fixture is now public in `tests/milestone_repo_helpers.py`: `make_milestone_repo`, `milestone_node`, `chunk_path`, `set_status`, `branch_leaf`, `merge_leaf`, `land_leaf`, `KEYS` and `LEAVES`. `test_milestone_full_review.py` keeps only `_statuses` and `_effective_rollup`. It, `test_planned_test_changes.py` and `test_refusals_name_their_fix.py` (which imported `make_milestone_repo` from the test module) now import from the helpers. Both milestone scenarios are unchanged.
+
+### Fix round 2: ref reads
+
+These are the roadmap reads in this leaf's code, and where each one reads from:
+
+| Read | Where | Source |
+|---|---|---|
+| plan at the reviewed commit | `integrity_removals._plan_at(root, t.commit, ...)` | `load_roadmap_nodes_at_ref(root, t.commit)`: manifest and chunks at that commit |
+| plan on the integration branch | `integrity_removals._plan_at(root, integration_ref(root), ...)` | `load_roadmap_nodes_at_ref` at the integration ref |
+| milestone leaf ids for the plan | `leaf_descendants(nodes_at_ref, node_id)` in `_plan_at` | that ref's graph |
+| integrity findings | `compare_integrity(root, t.base, t.commit)` | git objects at `base` and `commit`; not a roadmap read |
+| `review_packet_observed`, `review_record_rules.unplanned_removal_problem`, `role_prompt_rca` text | none | no roadmap read |
+| `review_files` schema load | `schemas/review-record.schema.json` | packaged schema; not the roadmap |
+| `edit-node` / `add-node` (`roadmap_edit_fields`, `roadmap_edit_list_fields`, `roadmap_crud_ops.cmd_add`, `roadmap_crud_argparse`) | `load_roadmap(root)`, `find_chunk_path`, `load_json_chunk` | the working checkout, by design: these commands edit that tree, and the edit is committed and then read at its ref |
+
+Outside this leaf, `resolve_target` still decides `t.milestone` and node existence from the checkout's `load_roadmap`. That is pre-existing and shared by every review command, and I did not change it here. Only the plan's leaf set moved off `t.nodes`.
+
+## Probes (round 2)
+
+- Review from dev after the leaf moved M1.1 from `phases/M1.json` to `phases/M1b.json` and added `planned_test_changes` there: `review-packet` has no heading, and `review record` approve with no entry exits 0 (`test_plan_is_read_at_the_reviewed_commit_after_the_leaf_moves_its_chunk`). It fails on `4377030a`.
+- `node_at` and `t.leaf_ids` in `integrity_removals.py`: no longer used (grep).
+- Imports of underscore names from another test module in this leaf's tests: none remain (grep `from tests.test_milestone_full_review`: none).
+- Milestone scenarios (an unplanned removal is refused, then filed with the entry; a leaf-planned removal is filed): both pass with the shared helpers.
+- Targeted suite: the 67 test files importing the changed modules or the milestone fixture give 1005 passed. `tests/test_refusals_name_their_fix.py` (41 together with the two above) passes. `specy-road file-limits` OK; `ruff` clean.
