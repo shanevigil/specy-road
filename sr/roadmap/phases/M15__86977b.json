@@ -268,7 +268,8 @@
         "specy_road/ready_run_checks.py",
         "specy_road/review_gate_ready.py",
         "specy_road/bundled_scripts/review_packet.py",
-        "tests/"
+        "tests/",
+        "specy_road/schemas/handoff.schema.json"
       ],
       "type": "task"
     },
