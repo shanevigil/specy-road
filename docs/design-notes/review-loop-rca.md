@@ -155,18 +155,24 @@ project:
   (`deferred_findings` or a disposition's `input_class`), and it is not a
   `correctness` finding on an acceptance id an earlier round marked `pass`. A
   class seen before means the loop is circling, and a regression on a passing
-  criterion is this leaf's to fix; neither leaves the leaf. A record must
-  cover every finding of each block it names, so a deferral never hides the
-  rest of a block.
+  criterion is this leaf's to fix; neither leaves the leaf. An item's round
+  is its blocking commit's, no later than the round the RCA covers, and only
+  what was named before that round is evidence.
+- **Binding.** One check (`block_problems`) serves `review defer` and the
+  gate: each item binds one to one to a finding of the blocking record (same
+  category and text); every finding is bound and every failed id named. A
+  record does not tie findings to criteria, so a block with a correctness
+  finding that fails an id an earlier round passed is never deferred.
 - **Applying it.** `specy-road review defer <ID> --rca <record>` is
   human-only (an interactive terminal, no `--yes`). It refuses the whole record
   when any item breaks the rule; otherwise it adds the follow-up leaf beside
   the leaf through the `add-node` write, records a closed `decision` in
   `roadmap/decisions.yaml` naming every deferred finding, the follow-up leaf
-  and the approver, and writes `DEFERRAL-<round>.yaml` beside the record.
+  and the approver, and writes `DEFERRAL-<round>.yaml` beside the record, all
+  as one transaction that rolls back on any failure.
 - **Audit trail and gate.** RCA record → decision entry → follow-up leaf. The
   gate stops counting a block only when a marker names its reviewer and commit,
-  covers all of its findings, and the decision is closed (the ledger is read
+  passes the same binding check, and the decision is closed (the ledger is read
   only then); another reviewer's block, or the same reviewer's
   on a later commit, still counts.
 

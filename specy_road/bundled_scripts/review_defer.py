@@ -16,6 +16,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from specy_road.bundled_scripts.roadmap_crud_ops import append_node_to_chunk
 from specy_road.bundled_scripts.roadmap_crud_prepare import next_sibling_order
 from specy_road.bundled_scripts.roadmap_layout import next_child_id
@@ -25,7 +27,8 @@ from specy_road.decisions import add_entry, close_entry
 from specy_road.git_subprocess import git_text
 from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 from specy_road.bundled_scripts.roadmap_chunk_atomic import TreeSnapshot
-from specy_road.review_deferral import coverage_problems, deferral_problems, list_applied, marker_path, write_marker
+from specy_road.review_deferral import (coverage_problems, deferral_problems, list_applied, marker_path,
+                                       round_of, write_marker)
 from specy_road.review_files import reviews_dir
 from specy_road.review_rca import loop_state
 from specy_road.review_target import full_sha
@@ -82,11 +85,10 @@ def _checked_record(root: Path, node_id: str, rca_arg: str) -> tuple[Any, str | 
         return None, f"{rca.path.name} recommends {rca.data['recommended_action']['type']}, not defer_findings"
     if marker_path(root, node_id, rca.path.name).exists():
         return None, f"{rca.path.name} is already applied ({marker_path(root, node_id, rca.path.name).name})"
-    rnd = int(rca.data["trigger"]["round"])   # only records and deferrals from earlier rounds are evidence
-    others = [r for r in loop.rcas if r is not rca and r.ok and int(r.data["trigger"]["round"]) < rnd]
-    applied = [(n, m) for n, m in list_applied(root, node_id) if int(m.get("round") or 0) < rnd]
+    covers = int(rca.data["trigger"]["round"])
+    others, applied = [r for r in loop.rcas if r is not rca], list_applied(root, node_id)
     items = rca.data["deferred_findings"]
-    problems = [p for x in items for p in deferral_problems(loop.rounds, others, applied, x)]
+    problems = [p for x in items for p in deferral_problems(loop.rounds, others, applied, x, covers)]
     problems += coverage_problems(loop.rounds, items) + _follow_up_problems(items)
     if problems:
         return None, (f"{rca.path.name} cannot be applied; nothing was written. A finding on an input class an "
@@ -124,19 +126,22 @@ def cmd_review_defer(ns: argparse.Namespace) -> int:
     if input(f"Apply as {approver}? [y/N] ").strip().lower() not in ("y", "yes"):
         print("Aborted (nothing written).")
         return 0
-    snap = TreeSnapshot((root / "roadmap", root / "planning"))   # a failed apply leaves nothing behind
+    marker = marker_path(root, ns.node_id, rca.path.name)
+    # One transaction: leaves, decision and marker all land, or none does (the marker path is captured absent).
+    snap = TreeSnapshot((root / "roadmap", root / "planning"), (marker,))
     try:
         entry, ids = _record(root, ns.node_id, rca, parent if isinstance(parent, str) else None, approver)
-    except (ValueError, OSError, SystemExit) as e:
+        rounds = loop_state(root, ns.node_id).rounds
+        write_marker(marker, {
+            "node_id": ns.node_id, "rca": rca.path.name, "round": int(rca.data["trigger"]["round"]),
+            "decision": entry["id"], "approver": approver, "follow_up": sorted(set(ids.values())),
+            "deferred": [{"reviewer": x["reviewer"], "commit": full_sha(root, x["commit"]) or x["commit"],
+                          "round": (round_of(rounds, x["commit"]) or 0) + 1, "finding": x["finding"],
+                          "category": x["category"], "acceptance_id": x["acceptance_id"],
+                          "input_class": x["input_class"]} for x in items]})
+    except (ValueError, OSError, SystemExit, yaml.YAMLError) as e:
         snap.restore()
         return _fail(f"could not apply {rca.path.name}; nothing was written: {e}")
-    marker = marker_path(root, ns.node_id, rca.path.name)
-    write_marker(marker, {
-        "node_id": ns.node_id, "rca": rca.path.name, "round": int(rca.data["trigger"]["round"]),
-        "decision": entry["id"], "approver": approver, "follow_up": sorted(set(ids.values())),
-        "deferred": [{"reviewer": x["reviewer"], "commit": full_sha(root, x["commit"]) or x["commit"],
-                      "finding": x["finding"], "category": x["category"], "acceptance_id": x["acceptance_id"],
-                      "input_class": x["input_class"]} for x in items]})
     print(f"[ok] added {', '.join(sorted(set(ids.values())))}; decision {entry['id']} closed; wrote {marker}")
     print("  Commit roadmap/ (the follow-up leaf and decisions.yaml), then "
           f"`specy-road handoff status {ns.node_id}`.")
