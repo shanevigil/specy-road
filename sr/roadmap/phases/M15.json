@@ -40,7 +40,8 @@
         "docs/orchestration-reviewer-output.md",
         "docs/orchestration-models.md",
         "tests/",
-        "docs/orchestration-workers.md"
+        "docs/orchestration-workers.md",
+        "specy_road/bundled_scripts/role_prompt.py"
       ],
       "type": "task"
     },

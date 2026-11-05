@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.test_worker_cli import _repo, run_worker_cli, wait_for_worker
+from tests.test_worker_cli import run_worker_cli, wait_for_worker
+from tests.worker_repo_helpers import make_worker_repo
 from tests.worker_lease_helpers import checkout_id_file, idle_worker, remote_and_clone, remote_leases
 
 from specy_road import worker_lease as lease
@@ -24,7 +25,7 @@ def test_a_failed_turns_cleanup_cannot_delete_the_lease_of_a_resume_that_overlap
                                                                                     capsys, argv: list[str]) -> None:
     """The wrapper publishes failed and deletes its lease as one step under the workers lock; a resume started in
     between waits for both, so the lease it pushes survives and a second clone still refuses at the limit."""
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     remote, clone = remote_and_clone(tmp_path, repo)
     cid = lease.checkout_id(repo)
     rec = idle_worker(repo, "M1.1")
@@ -59,7 +60,7 @@ def test_three_callers_initialising_an_empty_id_agree_and_a_leased_worker_resume
     """B reads the empty id file, then stalls while A initialises it and returns A's id; a third caller C runs in
     any gap B opens. All three must get A's id (a valid file is never set aside or rewritten), and a worker leased
     under it resumes in its own slot at max_workers 1."""
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     remote, _clone = remote_and_clone(tmp_path, repo)
     checkout_id_file(repo).write_text("", encoding="utf-8")
     ids: dict[str, str] = {}

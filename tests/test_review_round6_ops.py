@@ -30,7 +30,8 @@ import pytest
 import yaml
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_worker_cli import run_worker_cli, _repo, wait_for_worker
+from tests.test_worker_cli import run_worker_cli, wait_for_worker
+from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import worker_adapters as wa
 from specy_road import worker_lease as wl
@@ -132,7 +133,7 @@ def test_an_embedded_session_placeholder_is_refused_by_the_adapter(tmp_path: Pat
 # --- F2 ------------------------------------------------------------------------
 
 def test_message_op_id_binds_the_text_and_survives_a_missing_file(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
     wait_for_worker(repo, "w-0001")
     capsys.readouterr()
@@ -193,7 +194,7 @@ def test_hook_witness_does_not_wait_on_a_busy_lock(tmp_path: Path) -> None:
 
 
 def test_delegate_runs_preflight_outside_the_workers_lock(tmp_path: Path, monkeypatch) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     seen: dict[str, bool] = {}
 
     def probe(entry, root):
@@ -220,7 +221,7 @@ def _dead_pid() -> int:
 
 
 def test_sync_and_delegate_reap_dead_wrappers_on_any_leaf(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     dead = ws.create_record(repo, "M1.2", "claude-code", "opus", repo)
     ws.set_state(repo, dead, "running", pid=_dead_pid())
     assert wrc.sync(repo, ack=True)
@@ -241,7 +242,7 @@ def test_delegate_refuses_a_checkout_with_uncommitted_changes(tmp_path: Path, ca
     # Pre-release review: the worker would edit the same tree, overwriting this
     # work, and `reconcile` could not tell its edits from it. Only the leaf's
     # untracked bookkeeping is exempt, not the rest of work/ (re-review N2).
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     (repo / ".gitignore").write_text("work/.workers/\nwork/prompt-*.md\n")   # as the project template: briefs tracked
     (repo / "work").mkdir(exist_ok=True)
     (repo / "work" / "implementation-summary-M1.1.md").write_text("committed summary\n")
@@ -350,7 +351,7 @@ def test_sync_ack_runs_under_the_workers_lock(tmp_path: Path) -> None:
 # --- G3 ------------------------------------------------------------------------
 
 def test_message_from_a_linked_worktree_without_work_dir(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = _idle(repo, sid=UUID)
     wt = tmp_path / "linked"
     git(repo, "worktree", "add", "-q", str(wt), "-b", "side")
@@ -361,7 +362,7 @@ def test_message_from_a_linked_worktree_without_work_dir(tmp_path: Path) -> None
 
 
 def test_delegate_in_the_same_checkout_writes_the_missing_brief(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     assert not (repo / "work" / "brief-M1.1.md").exists()
     rec, _c = ops.delegate(repo, "M1.1", "opus")
     assert rec.worktree == str(repo.resolve()) and (repo / "work" / "brief-M1.1.md").is_file()

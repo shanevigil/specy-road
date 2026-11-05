@@ -13,7 +13,8 @@ import pytest
 from tests.helpers import REPO, SCHEMAS
 from tests.review_repo_helpers import git, make_review_repo
 from tests.test_review_round6_runner import _launch
-from tests.test_worker_cli import FAKE, _repo, run_worker_cli, wait_for_worker, worker_roster
+from tests.test_worker_cli import FAKE, run_worker_cli, wait_for_worker, worker_roster
+from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
@@ -156,7 +157,7 @@ def test_ancestor_rollup_then_validate_prints_each_warning_once(tmp_path: Path, 
 
 
 def test_worker_runner_reports_invalid_and_missing_ready(tmp_path: Path) -> None:
-    repo, script = _repo(tmp_path)
+    repo, script = make_worker_repo(tmp_path)
     ready_path = reviews_dir(repo, "M1.1") / "READY-opus.md"
     ready_path.parent.mkdir(parents=True, exist_ok=True)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
@@ -176,7 +177,7 @@ def test_worker_runner_reports_invalid_and_missing_ready(tmp_path: Path) -> None
 
 
 def test_exit_zero_with_a_broken_roadmap_still_completes_idle(tmp_path: Path) -> None:
-    repo, script = _repo(tmp_path)
+    repo, script = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
     (repo / "roadmap" / "manifest.json").write_text("{not json", encoding="utf-8")
     wr.run(repo, rec.worker_id, _launch(tmp_path, script, repo, "broken-roadmap"))

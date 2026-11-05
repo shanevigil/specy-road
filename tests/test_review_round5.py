@@ -24,7 +24,8 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_worker_cli import _repo, wait_for_worker
+from tests.test_worker_cli import wait_for_worker
+from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import session_presence as sp
 from specy_road import tool_call_guard as tg
@@ -75,7 +76,7 @@ def test_reconcile_remembers_a_breach_from_before_the_handoff(tmp_path: Path) ->
 # --- Gemini B2 / Sol F1 ---------------------------------------------------------
 
 def test_a_ready_for_an_older_commit_does_not_complete(tmp_path: Path) -> None:
-    repo, script = _repo(tmp_path)
+    repo, script = make_worker_repo(tmp_path)
     old = git(repo, "rev-parse", "HEAD~1")
     ready = _ready(repo, old)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
@@ -148,7 +149,7 @@ def test_a_non_string_hook_command_is_an_error_not_an_allow() -> None:
 # --- Gemini F2 ----------------------------------------------------------------
 
 def test_a_crashed_running_worker_cannot_be_handed_off_and_is_recorded_failed_before_a_message(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
     ws.set_state(repo, rec, "running", pid=999999)

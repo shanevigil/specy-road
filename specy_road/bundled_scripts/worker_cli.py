@@ -17,6 +17,7 @@ from specy_road.bundled_scripts.worker_cli_args import FixRound
 from specy_road.bundled_scripts.worker_cli_render import (_line, _row, timeline, timeline_lines, usage,
                                                        usage_json_payload, usage_lines)
 from specy_road.bundled_scripts.worker_cli_sync import add_sync_parser, cmd_sync as _cmd_sync
+from specy_road.orphaned_claims import append_claim_hint
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload
 from specy_road.worker_adapters import ADAPTERS, Unsupported
@@ -362,17 +363,34 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _failure_code(exc: BaseException) -> int | None:
+    """The status a worker failure already has, or None when this command does not own that error."""
+    if isinstance(exc, Unsupported):
+        return 2
+    if isinstance(exc, (WorkerError, LeaseError)):
+        return 1
+    return None
+
+
+def _report_failure(ns: argparse.Namespace, exc: BaseException, code: int) -> None:
+    """Print ``exc`` and stop. Every claimed ``delegate`` failure, of any type, names how to resolve the claim."""
+    text = str(exc)
+    if getattr(ns, "worker_cmd", None) == "delegate":
+        text = append_claim_hint(resolve_repo_root(ns), getattr(ns, "node_id", None), text)
+    print(f"error: {text}", file=sys.stderr)
+    raise SystemExit(code) from None
+
+
 def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     ns = build_parser().parse_args(argv)
     try:
         raise SystemExit(ns.func(ns))
-    except Unsupported as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(2) from None
-    except (WorkerError, LeaseError) as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1) from None
+    except Exception as e:
+        code = _failure_code(e)
+        if code is None and getattr(ns, "worker_cmd", None) != "delegate":
+            raise
+        _report_failure(ns, e, 1 if code is None else code)
 
 
 if __name__ == "__main__":

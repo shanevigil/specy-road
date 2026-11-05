@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_worker_cli import _repo
+from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import worker_adapters as wa
 from specy_road import worker_ops as ops
@@ -31,7 +31,7 @@ from specy_road.review_files import reviews_root
 # --- F9 -----------------------------------------------------------------------
 
 def test_a_ready_on_another_branch_does_not_complete(tmp_path: Path) -> None:
-    repo, script = _repo(tmp_path)
+    repo, script = make_worker_repo(tmp_path)
     d = reviews_root(repo) / "M1.1"
     d.mkdir(parents=True)
     head = git(repo, "rev-parse", "HEAD")
@@ -58,7 +58,7 @@ def test_a_profile_path_cannot_escape_the_repo(tmp_path: Path) -> None:
 
 
 def test_harness_override_cannot_move_a_rostered_model(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     with pytest.raises(ws.WorkerError, match="rostered on harness"):
         ops.delegate(repo, "M1.1", "opus", harness="cursor")
 
