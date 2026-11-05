@@ -488,4 +488,4 @@ In-repo:
 - `specy_road/tool_call_guard*.py`, `specy_road/worker_adapters.py`, `specy_road/worker_adapter_base.py`
 - `sr/roadmap/phases/M15.json` (M18.11 host effects), `sr/roadmap/phases/M18.json` (M18.3, M18.4)
 - `sr/docs/research/slimming-2026-11-05/research-orchestration-patterns.md`, the "Guards" row
-- `/home/savigil/WORKSPACE/agentic-sandbox/README.md` (MIT; QEMU/libvirt VMs over MCP)
+- the agentic-sandbox README (maintainer's sibling project) (MIT; QEMU/libvirt VMs over MCP)
