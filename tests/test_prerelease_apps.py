@@ -37,7 +37,10 @@ def test_move_node_keeps_the_scaffold_m1_numbering(tmp_path: Path) -> None:
     add = ("add-node", "--id", "M1.2", "--type", "task", "--title", "Second")
     assert _cli(tmp_path, *add, "--parent-id", "M1").returncode == 0
 
-    r = _cli(tmp_path, "move-node", "M1.2", "--to-parent", "M1", "--index", "0")
+    r = _cli(
+        tmp_path, "move-node", "M1.2", "--to-parent", "M1", "--index", "0",
+        "--renumber-outline",
+    )
 
     assert r.returncode == 0, r.stderr
     assert "[ok] moved M1.1 under M1" in r.stdout
