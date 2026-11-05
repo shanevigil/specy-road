@@ -13,6 +13,18 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `specy-road prompt --channel cli` no longer launches anything by itself: it
+  writes the prompt and prints the command it would run, and starts a process
+  (the roster's `preflight` included) only with the new `--run`, for every
+  role. A reviewer run takes its command from the roster entry only (never the
+  profile's `access.cli`), refuses a model with no API id and a `channels.cli`
+  passing `--force`, `--yolo` or `--dangerously-skip-permissions`, and runs in
+  the leaf's own worktree (`--worktree PATH` overrides), refusing when there is
+  none. The filed record carries `harness_model`, the model the harness
+  reported; when it is not the rostered model it also carries
+  `model_mismatch`, and the gate does not count it ("harness ran a different
+  model").
+
 - Claude transcript and memory lookups honour `CLAUDE_CONFIG_DIR`: the worker
   wrappers, usage-limit detection from a transcript, the `MEMORY.md` context
   line and `grind-session`'s session lookup all read `~/.claude/projects`, so

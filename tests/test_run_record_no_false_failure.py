@@ -22,7 +22,7 @@ NO_RECORD = "no review record was filed"
 
 
 def _prompt_cli(repo: Path) -> int:
-    return run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli",
+    return run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli", "--run",
                     "--repo-root", str(repo))
 
 

@@ -35,7 +35,8 @@ from specy_road.worker_adapter_base import Adapter
 from specy_road.worker_adapter_parsers import loads_untrusted
 
 #: Record fields ``review record`` writes itself; a reviewer's output never carries them.
-FILLED_BY_SPECY_ROAD = ("family", "independence", "notes_sha256", "signature", "launch_mode", "sibling_heads")
+FILLED_BY_SPECY_ROAD = ("family", "independence", "notes_sha256", "signature", "launch_mode", "sibling_heads",
+                        "harness_model", "model_mismatch")
 NOTES_DESCRIPTION = ("Your review notes in Markdown: findings with evidence, the commands you re-ran and their "
                      "results, and `## Excess` when it applies. specy-road writes them below the record's front matter.")
 RERUN = "rerun requested: "

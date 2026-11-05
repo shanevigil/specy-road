@@ -64,7 +64,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.3_prompt-channel-cli-launches-nothing-without-run_7e865197-c8d6-4ce4-a2d1-dc2b974a17d0.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt.py",

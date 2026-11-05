@@ -11,7 +11,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M15` rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction `rc3-multi-harness-adoption-friction` — phase — **Not Started**
   - `M15.1` RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command `rc-install-docs-cover-extras-and-direct-wheel-url` — task — **Complete**
   - `M15.2` A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch `claude-code-reviewer-works-on-a-subscription-login` — task — **Complete**
-  - `M15.3` prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged `prompt-channel-cli-launches-nothing-without-run` — task — **Not Started**
+  - `M15.3` prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged `prompt-channel-cli-launches-nothing-without-run` — task — **Complete**
   - `M15.4` Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current `parallel-pr-leaves-reconcile-bookkeeping-by-rule` — task — **Complete**
   - `M15.6` The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes `rework-prompt-carries-the-accepted-rca` — task — **Complete**
   - `M15.8` A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it `promoted-leaf-is-never-stuck-on-an-empty-approach` — task — **Complete**
@@ -239,7 +239,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
 - `M16.69` on `feature/rm-cursor-workers-no-force-by-default` since 2026-11-05
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
@@ -259,14 +258,13 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 26 | 13 | 5.46 | 85% | 19 | 3 |
+| `docs` **flagged** | 26 | 12 | 5.57 | 86% | 23 | 3 |
 | `planning` **flagged** | 1 | 0 | 3.00 | 100% | 0 | 0 |
-| `specy_road` **flagged** | 48 | 21 | 4.56 | 78% | 28 | 6 |
-| `tests` **flagged** | 50 | 22 | 4.50 | 79% | 28 | 6 |
-| `CHANGELOG.md` | 1 | 0 | 1.00 | 0% | 0 | 0 |
+| `specy_road` **flagged** | 48 | 20 | 4.64 | 79% | 32 | 6 |
+| `tests` **flagged** | 50 | 21 | 4.59 | 79% | 32 | 6 |
+| `CHANGELOG.md` | 2 | 0 | 4.00 | 50% | 4 | 0 |
 | `README.md` | 1 | 1 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
-| `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
