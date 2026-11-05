@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import TextIO
 
 import yaml
+from yaml import compose
+from yaml.nodes import MappingNode
 
 from specy_road.file_limits_engine import (
     build_overlay_match_sets,
@@ -29,7 +31,6 @@ _FUNC_STEP = 20
 _BASELINE_NAME = re.compile(r"^baseline-(\d{4}-\d{2}-\d{2})-(\d+)$")
 _TOP_LEVEL_KEY = re.compile(r"^[A-Za-z_][\w.-]*\s*:")
 _TRAILING_POLICY_KEYS = ("roadmap_manifest_max_lines", "roadmap_json_chunk_max_lines", "hard_alerts")
-_FLOW_EMPTY_OVERRIDE = re.compile(r"^override_limits\s*:\s*\[\](\s+#.*)?$")
 
 
 def literal_path_glob(rel_posix: str) -> str:
@@ -51,11 +52,44 @@ def _yaml_quoted_scalar(value: str) -> str:
     return yaml.dump(value, default_style='"', width=2**16).strip()
 
 
-def _split_trailing_hash_comment(line: str) -> tuple[str, str]:
-    match = re.search(r"(\s+#.*)$", line)
-    if match is None:
-        return line, ""
-    return line[: match.start()], match.group(1)
+def _inline_header_comment(text: str, val_end: int) -> str:
+    line_end = text.find("\n", val_end)
+    if line_end == -1:
+        line_end = len(text)
+    tail = text[val_end:line_end]
+    match = re.match(r"(\s+#.*)$", tail)
+    return match.group(1) if match else ""
+
+
+def _flow_override_limits_span(text: str) -> tuple[int, int, str] | None:
+    """Byte span of a flow-style ``override_limits`` value (from key line start through value end)."""
+    try:
+        root = compose(text)
+    except yaml.YAMLError:
+        return None
+    if not isinstance(root, MappingNode):
+        return None
+    for key_node, val_node in root.value:
+        if key_node.value != "override_limits":
+            continue
+        line_start = text.rfind("\n", 0, key_node.start_mark.index)
+        line_start = 0 if line_start == -1 else line_start + 1
+        val_start = val_node.start_mark.index
+        val_end = val_node.end_mark.index
+        if not text[val_start:val_end].lstrip().startswith("["):
+            return None
+        return line_start, val_end, _inline_header_comment(text, val_end)
+    return None
+
+
+def _render_override_limits_section(cfg: dict, block_lines: list[str], header_comment: str) -> str:
+    header = f"override_limits:{header_comment}" if header_comment else "override_limits:"
+    lines = [header]
+    for ov in cfg.get("override_limits") or []:
+        if isinstance(ov, dict):
+            lines.extend(_serialize_override_entry(ov))
+    lines.extend(block_lines)
+    return "\n".join(lines) + "\n"
 
 
 def _ends_override_limits_section(line: str) -> bool:
@@ -83,27 +117,6 @@ def _serialize_override_entry(ov: dict) -> list[str]:
         lines.append(f"    max_lines_per_file: {int(ov['max_lines_per_file'])}")
     if "max_lines_per_function" in ov:
         lines.append(f"    max_lines_per_function: {int(ov['max_lines_per_function'])}")
-    return lines
-
-
-def _normalize_override_limits_block(lines: list[str], cfg: dict) -> list[str]:
-    header_idx = _override_limits_header_index(lines)
-    if header_idx is None:
-        return lines
-    line = lines[header_idx]
-    empty = _FLOW_EMPTY_OVERRIDE.match(line)
-    if empty:
-        trail = empty.group(1) or ""
-        header = f"override_limits:{trail}" if trail else "override_limits:"
-        return lines[:header_idx] + [header] + lines[header_idx + 1:]
-    body, trail = _split_trailing_hash_comment(line)
-    value = body.split(":", 1)[1].strip() if ":" in body else ""
-    if value.startswith("[") and value != "[]":
-        chunk = [f"override_limits:{trail}" if trail else "override_limits:"]
-        for ov in cfg.get("override_limits") or []:
-            if isinstance(ov, dict):
-                chunk.extend(_serialize_override_entry(ov))
-        return lines[:header_idx] + chunk + lines[header_idx + 1:]
     return lines
 
 
@@ -144,7 +157,15 @@ def append_baseline_yaml_text(existing_text: str, block: str, *, cfg: dict | Non
         return existing_text
     block_lines = block.rstrip("\n").splitlines()
     loaded = cfg if cfg is not None else _loads_file_limits_mapping(existing_text)
-    lines = _normalize_override_limits_block(existing_text.splitlines(), loaded or {})
+    flow_span = _flow_override_limits_span(existing_text)
+    if flow_span is not None:
+        start, end, header_comment = flow_span
+        section = _render_override_limits_section(loaded or {}, block_lines, header_comment)
+        result = existing_text[:start] + section + existing_text[end:]
+        if existing_text.endswith("\n") or not result.endswith("\n"):
+            result += "\n"
+        return result
+    lines = existing_text.splitlines()
     insert_at, need_header = _insert_index_for_new_override_rows(lines)
     new_lines = lines[:insert_at]
     if need_header:

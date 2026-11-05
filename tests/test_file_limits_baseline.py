@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 from specy_road.file_limits_baseline import (
@@ -189,6 +190,46 @@ def test_write_baseline_appends_to_populated_flow_override_list(tmp_path: Path) 
     assert "keep" in names
     assert any(str(n).startswith("baseline-") for n in names)
     assert run_file_limits_scan(tmp_path, cfg) is False
+
+
+_FLOW_OVERRIDE_SUFFIXES = (
+    "override_limits: []\n",
+    "override_limits: [] # existing comment\n",
+    "override_limits: [{name: keep, file_globs: [keep.py], max_lines_per_file: 100}]\n",
+    (
+        "override_limits: [{name: keep, file_globs: [keep.py], max_lines_per_file: 100},\n"
+        "  {name: tail, file_globs: [tail.py], max_lines_per_file: 90}]\n"
+    ),
+)
+
+
+@pytest.mark.parametrize("override_suffix", _FLOW_OVERRIDE_SUFFIXES)
+def test_write_baseline_replaces_flow_override_limits_shapes(
+    tmp_path: Path, override_suffix: str
+) -> None:
+    (tmp_path / "constraints").mkdir()
+    cfg_path = tmp_path / "constraints" / "file-limits.yaml"
+    cfg_path.write_text(
+        "max_lines_per_file: 2\napplies_to_globs:\n  - \"**/*.py\"\n" + override_suffix,
+        encoding="utf-8",
+    )
+    _write_layout(tmp_path, {"wide.py": "x\n" * 3, "keep.py": "y\n", "tail.py": "z\n"})
+    assert write_baseline(tmp_path) == 0
+    text = cfg_path.read_text(encoding="utf-8")
+    assert yaml.safe_load(text) is not None
+    assert "[" not in text.split("override_limits", 1)[1].split("\n", 1)[0]
+    if "# existing comment" in override_suffix:
+        assert "# existing comment" in text
+    cfg = yaml.safe_load(text)
+    names = [e.get("name") for e in cfg["override_limits"]]
+    if "keep" in override_suffix:
+        assert "keep" in names
+    if "tail" in override_suffix:
+        assert "tail" in names
+    assert any(str(n).startswith("baseline-") for n in names)
+    assert run_file_limits_scan(tmp_path, cfg) is False
+    assert write_baseline(tmp_path) == 0
+    assert cfg_path.read_text(encoding="utf-8") == text
 
 
 def test_write_baseline_with_double_quote_in_filename(tmp_path: Path) -> None:
