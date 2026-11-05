@@ -47,6 +47,7 @@ def render(plan: OrchestrationPlan) -> list[str]:
             lines += [f"    strong review {s['item']}: one approval from {', '.join(s['require_one_of'])}; "
                       f"can satisfy it: {', '.join(s['can_satisfy']) or 'none'}" for s in a.strong_review]
             lines += [f"    {n}" for n in a.notes]
+            lines += [f"    ! {w}" for w in a.warnings]
             lines += [f"    ! {p}" for p in a.problems]
     if plan.blocked:
         lines.append(f"blocked (not assigned): {', '.join(plan.blocked)}")

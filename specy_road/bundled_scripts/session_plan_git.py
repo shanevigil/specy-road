@@ -20,6 +20,7 @@ from specy_road.bundled_scripts.planning_sheet_bootstrap import (
 )
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.session_plan import SessionPlan, compute_session_plan, _parallel_batches
+from specy_road.zone_coverage import zone_coverage_warnings
 from specy_road.git_workflow_config import resolve_integration_defaults, resolve_prefer_agentic
 from specy_road.nested_repos import unpushed_branches
 from specy_road.registry_yaml import read_registry, registry_path
@@ -116,4 +117,15 @@ def gather_session_plan(
         remote=remote,
         integration_branch=base,
     )
+    by_id = _nodes_by_id(nodes)
+    coverage = zone_coverage_warnings(repo_root, by_id, plan.ready)
+    if coverage:
+        plan = replace(
+            plan,
+            zone_coverage=[
+                {"node_id": nid, "message": coverage[nid]}
+                for nid in plan.ready
+                if nid in coverage
+            ],
+        )
     return nodes, reg, replace(plan, nested_unpushed=unpushed_branches(repo_root))

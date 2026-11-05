@@ -89,6 +89,7 @@ class SessionPlan:
     finished_unmerged: list[str] = field(default_factory=list)
     finished_claimed: list[str] = field(default_factory=list)
     unauthored: list[UnauthoredLeaf] = field(default_factory=list)
+    zone_coverage: list[dict[str, str]] = field(default_factory=list)
     totals: dict[str, int] = field(default_factory=dict)
     #: ready leaf id -> its ``execution_milestone`` (``None`` when unset).
     ready_execution: dict[str, str | None] = field(default_factory=dict)

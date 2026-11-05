@@ -21,7 +21,7 @@ from specy_road.impact import imported_names, module_names, python_sources
 from specy_road.runtime_paths import project_prefix
 
 FILE_CAP = 30       # zoned files listed; the rest are counted
-IMPORTER_CAP = 10   # importers listed per file; the rest are counted
+IMPORTER_CAP = 20   # importers listed per file; the rest are counted
 
 
 def direct_importers(files: dict[str, bytes], targets: set[str]) -> dict[str, list[str]]:

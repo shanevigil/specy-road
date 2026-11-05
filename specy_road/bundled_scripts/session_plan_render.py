@@ -235,6 +235,10 @@ def _render_blocked(plan: SessionPlan) -> list[str]:
 
 def _render_misc(plan: SessionPlan) -> list[str]:
     lines: list[str] = []
+    if plan.zone_coverage:
+        lines.append("**Touch zone gaps (acceptance paths not in zones):**")
+        lines.extend(f"- ! {w['message']}" for w in plan.zone_coverage)
+        lines.append("")
     if plan.unauthored:
         lines.append(
             "**Not ready — unwritten planning sheet "
@@ -264,7 +268,7 @@ def _render_nested_unpushed(plan: SessionPlan) -> list[str]:
 PLAN_FIELDS = (
     "under", "ready", "blocked", "active", "closed", "gated", "gates_open", "needs_codename",
     "waves", "parallel_batches", "zone_overlaps", "finished_unmerged", "finished_claimed",
-    "unauthored", "totals", "ready_execution", "prefer_agentic", "nested_unpushed",
+    "unauthored", "zone_coverage", "totals", "ready_execution", "prefer_agentic", "nested_unpushed",
 )
 
 
@@ -290,6 +294,7 @@ def _plan_dict(plan: SessionPlan) -> dict:
         "finished_unmerged": list(plan.finished_unmerged),
         "finished_claimed": list(plan.finished_claimed),
         "unauthored": [asdict(u) for u in plan.unauthored],
+        "zone_coverage": list(plan.zone_coverage),
         "totals": dict(plan.totals),
         "ready_execution": {i: plan.ready_execution.get(i) for i in plan.ready},
         "prefer_agentic": plan.prefer_agentic,

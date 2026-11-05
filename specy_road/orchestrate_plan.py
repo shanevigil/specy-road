@@ -59,6 +59,7 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.orchestration_config import active_substitutions
 from specy_road.review_strong import applicable_items, item_label
 from specy_road.runtime_paths import project_prefix
+from specy_road.zone_coverage import zone_coverage_warnings
 
 DEFAULT_SENSITIVITY = "public"
 ANY = "any"
@@ -199,6 +200,7 @@ class Assignment:
     reviewers: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     problems: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     strong_review: list[dict[str, Any]] = field(default_factory=list)   # item, require_one_of, can_satisfy
 
     @property
@@ -208,7 +210,8 @@ class Assignment:
     def to_dict(self) -> dict[str, Any]:
         return {"node_id": self.node_id, "sensitivity": self.sensitivity, "eligibility": self.eligibility,
                 "coordinator": self.coordinator, "executor": self.executor, "reviewers": self.reviewers,
-                "notes": self.notes, "problems": self.problems, "strong_review": self.strong_review}
+                "notes": self.notes, "problems": self.problems, "warnings": self.warnings,
+                "strong_review": self.strong_review}
 
 
 @dataclass
@@ -365,6 +368,12 @@ def build_orchestration_plan(root: Path, *, under: str | None = None,
     prefix = project_prefix(root)
     batches = [[assign_leaf(by_id[nid], cands, config, today, drift, prefix) for nid in batch if nid in by_id]
                for batch in sp.parallel_batches]
+    assigned = [a.node_id for batch in batches for a in batch]
+    coverage = zone_coverage_warnings(root, by_id, assigned)
+    for batch in batches:
+        for a in batch:
+            if a.node_id in coverage:
+                a.warnings.append(coverage[a.node_id])
     prefs, pref_err = plan_preferences(root, today)
     return OrchestrationPlan(under, dict(config["policy"]), batches,
                              [b.node_id for b in sp.blocked], list(sp.active),

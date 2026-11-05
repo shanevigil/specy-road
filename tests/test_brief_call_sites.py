@@ -93,6 +93,23 @@ def test_long_lists_are_capped_and_counted(tmp_path: Path, monkeypatch) -> None:
     assert lines[-1] == "- _… and 1 more zoned files with importers_"
 
 
+def test_two_hundred_importers_list_twenty_then_count(tmp_path: Path, monkeypatch) -> None:
+    _repo(tmp_path)
+    importers = [f"tests/test_{i:03d}.py" for i in range(200)]
+    monkeypatch.setattr(
+        bcs,
+        "direct_importers",
+        lambda _files, _targets: {"pkg/core.py": importers},
+    )
+    monkeypatch.setattr(bcs, "python_sources", lambda _root, _ref: {"pkg/core.py": b"x=1\n"})
+
+    lines = bcs.call_site_lines(tmp_path, ["pkg/core.py"])
+    line = next(ln for ln in lines if ln.startswith("- `pkg/core.py`"))
+
+    assert line.count("_(outside zones)_") == 20
+    assert "_… and 180 more_" in line
+
+
 def test_the_brief_lists_call_sites_under_the_touch_zones(tmp_path: Path) -> None:
     crud_fixture_repo(tmp_path)
     _repo(tmp_path)
