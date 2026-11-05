@@ -228,6 +228,20 @@ def _case_older_rule_after_the_block(repo: Path) -> None:
     write(repo, GITIGNORE, _block(after="work/*.md\n"))          # git lets the later, older rule decide
 
 
+def _case_nested_rule_decides(repo: Path) -> None:
+    write(repo, "work/.gitignore", "*.md\n")                      # git lets the nested rule decide
+    git(repo, "add", "work/.gitignore")
+    git(repo, "commit", "-qm", "nested")
+
+
+def _case_tracked_negated_after_the_block(repo: Path) -> None:
+    write(repo, GITIGNORE, _block(after="!work/prompt-a.md\n"))   # not ignored at all: no notice
+
+
+def _case_tracked_negated_in_a_nested_file(repo: Path) -> None:
+    write(repo, "work/.gitignore", "!prompt-a.md\n")
+
+
 #: name -> (setup, prefix, expected now-hidden, expected still-tracked). Every repo also tracks work/prompt-a.md.
 CASES = {
     "plain": (lambda r: write(r, "work/prompt-u.md"), "", {"work/prompt-u.md"}, {"work/prompt-a.md"}),
@@ -253,7 +267,10 @@ CASES = {
     "r3 tracked already ignored": (_case_tracked_already_ignored, "", set(),
                                    {"work/prompt-a.md", "work/prompt-tracked.md"}),
     "r5 tracked by an older rule only": (_case_tracked_by_an_older_rule_only, "", set(), {"work/prompt-a.md"}),
-    "r5 older rule after the block decides": (_case_older_rule_after_the_block, "", set(), set()),
+    "r5 older rule after the block decides": (_case_older_rule_after_the_block, "", set(), {"work/prompt-a.md"}),
+    "r7 nested rule decides": (_case_nested_rule_decides, "", set(), {"work/prompt-a.md"}),
+    "r7 tracked negated after the block": (_case_tracked_negated_after_the_block, "", set(), set()),
+    "r7 tracked negated in a nested file": (_case_tracked_negated_in_a_nested_file, "", set(), set()),
     "r4 self-ignored nested .gitignore": (_case_self_ignored_nested, "", {"work/prompt-hide.md"}, {"work/prompt-a.md"}),
 }
 

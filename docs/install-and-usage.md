@@ -164,7 +164,7 @@ blocks in `AGENTS.md`, `.gitignore`, `.cursorindexingignore` and `CLAUDE.md`, re
 and bumps the recorded `specyrd_version`. `specy-road validate` warns while the
 manifest lags. In a repo with no stub pack it still re-applies the managed
 blocks, says no pack is installed, and creates no manifest.
-When the `.gitignore` block changes, a real run lists the files git stopped showing (observed by git before and after the write) and the tracked files whose deciding rule, as `git check-ignore` names it, is one the update added; nothing is untracked. `--dry-run` prints an estimate, labelled as one, that can miss ignore inputs the scratch repository does not copy.
+When the `.gitignore` block changes, a real run lists the files git stopped showing (observed by git before and after the write) and the tracked files git now ignores that a rule the update added matches, even when an older rule also does; nothing is untracked. `--dry-run` prints an estimate, labelled as one, that can miss ignore inputs the scratch repository does not copy.
 
 Stubs this version no longer installs for your recorded `--role` are **listed, not deleted**, unless you pass `--prune`. They are paths the
 manifest recorded as the kit's, so `--prune` deletes exactly the list shown (and a directory it leaves empty).

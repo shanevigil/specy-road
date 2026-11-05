@@ -3,15 +3,15 @@
 **Real run: observed, not predicted.** Git lists, in the checkout itself, the
 untracked files it shows (:func:`observe`), once before the write and once
 after: *now hidden* is a file shown before and not after. *Still tracked under
-a new rule* is decided by attribution, not by a before/after difference: after
-the write, ``git check-ignore --no-index -v`` names the rule that decides each
-tracked file, and the file is listed when that rule is a line of the top-level
-``.gitignore`` the update added (a line not already in the file). A tracked
-file an older rule already ignored is therefore still listed when a new rule
-now decides it; one decided by an older rule alone (or by a later one, which
-git lets win) is not. Whatever git reads (rule order, nested and self-ignored
-``.gitignore`` files, ``info/exclude``, ``core.ignorecase``, the global
-excludes file) is therefore accounted for by git, not reproduced here.
+a new rule* is not a before/after difference either: a tracked file is listed
+when git ignores it after the write (every input counted, so a negation keeps
+it out) and a line the update added to the top-level ``.gitignore`` (a line
+not already in the file) matches it on its own, in a scratch ``.gitignore``
+holding only those lines. An older rule that also matches it, whichever rule
+git lets decide, does not hide the notice. Whatever git reads (rule order,
+nested and self-ignored ``.gitignore`` files, ``info/exclude``,
+``core.ignorecase``, the global excludes file) is therefore accounted for by
+git, not reproduced here.
 
 **Dry run: an estimate, labelled as one.** Nothing may be written, so
 :func:`estimate` copies the current top-level ``.gitignore``, the ``.gitignore``
@@ -110,7 +110,7 @@ def observed(git_root: Path, before: tuple[list[str], bytes]) -> list[Match]:
     hidden = [p for p in before[0] if p not in now_shown]
     tracked = _paths(_git(["ls-files", "-c", "-z"], git_root))
     rules = _ignored(git_root, hidden, [])
-    return (_tracked_under_new_rules(git_root, tracked, before[1], [])
+    return (_tracked_under_new_rules(git_root, tracked, before[1], _ignore_config(git_root)[0])
             + [(p, rules.get(p, "?"), HIDDEN_NOTE) for p in hidden])
 
 
@@ -129,18 +129,38 @@ def _ignored(cwd: Path, paths: list[str], config: list[str]) -> dict[str, str]:
     return {path: os.fsdecode(rule) for _src, _line, rule, path in _deciding(cwd, paths, config)}
 
 
-def _added_lines(old: bytes, new: bytes) -> set[bytes]:
-    """Numbers (1-based, as git prints them) of the lines in ``new`` that are not a line of ``old``."""
+def _added_lines(old: bytes, new: bytes) -> list[bytes]:
+    """The lines of ``new`` that are not a line of ``old`` (a trailing CR ignored), in order."""
     kept = {ln.rstrip(b"\r") for ln in old.split(b"\n")}
-    return {str(n).encode() for n, ln in enumerate(new.split(b"\n"), 1)
-            if ln.strip() and ln.rstrip(b"\r") not in kept}
+    return [ln.rstrip(b"\r") for ln in new.split(b"\n") if ln.strip() and ln.rstrip(b"\r") not in kept]
+
+
+def _new_rule_matches(paths: list[str], added: list[bytes], config: list[str]) -> dict[str, str]:
+    """``{path: new rule}`` for each path one of the ``added`` lines matches on its own, judged by git.
+
+    The lines alone become a top-level ``.gitignore`` in a scratch repository, so
+    no other rule can take the attribution; only matches from that file count.
+    """
+    if not paths or not added:
+        return {}
+    with tempfile.TemporaryDirectory() as tmp:
+        scratch = Path(tmp)
+        _git(["init", "-q", str(scratch)], scratch)
+        (scratch / GITIGNORE).write_bytes(b"".join(ln + b"\n" for ln in added))
+        return {path: os.fsdecode(rule) for src, _line, rule, path in _deciding(scratch, paths, config)
+                if src == GITIGNORE.encode()}
 
 
 def _tracked_under_new_rules(cwd: Path, tracked: list[str], old: bytes, config: list[str]) -> list[Match]:
-    """Tracked paths whose deciding rule is a top-level ``.gitignore`` line the update added (``old`` → now)."""
-    added = _added_lines(old, _top_ignore(cwd))
-    rules = {path: os.fsdecode(rule) for src, line, rule, path in _deciding(cwd, tracked, config)
-             if src == GITIGNORE.encode() and line in added}
+    """Tracked paths git ignores now that a line the update added matches (``old`` → now), in ``tracked`` order.
+
+    Two questions, both answered by git: is the path ignored after the update,
+    with every input git reads (so a negation still keeps it out), and does an
+    added line match it on its own (so an older rule that git lets decide,
+    before or after the block or in a nested ``.gitignore``, does not hide it).
+    """
+    ignored = _ignored(cwd, tracked, config)
+    rules = _new_rule_matches([p for p in tracked if p in ignored], _added_lines(old, _top_ignore(cwd)), config)
     return [(p, rules[p], TRACKED_NOTE) for p in tracked if p in rules]
 
 
