@@ -62,7 +62,8 @@
         "specy_road/review_record_rules.py",
         "specy_road/schemas/review-record.schema.json",
         "specy_road/review_files.py",
-        "specy_road/bundled_scripts/role_prompt_rca.py"
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "specy_road/bundled_scripts/roadmap_crud_ops.py"
       ],
       "type": "task"
     },
