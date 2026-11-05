@@ -50,6 +50,16 @@ Two further changes:
 - Runtime: `specy-road digest` on `sr/` (50 completed leaves) runs in about 1.75 s.
 - `specy-road file-limits`: OK. `tests/test_digest.py` would have hit 418 lines, so the quality tests moved to the new `tests/test_digest_quality.py`.
 
+## Merge: M15.11's `orchestrate_assign.py`
+
+`9953a2c7` merges `origin/WIP/improvements-0-3-1`, where M15.11 moved `assign_leaf` and the `_pick_*` helpers from `specy_road/orchestrate_plan.py` into the new `specy_road/orchestrate_assign.py` and added `--spread` (`spread_index`). The resolution keeps WIP's `orchestrate_plan.py` and re-adds this leaf's quality routing on top:
+
+- `orchestrate_plan.build_orchestration_plan` computes `flagged_areas` once and passes it to `assign_leaf` as a new trailing `flagged=` argument after `spread_index`. The module docstring's quality_routing sentence is restored.
+- `orchestrate_assign.assign_leaf` adds the `quality_review` items and notes after the configured strong-review items, before reviewers are picked: the same three lines this leaf had in `assign_leaf` before the move.
+- **Touch zone:** `specy_road/orchestrate_assign.py` is outside this leaf's listed zones. It holds the code that was in `orchestrate_plan.py`, which is in the zones, so it should be added to them.
+- `sr/roadmap/registry.yaml` keeps WIP's removal of the landed M14.6, M15.11 and M15.8 rows and this leaf's existing review stamp. `sr/roadmap-context.md` and `sr/roadmap.md` are re-rendered; `digest --check` and `export --check` pass at the merge.
+- Tests: the targeted set plus M15.11's `test_orchestrate_spread.py`, `test_roster_*.py` and the other `assign_leaf` callers pass (251 + 61), with ruff and file-limits clean.
+
 ## Fix round 3: population is the finish merge
 
 The reviewer `gpt-6.1-sol-low` blocked `15d36eb7` on A1 (R1): a reverted `complete, deregister` still counted, because eligibility was "a completion commit reachable from `HEAD`". This branch has a real instance: a failed finish committed `7876cf91`, and `15d36eb7` reverts it. The class is "a bookkeeping commit standing in for a landing". A revert, a finish that never merged and a branch merged some other way all reach it. Per the coordinator, the population is now defined by construction, without reading bookkeeping commits at all:
@@ -139,6 +149,10 @@ Final touch zones are the brief's list. `specy_road/review_rca.py`, `specy_road/
 4. `tests/test_review_tally.py` pins the trailer's counts, the end-to-end gate commit, and routing on and off.
 
 ## Added
+
+Merge changes:
+
+- `assign_leaf(..., spread_index=None, flagged=None)` in `specy_road/orchestrate_assign.py`: the `flagged` argument and its `quality_review` call, carried over from `orchestrate_plan.py` (A3).
 
 Fix round 3 changes:
 
