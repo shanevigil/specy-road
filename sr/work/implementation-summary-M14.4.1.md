@@ -20,9 +20,8 @@ import `land_nested_branches` / `unpushed_branches` / `describe_unpushed` / `rep
   - `land: local` (`_land_one_locally`) fetches and pushes nothing. It merges in the same detached temporary
     worktree, based on the local integration branch. It then moves the ref with
     `update-ref refs/heads/<ib> <merge> <old>`, which fails if the branch moved. Where `<ib>` is checked out,
-    that checkout must be clean (tracked files): a dirty one is refused, naming it, before anything merges. A
-    clean one is checked that it is still at `<old>`, then fast-forwarded to the merge so its working tree
-    follows the ref.
+    that checkout must be clean (tracked files): a dirty one is refused, naming it, before anything merges. The
+    clean-checkout handling was rewritten in fix round 1 (see below).
   - `land: manual` lands nothing when the branch is in neither the local nor the remote-tracking `<ib>`.
     `land_nested_branches` returns not-ok with one `git -C <repo> merge --no-ff <feature>` line per such
     repository and "re-run finish-this-task after merging". Finish's existing `merge_landing_failed` then
@@ -35,7 +34,7 @@ import `land_nested_branches` / `unpushed_branches` / `describe_unpushed` / `rep
   one is ahead of is refused. `_merge_base` uses the same ref, so with `base: local`, reconcile, the
   implementation gate and `review-packet` do not count local-only integration commits as the leaf's changes.
   A test shows a local-only commit is in the worktree.
-- **A4:** `nested_repos.py` is now 307 lines and the new `nested_repos_land.py` is 224 lines.
+- **A4:** `nested_repos.py` is now 313 lines and the new `nested_repos_land.py` is 250 lines (after fix round 1).
   `specy-road file-limits` passes.
 
 ## Design notes
@@ -55,6 +54,78 @@ import `land_nested_branches` / `unpushed_branches` / `describe_unpushed` / `rep
 - `python -m pytest -q -n 4` (full suite): 3990 passed.
 - `specy-road file-limits`: OK.
 - `ruff check` on the changed Python files: clean.
+
+## Fix round 1 (Sol: R1 P1, R2 P2)
+
+Merged `origin/WIP/improvements-0-3-1` first (clean merge).
+
+- **R1:** the landing is bound to the named ref `refs/heads/<ib>` and its original tip `<old>`:
+  - Before moving anything, if `<ib>` was checked out somewhere, that checkout's
+    `git symbolic-ref -q HEAD` must still be `refs/heads/<ib>`. If it detached or now points at another
+    branch, even at the same commit, landing is refused and nothing moves.
+  - The ref moves with `git update-ref refs/heads/<ib> <merge> <old>` (compare-and-swap), so the old
+    `merge --ff-only` in whatever branch the checkout held is gone.
+  - The checkout is then updated with `git read-tree -m -u <old> <merge>`. This runs only after
+    re-checking that the checkout still has `<ib>`. If the update fails, the ref is put back with
+    `update-ref refs/heads/<ib> <old> <merge>` (another compare-and-swap) and landing is refused.
+  - Success is reported only after `git merge-base --is-ancestor <merge> refs/heads/<ib>` passes.
+  - Regression test (`test_land_local_refuses_when_the_checkout_leaves_the_integration_branch_during_the_merge`,
+    two cases: another branch at the same commit, and detached). It goes through
+    `land_merge_feature_into_integration`, with a real `pre-merge-commit` hook that switches the checkout
+    during the temporary merge. It asserts not-ok, `dev` unchanged, the switched-to branch unchanged, and
+    neither the nested nor the main remote pushed.
+- **R2:** every path in a printed command goes through `shlex.quote`:
+  - the manual merge command (the leaf branch name is quoted too);
+  - the `git -C <repo> worktree remove <dest>` hint in `add_nested_worktrees`, which also now names the
+    actual destination instead of `<path>`.
+
+  Regression test (`test_the_printed_manual_command_runs_for_a_path_with_spaces`): the project is built under
+  `parent with spaces`, and the test runs the printed line through the shell. It asserts exit 0, that the
+  leaf branch is in `dev`, and that a re-run of landing then succeeds.
+- **Red-green:** with HEAD's (pre-fix) `nested_repos_land.py` swapped in, the three new tests fail (exit 1).
+  With the fix they pass.
+- **Lint:** the checkout update moved into `_follow_in_checkout`, which keeps `_land_one_locally` under
+  ruff's C901 limit.
+
+## Fix round 1: audit
+
+### Printed commands (nested_repos_land.py, nested_repos.py)
+
+- `nested_repos_land.land_nested_branches` (manual):
+  `git -C <shlex.quote(repo)> merge --no-ff <shlex.quote(branch)>`, followed by a `#` comment that the
+  shell ignores. Copy-runnable; the test above runs it.
+- `nested_repos.add_nested_worktrees` (refusal):
+  `git -C <shlex.quote(src)> worktree remove <shlex.quote(dest)>`. Copy-runnable when `dest` is a
+  worktree; otherwise the message's alternative applies ("or delete the directory").
+- `nested_repos.announce_nested_worktrees`: names `specy-road worker delegate` as the follow-up. It contains
+  no path to quote, but it is not a complete command: delegate needs the node id and `--model`, which this
+  function is not given. Unchanged, since it predates this leaf.
+- No other message in either file prints a command. The rest are prose such as "commit or stash them
+  there, then re-run" and "fix integration_branch/remote ... in roadmap/git-workflow.yaml", or `[ok]` lines.
+  `report_unpushed` and `describe_unpushed` print only facts.
+
+### Every point where landing reports success, and the ref check that guards it
+
+- `land_nested_branches`, repository without the leaf branch (`continue`): `git show-ref --verify
+  refs/heads/<feature>` fails (`_has_branch`), so there is nothing to land.
+- `land: manual`, skipped as merged (`continue`): `git merge-base --is-ancestor <feature> refs/heads/<ib>`
+  or `... refs/remotes/<remote>/<ib>` (`_merged_somewhere`). Otherwise it returns not-ok with the command.
+- `land: push`, already merged (`_land_one` returns `None` early): after `git fetch <remote>`,
+  `git merge-base --is-ancestor <feature> refs/remotes/<remote>/<ib>`.
+- `land: push`, landed (`[ok] ... pushed to <remote>`): the exit code of
+  `git push <remote> HEAD:refs/heads/<ib>` from the merge made on the fetched `refs/remotes/<remote>/<ib>`.
+  The remote refuses a non-fast-forward. This code is unchanged from before this leaf (push behaviour is
+  out of scope).
+- `land: local`, already merged (`_land_one_locally` returns `None` early):
+  `git merge-base --is-ancestor <feature> refs/heads/<ib>`.
+- `land: local`, landed (`[ok] ... into local <ib>`), guarded in order by:
+  - `symbolic-ref -q HEAD == refs/heads/<ib>` in the checkout that held `<ib>` (if any);
+  - `git update-ref refs/heads/<ib> <merge> <old>` (compare-and-swap);
+  - the same `symbolic-ref` re-check, plus `read-tree -m -u <old> <merge>` in that checkout, with the ref
+    put back on failure;
+  - finally `git merge-base --is-ancestor <merge> refs/heads/<ib>`.
+- `land_nested_branches` returns `(True, "")` only when every configured repository reached one of the
+  outcomes above and no manual repository is pending.
 
 ## Added
 
@@ -84,3 +155,12 @@ import `land_nested_branches` / `unpushed_branches` / `describe_unpushed` / `rep
   - base remote starts at the remote tip;
   - base local behind its remote: refused only with the flag (2 cases).
 - Mocks: none.
+- Fix round 1 `nested_repos_land._follow_in_checkout()`: updates the holding checkout's files after the ref
+  moves, only while it still has `<ib>`, and puts the ref back by compare-and-swap on failure (R1).
+- Fix round 1 guard: refuse when the checkout that held `<ib>` switched branch or detached during the merge (R1).
+- Fix round 1 guard: after the move, `merge-base --is-ancestor <merge> refs/heads/<ib>` before success (R1).
+- Fix round 1 `shlex.quote` on the manual merge command and the worktree-remove hint (R2).
+- Fix round 1 tests:
+  - `test_land_local_refuses_when_the_checkout_leaves_the_integration_branch_during_the_merge`
+    (2 cases, real hook; R1);
+  - `test_the_printed_manual_command_runs_for_a_path_with_spaces` (runs the printed command; R2).
