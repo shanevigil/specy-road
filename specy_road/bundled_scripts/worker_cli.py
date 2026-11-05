@@ -178,13 +178,15 @@ def cmd_message(ns: argparse.Namespace) -> int:
         if old is None:
             raise WorkerError(f"cannot read --file {ns.file}: {e}") from None
         return _replay(ns, ns.op_id, old)
+    if text is None and not ns.fix_round:
+        raise WorkerError("worker message needs --file or --text (optional with --fix-round)")
     return _mutate(ns, "message", lambda root: _row(ops.message(root, ns.worker_id, text, offline=ns.offline,
-                                                                 no_queue=ns.no_queue)),
+                                                                 no_queue=ns.no_queue, fix_round=ns.fix_round)),
                    lambda o: ([f"{o['worker_id']}: message queued for the next turn"]
                               if o.get("queued_message") else
                               [f"{o['worker_id']}: message sent; resumed (pid {o['pid']})"]),
                    inputs={"text": text, **({"offline": True} if ns.offline else {}),
-                           **({"no_queue": True} if ns.no_queue else {})})
+                           **({"no_queue": True} if ns.no_queue else {}), **({"fix_round": True} if ns.fix_round else {})})
 
 
 def cmd_resume(ns: argparse.Namespace) -> int:
@@ -337,8 +339,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_sync)
 
     sp = ws.add_parser("message", help="Send a follow-up prompt (resumes the native session)"); _w(sp)
-    g = sp.add_mutually_exclusive_group(required=True)
+    g = sp.add_mutually_exclusive_group()
     g.add_argument("--file", metavar="PATH"); g.add_argument("--text", metavar="TEXT")
+    sp.add_argument("--fix-round", action="store_true", help="Send the blocking findings and the class-audit block, then any text")
     sp.add_argument("--no-queue", action="store_true",
                     help="Refuse while a turn is still running instead of queueing for the next turn")
     _offline_arg(sp); sp.set_defaults(func=cmd_message)
