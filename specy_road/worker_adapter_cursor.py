@@ -87,7 +87,10 @@ class Cursor(Adapter):
 
     def final_message(self, line: str) -> Any:
         d = _json(line)
-        return d.get("result") if d and d.get("type") == "result" and not d.get("is_error") else None
+        if not d or d.get("type") != "result":
+            return None
+        result = d.get("result")   # an error or no text: no answer, which replaces any earlier one
+        return result if isinstance(result, str) and not d.get("is_error") else ""
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)

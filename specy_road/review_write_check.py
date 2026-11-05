@@ -25,11 +25,11 @@ LOCK_NAME = ".review-run.lock"
 
 def runtime_files(reviews: Path, model: str) -> frozenset[str]:
     """The files a reviewer run may change: its notes and what the adapter writes during the run (the run
-    record ``review_delegate.RUN_PREFIX`` names and its temporary copy, the raw log, Codex's ``-o`` file and
-    :data:`LOCK_NAME`). Prompts, packets and the output schema are written before the run starts, so a change to
-    them is the reviewer's."""
+    record ``review_delegate.RUN_PREFIX`` names and its temporary copy, the raw log and Codex's ``-o`` file).
+    Prompts, packets, the output schema and :data:`LOCK_NAME` (created and locked, never written, before the
+    run starts) are not among them, so a change to them is the reviewer's."""
     names = (f"notes-{model}.md", f"RUN-{model}.json", f"RUN-{model}.json.tmp", f"RUN-{model}.log",
-             f"{OUTPUT_PREFIX}{model}.json", LOCK_NAME)
+             f"{OUTPUT_PREFIX}{model}.json")
     return frozenset(str(reviews / n) for n in names)
 
 

@@ -29,9 +29,9 @@ specy-road decides the outcome:
 
 - **review failure** — the run wrote something besides its notes
   (`notes-<model>.md`) and the files the run itself keeps (`RUN-<model>.json`,
-  its `.tmp`, `RUN-<model>.log`, `OUTPUT-<model>.json` and
-  `.review-run.lock`; the schema file is written before the run, so it is not
-  one of them), or changed `RUN-<model>.log` other than by specy-road's own
+  its `.tmp`, `RUN-<model>.log` and `OUTPUT-<model>.json`; the schema file and
+  `.review-run.lock` exist before the run and specy-road never writes them
+  during it, so they are not among them), or changed `RUN-<model>.log` other than by specy-road's own
   appends of the harness's output (specy-road hashes what the log held when the
   run began and every byte it appended since): any file of the checkout it ran in, git-ignored and
   `work/` files included, any file of the leaf's hand-off directory, the Git

@@ -94,7 +94,8 @@ class Codex(Adapter):
         item = (d or {}).get("item") or {}
         if (d or {}).get("type") != "item.completed" or item.get("type") != "agent_message":
             return None
-        return item.get("text")
+        text = item.get("text")
+        return text if isinstance(text, str) else ""   # an answer event without an answer replaces any earlier one
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)

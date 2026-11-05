@@ -45,7 +45,7 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.orchestration_role_env import harness_env
 from specy_road.review_files import reviews_dir
 from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, ReviewRunBusy, RootFence, RunLog,
-                                            file_review, final_output, output_path, prepare_harness_files,
+                                            close_unfiled, file_review, final_output, output_path, prepare_harness_files,
                                             review_run_lock, reviewer_env, run_text, snapshot, write_schema)
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.reviewer_run_failure import capacity_error, gate_policy_summary, valid_record  # noqa: F401 — re-exported
@@ -246,10 +246,7 @@ def _close(repo_root: Path, t: ReviewTarget, model: str, run: dict[str, Any], pa
             run["outcome"] = filed.state
         close_run(repo_root, t, model, run, exit_code=last.get("exit"), errors=errors, tail=tail, reason_prefix=reason)
         return
-    run.update(state="incomplete", outcome=filed.state, reason="; ".join(x for x in (reason, filed.reason) if x))
-    harness_failed = errors or last.get("exit") not in (0, None)
-    record_reviewer_failure_event(run, harness_error_line(exit_code=last.get("exit"), errors=errors, tail=tail,
-                                                          fallback=filed.reason) if harness_failed else filed.reason)
+    close_unfiled(run, filed, reason, exit_code=last.get("exit"), errors=errors, tail=tail)
 
 
 def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = None, resume: bool = False,

@@ -8,6 +8,7 @@ program's structured-output flags (:func:`run_custom_reviewer`), captured and fi
 
 from __future__ import annotations
 
+import json
 import shlex
 import subprocess
 import sys
@@ -18,7 +19,8 @@ from pathlib import Path
 from specy_road.bundled_scripts.role_prompt_stream import stream_and_capture
 from specy_road.model_profiles import Profile
 from specy_road.orchestration_role_env import CLAUDE_REVIEWER_AVOID_ENV
-from specy_road.review_record_write import output_path, run_and_file, write_schema
+from specy_road.review_record_write import Outcome, close_unfiled, output_path, run_and_file, write_schema
+from specy_road.reviewer_run_failure import save_run
 from specy_road.worker_adapters import ADAPTERS, Launch, Unsupported, reviewer_cli, substitute_prompt
 
 
@@ -29,10 +31,11 @@ def _shown(argv: list[str]) -> str:
 
 def run_default_reviewer(prof: Profile | None, prompt_path: Path, root: Path, model: str | None, reviews: Path,
                          level: str | None, harness: str = "claude-code", ref: str | None = None,
-                         transcript: list[str] | None = None, sign_key: Path | None = None) -> int:
+                         transcript: list[str] | None = None, sign_key: Path | None = None,
+                         filed: list[Outcome] | None = None) -> int:
     """The harness's own read-only reviewer command (Claude Code bare, with ``--add-dir`` for the hand-off
     directory), its final JSON filed as the record (:func:`~specy_road.review_record_write.file_review`, signed
-    with ``sign_key``); 0 only when a record was filed. ``transcript`` collects the output for the run record
+    with ``sign_key``, its outcome appended to ``filed``); 0 only when a record was filed. ``transcript`` collects the output for the run record
     (M11.72). The caller holds the leaf's run lock (the answer is emptied under it)."""
     api_id = prof.api_id if prof is not None else model
     api_id = None if (api_id or "").strip().lower() in ("", "unknown") else api_id   # unknown: the harness default
@@ -45,12 +48,13 @@ def run_default_reviewer(prof: Profile | None, prompt_path: Path, root: Path, mo
         print("note: the reviewer runs with --bare (no repository hooks, MCP servers or CLAUDE.md), and bare mode "
               "never reads your subscription login: it needs ANTHROPIC_API_KEY (or an apiKeyHelper)", file=sys.stderr)
     print(f"running: {_shown(launch.argv)}" + (f" < {prompt_path}" if launch.stdin is not None else ""), file=sys.stderr)
-    return run_and_file(launch, adapter, root, str(model), reviews, ref, transcript, sign_key)
+    return run_and_file(launch, adapter, root, str(model), reviews, ref, transcript, sign_key, filed)
 
 
 def run_custom_reviewer(prof: Profile | None, cli: str, prompt_path: Path, root: Path, model: str, reviews: Path,
                         ref: str | None, harness: str | None, effort: list[str],
-                        transcript: list[str] | None = None, sign_key: Path | None = None) -> int:
+                        transcript: list[str] | None = None, sign_key: Path | None = None,
+                        filed: list[Outcome] | None = None) -> int:
     """A roster ``channels.cli`` or profile ``access.cli`` reviewer, run as written plus its program's
     structured-output flags (:func:`reviewer_cli`), captured and filed like the default commands."""
     try:
@@ -65,7 +69,24 @@ def run_custom_reviewer(prof: Profile | None, cli: str, prompt_path: Path, root:
     launch = Launch(["sh", "-c", substitute_prompt(cli, prompt_path, effort=effort)],
                     launch_mode=prof.launch_mode() if prof is not None else "full")
     return run_and_file(launch, ADAPTERS.get(harness or "generic", ADAPTERS["generic"]), root, model, reviews, ref,
-                        transcript, sign_key)
+                        transcript, sign_key, filed)
+
+
+def close_unfiled_cli_run(path: Path, filed: list[Outcome]) -> None:
+    """After ``close_reviewer_cli_run``, which takes any valid record of the commit as success: a run whose filing
+    was a review failure or rerun request stays incomplete with its reviewer-failure event even when an older
+    record of the commit is on file (:func:`~specy_road.review_record_write.close_unfiled`, as ``review delegate``
+    closes one). A run already incomplete has its event; it gets the ``outcome``."""
+    if not filed or filed[-1].state == "recorded":
+        return
+    run = json.loads(path.read_text(encoding="utf-8"))
+    if run.get("state") == "incomplete":
+        run["outcome"] = filed[-1].state
+    else:
+        log = Path(run.get("log") or path.with_suffix(".log"))
+        tail = log.read_text(encoding="utf-8", errors="replace").splitlines()[-20:] if log.is_file() else []
+        close_unfiled(run, filed[-1], exit_code=(run.get("attempts") or [{}])[-1].get("exit"), errors=[], tail=tail)
+    save_run(path, run)
 
 
 def run_plain_cli(cli: str, prompt_path: Path, root: Path, effort: list[str],

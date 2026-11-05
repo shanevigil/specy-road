@@ -67,6 +67,7 @@ from specy_road.review_write_check import (  # re-exported: the post-run write c
     snapshot,
     written,
 )
+from specy_road.reviewer_run_failure import harness_error_line, record_reviewer_failure_event
 from specy_road.runtime_paths import specy_road_package_dir
 
 #: Record fields ``review record`` writes itself; a reviewer's output never carries them.
@@ -179,8 +180,9 @@ def run_text(log: Path) -> str:
 
 
 def final_output(adapter: Any, text: str, output_file: Path | None = None) -> Any:
-    """The reviewer's final answer: Codex's ``-o`` file, else the last message the adapter reads from the
-    output lines, else the whole output (plain final-message JSON)."""
+    """The reviewer's final answer: Codex's ``-o`` file, else the last answer event the adapter reads from the
+    output lines (one with no valid answer, ``""``, replaces an earlier one: a rerun request), else the whole
+    output (plain final-message JSON)."""
     if output_file is not None and output_file.is_file():
         saved = output_file.read_text(encoding="utf-8", errors="replace")
         if saved.strip():
@@ -260,6 +262,17 @@ class Outcome:
     state: str            # "recorded", "rerun" or "review_failure"
     reason: str = ""
     path: Path | None = None
+
+
+def close_unfiled(run: dict[str, Any], filed: Outcome, reason: str = "", *, exit_code: int | None,
+                  errors: list[str], tail: list[str]) -> None:
+    """Close the run of a review failure or rerun request: incomplete whatever older record of the commit is on
+    file, with a reviewer-failure event (M11.72) naming the harness's error, or the outcome when the harness ended
+    cleanly; ``reason`` is the caller's own (a capacity error)."""
+    run.update(state="incomplete", outcome=filed.state, reason="; ".join(x for x in (reason, filed.reason) if x))
+    harness_failed = errors or exit_code not in (0, None)
+    record_reviewer_failure_event(run, harness_error_line(exit_code=exit_code, errors=errors, tail=tail,
+                                                          fallback=filed.reason) if harness_failed else filed.reason)
 
 
 def _review_record(root: Path, node_id: str, model: str, verdict: str, notes: Path, ref: str | None,
@@ -344,9 +357,10 @@ def run_logged(launch: Any, adapter: Any, cwd: Path, log: RunLog, transcript: li
 
 
 def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Path, ref: str | None = None,
-                 transcript: list[str] | None = None, sign_key: Path | None = None) -> int:
+                 transcript: list[str] | None = None, sign_key: Path | None = None,
+                 filed: list[Outcome] | None = None) -> int:
     """``prompt --channel cli``'s reviewer turn: run ``launch``, then :func:`file_review` it (signed with
-    ``sign_key``); 0 only when a record was filed. The caller holds :func:`review_run_lock` from before it writes
+    ``sign_key``, the :class:`Outcome` appended to ``filed`` for the run record); 0 only when a record was filed. The caller holds :func:`review_run_lock` from before it writes
     any of the run's files. The node id is the hand-off directory's name; ``transcript`` gets the output
     and, last, the outcome line (but a rerun request after a failed harness), which the run record's
     reviewer-failure event then names."""
@@ -360,6 +374,8 @@ def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Pat
                           output=final_output(adapter, run_text(path), out), ref=ref, launch_mode=launch.launch_mode,
                           fenced=fence.moved(), log=log, sign_key=sign_key)
     print(f"{outcome.state}: {outcome.path or outcome.reason}", file=sys.stderr)
+    if filed is not None:
+        filed.append(outcome)
     # The outcome line goes last, for the run record's reviewer-failure event; but a rerun request after a harness
     # failure is that failure's consequence, and the event reads a capacity error from the last plain line only.
     if transcript is not None and outcome.state != "recorded" and not (rc and outcome.state == "rerun"):

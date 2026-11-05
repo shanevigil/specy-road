@@ -78,7 +78,9 @@ class ClaudeCode(Adapter):
         if not d or d.get("type") != "result":
             return None
         structured = d.get("structured_output")   # set when --json-schema validated the answer
-        return structured if isinstance(structured, dict) else d.get("result")
+        if isinstance(structured, dict):
+            return structured
+        return d["result"] if isinstance(d.get("result"), str) else ""   # no answer: replaces any earlier one
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)

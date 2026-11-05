@@ -178,8 +178,10 @@ class Adapter:
         raise Unsupported(f"{self.harness}: no default reviewer command; set the roster's channels.cli")
 
     def final_message(self, line: str) -> Any:
-        """The reviewer's final answer when ``line`` carries one (a dict for harness-validated structured output,
-        else the message text); ``None`` otherwise, and always for ``generic``, whose whole output is the message."""
+        """The reviewer's final answer when ``line`` is an answer event (a dict for harness-validated structured
+        output, else the message text; ``""`` for an answer event with no valid answer, such as a ``null`` text or
+        an error result, so it replaces any earlier answer of the turn and the run is a rerun request); ``None`` for
+        any other line, and always for ``generic``, whose whole output is the message."""
         return None
 
     def parse(self, line: str) -> Parsed | None:

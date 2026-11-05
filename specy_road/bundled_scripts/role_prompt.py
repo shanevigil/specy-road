@@ -57,7 +57,8 @@ from pathlib import Path
 from specy_road.bundled_scripts.do_next_prompt import SUBAGENT_LINE
 from specy_road.bundled_scripts.generate_brief import index, render_brief, verify_cmd_lines
 from specy_road.bundled_scripts.review_packet import build_packet
-from specy_road.bundled_scripts.role_prompt_cli import run_custom_reviewer, run_default_reviewer, run_plain_cli
+from specy_road.bundled_scripts.role_prompt_cli import (close_unfiled_cli_run, run_custom_reviewer,
+                                                        run_default_reviewer, run_plain_cli)
 from specy_road.bundled_scripts.role_prompt_rca import (
     DATA_LINE,
     coordinator_preamble,
@@ -274,7 +275,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
 def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflight: str | None = None,
                     entry_cli: str | None = None, *, harness: str | None = None, role: str | None = None,
                     model: str | None = None, reviews: Path | None = None, ref: str | None = None,
-                    transcript: list[str] | None = None, sign_key: Path | None = None) -> int:
+                    transcript: list[str] | None = None, sign_key: Path | None = None, filed: list | None = None) -> int:
     if preflight:
         # Proposal §3.6: e.g. confirm which process owns a local model's port.
         # It runs before anything else is even inspected: a failed check stops
@@ -287,7 +288,8 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
     # `rca` is a reviewer's turn; a harness the roster does not name has no effort flag.
     level = prof.effort("reviewer" if role == "rca" else role) if prof and role else None
     if role == "reviewer" and harness in READ_BACK_HARNESSES and not entry_cli and reviews is not None:
-        return run_default_reviewer(prof, prompt_path, root, model, reviews, level, harness, ref, transcript, sign_key)
+        return run_default_reviewer(prof, prompt_path, root, model, reviews, level, harness, ref, transcript, sign_key,
+                                    filed)
     cli = entry_cli or (prof.cli() if prof else None)   # the roster's channels.cli wins, as `worker delegate` has it
     if not cli:
         print("error: --channel cli needs a roster `channels.cli` or an `access.cli` in the model's profile", file=sys.stderr)
@@ -302,7 +304,7 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
     effort = ADAPTERS.get(harness or "generic", ADAPTERS["generic"]).effort_flag(level)
     if role == "reviewer" and reviews is not None:   # captured, flagged and filed like the default commands
         return run_custom_reviewer(prof, cli, prompt_path, root, str(model), reviews, ref, harness, effort, transcript,
-                                   sign_key)
+                                   sign_key, filed)
     return run_plain_cli(cli, prompt_path, root, effort, transcript)
 
 
@@ -378,12 +380,14 @@ def _run(ns: argparse.Namespace, root: Path) -> None:
         raise SystemExit(1)
     reviewer_run = open_reviewer_cli_run(root, reviewer_target, ns.model, entry.get("harness"))
     transcript: list[str] = []
+    filed: list = []   # the filing outcome: a failed filing is no success beside an older record of the commit
     try:
         rc = run_cli_channel(prof, out, root, entry.get("preflight"), entry_cli,
                              harness=entry.get("harness"), role=ns.role, model=ns.model,
                              reviews=reviews_dir(root, ns.node_id), ref=ns.ref, transcript=transcript,
-                             sign_key=ns.sign_key)
+                             sign_key=ns.sign_key, filed=filed)
         close_reviewer_cli_run(root, reviewer_target, ns.model, reviewer_run, rc, transcript)
+        close_unfiled_cli_run(reviewer_run, filed)
     except BaseException as e:
         fail_reviewer_cli_run(reviewer_run, e)
         raise
