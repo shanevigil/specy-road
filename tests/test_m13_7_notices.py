@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from specy_road.agent_ignores import GITIGNORE, MATCH_LIMIT, apply_and_report
+from specy_road.ignore_report import ESTIMATE_HEADER, HIDDEN_NOTE, REAL_HEADER, TRACKED_NOTE, UNTRACK_HINT
 from specy_road.managed_block import MARKER_END, MARKER_START
 from specy_road.written_entry import Written
 from specy_road.bundled_scripts.refresh_stubs import main
@@ -117,27 +118,12 @@ def _repo_with_prompts(tmp_path: Path, untracked: int = 1) -> Path:
     return tmp_path
 
 
-@pytest.mark.parametrize("dry_run", [True, False])
-def test_a_new_ignore_rule_lists_tracked_and_untracked_matches(tmp_path: Path, capsys, dry_run: bool) -> None:
-    repo = _repo_with_prompts(tmp_path)
-    written: list[str] = []
-    apply_and_report(repo, "", written, dry_run=dry_run)
-    out = capsys.readouterr().out.splitlines()
-    assert out == [
-        ".gitignore: new rules match files already in the tree (nothing was untracked):",
-        "  work/prompt-a.md (work/prompt-*.md): still tracked; git keeps tracking it",
-        "  work/prompt-u00.md (work/prompt-*.md): untracked; now hidden from git status",
-    ]
-    assert f"{GITIGNORE} (created)" in written
-    assert "work/prompt-a.md" in _git(repo, "ls-files").split()   # nothing untracked
-
-
 def test_the_match_list_stops_at_the_limit_then_counts(tmp_path: Path, capsys) -> None:
     repo = _repo_with_prompts(tmp_path, untracked=MATCH_LIMIT + 4)
     apply_and_report(repo, "", [])
     out = capsys.readouterr().out.splitlines()
-    assert len(out) == 1 + MATCH_LIMIT + 1
-    assert out[-1] == "  … and 5 more"
+    assert len(out) == 1 + MATCH_LIMIT + 2
+    assert out[-2:] == ["  … and 5 more", UNTRACK_HINT]
 
 
 def test_rules_already_in_the_file_are_not_new(tmp_path: Path, capsys) -> None:
@@ -146,49 +132,6 @@ def test_rules_already_in_the_file_are_not_new(tmp_path: Path, capsys) -> None:
     capsys.readouterr()
     apply_and_report(repo, "", [])
     assert capsys.readouterr().out == ""
-
-
-def _status(repo: Path) -> str:
-    return _git(repo, "status", "--porcelain", "--untracked-files=all")
-
-
-@pytest.mark.parametrize("dry_run", [True, False])
-def test_a_path_the_new_rule_only_matches_as_a_pathspec_is_not_called_hidden(
-        tmp_path: Path, capsys, dry_run: bool) -> None:
-    repo = _repo_with_prompts(tmp_path, untracked=0)
-    (repo / "work" / "prompt-dir").mkdir()
-    (repo / "work" / "prompt-dir" / "sub.md").write_text("s\n", encoding="utf-8")
-    apply_and_report(repo, "", [], dry_run=dry_run)
-    assert "prompt-dir" not in capsys.readouterr().out
-    assert "?? work/prompt-dir/sub.md" in _status(repo)
-
-
-@pytest.mark.parametrize("dry_run", [True, False])
-def test_a_later_negation_keeps_the_file_visible_and_unlisted(tmp_path: Path, capsys, dry_run: bool) -> None:
-    repo = _repo_with_prompts(tmp_path, untracked=0)
-    (repo / GITIGNORE).write_text(f"{MARKER_START}\n{MARKER_END}\n!work/prompt-keep.md\n", encoding="utf-8")
-    (repo / "work" / "prompt-keep.md").write_text("k\n", encoding="utf-8")
-    apply_and_report(repo, "", [], dry_run=dry_run)
-    out = capsys.readouterr().out
-    assert "prompt-keep" not in out
-    assert "  work/prompt-a.md (work/prompt-*.md): still tracked; git keeps tracking it" in out.splitlines()
-    assert "?? work/prompt-keep.md" in _status(repo)
-
-
-@pytest.mark.parametrize("dry_run", [True, False])
-def test_a_negation_before_the_block_loses_to_the_new_rule_and_is_listed(
-        tmp_path: Path, capsys, dry_run: bool) -> None:
-    repo = _repo_with_prompts(tmp_path, untracked=0)
-    before = f"!work/prompt-keep.md\n{MARKER_START}\n{MARKER_END}\n"
-    (repo / GITIGNORE).write_text(before, encoding="utf-8")
-    (repo / "work" / "prompt-keep.md").write_text("k\n", encoding="utf-8")
-    apply_and_report(repo, "", [], dry_run=dry_run)
-    assert "  work/prompt-keep.md (work/prompt-*.md): untracked; now hidden from git status" in (
-        capsys.readouterr().out.splitlines())
-    if dry_run:
-        assert (repo / GITIGNORE).read_text(encoding="utf-8") == before
-    else:
-        assert "prompt-keep" not in _status(repo)
 
 
 def _generic_repo(tmp_path: Path, rel_dir: str, *, link_to: str | None = None) -> Path:
@@ -231,39 +174,6 @@ def test_a_symlinked_generic_dir_with_parentheses_reports_its_real_path(tmp_path
         assert f"{verb} actual/{name} (docs/team (commands) → actual)" in out
 
 
-def _untracked(repo: Path) -> set[str]:
-    return {ln[3:].strip('"') for ln in _git(repo, "-c", "core.quotePath=false", "status", "--porcelain",
-                                           "--untracked-files=all").splitlines() if ln.startswith("?? ")}
-
-
-_PROBES = {
-    "odd names": ("", None, ["work/prompt-a b.md", "work/prompt-β.md", "work/prompt-#x.md", "work/prompt-!y.md",
-                             "work/reviews/#r.json", "work/reviews/!r.json", "#top.md", "!top.md"]),
-    "no trailing newline": ("", b"node_modules", ["work/prompt-n.md", "notes.md"]),
-    "crlf": ("", b"!work/prompt-keep.md\r\n" + MARKER_START.encode() + b"\r\n" + MARKER_END.encode() + b"\r\n",
-             ["work/prompt-keep.md", "work/prompt-other.md"]),
-    "nested project": ("sr/", None, ["sr/work/prompt-x.md", "sr/work/.sessions/s.json", "work/prompt-y.md"]),
-}
-
-
-@pytest.mark.parametrize("probe", sorted(_PROBES))
-def test_the_hidden_list_is_exactly_what_git_status_stops_showing(tmp_path: Path, capsys, probe: str) -> None:
-    prefix, gitignore, files = _PROBES[probe]
-    repo = _repo_with_prompts(tmp_path, untracked=0)
-    if gitignore is not None:
-        (repo / GITIGNORE).write_bytes(gitignore)
-    for rel in files:
-        (repo / rel).parent.mkdir(parents=True, exist_ok=True)
-        (repo / rel).write_text("x\n", encoding="utf-8")
-    apply_and_report(repo, prefix, [], dry_run=True)
-    dry = capsys.readouterr().out
-    shown = _untracked(repo)
-    apply_and_report(repo, prefix, [])
-    assert capsys.readouterr().out == dry                       # dry and real agree
-    listed = {ln[2:].split(" (")[0] for ln in dry.splitlines() if ln.endswith("now hidden from git status")}
-    assert listed == shown - _untracked(repo) - {GITIGNORE} and listed
-
-
 def test_diff_shows_stubs_under_a_parenthesised_dir(tmp_path: Path, capsys) -> None:
     repo = _generic_repo(tmp_path, "docs/team (commands)")
     main(["--repo-root", str(repo), "--diff"])
@@ -271,52 +181,6 @@ def test_diff_shows_stubs_under_a_parenthesised_dir(tmp_path: Path, capsys) -> N
     for name in ("specyrd-validate.md", "specyrd-brief.md"):
         assert f"+++ b/docs/team (commands)/{name}" in out
         assert f"would write docs/team (commands)/{name}" not in out   # diffed, not left as a bare line
-
-
-@pytest.mark.parametrize("dry_run", [True, False])
-def test_an_unreadable_nested_gitignore_skips_the_note_but_not_the_writes(
-        tmp_path: Path, capsys, dry_run: bool) -> None:
-    import os
-    if os.geteuid() == 0:
-        pytest.skip("root reads any file")
-    repo = _repo_with_prompts(tmp_path)
-    nested = repo / "work" / ".gitignore"
-    nested.write_text("x\n", encoding="utf-8")
-    nested.chmod(0)
-    written: list[str] = []
-    try:
-        apply_and_report(repo, "", written, dry_run=dry_run)
-    finally:
-        nested.chmod(0o644)
-    out = capsys.readouterr().out.splitlines()
-    assert sorted(written) == [".cursorindexingignore (created)", ".gitignore (created)"]
-    assert len(out) == 1 and out[0].startswith("ignore check skipped: ") and "Permission denied" in out[0]
-    assert (repo / GITIGNORE).is_file() is not dry_run and (repo / ".cursorindexingignore").is_file() is not dry_run
-
-
-@pytest.mark.parametrize("dry_run", [True, False])
-def test_ignorecase_from_the_checkout_is_honoured(tmp_path: Path, capsys, dry_run: bool) -> None:
-    repo = _repo_with_prompts(tmp_path, untracked=0)
-    _git(repo, "config", "core.ignorecase", "true")
-    (repo / "work" / "Prompt-case.md").write_text("c\n", encoding="utf-8")
-    apply_and_report(repo, "", [], dry_run=dry_run)
-    assert "  work/Prompt-case.md (work/prompt-*.md): untracked; now hidden from git status" in (
-        capsys.readouterr().out.splitlines())
-    assert ("Prompt-case" in _status(repo)) is dry_run          # the real update does hide it
-
-
-@pytest.mark.parametrize("dry_run", [True, False])
-def test_a_tracked_file_an_older_rule_already_ignores_is_still_listed(tmp_path: Path, capsys, dry_run: bool) -> None:
-    repo = _repo_with_prompts(tmp_path, untracked=0)
-    (repo / "work" / "prompt-tracked.md").write_text("t\n", encoding="utf-8")
-    _git(repo, "add", "work/prompt-tracked.md")
-    _git(repo, "commit", "-qm", "tracked")
-    (repo / GITIGNORE).write_text("work/*.md\n", encoding="utf-8")
-    index = _git(repo, "ls-files", "-s")
-    apply_and_report(repo, "", [], dry_run=dry_run)
-    assert "  work/prompt-tracked.md (work/prompt-*.md): still tracked; git keeps tracking it" in (
-        capsys.readouterr().out.splitlines())
-    assert _git(repo, "ls-files", "-s") == index
 
 
 def test_a_git_dir_from_a_hook_does_not_point_the_scratch_repo_at_the_checkout(
@@ -329,3 +193,142 @@ def test_a_git_dir_from_a_hook_does_not_point_the_scratch_repo_at_the_checkout(
     assert "  work/prompt-u00.md (work/prompt-*.md): untracked; now hidden from git status" in (
         capsys.readouterr().out.splitlines())
     assert (repo / ".git" / "config").read_bytes() == config
+
+
+# --- A2, real run: the report is git's observed change -------------------------------------------
+
+def _write(repo: Path, rel: str, data: str | bytes = "x\n") -> None:
+    (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+    (repo / rel).write_bytes(data if isinstance(data, bytes) else data.encode())
+
+
+def _commit(repo: Path, rel: str) -> None:
+    _write(repo, rel)
+    _git(repo, "add", "--force", rel)
+    _git(repo, "commit", "-qm", rel)
+
+
+def _block(before: str = "", after: str = "", eol: str = "\n") -> bytes:
+    return f"{before}{MARKER_START}{eol}{MARKER_END}{eol}{after}".encode()
+
+
+def _case_ignorecase(repo: Path) -> None:
+    _git(repo, "config", "core.ignorecase", "true")
+    _write(repo, "work/Prompt-case.md")
+
+
+def _case_info_exclude(repo: Path) -> None:
+    _write(repo, ".git/info/exclude", "work/prompt-excluded.md\n")
+    _write(repo, "work/prompt-excluded.md")
+    _write(repo, "work/prompt-shown.md")
+
+
+def _case_self_ignored_nested(repo: Path) -> None:
+    _write(repo, "work/.gitignore", ".gitignore\n!prompt-keep.md\n")
+    _write(repo, "work/prompt-keep.md")
+    _write(repo, "work/prompt-hide.md")
+
+
+def _case_tracked_already_ignored(repo: Path) -> None:
+    _commit(repo, "work/prompt-tracked.md")
+    _write(repo, GITIGNORE, "work/*.md\n")
+
+
+#: name -> (setup, prefix, expected now-hidden, expected still-tracked). Every repo also tracks work/prompt-a.md.
+CASES = {
+    "plain": (lambda r: _write(r, "work/prompt-u.md"), "", {"work/prompt-u.md"}, {"work/prompt-a.md"}),
+    "r1 pathspec-only match": (lambda r: _write(r, "work/prompt-dir/sub.md"), "", set(), {"work/prompt-a.md"}),
+    "r1 negation after block": (lambda r: (_write(r, GITIGNORE, _block(after="!work/prompt-keep.md\n")),
+                                           _write(r, "work/prompt-keep.md")), "", set(), {"work/prompt-a.md"}),
+    "r2 negation before block": (lambda r: (_write(r, GITIGNORE, _block(before="!work/prompt-keep.md\n")),
+                                            _write(r, "work/prompt-keep.md")), "",
+                                 {"work/prompt-keep.md"}, {"work/prompt-a.md"}),
+    "r2 crlf": (lambda r: (_write(r, GITIGNORE, _block(before="!work/prompt-keep.md\r\n", eol="\r\n")),
+                           _write(r, "work/prompt-keep.md")), "", {"work/prompt-keep.md"}, {"work/prompt-a.md"}),
+    "r2 no trailing newline": (lambda r: (_write(r, GITIGNORE, "node_modules"), _write(r, "work/prompt-n.md")), "",
+                               {"work/prompt-n.md"}, {"work/prompt-a.md"}),
+    "r2 odd names": (lambda r: [_write(r, p) for p in ("work/prompt-a b.md", "work/prompt-β.md", "work/prompt-#x.md",
+                                                       "work/prompt-!y.md", "work/reviews/#r.json", "#top.md")], "",
+                     {"work/prompt-a b.md", "work/prompt-β.md", "work/prompt-#x.md", "work/prompt-!y.md",
+                      "work/reviews/#r.json"}, {"work/prompt-a.md"}),
+    "r2 nested project": (lambda r: [_write(r, p) for p in ("sr/work/prompt-x.md", "sr/work/.sessions/s.json",
+                                                            "work/prompt-y.md")], "sr/",
+                          {"sr/work/prompt-x.md", "sr/work/.sessions/s.json"}, set()),
+    "r3 ignorecase": (_case_ignorecase, "", {"work/Prompt-case.md"}, {"work/prompt-a.md"}),
+    "r3 info/exclude": (_case_info_exclude, "", {"work/prompt-shown.md"}, {"work/prompt-a.md"}),
+    "r3 tracked already ignored": (_case_tracked_already_ignored, "", set(), set()),
+    "r4 self-ignored nested .gitignore": (_case_self_ignored_nested, "", {"work/prompt-hide.md"}, {"work/prompt-a.md"}),
+}
+
+
+def _shown(repo: Path) -> set[str]:
+    out = _git(repo, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+    return {e[3:] for e in out.split("\0") if e.startswith("?? ")}
+
+
+def _tracked_ignored(repo: Path) -> set[str]:
+    return {p for p in _git(repo, "ls-files", "-c", "-i", "--exclude-standard", "-z").split("\0") if p}
+
+
+def _listed(out: str, note: str) -> set[str]:
+    return {ln[2:].rsplit(" (", 1)[0] for ln in out.splitlines() if ln.endswith(note)}
+
+
+@pytest.mark.parametrize("case", list(CASES))
+def test_the_real_run_reports_exactly_the_visibility_change_git_shows(tmp_path: Path, capsys, case: str) -> None:
+    setup, prefix, hidden, tracked = CASES[case]
+    repo = _repo_with_prompts(tmp_path, untracked=0)
+    setup(repo)
+    shown, ignored, index = _shown(repo), _tracked_ignored(repo), _git(repo, "ls-files", "-s")
+    apply_and_report(repo, prefix, [])
+    out = capsys.readouterr().out
+    assert _listed(out, HIDDEN_NOTE) == shown - _shown(repo) == hidden
+    assert _listed(out, TRACKED_NOTE) == _tracked_ignored(repo) - ignored == tracked
+    assert out.startswith(REAL_HEADER) if hidden | tracked else out == ""
+    assert _git(repo, "ls-files", "-s") == index                    # nothing untracked
+
+
+# --- A2, dry run: a labelled estimate ------------------------------------------------------------
+
+def test_the_dry_run_is_labelled_an_estimate_and_gets_the_self_ignored_nested_case_right(
+        tmp_path: Path, capsys) -> None:
+    repo = _repo_with_prompts(tmp_path, untracked=0)
+    _case_self_ignored_nested(repo)
+    apply_and_report(repo, "", [], dry_run=True)
+    dry = capsys.readouterr().out
+    assert dry.splitlines()[0] == ESTIMATE_HEADER
+    assert _listed(dry, HIDDEN_NOTE) == {"work/prompt-hide.md"}
+    assert _listed(dry, TRACKED_NOTE) == {"work/prompt-a.md"}
+    assert not (repo / GITIGNORE).exists()
+    apply_and_report(repo, "", [])
+    real = capsys.readouterr().out
+    assert dry.splitlines()[1:] == real.splitlines()[1:]          # same paths, rules and notes as observed
+
+
+# --- A2: the note never stops the writes ---------------------------------------------------------
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_a_failed_git_capture_skips_the_note_and_the_writes_still_happen(tmp_path: Path, capsys, dry_run: bool) -> None:
+    (tmp_path / ".git").write_text("gitdir: missing-git-dir\n", encoding="utf-8")   # a broken worktree link
+    written: list[str] = []
+    apply_and_report(tmp_path, "", written, dry_run=dry_run)
+    out = capsys.readouterr().out.splitlines()
+    assert sorted(written) == [".cursorindexingignore (created)", ".gitignore (created)"]
+    assert len(out) == 1 and out[0].startswith("ignore check skipped: git ls-files: ")
+    assert (tmp_path / GITIGNORE).is_file() is not dry_run
+
+
+def test_an_unreadable_nested_gitignore_skips_the_estimate(tmp_path: Path, capsys) -> None:
+    import os
+    if os.geteuid() == 0:
+        pytest.skip("root reads any file")
+    repo = _repo_with_prompts(tmp_path)
+    nested = repo / "work" / ".gitignore"
+    nested.write_text("x\n", encoding="utf-8")
+    nested.chmod(0)
+    try:
+        apply_and_report(repo, "", [], dry_run=True)
+    finally:
+        nested.chmod(0o644)
+    out = capsys.readouterr().out.splitlines()
+    assert len(out) == 1 and out[0].startswith("ignore check skipped: ") and "Permission denied" in out[0]
