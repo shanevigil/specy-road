@@ -116,6 +116,29 @@ Merged `origin/WIP/improvements-0-3-1` first (clean; roadmap and planning files 
     no profile gives the roster id.
   - Existing refusal tests keep their "resolves to no API model id" assertion; the message still says it.
 
+## Fix round 3, root cause (gpt-6.1-sol-low blocked df0142e3)
+
+Merged `origin/WIP/improvements-0-3-1` first. It was clean: roadmap and planning files only. M15.3's zones are unchanged, and `review_delegate.py` and `orchestration_config.py` are still outside them.
+
+**Root cause.** A roster entry had no single authoritative "effective model". Resolution (`model_problem`), validation (empty only) and comparison (`check`, which accepted the roster id, `harness_model` and every profile identity) each had their own idea of it. The three findings are that one gap seen from three places:
+- A2: a `harness_model` or `id` of `unknown` passed validation.
+- A4: a `harness_model` naming another model was still matched through the profile's names.
+- A1: the preview depended on launch-only state.
+
+**Design.**
+- `review_model_check.resolve_effective_model(entry, profile)` applies `orchestration_config.harness_model` (the entry's `harness_model`, else the profile's `api_id`, else the `id`), then rejects an empty or `unknown` result from any of those steps.
+- `role_prompt_cli.model_problem` is that function plus the refusal message. Every prompt path that shows or launches a reviewer takes its model from it: the preview (`show_reviewer`), the refusal before the run record, `run_reviewer_channel`, and `run_default_reviewer`'s `--model`.
+- `check` compares the reported model with the effective model only, after `normalise`. The profile's other names (`display_name`, `aliases`, file name) count only when the effective model is that profile's model. An entry with no effective model matches nothing.
+- `run_and_file` looks up its entry and profile by exact roster id (`review_model_check.rostered`). The old `model_names.roster_match` returned the first entry whose id, `harness_model` or profile alias matched, which could be a different entry.
+- **A1:** `reviewer_turn` handles the preview before any worktree enforcement. Without `--run` it always prints the command, as "would run in the leaf worktree (none found)" plus `note: --run would refuse: …` when there is none. With `--run` the worktree refusal is unchanged.
+
+**Tests.**
+- New `tests/test_effective_model.py`, split out for the 400-line test file cap. It has one parametrized table of 18 rows over `harness_model` set, unset, empty or `unknown`; profile present, absent or `unknown`; `id` `unknown`; and reported model matching, not matching or absent. Each row asserts `resolve_effective_model`, `model_problem` (the value preview and launch use) and `check`. The earlier `model_problem` unit test moved there too.
+- `test_preview_without_a_claimed_worktree_still_prints_the_command` in `tests/test_prompt_channel_cli_run.py`.
+- All earlier tests pass unchanged, including the public CLI `review-label` test (preview and launch both pass `--model gpt-6.1-sol`).
+
+**Not done:** "use it for delegate". `review_delegate.py` resolves its model with `harness_model(entry, api)` and passes `""` for a missing profile, which gives the harness default instead of the roster id, and it doesn't reject `unknown`. The file is outside this leaf's zones and A5 puts delegate's launch path out of scope, so it was not changed. Fixing it means adding `review_delegate.py` to the zones (or a follow-up leaf) and calling `resolve_effective_model` there. `prompt` has no resume path.
+
 ## Probes
 
 - Unknown API id with a `channels.cli`, run and dry run: refused before launch, with no process and no run record (tested).
@@ -157,6 +180,22 @@ Merged `origin/WIP/improvements-0-3-1` first (clean; roadmap and planning files 
   delegate's launch path out of scope. It needs a follow-up leaf.
 - Fix round 2, other callers of `harness_model` outside the zones (`worker_ops_launch.py`, `entry_routing`): executor
   and routing paths, not reviewer launches; not changed.
+
+- Fix round 3 / A2: a `harness_model` of `unknown` or `Unknown`, a profile `api_id` of `unknown`, and an `id` of `unknown` with no profile all resolve to no model and are refused (table rows).
+- Fix round 3 / A2: an empty `harness_model` counts as unset and falls through to the profile (table row).
+- Fix round 3 / A2: every prompt path that builds a model flag uses `model_problem` → `resolve_effective_model`: `show_reviewer`, the refusal in `reviewer_turn`, `run_reviewer_channel` and `run_default_reviewer` (grep for `api_id` and `harness_model(` in `role_prompt_cli.py`; no other computation remains).
+- Fix round 3 / A4: `harness_model: gpt-6.1-sol` with the Opus profile and a reported `claude-opus-5-5` or `Claude Opus 5.5`: mismatch (table rows).
+- Fix round 3 / A4: the same entry with `GPT 6.1 Sol` reported: match (table row).
+- Fix round 3 / A4: a `harness_model` naming the profile's own model keeps the profile's names, including when the profile's `api_id` is `unknown` (table row).
+- Fix round 3 / A4: the roster label reported (`opus`, `review-label`) when it isn't the effective model: mismatch (table rows).
+- Fix round 3 / A4: no effective model and a reported model: mismatch; nothing reported: unreported (table rows).
+- Fix round 3 / A4: other users of the comparison: `check_run` → `check` in `run_and_file`, and the gate reads only the filed `model_mismatch`. `worker_models.mismatch_note` (worker usage, outside the zones) still uses `same_model` with profile names; not a reviewer record, so not changed.
+- Fix round 3 / A4: entry lookup for the check is by exact roster id (`rostered`), not `roster_match`'s first match on id, `harness_model` or profile alias.
+- Fix round 3 / A1: preview with no claimed worktree: exit 0, the command printed, a note naming the `--run` refusal, and no process started (tested).
+- Fix round 3 / A1: `--run` with no worktree is still refused (existing test).
+- Fix round 3 / A1: the preview still refuses a command it can't show (unknown model, bypass flag, no `channels.cli`), with exit 1 and no process (existing tests).
+- Fix round 3 / A1: other preview paths that hit launch-only state: `show_cli` (other roles) never needed a worktree, and the run lock and auth block in `main` run only with `--run` (read `role_prompt.main` and `_run`).
+- Fix round 3 / existing fixtures: tests whose fake harness reports the roster id still match, because their entries have no profile, so the effective model is the id (601 targeted tests pass).
 
 ## Final touch zones
 
