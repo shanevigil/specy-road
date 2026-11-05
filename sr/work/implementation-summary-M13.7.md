@@ -437,3 +437,74 @@ The coordinator's precheck flagged `tests/test_m13_7_gitignore_symlinks.py` (rou
 
 - `tests/m13_7_ignore_helpers.py`: public helpers shared by the two M13.7 ignore test files. It replaces the cross-module private imports.
 - Mocks: none.
+
+## Fix round 7
+
+This round addresses two blocks with one design change. It starts with a clean merge of `origin/WIP/improvements-0-3-1` (`c59cc6f8`). The fix is commit `cffcf2a8`.
+
+- **gpt-6.1-sol-low on d2ac62d9, R1:** a tracked file a new rule matches is dropped when a later older root rule or a nested rule decides it.
+- **gpt-6.1-sol on c366c94f, R1:** the same file is dropped when an older rule already ignored it. Round 6 fixed that instance, and this round keeps it fixed.
+
+**Class:** a tracked file that a rule the update added matches, left out because some *other* rule is the one git attributes it to. Round 4 lost it to an older rule before the block. Round 6 lost it to a later rule or a nested `.gitignore`.
+
+**Design change, which removes the class:** the tracked notice no longer depends on which rule decides. A tracked file is listed when two questions, both answered by git, both say yes:
+1. **Is it ignored after the update?** This is `check-ignore --no-index -v` in the checkout (real run) or the scratch copy (dry run), with every input git reads. A negation anywhere therefore still keeps the file out.
+2. **Does a line the update added match it on its own?** The added lines alone are written as the top-level `.gitignore` of a fresh scratch repository. `check-ignore` runs there with the checkout's `core.ignorecase`, and only matches from that file count. The rule shown is that new rule.
+
+**Unchanged:**
+- untracked "now hidden": the observed before/after visibility change;
+- the 20-entry cap and the `git rm --cached` hint;
+- the skip-on-error line, since every git call goes through `_git` and `attempt`;
+- the index: nothing is untracked.
+
+**Tests (`tests/test_m13_7_notices.py`):** every case below runs real and dry, and the dry run must print the same lines.
+- "r5 older rule after the block decides" now expects `work/prompt-a.md` listed as tracked.
+- New "r7 nested rule decides": a committed `work/.gitignore` with `*.md`; `work/prompt-a.md` is listed.
+- New "r7 tracked negated after the block": not listed.
+- New "r7 tracked negated in a nested file": not listed.
+
+**Red-green:** with `ignore_report.py` from the merge commit, the 4 r5/r7-nested cases fail (real and dry); all 57 pass on `cffcf2a8`.
+
+**Docs:** the `docs/install-and-usage.md` line now says how the tracked notice is decided.
+
+## Fix round: probes
+
+Each probe ran dry and real (`/tmp/m137_probe2.py`, not committed), checked that the index was unchanged, and compared the two listings. All 27 agree between dry and real.
+
+- Sol-low's input, tracked `work/prompt-review (extra).md` with `work/*.md` after the block: listed.
+- Later older root rule decides (`work/*.md` after the block): listed. Test case r5.
+- Nested `work/.gitignore` `*.md` decides: listed. Test case r7.
+- Deeper nested `work/reviews/.gitignore` `*` decides `work/reviews/M1/r.json`: listed under `work/reviews/`.
+- Directory rule (`work/reviews/`, `work/.sessions/`), checked in a scratch repo where the paths do not exist: listed, because git applies the directory rule to the path's parent directories.
+- Older rule before the block (Sol's round-6 case): still listed. Test case r3.
+- Older rule in `info/exclude` or `core.excludesFile`: listed.
+- Tracked file matched only by an older rule (`info/exclude` or the root): not listed. Test case r5.
+- Negation of the tracked file after the block: not listed. Test case r7.
+- Negation in a nested `.gitignore`: not listed. Test case r7.
+- A negation followed by an older `work/*.md`: listed, since it is ignored again and the new rule matches it.
+- A shipped rule already present as a user line: not listed, because it is not a new line.
+- CRLF `.gitignore` with a later older rule: listed, and the old lines are not counted as added.
+- `core.ignorecase=true` (`work/Prompt-T.md`) with a later older rule: listed.
+- Names with a space, `β`, a leading `#` or `!`: listed exactly.
+- `init project` seed with a rule: listed.
+- No `.gitignore` before the update: listed.
+- Top-level `.gitignore` that is a symlink: nothing listed, since git does not read it.
+- Project prefix `sr/` with a later older rule: `sr/work/prompt-t.md` listed.
+- 25 tracked matches: 20 listed, then `… and 5 more` and the hint.
+
+**Gates:**
+- `scripts/check_test_private_imports.py`: exit 0.
+- No test imports an underscore name from another test module.
+- `specy-road file-limits`: OK.
+- `ruff`: clean.
+- Targeted run: 191 passed.
+
+### Added (fix round 7)
+
+- `ignore_report._new_rule_matches`: in a scratch repository holding only the added lines, git says which paths a new rule matches on its own (R1).
+- `_tracked_under_new_rules` is now "ignored after the update" plus "matched by a new rule". It replaces the round-6 deciding-line attribution.
+- `_added_lines` now returns the added lines, CR-stripped, instead of their line numbers.
+- The real run passes the checkout's `core.ignorecase` (`_ignore_config`) to that scratch check.
+- Early return in `_new_rule_matches` when there are no paths or no added lines: no scratch repository and no git call.
+- Test cases "r7 nested rule decides", "r7 tracked negated after the block" and "r7 tracked negated in a nested file", and the r5 expectation updated.
+- Mocks: none.
