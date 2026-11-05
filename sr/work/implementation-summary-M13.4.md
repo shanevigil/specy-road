@@ -25,7 +25,8 @@ Final list: as given; `specy_road/bundled_scripts/validate_notices.py` is the ne
 (R1: private-name imports from other test modules.)
 
 - `tests/test_milestone_review_hold_notice.py` imports from `tests.test_milestone_full_review`: only `POLICY_OFF`, `set_node_status`, `make_milestone_repo` (no underscore names).
-- `tests/test_milestone_full_review.py`: `_set_status` renamed to public `set_node_status`; no remaining `_set_status` symbol or callers in that file.
+- `tests/test_milestone_full_review.py`: `_set_status` renamed to public `set_node_status` delegating to `milestone_repo_helpers.set_status` after WIP merge; no `_set_status` symbol.
+- `tests/milestone_repo_helpers.py` (from WIP): shared `make_milestone_repo`, `set_status`, and leaf land helpers; full-review tests import from here.
 - All importers of `tests.test_milestone_full_review` in this branch (`test_milestone_review_hold_notice.py`, `test_refusals_name_their_fix.py`): no private-name imports.
 - `python scripts/check_test_private_imports.py`: exit 0, 0 new private references.
 
@@ -38,6 +39,6 @@ Final list: as given; `specy_road/bundled_scripts/validate_notices.py` is the ne
 - `notice_milestone_review_holds()` (validate_notices.py): validate's printing site, kept out of validate_roadmap.py for its line cap.
 - `review_hold` key in why-blocked `--json` and list-nodes `--json`: A2 machine-readable reason.
 - Guard in list-nodes skipping `UNRESOLVABLE_HOLD` reasons: their rollup is Complete, so marking them "(review hold)" would be wrong.
-- Renamed `_set_status` to public `set_node_status` in tests/test_milestone_full_review.py (callers updated, assertions unchanged): the new test file imports it, and tests must not import underscore names.
+- Renamed `_set_status` to public `set_node_status` in tests/test_milestone_full_review.py (thin wrapper over `milestone_repo_helpers.set_status`; callers unchanged, assertions unchanged): M13.4 tests must not import underscore names.
 - Mocks: none.
 - Tests (tests/test_milestone_review_hold_notice.py): validate notice text pinned for a milestone whose leaves are all Complete; why-blocked text and JSON; list-nodes text mark and JSON field; no notice with policy off or with the milestone recorded Complete; one-line unresolvable notice.
