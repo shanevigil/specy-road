@@ -39,6 +39,7 @@ from specy_road.finish_modes import (
     merge_landing_preflight,
 )
 from specy_road.finish_pr_merge import pr_merge_integration_or_exit
+from specy_road.finish_bookkeeping_undo import merge_undo_snapshot
 from specy_road.finish_on_complete_override import on_complete_override_or_exit
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context_for_finish
 from specy_road.generated_files import (
@@ -357,6 +358,7 @@ def _finish_locked(args) -> None:
         integration_branch=ib,
     )
 
+    undo = merge_undo_snapshot(ROOT, branch, ctx)   # M15.40: a failed merge landing restores this
     _bookkeeping_commit_phase(
         args, codename, node_id, branch, reg,
         pr_body_path=pr_body_path, sess_path=sess_path,
@@ -390,6 +392,7 @@ def _finish_locked(args) -> None:
         node_id=node_id,
         node=node,
         pr_body_path=pr_body_path,
+        undo=undo,
     )
 
 
