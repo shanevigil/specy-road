@@ -2,7 +2,7 @@
 
 Human-only, as ``mark-implementation-reviewed`` is for the human approval: it refuses unless stdin is a
 terminal, has no ``--yes``, and asks before writing. It refuses the whole record when any item may not be
-deferred (:func:`specy_road.review_deferral.deferral_problems`). Otherwise it adds one follow-up leaf per
+deferred (:func:`specy_road.review_deferral.qualify_deferral`, the rule the gate re-applies). Otherwise it adds one follow-up leaf per
 distinct ``follow_up_title`` beside the leaf (the ``add-node`` write), records a closed ``decision`` in
 ``roadmap/decisions.yaml`` naming every deferred finding, the follow-up leaf and the approver, and writes
 ``DEFERRAL-<round>.yaml`` beside the RCA record; the review gate then counts only those blocks (reviewer and
@@ -27,8 +27,8 @@ from specy_road.decisions import add_entry, close_entry
 from specy_road.git_subprocess import git_text
 from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 from specy_road.bundled_scripts.roadmap_chunk_atomic import TreeSnapshot
-from specy_road.review_deferral import (coverage_problems, deferral_problems, list_applied, marker_path,
-                                       round_of, write_marker)
+from specy_road.review_deferral import (deferral_evidence, marker_path, qualify_deferral, round_of,
+                                       write_marker)
 from specy_road.review_files import reviews_dir
 from specy_road.review_rca import loop_state
 from specy_road.review_target import full_sha
@@ -85,11 +85,9 @@ def applicable_record(root: Path, node_id: str, rca_arg: str) -> tuple[Any, str 
         return None, f"{rca.path.name} recommends {rca.data['recommended_action']['type']}, not defer_findings"
     if marker_path(root, node_id, rca.path.name).exists():
         return None, f"{rca.path.name} is already applied ({marker_path(root, node_id, rca.path.name).name})"
-    covers = int(rca.data["trigger"]["round"])
-    others, applied = [r for r in loop.rcas if r is not rca], list_applied(root, node_id)
     items = rca.data["deferred_findings"]
-    problems = [p for x in items for p in deferral_problems(loop.rounds, others, applied, x, covers)]
-    problems += coverage_problems(loop.rounds, items) + _follow_up_problems(items)
+    ev = deferral_evidence(root, node_id, rca.path.name, int(rca.data["trigger"]["round"]))
+    problems = qualify_deferral(items, ev) + _follow_up_problems(items)
     if problems:
         return None, (f"{rca.path.name} cannot be applied; nothing was written. A finding on an input class an "
                       "earlier round named, or a correctness finding on an acceptance id an earlier round "

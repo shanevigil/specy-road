@@ -45,7 +45,7 @@ from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
 from specy_road.review_ready_merge import add_ready_parser
 from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
-from specy_road.review_deferral import fix_round_budget
+from specy_road.review_next_step import fix_round_budget
 from specy_road.bundled_scripts.review_defer import add_parser as add_defer_parser
 from specy_road.review_record_rules import check_record
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
@@ -80,8 +80,8 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
     blocked_lines = executor_blocked_display_lines(ready) if same_commit(root, ready_commit, t.commit) else []
     loop = loop_state(root, node_id)
     escalated = loop.escalation is not None and not gate.passed
-    budget = fix_round_budget(root, gate.config, loop, node_id)   # None unless max_fix_rounds is set
-    spent = bool(budget and budget["spent"] and budget["next"] and gate.blocks)   # next None: nothing to run
+    budget = fix_round_budget(root, gate.config, loop, node_id, bool(gate.blocks))   # None: max_fix_rounds unset
+    spent = bool(budget and budget["spent"])   # spent and a counted review still blocks
     state = ("executor_blocked" if blocked_lines else "fix_round_budget_spent" if spent
              else "escalated" if escalated else _state(root, t, gate, ready_commit))
     state, hints = milestone_status(t, state)

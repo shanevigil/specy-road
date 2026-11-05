@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import json
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
@@ -28,6 +28,7 @@ from specy_road.orchestration_config import (
     is_rostered_reviewer,
     substitute_for,
 )
+from specy_road.review_deferral import load_markers
 from specy_road.review_files import (
     RCA_PREFIX,
     ReviewFile,
@@ -95,9 +96,10 @@ class LoopState:
     rcas: list[ReviewFile]
     escalation: Escalation | None
     resolved: int = 0   # rounds an RCA record already covers
+    marker_problems: list[str] = field(default_factory=list)   # malformed DEFERRAL-*.yaml (review_deferral)
 
     def problems(self) -> list[str]:
-        return [f"{r.path.name}: invalid — {'; '.join(r.errors)}" for r in self.rcas if not r.ok]
+        return [f"{r.path.name}: invalid — {'; '.join(r.errors)}" for r in self.rcas if not r.ok] + self.marker_problems
 
 
 def review_rounds(repo_root: Path, node_id: str) -> list[Round]:
@@ -211,7 +213,8 @@ def loop_state(repo_root: Path, node_id: str) -> LoopState:
         r.errors.extend(_rca_semantic_errors(repo_root, node_id, r.data, rounds, policy, config, resolved))
         if r.ok:
             resolved = max(resolved, int(r.data["trigger"]["round"]))
-    return LoopState(rounds, rcas, escalation(rounds, policy, resolved, _family(config)), resolved)
+    return LoopState(rounds, rcas, escalation(rounds, policy, resolved, _family(config)), resolved,
+                     load_markers(repo_root, node_id)[1])
 
 
 def escalated_note(loop: LoopState, node_id: str) -> list[str]:

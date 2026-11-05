@@ -79,7 +79,7 @@ def test_r3_a_later_record_is_not_earlier_evidence(tmp_path: Path, capsys, human
 @pytest.mark.parametrize("action,expected", [
     ("continue_with_class_fix", "specy-road prompt M1.1 --role executor --model composer"),
     ("change_or_reprompt_reviewer", "specy-road review-packet M1.1"),   # no packet yet; the prompt needs one
-    ("escalate_human", "specy-road decisions add M1.1 --kind decision --summary 'RCA-2.md: escalate_human'"),
+    ("escalate_human", "specy-road decisions add M1.1 --kind decision --summary"),
 ])
 def test_r4_a_non_defer_rca_names_a_runnable_step_for_its_action(tmp_path: Path, capsys, monkeypatch,
                                                                    action: str, expected: str) -> None:
@@ -196,7 +196,7 @@ def test_round2_r3_an_item_round_comes_from_its_blocking_commit(tmp_path: Path, 
     rca1.write_text("---\n" + yaml.safe_dump(_record(1, [item]), sort_keys=False) + "---\nreasoning\n")
     capsys.readouterr()
     assert _run("review", "defer", "M1.1", "--rca", str(rca1), "--repo-root", str(repo)) == 1
-    assert "that commit is round 3, later than round 1 the RCA covers" in capsys.readouterr().err
+    assert "that commit is round 3, later than round 1 the record covers" in capsys.readouterr().err
     _write_rca(repo, _record(1, None, action="escalate_human"))   # RCA-1 back to naming no class
     rca3 = _write_rca(repo, _record(3, [item]))   # covers round 3, so RCA-2 is earlier evidence
     assert _run("review", "defer", "M1.1", "--rca", str(rca3), "--repo-root", str(repo)) == 1
@@ -300,5 +300,5 @@ def test_round3_no_independent_analyst_names_a_human_decision(tmp_path: Path, ca
     _block_round(repo, 1)
     _block_round(repo, 2)
     b = _status(repo, capsys)[1]["fix_round_budget"]
-    assert "MODEL" not in b["next"] and "no rostered reviewer that neither implemented" in b["next_why"]
+    assert "MODEL" not in b["next"] and "no available rostered reviewer that neither implemented" in b["next_why"]
     assert b["next"].startswith("specy-road decisions add M1.1") and _runs(repo, b["next"]) == 0

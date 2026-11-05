@@ -144,9 +144,12 @@ project:
 
 - **Budget.** `policy.max_fix_rounds` (unset: no budget, nothing changes)
   counts the leaf's blocking rounds. Once spent while a review still blocks,
-  `handoff status` reports `fix_round_budget_spent` and names the next command:
-  a forced RCA while none covers the latest round, then a command that
-  advances that RCA's action (`review defer` for `defer_findings`).
+  `handoff status` reports `fix_round_budget_spent`; the next step comes from
+  an ordered state table (`specy_road/review_next_step.py`) keyed on the
+  budget, the covering RCA (none, non-defer, unapplied or applied deferral),
+  remaining blocks and an available independent analyst or executor. Each row
+  yields a command that runs as printed, `blocked` with a human decision, or
+  none; later leaves add rows there.
 - **Input class.** A short free-text label the analyst writes per finding; it
   is stored, never inferred. Two match when equal after lower-casing and
   collapsing whitespace; there is no fuzzy or semantic matching.
@@ -158,11 +161,14 @@ project:
   criterion is this leaf's to fix; neither leaves the leaf. An item's round
   is its blocking commit's, no later than the round the RCA covers, and only
   what was named before that round is evidence.
-- **Binding.** One check (`block_problems`) serves `review defer` and the
-  gate: each item binds one to one to a finding of the blocking record (same
-  category and text); every finding is bound and every failed id named. A
-  record does not tie findings to criteria, so a block with a correctness
-  finding that fails an id an earlier round passed is never deferred.
+- **One rule.** `qualify_deferral` holds every rule (round, new input class,
+  binding, coverage, protected criteria) and is the only place they live:
+  `review defer` calls it before writing, and the gate calls it again on each
+  marker every evaluation. Each item binds one to one to a finding of the
+  blocking record (same category and text); every finding is bound and every
+  failed id named. A record does not tie findings to criteria, so a block with
+  a correctness finding that fails an id an earlier round passed is never
+  deferred.
 - **Applying it.** `specy-road review defer <ID> --rca <record>` is
   human-only (an interactive terminal, no `--yes`). It refuses the whole record
   when any item breaks the rule; otherwise it adds the follow-up leaf beside
@@ -171,9 +177,10 @@ project:
   and the approver, and writes `DEFERRAL-<round>.yaml` beside the record, all
   as one transaction that rolls back on any failure.
 - **Audit trail and gate.** RCA record → decision entry → follow-up leaf. The
-  gate stops counting a block only when a marker names its reviewer and commit,
-  passes the same binding check, and the decision is closed (the ledger is read
-  only then); another reviewer's block, or the same reviewer's
+  gate stops counting a block only when a shape-valid marker names its
+  reviewer and commit, its decision is closed (the ledger is read only then),
+  and its items still qualify; a malformed marker resolves nothing and is
+  reported; another reviewer's block, or the same reviewer's
   on a later commit, still counts.
 
 ## Deferred
