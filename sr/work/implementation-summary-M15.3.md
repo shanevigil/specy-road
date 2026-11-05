@@ -32,6 +32,14 @@ Branch `feature/rm-prompt-channel-cli-launches-nothing-without-run`. Base is `76
 - **A5:** `review delegate` is unchanged (`review_delegate.py` is outside the zones). It calls `file_review` without `model_check`, so its records carry no `harness_model` yet.
 - **Docs:** updated `docs/orchestration-reviewer-output.md` (new M15.3 section, the specy-road-filled field list, and the agy row no longer mentions `access.cli`) and `specy_road/templates/specyrd/commands/specyrd-prompt.md`.
 
+## Merge with WIP (1b8fa35f)
+
+`origin/WIP/improvements-0-3-1` (M15.40, M15.37 and others) conflicted in `role_prompt_cli.py`; both sides kept:
+WIP's `harness_bin` (passed from the roster entry to `run_default_reviewer` and, in `show_reviewer`, to the
+dry-run's `reviewer_launch`), `checked` launch and `_refused` helper (now also used for `reviewer_command`'s
+refusal), alongside this leaf's roster-only `reviewer_command`, leaf-worktree `cwd` and model check. Re-verified:
+the M15.3 test files plus every test file the merge touched (514 passed), ruff, file-limits, full suite.
+
 ## Final touch zones
 
 The zones as listed in the roadmap, including the planner's added `review_gate.py` and `review_answer.py`. `review_eligible.py` is in the zones but is unchanged. There are no new modules outside the zones.
