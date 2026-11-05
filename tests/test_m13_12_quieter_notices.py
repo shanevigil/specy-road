@@ -19,7 +19,7 @@ from specy_road.ignore_report import UNTRACK_HINT
 from specy_road.init_project import project_template_root
 from specy_road.managed_block import MARKER_END, MARKER_START
 from tests.m13_7_ignore_helpers import repo_with_prompts
-from tests.test_touch_zone_tracked import UNTRACKED, _git_repo
+from tests.test_touch_zone_tracked import UNTRACKED, zone_git_repo
 
 MANIFEST_NOTE = "`.specyrd/manifest.json`, when present, stays tracked."
 
@@ -36,7 +36,7 @@ def _many_nodes() -> list[dict]:
 
 
 def test_85_untracked_nodes_give_a_bounded_line_claimed_and_in_progress_first(tmp_path: Path, capsys) -> None:
-    _git_repo(tmp_path)
+    zone_git_repo(tmp_path)
     warn_untracked_zones(_many_nodes(), tmp_path, claims=[{"node_id": "M1.60"}])
     out, err = capsys.readouterr()
     assert err == ""
@@ -51,7 +51,7 @@ def test_85_untracked_nodes_give_a_bounded_line_claimed_and_in_progress_first(tm
 
 
 def test_at_most_ten_nodes_are_named_and_the_rest_counted_by_status(tmp_path: Path, capsys) -> None:
-    _git_repo(tmp_path)
+    zone_git_repo(tmp_path)
     nodes = _many_nodes()
     for n in nodes[1:16]:
         n["status"] = "Blocked"
@@ -63,7 +63,7 @@ def test_at_most_ten_nodes_are_named_and_the_rest_counted_by_status(tmp_path: Pa
 
 
 def test_validate_all_names_every_node(tmp_path: Path, capsys) -> None:
-    _git_repo(tmp_path)
+    zone_git_repo(tmp_path)
     warn_untracked_zones(_many_nodes(), tmp_path, show_all=True)
     out = capsys.readouterr().out
     assert out.count("'pkg/new_") == 85
