@@ -33,7 +33,7 @@ from specy_road.runtime_paths import project_prefix, rebase_to_project
 from specy_road.worker_adapter_base import Parsed
 from specy_road.worker_reconcile import _bookkeeping
 from specy_road.worker_state import WorkerError, WorkerRecord, add_flag, append_event, clear_flag, mutate, status_entries
-from specy_road.worker_turn_stash import stash_findings
+from specy_road.worker_turn_stash import stash_findings, unreachable_commits
 
 #: The record state of a worker whose last turn stopped at a usage limit; resumable after ``limit_reset_at``.
 PAUSED_BY_LIMIT = "paused_by_limit"
@@ -49,6 +49,7 @@ class GitState:
     head: str | None
     branch: str | None
     stash: tuple[tuple[str, str], ...] | None   # each stash entry's hash and subject (%H %gs)
+    stash_unreachable: frozenset[str] | None   # ``git fsck --unreachable`` commits at snapshot time
     dirty: dict[str, str] | None   # each modified or untracked path and :func:`_content` of it
 
 
@@ -79,6 +80,7 @@ def git_state(worktree: Path) -> GitState:
         pairs = tuple(parsed)
     entries = status_entries(worktree)
     return GitState(head_sha(worktree), git_text(["branch", "--show-current"], worktree), pairs,
+                    unreachable_commits(worktree),
                     {p: _content(worktree, p) for _xy, p in entries} if entries is not None else None)
 
 
@@ -181,7 +183,9 @@ def git_findings(repo_root: Path, rec: WorkerRecord, before: GitState) -> list[d
         elif outside := _outside_zones(repo_root, rec, before.head, after.head, expected):
             out.append({"kind": "committed_outside_zones", "paths": outside,
                         "summary": "committed outside the touch zones: " + ", ".join(outside[:10])})
-    out.extend(stash_findings(repo_root, rec, before.stash, after.stash))
+    out.extend(stash_findings(repo_root, rec, before.stash, after.stash, worktree=wt,
+                              before_unreachable=before.stash_unreachable,
+                              after_unreachable=after.stash_unreachable))
     if after.dirty is None:
         out.append({"kind": "porcelain", "summary": "git status could not be read after the turn"})
     else:   # every path dirty at either end: new, changed, or gone (deleted, restored or committed) during the turn
