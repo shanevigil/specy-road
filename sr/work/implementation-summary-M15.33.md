@@ -35,6 +35,7 @@ No other paths were required. `review_record_write._review_record` already calls
 ## Added
 
 - `write_rejected`, `clear_rejected`, `rejected_state`, `ReviewRecordTrace`, `run_review_record` in `review_rejected.py` — marker I/O, age formatting, roster-gated tracing, and the full `review record` command.
+- `_review_record_setup`, `_review_record_validate`, `_review_record_signed_data`, `_review_record_finish` in `review_rejected.py` — split `run_review_record` for ruff C901 without behaviour change.
 - `refused_text`, `refused_by_model`, `extend_handoff_refused`, `print_refused_list`, `review_list_payload` in `review_run_status.py` — display, handoff JSON, and list JSON payloads.
 - `refused` / `extend_handoff_refused` / `review list --json` wiring in `review_cli.py`.
 - `tests/test_review_rejected_m15_33.py` — A1–A3 plus fix-round boundary tests for list JSON, missing notes, and roster ordering.

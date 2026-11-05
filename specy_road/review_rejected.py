@@ -137,9 +137,7 @@ class ReviewRecordTrace:
         self.roster_resolved(commit)
 
 
-def run_review_record(ns: Any, root: Path, fail: Any, relabel: Any) -> int:  # noqa: C901
-    """``review record`` implementation; refusals after the target and roster resolve write ``REJECTED-<model>.md``."""
-    trace = ReviewRecordTrace(root, ns.node_id, ns.model)
+def _review_record_setup(ns: Any, root: Path, trace: ReviewRecordTrace, fail: Any) -> tuple[Any, Any, dict] | int:
     try:
         t = resolve_target(root, ns.node_id, ns.ref)
     except ReviewTargetError as e:
@@ -149,25 +147,35 @@ def run_review_record(ns: Any, root: Path, fail: Any, relabel: Any) -> int:  # n
         return fail(f"orchestration config: {gate.config_error}")
     if mile := milestone_open_problem(t):
         return fail(mile)
-    config = gate.config
-    entry = next((e for e in config["roster"] if e.get("id") == ns.model), None)
+    entry = next((e for e in gate.config["roster"] if e.get("id") == ns.model), None)
     if entry is None:
         return fail(f"{ns.model!r} is not in the roster on the integration branch "
                     "(roadmap/orchestration.yaml); a review from it would not count")
     trace.roster_resolved(gate.commit)
+    return t, gate, entry
+
+
+def _review_record_validate(ns: Any, root: Path, t: Any, gate: Any, entry: dict, trace: ReviewRecordTrace,
+                            fail: Any) -> dict | int:
     rec, err = check_record(ns, root, t)
     if err:
         return trace.refuse(err, fail)
+    config = gate.config
     if "reviewer" not in (entry.get("roles") or []) and not substitute_for(config, ns.node_id, ns.model):
         return trace.refuse(f"{ns.model!r} has no reviewer role and no active substitution covers {ns.node_id}", fail)
-    why = rerun_problem(config["policy"], rec["data"])
-    if why:
+    if why := rerun_problem(config["policy"], rec["data"]):
         return trace.refuse(f"{ns.file}: does not count — {why}; list what you re-ran in commands_rerun", fail)
+    return rec
+
+
+def _review_record_signed_data(ns: Any, rec: dict, gate: Any, entry: dict, trace: ReviewRecordTrace,
+                               fail: Any) -> dict | int:
     # The body's hash rides in the front matter, so a signature covers the notes too.
     data = {**rec["data"], "commit": gate.commit, NOTES_KEY: notes_digest(rec["body"])}
     if ns.launch_mode:   # before signing: the signature covers it
         data["launch_mode"] = ns.launch_mode
     data = stamp_review_toolkit_version(data)
+    policy = gate.config["policy"]
     if ns.sign_key:
         if not entry.get("public_key"):
             return trace.refuse(f"--sign-key given, but the roster entry for {ns.model!r} has no public_key; "
@@ -180,10 +188,15 @@ def run_review_record(ns: Any, root: Path, fail: Any, relabel: Any) -> int:  # n
         if not ok:
             return trace.refuse(f"the signature does not verify against the roster public_key for {ns.model!r} "
                                 f"({why}); wrong key?", fail)
-    elif config["policy"].get("signed_reviews"):
+    elif policy.get("signed_reviews"):
         return trace.refuse("policy.signed_reviews is on: pass --sign-key <your private key>; the roster entry "
                             f"for {ns.model!r} must carry the matching public_key", fail)
     data["family"] = entry["family"]
+    return data
+
+
+def _review_record_finish(root: Path, ns: Any, t: Any, gate: Any, entry: dict, rec: dict, data: dict,
+                          trace: ReviewRecordTrace, relabel: Any) -> int:
     dest = review_path(root, ns.node_id, ns.model)
     text = render_front_matter(data, rec["body"])
     write_review(dest, text)   # replaces a record filed as review-<model>.md, whatever the filesystem's case rules
@@ -198,3 +211,19 @@ def run_review_record(ns: Any, root: Path, fail: Any, relabel: Any) -> int:  # n
                   "it is less independent and counts once toward the distinct-family policy.")
     print(f"policy: {after.summary()}")
     return 0
+
+
+def run_review_record(ns: Any, root: Path, fail: Any, relabel: Any) -> int:
+    """``review record`` implementation; refusals after the target and roster resolve write ``REJECTED-<model>.md``."""
+    trace = ReviewRecordTrace(root, ns.node_id, ns.model)
+    setup = _review_record_setup(ns, root, trace, fail)
+    if isinstance(setup, int):
+        return setup
+    t, gate, entry = setup
+    rec = _review_record_validate(ns, root, t, gate, entry, trace, fail)
+    if isinstance(rec, int):
+        return rec
+    data = _review_record_signed_data(ns, rec, gate, entry, trace, fail)
+    if isinstance(data, int):
+        return data
+    return _review_record_finish(root, ns, t, gate, entry, rec, data, trace, relabel)
