@@ -120,6 +120,40 @@
         "sr/roadmap-context.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "Runs after M16.65's fix-before-0.3.1 leaves land (the planner adds each such leaf as a dependency of this leaf as well as of M16.66): README.md, AGENTS.md, CLAUDE.md, docs/, constitution/ and constraints/README.md name only commands, options and config keys in the 0.3.1 command inventory (M16.0's tests/parity inventory after M16.62's alias removal), checked by a test that scans them for removed command and alias names",
+        "suggested_prompts/*.md match the real formats at the branch head (templates under specy_road/templates/project/, JSON schemas, validators, docs/roadmap-authoring.md), per CLAUDE.md's adoption-prompt rule; this sheet lists each prompt checked and what changed",
+        "CHANGELOG.md's [Unreleased] section is consolidated into one adopter-facing summary for the release: Added, Changed, Deprecated and Removed (each removed alias or config form with its replacement), Fixed, and an Upgrading section (run specy-road upgrade; the roster run: migration; the checks: block); no version heading is written and project.version is untouched, since the maintainer writes both at promotion",
+        "validate, export --check and digest --check on sr/ and the dogfood fixture, file-limits, tests/test_docs_links.py and M16.31's release-candidate pin scan pass; this sheet lists every doc touched and the promotion steps from docs/release-runbook.md, marking the human-owned ones (version bump, CHANGELOG heading, tag)",
+        "Estimated net line change (informational, not a gate): package 0; docs small"
+      ],
+      "codename": "release-docs-0-3-1",
+      "dependencies": [
+        "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0",
+        "d0c9dfae-8a1b-46f5-9e40-0686ecb1a67d",
+        "a0733044-eec3-4411-bec8-e6f31fac6456",
+        "98d51a48-dcd5-419f-bc34-16ae75aef21b"
+      ],
+      "id": "M16.70",
+      "node_key": "15c488ad-2531-4d82-a3a9-363e626a3872",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.70_release-docs-0-3-1_15c488ad-2531-4d82-a3a9-363e626a3872.md",
+      "sibling_order": 70,
+      "status": "Not Started",
+      "title": "Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships",
+      "touch_zones": [
+        "README.md",
+        "CHANGELOG.md",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "docs/",
+        "suggested_prompts/",
+        "constitution/",
+        "constraints/README.md"
+      ],
+      "type": "task"
     }
   ]
 }

@@ -110,6 +110,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.67` | move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit | task | Agentic-led | Complete |
 | `M16.68` | finish resolves roadmap chunk conflicts the branch only inherited | task | Agentic-led | Not Started |
 | `M16.69` | Cursor workers launch sandboxed without --force unless the roster opts in | task | Agentic-led | Not Started |
+| `M16.70` | Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships | task | — | Not Started |
 | `M17` | 0.3.2: PM GUI shows orchestration and worktree state | phase | Human-led | Not Started |
 | `M17.1` | 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface | gate | Human-led | Not Started |
 | `M18` | Orchestration and review-loop features (after 0.3.1) | phase | — | Not Started |
