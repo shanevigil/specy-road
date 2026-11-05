@@ -399,6 +399,7 @@ Do not pick these up.
 - `M15.35` on `feature/rm-packet-never-lists-dot-git-as-uncommitted` since 2026-11-05
 - `M15.37` on `feature/rm-comma-or-and-part-counts-only-when-it-names-a-defect` since 2026-11-05
 - `M15.38` on `feature/rm-derived-codename-capped-so-planning-names-fit` since 2026-11-05
+- `M15.40` on `feature/rm-finish-merge-failure-reports-and-undoes-bookkeeping` since 2026-11-05
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 
 ## Quality by area
