@@ -28,7 +28,6 @@ from specy_road.bundled_scripts.do_next_task_pickup_helpers import (
     refuse_linked_worktree,
     branch_fns,
     worktree_work_dir,
-    register_and_commit as _do_register_and_commit,
     write_brief as _do_write_brief,
     write_session_and_prompt as _do_write_session_and_prompt,
 )
@@ -37,6 +36,7 @@ from specy_road.bundled_scripts.do_next_task_leaf_guards import (
     drop_unauthored,
     exit_no_actionable_leaves as _exit_no_actionable_leaves,
 )
+from specy_road.bundled_scripts.do_next_task_register import register_claim
 from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.do_next_task_virtual_complete import (
@@ -189,27 +189,6 @@ def _assert_current_branch_equals(base: str) -> None:
         raise SystemExit(1)
 
 
-def _register_and_commit(
-    node: dict,
-    branch: str,
-    reg: dict,
-    commit_message: str,
-    *,
-    impl_review_gate: bool,
-    owner: str | None = None,
-) -> None:
-    _do_register_and_commit(
-        registry_path=registry_path(ROOT),
-        git_runner=lambda *a: git_run(ROOT, *a),
-        node=node,
-        branch=branch,
-        reg=reg,
-        commit_message=commit_message,
-        impl_review_gate=impl_review_gate,
-        owner=owner,
-    )
-
-
 def _push_integration_branch(remote: str, base: str) -> None:
     git_run(ROOT, "push", remote, base)
 
@@ -262,12 +241,12 @@ def _finalize_pickup(
         codename,
         include_ci_skip=include_ci_skip,
     )
-    _register_and_commit(
-        node, branch, reg, commit_msg,
+    register_claim(
+        ROOT, node, branch, reg, commit_msg,
         impl_review_gate=require_implementation_review_before_finish(ROOT),
         owner=owner,
     )
-    print("registered in roadmap/registry.yaml on integration branch (committed)")
+    print("registered in roadmap/registry.yaml on integration branch (committed with the regenerated digest)")
 
     _push_and_branch_with_self_heal(
         worktree, base, push_registry=push_registry, remote=remote,
