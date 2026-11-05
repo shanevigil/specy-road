@@ -209,7 +209,10 @@
         "cleanup refuses, removes nothing and prints one line per reason when the worktree has commits not on the integration branch, uncommitted changes or untracked files git does not ignore, or ignored files outside a known-regenerable list (__pycache__ and tool caches, node_modules, work/prompt-*.md, work/brief-*.md, work/.on-complete-*.yaml, .specyrd/cache/) once hand-off files are moved; reuses worktree_prune.plan_prune (including M14.3's foreign-worktree refusal) and worker terminate; a test per refusal",
         "specy-road worktree sweep [--dry-run] lists every linked worktree (wherever it lives, e.g. under .claude/worktrees/ or a temp dir) whose branch or detached HEAD is contained in the integration branch, with no registry claim (so never a claimed or deferred leaf's), no live or resumable worker, no live session, and nothing unsaved by the cleanup rules; it removes each (moving hand-off files first) or with --dry-run only reports; output is one line per worktree: removed, would remove, or kept with the reason; it uses M14.2's live-leaf rules rather than a copy; a test with a claimed, a live-session, a dirty and a removable worktree pins the four lines",
         "grind-session runs cleanup after each leaf it lands, and policy.worktree_sweep (off by default; between_leaves) makes it run sweep between leaves; the specyrd-orchestrate command tells the coordinator to run worktree cleanup <ID> after finish and worktree sweep --dry-run at the start of a session; docs/orchestration-chores.md documents both",
-        "Out of scope: deleting remote branches (never); local branch deletion only with --delete-local-branch, only for a branch the integration branch contains; cleaning the main checkout's work/ files (finish-this-task's cleanup already owns those)"
+        "Out of scope: deleting remote branches (never); local branch deletion only with --delete-local-branch, only for a branch the integration branch contains; cleaning the main checkout's work/ files (finish-this-task's cleanup already owns those)",
+        "worktree cleanup and sweep also end the session presence records tied to the removed worktree or its deleted branch (the leaf's worker, reviewer and session entries), so session list shows none for a landed leaf; a test with a leftover reviewer and session record asserts both are gone after cleanup",
+        "sweep removes a pickup-created worktree whose branch the integration branch contains (the reported case: it stayed after finish, and branch pruning skipped its branch as '(worktree)'), and after removal the branch is no longer skipped; a test covers it",
+        "docs/orchestration-chores.md warns that gh pr merge --delete-branch can remove a leaf's branch while its worktree still holds uncommitted or ignored hand-off files, and says to run worktree cleanup <ID> (which saves hand-off files first) before deleting the branch"
       ],
       "codename": "the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first",
       "dependencies": [
@@ -233,7 +236,8 @@
         "specy_road/templates/project/schemas/orchestration.schema.json",
         "specy_road/templates/specyrd/commands/specyrd-orchestrate.md",
         "docs/orchestration-chores.md",
-        "tests/"
+        "tests/",
+        "specy_road/session_presence.py"
       ],
       "type": "task"
     },

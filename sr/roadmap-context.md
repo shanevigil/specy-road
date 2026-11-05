@@ -227,6 +227,29 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M14.9` review rca launches the root-cause analyst like review delegate, and says what to do when no analyst is available `review-rca-launches-the-root-cause-analyst-like-review-delegate-and-says-what-to-do-when-no-analyst-is-available` — task — **Not Started**
   - `M14.10` Escalation recognises a converging loop and handoff status shows the findings trend `escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend` — task — **Not Started**
   - `M14.11` The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes `the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes` — task — **Not Started**
+- `M15` rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction `rc3-multi-harness-adoption-friction` — phase — **Not Started**
+  - `M15.1` RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command `rc-install-docs-cover-extras-and-direct-wheel-url` — task — **Not Started**
+  - `M15.2` A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch `claude-code-reviewer-works-on-a-subscription-login` — task — **Not Started**
+  - `M15.3` prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged `prompt-channel-cli-launches-nothing-without-run` — task — **Not Started**
+  - `M15.4` Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current `parallel-pr-leaves-reconcile-bookkeeping-by-rule` — task — **Not Started**
+  - `M15.5` Host effects policy: workers and reviewers do not take over the screen or change shared services, the guard denies such commands, and a message can interrupt a turn `host-effects-policy-and-interruptible-worker-messages` — task — **Not Started**
+  - `M15.6` The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes `rework-prompt-carries-the-accepted-rca` — task — **Not Started**
+  - `M15.7` file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count `file-limits-baseline-and-upgrade-report` — task — **Not Started**
+  - `M15.8` A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it `promoted-leaf-is-never-stuck-on-an-empty-approach` — task — **Not Started**
+  - `M15.9` Harness launches survive large prompts and a harness binary off PATH, for every role `harness-launches-survive-large-prompts-and-binaries-off-path` — task — **Not Started**
+  - `M15.10` Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff `try-a-roster-before-it-lands` — task — **Not Started**
+  - `M15.11` A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors `working-roster-in-one-command-and-validated-profiles` — task — **Not Started**
+  - `M15.12` Shared documentation zones do not serialize grind-session batches `shared-doc-zones-do-not-serialize-batches` — task — **Not Started**
+  - `M15.13` Worker loop friction: sync waits for the events that matter, tool-use noise collapses, rework after a completed worker, a READY-only resume, a quieter pickup `worker-loop-friction-sync-until-and-ready-only-resume` — task — **Not Started**
+  - `M15.14` Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored `chores-at-parity-with-leaves` — task — **Not Started**
+  - `M15.15` upgrade ships the work/ templates every prompt references, and the .specyrd README matches upgrade's steps `upgrade-ships-the-templates-prompts-reference` — task — **Not Started**
+  - `M15.16` Role-observed acceptance needs evidence from that role, and coordinator probes are not acceptance `role-observed-acceptance-needs-that-role` — task — **Not Started**
+  - `M15.17` Review friction: delegate builds a missing packet, the packet skips ignored evidence and numbers suppressions correctly, refusals quote the line, and superseded failed runs say so `review-friction-packet-and-record` — task — **Not Started**
+  - `M15.18` planned_test_changes can be edited after pickup, and an unplanned test removal is a required reviewer check `planned-test-changes-editable-and-removals-surfaced` — task — **Not Started**
+  - `M15.19` Cursor worker cost is estimated when the harness reports a display name for the rostered model `cursor-cost-with-display-name-models` — task — **Not Started**
+  - `M15.20` Touch zones that miss what acceptance needs are flagged at plan time, and the brief's zone section stays short `zones-missing-what-acceptance-needs-flagged` — task — **Not Started**
+  - `M15.21` Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments `linked-worktrees-resolve-root-and-symlinked-envs` — task — **Not Started**
+  - `M15.22` Project preferences the workflow respects: local decisions, a PR body footer, the summary commit rule, and local landing for the root repository `project-preferences-local-decisions-footer-summary-landing` — task — **Not Started**
 
 ## Dependencies that were removed
 
