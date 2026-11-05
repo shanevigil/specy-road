@@ -57,7 +57,7 @@ The round-0 root cause: "has commits of its own" was inferred from reflog *count
    - **Patch-content merges (`SAME_PATCH`):** these are still removable without that evidence. Their tip is not contained in the target, so by construction they carry commits the target lacks by SHA but has by patch. Removing them loses nothing, and the rebased/squashed fixture rows keep their cleanup.
 3. **F5:** `tests/test_doctor_live.py` defines public `run_doctor`, `has_ref` and `kept` helpers and imports only the public `doctor_repo` fixture.
 
-**Accepted trade-off (F4, planner's decision):** "preserve cleanup" became "preserve reporting; cleanup is offered only with evidence". Here is what that means in practice:
+**Accepted trade-off (F4, planner's decision; superseded by fix round 2's citation of the acceptance text below):** "preserve cleanup" became "preserve reporting; cleanup is offered only with evidence". Here is what that means in practice:
 - A real feature branch landed by fast-forward whose reflog has expired, or which exists only on the remote, is still reported as `merged`, but `--fix` no longer removes it; a human does.
 - An unclaimed merged branch with intact commit evidence, or landed by finish's `Merge branch '…'` commit (the fixture's `--no-ff` merges), is removed exactly as before.
 - Because a remote-tracking ref can only show evidence through a finish merge commit, a fresh pushed branch that nobody has merged is reported as `merged; no local evidence…`, not as "no commits yet". That wording is the coordinator's.
@@ -103,4 +103,63 @@ The round-0 root cause: "has commits of its own" was inferred from reflog *count
 
 - `python -m pytest -q -n 4 tests/test_doctor.py tests/test_doctor_live.py tests/test_gate_config_agree.py tests/test_nested_unpushed_report.py tests/test_worktree_env_setup.py tests/test_doctor_version_skew.py`: 73 passed
 - `specy-road file-limits`: OK (`doctor.py` 313 lines, `doctor_worktrees.py` about 225)
+- `ruff check` on the changed files: clean
+
+## Fix round 2 (Sol R1–R5, E1)
+
+I merged `origin/WIP/improvements-0-3-1`, which brings the rewritten M14.2 acceptance (79d3353f). The fix is commit `b4a5554b`.
+
+**Design:** one classification table in code, `doctor_worktrees.CLASSIFICATION`, read by `classify(live, evidence, containment, ref_kind) -> (label, fix)`. The first matching row wins.
+- **Branches:** `doctor._branch_reason` computes the four inputs and only words the label it gets back. The round-1 `if how and evidence == …` chain is gone.
+- **Worktrees:** `doctor_worktrees._worktree_reason` passes the worktree's live source and its branch's (evidence, containment) through the same `classify`. Liveness is decided first, before a missing directory. A live worktree is listed only when `classify("none", …)` for its branch would list it, or when it is prunable or detached.
+- **Not in the table:** a worktree with a missing directory or a detached HEAD that nothing holds isn't a branch verdict, so it keeps its existing rules.
+
+**Each finding:**
+- **R4 (claim beats session):** `live_holders` returns `(source, reason)` per branch and per worktree path, filled claim → worker → session. For a worktree, `_live` takes the highest-precedence holder across the branch match and the path match (`LIVE_SOURCES` order).
+- **R1, R2, R3 (evidence):** `evidence_kind` replaces `own_commit_evidence`.
+  - A local ref's reflog is read back to its newest `branch: Created from` entry, which ignores any earlier branch of the same name.
+  - A commit, merge or cherry-pick entry whose commit the tip contains → `commit`. Creation entries (and renames) all at the tip → `creation-only` (`rename-only`).
+  - A remote ref is `creation-only` when its tip equals its local namesake's newest creation commit and that namesake was **not** created from the remote ref itself. That proves it was pushed fresh. This uses the namesake's creation point, never its commits (F3 still holds).
+  - Only when none of that applies does a finish `Merge branch '<b>'` commit that brought the tip in count (`finish-merge`). Otherwise the evidence is `none`.
+  - Creation-only and rename-only evidence → "no commits yet", whatever the containment, so R3's unlanded tip is covered too.
+- **R5:** acceptance A3 (79d3353f) now says: "an unclaimed branch contained in the integration branch whose own-commit evidence is unavailable (expired reflog, fresh clone, remote-only ref) is still reported as merged, with the reason 'no local evidence of own commits', but doctor --fix offers no automatic removal for it; unclaimed merged branches with positive evidence keep the current report and fix." That is row 7 below.
+- **E1:** `_is_ancestor` was removed; `_finish_merge_brought` and `evidence_kind` call `grind_session_cleanup.merged_into`.
+- **Claimed branches:** a branch whose live source is `claim` is still left out of the branch section (in-progress work, never offered), as before this leaf. Its worktree is reported live under the listing rule above.
+
+**Consequence of A2's precedence:** checking out a remote branch that already has commits (`git branch b origin/b`, or `git checkout b` DWIM) gives a creation-only local reflog. That local branch is now "no commits yet" and not offered for removal. This is the safe direction, and the R1 test asserts it.
+
+### Fix round 2: classification table
+
+Inputs: live source (`claim` / `worker` / `session` / `none`; claim includes open rollups), evidence (`commit` / `finish-merge` / `creation-only` / `rename-only` / `none`), containment (`yes` / `no` / `same-patch`), ref kind (`local` / `remote`). `*` matches anything. Unit ids are in `tests/test_doctor_classification.py::test_each_classification_row[rowN]`; `test_the_rows_are_all_tested_and_cover_every_input` checks that every combination is classified, that liveness always wins, and that no contained branch without commit or finish-merge evidence is ever fixable.
+
+| row | live | evidence | containment | ref | label | fix | unit test | `doctor --fix` regression |
+|---|---|---|---|---|---|---|---|---|
+| 0 | claim | * | * | * | live: claimed by / open rollup of | no | `row0` | `test_a_claimed_worktree_on_a_fresh_branch…`, `test_f1_…moved…`, `test_r4_…` (claim beats session), `test_doctor.py::test_dry_run…` (`wt-thing`) |
+| 1 | worker | * | * | * | live: worker W (state) | no | `row1` | `test_a_worker_held_branch_is_live_until_the_worker_is_terminal` |
+| 2 | session | * | * | * | live: session A | no | `row2` | `test_r4_…` (session alone protects `wt-empty`) |
+| 3 | none | creation-only | * | * | no commits yet | no | `row3` | `test_an_unclaimed_branch_with_no_commits…`, `test_r1_…reused_branch_name…`, `test_r3_…unlanded_tip…`, `test_f3_…` (remote, R2) |
+| 4 | none | rename-only | * | * | no commits yet | no | `row4` | `test_f2_a_fresh_branch_renamed…` |
+| 5 | none | commit | yes | * | merged | yes | `row5` | `test_doctor.py::test_fix_removes…` (`rm-done` local), `test_f4_…expired_reflog…` (before expiry) |
+| 6 | none | finish-merge | yes | * | merged | yes | `row6` | `test_doctor.py::test_fix_removes…` (`origin feature/rm-gone`, `rm-done` on origin) |
+| 7 | none | none | yes | * | merged; no local evidence of own commits | no | `row7` | `test_f4_…expired_reflog…`, `test_f4_…no_local_branch…` |
+| 8 | none | * | same-patch | * | merged (same patch content) | yes | `row8` | `test_doctor.py::test_fix_removes…` (`rm-squash`, `rm-rebased`) |
+| 9 | none | * | no | * | claim gone / leaf Complete, not merged: N commit(s) | yes (unchanged policy) | `row9` | `test_doctor.py::test_fix_removes…` (`rm-open`, `rm-finished`), `test_r3_…` (`rm-open` still deleted) |
+
+Ref kind is an input but no row depends on it. It shapes the evidence instead: a remote ref can only be `creation-only` (via its namesake's creation point), `finish-merge` or `none`.
+
+### Added in fix round 2
+
+- `doctor_worktrees.CLASSIFICATION`, `classify`, `LIVE_SOURCES`, `EVIDENCE`, `CONTAINMENT`, `REF_KINDS`, `containment`: the single classification table and its inputs (A3, as rewritten).
+- `doctor_worktrees.evidence_kind` and `_since_creation`, replacing `own_commit_evidence`: evidence per exact ref, newest creation first (R1, R2, R3).
+- `_CREATED`/`_RENAMED`, replacing `_NAMING_ENTRIES`: reflog subject classes.
+- `live_holders` now returns `(source, reason)`; `doctor_worktrees._live` (replacing `_live_reason`) picks by precedence (R4).
+- `_WORKTREE_TEXT`, replacing `_MERGED_WORKTREE`: worktree wording by label.
+- Removed: `_is_ancestor` (E1), `own_commit_evidence`, and the ad-hoc verdict branches in `doctor._branch_reason`.
+- Tests: `tests/test_doctor_classification.py` (one parametrized case per row, plus the coverage check); `test_r1_…`, `test_r3_…` and `test_r4_…` in `tests/test_doctor_live.py`. `test_f3_…` now expects "no commits yet" for the fresh remote (R2).
+- Mocks: none.
+
+### Verification (targeted)
+
+- `python -m pytest -q -n 4 tests/test_doctor.py tests/test_doctor_live.py tests/test_doctor_classification.py tests/test_gate_config_agree.py tests/test_nested_unpushed_report.py tests/test_worktree_env_setup.py tests/test_doctor_version_skew.py`: 87 passed
+- `specy-road file-limits`: OK (`doctor.py` 311 lines, `doctor_worktrees.py` 283)
 - `ruff check` on the changed files: clean
