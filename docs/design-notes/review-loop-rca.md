@@ -92,7 +92,10 @@ rounds") and an RCA was recommended. So the trend is now a signal
   There is no severity weighting.
 - **Converging:** over the last `escalate_same_acceptance_blocks` rounds since
   the last analysis, the count never rose, fell at least once, and the latest
-  round fails no acceptance id.
+  round fails no acceptance id. Fewer than that many rounds since the last
+  analysis (or a threshold of 1, or a round whose count is unknown) is not
+  enough evidence, so the loop is not converging and nothing is deferred:
+  with `escalate_review_rounds: 2`, counts 5, 1 still escalate at round 2.
 - **Effect:** while converging, the `same_family` and `review_rounds` rules
   do not escalate; `same_acceptance` (which cannot fire while acceptance
   passes), a forced analysis and the fix-round budget (`max_fix_rounds`)

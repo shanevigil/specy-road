@@ -15,12 +15,31 @@ Escalation recognises a converging loop and handoff status shows the findings tr
 
 All edits are inside the listed zones. `specy_road/review_status_render.py` was not needed: the rendering lives in `review_trend.py`. Not changed: `specy_road/templates/project/roadmap/orchestration.yaml` lists the other escalate keys, but it is outside the zones. A3 asks only for the schema and defaults, so the new key is not added to that template.
 
+## Fix round 1 (gpt-6.1-sol-low blocked 4009a140)
+
+Before this round I merged `origin/WIP/improvements-0-3-1` into the branch (merge commit `86d379a4`).
+
+**Finding class:** convergence was declared on incomplete evidence. A window shorter than `n = escalate_same_acceptance_blocks`, for example the 2 rounds 5, 1 with n=3, counted as converging and deferred `review_rounds` when `escalate_review_rounds < n`. The same class covers a round whose count is unknown, and n=1, where a count cannot fall inside the window.
+
+**Design fix:** `review_trend.converging` is now the single place that decides convergence, and it returns false unless it has at least `n` rounds (and n ≥ 2) since the last RCA, each with a known count. `round_findings` returns `None` when a blocking record lacks a list for any of the four categories. That cannot happen for a valid record (the schema requires all four, and `review_rounds` keeps only valid records), but it means an unknown count can never count as evidence. The trend line prints such a count as `?`. Both callers (`escalation()` and `loop_state()`) pass the same window, `rounds[resolved:]`, so neither can see a different window. The design note states the rule.
+
+## Probes
+
+- `converging([5, 1], 3)`, the reviewer's case: was True, now False. A CLI replay with `escalate_same_acceptance_blocks: 3, escalate_review_rounds: 2` and counts 5, 1 with acceptance passing now escalates at round 2 on `review_rounds`, with `converging` and `escalation_deferred` both false. This test fails against `4009a140`'s `review_trend.py` (exit 1) and passes now.
+- Boundary grid with n=3. At n-1 rounds (5, 1) with `escalate_review_rounds` 2, 3 and 4, the results are `review_rounds`, none and none, and nothing is deferred. At n rounds (5, 1, 1) with 2, 3 and 4, the deferral is true, true and false. At n+1 rounds (5, 1, 1, 0) with 2, 4 and 5, it is true, true and false. A deferral is reported only when an escalation was actually due.
+- Window after an RCA: rounds 9, 5, 1 with `resolved=1` leave a window of 5, 1, which is shorter than 3, so the loop is not converging and `review_rounds` (2) escalates.
+- Threshold 1: `converging(..., 1)` is always false, so nothing is deferred.
+- Unknown count: a blocking record missing its `boundary` list gives `None`; the loop is not converging, and `same_family` still escalates.
+- `loop_state` uses the same `converging(rounds[resolved:], n)` call, so the status flags match `escalation()`. The CLI test checks this.
+- `_rca_semantic_errors` calls `escalation()`, so RCA trigger validation uses the corrected window. No other module calls `converging`; I checked with `grep -rn "converging(" specy_road`.
+- A1 trend line: `_line` is unaffected except that an unknown count prints as `?`. The earlier 13, 2, 2, 1, 0 CLI test still passes.
+
 ## Verification
 
-- `python -m pytest -q -n 4 tests/test_review_trend.py tests/test_review_rca.py tests/test_review_cli.py`: 47 passed.
+- `python -m pytest -q -n 4 tests/test_review_trend.py tests/test_review_rca.py tests/test_review_cli.py`: 59 passed (after fix round 1).
 - Full suite `python -m pytest -q -n 4`: 4124 passed (before the test-helper change, which touched only `tests/test_review_trend.py`).
 - `specy-road file-limits`: OK (`review_cli.py` 400, `review_rca.py` 384).
-- `ruff check` on the changed Python: clean.
+- `ruff check specy_road tests scripts`: clean.
 
 ## Added
 
@@ -44,3 +63,9 @@ All edits are inside the listed zones. `specy_road/review_status_render.py` was 
 - `tests/test_review_trend.py`, CLI tests that replay 13, 2, 2, 1, 0 through `review record` and `handoff status`:
   - the text and `--json` trend, and the `converging; escalation deferred` line (A1/A2);
   - the same replay with policy true escalates and prints no deferral (A3).
+- Fix round 1, in `review_trend.converging`: guards that return false for fewer than `n` rounds, for `n < 2`, and for any unknown count, so incomplete evidence never defers an escalation.
+- Fix round 1, in `review_trend.round_findings`: returns `None` when a blocking record lacks a category list, so an unknown count is explicit rather than 0.
+- Fix round 1, `tests/test_review_trend.py::test_convergence_needs_a_full_window_at_every_threshold`: parametrized over n-1, n and n+1 rounds and `escalate_review_rounds` below, equal to and above n.
+- Fix round 1, `test_rounds_before_an_rca_are_not_convergence_evidence`: the window after an RCA.
+- Fix round 1, `test_threshold_one_or_an_unknown_count_never_converges`: the n=1 and unknown-count members of the class.
+- Fix round 1, `test_cli_two_falling_rounds_below_the_window_escalate_on_review_rounds`: the reviewer's public CLI regression (thresholds 3 and 2, counts 5, 1).

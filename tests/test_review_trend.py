@@ -122,3 +122,50 @@ def test_status_with_policy_true_escalates_the_same_replay(tmp_path: Path, capsy
     run_cli("handoff", "status", "M1.1", "--repo-root", str(repo))
     out = capsys.readouterr().out
     assert "findings by round: 13, 2, 2, 1, 0" in out and "escalation deferred" not in out
+
+
+@pytest.mark.parametrize(("counts", "total", "rule", "deferred"), [
+    ([5, 1], 2, "review_rounds", False),    # n-1 rounds: too few to converge, review_rounds (2) fires
+    ([5, 1], 3, None, False),               # n-1 rounds, nothing due yet
+    ([5, 1], 4, None, False),
+    ([5, 1, 1], 2, None, True),             # n rounds: converging defers review_rounds below n
+    ([5, 1, 1], 3, None, True),             # ... equal to n
+    ([5, 1, 1], 4, None, False),            # ... above n: nothing was due
+    ([5, 1, 1, 0], 2, None, True),          # n+1 rounds
+    ([5, 1, 1, 0], 4, None, True),
+    ([5, 1, 1, 0], 5, None, False),
+])
+def test_convergence_needs_a_full_window_at_every_threshold(counts, total, rule, deferred) -> None:
+    rounds = [Round(f"c{i}", [_rec(n)]) for i, n in enumerate(counts)]
+    for i, r in enumerate(rounds):
+        r.records[0].data["model"] = f"m{i}"   # one model per round: no same_family streak
+    policy = {**POLICY, "escalate_review_rounds": total}
+    esc = escalation(rounds, policy)
+    assert (esc.rule if esc else None) == rule
+    undeferred = escalation(rounds, {**policy, "escalate_when_converging": True})
+    assert (esc is None and undeferred is not None) == deferred
+    assert converging(rounds, 3) == (len(counts) >= 3)
+
+
+def test_rounds_before_an_rca_are_not_convergence_evidence() -> None:
+    rounds = _rounds([9, 5, 1])
+    assert converging(rounds, 3) and not converging(rounds[1:], 3)
+    assert escalation(rounds, {**POLICY, "escalate_review_rounds": 2}, resolved=1).rule == "review_rounds"
+
+
+def test_threshold_one_or_an_unknown_count_never_converges() -> None:
+    assert not converging(_rounds([5, 1]), 1)
+    rounds = _rounds([5, 3, 1])
+    del rounds[1].records[0].data["findings"]["boundary"]
+    assert not converging(rounds, 3)
+    assert escalation(rounds, POLICY).rule == "same_family"
+
+
+def test_cli_two_falling_rounds_below_the_window_escalate_on_review_rounds(tmp_path: Path, capsys) -> None:
+    policy = "policy: {escalate_same_acceptance_blocks: 3, escalate_review_rounds: 2}\n"
+    repo = make_review_repo(tmp_path, orchestration=ROSTER + policy)
+    _record(repo, 1, 5, "pass")
+    _record(repo, 2, 1, "pass")
+    code, st = node_status(repo, capsys)
+    assert (code, st["state"], st["escalation"]["rule"]) == (1, "escalated", "review_rounds")
+    assert st["findings_trend"]["converging"] is False and st["findings_trend"]["escalation_deferred"] is False
