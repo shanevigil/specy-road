@@ -106,3 +106,32 @@ Verification: the targeted pytest command in READY (121 passed), `ruff`, and `sp
 - Removed `_key` in favour of `normalize_heading`.
 - Tests: `test_refresh_stubs_names_only_real_matching_headings`, with 8 parametrized cases. The R3 test is now parametrized, with a new `one-importer-twice` case.
 - Mocks: none.
+
+## Fix round 3 (Sol R1–R3; A2 bounded by e89b49a1)
+
+- **Scope:** `_headings` is cut down to the bounded input class that A2 now sets. It recognises ATX headings indented 0–3 spaces, and skips fenced code and HTML comments. The round-2 setext and paragraph logic, and its `_SETEXT_2`, `_CODE_INDENT` and `_LIST_OR_QUOTE` regexes, are removed as out of scope, along with the `setext` and `thematic-break` test cases. The out-of-scope list is in the docstring and in the `docs/install-and-usage.md` line, which stays one line, so the file is still within its cap.
+- **R1:** fences now use their own `_FENCE` regex, which allows 0–3 spaces of indent to open or close. The round-2 import of `validate_stale_commands`' fence helpers is dropped, because their regex allows any indent: that is right for the stale-command scan, which accepts list-indented fences, and wrong here. A backtick in a backtick fence's info string still means it is not a fence.
+- **R2:** comments that open and close on one line are stripped. An unclosed `<!--` hides lines until a line containing `-->`, or to the end of the file. Text before the `<!--` on its line still counts.
+- **R3:** the reread note formats `path.resolve().relative_to(top.resolve())`, the in-repo path. That cannot raise, because `inside()` already accepted the resolved path. That was the only `relative_to` in `agents_md_report.py`; `agents_md_block._display` already falls back safely.
+
+### Tests (all failed on the previous commit)
+
+New `test_refresh_stubs_names_only_real_matching_headings` cases:
+
+| Case | Input it covers |
+|---|---|
+| `indented-backticks` (R1) | 4-space backticks are not a fence, so a later heading is found |
+| `fence-indent` | a fence opened with 3 spaces; one indented 4 spaces does not close it |
+| `html-comments` (R2) | multi-line, one-line and trailing comments |
+| `unclosed-comment` | an unclosed comment runs to the end of the file |
+
+New test `test_a_repeated_absolute_import_through_an_outside_link_names_the_file_in_the_repo` (R3): two absolute `@` imports through a symlink outside the repo to `shared.md` inside it.
+
+The full block and its 17/2063 budget have no diff from base. Verification: the targeted pytest command in READY (114 passed), `ruff`, and `specy-road file-limits` (OK).
+
+### Added / removed in round 3
+
+- Added `_FENCE` and `_COMMENT` regexes: R1 and R2.
+- Removed the setext and paragraph state, its three regexes, and the `validate_stale_commands` helper import.
+- Tests: 4 new parametrized cases and 1 new test; 2 out-of-scope cases removed.
+- Mocks: none.
