@@ -256,18 +256,27 @@ def _parser() -> argparse.ArgumentParser:
     return p
 
 
+def selection_notice(written: list[str], kept: list[str], *, roster: bool, where: str = "") -> str | None:
+    """The line saying what ``refresh_profiles`` selected: the ``--profiles all`` hint when ``roster``
+    selection named no profile, else "already has every profile …" when nothing was written."""
+    if roster and all(r.endswith("/README.md") for r in written + kept):
+        return ("no roster entry in roadmap/orchestration.yaml names a profile this specy-road ships; "
+                "`specy-road refresh-profiles --profiles all` adds every one")
+    if not written:
+        which = "the roster names" if roster else "this specy-road ships"
+        return f"model-profiles/ already has every profile {which}{where}"
+    return None
+
+
 def _copy_missing(root: Path, args: argparse.Namespace) -> None:
     written, kept = refresh_profiles(root, dry_run=args.dry_run, force=args.force, only=args.only,
                                      profiles=args.profiles)
     verb = "would write" if args.dry_run else "wrote"
     for rel in written:
         print(f"{verb} {rel}")
-    if args.profiles == "roster" and not args.only and all(r.endswith("/README.md") for r in written + kept):
-        print("no roster entry in roadmap/orchestration.yaml names a profile this specy-road ships; "
-              "`specy-road refresh-profiles --profiles all` adds every one")
-    elif not written:
-        which = "the roster names" if args.profiles == "roster" and not args.only else "this specy-road ships"
-        print(f"model-profiles/ already has every profile {which} ({root})")
+    notice = selection_notice(written, kept, roster=args.profiles == "roster" and not args.only, where=f" ({root})")
+    if notice:
+        print(notice)
     elif kept:
         profiles = [k for k in kept if not k.endswith("/README.md")]
         readme = " and the README" if len(profiles) < len(kept) else ""
