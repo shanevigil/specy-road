@@ -89,6 +89,27 @@ The rule: what depends on the parse is bounded. A config file's change is always
 - Other decisions taken on a parsed value: the hooks directories (now a superset) and which includes are followed (already every one, conditions not evaluated). Displayed `;key=value` values only describe a finding; detection is by digest.
 - Targeted tests: 104 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
 
+## Fix round 3 (review `gpt-6.1-sol-low` at 3d391a47)
+
+The `origin/WIP/improvements-0-3-1` merge went in first (registry rows only), with no conflicts.
+
+- **R1, class: coverage decided by my own git-config parser.** This is the third input shape of the same open-ended problem (comments, then a BOM, now a CRLF continuation). The fix removes the parser from the decision instead of patching the shape. At the turn's start, before the executor acts, `git_config_text.git_reads` asks git itself which hooks directory it uses (`rev-parse --git-path hooks`). It also asks which config files it reads (`config --list --show-origin --includes`: global, system, local, worktree and their includes, with conditions evaluated). `scope_for` stores the answer in `Scope.git_known`. After the turn those files and directories are compared from the filesystem only, as before. The parser only adds candidates: the defaults, every `hooksPath` value and every include, unevaluated. It also now reads CRLF as LF, as git's reader does.
+
+  The one bounded rule and its limit are in the `git_config_text` docstring and in docs/orchestration-steering-files.md ("What git is asked, and when"): a directory or file git would use only because of a change made during the turn is not watched itself; the change is, by its file's digest. The reviewer's flagged claim ("parsing errors can only add watched directories") is removed from the docs and the docstrings.
+- **R2, class: the check falls through to the unsafe path when its own baseline is missing.** `_turn_findings` now fails closed in one place. A missing start snapshot and a failed git-steering comparison raise into the same `except`, which records `check_error … git probes skipped` and runs no git command. The separate `sw is None` branch is gone, so the function has fewer branches than in round 2.
+
+  Its sources of failure were also audited and fixed. Every `.resolve()` on an executor-controlled path became `_resolved` (`os.path.realpath`, which never raises): gitdir, commondir, hooksPath, `env_setup.link` bin and porcelain links, where a link loop raised `RuntimeError` on Python 3.11. A registry whose `entries` is not a list no longer raises (the reviewer's trigger).
+
+## Probes (round 3)
+
+- The new `crlf_continuation` shape and `snapshot=unavailable` case, run against round-2 `steering_paths.py`, `git_config_text.py` and `worker_turn_check.py` in a scratch worktree: both fail there and pass now.
+- A `hooksPath` that only git knows: set in a global config through `GIT_CONFIG_GLOBAL`, which the parser never reads. A hook written there gives one `git_hook` finding plus `git_probes_skipped`, so coverage no longer depends on the parser (probe script).
+- `entries: 42` in the worker's registry plus a symlink loop in the main `.venv/bin`: `TurnWatch` still takes its snapshot (`steering_error` None) (probe script).
+- `git config --list --show-origin --name-only -z` output shape (origin and name pairs, origins relative to the checkout) checked on git 2.43 before relying on it.
+- Every `.resolve()` in `steering_paths.py`: 0 left. Other raising paths: `_value`, `_hooks_dir`, `tree_files` and the env_bin `iterdir` already catch `OSError`.
+- Every place that takes a git-steering decision: `git_snapshot` (now git-named plus candidates) and `_turn_findings` (now one fail-closed `except`). `rest_changes` runs only after that gate.
+- Full suite: 5,036 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
+
 ## Added
 
 - `specy_road/steering_paths.py`: the list, `Scope` and snapshots per class, `changes`, `SteeringWatch` with `git_changes`, `rest_changes` and `without_steering_paths`, and `config_values`, a no-git config reader. Required by A1 and A2.
@@ -102,4 +123,5 @@ The rule: what depends on the parse is bounded. A config file's change is always
 - Tests: `tests/test_steering_file_guard.py` covers A5. Helpers: `_layout`, a linked worktree with a linked `.venv` and a second worktree on `dev`; `_turn`, which brackets one turn with `TurnWatch` and `close_turn`; plus `_write`, `_registry_add_other`, `_commit_policy_from_second`, `_finish`, `_set_zones` and `_denies`. No mocks.
 - Fix round 1: `git_config_text.py` (`parse_config`, `read_chain`, and helpers `_eol`, `_section`, `_value`, `_includes`) for R1. `steering_paths.watched_values` replaces `config_values` (display only). `SteeringWatch.merged` replaces `without_steering_paths` (R3). Tests: the parametrized `test_a_hook_in_the_configured_hooks_path_is_found_however_git_config_spells_it` (R1, with git as oracle); two new `CASES` entries, `forged_review_in_worktree` (R2) and `escaping_symlink_at_harness_path` (R3), plus the `_link` helper; the clean turn also writes its own READY in the worker checkout (R2 exemption).
 - Fix round 2: no new helpers. The leading-BOM strip in `parse_config` and the superset in `git_snapshot` replace the earlier "hooksPath else defaults" choice. The round-1 test `test_a_hook_in_the_configured_hooks_path_is_found_however_git_config_spells_it` became `test_a_hook_in_the_hooks_directory_git_uses_is_found_however_the_config_reads`, with five shapes and git deciding the directory in use.
+- Fix round 3: `git_config_text.git_reads` (git, at turn start only) and `Scope.git_known` (R1); `steering_paths._resolved`, which never raises; the CRLF line in `parse_config`. Tests: the `crlf_continuation` shape in `HOOKS_CONFIGS`, and the fsmonitor test parametrized over `snapshot` (`taken` / `unavailable`; the latter makes the public `steering_paths.file_snapshot` raise with monkeypatch, R2).
 - `tests/test_finish_work_cleanup._config_on_dev`: keeps the changed test under the 80-line function cap, which the fixture fix above would otherwise have exceeded.
