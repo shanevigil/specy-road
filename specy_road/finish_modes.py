@@ -9,6 +9,9 @@ from pathlib import Path
 from typing import NoReturn
 
 from specy_road.bundled_scripts.grind_session_cleanup import delete_merged_branch
+from specy_road.finish_bookkeeping_undo import (
+    BookkeepingSnapshot, UndoOutcome, one_line, undo_bookkeeping, undo_report,
+)
 from specy_road.finish_land_deterministic import codename_from_branch
 from specy_road.runtime_paths import project_prefix
 from specy_road.finish_land_integration import (
@@ -106,30 +109,49 @@ def print_pr_gated_state(
     )
 
 
+def landing_error_line(ib: str, err_msg: str) -> str:
+    """The one outcome line; a multi-line reason goes to stdout in full first (M15.40 A1)."""
+    if "\n" in err_msg.strip():
+        print(f"\nlanding to {ib} failed:\n" + "\n".join(f"  {ln}" for ln in err_msg.strip().splitlines()))
+    sys.stdout.flush()
+    return f"\nerror: could not land merge to {ib}: {one_line(err_msg)}"
+
+
 def merge_landing_failed(
     ib: str, err_msg: str, *, delete_branch: bool = False, land_check_cmd: str | None = None,
-    repo: Path | None = None,
+    repo: Path | None = None, undo: UndoOutcome | None = None,
 ) -> NoReturn:
     """Exit 1 after a failed merge landing, naming the re-run that retries it.
 
-    The re-run has no pickup session file (the bookkeeping commit removed it),
-    so when merge is not the configured mode the re-run names the
+    ``undo`` is what this run's undo of its own bookkeeping commit did (M15.40);
+    :func:`undo_report` turns it into the next commands. The re-run is then a
+    plain ``finish-this-task``, naming the merge override when merge is not the
+    configured mode. Without it the branch is one an earlier finish already
+    committed, and the re-run has no pickup session file (the bookkeeping commit
+    removed it), so when merge is not the configured mode the re-run names the
     acknowledgement flag that mode needs.
     """
-    again = "specy-road finish-this-task --on-complete merge"
-    if repo is not None and needs_override(repo, "merge"):
+    again = "specy-road finish-this-task"
+    override = repo is not None and needs_override(repo, "merge")
+    if undo is None or override:   # after an undo, merge is re-chosen only when it was an override
+        again += " --on-complete merge"
+    if override:
         again += f" {OVERRIDE_FLAG}"
     if delete_branch:
         again += " --delete-branch"
     if land_check_cmd is not None:
         again += f" --land-check-cmd {shlex.quote(land_check_cmd)}"
-    print(f"\nerror: could not land merge to {ib}: {err_msg}", file=sys.stderr)
+    print(landing_error_line(ib, err_msg), file=sys.stderr)
+    if undo is None:
+        state = (f"run `{again}` again on this branch: the bookkeeping is already committed, so it "
+                 "retries only the landing. Or rerun with --on-complete pr to open a PR instead.")
+    else:
+        undo_error, state = undo_report(undo, again)
+        if undo_error is not None:
+            print(undo_error, file=sys.stderr)
     print(
         "\n--on-complete merge cannot fall back to PR instructions. "
-        f"Fix what the error above names, then run `{again}` "
-        "again on this branch: the bookkeeping is already committed, so it "
-        "retries only the landing. Or rerun with --on-complete pr to open a "
-        "PR instead.",
+        "Fix what the error above names, then " + state,
         file=sys.stderr,
     )
     raise SystemExit(1)
@@ -186,7 +208,26 @@ def delete_landed_branch(
     if remote_ok:
         print(f"[ok] deleted {branch} on {remote}")
     if failure is not None:
+        sys.stdout.flush()
         print(f"[warn] --delete-branch: {failure['message']}", file=sys.stderr)
+
+
+def report_landed(
+    repo: Path, outcome: str, *, branch: str, ib: str, remote: str, delete_branch: bool,
+    local_only: bool, sess_path: Path | None = None,
+) -> None:
+    """Run every step that follows a landing, then print ``[ok] <outcome>`` last (M15.40 A1).
+
+    Whatever those steps print (session cleanup, ``--delete-branch``) comes
+    first, so the outcome is the final line under any option.
+    """
+    if sess_path is not None:
+        remove_on_complete_session(sess_path)
+    if delete_branch:
+        delete_landed_branch(repo, branch=branch, ib=ib, remote=remote, local_only=local_only)
+    sys.stdout.flush()
+    sys.stderr.flush()
+    print(f"\n[ok] {outcome}", flush=True)
 
 
 # What finish-this-task's bookkeeping commit writes; anything else in that commit was never reviewed.
@@ -226,6 +267,7 @@ def refuse_unless_finish_tip(repo: Path, branch: str) -> None:
     )
     if not moved:
         return
+    sys.stdout.flush()
     print(
         f"error: {branch} has moved past its finish-this-task commit; new commits "
         "need review before they land. Re-pick the leaf or open a new leaf for them.",
@@ -253,9 +295,8 @@ def retry_merge_landing(
     target, where = (f"refs/heads/{ib}", f"local {ib}") if local else (f"refs/remotes/{remote}/{ib}", f"{ib} on {remote}")
     if git_ok(["merge-base", "--is-ancestor", branch, target], repo)[0]:
         done = "" if delete_branch else "; nothing to do"
-        print(f"\n[ok] {branch} is already merged into {where}{done}")
-        if delete_branch:
-            delete_landed_branch(repo, branch=branch, ib=ib, remote=remote, local_only=local)
+        report_landed(repo, f"{branch} is already merged into {where}{done}", branch=branch, ib=ib,
+                      remote=remote, delete_branch=delete_branch, local_only=local)
         raise SystemExit(0)
     ok, err_msg, done_msg = land_on_integration(
         repo, remote=remote, ib=ib, branch=branch, land_check_cmd=land_check_cmd,
@@ -266,10 +307,21 @@ def retry_merge_landing(
             ib, err_msg, delete_branch=delete_branch, land_check_cmd=land_check_cmd,
             repo=repo,
         )
-    print(f"\n[ok] {done_msg}")
-    if delete_branch:
-        delete_landed_branch(repo, branch=branch, ib=ib, remote=remote, local_only=local)
+    report_landed(repo, done_msg, branch=branch, ib=ib, remote=remote,
+                  delete_branch=delete_branch, local_only=local)
     raise SystemExit(0)
+
+
+def _land_reporting_errors(
+    repo: Path, *, on_mode: str, remote: str, ib: str, branch: str, land_check_cmd: str | None,
+) -> tuple[bool, str, str]:
+    """:func:`land_on_integration`; in merge mode an exception becomes a failure to undo and report."""
+    try:
+        return land_on_integration(repo, remote=remote, ib=ib, branch=branch, land_check_cmd=land_check_cmd)
+    except Exception as e:  # noqa: BLE001 -- merge mode must still undo its bookkeeping and report
+        if on_mode != "merge":
+            raise
+        return False, f"{type(e).__name__}: {e}", ""
 
 
 def apply_on_complete_mode(
@@ -285,8 +337,12 @@ def apply_on_complete_mode(
     node_id: str,
     node: dict,
     pr_body_path: Path | None = None,
+    undo: BookkeepingSnapshot | None = None,
 ) -> None:
-    """PR tail, or merge/auto land integration (exit 1 on merge failure)."""
+    """PR tail, or merge/auto land integration (exit 1 on merge failure).
+
+    ``undo``: the state before this run's bookkeeping commit, put back when a merge landing fails.
+    """
     if on_mode == "pr":
         print_finish_tail(
             args,
@@ -303,15 +359,13 @@ def apply_on_complete_mode(
         remove_on_complete_session(sess_path)
         return
 
-    ok, err_msg, done_msg = land_on_integration(
-        repo, remote=gw_remote, ib=ib, branch=branch, land_check_cmd=args.land_check_cmd,
+    ok, err_msg, done_msg = _land_reporting_errors(
+        repo, on_mode=on_mode, remote=gw_remote, ib=ib, branch=branch,
+        land_check_cmd=args.land_check_cmd,
     )
     if ok:
-        print(f"\n[ok] {done_msg}")
-        remove_on_complete_session(sess_path)
-        if args.delete_branch:
-            delete_landed_branch(repo, branch=branch, ib=ib, remote=gw_remote,
-                                 local_only=root_land(repo) == LAND_LOCAL)
+        report_landed(repo, done_msg, branch=branch, ib=ib, remote=gw_remote, sess_path=sess_path,
+                      delete_branch=args.delete_branch, local_only=root_land(repo) == LAND_LOCAL)
         return
 
     if on_mode == "merge":
@@ -320,12 +374,10 @@ def apply_on_complete_mode(
         merge_landing_failed(
             ib, err_msg, delete_branch=args.delete_branch,
             land_check_cmd=args.land_check_cmd, repo=repo,
+            undo=None if undo is None else undo_bookkeeping(repo, undo),
         )
 
-    print(
-        f"\nerror: could not land merge to {ib}: {err_msg}",
-        file=sys.stderr,
-    )
+    print(landing_error_line(ib, err_msg), file=sys.stderr)   # M15.40: after the check output
     # on_mode == "auto": fall back to PR tail only here.
     print(
         "\n(auto) Merge to integration failed — use PR/MR or fix locally "

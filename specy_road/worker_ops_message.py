@@ -83,7 +83,8 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: boo
     prompt.write_text(text, encoding="utf-8")
     reviews_dir(repo_root, rec.node_id).mkdir(parents=True, exist_ok=True)   # as delegate: before the argv names it
     launch = worker_env(adapter.resume(sid, prompt, Path(rec.worktree), api_id, cli, node_id=rec.node_id,
-                                       repo_root=repo_root, launch_mode=mode, effort=effort),
+                                       repo_root=repo_root, launch_mode=mode, effort=effort,
+                                       harness_bin=entry.get("harness_bin")),   # as delegate: the adapter resolves it
                         Path(rec.worktree) / project_prefix(repo_root))   # as delegate set it
     acquire_lease(repo_root, rec, new=rec.state == "failed", offline=offline)   # a failed worker's was released
     append_event(repo_root, rec, "message", source="orchestrator", authority="orchestrator",

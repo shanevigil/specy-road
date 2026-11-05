@@ -1,0 +1,153 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "Before any reader changes, tests/parity/roster_forms/ holds the toolkit's sr/roadmap/orchestration.yaml as of pickup and a 0.3.1-shaped sample (a human entry, a manual reviewer, claude-code, codex and cursor entries, a dynamic-routing entry with and without `pinned`, and an orchestration.local.yaml with an availability patch and a `roster_add` entry), and records per entry: check_assignment's result for each M16.47 corpus row, the family attestation for an approval, the launch argv and added environment the harness adapter builds for an executor and a reviewer turn, the role-prompt text, and `orchestrate plan --json`",
+        "orchestration.schema.json accepts `version: 1` (today's flat entry, unchanged) and `version: 2`: core fields id, family, roles, may_process, public_key, available, paused_until, unavailable_until and family_pinned at entry level, and an optional `run:` object whose schema branch is chosen by `run.harness` (claude-code, codex, cursor, generic) and holds harness_bin, harness_model, profile, routing, billing_route, channels, preflight, class and subagent_family_lock under today's names; each branch accepts only the fields in this sheet's per-harness table and refuses another with a message naming the field and the harness",
+        "One loader returns the same entry model from either form, and every roster reader (eligibility, worker and review delegate, role prompt, orchestrate plan and assign, models, validate) reads that model; every parity row gives the same result from each version-1 roster and from the hand-written version-2 equivalent committed beside it",
+        "The review gate and review_gate_ready read core fields only; the family attestation (today's routing_problem: family_pinned, else the run block's routing, harness, channels.cli `--model`, harness_model and the profile's api_id) is a function of `specy_road.orchestration` with the same result on every parity and decision-table row; the layering gate fails when a review_gate module imports the roster's run model",
+        "validate accepts both forms for one release and prints one notice for a version-1 file that names `specy-road upgrade`; a version-2 entry with a run field at entry level is an error naming the field and `run:`; the M16.0 dogfood validate golden gains only that notice line",
+        "orchestration.local.yaml keeps today's rule that `roster:` patches set only available, paused_until and unavailable_until; `roster_add` entries are read in either form during the window and refused, as today, when they add a command without allow_local_cli; the gate still reads only the committed roster",
+        "No file is rewritten in this leaf (M16.64 migrates); the parity harness, the M16.1 decision table, the M16.47 eligibility corpus and the M16.15 state table are unchanged",
+        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
+        "Estimated net line change (informational, not a gate): package about +150 while both forms are read; M16.62 removes the version-1 path"
+      ],
+      "codename": "roster-core-and-run-block",
+      "dependencies": [
+        "e8394512-cb8d-4a53-9206-936dbe2a67d2"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.63",
+      "node_key": "a6cbaac4-954f-42dc-811b-81b9edb6922c",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.63_roster-core-and-run-block_a6cbaac4-954f-42dc-811b-81b9edb6922c.md",
+      "sibling_order": 64,
+      "status": "Not Started",
+      "title": "Roster entries split into core fields and a typed run: block, read in both forms",
+      "touch_zones": [
+        "specy_road/orchestration/",
+        "specy_road/orchestration_config.py",
+        "specy_road/roster_local.py",
+        "specy_road/review_gate.py",
+        "specy_road/review_gate_ready.py",
+        "specy_road/review_delegate.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/role_prompt_cli.py",
+        "specy_road/bundled_scripts/models_cli.py",
+        "specy_road/bundled_scripts/orchestrate_cli.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "scripts/check_import_layers.py",
+        "constraints/import-layers-baseline.json",
+        "CHANGELOG.md",
+        "tests/parity/roster_forms/",
+        "tests/parity/golden/",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "`upgrade` rewrites a version-1 roadmap/orchestration.yaml to version 2: core fields stay at entry level, `pinned` becomes `family_pinned`, every other harness field moves under `run:` with `harness` first; entry order, ids, values, `policy`, `substitutions` and every other top-level key are unchanged, and no comment line is dropped (a comment stays with the entry or field it annotated)",
+        "`roster_add` entries in roadmap/orchestration.local.yaml are rewritten the same way when that file exists; its `roster:` availability patches are left as they are",
+        "Applying twice gives the same files; `--dry-run` writes nothing and lists the rewrite in the upgrade report (M16.12); a version-2 file is left untouched; a file the rewrite cannot read is reported and left unchanged",
+        "tests/parity/roster_forms/ holds before and after files for the toolkit's own sr/roadmap/orchestration.yaml and the 0.3.1-shaped sample: upgrade on each before file writes exactly its committed after file, each after file validates with no notice, and each gives the same M16.63 parity rows as its before file",
+        "The project template's roadmap/orchestration.yaml and the dogfood fixture's roadmap/orchestration.yaml are version 2, so init project writes the new form; the M16.0 dogfood validate golden is back to its pickup text and the rc3-shaped `upgrade --dry-run` golden differs only by the roster rewrite lines",
+        "docs/upgrading.md shows a roster entry before and after and says version 1 is read until the alias window closes (M16.61, M16.62); the toolkit's live sr/roadmap/orchestration.yaml is not rewritten in this leaf (the running coordinator reads it): the maintainer runs upgrade on it after merge",
+        "CHANGELOG.md's [Unreleased] section records the roster migration (version 1 -> version 2, `pinned` -> `family_pinned`) and that version 1 is removed at the 0.3.1 final tag; no version heading is written",
+        "Estimated net line change (informational, not a gate): package about +120 (migration code)"
+      ],
+      "codename": "roster-upgrade-to-run-block",
+      "dependencies": [
+        "a6cbaac4-954f-42dc-811b-81b9edb6922c"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.64",
+      "node_key": "66711ba8-3d38-427a-bf76-fdc3989e0c75",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.64_roster-upgrade-to-run-block_66711ba8-3d38-427a-bf76-fdc3989e0c75.md",
+      "sibling_order": 65,
+      "status": "Not Started",
+      "title": "upgrade migrates rosters to core fields plus run:",
+      "touch_zones": [
+        "specy_road/bundled_scripts/upgrade.py",
+        "specy_road/upgrade_report.py",
+        "specy_road/orchestration/",
+        "specy_road/templates/project/roadmap/orchestration.yaml",
+        "tests/fixtures/specy_road_dogfood/roadmap/orchestration.yaml",
+        "docs/upgrading.md",
+        "CHANGELOG.md",
+        "tests/parity/roster_forms/",
+        "tests/parity/golden/",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "An end-to-end pass on the toolkit, run from a wheel built from the branch head in a clean virtual environment, follows this sheet's checklist (install, init project, the M16.0 leaf loop with on_complete merge and pr, upgrade on an rc3-shaped and an rc5-shaped repo, worker and review delegate on one leaf per harness the maintainer has, grind-session on the dogfood fixture, doctor --prune, the PM GUI server's read-only routes, and validate, export --check and digest --check on sr/ and the dogfood fixture); each step's result is recorded in this sheet",
+        "Every failure, and every feedback item the maintainer collects in this round, is an intake entry in this sheet with a disposition: fix before 0.3.1 (a new M16 leaf that M16.66 depends on, added by the planner) or after (post-M16 intake)",
+        "This leaf changes no product code; fixes land in their own leaves",
+        "Estimated net line change (informational, not a gate): 0"
+      ],
+      "codename": "e2e-pass-and-fix-round",
+      "dependencies": [
+        "d0c9dfae-8a1b-46f5-9e40-0686ecb1a67d"
+      ],
+      "execution_milestone": "Human-led",
+      "id": "M16.65",
+      "node_key": "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.65_e2e-pass-and-fix-round_08ceae7d-08a4-4aa3-80ea-e0f74cd512e0.md",
+      "sibling_order": 66,
+      "status": "Not Started",
+      "title": "End-to-end pass on the toolkit and a feedback-and-fix round before 0.3.1",
+      "touch_zones": [
+        "sr/planning/"
+      ],
+      "type": "task"
+    },
+    {
+      "codename": "ready-to-tag-0-3-1",
+      "dependencies": [
+        "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0",
+        "4830d6a5-8004-46b8-b748-e7194f614aa2"
+      ],
+      "execution_milestone": "Human-led",
+      "id": "M16.66",
+      "node_key": "2dce21fe-f676-42e5-a9a2-cd58a333d5fa",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.66_ready-to-tag-0-3-1_2dce21fe-f676-42e5-a9a2-cd58a333d5fa.md",
+      "sibling_order": 67,
+      "status": "Not Started",
+      "title": "Gate: ready to tag 0.3.1",
+      "touch_zones": [],
+      "type": "gate"
+    },
+    {
+      "acceptance": [
+        "move-node <ID> --to-parent <P> gives the moved node the next free display id under P (one past the highest existing child id, gaps allowed) and renumbers only the moved subtree beneath it; no node outside the moved subtree changes its display id, planning-sheet file name, registry node_id or touch-zone text",
+        "The previous whole-outline renumber stays available only as an explicit `move-node ... --renumber-outline` (and the PM GUI's drag-and-drop keeps its current call path unchanged); the help text and docs/roadmap-authoring.md say which ids each form changes",
+        "The moved subtree's planning sheets, registry claims (node_id) and touch-zone references are rewritten atomically with the move, as today; a history 'renumbered' event is recorded only for nodes whose id changed",
+        "Tests: moving a leaf out of the middle of a milestone leaves every sibling and every other milestone's ids unchanged; a claimed moved leaf keeps its claim under the new id; moving a subtree renumbers only its descendants; --renumber-outline reproduces today's behaviour. Out of scope: changing the GUI drag behaviour"
+      ],
+      "codename": "move-node-keeps-other-ids",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.67",
+      "node_key": "4830d6a5-8004-46b8-b748-e7194f614aa2",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.67_move-node-keeps-other-ids_4830d6a5-8004-46b8-b748-e7194f614aa2.md",
+      "sibling_order": 68,
+      "status": "Complete",
+      "title": "move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit",
+      "touch_zones": [
+        "specy_road/bundled_scripts/roadmap_move_node.py",
+        "specy_road/bundled_scripts/roadmap_outline_renumber.py",
+        "docs/roadmap-authoring.md",
+        "tests/"
+      ],
+      "type": "task"
+    }
+  ]
+}

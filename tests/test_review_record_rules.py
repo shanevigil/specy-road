@@ -182,6 +182,14 @@ def test_record_refuses_an_approve_whose_notes_carry_an_unclassified_observation
     ("## Acceptance", None),
     ("> The parser accepts malformed input.", None),
     ("`pytest -q` -> 41", None),
+    ("No internal imports, mock assertions or defensive branches were added; not a defect because the change uses "
+     "the existing exclusion mechanism.", None),
+    ("The test drives the CLI and checks both the pass case and the fail case, which is not a defect because it is "
+     "the exact scenario A2 describes.", None),
+    ("X fails and Y crashes; not a defect because the fallback handles both.",
+     'says "crashes", two observations joined by "and": "X fails" and "Y crashes"'),
+    ("X fails, Y crashes; not a defect because the fallback handles both.",
+     'says "crashes", two observations joined by ",": "X fails", "Y crashes"'),
 ])
 def test_note_problem(line: str, why: str | None) -> None:
     assert note_problem(line) == why
@@ -280,13 +288,19 @@ def test_record_refuses_an_approve_whose_explained_finding_joins_a_second_defect
 
 
 @pytest.mark.parametrize("text, why", [
-    (CONJUNCTION_WORDING, 'says "valid input crashes"'),
+    (CONJUNCTION_WORDING, 'says "valid input crashes", two observations joined by "and": '
+     '"The cache miss is expected" and "valid input crashes"'),
     ("The cache miss is expected and valid input crashes; not a defect because the fallback handles it.",
-     'says "valid input crashes"'),
+     'says "valid input crashes", two observations joined by "and": "The cache miss is expected" and '
+     '"valid input crashes"'),
     ("The cache miss is expected, valid input crashes, not a defect because the fallback handles it.",
-     'says "valid input crashes"'),
+     'says "valid input crashes", two observations joined by ",": "The cache miss is expected", '
+     '"valid input crashes"'),
     ("The cache miss is expected and the cache key ignores the branch name, not a defect because it is handled.",
-     "is an observation"),
+     None),
+    ("The cache key ignores the branch and valid input crashes, not a defect because it is handled.",
+     'says "valid input crashes", two observations joined by "and": "The cache key ignores the branch" and '
+     '"valid input crashes"'),
     ("x y; not a defect because the fallback handles it, so the message is lost.", 'says "is lost" in its reason'),
     ("The parser accepts malformed input, so invalid configuration reaches execution. Not a defect because the "
      "parser is outside this leaf.", None),

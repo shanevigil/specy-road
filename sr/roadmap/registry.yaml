@@ -1,7 +1,7 @@
 version: 1
 entries:
   - codename: zones-missing-what-acceptance-needs-flagged
-    node_id: M15.20
+    node_id: M18.13
     branch: feature/rm-zones-missing-what-acceptance-needs-flagged
     touch_zones:
       - specy_road/zone_coverage.py
@@ -17,7 +17,7 @@ entries:
     owner: savigil
     implementation_review: pending
   - codename: file-limits-baseline-and-upgrade-report
-    node_id: M15.7
+    node_id: M19.10
     branch: feature/rm-file-limits-baseline-and-upgrade-report
     touch_zones:
       - specy_road/file_limits_engine.py
@@ -31,7 +31,7 @@ entries:
     owner: savigil
     implementation_review: pending
   - codename: the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first
-    node_id: M12.5
+    node_id: M19.6
     branch: feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first
     touch_zones:
       - specy_road/worktree_cleanup.py
@@ -49,7 +49,7 @@ entries:
     owner: savigil
     implementation_review: pending
   - codename: stash-changes-attributed-to-the-owning-branch
-    node_id: M15.25
+    node_id: M18.14
     branch: feature/rm-stash-changes-attributed-to-the-owning-branch
     touch_zones:
       - specy_road/worker_turn_check.py
@@ -59,7 +59,7 @@ entries:
     owner: savigil
     implementation_review: pending
   - codename: notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice
-    node_id: M13.9
+    node_id: M19.7
     branch: feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice
     touch_zones:
       - specy_road/agent_text_report.py
@@ -83,20 +83,6 @@ entries:
       - specy_road/bundled_scripts/validate_roadmap.py
       - tests/
       - specy_road/reviewer_run_failure.py
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
-  - codename: an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it
-    node_id: M14.5
-    branch: feature/rm-an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it
-    touch_zones:
-      - specy_road/review_record_rules.py
-      - specy_road/review_eligible.py
-      - specy_road/schemas/review-record.schema.json
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/review_gate.py
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
@@ -133,6 +119,27 @@ entries:
       - specy_road/schemas/review-record.schema.json
       - specy_road/review_gate.py
       - specy_road/review_answer.py
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
+  - codename: archived-summary-exempt-from-file-limits
+    node_id: M15.32
+    branch: feature/rm-archived-summary-exempt-from-file-limits
+    touch_zones:
+      - specy_road/file_limits_engine.py
+      - docs/file-limits.md
+      - tests/
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
+  - codename: refused-review-record-leaves-a-trace
+    node_id: M15.33
+    branch: feature/rm-refused-review-record-leaves-a-trace
+    touch_zones:
+      - specy_road/review_rejected.py
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/review_run_status.py
+      - tests/
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending

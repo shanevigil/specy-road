@@ -28,7 +28,7 @@
       "node_key": "4dafa22a-727f-4d5e-b954-f956227c150a",
       "parent_id": "M15",
       "planning_dir": "planning/M15.2_claude-code-reviewer-works-on-a-subscription-login_4dafa22a-727f-4d5e-b954-f956227c150a.md",
-      "sibling_order": 2,
+      "sibling_order": 1,
       "status": "Not Started",
       "title": "A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch",
       "touch_zones": [
@@ -62,7 +62,7 @@
       "node_key": "7e865197-c8d6-4ce4-a2d1-dc2b974a17d0",
       "parent_id": "M15",
       "planning_dir": "planning/M15.3_prompt-channel-cli-launches-nothing-without-run_7e865197-c8d6-4ce4-a2d1-dc2b974a17d0.md",
-      "sibling_order": 3,
+      "sibling_order": 2,
       "status": "Not Started",
       "title": "prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged",
       "touch_zones": [
@@ -95,7 +95,7 @@
       "node_key": "b1a7472a-784c-4b57-a15e-75d664b9e942",
       "parent_id": "M15",
       "planning_dir": "planning/M15.4_parallel-pr-leaves-reconcile-bookkeeping-by-rule_b1a7472a-784c-4b57-a15e-75d664b9e942.md",
-      "sibling_order": 4,
+      "sibling_order": 3,
       "status": "Complete",
       "title": "Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current",
       "touch_zones": [
@@ -131,11 +131,11 @@
         "e008e1d8-42d1-4ee0-a067-1f24f880c5cf"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M15.5",
+      "id": "M18.11",
       "node_key": "da5688ff-f280-411e-9922-82b5c9c1c1d6",
-      "parent_id": "M15",
-      "planning_dir": "planning/M15.5_host-effects-policy-and-interruptible-worker-messages_da5688ff-f280-411e-9922-82b5c9c1c1d6.md",
-      "sibling_order": 5,
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.11_host-effects-policy-and-interruptible-worker-messages_da5688ff-f280-411e-9922-82b5c9c1c1d6.md",
+      "sibling_order": 10,
       "status": "Not Started",
       "title": "Host effects policy: workers and reviewers do not take over the screen or change shared services, the guard denies such commands, and a message can interrupt a turn",
       "touch_zones": [
@@ -170,7 +170,7 @@
       "node_key": "c80c3636-1dd9-4001-8520-f0c4e6402be4",
       "parent_id": "M15",
       "planning_dir": "planning/M15.6_rework-prompt-carries-the-accepted-rca_c80c3636-1dd9-4001-8520-f0c4e6402be4.md",
-      "sibling_order": 6,
+      "sibling_order": 4,
       "status": "Complete",
       "title": "The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes",
       "touch_zones": [
@@ -191,11 +191,11 @@
         "1726dab4-730d-414d-a79d-fef0b03b8983"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M15.7",
+      "id": "M19.10",
       "node_key": "10f2bb3c-b2d0-497a-9f18-c94eda09f011",
-      "parent_id": "M15",
-      "planning_dir": "planning/M15.7_file-limits-baseline-and-upgrade-report_10f2bb3c-b2d0-497a-9f18-c94eda09f011.md",
-      "sibling_order": 7,
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.10_file-limits-baseline-and-upgrade-report_10f2bb3c-b2d0-497a-9f18-c94eda09f011.md",
+      "sibling_order": 9,
       "status": "Not Started",
       "title": "file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count",
       "touch_zones": [
@@ -222,7 +222,7 @@
       "node_key": "4c08d324-6253-4875-ac9e-b0933d17f69c",
       "parent_id": "M15",
       "planning_dir": "planning/M15.8_promoted-leaf-is-never-stuck-on-an-empty-approach_4c08d324-6253-4875-ac9e-b0933d17f69c.md",
-      "sibling_order": 8,
+      "sibling_order": 5,
       "status": "Complete",
       "title": "A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it",
       "touch_zones": [
@@ -244,40 +244,6 @@
     },
     {
       "acceptance": [
-        "No adapter puts the prompt text on the command line: cursor's executor, resume and reviewer launches (M8.3's --mode ask included) pass a short instruction naming the prompt file, or stdin, as claude-code's STDIN_INSTRUCTION does; a test for every adapter and every role (executor, reviewer, rca) builds a launch from a 200 KiB prompt and asserts no argv element exceeds 32 KiB",
-        "A launch whose argv would still exceed the OS single-argument limit (a custom channels.cli with \"<prompt>\") is refused before exec with the size and the {prompt} placeholder fix, never as Errno 7 from the harness",
-        "specy_road/harness_binary.py resolves the harness binary (claude, agent, codex) before launch: a roster entry's optional harness_bin, else PATH, else the harness's documented install dirs (~/.local/bin for the Cursor agent CLI); not found means a refusal naming the dirs searched and harness_bin, not exit 127; the resolved path is what runs and is recorded. Out of scope: the cursor reviewer's --force (M8.3 already removes it)"
-      ],
-      "codename": "harness-launches-survive-large-prompts-and-binaries-off-path",
-      "dependencies": [
-        "2278f4ad-6118-44da-bca8-39d904afee8d"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M15.9",
-      "node_key": "5e31fbd5-36c8-4fd8-bc36-15cd9cc478f9",
-      "parent_id": "M15",
-      "planning_dir": "planning/M15.9_harness-launches-survive-large-prompts-and-binaries-off-path_5e31fbd5-36c8-4fd8-bc36-15cd9cc478f9.md",
-      "sibling_order": 9,
-      "status": "Not Started",
-      "title": "Harness launches survive large prompts and a harness binary off PATH, for every role",
-      "touch_zones": [
-        "specy_road/worker_adapter_cursor.py",
-        "specy_road/worker_adapter_codex.py",
-        "specy_road/worker_adapter_base.py",
-        "specy_road/worker_adapter_claude.py",
-        "specy_road/harness_binary.py",
-        "docs/orchestration-harness-launch.md",
-        "tests/",
-        "specy_road/templates/project/schemas/orchestration.schema.json",
-        "specy_road/worker_adapter_parsers.py",
-        "specy_road/worker_ops_launch.py",
-        "specy_road/review_delegate.py",
-        "specy_road/bundled_scripts/role_prompt_cli.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
         "orchestrate plan --roster-from-worktree plans with the working tree's roadmap/orchestration.yaml, prints 'DRY RUN: roster from the working tree, nothing may launch from this plan' first, and its --json carries roster_ref: worktree; worker delegate, review delegate and grind-session never accept it; a test asserts the banner and that delegate still reads the integration-branch roster",
         "models list says which roster it read (the ref) and, when the working tree's roster differs, prints the added, removed and changed entry ids (and changed fields) as 'uncommitted roster changes'",
         "The gitignored roadmap/orchestration.local.yaml may add roster entries under roster_add for this clone (availability overlays stay as they are); planning and delegation on this clone use them, labelled local in orchestrate plan; an added entry never overrides a committed id, and its access.cli or channels.cli is refused unless the clone sets allow_local_cli: true in the same file; tests cover add, id clash and the cli refusal. Out of scope: sharing local entries between clones"
@@ -289,7 +255,7 @@
       "node_key": "2cebdd4b-b1e0-4a40-9b9b-8768fc530b26",
       "parent_id": "M15",
       "planning_dir": "planning/M15.10_try-a-roster-before-it-lands_2cebdd4b-b1e0-4a40-9b9b-8768fc530b26.md",
-      "sibling_order": 10,
+      "sibling_order": 7,
       "status": "Complete",
       "title": "Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff",
       "touch_zones": [
@@ -318,7 +284,7 @@
       "node_key": "d333b89b-eb44-4636-a350-284149c4a490",
       "parent_id": "M15",
       "planning_dir": "planning/M15.11_working-roster-in-one-command-and-validated-profiles_d333b89b-eb44-4636-a350-284149c4a490.md",
-      "sibling_order": 11,
+      "sibling_order": 8,
       "status": "Complete",
       "title": "A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors",
       "touch_zones": [
@@ -353,7 +319,7 @@
       "node_key": "e6e3dd29-22ab-4b59-9ca3-2ecd479879d8",
       "parent_id": "M15",
       "planning_dir": "planning/M15.12_shared-doc-zones-do-not-serialize-batches_e6e3dd29-22ab-4b59-9ca3-2ecd479879d8.md",
-      "sibling_order": 12,
+      "sibling_order": 9,
       "status": "Complete",
       "title": "Shared documentation zones do not serialize grind-session batches",
       "touch_zones": [
@@ -386,7 +352,7 @@
       "node_key": "c740f23d-72c3-41de-88c6-0ee0a7663ce4",
       "parent_id": "M15",
       "planning_dir": "planning/M15.13_worker-loop-friction-sync-until-and-ready-only-resume_c740f23d-72c3-41de-88c6-0ee0a7663ce4.md",
-      "sibling_order": 13,
+      "sibling_order": 10,
       "status": "Complete",
       "title": "Worker loop friction: sync waits for the events that matter, tool-use noise collapses, rework after a completed worker, a READY-only resume, a quieter pickup",
       "touch_zones": [
@@ -418,11 +384,11 @@
         "2278f4ad-6118-44da-bca8-39d904afee8d"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M15.14",
+      "id": "M19.11",
       "node_key": "4f41204d-a102-4077-92d2-5e311c246e41",
-      "parent_id": "M15",
-      "planning_dir": "planning/M15.14_chores-at-parity-with-leaves_4f41204d-a102-4077-92d2-5e311c246e41.md",
-      "sibling_order": 14,
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.11_chores-at-parity-with-leaves_4f41204d-a102-4077-92d2-5e311c246e41.md",
+      "sibling_order": 10,
       "status": "Not Started",
       "title": "Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored",
       "touch_zones": [
@@ -454,7 +420,7 @@
       "node_key": "035cb961-9771-46ae-a5e5-a378ea914e01",
       "parent_id": "M15",
       "planning_dir": "planning/M15.15_upgrade-ships-the-templates-prompts-reference_035cb961-9771-46ae-a5e5-a378ea914e01.md",
-      "sibling_order": 15,
+      "sibling_order": 11,
       "status": "Complete",
       "title": "upgrade ships the work/ templates every prompt references, and the .specyrd README matches upgrade's steps",
       "touch_zones": [
@@ -476,11 +442,11 @@
         "2278f4ad-6118-44da-bca8-39d904afee8d"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M15.16",
+      "id": "M18.12",
       "node_key": "fc76ea81-b466-431d-a899-b078e86c7503",
-      "parent_id": "M15",
-      "planning_dir": "planning/M15.16_role-observed-acceptance-needs-that-role_fc76ea81-b466-431d-a899-b078e86c7503.md",
-      "sibling_order": 16,
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.12_role-observed-acceptance-needs-that-role_fc76ea81-b466-431d-a899-b078e86c7503.md",
+      "sibling_order": 11,
       "status": "Not Started",
       "title": "Role-observed acceptance needs evidence from that role, and coordinator probes are not acceptance",
       "touch_zones": [
@@ -493,6 +459,33 @@
         "docs/acceptance-evidence.md",
         "tests/",
         "specy_road/bundled_scripts/role_prompt_rca.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "review delegate tells the harness the model as worker delegate and docs/orchestration-models.md say: the entry's harness_model, else the profile's id, else the roster id when the entry has no profile (review_delegate._Harness no longer calls harness_model(entry, '') for a missing profile); a test with a claude-code entry with no profile and no harness_model asserts the roster id is the launch's model argument",
+        "When the model still resolves to none (a profile whose api_id is unknown and no harness_model) and the entry does not declare routing: dynamic, review delegate refuses before launch (no RUN record is opened, exit 1) with '<id>: no model would be passed to <harness>, so it would run its own default model; set harness_model on the roster entry, or routing: dynamic to accept the harness's choice'; tests for the refusal and for a routing: dynamic entry that launches",
+        "review delegate reads the model the harness reported (review_model_check.reported_model over the last attempt's text, M15.3) and passes check()'s result to file_review as prompt --channel cli --run does, so a delegated record carries harness_model and, on a mismatch, model_mismatch, which the gate excludes; RUN-<model>.json gains requested_model (the id passed, or null) and reported_model (or null); a fake-harness test reporting another model asserts model_mismatch on the record and that review list reports 'harness ran a different model'",
+        "entry_routing returns dynamic for an entry on any harness whose resolved model is none (today only cursor), and routing_problem's message for such an entry says no model was passed and names harness_model before pinned: true; a test with a claude-code entry whose profile api_id is unknown. Out of scope: worker delegate (executor) launches, the paste and subagent channels, and a harness that reports no model (M15.3's warning stays)"
+      ],
+      "codename": "delegated-reviewer-always-runs-a-named-model",
+      "dependencies": [
+        "7e865197-c8d6-4ce4-a2d1-dc2b974a17d0"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.31",
+      "node_key": "311116ea-4199-49bf-8858-11c48b99828c",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.31_delegated-reviewer-always-runs-a-named-model_311116ea-4199-49bf-8858-11c48b99828c.md",
+      "sibling_order": 20,
+      "status": "Not Started",
+      "title": "A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported",
+      "touch_zones": [
+        "specy_road/review_delegate.py",
+        "specy_road/orchestration_config.py",
+        "docs/orchestration-models.md",
+        "tests/"
       ],
       "type": "task"
     }
