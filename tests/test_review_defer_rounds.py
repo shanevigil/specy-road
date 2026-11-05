@@ -78,7 +78,7 @@ def test_r3_a_later_record_is_not_earlier_evidence(tmp_path: Path, capsys, human
 
 @pytest.mark.parametrize("action,expected", [
     ("continue_with_class_fix", "specy-road prompt M1.1 --role executor --model composer"),
-    ("change_or_reprompt_reviewer", "specy-road prompt M1.1 --role reviewer --model opus"),
+    ("change_or_reprompt_reviewer", "specy-road review-packet M1.1"),   # no packet yet; the prompt needs one
     ("escalate_human", "specy-road decisions add M1.1 --kind decision --summary 'RCA-2.md: escalate_human'"),
 ])
 def test_r4_a_non_defer_rca_names_a_runnable_step_for_its_action(tmp_path: Path, capsys, monkeypatch,
@@ -86,7 +86,7 @@ def test_r4_a_non_defer_rca_names_a_runnable_step_for_its_action(tmp_path: Path,
     import shlex
     import subprocess
 
-    repo = make_review_repo(tmp_path, orchestration=ROSTER + BUDGET)
+    repo = make_review_repo(tmp_path, orchestration=ROSTER + "  - {id: composer, family: cursor, roles: [executor]}\n" + BUDGET)
     _block_round(repo, 1)
     _block_round(repo, 2)
     _ready(repo)   # the executor the step re-prompts: composer
@@ -99,7 +99,7 @@ def test_r4_a_non_defer_rca_names_a_runnable_step_for_its_action(tmp_path: Path,
     argv = shlex.split(b["next"])   # parses as shell words, and the CLI accepts them
     assert argv[0] == "specy-road"
     if argv[1] == "decisions":
-        r = subprocess.run(["specy-road", *argv[1:], "--repo-root", str(repo)], capture_output=True, text=True)
+        r = subprocess.run(_cli(argv[1:], repo), capture_output=True, text=True, env=_this_checkout())
         assert r.returncode == 0, r.stderr
         entry = yaml.safe_load((repo / "roadmap" / "decisions.yaml").read_text())["entries"][0]
         assert (entry["status"], entry["recommendation"]) == ("open", "apply")
@@ -223,3 +223,82 @@ def test_round2_probe_the_gate_applies_the_correctness_rule_to_a_hand_written_ma
     _forge_closed_deferral(repo, [boundary, _item(head, finding="round 2/opus: A2 regressed", category="correctness",
                                                   acceptance_id="A1", input_class="a2")])
     assert evaluate_gate(repo, NODE, head).blocks == []   # the same findings, the correctness one on A1, resolve
+
+
+def _runs(repo: Path, command: str) -> int:
+    """Run a status ``next`` command exactly as printed (plus ``--repo-root``)."""
+    import shlex
+    import subprocess
+
+    argv = shlex.split(command)
+    assert argv[0] == "specy-road", command
+    return subprocess.run(_cli(argv[1:], repo), capture_output=True, text=True, cwd=repo,
+                          env=_this_checkout()).returncode
+
+
+def _cli(args: list[str], repo: Path) -> list[str]:
+    """``specy-road <args>`` from this checkout's package, not whichever ``specy-road`` is first on PATH."""
+    import sys
+
+    return [sys.executable, "-c", "import sys; from specy_road.cli import main; main(sys.argv[1:])",
+            *args, "--repo-root", str(repo)]
+
+
+def _this_checkout() -> dict[str, str]:
+    import os
+
+    return {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1])}
+
+
+def test_round3_every_next_step_runs_or_is_absent(tmp_path: Path, capsys, human) -> None:
+    """The next-step audit: each budget state names a command that succeeds, or none at all."""
+    executor = "  - {id: composer, family: cursor, roles: [executor]}\n"
+    repo = make_review_repo(tmp_path, orchestration=ROSTER4 + executor + BUDGET)
+    _block_round(repo, 1)
+    _two_fail_round(repo, 2, correctness=False)
+    _ready(repo)   # composer is the executor; sol and sonnet have not reviewed
+    head = git(repo, "rev-parse", "HEAD")
+    st = _status(repo, capsys)[1]   # 1. no RCA: a forced RCA by a rostered non-party
+    assert st["state"] == "fix_round_budget_spent" and "--role rca --force" in st["fix_round_budget"]["next"]
+    assert _runs(repo, st["fix_round_budget"]["next"]) == 0
+    for action, role in (("continue_with_class_fix", "executor"), ("change_or_reprompt_reviewer", "reviewer"),
+                         ("escalate_human", None)):   # 2. a covering non-defer RCA
+        _write_rca(repo, _record(2, None, action=action))
+        b = _status(repo, capsys)[1]["fix_round_budget"]
+        assert (role is None) == b["next"].startswith("specy-road decisions add"), b["next"]
+        if role == "reviewer":   # no packet yet: build it, and the reviewer prompt is next
+            assert b["next"] == "specy-road review-packet M1.1" and _runs(repo, b["next"]) == 0
+            b = _status(repo, capsys)[1]["fix_round_budget"]
+            assert b["next"] == "specy-road prompt M1.1 --role reviewer --model opus"
+        assert _runs(repo, b["next"]) == 0, b["next"]
+    bad = _record(2, [_item(head, category="regression")])   # 3a. a defer RCA review defer would refuse
+    _write_rca(repo, bad)
+    b = _status(repo, capsys)[1]["fix_round_budget"]
+    assert b["next"].startswith("specy-road decisions add") and "would refuse it" in b["next_why"]
+    rca = _write_rca(repo, _record(2, [_item(head)]))   # 3b. an applicable defer RCA
+    b = _status(repo, capsys)[1]["fix_round_budget"]
+    assert b["next"] == f"specy-road review defer M1.1 --rca {rca}"
+    assert _run("review", "defer", "M1.1", "--rca", str(rca), "--repo-root", str(repo)) == 0
+    code, st = _status(repo, capsys)   # 5. applied, no counted block left: the gate's own state
+    assert st["state"] != "fix_round_budget_spent" and st["fix_round_budget"]["next"] is None
+    assert evaluate_gate(repo, NODE, head).blocks == []
+
+
+def test_round3_a_ready_agent_without_the_executor_role_is_not_named(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ROSTER + BUDGET)   # composer is not rostered
+    _block_round(repo, 1)
+    _block_round(repo, 2)
+    _ready(repo)
+    _write_rca(repo, _record(2, None, action="continue_with_class_fix"))
+    b = _status(repo, capsys)[1]["fix_round_budget"]
+    assert b["next"].startswith("specy-road decisions add M1.1") and _runs(repo, b["next"]) == 0
+
+
+def test_round3_no_independent_analyst_names_a_human_decision(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ROSTER.replace("  - {id: sol, family: openai, roles: [reviewer]}\n", "")
+                            + BUDGET)   # opus reviews; no other non-human reviewer is rostered
+    _block_round(repo, 1)
+    _block_round(repo, 2)
+    b = _status(repo, capsys)[1]["fix_round_budget"]
+    assert "MODEL" not in b["next"] and "no rostered reviewer that neither implemented" in b["next_why"]
+    assert b["next"].startswith("specy-road decisions add M1.1") and _runs(repo, b["next"]) == 0

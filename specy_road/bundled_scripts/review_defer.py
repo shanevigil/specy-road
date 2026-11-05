@@ -73,7 +73,7 @@ def _add_follow_ups(root: Path, parent: str | None, items: list[dict[str, Any]])
     return ids
 
 
-def _checked_record(root: Path, node_id: str, rca_arg: str) -> tuple[Any, str | None]:
+def applicable_record(root: Path, node_id: str, rca_arg: str) -> tuple[Any, str | None]:
     """``(the RCA record, None)`` when it may be applied, else ``(None, why)``; nothing is written."""
     loop = loop_state(root, node_id)
     rca = next((r for r in loop.rcas if r.path.name == Path(rca_arg).name), None)
@@ -102,7 +102,7 @@ def cmd_review_defer(ns: argparse.Namespace) -> int:
     if not sys.stdin.isatty():
         return _fail("review defer is human-only: run it yourself in an interactive terminal. An agent or "
                      "unattended run may not apply a deferral, and there is no --yes.")
-    rca, why = _checked_record(root, ns.node_id, ns.rca)
+    rca, why = applicable_record(root, ns.node_id, ns.rca)
     if why:
         return _fail(why)
     approver = _approver(root)

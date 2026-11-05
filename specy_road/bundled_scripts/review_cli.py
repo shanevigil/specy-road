@@ -81,7 +81,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
     loop = loop_state(root, node_id)
     escalated = loop.escalation is not None and not gate.passed
     budget = fix_round_budget(root, gate.config, loop, node_id)   # None unless max_fix_rounds is set
-    spent = bool(budget and budget["spent"] and gate.blocks)
+    spent = bool(budget and budget["spent"] and budget["next"] and gate.blocks)   # next None: nothing to run
     state = ("executor_blocked" if blocked_lines else "fix_round_budget_spent" if spent
              else "escalated" if escalated else _state(root, t, gate, ready_commit))
     state, hints = milestone_status(t, state)

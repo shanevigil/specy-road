@@ -108,7 +108,7 @@ def test_budget_spent_names_the_rca_then_the_defer_command(tmp_path: Path, capsy
     code, st = _status(repo, capsys)
     assert (code, st["state"]) == (1, "blocked")
     assert st["fix_round_budget"]["blocking_rounds"] == 1 and not st["fix_round_budget"]["spent"]
-    _block_round(repo, 2)
+    _two_fail_round(repo, 2, correctness=False)   # a finding review defer can bind
     code, st = _status(repo, capsys)
     assert (code, st["state"]) == (1, "fix_round_budget_spent")
     assert st["fix_round_budget"]["next"] == (
@@ -157,6 +157,11 @@ def test_defer_applies_and_resolves_only_that_reviewers_block_at_that_commit(tmp
     gate = evaluate_gate(repo, NODE, head)
     assert [b.model for b in gate.blocks] == ["sonnet"]   # another reviewer's block still counts
     assert any(r.data["model"] == "opus" and why == f"deferred by {entry['id']}" for r, why in gate.ineligible)
+    code, st = _status(repo, capsys)   # applied, sonnet still blocks: no command that is known to fail
+    assert (code, st["state"], st["fix_round_budget"]["next"]) == (1, "blocked", None)
+    assert "RCA-2.md is applied (DEFERRAL-2.yaml)" in st["fix_round_budget"]["next_why"]
+    assert _run("handoff", "status", "M1.1", "--repo-root", str(repo)) == 1
+    assert "review defer" not in capsys.readouterr().out
     _block_round(repo, 3)   # the same reviewer on a later commit
     later = evaluate_gate(repo, NODE, git(repo, "rev-parse", "HEAD"))
     assert [b.model for b in later.blocks] == ["opus"]
