@@ -113,3 +113,74 @@ def test_a_foreign_worktree_inside_a_configured_nested_clone_refuses_and_survive
         assert f"{UNCOVERED}/sibling/ is a linked worktree of another repository" in out.stderr
         assert "unpushed nested sibling work" in out.stderr
         assert sib.is_dir() and clone.is_dir() and wt.is_dir()
+
+
+def _own_checkout(d: Path, branch: str, msg: str) -> None:
+    """An independent repository at ``d`` (which may already hold files) with one commit on ``branch``."""
+    d.mkdir(parents=True, exist_ok=True)
+    git(d, "init", "-q", "-b", branch)
+    git(d, "config", "user.email", "t@e.com")
+    git(d, "config", "user.name", "T")
+    commit_file(d, "core.py", "x = 1\n", msg)
+
+
+def _refused_both_ways(root: Path, *keep: Path) -> str:
+    """Preview and ``--yes`` both exit 1 and leave every path in ``keep``; the ``--yes`` stderr."""
+    for args in ((), ("--yes",)):
+        out = run_specy_road(root, "worktree", "prune", "M1", *args)
+        assert out.returncode == 1, out.stdout
+        assert all(p.is_dir() for p in keep)
+    return out.stderr
+
+
+def test_a_foreign_checkout_in_a_clean_tracked_directory_refuses_and_survives(tmp_path: Path) -> None:
+    root, wt = _landed_leaf_ignoring_sibling(tmp_path)
+    commit_file(wt, "vendor/core.py", "x = 1\n", "vendor code")
+    git(root, "merge", "-q", "--no-ff", "--no-edit", FEATURE)
+    git(root, "push", "-q", "origin", "main")
+    _own_checkout(wt / "vendor", "private", "private vendor history")   # same core.py: the leaf's status is clean
+    assert git(wt, "status", "--porcelain", "--ignored") == ""
+    why = _refused_both_ways(root, wt / "vendor", wt)
+    assert f"vendor/ is a checkout of another repository, {wt / 'vendor'}, on private" in why
+    assert "private vendor history" in why
+
+
+def test_an_initialized_submodule_refuses_and_survives(tmp_path: Path) -> None:
+    root, wt = _landed_leaf_ignoring_sibling(tmp_path)
+    upstream = tmp_path / "upstream"
+    _own_checkout(upstream, "private", "submodule base")
+    git(wt, "-c", "protocol.file.allow=always", "submodule", "add", "-q", "-b", "private", str(upstream), "vendor")
+    git(wt, "commit", "-qm", "add the submodule")
+    git(root, "merge", "-q", "--no-ff", "--no-edit", FEATURE)
+    git(root, "push", "-q", "origin", "main")
+    sub = wt / "vendor"
+    git(sub, "config", "user.email", "t@e.com")
+    git(sub, "config", "user.name", "T")
+    git(sub, "checkout", "-q", "-b", "private-topic")
+    commit_file(sub, "core.py", "x = 2\n", "submodule-only work")
+    git(sub, "checkout", "-q", "private")   # back at the recorded commit: the leaf's status is clean
+    assert git(wt, "status", "--porcelain", "--ignored") == ""
+    why = _refused_both_ways(root, sub, wt)
+    assert "vendor/ is a checkout of another repository" in why and "on private" in why
+    assert git(sub, "log", "-1", "--format=%s", "private-topic") == "submodule-only work"
+
+
+def test_an_ignored_foreign_checkout_with_a_carriage_return_in_its_name_refuses_and_survives(tmp_path: Path) -> None:
+    root, wt = _landed_leaf_ignoring_sibling(tmp_path)
+    sib = wt / "sibling\rname"   # text-mode decoding would read it as sibling\nname
+    _own_checkout(sib, "private", "carriage-return work")
+    why = _refused_both_ways(root, sib, wt)
+    assert "is a checkout of another repository" in why and "carriage-return work" in why
+
+
+def test_an_unreadable_directory_refuses_instead_of_being_skipped(tmp_path: Path) -> None:
+    root, wt = _landed_leaf_ignoring_sibling(tmp_path)
+    locked = wt / "sibling-locked"
+    _own_checkout(locked / "inner", "private", "hidden work")
+    locked.chmod(0)
+    try:
+        why = _refused_both_ways(root, wt)
+        assert f"cannot read {locked}: Permission denied" in why
+    finally:
+        locked.chmod(0o755)
+    assert (locked / "inner" / ".git").is_dir()

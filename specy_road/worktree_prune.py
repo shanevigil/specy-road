@@ -20,22 +20,27 @@ remote-tracking tips must be held by a branch or remote-tracking ref of the main
 checkout's copy, and any stash refuses. A worker in state ``running`` in the
 worktree refuses too: its harness is writing there.
 
-Any other directory in the worktree holding a ``.git`` (a linked worktree or a
-checkout of another repository, not a configured nested repo) refuses, naming
-its repository, branch and the commits its upstream lacks: removal would
-delete it, and this command never prunes another repository's worktree.
+Any other directory in the worktree holding a ``.git`` (a linked worktree, a
+checkout or an initialized submodule of another repository, not a configured
+nested repo itself) or laid out as a bare repository refuses, naming its
+repository, branch and the commits its upstream lacks: removal would delete it,
+and this command never prunes another repository's worktree. They are found by
+walking the filesystem, links not followed, so clean tracked directories are
+seen too; a directory the walk cannot read refuses.
 """
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from specy_road.bundled_scripts.grind_session_cleanup import merged_into
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.git_subprocess import git_code, git_stdout, git_text, run
+from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_code, git_stdout, git_text, run
 from specy_road.git_workflow_config import load_git_workflow_config, resolve_integration_defaults
 from specy_road.nested_repos import _common_dir, is_repo_top, nested_repos
 from specy_road.review_files import reviews_root
@@ -56,6 +61,7 @@ class PrunePlan:
     ignored: list[str] = field(default_factory=list)   # git-root-relative paths removal deletes
     nested: list[tuple[Path, Path, bool]] = field(default_factory=list)   # (main copy, dir, linked worktree)
     foreign: list[Path] = field(default_factory=list)   # other repositories' worktrees or checkouts inside it
+    unscanned: list[str] = field(default_factory=list)   # directories the foreign-repository walk could not read
 
 
 def leaf_worktree(root: Path, node_id: str) -> tuple[Path, Path, str]:
@@ -72,15 +78,20 @@ def leaf_worktree(root: Path, node_id: str) -> tuple[Path, Path, str]:
 
 def _status(d: Path, skip: tuple[str, ...] = ()) -> tuple[list[str], list[str]] | None:
     """``(changed or untracked, ignored)`` paths in ``d``, leaving out those under ``skip``; ``None`` if unreadable."""
-    # -z: paths come unquoted (a space or a non-ASCII byte would otherwise arrive in "..." with escapes,
-    # naming no file on disk), each record ending in NUL; a rename or copy record carries its source path
-    # as the next field. --untracked-files=all names each file inside an untracked or ignored directory,
-    # so the list says exactly what removal deletes. A name that is not valid text fails the read: None.
-    out = git_stdout(["status", "--porcelain=v1", "-z", "--ignored", "--untracked-files=all"], d)
-    if out is None:
+    # -z, read as bytes: paths come unquoted and untouched (text mode's universal newlines would turn a
+    # '\r' in a name into '\n'), each record ending in NUL; a rename or copy record carries its source
+    # path as the next field. --untracked-files=all names each file inside an untracked or ignored
+    # directory, so the list says exactly what removal deletes. Foreign repositories are not found from
+    # this list (a clean tracked one is not in it): see _walk_foreign.
+    try:
+        r = subprocess.run(["git", "status", "--porcelain=v1", "-z", "--ignored", "--untracked-files=all"],
+                           cwd=d, capture_output=True, timeout=DEFAULT_TIMEOUT, check=False)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    if r.returncode:
         return None
     changed, ignored = [], []
-    fields = iter(out.split("\0"))
+    fields = iter(os.fsdecode(f) for f in r.stdout.split(b"\0"))
     for rec in fields:
         if not rec:
             continue
@@ -146,7 +157,6 @@ def _check_nested(plan: PrunePlan, main: Path, prefix: str) -> None:
             continue
         changed, ignored = state
         plan.ignored += [f"{prefix}{nr.path}/{p}" for p in ignored]
-        plan.foreign += _foreign_dirs(d, changed + ignored)   # inside it; the configured repository itself is exempt
         if changed:
             plan.refusals.append(f"{label}: uncommitted or untracked: {', '.join(changed)}")
         stashes, lost = _stashes(d, plan.branch, linked), _lost_tips(src, d, linked)
@@ -164,20 +174,42 @@ def _check_nested(plan: PrunePlan, main: Path, prefix: str) -> None:
 _SHOWN = 20   # commits listed per foreign repository; a checkout with no remote could list its whole history
 
 
-def _foreign_dirs(wt: Path, paths: list[str]) -> list[Path]:
-    """Each directory in ``paths`` (``wt``-relative) or among their parents below ``wt`` that holds a ``.git``."""
-    found: set[Path] = set()
-    for rel in paths:
-        r = Path(rel.rstrip("/"))
-        found.update(wt / p for p in (r, *r.parents) if p != Path(".") and (wt / p / ".git").exists())
-    return sorted(found)
+def _walk_foreign(wt: Path, exempt: set[Path]) -> tuple[list[Path], list[str]]:
+    """``(foreign, unreadable)``: every directory below ``wt``, but not in ``exempt``, holding a ``.git``
+    entry (file, directory or link) or laid out as a bare repository; and each directory that could not
+    be read, which refuses too, since what is in it is unknown.
+
+    Walks the filesystem itself, not git's view of it: a clean tracked directory, or a submodule at its
+    recorded commit, is in no status output. Links are never followed (removal deletes the link, not
+    its target). A found repository is not descended into: it refuses already.
+    """
+    found, unreadable = [], []
+
+    def unread(e: OSError) -> None:
+        unreadable.append(f"cannot read {e.filename}: {e.strerror}; removal would delete what it holds unchecked")
+
+    for top, dirs, files in os.walk(wt, onerror=unread):
+        d = Path(top)
+        bare = "HEAD" in files and {"objects", "refs"} <= set(dirs)
+        if d != wt and d not in exempt and (".git" in dirs or ".git" in files or bare):
+            found.append(d)
+            dirs.clear()
+        elif ".git" in dirs:
+            dirs.remove(".git")   # this worktree's or an exempt repository's own git directory
+    return sorted(found), unreadable
 
 
 def _foreign_refusal(wt: Path, d: Path) -> str:
-    """Why ``d``, another repository's linked worktree (``.git`` file) or checkout (``.git`` directory), refuses."""
-    linked = (d / ".git").is_file()
+    """Why ``d``, another repository's linked worktree, checkout (a ``.git`` directory, or a ``.git`` file
+    naming its own git directory, as a submodule's does) or bare repository, refuses."""
     common = _common_dir(d)
-    repo = (common.parent if common and common.name == ".git" else common) if linked else d
+    git_dir = git_text(["rev-parse", "--absolute-git-dir"], d)
+    linked = bool(common and git_dir) and Path(git_dir).resolve() != common
+    bare = not (d / ".git").exists() and not os.path.islink(d / ".git")
+    if linked:
+        repo = common.parent if common.name == ".git" else common
+    else:
+        repo = d if bare or (d / ".git").is_dir() else (common or d)
     branch = git_text(["rev-parse", "--abbrev-ref", "HEAD"], d) or "unknown"
     upstream = git_text(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], d)
     span = ["@{u}..HEAD"] if upstream else ["HEAD", "--not", "--remotes"]
@@ -190,7 +222,7 @@ def _foreign_refusal(wt: Path, d: Path) -> str:
         more = " (and more)" if len(lines) > _SHOWN else ""
         commits = f"commits {lacks} lacks: {'; '.join(lines[:_SHOWN])}{more}" if lines else f"no commits {lacks} lacks"
     kind, step = (("linked worktree", f"`git -C {repo} worktree remove {d}`") if linked
-                  else ("checkout", "move it out of the worktree"))
+                  else ("bare clone" if bare else "checkout", "move it out of the worktree"))
     return (f"{d.relative_to(wt).as_posix()}/ is a {kind} of another repository, {repo or 'unknown'}, on {branch}; "
             f"{commits}; removal would delete it: land or push those commits, then {step}")
 
@@ -258,9 +290,9 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         plan.ignored = ignored + plan.ignored
         if changed:
             plan.refusals.append(f"uncommitted or untracked: {', '.join(changed)}")
-        configured = {d for _src, d, _linked in plan.nested}
-        plan.foreign = sorted(set(plan.foreign + _foreign_dirs(wt, changed + ignored)) - configured)
-        plan.refusals += [_foreign_refusal(wt, d) for d in plan.foreign]
+    # Every configured nested repo is exempt itself, but what it holds is walked like the rest.
+    plan.foreign, plan.unscanned = _walk_foreign(wt, {d for _src, d, _linked in plan.nested})
+    plan.refusals += [_foreign_refusal(wt, d) for d in plan.foreign] + plan.unscanned
     stashes = _stashes(wt, branch, linked=True)
     if stashes is None:
         plan.refusals.append("cannot read the stash list")
@@ -279,6 +311,8 @@ def remove(plan: PrunePlan) -> str | None:
     if plan.foreign:
         return f"{plan.worktree} holds another repository's worktree or checkout: " + \
             ", ".join(str(d) for d in plan.foreign)
+    if plan.unscanned:
+        return "; ".join(plan.unscanned)
     for src, d, linked in plan.nested:
         if linked:
             code, out = git_code(["worktree", "remove", "--force", str(d)], src)

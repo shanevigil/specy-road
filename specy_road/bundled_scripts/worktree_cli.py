@@ -64,7 +64,8 @@ def build_parser() -> argparse.ArgumentParser:
             "repository in it must also hold no uncommitted changes, stashes, or commits that no "
             "branch or remote-tracking ref of the main checkout's copy holds (a full clone's own "
             "branches and remote-tracking refs included). Any other directory in it holding a .git (another "
-            "repository's linked worktree or checkout) refuses, naming its repository, branch and the commits "
+            "repository's linked worktree, checkout or submodule) or a bare repository, found by walking "
+            "the filesystem, refuses, as does a directory that walk cannot read, naming its repository, branch and the commits "
             "its upstream lacks. Lists each ignored file removal deletes, "
             "including those inside ignored directories; removes only with --yes."
         ),
