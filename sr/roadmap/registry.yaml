@@ -121,3 +121,14 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: delegated-reviewer-always-runs-a-named-model
+    node_id: M15.31
+    branch: feature/rm-delegated-reviewer-always-runs-a-named-model
+    touch_zones:
+      - specy_road/review_delegate.py
+      - specy_road/orchestration_config.py
+      - docs/orchestration-models.md
+      - tests/
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
