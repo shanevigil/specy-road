@@ -6,16 +6,20 @@ from datetime import date
 from pathlib import Path
 
 from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
+from tests.test_mark_implementation_reviewed_gate import _repo as _mir_repo, _run as _mir_run
 from tests.test_orchestrate_plan import ROSTER, only_assignment, plan_repo
 
 from specy_road import orchestrate_plan as op
 from specy_road.review_files import reviews_dir
-from specy_road.review_gate import commit_trailers, evaluate_gate
-from specy_road.review_tally import leaf_areas, parse_tally
+from specy_road.review_gate import evaluate_gate
+from specy_road.review_tally import leaf_areas, parse_tally, tally_trailers
 
 
-def test_gate_trailers_end_with_the_leafs_review_tally(tmp_path: Path) -> None:
-    repo = make_review_repo(tmp_path)
+TALLY = "Review-tally: M1.1 rounds=2 blocks=1 integrity=0 rca=0 findings=boundary:1,correctness:2"
+
+
+def _two_rounds(repo: Path) -> str:
+    """A blocking round on the previous commit, then an approval of HEAD; returns HEAD."""
     head, earlier = git(repo, "rev-parse", "HEAD"), git(repo, "rev-parse", "HEAD~1")
     d = reviews_dir(repo, "M1.1")
     (d / "history").mkdir(parents=True)
@@ -24,15 +28,23 @@ def test_gate_trailers_end_with_the_leafs_review_tally(tmp_path: Path) -> None:
         review_text(earlier, verdict="block", a1="fail", findings=findings), encoding="utf-8")
     (d / "history" / "002.md").write_text(review_text(head), encoding="utf-8")
     (d / "REVIEW-human.md").write_text(review_text(head), encoding="utf-8")
-    gate = evaluate_gate(repo, NODE, head)
-    assert gate.passed, gate.problems()
+    return head
 
-    trailers = commit_trailers(gate)
-    assert trailers == [
-        f"Reviewed-by: human (human) approve {head}",
-        "Review-tally: M1.1 rounds=2 blocks=1 integrity=0 rca=0 findings=boundary:1,correctness:2",
-    ]
-    assert parse_tally(trailers[-1]) == ("M1.1", {"rounds": 2, "blocks": 1, "integrity": 0, "rca": 0})
+
+def test_tally_trailer_counts_the_leafs_review_records(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    gate = evaluate_gate(repo, NODE, _two_rounds(repo))
+    assert gate.passed, gate.problems()
+    assert tally_trailers(repo, gate) == [TALLY]
+    assert parse_tally(TALLY) == ("M1.1", {"rounds": 2, "blocks": 1, "integrity": 0, "rca": 0})
+
+
+def test_mark_implementation_reviewed_writes_the_tally_after_the_reviewed_by_lines(tmp_path: Path) -> None:
+    repo = _mir_repo(tmp_path)
+    head = _two_rounds(repo)
+    assert _mir_run(repo, "--yes") == 0
+    assert git(repo, "log", "-1", "--format=%B").strip().splitlines()[-2:] == [
+        f"Reviewed-by: human (human) approve {head}", TALLY]
 
 
 def test_parse_tally_rejects_a_malformed_line() -> None:

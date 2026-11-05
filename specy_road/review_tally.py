@@ -55,12 +55,11 @@ def format_tally(node_id: str, tally: dict[str, Any]) -> str:
     return f"{TRAILER}: {node_id} " + " ".join(f"{k}={tally[k]}" for k in _COUNTS) + f" findings={found}"
 
 
-def tally_trailers(gate: Any) -> list[str]:
-    """The gate commit's ``Review-tally`` line; none when the records cannot be read (the leaf counts as no tally)."""
-    if gate.repo_root is None:
-        return []
+def tally_trailers(repo_root: Path, gate: Any) -> list[str]:
+    """The gate commit's ``Review-tally`` line for a passed :class:`~specy_road.review_gate.GateResult`; none when
+    the records cannot be read (the leaf then counts as no tally)."""
     try:
-        return [format_tally(gate.node_id, leaf_tally(gate.repo_root, gate.node_id, gate.commit))]
+        return [format_tally(gate.node_id, leaf_tally(repo_root, gate.node_id, gate.commit))]
     except Exception:  # noqa: BLE001 - the tally is a record for the digest, never a reason to refuse the gate
         return []
 
