@@ -8,8 +8,14 @@ from pathlib import Path
 
 import pytest
 
+from tests.review_delegate_helpers import (
+    files_record_step,
+    make_delegate_repo,
+    roster,
+    run_review_delegate,
+    set_delegate_steps,
+)
 from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
-from tests.test_review_delegate import _delegate, _files_record, _repo, _roster, _steps
 
 from specy_road.bundled_scripts import role_prompt
 from specy_road.review_delegate import load_run
@@ -21,7 +27,7 @@ NO_RECORD = "no review record was filed"
 def _cli_repo(tmp_path: Path) -> Path:
     """A repo whose ``opus`` cli copies ``record.md`` (when it exists) to REVIEW-opus.md, then exits 0."""
     script, record = tmp_path / "fake_cli.py", tmp_path / "record.md"
-    repo = make_review_repo(tmp_path, orchestration=_roster(f"{sys.executable} {script.as_posix()} {{prompt}}"))
+    repo = make_review_repo(tmp_path, orchestration=roster(f"{sys.executable} {script.as_posix()} {{prompt}}"))
     target = reviews_dir(repo, "M1.1") / "REVIEW-opus.md"
     script.write_text(f"import os, shutil\nprint('reviewing')\n"
                       f"if os.path.exists({str(record)!r}): shutil.copy({str(record)!r}, {str(target)!r})\n")
@@ -68,9 +74,9 @@ def test_prompt_cli_record_for_an_older_commit_is_not_this_commits_record(tmp_pa
 
 
 def test_delegate_run_that_filed_its_record_has_no_error_in_the_run_file(tmp_path: Path) -> None:
-    repo, spec = _repo(tmp_path)
-    _steps(repo, spec, _files_record(repo))
-    assert _delegate(repo) == 0
+    repo, spec = make_delegate_repo(tmp_path)
+    set_delegate_steps(repo, spec, files_record_step(repo))
+    assert run_review_delegate(repo) == 0
     run = json.loads(_run_text(repo))
     assert run["state"] == "complete" and run["reason"] is None and run["events"] == []
     assert [a["error"] for a in run["attempts"]] == [None] and NO_RECORD not in _run_text(repo)
