@@ -219,3 +219,27 @@ def test_an_owning_repository_with_a_carriage_return_in_its_name_is_named_exactl
     assert f"linked worktree of another repository, {other.resolve()}, on topic" in why
     assert f"git -C {shlex.quote(str(other.resolve()))} worktree remove" in why
     _refused_both_ways(root, sib, wt)
+
+
+def test_every_foreign_repository_in_anything_removal_deletes_refuses_at_any_depth(tmp_path: Path) -> None:
+    """The scan covers what removal deletes: the leaf and a configured full clone, its ``.git`` included."""
+    root, wt = _landed_leaf_ignoring_sibling(tmp_path, (UNCOVERED,))
+    clone = wt / UNCOVERED
+    git(root, "clone", "-q", str(root / UNCOVERED), str(clone))
+    (clone / ".git" / "info" / "exclude").write_text("sibling*/\n")
+    other = _other_repo(tmp_path)
+    checkouts = [wt / "sibling-a", wt / "sibling-deep" / "x" / "y", clone / "sibling-inner" / "z",
+                 clone / ".git" / "info" / "sibling-meta", clone / ".git" / "refs" / "sibling-ref" / "deep"]
+    linked = [wt / "sibling-wt", wt / "sibling-deep" / "w", clone / ".git" / "sibling-linked"]
+    for i, d in enumerate(checkouts):
+        _own_checkout(d, "private", f"checkout work {i}")
+    for i, d in enumerate(linked):
+        git(other, "worktree", "add", "-q", "-b", f"topic{i}", str(d), "main")
+    plan = plan_prune(root, "M1")
+    assert plan.foreign == sorted(checkouts + linked)   # the leaf, the clone and the clone's .git are exempt
+    assert remove(plan) is not None
+    why = _refused_both_ways(root, *checkouts, *linked, clone, wt)
+    for d in checkouts:
+        assert f"{d.relative_to(wt).as_posix()}/ is a checkout of another repository" in why
+    for d in linked:
+        assert f"{d.relative_to(wt).as_posix()}/ is a linked worktree of another repository" in why
