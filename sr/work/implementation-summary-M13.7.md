@@ -72,3 +72,33 @@ a one-argument follow-up (`repo_root=checkout`). The A2 notice does reach
 - `tests/test_m13_7_notices.py::test_rules_already_in_the_file_are_not_new`: no notice once the rules exist.
 - `tests/test_session_presence.py` assertion updated to the new A3 text, which it pins as the first output line.
 - Mocks: none.
+
+## Fix round 1
+
+This round addresses Sol's (gpt-6.1-sol) block on a07d9e96, R1–R3, after merging `origin/WIP/improvements-0-3-1`. The code fix is commit `0be41c29`.
+
+- **R1 (either link direction):** `resolve_linked` now drops a skill-folder entry whose real path is the folder of another listed file, whichever side the symlink is on. Before, it was dropped only when the file was reached through the link. For `.claude/skills -> .agents/skills`, a dry run listed `.agents/skills/<x>/SKILL.md` and `.agents/skills/<x> (created) (…)`; it now lists the SKILL.md once. No link note is carried onto that file, because a real run never lists the link, and the two runs must print the same lines.
+- **R2 (git's ignore semantics):** `_new_rule_matches` no longer uses `git ls-files -- <rule>` pathspecs. It asks git through `git -c core.excludesFile=<tmp file of the new rules> check-ignore --no-index -v -z --stdin`, given the tracked files and the untracked files git shows today. A path is listed only when git says a new rule decides it. An existing `.gitignore` rule takes precedence over `core.excludesFile`, so a later `!work/prompt-keep.md` keeps the file unlisted. Gitignore `*` does not cross `/`, so `work/prompt-dir/sub.md` is not listed. This still runs before the write, so dry and real runs agree. The tracked notice and the 20-entry cap are unchanged.
+  - **Known limit:** a negation placed *before* the managed block is overridden in reality by the block rule after it. Here it still wins, so such a file is under-reported, never falsely reported as hidden.
+- **R3 (target outside the root):** the link note is now built by `_link_note`. It prints the target relative to the root when it lies inside the root, and absolute otherwise. `relative_to(root)` is no longer called unconditionally on the link target.
+
+**Red-green:** the 7 new test cases fail on a07d9e96 (7 failed, 7 passed) and pass on 0be41c29.
+
+**Verification:**
+- Targeted run (Sol's import-based selection plus `tests/test_upgrade.py`): 427 passed.
+- `specy-road file-limits`: OK.
+- `ruff check`: clean.
+
+### Added (fix round 1)
+
+- `refresh_stubs_report._link_note`: formats the link note safely when the target lies outside the root (R3).
+- `linked_parents` / `folded` sets in `resolve_linked`: fold the skill-folder entry in either symlink direction (R1).
+- `agent_ignores._ls_files`: NUL-separated `git ls-files` listing of tracked and visible untracked files, so paths with special characters parse correctly.
+- `agent_ignores._check_ignore`: asks git which paths a new rule decides, through `check-ignore` with the new rules as `core.excludesFile` (R2).
+- Guard in `_check_ignore` that returns no matches when git cannot run, so the notice is skipped rather than the refresh failing.
+- Early return in `_new_rule_matches` when there are no new rules or no files, which avoids a temp file and a git call.
+- `tests/test_m13_7_notices.py::test_a_reverse_symlinked_skills_dir_reports_each_skill_once_and_runs_agree`: R1, end to end, dry and real.
+- `tests/test_m13_7_notices.py::test_a_link_out_of_the_repo_and_back_names_its_target_absolutely` (dry and real): R3, end to end.
+- `tests/test_m13_7_notices.py::test_a_path_the_new_rule_only_matches_as_a_pathspec_is_not_called_hidden` (dry and real): R2, `work/prompt-dir/sub.md`.
+- `tests/test_m13_7_notices.py::test_a_later_negation_keeps_the_file_visible_and_unlisted` (dry and real): R2, negation after the managed block, with the tracked notice kept.
+- Mocks: none.
