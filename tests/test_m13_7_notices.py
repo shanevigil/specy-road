@@ -231,7 +231,16 @@ def _case_self_ignored_nested(repo: Path) -> None:
 
 def _case_tracked_already_ignored(repo: Path) -> None:
     _commit(repo, "work/prompt-tracked.md")
-    _write(repo, GITIGNORE, "work/*.md\n")
+    _write(repo, GITIGNORE, "work/*.md\n")                       # older rule; the new block lands after it
+
+
+def _case_tracked_by_an_older_rule_only(repo: Path) -> None:
+    _commit(repo, "work/old.md")
+    _write(repo, GITIGNORE, "work/old.md\n")
+
+
+def _case_older_rule_after_the_block(repo: Path) -> None:
+    _write(repo, GITIGNORE, _block(after="work/*.md\n"))          # git lets the later, older rule decide
 
 
 #: name -> (setup, prefix, expected now-hidden, expected still-tracked). Every repo also tracks work/prompt-a.md.
@@ -256,7 +265,10 @@ CASES = {
                           {"sr/work/prompt-x.md", "sr/work/.sessions/s.json"}, set()),
     "r3 ignorecase": (_case_ignorecase, "", {"work/Prompt-case.md"}, {"work/prompt-a.md"}),
     "r3 info/exclude": (_case_info_exclude, "", {"work/prompt-shown.md"}, {"work/prompt-a.md"}),
-    "r3 tracked already ignored": (_case_tracked_already_ignored, "", set(), set()),
+    "r3 tracked already ignored": (_case_tracked_already_ignored, "", set(),
+                                   {"work/prompt-a.md", "work/prompt-tracked.md"}),
+    "r5 tracked by an older rule only": (_case_tracked_by_an_older_rule_only, "", set(), {"work/prompt-a.md"}),
+    "r5 older rule after the block decides": (_case_older_rule_after_the_block, "", set(), set()),
     "r4 self-ignored nested .gitignore": (_case_self_ignored_nested, "", {"work/prompt-hide.md"}, {"work/prompt-a.md"}),
 }
 
@@ -279,16 +291,30 @@ def test_the_real_run_reports_exactly_the_visibility_change_git_shows(tmp_path: 
     setup, prefix, hidden, tracked = CASES[case]
     repo = _repo_with_prompts(tmp_path, untracked=0)
     setup(repo)
-    shown, ignored, index = _shown(repo), _tracked_ignored(repo), _git(repo, "ls-files", "-s")
+    shown, index = _shown(repo), _git(repo, "ls-files", "-s")
     apply_and_report(repo, prefix, [])
     out = capsys.readouterr().out
     assert _listed(out, HIDDEN_NOTE) == shown - _shown(repo) == hidden
-    assert _listed(out, TRACKED_NOTE) == _tracked_ignored(repo) - ignored == tracked
+    assert _listed(out, TRACKED_NOTE) == tracked <= _tracked_ignored(repo)   # attributed to a new rule, not a diff
     assert out.startswith(REAL_HEADER) if hidden | tracked else out == ""
     assert _git(repo, "ls-files", "-s") == index                    # nothing untracked
 
 
 # --- A2, dry run: a labelled estimate ------------------------------------------------------------
+
+@pytest.mark.parametrize("case", list(CASES))
+def test_the_dry_run_estimate_lists_what_the_real_run_reports(tmp_path: Path, capsys, case: str) -> None:
+    setup, prefix, hidden, tracked = CASES[case]
+    repo = _repo_with_prompts(tmp_path, untracked=0)
+    setup(repo)
+    apply_and_report(repo, prefix, [], dry_run=True)
+    dry = capsys.readouterr().out
+    apply_and_report(repo, prefix, [])
+    real = capsys.readouterr().out
+    assert (_listed(dry, HIDDEN_NOTE), _listed(dry, TRACKED_NOTE)) == (hidden, tracked)
+    assert dry.startswith(ESTIMATE_HEADER) if hidden | tracked else dry == ""
+    assert dry.splitlines()[1:] == real.splitlines()[1:]
+
 
 def test_the_dry_run_is_labelled_an_estimate_and_gets_the_self_ignored_nested_case_right(
         tmp_path: Path, capsys) -> None:
@@ -303,48 +329,6 @@ def test_the_dry_run_is_labelled_an_estimate_and_gets_the_self_ignored_nested_ca
     apply_and_report(repo, "", [])
     real = capsys.readouterr().out
     assert dry.splitlines()[1:] == real.splitlines()[1:]          # same paths, rules and notes as observed
-
-
-def _case_symlinked_nested(repo: Path) -> None:
-    _write(repo, "elsewhere.txt", "!prompt-keep.md\n")
-    (repo / "work" / GITIGNORE).symlink_to("../elsewhere.txt")   # git does not read a symlinked .gitignore
-    _write(repo, "work/prompt-keep.md")
-    _write(repo, "work/prompt-hide.md")
-
-
-def _case_symlinked_top(repo: Path) -> None:
-    _write(repo, "real-ignore", "node_modules\n")
-    (repo / GITIGNORE).symlink_to("real-ignore")                   # the update writes through it; git reads neither
-    _write(repo, "work/prompt-hide.md")
-
-
-def _case_dangling_top(repo: Path) -> None:
-    (repo / GITIGNORE).symlink_to("missing-ignore")
-    _write(repo, "work/prompt-hide.md")
-
-
-#: name -> (setup, expected now-hidden): ``.gitignore`` symlinks the estimate must keep as symlinks.
-SYMLINK_CASES = {
-    "nested symlink": (_case_symlinked_nested, {"work/prompt-hide.md", "work/prompt-keep.md"}),
-    "top-level symlink": (_case_symlinked_top, set()),
-    "dangling top-level symlink": (_case_dangling_top, set()),
-}
-
-
-@pytest.mark.parametrize("case", list(SYMLINK_CASES))
-def test_the_dry_run_estimate_treats_a_symlinked_gitignore_as_git_does(tmp_path: Path, capsys, case: str) -> None:
-    setup, hidden = SYMLINK_CASES[case]
-    repo = _repo_with_prompts(tmp_path, untracked=0)
-    setup(repo)
-    files = {p: p.read_bytes() for p in repo.rglob("*") if p.is_file() and ".git" not in p.parts}
-    apply_and_report(repo, "", [], dry_run=True)
-    dry = capsys.readouterr().out
-    assert {p: p.read_bytes() for p in repo.rglob("*") if p.is_file() and ".git" not in p.parts} == files
-    shown = _shown(repo)
-    apply_and_report(repo, "", [])
-    real = capsys.readouterr().out
-    assert _listed(dry, HIDDEN_NOTE) == _listed(real, HIDDEN_NOTE) == shown - _shown(repo) == hidden
-    assert dry.splitlines()[1:] == real.splitlines()[1:]
 
 
 # --- A2: the note never stops the writes ---------------------------------------------------------

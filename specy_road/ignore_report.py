@@ -1,10 +1,15 @@
 """The note on files a ``.gitignore`` update reaches: observed in a real run, estimated in a dry run.
 
 **Real run: observed, not predicted.** Git lists, in the checkout itself, the
-untracked files it shows and the tracked files it ignores (:func:`observe`),
-once before the write and once after. *Now hidden* is a file shown before and
-not after; *still tracked under a new rule* is a tracked file ignored after and
-not before. Whatever git reads (rule order, nested and self-ignored
+untracked files it shows (:func:`observe`), once before the write and once
+after: *now hidden* is a file shown before and not after. *Still tracked under
+a new rule* is decided by attribution, not by a before/after difference: after
+the write, ``git check-ignore --no-index -v`` names the rule that decides each
+tracked file, and the file is listed when that rule is a line of the top-level
+``.gitignore`` the update added (a line not already in the file). A tracked
+file an older rule already ignored is therefore still listed when a new rule
+now decides it; one decided by an older rule alone (or by a later one, which
+git lets win) is not. Whatever git reads (rule order, nested and self-ignored
 ``.gitignore`` files, ``info/exclude``, ``core.ignorecase``, the global
 excludes file) is therefore accounted for by git, not reproduced here.
 
@@ -13,11 +18,12 @@ excludes file) is therefore accounted for by git, not reproduced here.
 in every ancestor directory of every candidate path (ignored ones included;
 a symlinked one stays a symlink, which git does not read), and ``info/exclude``
 into a throwaway ``git init`` directory, applies the update there and asks git
-before and after, with the checkout's ``core.ignorecase``
-and ``core.excludesFile``. Known limits: it reproduces only those inputs, so
-it can differ from the real run when git reads anything else (another config
-setting, an ignore file this list misses) or when files change between the dry
-run and the real one; the real run reports exactly what changed.
+before and after (the same two definitions), with the checkout's
+``core.ignorecase`` and ``core.excludesFile``. Known limits: it reproduces
+only those inputs, so it can differ from the real run when git reads anything
+else (another config setting, an ignore file this list misses) or when files
+change between the dry run and the real one; the real run reports exactly
+what changed.
 
 Either way the note is advisory: any failure becomes one
 ``ignore check skipped: <reason>`` line (see :func:`attempt`), and the writes
@@ -82,32 +88,60 @@ def _stdin(paths: list[str]) -> bytes:
     return b"".join(os.fsencode(p) + b"\0" for p in paths)
 
 
-def observe(git_root: Path) -> tuple[list[str], list[str]]:
-    """``(untracked files git shows, tracked files git ignores)`` in the checkout, as git reports them now."""
-    shown = _paths(_git(["ls-files", "-o", "--exclude-standard", "-z"], git_root))
-    tracked_ignored = _paths(_git(["ls-files", "-c", "-i", "--exclude-standard", "-z"], git_root))
-    return shown, tracked_ignored
+def _shown(git_root: Path) -> list[str]:
+    """The untracked files git shows in ``git_root`` now."""
+    return _paths(_git(["ls-files", "-o", "--exclude-standard", "-z"], git_root))
 
 
-def observed(git_root: Path, before: tuple[list[str], list[str]]) -> list[Match]:
-    """What the write just changed, from :func:`observe` before it and now; rules named by ``check-ignore``."""
-    shown, tracked_ignored = observe(git_root)
-    was_ignored, now_shown = set(before[1]), set(shown)
-    newly_tracked = [p for p in tracked_ignored if p not in was_ignored]
+def _top_ignore(root: Path) -> bytes:
+    """The top-level ``.gitignore``'s bytes, empty when there is none (a symlink is read through)."""
+    path = root / GITIGNORE
+    return path.read_bytes() if path.is_file() else b""
+
+
+def observe(git_root: Path) -> tuple[list[str], bytes]:
+    """``(untracked files git shows, top-level .gitignore bytes)`` in the checkout, before the write."""
+    return _shown(git_root), _top_ignore(git_root)
+
+
+def observed(git_root: Path, before: tuple[list[str], bytes]) -> list[Match]:
+    """What the write just changed, from :func:`observe` before it and git now (see the module docstring)."""
+    now_shown = set(_shown(git_root))
     hidden = [p for p in before[0] if p not in now_shown]
-    rules = _ignored(git_root, newly_tracked + hidden, [])
-    return ([(p, rules.get(p, "?"), TRACKED_NOTE) for p in newly_tracked]
+    tracked = _paths(_git(["ls-files", "-c", "-z"], git_root))
+    rules = _ignored(git_root, hidden, [])
+    return (_tracked_under_new_rules(git_root, tracked, before[1], [])
             + [(p, rules.get(p, "?"), HIDDEN_NOTE) for p in hidden])
 
 
-def _ignored(cwd: Path, paths: list[str], config: list[str]) -> dict[str, str]:
-    """``{path: rule}`` for each path git ignores when run in ``cwd`` (index not consulted)."""
+def _deciding(cwd: Path, paths: list[str], config: list[str]) -> list[tuple[bytes, bytes, bytes, str]]:
+    """``(source, line number, rule, path)`` for each path git ignores in ``cwd`` (index not consulted)."""
     if not paths:
-        return {}
+        return []
     fields = _git([*config, "check-ignore", "--no-index", "-v", "-z", "--stdin"], cwd,
                   stdin=_stdin(paths), ok=(0, 1)).split(b"\0")
-    return {os.fsdecode(path): os.fsdecode(rule) for _src, _line, rule, path in zip(*[iter(fields)] * 4)
-            if not rule.startswith(b"!")}
+    return [(src, line, rule, os.fsdecode(path)) for src, line, rule, path in zip(*[iter(fields)] * 4)
+            if not rule.startswith(b"!")]
+
+
+def _ignored(cwd: Path, paths: list[str], config: list[str]) -> dict[str, str]:
+    """``{path: rule}`` for each path git ignores when run in ``cwd``."""
+    return {path: os.fsdecode(rule) for _src, _line, rule, path in _deciding(cwd, paths, config)}
+
+
+def _added_lines(old: bytes, new: bytes) -> set[bytes]:
+    """Numbers (1-based, as git prints them) of the lines in ``new`` that are not a line of ``old``."""
+    kept = {ln.rstrip(b"\r") for ln in old.split(b"\n")}
+    return {str(n).encode() for n, ln in enumerate(new.split(b"\n"), 1)
+            if ln.strip() and ln.rstrip(b"\r") not in kept}
+
+
+def _tracked_under_new_rules(cwd: Path, tracked: list[str], old: bytes, config: list[str]) -> list[Match]:
+    """Tracked paths whose deciding rule is a top-level ``.gitignore`` line the update added (``old`` → now)."""
+    added = _added_lines(old, _top_ignore(cwd))
+    rules = {path: os.fsdecode(rule) for src, line, rule, path in _deciding(cwd, tracked, config)
+             if src == GITIGNORE.encode() and line in added}
+    return [(p, rules[p], TRACKED_NOTE) for p in tracked if p in rules]
 
 
 def _ignore_config(git_root: Path) -> tuple[list[str], Path | None]:
@@ -160,12 +194,11 @@ def estimate(git_root: Path, prefix: str, seed: str, apply: Callable[..., object
             _copy_ignore(git_root / rel, scratch / rel, scratch / ".git" / f"ignore-link-{n}")
         if exclude is not None:
             shutil.copyfile(exclude, scratch / ".git" / "info" / "exclude")
-        before = _ignored(scratch, tracked + shown, config)
+        before, old = _ignored(scratch, shown, config), _top_ignore(scratch)
         apply(scratch, prefix, gitignore_seed=seed)
-        after = _ignored(scratch, tracked + shown, config)
-    newly = {p: rule for p, rule in after.items() if p not in before}
-    return ([(p, newly[p], TRACKED_NOTE) for p in tracked if p in newly]
-            + [(p, newly[p], HIDDEN_NOTE) for p in shown if p in newly])
+        after = _ignored(scratch, shown, config)
+        tracked_matches = _tracked_under_new_rules(scratch, tracked, old, config)
+    return tracked_matches + [(p, after[p], HIDDEN_NOTE) for p in shown if p in after and p not in before]
 
 
 def print_matches(matches: list[Match] | str, *, estimated: bool) -> None:
