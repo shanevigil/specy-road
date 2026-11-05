@@ -334,7 +334,32 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
-- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+- 2026-11-05 `M16.12` stopped depending on `M16.7 Commands run in the CLI's process: no python -m re-launch, no cwd globals`
+- 2026-11-05 `M16.12` stopped depending on `M16.10 One LLM client module replaces the provider code inside review_node`
+- 2026-11-05 `M16.15` stopped depending on `M16.1 Parity harness: a review-gate decision table covering every review policy`
+- 2026-11-05 `M16.15` stopped depending on `M16.6 The 29 package-imported library modules move out of bundled_scripts`
+- 2026-11-05 `M16.15` stopped depending on `M16.5 One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready`
+- 2026-11-05 `M16.33` stopped depending on `M16.12 upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update`
+- 2026-11-05 `M16.33` stopped depending on `M16.13 review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session`
+- 2026-11-05 `M16.33` stopped depending on `M16.11 doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases`
+- 2026-11-05 `M16.33` stopped depending on `M16.18 Shared-checkout guard and session presence move into orchestration`
+- 2026-11-05 `M16.33` stopped depending on `M16.22 Post-fix refactor gate: ready and the review packet report any complexity growth, and policy can block on it`
+- 2026-11-05 `M16.33` stopped depending on `M16.14 One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points`
+- 2026-11-05 `M16.33` stopped depending on `M16.17 Roster, model profiles, harness facts, orchestrate and role prompts move into orchestration`
+- 2026-11-05 `M16.33` stopped depending on `M16.21 Fold the review gate and escalation fragments, and mark the policies the evidence did not keep as deprecated`
+- 2026-11-05 `M16.33` stopped depending on `M16.16 Worker runtime moves into orchestration/workers with import-path edits only`
+- 2026-11-05 `M16.33` stopped depending on `M16.19 Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings`
+- 2026-11-05 `M16.9` stopped depending on `M16.6 The 29 package-imported library modules move out of bundled_scripts`
+- 2026-11-05 `M16.13` stopped depending on `M16.11 doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases`
+- 2026-11-05 `M16.3` stopped depending on `M16.0 Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs`
+- 2026-11-05 `M16.11` stopped depending on `M16.7 Commands run in the CLI's process: no python -m re-launch, no cwd globals`
+- 2026-11-05 `M16.18` stopped depending on `M16.15 Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI`
+- 2026-11-05 `M16.32` stopped depending on `M16.13 review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session`
+- 2026-11-05 `M16.32` stopped depending on `M16.30 AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer`
+- 2026-11-05 `M16.4` stopped depending on `M16.2 Baseline metrics, a coverage floor in CI, and the M16 working rules written down`
+- 2026-11-05 `M16.4` stopped depending on `M16.0 Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs`
+- 2026-11-05 `M16.6` stopped depending on `M16.3 Delete dead and unwired code from a decided list, and add vulture as an advisory CI step`
+- _…and 32 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
