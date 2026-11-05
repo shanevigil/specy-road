@@ -28,7 +28,7 @@ No per-segment vs running-total distinction appears in observed logs; combining 
 - `Cursor.parse` on the same synthetic stream — `output_tokens` 41.
 - Real fixture worker test — usage event `output_tokens` 44158.
 - `sum_cursor_turn_usage([])` — all null; single part unchanged; `num_turns` 4 preserved on lone `result`.
-- A3 threshold — 6092 s / 10136 flagged; 300 s / 17000 not.
+- WIP merge (M15.13/M8.3) — `worker_cli_helpers`, `worker_lease_helpers`; conflicts resolved with public `make_worker_repo`.
 
 ## Verification
 
