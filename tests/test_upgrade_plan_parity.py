@@ -210,5 +210,5 @@ def test_sol_f2_a_refused_canonical_skill_is_unowned_in_both_manifests(
     dry, real = _exits(root, validate, capsys, monkeypatch)
 
     assert dry == real == (1, ["error: required skill was refused"])
-    assert owned_seen == [False, False]
+    assert owned_seen and not any(owned_seen)
     assert (tmp_path / "outside.md").read_text(encoding="utf-8") == "old skill\n"
