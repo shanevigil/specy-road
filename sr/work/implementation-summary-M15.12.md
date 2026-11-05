@@ -134,9 +134,31 @@ Probes (grep for raw zone strings in the zoned modules):
 - `session_plan.py` `touch_zones` dict and the `shared_zones` field: only stored and passed on, never compared (the file is at its line cap); ok.
 - `session_plan_git.py`: passes `plan.shared_zones` on; no zone comparisons.
 
+## Fix round 3: one-shot iterables on public helpers (`gpt-6.1-sol` R1, R2)
+
+Class: an ``Iterable[str]`` argument that is a generator or other one-shot iterator,
+consumed more than once inside a helper so a tuple/list would behave differently.
+
+- ``zones_overlap``: was two ``is_shared_zone`` calls on the same ``shared`` iterator
+  (first check for ``planning/x.md`` exhausts it before ``planning/`` is tested);
+  now builds ``shared_keys`` once and compares both zone keys to it.
+- ``ignored_shared_zones``: was reusing ``leaf_ids`` in the outer loop over shared
+  zones (first zone exhausts the iterator); now ``list(leaf_ids)`` before the loop.
+- ``effective_overlap``: already ``tuple(shared)`` before calling ``zones_overlap``;
+  production plan/validate paths pass tuples; unchanged, still ok.
+- ``is_shared_zone``: still one pass over ``shared`` per call; validate uses it once
+  per zone in a loop with a tuple ``shared``; ok.
+- ``unique_zones(shared)`` in ``ignored_shared_zones``: single pass; ok.
+
+Probes (fix round 3):
+
+- Direct ``zones_overlap`` from validate with ``shared`` tuple: ok.
+- ``session_plan_render`` / ``ignored_shared_zones`` from plan with list leaf IDs: ok.
+- Red-green: both new tests fail against ``f7b17f7`` ``shared_zones.py`` (exit 1).
+
 ## Verification
 
-- `python -m pytest -q -n 4 tests/test_shared_zones.py tests/test_registry_overlap_warnings.py tests/test_session_plan_touch_zones.py tests/test_session_plan.py tests/test_session_plan_git.py tests/test_why_blocked_plan_holds.py tests/test_orchestrate_plan.py tests/test_grind_session.py tests/test_validate_roadmap.py tests/test_refresh_schemas.py tests/test_schema_revision.py tests/test_pick_ordering.py tests/test_grind_session_in_flight.py tests/test_grind_session_step.py tests/test_unauthored_leaf_guard.py`: 238 passed (fix round 2)
+- `python -m pytest -q -n 4 tests/test_shared_zones.py tests/test_registry_overlap_warnings.py tests/test_session_plan_touch_zones.py tests/test_session_plan.py tests/test_session_plan_git.py tests/test_why_blocked_plan_holds.py tests/test_orchestrate_plan.py tests/test_grind_session.py tests/test_validate_roadmap.py tests/test_refresh_schemas.py tests/test_schema_revision.py tests/test_pick_ordering.py tests/test_grind_session_in_flight.py tests/test_grind_session_step.py tests/test_unauthored_leaf_guard.py`: 240 passed (fix round 3)
 - `specy-road file-limits`: OK. `ruff check` on the changed files: clean. `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: exit 0.
 
 ## Added
@@ -160,3 +182,5 @@ Probes (grep for raw zone strings in the zoned modules):
 - Tests (fix round 1, `tests/test_shared_zones.py`): `test_plan_and_validate_apply_one_overlap_rule`, parametrized over 22 zone pairs; the plan, unscoped validate and scoped validate must all agree.
 - `shared_zones.unique_zones` (fix round 2): dedups a zone list by `zone_key`, keeping the first spelling, so an aliased shared zone is reported once.
 - Tests (fix round 2): `test_aliased_shared_zone_is_reported_once_in_text_and_json`, 3 alias configurations, through the public plan text and JSON.
+- Fix round 3 (`zones_overlap` ``shared_keys`` materialization; ``ignored_shared_zones`` ``list(leaf_ids)``): R1/R2 one-shot iterable class on the public helpers.
+- Tests (fix round 3): `test_zones_overlap_iterable_shared_matches_tuple` (R1: ``planning/x.md`` vs ``planning/`` with ``iter(DEFAULT_SHARED_ZONES)``); `test_ignored_shared_zones_iterable_leaf_ids_matches_list` (R2: iterator leaf IDs across ``planning/`` and ``shared/``).
