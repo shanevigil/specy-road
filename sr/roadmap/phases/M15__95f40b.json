@@ -13,7 +13,7 @@
       "node_key": "95f40b2e-87e0-4c88-b013-78f2155376d6",
       "parent_id": "M15",
       "planning_dir": "planning/M15.32_archived-summary-exempt-from-file-limits_95f40b2e-87e0-4c88-b013-78f2155376d6.md",
-      "sibling_order": 32,
+      "sibling_order": 21,
       "status": "Not Started",
       "title": "An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure",
       "touch_zones": [
@@ -38,7 +38,7 @@
       "node_key": "677e99a0-3221-4d71-8874-ac9f8b9d5fa1",
       "parent_id": "M15",
       "planning_dir": "planning/M15.33_refused-review-record-leaves-a-trace_677e99a0-3221-4d71-8874-ac9f8b9d5fa1.md",
-      "sibling_order": 33,
+      "sibling_order": 22,
       "status": "Not Started",
       "title": "A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed",
       "touch_zones": [
@@ -61,7 +61,7 @@
       "node_key": "79ecc94e-bcc0-4d9a-8368-0c00503ea2f4",
       "parent_id": "M15",
       "planning_dir": "planning/M15.34_executor-prompt-states-the-test-rules_79ecc94e-bcc0-4d9a-8368-0c00503ea2f4.md",
-      "sibling_order": 34,
+      "sibling_order": 23,
       "status": "Complete",
       "title": "The executor prompt states the test rules that the reviewer's excess checklist enforces",
       "touch_zones": [
@@ -83,7 +83,7 @@
       "node_key": "57bf9ac4-77f6-4b66-8ddb-fd478d67e060",
       "parent_id": "M15",
       "planning_dir": "planning/M15.35_packet-never-lists-dot-git-as-uncommitted_57bf9ac4-77f6-4b66-8ddb-fd478d67e060.md",
-      "sibling_order": 35,
+      "sibling_order": 24,
       "status": "Complete",
       "title": "The review packet never lists .git or a path under it as an uncommitted reference",
       "touch_zones": [
@@ -107,7 +107,7 @@
       "node_key": "858543e9-c22b-4224-ac40-964bfef8d0ec",
       "parent_id": "M15",
       "planning_dir": "planning/M15.36_worker-launch-never-depends-on-claude-default-mode_858543e9-c22b-4224-ac40-964bfef8d0ec.md",
-      "sibling_order": 36,
+      "sibling_order": 25,
       "status": "Not Started",
       "title": "Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode",
       "touch_zones": [
@@ -133,7 +133,7 @@
       "node_key": "33917212-11fd-4aee-bea6-37b23ae674ab",
       "parent_id": "M15",
       "planning_dir": "planning/M15.37_comma-or-and-part-counts-only-when-it-names-a-defect_33917212-11fd-4aee-bea6-37b23ae674ab.md",
-      "sibling_order": 37,
+      "sibling_order": 26,
       "status": "Not Started",
       "title": "Review notes: a part joined by a comma or 'and' is a second observation only when it names a defect",
       "touch_zones": [
@@ -157,7 +157,7 @@
       "node_key": "01a5074d-8815-4453-a0f6-be3e91893885",
       "parent_id": "M15",
       "planning_dir": "planning/M15.38_derived-codename-capped-so-planning-names-fit_01a5074d-8815-4453-a0f6-be3e91893885.md",
-      "sibling_order": 38,
+      "sibling_order": 27,
       "status": "Complete",
       "title": "add-node caps a title-derived codename at 64 characters so the planning file name fits",
       "touch_zones": [
@@ -188,7 +188,7 @@
       "node_key": "47ae3067-efce-47c2-a2dc-f7860e87266c",
       "parent_id": "M15",
       "planning_dir": "planning/M15.39_failed-roadmap-write-restores-every-file_47ae3067-efce-47c2-a2dc-f7860e87266c.md",
-      "sibling_order": 39,
+      "sibling_order": 28,
       "status": "Complete",
       "title": "A roadmap write that fails part-way restores every file it changed",
       "touch_zones": [
@@ -213,7 +213,7 @@
       "node_key": "78805bfe-0798-47a0-8ace-cdc0caebd261",
       "parent_id": "M15",
       "planning_dir": "planning/M15.40_finish-merge-failure-reports-and-undoes-bookkeeping_78805bfe-0798-47a0-8ace-cdc0caebd261.md",
-      "sibling_order": 40,
+      "sibling_order": 29,
       "status": "Complete",
       "title": "finish-this-task: a failed merge landing reports after the land check output and undoes its bookkeeping commit",
       "touch_zones": [

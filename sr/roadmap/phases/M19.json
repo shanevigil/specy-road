@@ -30,7 +30,7 @@
       "node_key": "7d55076e-5ed9-44fb-9c7d-84cab47c3409",
       "parent_id": "M19",
       "planning_dir": "planning/M19.1_analysis-tools_7d55076e-5ed9-44fb-9c7d-84cab47c3409.md",
-      "sibling_order": 1,
+      "sibling_order": 0,
       "status": "Not Started",
       "title": "Configurable code-analysis tools",
       "touch_zones": [
@@ -56,7 +56,7 @@
       "node_key": "7e53ed16-b377-4ba9-8183-af8e23dbe27b",
       "parent_id": "M19",
       "planning_dir": "planning/M19.2_research-due-in-doctor_7e53ed16-b377-4ba9-8183-af8e23dbe27b.md",
-      "sibling_order": 2,
+      "sibling_order": 1,
       "status": "Not Started",
       "title": "Research reminders leave validate",
       "touch_zones": [
@@ -84,7 +84,7 @@
       "node_key": "7641dc02-b1ad-4a6a-af7c-94944c5a7570",
       "parent_id": "M19",
       "planning_dir": "planning/M19.3_pickup-prompt-base_7641dc02-b1ad-4a6a-af7c-94944c5a7570.md",
-      "sibling_order": 3,
+      "sibling_order": 2,
       "status": "Not Started",
       "title": "The pickup prompt names its base commit",
       "touch_zones": [
@@ -111,7 +111,7 @@
       "node_key": "ae0f5bc8-b0ba-4ae7-8469-f8b6079dc4ff",
       "parent_id": "M19",
       "planning_dir": "planning/M19.4_no-local-in-block_ae0f5bc8-b0ba-4ae7-8469-f8b6079dc4ff.md",
-      "sibling_order": 4,
+      "sibling_order": 3,
       "status": "Not Started",
       "title": "The managed block stops naming pickup's --local opt-out",
       "touch_zones": [

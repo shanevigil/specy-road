@@ -30,7 +30,7 @@
       "node_key": "b1238b21-d99c-4534-8400-aa7bd5967a6b",
       "parent_id": "M18",
       "planning_dir": "planning/M18.1_review-code-quality_b1238b21-d99c-4534-8400-aa7bd5967a6b.md",
-      "sibling_order": 1,
+      "sibling_order": 0,
       "status": "Not Started",
       "title": "Reviewers check that code is well-formed and that fixes do not degrade it",
       "touch_zones": [
@@ -57,7 +57,7 @@
       "node_key": "9bb48d5d-9bf4-43b7-99d3-e64462ebb1c9",
       "parent_id": "M18",
       "planning_dir": "planning/M18.2_harness-facts-copilot-agy_9bb48d5d-9bf4-43b7-99d3-e64462ebb1c9.md",
-      "sibling_order": 2,
+      "sibling_order": 1,
       "status": "Not Started",
       "title": "Harness-facts records for the Copilot CLI and Antigravity agy",
       "touch_zones": [
@@ -85,7 +85,7 @@
       "node_key": "5cfa82bf-9a89-40c4-b8cc-911a1dcde5cd",
       "parent_id": "M18",
       "planning_dir": "planning/M18.3_guard-file-tools_5cfa82bf-9a89-40c4-b8cc-911a1dcde5cd.md",
-      "sibling_order": 3,
+      "sibling_order": 2,
       "status": "Not Started",
       "title": "The shared-checkout guard sees file-tool edits and refuses ending a live peer's session",
       "touch_zones": [
@@ -114,7 +114,7 @@
       "node_key": "95824c4f-e3d9-4696-b78f-70eb98b98934",
       "parent_id": "M18",
       "planning_dir": "planning/M18.4_unsigned-review-warning_95824c4f-e3d9-4696-b78f-70eb98b98934.md",
-      "sibling_order": 4,
+      "sibling_order": 3,
       "status": "Not Started",
       "title": "Unattended Codex and Cursor executors warn when reviews are unsigned",
       "touch_zones": [
@@ -142,7 +142,7 @@
       "node_key": "dd906a47-2ac5-4a50-8650-ab08269bbc87",
       "parent_id": "M18",
       "planning_dir": "planning/M18.5_sync-paused-until-hint_dd906a47-2ac5-4a50-8650-ab08269bbc87.md",
-      "sibling_order": 5,
+      "sibling_order": 4,
       "status": "Not Started",
       "title": "worker sync prints a paused_until line for a worker paused by a usage limit",
       "touch_zones": [
