@@ -14,9 +14,9 @@
     },
     {
       "acceptance": [
-        "tests/parity/ reads the command set from the CLI's own tables (`cli._known_commands()`, each command's subcommands and the `specyrd` parser) and compares it with the golden set under tests/parity/golden/ in both directions; a command, subcommand or alias present on one side only fails the test naming it; one documented environment variable regenerates the goldens",
+        "tests/parity/ reads the command set from the CLI's own tables (`cli._known_commands()`, each command's subcommands and the `specyrd` parser) and compares it with the golden set under tests/parity/golden/ in both directions after applying the additions, aliases and removals that rows of tests/parity/command_map.yaml authorise; any other difference fails the test naming the command, subcommand or alias; one documented environment variable regenerates the goldens. The inventory records, per command and subcommand, its subparser path, its option strings and whether it passes the remaining arguments through (argparse.REMAINDER or a bare --)",
         "Each name in that set has a golden `--help` transcript; tests/parity/command_map.yaml exists with no rows, and a test fails when a transcript differs from its golden unless the name is a row of that map (later leaves add rows: old invocation, new invocation, allowed difference)",
-        "An end-to-end test drives a temp repo through init project, add-node, scaffold-planning, pickup, ready, two review records, the gate check and finish, once with on_complete: merge and once with on_complete: pr (offline, no hosting service), asserting exit codes, registry rows, roadmap status and git state after each step",
+        "An end-to-end test drives a temp repo through init project, add-node, scaffold-planning, pickup, ready, two review records, the gate check and finish, once with on_complete: merge and once with on_complete: pr (offline, no hosting service). After each step it asserts the exit code, registry rows, node status and git state that today's pickup and finish tests already pin; the merge run ends at exit 0 with the leaf Complete, its registry row gone and the feature branch merged into the integration branch; the pr run's end state (exit code, node status, registry row, branches) is recorded at pickup from today's behaviour; neither run makes a network call",
         "`upgrade --dry-run` on a fixture shaped like a 0.3.1rc3 consumer repo, and validate, export --check and digest --check on the dogfood fixture, match golden outputs with paths and timestamps normalised; digest goldens leave out sections derived from git history (such as 'Quality by area'), so the goldens do not depend on the branch",
         "The harness is green on HEAD at pickup, carries the `parity` pytest marker so later leaves can run it alone, and adds no package code",
         "Estimated net line change (informational, not a gate): package 0; tests about +550"
@@ -38,11 +38,11 @@
     },
     {
       "acceptance": [
-        "Rows cover each reason code the gate's public result can return at pickup (the list is generated from the code and committed with the table), with one refusal row and, where a policy can approve, one approval row per code; plus the defaults and these interactions: stale vs current commit, executor, coordinator and fresh-session exclusions, missing and invalid signatures, reviewer count and distinct families, reviewer disagreement, an approval carried across commits, delta with red-green, deferral with strong review",
+        "Rows cover each branch of `GateResult.passed` and `GateResult.problems` as they exist at pickup (config error, no commit, a block, a stale record, an invalid record, an ineligible record, too few approvals, a verifier problem, an unmet strong-review item; the branch list is committed with the table), with one refusal row and, where that branch can still pass, one approval row; plus the defaults and these interactions: stale vs current commit, executor, coordinator and fresh-session exclusions, missing and invalid signatures, reviewer count and distinct families, reviewer disagreement, an approval carried across commits, delta with red-green, deferral with strong review. No reason-code field is added",
         "Rows for `review record` filed from a reviewer's final message: clean JSON, JSON with narration around it, and notes that break a notes rule; each asserts the outcome at pickup (this guards the one-shot filing path from M8.3 against the M16 review folds)",
         "At least one READY and one REVIEW file per record format found under sr/work/reviews are copied verbatim into tests/parity/review_gate/records/ and read by today's reader",
-        "The table drives the gate through the public entry points finish-this-task, mark-implementation-reviewed and the review status and list commands use, and asserts structured results; where a row's result has no reason code, it asserts the structured fields that exist and the sheet lists the row",
-        "A test fails when the orchestration schema gains a policy key that no row exercises; green on HEAD at pickup; adds no package code",
+        "The table drives the gate through the public entry points finish-this-task, mark-implementation-reviewed and the review status and list commands use; each row asserts `passed`, the approval count and the number of problems, and asserts a problem sentence only where a test at pickup asserts it",
+        "A committed classification puts every policy key in the orchestration schema into gate inputs or non-gate settings (such as garden_cadence_days and stall_after_seconds); every gate input has a row that exercises it, and a test fails on a schema key that is unclassified or on a gate input with no row; green on HEAD at pickup; adds no package code",
         "Estimated net line change (informational, not a gate): package 0; tests about +450"
       ],
       "codename": "parity-harness-a-review-gate-decision-table-covering-every-review-policy",
@@ -62,11 +62,11 @@
     },
     {
       "acceptance": [
-        "constraints/lean-baseline.json records the baseline commit; at that commit M14.1, M15.2, M15.3, M15.7, M15.9, M15.17 and M15.20 are each Complete or recorded as deferred in M16.34's sheet, and the M16.0 and M16.1 harnesses are green",
-        "`python scripts/lean_metrics.py` writes the baseline: package and test lines and files per subsystem, test functions and collected items, functions over ruff C901 (waivers ignored), `noqa: C901` count, lines over 100 characters, canonical command count (`cli._known_commands()` minus the alias rows of tests/parity/command_map.yaml) and alias count, config and policy key count, modules imported by `specy-road validate`, `validate --help` wall time, and full-suite wall time as the median of three runs with a fixed worker count, coverage off and all extras installed (settings and machine recorded); `--check` prints deltas; every number is a measurement, not a gate (the coverage floor below is the only CI failure this leaf adds)",
+        "constraints/lean-baseline.json records the baseline commit; at that commit every rc4 leaf in M16.34's inventory is Complete or recorded as deferred in M16.34's sheet, and the M16.0 and M16.1 harnesses are green",
+        "`python scripts/lean_metrics.py` writes the baseline: package and test lines and files per subsystem, docs lines and files (README.md, AGENTS.md, CLAUDE.md, docs/**/*.md except docs/design-notes/, constitution/*.md and suggested_prompts/*.md; the root design-notes/ and anything under sr/ are never counted), test functions and collected items, functions over ruff C901 (waivers ignored), `noqa: C901` count, lines over 100 characters, canonical command count (as M16.45 defines it) and alias count, config and policy key count, modules imported by `specy-road validate`, `validate --help` wall time, and full-suite wall time as the median of three runs with a fixed worker count, coverage off and all extras installed (settings and machine recorded); `--check` prints deltas; every number is a measurement, not a gate (the coverage floor below is the only CI failure this leaf adds)",
         "`python scripts/lean_metrics.py --contexts` (opt-in, not run in CI) runs the suite under coverage.py with per-test contexts, subprocesses included, and writes the covered arcs per test to work/lean/contexts.json for the test-lane leaves",
-        "[tool.coverage.report] fail_under is the single coverage.py total measured at the baseline commit, rounded down to a whole percent, and CI fails below it; branch coverage is printed, not gated; project.version is not touched",
-        "constraints/README.md states the M16 rules: behaviour-preserving except the two named exceptions (zone-scoped `checks:` gates in M16.52 and the complexity gate in M16.22); each leaf carries an informational line-change estimate, never a gate; no new config key, policy key or command without retiring one; adopter feedback is parked; the review-finding test rule of the recommendation section 3.4 item 4 (all five conditions); after a second block of the same class the planner rescopes or splits the leaf; a leaf past four review rounds is split or rescoped; reviewers check the acceptance lines and the leaf's parity tables, and a new input class goes to intake",
+        "The baseline coverage configuration is committed in pyproject.toml ([tool.coverage.run] source scope, branch setting and subprocess capture); [tool.coverage.report] fail_under is that configuration's coverage.py TOTAL at the baseline commit, rounded down to a whole percent; CI runs the same configuration and fails below it; a separately printed branch percentage is informational; project.version is not touched",
+        "constraints/README.md states the M16 rules: behaviour-preserving except the two named exceptions (zone-scoped `checks:` gates in M16.52 and the complexity gate in M16.22); each leaf carries an informational line-change estimate, never a gate; no new config key, policy key or command without retiring one; adopter feedback is parked; the review-finding test rule, which is these five conditions, all required: the test fails before the fix and passes after; it checks something no existing test checks, and a new input to tested behaviour is a new row in that behaviour's table rather than a new test; it is written at the cheapest level that reproduces the bug; it lives in the module's test file and is named for the behaviour, not the round; it asserts structured results, not message text; after a second block of the same class the planner rescopes or splits the leaf; a leaf past four review rounds is split or rescoped; reviewers check the acceptance lines and the leaf's parity tables, and a new input class goes to intake",
         "constraints/README.md states the M16 quality rules (maintainer, 2026-11-05, revision 3): behaviour is preserved (the parity harness, the decision table and the leaf's own tables); code a leaf touches moves toward best practice: small single-purpose functions, clear module boundaries, no new import cycle (M16.36), explicit dependencies (module globals and functions that call the clock or git themselves are given those as parameters where a test needs a seam; no dependency-injection framework), one statement of each rule rather than copies; no touched function rises in complexity (the M16.22 rule); docstrings and comments that explain intent are kept or improved, never stripped to save lines; names say what the code does; no code squashing (joined statements, removed blank lines, shortened names or deleted explanations to meet a number); the quality metrics (M16.8's ruff family baseline, line width, M16.36's layering gate) never regress in a leaf; line-count estimates are informational and never by themselves a review finding or a gate",
         "Estimated net line change (informational, not a gate): package 0; scripts about +200 (maintainer-only, not shipped)"
       ],
@@ -97,7 +97,7 @@
       "acceptance": [
         "specy_road/clock.py defines `utc_now()` and `utc_now_iso()`; the nine now helpers in session_presence, worker_witness, reviewer_run_failure, worker_lease, worker_outbox, grind_session_events, decisions, worker_turn_check and worker_state are replaced, and a test fails on `datetime.now(timezone.utc)` anywhere in specy_road outside clock.py",
         "specy_road/fs_atomic.py defines `atomic_write_text()`; the hand-written temp-file writers in worker_state (and worker_outbox's import of its private helper), history_cache, brainstorm_session, roadmap_chunk_atomic, reviewer_run_failure and worker_lease call it, and a test fails on `os.replace(` in specy_road outside fs_atomic.py and an allowlist committed with the test",
-        "A parametrised test per replaced writer asserts the encoding, newline handling, file mode and the leftover temp file on a failed write are what they were at pickup",
+        "A parametrised test per replaced writer asserts the encoding, newline handling, file mode and the leftover temp file on a failed write are what they were at pickup; review_write_check.replace_file's symlink protections and worker_lease.checkout_id's link-if-absent install are kept as specialised installers on the allowlist and tested through their public callers",
         "Parity harness unchanged",
         "Estimated net line change (informational, not a gate): package about -60"
       ],
@@ -137,7 +137,7 @@
       "acceptance": [
         "`RoadmapIndex` exposes by_id, by_key, status, effective_dependencies, `unmet(node)` and `ready()`; a table test over a builder-made graph covers dependencies inherited from ancestors, gate nodes, milestone nodes, stable keys and outline (pickup) order",
         "The four readiness derivations (do_next_available's two forms, session_plan's `_classify` and `_compute_waves`, roadmap_explain) and the effective-dependency maps in roadmap_layout, brief_dependency_context and digest call the index; no other function in those seven modules computes unmet dependencies",
-        "A test counts `{n['id']: n}` and `{n['node_key']: n}` builds and linear id lookups in specy_road against a committed baseline that may only shrink; there is no target number",
+        "A test counts, in specy_road outside roadmap_index.py: dict comprehensions whose key is a subscript with the string 'id' or 'node_key'; next() over a generator expression whose condition compares such a subscript; and `for` loops whose body is an `if` comparing such a subscript that returns or breaks. The patterns and the baseline count are committed; the count may only shrink; there is no target number",
         "Dogfood export --check and digest --check, the parity harness, and the do-next, session-plan, why-blocked, brief and digest tests are unchanged; digest output does not change",
         "Estimated net line change (informational, not a gate): package about -250"
       ],
@@ -168,9 +168,9 @@
     },
     {
       "acceptance": [
-        "The 29 library modules named in this sheet (the code report's section 5 list, review_node's LLM client excluded: it moves in M16.10) move from bundled_scripts/ to the specy_road package with `git mv`; no other module moves",
+        "Before any move, this sheet lists the modules under specy_road/bundled_scripts that a specy_road module outside bundled_scripts imports at pickup, excluding every module named by cli.py's `_SCRIPTS` or `_FORWARDED` and excluding review_node.py (M16.10); exactly those move to the specy_road package with `git mv`, and no other module moves (the title's 29 is the code report's count; the list is this rule's result, 39 on 2026-11-05)",
         "A moved module keeps a one-line re-export at its old path only if a console entry point, a shipped template or a documented `python specy_road/bundled_scripts/...` command names that path; each kept re-export is listed in this sheet for M16.62",
-        "Imports are updated and nothing else changes; parity harness, full suite and `scripts/check_test_private_imports.py` green",
+        "Imports are updated and nothing else changes; entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json are rewritten for the new paths only (M16.8's transfer rule); parity harness, full suite and `scripts/check_test_private_imports.py` green",
         "Estimated net line change (informational, not a gate): package about -40"
       ],
       "codename": "the-29-package-imported-library-modules-move-out-of-bundled-scripts",
@@ -188,14 +188,17 @@
       "touch_zones": [
         "specy_road/bundled_scripts/",
         "specy_road/",
-        "tests/"
+        "tests/",
+        "scripts/line_width_baseline.json",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "Before the switch, tests/parity/process/ records through today's subprocess path the stdout, stderr and exit code of: two commands run one after the other from two different repo roots, `doctor` with a registry row to prune (its nested registry_prune run), `mark-implementation-reviewed --yes` (its nested specy_road.cli run), a usage error, and `--version`",
-        "The top-level CLI imports a command's module and calls its `main(argv)` in the same process; no command re-launches `python -m` for itself or a sibling; the module-level `ROOT = Path.cwd()` globals in mark_implementation_reviewed, pm_sync, do_next_task, abort_task_pickup, finish_task and start_milestone_session are gone, and so are `cli._args_repo_root_first`, `cli_entry.run_forwarded_cli` and the guard CLI's prefix stripping",
+        "Before the switch, tests/parity/process/ records through today's subprocess path the stdout, stderr and exit code of: two commands run one after the other from two different repo roots, `--repo-root` given before and after the command name, a command on a shared parser (roadmap_query_cli), each command forwarded through run_forwarded_cli (history, digest, search, brainstorm), `doctor` with a registry row to prune (its nested registry_prune run), `mark-implementation-reviewed --yes` (its nested specy_road.cli run), a usage error, and `--version`; a dispatcher table in this sheet, committed with the corpus, names each command's module, its main(argv) and its parser prefix",
+        "The top-level CLI imports a command's module and calls its `main(argv)` in the same process. These are gone: doctor.py's nested registry_prune launch, mark_implementation_reviewed.py's nested specy_road.cli launch, `cli._args_repo_root_first`, `cli_entry.run_forwarded_cli` (history_cli, digest_cli, search_cli and brainstorm_cli call their parsers directly) and the guard CLI's prefix stripping, and the module-level `ROOT = Path.cwd()` globals in mark_implementation_reviewed, pm_sync, do_next_task, abort_task_pickup, finish_task and start_milestone_session; a test fails if cli.py, cli_entry.py, doctor.py or mark_implementation_reviewed.py starts `python -m specy_road`; any other command module changes only its main's argv handling, as the dispatcher table records",
         "Every recorded case gives byte-identical stdout, stderr and exit code in process, including two `main(argv)` calls in one process from two repo roots",
         "Parity harness byte-identical",
         "Estimated net line change (informational, not a gate): package about -100"
@@ -225,7 +228,12 @@
         "specy_road/bundled_scripts/finish_task.py",
         "specy_road/bundled_scripts/start_milestone_session.py",
         "tests/parity/process/",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/history_cli.py",
+        "specy_road/bundled_scripts/digest_cli.py",
+        "specy_road/bundled_scripts/search_cli.py",
+        "specy_road/bundled_scripts/brainstorm_cli.py",
+        "specy_road/bundled_scripts/"
       ],
       "type": "task"
     },
@@ -233,7 +241,8 @@
       "acceptance": [
         "The consumer template's constraints/file-limits.yaml matches the toolkit: max_lines_per_file 1,000 with a 750-line warning (maintainer decision, 2026-11-05)",
         "scripts/line_width_baseline.json records, per file under specy_road, scripts and tests, the number of lines over 100 characters at pickup (counted with `ruff check --select E501 --line-length 100 --output-format json`); a test fails when a file's count rises or a file outside the baseline has any, and when a count falls the entry must be lowered in the same change",
-        "scripts/ruff_quality_baseline.json records, per file under specy_road, scripts and tests, the number of ruff findings per rule family — C901 (waivers ignored), PL, B, SIM, RET, N, and D102/D103 (docstrings on public methods and functions) — counted at pickup by scripts/ruff_quality_baseline.py with `ruff check --select <family> --output-format json`; tests/test_ruff_quality_baseline.py fails when a file's count in a family rises or a file outside the baseline has a finding; `python scripts/ruff_quality_baseline.py --shrink` lowers entries and never raises one",
+        "scripts/ruff_quality_baseline.json records, per file under specy_road, scripts and tests, the number of ruff findings per rule family — C901 (waivers ignored: counted with `--ignore-noqa`), PL, B, SIM, RET, N, and D102/D103 (docstrings on public methods and functions) — counted at pickup by scripts/ruff_quality_baseline.py with `ruff check --select <family> --output-format json`; tests/test_ruff_quality_baseline.py fails when a file's count in a family rises or a file outside the baseline has a finding; `python scripts/ruff_quality_baseline.py --shrink` lowers entries and never raises one",
+        "For a move or fold a leaf records as old path -> new path, `python scripts/ruff_quality_baseline.py --transfer OLD NEW` and the width baseline's equivalent move OLD's entries onto NEW, summed per family; the per-family totals never rise; outside recorded moves every file keeps its own shrink-only check; tests/test_upgrade_file_limits_notice.py pins the upgrade notice below",
         "The families are selected only by the baseline script: pyproject.toml's ruff selection and today's `ruff check` CI gate are unchanged, and no tool other than ruff is added (mypy, radon and duplication detectors are out of scope for M16)",
         "`python scripts/lean_metrics.py --check` (M16.2) prints each family's total and its delta from the baseline commit, and docs/release-runbook.md's checklist records those totals, the width total and M16.36's import-cycle count for each release",
         "No code is reformatted or fixed in this leaf; the fold leaves rewrap the files they merge and lower their width entries",
@@ -268,7 +277,9 @@
         "scripts/ruff_quality_baseline.json",
         "tests/test_ruff_quality_baseline.py",
         "scripts/lean_metrics.py",
-        "docs/release-runbook.md"
+        "docs/release-runbook.md",
+        "tests/parity/golden/",
+        "tests/test_upgrade_file_limits_notice.py"
       ],
       "type": "task"
     },

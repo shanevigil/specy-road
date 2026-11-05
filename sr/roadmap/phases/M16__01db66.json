@@ -124,8 +124,8 @@
     },
     {
       "acceptance": [
-        "This sheet lists every held or parked leaf (the hold list, plus M12.5, M14.8 and M15.25) and every rc4 leaf still open (M14.1, M15.2, M15.3, M15.7, M15.9, M15.17, M15.20), each with a recommendation: finish in rc4, defer past the M16.2 baseline, park to the post-M16 intake, or drop",
-        "human: the maintainer records a decision per listed leaf in this sheet; the planner applies it with edit-node (dependencies, acceptance or status) and nothing else",
+        "At the recorded triage commit, this sheet inventories from the graph every live held or parked leaf and every rc4 leaf still open (on 2026-11-05: M15.3, M15.31, M15.33 and M15.36; M14.1, M15.7 and M15.20 are archived and M15.2, M15.9 and M15.17 Complete), reconciles archived and Complete entries, and gives each remaining leaf a recommendation: finish in rc4, defer past the M16.2 baseline, park to the post-M16 intake, move to M16.65's intake, or drop",
+        "human: the maintainer records a decision per listed leaf in this sheet; the planner applies each with the roadmap CLI command it needs (edit-node, archive or removal), regenerates export and digest, and records any replacement node or intake id here",
         "A 'keep' becomes a post-M16 leaf or an intake entry; it widens an M16 leaf only when the decision names that leaf and the acceptance line it adds",
         "No held leaf's status changes and no held leaf is started before its decision is recorded",
         "Estimated net line change (informational, not a gate): 0"
@@ -174,7 +174,7 @@
       "acceptance": [
         "git_subprocess provides `git_root`, `current_branch_name` and `is_worktree_root(path, branch)`; the private git wrappers in worktree_delete_set, update_specy_road, repo_ops, ignore_report, integrity and pm_publish are gone, and the worktree-root checks in worker_ops_launch, chore_cli, worktree_delete_set and session_overlap call is_worktree_root",
         "A test fails when a module in specy_road other than git_subprocess passes `--show-toplevel` or `--show-current` to git",
-        "`_save_registry` and `REGISTRY_REL` are defined once, in registry_yaml, and imported by finish_task, mark_implementation_reviewed, abort_task_pickup, pm_integration_registry, registry_remote_overlay_merge and review_target",
+        "registry_yaml.write_registry owns registry serialisation and writes, and registry_yaml.REGISTRY_REL the path constant; the `_save_registry` copies in finish_task, mark_implementation_reviewed and abort_task_pickup and the REGISTRY_REL copies in pm_integration_registry, registry_remote_overlay_merge and review_target are gone, and their callers use those public helpers",
         "Parity harness unchanged",
         "Estimated net line change (informational, not a gate): package about -110"
       ],
@@ -217,7 +217,7 @@
     {
       "acceptance": [
         "scripts/check_import_layers.py scans imports with the AST and writes constraints/import-layers-baseline.json: every strongly connected import component with its modules, and every import edge from package code into a bundled_scripts entry point",
-        "CI fails when a component grows, a new component appears, or a new package-to-entry-point edge appears; a shrink must be written to the baseline in the same change",
+        "CI fails unless every current cyclic component is a subset of one baselined component after recorded module renames: a new member, a merge of two baselined components or a new package-to-entry-point edge fails; every reduction is written to the baseline in the same change",
         "No package code changes",
         "Estimated net line change (informational, not a gate): package 0; scripts about +120"
       ],
@@ -245,7 +245,7 @@
       "acceptance": [
         "The 45-module component is gone from constraints/import-layers-baseline.json (the largest remaining component is recorded in the summary): roadmap_load no longer imports finish_ancestor_rollup or the review modules",
         "Package modules no longer import the entry points generate_brief, validate_roadmap or refresh_stubs: the functions they used live in package modules",
-        "Function-level imports that existed only for this cycle are removed (count in the summary)",
+        "The function-level import of finish_ancestor_rollup in roadmap_load and the function-level imports of the review modules in finish_ancestor_rollup are removed; the summary states how many function-level imports remain inside the modules that were in the old 45-module component",
         "Parity harness and full suite unchanged",
         "Estimated net line change (informational, not a gate): package about -100"
       ],
@@ -299,10 +299,10 @@
     {
       "acceptance": [
         "Every command module exposes `build_parser()`; the parity inventory reads parsers from it and the golden command set is unchanged (the parser half of M12.6, which triage round 1 removed)",
-        "cli_args declares `--json`, `--ref`, `--model` and `--base`/`--remote` once; every other declaration of those options is replaced; help goldens are unchanged except those options' help strings, which the transcript test allows by option name",
+        "cli_args declares `--json`, `--ref`, `--model` and `--base`/`--remote` once; every other declaration of those options is replaced; the shared helpers keep each caller's action, type, choices, required flag and default, pinned by a committed per-option parser table; help goldens are unchanged except those options' help strings, which the transcript test allows by option name",
         "`specy-road validate` imports at most half as many modules as the M16.2 baseline records (counted by a test); `validate --help` wall time is printed by lean_metrics, not gated",
         "The CLI imports without the gui and review extras (tests/test_cli_imports_without_gui_extra.py green)",
-        "The stale-command scan in validate (and M12.3's garden scan through the same function) uses the build_parser() registry to report each 'specy-road <cmd> [<sub>] --flag' mention whose flag that command does not accept, as file:line, the command, the unknown flag and the closest valid flag; valid flags, short options, declared passthrough (argparse.REMAINDER or a declared group) and anything after a bare -- are not reported; a fixture with one stale and one valid flag pins the output (absorbed from M12.6 by maintainer triage 2026-11-05)",
+        "The stale-command scan in validate (and M12.3's garden scan through the same function) extends the existing extractor: it walks only the files `validate_stale_commands.agent_files` walks, plus docs/ for the garden scan; inside a backtick or fenced span it tokenises a `specy-road <cmd> [<sub>] --<long-flag>` invocation with shlex, stops at a shell operator or a bare --, skips an unparseable or placeholder invocation, and reports file:line, the command, the unknown flag and the closest valid flag when <cmd> and <sub> are in that command's build_parser() and the long flag is not; short options and flags on an argparse.REMAINDER parser are not reported; a fixture with one stale and one valid flag pins the output (absorbed from M12.6 by maintainer triage 2026-11-05)",
         "Estimated net line change (informational, not a gate): package about -80"
       ],
       "codename": "every-command-exposes-build-parser-imports-lazily-and-shares-the-common-argument-helpers",
@@ -329,8 +329,8 @@
     },
     {
       "acceptance": [
-        "specy_road/errors.py defines `SpecyError(message, exit_code)`; the 15 exception classes named in this sheet (WorkerError, ReviewError, DelegateError, BrainstormError and the others the code report counts) subclass it and keep their names and import paths",
-        "cli_entry prints a SpecyError and exits with its code in one place; every `except` clause that catches one of those classes only to print it and exit is removed, and a test fails on such a clause; other exit sites are out of scope",
+        "specy_road/errors.py defines `SpecyError(message, exit_code)`; these 15 classes subclass it and keep their names, import paths, existing base classes (ValueError, RuntimeError, WorkerError) and constructor signatures: WorkerError, LeaseError, DelegateError, ReviewError, BrainstormError, ResearchError, ReviewTargetError, SigningError, EnvSetupError, RosterError, PruneError, NestedRepoError, HarnessFactsError, DeterministicResolveError, ConstitutionExistsError; this leaf's first commit, before any package change, records in this sheet each class's stderr prefix and exit code as printed today",
+        "cli_entry prints a SpecyError and exits with its code in one place, reproducing that table; a test fails when an `except` in specy_road catches one of those 15 classes and every statement in the handler is a print, a `sys.exit` or `raise SystemExit`, or a `return` of an int (the sites it matches at pickup are listed in this sheet and removed); handlers that log, record state or re-raise stay; other exit sites are out of scope",
         "Messages that tests assert at pickup are byte-identical; parity harness and the M16.7 process corpus unchanged",
         "Estimated net line change (informational, not a gate): package about -100"
       ],
