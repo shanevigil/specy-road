@@ -258,7 +258,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.31` A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported `delegated-reviewer-always-runs-a-named-model` — task — **Not Started**
   - `M15.32` An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure `archived-summary-exempt-from-file-limits` — task — **Not Started**
   - `M15.33` A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed `refused-review-record-leaves-a-trace` — task — **Not Started**
-  - `M15.34` The executor prompt states the test rules that the reviewer's excess checklist enforces `executor-prompt-states-the-test-rules` — task — **Not Started**
+  - `M15.34` The executor prompt states the test rules that the reviewer's excess checklist enforces `executor-prompt-states-the-test-rules` — task — **Complete**
   - `M15.35` The review packet never lists .git or a path under it as an uncommitted reference `packet-never-lists-dot-git-as-uncommitted` — task — **Complete**
   - `M15.36` Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode `worker-launch-never-depends-on-claude-default-mode` — task — **Not Started**
   - `M15.37` Review notes: a part joined by a comma or 'and' is a second observation only when it names a defect `comma-or-and-part-counts-only-when-it-names-a-defect` — task — **Not Started**
@@ -400,7 +400,6 @@ Do not pick these up.
 - `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
 - `M15.32` on `feature/rm-archived-summary-exempt-from-file-limits` since 2026-11-05
 - `M15.33` on `feature/rm-refused-review-record-leaves-a-trace` since 2026-11-05
-- `M15.34` on `feature/rm-executor-prompt-states-the-test-rules` since 2026-11-05
 - `M15.37` on `feature/rm-comma-or-and-part-counts-only-when-it-names-a-defect` since 2026-11-05
 - `M15.39` on `feature/rm-failed-roadmap-write-restores-every-file` since 2026-11-05
 - `M15.40` on `feature/rm-finish-merge-failure-reports-and-undoes-bookkeeping` since 2026-11-05
@@ -412,9 +411,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 32 | 25 | 7.43 | 100% | 14 | 1 |
-| `specy_road` **flagged** | 47 | 34 | 6.23 | 100% | 22 | 3 |
-| `tests` **flagged** | 50 | 37 | 6.23 | 100% | 22 | 3 |
+| `docs` **flagged** | 31 | 24 | 7.43 | 100% | 14 | 1 |
+| `specy_road` **flagged** | 47 | 33 | 5.93 | 93% | 22 | 3 |
+| `tests` **flagged** | 50 | 36 | 5.93 | 93% | 22 | 3 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |

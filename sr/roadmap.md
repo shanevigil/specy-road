@@ -258,7 +258,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.31` | A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported | task | Agentic-led | Not Started |
 | `M15.32` | An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure | task | Agentic-led | Not Started |
 | `M15.33` | A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed | task | Agentic-led | Not Started |
-| `M15.34` | The executor prompt states the test rules that the reviewer's excess checklist enforces | task | Agentic-led | Not Started |
+| `M15.34` | The executor prompt states the test rules that the reviewer's excess checklist enforces | task | Agentic-led | Complete |
 | `M15.35` | The review packet never lists .git or a path under it as an uncommitted reference | task | Agentic-led | Complete |
 | `M15.36` | Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode | task | Agentic-led | Not Started |
 | `M15.37` | Review notes: a part joined by a comma or 'and' is a second observation only when it names a defect | task | Agentic-led | Not Started |
