@@ -212,6 +212,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M13.11` upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs `upgrade-says-what-changed-for-this-repo-behaviour-changes-a-pin-below-the-new-minimum-the-new-files-and-duplicated-paragraphs` — task — **Not Started**
   - `M13.12` Quieter, accurate validate notices: untracked touch zones, the managed .gitignore comment, and tracked files under new ignore rules `quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules` — task — **Not Started**
   - `M13.13` upgrade --prompt writes an agent upgrade prompt filled in from this repo `upgrade-prompt-writes-an-agent-upgrade-prompt-filled-in-from-this-repo` — task — **Not Started**
+  - `M13.14` validate flags project agent text that mandates a changed behaviour (best-effort hint) `validate-flags-project-agent-text-that-mandates-a-changed-behaviour-best-effort-hint` — task — **Not Started**
 - `M14` Nested repos and review-gate integrity `nested-repos-and-review-gate-integrity` — phase — **Not Started**
   - `M14.1` Approvals never carry across unreviewed changes in a sibling repository `approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` — task — **Not Started**
   - `M14.2` doctor never offers to remove a live leaf's worktree or branch `doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch` — task — **Complete**
@@ -238,7 +239,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.8` A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it `promoted-leaf-is-never-stuck-on-an-empty-approach` — task — **Complete**
   - `M15.9` Harness launches survive large prompts and a harness binary off PATH, for every role `harness-launches-survive-large-prompts-and-binaries-off-path` — task — **Not Started**
   - `M15.10` Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff `try-a-roster-before-it-lands` — task — **Complete**
-  - `M15.11` A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors `working-roster-in-one-command-and-validated-profiles` — task — **Not Started**
+  - `M15.11` A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors `working-roster-in-one-command-and-validated-profiles` — task — **Complete**
   - `M15.12` Shared documentation zones do not serialize grind-session batches `shared-doc-zones-do-not-serialize-batches` — task — **Complete**
   - `M15.13` Worker loop friction: sync waits for the events that matter, tool-use noise collapses, rework after a completed worker, a READY-only resume, a quieter pickup `worker-loop-friction-sync-until-and-ready-only-resume` — task — **Not Started**
   - `M15.14` Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored `chores-at-parity-with-leaves` — task — **Not Started**
@@ -270,7 +271,6 @@ Do not pick these up.
 - `M12.4.1` on `feature/rm-per-area-quality-scores-in-the-digest-from-review-history` since 2026-11-04
 - `M13.8` on `feature/rm-a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts` since 2026-11-04
 - `M14.10` on `feature/rm-escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend` since 2026-11-04
-- `M15.11` on `feature/rm-working-roster-in-one-command-and-validated-profiles` since 2026-11-04
 - `M15.13` on `feature/rm-worker-loop-friction-sync-until-and-ready-only-resume` since 2026-11-04
 - `M15.15` on `feature/rm-upgrade-ships-the-templates-prompts-reference` since 2026-11-05
 - `M15.20` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04

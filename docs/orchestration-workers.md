@@ -8,7 +8,7 @@
 **Must know without reading on:**
 - Run `specy-road worker sync` at the start of every turn; `specy-road worker sync --ack` once you have acted on the events. To wait for a worker, `specy-road worker sync --wait`, never a sleep loop.
 - One writer per worker (`lease.holder`): `specy-road worker handoff <W>` before a human opens the native session, `specy-road worker reclaim <W>` after. While leased to a human, `message` and `resume` fail with `WORKER_LEASED_BY_HUMAN`.
-- `delegate` runs after pickup only: `specy-road worker delegate M2.3 --model claude-opus-5.5` needs the leaf's registry claim and branch. Work outside the roadmap runs as a chore instead: [`orchestration-chores.md`](orchestration-chores.md).
+- `delegate` runs after pickup only: `specy-road worker delegate M2.3 --model claude-opus-5-5` needs the leaf's registry claim and branch. Work outside the roadmap runs as a chore instead: [`orchestration-chores.md`](orchestration-chores.md).
 - A `completion` event and a READY file approve nothing; the review path is unchanged. `interrupt` is unsupported on every adapter; `terminate` loses the turn.
 - A worker whose wrapper died but whose harness lives is flagged `wrapper_gone_harness_alive` and still owns its leaf: `terminate` it (kills the recorded process group) before delegating again. To take a leaf over when its worker was terminated or cannot be resumed (its model became unavailable, say), `specy-road worker delegate M2.3 --model <another> --rework`: the prompt carries the blocking reviewers' required changes and the previous worker's last message ("The loop").
 - Records live in `work/.workers/` (gitignored); the event log is authoritative, the transcript is evidence. With `track_worker_logs: "events"` (or `"full"`) in `roadmap/git-workflow.yaml`, each turn's end also copies the event log (and, under `full`, the raw log) to `work/worker-logs/<NODE_ID>/` in the worker's checkout, which `finish-this-task` commits with the leaf; the default `"off"` writes nothing outside `work/.workers/`.
@@ -95,7 +95,7 @@ sensitivity (the same rules as `orchestrate plan`).
 
 ```yaml
 roster:
-  - id: claude-opus-5.5
+  - id: claude-opus-5-5
     family: anthropic
     roles: [executor, reviewer]
     harness: claude-code            # claude-code | codex | cursor | generic
@@ -193,7 +193,7 @@ Do not add a bare `Edit` or `Write` allow rule: in `dontAsk` mode it lets the wo
 
 ```bash
 specy-road worker sync                 # start of every turn: what changed (--wait: block until something does)
-specy-road worker delegate M2.3 --model claude-opus-5.5
+specy-road worker delegate M2.3 --model claude-opus-5-5
 specy-road worker sync --ack           # once you have acted on the events
 ```
 
