@@ -66,6 +66,17 @@ I first merged `origin/WIP/improvements-0-3-1`. Code commit: see `git log` (mess
 
 **What I reused:** `normalize_heading` (`specy_road/text_sections.py`) for case and whitespace folding; it replaces my `_key`. The fence logic comes from the CommonMark helpers in `bundled_scripts/validate_stale_commands.py` (`_fence_marker`, `_fence_closes`, `_opening_is_code_span`), imported lazily as `decisions._unfenced_lines` does. I could not call `_unfenced_lines` itself because it drops the line numbers the notice prints. I also could not use `text_sections.LEVEL2_RE`, because it matches level 2 only and allows any indent.
 
+**`specy_road/text_sections.py`, checked for every helper:**
+
+- `normalize_heading`: reused; it is called as is.
+- `split_sections`, `find_section` and `LEVEL2_RE`: cannot replace `_headings`. All three use `LEVEL2_RE`, which:
+  - matches level 2 only (the rules file's `### Load order` would be lost);
+  - allows any indent (so a 4-space code line would count as a heading);
+  - has no fence or setext awareness;
+  - returns no line numbers.
+- Extending `text_sections.py` would mean editing a file outside the touch zones, and changing `LEVEL2_RE` would change brief and search output. I left it unedited; no edit there is needed for this leaf.
+- `read_text_safely` fits `print_rules_overlap`'s file read, but swapping it in is a cosmetic change, so I left the read as is.
+
 ### Fix round 2: probes
 
 Each probe below runs through `refresh-stubs` in `test_refresh_stubs_names_only_real_matching_headings`, as a parametrized case.
