@@ -19,6 +19,11 @@ remote-tracking refs and stash with its directory, so each of its branch and
 remote-tracking tips must be held by a branch or remote-tracking ref of the main
 checkout's copy, and any stash refuses. A worker in state ``running`` in the
 worktree refuses too: its harness is writing there.
+
+Any other directory in the worktree holding a ``.git`` (a linked worktree or a
+checkout of another repository, not a configured nested repo) refuses, naming
+its repository, branch and the commits its upstream lacks: removal would
+delete it, and this command never prunes another repository's worktree.
 """
 
 from __future__ import annotations
@@ -50,6 +55,7 @@ class PrunePlan:
     refusals: list[str] = field(default_factory=list)
     ignored: list[str] = field(default_factory=list)   # git-root-relative paths removal deletes
     nested: list[tuple[Path, Path, bool]] = field(default_factory=list)   # (main copy, dir, linked worktree)
+    foreign: list[Path] = field(default_factory=list)   # other repositories' worktrees or checkouts inside it
 
 
 def leaf_worktree(root: Path, node_id: str) -> tuple[Path, Path, str]:
@@ -148,6 +154,40 @@ def _check_nested(plan: PrunePlan, main: Path, prefix: str) -> None:
                                  f"{', '.join(lost)}")
 
 
+_SHOWN = 20   # commits listed per foreign repository; a checkout with no remote could list its whole history
+
+
+def _foreign_dirs(wt: Path, paths: list[str]) -> list[Path]:
+    """Each directory in ``paths`` (``wt``-relative) or among their parents below ``wt`` that holds a ``.git``."""
+    found: set[Path] = set()
+    for rel in paths:
+        r = Path(rel.rstrip("/"))
+        found.update(wt / p for p in (r, *r.parents) if p != Path(".") and (wt / p / ".git").exists())
+    return sorted(found)
+
+
+def _foreign_refusal(wt: Path, d: Path) -> str:
+    """Why ``d``, another repository's linked worktree (``.git`` file) or checkout (``.git`` directory), refuses."""
+    linked = (d / ".git").is_file()
+    common = _common_dir(d)
+    repo = (common.parent if common and common.name == ".git" else common) if linked else d
+    branch = git_text(["rev-parse", "--abbrev-ref", "HEAD"], d) or "unknown"
+    upstream = git_text(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], d)
+    span = ["@{u}..HEAD"] if upstream else ["HEAD", "--not", "--remotes"]
+    log = git_text(["log", "--oneline", f"--max-count={_SHOWN + 1}", *span], d)
+    lacks = f"its upstream {upstream}" if upstream else "every remote-tracking ref"
+    if log is None:
+        commits = f"commits {lacks} lacks cannot be listed"
+    else:
+        lines = log.splitlines()
+        more = " (and more)" if len(lines) > _SHOWN else ""
+        commits = f"commits {lacks} lacks: {'; '.join(lines[:_SHOWN])}{more}" if lines else f"no commits {lacks} lacks"
+    kind, step = (("linked worktree", f"`git -C {repo} worktree remove {d}`") if linked
+                  else ("checkout", "move it out of the worktree"))
+    return (f"{d.relative_to(wt).as_posix()}/ is a {kind} of another repository, {repo or 'unknown'}, on {branch}; "
+            f"{commits}; removal would delete it: land or push those commits, then {step}")
+
+
 def _remote_heads(main: Path, remote: str, branches: list[str]) -> tuple[dict[str, str], str | None]:
     """``({branch: sha}, None)``: the remote's actual tips of those of ``branches`` it has, with their commits here.
 
@@ -211,6 +251,8 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         plan.ignored = ignored + plan.ignored
         if changed:
             plan.refusals.append(f"uncommitted or untracked: {', '.join(changed)}")
+        plan.foreign = _foreign_dirs(wt, changed + ignored)
+        plan.refusals += [_foreign_refusal(wt, d) for d in plan.foreign]
     stashes = _stashes(wt, branch, linked=True)
     if stashes is None:
         plan.refusals.append("cannot read the stash list")
@@ -223,8 +265,12 @@ def remove(plan: PrunePlan) -> str | None:
     """Remove the nested repositories, then the worktree; the failure, or ``None``.
 
     ``--force`` only because the ignored files listed would otherwise stop git:
-    :func:`plan_prune` has already refused anything else it would delete.
+    :func:`plan_prune` has already refused anything else it would delete. Another repository's worktree or
+    checkout inside it refuses here too, so a caller that skips the refusals still deletes nothing.
     """
+    if plan.foreign:
+        return f"{plan.worktree} holds another repository's worktree or checkout: " + \
+            ", ".join(str(d) for d in plan.foreign)
     for src, d, linked in plan.nested:
         if linked:
             code, out = git_code(["worktree", "remove", "--force", str(d)], src)
