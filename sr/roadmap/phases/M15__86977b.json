@@ -94,7 +94,7 @@
     },
     {
       "acceptance": [
-        "orchestrate plan and grind-session --plan warn once per leaf when an acceptance line names a repository path (or a path's parent directory) that no touch zone covers, listing those paths; paths that do not exist and are not under any zone are listed as 'new file outside zones'; a test with one covered and one uncovered path pins the warning",
+        "orchestrate plan and grind-session --plan warn once per leaf when an acceptance line names a repository path (or a path's parent directory) that no touch zone covers, listing those paths; paths that do not exist and are not under any zone are listed as 'new file outside zones'; a test with one covered and one uncovered path pins the warning; what counts as a path is one stated, best-effort rule (planner 2026-11-05): a backtick-quoted span containing '/' or a known file suffix is always a path candidate; a bare token is a candidate only when it starts with a tracked top-level directory name or ends in a known suffix (.py .md .json .yaml .yml .toml .ts .tsx .sh .txt .cfg .ini); a candidate that is a tracked file or directory (with or without a trailing '/') is existing, otherwise it is new; all other prose (and/or, read/write, M12/M13, URLs) is ignored, and the warning says it is a best-effort hint whose misses are accepted",
         "The brief lists at most 20 importers per zone marked '(outside zones)' and then a count of the rest; a test with a zone of 200 importers pins the bound. Out of scope: changing zones automatically"
       ],
       "codename": "zones-missing-what-acceptance-needs-flagged",
@@ -268,7 +268,8 @@
         "specy_road/ready_run_checks.py",
         "specy_road/review_gate_ready.py",
         "specy_road/bundled_scripts/review_packet.py",
-        "tests/"
+        "tests/",
+        "specy_road/schemas/handoff.schema.json"
       ],
       "type": "task"
     },
