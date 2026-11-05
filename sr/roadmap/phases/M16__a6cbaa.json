@@ -111,6 +111,7 @@
       "codename": "ready-to-tag-0-3-1",
       "dependencies": [
         "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0",
+        "3d08dc0a-5e36-45e6-9c64-2afb0bf110c5",
         "4830d6a5-8004-46b8-b748-e7194f614aa2",
         "f0e9d130-9b74-479d-a401-ccee402e63a4"
       ],
@@ -169,6 +170,33 @@
       "touch_zones": [
         "specy_road/finish_land_deterministic.py",
         "specy_road/milestone_rollup_git.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The cursor adapter's default worker launch and resume (worker_adapter_cursor.py) no longer pass --force: they pass --trust plus Cursor's sandbox (--sandbox enabled), the narrower command docs/orchestration-workers.md already documents; --force is used only when the roster entry opts in explicitly (one named, documented field, e.g. run/permission opt-in), never by default",
+        "Before the change lands, the executor verifies with the real agent CLI in a fresh linked worktree that a typical leaf turn works under the new default: edit a file, run the targeted pytest, and git commit on the leaf branch; the results (pass, or the exact refusal) are recorded in the implementation summary. If git commit or tests cannot run inside Cursor's sandbox, the leaf documents that as a known limitation (as for Codex) and the opt-in path, rather than restoring --force by default",
+        "When a roster entry opts into --force, orchestrate plan and doctor print one warning naming the entry and the risk (every command not explicitly denied is allowed; see docs/research agent-safety-posture-2026-11-05 and CR1), and the launch argv shown in logs makes the opt-in visible",
+        "Tests pin the default argv (no --force, has --trust and --sandbox enabled) for launch and resume, the opt-in argv, and the warning. docs/orchestration-workers.md and the CHANGELOG [Unreleased] section describe the new default and the opt-in. Out of scope: Claude Code and Codex launch flags (M15.36, M20)"
+      ],
+      "codename": "cursor-workers-no-force-by-default",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.69",
+      "node_key": "3d08dc0a-5e36-45e6-9c64-2afb0bf110c5",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.69_cursor-workers-no-force-by-default_3d08dc0a-5e36-45e6-9c64-2afb0bf110c5.md",
+      "sibling_order": 70,
+      "status": "Not Started",
+      "title": "Cursor workers launch sandboxed without --force unless the roster opts in",
+      "touch_zones": [
+        "specy_road/worker_adapter_cursor.py",
+        "specy_road/orchestrate_plan.py",
+        "specy_road/bundled_scripts/orchestrate_cli.py",
+        "docs/orchestration-workers.md",
+        "CHANGELOG.md",
         "tests/"
       ],
       "type": "task"
