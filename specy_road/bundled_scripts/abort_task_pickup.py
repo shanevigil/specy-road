@@ -325,7 +325,8 @@ def _abort_locked(args) -> None:
 
     git_run(ROOT, "fetch", remote)
     local_claim = all(
-        only_own_registration_ahead(ROOT, remote, base, codename, ref) for ref in ("HEAD", base)
+        only_own_registration_ahead(ROOT, remote, base, codename, ref, capture=git_capture)
+        for ref in ("HEAD", base)
     )
     if local_claim:
         _drop_local_registration(remote, base, branch)

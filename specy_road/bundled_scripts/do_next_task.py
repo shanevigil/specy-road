@@ -243,6 +243,7 @@ def _finalize_pickup(
     )
     register_claim(
         ROOT, node, branch, reg, commit_msg,
+        git_runner=lambda *a: git_run(ROOT, *a),
         impl_review_gate=require_implementation_review_before_finish(ROOT),
         owner=owner,
     )

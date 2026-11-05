@@ -35,13 +35,18 @@ def registers_only(root: Path, commit: str, codename: str) -> bool:
     )
 
 
-def only_own_registration_ahead(root: Path, remote: str, base: str, codename: str, ref: str) -> bool:
-    """True when the one commit on ``ref`` missing from ``remote/base`` is this claim's registration."""
-    ahead = git_capture(root, "rev-list", f"{remote}/{base}..{ref}").split()
+def only_own_registration_ahead(
+    root: Path, remote: str, base: str, codename: str, ref: str, *, capture=git_capture
+) -> bool:
+    """True when the one commit on ``ref`` missing from ``remote/base`` is this claim's registration.
+
+    ``capture`` is the caller's ``git_capture``, so its git reads stay patchable where they were.
+    """
+    ahead = capture(root, "rev-list", f"{remote}/{base}..{ref}").split()
     if len(ahead) != 1:
         return False
-    subject = git_capture(root, "log", "-1", "--format=%s", ahead[0])
-    paths = git_capture(root, "diff-tree", "--no-commit-id", "--name-only", "-r", ahead[0]).splitlines()
+    subject = capture(root, "log", "-1", "--format=%s", ahead[0])
+    paths = capture(root, "diff-tree", "--no-commit-id", "--name-only", "-r", ahead[0]).splitlines()
     prefix = project_prefix(root)   # diff-tree names paths from the repository root
     registry = prefix + REGISTRY_REL.as_posix()
     generated = {prefix + n for n in GENERATED_COMMITTED}
