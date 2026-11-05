@@ -22,6 +22,9 @@ from specy_road import orchestrate_plan as op
 REPO = Path(__file__).resolve().parent.parent
 STARTER = REPO / "specy_road" / "templates" / "project" / "roadmap" / "orchestration.yaml"
 OPUS_REL = "model-profiles/anthropic-claude/claude-opus-5-5.md"
+MISSING_REL = "model-profiles/openai-gpt/no-such.md"
+MISSING_INVALID = (f"invalid profile: {MISSING_REL}, accepted form "
+                   "model-profiles/<family-dir>/<profile-id>.md")
 MALFORMED = "anthropic/claude-opus-5-5"
 INVALID = f"invalid profile: {MALFORMED}, accepted form {OPUS_REL}"
 
@@ -137,6 +140,28 @@ def test_worktree_plan_reports_invalid_profile_form_for_a_malformed_missing_path
     plan, err = op.build_orchestration_plan(plan_repo(tmp_path, roster), roster_from_worktree=True)
     assert err is None and plan is not None
     assert plan.batches[0][0].problems == [f"opus: {INVALID}"]
+
+
+def test_worktree_plan_reports_invalid_profile_for_a_well_formed_missing_path(tmp_path: Path) -> None:
+    roster = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+              f"  - {{id: sol, family: openai, profile: {MISSING_REL}, roles: [executor]}}\n"
+              "policy: {reviewers_required: 1}\n")
+    plan, err = op.build_orchestration_plan(plan_repo(tmp_path, roster), roster_from_worktree=True)
+    assert err is None and plan is not None
+    problems = plan.batches[0][0].problems
+    assert problems == [f"sol: {MISSING_INVALID}"]
+    assert not any("cannot read" in p or "not committed" in p for p in problems)
+
+
+def test_committed_plan_reports_invalid_profile_for_a_well_formed_missing_path(tmp_path: Path) -> None:
+    roster = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+              f"  - {{id: sol, family: openai, profile: {MISSING_REL}, roles: [executor]}}\n"
+              "policy: {reviewers_required: 1}\n")
+    plan, err = op.build_orchestration_plan(plan_repo(tmp_path, roster))
+    assert err is None and plan is not None
+    problems = plan.batches[0][0].problems
+    assert problems == [f"sol: {MISSING_INVALID}"]
+    assert not any("cannot read" in p or "not committed" in p for p in problems)
 
 
 def test_committed_plan_refuses_a_malformed_profile_even_when_a_file_exists_at_that_path(tmp_path: Path) -> None:

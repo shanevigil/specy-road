@@ -243,15 +243,24 @@ def pinned_profile_for_entry(repo_root: Path, entry: dict[str, Any], *, worktree
         if why:
             return Profile(repo_root / str(rel), {}, errors=[why])
     if worktree:
+        if rel and not (repo_root / str(rel)).is_file():
+            why = profile_value_problem(repo_root, rel)
+            if why:
+                return Profile(repo_root / str(rel), {}, errors=[why])
         return profile_for_entry(repo_root, entry)
     ref, err = policy_source(repo_root)
     if err:
         return Profile(repo_root / str(entry.get("profile") or entry.get("id")), {}, errors=[err])
-    sha = full_sha(repo_root, ref) or ref if ref is not None else None
-    if ref is None or sha is None:
+    if ref is None:
         return profile_for_entry(repo_root, entry)
+    sha = full_sha(repo_root, ref) or ref
     if rel:
-        prof = _pinned_at(repo_root, sha, Path(str(rel)).as_posix(), ref)
+        rel_posix = Path(str(rel)).as_posix()
+        if _blob(repo_root, sha, rel_posix) is None and not (repo_root / rel).is_file():
+            why = profile_value_problem(repo_root, rel)
+            if why:
+                return Profile(repo_root / str(rel), {}, errors=[why])
+        prof = _pinned_at(repo_root, sha, rel_posix, ref)
         return prof.for_id(entry.get("id")) or prof
     paths = _committed_profile_paths(str(repo_root), sha)
     return next((m for path in paths
