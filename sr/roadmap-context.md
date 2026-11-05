@@ -237,7 +237,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.6` The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes `rework-prompt-carries-the-accepted-rca` — task — **Complete**
   - `M15.7` file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count `file-limits-baseline-and-upgrade-report` — task — **Not Started**
   - `M15.8` A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it `promoted-leaf-is-never-stuck-on-an-empty-approach` — task — **Complete**
-  - `M15.9` Harness launches survive large prompts and a harness binary off PATH, for every role `harness-launches-survive-large-prompts-and-binaries-off-path` — task — **Not Started**
+  - `M15.9` Harness launches survive large prompts and a harness binary off PATH, for every role `harness-launches-survive-large-prompts-and-binaries-off-path` — task — **Complete**
   - `M15.10` Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff `try-a-roster-before-it-lands` — task — **Complete**
   - `M15.11` A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors `working-roster-in-one-command-and-validated-profiles` — task — **Complete**
   - `M15.12` Shared documentation zones do not serialize grind-session batches `shared-doc-zones-do-not-serialize-batches` — task — **Complete**
@@ -334,7 +334,32 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
-- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+- 2026-11-05 `M16.12` stopped depending on `M16.7 Commands run in the CLI's process: no python -m re-launch, no cwd globals`
+- 2026-11-05 `M16.12` stopped depending on `M16.10 One LLM client module replaces the provider code inside review_node`
+- 2026-11-05 `M16.15` stopped depending on `M16.1 Parity harness: a review-gate decision table covering every review policy`
+- 2026-11-05 `M16.15` stopped depending on `M16.6 The 29 package-imported library modules move out of bundled_scripts`
+- 2026-11-05 `M16.15` stopped depending on `M16.5 One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready`
+- 2026-11-05 `M16.33` stopped depending on `M16.12 upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update`
+- 2026-11-05 `M16.33` stopped depending on `M16.13 review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session`
+- 2026-11-05 `M16.33` stopped depending on `M16.11 doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases`
+- 2026-11-05 `M16.33` stopped depending on `M16.18 Shared-checkout guard and session presence move into orchestration`
+- 2026-11-05 `M16.33` stopped depending on `M16.22 Post-fix refactor gate: ready and the review packet report any complexity growth, and policy can block on it`
+- 2026-11-05 `M16.33` stopped depending on `M16.14 One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points`
+- 2026-11-05 `M16.33` stopped depending on `M16.17 Roster, model profiles, harness facts, orchestrate and role prompts move into orchestration`
+- 2026-11-05 `M16.33` stopped depending on `M16.21 Fold the review gate and escalation fragments, and mark the policies the evidence did not keep as deprecated`
+- 2026-11-05 `M16.33` stopped depending on `M16.16 Worker runtime moves into orchestration/workers with import-path edits only`
+- 2026-11-05 `M16.33` stopped depending on `M16.19 Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings`
+- 2026-11-05 `M16.9` stopped depending on `M16.6 The 29 package-imported library modules move out of bundled_scripts`
+- 2026-11-05 `M16.13` stopped depending on `M16.11 doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases`
+- 2026-11-05 `M16.3` stopped depending on `M16.0 Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs`
+- 2026-11-05 `M16.11` stopped depending on `M16.7 Commands run in the CLI's process: no python -m re-launch, no cwd globals`
+- 2026-11-05 `M16.18` stopped depending on `M16.15 Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI`
+- 2026-11-05 `M16.32` stopped depending on `M16.13 review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session`
+- 2026-11-05 `M16.32` stopped depending on `M16.30 AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer`
+- 2026-11-05 `M16.4` stopped depending on `M16.2 Baseline metrics, a coverage floor in CI, and the M16 working rules written down`
+- 2026-11-05 `M16.4` stopped depending on `M16.0 Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs`
+- 2026-11-05 `M16.6` stopped depending on `M16.3 Delete dead and unwired code from a decided list, and add vulture as an advisory CI step`
+- _…and 32 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -356,7 +381,6 @@ Do not pick these up.
 - `M15.25` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
-- `M15.9` on `feature/rm-harness-launches-survive-large-prompts-and-binaries-off-path` since 2026-11-05
 
 ## Quality by area
 
@@ -364,9 +388,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 34 | 29 | 9.40 | 100% | 10 | 1 |
-| `specy_road` **flagged** | 47 | 38 | 7.78 | 100% | 14 | 3 |
-| `tests` **flagged** | 49 | 40 | 7.78 | 100% | 14 | 3 |
+| `docs` **flagged** | 34 | 28 | 8.17 | 100% | 13 | 1 |
+| `specy_road` **flagged** | 47 | 37 | 7.20 | 100% | 17 | 3 |
+| `tests` **flagged** | 49 | 39 | 7.20 | 100% | 17 | 3 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
 | `research` | 1 | 1 | — | — | 0 | 0 |

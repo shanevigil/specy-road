@@ -26,6 +26,7 @@ from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
 from specy_road import worker_turn_check as tc
 from specy_road.worker_adapter_claude import EXECUTOR_TOOLS
+from specy_road.worker_adapter_base import file_instruction
 from specy_road.worker_adapter_cursor import create_chat as real_create_chat   # before conftest stubs it
 from specy_road.worker_adapter_parsers import limit_detail
 
@@ -233,7 +234,8 @@ def test_cursor_creates_the_chat_first_passes_force_trust_and_never_w(
     launch = wa.adapter_for("cursor").launch(_prompt(tmp_path), tmp_path, "composer-2.5", None)
     assert _calls(spec)[0]["argv"] == ["create-chat"]
     assert launch.session_id == "chat-7f3a" and launch.argv[:4] == ["agent", "-p", "--resume", "chat-7f3a"]
-    assert "--force" in launch.argv and "--trust" in launch.argv and launch.argv[-1] == "do the leaf"
+    assert "--force" in launch.argv and "--trust" in launch.argv
+    assert launch.argv[-1] == file_instruction(_prompt(tmp_path).resolve())   # M15.9 A1: the file, not its text
     assert not {"-w", "--worktree"} & set(launch.argv)
     for cli in ("agent -p -w --force {prompt}", "agent -p --worktree=x {prompt}"):
         with pytest.raises(wa.Unsupported, match="never pass -w"):
