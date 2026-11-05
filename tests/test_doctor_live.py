@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from specy_road import worker_state
+from specy_road import session_presence, worker_state
 from specy_road.bundled_scripts import doctor
 from specy_road.doctor_worktrees import NO_EVIDENCE
 from tests.review_repo_helpers import commit_file, git
@@ -118,7 +118,7 @@ def test_f3_a_fresh_remote_branch_does_not_borrow_its_local_namesakes_commits(do
 
     assert run_doctor(repo, "--fix", "--yes") == 0
     out = capsys.readouterr().out
-    assert f"[kept] origin feature/rm-pushed: merged; {NO_EVIDENCE}, so --fix leaves it" in out
+    assert "[kept] origin feature/rm-pushed: claim gone, no commits yet, so --fix leaves it" in out   # R2
     assert "deleted feature/rm-pushed on origin" not in out
     assert git(bare, "rev-parse", "feature/rm-pushed") == fresh
 
@@ -182,3 +182,45 @@ def test_a_worker_held_branch_is_live_until_the_worker_is_terminal(doctor_repo, 
     out = capsys.readouterr().out
     assert "[ok] deleted local branch feature/rm-done" in out
     assert not wt.is_dir()
+
+
+def test_r1_a_reused_branch_name_with_a_creation_only_reflog_has_no_commits(doctor_repo, capsys) -> None:
+    """feature/rm-gone landed by a finish merge; recreating it locally from origin gives a creation-only
+    reflog, which beats that earlier branch's merge commit."""
+    repo, _bare = doctor_repo
+    git(repo, "branch", "feature/rm-gone", "origin/feature/rm-gone")
+
+    assert run_doctor(repo, "--fix", "--yes") == 0
+    out = capsys.readouterr().out
+    assert "[kept] local feature/rm-gone: claim gone, no commits yet, so --fix leaves it" in out
+    assert "deleted local branch feature/rm-gone" not in out
+    assert has_ref(repo, "refs/heads/feature/rm-gone")
+
+
+def test_r3_a_fresh_branch_at_another_branchs_unlanded_tip_has_no_commits(doctor_repo, capsys) -> None:
+    repo, _bare = doctor_repo
+    git(repo, "branch", "feature/rm-borrowed", "feature/rm-open")
+
+    assert run_doctor(repo, "--fix", "--yes") == 0
+    out = capsys.readouterr().out
+    assert "[kept] local feature/rm-borrowed: claim gone, no commits yet, so --fix leaves it" in out
+    assert has_ref(repo, "refs/heads/feature/rm-borrowed")
+    assert "[ok] deleted local branch feature/rm-open" in out   # unmerged with commits: policy unchanged
+
+
+def test_r4_a_claim_beats_a_session_and_a_session_alone_still_protects(doctor_repo, capsys) -> None:
+    repo, _bare = doctor_repo
+    with (repo / ".git" / "info" / "exclude").open("a") as f:
+        f.write("work/.sessions/\n")   # a consumer ignores work/; registry-prune needs a clean tree
+    session_presence.start_session(repo, "claim-session", paths=[], worktree=repo.parent / "wt-thing")
+    empty = repo.parent / "wt-empty"
+    git(repo, "worktree", "add", "-q", "-b", "feature/rm-empty", str(empty), "dev")
+    session_presence.start_session(repo, "lone-session", paths=[], worktree=empty)
+
+    assert run_doctor(repo, "--fix", "--yes") == 0
+    out = capsys.readouterr().out
+    assert kept(out, "wt-thing: branch feature/rm-thing live: claimed by M1.1, so --fix leaves it")
+    assert "live: session claim-session" not in out
+    assert kept(out, "wt-empty: branch feature/rm-empty live: session lone-session, so --fix leaves it")
+    assert "[kept] local feature/rm-empty: live: session lone-session, so --fix leaves it" in out
+    assert empty.is_dir() and (repo.parent / "wt-thing").is_dir()

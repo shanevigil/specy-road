@@ -45,8 +45,8 @@ from specy_road.bundled_scripts.do_next_task_self_heal import detect_stale_claim
 from specy_road.bundled_scripts.doctor_env_setup import report_checkout
 from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.doctor_worktrees import (  # noqa: F401 — SAME_PATCH, TEMP_WORKTREES re-exported for callers
-    SAME_PATCH, TEMP_WORKTREES, Finding, NO_EVIDENCE, live_holders, merged_how, own_commit_evidence,
-    worktree_findings,
+    NO_EVIDENCE, SAME_PATCH, TEMP_WORKTREES, Finding, classify, containment, evidence_kind, live_holders,
+    merged_how, worktree_findings,
 )
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_text
 from specy_road.nested_repos import report_unpushed
@@ -65,8 +65,8 @@ class _Ctx:
     base: str
     live: set[str]
     complete: dict[str, str]   # codename -> node id of a Complete leaf
-    held: dict[str, str]       # branch -> "live: …": never offered for removal (doctor_worktrees.live_holders)
-    held_paths: dict[str, str]  # resolved worktree path -> "live: …" (workers, sessions)
+    held: dict[str, tuple[str, str]]        # branch -> (live source, "live: …"): doctor_worktrees.live_holders
+    held_paths: dict[str, tuple[str, str]]  # resolved worktree path -> (live source, "live: …")
 
 
 def _complete_leaves(nodes: list[dict]) -> dict[str, str]:
@@ -75,25 +75,22 @@ def _complete_leaves(nodes: list[dict]) -> dict[str, str]:
             and (n.get("status") or "").lower() == "complete"}
 
 
-def _branch_reason(ctx: _Ctx, ref: str, branch: str, node_id: str | None) -> tuple[str, str | None]:
-    """The reason, and the verdict: ``None`` when not merged, else ``"merged"`` (removable),
-    ``"fresh"`` (no commits yet) or ``"unproven"`` (contained, with no evidence of own commits).
-
-    A patch-content merge needs no evidence: its tip is not in the target, so it has commits.
-    """
+def _branch_reason(ctx: _Ctx, ref: str, branch: str, node_id: str | None, kind: str
+                   ) -> tuple[str, str, bool, tuple[str, str]]:
+    """(reason, label, fix offered, (evidence, containment)): the verdict is :func:`classify`'s."""
     row = "; registry row remains" if branch in ctx.live else ""
     why = f"leaf {node_id} Complete" if node_id else "claim gone"
-    how = merged_how(ctx.root, ref, ctx.target)
     leaf = f"; leaf {node_id} Complete" if row else ""
-    evidence = own_commit_evidence(ctx.root, ref, ctx.target) if how == "merged" else "present"
-    if how and evidence == "absent":
-        return f"{why}, no commits yet{row}", "fresh"   # its tip is a commit target already had
-    if how and evidence == "ambiguous":
-        return f"{how}{leaf}{row}; {NO_EVIDENCE}", "unproven"
-    if how:
-        return f"{how}{leaf}{row}", "merged"
-    ahead = git_checked(["rev-list", "--count", f"{ctx.target}..{ref}"], ctx.root)
-    return f"{why}, not merged: {ahead} commit(s) {ctx.target} lacks{row}", None
+    how = merged_how(ctx.root, ref, ctx.target)
+    inputs = (evidence_kind(ctx.root, ref, ctx.target, ctx.remote), containment(how))
+    source, live_why = ctx.held.get(branch, ("none", ""))
+    label, fix = classify(source, *inputs, kind)
+    if label == "not merged":
+        ahead = git_checked(["rev-list", "--count", f"{ctx.target}..{ref}"], ctx.root)
+        return f"{why}, not merged: {ahead} commit(s) {ctx.target} lacks{row}", label, fix, inputs
+    reason = {"live": live_why, "no commits yet": f"{why}, no commits yet{row}",
+              "merged, no evidence": f"merged{leaf}{row}; {NO_EVIDENCE}"}.get(label, f"{how}{leaf}{row}")
+    return reason, label, fix, inputs
 
 
 def _delete_local(root: Path, branch: str, sha: str | None) -> str | None:
@@ -109,26 +106,27 @@ def _delete_remote(root: Path, branch: str, sha: str | None, remote: str) -> str
     return f"left on {remote}. {out}" if code else None
 
 
-def _branch_findings(ctx: _Ctx) -> tuple[list[Finding], dict[str, str]]:
-    """Complete or unclaimed branches, and every local ``feature/rm-*`` that is merged.
+def _branch_findings(ctx: _Ctx) -> tuple[list[Finding], dict[str, tuple[str, str]]]:
+    """Complete or unclaimed branches, and the classification inputs of every local ``feature/rm-*``.
 
-    The merged map (branch -> verdict of :func:`_branch_reason`) feeds the worktree section,
-    which judges a worktree on a merged branch even when the branch itself is not listed.
-    A live branch (:attr:`_Ctx.held`), or a merged one without evidence of its own commits,
-    is listed without a fix.
+    Those inputs feed the worktree section, which judges a worktree on a branch even when the
+    branch itself is not listed. A claimed branch is in-progress work and is not listed; any other
+    verdict without a fix (live worker or session, no commits yet, merged with no evidence) is
+    listed with ``so --fix leaves it``.
     """
     found: list[Finding] = []
-    merged_local: dict[str, str] = {}
+    local: dict[str, tuple[str, str]] = {}
     for prefix, where in (("refs/heads/", "local"), (f"refs/remotes/{ctx.remote}/", ctx.remote)):
         for b in feature_branches(ctx.root, prefix):
             node_id = ctx.complete.get(b.removeprefix("feature/rm-"))
-            reason, verdict = _branch_reason(ctx, prefix + b, b, node_id)
-            if where == "local" and verdict is not None:
-                merged_local[b] = verdict
-            if b in ctx.live and not node_id:
+            reason, label, fix, inputs = _branch_reason(ctx, prefix + b, b, node_id,
+                                                        "local" if where == "local" else "remote")
+            if where == "local":
+                local[b] = inputs
+            if ctx.held.get(b, ("none",))[0] == "claim":
                 continue
-            if b in ctx.held or verdict in ("fresh", "unproven"):
-                found.append(Finding("branch", f"{where:<9} {b}", f"{ctx.held.get(b, reason)}, so --fix leaves it", None, ""))
+            if not fix:
+                found.append(Finding("branch", f"{where:<9} {b}", f"{reason}, so --fix leaves it", None, ""))
                 continue
             sha = git_text(["rev-parse", prefix + b], ctx.root)
             if where == "local":
@@ -136,7 +134,7 @@ def _branch_findings(ctx: _Ctx) -> tuple[list[Finding], dict[str, str]]:
             else:
                 remove, done = partial(_delete_remote, ctx.root, b, sha, ctx.remote), f"deleted {b} on {ctx.remote}"
             found.append(Finding("branch", f"{where:<9} {b}", reason, remove, done))
-    return found, merged_local
+    return found, local
 
 
 def _prune_row(ctx: _Ctx, codename: str) -> str | None:
