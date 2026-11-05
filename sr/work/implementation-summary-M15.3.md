@@ -170,6 +170,28 @@ Merged `origin/WIP/improvements-0-3-1` first. It was clean, and WIP added tests 
 - **File limit:** this round's own new docstring paragraph was reflowed to 120 columns with no words removed;
   `role_prompt_cli.py` is at 400 lines.
 
+## Fix round 5 (gpt-6.1-sol-low blocked 3e3f890c)
+
+Merged `origin/WIP/improvements-0-3-1` first. It was clean, and WIP added one test file and a done summary.
+
+- **Finding:** `test_a_harness_model_overrides_an_unknown_profile_api_id_and_without_one_it_is_refused` in
+  `tests/test_effective_model.py` repeated three rows of the parametrized table above it.
+- **Class:** a test that restates cases a table or another test already asserts. Every test this leaf added was
+  audited, and four sets were consolidated, with no behaviour left uncovered:
+  1. The named standalone test was removed. Its three `model_problem` cases are table rows (a `harness_model` over an
+     `unknown` profile, `unknown` with no `harness_model`, no profile giving the roster id), and the table asserts
+     `model_problem` on every row.
+  2. `test_check_compares_the_reported_model_with_the_roster_entry` was removed. Its four rows (API id, display
+     name, other model, nothing reported) are rows of the same table, which asserts `check` on every row.
+  3. The two end-to-end mismatch tests (init-event report, result-only report) are now one test,
+     `test_a_mismatched_model_is_filed_flagged_and_excluded_from_the_gate`, parametrized over where the model was
+     reported. Both cases keep the full assertions: warning, record fields, gate exclusion and the `review_eligible` row.
+  4. The two "no API id" refusals (adapter command, custom command) are now one test parametrized over the entry.
+     Both cases assert refusal on `--run` with no process and no run record, and refusal in the preview.
+  - The public CLI bypass test keeps two rows: the plain CLI path, and the line continuation the previous round's
+    review asked for end to end. The other flag shapes are rows of the rule table
+    (`test_bypass_flags_are_found_as_sh_reads_its_words`), and every flag name appears there.
+
 ## Probes
 
 - Unknown API id with a `channels.cli`, run and dry run: refused before launch, with no process and no run record (tested).
@@ -237,6 +259,13 @@ Merged `origin/WIP/improvements-0-3-1` first. It was clean, and WIP added tests 
 - Fix round 4: text specy-road substitutes into the command after the check (`{prompt}`, `"<prompt>"`, `{effort}`): the prompt goes in as one quoted argument or a file path, and the effort flags come from fixed adapter tables, so neither adds roster-controlled words.
 - Fix round 4: an unbalanced quote is still refused (existing test).
 - Fix round 4: complexity. `bypass_problem` has no new branch, and this leaf adds no `noqa: C901` (grep of the diff from the base adds none). The one in the zones, on `role_prompt.build_prompt`, predates this leaf as its baseline marker and is unchanged.
+
+- Fix round 5: every test this leaf added (`test_prompt_channel_cli_run.py`, `test_effective_model.py`) was listed and compared case by case against the tables and the other tests. Four duplicate sets were found and consolidated (above); none remain.
+- Fix round 5: the remaining pairs that look alike assert different behaviour, so both stay. `test_reported_models_*` (parsing) vs `test_check_run_*` (the decision). The `--run` refusal with no worktree vs the preview with no worktree (refusal vs printing). The A3 cwd test vs the `review-label` CLI test (worktree vs model flag). The unreported end-to-end test vs the unreported table row (the gate counts the record vs the classification).
+- Fix round 5: no test imports or patches a private name from another module (grep for `import _` and `, _`; the `_`-prefixed names in use are each file's own helpers).
+- Fix round 5: assertions are on behaviour (exit codes, stderr, filed record fields, gate and eligibility results, launch argv and cwd), not call counts.
+- Fix round 5: coverage kept. The two edited files pass (60), and so does the targeted set of 45 files (704).
+- Fix round 5: earlier tests edited in other files (`--run` added, patch targets moved, fixture model) duplicate none of these.
 
 ## Final touch zones
 
