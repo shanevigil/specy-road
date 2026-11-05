@@ -189,7 +189,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.80` | Executors and reviewers run tests with a bounded worker count | task | Agentic-led | Complete |
 | `M11.82` | The integration branch passes ruff again and the land check runs it | task | Agentic-led | Complete |
 | `M12` | Harness engineering: cheaper gates, clearer refusals, less drift | phase | — | Not Started |
-| `M12.1` | A review fix-round budget that defers new-input-class findings to a follow-up leaf | task | Agentic-led | Not Started |
+| `M12.1` | A review fix-round budget that defers new-input-class findings to a follow-up leaf | task | Agentic-led | Complete |
 | `M12.2` | Every refusal names its fix | task | Agentic-led | Complete |
 | `M12.3` | Scheduled gardening chores that find drift and open small chore leaves | task | Agentic-led | Complete |
 | `M12.4` | Quality signals agents and PMs read first | milestone | — | Not Started |
@@ -201,7 +201,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M13` | rc3 adopter feedback: upgrade and adoption friction | phase | — | Not Started |
 | `M13.1` | Say which install is running and flag managed blocks an older version wrote | task | Agentic-led | Complete |
 | `M13.2` | upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap | task | Agentic-led | Not Started |
-| `M13.3` | A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates | task | Agentic-led | Not Started |
+| `M13.3` | A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates | task | Agentic-led | Complete |
 | `M13.4` | A milestone held for its full review says so in validate, list-nodes and why-blocked | task | Agentic-led | Not Started |
 | `M13.5` | refresh-profiles installs only the profiles the roster names, and suggests the alias for a near miss | task | Agentic-led | Complete |
 | `M13.6` | Safe release-candidate install recipe, pipx and uv tool upgrades, and checking which binary is on PATH | task | Agentic-led | Complete |
@@ -226,9 +226,9 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M14.8` | The implementation-zone check runs before a review is spent, and knows about sibling repositories | task | Agentic-led | Not Started |
 | `M14.9` | review rca launches the root-cause analyst like review delegate, and says what to do when no analyst is available | task | Agentic-led | Not Started |
 | `M14.10` | Escalation recognises a converging loop and handoff status shows the findings trend | task | Agentic-led | Not Started |
-| `M14.11` | The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes | task | Agentic-led | Not Started |
+| `M14.11` | The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes | task | Agentic-led | Complete |
 | `M15` | rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction | phase | — | Not Started |
-| `M15.1` | RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command | task | Agentic-led | Not Started |
+| `M15.1` | RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command | task | Agentic-led | Complete |
 | `M15.2` | A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch | task | Agentic-led | Not Started |
 | `M15.3` | prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged | task | Agentic-led | Not Started |
 | `M15.4` | Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current | task | Agentic-led | Not Started |
@@ -237,7 +237,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.7` | file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count | task | Agentic-led | Not Started |
 | `M15.8` | A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it | task | Agentic-led | Not Started |
 | `M15.9` | Harness launches survive large prompts and a harness binary off PATH, for every role | task | Agentic-led | Not Started |
-| `M15.10` | Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff | task | Agentic-led | Not Started |
+| `M15.10` | Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff | task | Agentic-led | Complete |
 | `M15.11` | A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors | task | Agentic-led | Not Started |
 | `M15.12` | Shared documentation zones do not serialize grind-session batches | task | Agentic-led | Not Started |
 | `M15.13` | Worker loop friction: sync waits for the events that matter, tool-use noise collapses, rework after a completed worker, a READY-only resume, a quieter pickup | task | Agentic-led | Not Started |

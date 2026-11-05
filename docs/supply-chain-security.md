@@ -112,7 +112,7 @@ Then run `pip-audit` (see [contributor-guide.md](contributor-guide.md#supply-cha
 ## Release candidates from TestPyPI
 
 Release candidates publish to TestPyPI, an index anyone can upload to. An install that names TestPyPI as `--index-url` and PyPI as `--extra-index-url` lets pip take **any** package in the resolution from either index (and uv's `--index-strategy unsafe-best-match` does the same), so a squatted dependency name on TestPyPI can replace the real one.
-The supported recipe ([install-and-usage.md](install-and-usage.md#install-a-release-candidate-testpypi)) downloads only the pinned `specy-road` wheel from TestPyPI with `--no-deps`, compares its sha256 with the value published in the RC announcement ([release-runbook.md](release-runbook.md), A.3), and installs the dependencies from PyPI alone.
+The supported recipe ([install-release-candidates.md](install-release-candidates.md)) downloads only the pinned `specy-road` wheel from TestPyPI with `--no-deps`, compares its sha256 with the value published in the RC announcement ([release-runbook.md](release-runbook.md), A.3), and installs the dependencies from PyPI alone.
 `tests/test_docs_rc_install_recipe.py` fails if a doc reintroduces the two-index form.
 
 ## Reporting discipline: repo-scoped first

@@ -61,7 +61,8 @@
         "specy_road/file_limits_engine.py",
         "tests/",
         "specy_road/templates/project/constraints/file-limits.yaml",
-        "specy_road/bundled_scripts/upgrade_preview.py"
+        "specy_road/bundled_scripts/upgrade_preview.py",
+        "specy_road/bundled_scripts/upgrade_plan.py"
       ],
       "type": "task"
     },
@@ -80,7 +81,7 @@
       "parent_id": "M13",
       "planning_dir": "planning/M13.3_a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates_6069463a-3a1a-4778-853a-a4dffb1a1ede.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates",
       "touch_zones": [
         "specy_road/agents_md_block.py",
