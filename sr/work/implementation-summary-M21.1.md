@@ -47,6 +47,11 @@ These are the brief's zones plus one new file:
   - The unknown-node guard is one helper, `_load_with_node`, shared by indent and outdent.
   - Measured with ruff C901 at `max-complexity=1`, no function that exists at the merge base is now more complex. The pre-existing `noqa: C901` on `_api_add_node_impl` is unchanged, and so is that function's complexity.
 
+## Post-fix refactor (coordinator precheck)
+
+- `_api_add_node_impl` measured 12 against a merge-base 11. The earlier measurement had missed it because the baseline `noqa: C901` hid it from ruff; it is now measured with `--ignore-noqa`. The requested-or-next-free id choice moved into one helper, `_new_node_id`: 400 for a refused request, 409 for a taken generated id, and the same behaviour as before. `_api_add_node_impl` is now 9, below its merge base and the project limit of 10, so I removed its baseline `noqa: C901 — baseline 2026-10-28; simplify, then drop this`, as that comment asks. No other file lists that waiver. This round added no `noqa`.
+- Re-measured with `--ignore-noqa` against the merge base: no base function in the touched modules is more complex than before. The only new functions are small helpers, each at complexity 4 or less.
+
 ## Probes
 
 - `lowest_free_child_id(["M0","M2"], root, ignore={"M0"})`: `M0` (was `M1`). Unit param added.
@@ -76,13 +81,14 @@ These are the brief's zones plus one new file:
 - `roadmap_outline_renumber._first_child_number`: the one root-base rule (`M0` from the whole graph) for both allocators (fix round 1, finding 1).
 - `roadmap_outline_ops._load_with_node`: shared indent/outdent load with the unknown-node guard (A4; fix round 1 consolidation).
 - `roadmap_id_rewrite_staging.py`: existing staging helpers moved verbatim for the file cap (no new logic).
+- `gui_app_routes_nodes._new_node_id`: add-node's id rule (requested free id or next free), extracted to keep `_api_add_node_impl` below its merge-base complexity (A3; precheck refactor).
 - `gui_app_models.OutlineShiftBody`: optional indent/outdent body carrying `renumber_outline` (A2).
 - `MoveOutlineBody.new_id`, `MoveOutlineBody.fill_gaps`, `MoveOutlineBody.renumber_outline`, `ReorderBody.renumber_outline`, `AddNodeBody.new_id`: optional request fields (A2, A3).
 
 ### Branches and guards
 - `move_node`: refuses more than one of `new_id`, `fill_gaps`, `renumber_outline`, through `_refuse_id_form_combinations` (A1).
 - `apply_indent` / `apply_outdent`: unknown node id raises `ValueError` (through `_load_with_node`), so the route returns 400 instead of 200 or 500 (A4).
-- `_api_add_node_impl`: validates a requested `new_id` and returns 400 if refused (A3).
+- `_new_node_id`: validates a requested `new_id` and returns 400 if refused (A3).
 - `_api_add_node_impl`: unknown reference returns 400 instead of 404 (A4).
 - `reorder_siblings`: renumbers only under `renumber_outline` (A2).
 
