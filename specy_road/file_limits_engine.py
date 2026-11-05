@@ -109,9 +109,9 @@ def merge_exclude_patterns(cfg: dict) -> list[str]:
     return out
 
 
-def _glob_pattern_variants(pattern: str) -> list[str]:
+def _glob_pattern_variants(pattern: str, *, strip: bool = True) -> list[str]:
     """``Path.glob('dir/**')`` can omit nested files on some layouts; also try ``dir/**/*``."""
-    p = pattern.strip()
+    p = pattern.strip() if strip else pattern
     if not p:
         return []
     if p.endswith("/**") and not p.endswith("/**/*"):
@@ -119,11 +119,11 @@ def _glob_pattern_variants(pattern: str) -> list[str]:
     return [p]
 
 
-def iter_glob_files(root: Path, pattern: str) -> list[Path]:
+def iter_glob_files(root: Path, pattern: str, *, strip_pattern: bool = True) -> list[Path]:
     root = root.resolve()
     seen: set[str] = set()
     matches: list[Path] = []
-    for variant in _glob_pattern_variants(pattern):
+    for variant in _glob_pattern_variants(pattern, strip=strip_pattern):
         for p in root.glob(variant):
             if not p.is_file() or should_skip(p, root):
                 continue
@@ -152,10 +152,10 @@ def build_overlay_match_sets(root: Path, cfg: dict) -> list[tuple[dict, frozense
             continue
         paths: set[str] = set()
         for g in ov.get("file_globs") or []:
-            gs = str(g).strip()
-            if not gs:
+            gs = str(g)
+            if not gs.strip():
                 continue
-            for p in iter_glob_files(root, gs):
+            for p in iter_glob_files(root, gs, strip_pattern=False):
                 paths.add(p.relative_to(root).as_posix())
         result.append((ov, frozenset(paths)))
     return result

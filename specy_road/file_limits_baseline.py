@@ -46,14 +46,6 @@ def literal_path_glob(rel_posix: str) -> str:
     return "".join(out)
 
 
-def _loads_file_limits_mapping(text: str) -> dict | None:
-    try:
-        cfg = yaml.safe_load(text)
-    except yaml.YAMLError:
-        return None
-    return cfg if isinstance(cfg, dict) else None
-
-
 def round_up_to_step(value: int, step: int) -> int:
     if value <= 0:
         return 0
@@ -225,21 +217,23 @@ def write_baseline(
         return 0
     try:
         new_text = append_baseline_yaml_text(raw, block, cfg=cfg)
-    except ValueError:
-        print(
-            f"file-limits baseline: refusing to write {cfg_path}; "
-            "append would alter existing override_limits entries.",
-            file=sys.stderr,
-        )
-        return 1
-    if _loads_file_limits_mapping(new_text) is None:
-        print(
-            f"file-limits baseline: refusing to write {cfg_path}; "
-            "appended text would not load as YAML.",
-            file=sys.stderr,
-        )
+    except ValueError as exc:
+        print(f"file-limits baseline: refusing to write {cfg_path}; {exc}", file=sys.stderr)
         return 1
     cfg_path.write_text(new_text, encoding="utf-8")
+    new_cfg = yaml.safe_load(new_text) or {}
+    if not isinstance(new_cfg, dict):
+        cfg_path.write_text(raw, encoding="utf-8")
+        print(f"file-limits baseline: refusing to write {cfg_path}; appended text is invalid.", file=sys.stderr)
+        return 1
+    if run_file_limits_scan(root, new_cfg, respect_gitignore=respect_gitignore):
+        cfg_path.write_text(raw, encoding="utf-8")
+        print(
+            f"file-limits baseline: appended entries did not resolve today's failures in {cfg_path}; "
+            "restored previous file.",
+            file=sys.stderr,
+        )
+        return 1
     print(f"file-limits baseline: appended to {cfg_path.relative_to(project)}", file=out)
     return 0
 

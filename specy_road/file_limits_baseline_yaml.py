@@ -3,35 +3,36 @@
 from __future__ import annotations
 
 import copy
+import json
 import re
 
 import yaml
 from yaml import compose
-from yaml.nodes import MappingNode, SequenceNode
+from yaml.nodes import MappingNode, ScalarNode, SequenceNode
 
-_TOP_LEVEL_KEY = re.compile(r"^[A-Za-z_][\w.-]*\s*:")
 _TRAILING_POLICY_KEYS = ("roadmap_manifest_max_lines", "roadmap_json_chunk_max_lines", "hard_alerts")
 
 
 def yaml_quoted_scalar(value: str) -> str:
-    return yaml.dump(value, default_style='"', width=2**16).strip()
+    return json.dumps(value)
 
 
-def _override_limits_sequence(text: str) -> SequenceNode | None:
+def _compose_mapping(text: str) -> MappingNode | None:
     try:
         root = compose(text)
     except yaml.YAMLError:
         return None
-    if not isinstance(root, MappingNode):
-        return None
+    return root if isinstance(root, MappingNode) else None
+
+
+def _override_limits_nodes(root: MappingNode) -> tuple[yaml.nodes.Node, yaml.nodes.Node] | None:
     for key_node, val_node in root.value:
-        if key_node.value == "override_limits" and isinstance(val_node, SequenceNode):
-            return val_node
+        if key_node.value == "override_limits":
+            return key_node, val_node
     return None
 
 
 def _flow_sequence_close_bracket_index(seq_node: SequenceNode) -> int:
-    """Index of the closing ``]`` for a flow-style sequence (composer end mark)."""
     return seq_node.end_mark.index - 1
 
 
@@ -60,43 +61,14 @@ def _verify_append_preserves_parsed(before: dict, after: dict, new_entries: int)
         if key != "override_limits" and after.get(key) != val:
             return False
     old_rows = before.get("override_limits") or []
+    if not isinstance(old_rows, list):
+        old_rows = []
     new_rows = after.get("override_limits") or []
+    if not isinstance(new_rows, list):
+        return False
     if len(new_rows) != len(old_rows) + new_entries:
         return False
     return new_rows[: len(old_rows)] == old_rows
-
-
-def _ends_override_limits_section(line: str) -> bool:
-    if not line.strip():
-        return False
-    if line[0] in " \t":
-        return False
-    if line.lstrip().startswith("#"):
-        return False
-    return _TOP_LEVEL_KEY.match(line) is not None
-
-
-def _override_limits_header_index(lines: list[str]) -> int | None:
-    for i, line in enumerate(lines):
-        if re.match(r"^override_limits\s*:", line):
-            return i
-    return None
-
-
-def _insert_index_for_new_override_rows(lines: list[str]) -> tuple[int, bool]:
-    header = _override_limits_header_index(lines)
-    if header is not None:
-        insert_at = len(lines)
-        for i in range(header + 1, len(lines)):
-            if _ends_override_limits_section(lines[i]):
-                insert_at = i
-                break
-        return insert_at, False
-    for i, line in enumerate(lines):
-        key = line.split(":", 1)[0].strip()
-        if key in _TRAILING_POLICY_KEYS:
-            return i, True
-    return len(lines), True
 
 
 def _loads_file_limits_mapping(text: str) -> dict | None:
@@ -107,36 +79,94 @@ def _loads_file_limits_mapping(text: str) -> dict | None:
     return cfg if isinstance(cfg, dict) else None
 
 
+def _line_start_index(text: str, index: int) -> int:
+    line_start = text.rfind("\n", 0, index)
+    return 0 if line_start == -1 else line_start + 1
+
+
+def _insert_index_for_new_override_section(text: str, root: MappingNode) -> int:
+    for key_node, _ in root.value:
+        if key_node.value in _TRAILING_POLICY_KEYS:
+            return _line_start_index(text, key_node.start_mark.index)
+    return root.end_mark.index
+
+
+def _insert_new_override_limits_section(text: str, root: MappingNode, block_body: str) -> str:
+    at = _insert_index_for_new_override_section(text, root)
+    prefix = text[:at]
+    suffix = text[at:]
+    if prefix and not prefix.endswith("\n"):
+        prefix += "\n"
+    chunk = "override_limits:\n" + block_body + "\n"
+    return prefix + chunk + suffix
+
+
+def _scalar_is_empty_override(val_node: ScalarNode) -> bool:
+    if val_node.value is None:
+        return True
+    if val_node.value == "":
+        return True
+    return str(val_node.value).lower() == "null"
+
+
+def _replace_empty_override_value(text: str, val_node: yaml.nodes.Node, block_body: str) -> str:
+    start = val_node.start_mark.index
+    end = val_node.end_mark.index
+    insertion = "\n" + block_body
+    if start == end and start > 0 and text[start - 1] != "\n":
+        insertion = "\n" + block_body
+    return text[:start] + insertion + text[end:]
+
+
+def _append_to_existing_override_limits(existing_text: str, val_node: yaml.nodes.Node, block_body: str) -> str:
+    if isinstance(val_node, SequenceNode):
+        if val_node.flow_style is True:
+            close = _flow_sequence_close_bracket_index(val_node)
+            flow_snip = _flow_baseline_snippet(block_body)
+            insertion = flow_snip if not val_node.value else f", {flow_snip}"
+            return existing_text[:close] + insertion + existing_text[close:]
+        if val_node.value:
+            idx = val_node.end_mark.index
+            prefix = "" if idx > 0 and existing_text[idx - 1] == "\n" else "\n"
+            return existing_text[:idx] + prefix + block_body + "\n" + existing_text[idx:]
+        return _replace_empty_override_value(existing_text, val_node, block_body)
+    if isinstance(val_node, MappingNode):
+        if val_node.value:
+            raise ValueError(
+                "constraints/file-limits.yaml: override_limits mapping is not empty; "
+                "rewrite override_limits as a sequence in block style and retry"
+            )
+        return _replace_empty_override_value(existing_text, val_node, block_body)
+    if isinstance(val_node, ScalarNode):
+        if not _scalar_is_empty_override(val_node):
+            raise ValueError(
+                "constraints/file-limits.yaml: override_limits is not a sequence; "
+                "rewrite override_limits in block style and retry"
+            )
+        return _replace_empty_override_value(existing_text, val_node, block_body)
+    raise ValueError(
+        "constraints/file-limits.yaml: override_limits has an unsupported shape; "
+        "rewrite override_limits as a block sequence and retry"
+    )
+
+
 def append_baseline_yaml_text(existing_text: str, block: str, *, cfg: dict | None = None) -> str:
     if not block.strip():
         return existing_text
+    root = _compose_mapping(existing_text)
+    if root is None:
+        raise ValueError(
+            "constraints/file-limits.yaml: could not compose YAML; fix syntax or use block-style override_limits"
+        )
     before_cfg = copy.deepcopy(cfg if cfg is not None else _loads_file_limits_mapping(existing_text) or {})
     block_body = block.rstrip("\n")
     new_count = _count_new_baseline_entries(block)
-    seq = _override_limits_sequence(existing_text)
-    if seq is None:
-        lines = existing_text.splitlines()
-        if _override_limits_header_index(lines) is not None:
-            raise ValueError(
-                "constraints/file-limits.yaml: override_limits is present but not a composable "
-                "sequence; rewrite override_limits in block style and retry"
-            )
-        insert_at, need_header = _insert_index_for_new_override_rows(lines)
-        new_lines = lines[:insert_at]
-        if need_header:
-            new_lines.append("override_limits:")
-        new_lines.extend(block_body.splitlines())
-        new_lines.extend(lines[insert_at:])
-        result = "\n".join(new_lines)
-    elif seq.flow_style is True:
-        close = _flow_sequence_close_bracket_index(seq)
-        flow_snip = _flow_baseline_snippet(block_body)
-        insertion = flow_snip if not seq.value else f", {flow_snip}"
-        result = existing_text[:close] + insertion + existing_text[close:]
+    nodes = _override_limits_nodes(root)
+    if nodes is None:
+        result = _insert_new_override_limits_section(existing_text, root, block_body)
     else:
-        idx = seq.end_mark.index
-        prefix = "" if idx > 0 and existing_text[idx - 1] == "\n" else "\n"
-        result = existing_text[:idx] + prefix + block_body + "\n" + existing_text[idx:]
+        _key_node, val_node = nodes
+        result = _append_to_existing_override_limits(existing_text, val_node, block_body)
     if existing_text.endswith("\n") or not result.endswith("\n"):
         result += "\n"
     after_cfg = _loads_file_limits_mapping(result)
