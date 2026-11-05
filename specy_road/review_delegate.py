@@ -33,7 +33,6 @@ import math
 import subprocess
 import sys
 import time
-import uuid
 from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
@@ -42,24 +41,24 @@ from typing import Any
 from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, load_chore
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text
-from specy_road.orchestration_config import harness_model
-from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
+from specy_road.orchestration_pinned import pinned_config
+from specy_road.review_delegate_harness import HarnessSetupError, _Harness
 from specy_road.review_delegate_packet import ensure_packet
 from specy_road.review_files import reviews_dir
 from specy_road.review_answer import stream_lines
-from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, ReviewRunBusy, answer_scratch, attempt_text,
+from specy_road.review_model_check import check_note, check_run, rostered
+from specy_road.review_record_write import (Outcome, ReviewRunBusy, answer_scratch, attempt_text,
                                             close_review_run, delegate_turn, file_review, final_answer, review_run_lock,
                                             snapshot, write_schema)
 from specy_road.review_run_status import superseded_by
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.review_usage import add_parser as add_usage_parser, archive_round
-from specy_road.reviewer_auth import claude_default_reviewer
 from specy_road.reviewer_run_failure import capacity_error, valid_record  # noqa: F401 — re-exported
 from specy_road.reviewer_run_failure import gate_policy_summary as _gate_policy_summary
 from specy_road.reviewer_run_failure import (_now, _read_json, close_run, run_path as _run_path, save_run,
                                              turn_capacity_error)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.worker_adapters import ClaudeCode, Launch, Unsupported, adapter_for, reviewer_cli
+from specy_road.worker_adapters import Unsupported
 from specy_road.worker_lock import WorkerError
 from specy_road.worker_sessions import check_session_id
 
@@ -102,58 +101,18 @@ def _preflight(entry: dict[str, Any], cwd: Path) -> None:
         raise DelegateError(f"preflight failed: {cmd}; nothing was launched")
 
 
-class _Harness:
-    """One roster entry's way of starting and resuming a reviewer turn."""
+def _no_model_refusal(model: str, harness: str) -> str:
+    return (f"{model}: no model would be passed to {harness}, so it would run its own default model; "
+            "set harness_model on the roster entry, or routing: dynamic to accept the harness's choice")
 
-    def __init__(self, repo_root: Path, entry: dict[str, Any], node_id: str, cwd: Path, chore: bool = False) -> None:
-        self.harness = str(entry.get("harness") or "generic")
-        self.adapter = adapter_for(self.harness)
-        prof = pinned_profile_for_entry(repo_root, entry)
-        if prof is not None and not prof.ok:
-            raise DelegateError(f"profile for {entry.get('id')!r}: " + "; ".join(prof.errors))
-        self.cli = (entry.get("channels") or {}).get("cli")
-        if not self.cli and self.harness == "generic" and prof is not None:
-            self.cli = prof.cli()
-        api = prof.api_id if prof is not None else ""   # no profile and no harness_model: the harness's default
-        self.api_id = harness_model(entry, api)
-        self.effort = prof.effort("reviewer") if prof is not None else None
-        self.mode = prof.launch_mode() if prof is not None else "full"
-        self.repo_root, self.node_id, self.cwd, self.model = repo_root, node_id, cwd, str(entry.get("id"))
-        # The adapter's own read-only reviewer command. A chore reviewer writes its verdict file itself (chore_cli),
-        # so it keeps the launch it had before M8.3: Claude Code's bare reviewer command, else the adapter's own.
-        self.chore = chore
-        self.default = self.harness != "generic" and not self.cli and (not chore or isinstance(self.adapter, ClaudeCode))
-        self.auth_error: str | None = None
-        self.note: str | None = None
-        self.harness_bin = entry.get("harness_bin")   # resolved by the adapter whenever a default command is built
-        if self.default and isinstance(self.adapter, ClaudeCode):
-            profile_mode = prof.launch_mode() if prof is not None else None
-            self.launch_mode, self.auth_error, self.note = claude_default_reviewer(entry, profile_mode)
-        else:
-            self.launch_mode = self.mode
-        self.can_resume = self.adapter.caps.resume
-        self.output: Path | None = None   # answer_scratch's file: where a fresh Codex turn writes its answer (-o)
-        self.log = Path()   # the run's transcript, RUN-<model>.log
-        self.replaced: list[Path] = []   # a symlink at the run record, replaced by specy-road's own update
 
-    def launch(self, prompt: Path, session: str | None) -> Launch:
-        """A fresh turn, or a resume of ``session`` (an id the harness reported)."""
-        if self.default:
-            sid = session or (str(uuid.uuid4()) if isinstance(self.adapter, ClaudeCode) else None)
-            reviews = reviews_dir(self.repo_root, self.node_id)
-            structured = {} if self.chore else {"schema": reviews / OUTPUT_SCHEMA_NAME, "output": self.output}
-            extra = {"mode": self.launch_mode} if isinstance(self.adapter, ClaudeCode) else {}
-            return self.adapter.reviewer_launch(prompt, self.api_id, reviews, self.effort,
-                                                session=(sid, session is not None) if sid else None,
-                                                **structured, **extra, harness_bin=self.harness_bin)
-        kw = {"node_id": self.node_id, "repo_root": self.repo_root, "launch_mode": self.mode, "effort": self.effort,
-              "harness_bin": self.harness_bin}   # a custom command without {session} resumes with the default
-        # A custom command gets its program's structured-output flags (Antigravity `agy`: --json-schema).
-        cli = (reviewer_cli(self.cli, reviews_dir(self.repo_root, self.node_id) / OUTPUT_SCHEMA_NAME)
-               if self.cli and not self.chore else self.cli)
-        if session is not None:
-            return self.adapter.resume(session, prompt, self.cwd, self.api_id, cli, **kw)
-        return self.adapter.launch(prompt, self.cwd, self.api_id, cli, **kw)
+def _model_check(repo_root: Path, model: str, log: Path, attempt: dict[str, Any]) -> tuple[str | None, tuple[str | None, str]]:
+    text_out = attempt_text(log, attempt)
+    rev_entry, prof = rostered(repo_root, model)
+    reported, state = check_run(text_out, rev_entry, prof)
+    if note := check_note(state, reported, model):
+        print(note, file=sys.stderr)
+    return reported, (reported, state)
 
 
 def _start(repo_root: Path, t: ReviewTarget, model: str, ref: str | None, h: _Harness,
@@ -254,7 +213,10 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
             raise DelegateError(str(e)) from None
     entry = _entry(repo_root, model)
     cwd = (worktree or Path(git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root)).resolve()
-    h = _Harness(repo_root, entry, node_id, cwd, chore=chore is not None)
+    try:
+        h = _Harness(repo_root, entry, node_id, cwd, chore=chore is not None)
+    except HarnessSetupError as e:
+        raise DelegateError(str(e)) from None
     if h.auth_error:   # forced bare with no key: before the lock, the prompt files and the RUN record
         raise DelegateError(h.auth_error)
     path, reviews = run_path(repo_root, node_id, model), reviews_dir(repo_root, node_id)
@@ -271,13 +233,15 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
         _preflight(entry, cwd)   # M8.3: after the lock, before the RUN record is saved
         if h.note:   # bare mode and the subscription login, same sentence prompt prints
             print(h.note, file=sys.stderr)
+        if h.api_id is None and entry.get("routing") != "dynamic":
+            raise DelegateError(_no_model_refusal(model, h.harness))
         prompts = (_prompt_file(repo_root, node_id, model, text),
                    _prompt_file(repo_root, node_id, model, CHORE_RESUME_PROMPT if chore else RESUME_PROMPT, "-resume"))
         archive_round(repo_root, node_id, model)   # M14.6: the previous round's RUN json, log and notes, kept in history/
         run = {"node_id": node_id, "model": model, "harness": h.harness, "ref": t.ref, "commit": t.commit,
                "state": "running", "session_id": session, "resumed": resume, "source": "review-delegate",
                "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
-               "launch_mode": h.launch_mode,
+               "launch_mode": h.launch_mode, "requested_model": h.api_id, "reported_model": None,
                "log": str(path.with_suffix(".log"))}
         save_run(path, run)
         h.log = log = path.with_suffix(".log")
@@ -287,11 +251,16 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
                 write_schema(repo_root, reviews, ref)   # before the snapshot: the reviewer must not change it
             before = snapshot(cwd, reviews, model) if chore is None else None
             reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
+            model_check = None
+            if before is not None:
+                attempt = run["attempts"][-1] if run["attempts"] else {}
+                reported, model_check = _model_check(repo_root, model, log, attempt)
+                run["reported_model"] = reported
             filed = None if before is None else file_review(
                 repo_root, node_id, model, reviews, answer=final_answer(
                     h.adapter, attempt_text(log, run["attempts"][-1] if run["attempts"] else {}), answer),
                 before=before, after=snapshot(cwd, reviews, model, before).with_symlinks(h.replaced), ref=ref,
-                launch_mode=h.launch_mode, sign_key=sign_key)
+                launch_mode=h.launch_mode, sign_key=sign_key, model_check=model_check)
             _close(repo_root, t, model, run, path, reason, filed)
         except BaseException as e:   # an interrupt or a launch refusal still closes the record
             close_review_run(repo_root, t, model, run, Outcome("rerun", f"interrupted: {e or type(e).__name__}", exit=None))

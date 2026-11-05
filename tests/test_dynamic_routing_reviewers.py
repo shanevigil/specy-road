@@ -14,6 +14,8 @@ from tests.worker_repo_helpers import FAKE, make_worker_repo, worker_roster
 
 from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
+from specy_road.orchestration_pinned import pinned_config
+from specy_road.orchestration_routing import entry_routing, routing_problem
 from specy_road.review_eligible import reviewer_eligibility
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
@@ -60,9 +62,10 @@ def test_dynamic_routing_approval_does_not_count_toward_distinct_families(tmp_pa
     repo, g = _gate(tmp_path, rev)
     assert g.passed is counts and g.approval_count == (2 if counts else 1)
     if not counts:
-        assert any("routes models dynamically" in p and "pinned: true" in p for p in g.problems())
+        assert any(("routes models dynamically" in p or "harness_model" in p) and "pinned: true" in p for p in g.problems())
         row = next(r for r in reviewer_eligibility(repo, NODE, g, None) if r["model"] == "rev")
-        assert not row["eligible"] and "routes models dynamically" in row["reason"]
+        assert not row["eligible"] and "pinned: true" in row["reason"]
+        assert "harness_model" in row["reason"] or "routes models dynamically" in row["reason"]
 
 
 def test_dynamic_routing_still_blocks_and_counts_without_distinct_families(tmp_path: Path) -> None:
@@ -91,6 +94,27 @@ def test_usage_keeps_requested_and_observed_model_and_sync_flags_a_mismatch(tmp_
     assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0
     mismatch = "model mismatch: told claude-sonnet-5-5, harness reported claude-opus-5-5"
     assert (mismatch in capsys.readouterr().out) is (told == "claude-sonnet-5-5")
+
+
+def test_claude_code_unknown_profile_api_id_routes_dynamic_and_names_harness_model(tmp_path: Path) -> None:
+    """M15.31 A4: any harness whose resolved model is none is dynamic; the gate names harness_model before pinned."""
+    from tests.test_models_and_prompt import OPUS, commit_profile, make_profile_repo
+
+    repo = make_profile_repo(tmp_path)
+    roster = repo / "roadmap" / "orchestration.yaml"
+    roster.write_text(roster.read_text().replace(
+        "    roles: [coordinator, executor, reviewer]",
+        "    roles: [coordinator, executor, reviewer]\n    harness: claude-code"))
+    prof = repo / "model-profiles" / "anthropic-claude" / OPUS.name
+    prof.write_text(prof.read_text().replace("api_id: claude-opus-5-5", "api_id: unknown"))
+    commit_profile(repo)
+    config, err = pinned_config(repo)
+    assert err is None
+    entry = next(e for e in config["roster"] if e.get("id") == "opus")
+    assert entry_routing(repo, entry) == "dynamic"
+    config["policy"] = {"reviewers_distinct_families": True}
+    why = routing_problem(repo, config, {"model": "opus", "verdict": "approve"})
+    assert why and "harness_model" in why and "pinned: true" in why
 
 
 @pytest.mark.parametrize("prologue, told, requested", [

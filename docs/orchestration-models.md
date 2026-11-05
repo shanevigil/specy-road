@@ -126,7 +126,7 @@ An entry's `harness_model` overrides both: it is the id the harness CLI expects
 when the roster `id` is not one (`claude --model` takes `claude-opus-5-5`, not
 a label like `opus-main`), and the default commands pass it as `--model` / `-m` on
 launch and on resume alike. With no profile and no `harness_model`, the roster
-`id` itself is passed. `validate` warns about a `claude-code` entry whose `id`
+`id` itself is passed (on `worker delegate`, `review delegate`, and `prompt --channel cli --run`). `validate` warns about a `claude-code` entry whose `id`
 has a dot and no `harness_model`. When a worker exits non-zero before its
 first stream event, its `error` event quotes the harness's last error line from
 `work/.workers/<id>.log` (an HTTP 404 for an unknown model, say), not only the
@@ -205,7 +205,7 @@ fields say so:
 
 | Key | Meaning |
 |---|---|
-| `routing` | `fixed` (the default): the harness runs the model it is told. `dynamic`: it may choose among models itself. A `cursor` entry told no model (no `harness_model`, a profile `api_id` of `unknown` or no profile, or a `channels.cli` without `--model`) or `auto` is `dynamic` whatever this says. A `channels.cli`'s `--model` is read only when it is one simple command (redirections such as `2>&1` allowed) and its value is literal (model-id characters, bare or quoted); in a list or pipeline (`;`, `&&`, `\|`, a newline, a subshell or `$(…)`) the flag may belong to another program, and a value the shell expands (`"${MODEL:-auto}"`, `$MODEL`, a glob, `~`) or an empty one is not the text written, so the model counts as unknown. |
+| `routing` | `fixed` (the default): the harness runs the model it is told. `dynamic`: it may choose among models itself. Any entry whose resolved launch model is none (no `harness_model`, a profile `api_id` of `unknown`, or no profile on a harness that needs an id) is `dynamic` whatever this says, as is a `cursor` entry told `auto`. A `cursor` entry told no model through `channels.cli` (no `--model` in one simple command) follows the same rule. A `channels.cli`'s `--model` is read only when it is one simple command (redirections such as `2>&1` allowed) and its value is literal (model-id characters, bare or quoted); in a list or pipeline (`;`, `&&`, `\|`, a newline, a subshell or `$(…)`) the flag may belong to another program, and a value the shell expands (`"${MODEL:-auto}"`, `$MODEL`, a glob, `~`) or an empty one is not the text written, so the model counts as unknown. |
 | `pinned` | `true` once the maintainer has checked that the harness honours the requested model (for Cursor: a model id that is not `auto`, with Auto turned off). Default `false`. |
 
 Under `policy.reviewers_distinct_families`, an approval from a `dynamic` entry that is not `pinned` does not
