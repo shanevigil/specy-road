@@ -2,43 +2,46 @@
 
 ## What changed
 
-The post-run check now reads each stash entry’s commit hash and subject (`git stash list --format=%H %gs`), parses the owning branch from the subject, and attributes add/remove deltas to the worker record on that branch. Observers get an informational `stash_other` note without `post_run_findings`; unattributable entries keep a `stash` finding on the observing worker with the subject quoted.
+The post-run check reads each stash entry’s commit hash and subject (`git stash list --format=%H %gs`), parses the owning branch from the subject, and attributes add/remove deltas to the worker record on that branch. Observers get an informational `stash_other` note without `post_run_findings`; unattributable entries keep a `stash` finding on the observing worker with the subject quoted.
 
 When either stash snapshot is `None` (git could not read the list), the turn gets exactly one `stash` finding whose summary includes `stash state unknown`, with no cross-worker attribution.
 
 All per-hash decisions go through `_decide_stash_hash_change`, which consults `_attributed_hashes` before any self-branch violation or observer attribution so each hash produces at most one owner `post_run_check`.
 
+When the stash **list** is unchanged across a turn but a push and pop both happened, we diff `git fsck --unreachable` snapshots (`GitState.stash_unreachable`) and attribute new stash-shaped commit subjects the same way as list deltas. Reflog was probed first; popped entries leave the reflog, so list+reflog at boundaries cannot see net-zero stashes.
+
 ## Touch zones (confirmed)
 
-- `specy_road/worker_turn_check.py` — `GitState.stash` shape, `git_state` stash capture, delegate stash comparison to `worker_turn_stash`, flag only non-`stash_other` findings, record `attributed_stash_hashes` on the turn event
+- `specy_road/worker_turn_check.py` — `GitState.stash` / `stash_unreachable`, `git_state`, delegate to `worker_turn_stash`, flag only non-`stash_other` findings, record `attributed_stash_hashes`
 - `specy_road/worker_turn_stash.py` — attribution module
-- `tests/test_worker_turn_stash.py` — parametrized and integration tests; `tests/test_worker_turn_check.py` — expect `stash_rule_violation` for self-stash
+- `tests/test_worker_turn_stash.py` — parametrized and integration tests; `tests/test_worker_turn_check.py` — self-stash expectation
 
-## Fix round (grok-4.7-low)
+## Fix round (grok-4.7-low, pass 2)
 
-- **Unknown snapshot class** — `None` before/after no longer coerced to `()`; one unknown finding on the observing worker only.
-- **Duplicate attribution class** — self-branch and observer paths both route through `_decide_stash_hash_change`, which skips hashes already in the owner’s `attributed_stash_hashes`.
-- **WIP detached subject** — `WIP on (no branch): …` treated like `On (no branch): …` (no branch parse).
+**Class:** net-zero stash delta invisible to turn-boundary `git stash list` (push+pop inside another worker’s turn).
+
+**Choice:** Reflog probe showed popped stash lines disappear from `refs/stash` reflog; unreachable stash commits remain until gc. Implemented unreachable-set diff when list snapshots match (variant of approach (a), not reflog). Ephemeral detection is skipped when either list snapshot is `None` or fsck fails.
 
 ## Probes
 
-- `stash_findings` with `before=None` and a foreign `On feature/rm-thing:` entry — one `stash` unknown finding, zero owner events.
-- `stash_findings` with `after=None` and a prior entry — same unknown behaviour, no owner events.
-- Second observer `stash_findings` after B attributed a hash — `[]`, owner still one `post_run_check`.
-- Owner removal diff after observer attribution — `stash_findings` returns `[]`, owner event count stays 1.
-- `stash_branch('WIP on (no branch): …')` — `None`, falls through to legacy `stash` finding when no worker matches.
-- `close_turn` after B pop mid-turn — owner exactly one attributed event (integration test).
-- Reviewer command bundle (`test_worker_turn_stash`, `test_worker_turn_check`, `test_headless_limits_denials`, `-n 4`) — exit 0.
+- `git reflog show refs/stash` after push+pop with empty stack — reflog ref deleted; popped entry not retained.
+- `git reflog show refs/stash` after pop with another stash present — ephemeral line removed from reflog.
+- `git fsck --unreachable` after push+pop — new `On …:` commit remains; diff attributes it during equal list snapshots.
+- `test_ephemeral_stash_push_pop_during_observer_turn_flags_owner_not_observer` — B gets `stash_other`, A flagged once.
+- Unknown list snapshot + unreachable diff — ephemeral path skipped when `before` or `after` stash is `None`.
+- Second observer / owner pop dedup — still one owner event (`test_already_attributed_hash_skips_second_observer_and_owner_pop`).
+- Reviewer pytest bundle (32 tests) — exit 0.
+- `ruff check specy_road tests scripts` — exit 0.
+- `specy-road file-limits` — OK.
 
 ## Added
 
 - `stash_branch` — parse `On …:` / `WIP on …:` subjects; reject `(no branch)` in both forms
-- `_attributed_hashes` — read prior `attributed_stash_hashes` from owner events
-- `_owner` — map branch to a worker record via `list_records`
-- `_rule_summary` / `_legacy_stash_summary` / `_UNKNOWN_STASH_SUMMARY` — finding text
-- `_attribute_owner` — append owner `post_run_check` when an observer attributes
-- `_decide_stash_hash_change` — single gate for every changed hash (self, other, legacy, dedup)
-- `stash_findings` — unknown-snapshot guard; iterate diffs through `_decide_stash_hash_change`
-- Parametrized tests — unknown before/after, own branch, other branch
-- `test_already_attributed_hash_skips_second_observer_and_owner_pop` — dedup probes
-- Integration tests — cross-worker add/pop, self-stash, unattributable `stash store`
+- `unreachable_commits` — parse `git fsck --unreachable` commit hashes
+- `_commit_subject` — subject line for an ephemeral stash commit
+- `_attributed_hashes`, `_owner`, `_rule_summary`, `_legacy_stash_summary`, `_attribute_owner`
+- `_decide_stash_hash_change` — single gate for every changed hash
+- `_list_delta_findings` / `_ephemeral_unreachable_findings` — list diff vs fsck diff when list unchanged
+- `stash_findings` — unknown snapshot guard; orchestrates list and ephemeral paths
+- `GitState.stash_unreachable` — snapshot for fsck diff at turn boundaries
+- Tests — parametrized unknown/own/other/already-attributed; integration add/pop/ephemeral/self/unattributable
