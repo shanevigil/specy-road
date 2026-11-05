@@ -4,7 +4,7 @@
       "acceptance": [
         "AGENTS.md is the only agent entry; CLAUDE.md points to it and holds only Claude-specific notes (about 20 lines, an estimate, not a gate); branch policy and the version-numbers rule each appear in one place and are linked elsewhere",
         "The load order is task-conditional: always purpose, principles and constraints; then by task (orchestration or review, roadmap data, dependencies or release, the dogfood fixture, sr/ roadmap work); supply-chain-security.md is not in the default order, here or in the consumer agents-rules template",
-        "tests/test_agent_start_up_reading.py fails when a file in the default load order is missing, for this repo and for a freshly initialised consumer repo, and prints each total (about 400 lines is the estimate, not a gate)",
+        "tests/test_agent_start_up_reading.py fails when a file in the default load order is missing or when the default start-up reading totals more than 400 lines, for this repo and for a freshly initialised consumer repo, and prints each total; CLAUDE.md's size (about 20 lines) is printed as a soft check, not enforced",
         "The shipped agents-rules.md loses its provenance comments and cites only files an adopter has",
         "Estimated net line change (informational, not a gate): docs about -200"
       ],

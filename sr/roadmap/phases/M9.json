@@ -8,7 +8,7 @@
       "notes": "Approved 2026-10-29 except M9.1 (held) and M9.10 (proposed). Design: docs/design-notes/regression-prevention.md.",
       "planning_dir": "planning/M9_regression-prevention_5f87b038-3bb6-4506-8950-046b66cde4b1.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Regression prevention",
       "touch_zones": [],
       "type": "phase"

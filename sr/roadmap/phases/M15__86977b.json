@@ -217,39 +217,6 @@
     },
     {
       "acceptance": [
-        "ci_gates in roadmap/git-workflow.yaml is schema-checked (git-workflow.schema.json has additionalProperties false, so the key is added there): a list of {name, cmd, paths}, name matching [A-Za-z0-9._-]+, cmd a non-empty string, paths an optional list of globs matched against the leaf's changed paths as touch zones are (finish_implementation_check.in_zones), no paths meaning every leaf; new specy_road/ci_gates.py reads it (git_workflow_config.py is at 396 lines and gains nothing) and refuses a duplicate name, naming it; tests for a valid list, a missing cmd (schema error) and a duplicate name",
-        "specy-road ready runs every gate whose paths match at least one path the READY records as changed (base...HEAD), from the project root as land_check_cmd runs, after the cheap refusals and after the executor's own --run commands, whether or not the executor passed any; each result is a verify row carrying gate: <name>; a non-zero exit refuses with the gate's name and output tail and never suggests --red-green; a gate skipped because no changed path matches is named in the READY body as skipped; tests with a fake failing gate, a passing gate, and a gate skipped by paths",
-        "The review packet gains a CI gates section (new specy_road/bundled_scripts/review_packet_ci_gates.py; review_packet.py, 392 lines, changes only one call line) listing every declared gate that applies to the leaf with its exit and tail from the READY when the READY commit is the commit under review, and in bold 'missing from READY' or 'not run at the commit under review' otherwise; one test per state",
-        "verify_cmd_lines (verify_cmd_config.py), which the executor brief and the reviewer prompt already carry, adds one sentence naming the leaf's applicable gates and saying a missing, stale or failing gate blocks; the project template git-workflow.yaml gains a commented ci_gates example, and new docs/git-workflow-ci-gates.md documents the key. Out of scope: running gates inside the review gate or at landing (land_check_cmd stays), auto-fix modes, per-gate timeouts, and declaring this toolkit's own gates in sr/roadmap/git-workflow.yaml (coordinator bookkeeping after landing)"
-      ],
-      "codename": "ci-gates-run-by-ready-and-shown-in-the-packet",
-      "dependencies": [
-        "4bbfe087-bdb9-4cff-8e15-8cb0badedabc"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M15.23",
-      "node_key": "2535829e-6a0d-40e3-aa42-9b0506bb9fe9",
-      "parent_id": "M15",
-      "planning_dir": "planning/M15.23_ci-gates-run-by-ready-and-shown-in-the-packet_2535829e-6a0d-40e3-aa42-9b0506bb9fe9.md",
-      "sibling_order": 23,
-      "status": "Not Started",
-      "title": "A project declares its merge-blocking CI commands per touch zone; ready always runs them and the review packet shows their result at the reviewed commit",
-      "touch_zones": [
-        "specy_road/ci_gates.py",
-        "specy_road/review_gate_ready.py",
-        "specy_road/ready_run_checks.py",
-        "specy_road/bundled_scripts/review_packet.py",
-        "specy_road/bundled_scripts/review_packet_ci_gates.py",
-        "specy_road/verify_cmd_config.py",
-        "specy_road/templates/project/schemas/git-workflow.schema.json",
-        "specy_road/templates/project/roadmap/git-workflow.yaml",
-        "docs/git-workflow-ci-gates.md",
-        "tests/"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
         "run_check moves from review_gate_ready.py to new specy_road/ready_run_checks.py (review_gate_ready.py imports it); a --run that exits 0 but whose recorded tail has a line containing one of 'cannot open', 'command not found', 'No such file or directory' or 'Permission denied' (case-sensitive, one constant in that module) gets warning: '<that line>' on its verify row; ready prints the warning on stderr and still writes the READY",
         "The review packet shows that warning in bold under the verifier's heading (review_packet.py, 392 lines, grows by at most two lines in _ready_verify); a test reproduces the reported shape (a loop whose earlier step fails with \"cannot open\" and whose last step succeeds, so the exit is 0) and asserts the warning in the READY and the packet, and a clean run carries none",
         "ready --run-argv '<JSON array of strings>' (repeatable) runs that argv without a shell, records cmd as shlex.join(argv), and is otherwise a --run (same refusal on a non-zero exit, same warning); a value that is not a non-empty JSON array of strings is refused before anything runs; a test passes an argument containing $f and spaces and asserts the program receives it unexpanded. Out of scope: refusing on a marker (it is a warning), scanning beyond the recorded tail, --verify CMD=EXIT rows (they have no output), and markers beyond the four listed"
@@ -415,7 +382,7 @@
       ],
       "codename": "one-full-leaf-checklist-review-per-round",
       "dependencies": [
-        "2535829e-6a0d-40e3-aa42-9b0506bb9fe9",
+        "449eeb3e-1874-4b25-841c-2b1fed8e2363",
         "46ce74ef-458b-401f-8abd-93e6a99b28c1"
       ],
       "execution_milestone": "Agentic-led",
