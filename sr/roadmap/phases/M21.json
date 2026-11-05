@@ -79,7 +79,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.10_doctor-without-a-remote_95346d66-4499-45c1-8a19-2de0cbdbef8a.md",
       "sibling_order": 9,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "doctor works in a repo with no remote",
       "touch_zones": [
         "specy_road/bundled_scripts/doctor.py",

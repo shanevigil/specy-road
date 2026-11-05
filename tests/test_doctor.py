@@ -317,6 +317,51 @@ def test_doctor_refuses_without_a_fresh_roadmap(
     assert _has(repo, "refs/heads/feature/rm-done")
 
 
+def _toolkit_stash(repo: Path) -> None:
+    (repo / "src" / "a.py").write_text("x", encoding="utf-8")
+    git(repo, "stash", "push", "-q", "-m", TOOLKIT_STASH)
+
+
+def _failing_env_setup(repo: Path) -> None:
+    yaml_text = "version: 1\nintegration_branch: dev\nremote: origin\nenv_setup:\n  cmd: exit 3\n"
+    commit_file(repo, "roadmap/git-workflow.yaml", yaml_text, "fails")
+
+
+def _bare_origin(repo: Path) -> None:
+    git(repo, "clone", "-q", "--bare", ".", "../remote.git")
+    git(repo, "remote", "add", "origin", "../remote.git")
+
+
+@pytest.mark.parametrize("setup, args, env, code, skipped, shown, stashes", [
+    (lambda r: None, [], "", 0, "origin", "Nothing to tidy: no toolkit stash.", 0),
+    (_toolkit_stash, [], "", 0, "origin", TOOLKIT_STASH, 1),
+    (_toolkit_stash, ["--fix", "--yes"], "", 0, "origin", "[ok] dropped stash", 0),
+    (lambda r: None, ["--fix", "--yes"], "", 0, "origin", "Claims with no live worker", 0),
+    (_failing_env_setup, [], "", 1, "origin", "error: env_setup fails in the main checkout", 0),
+    (_bare_origin, ["--remote", "upstream"], "", 0, "upstream", "Nothing to tidy: no toolkit stash.", 0),
+    (_bare_origin, [], "upstream", 0, "upstream", "Nothing to tidy: no toolkit stash.", 0),
+    (_bare_origin, [], "", 0, None, "Nothing to tidy: no stale branch", 0),
+    (lambda r: git(r, "remote", "add", "origin", "missing.git"), [], "", 1, None, "Merged means contained in", 0),
+], ids=["no remote", "stash kept", "stash removed", "orphaned claim", "checkout error", "--remote absent",
+        "env remote absent", "bare remote", "missing-path remote"])
+def test_doctor_without_a_remote_reports_what_needs_none(
+    tmp_path: Path, capsys, monkeypatch, setup, args, env, code, skipped, shown, stashes
+) -> None:
+    monkeypatch.setenv("SPECY_ROAD_REMOTE", env)
+    repo = make_review_repo(tmp_path)
+    setup(repo)
+
+    assert _exit([*args, "--repo-root", str(repo)]) == code
+
+    out, err = capsys.readouterr()
+    skip_line = f"doctor: no git remote named '{skipped}' is configured; skipped fetch and the branch, worktree and registry"
+    assert skip_line in out if skipped else "no git remote named" not in out
+    assert ("git fetch --prune origin failed" in err) == (code == 1 and not skipped)
+    assert shown in out + err
+    assert len(git(repo, "stash", "list").splitlines()) == stashes
+    assert "thing" in (repo / "roadmap" / "registry.yaml").read_text()   # the orphaned claim is not released
+
+
 def test_fix_keeps_a_landed_patch_whose_commit_no_ref_holds(doctor_repo, capsys) -> None:
     """The patch reached origin/dev under another SHA: the content landed, the commit did not."""
     repo, _bare = doctor_repo

@@ -90,16 +90,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: doctor-without-a-remote
-    node_id: M21.10
-    branch: feature/rm-doctor-without-a-remote
-    touch_zones:
-      - specy_road/bundled_scripts/doctor.py
-      - tests/test_doctor.py
-      - CHANGELOG.md
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
   - codename: remove-node
     node_id: M21.4
     branch: feature/rm-remove-node
