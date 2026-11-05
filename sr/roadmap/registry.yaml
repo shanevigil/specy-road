@@ -39,18 +39,6 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout
-    node_id: M14.3
-    branch: feature/rm-worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout
-    touch_zones:
-      - specy_road/worktree_prune.py
-      - specy_road/bundled_scripts/worktree_cli.py
-      - tests/
-      - specy_road/worktree_delete_set.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-05T08:19:50+00:00'
   - codename: a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts
     node_id: M13.8
     branch: feature/rm-a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts
