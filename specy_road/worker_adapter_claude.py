@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.claude_config import claude_projects_dir
+from specy_road.reviewer_auth import bare_settings_argv
 from specy_road.worker_adapter_base import (REVIEWER_DISALLOWED, REVIEWER_NO_WRITES, REVIEWER_TOOLS, STDIN_INSTRUCTION,
                                          Adapter, Capabilities, Launch, Parsed, _bare, _model_flag)
 from specy_road.worker_adapter_parsers import _init_detail, _json, _snip, _text, limit_detail, usage_fields
@@ -61,7 +62,9 @@ class ClaudeCode(Adapter):
                         output: Path | None = None, mode: str = "bare") -> Launch:
         """A fresh-session reviewer's turn. ``mode="bare"`` (the default) passes ``--bare``. ``mode="explicit"``
         passes ``--setting-sources user`` and ``--strict-mcp-config`` (help.txt) and never ``--bare`` or
-        ``--mcp-config``. Either way the branch under review runs none of its hooks and connects none of its
+        ``--mcp-config``. Bare mode with only an ``apiKeyHelper`` also passes ``--settings`` and that file's path
+        (:func:`~specy_road.reviewer_auth.bare_settings_argv`), never the helper command. Either way the branch
+        under review runs none of its hooks and connects none of its
         MCP servers, and ``--add-dir`` names the hand-off directory. The instruction goes
         right after ``-p``: ``--add-dir`` takes several values and would swallow it. ``session`` is
         ``(id, resume)`` for ``review delegate``: the session flag, and stream-json so the id can be read back.
@@ -71,8 +74,10 @@ class ClaudeCode(Adapter):
         the result event carries the final answer."""
         tracked = [*self.session_flag(*session), "--output-format", "stream-json", "--verbose"] if session else []
         structured = ["--json-schema", json.dumps(json.loads(schema.read_text(encoding="utf-8")))] if schema else []
-        # explicit reads the subscription login from user settings and still loads no project settings or MCP
-        auth = (["--setting-sources", "user", "--strict-mcp-config"] if mode == "explicit" else ["--bare"])
+        # explicit reads the subscription login from user settings and still loads no project settings or MCP.
+        # bare with only an apiKeyHelper passes the settings file's path, never the helper command.
+        auth = (["--setting-sources", "user", "--strict-mcp-config"] if mode == "explicit"
+                else ["--bare", *bare_settings_argv()])
         return Launch(["claude", "-p", STDIN_INSTRUCTION, *auth, *tracked, *_model_flag("--model", model),
                        *self.effort_flag(effort), "--allowedTools", REVIEWER_TOOLS,
                        "--disallowedTools", *REVIEWER_NO_WRITES, *REVIEWER_DISALLOWED, *structured,

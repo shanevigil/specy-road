@@ -57,8 +57,8 @@ from specy_road.bundled_scripts.do_next_prompt import SUBAGENT_LINE
 from specy_road.bundled_scripts.generate_brief import index, render_brief, verify_cmd_lines
 from specy_road.bundled_scripts.review_packet import build_packet
 from specy_road.bundled_scripts.role_prompt_cli import (READ_BACK_HARNESSES, close_cli_review_run,
-                                                        preflight as run_preflight, resolve_cli, run_plain_cli,
-                                                        run_reviewer_channel)
+                                                        preflight as run_preflight, resolve_cli, reviewer_launch_block,
+                                                        run_plain_cli, run_reviewer_channel)
 from specy_road.bundled_scripts.role_prompt_rca import (
     DATA_LINE,
     coordinator_preamble,
@@ -315,8 +315,13 @@ def main(argv: list[str] | None = None) -> None:
         p.error("--force needs a non-empty --reason, and --reason needs --force")
     root = resolve_repo_root(ns)
     lock = contextlib.ExitStack()
-    if ns.role == "reviewer" and ns.channel == "cli":   # the leaf's run lock before the run writes any of its files
-        try:
+    if ns.role == "reviewer" and ns.channel == "cli":   # refuse before the lock: taking it creates a file in reviews/
+        config, _err = pinned_config(root)
+        entry = next((e for e in config.get("roster") or [] if e.get("id") == ns.model), {})
+        blocked = reviewer_launch_block(pinned_profile_for_entry(root, entry), entry, root)
+        if blocked is not None:
+            raise SystemExit(blocked.exit or 1)
+        try:   # the leaf's run lock before the run writes any of its files
             lock.enter_context(review_run_lock(reviews_dir(root, ns.node_id)))
         except ReviewRunBusy as e:
             print(f"error: {e}", file=sys.stderr)
@@ -358,7 +363,7 @@ def _run(ns: argparse.Namespace, root: Path) -> None:
     transcript: list[str] = []
     try:   # the run record is closed from the filing outcome, an interrupt's included: never from older records
         filed = run_reviewer_channel(prof, out, root, entry, ns.model, reviews_dir(root, ns.node_id), ns.ref,
-                                     transcript, ns.sign_key)
+                                     transcript, ns.sign_key, prechecked=True)
     except BaseException as e:
         close_cli_review_run(root, reviewer_target, ns.model, reviewer_run,
                              Outcome("rerun", f"interrupted: {e or type(e).__name__}", exit=None), transcript)

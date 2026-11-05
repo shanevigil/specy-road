@@ -26,7 +26,7 @@ from specy_road.orchestration_role_env import CLAUDE_REVIEWER_AVOID_ENV
 from specy_road.review_record_write import (Outcome, answer_scratch, close_review_run, replace_file, run_and_file,
                                             write_schema)
 from specy_road.review_target import ReviewTarget
-from specy_road.reviewer_auth import AUTH_REFUSAL_PREFIX, claude_launch_decision, launch_note
+from specy_road.reviewer_auth import claude_launch_decision, launch_note
 from specy_road.reviewer_run_failure import _now, harness_error_line, save_run, turn_capacity_error
 from specy_road.worker_adapter_parsers import effort_note
 from specy_road.worker_adapters import ADAPTERS, Launch, Unsupported, placeholder_problem, reviewer_cli, substitute_prompt
@@ -55,36 +55,65 @@ def preflight(cmd: str | None, root: Path) -> int:
 
 
 def resolve_cli(prof: Profile | None, entry_cli: str | None, harness: str | None,
-                level: str | None) -> tuple[str | None, list[str], str]:
+                level: str | None, *, announce: bool = True) -> tuple[str | None, list[str], str]:
     """``(cli, effort flags, error)``: the roster's ``channels.cli`` (it wins, as ``worker delegate`` has it), else
-    the profile's ``access.cli``; ``error`` when there is none or it is malformed."""
+    the profile's ``access.cli``; ``error`` when there is none or it is malformed. ``announce`` prints the effort
+    note; a pre-launch check passes ``False`` so the note is not printed twice."""
     cli = entry_cli or (prof.cli() if prof else None)
     if not cli:
         return None, [], "--channel cli needs a roster `channels.cli` or an `access.cli` in the model's profile"
     why = placeholder_problem(cli)
     if why:
         return None, [], f"the cli has {why}: {cli}"
-    note = effort_note(cli, level)
+    note = effort_note(cli, level) if announce else None
     if note:
         print(note, file=sys.stderr)
     return cli, ADAPTERS.get(harness or "generic", ADAPTERS["generic"]).effort_flag(level), ""
 
 
-def run_reviewer_channel(prof: Profile | None, prompt_path: Path, root: Path, entry: dict[str, Any], model: str,
-                         reviews: Path, ref: str | None, transcript: list[str],
-                         sign_key: Path | None = None) -> Outcome:
-    """``prompt --role reviewer --channel cli``: the roster ``entry``'s reviewer, run and filed; every way out is an
-    :class:`Outcome`, a rerun request (``exit`` 1, or the preflight's) when nothing could be sent."""
-    _run_launch_mode.set(None)
+def reviewer_launch_block(prof: Profile | None, entry: dict[str, Any], root: Path) -> Outcome | None:
+    """A refusal before any reviewer file or launch, or ``None`` when the command may start.
+
+    Forced-bare authentication, the roster ``preflight``, and a command that cannot be launched. Writes nothing:
+    the caller opens the RUN record only after this returns ``None``.
+    """
     harness, entry_cli = entry.get("harness"), (entry.get("channels") or {}).get("cli")
     if harness == "claude-code" and not entry_cli:
         _mode, problem = claude_launch_decision(entry, prof.launch_mode() if prof is not None else None)
-        if problem:   # forced bare, no key: before preflight and before any launch
+        if problem:
             print(f"error: {problem}", file=sys.stderr)
             return Outcome("rerun", problem, exit=1)
     rc = preflight(entry.get("preflight"), root)
     if rc:
         return Outcome("rerun", f"rerun requested: preflight failed (exit {rc}); nothing was sent", exit=rc)
+    if harness in READ_BACK_HARNESSES and not entry_cli:
+        return None
+    _cli, _effort, err = resolve_cli(prof, entry_cli, harness, prof.effort("reviewer") if prof else None,
+                                     announce=False)
+    if err:
+        print(f"error: {err}", file=sys.stderr)
+        return Outcome("rerun", f"rerun requested: {err}", exit=1)
+    try:   # schema=None: the refusal does not depend on the schema file, which is written only once the run starts
+        reviewer_cli(str(_cli), None)
+    except Unsupported as e:
+        print(f"error: {e}", file=sys.stderr)
+        return Outcome("rerun", f"rerun requested: {e}", exit=1)
+    return None
+
+
+def run_reviewer_channel(prof: Profile | None, prompt_path: Path, root: Path, entry: dict[str, Any], model: str,
+                         reviews: Path, ref: str | None, transcript: list[str],
+                         sign_key: Path | None = None, *, prechecked: bool = False) -> Outcome:
+    """``prompt --role reviewer --channel cli``: the roster ``entry``'s reviewer, run and filed; every way out is an
+    :class:`Outcome`, a rerun request (``exit`` 1, or the preflight's) when nothing could be sent.
+
+    ``prechecked``: the caller already ran :func:`reviewer_launch_block` and refused before opening a record."""
+    _run_launch_mode.set(None)
+    if not prechecked:
+        blocked = reviewer_launch_block(prof, entry, root)
+        if blocked is not None:
+            return blocked
+    harness, entry_cli = entry.get("harness"), (entry.get("channels") or {}).get("cli")
     level = prof.effort("reviewer") if prof else None
     if harness in READ_BACK_HARNESSES and not entry_cli:
         return run_default_reviewer(prof, prompt_path, root, model, reviews, level, harness, ref, transcript, sign_key,
@@ -162,10 +191,6 @@ def close_cli_review_run(root: Path, t: ReviewTarget, model: str, opened: tuple[
     path, run = opened
     mode = _run_launch_mode.get()
     _run_launch_mode.set(None)
-    # role_prompt opens the RUN before this channel returns; a forced-bare refusal must not leave one.
-    if filed.exit == 1 and filed.reason.startswith(AUTH_REFUSAL_PREFIX):
-        path.unlink(missing_ok=True)
-        return
     if mode:
         run["launch_mode"] = mode
     replace_file(path.with_suffix(".log"), "\n".join(transcript) + ("\n" if transcript else ""))   # no symlink

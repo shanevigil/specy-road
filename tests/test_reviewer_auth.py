@@ -134,6 +134,12 @@ def _argv(calls: Path) -> list[list[str]]:
     return [json.loads(line) for line in calls.read_text().splitlines() if line.strip()]
 
 
+def _reviews(repo: Path) -> dict[str, bytes]:
+    """File name to bytes for the leaf's reviews directory, so a refusal can be shown to change nothing."""
+    d = reviews_dir(repo, "M1.1")
+    return {p.name: p.read_bytes() for p in d.iterdir() if p.is_file()}
+
+
 def test_delegate_explicit_without_a_key_records_the_mode_and_prints_the_note(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     _isolate(monkeypatch, tmp_path)
@@ -167,18 +173,19 @@ def test_forced_bare_without_a_key_refuses_before_a_run_record(
     _isolate(monkeypatch, tmp_path)
     repo = claude_code_reviewer_repo(tmp_path)
     _force_bare(repo)
+    planted = reviews_dir(repo, "M1.1") / "RUN-opus.json"
+    planted.write_text('{"planted": true}\n')
+    before = _reviews(repo)
     recorded = _fake_claude(monkeypatch, tmp_path)
     assert run_main(review_cli, "review", "delegate", "M1.1", "--model", "opus", "--retries", "0",
                     "--repo-root", str(repo)) == 1
     err = capsys.readouterr().err
-    assert all(fix in err for fix in FIXES) and _argv(recorded) == []
-    assert not (reviews_dir(repo, "M1.1") / "RUN-opus.json").exists()
+    assert all(fix in err for fix in FIXES) and _argv(recorded) == [] and _reviews(repo) == before
     prompt_calls = fake_reviewer_run(monkeypatch)
     assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
                     "--repo-root", str(repo)) == 1
     err = capsys.readouterr().err
-    assert all(fix in err for fix in FIXES)
-    assert not (reviews_dir(repo, "M1.1") / "RUN-opus.json").exists()
+    assert all(fix in err for fix in FIXES) and _reviews(repo) == before
     assert not any(list(c.get("cmd", [])[:2]) == ["claude", "-p"] for c in prompt_calls)
 
 
@@ -201,14 +208,43 @@ def test_prompt_explicit_mode_is_recorded_and_a_helper_selects_bare_without_prin
     capsys.readouterr()
     cfg = tmp_path / "empty-claude-config"
     cfg.mkdir()
-    (cfg / "settings.json").write_text(json.dumps({"apiKeyHelper": HELPER}))
+    settings = cfg / "settings.json"
+    settings.write_text(json.dumps({"apiKeyHelper": HELPER}))
+    (tmp_path / "p.md").write_text("x")
+    direct = ClaudeCode().reviewer_launch(tmp_path / "p.md", "m", tmp_path / "reviews", mode="bare")
+    assert direct.argv[direct.argv.index("--settings") + 1] == str(settings)
+    assert "--bare" in direct.argv and HELPER not in " ".join(direct.argv)
     calls.clear()
     assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
                     "--repo-root", str(repo)) == 0
     argv = next(c["cmd"] for c in calls if list(c["cmd"][:2]) == ["claude", "-p"])
     captured = capsys.readouterr()
-    assert "--bare" in argv and HELPER not in captured.err and HELPER not in captured.out
-    assert HELPER not in (rf.reviews_dir(repo, "M1.1") / "RUN-opus.log").read_text()
+    log = (rf.reviews_dir(repo, "M1.1") / "RUN-opus.log").read_text()
+    assert "--bare" in argv and argv[argv.index("--settings") + 1] == str(settings)
+    assert HELPER not in " ".join(argv) and HELPER not in captured.err and HELPER not in captured.out
+    assert HELPER not in log and "running:" in captured.err
+
+
+def test_a_refusing_preflight_leaves_the_reviews_dir_unchanged(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    """Roster preflight is the same class as forced-bare auth: a refusal before launch writes no reviews file."""
+    from specy_road.bundled_scripts import review_cli, role_prompt
+
+    _isolate(monkeypatch, tmp_path)
+    repo = claude_code_reviewer_repo(tmp_path)
+    roster = repo / "roadmap" / "orchestration.yaml"
+    roster.write_text(roster.read_text().replace(
+        "harness: claude-code\n", "harness: claude-code\n    preflight: exit 1\n", 1))
+    commit_profile(repo)
+    planted = reviews_dir(repo, "M1.1") / "RUN-opus.json"
+    planted.write_text('{"planted": true}\n')
+    before = _reviews(repo)
+    assert run_main(review_cli, "review", "delegate", "M1.1", "--model", "opus", "--retries", "0",
+                    "--repo-root", str(repo)) == 1
+    assert "preflight failed" in capsys.readouterr().err and _reviews(repo) == before
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+                    "--repo-root", str(repo)) == 1
+    assert "preflight failed" in capsys.readouterr().err and _reviews(repo) == before
 
 
 def test_plan_prints_one_reviewer_auth_notice(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,

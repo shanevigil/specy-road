@@ -78,6 +78,18 @@ def has_api_key_helper(user_settings: Mapping[str, Any] | None) -> bool:
     return isinstance(helper, str) and bool(helper.strip())
 
 
+def bare_settings_argv(env: Mapping[str, str] | None = None) -> list[str]:
+    """``--settings <path>`` when bare auth is an ``apiKeyHelper`` and not a key. The path only.
+
+    ``--settings`` also accepts a JSON string (help.txt). That string would put the helper command on the
+    argv and in the log, so the launch passes the user-settings file bare mode reads the helper from.
+    """
+    env = reviewer_environment() if env is None else env
+    if has_api_key(env) or not has_api_key_helper(load_user_settings(env)):
+        return []
+    return ["--settings", str(user_settings_path(env))]
+
+
 def claude_reviewer_mode(env: Mapping[str, str], user_settings: Mapping[str, Any] | None) -> str:
     """``bare`` only with a key or ``apiKeyHelper``; otherwise ``explicit``."""
     if has_api_key(env) or has_api_key_helper(user_settings):
