@@ -52,7 +52,7 @@ def _effective_rollup(root: Path, nid: str) -> str:
     return next(n["rollup_status"] for n in load_roadmap(root)["nodes"] if n["id"] == nid)
 
 
-def _set_status(root: Path, nid: str, status: str) -> None:
+def set_node_status(root: Path, nid: str, status: str) -> None:
     nodes = load_json_chunk(_chunk(root))
     next(n for n in nodes if n["id"] == nid)["status"] = status
     _chunk(root).write_text(json.dumps({"nodes": nodes}, indent=2) + "\n", encoding="utf-8")
@@ -65,7 +65,7 @@ def _branch_leaf(root: Path, nid: str) -> None:
     commit_file(root, "roadmap/registry.yaml", f"version: 1\nentries: []\n# {codename}\n",
                 f"chore(rm-{codename}): register as in-progress")
     commit_file(root, f"src/{codename}.py", f"print({codename!r})\n", f"feat({codename}): implement")
-    _set_status(root, nid, "Complete")
+    set_node_status(root, nid, "Complete")
     git(root, "add", "roadmap/phases/M2.json")
     git(root, "commit", "-qm", f"chore(rm-{codename}): complete, deregister")
 
@@ -161,7 +161,7 @@ def test_milestone_packet_covers_both_leaves_and_base_overrides(tmp_path: Path) 
 def test_milestone_packet_without_a_registration_commit_needs_base(tmp_path: Path, capsys) -> None:
     root = make_milestone_repo(tmp_path, land=False)
     for nid in LEAVES:   # finished straight on dev, with no pickup commit to anchor the range
-        _set_status(root, nid, "Complete")
+        set_node_status(root, nid, "Complete")
     git(root, "add", "roadmap/phases/M2.json")
     git(root, "commit", "-qm", "landed without pickup")
     with pytest.raises(SystemExit):

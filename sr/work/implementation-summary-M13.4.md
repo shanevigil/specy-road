@@ -29,5 +29,6 @@ Final list: as given; `specy_road/bundled_scripts/validate_notices.py` is the ne
 - `notice_milestone_review_holds()` (validate_notices.py): validate's printing site, kept out of validate_roadmap.py for its line cap.
 - `review_hold` key in why-blocked `--json` and list-nodes `--json`: A2 machine-readable reason.
 - Guard in list-nodes skipping `UNRESOLVABLE_HOLD` reasons: their rollup is Complete, so marking them "(review hold)" would be wrong.
+- Renamed `_set_status` to public `set_node_status` in tests/test_milestone_full_review.py (callers updated, assertions unchanged): the new test file imports it, and tests must not import underscore names.
 - Mocks: none.
 - Tests (tests/test_milestone_review_hold_notice.py): validate notice text pinned for a milestone whose leaves are all Complete; why-blocked text and JSON; list-nodes text mark and JSON field; no notice with policy off or with the milestone recorded Complete; one-line unresolvable notice.
