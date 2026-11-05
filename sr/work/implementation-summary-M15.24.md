@@ -11,15 +11,15 @@ Leaf `M15.24` (`ready-flags-failure-tails-and-takes-argv`): `specy-road ready` f
 ## Behaviour (summary)
 
 - Exit-0 tails matching `FAILURE_MARKERS` get a `warning` on the verify row and in the packet; READY still writes.
-- `--run-argv`: non-empty JSON string array; first element non-empty; later elements may be empty.
-- Every `--run` / `--run-argv` validated before live execution; blank `--run` refuses even with `--run-argv`.
-- `subprocess` launch `OSError` (missing binary, non-executable file, directory as program) becomes exit 127 or 126 with error text in `tail`, then the usual failing-verifier refusal (no READY).
+- `--run-argv`: non-empty JSON string array; first element non-empty; no NUL in any element; later elements may otherwise be empty.
+- Every `--run` / `--run-argv` validated in `prepare_live_runs` before any live verifier; blank or NUL-containing `--run` refuses the whole command.
+- `_subprocess_output` is the sole launch wrapper: any exception while starting a verifier becomes exit 126 or 127 with error text in `tail`, then the usual failing-verifier refusal (no READY).
 
-## Fix round (REVIEW-gpt-6.1-sol-low, launch + tests + docs)
+## Fix round (REVIEW-gpt-6.1-sol-low, embedded NUL)
 
-- **`_subprocess_output`:** Single launch path for `run_check` and `run_argv`; catches `OSError` at the subprocess boundary.
-- **Parser tests:** `RUN_ARGV_PARSE_REFUSED` owns refusal behaviour; help test only asserts examples appear in help text.
-- **`run_check` / `run_argv` docstrings:** Restore `{cmd, exit, tail}` and note optional `warning` and launch-failure exits.
+- **`parse_run_argv`:** Refuses `\\0` in any element with `argv[i]` in the message.
+- **`prepare_live_runs`:** Refuses NUL in raw `--run` strings before execution.
+- **`_subprocess_output`:** Catches `Exception` (not only `OSError`) so launch cannot crash `cmd_ready`.
 
 ## Verification
 
@@ -29,16 +29,15 @@ Leaf `M15.24` (`ready-flags-failure-tails-and-takes-argv`): `specy-road ready` f
 
 ## Probes
 
-- **`run_argv` missing executable:** `FileNotFoundError` → exit 127, tail text; `ready` CLI test asserts refusal and no READY.
-- **`run_argv` not executable / directory / bad shebang:** Parametrized launch cases → 126 or 127 without uncaught exception; no `warning` on non-zero exit.
-- **`run_check` missing command (shell):** Exit 127 via shell, not `OSError`; separate test documents `--run` parity without duplicating argv launch table.
-- **`_live_run_rows` non-zero exit path:** Launch-failure rows use same refusal branch as failing commands; no READY write.
-- **`parse_run_argv` refusal table:** Help examples ⊆ `RUN_ARGV_PARSE_REFUSED`; help test no longer calls `parse_run_argv` for refused specs.
-- **`prepare_live_runs` / blank `--run`:** Unchanged this round; combination tests still pass.
-- **`review_packet` / tail warnings:** Unchanged; selected pytest still passes.
+- **NUL in `--run-argv` JSON (program or later arg):** `parse_run_argv` raises before `prepare_live_runs` returns; CLI test with prior `--run touch` confirms marker file and READY absent.
+- **NUL in `--run` shell command:** `prepare_live_runs` refuses with embedded NUL message; no `_live_run_rows` call.
+- **Launch `ValueError` (embedded null if validation bypassed):** `_subprocess_output` maps to exit 126 and tail text; monkeypatched `subprocess.run` covers `--run` and `--run-argv` paths.
+- **`FileNotFoundError` / other `OSError`:** Still exit 127/126 via `_launch_failure_exit`; existing launch parametrized tests pass.
+- **Valid argv after validation:** Empty later strings, whitespace, unicode unchanged; accept tests pass.
+- **`review_packet` / marker warnings:** Unchanged; selected pytest still passes.
 
 ## Added
 
-- `_launch_exit_code`, `_subprocess_output` — shared subprocess boundary; 127 for `FileNotFoundError`, else 126.
-- `RUN_ARGV_PARSE_REFUSED` — single refusal case list for parametrized parse tests.
-- `test_run_argv_launch_os_errors`, `test_run_check_missing_command_exits_127_without_oserror`, `test_ready_run_argv_missing_executable_refuses_without_writing_ready`.
+- NUL scan in `parse_run_argv` and `prepare_live_runs` for `--run`.
+- `_launch_failure_exit` + total `except Exception` in `_subprocess_output`.
+- `test_parse_run_argv_refuses_embedded_nul`, `test_ready_run_argv_embedded_nul_refuses_before_any_live_run`, `test_subprocess_launch_exception_becomes_failing_row`.
