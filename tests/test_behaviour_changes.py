@@ -1,4 +1,4 @@
-"""M13.8: the behaviour-change catalogue and validate's notices for project text it contradicts."""
+"""M13.8: behaviour-change catalogue (lint moved to M13.14)."""
 
 from __future__ import annotations
 
@@ -9,25 +9,10 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.agent_text_report import contradicted_lines, sentences, warn_contradicted_instructions
 from specy_road.behaviour_changes import CATALOGUE
 from specy_road.cli import registered_agent_command_names
-from specy_road.managed_block import HTML_COMMENT
 
 REPO = Path(__file__).resolve().parents[1]
-
-CITED = [
-    "- Approve with `specy-road mark-implementation-reviewed --yes` when tests pass.",
-    "- Always run `specy-road finish-this-task --on-complete merge`.",
-    "- `specy-road do-next-available-task` always pushes the claim to origin.",
-    "- `specy-road finish-this-task` never deletes the source branch.",
-    "- With `specy-road do-next-available-task`, the first commit on the feature branch registers the work in registry.yaml.",
-]
-HISTORICAL_FIRST_COMMIT = (
-    "4. **First commit** registers the work in `registry.yaml` — same message as automation: "
-    "`chore(rm-<codename>): register as in-progress` plus optional CI-skip suffix `[skip ci] [ci skip] ***NO_CI***` "
-    "when using `do-next-available-task` or matching manually — no implementation before that commit."
-)
 
 
 @pytest.mark.parametrize("command", sorted({entry.command for entry in CATALOGUE}))
@@ -43,53 +28,6 @@ def test_every_entry_names_a_registered_command_and_flag(command: str) -> None:
             assert entry.flags and set(entry.flags) <= known, (entry, known)
 
 
-def test_cited_sentences_each_print_one_notice_outside_the_managed_block(tmp_path: Path, capsys) -> None:
-    managed = [HTML_COMMENT.start, CITED[0], HTML_COMMENT.end]
-    (tmp_path / "AGENTS.md").write_text("\n".join(["# Rules", *CITED[:3], *managed]) + "\n", encoding="utf-8")
-    (tmp_path / ".specyrd").mkdir()
-    (tmp_path / ".specyrd" / "AGENTS.team.md").write_text("\n".join(CITED[3:]) + "\n", encoding="utf-8")
-    (tmp_path / "CLAUDE.md").write_text(
-        "Run `specy-road finish-this-task` when done; pass --yes to nothing else.\n"
-        "Pickup registers the claim on the integration branch first.\n",
-        encoding="utf-8",
-    )
-    before = {p: p.read_bytes() for p in tmp_path.rglob("*.md")}
-
-    warn_contradicted_instructions(tmp_path)
-
-    out = capsys.readouterr().out.splitlines()
-    assert [line.split(": says")[0] for line in out] == [
-        "agents: notice — AGENTS.md:2",
-        "agents: notice — AGENTS.md:3",
-        "agents: notice — AGENTS.md:4",
-        "agents: notice — .specyrd/AGENTS.team.md:1",
-        "agents: notice — .specyrd/AGENTS.team.md:2",
-    ]
-    for line, sentence, entry in zip(out, CITED, CATALOGUE, strict=True):
-        assert f'says "{sentence}"; since {entry.since}: {entry.now}' in line
-    assert {p: p.read_bytes() for p in tmp_path.rglob("*.md")} == before
-
-
-def _current_guidance() -> list[Path]:
-    return sorted({
-        *(REPO / "docs").glob("*.md"),
-        *(REPO / "specy_road/templates/specyrd").glob("*.md"),
-        *(REPO / "specy_road/templates/project").rglob("*.md"),
-        REPO / "AGENTS.md",
-    })
-
-
-def test_the_toolkit_s_own_current_guidance_gets_zero_notices() -> None:
-    files = _current_guidance()
-    assert len(files) > 10
-    hits = [
-        f"{path.relative_to(REPO)}:{n}: {[e.flags for e in entries]}"
-        for path in files
-        for n, _, entries in contradicted_lines(list(enumerate(path.read_text(encoding="utf-8").splitlines(), 1)))
-    ]
-    assert hits == []
-
-
 def test_toolkit_docs_and_templates_do_not_say_the_first_commit_registers_the_work() -> None:
     entry = next(e for e in CATALOGUE if e.flags == ("--base",))
     hits = [
@@ -98,134 +36,6 @@ def test_toolkit_docs_and_templates_do_not_say_the_first_commit_registers_the_wo
         for path in sorted((REPO / top).rglob("*"))
         if path.is_file()
         for n, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1)
-        if any(entry.contradicted_by(part) for part in sentences(line))
+        if entry.contradicted_by(line)
     ]
     assert hits == []
-
-
-def _notices(tmp_path: Path, capsys, text: str) -> list[str]:
-    (tmp_path / "AGENTS.md").write_text(text + "\n", encoding="utf-8")
-    warn_contradicted_instructions(tmp_path)
-    return capsys.readouterr().out.splitlines()
-
-
-def test_a_line_matching_two_entries_prints_one_notice_with_both_behaviours(tmp_path: Path, capsys) -> None:
-    line = "Always run `specy-road finish-this-task --on-complete auto`; finish-this-task never deletes the source branch."
-    out = _notices(tmp_path, capsys, line)
-    assert len(out) == 1 and out[0].startswith("agents: notice — AGENTS.md:1:")
-    for entry in CATALOGUE:
-        if entry.command == "finish-this-task":
-            assert f"since {entry.since}: {entry.now}" in out[0]
-
-
-NEAR_MISSES = {
-    "mark-implementation-reviewed --yes": [
-        "Answer --yes to the installer prompt once the review is marked done.",
-        "Mark the implementation reviewed in the tracker, then run apt-get install --yes.",
-        "Never pass `--yes` to `specy-road mark-implementation-reviewed` on your own work.",
-    ],
-    "finish-this-task --on-complete": [
-        "Finish this task with git merge; the on-complete hook runs auto formatting.",
-        "Set --on-complete merge in the CI plugin config before you finish the task.",
-        "`specy-road finish-this-task --on-complete merge` is refused when it differs from the recorded mode.",
-    ],
-    "do-next-available-task --local": [
-        "The pickup truck always pushes the trailer up the hill.",
-        "The pickup truck always pushes the trailer; claim your insurance discount online.",
-        "Pickup always pushes the claim to origin.",
-        "`specy-road do-next-available-task` always pushes the claim unless you pass `--local`.",
-        "Our deploy script always pushes the tag; claim your slot in the calendar.",
-    ],
-    "finish-this-task --delete-branch": [
-        "`specy-road finish-this-task` never deletes uncommitted work.",
-        "Git never deletes a branch you have checked out when you finish the task.",
-        "`specy-road finish-this-task` never deletes the branch unless you pass `--delete-branch`.",
-    ],
-    "do-next-available-task --base": [
-        "The first commit registers the service worker.",
-        "Register the plugin in the first commit of the app; the work starts there.",
-        "The first commit registers the claim form with the insurer.",
-        "The first commit on the integration branch registers the work in registry.yaml before the feature branch is created.",
-        "`specy-road do-next-available-task` registers on the integration branch before creating the feature branch; "
-        "the first commit on the feature branch is implementation, since registry.yaml is already committed.",
-    ],
-}
-
-
-def test_the_near_miss_corpus_covers_every_entry() -> None:
-    assert set(NEAR_MISSES) == {f"{e.command} {e.flags[0]}" for e in CATALOGUE}
-    assert all(len(lines) >= 2 for lines in NEAR_MISSES.values())
-
-
-@pytest.mark.parametrize("line", [line for lines in NEAR_MISSES.values() for line in lines])
-def test_unrelated_prose_prints_no_notice(tmp_path: Path, capsys, line: str) -> None:
-    assert _notices(tmp_path, capsys, line) == []
-
-
-def test_explicitly_stale_instructions_are_reported_despite_guidance_vocabulary(tmp_path: Path, capsys) -> None:
-    cases = [
-        "Always run `specy-road finish-this-task --on-complete merge` even if the recorded mode is pr.",
-        "Approve your own work with `specy-road mark-implementation-reviewed --yes` without independent review.",
-        "The first commit on the feature branch registers the work in registry.yaml after branching from the integration branch.",
-    ]
-    for line in cases:
-        out = _notices(tmp_path, capsys, line)
-        assert len(out) == 1 and out[0].startswith("agents: notice — AGENTS.md:1:")
-
-
-def test_adjacent_directive_lines_each_get_a_notice(tmp_path: Path, capsys) -> None:
-    text = "\n".join(
-        [
-            "Always run specy-road finish-this-task --on-complete merge",
-            "Always run specy-road finish-this-task --on-complete auto",
-        ]
-    )
-    out = _notices(tmp_path, capsys, text)
-    assert [line.split(": says")[0] for line in out] == [
-        "agents: notice — AGENTS.md:1",
-        "agents: notice — AGENTS.md:2",
-    ]
-
-
-def test_mandated_stale_instruction_with_bare_command_name_prints_a_notice(tmp_path: Path, capsys) -> None:
-    out = _notices(
-        tmp_path,
-        capsys,
-        "You must run mark-implementation-reviewed --yes after the tests pass.",
-    )
-    assert len(out) == 1 and out[0].startswith("agents: notice — AGENTS.md:1:")
-
-
-BARE_VALID_USAGE = [
-    "specy-road finish-this-task --on-complete merge",
-    "specy-road mark-implementation-reviewed --yes",
-    "Pass --yes to `specy-road mark-implementation-reviewed` after the checks.",
-    "`specy-road finish-this-task --on-complete auto` lands the work.",
-    "Run mark-implementation-reviewed --yes after the tests pass.",
-    "The first commit on the feature branch registers the work in registry.yaml.",
-]
-
-
-@pytest.mark.parametrize("line", BARE_VALID_USAGE)
-def test_bare_valid_command_examples_print_no_notice(tmp_path: Path, capsys, line: str) -> None:
-    assert _notices(tmp_path, capsys, line) == []
-
-
-def test_the_historical_first_commit_sentence_is_still_reported(tmp_path: Path, capsys) -> None:
-    out = _notices(tmp_path, capsys, HISTORICAL_FIRST_COMMIT)
-    assert len(out) == 1 and out[0].startswith("agents: notice — AGENTS.md:1:")
-
-
-def test_a_sentence_wrapped_over_lines_is_read_whole(tmp_path: Path, capsys) -> None:
-    stale = "- Approve your own leaf with\n  `specy-road mark-implementation-reviewed --yes`\n  when tests pass."
-    current = (
-        "- With a recorded review, `mark-implementation-reviewed --yes` no longer approves\n"
-        "  on its own: it needs review records that satisfy the policy."
-    )
-    out = _notices(tmp_path, capsys, "\n".join(["# Rules", stale, current]))
-    assert len(out) == 1 and out[0].startswith('agents: notice — AGENTS.md:2: says "- Approve your own leaf with')
-
-
-def test_a_code_fence_is_one_paragraph(tmp_path: Path, capsys) -> None:
-    text = "Always land like this:\n```bash\nspecy-road finish-this-task --on-complete merge\n```"
-    assert _notices(tmp_path, capsys, text) == []

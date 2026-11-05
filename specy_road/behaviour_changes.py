@@ -1,20 +1,9 @@
 """Behaviour changes that make common project agent instructions wrong.
 
 Each entry records the version a change shipped in, the command and flags it
-concerns, one line on what happens now, and optionally a pattern for project
-text that still states the old behaviour. ``validate`` reports such text
-(:mod:`specy_road.agent_text_report`); it never rewrites it.
-
-Matching is per sentence (read whole across wrapped lines) or per physical line when
-each line is its own directive. A line is reported only when it **instructs** the
-stale behaviour: the sentence must match the entry's stale pattern, name ``command``
-(``specy-road <command>``, backticks, or a bare ``<command>`` token when anchored), and
-include a **mandate cue** (``must``, ``always``, ``approve``, ``when tests pass``,
-``never pass/run/delete/push``, non-TTY/unattended agent wording, or prescriptive
-first-commit registration steps). Bare examples that show a flag in use without
-mandating it are valid usage and are never reported. Entry 5 (pickup ``--base``) may
-match without naming ``command``. A sentence matching ``current`` states today's
-behaviour and is never reported.
+concerns, one line on what happens now, and an optional pattern for project
+text that still states the old behaviour. Leaf M13.14 wires these patterns into
+``validate`` notices; this module is the tracked catalogue only.
 """
 
 from __future__ import annotations

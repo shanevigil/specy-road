@@ -31,7 +31,6 @@ from specy_road.agents_md_block import (
     warn_missing_load_order_paths,
 )
 from specy_road.bundled_scripts.validate_stale_commands import unregistered_commands, warn_unregistered_commands
-from specy_road.agent_text_report import warn_contradicted_instructions
 from specy_road.version_pin import pinned_version, warn_if_pin_differs
 from specy_road.bundled_scripts.chore_garden import warn_garden_due
 from specy_road.generated_files import warn_if_generated_files_ignored
@@ -231,7 +230,6 @@ def validate_at(
     warn_if_agents_md_block_stale(root)
     warn_missing_load_order_paths(root)
     warn_unregistered_commands(root)
-    warn_contradicted_instructions(root)
     warn_if_context_over_limits(root)
     warn_if_generated_files_ignored(root)
     warn_research_register(root)
