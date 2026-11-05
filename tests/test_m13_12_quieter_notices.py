@@ -11,6 +11,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 from specy_road.agent_ignores import GITIGNORE, apply_agent_ignores, apply_and_report
 from specy_road.bundled_scripts.touch_zone_tracked import LISTED_LIMIT, warn_untracked_zones
 from specy_road.bundled_scripts.validate_notices import notice_repeated_ignore_patterns
@@ -192,3 +194,38 @@ def test_a_lone_carriage_return_does_not_split_a_line(tmp_path: Path, capsys) ->
     path.write_bytes(b"x\rwork/reviews/\n" + path.read_bytes())
     notice_repeated_ignore_patterns(tmp_path)
     assert capsys.readouterr().out == ""
+
+
+# The complete rule for reading a .gitignore (validate_notices._patterns), one row per item:
+# (bytes above the block, extra lines inside the block, patterns the notice must name).
+GIT_READS = {
+    "utf8-bom-dropped": (b"\xef\xbb\xbfwork/reviews/\n", "", ["work/reviews/"]),
+    "lf": (b"work/reviews/\n", "", ["work/reviews/"]),
+    "crlf": (b"work/reviews/\r\n", "", ["work/reviews/"]),
+    "lone-cr-does-not-split": (b"x\rwork/reviews/\n", "", []),
+    "blank-and-space-only-lines-skipped": (b"\n   \n\r\n", "", []),
+    "hash-comment-skipped": (b"#x\n", "#x\n", []),
+    "escaped-hash-is-a-pattern": (b"\\#x\n", "\\#x\n", ["\\#x"]),
+    "trailing-unescaped-spaces-trimmed": (b"work/reviews/   \n", "", ["work/reviews/"]),
+    "escaped-trailing-space-kept": (b"work/reviews/\\ \n", "", []),
+    "leading-space-kept": (b" work/reviews/\n", "", []),
+    "bang-and-escaped-bang-differ": (b"\\!x\n", "!x\n", []),
+    "bang-repeated": (b"!x\n", "!x\n", ["!x"]),
+}
+
+
+@pytest.mark.parametrize("case", list(GIT_READS))
+def test_the_notice_reads_gitignore_as_git_does(tmp_path: Path, capsys, case: str) -> None:
+    above, inside, repeated = GIT_READS[case]
+    apply_agent_ignores(tmp_path)
+    path = tmp_path / GITIGNORE
+    block = path.read_bytes().replace(MARKER_END.encode(), inside.encode() + MARKER_END.encode())
+    path.write_bytes(above + block)
+    notice_repeated_ignore_patterns(tmp_path)
+    expected = (
+        f"gitignore: notice — .gitignore lists {len(repeated)} pattern(s) above the specy-road managed block "
+        f"that the block repeats: {', '.join(repeated)}. They can be removed from above the markers "
+        "(validate never edits the file).\n"
+    ) if repeated else ""
+    assert capsys.readouterr().out == expected
+    assert path.read_bytes() == above + block   # report only

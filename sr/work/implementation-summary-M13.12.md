@@ -112,6 +112,19 @@ Quieter, accurate validate notices. Commits `36e8aabf` and `cc417326`, then a fi
   None of these embeds a path or other data.
 - Tests that import `agent_ignores`, `ignore_report`, `refresh_stubs`, `init_project` or `upgrade`: 659 passed. Other targeted suites: 150 passed. The fixture tree is clean.
 
+## Fix round 5 (review `gpt-6.1-sol-low` on `8f2a4cf8`; merged `origin/WIP/improvements-0-3-1`)
+
+- **Merge:** a conflict in `validate_roadmap_checks.py` at the call site. The WIP line added `warn_summary_rule(r, nodes)` (M15.22) beside it. Resolved by keeping both lines; this leaf's diff on that file is still only the `warn_untracked_zones(...)` call line.
+- **Class: `.gitignore` text read differently from how git reads it.** A leading UTF-8 BOM stayed in the first pattern, so a repeat on line 1 was missed. Design change: `validate_notices._patterns` is the one place this leaf reads `.gitignore` patterns. It now drops a leading BOM, and its docstring states the complete rule as six numbered items: BOM; LF/CRLF with a lone CR kept; `#` comment vs `\#`; trailing unescaped spaces; empty lines; leading spaces and escapes kept.
+
+## Probes (fix round 5)
+
+- Git itself on a `.gitignore` starting with a BOM then `bom`: `git check-ignore -v --no-index bom` prints pattern `bom` (BOM dropped). `_patterns` now agrees.
+- One parametrized table, `test_the_notice_reads_gitignore_as_git_does`, through the public `notice_repeated_ignore_patterns`, with one row per rule item. Every row also asserts the file bytes are unchanged. The rows: BOM; LF; CRLF; lone CR; blank and space-only lines; `#` comment; `\#` pattern; trailing unescaped spaces; escaped trailing space; leading space; `!` vs `\!`; `!` repeated. 12 rows pass; the BOM row fails on `8f2a4cf8`.
+- Other places in the change that read `.gitignore` text:
+  - `ignore_report` (M13.7, existing; this leaf changed only the printed command lines) and `agent_ignores` (note text only) read no patterns for comparison here.
+  - `managed_block` locates the markers by substring, so a BOM before the first line does not move them.
+
 ## Verification
 
 - `python -m pytest -q -n 4`: 4409 passed, 1 failed before the `test_validate_strict.py` update. All 7 tests in that file pass after it. After the fix round and the merge: 4459 passed.
@@ -137,6 +150,7 @@ Quieter, accurate validate notices. Commits `36e8aabf` and `cc417326`, then a fi
 - `validate_notices.parse_validate_args`: adds `--context`, parses, and sets folding, keeping the option out of `validate_roadmap.py` (A5).
 - `validate_notices.__all__`: marks `report_context_warnings` as a re-export for the single `validate_roadmap.py` import line (A5).
 - Guard in `_record`: bytes comparison (no decode), and `OSError` suppressed on read and on write or remove. Any unreadable hash is a miss.
+- Test `test_the_notice_reads_gitignore_as_git_does` (fix round 5): one row per item of the `.gitignore` reading rule, BOM included (A4).
 - `validate_notices._trim_trailing_spaces`: git's trailing-space rule, so `_patterns` reads lines as git does (fix round 2, A4).
 - Tests `test_patterns_git_reads_differently_are_not_repeats`, `test_trailing_unescaped_spaces_and_a_crlf_are_what_git_drops`, `test_a_lone_carriage_return_does_not_split_a_line`: A4 pattern equality as git reads it (fix round 2).
 - Tests in `tests/test_m13_12_context_cache.py`: invalid UTF-8, truncated, directory as the hash file, file as the cache dir, mode 000; no flag never folds; the flag folds one report only.

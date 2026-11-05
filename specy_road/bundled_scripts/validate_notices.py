@@ -57,14 +57,20 @@ def _trim_trailing_spaces(line: str) -> str:
 
 
 def _patterns(text: str) -> list[str]:
-    """The ignore patterns in ``text``, each exactly as git reads it.
+    """The ignore patterns in ``text``, each exactly as git reads a ``.gitignore``.
 
-    Like git: lines split on ``\\n`` only, one trailing ``\\r`` dropped, a line
-    starting with ``#`` is a comment, trailing unescaped spaces are trimmed, and
-    nothing else changes (a leading space, ``\\#``, ``!`` and ``\\!`` all stay
-    as written), so two lines compare equal only when git reads the same pattern.
+    The complete rule (git's ``add_patterns_from_buffer``):
+
+    1. a leading UTF-8 BOM is dropped;
+    2. lines split on ``\\n`` only, and one trailing ``\\r`` is dropped, so CRLF and LF read the same;
+    3. a line starting with ``#`` is a comment (``\\#`` is a pattern);
+    4. trailing unescaped spaces are trimmed (``\\ `` keeps its space);
+    5. a line left empty is skipped;
+    6. nothing else changes: a leading space, ``!``, ``\\!`` and every other escape stay as written.
+
+    So two lines compare equal only when git reads the same pattern.
     """
-    lines = (ln[:-1] if ln.endswith("\r") else ln for ln in text.split("\n"))
+    lines = (ln[:-1] if ln.endswith("\r") else ln for ln in text.removeprefix("\ufeff").split("\n"))
     return [p for ln in lines if not ln.startswith("#") and (p := _trim_trailing_spaces(ln))]
 
 
