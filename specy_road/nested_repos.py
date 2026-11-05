@@ -19,6 +19,7 @@ repository's files.
 
 from __future__ import annotations
 
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -177,8 +178,8 @@ def add_nested_worktrees(repo_root: Path, leaf_root: Path, branch: str, zones) -
         if dest.exists():
             problem = existing_worktree_problem(src, dest, branch if covered else None, tip)
             if problem:
-                raise NestedRepoError(f"nested repo {nr.path!r}: {problem}; remove it (`git -C {src} worktree "
-                                      "remove <path>`, or delete the directory), then re-run")
+                raise NestedRepoError(f"nested repo {nr.path!r}: {problem}; remove it (`git -C {shlex.quote(str(src))} "
+                                      f"worktree remove {shlex.quote(str(dest))}`, or delete the directory), then re-run")
             continue
         if covered:
             how = f"on {branch}"

@@ -11,6 +11,7 @@ nothing and stops finish with the merge command to run by hand.
 from __future__ import annotations
 
 import re
+import shlex
 import shutil
 import tempfile
 from pathlib import Path
@@ -82,13 +83,33 @@ def _land_one(repo: Path, nr: NestedRepo, feature_branch: str) -> str | None:
     return _merge_in_temp_tree(repo, tip, feature_branch, f"{rm}/{ib}", push)
 
 
+def _follow_in_checkout(repo: Path, holder: Path, ref: str, tip: str, merge: str) -> str | None:
+    """Update ``holder``'s index and files from ``tip`` to ``merge`` after ``ref`` moved; why not, or ``None``.
+
+    Only while ``holder`` still has ``ref`` checked out; on any failure ``ref``
+    is put back to ``tip`` (compare-and-swap: only if it still names ``merge``).
+    """
+    switched = git_text(["symbolic-ref", "-q", "HEAD"], holder) != ref
+    code, out = (1, "it switched branch or detached") if switched else \
+        git_code(["read-tree", "-m", "-u", tip, merge], holder)
+    if code == 0:
+        return None
+    git_code(["update-ref", ref, tip, merge], repo)
+    ib = ref.removeprefix("refs/heads/")
+    return f"could not update the checkout of {ib} in {holder}: {out}; {ib} was not moved; re-run"
+
+
 def _land_one_locally(repo: Path, nr: NestedRepo, feature_branch: str) -> str | None:
     """``land: local``: merge ``feature_branch`` onto the local integration branch and move only that ref.
 
-    Nothing is fetched or pushed. The ref moves only if it still names the
-    commit the merge was made on. Where the branch is checked out, that
-    worktree must be clean and is fast-forwarded to the merge; a dirty one is
-    refused before anything is merged. Already merged (a re-run) is skipped.
+    Nothing is fetched or pushed. ``refs/heads/<ib>`` itself moves, by
+    compare-and-swap from the commit the merge was made on, so a branch moved
+    meanwhile is refused. Where the branch is checked out, that worktree must be
+    clean, and must still have ``<ib>`` checked out after the merge (not
+    detached, not another branch, even at the same commit); its index and files
+    then follow the ref, and the ref is put back if they cannot. Success is
+    reported only once ``refs/heads/<ib>`` contains the merge. Already merged (a
+    re-run) is skipped.
     """
     ib = nr.integration_branch
     tip = git_text(["rev-parse", "--verify", "--quiet", f"refs/heads/{ib}"], repo)
@@ -103,16 +124,21 @@ def _land_one_locally(repo: Path, nr: NestedRepo, feature_branch: str) -> str | 
             return (f"{ib} is checked out in {holder} with uncommitted changes (or an unreadable status); "
                     "commit or stash them there, then re-run")
 
+    ref = f"refs/heads/{ib}"
+
     def move_ref(tree: Path) -> str | None:
         merge = git_text(["rev-parse", "HEAD"], tree) or ""
-        if holder is None:
-            code, out = git_code(["update-ref", f"refs/heads/{ib}", merge, tip], repo)
-        elif git_text(["rev-parse", "HEAD"], holder) != tip:
-            code, out = 1, f"{ib} moved in {holder} during the merge"
-        else:
-            code, out = git_code(["merge", "-q", "--ff-only", merge], holder)
+        if holder is not None and git_text(["symbolic-ref", "-q", "HEAD"], holder) != ref:
+            return (f"{holder} no longer has {ib} checked out (switched branch or detached during the merge); "
+                    f"{ib} was not moved; re-run")
+        code, out = git_code(["update-ref", ref, merge, tip], repo)   # compare-and-swap on the named ref
         if code != 0:
-            return f"could not move {ib} to the merge {merge[:12]}: {out}; re-run"
+            return f"could not move {ib} to the merge {merge[:12]} ({ib} moved meanwhile?): {out}; re-run"
+        err = _follow_in_checkout(repo, holder, ref, tip, merge) if holder is not None else None
+        if err:
+            return err
+        if not git_ok(["merge-base", "--is-ancestor", merge, ref], repo)[0]:
+            return f"{ib} does not contain the merge {merge[:12]} after moving it; re-run"
         print(f"[ok] nested repo {nr.path}: merged {feature_branch} into local {ib} (land: local; nothing pushed)")
         return None
 
@@ -152,7 +178,7 @@ def land_nested_branches(repo_root: Path, feature_branch: str) -> tuple[bool, st
             continue
         elif nr.land == "manual":
             if not _merged_somewhere(repo, nr, feature_branch):
-                manual.append(f"  git -C {repo} merge --no-ff {feature_branch}   "
+                manual.append(f"  git -C {shlex.quote(str(repo))} merge --no-ff {shlex.quote(feature_branch)}   "
                               f"# with {nr.integration_branch} checked out there")
             continue
         elif nr.land == "local":

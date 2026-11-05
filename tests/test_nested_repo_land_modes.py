@@ -7,6 +7,9 @@ Fixture: :func:`tests.test_nested_repo_finish._repo` (the review repo with a bar
 
 from __future__ import annotations
 
+import os
+import shlex
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -147,3 +150,42 @@ def test_base_local_behind_its_remote_is_refused_only_when_the_entry_says_so(tmp
     else:
         add_nested_worktrees(repo, leaf, BRANCH, ["src"])
         assert git(leaf / COVERED, "rev-parse", "HEAD") == git(nested, "rev-parse", "dev")
+
+
+@pytest.mark.parametrize("switch", [["checkout", "-q", "-b", "another-branch"], ["checkout", "-q", "--detach"]])
+def test_land_local_refuses_when_the_checkout_leaves_the_integration_branch_during_the_merge(
+        tmp_path: Path, switch: list[str]) -> None:
+    """Fix round 1 R1: the checkout switches to another branch (or detaches) at the same commit while the
+    temporary merge runs; landing must not report success, and the main repository must not be pushed."""
+    repo, nested = _repo(tmp_path)
+    _configure(repo, f"{{path: {COVERED}, land: local}}")
+    hook = Path(git(nested, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "hooks" / "pre-merge-commit"
+    hook.parent.mkdir(exist_ok=True)
+    hook.write_text("#!/bin/sh\nunset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_COMMON_DIR\n"
+                    f"git -C {shlex.quote(str(nested))} {' '.join(switch)}\n", encoding="utf-8")
+    hook.chmod(0o755)
+    nested_remote, main_remote, dev = _origin_tip(nested), _origin_tip(repo), git(nested, "rev-parse", "dev")
+    ok, err = _land(repo)
+    assert not ok and "no longer has dev checked out" in err and "main repository was not merged" in err
+    assert git(nested, "rev-parse", "dev") == dev   # the integration branch did not move
+    assert git(nested, "branch", "--show-current") == ("another-branch" if "-b" in switch else "")
+    assert git(nested, "rev-parse", "HEAD") == dev   # nor did the branch it switched to
+    assert _origin_tip(nested) == nested_remote and _origin_tip(repo) == main_remote   # nothing pushed
+
+
+def test_the_printed_manual_command_runs_for_a_path_with_spaces(tmp_path: Path) -> None:
+    """Fix round 1 R2: the repository path is shell-quoted, so the printed command merges as printed."""
+    parent = tmp_path / "parent with spaces"
+    parent.mkdir()
+    repo, nested = _repo(parent)
+    _configure(repo, f"{{path: {COVERED}, land: manual}}")
+    ok, err = _land(repo)
+    assert not ok
+    line = next(ln for ln in err.splitlines() if ln.lstrip().startswith("git -C "))
+    assert shlex.quote(str(nested)) in line
+    r = subprocess.run(line, shell=True, capture_output=True, text=True,
+                       env={**os.environ, "GIT_MERGE_AUTOEDIT": "no"})
+    assert r.returncode == 0, r.stderr
+    assert git(nested, "merge-base", "--is-ancestor", BRANCH, "dev") == ""
+    ok, err = _land(repo)
+    assert ok, err
