@@ -87,7 +87,7 @@
       "parent_id": "M12",
       "planning_dir": "planning/M12.3_scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves_14d90a55-fc3f-49f3-9c1b-c1cac57e09c9.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Scheduled gardening chores that find drift and open small chore leaves",
       "touch_zones": [
         "specy_road/bundled_scripts/chore_cli.py",

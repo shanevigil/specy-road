@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI for ``specy-road chore start|close`` (``docs/orchestration-chores.md``): work outside the roadmap.
+"""CLI for ``specy-road chore start|close|garden`` (``docs/orchestration-chores.md``): work outside the roadmap.
 
 A chore is ``work/chores/<slug>.json`` in the main checkout: no roadmap node,
 branch or registry row. It runs in the checkout it was started from (or
@@ -8,7 +8,8 @@ leaf does. ``worker delegate``, ``message``, ``resume``, ``sync``, ``usage``,
 ``reconcile`` and ``review delegate`` take the slug where they take a node id;
 its model may be off the roster when ``--harness`` names where it runs.
 ``chore close`` writes ``work/chores/<slug>.md``: the summary, the workers'
-usage, and each reviewer's verdict, or ``unreviewed``. Exit codes: 0 done, 1 refused.
+usage, and each reviewer's verdict, or ``unreviewed``. ``chore garden`` (``chore_garden.py``)
+reports drift and may file it as roadmap leaves. Exit codes: 0 done, 1 refused.
 """
 
 from __future__ import annotations
@@ -170,6 +171,24 @@ def cmd_close(ns: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_garden(ns: argparse.Namespace) -> int:
+    from specy_road.bundled_scripts.chore_garden import as_json, garden  # noqa: PLC0415 — it imports this module
+
+    if ns.open_chores and not ns.under:
+        raise WorkerError("--open-chores needs --under <PARENT>: the node the chore leaves are added under")
+    report = garden(resolve_repo_root(ns), ns.under if ns.open_chores else None)
+    if ns.json:
+        print(as_json(report))
+        return 0
+    for f in report["findings"]:
+        print(f.text())
+    for line in report["notes"]:
+        print(f"garden: {line}", file=sys.stderr)
+    for line in report["chores"]:
+        print(f"garden: {line}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="specy-road")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -193,6 +212,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--json", action="store_true")
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_close)
+    sp = cs.add_parser("garden", help="Read-only drift scans, one finding per line; --open-chores files them as leaves")
+    sp.add_argument("--open-chores", action="store_true",
+                    help="Add one leaf per finding class through the add-node write; none while one is still open")
+    sp.add_argument("--under", metavar="PARENT", help="The node --open-chores adds its leaves under (required with it)")
+    sp.add_argument("--json", action="store_true")
+    add_repo_root_arg(sp)
+    sp.set_defaults(func=cmd_garden)
     return p
 
 
