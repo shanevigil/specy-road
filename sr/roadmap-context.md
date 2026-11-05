@@ -110,6 +110,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M16.67` move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit `move-node-keeps-other-ids` — task — **Complete**
   - `M16.68` finish resolves roadmap chunk conflicts the branch only inherited `finish-resolves-inherited-roadmap-conflicts` — task — **Not Started**
   - `M16.69` Cursor workers launch sandboxed without --force unless the roster opts in `cursor-workers-no-force-by-default` — task — **Not Started**
+  - `M16.70` move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree `move-node-chosen-id` — task — **Not Started**
+  - `M16.71` CLI indent, outdent and group-nodes re-level siblings in one transaction validated once `outline-group-cli` — task — **Not Started**
+  - `M16.72` Opt-in rewrite of prose id references after a move, and a standalone rename-refs `rewrite-id-refs` — task — **Not Started**
+  - `M16.73` remove-node deletes an empty never-started node and names every blocker otherwise `remove-node` — task — **Not Started**
+  - `M16.74` apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once `apply-restructure-ops` — task — **Not Started**
+  - `M16.75` validate and add-dependency catch cycles made through inherited group dependencies `inherited-dep-cycles` — task — **Not Started**
 - `M17` 0.3.2: PM GUI shows orchestration and worktree state `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface `pm-gui-orchestration-plan` — gate — **Not Started**
 - `M18` Orchestration and review-loop features (after 0.3.1) `orch-review-loop` — phase — **Not Started**
@@ -215,6 +221,7 @@ Do not pick these up.
 - `M15.33` on `feature/rm-refused-review-record-leaves-a-trace` since 2026-11-05
 - `M15.36` on `feature/rm-worker-launch-never-depends-on-claude-default-mode` since 2026-11-05
 - `M16.68` on `feature/rm-finish-resolves-inherited-roadmap-conflicts` since 2026-11-05
+- `M16.69` on `feature/rm-cursor-workers-no-force-by-default` since 2026-11-05
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
