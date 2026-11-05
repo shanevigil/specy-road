@@ -128,7 +128,7 @@
       "parent_id": "M12.4",
       "planning_dir": "planning/M12.4.1_per-area-quality-scores-in-the-digest-from-review-history_46ce74ef-458b-401f-8abd-93e6a99b28c1.md",
       "sibling_order": 1,
-      "status": "Complete",
+      "status": "Not Started",
       "title": "Per-area quality scores in the digest from review history",
       "touch_zones": [
         "specy_road/digest.py",
