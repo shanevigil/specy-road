@@ -41,6 +41,7 @@ Unchanged: `specy_road/worker_orphans.py`, `specy_road/worker_ops_slots.py`, `sp
 - `orphaned_claims._parse_when`: an ISO timestamp, or a date-only `started` value at midnight UTC.
 - `orphaned_claims._age`: `Nd`, `Nh`, `Nm`, or `under 1m`.
 - `doctor._print_orphaned_claims`: the report-only section, printed only when the list is non-empty.
+- `grind_session_events._human_hook_failed`: the `hook_failed` line, including the claim sentence for `phase=implement`, so that branch stays out of `_human`.
 
 ### Branches or guards
 
@@ -48,7 +49,7 @@ Unchanged: `specy_road/worker_orphans.py`, `specy_road/worker_ops_slots.py`, `sp
 - `slot_breakdown` drops any record whose state is not in `SLOT_STATES` before it groups the refusal.
 - `append_claim_hint` returns the message unchanged when there is no node, the node is not claimed, or a live worker is on it.
 - `orphaned_claims` skips a claim that has a live worker, a live session on its branch, or a valid READY at the tip, and uses `unknown` when neither a commit nor `started` exists.
-- grind `hook_failed` adds the sentence only for `phase=implement` when the node id is set; JSON output is unchanged.
+- grind `hook_failed` adds the sentence only for `phase=implement` when the node id is set; JSON output is unchanged. The sentence is built in `_human_hook_failed`, so `_human` keeps the branch it had before this leaf.
 - `cmd_doctor` prints the claim section after the tidy sections and does not put it in `FIX_ORDER`, so `--fix` never acts on it.
 - `cmd_handoff_status` prints the report lines (an empty list prints nothing) and adds `orphaned_claims` to the existing JSON object.
 - `worker_cli.main` passes the node id into the hint only when the command is `delegate`.
