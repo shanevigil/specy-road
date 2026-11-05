@@ -187,6 +187,14 @@ def _sum_usage(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
+def _usage_total(rows: list[dict[str, Any]], *, turns: int) -> dict[str, Any]:
+    """Sum usage rows into one total; propagate ``possible_undercount`` when any row carries it."""
+    total = {"turns": turns, **_sum_usage(rows)}
+    if any(r.get("possible_undercount") for r in rows):
+        total["possible_undercount"] = True
+    return total
+
+
 def usage(attempts: list[tuple[Any, list[dict[str, Any]]]]) -> dict[str, Any]:
     """``{"node_id", "attempts": [...], "total"}`` from ``(record, events)`` per worker, from its ``usage`` events."""
 
@@ -198,9 +206,7 @@ def usage(attempts: list[tuple[Any, list[dict[str, Any]]]]) -> dict[str, Any]:
         rows.append({"attempt": rec.attempt, "worker_id": rec.worker_id, "model": rec.model, "harness": rec.harness,
                      "harness_version": versions[-1] if versions else None, "worktree": rec.worktree,
                      "turns": len(turns), "possible_undercount": flag, **_sum_usage(turns)})
-    total = {"turns": sum(r["turns"] for r in rows), **_sum_usage(rows)}
-    if any(r.get("possible_undercount") for r in rows):
-        total["possible_undercount"] = True
+    total = _usage_total(rows, turns=sum(r["turns"] for r in rows))
     return {"node_id": attempts[0][0].node_id, "attempts": rows, "total": total}
 
 
@@ -229,7 +235,7 @@ def _combined_node_total(data: dict[str, Any], repo_root: Path | None) -> tuple[
     exec_total, rev = data["total"], reviewer_total(data, repo_root)
     if rev is None:
         return exec_total, None
-    combined = {"turns": exec_total["turns"] + rev["turns"], **_sum_usage([exec_total, rev])}
+    combined = _usage_total([exec_total, rev], turns=exec_total["turns"] + rev["turns"])
     return combined, rev
 
 

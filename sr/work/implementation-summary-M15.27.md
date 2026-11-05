@@ -9,7 +9,7 @@ Real Composer 2.5 worker logs on this toolkit's grind emit **one** usage-bearing
 - **`specy_road/worker_adapter_cursor.py`** — `_usage_parts` per turn; `sum_cursor_turn_usage` when len > 1; otherwise result usage + `num_turns`.
 - **`tests/fixtures/worker_usage/sanitize_cursor_worker_log_turn.py`** — full-turn sanitizer (every line: type, subtype, session_id, usage when present).
 - **`tests/fixtures/worker_usage/cursor_multi_segment_turn.json`** — sanitized real longest grind turn (2196 lines, **one** usage-bearing line, 44158 output tokens).
-- **`specy_road/worker_usage_plausibility.py`**, **`worker_cli_render.py`**, **`tests/test_cursor_usage_segments.py`** — A3 marking and tests.
+- **`specy_road/worker_usage_plausibility.py`**, **`worker_cli_render.py`** (`_usage_total` propagates `possible_undercount` on every summed total), **`tests/test_cursor_usage_segments.py`** — A3 marking and tests.
 
 ### Fixture observations (A1)
 
@@ -29,6 +29,9 @@ No per-segment vs running-total distinction appears in observed logs; combining 
 - Real fixture worker test — usage event `output_tokens` 44158.
 - `sum_cursor_turn_usage([])` — all null; single part unchanged; `num_turns` 4 preserved on lone `result`.
 - WIP merge (M15.13/M8.3) — `worker_cli_helpers`, `worker_lease_helpers`; conflicts resolved with public `make_worker_repo`.
+- `_usage_total` / `_combined_node_total` — flagged executor + reviewer JSON/text totals keep `possible_undercount: true`.
+- `_usage_total` with unmarked executor + reviewer — combined JSON/text omit the flag.
+- Reviewer-only node total (no executor usage events) — no `possible_undercount` on combined total.
 
 ## Verification
 
@@ -48,5 +51,6 @@ specy-road file-limits
 - `_usage_parts` / `_track_usage` — per-turn accumulator; cleared on `system`/`init` and after `result`.
 - `sanitize_cursor_worker_log_turn.py` — regenerates the committed fixture from a worker log.
 - `reset_cursor_adapter_via_init` — test isolation via public init parse.
+- `_usage_total` — single helper for executor totals and executor+reviewer combined totals; carries `possible_undercount` when any input row does.
 - `worker_usage_plausibility.possible_undercount` — duration vs output-rate heuristic.
 - `tests/test_cursor_usage_segments.py` — sanitizer regression, multi-line sum, real fixture, A3.

@@ -122,3 +122,56 @@ def test_worker_usage_json_and_text_mark_possible_undercount() -> None:
     assert data["total"]["possible_undercount"] is True
     lines = wcr.usage_lines(data)
     assert any("possible undercount" in ln for ln in lines)
+
+
+def _reviewer_subtotal() -> dict:
+    return {"runs": 1, "turns": 1, "input_tokens": 50, "output_tokens": 5, "cached_input_tokens": None,
+            "reasoning_tokens": None, "cost_usd": 0.1, "cost_is_estimate": True, "num_turns": None}
+
+
+def _usage_events(output_tokens: int, *, duration_sec: int) -> list[dict]:
+    start = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+    return [
+        {"at": start.isoformat(), "type": "started", "source": "worker", "seq": 1},
+        {"at": (start + timedelta(seconds=duration_sec)).isoformat(), "type": "usage", "source": "worker", "seq": 2,
+         "detail": {"input_tokens": 1, "output_tokens": output_tokens, "cached_input_tokens": None,
+                    "reasoning_tokens": None, "cost_usd": None, "cost_is_estimate": None, "num_turns": None,
+                    "harness_version": None}},
+    ]
+
+
+def _worker_rec() -> object:
+    return type("R", (), {"attempt": 1, "worker_id": "w-0001", "model": "c", "harness": "cursor", "node_id": "M1.1",
+                         "worktree": None})()
+
+
+def test_combined_usage_json_and_text_keep_possible_undercount_when_executor_is_flagged(monkeypatch) -> None:
+    from specy_road.bundled_scripts import worker_cli_render as wcr
+
+    monkeypatch.setattr(wcr, "reviewer_total", lambda data, repo_root=None: _reviewer_subtotal())
+    data = wcr.usage([(_worker_rec(), _usage_events(10136, duration_sec=6092))])
+    payload = wcr.usage_json_payload(data, Path("/tmp/repo"))
+    assert payload["executors"]["possible_undercount"] is True
+    assert payload["total"]["possible_undercount"] is True
+    lines = wcr.usage_lines(data, Path("/tmp/repo"))
+    assert "possible undercount" in lines[-1]
+
+
+def test_combined_usage_omits_possible_undercount_when_executor_and_reviewer_are_unmarked(monkeypatch) -> None:
+    from specy_road.bundled_scripts import worker_cli_render as wcr
+
+    monkeypatch.setattr(wcr, "reviewer_total", lambda data, repo_root=None: _reviewer_subtotal())
+    data = wcr.usage([(_worker_rec(), _usage_events(17000, duration_sec=300))])
+    payload = wcr.usage_json_payload(data, Path("/tmp/repo"))
+    assert "possible_undercount" not in payload["executors"]
+    assert "possible_undercount" not in payload["total"]
+    assert "possible undercount" not in wcr.usage_lines(data, Path("/tmp/repo"))[-1]
+
+
+def test_reviewer_only_subtotal_does_not_imply_possible_undercount(monkeypatch) -> None:
+    from specy_road.bundled_scripts import worker_cli_render as wcr
+
+    monkeypatch.setattr(wcr, "reviewer_total", lambda data, repo_root=None: _reviewer_subtotal())
+    data = wcr.usage([(_worker_rec(), [])])
+    payload = wcr.usage_json_payload(data, Path("/tmp/repo"))
+    assert "possible_undercount" not in payload.get("total", {})
