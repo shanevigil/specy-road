@@ -367,7 +367,10 @@
         "specy_road/shared_zones.py",
         "specy_road/bundled_scripts/validate_registry_overlap.py",
         "docs/grind-session.md",
-        "tests/"
+        "tests/",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "specy_road/bundled_scripts/session_plan_git.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py"
       ],
       "type": "task"
     },

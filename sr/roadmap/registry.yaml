@@ -154,6 +154,9 @@ entries:
       - specy_road/bundled_scripts/validate_registry_overlap.py
       - docs/grind-session.md
       - tests/
+      - specy_road/templates/project/schemas/git-workflow.schema.json
+      - specy_road/bundled_scripts/session_plan_git.py
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -170,6 +173,10 @@ entries:
       - specy_road/bundled_scripts/review_packet_observed.py
       - docs/acceptance-evidence.md
       - tests/
+      - specy_road/review_record_rules.py
+      - specy_road/schemas/review-record.schema.json
+      - specy_road/review_files.py
+      - specy_road/bundled_scripts/role_prompt_rca.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -193,6 +200,9 @@ entries:
       - specy_road/worktree_env.py
       - docs/orchestration-worktrees.md
       - tests/
+      - specy_road/templates/project/schemas/git-workflow.schema.json
+      - specy_road/bundled_scripts/doctor_env_setup.py
+      - specy_road/worker_ops_message.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending

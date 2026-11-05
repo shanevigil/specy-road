@@ -58,7 +58,11 @@
         "specy_road/bundled_scripts/review_packet.py",
         "specy_road/bundled_scripts/review_packet_observed.py",
         "docs/acceptance-evidence.md",
-        "tests/"
+        "tests/",
+        "specy_road/review_record_rules.py",
+        "specy_road/schemas/review-record.schema.json",
+        "specy_road/review_files.py",
+        "specy_road/bundled_scripts/role_prompt_rca.py"
       ],
       "type": "task"
     },
@@ -129,7 +133,10 @@
         "specy_road/worker_ops_launch.py",
         "specy_road/worktree_env.py",
         "docs/orchestration-worktrees.md",
-        "tests/"
+        "tests/",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "specy_road/bundled_scripts/doctor_env_setup.py",
+        "specy_road/worker_ops_message.py"
       ],
       "type": "task"
     },
