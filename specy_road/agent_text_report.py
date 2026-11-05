@@ -40,9 +40,13 @@ def _paragraphs(lines: list[tuple[int, str]]):
     prev = None
     for lineno, line in lines:
         if _FENCE.match(line):
+            if para:
+                yield para
+                para = []
             fenced = not fenced
-            line = ""
-        if para and (fenced or not line.strip() or _BLOCK_START.match(line) or lineno != prev + 1):
+            prev = lineno
+            continue
+        if para and (not line.strip() or _BLOCK_START.match(line) or (not fenced and lineno != prev + 1)):
             yield para
             para = []
         if line.strip():

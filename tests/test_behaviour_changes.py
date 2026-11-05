@@ -162,6 +162,19 @@ def test_unrelated_prose_prints_no_notice(tmp_path: Path, capsys, line: str) -> 
     assert _notices(tmp_path, capsys, line) == []
 
 
+@pytest.mark.parametrize(
+    "line",
+    [
+        "Pass --yes to `specy-road mark-implementation-reviewed` after the checks.",
+        "`specy-road finish-this-task --on-complete auto` lands the work.",
+        "The first commit on the feature branch registers the work in registry.yaml.",
+    ],
+)
+def test_a2_a4_minimum_stale_pairings_print_a_notice(tmp_path: Path, capsys, line: str) -> None:
+    out = _notices(tmp_path, capsys, line)
+    assert len(out) == 1 and out[0].startswith("agents: notice — AGENTS.md:1:")
+
+
 def test_the_historical_first_commit_sentence_is_still_reported(tmp_path: Path, capsys) -> None:
     out = _notices(tmp_path, capsys, HISTORICAL_FIRST_COMMIT)
     assert len(out) == 1 and out[0].startswith("agents: notice — AGENTS.md:1:")
@@ -177,6 +190,6 @@ def test_a_sentence_wrapped_over_lines_is_read_whole(tmp_path: Path, capsys) -> 
     assert len(out) == 1 and out[0].startswith('agents: notice — AGENTS.md:2: says "- Approve your own leaf with')
 
 
-def test_each_code_fence_line_is_its_own_sentence(tmp_path: Path, capsys) -> None:
+def test_a_code_fence_is_one_paragraph(tmp_path: Path, capsys) -> None:
     text = "Always land like this:\n```bash\nspecy-road finish-this-task --on-complete merge\n```"
     assert _notices(tmp_path, capsys, text) == []
