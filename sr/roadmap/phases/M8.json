@@ -103,7 +103,7 @@
       "parent_id": "M8",
       "planning_dir": "planning/M8.3_reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output_2278f4ad-6118-44da-bca8-39d904afee8d.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Reviewer runs are read-only and specy-road writes the review record from structured output",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt.py",

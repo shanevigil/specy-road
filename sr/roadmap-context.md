@@ -66,10 +66,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M7` Keeping current: recurring research `keeping-current-recurring-research` — phase — **In Progress**
   - `M7.1` A research register tracks deep-research topics with a refresh cadence `a-research-register-tracks-deep-research-topics-with-a-refresh-cadence` — task — **Complete**
   - `M7.2` Run the harness-capabilities research and fold its findings `run-the-harness-capabilities-research-and-fold-its-findings` — task — **Complete**
-- `M8` Harness compatibility `harness-compatibility` — phase — **Not Started**
+- `M8` Harness compatibility `harness-compatibility` — phase — **In Progress**
   - `M8.1` Harness facts fixture drives model-profiles and executor templates, with a classified diff on version bumps `harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps` — task — **Complete**
   - `M8.2` Worker adapters harden the launch and run a deterministic post-run check `worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` — task — **Complete**
-  - `M8.3` Reviewer runs are read-only and specy-road writes the review record from structured output `reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` — task — **Not Started**
+  - `M8.3` Reviewer runs are read-only and specy-road writes the review record from structured output `reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` — task — **Complete**
   - `M8.4` Ship skills once and meter every file each harness injects `ship-skills-once-and-meter-every-file-each-harness-injects` — task — **Complete**
   - `M8.5` Guard hooks per harness and avoid lists in every model profile `guard-hooks-per-harness-and-avoid-lists-in-every-model-profile` — task — **Complete**
   - `M8.7` Runtime verification of the harness facts against installed binaries `runtime-verification-of-the-harness-facts-against-installed-binaries` — task — **Complete**
@@ -288,7 +288,6 @@ Do not pick these up.
 - `M15.25` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M15.27` on `feature/rm-cursor-usage-sums-segments-and-flags-undercounts` since 2026-11-05
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
-- `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
 ## Quality by area
 
@@ -296,17 +295,21 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 34 | 32 | 4.00 | 100% | 0 | 0 |
-| `specy_road` **flagged** | 47 | 45 | 4.00 | 100% | 0 | 0 |
-| `tests` **flagged** | 49 | 47 | 4.00 | 100% | 0 | 0 |
-| `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
-| `README.md` | 2 | 2 | — | — | 0 | 0 |
-| `gui` | 1 | 1 | — | — | 0 | 0 |
+| `.github` | 1 | 1 | — | — | 0 | 0 |
+| `CLAUDE.md` | 1 | 1 | — | — | 0 | 0 |
+| `README.md` | 1 | 1 | — | — | 0 | 0 |
+| `constraints` | 1 | 1 | — | — | 0 | 0 |
+| `docs` | 39 | 39 | — | — | 0 | 0 |
+| `model-profiles` | 1 | 1 | — | — | 0 | 0 |
+| `pyproject.toml` | 1 | 1 | — | — | 0 | 0 |
+| `requirements-ci.in` | 1 | 1 | — | — | 0 | 0 |
+| `requirements-ci.txt` | 1 | 1 | — | — | 0 | 0 |
 | `research` | 1 | 1 | — | — | 0 | 0 |
-| `roadmap` | 2 | 2 | — | — | 0 | 0 |
-| `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
-| `schemas` | 1 | 1 | — | — | 0 | 0 |
-| `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
+| `roadmap` | 1 | 1 | — | — | 0 | 0 |
+| `schemas` | 3 | 3 | — | — | 0 | 0 |
+| `scripts` | 1 | 1 | — | — | 0 | 0 |
+| `specy_road` | 48 | 48 | — | — | 0 | 0 |
+| `tests` | 47 | 47 | — | — | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
