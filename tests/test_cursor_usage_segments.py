@@ -7,8 +7,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from tests.test_worker_adapters import CURSOR_RESULT
-from tests.test_worker_cli import _turn
-from tests.worker_repo_helpers import make_worker_repo
+from tests.worker_repo_helpers import make_worker_repo, run_fake_harness_turn
 
 from specy_road import worker_adapters as wa
 from specy_road import worker_state as ws
@@ -47,7 +46,7 @@ def test_a_multi_segment_cursor_turn_records_the_sum_of_every_usage_line(tmp_pat
     repo, script = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "cursor", "composer-2.5", repo)
     wa.adapter_for("cursor")._usage_segments = []
-    _turn(repo, script, rec, lines)
+    run_fake_harness_turn(repo, script, rec, lines)
     usage = next(e.detail for e in ws.events_since(repo, rec.worker_id) if e.type == "usage")
     assert usage["output_tokens"] == spec["expected_output_tokens"]
 

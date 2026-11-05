@@ -19,7 +19,7 @@ from specy_road.bundled_scripts import review_cli, worker_cli, worker_cli_render
 
 # The fake harness and its repo live in worker_repo_helpers; the old private name
 # stays for the modules that import it from here.
-from tests.worker_repo_helpers import FAKE, make_worker_repo as _repo, worker_roster  # noqa: F401
+from tests.worker_repo_helpers import FAKE, make_worker_repo as _repo, run_fake_harness_turn, worker_roster  # noqa: F401
 
 
 def run_worker_cli(*args: str) -> int:
@@ -314,26 +314,17 @@ def test_timeline_arithmetic_and_unknown_phases() -> None:
     assert set(t["phases"].values()) == {None} and all(line.endswith("unknown") for line in wcr.timeline_lines(t)[1:])
 
 
-def _turn(repo: Path, script: Path, rec: ws.WorkerRecord, lines: list[dict], *, exit_code: int = 0) -> None:
-    """One turn of the fake harness through the wrapper, printing ``lines``."""
-    from specy_road import worker_runner as wr
-    from specy_road.worker_adapters import Launch
-    spec = script.parent / f"turn-{rec.worker_id}-{ws.load_record(repo, rec.worker_id).last_event_seq}.json"
-    spec.write_text(json.dumps({"lines": lines, "exit": exit_code}))
-    wr.run(repo, rec.worker_id, Launch([sys.executable, str(script), str(spec)]))
-
-
 def test_usage_events_per_turn_and_the_usage_command(tmp_path: Path, capsys) -> None:
     """M10.2 A2/A3: one usage event per turn end, Claude's running cost as a delta; `worker usage` per attempt and node."""
     repo, script = _repo(tmp_path)
     rec = json.loads((Path(__file__).parent / "fixtures/worker_usage/turn_end_lines.json").read_text())   # real, sanitized
     init, first, resumed = rec["claude-code"]["lines"]   # one session: the resumed turn reports the session's whole total
     claude = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
-    _turn(repo, script, claude, [init, first])
-    _turn(repo, script, claude, [init, resumed])
+    run_fake_harness_turn(repo, script, claude, [init, first])
+    run_fake_harness_turn(repo, script, claude, [init, resumed])
     codex = ws.create_record(repo, "M1.1", "codex", "sol", repo)
-    _turn(repo, script, codex, rec["codex"]["lines"])
-    _turn(repo, script, codex, [{"type": "turn.failed", "error": {"message": "quota"}}], exit_code=1)   # constructed
+    run_fake_harness_turn(repo, script, codex, rec["codex"]["lines"])
+    run_fake_harness_turn(repo, script, codex, [{"type": "turn.failed", "error": {"message": "quota"}}], exit_code=1)   # constructed
     cu = [e.detail for e in ws.events_since(repo, claude.worker_id) if e.type == "usage"]
     assert [u["cost_usd"] for u in cu] == [1.0474079, 0.162736] and [u["session_cost_usd"] for u in cu] == [1.0474079, 1.2101441]
     assert cu[1] == {"input_tokens": 380001, "cached_input_tokens": 376181, "output_tokens": 2849, "reasoning_tokens": 123,

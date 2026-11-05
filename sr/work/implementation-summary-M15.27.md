@@ -12,6 +12,7 @@ Cursor stream-json can emit usage on several lines within one agent turn (`type:
 - **`tests/fixtures/worker_usage/cursor_multi_segment_turn.json`** — Sanitized multi-segment turn (provenance in file).
 - **`tests/test_cursor_usage_segments.py`** — Acceptance tests for summing, plausibility, and CLI shape.
 - **`tests/test_worker_adapters.py`**, **`tests/test_cursor_usage_cost.py`** — Reset the shared Cursor adapter segment list where tests parse recorded lines in isolation.
+- **`tests/worker_repo_helpers.py`** — Public `run_fake_harness_turn` for fake-harness worker turns (shared with `test_worker_cli`).
 
 ### Fixture observations (A1)
 
@@ -46,3 +47,4 @@ specy-road file-limits
 - `worker_cli_render._usage_line` — appends the undercount label in text output.
 - `tests/fixtures/worker_usage/cursor_multi_segment_turn.json` — sanitized multi-segment acceptance fixture.
 - `tests/test_cursor_usage_segments.py` — regression and acceptance coverage for A2/A3.
+- `run_fake_harness_turn` in `tests/worker_repo_helpers.py` — public helper for one fake-harness turn through the worker wrapper.
