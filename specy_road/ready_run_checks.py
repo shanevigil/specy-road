@@ -39,8 +39,12 @@ def _finish(cmd: str, returncode: int, stdout: str) -> dict[str, Any]:
     return out
 
 
-def _launch_exit_code(err: OSError) -> int:
-    return 127 if isinstance(err, FileNotFoundError) else 126
+def _launch_failure_exit(err: BaseException) -> int:
+    if isinstance(err, FileNotFoundError):
+        return 127
+    if isinstance(err, OSError):
+        return 126
+    return 126
 
 
 def _subprocess_output(*, shell: bool, cmd: str | None = None, argv: list[str] | None = None) -> tuple[int, str]:
@@ -48,15 +52,15 @@ def _subprocess_output(*, shell: bool, cmd: str | None = None, argv: list[str] |
         r = subprocess.run(cmd if shell else argv, shell=shell, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT, text=True, errors="replace", check=False)
         return r.returncode, r.stdout or ""
-    except OSError as e:
-        return _launch_exit_code(e), str(e)
+    except Exception as e:
+        return _launch_failure_exit(e), str(e)
 
 
 def run_check(cmd: str) -> dict[str, Any]:
     """Run ``cmd`` in a shell from the current directory, as the executor would.
 
     Returns ``{cmd, exit, tail}``; on exit 0, may add ``warning`` when the tail matches :data:`FAILURE_MARKERS`.
-    Process launch failures become exit 126 or 127 with the ``OSError`` text in ``tail``.
+    Any exception while starting the process becomes exit 126 or 127 with the error text in ``tail``.
     """
     code, out = _subprocess_output(shell=True, cmd=cmd)
     return _finish(cmd, code, out)
@@ -66,7 +70,7 @@ def run_argv(argv: list[str]) -> dict[str, Any]:
     """Run ``argv`` without a shell; ``cmd`` in the result is ``shlex.join(argv)``.
 
     Returns ``{cmd, exit, tail}``; on exit 0, may add ``warning`` when the tail matches :data:`FAILURE_MARKERS`.
-    Process launch failures become exit 126 or 127 with the ``OSError`` text in ``tail``.
+    Any exception while starting the process becomes exit 126 or 127 with the error text in ``tail``.
     """
     cmd = shlex.join(argv)
     code, out = _subprocess_output(shell=False, argv=argv)
@@ -74,7 +78,10 @@ def run_argv(argv: list[str]) -> dict[str, Any]:
 
 
 def parse_run_argv(spec: str) -> list[str]:
-    """JSON array of strings with at least one element; the first must be non-empty (later elements may be empty)."""
+    """JSON array of strings with at least one element; the first must be non-empty (later elements may be empty).
+
+    No element may contain an embedded NUL (``\\0``); the OS cannot pass that in argv.
+    """
     try:
         parsed = json.loads(spec)
     except json.JSONDecodeError as e:
@@ -85,6 +92,9 @@ def parse_run_argv(spec: str) -> list[str]:
         raise ValueError(f"{spec!r}: expected a non-empty JSON array of strings")
     if not parsed[0]:
         raise ValueError(f"{spec!r}: the first element must be a non-empty string")
+    for i, x in enumerate(parsed):
+        if "\0" in x:
+            raise ValueError(f"{spec!r}: argv[{i}] contains an embedded NUL character")
     return parsed
 
 
@@ -93,6 +103,8 @@ def prepare_live_runs(raw_runs: list[str], run_argv_specs: list[str]) -> tuple[l
     for raw in raw_runs:
         if not raw.strip():
             return [], [], f"--run {raw!r} is blank or whitespace-only"
+        if "\0" in raw:
+            return [], [], f"--run {raw!r} contains an embedded NUL character"
     runs = [c.strip() for c in raw_runs]
     argv_runs: list[list[str]] = []
     for spec in run_argv_specs:

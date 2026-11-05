@@ -11,9 +11,11 @@ from tests.review_repo_helpers import diverge, git, make_review_repo
 from tests.test_models_and_prompt import make_profile_repo
 
 import argparse
+import subprocess
 
 from specy_road.bundled_scripts import review_cli, review_packet, role_prompt
 from specy_road.cli import registered_agent_command_names
+import specy_road.ready_run_checks as ready_run_checks
 from specy_road.ready_run_checks import parse_run_argv, run_argv, run_check
 from specy_road.review_files import load_ready, reviews_dir
 from specy_road.review_gate_ready import add_ready_parser
@@ -355,4 +357,43 @@ def test_ready_run_argv_missing_executable_refuses_without_writing_ready(tmp_pat
     err = capsys.readouterr().err
     assert "failing verifier" in err and "127" in err
     assert not ready_path.exists()
+
+
+@pytest.mark.parametrize(
+    "spec,index",
+    [
+        (json.dumps(["\x00"]), 0),
+        (json.dumps(["echo", "\x00"]), 1),
+    ],
+    ids=["nul_in_program", "nul_in_later_argument"],
+)
+def test_parse_run_argv_refuses_embedded_nul(spec: str, index: int) -> None:
+    with pytest.raises(ValueError, match=rf"argv\[{index}\] contains an embedded NUL"):
+        parse_run_argv(spec)
+
+
+def test_ready_run_argv_embedded_nul_refuses_before_any_live_run(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    monkeypatch.chdir(repo)
+    marker = repo / "executed-before-invalid-argv"
+    spec = json.dumps(["echo", "\u0000"])
+    capsys.readouterr()
+    ready_path = reviews_dir(repo, "M1.1") / "READY-opus.md"
+    assert _cli("ready", "M1.1", "--model", "opus", "--run", f"touch {marker.name}", "--run-argv", spec,
+                "--repo-root", str(repo)) == 1
+    err = capsys.readouterr().err
+    assert "embedded NUL" in err and "argv[1]" in err
+    assert not marker.exists()
+    assert not ready_path.exists()
+
+
+def test_subprocess_launch_exception_becomes_failing_row(monkeypatch) -> None:
+    def _boom(*_args, **_kwargs) -> subprocess.CompletedProcess[str]:
+        raise TypeError("launch broke")
+
+    monkeypatch.setattr(ready_run_checks.subprocess, "run", _boom)
+    row = run_argv(["echo", "ok"])
+    assert row["exit"] == 126 and "launch broke" in row["tail"]
+    row = run_check("echo ok")
+    assert row["exit"] == 126 and "launch broke" in row["tail"]
 
