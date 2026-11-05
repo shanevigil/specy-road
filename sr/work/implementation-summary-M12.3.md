@@ -60,3 +60,17 @@ Branch `feature/rm-scheduled-gardening-chores-that-find-drift-and-open-small-cho
 
 - `GITIGNORE_LINES` entry `work/chores/garden.json`, plus a line in the block's note: the review's required ignore rule.
 - In `garden_repo()`: the managed-ignore setup and the `check-ignore` and `dirty_check` assertions in the A1 test: lock the fix against the scaffold's real lines.
+
+## Fix round 2 (gpt-6.1-sol block, R1–R3)
+
+- **R2:** the run record moved to `work/chores/.garden.json`. A chore slug must start with a letter or digit, so no chore record can be that file. The reserved `garden` slug is dropped: `_SLUG` and its message are back to the base version. The managed ignore line in `agent_ignores.py`, the schema description and the docs now name `.garden.json`. Test `test_a_chore_named_garden_survives_a_garden_run` starts a `garden` chore through the public `chore start`, runs `chore garden`, and checks that the chore loads unchanged, takes a `worker delegate`, closes and writes `garden.md`. It replaces `test_garden_is_not_a_chore_slug`, which pinned the reservation this round removes.
+- **R1:** garden's stale-command path set is now `validate`'s `agent_files()` plus `.specyrd/AGENTS.md`; `validate`'s own set is unchanged. Test `test_garden_reports_stale_commands_in_the_managed_rules_file` plants `specy-road nonexistent-garden-probe` in `.specyrd/AGENTS.md`, checks that `chore garden --json` reports it at line 7, and checks that `agent_files()` still leaves that file out.
+- **R3:** `open_chores` calls `assert_pm_nodes_not_milestone_locked(nodes, under)` before writing anything. A refusal becomes a `WorkerError`, so the CLI prints `error: --under <id>: … Pass another --under parent, or run after the milestone closes.` and exits 1. Test `test_open_chores_refuses_a_parent_in_a_locked_milestone[active|pending_mr]` runs the CLI and checks that the roadmap and planning files are byte-identical afterwards. Docs mention the refusal.
+- Red-green: with `chore_garden.py` and `chore_cli.py` reverted to the round-1 commit, all four new tests fail.
+
+### Added (fix round 2)
+
+- `chore_garden.open_chores` milestone-lock guard (`assert_pm_nodes_not_milestone_locked`): R3, the same lock `add-node` and brainstorm promotion apply.
+- `RULES_MD` in `stale_command_findings`' path set: R1.
+- `record_path` docstring: explains why a dot-file cannot collide with a chore.
+- Tests: the three R1–R3 tests above (four cases). Removed: `test_garden_is_not_a_chore_slug`, because the behaviour it pinned is removed.
