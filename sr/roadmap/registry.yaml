@@ -196,6 +196,7 @@ entries:
       - specy_road/bundled_scripts/do_next_task_leaf_guards.py
       - specy_road/bundled_scripts/session_plan_render.py
       - specy_road/bundled_scripts/orchestrate_cli.py
+      - specy_road/bundled_scripts/brief_dependency_context.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
