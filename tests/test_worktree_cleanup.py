@@ -100,7 +100,7 @@ def test_cleanup_refuses_and_removes_nothing(tmp_path: Path, make, why: str) -> 
     assert any(line.startswith("  - ") and why in line for line in out.stderr.splitlines()), out.stderr
     assert wt.is_dir()
     assert load_record(root, rec.worker_id).state == "idle"
-    assert (root / HISTORY).read_text() == "round 1\n"   # saved even though nothing was removed
+    assert (wt / HISTORY).read_text() == "round 1\n" and not (root / HISTORY).exists()   # planned, never moved
 
 
 def test_cleanup_ends_the_leafs_reviewer_and_session_records(tmp_path: Path) -> None:
@@ -191,3 +191,69 @@ def test_grind_session_cleans_up_each_landed_leaf_and_sweeps_by_policy(tmp_path:
     else:
         assert events[1]["event"] == "worktree_sweep" and f"removed {stale}" in events[1]["lines"]
         assert not stale.exists()
+
+
+def _foreign(tmp_path: Path, wt: Path, kind: str) -> tuple[Path, Path]:
+    """Another repository under the leaf's ignored ``work/reviews/M1/``: ``(its directory, its owner)``.
+
+    ``worktree``: a linked worktree of a separate repository with a commit no remote holds; ``clone``: a
+    nested repository with a ``.git`` directory; ``gitfile``: a checkout whose ``.git`` is a file naming
+    its git directory elsewhere, as a submodule's does.
+    """
+    owner = tmp_path / "other"
+    git(tmp_path, "init", "-q", "-b", "main", str(owner))
+    git(owner, "config", "user.email", "t@e.com")
+    git(owner, "config", "user.name", "T")
+    commit_file(owner, "core.py", "x = 1\n", "other base")
+    d = wt / "work" / "reviews" / "M1" / "foreign"
+    d.parent.mkdir(parents=True, exist_ok=True)
+    if kind == "worktree":
+        git(owner, "worktree", "add", "-q", "-b", "side", str(d))
+    elif kind == "clone":
+        git(tmp_path, "clone", "-q", str(owner), str(d))
+        owner = d
+    else:
+        git(tmp_path, "init", "-q", "-b", "main", f"--separate-git-dir={tmp_path / 'sep.git'}", str(d))
+        owner = d
+    git(d, "config", "user.email", "t@e.com")
+    git(d, "config", "user.name", "T")
+    commit_file(d, "only-here.txt", "unlanded\n", "foreign work no remote holds")
+    return d, owner
+
+
+def _foreign_intact(d: Path, owner: Path, kind: str) -> None:
+    assert (d / ".git").exists() and (d / "only-here.txt").read_text() == "unlanded\n"
+    assert git(d, "log", "-1", "--format=%s") == "foreign work no remote holds"
+    if kind == "worktree":
+        listed = git(owner, "worktree", "list", "--porcelain")
+        assert f"worktree {d.resolve()}" in listed and "prunable" not in listed
+
+
+@pytest.mark.parametrize("kind", ["worktree", "clone", "gitfile"])
+def test_cleanup_refuses_another_repository_in_the_hand_off_tree_and_moves_nothing(tmp_path: Path, kind: str) -> None:
+    root, wt = _leaf(tmp_path)
+    _land(root, wt)
+    _write(wt / HISTORY, "round 1\n")
+    d, owner = _foreign(tmp_path, wt, kind)
+    out = run_specy_road(root, "worktree", "cleanup", "M1")
+    assert out.returncode == 1, out.stdout
+    assert "work/reviews/M1/foreign/ holds a repository" in out.stderr
+    assert "work/reviews/M1/foreign/ is a" in out.stderr and "of another repository" in out.stderr
+    assert wt.is_dir() and (wt / HISTORY).is_file() and not (root / "work/reviews/M1/foreign").exists()
+    assert not (root / HISTORY).exists()
+    _foreign_intact(d, owner, kind)
+
+
+@pytest.mark.parametrize("kind", ["worktree", "clone", "gitfile"])
+def test_sweep_keeps_a_worktree_holding_another_repository_in_its_hand_off_tree(tmp_path: Path, kind: str) -> None:
+    root, wt = _leaf(tmp_path)
+    _land(root, wt)
+    _write(wt / HISTORY, "round 1\n")
+    d, owner = _foreign(tmp_path, wt, kind)
+    for argv in (("--dry-run",), ()):
+        out = run_specy_road(root, "worktree", "sweep", *argv)
+        assert out.returncode == 0, out.stderr
+        line = next(line for line in out.stdout.splitlines() if line.startswith(f"kept {wt}:"))
+        assert "work/reviews/M1/foreign/ holds a repository" in line
+    assert wt.is_dir() and not (root / HISTORY).exists()
+    _foreign_intact(d, owner, kind)

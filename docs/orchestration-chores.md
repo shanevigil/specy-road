@@ -140,8 +140,11 @@ into the remote's integration tip, nothing uncommitted, untracked or stashed,
 no running worker, no other repository's worktree inside) and also refuses on
 ignored files that are not regenerable: anything but `__pycache__/` and the
 tool caches, `node_modules/`, `work/prompt-*.md`, `work/brief-*.md`,
-`work/.on-complete-*.yaml` and `.specyrd/cache/`. A refusal removes nothing and
-prints one line per reason. Otherwise it terminates the leaf's idle worker,
+`work/.on-complete-*.yaml` and `.specyrd/cache/`. Every check reads the
+worktree as it is, before anything moves: a refusal moves and removes nothing
+and prints one line per reason. A directory under `work/reviews/` holding
+another repository (a `.git` file or directory, a bare layout) refuses and
+stays where it is; it is never treated as hand-off files. Otherwise it terminates the leaf's idle worker,
 removes the worktree and ends the session records (worker, reviewer, session)
 tied to the worktree or its branch, so `session list` shows none for the leaf.
 

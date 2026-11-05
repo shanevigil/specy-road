@@ -1,8 +1,8 @@
 """``specy-road worktree cleanup <ID>`` and ``worktree sweep``: retire landed worktrees, saving hand-off files first.
 
 A reviewer may write its review history into the leaf worktree's own (ignored) ``work/reviews/<ID>/``,
-and ``git worktree remove --force`` would delete it. So both commands first move those files into the
-main checkout's shared hand-off directory (:func:`specy_road.review_files.reviews_root`), never
+and ``git worktree remove --force`` would delete it. So both commands move those files into the
+main checkout's shared hand-off directory before removing anything (:func:`specy_road.review_files.reviews_root`), never
 overwriting a different file: a same-named file with other bytes is kept beside it as
 ``<name>.from-worktree<n>``.
 
@@ -15,12 +15,19 @@ detached ``HEAD``, the integration branch contains, and keeps any that M14.2's l
 live session. Removing a worktree ends the session records tied to it or its branch. Remote branches are
 never deleted; a local branch only with ``--delete-local-branch``, and only once the integration branch
 contains it.
+
+Plan first, act second: :func:`plan_cleanup` reads the untouched tree once (the prune checks, the hand-off
+files to save, the workers to end, every refusal) and :func:`execute` acts only on a plan with no refusal.
+A directory holding a repository (a ``.git`` file, directory or link, or a bare layout) is never moved:
+the hand-off walk stops there and refuses, and the prune walk names its repository.
 """
 
 from __future__ import annotations
 
 import filecmp
+import os
 import shutil
+from dataclasses import dataclass, field
 from fnmatch import fnmatchcase
 from pathlib import Path
 from types import SimpleNamespace
@@ -66,6 +73,48 @@ def regenerable(path: str, prefix: str) -> bool:
     return False
 
 
+@dataclass
+class CleanupPlan:
+    """Everything one removal does, read from the untouched worktree: nothing is moved or deleted while it is built.
+
+    ``salvage``: ``(file in the worktree, its place under reviews_root(main))``; never a ``.git`` entry or a file
+    in a directory that holds one. ``refusals``: every reason not to act; :func:`execute` acts only without any.
+    """
+    prune: PrunePlan
+    salvage: list[tuple[Path, Path]] = field(default_factory=list)
+    workers: list[WorkerRecord] = field(default_factory=list)
+    refusals: list[str] = field(default_factory=list)
+
+
+def _holds_repo(dirs: list[str], files: list[str]) -> bool:
+    """A ``.git`` entry (file, directory or link), or a bare repository's layout: another repository starts here."""
+    return ".git" in dirs or ".git" in files or ("HEAD" in files and {"objects", "refs"} <= set(dirs))
+
+
+def _salvage_list(main: Path, wt: Path, sub: str) -> tuple[list[tuple[Path, Path]], list[str]]:
+    """``(moves, refusals)`` for ``wt``'s own ``work/reviews/<sub>``: links are never followed, and a directory
+    holding a repository is left in place, unwalked, with a refusal naming it."""
+    src_root = wt / project_prefix(main) / REVIEWS_REL
+    src, dest_root = (src_root / sub if sub else src_root), reviews_root(main)
+    if not src.is_dir() and not src.is_symlink():
+        return [], []
+    if src.resolve() != wt.resolve() / src.relative_to(wt):
+        return [], [f"{src.relative_to(wt).as_posix()} is or lies under a link; hand-off files there are not followed"]
+    if src_root.resolve() == dest_root.resolve():
+        return [], []
+    moves, refusals = [], []
+    for top, dirs, files in os.walk(src):   # links are not followed
+        d = Path(top)
+        if _holds_repo(dirs, files):
+            refusals.append(f"{d.relative_to(wt).as_posix()}/ holds a repository; its files are not hand-off files "
+                            "and are left in place")
+            dirs.clear()
+            continue
+        moves += [(d / f, dest_root / (d / f).relative_to(src_root)) for f in sorted(files)
+                  if not (d / f).is_symlink()]
+    return moves, refusals
+
+
 def _move_one(src: Path, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     target, n = dest, 0
@@ -78,57 +127,56 @@ def _move_one(src: Path, dest: Path) -> None:
         shutil.move(src, target)
 
 
-def salvage(main: Path, wt: Path, sub: str = "", *, move: bool = True) -> list[str]:
-    """Move the files under ``wt``'s own ``work/reviews/<sub>`` into ``reviews_root(main)/<sub>``.
-
-    Returns their ``wt``-relative paths, what removal no longer loses; with ``move=False`` only lists them.
-    """
-    src_root = wt / project_prefix(main) / REVIEWS_REL
-    src, dest_root = (src_root / sub if sub else src_root), reviews_root(main)
-    if not src.is_dir() or src_root.resolve() == dest_root.resolve():
-        return []
-    saved = []
-    for f in sorted(p for p in src.rglob("*") if p.is_file() and not p.is_symlink()):
-        saved.append(f.relative_to(wt).as_posix())
-        if move:
-            _move_one(f, dest_root / f.relative_to(src_root))
-    return saved
-
-
-def _unsaved(plan: PrunePlan, saved: list[str]) -> list[str]:
-    prefix = project_prefix(plan.main)
-    left = [p for p in plan.ignored if p not in saved and not regenerable(p, prefix)]
-    return [f"ignored files that are not regenerable: {', '.join(left)}"] if left else []
-
-
 def _workers_in(main: Path, wt: Path) -> list[WorkerRecord]:
     here = wt.resolve()
     return [r for r in list_records(main, active_only=True) if Path(r.worktree).resolve().is_relative_to(here)]
 
 
-def cleanup_after_land(root: Path, node_id: str) -> tuple[bool, list[str]]:
-    """``worktree cleanup <ID>``: ``(removed, lines)``; refused, nothing is removed and each line is one reason.
+def plan_cleanup(main: Path, wt: Path, branch: str, sub: str = "") -> CleanupPlan:
+    """The whole removal of ``wt``, hand-off files under ``work/reviews/<sub>`` saved first, and every refusal.
 
-    :class:`specy_road.worktree_prune.PruneError` when the leaf has no worktree.
+    The prune checks (M14.3's foreign-repository walk included) see the tree as it is, hand-off files still
+    in place; each ignored file must then be saved by this plan or :func:`regenerable`.
     """
-    main, wt, branch = leaf_worktree(root, node_id)
-    saved = salvage(main, wt, node_id)
-    plan = plan_worktree(main, wt, branch)
+    prune = plan_worktree(main, wt, branch)
+    moves, held = _salvage_list(main, wt, sub)
+    saved = {f.relative_to(wt).as_posix() for f, _dest in moves}
+    prefix = project_prefix(main)
+    left = [p for p in prune.ignored if p not in saved and not regenerable(p, prefix)]
     workers = _workers_in(main, wt)
-    refusals = plan.refusals + _unsaved(plan, saved)
+    refusals = prune.refusals + held
+    refusals += [f"ignored files that are not regenerable: {', '.join(left)}"] if left else []
     refusals += [f"worker {r.worker_id} is {r.state} in it" for r in workers
                  if r.state not in HELD_STATES and r.state != "running"]   # running: plan_worktree says so
     refusals += [f"worker {r.worker_id} is handed off to a human; `specy-road worker reclaim {r.worker_id}` first"
                  for r in workers if r.state in HELD_STATES and r.lease.get("holder") == "human"]
-    if refusals:
-        return False, refusals
-    lines = [f"saved hand-off file {p} to {reviews_root(main)}" for p in saved]
-    lines += [f"terminated worker {terminate(main, r.worker_id).worker_id}" for r in workers]
-    failure = remove(plan)
+    return CleanupPlan(prune, moves, workers, refusals)
+
+
+def execute(plan: CleanupPlan) -> tuple[bool, list[str]]:
+    """Carry ``plan`` out: save the hand-off files, end its workers, remove the worktree, end its session records.
+
+    ``(False, refusals)`` without doing anything when it has any.
+    """
+    if plan.refusals:
+        return False, plan.refusals
+    main, wt = plan.prune.main, plan.prune.worktree
+    for src, dest in plan.salvage:
+        _move_one(src, dest)
+    lines = [f"saved hand-off file {src.relative_to(wt).as_posix()} to {reviews_root(main)}" for src, _d in plan.salvage]
+    lines += [f"terminated worker {terminate(main, r.worker_id).worker_id}" for r in plan.workers]
+    failure = remove(plan.prune)
     if failure:
         return False, [failure]
-    lines += [f"ended session record {s.agent}" for s in end_sessions_for(main, wt, branch)]
+    lines += [f"ended session record {s.agent}" for s in end_sessions_for(main, wt, plan.prune.branch or None)]
     return True, [*lines, f"removed worktree {wt}"]
+
+
+def cleanup_after_land(root: Path, node_id: str) -> tuple[bool, list[str]]:
+    """``worktree cleanup <ID>``: ``(removed, lines)``; refused, nothing is moved or removed and each line is one
+    reason. :class:`specy_road.worktree_prune.PruneError` when the leaf has no worktree."""
+    main, wt, branch = leaf_worktree(root, node_id)
+    return execute(plan_cleanup(main, wt, branch, node_id))
 
 
 def _gate(ctx: SimpleNamespace, wt: dict[str, str]) -> str | None:
@@ -162,17 +210,14 @@ def _sweep_one(ctx: SimpleNamespace, wt: dict[str, str], dry_run: bool, delete_b
     if why:
         return f"kept {path}: {why}"
     branch = wt.get("branch", "").removeprefix("refs/heads/")
-    saved = salvage(ctx.root, path, move=not dry_run)
-    plan = plan_worktree(ctx.root, path, branch)
-    reasons = plan.refusals + _unsaved(plan, saved)
-    if reasons:
-        return f"kept {path}: {'; '.join(reasons)}"
+    plan = plan_cleanup(ctx.root, path, branch)
+    if plan.refusals:
+        return f"kept {path}: {'; '.join(plan.refusals)}"
     if dry_run:
         return f"would remove {path}" + (f"; would delete branch {branch}" if delete_branch and branch else "")
-    failure = remove(plan)
-    if failure:
-        return f"kept {path}: {failure}"
-    end_sessions_for(ctx.root, path, branch or None)
+    removed, lines = execute(plan)
+    if not removed:
+        return f"kept {path}: {'; '.join(lines)}"
     line = f"removed {path}"
     if delete_branch and branch:
         failed = delete_local_branch(ctx.root, branch, ctx.target)
