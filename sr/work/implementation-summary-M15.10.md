@@ -14,6 +14,10 @@
   working tree's roster differs from the ref, it then prints `uncommitted roster changes` with the added,
   removed and changed ids (each with its changed fields), using the new `roster_diff()` in
   `orchestration_pinned.py`. `--json` has `roster_ref` and `uncommitted_roster_changes`.
+  Rework (R1): `roster_diff` now compares the two files' validated rosters as written, through
+  `load_orchestration_config` (an absent file is still the default roster), before this clone's availability
+  overlay. Before, both sides went through `effective_config`, which applied the overlay to each, so a local
+  `available: true` hid a committed-vs-working-tree `available` edit.
 - **A3** — new `specy_road/roster_local.py`: the `roster_add` list in `roadmap/orchestration.local.yaml` is
   checked against the roster entry schema, then merged after the pinned roster in `pinned_config`. Everything
   that routes through it (plan, prompt, worker delegate, review delegate) sees these entries. An id that is
@@ -48,6 +52,19 @@ default arguments.
 - `specy-road file-limits`: OK.
 - `ruff check` on the changed files: clean.
 
+## Probes
+
+R1's class: a working-tree vs ref comparison made after a clone-local layer (the availability overlay, or the
+`roster_add` merge) had been applied to both sides.
+
+- `roster_diff` with an uncommitted `available: false` and a local overlay `available: true`: before, `(None, None)`; now `changed: {opus: [available]}` in text and JSON (new test, red before the fix, green after).
+- `roster_diff` with only a local overlay and no file edit: `(None, None)`. The overlay alone is not reported as an uncommitted change.
+- `roster_diff` with the working-tree file deleted: every committed id is `removed`, the same as before (the missing-file default roster is kept).
+- `roster_diff` with a working-tree YAML error: returns `working tree: YAML error ...`, as before.
+- `roster_add` entries: `roster_diff` never merges them (it does not call `pinned_config` or `merge_local_roster`), so a local entry cannot hide or fake a diff.
+- `roster_report` / `roster_source` drift: these compare raw file text (`_blob` vs `read_text`), so no overlay reaches them.
+- `models_cli`, `orchestrate_plan`, `orchestrate_cli` and `roster_local`: no other working-tree vs ref comparison in the change (grep for `effective_config` / `load_availability_overlay` finds no other use in these files).
+
 ## Added
 
 - `roster_local.load_local_roster`: reads and schema-checks `roster_add` and `allow_local_cli` from the local file (A3).
@@ -57,6 +74,7 @@ default arguments.
 - `pinned_config(..., worktree=False)` branch: reads the working tree's roster for the dry run only, then merges local entries (A1, A3).
 - `pinned_profile_for_entry(..., worktree=False)` branch: uses the working-tree profile in a dry run, so a new uncommitted profile is shown as it would run (A1).
 - `orchestration_pinned.roster_diff`: working tree vs ref, by entry id with changed fields (A2).
+- `orchestration_pinned._file_roster`: the validated file roster at a ref or in the working tree, with no overlay (the default roster when the file is absent), so `roster_diff` compares the files as written (R1).
 - `Candidate.local` field and the `[local]` tag in `describe`: labels local entries in plan notes (A3).
 - `OrchestrationPlan.local_roster` field and JSON key: lists local ids in the plan (A3).
 - `build_orchestration_plan(..., roster_from_worktree=False)` parameter: the dry-run switch (A1).
@@ -71,4 +89,5 @@ default arguments.
 - Test `test_roster_add_never_overrides_a_committed_id`: id clash refused (A3).
 - Test `test_roster_add_cli_needs_allow_local_cli`: `channels.cli` and profile `access.cli` are refused, then allowed with `allow_local_cli: true` (A3).
 - Test `test_roster_add_entries_are_schema_checked`: a malformed local entry is reported (A3).
+- Test `test_models_list_diff_is_not_masked_by_the_local_availability_overlay`: an `available` edit masked by a local overlay is still reported in text and JSON (R1).
 - Mocks: none.
