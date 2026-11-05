@@ -190,7 +190,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.82` The integration branch passes ruff again and the land check runs it `wip-ruff-clean` — task — **Complete**
 - `M12` Harness engineering: cheaper gates, clearer refusals, less drift `harness-engineering-cheaper-gates-clearer-refusals-less-drift` — phase — **Not Started**
   - `M12.1` A review fix-round budget that defers new-input-class findings to a follow-up leaf `a-review-fix-round-budget-that-defers-new-input-class-findings-to-a-follow-up-leaf` — task — **Not Started**
-  - `M12.2` Every refusal names its fix `every-refusal-names-its-fix` — task — **Not Started**
+  - `M12.2` Every refusal names its fix `every-refusal-names-its-fix` — task — **Complete**
   - `M12.3` Scheduled gardening chores that find drift and open small chore leaves `scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves` — task — **Not Started**
   - `M12.4` Quality signals agents and PMs read first `quality-signals-agents-and-pms-read-first` — milestone — **Not Started**
     - `M12.4.1` Per-area quality scores in the digest from review history `per-area-quality-scores-in-the-digest-from-review-history` — task — **Not Started**
@@ -221,7 +221,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M12.1` on `feature/rm-a-review-fix-round-budget-that-defers-new-input-class-findings-to-a-follow-up-leaf` since 2026-11-04
-- `M12.2` on `feature/rm-every-refusal-names-its-fix` since 2026-11-04
 - `M12.3` on `feature/rm-scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves` since 2026-11-04
 - `M13.1` on `feature/rm-say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote` since 2026-11-04
 - `M13.3` on `feature/rm-a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates` since 2026-11-04
