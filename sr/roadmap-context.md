@@ -20,7 +20,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M14.11` The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes `the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes` — task — **Complete**
 - `M15` rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction `rc3-multi-harness-adoption-friction` — phase — **Not Started**
   - `M15.1` RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command `rc-install-docs-cover-extras-and-direct-wheel-url` — task — **Complete**
-  - `M15.2` A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch `claude-code-reviewer-works-on-a-subscription-login` — task — **Not Started**
+  - `M15.2` A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch `claude-code-reviewer-works-on-a-subscription-login` — task — **Complete**
   - `M15.3` prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged `prompt-channel-cli-launches-nothing-without-run` — task — **Not Started**
   - `M15.4` Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current `parallel-pr-leaves-reconcile-bookkeeping-by-rule` — task — **Complete**
   - `M15.6` The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes `rework-prompt-carries-the-accepted-rca` — task — **Complete**
@@ -40,7 +40,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.26` A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim `claims-with-no-worker-are-reported-and-never-hold-slots` — task — **Complete**
   - `M15.27` worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length `cursor-usage-sums-segments-and-flags-undercounts` — task — **Complete**
   - `M15.31` A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported `delegated-reviewer-always-runs-a-named-model` — task — **Not Started**
-  - `M15.32` An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure `archived-summary-exempt-from-file-limits` — task — **Not Started**
+  - `M15.32` An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure `archived-summary-exempt-from-file-limits` — task — **Complete**
   - `M15.33` A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed `refused-review-record-leaves-a-trace` — task — **Not Started**
   - `M15.34` The executor prompt states the test rules that the reviewer's excess checklist enforces `executor-prompt-states-the-test-rules` — task — **Complete**
   - `M15.35` The review packet never lists .git or a path under it as an uncommitted reference `packet-never-lists-dot-git-as-uncommitted` — task — **Complete**
@@ -118,6 +118,8 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M16.65` End-to-end pass on the toolkit and a feedback-and-fix round before 0.3.1 `e2e-pass-and-fix-round` — task — **Not Started**
   - `M16.66` Gate: ready to tag 0.3.1 `ready-to-tag-0-3-1` — gate — **Not Started**
   - `M16.67` move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit `move-node-keeps-other-ids` — task — **Complete**
+  - `M16.68` finish resolves roadmap chunk conflicts the branch only inherited `finish-resolves-inherited-roadmap-conflicts` — task — **Not Started**
+  - `M16.69` Cursor workers launch sandboxed without --force unless the roster opts in `cursor-workers-no-force-by-default` — task — **Not Started**
 - `M17` 0.3.2: PM GUI shows orchestration and worktree state `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface `pm-gui-orchestration-plan` — gate — **Not Started**
 - `M18` Orchestration and review-loop features (after 0.3.1) `orch-review-loop` — phase — **Not Started**
@@ -215,10 +217,9 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M14.1` on `feature/rm-approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` since 2026-11-05
-- `M15.2` on `feature/rm-claude-code-reviewer-works-on-a-subscription-login` since 2026-11-05
 - `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
-- `M15.32` on `feature/rm-archived-summary-exempt-from-file-limits` since 2026-11-05
 - `M15.33` on `feature/rm-refused-review-record-leaves-a-trace` since 2026-11-05
+- `M15.36` on `feature/rm-worker-launch-never-depends-on-claude-default-mode` since 2026-11-05
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -231,9 +232,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 29 | 20 | 6.56 | 100% | 15 | 2 |
-| `specy_road` **flagged** | 47 | 29 | 5.17 | 83% | 23 | 4 |
-| `tests` **flagged** | 50 | 32 | 5.17 | 83% | 23 | 4 |
+| `docs` **flagged** | 29 | 18 | 6.18 | 91% | 15 | 3 |
+| `specy_road` **flagged** | 47 | 27 | 5.10 | 80% | 23 | 5 |
+| `tests` **flagged** | 50 | 30 | 5.10 | 80% | 23 | 5 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |

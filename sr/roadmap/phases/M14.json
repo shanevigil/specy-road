@@ -39,7 +39,8 @@
         "specy_road/schemas/handoff.schema.json",
         "specy_road/bundled_scripts/validate_roadmap.py",
         "tests/",
-        "specy_road/reviewer_run_failure.py"
+        "specy_road/reviewer_run_failure.py",
+        "specy_road/review_answer.py"
       ],
       "type": "task"
     },

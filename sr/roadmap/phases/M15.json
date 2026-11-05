@@ -29,7 +29,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.2_claude-code-reviewer-works-on-a-subscription-login_4dafa22a-727f-4d5e-b954-f956227c150a.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch",
       "touch_zones": [
         "specy_road/reviewer_auth.py",
@@ -41,7 +41,8 @@
         "docs/orchestration-models.md",
         "tests/",
         "docs/orchestration-workers.md",
-        "specy_road/bundled_scripts/role_prompt.py"
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/orchestrate_cli.py"
       ],
       "type": "task"
     },

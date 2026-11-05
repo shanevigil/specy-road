@@ -4,6 +4,10 @@
 
 The TS/JS scan is a best-effort bracket heuristic (`specy_road/file_limits_js.py`). In `.jsx` and `.tsx` files, JSX text is blanked before that scan, so it is not read as code: an apostrophe in `<p>Don't</p>` does not open a string.
 
+## Skipped before measurement
+
+Git-ignored paths are not measured unless you pass `--no-respect-gitignore`. The toolkit also skips its own session artifacts under `work/` (briefs, prompts, live and **archived** implementation summaries under `work/done/`, PR bodies, on-complete stubs, review hand-offs, and session records) and archived roadmap material under `roadmap/archive/` — see `SESSION_ARTIFACT_GLOBS` in `specy_road/file_limits_engine.py`.
+
 ## Out of scope
 
 These two forms are valid TypeScript or JavaScript and are not measured. The amended acceptance for this check leaves them out of the scanner on purpose.

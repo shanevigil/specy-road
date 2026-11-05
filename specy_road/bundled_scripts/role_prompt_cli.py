@@ -15,6 +15,7 @@ import shlex
 import subprocess
 import sys
 import uuid
+from contextvars import ContextVar
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,7 @@ from specy_road.orchestration_role_env import CLAUDE_REVIEWER_AVOID_ENV
 from specy_road.review_record_write import (Outcome, answer_scratch, close_review_run, replace_file, run_and_file,
                                             write_schema)
 from specy_road.review_target import ReviewTarget
+from specy_road.reviewer_auth import claude_launch_decision, launch_note
 from specy_road.reviewer_run_failure import _now, harness_error_line, save_run, turn_capacity_error
 from specy_road.worker_adapter_base import checked, oversized_arg
 from specy_road.worker_adapter_parsers import effort_note
@@ -32,6 +34,8 @@ from specy_road.worker_adapters import ADAPTERS, Launch, Unsupported, placeholde
 
 #: Reviewer harnesses whose default command specy-road launches, reads back and files from.
 READ_BACK_HARNESSES = ("claude-code", "codex", "cursor")
+#: The mode ``run_default_reviewer`` chose, read by :func:`close_cli_review_run` after the caller returns.
+_run_launch_mode: ContextVar[str | None] = ContextVar("specy_road_claude_reviewer_launch_mode", default=None)
 
 
 def _shown(argv: list[str]) -> str:
@@ -67,11 +71,32 @@ def resolve_cli(prof: Profile | None, entry_cli: str | None, harness: str | None
     return cli, ADAPTERS.get(harness or "generic", ADAPTERS["generic"]).effort_flag(level), ""
 
 
+def reviewer_launch_block(prof: Profile | None, entry: dict[str, Any], _root: Path) -> Outcome | None:
+    """Forced-bare authentication, or ``None``. Writes nothing.
+
+    This is the only refusal that runs before the RUN record. A roster ``preflight`` stays in
+    :func:`run_reviewer_channel`, after ``prompt --channel cli`` has opened that record (M8.3). ``_root`` is
+    unused; the decision reads the reviewer environment, not the checkout.
+    """
+    harness, entry_cli = entry.get("harness"), (entry.get("channels") or {}).get("cli")
+    if harness != "claude-code" or entry_cli:
+        return None
+    problem = claude_launch_decision(entry, prof.launch_mode() if prof is not None else None)[1]
+    if not problem:
+        return None
+    print(f"error: {problem}", file=sys.stderr)
+    return Outcome("rerun", problem, exit=1)
+
+
 def run_reviewer_channel(prof: Profile | None, prompt_path: Path, root: Path, entry: dict[str, Any], model: str,
                          reviews: Path, ref: str | None, transcript: list[str],
                          sign_key: Path | None = None) -> Outcome:
     """``prompt --role reviewer --channel cli``: the roster ``entry``'s reviewer, run and filed; every way out is an
-    :class:`Outcome`, a rerun request (``exit`` 1, or the preflight's) when nothing could be sent."""
+    :class:`Outcome`, a rerun request (``exit`` 1, or the preflight's) when nothing could be sent.
+
+    Forced-bare authentication is :func:`reviewer_launch_block`, which ``prompt`` runs before it opens the RUN
+    record. The roster ``preflight`` stays here, after that record exists."""
+    _run_launch_mode.set(None)
     rc = preflight(entry.get("preflight"), root)
     if rc:
         return Outcome("rerun", f"rerun requested: preflight failed (exit {rc}); nothing was sent", exit=rc)
@@ -79,7 +104,7 @@ def run_reviewer_channel(prof: Profile | None, prompt_path: Path, root: Path, en
     level = prof.effort("reviewer") if prof else None
     if harness in READ_BACK_HARNESSES and not entry_cli:
         return run_default_reviewer(prof, prompt_path, root, model, reviews, level, harness, ref, transcript, sign_key,
-                                    harness_bin=entry.get("harness_bin"))
+                                    entry, harness_bin=entry.get("harness_bin"))
     cli, effort, err = resolve_cli(prof, entry_cli, harness, level)
     if err:
         print(f"error: {err}", file=sys.stderr)
@@ -91,27 +116,36 @@ def run_reviewer_channel(prof: Profile | None, prompt_path: Path, root: Path, en
 
 def run_default_reviewer(prof: Profile | None, prompt_path: Path, root: Path, model: str | None, reviews: Path,
                          level: str | None, harness: str = "claude-code", ref: str | None = None,
-                         transcript: list[str] | None = None, sign_key: Path | None = None, *,
-                         harness_bin: str | None = None) -> Outcome:
-    """The harness's own read-only reviewer command (Claude Code bare, with ``--add-dir`` for the hand-off
-    directory), its final JSON filed as the record (:func:`~specy_road.review_record_write.file_review`, signed
-    with ``sign_key``); ``harness_bin`` is the roster entry's, which the adapter resolves (harness_binary).
-    ``transcript`` collects the output for the run record (M11.72). The caller holds the leaf's run lock. Codex writes its answer (``-o``) to an :func:`answer_scratch` file outside the checked tree."""
+                         transcript: list[str] | None = None, sign_key: Path | None = None,
+                         entry: dict[str, Any] | None = None, *, harness_bin: str | None = None) -> Outcome:
+    """The harness's own read-only reviewer command (Claude Code bare or explicit, with ``--add-dir`` for the
+    hand-off directory), its final JSON filed as the record (:func:`~specy_road.review_record_write.file_review`,
+    signed with ``sign_key``). ``harness_bin`` is the roster entry's, which the adapter resolves (harness_binary).
+    ``transcript`` collects the output for the run record (M11.72). The caller holds the leaf's run lock. Codex
+    writes its answer (``-o``) to an :func:`answer_scratch` file outside the checked tree. ``entry`` is the roster
+    row, when the caller has it, so a row that forces bare is refused here too."""
     api_id = prof.api_id if prof is not None else model
     api_id = None if (api_id or "").strip().lower() in ("", "unknown") else api_id   # unknown: the harness default
     adapter = ADAPTERS[harness]
     session = (str(uuid.uuid4()), False) if harness == "claude-code" else None   # stream-json, to read the result
+    mode: str | None = None
+    if harness == "claude-code":
+        mode, problem = claude_launch_decision(entry, prof.launch_mode() if prof is not None else None)
+        if problem:   # a direct caller (the channel refuses first): still no launch
+            print(f"error: {problem}", file=sys.stderr)
+            return Outcome("rerun", problem, exit=1)
+        _run_launch_mode.set(mode)
     with answer_scratch(str(model)) as out:
         try:
+            extra = {"mode": mode} if mode is not None else {}
             launch = adapter.reviewer_launch(prompt_path, api_id, reviews, level, session=session,
-                                             schema=write_schema(root, reviews, ref), output=out, harness_bin=harness_bin)
+                                             schema=write_schema(root, reviews, ref), output=out,
+                                             harness_bin=harness_bin, **extra)
         except Unsupported as e:   # HarnessNotFound: the dirs searched, before anything runs
             return _refused(str(e), transcript)
         if harness == "claude-code":
             launch = replace(launch, env={**(launch.env or {}), **CLAUDE_REVIEWER_AVOID_ENV})   # as `review delegate`'s
-            print("note: the reviewer runs with --bare (no repository hooks, MCP servers or CLAUDE.md), and bare mode "
-                  "never reads your subscription login: it needs ANTHROPIC_API_KEY (or an apiKeyHelper)",
-                  file=sys.stderr)
+            print(launch_note(mode or "bare"), file=sys.stderr)
         print(f"running: {_shown(launch.argv)}" + (f" < {prompt_path}" if launch.stdin is not None else ""),
               file=sys.stderr)
         return run_and_file(launch, adapter, root, str(model), reviews, ref, transcript, sign_key, out)
@@ -152,6 +186,10 @@ def close_cli_review_run(root: Path, t: ReviewTarget, model: str, opened: tuple[
     directory: the record is specy-road's own, and the log is always ``RUN-<model>.log`` beside it, never a path
     from file content."""
     path, run = opened
+    mode = _run_launch_mode.get()
+    _run_launch_mode.set(None)
+    if mode:
+        run["launch_mode"] = mode
     replace_file(path.with_suffix(".log"), "\n".join(transcript) + ("\n" if transcript else ""))   # no symlink
     tail = [ln.strip() for ln in transcript[-20:] if ln.strip()]
     failed = filed.exit not in (0, None)

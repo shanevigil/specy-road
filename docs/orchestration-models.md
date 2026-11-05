@@ -57,6 +57,21 @@ access:
   `ANTHROPIC_API_KEY` (or an `apiKeyHelper`) instead of your subscription
   login; Bedrock, Google Cloud and Foundry credentials still work.
 
+A `claude-code` reviewer does not follow that worker `launch_mode` unless the
+profile sets `bare`, which forces the reviewer to bare as well. Otherwise
+specy-road chooses bare only when the reviewer's environment has
+`ANTHROPIC_API_KEY` or the user settings bare mode reads define `apiKeyHelper`,
+and explicit mode otherwise (`--setting-sources user --strict-mcp-config`, no
+`--mcp-config`). Explicit mode reads the subscription login and still loads no
+repository hooks, project settings or MCP servers. A roster `billing_route`
+of `claude_subscription` is that case: the reviewer runs in explicit mode.
+`channels.cli` is still needed when that reviewer should run a command other
+than this default. With
+bare forced and no key or `apiKeyHelper`, `review delegate` and
+`prompt --channel cli` refuse before launch, and `orchestrate plan` prints one
+`reviewer auth:` notice for that roster entry.
+[orchestration-reviewer-output.md](orchestration-reviewer-output.md) has the argv.
+
 A roster `channels.cli` is run as written: the mode adds no flag to it.
 
 A profile's `access.effort_by_role` sets the thinking budget per role. Each

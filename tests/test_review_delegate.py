@@ -193,7 +193,10 @@ def test_zero_retries_still_makes_the_first_attempt_and_ends_incomplete(tmp_path
     assert run["state"] == "incomplete" and "capacity error after 1 attempt(s)" in run["reason"]
 
 
-def test_bare_reviewer_launch_tracks_a_session_only_when_asked(tmp_path: Path) -> None:
+def test_bare_reviewer_launch_tracks_a_session_only_when_asked(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "claude"))
     prompt = tmp_path / "p.md"
     prompt.write_text("x")
     plain = ClaudeCode().reviewer_launch(prompt, "m", tmp_path)
