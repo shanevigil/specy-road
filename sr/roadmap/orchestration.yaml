@@ -99,6 +99,14 @@ roster:
     pinned: true
     channels:
       cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/cursor-review.sh" cursor-grok-4.6-high {prompt}'
+  - id: grok-4.7-exec
+    family: xai
+    roles: [executor]
+    profile: model-profiles/spacexai-grok/grok-4.7.md
+    harness: cursor
+    harness_model: grok-4.7-high
+    billing_route: cursor_subscription
+    # Overflow executor while the Claude account is at its usage limit (maintainer, 2026-11-05).
   - id: composer-2.5
     family: cursor
     roles: [executor]
