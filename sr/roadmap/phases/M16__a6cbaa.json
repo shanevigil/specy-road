@@ -197,7 +197,15 @@
         "specy_road/bundled_scripts/orchestrate_cli.py",
         "docs/orchestration-workers.md",
         "CHANGELOG.md",
-        "tests/"
+        "tests/",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/worker_ops_message.py",
+        "specy_road/worker_adapter_base.py",
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/worker_runner.py",
+        "sr/roadmap/orchestration.yaml",
+        "sr/roadmap/decisions.yaml"
       ],
       "type": "task"
     }
