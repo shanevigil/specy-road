@@ -39,3 +39,18 @@ These tests relied on "every profile" being the default, so they now pass `profi
 - `model_profiles._near_miss_fix`: builds the `profile:` roster line, plus the refresh hint when the file is missing (A2).
 - `model_profiles.bundled_profiles_root`: package template root without importing `init_project` (that import would be circular) (A2).
 - `tests/test_refresh_profiles_roster.py`: covers roster-only writes (id, alias and `profile:`), no roster → README plus hint, `--profiles all` → full set, `--force` outside the roster, the two near-miss examples, and an unrelated id keeping today's text (A1, A2).
+
+## Fix round 1
+
+Addresses Sol's R1 (A1 on the `upgrade` path). The coordinator added `specy_road/bundled_scripts/upgrade.py` to the touch zones for this fix.
+
+- `refresh_profiles.selection_notice(written, kept, *, roster, where="")` is new. It returns the line saying what was selected: the `--profiles all` hint when roster selection named no profile, `model-profiles/ already has every profile the roster names|this specy-road ships` when nothing was written, and `None` otherwise. `_copy_missing` now uses it in place of its inline branches; the CLI output is unchanged.
+- `upgrade._refresh` prints `selection_notice(profiles, kept, roster=True)`. This replaces the hard-coded "already has every profile this version ships" line, which was false under roster selection. A repo with no roster now gets the `--profiles all` hint on the first run and on every repeat.
+- The earlier note that `upgrade.py` was outside the zones and left unchanged no longer applies.
+
+Verification: `python -m pytest -q -n 4 tests/test_upgrade.py tests/test_refresh_profiles_roster.py tests/test_models_and_prompt.py tests/test_init_profiles_subset.py` → 47 passed; `specy-road file-limits` OK; ruff clean.
+
+### Added (fix round 1)
+
+- `refresh_profiles.selection_notice`: one source for the selection notice, shared by the CLI and `upgrade` (R1, so the text is not duplicated).
+- `tests/test_upgrade.py::test_no_roster_upgrade_writes_only_the_readme_and_names_profiles_all_on_every_run`: runs `upgrade` twice on a repo with no roster. Each run must write only the README, name `--profiles all`, and never claim every shipped profile is present (R1).
