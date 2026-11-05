@@ -32,11 +32,12 @@ No per-segment vs running-total distinction appears in observed logs; combining 
 - `_usage_total` / `_combined_node_total` — flagged executor + reviewer JSON/text totals keep `possible_undercount: true`.
 - `_usage_total` with unmarked executor + reviewer — combined JSON/text omit the flag.
 - Reviewer-only node total (no executor usage events) — no `possible_undercount` on combined total.
+- Merge regression class (helper import trapped in embedded harness string) — `test_worker_queue_message.py`: `make_worker_repo` at module scope; `FAKE_SLOW` omits it; `rg 'FAKE.*make_worker_repo'` across `tests/` — no other embedded-script traps.
 
 ## Verification
 
 ```text
-python -m pytest -q -p no:cacheprovider tests/test_cursor_usage_segments.py tests/test_worker_adapters.py::test_each_adapter_reports_turn_usage_in_one_shape tests/test_cursor_usage_cost.py tests/test_worker_cli.py::test_usage_events_per_turn_and_the_usage_command
+PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider tests/test_cursor_usage_segments.py tests/test_worker_adapters.py tests/test_cursor_usage_cost.py tests/test_worker_cli.py tests/test_review_usage.py tests/test_worker_sync_m15_13.py tests/test_worker_turn_accounting.py tests/test_worker_queue_message.py tests/test_worker_lease_races.py tests/test_worker_max_workers_global.py tests/test_worker_faults.py tests/test_worker_orphans.py tests/test_worker_resume_failed.py tests/test_worker_review_round1.py tests/test_worker_review_round2.py tests/test_m11_27_small_cli_fixes.py tests/test_review_round4_sol.py tests/test_review_round4_sol_b.py tests/test_review_round5.py tests/test_review_round6_ops.py tests/test_review_round6_runner.py tests/test_rework_findings_in_prompt.py
 ruff check specy_road tests scripts
 specy-road file-limits
 ```

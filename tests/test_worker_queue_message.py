@@ -13,6 +13,8 @@ import pytest
 
 from tests.test_worker_cli import run_worker_cli, wait_for_worker
 
+from tests.worker_repo_helpers import make_worker_repo
+
 from specy_road import worker_ops as ops
 from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
@@ -20,7 +22,6 @@ from specy_road import worker_state as ws
 
 FAKE_SLOW = '''
 import json, sys, time
-from tests.worker_repo_helpers import make_worker_repo
 from pathlib import Path
 prompt = Path(sys.argv[1])
 turn_file = prompt.with_name(prompt.name + ".turn")
