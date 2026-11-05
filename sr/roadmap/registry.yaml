@@ -29,7 +29,6 @@ entries:
     branch: feature/rm-a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts
     touch_zones:
       - specy_road/behaviour_changes.py
-      - specy_road/agent_text_report.py
       - specy_road/version_pin.py
       - specy_road/bundled_scripts/validate_roadmap.py
       - tests/

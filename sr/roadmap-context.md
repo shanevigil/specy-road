@@ -212,6 +212,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M13.11` upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs `upgrade-says-what-changed-for-this-repo-behaviour-changes-a-pin-below-the-new-minimum-the-new-files-and-duplicated-paragraphs` — task — **Not Started**
   - `M13.12` Quieter, accurate validate notices: untracked touch zones, the managed .gitignore comment, and tracked files under new ignore rules `quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules` — task — **Not Started**
   - `M13.13` upgrade --prompt writes an agent upgrade prompt filled in from this repo `upgrade-prompt-writes-an-agent-upgrade-prompt-filled-in-from-this-repo` — task — **Not Started**
+  - `M13.14` validate flags project agent text that mandates a changed behaviour (best-effort hint) `validate-flags-project-agent-text-that-mandates-a-changed-behaviour-best-effort-hint` — task — **Not Started**
 - `M14` Nested repos and review-gate integrity `nested-repos-and-review-gate-integrity` — phase — **Not Started**
   - `M14.1` Approvals never carry across unreviewed changes in a sibling repository `approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` — task — **Not Started**
   - `M14.2` doctor never offers to remove a live leaf's worktree or branch `doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch` — task — **Complete**

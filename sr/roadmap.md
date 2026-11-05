@@ -212,6 +212,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M13.11` | upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs | task | Agentic-led | Not Started |
 | `M13.12` | Quieter, accurate validate notices: untracked touch zones, the managed .gitignore comment, and tracked files under new ignore rules | task | Agentic-led | Not Started |
 | `M13.13` | upgrade --prompt writes an agent upgrade prompt filled in from this repo | task | Agentic-led | Not Started |
+| `M13.14` | validate flags project agent text that mandates a changed behaviour (best-effort hint) | task | Agentic-led | Not Started |
 | `M14` | Nested repos and review-gate integrity | phase | — | Not Started |
 | `M14.1` | Approvals never carry across unreviewed changes in a sibling repository | task | Agentic-led | Not Started |
 | `M14.2` | doctor never offers to remove a live leaf's worktree or branch | task | Agentic-led | Complete |
