@@ -110,6 +110,12 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.67` | move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit | task | Agentic-led | Complete |
 | `M16.68` | finish resolves roadmap chunk conflicts the branch only inherited | task | Agentic-led | Not Started |
 | `M16.69` | Cursor workers launch sandboxed without --force unless the roster opts in | task | Agentic-led | Not Started |
+| `M16.70` | move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree | task | Agentic-led | Not Started |
+| `M16.71` | CLI indent, outdent and group-nodes re-level siblings in one transaction validated once | task | Agentic-led | Not Started |
+| `M16.72` | Opt-in rewrite of prose id references after a move, and a standalone rename-refs | task | Agentic-led | Not Started |
+| `M16.73` | remove-node deletes an empty never-started node and names every blocker otherwise | task | Agentic-led | Not Started |
+| `M16.74` | apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once | task | Agentic-led | Not Started |
+| `M16.75` | validate and add-dependency catch cycles made through inherited group dependencies | task | Agentic-led | Not Started |
 | `M17` | 0.3.2: PM GUI shows orchestration and worktree state | phase | Human-led | Not Started |
 | `M17.1` | 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface | gate | Human-led | Not Started |
 | `M18` | Orchestration and review-loop features (after 0.3.1) | phase | — | Not Started |
