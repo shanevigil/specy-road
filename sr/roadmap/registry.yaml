@@ -161,3 +161,12 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: comma-or-and-part-counts-only-when-it-names-a-defect
+    node_id: M15.37
+    branch: feature/rm-comma-or-and-part-counts-only-when-it-names-a-defect
+    touch_zones:
+      - specy_road/review_record_rules.py
+      - tests/test_review_record_rules.py
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
