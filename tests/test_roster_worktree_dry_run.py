@@ -97,6 +97,11 @@ def test_models_list_names_the_ref_and_the_uncommitted_diff(tmp_path: Path, caps
     out = capsys.readouterr().out
     assert out.splitlines()[0] == "roster: roadmap/orchestration.yaml at dev"
     assert "uncommitted roster changes" not in out
+    # This clone's layers are not uncommitted roster changes: an availability overlay and a roster_add entry.
+    _local(repo, "roster:\n  - {id: opus, available: false}\nroster_add:\n" + MINI)
+    assert run_main(models_cli, "models", "list", "--json", "--repo-root", str(repo)) == 0
+    assert json.loads(capsys.readouterr().out)["uncommitted_roster_changes"] is None
+    (repo / "roadmap" / "orchestration.local.yaml").unlink()
     edited = (ROSTER.replace("  - id: local\n    family: local\n    roles: [executor]\n"
                              "    may_process: [public, internal, restricted]\n    preflight: \"true\"\n",
                              "  - {id: extra, family: mistral, roles: [executor]}\n")
@@ -115,10 +120,12 @@ def test_models_list_names_the_ref_and_the_uncommitted_diff(tmp_path: Path, caps
     assert "extra" not in {r["id"] for r in data["roster"]}   # the list itself is still the pinned roster
 
 
-def test_models_list_diff_is_not_masked_by_the_local_availability_overlay(tmp_path: Path, capsys) -> None:
+@pytest.mark.parametrize("overlay", ["true", "false"])   # false: the same value the working tree set
+def test_models_list_diff_is_not_masked_by_the_local_availability_overlay(tmp_path: Path, capsys,
+                                                                          overlay: str) -> None:
     repo = plan_repo(tmp_path)
     _roster(repo, OPUS_OFF)                                    # uncommitted: opus available: false
-    _local(repo, "roster:\n  - {id: opus, available: true}\n")   # this clone's overlay says true
+    _local(repo, f"roster:\n  - {{id: opus, available: {overlay}}}\n")
     capsys.readouterr()
     assert run_main(models_cli, "models", "list", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
