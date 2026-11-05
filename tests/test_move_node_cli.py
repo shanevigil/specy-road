@@ -1,4 +1,4 @@
-"""`specy-road move-node`: re-parent a subtree, renumber, and stay atomic.
+"""`specy-road move-node`: re-parent a subtree, renumber it, and stay atomic.
 
 `edit-node --set parent_id=` moves the edge and leaves the display id behind, so
 re-parenting meant hand-editing two chunk files and renaming a planning sheet.
@@ -16,10 +16,12 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_move_node import move_node
+from specy_road.history_events import RENUMBERED, diff_snapshots, snapshot
 from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
 
 NK_A = "20000000-0000-4000-8000-00000000aa01"
@@ -221,8 +223,12 @@ def test_touch_zone_segments_naming_an_old_id_follow_the_node(tmp_path: Path) ->
         "M2.1": ["docs/M2.1/", "shared/M1.1/api.md"],
     })
 
-    # Index 0 makes a chain: M1.1 -> M2.1 while the old M2.1 -> M2.2.
-    r = _run(tmp_path, "--repo-root", str(tmp_path), "M1.1", "--to-parent", "M2", "--index", "0")
+    # Index 0 makes a chain under a whole-outline renumber: M1.1 -> M2.1 while
+    # the old M2.1 -> M2.2.
+    r = _run(
+        tmp_path, "--repo-root", str(tmp_path), "M1.1", "--to-parent", "M2",
+        "--index", "0", "--renumber-outline",
+    )
 
     assert r.returncode == 0, r.stderr
     nodes = _by_key(tmp_path)
@@ -250,3 +256,127 @@ def test_a_registry_claims_touch_zones_follow_the_new_id(tmp_path: Path) -> None
     text = registry.read_text(encoding="utf-8")
     assert f"- docs/{new_id}/" in text
     assert "docs/M1.1/" not in text
+
+
+# A wider graph for the subtree-only default: M1 holds a leaf, a milestone
+# M1.2 with three leaves and a gap (M1.2.1, M1.2.2, M1.2.4), and another leaf;
+# M2 has a gap before M2.4.
+NK_A2 = "20000000-0000-4000-8000-00000000aa03"
+NK_A21 = "20000000-0000-4000-8000-00000000aa04"
+NK_A22 = "20000000-0000-4000-8000-00000000aa05"
+NK_A24 = "20000000-0000-4000-8000-00000000aa06"
+NK_A3 = "20000000-0000-4000-8000-00000000aa07"
+NK_B4 = "20000000-0000-4000-8000-00000000bb03"
+
+
+def _wide_fixture(dest: Path) -> None:
+    _fixture(dest)
+    middle = _task("M1.2", NK_A2, "M1", "middle-work")
+    middle.update(type="milestone", codename=None, execution_milestone="Mixed")
+    middle["planning_dir"] = f"planning/M1.2_unnamed_{NK_A2}.md"
+    extra = [
+        middle,
+        _task("M1.2.1", NK_A21, "M1.2", "inner-one"),
+        _task("M1.2.2", NK_A22, "M1.2", "inner-two"),
+        _task("M1.2.4", NK_A24, "M1.2", "inner-four"),
+        _task("M1.3", NK_A3, "M1", "last-work"),
+        _task("M2.4", NK_B4, "M2", "gap-work"),
+    ]
+    for n, order in zip(extra, (1, 0, 1, 2, 2, 1)):
+        n["sibling_order"] = order
+    chunk = dest / "roadmap" / "phases" / "T.json"
+    write_json_chunk(chunk, load_json_chunk(chunk) + extra)
+    for n in extra:
+        (dest / n["planning_dir"]).write_text(f"# {n['id']}\n", encoding="utf-8")
+    registry = dest / "roadmap" / "registry.yaml"
+    registry.write_text(
+        registry.read_text(encoding="utf-8")
+        + "  - codename: inner-two\n    node_id: M1.2.2\n"
+        "    branch: feature/rm-inner-two\n"
+        "  - codename: inner-four\n    node_id: M1.2.4\n"
+        "    branch: feature/rm-inner-four\n",
+        encoding="utf-8",
+    )
+
+
+def _ids(root: Path) -> dict[str, str]:
+    return {k: n["id"] for k, n in _by_key(root).items()}
+
+
+def _sheets(root: Path) -> set[str]:
+    return {p.name for p in (root / "planning").glob("*.md")}
+
+
+def _unchanged_except(before: dict[str, str], after: dict[str, str], keys: set[str]) -> bool:
+    return {k: v for k, v in after.items() if k not in keys} == {
+        k: v for k, v in before.items() if k not in keys
+    }
+
+
+@pytest.mark.parametrize(
+    ("flags", "expected"),
+    [
+        # Default: one past M2's highest child (M2.4); nothing else moves.
+        ((), {NK_A22: "M2.5", NK_A24: "M1.2.4", NK_B4: "M2.4"}),
+        # Today's whole-outline renumber closes the gaps around the move.
+        (("--renumber-outline",), {NK_A22: "M2.3", NK_A24: "M1.2.2", NK_B4: "M2.2"}),
+    ],
+    ids=["subtree-only", "renumber-outline"],
+)
+def test_moving_a_leaf_out_of_the_middle_of_a_milestone(
+    tmp_path: Path, flags: tuple[str, ...], expected: dict[str, str]
+) -> None:
+    _wide_fixture(tmp_path)
+    before = _ids(tmp_path)
+    before_sheets = _sheets(tmp_path)
+
+    r = _run(tmp_path, "--repo-root", str(tmp_path), "M1.2.2", "--to-parent", "M2", *flags)
+    assert r.returncode == 0, r.stderr
+
+    after = _ids(tmp_path)
+    assert {k: after[k] for k in expected} == expected
+    if not flags:
+        assert _unchanged_except(before, after, {NK_A22})
+        assert before_sheets - _sheets(tmp_path) == {f"M1.2.2_inner-two_{NK_A22}.md"}
+        assert "M1.2.2 -> M2.5" in r.stdout
+        assert "M1.2.4 ->" not in r.stdout
+
+
+def test_a_subtree_move_renumbers_only_its_descendants(tmp_path: Path) -> None:
+    _wide_fixture(tmp_path)
+    before_nodes = load_roadmap(tmp_path)["nodes"]
+    before_sheets = _sheets(tmp_path)
+    before = _ids(tmp_path)
+
+    r = _run(tmp_path, "--repo-root", str(tmp_path), "M1.2", "--to-parent", "M2")
+    assert r.returncode == 0, r.stderr
+
+    after = _ids(tmp_path)
+    moved = {NK_A2: "M2.5", NK_A21: "M2.5.1", NK_A22: "M2.5.2", NK_A24: "M2.5.4"}
+    assert {k: after[k] for k in moved} == moved
+    assert _unchanged_except(before, after, set(moved))
+    assert _by_key(tmp_path)[NK_A24]["parent_id"] == "M2.5"
+    # Only the moved subtree's sheets were renamed.
+    assert before_sheets - _sheets(tmp_path) == {
+        f"M1.2_unnamed_{NK_A2}.md",
+        f"M1.2.1_inner-one_{NK_A21}.md",
+        f"M1.2.2_inner-two_{NK_A22}.md",
+        f"M1.2.4_inner-four_{NK_A24}.md",
+    }
+    # History records a renumbering for the subtree and nothing else.
+    events = diff_snapshots(
+        snapshot(before_nodes), snapshot(load_roadmap(tmp_path)["nodes"]), {}
+    )
+    assert {e["node_key"] for e in events if e["kind"] == RENUMBERED} == set(moved)
+
+
+def test_a_claimed_moved_leaf_keeps_its_claim_under_the_new_id(tmp_path: Path) -> None:
+    _wide_fixture(tmp_path)
+
+    r = _run(tmp_path, "--repo-root", str(tmp_path), "M1.2.2", "--to-parent", "M2")
+    assert r.returncode == 0, r.stderr
+
+    entries = yaml.safe_load((tmp_path / "roadmap" / "registry.yaml").read_text(encoding="utf-8"))
+    claims = {e["codename"]: e["node_id"] for e in entries["entries"]}
+    # The moved claim follows its node; the others keep their ids.
+    assert claims == {"alpha-work": "M1.1", "inner-two": "M2.5", "inner-four": "M1.2.4"}
