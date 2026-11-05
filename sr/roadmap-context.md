@@ -122,7 +122,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.8` The queued-message worker test waits for the idle state, not just the second completion event `queue-message-test-waits-for-idle` — task — **Complete**
   - `M21.9` A freshly initialized project passes its own checks `init-passes-own-checks` — task — **Not Started**
   - `M21.10` doctor works in a repo with no remote `doctor-without-a-remote` — task — **Not Started**
-  - `M21.11` Help text names installed commands `help-names-installed-commands` — task — **Not Started**
+  - `M21.11` Help text names installed commands `help-names-installed-commands` — task — **Complete**
   - `M21.12` A review record is refused for joined observations only when one of them names a defect `joined-observations-need-a-defect` — task — **Not Started**
 - `M17` 0.3.2: PM GUI shows orchestration and worktree state `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface `pm-gui-orchestration-plan` — gate — **Not Started**
@@ -247,7 +247,6 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.10` on `feature/rm-doctor-without-a-remote` since 2026-11-05
-- `M21.11` on `feature/rm-help-names-installed-commands` since 2026-11-05
 - `M21.12` on `feature/rm-joined-observations-need-a-defect` since 2026-11-05
 - `M21.4` on `feature/rm-remove-node` since 2026-11-05
 - `M21.7` on `feature/rm-steering-file-guard` since 2026-11-05
@@ -259,10 +258,11 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 27 | 14 | 5.46 | 85% | 19 | 3 |
+| `docs` **flagged** | 26 | 13 | 5.46 | 85% | 19 | 3 |
 | `planning` **flagged** | 1 | 0 | 3.00 | 100% | 0 | 0 |
-| `specy_road` **flagged** | 48 | 22 | 4.69 | 81% | 28 | 6 |
-| `tests` **flagged** | 50 | 23 | 4.63 | 81% | 28 | 6 |
+| `specy_road` **flagged** | 48 | 21 | 4.56 | 78% | 28 | 6 |
+| `tests` **flagged** | 50 | 22 | 4.50 | 79% | 28 | 6 |
+| `CHANGELOG.md` | 1 | 0 | 1.00 | 0% | 0 | 0 |
 | `README.md` | 1 | 1 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |

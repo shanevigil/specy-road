@@ -103,7 +103,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.11_help-names-installed-commands_5bdbdc68-29a1-4d02-b8b3-f6c05849cc3a.md",
       "sibling_order": 10,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Help text names installed commands",
       "touch_zones": [
         "specy_road/cli.py",
