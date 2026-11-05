@@ -99,18 +99,6 @@ def _preflight(entry: dict[str, Any], cwd: Path) -> None:
         raise DelegateError(f"preflight failed: {cmd}; nothing was launched")
 
 
-def _refuse_before_launch(h: _Harness, entry: dict[str, Any], cwd: Path) -> None:
-    """Auth, the roster preflight, and a command the program refuses, before the lock or any reviews file."""
-    if h.auth_error:
-        raise DelegateError(h.auth_error)
-    _preflight(entry, cwd)
-    if h.cli and not h.chore:
-        try:
-            reviewer_cli(h.cli, None)
-        except Unsupported as e:
-            raise DelegateError(str(e)) from None
-
-
 class _Harness:
     """One roster entry's way of starting and resuming a reviewer turn."""
 
@@ -262,7 +250,8 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
     entry = _entry(repo_root, model)
     cwd = (worktree or Path(git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root)).resolve()
     h = _Harness(repo_root, entry, node_id, cwd, chore=chore is not None)
-    _refuse_before_launch(h, entry, cwd)   # before the lock, which creates a file in the reviews directory
+    if h.auth_error:   # forced bare with no key: before the lock, the prompt files and the RUN record
+        raise DelegateError(h.auth_error)
     path, reviews = run_path(repo_root, node_id, model), reviews_dir(repo_root, node_id)
     lock = contextlib.ExitStack()
     try:   # one reviewer run per leaf, taken before the run writes any of its files: they would cross-fail
@@ -272,6 +261,7 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
     with lock, answer_scratch(model) as answer:
         h.output = None if chore else answer
         text, session = _start(repo_root, t, model, ref, h, resume)
+        _preflight(entry, cwd)   # M8.3: after the lock, before the RUN record is saved
         if h.note:   # bare mode and the subscription login, same sentence prompt prints
             print(h.note, file=sys.stderr)
         prompts = (_prompt_file(repo_root, node_id, model, text),

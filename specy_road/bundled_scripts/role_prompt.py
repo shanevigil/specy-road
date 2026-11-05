@@ -315,7 +315,7 @@ def main(argv: list[str] | None = None) -> None:
         p.error("--force needs a non-empty --reason, and --reason needs --force")
     root = resolve_repo_root(ns)
     lock = contextlib.ExitStack()
-    if ns.role == "reviewer" and ns.channel == "cli":   # refuse before the lock: taking it creates a file in reviews/
+    if ns.role == "reviewer" and ns.channel == "cli":   # bare-mode auth only: the roster preflight still runs after the RUN opens
         config, _err = pinned_config(root)
         entry = next((e for e in config.get("roster") or [] if e.get("id") == ns.model), {})
         blocked = reviewer_launch_block(pinned_profile_for_entry(root, entry), entry, root)

@@ -25,8 +25,7 @@ Left unchanged, outside the zones:
 - `has_api_key_helper` — a non-empty string `apiKeyHelper`, without returning the command.
 - `bare_settings_argv` — `--settings` plus the user-settings path when bare auth is a helper and not a key; never the helper command, and never a JSON `--settings` value.
 - `claude_reviewer_mode` — bare only with a key or helper; otherwise explicit.
-- `reviewer_launch_block` — auth, roster preflight, a missing or malformed cli, and a program that refuses its command, before any reviews file or launch.
-- `_refuse_before_launch` — the same three refusals on `review delegate`, before the lock (the lock creates a file).
+- `reviewer_launch_block` — the forced-bare authentication refusal only. It writes nothing and runs before the lock. The roster preflight is not part of it.
 - `auth_problem` — the refusal text when bare was forced and neither credential exists; `None` otherwise.
 - `forces_bare` — a roster `launch_mode: bare` or a profile `access.launch_mode: bare`.
 - `claude_launch_decision` — `(mode, refusal)` shared by both entry points.
@@ -46,10 +45,12 @@ Left unchanged, outside the zones:
 
 - `reviewer_launch` auth flags — `mode="explicit"` adds `--setting-sources user --strict-mcp-config` and records `launch_mode` `explicit`. Any other mode is `--bare`, plus `bare_settings_argv()` when the helper is the only credential. The default remains bare so a caller that does not pass a mode stays bare.
 - `parse_events` inferred-mode check — a mismatch is reported only when `launch_mode` is `bare` or `full`. Explicit is a reviewer mode the tool list cannot infer, so a reviewer turn is not failed for it.
-- `delegate` refusal — `_refuse_before_launch` before the review-run lock, the prompt files and `save_run`.
+- `delegate` auth refusal — `DelegateError` before the review-run lock, the prompt files and `save_run`.
+- `delegate` preflight — `_preflight` after the lock and before `save_run`, where M8.3 left it.
 - `delegate` note — after the prompt is built, prints the same bare or explicit note `prompt` prints.
-- `prompt` refusal — `reviewer_launch_block` in `main`, before the review-run lock and before `open_reviewer_cli_run`. The channel is then called `prechecked` so the roster preflight does not run twice.
-- `run_reviewer_channel` refusal — a direct caller hits the same block before `write_schema` or a launch.
+- `prompt` auth refusal — `reviewer_launch_block` in `main`, before the lock and before `open_reviewer_cli_run`.
+- `prompt` preflight — `preflight` inside `run_reviewer_channel`, after the RUN record is open, so a failure is closed as an incomplete `prompt-cli` run.
+- `run_reviewer_channel` auth — a direct caller hits the same block before `write_schema` or a launch. `prompt` passes `prechecked` so that check does not run again after the record exists.
 - `run_default_reviewer` refusal — the same decision again, so a direct caller does not launch either, and sets the mode the RUN record will carry.
 - `claude_reviewer_auth_notices` skip — returns nothing when a key or helper exists, and skips entries that are not a forced claude-code reviewer without `channels.cli`.
 
@@ -67,7 +68,7 @@ Left unchanged, outside the zones:
 - `test_delegate_bare_with_a_key_prints_the_note_and_hides_the_key` — a key selects bare, the note is printed, and the key is absent from stderr, the run, the argv record and the log.
 - `test_forced_bare_without_a_key_refuses_before_a_run_record` — `review delegate` and `prompt --channel cli` exit 1, name the fixes, launch nothing, and leave a planted RUN record and the rest of the reviews directory byte for byte.
 - `test_prompt_explicit_mode_is_recorded_and_a_helper_selects_bare_without_printing_it` — the prompt path records `explicit` without a key. With only an `apiKeyHelper`, `reviewer_launch` and the launched argv pass `--settings` and that file's path, and the helper command is absent from the argv, the displayed `running:` line, and the log.
-- `test_a_refusing_preflight_leaves_the_reviews_dir_unchanged` — a roster `preflight` that exits 1 refuses `review delegate` and `prompt --channel cli` without changing a planted RUN record or any other file in the reviews directory.
+- `test_a_forced_bare_auth_refusal_leaves_the_reviews_dir_unchanged` — forced bare with no key refuses `review delegate` and `prompt --channel cli` without changing a planted RUN record or any other file in the reviews directory. A roster preflight is not this case.
 - `test_plan_prints_one_reviewer_auth_notice` — `orchestrate plan` prints one `reviewer auth:` line naming the entry and the fixes, and prints none once a key is set.
 - `test_claude_code_reviewer_without_channels_cli_runs_bare` (extended) — sets a key and an empty config dir so the pinned bare argv stays deterministic, and asserts the key is absent from the output and the run.
 
@@ -81,11 +82,20 @@ R1 class: bare mode was selected because user settings define `apiKeyHelper`, bu
 - The displayed command (`_shown` / `running:`) and the RUN log. Result: both print the argv. The argv holds the path, not the helper command. The prompt test asserts the command is absent from the argv, stderr, stdout and the log.
 - `--settings`'s JSON-string form. Result: not used.
 
-R2 class: a check that can refuse the launch ran after a reviews-directory file was written (`open_reviewer_cli_run`, the review-run lock, `save_run`, or `write_schema`).
+R2 class: a forced-bare authentication refusal ran after a reviews-directory file was written.
 
-- `open_reviewer_cli_run` has one caller, `role_prompt._run`, and it ran before auth, the roster preflight, a bad cli, and `reviewer_cli`. Result: `reviewer_launch_block` runs in `main` before the lock and before that call. A refusal returns without creating or replacing a file. The test plants a RUN record and compares the directory.
-- `close_cli_review_run` used to unlink the RUN after the fact. Result: removed. The record is not opened, so nothing is deleted.
-- A direct `run_reviewer_channel` caller. Result: the same block runs first, before `write_schema` or a launch. `prompt` passes `prechecked` so the shell preflight does not run twice.
-- `review delegate` auth, roster preflight, and `reviewer_cli`. Result: `_refuse_before_launch` raises before the lock. The lock is what used to create a file before `_preflight`. `reviewer_cli` used to run inside `launch` after `save_run` and `write_schema`.
-- `run_cli_channel` for a non-reviewer. Result: it has no RUN record. Its preflight already returns before the process starts.
-- Prompt building writes `PACKET-<model>.md` only for a delta review. Result: that write is after the block has allowed the launch. A non-delta refusal does not reach it. The tests are non-delta and compare the whole reviews directory.
+- `open_reviewer_cli_run` has one caller, `role_prompt._run`. Result: `reviewer_launch_block` runs in `main` before the lock and before that call. An auth refusal returns without creating or replacing a file. The test plants a RUN record and compares the directory.
+- `close_cli_review_run` used to unlink a RUN opened before the auth check. Result: removed. Auth never opens the record, so nothing is deleted.
+- A direct `run_reviewer_channel` caller. Result: the same auth block runs first, before `write_schema` or a launch. `prompt` passes `prechecked` so the check does not run again after the record exists.
+- `review delegate` auth. Result: `DelegateError` before the lock and before `save_run`.
+- Prompt building writes `PACKET-<model>.md` only for a delta review. Result: that write is after the auth block has allowed the launch. A non-delta auth refusal does not reach it.
+
+R3 class: an existing refusal that already filed an incomplete `prompt-cli` RUN was moved before the record was opened. A failed roster preflight is that case. Forced-bare auth is not.
+
+- `prompt --channel cli` roster preflight. Result: it runs in `run_reviewer_channel` after `open_reviewer_cli_run`. `close_cli_review_run` still files `source` `prompt-cli`, `state` `incomplete`, `outcome` `rerun`, and a `reviewer-failure` event. `test_prompt_cli_that_sends_nothing_stays_incomplete_beside_an_older_record_of_the_commit` is unchanged and covers the preflight parameter.
+- The same test's interrupt parameter. Result: the interrupt still closes the record `role_prompt` opened. That path was not moved.
+- A missing or malformed cli, and `reviewer_cli` refusing the command, on the prompt path. Result: they stay in `run_reviewer_channel` and `run_custom_reviewer`, after the record is open, as M8.3 had them.
+- `review delegate` roster preflight. Result: `_preflight` is after the lock and before `save_run`, its M8.3 place. It raises before a RUN json is saved. The incomplete-record behaviour the closure test pins is the prompt path.
+- `review delegate` `reviewer_cli`. Result: only the call inside `launch`, after `save_run`. The earlier check before the lock was removed.
+- `run_cli_channel` for a non-reviewer. Result: unchanged. It never opened a reviewer RUN; its preflight still returns before the process starts.
+- Forced-bare auth on both entry points. Result: still before the lock and before any RUN. The retargeted test compares the reviews directory for that refusal only.
