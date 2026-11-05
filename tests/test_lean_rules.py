@@ -17,6 +17,7 @@ from tests.test_models_and_prompt import ROSTER, TEMPLATE_PROFILES
 from specy_road.agents_md_block import render_rules
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.bundled_scripts import role_prompt
+from specy_road.bundled_scripts.role_prompt_rca import TEST_RULES
 from specy_road.review_files import PACKET_NAME, reviews_dir
 
 REPO = Path(__file__).resolve().parent.parent
@@ -92,6 +93,21 @@ def test_executor_prompt_asks_for_the_added_inventory(tmp_path: Path) -> None:
     text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="executor", model="opus")
     assert err is None
     assert "ending with an `## Added` inventory" in text and "mock and test you added" in text
+
+
+def test_executor_and_reviewer_prompts_share_test_rules(tmp_path: Path) -> None:
+    repo = _profiled_repo(tmp_path)
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True)
+    (d / PACKET_NAME).write_text("# Review packet: `M1.1`\n", encoding="utf-8")
+    executor, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="executor", model="opus")
+    assert err is None
+    reviewer, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="reviewer", model="opus")
+    assert err is None
+    assert "**Tests:**" in executor
+    for rule in TEST_RULES:
+        assert rule in executor, rule
+        assert rule in reviewer, rule
 
 
 def test_packet_notes_a_summary_without_an_added_inventory(tmp_path: Path) -> None:
