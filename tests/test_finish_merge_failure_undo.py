@@ -15,7 +15,7 @@ import yaml
 
 from tests.helpers import REPO
 from tests.review_repo_helpers import commit_file, git
-from tests.test_finish_merge_mode import _merge_mode_finish_repo
+from tests.test_finish_merge_mode import merge_mode_finish_repo
 
 BRANCH = "feature/rm-thing"
 CHECK = "echo LAND-CHECK-OUTPUT; echo '3 passed'"
@@ -43,7 +43,7 @@ with mock.patch.object(fm, "land_on_integration", boom):
 
 
 def _repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
-    repo, bare = _merge_mode_finish_repo(tmp_path, monkeypatch)
+    repo, bare = merge_mode_finish_repo(tmp_path, monkeypatch)
     commit_file(
         repo, "roadmap/git-workflow.yaml",
         "version: 1\nintegration_branch: dev\nremote: origin\non_complete: merge\n"

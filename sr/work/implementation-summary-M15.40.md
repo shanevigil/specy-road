@@ -37,3 +37,4 @@ These are as listed. The new module `specy_road/finish_bookkeeping_undo.py` was 
 - `tests/test_finish_merge_failure_undo.py::test_landing_exception_reports_last_and_undoes`: A4(b), with a `mock.patch.object` on `finish_modes.land_on_integration` inside the subprocess.
 - `tests/test_finish_merge_failure_undo.py::test_undo_failure_names_the_reset`: the A2 undo-failure message.
 - The `monkeypatch.setattr(finish_task, "merge_undo_snapshot", ...)` in the two retry tests: simulates a branch finished before this change (A3).
+- `tests/test_finish_merge_mode.py`: renamed `_merge_mode_finish_repo` to the public `merge_mode_finish_repo` and updated its one existing caller, so the new test module never imports an underscore-prefixed name (coordinator precheck). All assertions are unchanged.
