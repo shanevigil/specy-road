@@ -112,7 +112,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M16.69` Cursor workers launch sandboxed without --force unless the roster opts in `cursor-workers-no-force-by-default` — task — **Not Started**
   - `M16.70` Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships `release-docs-0-3-1` — task — **Not Started**
 - `M21` rc4 stabilization: fixes filed after the themed-milestone rule `rc4-stabilization` — phase — **Not Started**
-  - `M21.1` move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree `move-node-chosen-id` — task — **Not Started**
+  - `M21.1` move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree `move-node-chosen-id` — task — **Complete**
   - `M21.2` CLI indent, outdent and group-nodes re-level siblings in one transaction validated once `outline-group-cli` — task — **Not Started**
   - `M21.3` Opt-in rewrite of prose id references after a move, and a standalone rename-refs `rewrite-id-refs` — task — **Not Started**
   - `M21.4` remove-node deletes an empty never-started node and names every blocker otherwise `remove-node` — task — **Not Started**
@@ -238,7 +238,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M21.1` on `feature/rm-move-node-chosen-id` since 2026-11-05
 - `M21.10` on `feature/rm-doctor-without-a-remote` since 2026-11-05
 - `M21.11` on `feature/rm-help-names-installed-commands` since 2026-11-05
 - `M21.12` on `feature/rm-joined-observations-need-a-defect` since 2026-11-05
@@ -251,10 +250,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 27 | 15 | 5.75 | 83% | 15 | 3 |
+| `docs` **flagged** | 27 | 14 | 5.46 | 85% | 19 | 3 |
 | `planning` **flagged** | 1 | 0 | 3.00 | 100% | 0 | 0 |
-| `specy_road` **flagged** | 48 | 23 | 4.80 | 80% | 24 | 6 |
-| `tests` **flagged** | 50 | 24 | 4.73 | 81% | 24 | 6 |
+| `specy_road` **flagged** | 48 | 22 | 4.69 | 81% | 28 | 6 |
+| `tests` **flagged** | 50 | 23 | 4.63 | 81% | 28 | 6 |
 | `README.md` | 1 | 1 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
