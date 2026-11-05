@@ -29,7 +29,7 @@ def _promote(repo: Path) -> str:
     _scaffold(repo)
     seed_planning_sheet(repo, dict(NODE), Idea(id="i-1", title="Thing", rationale="Needed."))
     git(repo, "commit", "-qam", "promote")
-    return "brainstorm promote's placeholder under ## Intent"
+    return "brainstorm promote's placeholder under ## Approach"
 
 
 @pytest.mark.parametrize("unwrite", [_scaffold, _promote])

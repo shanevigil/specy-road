@@ -99,6 +99,8 @@ USAGE_TEXT = (
     "  review-node <NODE_ID> — advisory LLM review (requires pip install specy-road[review])\n"
     "  scaffold-planning <NODE_ID> — create planning/<id>_<slug>_<node_key>.md; set planning_dir\n"
     "    (optional: --planning-dir PATH --force; see specy_road/bundled_scripts/scaffold_planning.py -h)\n"
+    "  author-approach <ID> [<ID>...] — print the prompt that writes a leaf's placeholder ## Approach\n"
+    "    (pickup skips it until written); skips authored ones (optional: -o writes work/prompt-approach-<ID>.md)\n"
     "  scaffold-constitution — create constitution/purpose.md and constitution/principles.md from templates\n"
     "    (optional: --repo-root DIR --force)\n"
     "  init project [PATH] — scaffold roadmap/constitution/shared/… into the repo root\n"

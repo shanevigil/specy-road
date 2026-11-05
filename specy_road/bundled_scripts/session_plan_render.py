@@ -16,6 +16,7 @@ from dataclasses import asdict
 from typing import TYPE_CHECKING
 
 from specy_road.nested_repos import describe_unpushed
+from specy_road.planning_scaffold_check import needs_approach_line
 
 if TYPE_CHECKING:  # annotations only: session_plan re-exports session_plan_to_dict from here
     from specy_road.bundled_scripts.session_plan import SessionPlan
@@ -241,6 +242,8 @@ def _render_misc(plan: SessionPlan) -> list[str]:
             "(pickup skips these):**"
         )
         lines.extend(f"- `{u.node_id}`: {u.reason}" for u in plan.unauthored)
+        needs = needs_approach_line({u.node_id: u.reason for u in plan.unauthored})
+        lines.extend([f"**{needs}**"] if needs else [])
         lines.append("")
     if plan.needs_codename:
         lines.append(

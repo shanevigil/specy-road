@@ -49,6 +49,7 @@ _SCRIPTS = {
     "upgrade": "upgrade.py",
     "review-node": "review_node.py",
     "scaffold-planning": "scaffold_planning.py",
+    "author-approach": "author_approach.py",
     "move-node": "roadmap_move_node.py",
     "doctor": "doctor.py",
 }

@@ -20,11 +20,13 @@ import sys
 from datetime import date
 
 from specy_road.decisions import format_preference
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.orchestrate_plan import OrchestrationPlan, build_orchestration_plan
+from specy_road.planning_scaffold_check import needs_approach_line, pickup_unauthored_leaves
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
-def render(plan: OrchestrationPlan) -> list[str]:
+def render(plan: OrchestrationPlan, needs_approach: str | None = None) -> list[str]:
     pol = plan.policy
     unit = "distinct-family" if pol.get("reviewers_distinct_families") else "any-family"
     lines = [f"policy: {pol.get('reviewers_required')} {unit} reviewer(s)"
@@ -54,6 +56,8 @@ def render(plan: OrchestrationPlan) -> list[str]:
         lines.append(f"active claims (not reassigned): {', '.join(plan.active)}")
     if plan.unauthored:
         lines.append(f"unauthored (not assigned; pickup skips them): {', '.join(plan.unauthored)}")
+    if needs_approach:
+        lines.append(needs_approach)
     return lines + preference_lines(plan)
 
 
@@ -80,7 +84,9 @@ def cmd_plan(ns: argparse.Namespace) -> int:
     if ns.json:
         print(json.dumps(plan.to_dict(), indent=2))
     else:
-        print("\n".join(render(plan)))
+        reasons = pickup_unauthored_leaves(root, load_roadmap(root)["nodes"])
+        needs = needs_approach_line({nid: reasons[nid] for nid in plan.unauthored if nid in reasons})
+        print("\n".join(render(plan, needs)))
     return 0 if plan.ok else 1
 
 
