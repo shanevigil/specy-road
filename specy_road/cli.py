@@ -30,6 +30,7 @@ _SCRIPTS = {
     "file-limits": "validate_file_limits.py",
     "do-next-available-task": "do_next_task.py",
     "abort-task-pickup": "abort_task_pickup.py",
+    "reconcile-branch": "reconcile_branch_cli.py",
     "registry-prune": "registry_prune.py",
     "mark-implementation-reviewed": "mark_implementation_reviewed.py",
     "review-packet": "review_packet.py",

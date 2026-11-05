@@ -120,6 +120,8 @@ USAGE_TEXT = (
     "    An existing feature/rm-* branch is checked out, not treated as a failure.\n"
     "  abort-task-pickup       — undo pickup: deregister on base, push base, delete local feature/rm-*, clean work/\n"
     "    (optional: --base BRANCH --remote NAME | --force)\n"
+    "  reconcile-branch [ID]   — in a PR-mode leaf's worktree: merge base, registry by rule, regenerate, commit, push\n"
+    "    (refuses, unchanged, on a conflict outside the three bookkeeping paths)\n"
     "  registry-prune          — list claims whose feature/rm-* branch is missing from this clone\n"
     "    (--remove CODENAME to drop one, repeatable: commits on base and pushes)\n"
     "    Reporting is advisory: another clone's live claim looks identical here,\n"
