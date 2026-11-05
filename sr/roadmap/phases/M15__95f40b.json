@@ -14,7 +14,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.32_archived-summary-exempt-from-file-limits_95f40b2e-87e0-4c88-b013-78f2155376d6.md",
       "sibling_order": 32,
-      "status": "Complete",
+      "status": "Not Started",
       "title": "An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure",
       "touch_zones": [
         "specy_road/file_limits_engine.py",

@@ -260,7 +260,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.29` A review that stops before filing leaves a trace: every reviewer channel opens a RUN record, and review list shows started but not filed `every-reviewer-channel-leaves-a-run-record` — task — **Not Started**
   - `M15.30` Under delta review, one approval per round still checks the whole leaf against the merge base on a fixed checklist `one-full-leaf-checklist-review-per-round` — task — **Not Started**
   - `M15.31` A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported `delegated-reviewer-always-runs-a-named-model` — task — **Not Started**
-  - `M15.32` An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure `archived-summary-exempt-from-file-limits` — task — **Complete**
+  - `M15.32` An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure `archived-summary-exempt-from-file-limits` — task — **Not Started**
   - `M15.33` A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed `refused-review-record-leaves-a-trace` — task — **Not Started**
   - `M15.34` The executor prompt states the test rules that the reviewer's excess checklist enforces `executor-prompt-states-the-test-rules` — task — **Not Started**
   - `M15.35` The review packet never lists .git or a path under it as an uncommitted reference `packet-never-lists-dot-git-as-uncommitted` — task — **Not Started**
@@ -385,6 +385,7 @@ Do not pick these up.
 - `M15.20` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M15.25` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
+- `M15.32` on `feature/rm-archived-summary-exempt-from-file-limits` since 2026-11-05
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 
 ## Quality by area
