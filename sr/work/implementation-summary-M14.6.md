@@ -16,7 +16,7 @@ Reviewer usage is visible: RUN files and notes kept per round, `specy-road revie
   - Each log is parsed line by line with the run's harness adapter `parse_events`, the same parser worker events use.
   - Session running totals become per-turn figures with `worker_usage_delta.turn_usage`, as `worker usage` does. A `resumed` run continues the same model's previous run's event history, so a resumed Claude session's `total_cost_usd` is not counted twice.
   - Figures are summed with `worker_cli_render._sum_usage` and printed with `usage_text`, so an unreported figure is `None` / `?`, never 0.
-  - The subparser is registered from `review_usage.add_parser`. `review_cli.py` gains two lines.
+  - The subparser is defined in `review_usage.add_parser` and registered from `review_delegate.add_parser`. That function is already called from `review_cli.py`, so `review_cli.py` ends up unchanged. After the merge of `WIP/improvements-0-3-1` (which added `review defer`), `review_cli.py` is exactly 400 lines. Two more lines there would break the file-limits cap.
   - No roster price estimate is applied, because the saved log does not keep the launch argv's `--model`. The cost is whatever the harness reported, or `?`.
 - **A3 — node total.** `usage_lines()` takes an optional `repo_root`. When the node has delegated reviewer runs it prints three lines: `executors, …`, `reviewers, N run(s), …` and the combined `total, …`. With no reviewer runs the output is unchanged.
   - `usage()` rows now also carry `worker_id`'s `worktree`, an additive JSON field. When `repo_root` is not passed, `usage_lines` finds the project from that worktree's nearest existing directory. A finished leaf's worktree is gone, but its parent under the project's `work/` still exists.
@@ -24,17 +24,18 @@ Reviewer usage is visible: RUN files and notes kept per round, `specy-road revie
 
 ## Touch zones (final)
 
-`specy_road/review_delegate.py`, `specy_road/review_usage.py` (new), `specy_road/bundled_scripts/review_cli.py`, `specy_road/bundled_scripts/worker_cli_render.py`, `specy_road/bundled_scripts/worker_cli.py`, `tests/`. No change outside them.
+`specy_road/review_delegate.py`, `specy_road/review_usage.py` (new), `specy_road/bundled_scripts/worker_cli_render.py`, `specy_road/bundled_scripts/worker_cli.py`, `tests/`. `specy_road/bundled_scripts/review_cli.py` is in the zones but ends up unchanged. No change outside them.
 
+- **Merge:** `WIP/improvements-0-3-1` was 47 commits ahead, and a trial merge conflicted on `review_cli.py`. I merged it in a merge commit (no rewrite), kept the upstream `add_defer_parser`, and moved the `review usage` registration into `review_delegate.add_parser` (see A2). `specy_road/bundled_scripts/review_cli.py` is no longer changed by this leaf.
 - **Rework (second commit):** `worker_cli.py` was added to the zones, so `cmd_usage` now passes its resolved root as `usage_lines(data, root)`. `worker usage --repo-root` therefore finds the reviewers even when a worker's worktree path names no project. The worktree-derived root stays as the fallback for callers that pass no root (`chore_cli`).
 - **Out of scope (A3):** reviews run outside `review delegate` have no RUN record and are not counted.
 
 ## Verification
 
 - `python -m pytest tests/test_review_usage.py -q`: 6 passed. The new root test fails without the `worker_cli.py` change (checked by reverting that line).
-- `specy-road file-limits`: OK. The largest touched file is `review_delegate.py` at 340 lines.
+- `specy-road file-limits`: OK. After the merge, `review_cli.py` (unchanged) is at 400 and `review_delegate.py` at 341.
 - `ruff check` on the touched files: clean.
-- `python -m pytest -n 4 -q`: 4029 passed.
+- `python -m pytest -n 4 -q`: 4120 passed after the merge.
 
 ## Added
 
@@ -47,6 +48,7 @@ Reviewer usage is visible: RUN files and notes kept per round, `specy-road revie
 - Guard in `archive_round`: the commit is sanitised to alphanumerics, using `unknown` if there is none, because it becomes part of a file name.
 - Branch in `review_usage`: a resumed run carries the same model's previous run's events, so session totals are not counted twice.
 - `review_delegate.delegate`: one call to `archive_round` before the new record is saved (A1, A4).
+- `review_delegate.add_parser`: one call to `review_usage.add_parser`, so `review usage` is registered without lines in `review_cli.py`, which is at its file-limits cap (A2).
 - `worker_cli_render._project_root_of`: finds the project from a worker's worktree or its nearest existing parent (A3, without editing `worker_cli.py`).
 - `worker_cli_render.reviewer_total`: the node's reviewer total, or `None` when the node has no delegated runs (A3).
 - `worker_cli_render.usage_lines`: the executors/reviewers/total branch and the optional `repo_root` (A3).
