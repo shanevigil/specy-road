@@ -24,21 +24,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end
-    node_id: M13.7
-    branch: feature/rm-clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end
-    touch_zones:
-      - specy_road/bundled_scripts/refresh_stubs.py
-      - specy_road/agent_ignores.py
-      - specy_road/bundled_scripts/session_cli.py
-      - tests/
-      - specy_road/bundled_scripts/refresh_stubs_report.py
-      - specy_road/written_entry.py
-      - specy_road/ignore_report.py
-      - docs/install-and-usage.md
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout
     node_id: M14.3
     branch: feature/rm-worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout
@@ -47,19 +32,6 @@ entries:
       - specy_road/bundled_scripts/worktree_cli.py
       - tests/
       - specy_road/worktree_delete_set.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap
-    node_id: M13.2
-    branch: feature/rm-upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap
-    touch_zones:
-      - specy_road/bundled_scripts/upgrade.py
-      - specy_road/file_limits_engine.py
-      - tests/
-      - specy_road/templates/project/constraints/file-limits.yaml
-      - specy_road/bundled_scripts/upgrade_preview.py
-      - specy_road/bundled_scripts/upgrade_plan.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -196,6 +168,8 @@ entries:
       - specy_road/bundled_scripts/do_next_task_leaf_guards.py
       - specy_road/bundled_scripts/session_plan_render.py
       - specy_road/bundled_scripts/orchestrate_cli.py
+      - specy_road/bundled_scripts/brief_dependency_context.py
+      - specy_road/bundled_scripts/grind_session.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -266,5 +240,28 @@ entries:
       - specy_road/agent_ignores.py
       - specy_road/bundled_scripts/validate_roadmap_checks.py
     started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record
+    node_id: M14.7
+    branch: feature/rm-session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record
+    touch_zones:
+      - specy_road/bundled_scripts/session_cli.py
+      - specy_road/session_presence.py
+      - tests/
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
+  - codename: file-limits-baseline-and-upgrade-report
+    node_id: M15.7
+    branch: feature/rm-file-limits-baseline-and-upgrade-report
+    touch_zones:
+      - specy_road/file_limits_engine.py
+      - specy_road/file_limits_baseline.py
+      - specy_road/bundled_scripts/validate_file_limits.py
+      - specy_road/bundled_scripts/upgrade.py
+      - docs/file-limits.md
+      - tests/
+    started: '2026-11-05'
     owner: savigil
     implementation_review: pending

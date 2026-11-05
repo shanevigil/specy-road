@@ -54,7 +54,7 @@
       "parent_id": "M13",
       "planning_dir": "planning/M13.2_upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap_1726dab4-730d-414d-a79d-fef0b03b8983.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap",
       "touch_zones": [
         "specy_road/bundled_scripts/upgrade.py",
@@ -187,7 +187,7 @@
       "parent_id": "M13",
       "planning_dir": "planning/M13.7_clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end_bf5ffc69-0d63-4e1c-9159-7ba00872b009.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Clearer notices: symlinked skill dirs, new ignore rules over tracked files, and session end",
       "touch_zones": [
         "specy_road/bundled_scripts/refresh_stubs.py",
@@ -204,7 +204,7 @@
     {
       "acceptance": [
         "specy_road/behaviour_changes.py holds a tracked catalogue of behaviour changes that invalidate common project instructions, each with the version it shipped in, a one-line 'now' statement, the command and flags it concerns, and an optional pattern for project text that contradicts it; it starts with the four cited cases (mark-implementation-reviewed --yes on your own work, finish-this-task --on-complete differing from the recorded mode needs --override-on-complete, pickup --local, finish-this-task --delete-branch); a test asserts every entry names a registered command and flag",
-        "validate prints one notice per line of project text outside managed blocks (root AGENTS.md, CLAUDE.md, .specyrd/AGENTS.team.md) that matches a catalogue pattern, at minimum --yes with mark-implementation-reviewed and --on-complete merge|auto with finish-this-task, naming file:line, the instruction and the current behaviour; it reports only and never rewrites project text; a fixture with all four cited sentences pins the notices and a clean file prints none",
+        "validate prints one notice per line of project text outside managed blocks (root AGENTS.md, CLAUDE.md, .specyrd/AGENTS.team.md) that matches a catalogue pattern, at minimum --yes with mark-implementation-reviewed and --on-complete merge|auto with finish-this-task, naming file:line, the instruction and the current behaviour; it reports only and never rewrites project text; a fixture with all four cited sentences pins the notices and a clean file prints none; a line matches only when it INSTRUCTS the changed behaviour (a mandate or habit: 'must', 'always', 'in non-TTY/agent contexts pass', 'unattended runs pass'), never when it merely shows a command in use: a bare example such as `specy-road finish-this-task --on-complete merge` or `specy-road mark-implementation-reviewed --yes` with no mandating words is valid current usage and prints no notice (planner clarification 2026-11-04 after reviewers enforced opposite readings)",
         "To keep validate_roadmap.py under the 400-line cap, pinned_version and warn_if_pin_differs move to specy_road/version_pin.py (validate_roadmap re-exports them so existing imports and tests still work) and the new report is one call from validate. Out of scope: printing the catalogue during upgrade (M13.11), and checking prose that names no command",
         "The catalogue has an entry for pickup registering the claim on the integration branch before the feature branch exists, with a pattern for project text saying the first commit on the feature branch registers the work (as earlier init-era root AGENTS.md, docs/git-workflow.md and constitution/principles.md copies say); validate's notice names file:line for each match. This toolkit's own docs/roadmap-authoring.md ('Before starting implementation', steps 3 and 4) says the same today and is rewritten to the integration-branch order without adding net lines (the file is at 400); a test runs the pattern over the toolkit's docs/ and specy_road/templates/ and finds nothing (specy_road/templates/project/ has no such sentence today)"
       ],
