@@ -181,7 +181,8 @@
         "tests/",
         "specy_road/bundled_scripts/role_prompt_rca.py",
         "specy_road/agent_ignores.py",
-        "specy_road/bundled_scripts/validate_roadmap_checks.py"
+        "specy_road/bundled_scripts/validate_roadmap_checks.py",
+        "specy_road/finish_land_local.py"
       ],
       "type": "task"
     },
@@ -267,7 +268,8 @@
         "specy_road/ready_run_checks.py",
         "specy_road/review_gate_ready.py",
         "specy_road/bundled_scripts/review_packet.py",
-        "tests/"
+        "tests/",
+        "specy_road/schemas/handoff.schema.json"
       ],
       "type": "task"
     },
