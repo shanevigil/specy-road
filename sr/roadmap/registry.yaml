@@ -166,3 +166,19 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: claude-code-reviewer-works-on-a-subscription-login
+    node_id: M15.2
+    branch: feature/rm-claude-code-reviewer-works-on-a-subscription-login
+    touch_zones:
+      - specy_road/reviewer_auth.py
+      - specy_road/worker_adapter_claude.py
+      - specy_road/review_delegate.py
+      - specy_road/bundled_scripts/role_prompt_cli.py
+      - specy_road/orchestrate_plan.py
+      - docs/orchestration-reviewer-output.md
+      - docs/orchestration-models.md
+      - tests/
+      - docs/orchestration-workers.md
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending

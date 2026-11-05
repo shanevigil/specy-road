@@ -317,6 +317,7 @@ Do not pick these up.
 - `M13.9` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M14.1` on `feature/rm-approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` since 2026-11-05
 - `M14.5` on `feature/rm-an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it` since 2026-11-05
+- `M15.2` on `feature/rm-claude-code-reviewer-works-on-a-subscription-login` since 2026-11-05
 - `M15.20` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M15.22` on `feature/rm-project-preferences-local-decisions-footer-summary-landing` since 2026-11-04
 - `M15.25` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
