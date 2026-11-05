@@ -135,3 +135,61 @@ The full block and its 17/2063 budget have no diff from base. Verification: the 
 - Removed the setext and paragraph state, its three regexes, and the `validate_stale_commands` helper import.
 - Tests: 4 new parametrized cases and 1 new test; 2 out-of-scope cases removed.
 - Mocks: none.
+
+## Fix round 4 (Sol R1–R2)
+
+I first merged `origin/WIP/improvements-0-3-1`, which adds `specy_road/bundled_scripts/refresh_stubs.py` to the zones. My change to that file is one line plus one import name.
+
+- **R1:** the new `_uncommented(line, comment)` helper walks the whole line. After a `-->` it keeps scanning, so a later `<!--` on the same line re-enters a comment, as often as the line does.
+  - Fences take precedence: inside a fence, comment markers are text.
+  - A fence opener inside an open comment is comment text.
+  - A line that starts inside a comment, or starts with one, is not a heading (`<!-- x --> ## y`).
+  - The docstring says all of this. I removed the round-3 `_COMMENT` regex.
+- **R2:** `render_agents_lines(project_root, mode)`, `apply_agents_md_block(..., mode=)` and `apply_agents_files(..., mode=)` take an optional `agents_block` override. `_block_previews` in `refresh_stubs.py` passes `agents_block_mode(repo_root / prefix)`, the value the real run reads. I chose this over copying the manifest into the temp tree. `agents_md_block.py` is exactly at its 400-line cap.
+
+### Fix round 4: preview/write parity
+
+Each row runs `refresh-stubs --diff`, then the real `refresh-stubs`, and asserts that the previewed `AGENTS.md` hunk equals the diff of the real write. Each row also checks the 3-line section exactly when the setting is minimal. Rows in the second table marked † failed without the R2 fix.
+
+**`test_the_diff_is_what_a_refresh_then_writes[...]`** (the existing test, extended; `_old_repo`, no git, no `AGENTS.md`):
+
+| Parameter | agents_block | Result |
+|---|---|---|
+| `None` | key absent (full) | parity |
+| `full` | full | parity |
+| `minimal` | minimal | parity †; failed before |
+
+**`test_the_agents_md_preview_is_what_a_refresh_then_writes[...]`** (new; a git repo):
+
+| Layout | Manifest | Existing `AGENTS.md` | Result |
+|---|---|---|---|
+| embedded | minimal | text, no block yet | parity †; failed before |
+| embedded | full | stale block | parity |
+| embedded | missing | none | parity |
+| embedded | missing | stale block | parity |
+| nested (`project_root: sr`) | minimal | stale block | parity †; failed before |
+| nested (`project_root: sr`) | minimal | none | parity †; failed before |
+| nested (`project_root: sr`) | full | text, no block yet | parity |
+
+### R1 cases
+
+These are new `test_refresh_stubs_names_only_real_matching_headings` cases:
+
+| Case | Result |
+|---|---|
+| `adjacent-comments` | passes (coverage) |
+| `close-then-open` | fixed; failed before |
+| `many-per-line` | fixed; failed before |
+| `closed-then-heading` | fixed; failed before. A heading on the line after a closed comment counts; text after `-->` on the comment's own line does not. |
+| `comment-in-fence` | passes; `<!--` inside a fence does not start a comment |
+
+The full block and its 17/2063 budget have no diff from base. Verification: the targeted pytest command in READY (146 passed), `ruff`, and `specy-road file-limits` (OK).
+
+### Added / removed in round 4
+
+- Added `_uncommented`: R1.
+- Added the `mode` parameter on the three render/apply functions: R2.
+- Changed one line in `_block_previews`, and added `agents_block_mode` to its import: R2.
+- Removed the `_COMMENT` regex.
+- Tests: 5 heading cases; the existing parity test parametrized ×3 and given an `AGENTS.md` assertion; a new 7-row parity test; and a `_between_markers` helper.
+- Mocks: none.
