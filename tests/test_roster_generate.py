@@ -87,6 +87,17 @@ def test_models_roster_write_into_the_starter_keeps_its_comments(tmp_path: Path,
     assert data["substitutions"] == [] and data["policy"]["max_workers"] == 2
 
 
+def test_models_roster_write_keeps_an_inline_comment_on_roster_empty_list(tmp_path: Path, capsys) -> None:
+    repo = make_profile_repo(tmp_path)
+    path = repo / "roadmap" / "orchestration.yaml"
+    path.write_text("version: 1\nroster: [] # keep me\npolicy: {reviewers_required: 1}\n")
+    assert run_main(models_cli, "models", "roster", "--executor", "claude-opus-5-5", "--write",
+                    "--repo-root", str(repo)) == 0
+    text = path.read_text()
+    assert "# keep me" in text
+    assert "roster:" in text.splitlines()[1] or "roster: # keep me" in text or "roster:  # keep me" in text
+
+
 # --- A2: profile values validated locally; the plan names them ----------------------
 
 def test_validate_names_the_accepted_form_for_a_malformed_profile(tmp_path: Path, capsys) -> None:
@@ -117,6 +128,33 @@ def test_plan_reports_an_invalid_profile_and_suppresses_the_may_process_hint(tmp
     problems = plan.batches[0][0].problems
     assert problems == [f"opus: {INVALID}"]
     assert not any("not committed" in p or "may_process" in p for p in problems)
+
+
+def test_worktree_plan_reports_invalid_profile_form_for_a_malformed_missing_path(tmp_path: Path) -> None:
+    roster = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+              f"  - {{id: opus, family: anthropic, profile: {MALFORMED}, roles: [executor]}}\n"
+              "policy: {reviewers_required: 1}\n")
+    plan, err = op.build_orchestration_plan(plan_repo(tmp_path, roster), roster_from_worktree=True)
+    assert err is None and plan is not None
+    assert plan.batches[0][0].problems == [f"opus: {INVALID}"]
+
+
+def test_committed_plan_refuses_a_malformed_profile_even_when_a_file_exists_at_that_path(tmp_path: Path) -> None:
+    from tests.review_repo_helpers import git
+
+    roster = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+              f"  - {{id: opus, family: anthropic, profile: {MALFORMED}, roles: [executor]}}\n"
+              "policy: {reviewers_required: 1}\n")
+    repo = plan_repo(tmp_path, roster)
+    wrong = repo / MALFORMED
+    wrong.parent.mkdir(parents=True, exist_ok=True)
+    wrong.write_text((REPO / "specy_road" / "templates" / "project" / "model-profiles"
+                      / "anthropic-claude" / "claude-opus-5-5.md").read_text(encoding="utf-8"), encoding="utf-8")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "wrong-path profile")
+    plan, err = op.build_orchestration_plan(repo)
+    assert err is None and plan is not None
+    assert plan.batches[0][0].problems == [f"opus: {INVALID}"]
 
 
 def test_the_may_process_hint_stays_when_no_entry_was_dropped() -> None:

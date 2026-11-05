@@ -36,14 +36,26 @@ def accepted_form(repo_root: Path, value: str) -> str:
     return GENERIC_FORM
 
 
+def profile_value_form_problem(repo_root: Path, value: Any) -> str | None:
+    """``invalid profile: <value>, accepted form <form>`` unless ``value`` is a repo-relative
+    ``model-profiles/…/*.md`` path (the file need not exist in the working tree)."""
+    rel = PurePosixPath(str(value).replace("\\", "/"))
+    if (not rel.is_absolute() and ".." not in rel.parts and rel.parts[:1] == (PROFILES_REL.as_posix(),)
+            and rel.suffix == ".md"):
+        return None
+    return f"invalid profile: {value}, accepted form {accepted_form(repo_root, str(value))}"
+
+
 def profile_value_problem(repo_root: Path, value: Any) -> str | None:
     """``invalid profile: <value>, accepted form <form>`` unless ``value`` is a ``.md`` file under
     ``model-profiles/`` in the working tree."""
+    why = profile_value_form_problem(repo_root, value)
+    if why:
+        return why
     rel = PurePosixPath(str(value).replace("\\", "/"))
-    if (not rel.is_absolute() and ".." not in rel.parts and rel.parts[:1] == (PROFILES_REL.as_posix(),)
-            and rel.suffix == ".md" and (repo_root / rel).is_file()):
-        return None
-    return f"invalid profile: {value}, accepted form {accepted_form(repo_root, str(value))}"
+    if not (repo_root / rel).is_file():
+        return f"invalid profile: {value}, accepted form {accepted_form(repo_root, str(value))}"
+    return None
 
 
 def roster_profile_problems(repo_root: Path) -> list[str]:

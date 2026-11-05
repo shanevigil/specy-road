@@ -115,7 +115,8 @@ def write_entries(repo_root: Path, entries: list[dict[str, Any]]) -> tuple[list[
     lines = text.splitlines(keepends=True)
     start, at, indent = _roster_span([ln.rstrip("\n") for ln in lines])
     if lines[start].split("#")[0].strip() == "roster: []":
-        lines[start] = "roster:\n"
+        parts = lines[start].split("#", 1)
+        lines[start] = "roster:" + (f" #{parts[1]}" if len(parts) > 1 else "") + "\n"
     if at > 0 and not lines[at - 1].endswith("\n"):
         lines[at - 1] += "\n"
     out = "".join(lines[:at]) + format_entries(new, indent) + "".join(lines[at:])

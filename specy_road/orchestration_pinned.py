@@ -39,7 +39,7 @@ from specy_road.orchestration_config import (
 from specy_road.review_policy_ref import integration_name, policy_source
 from specy_road.review_target import full_sha
 from specy_road.roster_local import merge_local_roster
-from specy_road.roster_profile_check import profile_value_problem
+from specy_road.roster_profile_check import profile_value_form_problem, profile_value_problem
 
 
 #: ``roster_ref`` of a plan built with ``worktree=True``: a dry run nothing may launch from.
@@ -234,21 +234,20 @@ def pinned_profile_for_entry(repo_root: Path, entry: dict[str, Any], *, worktree
     ``profile:`` names the path; without it a committed profile whose ``api_id``,
     file name or ``aliases`` include the entry's ``id`` is used, as :func:`profile_for_entry` does.
     """
+    rel = entry.get("profile")
+    if rel:
+        why = profile_rel_problem(repo_root, str(rel))
+        if why:
+            return Profile(repo_root / str(rel), {}, errors=[why])
+        why = profile_value_form_problem(repo_root, rel)
+        if why:
+            return Profile(repo_root / str(rel), {}, errors=[why])
     if worktree:
         return profile_for_entry(repo_root, entry)
     ref, err = policy_source(repo_root)
     if err:
         return Profile(repo_root / str(entry.get("profile") or entry.get("id")), {}, errors=[err])
-    rel = entry.get("profile")
-    why = profile_rel_problem(repo_root, str(rel)) if rel else None
-    if why:
-        return Profile(repo_root / str(rel), {}, errors=[why])
     sha = full_sha(repo_root, ref) or ref if ref is not None else None
-    # A value naming no file here or at the ref is reported as itself, with the accepted form, not as
-    # "not committed": that sentence sends the adopter to commit a file that does not exist.
-    if rel and not (repo_root / str(rel)).is_file() and (
-            sha is None or _blob(repo_root, sha, Path(str(rel)).as_posix()) is None):
-        return Profile(repo_root / str(rel), {}, errors=[str(profile_value_problem(repo_root, rel))])
     if ref is None or sha is None:
         return profile_for_entry(repo_root, entry)
     if rel:
