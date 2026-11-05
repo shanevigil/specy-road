@@ -91,7 +91,7 @@
     },
     "nested_repos": {
       "type": "array",
-      "description": "Separately versioned git repositories under the project root, each a project-relative path or {path, integration_branch, remote} (both default to this file's). worker delegate and do-next-available-task --worktree give each one a worktree at the same path inside the leaf's worktree: on the leaf's branch when the leaf's touch zones cover it, detached at its integration tip otherwise. worker reconcile diffs them, finish-this-task in merge (and auto) mode merges and pushes each leaf branch before the main repository, and review-packet includes their diffs. See docs/git-workflow.md.",
+      "description": "Separately versioned git repositories under the project root, each a project-relative path or {path, integration_branch, remote, land, base, refuse_behind_remote} (integration_branch and remote default to this file's; land push, base remote). worker delegate and do-next-available-task --worktree give each one a worktree at the same path inside the leaf's worktree: on the leaf's branch when the leaf's touch zones cover it, detached at its integration tip otherwise. worker reconcile diffs them, finish-this-task in merge (and auto) mode lands each leaf branch (per land) before the main repository, and review-packet includes their diffs. See docs/git-workflow.md.",
       "uniqueItems": true,
       "items": {
         "oneOf": [
@@ -113,6 +113,18 @@
                 "minLength": 1,
                 "pattern": "^[A-Za-z0-9._-]+$",
                 "description": "This repository's remote (default: remote above)."
+              },
+              "land": {
+                "enum": ["push", "local", "manual"],
+                "description": "How finish-this-task (merge and auto mode) lands the leaf's branch here before the main repository: push (default) merges onto <remote>/<integration_branch> and pushes; local merges onto the local integration_branch and moves only that ref (only if it has not moved meanwhile), pushing nothing; manual lands nothing and stops finish before the main repository, printing the git merge command to run here, then re-run finish-this-task."
+              },
+              "base": {
+                "enum": ["remote", "local"],
+                "description": "Which integration tip this repository's leaf worktrees start from (and diffs are taken against): remote (default) is <remote>/<integration_branch>, else the local branch; local is the local integration_branch, so local-only commits are included."
+              },
+              "refuse_behind_remote": {
+                "type": "boolean",
+                "description": "With base: local, refuse to create a worktree while the local integration_branch is behind its remote-tracking branch (default false: use it anyway)."
               }
             }
           }
