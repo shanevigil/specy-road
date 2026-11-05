@@ -75,7 +75,9 @@
         "docs/orchestration-reviewer-output.md",
         "CHANGELOG.md",
         "tests/",
-        "specy_road/schemas/review-record.schema.json"
+        "specy_road/schemas/review-record.schema.json",
+        "specy_road/review_gate.py",
+        "specy_road/review_answer.py"
       ],
       "type": "task"
     },
