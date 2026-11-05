@@ -24,11 +24,19 @@ Final list: as given; `specy_road/bundled_scripts/validate_notices.py` is the ne
 
 (R1: private-name imports from other test modules.)
 
-- `tests/test_milestone_review_hold_notice.py` imports from `tests.test_milestone_full_review`: only `POLICY_OFF`, `set_node_status`, `make_milestone_repo` (no underscore names).
-- `tests/test_milestone_full_review.py`: `_set_status` renamed to public `set_node_status` delegating to `milestone_repo_helpers.set_status` after WIP merge; no `_set_status` symbol.
-- `tests/milestone_repo_helpers.py` (from WIP): shared `make_milestone_repo`, `set_status`, and leaf land helpers; full-review tests import from here.
-- All importers of `tests.test_milestone_full_review` in this branch (`test_milestone_review_hold_notice.py`, `test_refusals_name_their_fix.py`): no private-name imports.
+- `tests/test_milestone_review_hold_notice.py` imports `set_status` and `make_milestone_repo` from `tests.milestone_repo_helpers`, and `POLICY_OFF` from `tests.test_milestone_full_review` only (no underscore names).
+- `tests/test_milestone_full_review.py`: no `set_node_status` or `_set_status`; uses `milestone_repo_helpers.set_status` directly.
+- All importers of `tests.test_milestone_full_review` on this branch (`test_milestone_review_hold_notice.py`, `test_refusals_name_their_fix.py`): no private-name imports.
 - `python scripts/check_test_private_imports.py`: exit 0, 0 new private references.
+
+## Fix round: probes
+
+(Duplicated test helper: a wrapper identical to an existing public helper in `milestone_repo_helpers`.)
+
+- Repository search for `set_node_status`: no definitions or callers remain after removing the wrapper.
+- `tests/test_milestone_review_hold_notice.py`: sole status mutation uses `milestone_repo_helpers.set_status` (same chunk write as the removed wrapper).
+- `tests/test_milestone_full_review.py`: status mutations use `set_status` from `milestone_repo_helpers` only; no re-export of status helpers.
+- Other M13.4-related tests (`test_refusals_name_their_fix.py`, `test_why_blocked_plan_holds.py`): no import of `set_node_status` or private names from `test_milestone_full_review`.
 
 ## Added
 
@@ -39,6 +47,5 @@ Final list: as given; `specy_road/bundled_scripts/validate_notices.py` is the ne
 - `notice_milestone_review_holds()` (validate_notices.py): validate's printing site, kept out of validate_roadmap.py for its line cap.
 - `review_hold` key in why-blocked `--json` and list-nodes `--json`: A2 machine-readable reason.
 - Guard in list-nodes skipping `UNRESOLVABLE_HOLD` reasons: their rollup is Complete, so marking them "(review hold)" would be wrong.
-- Renamed `_set_status` to public `set_node_status` in tests/test_milestone_full_review.py (thin wrapper over `milestone_repo_helpers.set_status`; callers unchanged, assertions unchanged): M13.4 tests must not import underscore names.
 - Mocks: none.
 - Tests (tests/test_milestone_review_hold_notice.py): validate notice text pinned for a milestone whose leaves are all Complete; why-blocked text and JSON; list-nodes text mark and JSON field; no notice with policy off or with the milestone recorded Complete; one-line unresolvable notice.

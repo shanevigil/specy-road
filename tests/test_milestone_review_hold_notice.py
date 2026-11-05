@@ -16,7 +16,8 @@ from specy_road.bundled_scripts import roadmap_query_cli as rq
 from specy_road.bundled_scripts.roadmap_crud_ops import cmd_list
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.finish_ancestor_rollup import milestone_review_hold_notice
-from tests.test_milestone_full_review import POLICY_OFF, set_node_status, make_milestone_repo
+from tests.milestone_repo_helpers import make_milestone_repo, set_status
+from tests.test_milestone_full_review import POLICY_OFF
 
 WAYS_OUT = [
     "  1. Review it: specy-road review-packet M2; each reviewer: specy-road review record M2 --model <id> "
@@ -84,7 +85,7 @@ def test_no_notice_when_the_policy_is_off_or_the_milestone_is_recorded_complete(
     assert "milestone review: notice" not in capsys.readouterr().out
     assert "review hold" not in _list(off, capsys)
     closed = make_milestone_repo(tmp_path / "closed")
-    set_node_status(closed, "M2", "Complete")   # way out 2
+    set_status(closed, "M2", "Complete")   # way out 2
     capsys.readouterr()
     validate_at(closed)
     assert "milestone review: notice" not in capsys.readouterr().out

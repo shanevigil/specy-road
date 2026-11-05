@@ -38,11 +38,6 @@ def _effective_rollup(root: Path, nid: str) -> str:
     return next(n["rollup_status"] for n in load_roadmap(root)["nodes"] if n["id"] == nid)
 
 
-def set_node_status(root: Path, nid: str, status: str) -> None:
-    """Public status helper for other test modules (M13.4); same as ``milestone_repo_helpers.set_status``."""
-    set_status(root, nid, status)
-
-
 def _review(root: Path, model: str = "human", commit: str | None = None) -> None:
     d = reviews_dir(root, "M2")
     d.mkdir(parents=True, exist_ok=True)
