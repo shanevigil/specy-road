@@ -192,7 +192,9 @@
         "specy_road/bundled_scripts/session_cli.py",
         "tests/",
         "specy_road/bundled_scripts/refresh_stubs_report.py",
-        "specy_road/written_entry.py"
+        "specy_road/written_entry.py",
+        "specy_road/ignore_report.py",
+        "docs/install-and-usage.md"
       ],
       "type": "task"
     },
