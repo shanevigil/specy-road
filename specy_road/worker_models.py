@@ -3,7 +3,7 @@
 A harness that routes models itself (Cursor's Auto, a cascade, its own critic) can run another model than the
 ``--model`` it was given. The wrapper records the ``--model`` on each ``launched`` event and the model the harness's
 ``system/init`` line names on its ``started`` event; the turn's ``usage`` event keeps both, and its summary, which
-``worker sync`` prints, says when they differ. Split from :mod:`specy_road.worker_runner` for the file limit.
+``worker sync`` prints, says when they differ (:func:`usage_event`). Split from :mod:`specy_road.worker_runner` for the file limit.
 
 A custom command runs as ``sh -c <command>``; its model is read only when the command is one simple command and
 the value is literal (:func:`command_model`): in a list or pipeline a ``--model`` can belong to another program than
@@ -15,9 +15,11 @@ from __future__ import annotations
 
 import re
 import shlex
+from pathlib import Path
 from typing import Any
 
-from specy_road.worker_adapter_parsers import _WORD, model_from_argv
+from specy_road.model_names import roster_match, same_model
+from specy_road.worker_adapter_parsers import _WORD, model_from_argv, usage_text
 from specy_road.worker_state import WorkerEvent
 
 #: Spans ``sh`` reads literally: single-quoted, double-quoted without a substitution inside, a backslash escape.
@@ -67,15 +69,22 @@ def turn_models(events: list[WorkerEvent]) -> dict[str, str | None]:
     return {"requested_model": requested, "observed_model": observed}
 
 
-def _model_key(name: object) -> str:
-    """A model name as :func:`mismatch_note` compares it: case, ``-``, ``_`` and spaces do not count, so Cursor's
-    display name ``Composer 2.5`` is the slug ``composer-2.5`` it was told."""
-    return re.sub(r"[-_\s]+", "-", str(name).strip().lower())
-
-
-def mismatch_note(detail: dict[str, Any]) -> str:
-    """The summary suffix when both models are known and differ (beyond :func:`_model_key`), else ``""``."""
+def mismatch_note(detail: dict[str, Any], harness_model: object = None, profile: Any = None) -> str:
+    """The summary suffix when both models are known and :func:`~specy_road.model_names.same_model` says they
+    differ (Cursor's ``Composer 2.5`` is the ``composer-2.5`` it was told), else ``""``."""
     told, ran = detail.get("requested_model"), detail.get("observed_model")
-    if not told or not ran or _model_key(told) == _model_key(ran):
+    if not told or not ran or same_model(ran, told, harness_model, profile):
         return ""
     return f"; model mismatch: told {told}, harness reported {ran}"
+
+
+def usage_event(repo_root: Path, detail: dict[str, Any]) -> dict[str, Any]:
+    """The ``summary`` and ``detail`` of a turn's ``usage`` event (M15.19). The told model is compared with the
+    reported one through its roster entry and profile; on a real mismatch a roster-price estimate is dropped,
+    since it priced a model the harness did not run (a cost the harness reported is kept)."""
+    told, ran = detail.get("requested_model"), detail.get("observed_model")
+    entry, prof = roster_match(repo_root, str(told)) if told and ran else ({}, None)
+    note = mismatch_note(detail, entry.get("harness_model"), prof)
+    if note and detail.get("cost_is_estimate"):
+        detail = {**detail, "cost_usd": None, "cost_is_estimate": None}
+    return {"summary": f"usage: {usage_text(detail)}{note}", "detail": detail}

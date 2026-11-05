@@ -285,17 +285,13 @@ def apply_roster_price_estimate(usage: dict[str, Any], model_id: str, repo_root:
     """Fill ``cost_usd`` and ``cost_is_estimate`` from the pinned roster profile when the harness reported none.
 
     ``model_id`` is what production puts on argv (``Profile.api_id`` or an alias), not necessarily
-    the roster ``id``. Each entry's pinned profile is matched with :meth:`Profile.for_id`.
+    the roster ``id``. The entry and its pinned profile come from :func:`specy_road.model_names.roster_match`.
     """
     if usage.get("cost_usd") is not None or not model_id:
         return usage
-    from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry  # noqa: PLC0415
+    from specy_road.model_names import roster_match  # noqa: PLC0415
 
-    config, err = pinned_config(repo_root)
-    if err:
-        return usage
-    prof = next((m for e in config.get("roster") or []
-                 if (p := pinned_profile_for_entry(repo_root, e)) and p.ok and (m := p.for_id(model_id))), None)
+    prof = roster_match(repo_root, model_id)[1]   # also an entry whose id or harness_model is model_id (M15.19)
     if not prof:
         return usage
     cost = estimate_usage_cost(usage, mtok_rates(prof.data))
