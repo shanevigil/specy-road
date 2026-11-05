@@ -27,6 +27,9 @@ from specy_road.review_target import ReviewTarget, same_commit
 from specy_road.rework_rca import RcaDoc, RcaNotCarried, check_inputs, filed, governing_rca, rca_lines
 from specy_road.worker_state import WorkerError, WorkerRecord, active_for_node, events_since, list_records
 
+#: Worker states that count as ended for ``--rework`` context (prompt + delegate); not resumable-in-progress ones.
+REWORK_ENDED_WORKER_STATES = frozenset({"completed", "failed", "terminated"})
+
 
 def blocking_reviews(root: Path, node_id: str) -> list[ReviewFile]:
     """Each valid ``REVIEW-*.md`` for ``node_id`` whose verdict is ``block``, at any commit. A reviewer's file
@@ -36,10 +39,10 @@ def blocking_reviews(root: Path, node_id: str) -> list[ReviewFile]:
 
 
 def stopped_worker(root: Path, node_id: str) -> WorkerRecord | None:
-    """The leaf's latest worker when it is ``terminated`` or ``failed``, else ``None``."""
+    """The leaf's latest worker when it is in :data:`REWORK_ENDED_WORKER_STATES`, else ``None``."""
     latest = max((r for r in list_records(root) if r.node_id == node_id),
                  key=lambda r: int(r.worker_id[2:]), default=None)   # w-10000 sorts after w-9999
-    return latest if latest is not None and not latest.active else None
+    return latest if latest is not None and latest.state in REWORK_ENDED_WORKER_STATES else None
 
 
 def last_final_message(root: Path, worker_id: str) -> str | None:
@@ -114,8 +117,7 @@ def rework_check(root: Path, node_id: str) -> None:
     (``message`` or ``resume`` it, or ``terminate`` it first), treat a ``completed`` worker as ended, when there is
     nothing to rework from, or when an accepted RCA cannot be carried; else say on stderr what the prompt carries."""
     active = active_for_node(root, node_id)
-    completed = active if active is not None and active.state == "completed" else None
-    if active is not None and active.state != "completed":
+    if active is not None and active.state not in REWORK_ENDED_WORKER_STATES:
         raise WorkerError(f"{active.worker_id} is still active on {node_id} ({active.state}): `worker message` or "
                           f"`worker resume` it, or `worker terminate` it, then delegate --rework")
     try:
@@ -124,15 +126,14 @@ def rework_check(root: Path, node_id: str) -> None:
         raise WorkerError(f"--rework refused: {e}") from None
     blocks, prev = blocking_reviews(root, node_id), stopped_worker(root, node_id)
     if not blocks and prev is None:
-        raise WorkerError(f"nothing to rework on {node_id}: no blocking review record and no terminated or failed "
-                          "worker; delegate without --rework")
+        raise WorkerError(f"nothing to rework on {node_id}: no blocking review record and no ended worker "
+                          f"({', '.join(sorted(REWORK_ENDED_WORKER_STATES))}); delegate without --rework")
     try:
         rca = governing_rca(root, node_id, blocks)
     except RcaNotCarried as e:
         raise WorkerError(f"--rework refused: {e}") from None
     carried = [f"the accepted root-cause analysis {rca.record.path} as the governing design"] if rca else []
     carried += [f"{len(blocks)} blocking review(s) ({', '.join(r.data['model'] for r in blocks)})"] if blocks else []
-    carried += [f"{prev.worker_id}'s last message ({prev.model}, {prev.state})"] if prev is not None else []
-    if completed is not None:
-        carried.append(f"{completed.worker_id} on {node_id} ({completed.state})")
+    if prev is not None:
+        carried.append(f"{prev.worker_id}'s last message ({prev.model}, {prev.state})")
     print(f"note: the executor prompt carries {' and '.join(carried)} under ## Rework", file=sys.stderr)

@@ -64,6 +64,20 @@ No zone additions or removals beyond the new sync module and doc.
 - **Other `_mutate` commands:** `handoff`, `terminate`, etc. use `inputs=None` or explicit dicts; only resume gained `ready_only` in this leaf — grep `cmd_*` + `inputs=` in `worker_cli.py`.
 - **Comment-only R3:** no behaviour change in `test_worker_cli.py` beyond restored comment.
 
+## Fix round (gpt-6.1-sol-low, second pass)
+
+- **R1 — completed alone is rework context:** `REWORK_ENDED_WORKER_STATES` (`completed`, `failed`, `terminated`) drives `stopped_worker`, `rework_check`, and active-worker refusal; completed-without-block launches `w-0002` with last-message note.
+- **R2 — offline rework replacement:** `_rework_clear_completed(..., offline=…)` skips `release_lease` when offline; `offline` threaded through `_existing_after_rework` on the delegate path.
+
+## Probes (gpt-6.1-sol-low, second pass)
+
+- **`REWORK_ENDED_WORKER_STATES` vs resumable states:** `idle`/`running`/`handed_off`/`paused_by_limit` not in the frozenset; `rework_check` refuses them — parametrized CLI test for `idle`.
+- **`stopped_worker` / `rework_lines` / `rework_check`:** all use the same frozenset — grep call sites; no duplicate completed-only branch left.
+- **Delegate remote calls with `--offline`:** `foreign_leases(offline=True)` no fetch; `acquire_lease(offline=True)` no push; rework clear no `release_lease`; `_launch_locked` spawn failure still calls `release_lease` (pre-existing, not rework-specific) — audited `delegate` path.
+- **`terminate()` online path:** still releases lease after lock — unchanged; offline rework does not call `terminate()` CLI, only `_terminate_locked` locally.
+- **Completed-only regression:** public CLI test asserts `created`, new worker id, stderr last-message note — no blocking review file.
+- **`REWORK_ENDED_WORKER_STATES` constant in `role_prompt_rework.py`:** single ended-state set for rework (R1 consolidation).
+
 ## Added
 
 - `worker_cli_sync.py` module (`parse_sync_until`, `wait_for_typed_event`, `wait_for_sync`, `cmd_sync`, `add_sync_parser`): A1/A2 CLI surface and wait loop without bloating `worker_cli.py`

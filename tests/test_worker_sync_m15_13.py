@@ -146,10 +146,71 @@ def test_delegate_rework_proceeds_when_the_leaf_worker_is_completed(tmp_path: Pa
     out = json.loads(captured.out)
     assert out["created"] is True and out["worker_id"] == "w-0002" and out["model"] == "opus"
     assert ws.load_record(repo, "w-0001").state == "terminated"
-    assert "w-0001 on M1.1 (completed)" in captured.err
+    assert "w-0001's last message (grok, completed)" in captured.err
     launched = wait_for_worker(repo, "w-0002")
     assert launched.state == "idle" and launched.model == "opus"
     assert ws.events_since(repo, "w-0002")[-1].type == "completion"
+
+
+def test_delegate_rework_with_completed_only_launches_a_fresh_worker(tmp_path: Path, capsys) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "grok", repo)
+    ws.set_state(repo, rec, "completed", pid=None)
+    ws.append_event(repo, rec, "turn_completed", source="worker", summary="done",
+                    detail={"message": "Finished impl; forgot READY."})
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--rework", "--json",
+                          "--repo-root", str(repo)) == 0
+    captured = capsys.readouterr()
+    out = json.loads(captured.out)
+    assert out["created"] is True and out["worker_id"] == "w-0002" and out["model"] == "opus"
+    assert "w-0001's last message (grok, completed)" in captured.err
+    wait_for_worker(repo, "w-0002")
+
+
+@pytest.mark.parametrize(
+    "state",
+    ("completed", "failed", "terminated"),
+)
+def test_rework_accepts_each_ended_worker_state_without_a_block(tmp_path: Path, state: str) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "grok", repo)
+    ws.set_state(repo, rec, state, pid=None)
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--rework", "--repo-root", str(repo)) == 0
+    wait_for_worker(repo, "w-0002")
+
+
+def test_rework_refuses_idle_worker_without_a_block(tmp_path: Path, capsys) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "grok", repo)
+    ws.set_state(repo, rec, "idle", pid=None)
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--rework", "--repo-root", str(repo)) == 1
+    assert "still active on M1.1 (idle)" in capsys.readouterr().err
+
+
+def test_rework_offline_does_not_delete_completed_worker_leases(tmp_path: Path, monkeypatch) -> None:
+    from specy_road import worker_lease as wl
+    from tests.test_worker_max_workers_global import _leases, _remote_and_clone
+
+    repo, _ = make_worker_repo(tmp_path)
+    remote, _ = _remote_and_clone(tmp_path, repo)
+    run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
+    rec = wait_for_worker(repo, "w-0001")
+    ws.set_state(repo, rec, "completed", pid=None)
+    before = _leases(remote)
+    assert any(rec.worker_id in ref for ref in before)
+    pushes: list[list[str]] = []
+    real_run = wl.run
+
+    def track(args, cwd, **kw):
+        pushes.append(list(args))
+        return real_run(args, cwd, **kw)
+
+    monkeypatch.setattr(wl, "run", track)
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--rework", "--offline",
+                          "--repo-root", str(repo)) == 0
+    assert _leases(remote) == before
+    assert not any(a[0:2] == ["push", "--quiet"] and "--delete" in a for a in pushes)
+    wait_for_worker(repo, "w-0002")
 
 
 @pytest.mark.parametrize(
