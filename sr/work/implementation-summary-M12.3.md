@@ -74,3 +74,31 @@ Branch `feature/rm-scheduled-gardening-chores-that-find-drift-and-open-small-cho
 - `RULES_MD` in `stale_command_findings`' path set: R1.
 - `record_path` docstring: explains why a dot-file cannot collide with a chore.
 - Tests: the three R1–R3 tests above (four cases). Removed: `test_garden_is_not_a_chore_slug`, because the behaviour it pinned is removed.
+
+## Fix round 3 (gpt-6.1-sol block, R4)
+
+- **R4:** garden no longer calls `file_unregistered_commands`, which drops managed blocks. `validate_stale_commands.line_unregistered_commands(lines)` exposes the same occurrence scanner (`_occurrences`) for any numbered line source. Garden feeds it `chore_garden._numbered_lines(path)`, which is the whole file, managed blocks included, at its original line numbers. `validate` still uses `file_unregistered_commands`, unchanged, so it keeps skipping managed blocks. Test `test_garden_reports_mentions_inside_managed_blocks_and_validate_still_skips_them` puts a managed block with `specy-road managed-probe` at line 5 of `AGENTS.md`, `CLAUDE.md` and `docs/guide.md`. Garden reports all three at line 5, and `warn_unregistered_commands` prints none.
+
+## Fix round 3: coverage audit
+
+Each input garden reads, whether the scan sees the whole file, whether line numbers are right, and what (if anything) filters it upstream:
+
+| Scan | Input | Whole file? | Line numbers | Upstream filter | Result |
+| --- | --- | --- | --- | --- | --- |
+| stale-command | `docs/**/*.md` under the project root and the git root (`rglob`, dot-dirs included) | yes, after R4 | git's (`\n` only) | none; non-UTF-8 files are skipped, as `validate` skips them | **fixed (R4)**: managed blocks in docs were dropped |
+| stale-command | `AGENTS.md` and `CLAUDE.md` at project and git roots, `.specyrd/AGENTS.team.md` (`agent_files()`) | yes, after R4 | git's | none | **fixed (R4)**: managed blocks were dropped |
+| stale-command | `.specyrd/AGENTS.md` (`RULES_MD`) | yes | git's | none | fixed in round 2 (R1); whole file after R4 |
+| stale-command | (any of the above) | — | — | the occurrence scanner's own rules (fenced code, mandatory contexts), shared with `validate` by design | by design |
+| stale-command and advisory-rule | line splitting | — | `str.splitlines()` also broke on U+2028, form feed and a lone CR, so later line numbers drifted from git's | — | **fixed**: `_numbered_lines` splits on `\n` only and strips a trailing CR. Test `test_garden_line_numbers_count_only_newlines` |
+| advisory-rule | `agent_files()`, `.specyrd/AGENTS.md`, and the three `templates/specyrd/` sources when they are inside the checkout | yes (never block-filtered) | git's (now `_numbered_lines`) | matches only whole-line `PROVENANCE` comments, the same rule `strip_provenance` uses; rendered files carry none, which is why the templates are read | by design |
+| ratchet-grew | every `policy.ratchet_paths` entry: `git diff --raw --no-relative --no-renames <tag> HEAD` with no pathspec (whole repo), whole blobs | yes | n/a (a count of added lines) | non-UTF-8 diffs are skipped (shared `integrity` behaviour). An unreadable integration-branch policy made `integration_ratchet_paths` return `[]` silently | **fixed**: a `policy_source` error is now a one-line note, as no-tag is. Test `test_garden_says_why_when_the_ratchet_policy_is_unreadable` |
+| ratchet-grew | the base tag | — | — | `git describe --tags --abbrev=0`: the newest tag reachable from HEAD; no tag gives a note | by design |
+
+Not scanned, because A1 does not name them: `.claude/CLAUDE.md`, `CLAUDE.local.md`, `README.md` and other non-`docs/` Markdown.
+
+### Added (fix round 3)
+
+- `validate_stale_commands.line_unregistered_commands()`: the shared occurrence scanner over a caller's line source (R4).
+- `chore_garden._numbered_lines()`: garden's whole-file line source, numbered as git numbers lines; it returns nothing for a missing or non-UTF-8 file (R4, audit).
+- `ratchet_findings` `policy_source` guard and note: an unreadable policy is no longer a silent clean scan (audit).
+- Tests: `test_garden_reports_mentions_inside_managed_blocks_and_validate_still_skips_them`, `test_garden_line_numbers_count_only_newlines`, `test_garden_says_why_when_the_ratchet_policy_is_unreadable`, and the `_garden_json` helper. All three tests fail with `chore_garden.py` at the round-2 commit.
