@@ -156,6 +156,8 @@ entries:
       - tests/test_model_profile_aliases.py
       - docs/install-and-usage.md
       - CHANGELOG.md
+      - tests/upgrade_repo_helpers.py
+      - tests/test_refresh_profiles_roster.py
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
