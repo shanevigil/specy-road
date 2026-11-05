@@ -18,7 +18,8 @@ from specy_road.bundled_scripts import review_cli
 from specy_road.review_files import load_ready, reviews_dir
 from specy_road.runtime_paths import REPO_ROOT_ENV, project_root
 from specy_road.worker_state import active_for_node
-from specy_road.worktree_env import EnvSetupError, setup_worktree_env
+from specy_road.git_workflow_config import load_git_workflow_config
+from specy_road.worktree_env import EnvSetupError, link_into, linked_status_paths, setup_worktree_env
 
 # --- A1: the enclosing worktree wins ------------------------------------------------------------
 
@@ -201,11 +202,73 @@ def test_link_refuses_a_parent_that_is_a_symlink_out_of_the_worktree(tmp_path: P
 
 def test_link_excludes_a_name_with_pattern_characters_literally(tmp_path: Path) -> None:
     root, lane = _linked_project(tmp_path)
-    _set_link(root, '["env[1]", "a*b?"]')
-    (root / "env[1]").mkdir()
-    (root / "a*b?").mkdir()
-    assert setup_worktree_env(root, lane) == ["linked env[1]", "linked a*b?"]
+    names = ["env[1]", "a*b?", "!bang", "#hash", "c]d", "e\\\\f"]
+    _set_link(root, "[" + ", ".join(f"'{n}'" for n in names) + "]")
+    for name in names:
+        (root / name).mkdir()
+    assert setup_worktree_env(root, lane) == [f"linked {n}" for n in names]
     assert git(lane, "status", "--porcelain", "--untracked-files=all") == ""
     (lane / "env1").write_text("x", encoding="utf-8")   # what the unescaped /env[1] would have matched
     (lane / "aXbY").write_text("x", encoding="utf-8")
     assert git(lane, "status", "--porcelain", "--untracked-files=all").splitlines() == ["?? aXbY", "?? env1"]
+
+
+@pytest.mark.parametrize("entry", ["node_modules/..", "../escape"])
+def test_link_refuses_dot_dot_out_of_place(tmp_path: Path, entry: str) -> None:
+    root, lane = _linked_project(tmp_path)
+    _set_link(root, f"['{entry}']")
+    before = git(lane, "status", "--porcelain", "--untracked-files=all")
+    with pytest.raises(EnvSetupError, match="cannot link"):
+        setup_worktree_env(root, lane)
+    assert git(lane, "status", "--porcelain", "--untracked-files=all") == before
+
+
+def test_an_absolute_link_path_is_refused_by_the_schema_and_by_the_link_guard(tmp_path: Path) -> None:
+    root, lane = _linked_project(tmp_path)
+    absolute = str(tmp_path / "elsewhere" / "node_modules")
+    _set_link(root, f"['{absolute}']")
+    assert "does not match '^(?!/)'" in load_git_workflow_config(root)[1]
+    assert setup_worktree_env(root, lane) == []   # an invalid config sets nothing up
+    with pytest.raises(EnvSetupError, match="cannot link"):   # and the guard holds without the schema
+        link_into({"link": [str(root / "node_modules")]}, root, lane, "")
+    assert not (tmp_path / "elsewhere").exists() and not (lane / "node_modules").exists()
+
+
+def test_a_source_that_is_a_symlink_links_its_resolved_target(tmp_path: Path) -> None:
+    root, lane = _linked_project(tmp_path)
+    (root / "store").mkdir()
+    (root / "node_modules" / "marker").rename(root / "store" / "marker")
+    (root / "node_modules").rmdir()
+    (root / "node_modules").symlink_to(root / "store", target_is_directory=True)
+    _set_link(root, "[node_modules]")
+    assert setup_worktree_env(root, lane) == ["linked node_modules"]
+    assert (lane / "node_modules").resolve() == (root / "store").resolve()
+    assert linked_status_paths(root, lane) == {"node_modules"}
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (root / "node_modules").unlink()
+    (root / "node_modules").symlink_to(outside, target_is_directory=True)   # a source past the git root
+    (lane / "node_modules").unlink()
+    with pytest.raises(EnvSetupError, match="outside the main checkout"):
+        setup_worktree_env(root, lane)
+    assert not (lane / "node_modules").exists()
+
+
+def test_link_in_a_nested_project_excludes_git_root_relative_lines(tmp_path: Path) -> None:
+    top = make_pickup_project(tmp_path)
+    project = top / "sr"
+    (project / "roadmap").mkdir(parents=True)
+    (project / "roadmap" / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: main\nremote: origin\nenv_setup:\n  link: [node_modules, ../.venv]\n",
+        encoding="utf-8")
+    (project / "node_modules").mkdir()
+    (top / ".venv").mkdir()
+    (top / ".gitignore").write_text("sr/\n.venv/\n", encoding="utf-8")
+    git(top, "add", ".gitignore")
+    git(top, "commit", "-qm", "ignore")
+    lane = tmp_path / "lane"
+    git(top, "worktree", "add", "-q", "-b", "lane", str(lane))
+    assert setup_worktree_env(project, lane / "sr") == ["linked node_modules", "linked ../.venv"]
+    exclude = Path(git(lane, "rev-parse", "--path-format=absolute", "--git-path", "info/exclude"))
+    assert exclude.read_text(encoding="utf-8").splitlines()[-2:] == ["/sr/node_modules", "/.venv"]
+    assert linked_status_paths(project, lane / "sr") == {"sr/node_modules", ".venv"}

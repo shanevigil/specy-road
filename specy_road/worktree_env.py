@@ -78,9 +78,10 @@ def link_target(leaf_root: Path, rel: str, leaf_top: Path) -> Path:
 
 
 def exclude_pattern(rel: str) -> str:
-    """``rel`` as an anchored ``info/exclude`` line matching that one name: ``\\ * ? [`` and trailing spaces
-    are escaped, since git reads them as pattern syntax (``env[1]`` would match ``env1``, not itself)."""
-    body = re.sub(r"([\\*?\[])", r"\\\1", rel)
+    """``rel`` as an anchored ``info/exclude`` line matching that one name: ``\\ * ? [ ] ! #`` and trailing
+    spaces are escaped, since git reads them as pattern syntax (``env[1]`` would match ``env1``, not itself).
+    The leading ``/`` means no line starts with ``!`` or ``#``; escaping them anyway keeps each one literal."""
+    body = re.sub(r"([\\*?\[\]!#])", r"\\\1", rel)
     stripped = body.rstrip(" ")
     return "/" + stripped + "\\ " * (len(body) - len(stripped))
 
