@@ -8,8 +8,8 @@ read as filed review records, and a reviewer drafts its record in its notes.
 
 Usage is read from each run's log with the harness adapter's own parser, the one ``worker`` events use, and
 running session totals become per-turn figures with :func:`turn_usage`, as ``worker usage`` does. A figure no
-turn reported stays ``None`` (``?``), never 0. Reviews run outside ``review delegate`` have no RUN record and
-are not counted.
+turn reported stays ``None`` (``?``), never 0. Only RUN records whose ``source`` is ``review-delegate`` are
+counted; ``prompt-cli`` and other RUN files are ignored (A3).
 """
 
 from __future__ import annotations
@@ -32,7 +32,13 @@ from specy_road.worker_state import WorkerEvent
 from specy_road.worker_usage_delta import turn_usage
 
 NOTES_DIRNAME = "notes"
+DELEGATE_SOURCE = "review-delegate"
 _ROUND = re.compile(r"-(\d+)\.json$")
+
+
+def is_delegate_run(record: dict[str, Any]) -> bool:
+    """True when the RUN record was opened by ``review delegate`` (A3)."""
+    return record.get("source") == DELEGATE_SOURCE
 
 
 def _round_of(p: Path) -> int:
@@ -40,11 +46,13 @@ def _round_of(p: Path) -> int:
     return int(m.group(1)) if m else 0
 
 
-def _history_runs(hist: Path, model: str | None = None) -> list[tuple[Path, dict[str, Any]]]:
+def _history_runs(hist: Path, model: str | None = None, *, delegate_only: bool = False) -> list[tuple[Path, dict[str, Any]]]:
     """Archived RUN records (of ``model``, when given); the model is read from the record, not the name."""
     out = []
     for p in sorted(hist.glob("RUN-*.json")) if hist.is_dir() else []:
         r = _read_json(p) or {}
+        if delegate_only and not is_delegate_run(r):
+            continue
         if model is None or r.get("model") == model:
             out.append((p, r))
     return out
@@ -56,10 +64,13 @@ def archive_round(repo_root: Path, node_id: str, model: str) -> Path | None:
     cur = d / f"RUN-{model}.json"
     if not cur.is_file():
         return None
+    cur_run = _read_json(cur) or {}
+    if not is_delegate_run(cur_run):
+        return None
     hist = d / HISTORY_DIRNAME
     hist.mkdir(parents=True, exist_ok=True)
-    commit = re.sub(r"[^0-9A-Za-z]", "", str((_read_json(cur) or {}).get("commit") or ""))[:12] or "unknown"
-    n = 1 + max((_round_of(p) for p, _r in _history_runs(hist, model)), default=0)
+    commit = re.sub(r"[^0-9A-Za-z]", "", str(cur_run.get("commit") or ""))[:12] or "unknown"
+    n = 1 + max((_round_of(p) for p, _r in _history_runs(hist, model, delegate_only=True)), default=0)
     stem = f"RUN-{model}-{commit}-{n}"
     shutil.copy2(cur, hist / f"{stem}.json")
     log = cur.with_suffix(".log")
@@ -90,12 +101,14 @@ def _log_turns(harness: str, log: Path, events: list[WorkerEvent]) -> list[dict[
 def review_usage(repo_root: Path, node_id: str) -> dict[str, Any]:
     """``{"node_id", "runs": [...], "total"}`` over every delegated reviewer run, current and archived."""
     d = reviews_dir(repo_root, node_id)
-    runs = [(p, r, _round_of(p)) for p, r in _history_runs(d / HISTORY_DIRNAME)]
+    runs = [(p, r, _round_of(p)) for p, r in _history_runs(d / HISTORY_DIRNAME, delegate_only=True)]
     last = {}
     for _p, r, n in runs:
         last[r.get("model")] = max(n, last.get(r.get("model"), 0))
     for p in sorted(d.glob("RUN-*.json")) if d.is_dir() else []:
         r = _read_json(p) or {}
+        if not is_delegate_run(r):
+            continue
         runs.append((p, r, last.get(r.get("model"), 0) + 1))
     rows, sessions = [], {}
     for p, r, n in sorted(runs, key=lambda x: (str(x[1].get("model")), x[2])):

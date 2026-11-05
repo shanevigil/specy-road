@@ -14,6 +14,7 @@ Reviewer usage is visible: RUN files and notes kept per round, `specy-road revie
   - **Why notes are moved, not copied (RC2):** a copy left the previous round's draft in place. A later run that failed before writing notes could then be archived with that stale file, relabeling another commit's notes. Moving clears the current path like the log.
   - **Why notes go in `history/notes/`:** `list_review_history` reads every `history/*.md` as a filed review record. That list feeds the gate's prior approvals, RCA rounds and eligibility. Reviewers draft their record in their notes and file it with `--file <notes.md>`, so a notes copy in `history/*.md` could be counted as a filed approval. The `notes/` subdirectory is still under `history/` and is not globbed. This is my reading of A4's "under history/"; reviewers should check it.
 - **A2 — `review usage <ID>` [--json].** It lists every delegated run, archived and current. For each run it gives model, harness, round, commit, state, file, turns and the summed usage, then a total over all runs.
+  - Only RUN records with ``source: review-delegate`` are included; ``prompt-cli`` RUN files are ignored (A3, R1).
   - Each log is parsed line by line with the run's harness adapter `parse_events`, the same parser worker events use.
   - Session running totals become per-turn figures with `worker_usage_delta.turn_usage`, as `worker usage` does. A `resumed` run continues the same model's previous run's event history, so a resumed Claude session's `total_cost_usd` is not counted twice.
   - Figures are summed with `worker_cli_render._sum_usage` and printed with `usage_text`, so an unreported figure is `None` / `?`, never 0.
@@ -30,6 +31,7 @@ Reviewer usage is visible: RUN files and notes kept per round, `specy-road revie
 
 - **Merge:** `WIP/improvements-0-3-1` was merged earlier on this branch; `review usage` registers from `review_delegate.add_parser` so `review_cli.py` stays at the cap.
 - **Rework (gpt-6.1-sol RC1/RC2):** JSON node totals include reviewers; archived notes move instead of copy so a no-notes failure cannot relabel a prior draft.
+- **Fix round (gpt-6.1-sol-low R1):** ``is_delegate_run`` gates ``review_usage``, delegate-only round numbering in ``archive_round``, and ``archive_round`` skips non-delegate current RUN files so ``prompt-cli`` usage never enters reviewer or node totals.
 
 ## Probes
 
@@ -39,16 +41,24 @@ Reviewer usage is visible: RUN files and notes kept per round, `specy-road revie
 - Successful two-round archival test still passes with notes moved (same on-disk content as copy for completed rounds).
 - `list_review_history` glob `history/*.md` still excludes `history/notes/` — notes paths unchanged.
 
+## Fix round: probes
+
+- **Class:** RUN records with ``source`` other than ``review-delegate`` (notably ``prompt-cli``) present in ``history/`` and at the current ``RUN-*.json`` path — ``review_usage`` and ``worker usage --json`` still report only delegate runs (300/30/$0.75 for two-round fixture); pass.
+- **Class:** current ``RUN-<model>.json`` is ``prompt-cli`` when ``archive_round`` runs — returns ``None`` and writes nothing under ``history/``; pass.
+- **Class:** delegate-only round/session carry — resumed delegate costs still delta correctly (prior reviewer probe unchanged); pass.
+- **Class:** GUI ``usage()`` executor-only ``total`` — still unchanged; pass (no code path change).
+
 ## Verification
 
-- `python -m pytest tests/test_review_usage.py -q`: 7 passed.
+- `python -m pytest tests/test_review_usage.py tests/test_review_delegate.py tests/test_run_record_no_false_failure.py -q`: 35 passed.
 - `specy-road file-limits`: OK.
 - `python -m pytest -n 4 -q`: (recorded in READY).
 
 ## Added
 
 - `review_usage.archive_round`: keeps the previous round's RUN json, log and notes under `history/` before a new run (A1, A4); notes **move** (RC2).
-- `review_usage._history_runs`: reads archived RUN records and filters by the model recorded inside them, because model ids may contain hyphens and make file names ambiguous.
+- `review_usage.is_delegate_run`, ``DELEGATE_SOURCE``: delegate-only filter for usage and archival (R1).
+- `review_usage._history_runs`: optional ``delegate_only`` for round numbering and usage collection (R1).
 - `review_usage._round_of`: reads the round number from an archived file name.
 - `review_usage._log_turns`: per-turn usage from a log via the adapter parser and `turn_usage` (A2).
 - `review_usage.review_usage`, `review_usage_lines`, `cmd_review_usage`, `add_parser`: the `review usage` command and its data (A2).
@@ -68,6 +78,8 @@ Reviewer usage is visible: RUN files and notes kept per round, `specy-road revie
 - Test `::test_review_usage_lists_each_run_and_the_total` (A2).
 - Test `::test_worker_usage_adds_reviewers_to_the_node_total` (A3; text and `--json` combined total, RC1).
 - Test `::test_notes_are_not_relabeled_when_a_later_run_writes_no_notes` (A4/RC2: capacity failure at new commit, then successful retry).
+- Test `::test_prompt_cli_runs_are_excluded_from_review_and_worker_usage` (R1/A3).
+- Test `::test_archive_round_skips_the_current_run_when_it_is_not_review_delegate` (R1).
 - Test `::test_a_removed_worktree_still_finds_its_projects_reviews`: covers the `_project_root_of` parent walk.
 - Test `::test_worker_usage_uses_its_repo_root_not_the_worktree`: `--repo-root` when the worktree names no project (A3).
 - Test `::test_no_delegated_review_keeps_the_single_total_line`: output unchanged without reviewer runs.

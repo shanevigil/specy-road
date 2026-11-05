@@ -22,6 +22,8 @@ from specy_road import worker_state as ws
 from specy_road.bundled_scripts import worker_cli
 from specy_road.bundled_scripts.worker_cli_render import usage, usage_lines
 from specy_road.review_files import reviews_dir
+from specy_road.review_usage import archive_round, review_usage
+from specy_road.reviewer_run_failure import run_path, save_run
 from specy_road.worker_adapter_parsers import USAGE_FIELDS
 
 # The fake harness's result line also carries the step's usage, as Claude's stream-json result does.
@@ -129,6 +131,50 @@ def test_notes_are_not_relabeled_when_a_later_run_writes_no_notes(tmp_path: Path
     assert run_review_delegate(repo) == 0
     assert (reviews_dir(repo, "M1.1") / "notes-opus.md").read_text() == "Commit-two retry notes\n"
     assert not any(p.read_text() == c1_notes for p in notes_hist.glob(f"notes-opus-{c2[:12]}-*.md"))
+
+
+_PROMPT_CLI_USAGE_LOG = json.dumps({"type": "result", "subtype": "success", "result": "ok", "is_error": False,
+                                   "usage": {"input_tokens": 900, "output_tokens": 90}, "total_cost_usd": 0.9}) + "\n"
+
+
+def _write_prompt_cli_run(path: Path, commit: str) -> None:
+    save_run(path, {"node_id": "M1.1", "model": path.stem.removeprefix("RUN-"), "harness": "claude-code",
+                  "commit": commit, "state": "complete", "source": "prompt-cli", "resumed": False,
+                  "log": str(path.with_suffix(".log"))})
+    path.with_suffix(".log").write_text(_PROMPT_CLI_USAGE_LOG, encoding="utf-8")
+
+
+def test_prompt_cli_runs_are_excluded_from_review_and_worker_usage(two_rounds, capsys) -> None:
+    """A3/R1: ``source=prompt-cli`` RUN files in history and at the current path do not enter reviewer totals."""
+    repo, c1, _c2 = two_rounds
+    d, hist = reviews_dir(repo, "M1.1"), reviews_dir(repo, "M1.1") / "history"
+    archived = hist / f"RUN-plain-{c1[:12]}-1.json"
+    archived.write_text(json.dumps({"node_id": "M1.1", "model": "plain", "harness": "claude-code", "commit": c1,
+                                    "state": "complete", "source": "prompt-cli", "resumed": False}), encoding="utf-8")
+    archived.with_suffix(".log").write_text(_PROMPT_CLI_USAGE_LOG, encoding="utf-8")
+    _write_prompt_cli_run(run_path(repo, "M1.1", "plain"), git(repo, "rev-parse", "HEAD"))
+    data = review_usage(repo, "M1.1")
+    assert [r["model"] for r in data["runs"]] == ["opus", "opus"]
+    t = data["total"]
+    assert (t["runs"], t["turns"], t["input_tokens"], t["output_tokens"], t["cost_usd"]) == (2, 2, 300, 30, 0.75)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.append_event(repo, rec, "usage", source="worker", summary="usage",
+                    detail={**dict.fromkeys(USAGE_FIELDS), "input_tokens": 1, "output_tokens": 1, "cost_usd": 0.01})
+    capsys.readouterr()
+    with pytest.raises(SystemExit) as exc:
+        worker_cli.main(["worker", "usage", "M1.1", "--json", "--repo-root", str(repo)])
+    assert (exc.value.code or 0) == 0
+    reviewers = json.loads(capsys.readouterr().out)["reviewers"]
+    assert reviewers["runs"] == 2 and reviewers["input_tokens"] == 300
+    assert archive_round(repo, "M1.1", "plain") is None
+
+
+def test_archive_round_skips_the_current_run_when_it_is_not_review_delegate(tmp_path: Path) -> None:
+    """R1: ``archive_round`` must not move a ``prompt-cli`` RUN into ``history/``."""
+    repo, _spec = make_delegate_repo(tmp_path)
+    _write_prompt_cli_run(run_path(repo, "M1.1", "opus"), git(repo, "rev-parse", "HEAD"))
+    assert archive_round(repo, "M1.1", "opus") is None
+    assert not list((reviews_dir(repo, "M1.1") / "history").glob("RUN-opus*"))
 
 
 def test_a_removed_worktree_still_finds_its_projects_reviews(two_rounds) -> None:
