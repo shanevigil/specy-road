@@ -140,6 +140,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M18.15` --rework carries blocks at the branch tip as required changes, lists older blocks as possibly resolved, and takes a coordinator note placed above the reviews `rework-carries-current-blocks-and-a-coordinator-note` — task — **Not Started**
   - `M18.16` A review that stops before filing leaves a trace: every reviewer channel opens a RUN record, and review list shows started but not filed `every-reviewer-channel-leaves-a-run-record` — task — **Not Started**
   - `M18.17` Under delta review, one approval per round still checks the whole leaf against the merge base on a fixed checklist `one-full-leaf-checklist-review-per-round` — task — **Not Started**
+  - `M18.18` Plan review after planning, and a staleness check before pickup `plan-review-and-pickup-staleness` — task — **Not Started**
 - `M19` Adopter-project features: upgrade, agent-file layering, planning hygiene, project tooling (after 0.3.1) `adopter-features` — phase — **Not Started**
   - `M19.1` Configurable code-analysis tools `analysis-tools` — task — **Not Started**
   - `M19.2` Research reminders leave validate `research-due-in-doctor` — task — **Not Started**
@@ -154,6 +155,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M19.11` Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored `chores-at-parity-with-leaves` — task — **Not Started**
   - `M19.12` List shipped nodes with no result after N days `list-shipped-nodes-with-no-result-after-n-days` — milestone — **Not Started**
   - `M19.13` Store a pointer and a human verdict for outcomes, never the metric itself `store-a-pointer-and-a-human-verdict-for-outcomes-never-the-metric-itself` — milestone — **Not Started**
+- `M20` Agent safety and governance posture (after 0.3.1) `agent-safety-posture` — phase — **Not Started**
+  - `M20.1` Posture advisor: plan the M20 leaves from the research `plan-m20-from-research` — task — **Not Started**
+  - `M20.2` Probe each reviewer harness for instruction-file leakage into fresh sessions `fresh-reviewer-leak-probe` — task — **Not Started**
 
 ## Open gates
 

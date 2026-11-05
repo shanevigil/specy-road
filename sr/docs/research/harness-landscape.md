@@ -37,6 +37,7 @@ One line per entry, then what to watch for.
 | Claude Squad | Go TUI; tmux plus a worktree per agent (AGPL-3.0) | Worktree and session patterns; the licence rules out embedding |
 | Conductor | macOS app for parallel coding agents | Whether it is maintained (reportedly not since Aug 2026, single source) |
 | OpenTelemetry GenAI semantic conventions | Standard names such as `gen_ai.usage.input_tokens` (status: Development) | The spec reaching stable; the session-versus-turn usage question that `worker_usage_delta` handles |
+| Elephant-Goldfish Model (EGM) | Google's Apache-2.0 plugin of Markdown skills: design in one long session, review with fresh-context subagent personas; Claude Code, Codex, Antigravity (Cursor experimental) | 1.0 contract for skill names and report formats; a non-interactive or headless review mode; outcome evidence beyond "thousands of Googlers"; host fixes for instruction-file leakage into fresh subagents (issue #237); pinned or tagged marketplace installs |
 
 ## Triggers that reopen buy vs build
 
@@ -77,3 +78,9 @@ what changed and where it went.
   Decision: keep building, adopt patterns only (Option A). The roster split into core fields and a
   typed `run:` block is planned in M16.63 and M16.64. No trigger fired: ACP has no standard usage,
   acpx is alpha and downloads adapters at run time, and the Claude Agent SDK steers to API keys.
+- **2026-11-05.** Assessed the Elephant-Goldfish Model:
+  [`elephant-goldfish-2026-11-05.md`](elephant-goldfish-2026-11-05.md). Decision: borrow the
+  pattern, do not adopt or depend on it. Borrowed as M18.18 (a fresh-context plan review after
+  planning, with a staleness check before pickup) and M20.2 (a per-harness probe for
+  instruction-file leakage into fresh reviewers). No trigger fired: EGM does not drive CLIs,
+  report usage, or replace launch, resume or parse. Added to the watchlist.
