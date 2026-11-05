@@ -115,7 +115,8 @@
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
         "specy_road/bundled_scripts/validate_roadmap.py",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/validate_notices.py"
       ],
       "type": "task"
     },
@@ -309,7 +310,8 @@
         "specy_road/upgrade_report.py",
         "specy_road/version_pin.py",
         "specy_road/agent_text_report.py",
-        "tests/"
+        "tests/",
+        "docs/upgrading.md"
       ],
       "type": "task"
     },
@@ -341,7 +343,9 @@
         "tests/",
         "specy_road/context_notice_cache.py",
         "specy_road/agents_md_block.py",
-        "specy_road/bundled_scripts/validate_roadmap.py"
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/ignore_report.py",
+        "specy_road/bundled_scripts/validate_notices.py"
       ],
       "type": "task"
     },

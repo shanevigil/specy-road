@@ -283,6 +283,7 @@ Do not pick these up.
 - `M15.18` on `feature/rm-planned-test-changes-editable-and-removals-surfaced` since 2026-11-04
 - `M15.19` on `feature/rm-cursor-cost-with-display-name-models` since 2026-11-04
 - `M15.21` on `feature/rm-linked-worktrees-resolve-root-and-symlinked-envs` since 2026-11-04
+- `M15.4` on `feature/rm-parallel-pr-leaves-reconcile-bookkeeping-by-rule` since 2026-11-04
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
 ## Reaching the detail behind this

@@ -172,7 +172,10 @@
         "specy_road/cli.py",
         "specy_road/digest.py",
         "specy_road/bundled_scripts/validate_roadmap.py",
-        "specy_road/bundled_scripts/finish_task.py"
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/debt_ledger.py",
+        "docs/debt-ledger.md",
+        "specy_road/bundled_scripts/validate_notices.py"
       ],
       "type": "task"
     },
@@ -199,7 +202,9 @@
         "specy_road/orchestrate_plan.py",
         "specy_road/bundled_scripts/models_cli.py",
         "docs/orchestration-models.md",
-        "tests/"
+        "tests/",
+        "specy_road/orchestration_config.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json"
       ],
       "type": "task"
     },
@@ -237,7 +242,8 @@
         "specy_road/templates/specyrd/commands/specyrd-orchestrate.md",
         "docs/orchestration-chores.md",
         "tests/",
-        "specy_road/session_presence.py"
+        "specy_road/session_presence.py",
+        "specy_road/bundled_scripts/grind_session.py"
       ],
       "type": "task"
     },
@@ -266,7 +272,8 @@
         "specy_road/bundled_scripts/validate_stale_flags.py",
         "specy_road/bundled_scripts/validate_stale_commands.py",
         "specy_road/bundled_scripts/chore_cli.py",
-        "tests/"
+        "tests/",
+        "specy_road/cli.py"
       ],
       "type": "task"
     }
