@@ -1,6 +1,6 @@
 # Implementation summary: `M15.36` — Claude Code workers never depend on the -p default mode
 
-Branch `feature/rm-worker-launch-never-depends-on-claude-default-mode`, base `ffc8a729`, change commit `80028257`.
+Branch `feature/rm-worker-launch-never-depends-on-claude-default-mode`, base `ffc8a729`, change commit `80028257`, fix-round commit `7166d20c` (after merging `origin/WIP/improvements-0-3-1`).
 
 ## What changed
 
@@ -34,6 +34,56 @@ Branch `feature/rm-worker-launch-never-depends-on-claude-default-mode`, base `ff
   so in practice the profile's `access.launch_mode: bare` is what forces bare. `forces_bare` also honours an entry
   value, as it does for reviewers.
 
+## Fix round 1 (`gpt-6.1-sol-low` block on `29e9ce50`)
+
+**Finding.** On `worker message`/`resume` the auth check ran after `_wrapper_gone`. For a forced-bare worker whose
+wrapper had died, a refusal still left the record marked `failed`, an `error` event appended and the lease released.
+
+**Class.** On a launch or resume path, a refusal-capable check ran after a write to worker state (record, events,
+mailbox, lease, `--rework` termination).
+
+**Design change.**
+- `worker_ops_launch._launch_checks` is the one place for every refusal that comes from the roster entry, the
+  leaf, the profile and the environment: eligibility, a broken profile, the Claude Code auth check, and the roster
+  `preflight` command.
+- `_send` (`worker message` and `worker resume`) resolves the entry and runs `_launch_checks` once, before the first
+  write on each of its paths:
+  - before `_wrapper_gone` when that would write (a `running`/`starting` record whose wrapper is not alive);
+  - before a message is queued for a live worker;
+  - before the slot sweep in `_slot_or_existing`.
+  State-only refusals that write nothing keep their earlier precedence: terminated, the usage-limit gate, a live
+  turn with `--no-queue`, branch, session id. Existing tests pin that order.
+- In `delegate`, the environment-only auth check still runs before anything, including the lock file.
+  - `--rework` no longer terminates a completed worker in the first lock sections (`_existing_unless_rework` skips
+    it). It is terminated only in the last lock section, after `_launch_checks` and the prompt build.
+  - The `max_workers` cap and existing-worker answers keep their precedence over the leaf checks, as
+    `test_delegate_refusals` pins.
+
+## Probes
+
+- `_send`, dead wrapper plus forced bare with no key: refused before `_wrapper_gone`. The record, events, mailbox
+  and lease refs are byte-identical, and the state stays `running`. Covered by the new assertion in
+  `test_resume_follows_the_same_rule`, which fails on `29e9ce50`.
+- `_send`, idle worker and forced bare with no key: refused, nothing written (unchanged test).
+- `_send`, live worker and queued message: `_launch_checks` now runs before `queue_worker_message`, so a refused
+  message is not queued. Before this change the queue path ran no checks.
+- `_send`, slot sweep (`_slot_or_existing` closes dead wrappers on any leaf): the checks now run before it. Before
+  this change, eligibility and preflight ran after it.
+- `_send`, `_cli_for` profile error after the prompt file is written: a broken profile is now refused earlier by
+  `_launch_checks`.
+- `_send`, terminated, usage limit, session-id metacharacters: no write precedes them, so their order is kept
+  (`test_review_round6_ops`, `test_worker_turn_check` pass).
+- `delegate`, auth: runs before `work/.workers/.lock` is created (`test_forced_bare_without_a_key_is_refused_before_any_worker_state`).
+- `delegate --rework`, failing roster preflight: the completed record and its files are unchanged. Covered by the
+  new `test_a_refused_rework_leaves_the_completed_worker_as_it_was`, which fails on `29e9ce50`.
+- `delegate`, dead-wrapper sweep in the early lock sections: still runs before the leaf checks. The cap and
+  existing-worker refusals depend on it, and their precedence over the claim check is pinned by
+  `test_worker_cli.py::test_delegate_refusals`. It records only processes that are already dead, which is the same
+  write `worker status` and `sync` make. It is not a write this launch causes.
+- `_launch_locked`: worktree, nested-repo and env setup, and the dirty-tree refusal all come before the prompt,
+  record, lease and spawn. `_cli_for`'s profile refusal is now pre-empted by `_launch_checks`.
+- Reviewer launch paths (M15.2) and other harnesses: out of scope, not changed.
+
 ## Touch zones (final)
 
 The zones were confirmed as accurate. The change touched `specy_road/worker_adapter_claude.py`,
@@ -61,7 +111,8 @@ worker's explicit `--setting-sources` flags or the `worker auth:` refusal. A doc
 - `python -m pytest -q -n 4 -p no:cacheprovider` (full suite)
 - `specy-road file-limits`
 - Red/green: with the `specy_road/` changes reverted, `tests/test_worker_claude_auth.py` fails 4 of 5. The API-key
-  bare case already passed before the change.
+  bare case already passed before the change. Fix round: on `29e9ce50`'s `specy_road/`, the two fix-round tests fail
+  and the other 4 pass.
 
 ## Added
 
@@ -70,11 +121,16 @@ worker's explicit `--setting-sources` flags or the `worker auth:` refusal. A doc
 - `reviewer_auth.worker_environment()`: the executor environment the auth check and `--settings` path read, the worker counterpart of `reviewer_environment()`.
 - `reviewer_auth.claude_worker_refusal()`: the shared M15.2 auth check applied to a worker entry, returning one refusal line (A1).
 - `worker_adapter_claude._worker_mode()`: chooses `--bare` (plus the helper's settings path) or the explicit setting sources for launch and resume (A2).
-- `worker_ops_launch._auth_preflight()`: refuses a forced-bare claude-code worker before any state is written. It skips other harnesses and `channels.cli` entries, which are run as written (A1).
-- Guard call in `worker_ops_launch.delegate`, right after the roster entry resolves (A1, before `--rework` and any record or lease).
-- Guard call in `worker_ops_message._send`, the shared path of `worker message` and `worker resume` (A1/A3, resume follows the same rule).
+- `worker_ops_launch._auth_preflight()`: refuses a forced-bare claude-code worker. It skips other harnesses and `channels.cli` entries, which are run as written (A1).
+- `worker_ops_launch._launch_checks()` (fix round): eligibility, a broken profile, auth and the roster preflight in one place, run before any worker-state write on delegate and resume.
+- `worker_ops_launch._existing_unless_rework()` (fix round): the early lock sections ignore a completed worker under `--rework` without terminating it, so the termination waits for the last section, after every refusal.
+- Guard call in `worker_ops_launch.delegate`: `_auth_preflight` right after the roster entry resolves, before the lock file; `_launch_checks` before the prompt build and the last lock section (A1).
+- `entry_checked()` closure in `worker_ops_message._send` (fix round): resolves the entry and runs `_launch_checks` once, before the dead-wrapper close, the queue or the slot sweep, whichever comes first (A1/A3).
+- Branch in `_send` (fix round): `rec.state in (running, starting) and not wrapper_alive(...)` runs the checks before `_wrapper_gone` would write.
 - Test `tests/test_worker_claude_auth.py::test_launch_and_resume_name_their_mode`, parametrized over subscription, subscription with a key, and API-key bare: pins the delegate and message argv (A2/A3).
 - Test `tests/test_worker_claude_auth.py::test_forced_bare_without_a_key_is_refused_before_any_worker_state`: one-line refusal, and no new file under `work/.workers` (A1/A3).
-- Test `tests/test_worker_claude_auth.py::test_resume_follows_the_same_rule`: `worker message` and `worker resume` are refused once the key is gone, and nothing is written (A3).
+- Test `tests/test_worker_claude_auth.py::test_resume_follows_the_same_rule`: `worker message` and `worker resume` are refused once the key is gone, for an idle worker and for one whose wrapper died. Record, events and lease are byte-identical (A3, fix round).
+- Test `tests/test_worker_claude_auth.py::test_a_refused_rework_leaves_the_completed_worker_as_it_was` (fix round): a `--rework` refused by the roster preflight leaves the completed worker untouched.
+- Helper `_files` in that test file: snapshots every file under `work/.workers` byte for byte, plus local and remote lease refs (fix round: "byte-identical").
 - Fixture `account` in that file: isolates `HOME`, `CLAUDE_CONFIG_DIR` and `ANTHROPIC_API_KEY` from the developer's account (planning sheet).
 - Mocks: `worker_ops.spawn` is stubbed to capture the `Launch` instead of starting a harness, the same pattern as `tests/test_harness_launch.py`.
