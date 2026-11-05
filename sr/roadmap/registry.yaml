@@ -128,3 +128,18 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
+  - codename: try-a-roster-before-it-lands
+    node_id: M15.10
+    branch: feature/rm-try-a-roster-before-it-lands
+    touch_zones:
+      - specy_road/orchestration_pinned.py
+      - specy_road/roster_local.py
+      - specy_road/orchestrate_plan.py
+      - specy_road/bundled_scripts/orchestrate_cli.py
+      - specy_road/bundled_scripts/models_cli.py
+      - docs/orchestration-models.md
+      - docs/orchestration-roster.md
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
