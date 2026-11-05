@@ -97,20 +97,6 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round
-    node_id: M14.6
-    branch: feature/rm-reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round
-    touch_zones:
-      - specy_road/review_delegate.py
-      - specy_road/review_usage.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/bundled_scripts/worker_cli_render.py
-      - tests/
-      - specy_road/bundled_scripts/worker_cli.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-05T08:26:34+00:00'
   - codename: parallel-pr-leaves-reconcile-bookkeeping-by-rule
     node_id: M15.4
     branch: feature/rm-parallel-pr-leaves-reconcile-bookkeeping-by-rule
