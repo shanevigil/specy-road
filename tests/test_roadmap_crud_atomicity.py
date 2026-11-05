@@ -22,6 +22,8 @@ from specy_road.bundled_scripts.roadmap_crud_ops import (
     delete_roadmap_node_hard,
     edit_node_set_pairs,
 )
+from specy_road.bundled_scripts.roadmap_codename_cap import cap_codename_slug
+from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_MAX_CHARS, title_to_codename
 from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
 
 NK_PHASE = "20000000-0000-4000-8000-000000000001"
@@ -255,3 +257,79 @@ def test_mutation_output_does_not_leak_validation_success_line(repo: Path) -> No
     assert r.returncode == 0, r.stdout + r.stderr
     assert "OK: roadmap and registry validate." not in r.stdout
     assert "[ok] updated M50.1" in r.stdout
+
+
+def test_add_node_long_title_caps_derived_codename(repo: Path) -> None:
+    title = " ".join(f"segment{i}" for i in range(40))  # well over 300 characters
+    assert len(title) >= 300
+    r = _run(
+        repo,
+        "--repo-root",
+        str(repo),
+        "add-node",
+        "--id",
+        "M50.2",
+        "--parent-id",
+        "M50",
+        "--type",
+        "task",
+        "--title",
+        title,
+    )
+    assert r.returncode == 0, r.stdout + r.stderr
+    nodes = load_json_chunk(repo / "roadmap" / "phases" / "T.json")
+    node = next(n for n in nodes if n["id"] == "M50.2")
+    uncapped = title_to_codename(title)
+    codename = node["codename"]
+    assert codename is not None
+    assert len(codename) <= CODENAME_MAX_CHARS
+    assert codename == cap_codename_slug(uncapped)
+    assert uncapped.startswith(codename) or codename in uncapped
+    sheet_name = node["planning_dir"].split("/", 1)[1]
+    assert len(sheet_name.encode("utf-8")) <= 255
+    assert (repo / "planning" / sheet_name).is_file()
+
+
+def test_add_node_refuses_explicit_codename_over_64_chars(repo: Path) -> None:
+    too_long = "a" * 65
+    before = _snapshot(repo)
+    r = _run(
+        repo,
+        "--repo-root",
+        str(repo),
+        "add-node",
+        "--id",
+        "M50.2",
+        "--parent-id",
+        "M50",
+        "--type",
+        "task",
+        "--title",
+        "Short title",
+        "--codename",
+        too_long,
+    )
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert (
+        r.stderr.strip()
+        == "error: codename is 65 characters; the limit is 64 "
+        "(it names feature/rm-<codename> and the planning file)"
+    )
+    assert _snapshot(repo) == before
+
+
+def test_edit_node_refuses_codename_over_64_chars(repo: Path) -> None:
+    too_long = "b" * 65
+    before = _snapshot(repo)
+    r = _run(
+        repo,
+        "--repo-root",
+        str(repo),
+        "edit-node",
+        "M50.1",
+        "--set",
+        f"codename={too_long}",
+    )
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "error: codename is 65 characters; the limit is 64" in r.stderr
+    assert _snapshot(repo) == before
