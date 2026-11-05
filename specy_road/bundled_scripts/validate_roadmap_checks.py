@@ -340,8 +340,7 @@ def warn_authoring_gaps(
 
 
 def run_validation(
-    roadmap: dict,
-    registry: dict,
+    roadmap: dict, registry: dict,
     no_overlap_warn: bool,
     *,
     repo_root: Path | None = None,
@@ -392,7 +391,10 @@ def run_validation(
     warn_summary_rule(r)   # implementation_summary: commit against a .gitignore that ignores summaries (M15.22)
     warn_authoring_gaps(nodes, r, gate, show_all=show_all, strict_authoring=strict_authoring)
     warn_acceptance_merged(nodes)
-    warn_registry_touch_zone_overlap(registry.get("entries") or [], no_overlap_warn=no_overlap_warn,
-                                     overlap_scope=overlap_scope)
+    warn_registry_touch_zone_overlap(
+        registry.get("entries") or [],
+        no_overlap_warn=no_overlap_warn,
+        overlap_scope=overlap_scope,
+    )
 
     print("OK: roadmap and registry validate.")
