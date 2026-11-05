@@ -2,9 +2,23 @@
 
 **Leaf:** add-node caps a title-derived codename at 64 characters so the planning file name fits (`derived-codename-capped-so-planning-names-fit`)
 
-**Commit (implementation):** `e9878251` (on `feature/rm-derived-codename-capped-so-planning-names-fit`)
+**Commit (implementation):** see latest fix commit on `feature/rm-derived-codename-capped-so-planning-names-fit` (round 2 removes unreachable branches after grok-4.7-low block)
 
 **Base (from pickup):** `6d771bebeff0eec2d79092c1aee80a58a5092cfd`
+
+## Fix round (grok-4.7-low)
+
+Removed two unreachable guards: `cap_codename_slug` empty-`parts` return (all-hyphen slugs already exit on `strip("-")`), and `derive_codename_with_collision_suffix` empty-`slug` return after a non-empty `title_to_codename` result. Behaviour and tests unchanged.
+
+## Probes
+
+- `cap_codename_slug` with hyphen-only input (`"---"`, `"----"`) — returns `""` at the post-`strip("-")` guard; never reaches word split.
+- `cap_codename_slug` with non-empty slug and `max_chars >= 1` — never returns `""` (single-token truncation keeps at least one character when input token is non-empty).
+- `derive_codename_with_collision_suffix` after `if not uncapped` — capped slug is non-empty for every non-empty `title_to_codename` output (same invariant as probe above).
+- `derived_codename_from_title` — only calls `cap_codename_slug` after `title_to_codename`; empty title still yields `""` via early cap on empty input, no separate empty-slug guard needed.
+- `_with_suffix` collision path — `max_base` is at least 59 for 4-char suffixes; non-empty `uncapped` keeps `base` non-empty under the same cap invariant.
+- `codename_was_derived` / `maybe_sync_codename_from_title` — use `cap_codename_slug` only on non-empty uncapped slugs or empty titles; no duplicate empty-capped checks added elsewhere.
+- Reviewer’s targeted pytest list (77 tests) — all pass after removal.
 
 ## Acceptance
 
