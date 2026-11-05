@@ -121,14 +121,31 @@ M15.11 behaviour (`models roster`, profile check, `--spread`, coordinator line) 
 - Escaping path — still `profile_rel_problem` first (existing test).
 - `ref is None` outside git — still falls through to `profile_for_entry` before `full_sha` (no `sha is None` guard).
 
+## Fix round 3 (gpt-6.1-sol-low at `358f3b04`)
+
+- **R1:** Repo-relative `profile:` values must use forward slashes. `profile_value_form_problem` rejects any
+  `\` in the raw value with the A2 `invalid profile: …, accepted form …` diagnostic (canonical path from
+  `accepted_form`); checks and loaders no longer normalize backslashes into a passing form check.
+
+## Probes
+
+- Backslash `profile:` with canonical slash-separated file present — `validate` warns with accepted form, not
+  `cannot read` (new test).
+- Same value on worktree dry-run plan — `invalid profile` on the leaf, not `cannot read` (new test).
+- Forward-slash well-formed paths — unchanged (`profile_value_problem` None when file present; existing tests).
+- Committed plan with missing well-formed path — still A2 diagnostic (existing test).
+- `pinned_profile_for_entry` — uses `profile_value_form_problem` / `profile_value_problem` only; no raw-path load
+  after normalized form pass.
+
 ## Added
 
 - `specy_road/roster_generate.py`: `ROSTER_FAMILY` (profile family → roster family, from the profiles README);
   `RosterError`; `shipped_profiles`; `profile_id`; `find_profile` (refusal with the nearest ids); `harness_for`;
   `roster_entries`; `format_entries`; `missing_profile_files`; `_roster_span` (finds where the roster block ends);
   `write_entries` (text insert with a re-parse guard, so comments survive). Reason: A1.
-- `specy_road/roster_profile_check.py`: `GENERIC_FORM`; `accepted_form`; `profile_value_form_problem`;
-  `profile_value_problem`; `roster_profile_problems`; `report_roster_profiles`. Reason: A2 and fix-round R1.
+- `specy_road/roster_profile_check.py`: `GENERIC_FORM`; `accepted_form`; `profile_value_form_problem` (forward-slash
+  policy, rejects `\` in raw values); `profile_value_problem`; `roster_profile_problems`; `report_roster_profiles`.
+  Reason: A2 and fix rounds.
 - `specy_road/orchestrate_assign.py`: moved code plus `Assignment.coordinator_is_session`; `Candidate.local` and
   `[local]` in `describe` (M15.10 merge). New branches:
   - the `--spread` pick in `_pick_executor` (`spread_index`);
