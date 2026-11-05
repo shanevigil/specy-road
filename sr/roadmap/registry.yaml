@@ -41,6 +41,8 @@ entries:
       - docs/orchestration-chores.md
       - specy_road/templates/project/
       - tests/
+      - specy_road/bundled_scripts/chore_garden.py
+      - specy_road/agent_ignores.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -57,6 +59,8 @@ entries:
       - docs/orchestration-review.md
       - docs/design-notes/review-loop-rca.md
       - tests/
+      - specy_road/review_deferral.py
+      - specy_road/bundled_scripts/review_defer.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -66,6 +70,54 @@ entries:
     touch_zones:
       - specy_road/version_skew.py
       - specy_road/bundled_scripts/doctor.py
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: refresh-profiles-installs-only-the-profiles-the-roster-names-and-suggests-the-alias-for-a-near-miss
+    node_id: M13.5
+    branch: feature/rm-refresh-profiles-installs-only-the-profiles-the-roster-names-and-suggests-the-alias-for-a-near-miss
+    touch_zones:
+      - specy_road/bundled_scripts/refresh_profiles.py
+      - specy_road/model_profiles.py
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end
+    node_id: M13.7
+    branch: feature/rm-clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end
+    touch_zones:
+      - specy_road/bundled_scripts/refresh_stubs.py
+      - specy_road/agent_ignores.py
+      - specy_road/bundled_scripts/session_cli.py
+      - tests/
+      - specy_road/bundled_scripts/refresh_stubs_report.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates
+    node_id: M13.3
+    branch: feature/rm-a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates
+    touch_zones:
+      - specy_road/agents_md_block.py
+      - specy_road/templates/specyrd/agents-md-block.md
+      - specy_road/templates/specyrd/claude-md-block.md
+      - suggested_prompts/bootstrap-agents-md.md
+      - docs/install-and-usage.md
+      - tests/
+      - specy_road/agents_md_report.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: safe-release-candidate-install-recipe-pipx-and-uv-tool-upgrades-and-checking-which-binary-is-on-path
+    node_id: M13.6
+    branch: feature/rm-safe-release-candidate-install-recipe-pipx-and-uv-tool-upgrades-and-checking-which-binary-is-on-path
+    touch_zones:
+      - docs/install-and-usage.md
+      - docs/release-runbook.md
+      - docs/supply-chain-security.md
+      - README.md
       - tests/
     started: '2026-11-04'
     owner: savigil
