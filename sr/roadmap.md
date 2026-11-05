@@ -261,6 +261,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.33` | A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed | task | Agentic-led | Not Started |
 | `M15.34` | The executor prompt states the test rules that the reviewer's excess checklist enforces | task | Agentic-led | Not Started |
 | `M15.35` | The review packet never lists .git or a path under it as an uncommitted reference | task | Agentic-led | Not Started |
+| `M15.36` | Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode | task | Agentic-led | Not Started |
 | `M16` | lean core: harden and optimize code and docs, all delivered functionality kept | phase | — | Not Started |
 | `M16.0` | Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs | task | Agentic-led | Not Started |
 | `M16.1` | Parity harness: a review-gate decision table covering every review policy | task | Agentic-led | Not Started |

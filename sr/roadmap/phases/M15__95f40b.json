@@ -91,6 +91,33 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "worker delegate and worker message (resume) for a claude-code roster entry run the same subscription/auth check M15.2 adds for reviewers before any worker record, lease or log file is written: a launch that would run in bare mode with neither ANTHROPIC_API_KEY nor an apiKeyHelper is refused with one line naming the fix (set an API key, or use the entry's subscription login without bare mode)",
+        "A worker's claude -p launch never relies on Claude Code's default mode: the adapter passes an explicit mode chosen from the entry (launch_mode / billing_route, as M15.2 decides for reviewers), so a future Claude Code default of --bare for -p does not change which account a worker uses; tests pin the argv for a subscription entry (no --bare) and an API-key entry",
+        "Tests: subscription entry -> launch argv has no --bare; API-key entry -> bare allowed; forced bare with no key -> refusal and no new file under sr/work/.workers; resume follows the same rule. Out of scope: reviewer launches (M15.2) and other harnesses"
+      ],
+      "codename": "worker-launch-never-depends-on-claude-default-mode",
+      "dependencies": [
+        "4dafa22a-727f-4d5e-b954-f956227c150a"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.36",
+      "node_key": "858543e9-c22b-4224-ac40-964bfef8d0ec",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.36_worker-launch-never-depends-on-claude-default-mode_858543e9-c22b-4224-ac40-964bfef8d0ec.md",
+      "sibling_order": 36,
+      "status": "Not Started",
+      "title": "Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode",
+      "touch_zones": [
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/worker_ops_message.py",
+        "specy_road/reviewer_auth.py",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
