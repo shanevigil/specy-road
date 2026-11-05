@@ -17,22 +17,8 @@ from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import review_cli, worker_cli, worker_cli_render as wcr
 
+from tests.worker_cli_helpers import run_worker_cli, wait_for_worker
 from tests.worker_repo_helpers import FAKE, make_worker_repo, run_fake_harness_turn, worker_roster  # noqa: F401
-
-
-def run_worker_cli(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        worker_cli.main(list(args))
-    return e.value.code or 0
-
-
-def wait_for_worker(repo: Path, wid: str, timeout: float = 10) -> ws.WorkerRecord:
-    for _ in range(int(timeout * 10)):
-        rec = ws.load_record(repo, wid)
-        if rec.pid is None:
-            return rec
-        time.sleep(0.1)
-    raise AssertionError("worker did not finish")
 
 
 def test_delegate_returns_at_once_and_is_idempotent(tmp_path: Path, capsys) -> None:
