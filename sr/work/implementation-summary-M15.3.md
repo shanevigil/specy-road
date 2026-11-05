@@ -86,6 +86,15 @@ both sides are kept:
 - Verified: the M15.3 test files plus every test file either merge touched (34 files) pass, ruff, file-limits,
   and the full suite.
 
+## Third merge with WIP
+
+`specy-road ready` then reported WIP 25 commits ahead with a trial-merge conflict, so WIP was merged once more.
+WIP's new specy-road-filled record field `sibling_heads` conflicted with `harness_model`/`model_mismatch` in
+`review_answer.FILLED_BY_SPECY_ROAD`, the record schema and the output-schema test; all three fields are kept in
+each. The `harness_model` schema description now says it comes from init or result events and, on a mismatch, is
+the reported model that differs. Verified: 35 test files (M15.3's plus every test file the merges touched), 580
+passed; full suite 5028 passed; ruff; file-limits.
+
 ## Probes
 
 - Unknown API id with a `channels.cli`, run and dry run: refused before launch, with no process and no run record (tested).
