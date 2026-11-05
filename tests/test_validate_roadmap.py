@@ -116,7 +116,7 @@ def test_warn_stale_parent_status_only_on_a_complete_disagreement(
     assert bool(err) is warned
 
 
-def test_cycle_check_detects_cycle() -> None:
+def test_cycle_check_detects_cycle(capsys: pytest.CaptureFixture[str]) -> None:
     k1 = "10000000-0000-4000-8000-000000000001"
     k2 = "20000000-0000-4000-8000-000000000002"
     nodes = [
@@ -125,6 +125,7 @@ def test_cycle_check_detects_cycle() -> None:
     ]
     with pytest.raises(SystemExit):
         vr.cycle_check(nodes)
+    assert capsys.readouterr().err == "roadmap: dependency cycle involving M1\n"
 
 
 def test_validate_codenames_duplicate() -> None:

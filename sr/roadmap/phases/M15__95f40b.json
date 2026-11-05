@@ -39,13 +39,14 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.33_refused-review-record-leaves-a-trace_677e99a0-3221-4d71-8874-ac9f8b9d5fa1.md",
       "sibling_order": 22,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed",
       "touch_zones": [
         "specy_road/review_rejected.py",
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/review_run_status.py",
-        "tests/"
+        "tests/",
+        "specy_road/orphaned_claims.py"
       ],
       "type": "task"
     },

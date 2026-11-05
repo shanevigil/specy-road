@@ -178,6 +178,33 @@ def test_api_patch_node_rejects_disallowed_key(api_client: TestClient) -> None:
     assert r.status_code == 400
 
 
+@pytest.mark.parametrize(
+    "node_id, deps, detail",
+    [
+        (   # M0.2 waits on its own group M0, which completes only when M0.2 does.
+            "M0.2",
+            "81df7683-5e2f-5c97-b96c-fc9df4fac123 cd44fef1-715a-5b8d-b03f-1752a61a47cc",
+            "roadmap: dependency cycle: M0 -> M0.2 -> M0\n"
+            "  M0 -> M0.2: parent-child rollup: M0 completes when its child M0.2 does",
+        ),
+        ("M0", "e7fcdb23-5d23-5bbf-a9b5-aaa0140ff208", "roadmap: inherited self-edge M0.2 via M0"),
+    ],
+)
+def test_api_patch_dependencies_refuses_inherited_cycle(
+    api_client: TestClient, dogfood_copy: Path, node_id: str, deps: str, detail: str
+) -> None:
+    roadmap = dogfood_copy / "roadmap"
+    before = {p: p.read_bytes() for p in roadmap.rglob("*") if p.is_file()}
+    r = api_client.patch(
+        f"/api/nodes/{node_id}",
+        headers={**_mutation_headers(api_client), "Content-Type": "application/json"},
+        json={"pairs": [{"key": "dependencies", "value": deps}]},
+    )
+    assert r.status_code == 400
+    assert r.json() == {"detail": detail}
+    assert {p: p.read_bytes() for p in roadmap.rglob("*") if p.is_file()} == before
+
+
 def test_api_outline_reorder_rejects_incomplete_child_set(
     api_client: TestClient,
 ) -> None:

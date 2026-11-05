@@ -31,7 +31,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.27` worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length `cursor-usage-sums-segments-and-flags-undercounts` — task — **Complete**
   - `M15.31` A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported `delegated-reviewer-always-runs-a-named-model` — task — **Not Started**
   - `M15.32` An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure `archived-summary-exempt-from-file-limits` — task — **Complete**
-  - `M15.33` A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed `refused-review-record-leaves-a-trace` — task — **Not Started**
+  - `M15.33` A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed `refused-review-record-leaves-a-trace` — task — **Complete**
   - `M15.34` The executor prompt states the test rules that the reviewer's excess checklist enforces `executor-prompt-states-the-test-rules` — task — **Complete**
   - `M15.35` The review packet never lists .git or a path under it as an uncommitted reference `packet-never-lists-dot-git-as-uncommitted` — task — **Complete**
   - `M15.36` Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode `worker-launch-never-depends-on-claude-default-mode` — task — **Not Started**
@@ -108,14 +108,22 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M16.65` End-to-end pass on the toolkit and a feedback-and-fix round before 0.3.1 `e2e-pass-and-fix-round` — task — **Not Started**
   - `M16.66` Gate: ready to tag 0.3.1 `ready-to-tag-0-3-1` — gate — **Not Started**
   - `M16.67` move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit `move-node-keeps-other-ids` — task — **Complete**
-  - `M16.68` finish resolves roadmap chunk conflicts the branch only inherited `finish-resolves-inherited-roadmap-conflicts` — task — **Not Started**
+  - `M16.68` finish resolves roadmap chunk conflicts the branch only inherited `finish-resolves-inherited-roadmap-conflicts` — task — **Complete**
   - `M16.69` Cursor workers launch sandboxed without --force unless the roster opts in `cursor-workers-no-force-by-default` — task — **Not Started**
-  - `M16.70` move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree `move-node-chosen-id` — task — **Not Started**
-  - `M16.71` CLI indent, outdent and group-nodes re-level siblings in one transaction validated once `outline-group-cli` — task — **Not Started**
-  - `M16.72` Opt-in rewrite of prose id references after a move, and a standalone rename-refs `rewrite-id-refs` — task — **Not Started**
-  - `M16.73` remove-node deletes an empty never-started node and names every blocker otherwise `remove-node` — task — **Not Started**
-  - `M16.74` apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once `apply-restructure-ops` — task — **Not Started**
-  - `M16.75` validate and add-dependency catch cycles made through inherited group dependencies `inherited-dep-cycles` — task — **Not Started**
+  - `M16.70` Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships `release-docs-0-3-1` — task — **Not Started**
+- `M21` rc4 stabilization: fixes filed after the themed-milestone rule `rc4-stabilization` — phase — **Not Started**
+  - `M21.1` move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree `move-node-chosen-id` — task — **Not Started**
+  - `M21.2` CLI indent, outdent and group-nodes re-level siblings in one transaction validated once `outline-group-cli` — task — **Not Started**
+  - `M21.3` Opt-in rewrite of prose id references after a move, and a standalone rename-refs `rewrite-id-refs` — task — **Not Started**
+  - `M21.4` remove-node deletes an empty never-started node and names every blocker otherwise `remove-node` — task — **Not Started**
+  - `M21.5` apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once `apply-restructure-ops` — task — **Not Started**
+  - `M21.6` validate and add-dependency catch cycles made through inherited group dependencies `inherited-dep-cycles` — task — **Complete**
+  - `M21.7` Executors cannot change the files that steer harnesses and specy-road unnoticed `steering-file-guard` — task — **Not Started**
+  - `M21.8` The queued-message worker test waits for the idle state, not just the second completion event `queue-message-test-waits-for-idle` — task — **Complete**
+  - `M21.9` A freshly initialized project passes its own checks `init-passes-own-checks` — task — **Not Started**
+  - `M21.10` doctor works in a repo with no remote `doctor-without-a-remote` — task — **Not Started**
+  - `M21.11` Help text names installed commands `help-names-installed-commands` — task — **Not Started**
+  - `M21.12` A review record is refused for joined observations only when one of them names a defect `joined-observations-need-a-defect` — task — **Not Started**
 - `M17` 0.3.2: PM GUI shows orchestration and worktree state `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface `pm-gui-orchestration-plan` — gate — **Not Started**
 - `M18` Orchestration and review-loop features (after 0.3.1) `orch-review-loop` — phase — **Not Started**
@@ -137,6 +145,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M18.16` A review that stops before filing leaves a trace: every reviewer channel opens a RUN record, and review list shows started but not filed `every-reviewer-channel-leaves-a-run-record` — task — **Not Started**
   - `M18.17` Under delta review, one approval per round still checks the whole leaf against the merge base on a fixed checklist `one-full-leaf-checklist-review-per-round` — task — **Not Started**
   - `M18.18` Plan review after planning, and a staleness check before pickup `plan-review-and-pickup-staleness` — task — **Not Started**
+  - `M18.19` orchestrate plan and review delegate apply reviewer preferences from the decisions ledger and say when they do `plan-applies-preferences` — task — **Not Started**
 - `M19` Adopter-project features: upgrade, agent-file layering, planning hygiene, project tooling (after 0.3.1) `adopter-features` — phase — **Not Started**
   - `M19.1` Configurable code-analysis tools `analysis-tools` — task — **Not Started**
   - `M19.2` Research reminders leave validate `research-due-in-doctor` — task — **Not Started**
@@ -151,6 +160,11 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M19.11` Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored `chores-at-parity-with-leaves` — task — **Not Started**
   - `M19.12` List shipped nodes with no result after N days `list-shipped-nodes-with-no-result-after-n-days` — milestone — **Not Started**
   - `M19.13` Store a pointer and a human verdict for outcomes, never the metric itself `store-a-pointer-and-a-human-verdict-for-outcomes-never-the-metric-itself` — milestone — **Not Started**
+  - `M19.14` Human decisions get recorded and shown: agent rule, digest, review status and decisions add --help `decisions-discoverable` — task — **Not Started**
+  - `M19.15` Decision ids take a project prefix (default DEC-) and warn when a new id already appears in governance files `decision-id-prefix` — task — **Not Started**
+  - `M19.16` validate notices sheet acceptance that drifted from the node, and gate dependencies the gate never names `sheet-acceptance-drift` — task — **Not Started**
+  - `M19.17` validate notices governance files that require a field validate strips, and names the replacement `governance-deprecated-fields` — task — **Not Started**
+  - `M19.18` A ratified scope boundary in the decisions ledger, with validate and digest notices for phases beyond it `scope-boundary` — task — **Not Started**
 - `M20` Agent safety and governance posture (after 0.3.1) `agent-safety-posture` — phase — **Not Started**
   - `M20.1` Posture advisor: plan the M20 leaves from the research `plan-m20-from-research` — task — **Not Started**
   - `M20.2` Probe each reviewer harness for instruction-file leakage into fresh sessions `fresh-reviewer-leak-probe` — task — **Not Started**
@@ -167,6 +181,7 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-05 `M16.60` stopped depending on `M16.31 Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra`
 - 2026-11-05 `M15.30` stopped depending on `2535829e-6a0d-40e3-aa42-9b0506bb9fe9` (no longer live)
 - 2026-11-05 `M16.18` stopped depending on `M16.47 One check_assignment decides eligibility for every launch and for the gate`
 - 2026-11-05 `M16.12` stopped depending on `M16.7 Commands run in the CLI's process: no python -m re-launch, no cwd globals`
@@ -191,8 +206,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M16.18` stopped depending on `M16.15 Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI`
 - 2026-11-05 `M16.32` stopped depending on `M16.13 review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session`
 - 2026-11-05 `M16.32` stopped depending on `M16.30 AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer`
-- 2026-11-05 `M16.4` stopped depending on `M16.2 Baseline metrics, a coverage floor in CI, and the M16 working rules written down`
-- _…and 34 earlier — `specy-road history --json`_
+- _…and 35 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -218,15 +232,15 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
-- `M15.33` on `feature/rm-refused-review-record-leaves-a-trace` since 2026-11-05
 - `M15.36` on `feature/rm-worker-launch-never-depends-on-claude-default-mode` since 2026-11-05
-- `M16.68` on `feature/rm-finish-resolves-inherited-roadmap-conflicts` since 2026-11-05
 - `M16.69` on `feature/rm-cursor-workers-no-force-by-default` since 2026-11-05
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
+- `M21.1` on `feature/rm-move-node-chosen-id` since 2026-11-05
+- `M21.7` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
 
@@ -234,11 +248,12 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 29 | 18 | 6.18 | 91% | 15 | 3 |
-| `specy_road` **flagged** | 47 | 26 | 5.10 | 81% | 23 | 5 |
-| `tests` **flagged** | 50 | 29 | 5.10 | 81% | 23 | 5 |
+| `docs` **flagged** | 28 | 16 | 5.75 | 83% | 15 | 3 |
+| `planning` **flagged** | 1 | 0 | 3.00 | 100% | 0 | 0 |
+| `specy_road` **flagged** | 47 | 23 | 4.88 | 79% | 23 | 6 |
+| `tests` **flagged** | 50 | 25 | 4.80 | 80% | 23 | 6 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
-| `README.md` | 2 | 2 | — | — | 0 | 0 |
+| `README.md` | 1 | 1 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
 

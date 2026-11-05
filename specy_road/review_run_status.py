@@ -12,8 +12,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from specy_road.review_files import list_reviews
-from specy_road.review_target import same_commit
+from specy_road.review_files import list_reviews, reviews_dir
+from specy_road.review_rejected import REJECTED_PREFIX, rejected_state, unreadable_rejected_lines
+from specy_road.review_target import ReviewTargetError, resolve_target, same_commit
 
 
 def _run_time(run: dict[str, Any]) -> float | None:
@@ -40,3 +41,67 @@ def superseded_by(repo_root: Path, node_id: str, run: dict[str, Any]) -> str | N
                 and int((rec.on_disk or rec.path).stat().st_mtime) >= int(since)):
             return rec.path.name
     return None
+
+
+def refused_text(age: str, reason: str) -> str:
+    return f"record refused {age} ago: {reason}"
+
+
+def refused_by_model(repo_root: Path, node_id: str, commit: str | None) -> dict[str, dict[str, str]]:
+    """Each model with an active ``REJECTED-<model>.md`` at ``commit``: ``age`` and ``reason`` (first line)."""
+    if not commit:
+        return {}
+    reviews = reviews_dir(repo_root, node_id)
+    if not reviews.is_dir():
+        return {}
+    out: dict[str, dict[str, str]] = {}
+    for path in sorted(reviews.glob(f"{REJECTED_PREFIX}*.md")):
+        model = path.name[len(REJECTED_PREFIX): -len(".md")]
+        state = rejected_state(reviews, model, commit, repo_root)
+        if state:
+            age, reason = state
+            out[model] = {"age": age, "reason": reason}
+    return out
+
+
+def extend_handoff_refused(st: dict[str, Any], lines: list[str]) -> None:
+    for unreadable in st.get("refused_unreadable") or []:
+        lines.append(f"  {unreadable}")
+    fams = {r["model"]: r["family"] for r in st.get("reviewer_eligibility") or []}
+    for model, info in sorted((st.get("refused") or {}).items()):
+        fam = fams.get(model)
+        pre = f"{model} ({fam}): " if fam else f"{model}: "
+        lines.append(f"  {pre}{refused_text(info['age'], info['reason'])}")
+
+
+def print_refused_list(repo_root: Path, node_id: str, commit: str | None) -> None:
+    for model, info in refused_by_model(repo_root, node_id, commit).items():
+        print(f"REJECTED-{model}.md: {refused_text(info['age'], info['reason'])}")
+
+
+def review_list_payload(repo_root: Path, node_id: str, ref: str | None) -> dict[str, Any]:
+    """Machine-readable ``review list`` body, including the ``refused`` map (M15.33 A2)."""
+    from specy_road.review_delegate import run_states
+
+    try:
+        t = resolve_target(repo_root, node_id, ref)
+    except ReviewTargetError as e:
+        if not str(e).startswith("no registry claim"):
+            return {"node_id": node_id, "error": str(e)}
+        t = None
+    commit = t.commit if t else None
+    reviews = reviews_dir(repo_root, node_id)
+    return {
+        "node_id": node_id,
+        "ref": t.ref if t else None,
+        "commit": commit,
+        "reviews": [
+            {"file": r.path.name, "model": r.data.get("model"), "verdict": r.data.get("verdict"),
+             "family": r.data.get("family"), "commit": r.data.get("commit"), "ok": r.ok,
+             "stale": t is not None and r.ok and not same_commit(repo_root, r.data.get("commit"), t.commit)}
+            for r in list_reviews(repo_root, node_id)
+        ],
+        "refused": refused_by_model(repo_root, node_id, commit),
+        "refused_unreadable": unreadable_rejected_lines(reviews),
+        "review_runs": run_states(repo_root, node_id, commit),
+    }
