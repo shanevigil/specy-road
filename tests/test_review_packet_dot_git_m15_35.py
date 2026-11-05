@@ -10,11 +10,6 @@ from specy_road.bundled_scripts import review_packet as rp
 from specy_road.bundled_scripts.review_packet_uncommitted_refs import UNCOMMITTED_REF_NOTE
 
 
-def _uncommitted_block(text: str) -> str:
-    start = "## Uncommitted references\n"
-    return text.split(start, 1)[1].split("\n## Changed paths\n", 1)[0]
-
-
 def test_packet_skips_dot_git_paths_named_in_the_brief(tmp_path: Path, capsys) -> None:
     """A1: `.git` and paths under it are never uncommitted references."""
     repo = make_review_repo(tmp_path)
@@ -29,7 +24,7 @@ def test_packet_skips_dot_git_paths_named_in_the_brief(tmp_path: Path, capsys) -
         "cite git and missing doc",
     )
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
-    block = _uncommitted_block(text)
+    block = text.split("## Uncommitted references\n", 1)[1].split("\n## Changed paths\n", 1)[0]
     assert UNCOMMITTED_REF_NOTE in block and "- `docs/x.md`" in block
     assert ".git" not in block
     err = capsys.readouterr().err

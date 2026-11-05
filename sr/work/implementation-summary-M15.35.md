@@ -1,6 +1,6 @@
 # Implementation summary: M15.35 — packet never lists `.git` as uncommitted
 
-Base `045de174`; code commit `40bea4d8`.
+Base `045de174`; code commit `40bea4d8`; summary at review `b784077b`.
 
 ## What changed, per acceptance item
 
@@ -13,6 +13,16 @@ Base `045de174`; code commit `40bea4d8`.
 
 Out of scope unchanged: M15.17 git-ignore skipping and path-extraction rules.
 
+## Fix round 1 (gpt-6.1-sol-low)
+
+Required change: remove the duplicated `_uncommitted_block` helper in `tests/test_review_packet_dot_git_m15_35.py` (same logic as `tests/test_review_packet.py:309`). Inlined the split expression at the single call site; assertions unchanged.
+
+## Probes
+
+- Class: a second copy of an existing test helper that owns the same packet-section parse — checked the new test file only had one call site; inlined there rather than importing from `test_review_packet`.
+- Other test modules under `tests/` for the same helper name on this branch — only the two files above; no further duplication added.
+- Import of a private helper from another test module — not used; grep of the new file confirms no cross-test import.
+
 ## Verification
 
 - `pytest tests/test_review_packet_dot_git_m15_35.py -q`
@@ -22,4 +32,4 @@ Out of scope unchanged: M15.17 git-ignore skipping and path-extraction rules.
 
 - Guard in `_named_repo_path` rejecting first segment `.git` — A1; stops the metadata directory from being treated as a named repo path.
 - `tests/test_review_packet_dot_git_m15_35.py` with `test_packet_skips_dot_git_paths_named_in_the_brief` — A1 acceptance scenario through `build_packet`.
-- Local `_uncommitted_block` helper in that test module — parses the packet section without growing `test_review_packet.py` past file limits.
+- none (fix round removed the local `_uncommitted_block` helper; section parse is inlined at the call site).
