@@ -309,6 +309,43 @@ worktree.
   `worktree_cli.py` is unchanged. A grep of both modules for `git_text|git_stdout|git_code|run(` shows
   only `git_run`'s `subprocess.run`.
 
+## Fix round 5: every unlanded commit listed (gpt-6.1-sol-low R1, after merging origin/WIP/improvements-0-3-1)
+
+**Class:** an output cap that hides evidence A1 requires. `foreign_refusal()` ran `git log --max-count=21`
+and showed only the first 20 commits, so on a branch with 22 commits its upstream lacked, the two oldest
+were never shown. The fix removes the cap. The refusal now lists the full `@{u}..HEAD` (or
+`HEAD --not --remotes`), and `_SHOWN` is gone.
+
+**Test:** `test_a_linked_worktree_of_another_repository_refuses_and_survives` is extended. The sibling
+now has 22 commits its upstream lacks (`private-01` … `private-21`, then "unpushed sibling work"). It
+asserts that every one, the oldest included, appears in the preview and in the `--yes` output. All of
+its previous assertions are unchanged.
+- Red/green: with `worktree_delete_set.py` at `9485371a`, that test fails and the other 12 pass.
+- With the fix, `python -m pytest -q -n 4 tests/test_worktree_prune.py tests/test_worktree_prune_foreign.py
+  tests/test_nested_repo_worktrees.py tests/test_nested_unpushed_report.py` gives 77 passed.
+- `specy-road file-limits` is OK and `ruff` is clean.
+
+`gpt-6.1-sol`'s block is on `60a4d9e8` (R1, admin directories). Fix round 4 (`405c5bae`) addressed it,
+and its regression and property tests are still in place and pass.
+
+### Fix round: probes
+
+- **Truncations in `worktree_prune.py`, `worktree_delete_set.py` and `worktree_cli.py`:** grepped for
+  `[:`, `[-`, `more`, `max-count` and `head`. The only hits left are `sha[:12]`, in `_lost_tips` and in
+  the merged target. They shorten a SHA but drop no entries; every lost tip is still listed.
+- **Other lists a refusal or the preview prints:**
+  - changed and untracked paths, both the leaf's and each nested repo's: all;
+  - stash subjects: all;
+  - lost tips: all;
+  - foreign directories in `remove()`'s message: all;
+  - unreadable directories: all;
+  - the CLI's ignored-file list: all, one per line.
+- **The no-upstream span (`HEAD --not --remotes`):** also uncapped now. A checkout with no remote lists
+  its whole history, which is exactly what removal would lose.
+- **Test imports:** no test in `tests/test_worktree_prune*.py` imports a `_`-prefixed name from another
+  test module. The only cross-module imports are `FEATURE`, `make_pickup_project`, `run_specy_road`,
+  `commit_file`, `git`, `COVERED`, `UNCOVERED` and `add_nested_repo`.
+
 ## Deletion-path audit (updated in fix rounds 2 and 3)
 
 `remove()` deletes, in order: each configured nested repo (`git -C <copy> worktree remove --force` for a
@@ -359,7 +396,7 @@ commits, hooks and config.
 - `PrunePlan.foreign` — records the foreign `.git` directories so `remove()` can refuse without re-scanning.
 - `_foreign_dirs()` — finds directories (and parents below the worktree) holding a `.git` among the paths removal deletes.
 - `_foreign_refusal()` — builds the refusal text: directory, repository, branch, unlanded commits, next step.
-- `_SHOWN` — caps listed commits at 20 so a checkout with no remote does not print its whole history.
+- `_SHOWN` — caps listed commits at 20 (removed in fix round 5: A1 needs every commit).
 - Guard in `remove()` — refuses when `plan.foreign` is non-empty, so a caller skipping the refusals deletes nothing.
 - Test `test_a_linked_worktree_of_another_repository_refuses_and_survives` — A2: refusal, commit listed, preview and `--yes` exit 1, directory survives.
 - Test `test_a_checkout_of_another_repository_refuses_with_commits_no_remote_holds` — the `.git`-directory and no-upstream path of A1.
@@ -397,4 +434,5 @@ commits, hooks and config.
 - Round 4 test helpers `_admin()` and `_shown()`.
 - Test `test_a_foreign_worktree_in_the_leafs_administrative_directory_refuses_and_survives`: R1.
 - Test `test_every_directory_of_every_kind_prune_deletes_is_scanned`: the property test across all six delete-set members.
+- Round 5: removed `_SHOWN`, `--max-count` and the "(and more)" slice. The linked-worktree test now has 22 unlanded commits and asserts every one is listed.
 - Mocks: none.
