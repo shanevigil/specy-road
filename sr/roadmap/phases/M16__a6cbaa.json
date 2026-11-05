@@ -276,7 +276,8 @@
         "specy_road/gui_app_routes_nodes.py",
         "specy_road/gui_app_models.py",
         "docs/roadmap-authoring.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/roadmap_outline_group.py"
       ],
       "type": "task"
     },

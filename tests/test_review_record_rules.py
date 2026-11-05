@@ -287,7 +287,19 @@ def test_record_refuses_an_approve_whose_explained_finding_joins_a_second_defect
     assert not (reviews_dir(repo, "M1.1") / "history").exists()
 
 
+JOIN_ROWS = [(f"{a}{j}{b}, not a defect because both are expected.",
+              f'says "crashes", two observations joined by "{j.strip()}": "{a}"{j}"{b}"'
+              if "crashes" in a + b else None)
+             for j in (", ", " and ", " but ", " while ", " whereas ", " although ", " though ", " yet ", " plus ")
+             for a, b in (("The cache is cold", "the lock is held"), ("The cache is cold", "the lock crashes"),
+                          ("The lock crashes", "the cache is cold"))]
+
+
 @pytest.mark.parametrize("text, why", [
+    *JOIN_ROWS,
+    ("Changed paths are tests/test_worker_queue_message.py plus sr/work/implementation-summary-M21.8.md, not a defect "
+     "because the summary is the leaf hand-off.", None),
+    ("The cache is cold, the lock is held plus the queue is empty, not a defect because all three are expected.", None),
     (CONJUNCTION_WORDING, 'says "valid input crashes", two observations joined by "and": '
      '"The cache miss is expected" and "valid input crashes"'),
     ("The cache miss is expected and valid input crashes; not a defect because the fallback handles it.",

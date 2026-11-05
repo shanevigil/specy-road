@@ -49,7 +49,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.9_init-passes-own-checks_3b906ab5-caac-4289-a629-606ea454e3b0.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A freshly initialized project passes its own checks",
       "touch_zones": [
         "specy_road/init_project.py",
@@ -129,7 +129,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.12_joined-observations-need-a-defect_50155a9c-8f7d-47e7-9fe3-ff77461243ac.md",
       "sibling_order": 11,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A review record is refused for joined observations only when one of them names a defect",
       "touch_zones": [
         "specy_road/review_record_rules.py",
