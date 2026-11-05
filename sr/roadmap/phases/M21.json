@@ -28,17 +28,19 @@
       "status": "Not Started",
       "title": "The queued-message worker test waits for the idle state, not just the second completion event",
       "touch_zones": [
-        "tests/test_worker_queue_message.py"
+        "tests/test_worker_queue_message.py",
+        "planning/M21.8_queue-message-test-waits-for-idle_9a94e9ff-94d7-4166-bb4a-fbe6ba5d6daf.md",
+        "sr/planning/M21.8_queue-message-test-waits-for-idle_9a94e9ff-94d7-4166-bb4a-fbe6ba5d6daf.md"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "specy-road init project (not --dry-run) also writes roadmap.md and roadmap-context.md from the scaffold graph by reusing generated_files.regenerate_generated_files, and lists both in its written paths; --dry-run lists them as would-write and writes nothing",
-        "The starter roster placeholder (id my-executor, no harness and no channels.cli) produces no 'matches no model profile' notice; a real unmatched roster id still gets the notice, and its 'closest profile' hint is shown only when the closest name passes a similarity cutoff, so an unrelated profile is never suggested",
-        "New test: init project into a tmp git repo, make the first commit, then run validate, validate --strict, export --check and digest --check in-process; all exit 0 and stderr has no notice or warning naming a scaffold file or the placeholder roster entry. The vision.md touch-zone notice is untracked-only (verified: it clears after the first commit), so the zone check is not changed",
-        "docs/install-and-usage.md new-project line states that init writes both generated files and that the first commit precedes validate; CHANGELOG [Unreleased] Fixed entry",
-        "Estimated net line change (informational, not a gate): package about +25, tests about +60, docs about +5"
+        "specy-road init project (not --dry-run) also writes roadmap.md and roadmap-context.md from the scaffold graph by reusing generated_files.regenerate_generated_files, and lists both in its written paths; --dry-run lists them as would-write and adds no path. tests/test_init_project_reports.py asserts the real run's new files equal the listed names for a flat layout and for project root sr/",
+        "The starter roster placeholder (id my-executor, no harness and no channels.cli; id kept in one constant that a test checks against the template) produces no 'matches no model profile' notice; the 'closest profile' hint is shown only when the maximum SequenceMatcher(None, roster_id, name).ratio() over that profile's api_id, file stem and aliases is >= 0.6, otherwise the hint names no profile and keeps 'add one or give the entry profile:'",
+        "tests/test_model_profile_aliases.py is table-driven through the public roster_profile_gaps, no private patch: my-executor non-launchable gives no gap; my-executor with a harness or channels.cli gives a gap; another non-launchable unmatched id gives a gap with launchable False (stdout notice); a launchable unmatched id gives launchable True (stderr warning); ratio below 0.6 omits the closest-profile hint; ratio 0.6 or higher includes it",
+        "New tests/test_init_project_first_run.py: init project into a tmp git repo, first commit, then validate, validate --strict, export --check and digest --check in-process each exit 0, and combined stdout and stderr contain no notice or warning naming my-executor or vision.md (the zone check is not changed: that notice is untracked-only). docs/install-and-usage.md new-project line says init writes both generated files and the first commit precedes validate; CHANGELOG [Unreleased] Fixed entry",
+        "Estimated net line change (informational, not a gate): package about +25, tests about +80, docs about +5"
       ],
       "codename": "init-passes-own-checks",
       "dependencies": [],
@@ -62,11 +64,11 @@
     },
     {
       "acceptance": [
-        "When the resolved remote (--remote, git-workflow.yaml, else origin) is not configured in the repo (git remote get-url fails), doctor skips git fetch and the remote-backed branch and registry sections, prints one informational line naming the missing remote and that those checks were skipped, still runs the install, checkout, stash and orphaned-claim reports, and exits 0 unless one of those fails",
-        "A configured remote whose fetch fails (bad URL, network) still exits 1 with the existing 'git fetch --prune <remote> failed' error; branches prune is unchanged",
-        "Table-driven test in tests/test_doctor.py over three cases: no remote (exit 0, the informational line, no fetch error), remote present (unchanged listing, exit 0), fetch failing for another reason (exit 1, existing error)",
+        "When git remote get-url fails for the resolved remote (--remote, then SPECY_ROAD_REMOTE, then roadmap/git-workflow.yaml, else origin, via resolve_integration_defaults as the fetch uses), doctor skips fetch and the branch, worktree and registry sections, prints one stdout line naming that remote and that those checks were skipped, still runs the install, checkout, stash and orphaned-claim reports, and exits 0 unless checkout is bad or --fix fails on a listed stash; --fix deletes only stashes it listed",
+        "A configured remote whose fetch fails still exits 1 with the existing 'git fetch --prune <remote> failed' error; branches prune is unchanged",
+        "Table-driven test in tests/test_doctor.py, local git only, no network, no private patch: no remote (exit 0, the skip line, no fetch error); no remote with a toolkit stash (listed and kept without --fix, removed with --fix --yes); no remote with an orphaned claim (printed, not released); no remote with a checkout error (exit 1); configured remote as a local bare repo (exit 0, no skip line); remote pointing at a missing local path (exit 1, existing fetch error)",
         "CHANGELOG [Unreleased] Fixed entry",
-        "Estimated net line change (informational, not a gate): package about +15, tests about +25"
+        "Estimated net line change (informational, not a gate): package about +15, tests about +60"
       ],
       "codename": "doctor-without-a-remote",
       "dependencies": [],
@@ -86,11 +88,11 @@
     },
     {
       "acceptance": [
-        "specy-road --help points add-node and scaffold-planning at 'specy-road <cmd> -h', never python specy_road/bundled_scripts/... paths; the gui line names the canonical 'specy-road init gui --install-gui' (the only form the init parser accepts) with pip install 'specy-road[gui-next]' as the alternative; no command or flag is removed",
+        "specy-road --help points add-node and scaffold-planning at 'specy-road <cmd> -h', never python specy_road/bundled_scripts/... paths; the gui line names 'specy-road init gui --install-gui' with pip install 'specy-road[gui-next]' as the alternative; no command or flag is removed",
         "Subcommand help 'usage:' lines read 'specy-road <cmd>' instead of the module file name (roadmap_crud.py, validate_roadmap.py, ...), set once in cli._run for every bundled entrypoint rather than per script",
         "Help text no longer cites a bare docs/<name>.md that pip installs lack: each is rewritten to the published URL with doc_links.link_toolkit_docs (top-level usage, apply, do-next-available-task --on-complete) or dropped",
-        "New tests/test_cli_help_text.py runs specy-road --help and '<cmd> -h' for every name in cli._known_commands() and fails on 'bundled_scripts/', on a usage line or 'python ...' naming a .py file, and on a bare docs/<name>.md outside doc_links.SHIPPED_DOCS; CHANGELOG [Unreleased] Fixed entry",
-        "Estimated net line change (informational, not a gate): package about +15, tests about +40"
+        "New tests/test_cli_help_text.py: specy-road --help plus '<cmd> -h' for every name in the public cli.registered_agent_command_names()['specy-road'] except version (orchestration as 'orchestration guard -h'); each row exits 0, its usage line starts with 'usage: specy-road', and it has no 'bundled_scripts/', no usage or 'python ...' line naming a .py file, no bare docs/<name>.md outside doc_links.SHIPPED_DOCS. Top-level help contains 'specy-road init gui --install-gui', \"pip install 'specy-road[gui-next]'\", 'specy-road add-node -h' and 'specy-road scaffold-planning -h' and not 'specy-road init --install-gui'; CHANGELOG [Unreleased] Fixed entry",
+        "Estimated net line change (informational, not a gate): package about +15, tests about +50"
       ],
       "codename": "help-names-installed-commands",
       "dependencies": [],
@@ -107,6 +109,30 @@
         "specy_road/bundled_scripts/roadmap_crud_argparse.py",
         "specy_road/bundled_scripts/do_next_task_args.py",
         "tests/test_cli_help_text.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "_second_observation in specy_road/review_record_rules.py returns a refusal only when at least one of the joined parts names a defect (_named_defect); two or more neutral observations joined by a comma or by and, but, while, whereas, although, though, yet or plus are accepted under one explanation; the docstring states this one rule",
+        "Table-driven rows in tests/test_review_record_rules.py: the two refused lines from the 2026-11-05 M21.8 review (neutral parts joined by plus) are accepted; 'X fails plus Y crashes' and 'X fails, Y crashes' under one explanation are still refused with the existing message naming the joining word; existing rows that refuse a defect-naming part keep passing; rows that only refused neutral joined parts are changed to expect acceptance and listed in the sheet",
+        "clause_problem's other rules are unchanged: an unexplained clause that names a defect is refused, and a reason that itself names a defect is refused; CHANGELOG.md [Unreleased] Fixed records the change",
+        "Estimated net line change (informational, not a gate): package about +2, tests about +20"
+      ],
+      "codename": "joined-observations-need-a-defect",
+      "dependencies": [],
+      "id": "M21.12",
+      "node_key": "50155a9c-8f7d-47e7-9fe3-ff77461243ac",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.12_joined-observations-need-a-defect_50155a9c-8f7d-47e7-9fe3-ff77461243ac.md",
+      "sibling_order": 11,
+      "status": "Not Started",
+      "title": "A review record is refused for joined observations only when one of them names a defect",
+      "touch_zones": [
+        "specy_road/review_record_rules.py",
+        "tests/test_review_record_rules.py",
+        "tests/test_review_friction_m15_17.py",
         "CHANGELOG.md"
       ],
       "type": "task"
