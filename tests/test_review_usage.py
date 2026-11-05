@@ -7,8 +7,16 @@ from pathlib import Path
 
 import pytest
 
+from tests.review_delegate_helpers import (
+    CAPACITY,
+    FAKE,
+    files_record_step,
+    make_delegate_repo,
+    run_review_delegate,
+    run_review_cli,
+    set_delegate_steps,
+)
 from tests.review_repo_helpers import commit_file, git
-from tests.test_review_delegate import CAPACITY, FAKE, _delegate, _files_record, _repo, _run, _steps
 
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import worker_cli
@@ -25,21 +33,21 @@ assert FAKE_USAGE.count("step.get") == FAKE.count("step.get") + 2
 
 def _round(repo: Path, notes: str, **result) -> dict:
     notes_step = {"path": str(reviews_dir(repo, "M1.1") / "notes-opus.md"), "text": notes}
-    return {**_files_record(repo), "notes": notes_step, "say": "reviewing", "result": result}
+    return {**files_record_step(repo), "notes": notes_step, "say": "reviewing", "result": result}
 
 
 @pytest.fixture()
 def two_rounds(tmp_path: Path) -> tuple[Path, str, str]:
-    repo, spec = _repo(tmp_path)
+    repo, spec = make_delegate_repo(tmp_path)
     (tmp_path / "fake.py").write_text(FAKE_USAGE)
     c1 = git(repo, "rev-parse", "HEAD")
-    _steps(repo, spec, _round(repo, "round one notes\n", usage={"input_tokens": 100, "output_tokens": 10},
+    set_delegate_steps(repo, spec, _round(repo, "round one notes\n", usage={"input_tokens": 100, "output_tokens": 10},
                               total_cost_usd=0.5, num_turns=3))
-    assert _delegate(repo) == 0
+    assert run_review_delegate(repo) == 0
     c2 = commit_file(repo, "src/a.py", "print('fixed')\n", "fix")
-    _steps(repo, spec, _round(repo, "round two notes\n", usage={"input_tokens": 200, "output_tokens": 20},
+    set_delegate_steps(repo, spec, _round(repo, "round two notes\n", usage={"input_tokens": 200, "output_tokens": 20},
                               total_cost_usd=0.25, num_turns=2))
-    assert _delegate(repo) == 0
+    assert run_review_delegate(repo) == 0
     return repo, c1, c2
 
 
@@ -63,7 +71,7 @@ def test_review_usage_lists_each_run_and_the_total(two_rounds, capsys) -> None:
     """A2: per run (model, round, commit) and a total, --json and text; '?' where the harness reported nothing."""
     repo, c1, c2 = two_rounds
     capsys.readouterr()
-    assert _run("review", "usage", "M1.1", "--json", "--repo-root", str(repo)) == 0
+    assert run_review_cli("review", "usage", "M1.1", "--json", "--repo-root", str(repo)) == 0
     data = json.loads(capsys.readouterr().out)
     assert [(r["model"], r["round"], r["commit"]) for r in data["runs"]] == [("opus", 1, c1), ("opus", 2, c2)]
     assert [(r["input_tokens"], r["output_tokens"], r["cost_usd"]) for r in data["runs"]] == [(100, 10, 0.5),
@@ -71,7 +79,7 @@ def test_review_usage_lists_each_run_and_the_total(two_rounds, capsys) -> None:
     t = data["total"]
     assert (t["runs"], t["turns"], t["input_tokens"], t["output_tokens"], t["cost_usd"]) == (2, 2, 300, 30, 0.75)
     assert t["reasoning_tokens"] is None
-    assert _run("review", "usage", "M1.1", "--repo-root", str(repo)) == 0
+    assert run_review_cli("review", "usage", "M1.1", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
     assert f"opus round 1 at {c1[:12]} (complete), 1 turn(s): in 100 (? cached), out 10, reasoning ?" in out
     assert "  total, 2 turn(s): in 300 (? cached), out 30, reasoning ?, $0.7500 est." in out
@@ -103,22 +111,22 @@ def test_worker_usage_adds_reviewers_to_the_node_total(two_rounds, capsys) -> No
 
 def test_notes_are_not_relabeled_when_a_later_run_writes_no_notes(tmp_path: Path) -> None:
     """A4/RC2: a capacity failure at a new commit must not archive the previous commit's notes under that run."""
-    repo, spec = _repo(tmp_path)
+    repo, spec = make_delegate_repo(tmp_path)
     (tmp_path / "fake.py").write_text(FAKE_USAGE)
     c1_notes = "Only commit-one notes\n"
-    _steps(repo, spec, _round(repo, c1_notes, usage={"input_tokens": 100, "output_tokens": 10}, total_cost_usd=0.5))
-    assert _delegate(repo) == 0
+    set_delegate_steps(repo, spec, _round(repo, c1_notes, usage={"input_tokens": 100, "output_tokens": 10}, total_cost_usd=0.5))
+    assert run_review_delegate(repo) == 0
     c1 = git(repo, "rev-parse", "HEAD")
     commit_file(repo, "src/a.py", "print('fixed')\n", "fix")
     c2 = git(repo, "rev-parse", "HEAD")
-    _steps(repo, spec, {"error": CAPACITY, "exit": 1})
-    assert _delegate(repo, "--retries", "0") == 1
+    set_delegate_steps(repo, spec, {"error": CAPACITY, "exit": 1})
+    assert run_review_delegate(repo, "--retries", "0") == 1
     notes_hist = reviews_dir(repo, "M1.1") / "history" / "notes"
     assert (notes_hist / f"notes-opus-{c1[:12]}-1.md").read_text() == c1_notes
     assert not list(notes_hist.glob(f"notes-opus-{c2[:12]}-*.md"))
-    _steps(repo, spec, _round(repo, "Commit-two retry notes\n", usage={"input_tokens": 50, "output_tokens": 5},
+    set_delegate_steps(repo, spec, _round(repo, "Commit-two retry notes\n", usage={"input_tokens": 50, "output_tokens": 5},
                               total_cost_usd=0.25))
-    assert _delegate(repo) == 0
+    assert run_review_delegate(repo) == 0
     assert (reviews_dir(repo, "M1.1") / "notes-opus.md").read_text() == "Commit-two retry notes\n"
     assert not any(p.read_text() == c1_notes for p in notes_hist.glob(f"notes-opus-{c2[:12]}-*.md"))
 
@@ -132,7 +140,7 @@ def test_a_removed_worktree_still_finds_its_projects_reviews(two_rounds) -> None
 
 
 def test_no_delegated_review_keeps_the_single_total_line(tmp_path: Path) -> None:
-    repo, _spec = _repo(tmp_path)
+    repo, _spec = make_delegate_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     lines = usage_lines(usage([(rec, [])]))
     assert lines[-1] == "  total, 0 turn(s): in ? (? cached), out ?, reasoning ?, $?"

@@ -72,3 +72,4 @@ Reviewer usage is visible: RUN files and notes kept per round, `specy-road revie
 - Test `::test_worker_usage_uses_its_repo_root_not_the_worktree`: `--repo-root` when the worktree names no project (A3).
 - Test `::test_no_delegated_review_keeps_the_single_total_line`: output unchanged without reviewer runs.
 - Mock `FAKE_USAGE` in that test file: the existing fake Claude harness, extended to print usage on its result line and to write notes during the run.
+- `tests/review_delegate_helpers.py`: public fake-harness and CLI helpers shared by delegate and usage tests (no imports of underscore names from test modules).
