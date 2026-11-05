@@ -54,6 +54,7 @@ entries:
       - tests/
       - specy_road/review_deferral.py
       - specy_road/bundled_scripts/review_defer.py
+      - specy_road/review_next_step.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
