@@ -197,7 +197,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M12.4.2` A tracked tech-debt ledger that planning can turn into leaves `a-tracked-tech-debt-ledger-that-planning-can-turn-into-leaves` — task — **Not Started**
     - `M12.4.3` Per-model review evidence: block rate and overturned approvals feed orchestrate plan `per-model-review-evidence-block-rate-and-overturned-approvals-feed-orchestrate-plan` — task — **Not Started**
 - `M13` rc3 adopter feedback: upgrade and adoption friction `rc3-adopter-feedback-upgrade-and-adoption-friction` — phase — **Not Started**
-  - `M13.1` Say which install is running and flag managed blocks an older version wrote `say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote` — task — **Not Started**
+  - `M13.1` Say which install is running and flag managed blocks an older version wrote `say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote` — task — **Complete**
   - `M13.2` upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap `upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap` — task — **Not Started**
   - `M13.3` A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates `a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates` — task — **Not Started**
   - `M13.4` A milestone held for its full review says so in validate, list-nodes and why-blocked `a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked` — task — **Not Started**
@@ -240,10 +240,11 @@ Do not pick these up.
 
 - `M12.1` on `feature/rm-a-review-fix-round-budget-that-defers-new-input-class-findings-to-a-follow-up-leaf` since 2026-11-04
 - `M12.3` on `feature/rm-scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves` since 2026-11-04
-- `M13.1` on `feature/rm-say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote` since 2026-11-04
 - `M13.3` on `feature/rm-a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates` since 2026-11-04
 - `M13.6` on `feature/rm-safe-release-candidate-install-recipe-pipx-and-uv-tool-upgrades-and-checking-which-binary-is-on-path` since 2026-11-04
 - `M13.7` on `feature/rm-clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end` since 2026-11-04
+- `M14.3` on `feature/rm-worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout` since 2026-11-04
+- `M14.4.1` on `feature/rm-per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip` since 2026-11-04
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
 ## Reaching the detail behind this

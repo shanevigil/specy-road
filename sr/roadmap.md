@@ -197,7 +197,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M12.4.2` | A tracked tech-debt ledger that planning can turn into leaves | task | Agentic-led | Not Started |
 | `M12.4.3` | Per-model review evidence: block rate and overturned approvals feed orchestrate plan | task | Agentic-led | Not Started |
 | `M13` | rc3 adopter feedback: upgrade and adoption friction | phase | — | Not Started |
-| `M13.1` | Say which install is running and flag managed blocks an older version wrote | task | Agentic-led | Not Started |
+| `M13.1` | Say which install is running and flag managed blocks an older version wrote | task | Agentic-led | Complete |
 | `M13.2` | upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap | task | Agentic-led | Not Started |
 | `M13.3` | A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates | task | Agentic-led | Not Started |
 | `M13.4` | A milestone held for its full review says so in validate, list-nodes and why-blocked | task | Agentic-led | Not Started |

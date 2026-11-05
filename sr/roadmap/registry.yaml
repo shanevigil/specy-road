@@ -51,16 +51,6 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote
-    node_id: M13.1
-    branch: feature/rm-say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote
-    touch_zones:
-      - specy_road/version_skew.py
-      - specy_road/bundled_scripts/doctor.py
-      - tests/
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end
     node_id: M13.7
     branch: feature/rm-clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end
