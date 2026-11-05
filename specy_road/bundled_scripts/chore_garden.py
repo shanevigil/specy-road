@@ -10,7 +10,7 @@ Each finding is one line, ``<class>: <path>:<line>: <detail>``, with git-root-re
 - ``ratchet-grew``: a ``policy.ratchet_paths`` baseline with lines added since the newest tag.
 
 :func:`open_chores` files each class as at most one leaf through the add-node write; nothing
-here edits code, docs or agent files. Each run is recorded in ``work/chores/garden.json``,
+here edits code, docs or agent files. Each run is recorded in ``work/chores/.garden.json``,
 which ``validate`` reads for ``policy.garden_cadence_days``.
 """
 
@@ -34,6 +34,7 @@ from specy_road.bundled_scripts.validate_stale_commands import (
 from specy_road.git_subprocess import git_text
 from specy_road.harness_instruction_files import RULES_MD
 from specy_road.integrity import _ratchet_findings, integration_ratchet_paths
+from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 from specy_road.orchestration_config import effective_config
 from specy_road.runtime_paths import git_root
 from specy_road.worker_state import WorkerError, _write_atomic
@@ -79,7 +80,7 @@ def stale_command_findings(root: Path) -> list[Finding]:
     return list(dict.fromkeys(   # a line naming one command twice is one finding
         Finding("stale-command", path.relative_to(checkout).as_posix(), lineno,
                 f"`{mention}` is not a command in specy-road {__version__}; {stale_command_advice(mention)}")
-        for path in dict.fromkeys([*docs, *agent_files(root)])
+        for path in dict.fromkeys([*docs, *agent_files(root), root / RULES_MD])   # validate's set, plus the rules
         for lineno, mention in file_unregistered_commands(path)))
 
 
@@ -143,6 +144,10 @@ def open_chores(root: Path, findings: list[Finding], under: str) -> list[str]:
     nodes = load_roadmap(root)["nodes"]
     if under not in {n["id"] for n in nodes}:
         raise WorkerError(f"--under {under}: no such node in the roadmap")
+    try:   # the lock add-node and brainstorm promotion honour
+        assert_pm_nodes_not_milestone_locked(nodes, under)
+    except ValueError as e:
+        raise WorkerError(f"--under {under}: {e} Pass another --under parent, or run after the milestone closes.") from e
     done: list[str] = []
     for cls, title in CLASSES.items():
         found = [f for f in findings if f.cls == cls]
@@ -167,7 +172,8 @@ def open_chores(root: Path, findings: list[Finding], under: str) -> list[str]:
 
 
 def record_path(root: Path) -> Path:
-    return chores_dir(root) / "garden.json"
+    """A dot-file: a chore slug starts with a letter or digit, so no chore record can be this file."""
+    return chores_dir(root) / ".garden.json"
 
 
 def garden(root: Path, under: str | None = None) -> dict:

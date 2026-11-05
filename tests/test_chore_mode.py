@@ -214,7 +214,7 @@ def test_garden_prints_one_line_per_finding_and_writes_nothing_tracked(tmp_path:
     assert run_chore_cli("chore", "garden", "--repo-root", str(repo)) == 0
     assert capsys.readouterr().out.splitlines() == _GARDEN_LINES
     assert git(repo, "status", "--porcelain", "--untracked-files=all") == ""   # the managed lines ignore the record
-    assert git(repo, "check-ignore", "work/chores/garden.json") == "work/chores/garden.json"
+    assert git(repo, "check-ignore", "work/chores/.garden.json") == "work/chores/.garden.json"
     clean = subprocess.run(dirty_check("", "M1.1"), shell=True, cwd=repo, capture_output=True, text=True, check=True)
     assert clean.stdout == ""                                             # delegate's clean-tree check passes
     assert json.loads(chore_garden.record_path(repo).read_text()) == {"last_run": date.today().isoformat()}
@@ -290,7 +290,49 @@ def test_garden_cadence_warns_when_due_and_names_the_command(tmp_path: Path, cap
     assert chore_garden.garden_due(repo, today) is None                  # the run reset the clock
 
 
-def test_garden_is_not_a_chore_slug(tmp_path: Path, capsys) -> None:
+def test_a_chore_named_garden_survives_a_garden_run(tmp_path: Path, capsys) -> None:
+    """R2: the run record is a dot-file, so ``chore garden`` never overwrites a chore's record."""
     repo = chore_repo(tmp_path)
-    assert run_chore_cli("chore", "start", "garden", "--task", "t", "--zone", "src", "--repo-root", str(repo)) == 1
-    assert "not 'garden'" in capsys.readouterr().err
+    chore = _start(repo, "garden", "--model", "opus")
+    assert run_chore_cli("chore", "garden", "--repo-root", str(repo)) == 0
+    assert chore_cli.load_chore(repo, "garden") == chore and chore_garden.record_path(repo).is_file()
+    capsys.readouterr()
+    assert run_worker_cli("worker", "delegate", "garden", "--json", "--repo-root", str(repo)) == 0
+    rec = wait_for_worker(repo, json.loads(capsys.readouterr().out)["worker_id"])
+    assert rec.node_id == "garden" and rec.state == "idle"
+    assert run_chore_cli("chore", "close", "garden", "--summary", "Garden chore done", "--repo-root", str(repo)) == 0
+    assert "Garden chore done" in (repo / "work" / "chores" / "garden.md").read_text()
+    assert ws.load_record(repo, rec.worker_id).state == "terminated"
+
+
+def test_garden_reports_stale_commands_in_the_managed_rules_file(tmp_path: Path, capsys) -> None:
+    """R1: ``.specyrd/AGENTS.md`` is in garden's stale-command set; validate's own set is unchanged."""
+    from specy_road.bundled_scripts.validate_stale_commands import agent_files  # noqa: PLC0415
+
+    repo = garden_repo(tmp_path)
+    commit_file(repo, ".specyrd/AGENTS.md", _RULES + "Run `specy-road nonexistent-garden-probe`.\n", "probe")
+    capsys.readouterr()
+    assert run_chore_cli("chore", "garden", "--json", "--repo-root", str(repo)) == 0
+    stale = [f for f in json.loads(capsys.readouterr().out)["findings"] if f["cls"] == "stale-command"]
+    assert {"cls": "stale-command", "path": ".specyrd/AGENTS.md", "line": 7,
+            "detail": f"`specy-road nonexistent-garden-probe` is not a command in specy-road {chore_garden.__version__}; "
+                      "see `specy-road --help`"} in stale
+    assert repo.resolve() / ".specyrd" / "AGENTS.md" not in agent_files(repo)
+
+
+@pytest.mark.parametrize("state", ["active", "pending_mr"])
+def test_open_chores_refuses_a_parent_in_a_locked_milestone(tmp_path: Path, capsys, state: str) -> None:
+    """R3: the milestone lock add-node honours; the graph and planning files stay as they were."""
+    repo = garden_repo(tmp_path)
+    chunk = repo / "roadmap" / "phases" / "M1.json"
+    doc = json.loads(chunk.read_text())
+    doc["nodes"][0]["milestone_execution"] = {"state": state, "rollup_branch": "feature/rm-thing",
+                                              "integration_branch": "dev", "remote": "origin"}
+    chunk.write_text(json.dumps(doc))
+    before = _roadmap_bytes(repo)
+    capsys.readouterr()
+    assert run_chore_cli("chore", "garden", "--open-chores", "--under", "M1.1", "--repo-root", str(repo)) == 1
+    err = capsys.readouterr().err
+    assert "error: --under M1.1: roadmap node 'M1.1' is inside milestone subtree 'M1.1'" in err
+    assert "Pass another --under parent, or run after the milestone closes." in err
+    assert _roadmap_bytes(repo) == before

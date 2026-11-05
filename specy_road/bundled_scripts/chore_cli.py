@@ -28,9 +28,8 @@ from specy_road.review_target import ReviewTarget
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worker_state import HARNESSES, WorkerError, _now, _write_atomic, events_since, list_records
 
-# Lower case, so never a node id (``M1.2``); not ``w-``, which names a worker id where a target is either;
-# not ``garden``, whose ``work/chores/garden.json`` is ``chore garden``'s run record.
-_SLUG = re.compile(r"^(?!w-)(?!garden$)[a-z0-9][a-z0-9-]*$")
+# Lower case, so never a node id (``M1.2``); not ``w-``, which names a worker id where a target is either.
+_SLUG = re.compile(r"^(?!w-)[a-z0-9][a-z0-9-]*$")
 
 
 def chores_dir(repo_root: Path) -> Path:
@@ -102,7 +101,7 @@ def chore_prompt(chore: dict[str, Any], role: str, model: str, repo_root: Path, 
 def start(repo_root: Path, slug: str, *, task: str, zones: list[str], review: bool = False,
           model: str | None = None, harness: str | None = None, worktree: Path | None = None) -> dict[str, Any]:
     if not _SLUG.match(slug):
-        raise WorkerError(f"{slug!r} is not a chore slug: lower-case letters, digits and '-', not starting with 'w-', not 'garden'")
+        raise WorkerError(f"{slug!r} is not a chore slug: lower-case letters, digits and '-', not starting with 'w-'")
     if not zones or any(_clean(z) is None for z in zones):   # reconcile drops these, and no zones means unguarded
         raise WorkerError(f"every --zone must name a path; got {zones!r}")
     if (chores_dir(repo_root) / f"{slug}.json").exists():

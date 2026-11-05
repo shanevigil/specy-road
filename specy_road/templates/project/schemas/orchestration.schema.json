@@ -133,7 +133,7 @@
         "garden_cadence_days": {
           "type": "integer",
           "minimum": 1,
-          "description": "When set, `specy-road validate` warns that gardening is due once more than this many days have passed since `specy-road chore garden` last ran (recorded in work/chores/garden.json), or when it never has. Unset: no warning."
+          "description": "When set, `specy-road validate` warns that gardening is due once more than this many days have passed since `specy-road chore garden` last ran (recorded in work/chores/.garden.json), or when it never has. Unset: no warning."
         },
         "ratchet_paths": {
           "type": "array",

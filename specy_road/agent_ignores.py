@@ -76,7 +76,7 @@ GITIGNORE_LINES = [
     ".specyrd/cache/",
     *SESSION_WORK_FILES,
     *RUNTIME_WORK_DIRS,
-    "work/chores/garden.json",   # `chore garden`'s run record; chore records beside it are left to the project
+    "work/chores/.garden.json",   # `chore garden`'s run record; chore records beside it are left to the project
     "work/brainstorm-*-prompt.md",
     "work/brainstorm-closed/*-prompt.md",
     "roadmap/orchestration.local.yaml",

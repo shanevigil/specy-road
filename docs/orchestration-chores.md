@@ -77,7 +77,7 @@ findings, because it is a report. It edits nothing tracked.
 
 | Class | What it reports |
 | --- | --- |
-| `stale-command` | A `specy-road` or `specyrd` command this version does not register, named in `docs/**/*.md`, `AGENTS.md`, `CLAUDE.md` (project and git roots) or `.specyrd/AGENTS.team.md`. It is the scanner `validate` runs on the agent files, over more files; it checks command names, not flags. |
+| `stale-command` | A `specy-road` or `specyrd` command this version does not register, named in `docs/**/*.md`, `AGENTS.md`, `CLAUDE.md` (project and git roots), `.specyrd/AGENTS.md` or `.specyrd/AGENTS.team.md`. It is the scanner `validate` runs on the agent files, over more files; it checks command names, not flags. |
 | `advisory-rule` | A provenance comment (`<!-- prevents: … \| enforced: advisory … \| ref: … -->`) in a managed agent file, or in the templates they are rendered from when those are in this checkout (rendering strips the comments): one line per rule nothing checks. |
 | `ratchet-grew` | A `policy.ratchet_paths` baseline with lines added since the newest tag (`git describe --tags --abbrev=0`), reported as `<path>: +N line(s) since <tag>`. With no tag the scan reports nothing and says so once on stderr. |
 
@@ -87,7 +87,8 @@ example `Garden: stale command mentions`), codename `garden-<class>`, one
 acceptance line per finding path (the first 10, then a count of the rest) and
 the finding paths as touch zones. While a leaf with that codename is not
 Complete, a second run adds nothing for its class and prints its id; once it is
-Complete, the next run adds `garden-<class>-2`. The leaves are picked up,
+Complete, the next run adds `garden-<class>-2`. A parent inside a milestone whose execution is `active` or
+`pending_mr` is refused, as `add-node` refuses it. The leaves are picked up,
 delegated and reviewed like any other; gardening never fixes a finding itself.
 
 ### Cadence
@@ -98,7 +99,7 @@ policy:
   garden_cadence_days: 14
 ```
 
-Each run records its date in `work/chores/garden.json`, which the managed
+Each run records its date in `work/chores/.garden.json`, which the managed
 `.gitignore` block ignores (`specy-road refresh-stubs` adds the line to an older block). With `policy.garden_cadence_days` set, `specy-road validate`
 warns "gardening due: last run <date>, every N days; run `specy-road chore garden`"
 once more than N days have passed, or `never run` when there is no record. The
