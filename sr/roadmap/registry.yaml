@@ -131,7 +131,8 @@ entries:
       - tests/
     started: '2026-11-05'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-05T20:29:31+00:00'
   - codename: refused-review-record-leaves-a-trace
     node_id: M15.33
     branch: feature/rm-refused-review-record-leaves-a-trace
