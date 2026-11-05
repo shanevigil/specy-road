@@ -300,7 +300,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.30` | AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer | task | Agentic-led | Not Started |
 | `M16.31` | Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra | task | Agentic-led | Not Started |
 | `M16.32` | suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout | task | Agentic-led | Not Started |
-| `M16.33` | rc5 close: lean metrics checked against the baseline and the sum of the leaf budgets | task | Mixed | Not Started |
+| `M16.33` | rc5 close: lean metrics measured against the baseline | task | Mixed | Not Started |
 | `M16.34` | Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf | task | Human-led | Not Started |
 | `M16.35` | Git queries and registry I/O go through one helper each | task | Agentic-led | Not Started |
 | `M16.36` | A shrink-only layering gate records the import cycles and package-to-entry-point imports | task | Agentic-led | Not Started |
@@ -330,5 +330,11 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.60` | Tests: five named properties replace the single-input tests they cover | task | Agentic-led | Not Started |
 | `M16.61` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |
 | `M16.62` | After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims | task | Agentic-led | Not Started |
+| `M16.63` | Roster entries split into core fields and a typed run: block, read in both forms | task | Agentic-led | Not Started |
+| `M16.64` | upgrade migrates rosters to core fields plus run: | task | Agentic-led | Not Started |
+| `M16.65` | End-to-end pass on the toolkit and a feedback-and-fix round before 0.3.1 | task | Human-led | Not Started |
+| `M16.66` | Gate: ready to tag 0.3.1 | gate | Human-led | Not Started |
+| `M17` | 0.3.2: PM GUI shows orchestration and worktree state | phase | Human-led | Not Started |
+| `M17.1` | 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface | gate | Human-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
