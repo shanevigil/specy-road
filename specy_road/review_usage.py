@@ -58,6 +58,16 @@ def _history_runs(hist: Path, model: str | None = None, *, delegate_only: bool =
     return out
 
 
+def _clear_nondelegate_artifacts(d: Path, model: str) -> None:
+    """Remove log and notes left by a non-delegate RUN so the next ``review delegate`` appends to a fresh log."""
+    log = d / f"RUN-{model}.log"
+    if log.is_file():
+        log.unlink()
+    notes = d / f"notes-{model}.md"
+    if notes.is_file():
+        notes.unlink()
+
+
 def archive_round(repo_root: Path, node_id: str, model: str) -> Path | None:
     """Keep the previous round's RUN json, log and notes under ``history/``; returns the archived json."""
     d = reviews_dir(repo_root, node_id)
@@ -66,6 +76,7 @@ def archive_round(repo_root: Path, node_id: str, model: str) -> Path | None:
         return None
     cur_run = _read_json(cur) or {}
     if not is_delegate_run(cur_run):
+        _clear_nondelegate_artifacts(d, model)
         return None
     hist = d / HISTORY_DIRNAME
     hist.mkdir(parents=True, exist_ok=True)

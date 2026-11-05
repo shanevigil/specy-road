@@ -175,6 +175,22 @@ def test_archive_round_skips_the_current_run_when_it_is_not_review_delegate(tmp_
     _write_prompt_cli_run(run_path(repo, "M1.1", "opus"), git(repo, "rev-parse", "HEAD"))
     assert archive_round(repo, "M1.1", "opus") is None
     assert not list((reviews_dir(repo, "M1.1") / "history").glob("RUN-opus*"))
+    assert not run_path(repo, "M1.1", "opus").with_suffix(".log").is_file()
+
+
+def test_delegate_after_prompt_cli_does_not_append_to_the_old_log(tmp_path: Path) -> None:
+    """A3: a ``prompt-cli`` log must not carry into the next ``review delegate`` run's usage."""
+    repo, spec = make_delegate_repo(tmp_path)
+    (tmp_path / "fake.py").write_text(FAKE_USAGE)
+    path = run_path(repo, "M1.1", "opus")
+    _write_prompt_cli_run(path, git(repo, "rev-parse", "HEAD"))
+    set_delegate_steps(repo, spec, _round(repo, "delegate notes\n", usage={"input_tokens": 10, "output_tokens": 1},
+                                          total_cost_usd=0.1))
+    assert run_review_delegate(repo) == 0
+    data = review_usage(repo, "M1.1")
+    assert len(data["runs"]) == 1 and data["runs"][0]["input_tokens"] == 10 and data["total"]["turns"] == 1
+    assert "900" not in path.with_suffix(".log").read_text()
+    assert not list((reviews_dir(repo, "M1.1") / "history").glob("RUN-opus*"))
 
 
 def test_a_removed_worktree_still_finds_its_projects_reviews(two_rounds) -> None:
