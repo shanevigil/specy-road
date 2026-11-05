@@ -70,28 +70,6 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: working-roster-in-one-command-and-validated-profiles
-    node_id: M15.11
-    branch: feature/rm-working-roster-in-one-command-and-validated-profiles
-    touch_zones:
-      - specy_road/bundled_scripts/models_cli.py
-      - specy_road/roster_generate.py
-      - specy_road/orchestration_pinned.py
-      - specy_road/orchestrate_plan.py
-      - specy_road/orchestrate_assign.py
-      - specy_road/bundled_scripts/orchestrate_cli.py
-      - specy_road/roster_profile_check.py
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - specy_road/templates/project/roadmap/orchestration.yaml
-      - docs/orchestration.md
-      - docs/orchestration-models.md
-      - docs/orchestration-workers.md
-      - docs/orchestration-roster.md
-      - docs/design-notes/model-aware-orchestration-proposal.md
-      - tests/
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend
     node_id: M14.10
     branch: feature/rm-escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend
