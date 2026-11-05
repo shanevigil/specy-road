@@ -31,15 +31,14 @@ from typing import Any
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.orchestration_config import substitute_for
 from specy_road.red_green import cmd_red_green
 from specy_road.review_files import (
-    REVIEW_LAUNCH_MODES, archive_review, executor_blocked_display_lines, latest_ready, list_ready,
+    REVIEW_LAUNCH_MODES, executor_blocked_display_lines, latest_ready, list_ready,
     list_reviews, node_ids_with_reviews, non_gating_verify_problems, render_front_matter,
-    review_path, reviews_root, round_span, write_review,
+    review_path, reviews_dir, reviews_root, round_span, write_review,
 )
-from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
-from specy_road.toolkit_version import stamp_review_toolkit_version
+from specy_road.review_gate import GateResult, evaluate_gate, trial_merge
+from specy_road.review_rejected import run_review_record
 from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states, gate_policy_summary
 from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
 from specy_road.review_ready_merge import add_ready_parser
@@ -48,10 +47,10 @@ from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_next_step import fix_round_budget
 from specy_road.bundled_scripts.review_defer import add_parser as add_defer_parser
 from specy_road.orphaned_claims import orphaned_claims, report_lines
-from specy_road.review_record_rules import check_record
-from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
-from specy_road.review_target import ReviewTarget, ReviewTargetError, milestone_status, resolve_target, same_commit
-from specy_road.sibling_repos import sibling_heads_field
+from specy_road.review_run_status import (extend_handoff_refused, print_refused_list, refused_by_model,
+                                          review_list_payload, unreadable_rejected_lines)
+from specy_road.review_target import (ReviewTarget, ReviewTargetError, milestone_status,
+                                      resolve_target, same_commit)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.session_presence import list_sessions
 from specy_road.worker_state import list_records
@@ -109,6 +108,8 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         "review_rounds": round_span(root, node_id), "findings_trend": loop.findings_trend(),
         "review_runs": (runs := run_states(root, node_id, gate.commit)),
         "policy": gate_policy_summary(gate, runs), "reviewer_eligibility": reviewer_eligibility(root, t.node, gate, branch),
+        "refused": refused_by_model(root, node_id, gate.commit),
+        "refused_unreadable": unreadable_rejected_lines(reviews_dir(root, node_id)),
         "policy_met": gate.passed,
         "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
                         "blocking": tm.code_conflicts} if tm and tm.conflicts else None,
@@ -133,6 +134,7 @@ def _render(st: dict[str, Any]) -> list[str]:
         lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']}){at}"
                      f"{' [signed]' if r['signed'] else ''}{mode}{extra}")
     lines += [f"  {line}" for line in run_lines(st.get("review_runs") or [])]
+    extend_handoff_refused(st, lines)
     lines += [f"  {x}" for x in [st["review_rounds"]["line"], *(st.get("findings_trend") or {}).get("lines", [])]]
     lines += [f"  policy: {st['policy']}"] + eligibility_lines(st)   # who can still approve, when not met
     if tm := st.get("trial_merge"):
@@ -257,73 +259,11 @@ def _relabel_independence(root: Path, gate: GateResult) -> None:
             write_review(c.review.path, render_front_matter(c.review.data, c.review.body))
 
 
-def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
-    root = resolve_repo_root(ns)
-    try:
-        t = resolve_target(root, ns.node_id, ns.ref)
-    except ReviewTargetError as e:
-        return _fail(str(e))
-    rec, err = check_record(ns, root, t)
-    if err:
-        return _fail(err)
-    gate = evaluate_gate(root, t.node, t.commit, branch=(t.entry or {}).get("branch"))
-    if gate.config_error:
-        return _fail(f"orchestration config: {gate.config_error}")
-    config = gate.config
-    entry = next((e for e in config["roster"] if e.get("id") == ns.model), None)
-    if entry is None:
-        return _fail(f"{ns.model!r} is not in the roster on the integration branch "
-                     "(roadmap/orchestration.yaml); a review from it would not count")
-    if "reviewer" not in (entry.get("roles") or []) and not substitute_for(config, ns.node_id, ns.model):
-        return _fail(f"{ns.model!r} has no reviewer role and no active substitution covers {ns.node_id}")
-    why = rerun_problem(config["policy"], rec["data"])
-    if why:
-        return _fail(f"{ns.file}: does not count — {why}; list what you re-ran in commands_rerun")
-    # The body's hash rides in the front matter, so a signature covers the notes too.
-    data = {**rec["data"], "commit": gate.commit, NOTES_KEY: notes_digest(rec["body"]), **sibling_heads_field(root)}
-    if ns.launch_mode:   # before signing: the signature covers it
-        data["launch_mode"] = ns.launch_mode
-    data = stamp_review_toolkit_version(data)
-    if ns.sign_key:
-        if not entry.get("public_key"):
-            return _fail(f"--sign-key given, but the roster entry for {ns.model!r} has no public_key; "
-                         "the gate could not verify the record")
-        try:
-            data["signature"] = sign(data, Path(ns.sign_key))
-        except SigningError as e:
-            return _fail(f"could not sign: {e}")
-        ok, why = verify(data, data["signature"], str(entry["public_key"]), ns.model)
-        if not ok:
-            return _fail(f"the signature does not verify against the roster public_key for {ns.model!r} "
-                         f"({why}); wrong key?")
-    elif config["policy"].get("signed_reviews"):
-        return _fail("policy.signed_reviews is on: pass --sign-key <your private key>; the roster entry "
-                     f"for {ns.model!r} must carry the matching public_key")
-    data["family"] = entry["family"]
-    dest = review_path(root, ns.node_id, ns.model)
-    text = render_front_matter(data, rec["body"])
-    write_review(dest, text)   # replaces a record filed as review-<model>.md, whatever the filesystem's case rules
-    archive_review(root, ns.node_id, ns.model, text)
-    print(f"Wrote {dest}")
-    after = evaluate_gate(root, t.node, t.commit, branch=(t.entry or {}).get("branch"))
-    if after.distinct_families:
-        _relabel_independence(root, after)
-        if any(o.family == entry["family"] and o.model != ns.model for o in after.approvals + after.blocks):
-            print(f"note: another counted review is also from family {entry['family']!r}; "
-                  "it is less independent and counts once toward the distinct-family policy.")
-    print(f"policy: {gate_policy_summary(after, [])}")
-    return 0
+def cmd_review_record(ns: argparse.Namespace) -> int:
+    return run_review_record(ns, resolve_repo_root(ns), _fail, _relabel_independence)
 
 
-def cmd_review_list(ns: argparse.Namespace) -> int:
-    """Filed records and RCA records, the gate at the commit under review, then any escalation; reads only."""
-    root = resolve_repo_root(ns)
-    try:
-        t = resolve_target(root, ns.node_id, ns.ref)
-    except ReviewTargetError as e:
-        if not str(e).startswith("no registry claim"):
-            return _fail(str(e))
-        t = None
+def _print_review_list_text(root: Path, ns: argparse.Namespace, t: ReviewTarget | None) -> int:
     reviews = list_reviews(root, ns.node_id)
     if not reviews:
         print(f"No review records for {ns.node_id}.")
@@ -333,10 +273,15 @@ def cmd_review_list(ns: argparse.Namespace) -> int:
         print(f"{r.path.name}: {d.get('verdict')} by {d.get('model')} ({d.get('family')}) "
               f"at {str(d.get('commit') or '?')[:12]}{' [signed]' if d.get('signature') else ''}"
               + ("" if r.ok else f" — invalid: {'; '.join(r.errors)}") + (" — stale: not the commit under review" if stale else ""))
+    if t:
+        print_refused_list(root, ns.node_id, t.commit)
+    for line in unreadable_rejected_lines(reviews_dir(root, ns.node_id)):
+        print(line)
     print("\n".join(run_lines(run_states(root, ns.node_id, t.commit if t else None))) or "No delegated review runs.")
     print(round_span(root, ns.node_id)["line"])
     loop = loop_state(root, ns.node_id)
     _print_rcas(loop)
+    gate = None
     if t is None:
         print("gate: not evaluated — no registry claim names the commit under review; "
               "pass --ref <branch or commit>")
@@ -350,6 +295,24 @@ def cmd_review_list(ns: argparse.Namespace) -> int:
     if loop.escalation and (t is None or not gate.passed):
         print(_escalation_line(ns.node_id, loop.escalation.describe()).strip())
     return 0
+
+
+def cmd_review_list(ns: argparse.Namespace) -> int:
+    """Filed records and RCA records, the gate at the commit under review, then any escalation; reads only."""
+    root = resolve_repo_root(ns)
+    if ns.json:
+        payload = review_list_payload(root, ns.node_id, ns.ref)
+        print(json.dumps(payload, indent=2))
+        if payload.get("error"):
+            return _fail(payload["error"])
+        return 0
+    try:
+        t = resolve_target(root, ns.node_id, ns.ref)
+    except ReviewTargetError as e:
+        if not str(e).startswith("no registry claim"):
+            return _fail(str(e))
+        t = None
+    return _print_review_list_text(root, ns, t)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -384,6 +347,8 @@ def build_parser() -> argparse.ArgumentParser:
         sp = rsub.add_parser(name, help=about)
         sp.add_argument("node_id")
         sp.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+        if name == "list":
+            sp.add_argument("--json", action="store_true", help="Machine-readable output including refused markers")
         add_repo_root_arg(sp)
         sp.set_defaults(func=fn)
     add_delegate_parser(rsub)
