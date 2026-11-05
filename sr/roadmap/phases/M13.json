@@ -40,6 +40,7 @@
         "upgrade's first lines name the running version, sys.prefix and the launcher list from M13.1; under --dry-run the first line reads 'previewing what specy-road <version> would write'",
         "upgrade --dry-run also runs validate, against a temporary copy of the project with the refreshes applied (the checkout is never written), prints its errors and exits with validate's code; a test injects a validate error the new version raises and asserts --dry-run exits 1 before anything is written",
         "After writing, upgrade checks every file it wrote or rewrote against the project's file-limits caps and names each one its own write pushed over the cap (path, old and new line count, cap); a file already over the cap before the upgrade is not blamed on it; a test covers both",
+        "init project's constraints/file-limits.yaml template no longer caps the developer-owned root agent files (AGENTS.md, CLAUDE.md) by default: they are excluded from the default globs, with a commented example of how a project opts them in; specy-road budgets only what it owns (its managed blocks and .specyrd/ files, already pinned by tests); a test asserts a freshly initialised project's file-limits does not apply to root AGENTS.md or CLAUDE.md. This toolkit repo's own constraints/file-limits.yaml is out of scope",
         "upgrade's help and module docstring name pip, pipx and uv tool upgrades instead of only 'pip install -U'. Out of scope: changing which refreshes run or their order, and digest drift wording beyond pointing at validate's notices"
       ],
       "codename": "upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap",
@@ -57,13 +58,14 @@
       "touch_zones": [
         "specy_road/bundled_scripts/upgrade.py",
         "specy_road/file_limits_engine.py",
-        "tests/"
+        "tests/",
+        "specy_road/templates/project/constraints/file-limits.yaml"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "A project setting (agents_block: minimal in .specyrd/manifest.json, default full) makes refresh-stubs and upgrade write a root AGENTS.md block of at most 3 lines that points at .specyrd/AGENTS.md; the default full block gains one line saying why the floor bullets are repeated there; validate's context lines reflect the smaller block; a test renders both",
+        "A project setting (agents_block: minimal in .specyrd/manifest.json, default full) makes refresh-stubs and upgrade write a root AGENTS.md block of at most 3 lines that points at .specyrd/AGENTS.md; the default full block is unchanged and stays within its existing budget (17 lines, 2,063 bytes in tests/test_enforced_rules_pointers.py), because the block is specy-road's text inside a file the developer owns; docs/install-and-usage.md says why the full block repeats the floor bullets and names the minimal setting; validate's context lines reflect the smaller block; a test renders both",
         "When upgrade or refresh-stubs first creates .specyrd/AGENTS.md it prints the new file's headings and names each heading of the project's own AGENTS.md text (outside the managed block) that matches one of them case-insensitively, with one line saying to compare and drop the stale copy; a test with a duplicated heading asserts the line",
         "Each harness's validate context line ends with a per-harness total in lines and bytes, counting a file imported twice (CLAUDE.md imports) once and saying so",
         "Out of scope: removing the floor bullets from the default block, editing project text outside managed blocks, and rewriting .specyrd/AGENTS.md content"
@@ -84,7 +86,8 @@
         "specy_road/templates/specyrd/claude-md-block.md",
         "suggested_prompts/bootstrap-agents-md.md",
         "docs/install-and-usage.md",
-        "tests/"
+        "tests/",
+        "specy_road/agents_md_report.py"
       ],
       "type": "task"
     },
@@ -133,7 +136,8 @@
       "touch_zones": [
         "specy_road/bundled_scripts/refresh_profiles.py",
         "specy_road/model_profiles.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/upgrade.py"
       ],
       "type": "task"
     },

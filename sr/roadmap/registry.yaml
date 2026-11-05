@@ -81,6 +81,7 @@ entries:
       - specy_road/bundled_scripts/refresh_profiles.py
       - specy_road/model_profiles.py
       - tests/
+      - specy_road/bundled_scripts/upgrade.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -105,6 +106,19 @@ entries:
       - specy_road/templates/specyrd/claude-md-block.md
       - suggested_prompts/bootstrap-agents-md.md
       - docs/install-and-usage.md
+      - tests/
+      - specy_road/agents_md_report.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: safe-release-candidate-install-recipe-pipx-and-uv-tool-upgrades-and-checking-which-binary-is-on-path
+    node_id: M13.6
+    branch: feature/rm-safe-release-candidate-install-recipe-pipx-and-uv-tool-upgrades-and-checking-which-binary-is-on-path
+    touch_zones:
+      - docs/install-and-usage.md
+      - docs/release-runbook.md
+      - docs/supply-chain-security.md
+      - README.md
       - tests/
     started: '2026-11-04'
     owner: savigil
