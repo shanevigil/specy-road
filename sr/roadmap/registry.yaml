@@ -162,13 +162,3 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: executor-prompt-states-the-test-rules
-    node_id: M15.34
-    branch: feature/rm-executor-prompt-states-the-test-rules
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - tests/
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-05T18:26:33+00:00'
