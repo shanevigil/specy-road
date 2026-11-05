@@ -66,10 +66,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M7` Keeping current: recurring research `keeping-current-recurring-research` — phase — **In Progress**
   - `M7.1` A research register tracks deep-research topics with a refresh cadence `a-research-register-tracks-deep-research-topics-with-a-refresh-cadence` — task — **Complete**
   - `M7.2` Run the harness-capabilities research and fold its findings `run-the-harness-capabilities-research-and-fold-its-findings` — task — **Complete**
-- `M8` Harness compatibility `harness-compatibility` — phase — **Not Started**
+- `M8` Harness compatibility `harness-compatibility` — phase — **In Progress**
   - `M8.1` Harness facts fixture drives model-profiles and executor templates, with a classified diff on version bumps `harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps` — task — **Complete**
   - `M8.2` Worker adapters harden the launch and run a deterministic post-run check `worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` — task — **Complete**
-  - `M8.3` Reviewer runs are read-only and specy-road writes the review record from structured output `reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` — task — **Not Started**
+  - `M8.3` Reviewer runs are read-only and specy-road writes the review record from structured output `reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` — task — **Complete**
   - `M8.4` Ship skills once and meter every file each harness injects `ship-skills-once-and-meter-every-file-each-harness-injects` — task — **Complete**
   - `M8.5` Guard hooks per harness and avoid lists in every model profile `guard-hooks-per-harness-and-avoid-lists-in-every-model-profile` — task — **Complete**
   - `M8.7` Runtime verification of the harness facts against installed binaries `runtime-verification-of-the-harness-facts-against-installed-binaries` — task — **Complete**
@@ -210,7 +210,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M13.9` Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice `notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` — task — **Not Started**
   - `M13.10` Upgrade guide: moving to the split rules files, previewing an uninstalled version, telling old installs apart `upgrade-guide-moving-to-the-split-rules-files-previewing-an-uninstalled-version-telling-old-installs-apart` — task — **Complete**
   - `M13.11` upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs `upgrade-says-what-changed-for-this-repo-behaviour-changes-a-pin-below-the-new-minimum-the-new-files-and-duplicated-paragraphs` — task — **Not Started**
-  - `M13.12` Quieter, accurate validate notices: untracked touch zones, the managed .gitignore comment, and tracked files under new ignore rules `quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules` — task — **Not Started**
+  - `M13.12` Quieter, accurate validate notices: untracked touch zones, the managed .gitignore comment, and tracked files under new ignore rules `quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules` — task — **Complete**
   - `M13.13` upgrade --prompt writes an agent upgrade prompt filled in from this repo `upgrade-prompt-writes-an-agent-upgrade-prompt-filled-in-from-this-repo` — task — **Not Started**
   - `M13.14` validate flags project agent text that mandates a changed behaviour (best-effort hint) `validate-flags-project-agent-text-that-mandates-a-changed-behaviour-best-effort-hint` — task — **Not Started**
 - `M14` Nested repos and review-gate integrity `nested-repos-and-review-gate-integrity` — phase — **Not Started**
@@ -241,7 +241,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.10` Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff `try-a-roster-before-it-lands` — task — **Complete**
   - `M15.11` A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors `working-roster-in-one-command-and-validated-profiles` — task — **Complete**
   - `M15.12` Shared documentation zones do not serialize grind-session batches `shared-doc-zones-do-not-serialize-batches` — task — **Complete**
-  - `M15.13` Worker loop friction: sync waits for the events that matter, tool-use noise collapses, rework after a completed worker, a READY-only resume, a quieter pickup `worker-loop-friction-sync-until-and-ready-only-resume` — task — **Not Started**
+  - `M15.13` Worker loop friction: sync waits for the events that matter, tool-use noise collapses, rework after a completed worker, a READY-only resume, a quieter pickup `worker-loop-friction-sync-until-and-ready-only-resume` — task — **Complete**
   - `M15.14` Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored `chores-at-parity-with-leaves` — task — **Not Started**
   - `M15.15` upgrade ships the work/ templates every prompt references, and the .specyrd README matches upgrade's steps `upgrade-ships-the-templates-prompts-reference` — task — **Complete**
   - `M15.16` Role-observed acceptance needs evidence from that role, and coordinator probes are not acceptance `role-observed-acceptance-needs-that-role` — task — **Not Started**
@@ -249,16 +249,52 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.18` planned_test_changes can be edited after pickup, and an unplanned test removal is a required reviewer check `planned-test-changes-editable-and-removals-surfaced` — task — **Complete**
   - `M15.19` Cursor worker cost is estimated when the harness reports a display name for the rostered model `cursor-cost-with-display-name-models` — task — **Complete**
   - `M15.20` Touch zones that miss what acceptance needs are flagged at plan time, and the brief's zone section stays short `zones-missing-what-acceptance-needs-flagged` — task — **Not Started**
-  - `M15.21` Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments `linked-worktrees-resolve-root-and-symlinked-envs` — task — **Not Started**
-  - `M15.22` Project preferences the workflow respects: local decisions, a PR body footer, the summary commit rule, and local landing for the root repository `project-preferences-local-decisions-footer-summary-landing` — task — **Not Started**
+  - `M15.21` Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments `linked-worktrees-resolve-root-and-symlinked-envs` — task — **Complete**
+  - `M15.22` Project preferences the workflow respects: local decisions, a PR body footer, the summary commit rule, and local landing for the root repository `project-preferences-local-decisions-footer-summary-landing` — task — **Complete**
   - `M15.23` A project declares its merge-blocking CI commands per touch zone; ready always runs them and the review packet shows their result at the reviewed commit `ci-gates-run-by-ready-and-shown-in-the-packet` — task — **Not Started**
-  - `M15.24` ready does not record false evidence: a passing run whose output shows a failed command is flagged, and --run-argv runs a command without a shell `ready-flags-failure-tails-and-takes-argv` — task — **Not Started**
+  - `M15.24` ready does not record false evidence: a passing run whose output shows a failed command is flagged, and --run-argv runs a command without a shell `ready-flags-failure-tails-and-takes-argv` — task — **Complete**
   - `M15.25` A change to the shared stash is attributed to the worker whose branch made it, not to whichever worker's turn ended while the entry existed `stash-changes-attributed-to-the-owning-branch` — task — **Not Started**
-  - `M15.26` A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim `claims-with-no-worker-are-reported-and-never-hold-slots` — task — **Not Started**
-  - `M15.27` worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length `cursor-usage-sums-segments-and-flags-undercounts` — task — **Not Started**
+  - `M15.26` A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim `claims-with-no-worker-are-reported-and-never-hold-slots` — task — **Complete**
+  - `M15.27` worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length `cursor-usage-sums-segments-and-flags-undercounts` — task — **Complete**
   - `M15.28` --rework carries blocks at the branch tip as required changes, lists older blocks as possibly resolved, and takes a coordinator note placed above the reviews `rework-carries-current-blocks-and-a-coordinator-note` — task — **Not Started**
   - `M15.29` A review that stops before filing leaves a trace: every reviewer channel opens a RUN record, and review list shows started but not filed `every-reviewer-channel-leaves-a-run-record` — task — **Not Started**
   - `M15.30` Under delta review, one approval per round still checks the whole leaf against the merge base on a fixed checklist `one-full-leaf-checklist-review-per-round` — task — **Not Started**
+- `M16` lean core: harden and optimize code and docs, all delivered functionality kept `lean-core` — phase — **Not Started**
+  - `M16.0` Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs `parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs` — task — **Not Started**
+  - `M16.1` Parity harness: a review-gate decision table covering every review policy `parity-harness-a-review-gate-decision-table-covering-every-review-policy` — task — **Not Started**
+  - `M16.2` Baseline metrics, a coverage floor in CI, and the M16 working rules written down `baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down` — task — **Not Started**
+  - `M16.3` Delete dead and unwired code, and add vulture as an advisory CI step `delete-dead-and-unwired-code-and-add-vulture-as-an-advisory-ci-step` — task — **Not Started**
+  - `M16.4` Shared helpers for time, atomic writes, git queries and registry I/O replace their copies `shared-helpers-for-time-atomic-writes-git-queries-and-registry-i-o-replace-their-copies` — task — **Not Started**
+  - `M16.5` One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready `one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready` — task — **Not Started**
+  - `M16.6` Library code moves out of bundled_scripts, the two large import cycles are broken, and a layering gate keeps them broken `library-code-moves-out-of-bundled-scripts-the-two-large-import-cycles-are-broken-and-a-layering-gate-keeps-them-broken` — task — **Not Started**
+  - `M16.7` Commands run in-process with lazy imports, one error type and shared argument helpers `commands-run-in-process-with-lazy-imports-one-error-type-and-shared-argument-helpers` — task — **Not Started**
+  - `M16.8` A 100-character line-width rule with a shrink-only baseline, and the consumer file-limit default decided `a-100-character-line-width-rule-with-a-shrink-only-baseline-and-the-consumer-file-limit-default-decided` — task — **Not Started**
+  - `M16.9` Fold the cap-driven splits in pickup, finish, milestone and the PM UI server into their parents `fold-the-cap-driven-splits-in-pickup-finish-milestone-and-the-pm-ui-server-into-their-parents` — task — **Not Started**
+  - `M16.10` Fold brainstorm, agent-file and miscellaneous splits, and extract one LLM client from review_node `fold-brainstorm-agent-file-and-miscellaneous-splits-and-extract-one-llm-client-from-review-node` — task — **Not Started**
+  - `M16.11` doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases `doctor-prune-is-the-one-cleanup-path-branches-prune-registry-prune-and-the-grind-cleanup-become-aliases` — task — **Not Started**
+  - `M16.12` upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update `upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update` — task — **Not Started**
+  - `M16.13` Command groups and renames: milestone, planning, archive --deep, review status, decisions --kind lesson, presence `command-groups-and-renames-milestone-planning-archive-deep-review-status-decisions-kind-lesson-presence` — task — **Not Started**
+  - `M16.14` One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd and carries per-zone merge-blocking gates `one-checks-block-replaces-baseline-cmd-land-check-cmd-and-verify-cmd-and-carries-per-zone-merge-blocking-gates` — task — **Not Started**
+  - `M16.15` Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI `orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui` — task — **Not Started**
+  - `M16.16` Worker runtime moves into orchestration/workers, the worker_ops facade and its module-class swap go `worker-runtime-moves-into-orchestration-workers-the-worker-ops-facade-and-its-module-class-swap-go` — task — **Not Started**
+  - `M16.17` Roster, model profiles, planning and role prompts move into orchestration, with one eligibility check for every launch `roster-model-profiles-planning-and-role-prompts-move-into-orchestration-with-one-eligibility-check-for-every-launch` — task — **Not Started**
+  - `M16.18` Shared-checkout guard and session presence move into orchestration, and the guard classifier becomes table-driven `shared-checkout-guard-and-session-presence-move-into-orchestration-and-the-guard-classifier-becomes-table-driven` — task — **Not Started**
+  - `M16.19` Grind session, its plan, chores, decisions and lessons move into orchestration, and grind settings live under grind: `grind-session-its-plan-chores-decisions-and-lessons-move-into-orchestration-and-grind-settings-live-under-grind` — task — **Not Started**
+  - `M16.20` Review-policy evidence: how often each optional review policy changed a gate outcome `review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` — task — **Not Started**
+  - `M16.21` Fold the review gate, packet and escalation fragments, and deprecate the policies the evidence did not keep `fold-the-review-gate-packet-and-escalation-fragments-and-deprecate-the-policies-the-evidence-did-not-keep` — task — **Not Started**
+  - `M16.22` Post-fix refactor gate: ready and the review packet report the complexity delta, and policy can block on growth `post-fix-refactor-gate-ready-and-the-review-packet-report-the-complexity-delta-and-policy-can-block-on-growth` — task — **Not Started**
+  - `M16.23` Tests: shared fixtures in tests/support replace copied helpers and cross-test-file imports `tests-shared-fixtures-in-tests-support-replace-copied-helpers-and-cross-test-file-imports` — task — **Not Started**
+  - `M16.24` Tests: one file per module or flow, named for behaviour, in unit, flows, cli, gui and repo lanes `tests-one-file-per-module-or-flow-named-for-behaviour-in-unit-flows-cli-gui-and-repo-lanes` — task — **Not Started**
+  - `M16.25` Tests: remove duplicates and fold single-input regressions into tables, with no coverage drop `tests-remove-duplicates-and-fold-single-input-regressions-into-tables-with-no-coverage-drop` — task — **Not Started**
+  - `M16.26` Tests: public seams replace private-name patches, property tests cover parsers and transforms, no wall-clock sleeps `tests-public-seams-replace-private-name-patches-property-tests-cover-parsers-and-transforms-no-wall-clock-sleeps` — task — **Not Started**
+  - `M16.27` Tests: fill the milestone, outline and edit-field coverage gaps `tests-fill-the-milestone-outline-and-edit-field-coverage-gaps` — task — **Not Started**
+  - `M16.28` Tests: a CLI smoke lane of at most 50 subprocess tests, everything else in-process, full suite under 35 s `tests-a-cli-smoke-lane-of-at-most-50-subprocess-tests-everything-else-in-process-full-suite-under-35-s` — task — **Not Started**
+  - `M16.29` Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions `constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions` — task — **Not Started**
+  - `M16.30` AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer `agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer` — task — **Not Started**
+  - `M16.31` Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra `docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra` — task — **Not Started**
+  - `M16.32` suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout `suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout` — task — **Not Started**
+  - `M16.33` After the next release: delete the deprecated aliases and shims, and check the end-state targets `after-the-next-release-delete-the-deprecated-aliases-and-shims-and-check-the-end-state-targets` — task — **Not Started**
+  - `M16.34` Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf `triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf` — task — **Not Started**
 
 ## Dependencies that were removed
 
@@ -277,18 +313,14 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M12.5` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
-- `M13.12` on `feature/rm-quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules` since 2026-11-05
 - `M13.9` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M14.1` on `feature/rm-approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` since 2026-11-05
-- `M15.13` on `feature/rm-worker-loop-friction-sync-until-and-ready-only-resume` since 2026-11-04
+- `M14.5` on `feature/rm-an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it` since 2026-11-05
+- `M15.2` on `feature/rm-claude-code-reviewer-works-on-a-subscription-login` since 2026-11-05
 - `M15.20` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
-- `M15.21` on `feature/rm-linked-worktrees-resolve-root-and-symlinked-envs` since 2026-11-04
-- `M15.22` on `feature/rm-project-preferences-local-decisions-footer-summary-landing` since 2026-11-04
-- `M15.24` on `feature/rm-ready-flags-failure-tails-and-takes-argv` since 2026-11-05
 - `M15.25` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
-- `M15.27` on `feature/rm-cursor-usage-sums-segments-and-flags-undercounts` since 2026-11-05
+- `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
-- `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
 ## Quality by area
 
@@ -296,14 +328,13 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 34 | 33 | 2.00 | 100% | 0 | 0 |
-| `specy_road` **flagged** | 47 | 46 | 2.00 | 100% | 0 | 0 |
-| `tests` **flagged** | 49 | 48 | 2.00 | 100% | 0 | 0 |
+| `docs` **flagged** | 34 | 29 | 9.40 | 100% | 10 | 1 |
+| `specy_road` **flagged** | 47 | 38 | 7.78 | 100% | 14 | 3 |
+| `tests` **flagged** | 49 | 40 | 7.78 | 100% | 14 | 3 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
-| `gui` | 1 | 1 | — | — | 0 | 0 |
 | `research` | 1 | 1 | — | — | 0 | 0 |
-| `roadmap` | 2 | 2 | — | — | 0 | 0 |
+| `roadmap` | 1 | 1 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 | `schemas` | 1 | 1 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |

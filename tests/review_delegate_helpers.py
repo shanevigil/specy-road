@@ -1,4 +1,10 @@
-"""Fake harness and CLI helpers for ``review delegate`` tests (M11.7 and dependents)."""
+"""Shared fixtures for reviewer runs (M11.7, M8.3): a claimed leaf whose roster runs a fake reviewer harness.
+
+The fake answers as a launched reviewer does since M8.3: a final JSON object specy-road files as the record.
+:func:`fake_reviewer_run` replaces the process launch of ``prompt --channel cli`` instead. M14.6's names
+(:func:`make_delegate_repo`, :func:`set_delegate_steps`, :func:`files_record_step`, the CLI runners) are kept on
+the same fake.
+"""
 
 from __future__ import annotations
 
@@ -8,12 +14,13 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo, review_text
+from tests.review_repo_helpers import git, make_review_repo, review_output
 
-from specy_road.bundled_scripts import review_cli
+from specy_road import review_record_write
+from specy_road.bundled_scripts import review_cli, role_prompt, role_prompt_cli, role_prompt_stream
 from specy_road.review_files import reviews_dir
 
-# Each call takes the next step of the spec; the call's argv is appended to ``calls``.
+# Each call takes the next step of the spec; the call's argv is appended to `calls`.
 FAKE = '''
 import json, os, sys
 spec = json.loads(open(sys.argv[1]).read())
@@ -22,51 +29,195 @@ calls.append(sys.argv[2:])
 open(spec["calls"], "w").write(json.dumps(calls))
 step = spec["steps"][min(len(calls), len(spec["steps"])) - 1]
 sid = sys.argv[-1]
-print(json.dumps({"type": "system", "subtype": "init", "session_id": sid, "model": "fake"}), flush=True)
+for ln in step.get("preamble", []):   # raw lines before the stream (a forged marker, stray text)
+    print(ln, flush=True)
+if not step.get("plain"):   # a plain-text harness prints no event stream at all
+    print(json.dumps({"type": "system", "subtype": "init", "session_id": sid, "model": "fake"}), flush=True)
+for ln in step.get("lines", []):   # raw lines inside the stream, before the final message
+    print(ln, flush=True)
 if step.get("write"):
-    open(step["write"]["path"], "w").write(step["write"]["text"])
-if step.get("say"):
+    w = step["write"]
+    os.makedirs(os.path.dirname(w["path"]), exist_ok=True)       # a new directory too
+    open(w["path"], "w").write(w["text"])
+if step.get("symlink"):   # a path replaced by a symlink (a tracked file's typechange, a directory, or a new link)
+    import shutil
+    ln = step["symlink"]
+    if os.path.isdir(ln["path"]) and not os.path.islink(ln["path"]):
+        shutil.rmtree(ln["path"])
+    elif os.path.lexists(ln["path"]):
+        os.unlink(ln["path"])
+    os.symlink(ln["target"], ln["path"])
+if step.get("say"):   # an assistant message before the result
     print(json.dumps({"type": "assistant", "session_id": sid,
                       "message": {"content": [{"type": "text", "text": step["say"]}]}}), flush=True)
-if step.get("error"):
+answer = json.dumps(step["answer"]) if "answer" in step else step.get("raw", "filed")
+if step.get("plain"):   # a harness that prints only its final message
+    print(answer, flush=True)
+elif step.get("error"):
     print(json.dumps({"type": "result", "subtype": "error_during_execution", "is_error": True,
                       "result": step["error"], "session_id": sid}), flush=True)
 else:
-    print(json.dumps({"type": "result", "subtype": "success", "result": "filed", "session_id": sid}), flush=True)
+    # a step's "result" fields (usage, cost, turns) ride on the result line, as Claude's stream-json carries them
+    # "unescaped": the line as a harness writes UTF-8 JSON (U+2028 and the like left raw inside strings)
+    raw = not step.get("unescaped")
+    answer = json.dumps(step["answer"], ensure_ascii=raw) if "answer" in step else answer
+    sys.stdout.buffer.write((json.dumps({"type": "result", "subtype": "success", "result": answer, "session_id": sid,
+                                         **step.get("result", {})}, ensure_ascii=raw) + "\\n").encode("utf-8"))
+    sys.stdout.flush()
+if step.get("after"):   # a line printed after the final message (a truncated event)
+    print(step["after"], flush=True)
 sys.exit(step.get("exit", 0))
 '''
 
 CAPACITY = 'API Error: 529 {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}'
 
 
-def roster(cli: str) -> str:
+def delegate_roster(cli: str) -> str:
     return ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
             f"  - {{id: opus, family: anthropic, roles: [reviewer], harness: claude-code, channels: {{cli: '{cli}'}}}}\n"
             "  - {id: plain, family: openai, roles: [reviewer]}\n")
 
 
-def make_delegate_repo(tmp_path: Path) -> tuple[Path, Path]:
+def delegate_repo(tmp_path: Path, roster: str | None = None) -> tuple[Path, Path]:
+    """``(repo, spec)``: ``roster`` (default :func:`delegate_roster` on a claude-code entry) may name the fake's
+    command as ``{fake}``; the fake runs the steps :func:`set_steps` writes to ``spec``."""
     script, spec = tmp_path / "fake.py", tmp_path / "spec.json"
     script.write_text(FAKE)
-    repo = make_review_repo(tmp_path, orchestration=roster(f"{sys.executable} {script} {spec} {{prompt}} {{session_flag}}"))
+    fake = f"{sys.executable} {script} {spec}"
+    roster = roster or delegate_roster(fake + " {prompt} {session_flag}")
+    repo = make_review_repo(tmp_path, orchestration=roster.replace("{fake}", fake))
     (reviews_dir(repo, "M1.1")).mkdir(parents=True, exist_ok=True)
     (reviews_dir(repo, "M1.1") / "PACKET.md").write_text("# Review packet\n\n**Commit under review:** HEAD\n")
     return repo, spec
 
 
-def set_delegate_steps(repo: Path, spec: Path, *steps: dict) -> None:
+def set_steps(repo: Path, spec: Path, *steps: dict) -> None:
     spec.write_text(json.dumps({"calls": str(spec.with_name("calls.json")), "steps": list(steps)}))
 
 
-def read_delegate_calls(spec: Path) -> list[list[str]]:
+def fake_calls(spec: Path) -> list[list[str]]:
     return json.loads(spec.with_name("calls.json").read_text())
 
 
+def launches(calls: list[list[str]], flag: str) -> list[list[str]]:
+    """The launches whose argv carries ``flag`` (``--session-id``: a fresh turn; ``--resume``: a resumed one), so a
+    test selects a launch by what it observably was, never by how many calls came before it. Retry counts come from
+    the run record's ``attempts``."""
+    return [c for c in calls if flag in c]
+
+
+def verdict_step(repo: Path, verdict: str = "approve", model: str = "opus") -> dict:
+    """A step whose final JSON specy-road files as a valid REVIEW-opus.md for the commit under review."""
+    return {"answer": review_output(git(repo, "rev-parse", "HEAD"), model=model, verdict=verdict,
+                                    a1="pass" if verdict == "approve" else "fail")}
+
+
+def fake_reviewer_run(monkeypatch, answer: list[str] | None = None) -> list[dict]:
+    """Record each ``prompt --channel cli`` launch instead of running it; a reviewer turn "prints" ``answer``'s lines.
+    ``role_prompt``'s and ``role_prompt_cli``'s own ``subprocess.run`` and ``Popen`` (the streamed, transcribed
+    path) are recorded too."""
+    import subprocess as real_sp
+    from types import SimpleNamespace
+
+    calls: list[dict] = []
+
+    def run(cmd, **kw):
+        calls.append({"cmd": cmd, **kw})
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    def popen(cmd, **kw):
+        rec = {"cmd": cmd, **kw, "input": ""}
+
+        class Stdin:
+            def write(self, s):
+                rec["input"] += s
+                return len(s)
+
+            def close(self):
+                pass
+
+        stdin = Stdin() if kw.get("stdin") not in (None, real_sp.DEVNULL) else None
+        calls.append(rec)
+        return SimpleNamespace(stdin=stdin, stdout=iter(()), wait=lambda: 0)
+
+    fake = SimpleNamespace(run=run, Popen=popen, PIPE=real_sp.PIPE, STDOUT=real_sp.STDOUT, DEVNULL=real_sp.DEVNULL)
+    for module in (role_prompt_cli, role_prompt_stream):   # the preflight and the commands, the stream
+        monkeypatch.setattr(module, "subprocess", fake)
+
+    def logged(launch, adapter, cwd, log, transcript=None, span=None) -> int:
+        calls.append({"cmd": launch.argv, "input": launch.stdin, "cwd": cwd})
+        with log.open("a", encoding="utf-8", newline="") as raw:   # as the real turn appends, its span recorded
+            raw.write("[review prompt] now claude\n")
+            out = review_record_write.SpanWriter(raw)
+            out.write("\n".join(answer or []) + "\n")
+            if span is not None:
+                span[:] = out.close()
+        if transcript is not None:
+            transcript.extend(answer or [])
+        return 0
+    monkeypatch.setattr(review_record_write, "run_logged", logged)
+    return calls
+
+
+def wrote_paths(reason: str) -> list[str]:
+    """The paths a ``review_failure`` reason names (``review failure: the reviewer run wrote a, b; …``)."""
+    head = "review failure: the reviewer run wrote "
+    return reason[reason.index(head) + len(head):].split(";", 1)[0].split(", ")
+
+
+def strict_problems(node: object, at: str = "") -> list[str]:
+    """Where ``node`` breaks OpenAI strict structured output (Codex ``--output-schema``): an object must require
+    every property and allow no others; ``propertyNames`` and ``patternProperties`` are refused."""
+    if isinstance(node, list):
+        return [p for i, v in enumerate(node) for p in strict_problems(v, f"{at}/{i}")]
+    if not isinstance(node, dict):
+        return []
+    out = [f"{at}: {k}" for k in ("propertyNames", "patternProperties") if k in node]
+    if node.get("type") == "object" and (set(node.get("required", [])) != set(node.get("properties", {}))
+                                         or node.get("additionalProperties") is not False):
+        out.append(f"{at}: not every property required, or other keys allowed")
+    return out + [p for k, v in node.items() for p in strict_problems(v, f"{at}/{k}")]
+
+
+FAKE_CODEX = '''#!{python}
+import json, os, sys
+spec = json.loads(open(os.environ["FAKE_CODEX_SPEC"]).read())
+open(spec["calls"], "w").write(json.dumps(sys.argv[1:]))
+sys.stdin.read()
+argv = sys.argv[1:]
+print(json.dumps({{"type": "thread.started", "thread_id": "t-1"}}), flush=True)
+print(json.dumps({{"type": "item.completed", "item": {{"type": "agent_message", "text": "see -o"}}}}), flush=True)
+if "-o" in argv:
+    open(argv[argv.index("-o") + 1], "w").write(json.dumps(spec["answer"]))
+print(json.dumps({{"type": "turn.completed", "usage": {{}}}}), flush=True)
+'''
+
+
+FAKE_AGY = '''#!{python}
+import json, os, sys
+spec = json.loads(open(os.environ["FAKE_AGY_SPEC"]).read())
+open(spec["calls"], "w").write(json.dumps(sys.argv[1:]))
+envelope = {{"conversation_id": "c-1", "status": "SUCCESS", "response": json.dumps(spec["answer"]),
+            "structured_output": spec["answer"], "num_turns": 1}}
+print(json.dumps(envelope, indent=2), flush=True)   # one envelope, pretty-printed over many lines
+'''
+
+
+# --- M14.6's names for the same fake (review usage, per-round history) -------------------------------------------
+
+roster = delegate_roster
+read_delegate_calls = fake_calls
+set_delegate_steps = set_steps
+
+
+def make_delegate_repo(tmp_path: Path) -> tuple[Path, Path]:
+    return delegate_repo(tmp_path)
+
+
 def files_record_step(repo: Path, verdict: str = "approve") -> dict:
-    """A step that files a valid REVIEW-opus.md for the commit under review."""
-    text = review_text(git(repo, "rev-parse", "HEAD"), model="opus", verdict=verdict,
-                       a1="pass" if verdict == "approve" else "fail")
-    return {"write": {"path": str(reviews_dir(repo, "M1.1") / "REVIEW-opus.md"), "text": text}}
+    """A step whose final JSON specy-road files as a valid REVIEW-opus.md for the commit under review (since M8.3
+    the reviewer never writes the record itself: that is a review failure)."""
+    return verdict_step(repo, verdict)
 
 
 def run_review_cli(*args: str) -> int:

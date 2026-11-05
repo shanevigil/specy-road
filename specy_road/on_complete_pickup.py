@@ -86,10 +86,14 @@ def print_pickup_footer(
     else:
         print("When done: specy-road finish-this-task")
     print("-" * 60)
-    print_orchestration_hint()
+    print_orchestration_hint(root)
 
 
-def print_orchestration_hint() -> None:
+def _orchestration_hint_marker(repo_root: Path) -> Path:
+    return repo_root / ".specyrd" / "cache" / "pickup-orchestration-hint"
+
+
+def print_orchestration_hint(repo_root: Path | None = None) -> None:
     """Point at ``grind-session`` from the one place everyone already looks.
 
     The loop and its hook mode were documented only in ``docs/grind-session.md``,
@@ -103,6 +107,12 @@ def print_orchestration_hint() -> None:
     """
     if os.environ.get("SPECY_ROAD_GRIND_SESSION"):
         return
+    if repo_root is not None:
+        marker = _orchestration_hint_marker(repo_root)
+        if marker.is_file():
+            return
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text("shown\n", encoding="utf-8")
     print()
     print("Running more than one leaf? specy-road grind-session drives this loop:")
     print("  specy-road grind-session --plan            # ready/blocked leaves + waves")

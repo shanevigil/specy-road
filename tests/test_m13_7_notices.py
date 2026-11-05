@@ -110,8 +110,11 @@ def test_the_match_list_stops_at_the_limit_then_counts(tmp_path: Path, capsys) -
     repo = repo_with_prompts(tmp_path, untracked=MATCH_LIMIT + 4)
     apply_and_report(repo, "", [])
     out = capsys.readouterr().out.splitlines()
-    assert len(out) == 1 + MATCH_LIMIT + 2
-    assert out[-2:] == ["  … and 5 more", UNTRACK_HINT]
+    assert len(out) == 1 + MATCH_LIMIT + 4
+    assert out[-4:] == ["  … and 5 more",
+                        "  to stop tracking them, run from the git root (specy-road never runs it):",
+                        "    git rm --cached -- work/prompt-a.md",
+                        UNTRACK_HINT]
 
 
 def test_rules_already_in_the_file_are_not_new(tmp_path: Path, capsys) -> None:

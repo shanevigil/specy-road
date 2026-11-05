@@ -1,66 +1,5 @@
 version: 1
 entries:
-  - codename: reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
-    node_id: M8.3
-    branch: feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/review_files.py
-      - specy_road/review_record_write.py
-      - specy_road/templates/specyrd/
-      - docs/pm-llm-review.md
-      - tests/
-      - specy_road/worker_adapters.py
-      - specy_road/worker_adapter_base.py
-      - specy_road/worker_adapter_claude.py
-      - specy_road/worker_adapter_codex.py
-      - specy_road/worker_adapter_cursor.py
-      - docs/orchestration-reviewer-output.md
-      - docs/orchestration-review.md
-      - specy_road/bundled_scripts/role_prompt_cli.py
-      - specy_road/review_answer.py
-      - specy_road/review_delegate.py
-      - specy_road/review_write_check.py
-      - specy_road/reviewer_run_failure.py
-      - specy_road/review_usage.py
-      - specy_road/worker_adapter_parsers.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
-  - codename: linked-worktrees-resolve-root-and-symlinked-envs
-    node_id: M15.21
-    branch: feature/rm-linked-worktrees-resolve-root-and-symlinked-envs
-    touch_zones:
-      - specy_road/runtime_paths.py
-      - specy_road/worker_ops_launch.py
-      - specy_road/worktree_env.py
-      - docs/orchestration-worktrees.md
-      - tests/
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - specy_road/bundled_scripts/doctor_env_setup.py
-      - specy_road/worker_ops_message.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: worker-loop-friction-sync-until-and-ready-only-resume
-    node_id: M15.13
-    branch: feature/rm-worker-loop-friction-sync-until-and-ready-only-resume
-    touch_zones:
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/bundled_scripts/worker_cli_sync.py
-      - specy_road/bundled_scripts/worker_cli_render.py
-      - specy_road/worker_state.py
-      - specy_road/bundled_scripts/role_prompt_rework.py
-      - specy_road/on_complete_pickup.py
-      - docs/orchestration-workers.md
-      - docs/orchestration-worker-sync.md
-      - tests/
-      - specy_road/worker_ops_message.py
-      - specy_road/worker_runner_ready.py
-      - specy_road/worker_ops_launch.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: zones-missing-what-acceptance-needs-flagged
     node_id: M15.20
     branch: feature/rm-zones-missing-what-acceptance-needs-flagged
@@ -74,28 +13,6 @@ entries:
       - specy_road/bundled_scripts/session_plan_render.py
       - specy_road/bundled_scripts/orchestrate_cli.py
       - specy_road/orchestrate_assign.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: project-preferences-local-decisions-footer-summary-landing
-    node_id: M15.22
-    branch: feature/rm-project-preferences-local-decisions-footer-summary-landing
-    touch_zones:
-      - specy_road/decisions.py
-      - specy_road/decisions_local.py
-      - specy_road/bundled_scripts/decisions_cli.py
-      - specy_road/finish_pr_body.py
-      - specy_road/git_workflow_config.py
-      - specy_road/workflow_prefs.py
-      - specy_road/bundled_scripts/do_next_prompt.py
-      - specy_road/finish_modes.py
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - docs/git-workflow-preferences.md
-      - tests/
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/agent_ignores.py
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - specy_road/finish_land_local.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -131,52 +48,12 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules
-    node_id: M13.12
-    branch: feature/rm-quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules
-    touch_zones:
-      - specy_road/bundled_scripts/touch_zone_tracked.py
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - specy_road/agent_ignores.py
-      - specy_road/templates/project/.gitignore
-      - tests/
-      - specy_road/context_notice_cache.py
-      - specy_road/agents_md_block.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - specy_road/ignore_report.py
-      - specy_road/bundled_scripts/validate_notices.py
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
-  - codename: ready-flags-failure-tails-and-takes-argv
-    node_id: M15.24
-    branch: feature/rm-ready-flags-failure-tails-and-takes-argv
-    touch_zones:
-      - specy_road/ready_run_checks.py
-      - specy_road/review_gate_ready.py
-      - specy_road/bundled_scripts/review_packet.py
-      - tests/
-      - specy_road/schemas/handoff.schema.json
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
   - codename: stash-changes-attributed-to-the-owning-branch
     node_id: M15.25
     branch: feature/rm-stash-changes-attributed-to-the-owning-branch
     touch_zones:
       - specy_road/worker_turn_check.py
       - specy_road/worker_turn_stash.py
-      - tests/
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
-  - codename: cursor-usage-sums-segments-and-flags-undercounts
-    node_id: M15.27
-    branch: feature/rm-cursor-usage-sums-segments-and-flags-undercounts
-    touch_zones:
-      - specy_road/worker_adapter_cursor.py
-      - specy_road/worker_usage_plausibility.py
-      - specy_road/bundled_scripts/worker_cli_render.py
       - tests/
     started: '2026-11-05'
     owner: savigil
@@ -206,6 +83,54 @@ entries:
       - specy_road/bundled_scripts/validate_roadmap.py
       - tests/
       - specy_road/reviewer_run_failure.py
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
+  - codename: an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it
+    node_id: M14.5
+    branch: feature/rm-an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it
+    touch_zones:
+      - specy_road/review_record_rules.py
+      - specy_road/review_eligible.py
+      - specy_road/schemas/review-record.schema.json
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - docs/orchestration-review.md
+      - tests/
+      - specy_road/review_gate.py
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
+  - codename: claude-code-reviewer-works-on-a-subscription-login
+    node_id: M15.2
+    branch: feature/rm-claude-code-reviewer-works-on-a-subscription-login
+    touch_zones:
+      - specy_road/reviewer_auth.py
+      - specy_road/worker_adapter_claude.py
+      - specy_road/review_delegate.py
+      - specy_road/bundled_scripts/role_prompt_cli.py
+      - specy_road/orchestrate_plan.py
+      - docs/orchestration-reviewer-output.md
+      - docs/orchestration-models.md
+      - tests/
+      - docs/orchestration-workers.md
+      - specy_road/bundled_scripts/role_prompt.py
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
+  - codename: prompt-channel-cli-launches-nothing-without-run
+    node_id: M15.3
+    branch: feature/rm-prompt-channel-cli-launches-nothing-without-run
+    touch_zones:
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/bundled_scripts/role_prompt_cli.py
+      - specy_road/review_record_write.py
+      - specy_road/review_model_check.py
+      - specy_road/review_eligible.py
+      - specy_road/templates/specyrd/commands/specyrd-prompt.md
+      - docs/orchestration-reviewer-output.md
+      - CHANGELOG.md
+      - tests/
+      - specy_road/schemas/review-record.schema.json
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending

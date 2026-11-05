@@ -40,7 +40,8 @@
         "docs/orchestration-reviewer-output.md",
         "docs/orchestration-models.md",
         "tests/",
-        "docs/orchestration-workers.md"
+        "docs/orchestration-workers.md",
+        "specy_road/bundled_scripts/role_prompt.py"
       ],
       "type": "task"
     },
@@ -384,7 +385,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.13_worker-loop-friction-sync-until-and-ready-only-resume_c740f23d-72c3-41de-88c6-0ee0a7663ce4.md",
       "sibling_order": 13,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Worker loop friction: sync waits for the events that matter, tool-use noise collapses, rework after a completed worker, a READY-only resume, a quieter pickup",
       "touch_zones": [
         "specy_road/bundled_scripts/worker_cli.py",

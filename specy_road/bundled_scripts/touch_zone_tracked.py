@@ -19,7 +19,10 @@ tree for started nodes only). Advisory, and silent when git cannot list the tree
   silence it. A notice, like the unauthored-leaf block, because ``--strict``
   fails on any stderr line and a fresh ``init project`` scaffold names a file
   its first leaf will create; one line rather than one per node because the
-  guidance is the same for all of them.
+  guidance is the same for all of them. It lists at most :data:`LISTED_LIMIT`
+  nodes, claimed or In Progress first, and counts the rest by status: a Not
+  Started unclaimed leaf is the usual case (the work will create the file), so
+  it is only counted; ``validate --all`` lists every node.
 
 :func:`warn_written_zones` is that second line as a stderr warning for the one
 node ``add-node`` or ``edit-node --set touch_zones=`` just wrote: they print
@@ -31,6 +34,7 @@ from __future__ import annotations
 
 import bisect
 import sys
+from collections import Counter
 from pathlib import Path, PurePosixPath
 
 from specy_road.finish_implementation_check import zone_matches
@@ -39,6 +43,8 @@ from specy_road.runtime_paths import git_root, project_prefix, rebase_to_project
 
 _GLOB_CHARS = "*?["
 _SETTLED = {"complete", "archived", "cancelled"}
+#: How many nodes the untracked-zone notice names before it counts the rest by status.
+LISTED_LIMIT = 10
 
 GLOB_HINT = (
     "zones are paths, directories or globs (for example 'pkg/worker_ops_*.py'); "
@@ -151,10 +157,11 @@ def _warn_prefix(nid: str, zone: str, extends: list[str]) -> None:
     )
 
 
-def _untracked_line(entries: list[str]) -> str:
+def _untracked_line(entries: list[str], hidden: str = "") -> str:
+    listed = "; ".join(entries) + (f"; and {hidden}" if entries and hidden else hidden)
     return (
         "touch zones that match no tracked file and are not a directory: "
-        f"{'; '.join(entries)}. Keep a zone that names a file the work will create; "
+        f"{listed}. Keep a zone that names a file the work will create; "
         "otherwise fix the path (specy-road edit-node <NODE_ID> --set "
         f"touch_zones=<paths>) — {GLOB_HINT}."
     )
@@ -164,8 +171,44 @@ def _entry(nid: str, zones: list[str]) -> str:
     return f"{nid} " + ", ".join(repr(z) for z in zones)
 
 
-def warn_untracked_zones(nodes: list[dict], project_root: Path) -> None:
-    """``validate``: open nodes' zones that match no tracked file and are not a directory."""
+def _status(node: dict) -> str:
+    status = node.get("status")
+    return status.strip() if isinstance(status, str) and status.strip() else "Not Started"
+
+
+def _rank(node: dict, claimed: set[str], parents: set[str]) -> int:
+    """0 claimed or In Progress, 1 any other status, 2 Not Started, 3 Not Started unclaimed leaf (counted only)."""
+    nid, status = str(node.get("id", "?")), _status(node).lower()
+    if nid in claimed or status == "in progress":
+        return 0
+    if status != "not started":
+        return 1
+    return 2 if nid in parents else 3
+
+
+def _hidden(nodes: list[dict], *, more: bool) -> str:
+    """``N [more] node(s) (by status: …); …`` for the nodes the notice counts instead of naming."""
+    if not nodes:
+        return ""
+    counts = Counter(_status(n) for n in nodes)
+    by_status = ", ".join(f"{status} {n}" for status, n in sorted(counts.items()))
+    return (f"{len(nodes)}{' more' if more else ''} node(s) (by status: {by_status}); "
+            "`specy-road validate --all` lists every one")
+
+
+def warn_untracked_zones(
+    nodes: list[dict],
+    project_root: Path,
+    *,
+    claims: list[dict] | None = None,
+    show_all: bool = False,
+) -> None:
+    """``validate``: open nodes' zones that match no tracked file and are not a directory.
+
+    ``claims`` are the registry entries ``validate`` already loaded. Unless
+    ``show_all``, at most :data:`LISTED_LIMIT` nodes are named, in :func:`_rank`
+    order, and Not Started unclaimed leaves are never named, only counted.
+    """
     open_nodes = [
         n for n in nodes
         if isinstance(n.get("touch_zones"), list) and n["touch_zones"] and not _is_settled(n)
@@ -173,8 +216,10 @@ def warn_untracked_zones(nodes: list[dict], project_root: Path) -> None:
     tracked = tracked_files(project_root) if open_nodes else None
     if tracked is None:
         return
-    missing: list[str] = []
-    for n in open_nodes:
+    claimed = {str(e.get("node_id")) for e in claims or [] if isinstance(e, dict)}
+    parents = {str(n.get("parent_id")) for n in nodes if n.get("parent_id")}
+    missing: list[tuple[int, int, dict, str]] = []
+    for i, n in enumerate(open_nodes):
         nid = str(n.get("id", "?"))
         for z in n["touch_zones"]:
             extends = prefix_of(z, tracked) if isinstance(z, str) else []
@@ -182,9 +227,18 @@ def warn_untracked_zones(nodes: list[dict], project_root: Path) -> None:
                 _warn_prefix(nid, z, extends)
         zones = untracked_zones(n["touch_zones"], tracked)
         if zones:
-            missing.append(_entry(nid, zones))
-    if missing:
-        print(f"roadmap: notice — {_untracked_line(missing)}")   # stdout: --strict does not count it
+            missing.append((_rank(n, claimed, parents), i, n, _entry(nid, zones)))
+    if not missing:
+        return
+    missing.sort(key=lambda m: m[:2])
+    if show_all:
+        listed, hidden = [m[3] for m in missing], []
+    else:
+        nameable = [m for m in missing if m[0] < 3]
+        listed = [m[3] for m in nameable[:LISTED_LIMIT]]
+        hidden = [m[2] for m in nameable[LISTED_LIMIT:]] + [m[2] for m in missing if m[0] == 3]
+    line = _untracked_line(listed, _hidden(hidden, more=bool(listed)))
+    print(f"roadmap: notice — {line}")   # stdout: --strict does not count it
 
 
 def warn_written_zones(node_id: str, zones: object, project_root: Path) -> None:

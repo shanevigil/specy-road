@@ -16,7 +16,8 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import make_review_repo
-from tests.test_worker_cli import _repo, wait_for_worker, worker_roster
+from tests.test_worker_cli import wait_for_worker, worker_roster
+from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import worker_adapters as wa
 from specy_road import worker_ops as ops
@@ -32,7 +33,7 @@ os.kill(os.getpid(), signal.SIGKILL)
 
 @pytest.mark.skipif(not hasattr(signal, "SIGKILL"), reason="POSIX signals")
 def test_a_killed_harness_leaves_the_worker_failed(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     script = tmp_path / "killed.py"
     script.write_text(KILLED)
     prompt = tmp_path / "prompt.md"
@@ -83,7 +84,7 @@ def _stall_repo(tmp_path: Path, seconds: int) -> Path:
 
 
 def test_last_output_at_is_written_at_most_every_five_seconds(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
     launch = _paced(tmp_path, 0, 2.2)   # two lines about 2.2 s apart
     # Clock readings 0 and 1: the second line is inside the window, so the first line's time stays.
@@ -95,7 +96,7 @@ def test_last_output_at_is_written_at_most_every_five_seconds(tmp_path: Path) ->
 
 
 def test_a_new_turn_resets_last_output_at_and_the_stalled_mark(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
     ws.mutate(repo, rec, lambda r: (setattr(r, "last_output_at", "2026-01-01T00:00:00+00:00"), r.flags.append(ws.FLAG_STALLED)))
     before = datetime.now(timezone.utc).replace(microsecond=0)   # stamps are whole seconds
@@ -110,7 +111,7 @@ def _stalled(repo: Path, wid: str) -> list[ws.WorkerEvent]:
 
 
 def test_a_silent_running_worker_is_flagged_once_per_silence(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     t0 = datetime.fromisoformat("2026-11-01T00:00:00+00:00")
     ws.mutate(repo, rec, lambda r: (setattr(r, "state", "running"), setattr(r, "last_output_at", t0.isoformat())))
@@ -173,7 +174,7 @@ def test_list_and_sync_flag_a_live_silent_worker(tmp_path: Path, capsys) -> None
 
     from tests.test_worker_cli import run_worker_cli
 
-    repo, script = _repo(tmp_path)
+    repo, script = make_worker_repo(tmp_path)
     spec = tmp_path / "silent.json"
     spec.write_text(json.dumps({"lines": [{"type": "system", "subtype": "init", "session_id": "quiet"}], "sleep": 30}))
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)

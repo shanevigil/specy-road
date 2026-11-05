@@ -134,7 +134,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.21_linked-worktrees-resolve-root-and-symlinked-envs_b502d0b5-af11-4b1e-802c-5283e4f7a506.md",
       "sibling_order": 21,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments",
       "touch_zones": [
         "specy_road/runtime_paths.py",
@@ -165,7 +165,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.22_project-preferences-local-decisions-footer-summary-landing_28fd4390-9084-4f8d-9304-1f7d6e6a88c7.md",
       "sibling_order": 22,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Project preferences the workflow respects: local decisions, a PR body footer, the summary commit rule, and local landing for the root repository",
       "touch_zones": [
         "specy_road/decisions.py",
@@ -262,7 +262,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.24_ready-flags-failure-tails-and-takes-argv_4bbfe087-bdb9-4cff-8e15-8cb0badedabc.md",
       "sibling_order": 24,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "ready does not record false evidence: a passing run whose output shows a failed command is flagged, and --run-argv runs a command without a shell",
       "touch_zones": [
         "specy_road/ready_run_checks.py",
@@ -275,9 +275,9 @@
     },
     {
       "acceptance": [
-        "The post-run check reads git stash list with each entry's hash and subject; new specy_road/worker_turn_stash.py parses the branch from a subject of the form 'On <branch>: <message>' or 'WIP on <branch>: <message>' for every entry added or removed during the turn; worker_turn_check.py changes only GitState's stash field and its one stash comparison",
+        "The post-run check reads git stash list with each entry's hash and subject; new specy_road/worker_turn_stash.py parses the branch from a subject of the form 'On <branch>: <message>' or 'WIP on <branch>: <message>' for every entry added or removed during the turn; worker_turn_check.py changes only GitState's stash field and its one stash comparison; close_turn may also change its one flag predicate to call a single function from worker_turn_stash.py, so an observer turn is noted rather than flagged (planner 2026-11-05)",
         "An entry on the turn's own worker's branch is a stash_rule_violation finding that quotes the subject and says the executor prompt forbids stashing, and flags that worker (post_run_findings); an entry on another worker's branch (any worker record with that branch) appends a post_run_check event with a stash_rule_violation finding to that worker's record and flags it, while this turn records an unflagged stash_other note naming that worker; each stash hash is attributed to its owner at most once, so a second observer adds no second event; an entry whose subject names no branch, or a branch no worker has, keeps today's stash finding on this worker with the subject quoted",
-        "Tests: worker A stashes and pops during worker B's turn, so A is flagged and B is not; A's own turn stashing flags A; an entry with no matching worker keeps today's finding. Out of scope: preventing the stash (the tool-call guard already denies git stash where installed) and stashes inside nested repositories"
+        "Tests: worker A stashes during worker B's turn and the entry is still present when B's turn ends (A pops later), so A is flagged and B is not; A's own turn stashing flags A; an entry with no matching worker keeps today's finding; a stash pushed and popped entirely inside another worker's turn is not visible to turn-boundary snapshots and is not detected (documented limit, pinned by one test; planner 2026-11-05). Out of scope: preventing the stash (the tool-call guard already denies git stash where installed) and stashes inside nested repositories"
       ],
       "codename": "stash-changes-attributed-to-the-owning-branch",
       "dependencies": [],
@@ -310,7 +310,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.26_claims-with-no-worker-are-reported-and-never-hold-slots_4bd33f34-dd57-4ef9-a511-27051f646dd2.md",
       "sibling_order": 26,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim",
       "touch_zones": [
         "specy_road/worker_orphans.py",
@@ -327,8 +327,8 @@
     },
     {
       "acceptance": [
-        "A sanitized fixture under tests/fixtures/ holds a multi-segment Cursor stream-json turn (only type, subtype, session_id and usage fields kept; no prompt or content text), taken from a real long turn's worker log; the implementation summary states which line types carry usage and whether each count is per segment or a running total, as observed in that fixture",
-        "The cursor adapter counts every usage-bearing line of a turn: per-segment counts are summed and a running total is taken once at its last value, so the turn's usage, as worker usage sums it, equals the turn's real total; a test with the fixture asserts output_tokens equal the sum of the segments, and a single-result short turn keeps today's numbers",
+        "A sanitized fixture under tests/fixtures/ holds a real long Cursor stream-json turn from this toolkit's own grind (only type, subtype, session_id and usage fields kept; no prompt or content text); the implementation summary states which line types carry usage, as observed. Planner finding 2026-11-05: in real composer-2.5 logs only the type=result line carries usage, once per turn (10 results, 10 usage-bearing lines in one worker log), so there are no intermediate segments to sum",
+        "The cursor adapter takes a turn's usage from its result line as today; if a turn ever has more than one usage-bearing line, the adapter sums them and the summary says so; a test with the real fixture pins today's single-result numbers. The undercount is surfaced by A3's plausibility mark rather than corrected (planner 2026-11-05, from the real-log finding)",
         "worker usage (and --json, as possible_undercount: true) marks a turn as 'possible undercount' when it lasted 20 minutes or more (from its start event to its usage event) and reported fewer than 300 output tokens per minute, both constants in new specy_road/worker_usage_plausibility.py; tests: the reported shape (6,092 s, 10,136 output tokens) is marked and a 5-minute turn with 17,000 is not. Out of scope: other harnesses' parsers, diff size as a signal, and correcting the recorded cost"
       ],
       "codename": "cursor-usage-sums-segments-and-flags-undercounts",
@@ -341,7 +341,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.27_cursor-usage-sums-segments-and-flags-undercounts_eb4e416f-8d09-49b7-9da4-c4b90bb83145.md",
       "sibling_order": 27,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length",
       "touch_zones": [
         "specy_road/worker_adapter_cursor.py",

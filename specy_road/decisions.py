@@ -26,6 +26,7 @@ from specy_road.registry_yaml import dump_registry_text
 from specy_road.text_sections import find_section
 
 DECISIONS_REL = Path("roadmap") / "decisions.yaml"
+DECISIONS_LOCAL_REL = Path("roadmap") / "decisions.local.yaml"   # this clone only (M15.22)
 PREFERENCE = "preference"
 _SCHEMA_NAME = "decisions.schema.json"
 _DECISION_HEADINGS = {"decisions and notes", "decisions"}
@@ -35,8 +36,8 @@ _DECISION_LINE = re.compile(
 )
 
 
-def decisions_path(root: Path) -> Path:
-    return root / DECISIONS_REL
+def decisions_path(root: Path, local: bool = False) -> Path:
+    return root / (DECISIONS_LOCAL_REL if local else DECISIONS_REL)
 
 
 def read_decisions(path: Path, *, missing_ok: bool = True) -> dict[str, Any]:
@@ -130,15 +131,13 @@ def active_preferences(doc: dict[str, Any], now: datetime | date | None = None) 
 
 
 def plan_preferences(root: Path, now: datetime | date | None = None) -> tuple[list[dict[str, Any]], str | None]:
-    """Active preferences for ``orchestrate plan``; an unreadable ledger is a warning, never a plan failure."""
-    rel = DECISIONS_REL.as_posix()
-    try:
-        doc = read_decisions(decisions_path(root))
-    except (OSError, yaml.YAMLError) as e:
-        return [], f"{rel} could not be read ({e}); preferences not shown"
-    errs = schema_errors(doc, schema_path_for_write(root)) if isinstance(doc, dict) else ["(root): not a mapping"]
+    """Active preferences for ``orchestrate plan``, ``roadmap/decisions.local.yaml`` merged over the tracked
+    ledger; an unreadable ledger is a warning, never a plan failure."""
+    from specy_road.decisions_local import load_merged
+
+    doc, _local_ids, errs = load_merged(root)
     if errs:
-        return [], f"{rel} fails its schema ({errs[0]}); preferences not shown; run `specy-road decisions list`"
+        return [], f"{errs[0]}; preferences not shown; run `specy-road decisions list`"
     return active_preferences(doc, now), None
 
 
@@ -291,8 +290,9 @@ def add_entry(
     decision_id: str | None = None,
     needed_by: str | None = None,
     asked: str | None = None,
+    local: bool = False,
 ) -> dict[str, Any]:
-    path = decisions_path(root)
+    path = decisions_path(root, local)
     doc = read_decisions(path)
     entry_id = decision_id or next_decision_id(doc)
     for e in doc.get("entries") or []:
@@ -331,9 +331,10 @@ def add_preference(
     preference_id: str | None = None,
     supersedes: str | None = None,
     asked: str | None = None,
+    local: bool = False,
 ) -> dict[str, Any]:
     """Record a routing preference; ``supersedes`` closes an open preference in the same write."""
-    path = decisions_path(root)
+    path = decisions_path(root, local)
     doc = read_decisions(path)
     entries = doc.setdefault("entries", [])
     entry_id = preference_id or next_decision_id(doc, "P")
@@ -359,7 +360,7 @@ def add_preference(
 
 
 def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str | None,
-                ledger_only: bool = False) -> dict[str, Any]:
+                ledger_only: bool = False, local: bool = False) -> dict[str, Any]:
     """Close an open entry. A preference (``sheet_text`` None) needs no planning-sheet record:
     it belongs to the project's sessions, not to one leaf. ``ledger_only`` closes a decision without one
     for a caller that keeps its own audit trail (``review defer``: the RCA record and its deferral marker)."""
@@ -372,7 +373,7 @@ def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str | 
             file=sys.stderr,
         )
         raise SystemExit(1)
-    path = decisions_path(root)
+    path = decisions_path(root, local)
     doc = read_decisions(path)
     entries = doc.get("entries") or []
     for e in entries:
@@ -389,5 +390,5 @@ def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str | 
             e["closed"] = _now_iso()
             write_decisions(path, doc)
             return e
-    print(f"error: no decision {decision_id!r} in roadmap/decisions.yaml", file=sys.stderr)
+    print(f"error: no decision {decision_id!r} in {path.relative_to(root).as_posix()}", file=sys.stderr)
     raise SystemExit(1)

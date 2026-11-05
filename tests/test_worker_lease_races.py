@@ -10,8 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.test_worker_cli import _repo, run_worker_cli, wait_for_worker
-from tests.test_worker_max_workers_global import _id_file, _idle, _leases, _remote_and_clone
+from tests.test_worker_cli import run_worker_cli, wait_for_worker
+from tests.worker_repo_helpers import make_worker_repo
+from tests.worker_lease_helpers import checkout_id_file, idle_worker, remote_and_clone, remote_leases
 
 from specy_road import worker_lease as lease
 from specy_road import worker_ops as ops
@@ -24,10 +25,10 @@ def test_a_failed_turns_cleanup_cannot_delete_the_lease_of_a_resume_that_overlap
                                                                                     capsys, argv: list[str]) -> None:
     """The wrapper publishes failed and deletes its lease as one step under the workers lock; a resume started in
     between waits for both, so the lease it pushes survives and a second clone still refuses at the limit."""
-    repo, _ = _repo(tmp_path, max_workers=1)
-    remote, clone = _remote_and_clone(tmp_path, repo)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
+    remote, clone = remote_and_clone(tmp_path, repo)
     cid = lease.checkout_id(repo)
-    rec = _idle(repo, "M1.1")
+    rec = idle_worker(repo, "M1.1")
     lease.acquire_lease(repo, rec, new=True)
     real, resumes, errors = runner.release_lease, [], []
 
@@ -48,7 +49,7 @@ def test_a_failed_turns_cleanup_cannot_delete_the_lease_of_a_resume_that_overlap
     assert runner.run(repo, rec.worker_id, runner.Launch(argv=argv)) != 0
     resumes[0].join(30)
     assert errors == [] and wait_for_worker(repo, rec.worker_id).state == "idle"
-    assert _leases(remote) == [f"{cid}/{rec.worker_id}"]   # the resumed turn's lease, not deleted by the old cleanup
+    assert remote_leases(remote) == [f"{cid}/{rec.worker_id}"]   # the resumed turn's lease, not deleted by the old cleanup
     capsys.readouterr()
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(clone)) == 1
     assert "0 workers active (and 1 leased by other checkouts" in capsys.readouterr().err
@@ -59,9 +60,9 @@ def test_three_callers_initialising_an_empty_id_agree_and_a_leased_worker_resume
     """B reads the empty id file, then stalls while A initialises it and returns A's id; a third caller C runs in
     any gap B opens. All three must get A's id (a valid file is never set aside or rewritten), and a worker leased
     under it resumes in its own slot at max_workers 1."""
-    repo, _ = _repo(tmp_path, max_workers=1)
-    remote, _clone = _remote_and_clone(tmp_path, repo)
-    _id_file(repo).write_text("", encoding="utf-8")
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
+    remote, _clone = remote_and_clone(tmp_path, repo)
+    checkout_id_file(repo).write_text("", encoding="utf-8")
     ids: dict[str, str] = {}
     b_read, a_done = threading.Event(), threading.Event()
     real_read, real_rename = Path.read_text, os.rename
@@ -92,7 +93,7 @@ def test_three_callers_initialising_an_empty_id_agree_and_a_leased_worker_resume
     b.start()
     assert b_read.wait(10)
     ids["A"] = lease.checkout_id(repo)
-    inode = _id_file(repo).stat().st_ino
+    inode = checkout_id_file(repo).stat().st_ino
     a_done.set()
     b.join(10)
     if "C" not in ids:   # no gap was opened: C simply arrives last
@@ -100,9 +101,9 @@ def test_three_callers_initialising_an_empty_id_agree_and_a_leased_worker_resume
         c.join(10)
     first = ids["A"]
     assert ids == {"A": first, "B": first, "C": first}
-    assert _id_file(repo).read_text(encoding="utf-8").strip() == first and _id_file(repo).stat().st_ino == inode
-    rec = _idle(repo, "M1.1")
+    assert checkout_id_file(repo).read_text(encoding="utf-8").strip() == first and checkout_id_file(repo).stat().st_ino == inode
+    rec = idle_worker(repo, "M1.1")
     lease.acquire_lease(repo, rec, new=True)
     ops.resume(repo, rec.worker_id)   # its own lease is not counted as another checkout's
     assert wait_for_worker(repo, rec.worker_id).state == "idle"
-    assert _leases(remote) == [f"{first}/{rec.worker_id}"]
+    assert remote_leases(remote) == [f"{first}/{rec.worker_id}"]

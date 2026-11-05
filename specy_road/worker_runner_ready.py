@@ -10,6 +10,12 @@ from specy_road.worker_process import _fingerprint, branch_mismatch, new_ready
 from specy_road.worker_state import WorkerRecord, append_event
 
 
+READY_ONLY_PROMPT = (
+    "Write only the READY hand-off for the current HEAD commit (`specy-road ready <NODE_ID> ...`). "
+    "Do not change code, run verifiers, or edit the implementation summary. Stop when READY is written.\n"
+)
+
+
 def all_ready_fingerprints(repo_root: Path, node_id: str) -> list[str]:
     """Every READY path's content fingerprint, valid or not — the turn's full checkpoint."""
     return sorted(_fingerprint(p) for p in _files(repo_root, node_id, READY_PREFIX))

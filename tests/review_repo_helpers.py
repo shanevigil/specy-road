@@ -249,6 +249,12 @@ def review_text(commit: str, *, model: str = "human", verdict: str = "approve",
     return "---\n" + yaml.safe_dump(data, sort_keys=False) + "---\nnotes\n"
 
 
+def review_output(commit: str, *, model: str, verdict: str = "approve", a1: str = "pass") -> dict:
+    """A reviewer's final JSON (``review_record_write.output_schema``): the record fields plus ``notes``."""
+    data = yaml.safe_load(review_text(commit, model=model, verdict=verdict, a1=a1).split("---\n")[1])
+    return {**data, "commands_rerun": ["pytest -q"], "notes": "## Findings\n\nnone"}
+
+
 def shipped_anthropic_opus_cli_yaml_line() -> str:
     """The shipped ``access.cli`` YAML line for claude-opus-5-5 (project template)."""
     path = Path(__file__).resolve().parent.parent / "specy_road" / "templates" / "project" / "model-profiles"

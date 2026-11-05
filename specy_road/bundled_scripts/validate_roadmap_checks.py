@@ -15,6 +15,7 @@ from specy_road.roster_profile_check import report_roster_profiles
 from specy_road.review_gate import review_required
 from specy_road.review_gate_agreement import gate_config_mismatch
 from specy_road.runtime_paths import default_user_repo_root, git_root
+from specy_road.workflow_prefs import warn_summary_rule
 
 from specy_road.bundled_scripts.brief_acceptance import warn_acceptance_merged, warn_acceptance_missing, warn_unauthored
 from specy_road.bundled_scripts.planning_sheet_bootstrap import unauthored_leaves
@@ -339,8 +340,7 @@ def warn_authoring_gaps(
 
 
 def run_validation(
-    roadmap: dict,
-    registry: dict,
+    roadmap: dict, registry: dict,
     no_overlap_warn: bool,
     *,
     repo_root: Path | None = None,
@@ -386,7 +386,8 @@ def run_validation(
     warn_stale_parent_status(nodes)
     report_roster_profiles(r)   # unmatched ids, and profile: values that do not resolve
     warn_touch_zones_match_nothing(nodes, r, git_root=git_root(r) or r)
-    warn_untracked_zones(nodes, r)
+    warn_untracked_zones(nodes, r, claims=registry.get("entries") or [], show_all=show_all)
+    warn_summary_rule(r, nodes)   # implementation_summary: commit against a .gitignore that ignores summaries (M15.22)
     warn_authoring_gaps(nodes, r, gate, show_all=show_all, strict_authoring=strict_authoring)
     warn_acceptance_merged(nodes)
     warn_registry_touch_zone_overlap(

@@ -15,6 +15,7 @@ The model must be a roster `id` in `roadmap/orchestration.yaml` with that role; 
 - The prompt opens with a precondition: if the brief, branch, or packet is not there, the agent changes nothing, replies `<NODE_ID> not landed; waiting`, and stops. You can queue prompts for dependent leaves before they land.
 - `--channel cli` also runs the profile's `access.cli` (or the roster entry's `channels.cli`), replacing `"<prompt>"` (the shipped profiles' form) with the prompt text as one argument and `{prompt}` with the prompt file's path; `paste` (default) and `subagent` only write the file.
 - A reviewer prompt needs the packet first: `/specyrd-review-packet`.
+- `--channel cli` on a reviewer runs its harness's read-only reviewer command (`claude-code`, `codex`, `cursor` without `channels.cli`) or its own command, captured (`agy` gets `--json-schema`), and files `REVIEW-<model>.md` from the final JSON; a run that writes anything is a review failure (its notes go in the JSON), one whose last message is not valid JSON a rerun request.
 - `rca` takes a rostered reviewer that neither implemented nor reviewed the leaf; it writes `work/reviews/<NODE_ID>/RCA-<round>.md`, which `handoff status` validates.
 - `--ref <branch or commit>` names the commit under review when no registry claim does (a Complete node, say), as `review-packet --ref` does; the reviewer prompt passes it on to `review record`.
 

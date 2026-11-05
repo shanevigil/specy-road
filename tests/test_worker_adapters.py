@@ -13,7 +13,7 @@ import pytest
 from tests.review_repo_helpers import make_review_repo, shipped_anthropic_opus_cli_yaml_line
 from tests.test_models_and_prompt import commit_profile, make_profile_repo, run_main
 from tests.test_worker_cli import run_worker_cli
-
+from tests.worker_repo_helpers import reset_cursor_adapter_via_init
 from specy_road import worker_adapters as wa
 from specy_road import worker_ops as ops
 from specy_road import worker_reconcile as wrc
@@ -124,7 +124,7 @@ CLAUDE_RESULT, CODEX_TURN, CURSOR_RESULT = (RECORDED[h]["lines"][i] for h, i in 
 
 
 def test_each_adapter_reports_turn_usage_in_one_shape() -> None:
-    cc, cx, cu = (wa.adapter_for(h) for h in ("claude-code", "codex", "cursor"))
+    cc, cx, cu = (wa.adapter_for(h) for h in ("claude-code", "codex", "cursor")); reset_cursor_adapter_via_init(cu)
     assert cc.parse(json.dumps(CLAUDE_RESULT)).usage == {"input_tokens": 38 + 67090 + 1224204, "cached_input_tokens": 1224204,
         "output_tokens": 13258, "reasoning_tokens": 4703, "cost_usd": 1.0474079, "cost_is_estimate": True, "num_turns": 19,
         "harness_version": None, "session_cost_usd": 1.0474079}   # input counts cache reads and writes; the wrapper takes the delta

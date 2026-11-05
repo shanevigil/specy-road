@@ -16,6 +16,7 @@ from typing import Any
 from specy_road.git_subprocess import git_text
 from specy_road.worker_adapter_parsers import (
     _SESSION,
+    _json,
     _snip,
     _tokens,
     apply_roster_price_estimate,
@@ -68,6 +69,17 @@ STDIN_INSTRUCTION = "The task is the text on standard input. Follow it exactly; 
 EFFORT_FLAGS = {"claude-code": lambda lv: ["--effort", lv], "codex": lambda lv: ["-c", f"model_reasoning_effort={lv}"]}
 # `codex exec` has no --ask-for-approval (codex-cli 0.165): set both as config, which exec and resume take.
 CODEX_POLICY = ("-c", "sandbox_mode=workspace-write", "-c", "approval_policy=never")
+# A reviewer's turn writes nothing: specy-road files its record from the final JSON (review_record_write).
+CODEX_REVIEW_POLICY = ("-c", "sandbox_mode=read-only", "-c", "approval_policy=never")
+#: Claude Code's reviewer runs --bare, so no hook fires to stop these; the deny list does.
+REVIEWER_DISALLOWED = ("Bash(git commit *)", "Bash(git push *)", "Bash(gh *)")
+#: A reviewer writes nothing (M8.3 A2): its read and shell tools only, and the file-writing tools denied outright.
+REVIEWER_TOOLS = "Read,Glob,Grep,Bash"
+REVIEWER_NO_WRITES = ("Write", "Edit", "NotebookEdit")
+# Antigravity's `agy` runs as a `generic` harness (docs/design-notes/harness-compatibility-triage.md); a reviewer turn
+# needs these, each added when the command lacks it (https://antigravity.google/docs/cli/headless): one JSON envelope
+# whose structured_output is the answer, the terminal sandbox, and more than the 5m default to answer in.
+AGY_REVIEW_FLAGS = (("--output-format", "json"), ("--sandbox", None), ("--print-timeout", "30m"))
 REVIEWS_DIR = "{reviews_dir}"   # a custom command's writable root (module docstring)
 
 
@@ -101,6 +113,41 @@ def reviews_dir_into(cli: str, repo_root: Path | None, node_id: str | None) -> s
     return cli
 
 
+def reviewer_cli(cli: str, schema: Path | None) -> str:
+    """A custom reviewer command with the structured-output flags its program takes. For Antigravity (``agy``):
+    ``--json-schema <schema file>`` and :data:`AGY_REVIEW_FLAGS`, each only when absent, right after the program;
+    ``--dangerously-skip-permissions`` (auto-approve every tool) is refused. Any other program is left as written."""
+    try:
+        words = shlex.split(cli)
+    except ValueError:   # unbalanced quotes: placeholder_problem reports the command as it is
+        return cli
+    if not words or Path(words[0]).name != "agy":
+        return cli
+    if "--dangerously-skip-permissions" in words:
+        raise Unsupported(f"an agy reviewer must not pass --dangerously-skip-permissions: {cli}")
+    named = {w.split("=", 1)[0] for w in words}
+    add = [] if not schema or "--json-schema" in named else ["--json-schema", shlex.quote(str(schema))]
+    for flag, value in AGY_REVIEW_FLAGS:
+        add += [flag, *([value] if value else [])] if flag not in named else []
+    end = _program_end(cli)
+    return cli[:end] + "".join(f" {a}" for a in add) + cli[end:] if add else cli
+
+
+def _program_end(cli: str) -> int:
+    """Where ``cli``'s first shell word ends, read as :func:`shlex.split` reads it: whitespace inside quotes or
+    after a backslash belongs to the word, so a quoted program path with spaces stays whole."""
+    i, quote = len(cli) - len(cli.lstrip()), None
+    while i < len(cli) and (quote or not cli[i].isspace()):
+        if cli[i] == "\\" and quote != "'":
+            i += 1
+        elif cli[i] == quote:
+            quote = None
+        elif not quote and cli[i] in "'\"":
+            quote = cli[i]
+        i += 1
+    return min(i, len(cli))
+
+
 def _bare(launch_mode: str) -> list[str]:
     return ["--bare"] if launch_mode == "bare" else []
 
@@ -124,6 +171,14 @@ class Adapter:
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
                effort: str | None = None) -> Launch:
         raise Unsupported(f"{self.harness}: resume is not supported")
+
+    def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,
+                        session: tuple[str, bool] | None = None, *, schema: Path | None = None,
+                        output: Path | None = None) -> Launch:
+        """The harness's own read-only reviewer command; ``session`` is ``(id, resume)``, ``schema`` the review
+        output schema file and ``output`` where a harness that can writes its final message. A ``generic`` entry
+        has none: it runs its ``channels.cli`` and its final message is parsed as plain JSON."""
+        raise Unsupported(f"{self.harness}: no default reviewer command; set the roster's channels.cli")
 
     def parse(self, line: str) -> Parsed | None:
         raw = line.strip()

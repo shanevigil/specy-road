@@ -1,6 +1,11 @@
 """The ``cursor`` harness adapter: ``agent -p`` stream-json (slice 7b).
 
 Split from :mod:`specy_road.worker_adapters` for the file limit; callers reach it through that module.
+
+Composer 2.5 worker logs on this toolkit's grind carry usage on the terminal ``result`` line
+once per turn (``inputTokens``, ``outputTokens``, ``cacheReadTokens``, ``cacheWriteTokens``).
+If a turn ever emits more than one usage-bearing line (``usage``, ``assistant``/``message.usage``,
+or ``result``), token counts are summed in :func:`sum_cursor_turn_usage`.
 """
 
 from __future__ import annotations
@@ -8,10 +13,36 @@ from __future__ import annotations
 import shlex
 import subprocess
 from pathlib import Path
+from typing import Any
 
-from specy_road.worker_adapter_base import Adapter, Capabilities, Launch, Parsed, Unsupported, _model_flag
-from specy_road.worker_adapter_parsers import _json, _snip, _text, usage_fields
+from specy_road.worker_adapter_base import (Adapter, Capabilities, Launch, Parsed, Unsupported, _model_flag)
+from specy_road.worker_adapter_parsers import _json, _num, _snip, _text, usage_fields
 from specy_road.worker_sessions import session_id_problem
+from specy_road.worker_usage_delta import SESSION_TOKENS
+
+
+def _raw_usage(d: dict[str, Any]) -> Any:
+    if d.get("usage") is not None:
+        return d.get("usage")
+    msg = d.get("message")
+    if isinstance(msg, dict) and msg.get("usage") is not None:
+        return msg.get("usage")
+    return None
+
+
+def sum_cursor_turn_usage(parts: list[dict[str, Any]]) -> dict[str, Any]:
+    """One turn's usage: a single line unchanged, several lines summed per token key."""
+    if not parts:
+        return usage_fields(None)
+    if len(parts) == 1:
+        return dict(parts[0])
+    out = usage_fields(None)
+    for k in SESSION_TOKENS:
+        vals = [p[k] for p in parts if p.get(k) is not None]
+        out[k] = sum(vals) if vals else None
+    for k in ("cost_usd", "cost_is_estimate", "num_turns", "harness_version"):
+        out[k] = next((p[k] for p in reversed(parts) if p.get(k) is not None), None)
+    return out
 
 
 def create_chat(worktree: Path) -> str:
@@ -48,6 +79,17 @@ class Cursor(Adapter):
                               "mode can write and run shell; never -w); resume = `agent -p --resume` (undocumented with a "
                               "new prompt: verify)")
 
+    def __init__(self) -> None:
+        self._usage_parts: list[dict[str, Any]] = []
+
+    def _track_usage(self, d: dict[str, Any]) -> None:
+        if d.get("type") == "system" and d.get("subtype") == "init":
+            self._usage_parts = []
+            return
+        raw = _raw_usage(d)
+        if raw is not None:
+            self._usage_parts.append(usage_fields(raw))
+
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
                effort: str | None = None) -> Launch:
@@ -72,10 +114,23 @@ class Cursor(Adapter):
                        _text(prompt_path)],
                       session_id=session_id)
 
+    def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,
+                        session: tuple[str, bool] | None = None, *, schema: Path | None = None,
+                        output: Path | None = None) -> Launch:
+        """A reviewer's turn in ``--mode ask`` (read-only Q&A) with ``--trust`` and without ``--force``, which
+        would force-allow every command not denied. ``agent -p`` has no structured-output flag, so ``schema`` and
+        ``output`` are unused and the result event's text is parsed as the final JSON; ``session`` is
+        ``(id, resume)``, and only a resume can name the id."""
+        resume = ["--resume", session[0]] if session and session[1] else []
+        return Launch(["agent", "-p", *resume, "--output-format", "stream-json", "--mode", "ask", "--trust",
+                       *_model_flag("--model", model), _text(prompt_path)],
+                      session_id=session[0] if resume else None)
+
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)
         if not d:
             return None
+        self._track_usage(d)
         sid = d.get("session_id")
         t = d.get("type")
         if t == "system" and d.get("subtype") == "init":
@@ -86,14 +141,19 @@ class Cursor(Adapter):
             return Parsed("output", _snip(text) or "(assistant)", sid)
         if t == "tool_call":
             return Parsed("output", f"tool call {d.get('subtype', '')}".strip(), sid)
+        if t == "usage":
+            return Parsed("output", "usage", sid)
         if t == "result":
             text = str(d.get("result") or "")
             ok = not d.get("is_error")
             summary = f"{d.get('subtype')}: {_snip(text)}" if ok else _snip(text) or f"{d.get('subtype')}: error"
             detail = {"message": text} if text else None
-            # Token counts only on the line; cost comes from the roster profile when rates are known.
-            return Parsed("turn_completed" if ok else "error", summary, sid, detail,
-                          usage_fields(d.get("usage"), num_turns=d.get("num_turns")))
+            usage = sum_cursor_turn_usage(self._usage_parts) if self._usage_parts else usage_fields(d.get("usage"))
+            nt = _num(d.get("num_turns"), whole=True)
+            if nt is not None:
+                usage["num_turns"] = nt
+            self._usage_parts = []
+            return Parsed("turn_completed" if ok else "error", summary, sid, detail, usage)
         return None
 
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:

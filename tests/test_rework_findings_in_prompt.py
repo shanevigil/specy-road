@@ -9,7 +9,8 @@ import yaml
 
 from tests.review_repo_helpers import git, review_text
 from tests.test_models_and_prompt import make_profile_repo
-from tests.test_worker_cli import _repo, run_worker_cli, wait_for_worker
+from tests.test_worker_cli import run_worker_cli, wait_for_worker
+from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import role_prompt
@@ -90,7 +91,7 @@ def test_an_active_latest_worker_carries_nothing(tmp_path: Path) -> None:
 
 
 def test_delegate_rework_takeover_by_a_different_model(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     tip = git(repo, "rev-parse", "HEAD")
     file_review(repo, "sol", tip, "block", ["Cover the empty roster"])
     stopped_worker(repo, "grok", "failed", "Model unavailable after commit 2; A2 is left.")
@@ -108,7 +109,7 @@ def test_delegate_rework_takeover_by_a_different_model(tmp_path: Path, capsys) -
 
 
 def test_delegate_rework_refusals(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--rework", "--repo-root", str(repo)) == 1
     assert "nothing to rework on M1.1" in capsys.readouterr().err
     stopped_worker(repo, "grok", "idle", "still mine")

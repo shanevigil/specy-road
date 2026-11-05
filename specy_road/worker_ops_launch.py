@@ -6,6 +6,7 @@ these through that module.
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import subprocess
 import sys
@@ -24,7 +25,7 @@ from specy_road.orchestration_config import harness_model, roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_files import reviews_dir, reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
-from specy_road.runtime_paths import git_root, project_prefix
+from specy_road.runtime_paths import REPO_ROOT_ENV, git_root, project_prefix
 from specy_road.worker_adapter_parsers import effort_note, output_mode_note, resume_form_note
 from specy_road.worker_adapters import adapter_for
 from specy_road.worker_lease import acquire_lease, foreign_leases, release_lease
@@ -36,11 +37,12 @@ from specy_road.worker_state import (
     WorkerRecord,
     append_event,
     create_record,
+    list_records,
     set_state,
     status_entries,
     workers_lock,
 )
-from specy_road.worktree_env import EnvSetupError, setup_worktree_env
+from specy_road.worktree_env import EnvSetupError, linked_status_paths, setup_worktree_env
 
 
 def _target(repo_root: Path, node_id: str):
@@ -175,6 +177,12 @@ def _brief_into(wt: Path, repo_root: Path, node_id: str, t) -> None:
         dest.write_text(render_brief(node_id, index(t.nodes), repo_root=repo_root, include_history=False), encoding="utf-8")
 
 
+def worker_env(launch, leaf_root: Path):
+    """``launch`` with ``SPECY_ROAD_REPO_ROOT`` set to the worker's own project root, so a command the worker
+    runs never resolves the checkout that delegated it (an exported variable would name that one)."""
+    return dataclasses.replace(launch, env={**(launch.env or {}), REPO_ROOT_ENV: str(Path(leaf_root).resolve())})
+
+
 def _nested_dirty(leaf_root: Path, repo_root: Path) -> list[str]:
     """Tracked-modified and untracked paths in each nested repository under ``leaf_root`` (``nested_repos``),
     git-root-relative: the worker edits those trees too, so they are checked as the main tree is."""
@@ -188,8 +196,28 @@ def _nested_dirty(leaf_root: Path, repo_root: Path) -> list[str]:
     return out
 
 
+def _rework_clear_completed(repo_root: Path, node_id: str, *, offline: bool) -> None:
+    """``--rework`` replaces a finished worker: terminate its ``completed`` record so a new launch can proceed."""
+    existing = next((r for r in list_records(repo_root, active_only=True) if r.node_id == node_id), None)
+    if existing is None or existing.state != "completed":
+        return
+    from specy_road.worker_ops_lifecycle import _terminate_locked  # noqa: PLC0415 — launch must not import at module level
+
+    wid = existing.worker_id
+    _terminate_locked(repo_root, existing)
+    if not offline:
+        release_lease(repo_root, wid)
+
+
+def _existing_after_rework(repo_root: Path, node_id: str, *, foreign: list[str] | None = None,
+                           rework: bool = False, offline: bool = False) -> WorkerRecord | None:
+    if rework:
+        _rework_clear_completed(repo_root, node_id, offline=offline)
+    return _slot_or_existing(repo_root, node_id, foreign=foreign)
+
+
 def delegate(repo_root: Path, node_id: str, model: str | None, *, harness: str | None = None,
-             worktree: Path | None = None, offline: bool = False) -> tuple[WorkerRecord, bool]:
+             worktree: Path | None = None, offline: bool = False, rework: bool = False) -> tuple[WorkerRecord, bool]:
     """``(record, created)``: an active worker on the leaf is returned, not duplicated.
 
     The existing-worker check, the cap and the launch happen under the workers lock, so two concurrent delegates
@@ -204,11 +232,11 @@ def delegate(repo_root: Path, node_id: str, model: str | None, *, harness: str |
         raise WorkerError(f"--model is required for {node_id}")
     entry, harness = _entry_and_harness(repo_root, model, harness, roster_free=chore is not None)
     with workers_lock(repo_root):   # before any network read: a retry is answered while the remote is down
-        if existing := _slot_or_existing(repo_root, node_id):
+        if existing := _existing_after_rework(repo_root, node_id, rework=rework, offline=offline):
             return existing, False
     foreign = foreign_leases(repo_root, offline=offline)   # other checkouts' workers: a network read, so outside the lock
     with workers_lock(repo_root):
-        if existing := _slot_or_existing(repo_root, node_id, foreign=foreign):
+        if existing := _existing_after_rework(repo_root, node_id, foreign=foreign, rework=rework, offline=offline):
             return existing, False
     t = chore_target(repo_root, chore) if chore else _target(repo_root, node_id)
     if not entry.get("roster_free"):
@@ -219,7 +247,7 @@ def delegate(repo_root: Path, node_id: str, model: str | None, *, harness: str |
     if err:
         raise WorkerError(err)
     with workers_lock(repo_root):
-        existing = _slot_or_existing(repo_root, node_id, foreign=foreign)   # re-checked: another delegate may have landed
+        existing = _existing_after_rework(repo_root, node_id, foreign=foreign, rework=rework, offline=offline)
         if existing:
             return existing, False
         return _launch_locked(repo_root, node_id, model, harness, entry, t, text,
@@ -247,15 +275,15 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     # The worker edits this tree: uncommitted work in it could be overwritten, and
     # `reconcile` could not tell the worker's edits from it. Only the leaf's own
     # untracked bookkeeping is exempt (pickup leaves the brief there untracked),
-    # and a nested repository's directory, which is its own repository and is
+    # env_setup's symlinks, and a nested repository's directory, which is its own repository and is
     # checked on its own (_nested_dirty).
     entries = status_entries(wt)
     if entries is None:
         raise WorkerError(f"cannot read `git status` in {wt}, so its uncommitted changes are unknown; "
                           "repair that checkout, then delegate again")
-    nested = nested_prefixes(repo_root)
+    nested, links = nested_prefixes(repo_root), linked_status_paths(repo_root, wt / prefix)   # env_setup.link
     dirty = sorted(p for xy, p in entries
-                   if not (xy == "??" and (_bookkeeping(p, node_id, prefix) or in_nested(p, nested))))
+                   if not (xy == "??" and (_bookkeeping(p, node_id, prefix) or in_nested(p, nested) or p in links)))
     dirty += _nested_dirty(wt / prefix, repo_root)
     if dirty:
         raise WorkerError(f"{wt} has uncommitted changes the worker could overwrite: {', '.join(dirty)}; "
@@ -268,8 +296,8 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     cli, api_id, mode, effort = _cli_for(repo_root, entry, harness)
     _report_cli(entry, harness, cli)
     reviews_dir(repo_root, node_id).mkdir(parents=True, exist_ok=True)   # a harness may refuse an --add-dir that is missing
-    launch = adapter_for(harness).launch(prompt, wt, api_id, cli, node_id=node_id, repo_root=repo_root,
-                                         launch_mode=mode, effort=effort)
+    launch = worker_env(adapter_for(harness).launch(prompt, wt, api_id, cli, node_id=node_id, repo_root=repo_root,
+                                                    launch_mode=mode, effort=effort), wt / prefix)
     rec = create_record(repo_root, node_id, harness, model, wt, branch=branch,
                         contract_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
                         billing_route=entry.get("billing_route"))
