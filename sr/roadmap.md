@@ -251,5 +251,13 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.20` | Touch zones that miss what acceptance needs are flagged at plan time, and the brief's zone section stays short | task | Agentic-led | Not Started |
 | `M15.21` | Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments | task | Agentic-led | Not Started |
 | `M15.22` | Project preferences the workflow respects: local decisions, a PR body footer, the summary commit rule, and local landing for the root repository | task | Agentic-led | Not Started |
+| `M15.23` | A project declares its merge-blocking CI commands per touch zone; ready always runs them and the review packet shows their result at the reviewed commit | task | Agentic-led | Not Started |
+| `M15.24` | ready does not record false evidence: a passing run whose output shows a failed command is flagged, and --run-argv runs a command without a shell | task | Agentic-led | Not Started |
+| `M15.25` | A change to the shared stash is attributed to the worker whose branch made it, not to whichever worker's turn ended while the entry existed | task | Agentic-led | Not Started |
+| `M15.26` | A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim | task | Agentic-led | Not Started |
+| `M15.27` | worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length | task | Agentic-led | Not Started |
+| `M15.28` | --rework carries blocks at the branch tip as required changes, lists older blocks as possibly resolved, and takes a coordinator note placed above the reviews | task | Agentic-led | Not Started |
+| `M15.29` | A review that stops before filing leaves a trace: every reviewer channel opens a RUN record, and review list shows started but not filed | task | Agentic-led | Not Started |
+| `M15.30` | Under delta review, one approval per round still checks the whole leaf against the merge base on a fixed checklist | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
