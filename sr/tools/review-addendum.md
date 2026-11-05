@@ -8,4 +8,6 @@ record it refuses costs a whole rerun. Before you send the final message, check 
 - A line that uses a defect word (fails, broken, bug, corrupt, crash, wrong, missing, regression, ...) needs the same,
   even inside a longer sentence. Each clause split on ". ", "; " or " and " is checked on its own.
 - On an approve, every findings entry also needs "not a defect because <reason>".
+Write ONE observation per line. A list joined by commas ("no X, Y or Z were added") counts as several observations, each needing its
+own reason: split such a list into separate lines, each ending with its own "not a defect because <reason>".
 Keep the notes short: fewer lines, fewer refusals. Evidence goes in commands_rerun, not in free prose.
