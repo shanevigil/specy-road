@@ -106,9 +106,37 @@ Pairs checked (a, b → overlap), default shared zones `planning/`, `shared/`; a
 Red-green: against the previous tip (`5159ce9f`) 4 of these pairs fail (the `//` and
 `x/../` ones); against the reviewed commit `70f35d8d`, 11 tests in the file fail.
 
+## Fix round 2: aliased shared zones reported once
+
+Merged `origin/WIP/improvements-0-3-1` first. Class: a list of zones taken from
+configuration and reported or counted without going through the normaliser, so two
+spellings of one directory showed up twice.
+
+- `shared_zones.unique_zones` collapses spellings by `zone_key` (the key
+  `zones_overlap` compares by), keeping the first configured spelling.
+  `resolve_shared_zones` returns the deduplicated set, and `ignored_shared_zones`
+  dedups again for a set passed straight to `compute_session_plan`.
+- Test `test_aliased_shared_zone_is_reported_once_in_text_and_json`: configured
+  `[notes/team/, ./notes/team/]`, `[notes/team/, notes//team/, " notes/team "]`,
+  `[notes/team/, notes/x/../team/]`. For each, both the config-resolved set and the raw
+  set give one `notes/team/` in the `shared_zones_ignored` JSON and in the one text line.
+  3 of these fail against the previous tip's `shared_zones.py`.
+
+Probes (grep for raw zone strings in the zoned modules):
+- `shared_zones.is_shared_zone`, `zones_overlap`, `in_zone_tree`, `ignored_shared_zones` comparisons: all through `zone_key`; ok.
+- `shared_zones.ignored_shared_zones` iteration over `shared`: was raw (the finding); now `unique_zones`.
+- `shared_zones.resolve_shared_zones` result: was raw; now `unique_zones`.
+- `validate_registry_overlap._is_broad_touch_zone`: was `zone.strip().endswith("/")`; now `norm_zone(zone).endswith("/")`.
+- `validate_registry_overlap` summary keys and `summarized_broad`: already `norm_zone`; ok. Same-file check in `_clash_suppressed_by_broad_summary`: `norm_zone` equality; ok.
+- `validate_registry_overlap` `sorted(touch_zones)`: only orders the loop, compares nothing; ok.
+- `validate_registry_overlap._claims_in_broad_zone_tree`: a rename in fix round 1 had mangled it to `_claimsin_zone_tree`; now `_claims_in_zone_tree`.
+- `session_plan_render` `zone_clash` / `zone_overlaps` / `shared_zones_ignored`: delegate to `shared_zones`; no raw comparisons.
+- `session_plan.py` `touch_zones` dict and the `shared_zones` field: only stored and passed on, never compared (the file is at its line cap); ok.
+- `session_plan_git.py`: passes `plan.shared_zones` on; no zone comparisons.
+
 ## Verification
 
-- `python -m pytest -q -n 4 tests/test_shared_zones.py tests/test_registry_overlap_warnings.py tests/test_session_plan_touch_zones.py tests/test_session_plan.py tests/test_session_plan_git.py tests/test_why_blocked_plan_holds.py tests/test_orchestrate_plan.py tests/test_grind_session.py tests/test_validate_roadmap.py tests/test_refresh_schemas.py tests/test_schema_revision.py tests/test_pick_ordering.py tests/test_grind_session_in_flight.py tests/test_grind_session_step.py tests/test_unauthored_leaf_guard.py`: 235 passed (fix round 1)
+- `python -m pytest -q -n 4 tests/test_shared_zones.py tests/test_registry_overlap_warnings.py tests/test_session_plan_touch_zones.py tests/test_session_plan.py tests/test_session_plan_git.py tests/test_why_blocked_plan_holds.py tests/test_orchestrate_plan.py tests/test_grind_session.py tests/test_validate_roadmap.py tests/test_refresh_schemas.py tests/test_schema_revision.py tests/test_pick_ordering.py tests/test_grind_session_in_flight.py tests/test_grind_session_step.py tests/test_unauthored_leaf_guard.py`: 238 passed (fix round 2)
 - `specy-road file-limits`: OK. `ruff check` on the changed files: clean. `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: exit 0.
 
 ## Added
@@ -130,3 +158,5 @@ Red-green: against the previous tip (`5159ce9f`) 4 of these pairs fail (the `//`
 - Tests (`tests/test_shared_zones.py`): 30-leaf single batch and one-time ignored-zones line; same planning sheet kept apart; code overlap still splits next to shared zones; `shared_zones=()` restores the plain rule; config default/override/empty/schema rejection; registry warning ignores shared zones (unscoped and scoped); registry warning keeps the same planning sheet; validate reads configured zones via `repo_root`.
 - Tests (rework, `tests/test_shared_zones.py`): `test_same_file_spelled_two_ways_warns_scoped_and_unscoped_and_splits` (R1: `planning/same.md` vs `./planning/same.md` warns once unscoped, once scoped, and the plan splits); `test_registry_broad_zone_spelled_two_ways_is_summarized_once` (summary key normalized).
 - Tests (fix round 1, `tests/test_shared_zones.py`): `test_plan_and_validate_apply_one_overlap_rule`, parametrized over 22 zone pairs; the plan, unscoped validate and scoped validate must all agree.
+- `shared_zones.unique_zones` (fix round 2): dedups a zone list by `zone_key`, keeping the first spelling, so an aliased shared zone is reported once.
+- Tests (fix round 2): `test_aliased_shared_zone_is_reported_once_in_text_and_json`, 3 alias configurations, through the public plan text and JSON.
