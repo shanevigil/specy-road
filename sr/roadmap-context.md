@@ -262,6 +262,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.34` The executor prompt states the test rules that the reviewer's excess checklist enforces `executor-prompt-states-the-test-rules` — task — **Not Started**
   - `M15.35` The review packet never lists .git or a path under it as an uncommitted reference `packet-never-lists-dot-git-as-uncommitted` — task — **Not Started**
   - `M15.36` Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode `worker-launch-never-depends-on-claude-default-mode` — task — **Not Started**
+  - `M15.37` Review notes: a part joined by a comma or 'and' is a second observation only when it names a defect `comma-or-and-part-counts-only-when-it-names-a-defect` — task — **Not Started**
+  - `M15.38` add-node caps a title-derived codename at 64 characters so the planning file name fits `derived-codename-capped-so-planning-names-fit` — task — **Not Started**
+  - `M15.39` A roadmap write that fails part-way restores every file it changed `failed-roadmap-write-restores-every-file` — task — **Not Started**
+  - `M15.40` finish-this-task: a failed merge landing reports after the land check output and undoes its bookkeeping commit `finish-merge-failure-reports-and-undoes-bookkeeping` — task — **Not Started**
 - `M16` lean core: harden and optimize code and docs, all delivered functionality kept `lean-core` — phase — **Not Started**
   - `M16.0` Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs `parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs` — task — **Not Started**
   - `M16.1` Parity harness: a review-gate decision table covering every review policy `parity-harness-a-review-gate-decision-table-covering-every-review-policy` — task — **Not Started**
