@@ -233,3 +233,38 @@ def test_a_record_filed_before_the_failed_run_does_not_supersede_it(tmp_path: Pa
     _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
     st = json.loads(capsys.readouterr().out)["nodes"][0]
     assert st["review_runs"][0]["superseded"] is None
+
+
+# A4/A6 on refusals reviewers really hit after M8.3 (from RUN-*.log final answers, 2026-11-05): each is still refused,
+# and the refusal names its trigger and quotes the line.
+
+_REAL = [
+    # M14.1 cursor-grok-4.6-high, findings.boundary[0]: joined by "plus"
+    ({"boundary": ["Changed paths are the touch zones plus sr/work/implementation-summary-M14.1.md, not a defect "
+                   "because that summary is the leaf hand-off."]}, "",
+     'findings.boundary[0] is a finding, two observations joined by "plus": "Changed paths are the touch zones" plus '
+     '"sr/work/implementation-summary-M14.1.md": Changed paths are the touch zones plus '
+     'sr/work/implementation-summary-M14.1.md, not a defect because that summary is the leaf hand-off.'),
+    # M14.1 grok-4.7-low, findings.boundary[0]
+    ({"boundary": ["The diff stays inside the listed touch zones plus the required implementation summary not a "
+                   "defect because no other product module is edited."]}, "",
+     'findings.boundary[0] is a finding, two observations joined by "plus": "The diff stays inside the listed touch '
+     'zones" plus "the required implementation summary": The diff stays inside'),
+    # M13.12 grok-4.7-low, findings.test_integrity[0]: the reason names a defect word
+    ({"test_integrity": ["The packet's test-integrity section lists no removals not a defect because no test was "
+                         "dropped."]}, "",
+     'findings.test_integrity[0] says "was dropped" in its reason: The packet\'s test-integrity section lists no '
+     'removals not a defect because no test was dropped.'),
+    # M12.5 grok-4.7-low, notes line 3: joined by "and"
+    ({}, "## Acceptance\nA1: pass.\nA2: pass. Refusals print one reason line and leave the worktree in place not a "
+         "defect because `test_cleanup_refuses_and_removes_nothing` covers unmerged files.\n",
+     'notes line 3 is an observation, two observations joined by "and": "Refusals print one reason line" and '
+     '"leave the worktree in place": A2: pass. Refusals print one reason line and leave the worktree in place'),
+]
+
+
+@pytest.mark.parametrize("findings, notes, want", _REAL)
+def test_a_real_refusal_names_its_trigger_and_quotes_the_line(findings: dict, notes: str, want: str) -> None:
+    why = approve_defect_problem({"verdict": "approve", "findings": findings}, notes)
+    assert why is not None and why.startswith("verdict: approve refused: each line below has no required_changes")
+    assert f"\n  {want}" in why

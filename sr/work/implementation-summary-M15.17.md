@@ -14,7 +14,11 @@ Base `4a8d93bb`; code commit `d5f88a7b`.
 ## Test changes
 
 - `tests/test_review_record_rules.py`: in `test_clause_problem`, the expected strings for the four joined-observation cases now include the A6 suffix (joining word and both parts). The cases, and the verdict for each (refused), are the same; no case was removed.
-- New `tests/test_review_friction_m15_17.py` (17 tests). Run against the base source, 13 fail. The 4 that pass without the fix are expected to: the A3 pin, the keep-current-packet case, the backtick span (code spans were already stripped), and a conjunction inside the reason.
+- New `tests/test_review_friction_m15_17.py` (17 tests, plus 4 added later on real refused answers). Run against the base source, 13 fail. The 4 that pass without the fix are expected to: the A3 pin, the keep-current-packet case, the backtick span (code spans were already stripped), and a conjunction inside the reason.
+
+## Real refusals (coordinator context, round 1)
+
+The coordinator pointed to refused reviewer answers in the main checkout's `RUN-*.log` files (M12.5, M13.12 and M14.1 ×2; the M15.2 log has no refusal, and the M8.3 logs' refusals come from test repos inside those runs). I ran each final answer through `approve_defect_problem`. Each one is still refused, so the rules are not widened, and each refusal now names its trigger (`"and"`/`"plus"` with both parts, or the defect word in the reason) and quotes the line. Four of them are verbatim cases in `test_a_real_refusal_names_its_trigger_and_quotes_the_line`. The M12.5 run was first refused with `verdict: approve with required_changes listed; use block`. That message comes from `specy_road/review_files.py` (`review_semantic_errors`), which is outside the touch zones and is a different rule from A4's, so I left it unchanged.
 
 ## Touch zones (final)
 
@@ -42,5 +46,5 @@ These are the zones as listed. I edited `review_delegate.py`, `review_delegate_p
 - `review_run_status.superseded_by` / `_run_time`: decides whether a failed run is superseded (A5).
 - `run_states` `superseded` key, the `run_lines` suffix and the `run_problems` exclusion: mark superseded runs in review list and handoff status (A5).
 - `review_delegate.gate_policy_summary` wrapper: a superseded run is no reviewer failure on the policy line (A5).
-- Tests: the 17 in `tests/test_review_friction_m15_17.py`, one or more per acceptance item, including a negative A5 case (a record filed before the run does not supersede it) and an A2 case (a matching glob is present).
+- Tests: the 21 in `tests/test_review_friction_m15_17.py` (17, plus 4 on real refused answers), one or more per acceptance item, including a negative A5 case (a record filed before the run does not supersede it) and an A2 case (a matching glob is present).
 - Mocks: none (the tests reuse the existing fake reviewer harness from `tests/review_delegate_helpers.py`).
