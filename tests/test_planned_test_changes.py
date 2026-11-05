@@ -54,6 +54,18 @@ def test_edit_node_sets_adds_and_removes_planned_test_changes_on_a_claimed_leaf(
     assert _planned(repo) is None
 
 
+def test_add_node_takes_planned_test_change(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    _crud(repo, "add-node", "--id", "M1.2", "--type", "task", "--title", "Other", "--parent-id", "null",
+          "--planned-test-change", OLD, "--planned-test-change", " new-skip: tests/test_leaf.py::test_slow ")
+    node = next(n for n in load_roadmap(repo)["nodes"] if n["id"] == "M1.2")
+    assert node["planned_test_changes"] == [OLD, "new-skip: tests/test_leaf.py::test_slow"]
+    _crud(repo, "add-node", "--id", "M1.3", "--type", "task", "--title", "Third", "--parent-id", "null")
+    assert "planned_test_changes" not in next(n for n in load_roadmap(repo)["nodes"] if n["id"] == "M1.3")
+    v = _validate(repo)
+    assert v.returncode == 0, v.stderr + v.stdout
+
+
 def test_planned_test_change_items_are_stripped_and_blanks_dropped() -> None:
     assert planned_test_change_items(["  " + OLD + " ", "", "   "]) == [OLD]
 

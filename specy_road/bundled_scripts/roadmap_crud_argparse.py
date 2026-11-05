@@ -116,6 +116,14 @@ def _p_add(sub: argparse._SubParsersAction) -> None:
         default=[],
         help="One acceptance criterion; repeat for each ('|' is not a separator).",
     )
+    sp.add_argument(
+        "--planned-test-change",
+        dest="planned_test_change",
+        action="append",
+        default=[],
+        help="One approved test removal or weakening, as `specy-road integrity` prints it "
+             "(removed-test: tests/test_x.py::test_old); repeat for each.",
+    )
     sp.add_argument("--sensitivity", default=None, help="Data-sensitivity class (default public); see roadmap/orchestration.yaml may_process")
     sp.add_argument("--executor-eligibility", dest="executor_eligibility", default=None, help="any (default) or a roster class tag such as senior")
     sp.add_argument(

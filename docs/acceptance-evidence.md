@@ -16,7 +16,12 @@ assert-loss: tests/test_x.py::test_ok 2->1
 
 ## Before pickup
 
-Author the list with the leaf, and approve it with the rest of the node.
+Author the list with the leaf, and approve it with the rest of the node:
+
+```bash
+specy-road add-node --id M3.4 --type task --title "..." --parent-id M3 \
+  --planned-test-change 'removed-test: tests/test_x.py::test_old'
+```
 
 ## After pickup
 
