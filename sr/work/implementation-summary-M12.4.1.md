@@ -21,7 +21,7 @@ The reviewer `gpt-6.1-sol` blocked `052cad44` (R1–R6). The shared root cause w
 
 | Input | Tracked source | Covered by |
 | --- | --- | --- |
-| Population (completed leaves) | Each codename's `chore(rm-<codename>): complete, deregister` commit reachable from `HEAD`, in `git log --topo-order --full-history` order. Never node status (R2). | `test_digest_quality.py::test_a_gated_leaf_that_has_not_completed_is_not_counted_and_evicts_nothing`, `::test_a_leaf_whose_branch_nets_no_change_under_the_project_still_counts` |
+| Population (completed leaves) | Each codename's `chore(rm-<codename>): complete, deregister` commit reachable from `HEAD` (eligibility only), ordered by gate commit since fix round 2. Never node status (R2). | `test_digest_quality.py::test_a_gated_leaf_that_has_not_completed_is_not_counted_and_evicts_nothing`, `::test_a_leaf_whose_branch_nets_no_change_under_the_project_still_counts` |
 | Zones | The live graph by codename. For an archived leaf, the graph at its completion commit (`load_roadmap_nodes_at_ref`) (R4). | `::test_an_archived_completed_leaf_keeps_its_place_in_the_window` (public `archive_node`) |
 | Tally | The newest `Review-tally` trailer on the codename's gate commit. A completed leaf without one counts as landed with no tally, so legacy-only history still prints rows (R3). | `::test_legacy_only_history_counts_its_leaves_with_no_rates`, `::test_quality_section_lists_flagged_areas_first_with_their_numbers` |
 | Reviewer kinds | The review history merged with every record the passing gate counted (`gate.approvals + gate.blocks`), keyed by (resolved commit, model) the way `review_rounds` keys them. A human `REVIEW-human.md` with no history copy is therefore a round. The trailer gains `approvals=` (R1). | `test_review_tally.py::test_a_human_approval_with_no_history_copy_is_one_round` (runs `mark_implementation_reviewed.main --yes`: rounds=1, approvals=1), `::test_tally_trailer_counts_the_leafs_review_records` (history and live copy of the same record counted once) |
@@ -50,6 +50,30 @@ Two further changes:
 - Runtime: `specy-road digest` on `sr/` (50 completed leaves) runs in about 1.75 s.
 - `specy-road file-limits`: OK. `tests/test_digest.py` would have hit 418 lines, so the quality tests moved to the new `tests/test_digest_quality.py`.
 
+## Fix round 2: window order
+
+The reviewer `gpt-6.1-sol-low` blocked `9535b15a` with one finding, R1: the window followed completion-commit order, but the planning sheet specifies gate-commit order. With a window of one, the sequence gate A, gate B, complete B, complete A selected A instead of B. (`cursor-grok-4.6-high` approved `9535b15a`; `gpt-6.1-sol`'s R1–R6 apply to `052cad44` and were fixed in round 1.)
+
+- **Merge.** `449104d7` merges `origin/WIP/improvements-0-3-1`; it was clean, with no conflicts.
+- **Fix.** `2e30bb59` changes `completed_leaves`:
+  - A reachable completion commit is now the eligibility filter only.
+  - Each eligible leaf sits where its newest gate commit sits in `git log --topo-order --full-history`, newest first. Ties, which cannot happen since a commit has one position, would break on codename.
+  - A completion with no gate commit (landed without the review gate) sits where its completion commit does. This is deterministic, and it is the only position such a leaf has in history.
+  - The tally comes from the same newest gate commit that gives the order.
+- **Docs.** `docs/orchestration-quality.md` gains an "Order" row, and the `review_tally.py` module docstring says the same.
+
+## Fix round: probes
+
+- Class (which commit orders the window): `_window` is the only consumer of `completed_leaves` order. The digest and `quality_routing` both reach it through `area_quality`. Result: one ordering, tested once via the digest.
+- Gate and completion order differ (the reviewer's sequence): `test_digest_quality.py::test_the_window_follows_gate_order_not_completion_order`. Result: fails at `9535b15a`, passes at `2e30bb59`.
+- Legacy completion with no gate commit: `::test_a_completion_without_a_gate_commit_sits_where_it_completed` pins the fallback. Result: passes. It also passed before, because there completion and gate order coincide, so it pins the rule rather than reproducing a bug.
+- Re-gated leaf (rework, two gate commits): the newest gate commit gives both the order and the tally. Result: consistent by construction, since one dict entry is kept per codename, first met in newest-first log order.
+- An approved but unfinished leaf whose gate is newest: still excluded, because eligibility needs a completion. Result: `::test_a_gated_leaf_that_has_not_completed_is_not_counted_and_evicts_nothing` passes.
+- Merge topology (TREESAME feature merge): the `--full-history` scan is unchanged. Result: `::test_a_leaf_whose_branch_nets_no_change_under_the_project_still_counts` passes.
+- Archived leaf and overlay determinism (round 1 classes): their tests pass unchanged.
+- Private cross-module test imports: `grep -E "from tests\.[a-z_]+ import .*\b_[a-z]"` over the new test files finds nothing.
+- `specy-road file-limits`: OK.
+
 ## Changes
 
 - `specy_road/review_tally.py` (new): `leaf_tally`, `format_tally`, `tally_trailers(repo_root, gate)`, `parse_tally`, `gate_history`, `leaf_areas`, `AreaQuality`, `area_quality`, `flagged_areas`, `quality_review`.
@@ -67,6 +91,7 @@ Final touch zones are the brief's list. `specy_road/review_rca.py`, `specy_road/
 ## Verification
 
 - Round 0: `pytest -n 4`: 4033 passed, and both `digest --check` runs passed.
+- Fix round 2 (targeted only): 173 passed across the same twelve files.
 - Fix round 1 (targeted only, per the coordinator): 171 passed across `test_digest.py`, `test_digest_quality.py`, `test_review_tally.py`, `test_mark_implementation_reviewed_gate.py`, `test_orchestrate_plan.py`, `test_finish_land_regenerates.py`, `test_generated_files.py`, `test_orchestration_config.py`, `test_strong_review.py`, `test_milestone_full_review.py`, `test_review_hardening.py` and `test_integrity_gate.py`. `digest --check` on this repo now reports the expected drift explained under Fix round 1.
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: OK (pre-existing warnings only).
 - `specy-road file-limits`: OK.
@@ -85,6 +110,14 @@ Final touch zones are the brief's list. `specy_road/review_rca.py`, `specy_road/
 4. `tests/test_review_tally.py` pins the trailer's counts, the end-to-end gate commit, and routing on and off.
 
 ## Added
+
+Fix round 2 changes:
+
+- `completed_leaves`: orders by the newest gate commit's log position, falling back to the completion commit's position (R1). It returns the same tuple shape as before.
+- `tests/test_digest_quality.py`:
+  - helper `_complete`, split out of `_land` so a test can separate gate and completion
+  - `test_the_window_follows_gate_order_not_completion_order` (R1)
+  - `test_a_completion_without_a_gate_commit_sits_where_it_completed` (the deterministic legacy rule)
 
 Fix round 1 changes to the inventory below:
 
