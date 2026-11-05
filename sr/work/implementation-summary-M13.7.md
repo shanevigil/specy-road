@@ -338,3 +338,13 @@ Each probe ran `apply_and_report` dry and real on a fresh repository and compare
 - `is_symlink()` alternative in `estimate`'s copy filter: without it a dangling link was skipped, and the scratch update created a regular `.gitignore`.
 - `tests/test_m13_7_notices.py::test_the_dry_run_estimate_treats_a_symlinked_gitignore_as_git_does` (3 cases: nested, top-level and dangling top-level symlink). Each case checks that dry, real and the git-status change agree and that the dry run writes no file.
 - Mocks: none.
+
+### Fix round 5: merge
+
+`specy-road ready` reported `origin/WIP/improvements-0-3-1` 90 commits ahead, with a conflict in `specy_road/bundled_scripts/refresh_stubs.py`. I merged it in as `73bd36ed`. This is a merge commit, so it could not be committed by explicit path.
+
+The conflict was one line in `_block_previews`. The resolution keeps both sides:
+- the integration branch's `apply_agents_files(..., mode=agents_block_mode(repo_root / prefix))`;
+- this branch's `(path, text)` preview values (fix round 2, R2).
+
+After the merge, the full suite (`pytest -n 4`) gave 4148 passed and 1 failed: `tests/test_worker_queue_message.py::test_message_while_running_queues_and_delivers`, a timing assertion (`idle` vs `running`). That file passed 6/6 on each of three reruns. Compared with the integration tip, the merge differs only in this leaf's own files.
