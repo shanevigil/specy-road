@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -313,14 +314,21 @@ def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None
     git_run(ROOT, "push", remote, base)
 
 
-def _exit_if_base_checked_out_elsewhere(base: str, branch: str) -> None:
-    """Abort moves this checkout to ``base``; git refuses while another worktree holds it."""
+def _exit_if_base_checked_out_elsewhere(base: str, branch: str, node_id: str) -> None:
+    """Abort moves this checkout to ``base``; git refuses while another worktree holds it.
+
+    The hint's ``--force`` is what lets git remove the worktree at all: pickup
+    leaves its brief there untracked, and tracked changes were refused already.
+    """
     holder = integration_worktree(ROOT, base)
     if holder is None:
         return
+    wt = shlex.quote(git_capture(ROOT, "rev-parse", "--show-toplevel").strip())
     print(f"error: '{base}' is checked out in {holder}, and abort-task-pickup needs it here.", file=sys.stderr)
     print("  For a delegated leaf: `specy-road worker terminate <W>`; then, in that checkout:", file=sys.stderr)
-    print(f"  `git worktree remove {ROOT}`, `git checkout {branch}`, and `specy-road abort-task-pickup`.",
+    print(f"  `git -C {wt} status --short` lists what removing this worktree discards: pickup's untracked "
+          f"work/brief-{node_id}.md, and --force discards any other untracked file there too.", file=sys.stderr)
+    print(f"  `git worktree remove --force {wt}`, `git checkout {branch}`, and `specy-road abort-task-pickup`.",
           file=sys.stderr)
     raise SystemExit(1)
 
@@ -351,7 +359,7 @@ def _abort_locked(args) -> None:
     )
     node_id = entry["node_id"]
     _assert_no_tracked_changes(base)
-    _exit_if_base_checked_out_elsewhere(base, branch)
+    _exit_if_base_checked_out_elsewhere(base, branch, node_id)
 
     git_run(ROOT, "fetch", remote)
     local_claim = all(

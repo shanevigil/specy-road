@@ -40,7 +40,7 @@ from specy_road.finish_ancestor_rollup import complete_reviewed_milestone
 from specy_road.generated_files import GENERATED_COMMITTED, unstageable_generated_files
 from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.bundled_scripts.repo_ops import current_branch, git_run, working_tree_clean
+from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch, git_run
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
 #: so the name exists at import. Resolving the real root here would make
@@ -315,10 +315,7 @@ def _close_milestone(args: argparse.Namespace, node_id: str) -> None:
     print(f"Milestone full review — [{node_id}] at {target.ref}\n")
     gate = _gate_or_human_approval(args, node, branch=None, summary_text="", walkthrough=None,
                                    commit=target.commit)
-    if not working_tree_clean(ROOT, except_work=True):
-        print("error: working tree is not clean (commit, stash, or discard changes outside work/ first).",
-              file=sys.stderr)
-        raise SystemExit(1)
+    assert_working_tree_clean(ROOT, except_work=True)
     changed = complete_reviewed_milestone(ROOT, node_id)   # the checks above make its ValueError unreachable
     if not changed:
         print(f"{node_id} is already Complete; nothing to commit.")
@@ -386,13 +383,7 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     # work/ changes stay where they are: the registry commit names its one path.
-    if not working_tree_clean(ROOT, except_work=True):
-        print(
-            "error: working tree is not clean (commit, stash, or "
-            "discard changes outside work/ first).",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
+    assert_working_tree_clean(ROOT, except_work=True)
     _commit_registry_approved(codename, reg, commit_trailers(gate))
 
 
