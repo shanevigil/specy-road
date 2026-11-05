@@ -11,11 +11,14 @@ from specy_road import worker_state as ws
 from specy_road.bundled_scripts.worker_cli_render import sync_event_lines
 from specy_road.worker_ops_message import resume
 from specy_road.worker_runner_ready import READY_ONLY_PROMPT
-from tests.test_worker_cli import _repo, run_worker_cli, wait_for_worker
+from tests.review_repo_helpers import git
+from tests.test_rework_findings_in_prompt import file_review
+from tests.worker_cli_helpers import run_worker_cli, wait_for_worker
+from tests.worker_repo_helpers import make_worker_repo
 
 
 def test_sync_wait_until_completion_skips_output_events(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.set_state(repo, rec, "idle", pid=None)
     run_worker_cli("worker", "sync", "--wait", "--ack", "--repo-root", str(repo))
@@ -35,7 +38,7 @@ def test_sync_wait_until_completion_skips_output_events(tmp_path: Path, capsys) 
 
 
 def test_sync_collapses_consecutive_tool_use_lines(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.set_state(repo, rec, "idle", pid=None)
     for _ in range(6):
@@ -49,7 +52,7 @@ def test_sync_collapses_consecutive_tool_use_lines(tmp_path: Path, capsys) -> No
 
 
 def test_sync_verbose_shows_each_tool_use(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.set_state(repo, rec, "idle", pid=None)
     ws.append_event(repo, rec, "output", source="worker", summary="(tool use)")
@@ -68,7 +71,7 @@ def test_completion_missing_ready_offers_ready_only_resume() -> None:
 
 
 def test_resume_ready_only_uses_the_fixed_prompt(tmp_path: Path, monkeypatch) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.set_state(repo, rec, "idle", pid=None)
     ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sess-1"))
@@ -85,9 +88,7 @@ def test_resume_ready_only_uses_the_fixed_prompt(tmp_path: Path, monkeypatch) ->
 
 
 def test_delegate_rework_proceeds_when_the_leaf_worker_is_completed(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
-    from tests.review_repo_helpers import git
-    from tests.test_rework_findings_in_prompt import file_review
+    repo, _ = make_worker_repo(tmp_path)
 
     rec = ws.create_record(repo, "M1.1", "claude-code", "grok", repo)
     ws.set_state(repo, rec, "completed", pid=None)

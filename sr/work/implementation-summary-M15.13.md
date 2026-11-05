@@ -42,6 +42,7 @@ No zone additions or removals beyond the new sync module and doc.
 - `_orchestration_hint_marker` and marker write in `print_orchestration_hint`: A5
 - `READY_ONLY_PROMPT` and `resume(..., ready_only=…)`: A4
 - `docs/orchestration-worker-sync.md`: operator doc for sync wait/until/verbose
+- `tests/worker_cli_helpers.py` (`run_worker_cli`, `wait_for_worker`): public CLI test helpers (no `_`-prefixed imports in M15.13 tests)
 - `tests/test_worker_sync_m15_13.py`: A1–A4 behaviour tests
 - `test_the_footer_carries_the_hint_once_per_checkout`: A5
 - `test_worker_state` Ctrl-C patch target `worker_cli_sync.wait_for_sync`: sync moved out of `worker_cli.py`
