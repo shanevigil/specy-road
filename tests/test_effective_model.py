@@ -57,12 +57,3 @@ def test_one_effective_model_resolves_and_is_the_only_thing_compared(entry: dict
     resolved, err = model_problem(prof, entry)                # what the preview and the launch use
     assert resolved == effective and bool(err) is (effective is None)
     assert check(reported, entry, prof) == state
-
-
-def test_a_harness_model_overrides_an_unknown_profile_api_id_and_without_one_it_is_refused() -> None:
-    unknown = load_profile(OPUS)
-    unknown.data["api_id"] = "unknown"
-    assert unknown.api_id.lower() == "unknown"
-    assert model_problem(unknown, {"id": "opus", "harness_model": "claude-opus-5-5"}) == ("claude-opus-5-5", "")
-    assert model_problem(unknown, {"id": "opus"})[0] is None
-    assert model_problem(None, {"id": "opus"}) == ("opus", "")                    # no profile: the roster id
