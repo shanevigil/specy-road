@@ -25,6 +25,7 @@ from specy_road.orchestration_config import harness_model, roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_files import reviews_dir, reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
+from specy_road.reviewer_auth import claude_worker_refusal
 from specy_road.runtime_paths import REPO_ROOT_ENV, git_root, project_prefix
 from specy_road.worker_adapter_parsers import effort_note, output_mode_note, resume_form_note
 from specy_road.worker_adapters import adapter_for
@@ -163,6 +164,17 @@ def _preflight(entry: dict[str, Any], repo_root: Path) -> None:
         raise WorkerError(f"preflight failed (exit {rc}): {cmd}; nothing was launched")
 
 
+def _auth_preflight(repo_root: Path, entry: dict[str, Any], harness: str) -> None:
+    """M15.36: a claude-code worker forced to bare with no key or ``apiKeyHelper`` is refused before any worker
+    state is written. A ``channels.cli`` command is run as written, so its mode is not checked here."""
+    if harness != "claude-code" or (entry.get("channels") or {}).get("cli"):
+        return
+    prof = pinned_profile_for_entry(repo_root, entry)
+    problem = claude_worker_refusal(entry, prof.launch_mode() if prof is not None and prof.ok else None)
+    if problem:
+        raise WorkerError(problem)
+
+
 def _brief_into(wt: Path, repo_root: Path, node_id: str, t) -> None:
     """The executor's precondition wants ``work/brief-<id>.md`` under **its** tree's project root (the
     prompt names it from the git root in the nested layout), and ``work/`` may be gitignored."""
@@ -231,6 +243,7 @@ def delegate(repo_root: Path, node_id: str, model: str | None, *, harness: str |
     if not model:
         raise WorkerError(f"--model is required for {node_id}")
     entry, harness = _entry_and_harness(repo_root, model, harness, roster_free=chore is not None)
+    _auth_preflight(repo_root, entry, harness)   # before --rework or a launch writes any worker state
     with workers_lock(repo_root):   # before any network read: a retry is answered while the remote is down
         if existing := _existing_after_rework(repo_root, node_id, rework=rework, offline=offline):
             return existing, False

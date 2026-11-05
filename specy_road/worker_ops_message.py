@@ -16,7 +16,7 @@ from specy_road.review_files import reviews_dir
 from specy_road.worker_adapters import Unsupported, adapter_for
 from specy_road.worker_lease import acquire_lease
 from specy_road.runtime_paths import project_prefix
-from specy_road.worker_ops_launch import _check_eligible, _cli_for, _entry_and_harness, _preflight, _target, worker_env
+from specy_road.worker_ops_launch import _auth_preflight, _check_eligible, _cli_for, _entry_and_harness, _preflight, _target, worker_env
 from specy_road.worker_ops_slots import _slot_or_existing, _wrapper_gone
 from specy_road.worker_process import process_alive, require_branch
 from specy_road.worker_runner import spawn
@@ -74,6 +74,7 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: boo
         raise WorkerError(f"{rec.node_id} already has an active worker ({other.worker_id}); {rec.worker_id} stays {rec.state}")
     if not entry.get("roster_free"):   # availability and sensitivity can change
         _check_eligible(entry, chore_node(chore) if chore else _target(repo_root, rec.node_id).node, rec.model)
+    _auth_preflight(repo_root, entry, rec.harness)
     _preflight(entry, repo_root)
     cli, api_id, mode, effort = _cli_for(repo_root, entry, rec.harness)
     cli = _resume_cli(entry, cli)

@@ -13,9 +13,9 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.claude_config import claude_projects_dir
-from specy_road.reviewer_auth import bare_settings_argv
+from specy_road.reviewer_auth import WORKER_FULL_FLAGS, bare_settings_argv, worker_environment
 from specy_road.worker_adapter_base import (REVIEWER_DISALLOWED, REVIEWER_NO_WRITES, REVIEWER_TOOLS, STDIN_INSTRUCTION,
-                                         Adapter, Capabilities, Launch, Parsed, _bare, _model_flag)
+                                         Adapter, Capabilities, Launch, Parsed, _model_flag)
 from specy_road.worker_adapter_parsers import _init_detail, _json, _snip, _text, limit_detail, usage_fields
 
 #: The executor's tools, listed rather than left to the mode: since 2.1.302 ``claude -p`` silently denies a tool
@@ -25,6 +25,14 @@ EXECUTOR_TOOLS = "Read,Edit,Write,Glob,Grep,Bash"
 #: still unresolved is denied and Claude is told not to retry; the denial shows in the stream, see ``parse_events``).
 #: ``--allowedTools`` takes several values, so a single-value flag follows it before the instruction.
 EXECUTOR_PERMISSIONS = ("--allowedTools", EXECUTOR_TOOLS, "--permission-prompts", "none", "--permission-mode", "acceptEdits")
+
+
+def _worker_mode(launch_mode: str) -> list[str]:
+    """A worker's mode flags, never ``claude -p``'s default (M15.36): ``--bare`` (and the user-settings path when
+    only an ``apiKeyHelper`` authenticates it), else every setting source named, so the subscription login is read."""
+    if launch_mode == "bare":
+        return ["--bare", *bare_settings_argv(worker_environment())]
+    return list(WORKER_FULL_FLAGS)
 
 
 class ClaudeCode(Adapter):
@@ -40,7 +48,7 @@ class ClaudeCode(Adapter):
         custom = self._custom(cli, prompt_path, effort=effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return replace(custom, launch_mode=launch_mode)   # left as written; only the check uses the mode
-        return Launch([self._program(harness_bin), "-p", *_bare(launch_mode), "--output-format", "stream-json", "--verbose",
+        return Launch([self._program(harness_bin), "-p", *_worker_mode(launch_mode), "--output-format", "stream-json", "--verbose",
                        "--session-id", sid, *_model_flag("--model", model), *self.effort_flag(effort),
                        *self._add_dir(worktree, repo_root, node_id), *EXECUTOR_PERMISSIONS, STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=sid, launch_mode=launch_mode)
@@ -52,7 +60,7 @@ class ClaudeCode(Adapter):
         if custom:
             return replace(custom, launch_mode=launch_mode)
         # A resumed session does not keep the launch's --model: pass it again, as the launch did.
-        return Launch([self._program(harness_bin), "-p", *_bare(launch_mode), "--resume", session_id, "--output-format", "stream-json",
+        return Launch([self._program(harness_bin), "-p", *_worker_mode(launch_mode), "--resume", session_id, "--output-format", "stream-json",
                        "--verbose", *_model_flag("--model", model), *self.effort_flag(effort),
                        *self._add_dir(worktree, repo_root, node_id), *EXECUTOR_PERMISSIONS, STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=session_id, launch_mode=launch_mode)
