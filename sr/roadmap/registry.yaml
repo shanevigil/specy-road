@@ -167,3 +167,14 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: move-node-keeps-other-ids
+    node_id: M16.67
+    branch: feature/rm-move-node-keeps-other-ids
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_move_node.py
+      - specy_road/bundled_scripts/roadmap_outline_renumber.py
+      - docs/roadmap-authoring.md
+      - tests/
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending

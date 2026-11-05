@@ -403,6 +403,7 @@ Do not pick these up.
 - `M15.37` on `feature/rm-comma-or-and-part-counts-only-when-it-names-a-defect` since 2026-11-05
 - `M15.40` on `feature/rm-finish-merge-failure-reports-and-undoes-bookkeeping` since 2026-11-05
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
+- `M16.67` on `feature/rm-move-node-keeps-other-ids` since 2026-11-05
 
 ## Quality by area
 
