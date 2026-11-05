@@ -83,7 +83,26 @@ def _node_id_for_key(nodes: list[dict[str, Any]], node_key: str) -> str | None:
     return None
 
 
-def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
+def _new_node_id(
+    nodes: list[dict[str, Any]], parent_id: str | None, requested: str | None
+) -> str:
+    """The added node's id: a requested free child id (400 if refused) or the next free one.
+
+    No other node's id changes (no whole-outline renumber).
+    """
+    if requested is not None:
+        try:
+            check_chosen_child_id(nodes, parent_id, requested, ignore_ids=set())
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        return requested
+    new_id = next_child_id(nodes, parent_id)
+    if any(n["id"] == new_id for n in nodes):
+        raise HTTPException(status_code=409, detail="generated id already exists")
+    return new_id
+
+
+def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:
     nodes = load_roadmap(root)["nodes"]
     by_id = {n["id"]: n for n in nodes}
     ref = body.reference_node_id
@@ -115,16 +134,7 @@ def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:  # noqa
     ix = siblings.index(ref)
     insert_at = ix if body.position == "above" else ix + 1
 
-    # The new node takes the next free id under its parent, or a requested
-    # free one; no other node's id changes (no whole-outline renumber).
-    if body.new_id is not None:
-        try:
-            check_chosen_child_id(nodes, parent_id, body.new_id, ignore_ids=set())
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-    new_id = body.new_id or next_child_id(nodes, parent_id)
-    if any(n["id"] == new_id for n in nodes):
-        raise HTTPException(status_code=409, detail="generated id already exists")
+    new_id = _new_node_id(nodes, parent_id, body.new_id)
 
     new_node: dict[str, Any] = {
         "id": new_id,
