@@ -31,9 +31,10 @@ from typing import Any
 
 import yaml
 
+from specy_road.git_config_text import read_chain
 from specy_road.git_subprocess import run
 from specy_road.git_workflow_config import resolve_integration_defaults
-from specy_road.review_files import READY_PREFIX, reviews_root
+from specy_road.review_files import READY_PREFIX, REVIEWS_REL
 from specy_road.runtime_paths import prefix_within
 from specy_road.worker_state import status_entries
 from specy_road.worktree_env import env_setup_config, git_top, link_paths, main_project_root
@@ -131,24 +132,12 @@ def _watched(key: str) -> bool:
     return key in GIT_CONFIG_KEYS or (key.startswith("includeif.") and key.endswith(".path"))
 
 
-def config_values(data: bytes) -> dict[str, str]:
-    """The watched keys a git config file sets, read as text (no git): ``{key: value[, value...]}``.
-    Section and key names are folded to lower case as git folds them; a subsection keeps its case."""
+def watched_values(pairs: list[tuple[str, str]]) -> dict[str, str]:
+    """The watched keys among a config file's ``(key, value)`` pairs, as a finding shows them: ``{key: v1,v2}``."""
     out: dict[str, list[str]] = {}
-    section = ""
-    for raw in data.decode("utf-8", "replace").splitlines():
-        line = raw.strip()
-        if line.startswith("["):
-            end = line.find("]")
-            name, _sp, sub = line[1:end if end > 0 else len(line)].strip().partition(" ")
-            section = name.lower() + (f".{sub.strip().strip(chr(34))}" if sub else "")
-            line = line[end + 1:].strip() if end > 0 else ""
-        if not line or line[0] in "#;":
-            continue
-        key, eq, val = line.partition("=")
-        full = f"{section}.{key.strip().lower()}"
-        if _watched(full):
-            out.setdefault(full, []).append(val.strip().strip('"') if eq else "true")
+    for k, v in pairs:
+        if _watched(k):
+            out.setdefault(k, []).append(v)
     return {k: ",".join(v) for k, v in out.items()}
 
 
@@ -224,29 +213,25 @@ def _hooks_dir(snap: Snapshot, scope: Scope, d: Path) -> None:
 
 
 def git_snapshot(scope: Scope) -> Snapshot:
-    """Git steering, from the filesystem only: the hooks directories and the config files."""
+    """Git steering, from the filesystem only (:mod:`specy_road.git_config_text`): every config file git reads
+    (the common ``config``, ``config.worktree`` and what they include), and the hooks directories: each
+    ``core.hooksPath`` value any of them sets (relative to the checkout), else ``<common>/hooks`` and
+    ``<worktree-gitdir>/hooks``."""
     snap: Snapshot = {}
     for top in scope.tops:
         dirs = _gitdirs(top)
         if dirs is None:
             continue
         gitdir, common = dirs
-        values: dict[str, str] = {}
-        for cfg in dict.fromkeys((common / "config", common / "config.worktree", gitdir / "config.worktree")):
-            try:
-                data = cfg.read_bytes()
-            except OSError:
-                continue
-            got = config_values(data)
-            values.update(got)
-            real = _real(cfg)
-            snap.setdefault(str(real), Entry(scope.display(real), "git_config", _sha(data), tuple(sorted(got.items()))))
-        hooks_path = values.get("core.hookspath", "").split(",")[-1]
-        if hooks_path:
-            _hooks_dir(snap, scope, (top / os.path.expanduser(hooks_path)).resolve())
-        else:
-            for d in dict.fromkeys((common / "hooks", gitdir / "hooks")):
-                _hooks_dir(snap, scope, d)
+        hooks: list[Path] = []
+        for start in dict.fromkeys((common / "config", common / "config.worktree", gitdir / "config.worktree")):
+            for path, data, pairs in read_chain(start):
+                real = _real(path)
+                snap.setdefault(str(real), Entry(scope.display(real), "git_config", _sha(data),
+                                                 tuple(sorted(watched_values(pairs).items()))))
+                hooks += [(top / os.path.expanduser(v)).resolve() for k, v in pairs if k == "core.hookspath" and v]
+        for d in dict.fromkeys(hooks or [common / "hooks", gitdir / "hooks"]):
+            _hooks_dir(snap, scope, d)
     return snap
 
 
@@ -267,18 +252,20 @@ def _registry(snap: Snapshot, scope: Scope) -> None:
 
 
 def _reviews(snap: Snapshot, scope: Scope) -> None:
-    """Every file under the main checkout's ``work/reviews/`` but the leaf's own READY."""
-    root = reviews_root(scope.m_top / scope.prefix)
-    for p in tree_files(root) if root.is_dir() else []:
-        rel = p.relative_to(root)
-        if not (rel.parts[:1] == (scope.node_id,) and len(rel.parts) == 2 and rel.name.startswith(READY_PREFIX)):
-            _add(snap, scope, p, "review_file")
+    """Every file under each checkout's ``work/reviews/`` but the leaf's own READY."""
+    for top in scope.tops:
+        root = top / scope.prefix / REVIEWS_REL
+        for p in tree_files(root) if root.is_dir() else []:
+            rel = p.relative_to(root)
+            if not (rel.parts[:1] == (scope.node_id,) and len(rel.parts) == 2 and rel.name.startswith(READY_PREFIX)):
+                _add(snap, scope, p, "review_file")
 
 
 def _env_bin(snap: Snapshot, scope: Scope) -> None:
-    """Each ``env_setup.link`` source's ``bin/`` entries: name, type, link text, resolved regular-file sha256."""
-    for rel in scope.links:
-        bin_dir = (scope.m_top / scope.prefix / rel).resolve() / "bin"
+    """Each ``env_setup.link`` path's ``bin/`` entries in each checkout (the worker's link and its main-checkout
+    source are one real directory): name, type, link text, resolved regular-file sha256."""
+    for top, rel in ((top, rel) for top in scope.tops for rel in scope.links):
+        bin_dir = (top / scope.prefix / rel).resolve() / "bin"
         try:
             kids = sorted(bin_dir.iterdir())
         except OSError:
@@ -289,7 +276,7 @@ def _env_bin(snap: Snapshot, scope: Scope) -> None:
                 value = f"link:{os.readlink(k)}" + (f"@{_value(target)}" if target.is_file() else "")
             else:
                 value = _value(k) if k.is_file() else "dir" if k.is_dir() else "other"
-            _add(snap, scope, k, "env_bin", value, f"{rel}/bin/{k.name}")
+            _add(snap, scope, k, "env_bin", value, scope.display(top / scope.prefix / rel / "bin" / k.name))
 
 
 def _blobs(snap: Snapshot, scope: Scope) -> None:
@@ -380,16 +367,20 @@ class SteeringWatch:
                                        f"link:{old}" if old is not None else ABSENT, f"link:{target}"))
         return out
 
-    def without_steering_paths(self, found: list[dict[str, Any]], steer: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """``found`` with every steering path dropped from its porcelain and ``committed_outside_zones`` findings:
-        the ``steering_file`` finding replaces them."""
-        named = {f["path"] for f in steer}
+    def merged(self, found: list[dict[str, Any]], steer: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """``found`` plus ``steer`` with one finding per path: of several ``steering_file`` findings for one path
+        (two detectors reach it, e.g. a harness file that is also a new escaping symlink) the first class in
+        :data:`CLASSES` order is kept, and every steering path is dropped from the ``porcelain`` and
+        ``committed_outside_zones`` findings."""
+        one: dict[str, dict[str, Any]] = {}
+        for f in sorted(steer, key=lambda f: CLASSES.index(f["class"])):
+            one.setdefault(f["path"], f)
         out = []
         for f in found:
             if f["kind"] not in ("porcelain", "committed_outside_zones") or "paths" not in f:
                 out.append(f)
                 continue
-            keep = [p for p in f["paths"] if self.scope.display(_real(self.scope.w_top / p)) not in named]
+            keep = [p for p in f["paths"] if self.scope.display(_real(self.scope.w_top / p)) not in one]
             if keep:
                 out.append({**f, "paths": keep, "summary": f["summary"].split(": ", 1)[0] + ": " + ", ".join(keep[:10])})
-        return out
+        return out + sorted(one.values(), key=lambda f: f["path"])

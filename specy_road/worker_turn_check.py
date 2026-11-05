@@ -251,8 +251,8 @@ def _turn_findings(repo_root: Path, rec: WorkerRecord, watch: TurnWatch) -> list
             steer += sw.rest_changes(after.dirty if after else None, git_ok=after is not None)
         except Exception as e:  # noqa: BLE001
             found.append({"kind": "check_error", "summary": f"steering files not checked: {e}"})
-        found = sw.without_steering_paths(found, steer)
-    return found + steer
+        return sw.merged(found, steer)
+    return found
 
 
 def limit_gate(rec: WorkerRecord, now: datetime | None = None) -> None:

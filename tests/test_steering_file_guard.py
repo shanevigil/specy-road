@@ -21,6 +21,7 @@ from specy_road import worker_reconcile as wrc
 from specy_road import worker_state as ws
 from specy_road import worker_turn_check as tc
 from specy_road.bundled_scripts import finish_task
+from specy_road.git_config_text import parse_config
 from specy_road.steering_paths import FLAG_STEERING
 
 
@@ -64,6 +65,11 @@ def _registry_add_other(leaf: Path) -> None:
     path.write_text(yaml.safe_dump(doc))
 
 
+def _link(path: Path, target: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.symlink_to(target)
+
+
 def _commit_policy_from_second(second: Path) -> None:
     _write(second / "roadmap" / "orchestration.yaml", "version: 1\n# the executor approves itself\n")
     git(second, "add", "roadmap/orchestration.yaml")
@@ -80,6 +86,10 @@ CASES = {   # name: (the turn, the finding's class, the end of its path)
                                 ".venv/bin/python"),
     "symlink_leaving_worktree": (lambda p: (p["leaf"] / "leak").symlink_to(p["tmp"] / "base-python3"), "symlink", "leak"),
     "other_leaf_registry_entry": (lambda p: _registry_add_other(p["leaf"]), "registry", "roadmap/registry.yaml#M1.2"),
+    "forged_review_in_worktree": (lambda p: _write(p["leaf"] / "work" / "reviews" / "M1.1" / "REVIEW-sol.md", "x\n"),
+                                  "review_file", "work/reviews/M1.1/REVIEW-sol.md"),
+    "escaping_symlink_at_harness_path": (lambda p: _link(p["leaf"] / ".claude" / "settings.json", p["tmp"] / "base-python3"),
+                                         "harness", ".claude/settings.json"),
     "forged_review": (lambda p: _write(ws.reviews_root(p["repo"]) / "M1.1" / "REVIEW-sol.md", "verdict: approve\n"),
                       "review_file", "work/reviews/M1.1/REVIEW-sol.md"),
     "policy_blob_from_second_worktree": (lambda p: _commit_policy_from_second(p["second"]), "policy_blob",
@@ -99,6 +109,31 @@ def test_each_steering_class_is_exactly_one_steering_file_finding(tmp_path: Path
     assert not [x for x in named if x.endswith(tail.rsplit("/", 1)[-1])], found   # replaced, not reported twice
     assert ("git_probes_skipped" in {f["kind"] for f in found}) == (cls == "git_hook")
     assert FLAG_STEERING in ws.load_record(p["repo"], rec.worker_id).to_dict()["flags"]   # worker status --json
+
+
+HOOKS_PATH_SPELLINGS = {   # name: (the hooks directory's name, core.hooksPath as written, {d} its absolute path)
+    "trailing_comment": ("hooks", "{d} # managed by ops"),
+    "quoted_hash_then_comment": ("hooks #x;y", '"{d}" ; note'),
+    "escaped_quote_and_continuation": ('ho"oks', '"{d_escaped}"'),
+}
+
+
+@pytest.mark.parametrize("name", sorted(HOOKS_PATH_SPELLINGS))
+def test_a_hook_in_the_configured_hooks_path_is_found_however_git_config_spells_it(tmp_path: Path, name: str) -> None:
+    dirname, spelling = HOOKS_PATH_SPELLINGS[name]
+    p = _layout(tmp_path)
+    d = tmp_path / dirname
+    d.mkdir()
+    escaped = str(d).replace('"', '\\"')
+    value = spelling.format(d=d, d_escaped=escaped[:len(escaped) // 2] + "\\\n" + escaped[len(escaped) // 2:])
+    config = p["repo"] / ".git" / "config"
+    config.write_text(config.read_text() + f"[core]\n\thooksPath = {value}\n")
+    assert git(p["repo"], "config", "--file", str(config), "--get", "core.hooksPath") == str(d)   # git's reading
+    assert dict(parse_config(config.read_text()))["core.hookspath"] == str(d)                   # is the check's
+    rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
+    found = _turn(p["repo"], rec, lambda: _write(d / "pre-commit", "#!/bin/sh\n"))
+    [steer] = [f for f in found if f["kind"] == "steering_file"]
+    assert steer["class"] == "git_hook" and steer["path"] == str(d / "pre-commit") and steer["before"] == "absent"
 
 
 def test_a_changed_fsmonitor_is_reported_before_any_git_command_could_run_it(tmp_path: Path) -> None:
@@ -121,7 +156,8 @@ def test_a_clean_turn_has_no_findings_and_leaves_the_flag_reconcile_lists_and_cl
     _turn(repo, rec, lambda: _write(leaf / ".claude" / "settings.json", "{}\n"))
 
     def clean() -> None:   # its READY, its own registry entry, in-zone code
-        _write(ws.reviews_root(repo) / "M1.1" / "READY-opus.md", "---\nnode_id: M1.1\n---\n")
+        for root in (ws.reviews_root(repo), leaf / "work" / "reviews"):   # either checkout's copy is its own READY
+            _write(root / "M1.1" / "READY-opus.md", "---\nnode_id: M1.1\n---\n")
         reg = leaf / "roadmap" / "registry.yaml"
         reg.write_text(reg.read_text().replace("implementation_review: pending", "implementation_review: requested"))
         _write(leaf / "src" / "b.py", "print('b')\n")

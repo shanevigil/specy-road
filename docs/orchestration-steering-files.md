@@ -8,14 +8,14 @@ named project-relative in the worker's tree, as `zone_matches` compares them, an
 | Class | What |
 |---|---|
 | `harness` | `.claude/settings*.json`, `.claude/hooks/**`, `.codex/**`, `.cursor/*.json`, `.cursor/hooks/**`, at the git root and the project root |
-| `git_hook` | the hooks directory, read from the filesystem only: `core.hooksPath` when set, else `<common-git-dir>/hooks` and `<worktree-gitdir>/hooks`; direct regular-file names with sha256, not recursive, or the one marker `capped` past 200 children |
-| `git_config` | the bytes of the common `config` and of `config.worktree`; the finding also names the changed values of `core.hooksPath`, `core.fsmonitor`, `core.sshCommand`, `include.path` and `includeIf.*.path` |
+| `git_hook` | the hooks directory, read from the filesystem only: each `core.hooksPath` value the config files below set (relative to the checkout), else `<common-git-dir>/hooks` and `<worktree-gitdir>/hooks`; direct regular-file names with sha256, not recursive, or the one marker `capped` past 200 children |
+| `git_config` | the bytes of the common `config`, of `config.worktree` and of every file they name by `include.path` or `includeIf.*.path` (conditions not evaluated, followed to git's depth of 10), parsed as git-config(1) reads them, quoting, escapes, comments and continued lines included (`specy_road/git_config_text.py`, no git command); the finding also names the changed values of `core.hooksPath`, `core.fsmonitor`, `core.sshCommand`, `include.path` and `includeIf.*.path` |
 | `policy_tree` | `roadmap/orchestration.yaml`, `roadmap/orchestration.local.yaml`, `roadmap/git-workflow.yaml` in the tree |
 | `policy_blob` | the same three as blobs at the local integration branch tip (no fetch), so a roster commit made from another checkout shows |
 | `registry` | each `roadmap/registry.yaml` `entries` item whose `node_id` is another leaf |
-| `review_file` | every file under the main checkout's `work/reviews/` except the leaf's own `READY-*` |
+| `review_file` | every file under each checkout's `work/reviews/` except the leaf's own `READY-*` |
 | `shell_startup` | root `.bashrc`, `.bash_profile`, `.profile`, `.zshrc`, `.zshenv`, `.envrc` |
-| `env_bin` | for each `env_setup.link` target, its `bin/` entry names, types, link text and resolved regular-file sha256 (a write through an unchanged `.venv/bin/python` link changes the digest, not the link) |
+| `env_bin` | for each `env_setup.link` path in each checkout (the worker's link and its source are one directory), its `bin/` entry names, types, link text and resolved regular-file sha256 (a write through an unchanged `.venv/bin/python` link changes the digest, not the link) |
 | `symlink` | a porcelain entry in either checkout, new or retargeted during the turn, whose target resolves outside the worker's git root |
 
 **After each turn** the post-run check compares the git half first, from the filesystem, before any post-turn git
@@ -23,7 +23,9 @@ command: on a change it records the finding and a `git_probes_skipped` finding a
 `git status` never runs under a `core.fsmonitor` or hook the turn changed. Otherwise the git probes run, then the
 rest is compared. Each change is one `steering_file` finding (`path`, `class`, `before`, `after`: a sha256,
 `link:<target>`, `absent`, or for `git_config` the digest followed by `;key=value` per changed watched key), which
-replaces any `porcelain` or `committed_outside_zones` mention of the same path. It sets the sticky `steering_changed`
+replaces any `porcelain` or `committed_outside_zones` mention of the same path. A path two classes reach (a harness
+file that is also a new escaping symlink, a hooks directory inside `.claude/hooks`) is one finding, of the class
+listed first in the table. It sets the sticky `steering_changed`
 flag (`worker status --json` `flags`, `handoff status --json` `workers[].flags`); `worker reconcile W` lists the
 findings and clears it.
 
