@@ -246,3 +246,118 @@ I checked each state `fix_round_budget` can report. `test_round3_every_next_step
   - `test_round3_a_ready_agent_without_the_executor_role_is_not_named`
   - `test_round3_no_independent_analyst_names_a_human_decision`
   - The R1 status assertions in `test_defer_applies_and_resolves_only_that_reviewers_block_at_that_commit`.
+
+## Fix round 4: root-cause design
+
+This round answers Sol's block of `780e53de` (R1–R4) and follows the coordinator's root-cause design. It was preceded by a merge of `origin/WIP/improvements-0-3-1`. The fix commit is `76ad8117`.
+
+**New module, to add to the zones: `specy_road/review_next_step.py`.** It holds the next-step state machine that M14.9 and M14.10 will extend.
+
+### Cause 1: the rules lived in two places. Now there is one function.
+
+`review_deferral.qualify_deferral(items, evidence) -> list[problem]` holds every deferral rule:
+
+- **Round:** an item's round comes from its blocking commit. That round must hold a blocking record from the item's reviewer, and must be no later than the round the source record covers.
+- **New input class:** compared normalised, against evidence from earlier rounds only. The source record and its own marker are excluded.
+- **Binding:** each item binds one to one to a finding of that record, matching category and text.
+- **Coverage:** every finding is bound, and every failed acceptance id is named by an item.
+- **Protected criteria:** a correctness item may not name an id that passed in an earlier round. A block that has any correctness finding and also fails such an id is never resolved.
+
+The one helper, `_block_problems`, is called only from this function. These functions are gone: `deferral_problems`, `coverage_problems`, `block_problems` and `_evidence`.
+
+Both callers build their evidence with `deferral_evidence(repo_root, node_id, source, covers)`. It draws on `loop_state`, which supplies the rounds and the RCAs validated against the schema and the history, and on the valid markers. The two callers are:
+- `review defer` (`applicable_record`), which calls it before writing anything.
+- The gate (`apply_deferrals`), which calls it on every marker naming a block, each time it evaluates. It resolves the block only when the marker's decision is closed **and** the marker's items still qualify.
+
+The marker is a cache, not an authority. A block must be fully deferred by one marker.
+
+**Agreement table** (`tests/test_review_deferral_agreement.py::test_review_defer_and_the_gate_agree`): the same items, through `review defer` in one repository and through a closed decision plus a hand-written marker and `evaluate_gate` in a twin repository.
+
+| Case | `review defer` | gate | Red at `780e53de` |
+|---|---|---|---|
+| eligible (boundary/A1 binds its finding) | accepts | resolves | — |
+| earlier_class (RCA-1 named `crlf  LINE endings`) — **R1** | refuses | keeps block | yes (old gate resolved it) |
+| later_round (an RCA-1 item cites a round-2 commit) | refuses | keeps block | yes (old gate resolved it) |
+| crossed_category | refuses | keeps block | no |
+| unbound_text | refuses | keeps block | no |
+| uncovered_failed_id (item names A2, A1 fails) | refuses | keeps block | no |
+| absent_reviewer | refuses | keeps block | no |
+| duplicate (short + full SHA) | refuses | keeps block | no |
+| protected_block (correctness finding, A2 passed earlier) | refuses | keeps block | no |
+| correctness_item (correctness item on earlier-passing A2) | refuses | keeps block | no |
+
+`later_round` shows a second drift that no review had reported: the old gate never checked the covered round.
+
+### Cause 2: markers were untrusted input. Now they are checked at the boundary.
+
+`review_deferral.MARKER_SCHEMA` (JSON Schema, validated with `jsonschema`) is checked in `load_markers`, the only reader. It returns `(valid markers, one problem line per bad file)` and never raises on a marker's content. `LoopState.problems()` carries those lines, so `handoff status` (text and `--json`) and `review list` show one line naming the file, and a bad marker resolves nothing.
+
+`test_a_malformed_marker_resolves_nothing_and_status_stays_usable` runs with `max_fix_rounds` unset. It covers six inputs:
+- R4's exact `deferred: [incomplete write]`;
+- non-mapping YAML;
+- missing keys;
+- wrong types;
+- unparsable YAML;
+- bad item fields.
+
+All six fail at `780e53de`: either a traceback or no problem line.
+
+### Cause 3: the next step was ad hoc. Now it is a state machine.
+
+`review_next_step.facts()` collects a frozen `Facts`:
+- budget and blocking rounds;
+- whether a counted review blocks;
+- the covering RCA as none, non_defer, defer_unapplied or defer_applied, plus `review defer`'s refusal reason;
+- an available independent analyst;
+- an available rostered executor that handed off;
+- an available blocking reviewer;
+- whether the packet exists.
+
+"Available" uses `orchestrate_plan.is_available`, the rule `prompt` applies (R2). `STATES` is an ordered table; `classify()` takes the first row whose `when` holds, and its `step` yields one `Step(kind, next, why)`.
+
+`fix_round_budget()` returns `None` only for `budget_unset`, so status is unchanged when no budget is set. `spent` means the budget is spent and any counted review blocks. `review_cli` reports `fix_round_budget_spent` exactly when `spent` is true, so it stays true after a partial deferral (R3).
+
+**State table**: every row has a test in `tests/test_review_next_step.py` through `handoff status` `--json` and text. The test runs the printed command and requires it not to exit 1. `test_every_state_row_is_tested` fails if a row has no test.
+
+| Row (first match wins) | When | Step | `next` (verified to run) |
+|---|---|---|---|
+| budget_unset | `max_fix_rounds` unset | none | — (no `fix_round_budget` key) |
+| within_budget | blocking rounds < budget | none | — |
+| spent_no_blocks | spent, no counted block | none | — (the gate's own state) |
+| spent_no_rca | no covering RCA, analyst available | command | `prompt --role rca --force --reason … --model <analyst>` |
+| spent_no_rca_no_analyst | no covering RCA, no available analyst (R2) | blocked | `decisions add …` |
+| spent_defer_unapplied | covering defer RCA, `review defer` accepts it | command | `review defer <ID> --rca <file>` (run as a person, on a TTY) |
+| spent_defer_refused | covering defer RCA it would refuse | blocked | `decisions add …` (`next_why` quotes the refusal) |
+| spent_defer_applied | applied defer, blocks remain, executor available (R3) | command | `prompt --role executor --model <executor>` |
+| spent_defer_applied_no_executor | applied defer, blocks remain, no executor (R3) | blocked | `decisions add …` |
+| spent_rca_executor | executor action, executor available | command | `prompt --role executor --model <executor>` |
+| spent_rca_packet | reviewer re-prompt, no PACKET.md | command | `review-packet <ID>` |
+| spent_rca_reviewer | reviewer re-prompt, available blocking reviewer | command | `prompt --role reviewer --model <reviewer>` |
+| spent_rca_human | any other covering RCA | blocked | `decisions add …` |
+
+The defer rows never re-name `review defer` after an apply. M14.9 and M14.10 add rows by inserting a `State` before the row they refine; the coverage test will then ask for their test.
+
+### Earlier tests changed
+- `test_defer_applies_and_resolves_only_that_reviewers_block_at_that_commit` used to pin R3's wrong state, `blocked` with a null next step. It now pins `fix_round_budget_spent` / `spent_defer_applied_no_executor` / `blocked`.
+- Three message assertions follow the new wording:
+  - "the record covers";
+  - "no available rostered reviewer";
+  - the `decisions add` summary prefix.
+
+### Verification
+- The targeted run is 180 passed over 12 files: `test_review_next_step`, `test_review_deferral_agreement`, `test_review_defer`, `test_review_defer_rounds`, `test_review_rca`, `test_review_gate`, `test_review_cli`, `test_mark_implementation_reviewed_gate`, `test_decisions`, `test_decision_preferences`, `test_review_eligible` and `test_strong_review`.
+- `specy-road file-limits` is OK, ruff is clean, and `check_test_private_imports` exits 0.
+
+### Added (fix round 4)
+- `review_deferral`:
+  - `qualify_deferral`, `_block_problems`, `_earlier_classes`;
+  - `Evidence`, `deferral_evidence`;
+  - `Marker`, `MARKER_SCHEMA`, `_marker_validator`, `load_markers`, `CATEGORIES`.
+- Moved out of `review_deferral` into `review_next_step`: `fix_round_budget` and all next-step logic.
+- `review_next_step` (new module): `Facts`, `Step`, `State`, `STATES`, `classify`, `facts`, `fix_round_budget`, `_human`, `_executor`, `_available`, `_rca_why`, `_none`.
+- `review_rca.LoopState.marker_problems`: bad-marker lines in the loop's problems.
+- `review_cli`: the spent rule is `budget["spent"]`. It calls `fix_round_budget(..., bool(gate.blocks))` from `review_next_step`.
+- `review_defer.applicable_record`: now `qualify_deferral` plus the follow-up field check.
+- Tests:
+  - `tests/test_review_deferral_agreement.py`: agreement table (10 cases) and malformed markers (6 cases);
+  - `tests/test_review_next_step.py`: one test per row, plus the row-coverage test.
