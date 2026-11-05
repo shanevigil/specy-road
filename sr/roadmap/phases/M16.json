@@ -285,8 +285,8 @@
     },
     {
       "acceptance": [
-        "The merges in this sheet's table are applied: do_next_task_virtual_complete, do_next_task_held_claim, do_next_task_leaf_guards and registration_pickup_commit into do_next_task; abort_task_pickup_own_commit into abort_task_pickup; finish_task_gates and finish_task_args into finish_task; finish_land_check into finish_land_integration; the rows marked leave are left",
-        "Each merged file is rewrapped to 100 characters, its width-baseline entry lowered, and stays within the 1,000-line cap (not squashed to get under the 750-line warning); re-export lines, cap-only docstrings, cycle-dodging imports between the merged modules and comments naming a roadmap id or review round in them are gone",
+        "The merges in this sheet's table are applied: do_next_task_virtual_complete, do_next_task_held_claim, do_next_task_leaf_guards and registration_pickup_commit into do_next_task; abort_task_pickup_own_commit into abort_task_pickup; finish_task_gates and finish_task_args into finish_task; finish_land_check into finish_land_integration, and finish_land_local imports what it used from finish_land_check from finish_land_integration; the rows marked leave are left",
+        "Each merged file is rewrapped to 100 characters, its width-baseline entry lowered, and stays within the 1,000-line cap (not squashed to get under the 750-line warning); re-export lines between the merged modules and imports the module's top level already makes are gone; in the merged files no comment or docstring still matches `M\\d+(\\.\\d+)*` or `round \\d+`: each such comment is deleted when it only records split or review history, or rewritten without the id when it explains current behaviour; no other comment or docstring is deleted",
         "Parity harness, dogfood outputs and full suite unchanged; no console entry point's import path changes",
         "Estimated net line change (informational, not a gate): package about -200; files -8"
       ],
@@ -312,7 +312,11 @@
         "specy_road/finish_land_check.py",
         "specy_road/finish_land_integration.py",
         "scripts/line_width_baseline.json",
-        "tests/"
+        "tests/",
+        "specy_road/finish_land_local.py",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/import-layers-baseline.json",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
@@ -351,7 +355,7 @@
     {
       "acceptance": [
         "Before the switch, tests/parity/cleanup/ holds one fixture repo with: a merged feature branch, an unmerged one, a branch whose leaf is Complete, a claimed branch, a live worktree, a merged clean worktree, a merged dirty worktree, a registry row with no branch, a registry row for a Complete leaf, a specy-road stash and a foreign stash; it records the dry-run action list of `doctor`, `branches prune`, `registry-prune`, `worktree prune <ID>` and `grind-session --delete-merged-branches` on that fixture",
-        "`doctor --prune` with `--kind` branches, registry, worktrees or stashes plans through one planner with one merged rule and one live rule (live read from the M16.15 snapshot); for each old command the planner selects nothing the old command did not select on the fixture, any item an old command selected and the planner does not is listed in this sheet, and applying removes exactly the planned items",
+        "Before the switch, a reconciliation table in this sheet fixes the action and reason for each fixture item under each old command and under `doctor --prune --kind` branches, registry, worktrees or stashes; one planner with one merged rule and one live rule (live read from the M16.15 snapshot) selects exactly the table's rows for the new form and for each alias; a safety-driven reduction from an old command's selection is a decided row of that table; applying removes exactly the planned items",
         "`worktree prune <ID>` stays as the single-leaf path on the same planner; `branches prune`, `registry-prune` and `grind-session --delete-merged-branches` still work for one release, print one deprecation line naming the new form, are hidden from top-level help and are rows of tests/parity/command_map.yaml",
         "Docs, templates and suggested_prompts name the new form in the same change; the stale-command check passes; goldens differ only for map rows",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
@@ -385,44 +389,9 @@
         "tests/parity/cleanup/",
         "tests/parity/command_map.yaml",
         "tests/",
-        "CHANGELOG.md"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "`upgrade` performs what refresh-stubs, refresh-schemas and refresh-profiles do, each selectable with `--only stubs`, `--only schemas` or `--only profiles`; the three commands stay as hidden one-release aliases with one deprecation line and are rows of tests/parity/command_map.yaml",
-        "`upgrade` prints one report with four fixed sections (files added or changed, schema refreshes, profile refreshes, notices) built only from data the refresh steps compute at pickup; the before and after `upgrade --dry-run` outputs on the rc3-shaped fixture are committed, and the set of reported lines is the same, only headings and grouping differ",
-        "`update` (fast-forward a toolkit clone) is renamed `self-update`, with `update` a hidden one-release alias and a map row; the update scenarios (M16.53) pass under both names",
-        "M13.11's extra report sections are not part of this leaf; docs, templates and suggested_prompts use the new names; goldens differ only for map rows",
-        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
-        "Estimated net line change (informational, not a gate): package about -200"
-      ],
-      "codename": "upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update",
-      "dependencies": [
-        "b5ca5d95-58a9-472c-9f90-0004d0fbd46f"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M16.12",
-      "node_key": "fcb9f89a-2bad-423c-8d52-eb748967a367",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.12_upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update_fcb9f89a-2bad-423c-8d52-eb748967a367.md",
-      "sibling_order": 12,
-      "status": "Not Started",
-      "title": "upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update",
-      "touch_zones": [
-        "specy_road/bundled_scripts/upgrade.py",
-        "specy_road/bundled_scripts/refresh_stubs.py",
-        "specy_road/bundled_scripts/update_specy_road.py",
-        "specy_road/upgrade_report.py",
-        "specy_road/cli.py",
-        "docs/upgrading.md",
-        "docs/install-and-usage.md",
-        "suggested_prompts/",
-        "specy_road/templates/project/",
-        "tests/parity/",
-        "tests/",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/grind_session_args.py",
+        "specy_road/bundled_scripts/grind_session.py"
       ],
       "type": "task"
     },

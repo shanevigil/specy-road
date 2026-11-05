@@ -357,7 +357,7 @@
     {
       "acceptance": [
         "nested_repos_land (250) merges into nested_repos (313); nested_repos, nested_repos_land and finish_implementation_check no longer form an import cycle (the layering baseline shrinks)",
-        "milestone_session and on_complete_session read and write their session files through one shared helper (the 17-26 line clone goes); the files' paths and formats are unchanged",
+        "milestone_session and on_complete_session read and write their session files through one shared helper in specy_road/session_file_io.py (the 17-26 line clone goes); the files' paths and formats are unchanged",
         "The merged file is rewrapped and its width entry lowered; parity harness, the milestone scenarios (M16.27) and the full suite unchanged",
         "Estimated net line change (informational, not a gate): package about -50"
       ],
@@ -381,7 +381,11 @@
         "specy_road/milestone_session.py",
         "specy_road/on_complete_session.py",
         "scripts/line_width_baseline.json",
-        "tests/"
+        "tests/",
+        "specy_road/session_file_io.py",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/import-layers-baseline.json",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
@@ -458,8 +462,8 @@
     },
     {
       "acceptance": [
-        "The merges in this sheet's table are applied: gui_app_api, gui_app_routes_publish and gui_app_routes_workers into gui_app; roadmap_gui_pr_pickers into roadmap_gui_remote; roadmap_gui_settings_tokens into roadmap_gui_settings; roadmap_crud_delete into roadmap_crud_ops; bundled_scripts/roadmap_crud.py stays (a documented command path)",
-        "PM UI routes and their JSON responses (GUI tests) and the outline and edit-field scenarios (M16.53) are unchanged; the worker routes keep reading what they read at pickup",
+        "The merges in this sheet's table are applied: gui_app_api, gui_app_routes_publish and gui_app_routes_workers into gui_app; roadmap_gui_pr_pickers into roadmap_gui_remote; roadmap_gui_settings_tokens into roadmap_gui_settings; roadmap_crud_delete into roadmap_crud_ops; bundled_scripts/roadmap_crud.py stays (a documented command path); module paths resolve through M16.6's committed move list; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
+        "PM UI routes and their JSON responses (GUI tests) and the outline and edit-field scenarios (M16.53) are unchanged; each handler from the old gui_app_routes_workers module calls the same functions it called at pickup (import paths may change), and none calls `orchestration.state.snapshot`",
         "Each merged file is rewrapped, its width entry lowered, and stays within the 1,000-line cap (not squashed to get under the 750-line warning)",
         "Estimated net line change (informational, not a gate): package about -100"
       ],
@@ -481,7 +485,11 @@
         "specy_road/bundled_scripts/roadmap_gui_*.py",
         "specy_road/bundled_scripts/roadmap_crud*.py",
         "scripts/line_width_baseline.json",
-        "tests/"
+        "tests/",
+        "specy_road/",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/import-layers-baseline.json",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     }

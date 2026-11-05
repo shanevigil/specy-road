@@ -3,11 +3,12 @@
     {
       "acceptance": [
         "Before any reader changes, tests/parity/roster_forms/ holds the toolkit's sr/roadmap/orchestration.yaml as of pickup and a 0.3.1-shaped sample (a human entry, a manual reviewer, claude-code, codex and cursor entries, a dynamic-routing entry with and without `pinned`, and an orchestration.local.yaml with an availability patch and a `roster_add` entry), and records per entry: check_assignment's result for each M16.47 corpus row, the family attestation for an approval, the launch argv and added environment the harness adapter builds for an executor and a reviewer turn, the role-prompt text, and `orchestrate plan --json`",
-        "orchestration.schema.json accepts `version: 1` (today's flat entry, unchanged) and `version: 2`: core fields id, family, roles, may_process, public_key, available, paused_until, unavailable_until and family_pinned at entry level, and an optional `run:` object whose schema branch is chosen by `run.harness` (claude-code, codex, cursor, generic) and holds harness_bin, harness_model, profile, routing, billing_route, channels, preflight, class and subagent_family_lock under today's names; each branch accepts only the fields in this sheet's per-harness table and refuses another with a message naming the field and the harness",
+        "orchestration.schema.json accepts `version: 1` (today's flat entry, unchanged) and `version: 2`: core fields id, family, roles, may_process, public_key, available, paused_until, unavailable_until, family_pinned, class and subagent_family_lock at entry level (class and the family lock are eligibility inputs, so they stay core), and an optional `run:` object whose schema branch is chosen by `run.harness` (claude-code, codex, cursor, generic) and holds harness_bin, harness_model, profile, routing, billing_route, channels, preflight and cursor_force (cursor only, M16.69) under today's names; each branch accepts only the fields in this sheet's per-harness table, which the planner fills before dispatch from each adapter's and role_prompt's reads, and refuses another with a message naming the field and the harness; a valid and an invalid fixture per branch, and a human and a manual-reviewer entry without `run:`, are committed",
         "One loader returns the same entry model from either form, and every roster reader (eligibility, worker and review delegate, role prompt, orchestrate plan and assign, models, validate) reads that model; every parity row gives the same result from each version-1 roster and from the hand-written version-2 equivalent committed beside it",
         "The review gate and review_gate_ready read core fields only; the family attestation (today's routing_problem: family_pinned, else the run block's routing, harness, channels.cli `--model`, harness_model and the profile's api_id) is a function of `specy_road.orchestration` with the same result on every parity and decision-table row; the layering gate fails when a review_gate module imports the roster's run model",
         "validate accepts both forms for one release and prints one notice for a version-1 file that names `specy-road upgrade`; a version-2 entry with a run field at entry level is an error naming the field and `run:`; the M16.0 dogfood validate golden gains only that notice line",
-        "orchestration.local.yaml keeps today's rule that `roster:` patches set only available, paused_until and unavailable_until; `roster_add` entries are read in either form during the window and refused, as today, when they add a command without allow_local_cli; the gate still reads only the committed roster",
+        "orchestration.local.yaml keeps today's rule that `roster:` patches set only available, paused_until and unavailable_until; `roster_add` entries are read in either form during the window (an entry with `run:` is version 2, otherwise version 1; an entry with both `run:` and an entry-level run field is an error naming the field) and refused, as today, when they add a command without allow_local_cli; the gate still reads only the committed roster",
+        "roster_generate (behind `validate --generate-orchestration`) writes the file version it is asked for, a new file is version 2, and no writer appends an entry in the other form to an existing file; module paths in this leaf's zones resolve through M16.17's destination list",
         "No file is rewritten in this leaf (M16.64 migrates); the parity harness, the M16.1 decision table, the M16.47 eligibility corpus and the M16.15 state table are unchanged",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
         "Estimated net line change (informational, not a gate): package about +150 while both forms are read; M16.62 removes the version-1 path"
@@ -48,7 +49,7 @@
     },
     {
       "acceptance": [
-        "`upgrade` rewrites a version-1 roadmap/orchestration.yaml to version 2: core fields stay at entry level, `pinned` becomes `family_pinned`, every other harness field moves under `run:` with `harness` first; entry order, ids, values, `policy`, `substitutions` and every other top-level key are unchanged, and no comment line is dropped (a comment stays with the entry or field it annotated)",
+        "`upgrade` rewrites a version-1 roadmap/orchestration.yaml to version 2: core fields stay at entry level, `pinned` becomes `family_pinned`, every other harness field moves under `run:` with `harness` first; entry order, ids, values, `policy`, `substitutions` and every other top-level key are unchanged; a comment on the line immediately above a key, or on the same line after it, is on the line immediately above, or on the same line after, that same key in the after file, and no other comment line is dropped; the YAML shapes the rewrite supports are a committed table, and a file outside it is reported and left byte-identical",
         "`roster_add` entries in roadmap/orchestration.local.yaml are rewritten the same way when that file exists; its `roster:` availability patches are left as they are",
         "Applying twice gives the same files; `--dry-run` writes nothing and lists the rewrite in the upgrade report (M16.12); a version-2 file is left untouched; a file the rewrite cannot read is reported and left unchanged",
         "tests/parity/roster_forms/ holds before and after files for the toolkit's own sr/roadmap/orchestration.yaml and the 0.3.1-shaped sample: upgrade on each before file writes exactly its committed after file, each after file validates with no notice, and each gives the same M16.63 parity rows as its before file",
@@ -422,6 +423,45 @@
         "docs/orchestration-harness-launch.md",
         "docs/orchestration-review.md",
         "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Before the switch, a table in this sheet maps every flag and mode of refresh-stubs, refresh-schemas and refresh-profiles (including refresh-profiles' `--only API_ID` and its --check, --render and --capture modes) to an upgrade invocation; `upgrade --only stubs|schemas|profiles` selects a component, and profile selection uses a separate option the table names; each row gives the same files and output as the old invocation; the three commands stay as hidden one-release aliases with one deprecation line and are rows of tests/parity/command_map.yaml, which also lists upgrade's allowed help and report differences",
+        "`upgrade` prints one report with four fixed sections (files added or changed, schema refreshes, profile refreshes, notices) built only from data the refresh steps compute at pickup; the before and after `upgrade --dry-run` outputs on the rc3-shaped fixture are committed, and the set of reported lines is the same, only headings and grouping differ",
+        "`update` (fast-forward a toolkit clone) is renamed `self-update`, with `update` a hidden one-release alias and a map row; the update scenarios (M16.53) pass under both names",
+        "M13.11's extra report sections are not part of this leaf; docs, templates and suggested_prompts use the new names; goldens differ only for map rows",
+        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
+        "Estimated net line change (informational, not a gate): package about -200"
+      ],
+      "codename": "upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update",
+      "dependencies": [
+        "b5ca5d95-58a9-472c-9f90-0004d0fbd46f"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.12",
+      "node_key": "fcb9f89a-2bad-423c-8d52-eb748967a367",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.12_upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update_fcb9f89a-2bad-423c-8d52-eb748967a367.md",
+      "sibling_order": 12,
+      "status": "Not Started",
+      "title": "upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update",
+      "touch_zones": [
+        "specy_road/bundled_scripts/upgrade.py",
+        "specy_road/bundled_scripts/refresh_stubs.py",
+        "specy_road/bundled_scripts/update_specy_road.py",
+        "specy_road/upgrade_report.py",
+        "specy_road/cli.py",
+        "docs/upgrading.md",
+        "docs/install-and-usage.md",
+        "suggested_prompts/",
+        "specy_road/templates/project/",
+        "tests/parity/",
+        "tests/",
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/refresh_schemas.py",
+        "specy_road/bundled_scripts/refresh_profiles.py"
       ],
       "type": "task"
     }

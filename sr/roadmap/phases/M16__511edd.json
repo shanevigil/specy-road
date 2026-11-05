@@ -4,7 +4,7 @@
       "acceptance": [
         "`milestone start`, `milestone status` and `milestone pr` run start-milestone-session, reconcile-milestone-status and open-milestone-pr with the same flags and output; `planning scaffold` and `planning approach` run scaffold-planning and author-approach; `archive --hard-remove` runs archive-node, and archive's restore and removal behaviour is unchanged",
         "Each old name works for one release with one deprecation line, is hidden from top-level help and is a row of tests/parity/command_map.yaml",
-        "The canonical command count (`cli._known_commands()` minus alias rows) is at most 56: 68 minus the 14 names that M16.11, M16.12, M16.13 and this leaf retire (registry-prune, branches, refresh-stubs, refresh-schemas, refresh-profiles, handoff, review-packet, lessons, start-milestone-session, reconcile-milestone-status, open-milestone-pr, scaffold-planning, author-approach, archive-node) plus the 2 new groups (milestone, planning); the renames update to self-update and session to presence are net zero",
+        "The canonical command count — distinct registered top-level names minus the names tests/parity/command_map.yaml classifies as retired top-level aliases (subcommand and flag rows do not count) — is at most 56, and the test prints the name set: 68 minus the 14 names that M16.11, M16.12, M16.13 and this leaf retire (registry-prune, branches, refresh-stubs, refresh-schemas, refresh-profiles, handoff, review-packet, lessons, start-milestone-session, reconcile-milestone-status, open-milestone-pr, scaffold-planning, author-approach, archive-node) plus the 2 new groups (milestone, planning); the renames update to self-update and session to presence are net zero",
         "Docs, templates, skills and stubs, and suggested_prompts use the new names; the stale-command check passes; goldens differ only for map rows",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
         "Estimated net line change (informational, not a gate): package about -70"
@@ -42,8 +42,8 @@
     },
     {
       "acceptance": [
-        "A `checks:` entry with `zones:` runs at ready and land when any path in the leaf's diff against its merge base matches one of its globs (repo-relative fnmatch) and is otherwise skipped, with the skip recorded",
-        "A result is recorded with the commit it ran on and counts only for that commit; land refuses when a merge-blocking entry's result for the commit to land is missing or failed",
+        "A `checks:` entry with `zones:` runs at ready and land when a path in the leaf's diff against its merge base matches one of its globs, and is otherwise skipped with the skip recorded; paths are POSIX and relative to the git root, matched with fnmatchcase, with deleted paths and both sides of a rename included; the command runs from the configured project root",
+        "Every entry with `zones:` blocks land (no opt-out field in M16); its fields and defaults extend the `checks:` schema table M16.14 committed, in this leaf's first commit; a result records the entry name, a fingerprint of its command and config, the stage, the commit, the result and the skip reason, is stored with ready's evidence and counts only for that commit; land refuses when a zoned entry's result for the commit to land is missing or failed",
         "A table test covers matching zone pass, matching zone fail, no matching zone, stale result and missing result, and the M16.1 decision table gains these rows",
         "A repo without zone entries behaves as before: parity harness and the M16.14 migration table unchanged",
         "Estimated net line change (informational, not a gate): package about +80 (named new behaviour)"
@@ -103,7 +103,7 @@
     {
       "acceptance": [
         "Before the switch, tests/parity/eligibility/ holds a corpus over role (coordinator, executor, reviewer), roster membership, availability (available, paused_until, unavailable_until), sensitivity against may_process, executor class and family lock; each row is run through role_prompt, worker delegate, review delegate, review_eligible, the review gate and orchestrate assign, recording per caller the allow or refuse, the first refusal and its message at pickup",
-        "`check_assignment(config, model, node, role, context)` replaces the five checks; for every row and caller it gives the same allow or refuse and the same first refusal, and the same message where a test asserted it at pickup; caller-specific defaults are passed in `context`, not re-derived",
+        "`check_assignment(config, model, node, role, context)` replaces the checks in the six callers named in A1; for every row and caller it gives the same allow or refuse and the same first refusal, and the same message where a test asserted it at pickup; caller-specific defaults are passed in `context`, not re-derived",
         "The review gate reads dependencies through `RoadmapIndex.unmet` (M16.5)",
         "Parity harness and decision table unchanged",
         "Estimated net line change (informational, not a gate): package about -120"
@@ -152,36 +152,6 @@
       "touch_zones": [
         "specy_road/orchestration/guard/",
         "tests/parity/guard/",
-        "tests/"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "Chore, decision and preference, and lesson code moves under specy_road/orchestration/; shared internal adapters keep each record type's path, schema, ordering, ids, metadata and write behaviour; no new on-disk format",
-        "tests/parity/records/ fixtures (a decisions.yaml with every kind including an expired preference, a review-lessons.md with prose around the lessons, a chore record mid-execution) load and save byte-identical",
-        "Preference routing and lesson injection into reviewer prompts give the same prompt text as at pickup",
-        "Estimated net line change (informational, not a gate): package about -60"
-      ],
-      "codename": "chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte",
-      "dependencies": [
-        "275b701c-4eb9-4214-ae77-7ab34a7d197a"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M16.49",
-      "node_key": "24c28b1f-7b6d-4f86-8a89-a6963d9eb65d",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.49_chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte_24c28b1f-7b6d-4f86-8a89-a6963d9eb65d.md",
-      "sibling_order": 51,
-      "status": "Not Started",
-      "title": "Chore, decision and lesson records share internal adapters and keep their files byte for byte",
-      "touch_zones": [
-        "specy_road/orchestration/records/",
-        "specy_road/bundled_scripts/chore_*.py",
-        "specy_road/decisions.py",
-        "specy_road/bundled_scripts/decisions_cli.py",
-        "specy_road/review_lessons.py",
-        "tests/parity/records/",
         "tests/"
       ],
       "type": "task"
