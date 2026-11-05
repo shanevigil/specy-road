@@ -146,6 +146,14 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M18.17` Under delta review, one approval per round still checks the whole leaf against the merge base on a fixed checklist `one-full-leaf-checklist-review-per-round` — task — **Not Started**
   - `M18.18` Plan review after planning, and a staleness check before pickup `plan-review-and-pickup-staleness` — task — **Not Started**
   - `M18.19` orchestrate plan and review delegate apply reviewer preferences from the decisions ledger and say when they do `plan-applies-preferences` — task — **Not Started**
+  - `M18.20` Unattended grind loop: several workers at once, zone-overlap scheduling, per-model caps, review hand-off and landing when the gate is met `unattended-grind-loop` — task — **Not Started**
+  - `M18.21` Automatic fix rounds in the unattended loop, capped by the fix-round budget, then parked for a human `auto-fix-rounds` — task — **Not Started**
+  - `M18.22` doctor reports a stalled orchestration: a silent loop, failed or stalled workers, idle leaves, a stuck review queue, undelegated ready leaves and a dirty checkout `orchestration-supervision` — task — **Not Started**
+  - `M18.23` Executor account pools: weighted accounts per roster entry, session-account affinity, and failover on a usage limit `executor-account-pools` — task — **Not Started**
+  - `M18.24` review run: the required reviewers in order for one leaf, a concurrency cap across leaves, and one retry on a refused record `review-run-queue` — task — **Not Started**
+  - `M18.25` A channels.cli reviewer writes its final answer to a file specy-road names, and its transcript is kept beside the run record `reviewer-answer-file` — task — **Not Started**
+  - `M18.26` Amending a claimed leaf's touch zones or one acceptance line records the reason, commits on the leaf branch and re-arms its review `claimed-leaf-amendments` — task — **Not Started**
+  - `M18.27` Append-only zone paths such as CHANGELOG.md do not serialize leaves, and finish merges their added lines `append-only-zone-paths` — task — **Not Started**
 - `M19` Adopter-project features: upgrade, agent-file layering, planning hygiene, project tooling (after 0.3.1) `adopter-features` — phase — **Not Started**
   - `M19.1` Configurable code-analysis tools `analysis-tools` — task — **Not Started**
   - `M19.2` Research reminders leave validate `research-due-in-doctor` — task — **Not Started**

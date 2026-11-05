@@ -133,6 +133,14 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M18.17` | Under delta review, one approval per round still checks the whole leaf against the merge base on a fixed checklist | task | Agentic-led | Not Started |
 | `M18.18` | Plan review after planning, and a staleness check before pickup | task | Agentic-led | Not Started |
 | `M18.19` | orchestrate plan and review delegate apply reviewer preferences from the decisions ledger and say when they do | task | Agentic-led | Not Started |
+| `M18.20` | Unattended grind loop: several workers at once, zone-overlap scheduling, per-model caps, review hand-off and landing when the gate is met | task | — | Not Started |
+| `M18.21` | Automatic fix rounds in the unattended loop, capped by the fix-round budget, then parked for a human | task | — | Not Started |
+| `M18.22` | doctor reports a stalled orchestration: a silent loop, failed or stalled workers, idle leaves, a stuck review queue, undelegated ready leaves and a dirty checkout | task | — | Not Started |
+| `M18.23` | Executor account pools: weighted accounts per roster entry, session-account affinity, and failover on a usage limit | task | — | Not Started |
+| `M18.24` | review run: the required reviewers in order for one leaf, a concurrency cap across leaves, and one retry on a refused record | task | — | Not Started |
+| `M18.25` | A channels.cli reviewer writes its final answer to a file specy-road names, and its transcript is kept beside the run record | task | — | Not Started |
+| `M18.26` | Amending a claimed leaf's touch zones or one acceptance line records the reason, commits on the leaf branch and re-arms its review | task | — | Not Started |
+| `M18.27` | Append-only zone paths such as CHANGELOG.md do not serialize leaves, and finish merges their added lines | task | — | Not Started |
 | `M19` | Adopter-project features: upgrade, agent-file layering, planning hygiene, project tooling (after 0.3.1) | phase | — | Not Started |
 | `M19.1` | Configurable code-analysis tools | task | — | Not Started |
 | `M19.2` | Research reminders leave validate | task | — | Not Started |
