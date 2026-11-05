@@ -50,16 +50,6 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch
-    node_id: M14.2
-    branch: feature/rm-doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch
-    touch_zones:
-      - specy_road/bundled_scripts/doctor.py
-      - specy_road/doctor_worktrees.py
-      - tests/
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap
     node_id: M13.2
     branch: feature/rm-upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap
@@ -83,55 +73,6 @@ entries:
       - specy_road/bundled_scripts/validate_roadmap.py
       - tests/
       - docs/roadmap-authoring.md
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: shared-doc-zones-do-not-serialize-batches
-    node_id: M15.12
-    branch: feature/rm-shared-doc-zones-do-not-serialize-batches
-    touch_zones:
-      - specy_road/bundled_scripts/session_plan_render.py
-      - specy_road/bundled_scripts/session_plan.py
-      - specy_road/shared_zones.py
-      - specy_road/bundled_scripts/validate_registry_overlap.py
-      - docs/grind-session.md
-      - tests/
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - specy_road/bundled_scripts/session_plan_git.py
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: planned-test-changes-editable-and-removals-surfaced
-    node_id: M15.18
-    branch: feature/rm-planned-test-changes-editable-and-removals-surfaced
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_edit_fields.py
-      - specy_road/bundled_scripts/roadmap_crud_argparse.py
-      - specy_road/integrity.py
-      - specy_road/integrity_removals.py
-      - specy_road/bundled_scripts/roadmap_edit_list_fields.py
-      - specy_road/bundled_scripts/review_packet.py
-      - specy_road/bundled_scripts/review_packet_observed.py
-      - docs/acceptance-evidence.md
-      - tests/
-      - specy_road/review_record_rules.py
-      - specy_road/schemas/review-record.schema.json
-      - specy_road/review_files.py
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/bundled_scripts/roadmap_crud_ops.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: cursor-cost-with-display-name-models
-    node_id: M15.19
-    branch: feature/rm-cursor-cost-with-display-name-models
-    touch_zones:
-      - specy_road/worker_models.py
-      - specy_road/worker_adapter_parsers.py
-      - specy_road/model_names.py
-      - tests/
-      - specy_road/worker_runner.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -200,16 +141,7 @@ entries:
       - specy_road/bundled_scripts/do_next_task_pickup_helpers.py
       - specy_road/bundled_scripts/abort_task_pickup.py
       - specy_road/bundled_scripts/abort_task_pickup_own_commit.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: rework-prompt-carries-the-accepted-rca
-    node_id: M15.6
-    branch: feature/rm-rework-prompt-carries-the-accepted-rca
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt_rework.py
-      - specy_road/rework_rca.py
-      - tests/
+      - specy_road/bundled_scripts/do_next_task_self_heal.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending

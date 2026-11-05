@@ -393,7 +393,7 @@ def run_validation(
     warn_registry_touch_zone_overlap(
         registry.get("entries") or [],
         no_overlap_warn=no_overlap_warn,
-        overlap_scope=overlap_scope,
+        overlap_scope=overlap_scope, repo_root=r,
     )
 
     print("OK: roadmap and registry validate.")

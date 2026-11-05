@@ -166,6 +166,19 @@
       "type": "integer",
       "minimum": 0,
       "description": "grind-session: how many times to re-run a Claude implement command that died on a signal without printing anything (default 2). Not a retry for failed implementations - those still stop the run. CLI --max-empty-retries wins."
+    },
+    "grind": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "grind-session settings.",
+      "properties": {
+        "shared_zones": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true,
+          "description": "Directory touch zones that do not make two leaves overlap in grind-session --plan batches or the validate registry overlap warning (default [\"planning/\", \"shared/\"]; [] turns it off). Two leaves naming the same file under one still overlap."
+        }
+      }
     }
   }
 }

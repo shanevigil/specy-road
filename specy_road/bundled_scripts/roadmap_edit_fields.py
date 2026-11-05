@@ -9,6 +9,7 @@ from typing import Any
 
 from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, planning_filename_for_node
 
+from specy_road.bundled_scripts.roadmap_edit_list_fields import PLANNED_TEST_CHANGES, set_planned_test_changes
 from specy_road.bundled_scripts.roadmap_node_keys import NODE_KEY_PATTERN
 
 ID_PATTERN = re.compile(r"^M[0-9]+(\.[0-9]+)*$")
@@ -54,6 +55,7 @@ EDIT_WHITELIST = frozenset({
     "touch_zones",
     "acceptance",
     "risks",
+    PLANNED_TEST_CHANGES,
     "decision.status",
     "decision.decided_date",
     "decision.adr_ref",
@@ -93,7 +95,7 @@ def _nonempty_lines(raw: str) -> list[str]:
 
 
 #: Keys whose value is a list: repeating ``--set key=…`` appends one item each.
-LIST_KEYS = ("acceptance", "risks", "touch_zones", "dependencies")
+LIST_KEYS = ("acceptance", "risks", "touch_zones", "dependencies", PLANNED_TEST_CHANGES)
 
 
 def merge_set_pairs(pairs: list[tuple[str, str]]) -> list[tuple[str, str]]:
@@ -363,6 +365,9 @@ def apply_set(
             f"{dotted_key} value looks like a JSON list; it is read as text, one item per line, "
             f"not parsed. Give one --set {dotted_key}=… per item."
         )
+    if dotted_key == PLANNED_TEST_CHANGES:
+        set_planned_test_changes(node, raw_val)
+        return
     if len(parts) == 1:
         key = parts[0]
         old_title = str(node.get("title") or "")
