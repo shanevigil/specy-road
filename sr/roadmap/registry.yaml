@@ -29,7 +29,6 @@ entries:
     branch: feature/rm-a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts
     touch_zones:
       - specy_road/behaviour_changes.py
-      - specy_road/agent_text_report.py
       - specy_road/version_pin.py
       - specy_road/bundled_scripts/validate_roadmap.py
       - tests/
@@ -72,61 +71,6 @@ entries:
     owner: savigil
     implementation_review: approved
     implementation_review_at: '2026-11-05T08:22:42+00:00'
-  - codename: reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round
-    node_id: M14.6
-    branch: feature/rm-reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round
-    touch_zones:
-      - specy_road/review_delegate.py
-      - specy_road/review_usage.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/bundled_scripts/worker_cli_render.py
-      - tests/
-      - specy_road/bundled_scripts/worker_cli.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: working-roster-in-one-command-and-validated-profiles
-    node_id: M15.11
-    branch: feature/rm-working-roster-in-one-command-and-validated-profiles
-    touch_zones:
-      - specy_road/bundled_scripts/models_cli.py
-      - specy_road/roster_generate.py
-      - specy_road/orchestration_pinned.py
-      - specy_road/orchestrate_plan.py
-      - specy_road/orchestrate_assign.py
-      - specy_road/bundled_scripts/orchestrate_cli.py
-      - specy_road/roster_profile_check.py
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - specy_road/templates/project/roadmap/orchestration.yaml
-      - docs/orchestration.md
-      - docs/orchestration-models.md
-      - docs/orchestration-workers.md
-      - docs/orchestration-roster.md
-      - docs/design-notes/model-aware-orchestration-proposal.md
-      - tests/
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: promoted-leaf-is-never-stuck-on-an-empty-approach
-    node_id: M15.8
-    branch: feature/rm-promoted-leaf-is-never-stuck-on-an-empty-approach
-    touch_zones:
-      - specy_road/bundled_scripts/brainstorm_promote.py
-      - specy_road/bundled_scripts/planning_sheet_bootstrap.py
-      - specy_road/bundled_scripts/author_approach.py
-      - specy_road/planning_scaffold_check.py
-      - specy_road/cli.py
-      - specy_road/cli_usage.py
-      - docs/brainstorming.md
-      - tests/
-      - specy_road/bundled_scripts/do_next_task_leaf_guards.py
-      - specy_road/bundled_scripts/session_plan_render.py
-      - specy_road/bundled_scripts/orchestrate_cli.py
-      - specy_road/bundled_scripts/brief_dependency_context.py
-      - specy_road/bundled_scripts/grind_session.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend
     node_id: M14.10
     branch: feature/rm-escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend
@@ -194,16 +138,6 @@ entries:
       - specy_road/agent_ignores.py
       - specy_road/bundled_scripts/validate_roadmap_checks.py
     started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record
-    node_id: M14.7
-    branch: feature/rm-session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record
-    touch_zones:
-      - specy_road/bundled_scripts/session_cli.py
-      - specy_road/session_presence.py
-      - tests/
-    started: '2026-11-05'
     owner: savigil
     implementation_review: pending
   - codename: file-limits-baseline-and-upgrade-report

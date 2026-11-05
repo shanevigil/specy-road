@@ -204,9 +204,8 @@
     {
       "acceptance": [
         "specy_road/behaviour_changes.py holds a tracked catalogue of behaviour changes that invalidate common project instructions, each with the version it shipped in, a one-line 'now' statement, the command and flags it concerns, and an optional pattern for project text that contradicts it; it starts with the four cited cases (mark-implementation-reviewed --yes on your own work, finish-this-task --on-complete differing from the recorded mode needs --override-on-complete, pickup --local, finish-this-task --delete-branch); a test asserts every entry names a registered command and flag",
-        "validate prints one notice per line of project text outside managed blocks (root AGENTS.md, CLAUDE.md, .specyrd/AGENTS.team.md) that matches a catalogue pattern, at minimum --yes with mark-implementation-reviewed and --on-complete merge|auto with finish-this-task, naming file:line, the instruction and the current behaviour; it reports only and never rewrites project text; a fixture with all four cited sentences pins the notices and a clean file prints none; a line matches only when it INSTRUCTS the changed behaviour (a mandate or habit: 'must', 'always', 'in non-TTY/agent contexts pass', 'unattended runs pass'), never when it merely shows a command in use: a bare example such as `specy-road finish-this-task --on-complete merge` or `specy-road mark-implementation-reviewed --yes` with no mandating words is valid current usage and prints no notice (planner clarification 2026-11-04 after reviewers enforced opposite readings)",
-        "To keep validate_roadmap.py under the 400-line cap, pinned_version and warn_if_pin_differs move to specy_road/version_pin.py (validate_roadmap re-exports them so existing imports and tests still work) and the new report is one call from validate. Out of scope: printing the catalogue during upgrade (M13.11), and checking prose that names no command",
-        "The catalogue has an entry for pickup registering the claim on the integration branch before the feature branch exists, with a pattern for project text saying the first commit on the feature branch registers the work (as earlier init-era root AGENTS.md, docs/git-workflow.md and constitution/principles.md copies say); validate's notice names file:line for each match. This toolkit's own docs/roadmap-authoring.md ('Before starting implementation', steps 3 and 4) says the same today and is rewritten to the integration-branch order without adding net lines (the file is at 400); a test runs the pattern over the toolkit's docs/ and specy_road/templates/ and finds nothing (specy_road/templates/project/ has no such sentence today)"
+        "To keep validate_roadmap.py under the 400-line cap, pinned_version and warn_if_pin_differs move to specy_road/version_pin.py (validate_roadmap re-exports them so existing imports and tests still work). Out of scope: printing the catalogue during upgrade (M13.11), and checking prose that names no command",
+        "The catalogue has an entry for pickup registering the claim on the integration branch before the feature branch exists, with a pattern for project text saying the first commit on the feature branch registers the work (as earlier init-era root AGENTS.md, docs/git-workflow.md and constitution/principles.md copies say). This toolkit's own docs/roadmap-authoring.md ('Before starting implementation', steps 3 and 4) says the same today and is rewritten to the integration-branch order without adding net lines (the file is at 400); a test runs the pattern over the toolkit's docs/ and specy_road/templates/ and finds nothing (specy_road/templates/project/ has no such sentence today). Out of scope (split to M13.14, maintainer 2026-11-04): validate notices for project text that contradicts the catalogue"
       ],
       "codename": "a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts",
       "dependencies": [],
@@ -220,7 +219,6 @@
       "title": "A behaviour-change catalogue, and validate reports project agent text it contradicts",
       "touch_zones": [
         "specy_road/behaviour_changes.py",
-        "specy_road/agent_text_report.py",
         "specy_road/version_pin.py",
         "specy_road/bundled_scripts/validate_roadmap.py",
         "tests/",
@@ -384,6 +382,32 @@
         "docs/upgrading.md",
         "tests/",
         "docs/install-release-candidates.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "validate prints at most one notice per sentence of project text outside managed blocks (root AGENTS.md, CLAUDE.md, .specyrd/AGENTS.team.md) when that sentence names a catalogue command as a literal token AND contains a mandate cue from a fixed, documented list ('must', 'always', 'never omit', 'in non-TTY/agent contexts pass', 'unattended runs pass'); the notice names file:line, the instruction and the current behaviour from the M13.8 catalogue; it reports only and never rewrites project text",
+        "Sentences are split by one stated rule (on '. ', '; ' and line breaks, outside backtick spans); a bare command example with no mandate cue never matches; the lint is documented as a best-effort hint: paraphrases without a listed cue are false negatives and out of scope",
+        "Tests: the four cited stale sentences match (positives); bare examples such as `specy-road finish-this-task --on-complete merge`, correct current guidance, and unrelated prose (e.g. 'The first commit registers the service worker.') do not (negatives, parametrized); running the lint over the toolkit's own docs/, specy_road/templates/ and AGENTS.md finds nothing"
+      ],
+      "codename": "validate-flags-project-agent-text-that-mandates-a-changed-behaviour-best-effort-hint",
+      "dependencies": [
+        "f7af5b48-1dd5-41f8-a55b-781cd48a8c18"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M13.14",
+      "node_key": "ef79760f-c6d0-4a12-afe6-7f2c6a1eb1a2",
+      "parent_id": "M13",
+      "planning_dir": "planning/M13.14_validate-flags-project-agent-text-that-mandates-a-changed-behaviour-best-effort-hint_ef79760f-c6d0-4a12-afe6-7f2c6a1eb1a2.md",
+      "sibling_order": 14,
+      "status": "Not Started",
+      "title": "validate flags project agent text that mandates a changed behaviour (best-effort hint)",
+      "touch_zones": [
+        "specy_road/agent_text_report.py",
+        "specy_road/bundled_scripts/validate_notices.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "tests/"
       ],
       "type": "task"
     }

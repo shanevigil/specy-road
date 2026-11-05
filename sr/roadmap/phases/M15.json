@@ -218,7 +218,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.8_promoted-leaf-is-never-stuck-on-an-empty-approach_4c08d324-6253-4875-ac9e-b0933d17f69c.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_promote.py",
@@ -314,7 +314,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.11_working-roster-in-one-command-and-validated-profiles_d333b89b-eb44-4636-a350-284149c4a490.md",
       "sibling_order": 11,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors",
       "touch_zones": [
         "specy_road/bundled_scripts/models_cli.py",
