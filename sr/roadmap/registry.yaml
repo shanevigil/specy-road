@@ -67,6 +67,8 @@ entries:
       - specy_road/review_tally.py
       - specy_road/bundled_scripts/mark_implementation_reviewed.py
       - docs/orchestration-quality.md
+      - specy_road/orchestrate_assign.py
+      - sr/roadmap-context.md
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
