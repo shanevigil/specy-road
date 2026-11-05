@@ -193,7 +193,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M12.2` Every refusal names its fix `every-refusal-names-its-fix` — task — **Complete**
   - `M12.3` Scheduled gardening chores that find drift and open small chore leaves `scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves` — task — **Complete**
   - `M12.4` Quality signals agents and PMs read first `quality-signals-agents-and-pms-read-first` — milestone — **Not Started**
-    - `M12.4.1` Per-area quality scores in the digest from review history `per-area-quality-scores-in-the-digest-from-review-history` — task — **Not Started**
+    - `M12.4.1` Per-area quality scores in the digest from review history `per-area-quality-scores-in-the-digest-from-review-history` — task — **Complete**
     - `M12.4.2` A tracked tech-debt ledger that planning can turn into leaves `a-tracked-tech-debt-ledger-that-planning-can-turn-into-leaves` — task — **Not Started**
     - `M12.4.3` Per-model review evidence: block rate and overturned approvals feed orchestrate plan `per-model-review-evidence-block-rate-and-overturned-approvals-feed-orchestrate-plan` — task — **Not Started**
   - `M12.5` The orchestrator cleans up landed leaves and stale worktrees automatically, saving hand-off files first `the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` — task — **Not Started**
@@ -268,7 +268,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M12.4.1` on `feature/rm-per-area-quality-scores-in-the-digest-from-review-history` since 2026-11-04
 - `M13.8` on `feature/rm-a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts` since 2026-11-04
 - `M14.10` on `feature/rm-escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend` since 2026-11-04
 - `M15.13` on `feature/rm-worker-loop-friction-sync-until-and-ready-only-resume` since 2026-11-04
@@ -278,24 +277,6 @@ Do not pick these up.
 - `M15.22` on `feature/rm-project-preferences-local-decisions-footer-summary-landing` since 2026-11-04
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
-
-## Quality by area
-
-Review cost of the last 50 completed leaves, per touch-zone area, from the `Review-tally` trailers on their gate commits. Block rate is the share of tallied leaves with at least one blocking round; areas above 50% are **flagged** and listed first. Plan tighter acceptance there.
-
-| Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
-| --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
-| `README.md` | 1 | 1 | — | — | 0 | 0 |
-| `docs` | 34 | 34 | — | — | 0 | 0 |
-| `gui` | 1 | 1 | — | — | 0 | 0 |
-| `research` | 1 | 1 | — | — | 0 | 0 |
-| `roadmap` | 3 | 3 | — | — | 0 | 0 |
-| `schemas` | 2 | 2 | — | — | 0 | 0 |
-| `specy_road` | 48 | 48 | — | — | 0 | 0 |
-| `tests` | 49 | 49 | — | — | 0 | 0 |
-
-Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
 ## Reaching the detail behind this
 
