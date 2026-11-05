@@ -102,14 +102,26 @@ def _archive_tracked_summary(root_r: Path, node_id: str) -> list[str]:
     return [rel, dst_rel]
 
 
-def remove_work_file(root_r: Path, rel: str) -> bool | None:
-    """Delete ``rel`` under the repo root. True when tracked, None when absent."""
+def removal_target(root_r: Path, rel: str) -> Path | None:
+    """The file :func:`remove_work_file` deletes for ``rel``, or ``None`` when it deletes nothing.
+
+    ``rel`` is resolved, so for a symlink this is its target, and only a target
+    inside the repo counts.
+    """
     path = (root_r / rel).resolve()
     if not path.is_file():
         return None
     try:
         path.relative_to(root_r)
     except ValueError:
+        return None
+    return path
+
+
+def remove_work_file(root_r: Path, rel: str) -> bool | None:
+    """Delete ``rel`` under the repo root. True when tracked, None when absent."""
+    path = removal_target(root_r, rel)
+    if path is None:
         return None
     tracked = is_git_tracked(root_r, rel)
     path.unlink()
@@ -167,16 +179,41 @@ def cleanup_session_sidecar(repo_root: Path, sess_path: Path | None) -> list[str
     The sidecar is internal handoff state rather than a document, so it goes
     regardless of ``--no-cleanup-work``.
     """
-    if sess_path is None:
-        return []
     root_r = repo_root.resolve()
+    rel = _sidecar_rel(root_r, sess_path)
+    return [rel] if rel is not None and remove_work_file(root_r, rel) else []
+
+
+def _sidecar_rel(root_r: Path, sess_path: Path | None) -> str | None:
+    if sess_path is None:
+        return None
     try:
-        rel = sess_path.resolve().relative_to(root_r).as_posix()
+        return sess_path.resolve().relative_to(root_r).as_posix()
     except ValueError:
         # A work/ symlink pointing outside the tree. Not ours to delete, and
         # raising here would abort a half-applied bookkeeping phase.
-        return []
-    return [rel] if remove_work_file(root_r, rel) else []
+        return None
+
+
+def cleanup_paths(repo_root: Path, node_id: str, sess_path: Path | None) -> list[str]:
+    """Repo-relative paths the finish cleanup may delete or move (M15.40's undo snapshots them).
+
+    Each session document and the sidecar as named (a tracked summary is moved
+    to ``work/done/`` as is, link or file), plus the :func:`removal_target` that
+    :func:`remove_work_file` deletes when that differs (a symlink's target).
+    """
+    root_r = repo_root.resolve()
+    rels = list(work_artifact_rel_paths(node_id))
+    sidecar = _sidecar_rel(root_r, sess_path)
+    if sidecar is not None:
+        rels.append(sidecar)
+    out: list[str] = []
+    for rel in rels:
+        target = removal_target(root_r, rel)
+        for p in (rel, None if target is None else target.relative_to(root_r).as_posix()):
+            if p is not None and p not in out:
+                out.append(p)
+    return out
 
 
 def worker_logs_to_stage(repo_root: Path, node_id: str) -> list[str]:

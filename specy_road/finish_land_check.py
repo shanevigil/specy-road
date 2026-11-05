@@ -51,6 +51,7 @@ def _run_streaming(cmd: str, cwd: Path) -> tuple[int, list[str]]:
     )
     for line in proc.stdout:
         sys.stdout.write(line)
+        sys.stdout.flush()   # M15.40: under `2>&1 | tee`, ahead of whatever finish reports next
         tail.append(line.rstrip("\n"))
     return proc.wait(), list(tail)
 

@@ -1,0 +1,21 @@
+category | v0.2.3 | v0.3.1-rc1 | v0.3.1-rc2 | v0.3.1-rc3 | origin/WIP/improvements-0-3-1
+pkg py (specy_road/) | 172f/31301 | 217f/40410 | 233f/45784 | 305f/60433 | 338f/65383
+  of which bundled_scripts | 94f/18375 | 111f/21846 | 119f/25195 | 139f/29847 | 151f/31545
+tests py | 150f/25228 | 201f/33974 | 223f/39539 | 327f/58889 | 367f/65323
+scripts/ | 3f/252 | 9f/1091 | 9f/1091 | 11f/1341 | 11f/1341
+docs/ md | 29f/6366 | 42f/11202 | 47f/11914 | 56f/14027 | 61f/14524
+templates (specy_road/templates) | 54f/1508 | 80f/3323 | 80f/3433 | 106f/6297 | 106f/6344
+schemas json | 1f/157 | 5f/321 | 6f/419 | 6f/474 | 6f/505
+top-level md | 4f/2119 | 4f/2708 | 4f/2882 | 4f/3531 | 4f/3143
+constitution+constraints | 4f/77 | 6f/309 | 6f/309 | 6f/296 | 6f/296
+suggested_prompts | 7f/1058 | 5f/530 | 5f/528 | 5f/533 | 5f/533
+gui ts/tsx | 78f/15359 | 79f/15476 | 79f/15476 | 86f/16540 | 86f/16540
+model-profiles | 0f/0 | 0f/0 | 0f/0 | 0f/0 | 0f/0
+test functions (def test_) | 1310 | 1794 | 2048 | 3028 | 3326
+pkg funcs (def ) | 1339 | 1838 | 2108 | 2935 | 3196
+CLI subcommands (add_parser) | 28 | 66 | 73 | 93 | 99
+v0.2.3 2026-09-09 01:52:24 -0600 commits since v0.2.3: 0
+v0.3.1-rc1 2026-10-28 04:08:47 -0600 commits since v0.2.3: 286
+v0.3.1-rc2 2026-10-29 04:04:20 -0600 commits since v0.2.3: 761
+v0.3.1-rc3 2026-11-04 15:28:13 -0700 commits since v0.2.3: 2212
+origin/WIP/improvements-0-3-1 2026-11-05 02:09:53 -0700 commits since v0.2.3: 2682
