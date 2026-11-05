@@ -252,3 +252,16 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: file-limits-baseline-and-upgrade-report
+    node_id: M15.7
+    branch: feature/rm-file-limits-baseline-and-upgrade-report
+    touch_zones:
+      - specy_road/file_limits_engine.py
+      - specy_road/file_limits_baseline.py
+      - specy_road/bundled_scripts/validate_file_limits.py
+      - specy_road/bundled_scripts/upgrade.py
+      - docs/file-limits.md
+      - tests/
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
