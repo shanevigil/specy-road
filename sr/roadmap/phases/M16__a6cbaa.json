@@ -386,7 +386,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.6_inherited-dep-cycles_b47e4275-a0ab-4165-ad9e-9a27cc522791.md",
       "sibling_order": 5,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "validate and add-dependency catch cycles made through inherited group dependencies",
       "touch_zones": [
         "specy_road/bundled_scripts/validate_roadmap_checks.py",
