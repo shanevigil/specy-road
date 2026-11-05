@@ -189,7 +189,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.80` Executors and reviewers run tests with a bounded worker count `test-worker-cap` — task — **Complete**
   - `M11.82` The integration branch passes ruff again and the land check runs it `wip-ruff-clean` — task — **Complete**
 - `M12` Harness engineering: cheaper gates, clearer refusals, less drift `harness-engineering-cheaper-gates-clearer-refusals-less-drift` — phase — **Not Started**
-  - `M12.1` A review fix-round budget that defers new-input-class findings to a follow-up leaf `a-review-fix-round-budget-that-defers-new-input-class-findings-to-a-follow-up-leaf` — task — **Not Started**
+  - `M12.1` A review fix-round budget that defers new-input-class findings to a follow-up leaf `a-review-fix-round-budget-that-defers-new-input-class-findings-to-a-follow-up-leaf` — task — **Complete**
   - `M12.2` Every refusal names its fix `every-refusal-names-its-fix` — task — **Complete**
   - `M12.3` Scheduled gardening chores that find drift and open small chore leaves `scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves` — task — **Complete**
   - `M12.4` Quality signals agents and PMs read first `quality-signals-agents-and-pms-read-first` — milestone — **Not Started**
@@ -267,7 +267,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M12.1` on `feature/rm-a-review-fix-round-budget-that-defers-new-input-class-findings-to-a-follow-up-leaf` since 2026-11-04
 - `M12.4.1` on `feature/rm-per-area-quality-scores-in-the-digest-from-review-history` since 2026-11-04
 - `M13.2` on `feature/rm-upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap` since 2026-11-04
 - `M13.7` on `feature/rm-clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end` since 2026-11-04
