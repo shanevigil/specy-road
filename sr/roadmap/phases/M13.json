@@ -26,7 +26,7 @@
       "parent_id": "M13",
       "planning_dir": "planning/M13.1_say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote_0df02f07-4621-455d-83a3-155de03dadb8.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Say which install is running and flag managed blocks an older version wrote",
       "touch_zones": [
         "specy_road/version_skew.py",

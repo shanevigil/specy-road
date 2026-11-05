@@ -196,7 +196,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M12.4.1` Per-area quality scores in the digest from review history `per-area-quality-scores-in-the-digest-from-review-history` — task — **Not Started**
     - `M12.4.2` A tracked tech-debt ledger that planning can turn into leaves `a-tracked-tech-debt-ledger-that-planning-can-turn-into-leaves` — task — **Not Started**
 - `M13` rc3 adopter feedback: upgrade and adoption friction `rc3-adopter-feedback-upgrade-and-adoption-friction` — phase — **Not Started**
-  - `M13.1` Say which install is running and flag managed blocks an older version wrote `say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote` — task — **Not Started**
+  - `M13.1` Say which install is running and flag managed blocks an older version wrote `say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote` — task — **Complete**
   - `M13.2` upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap `upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap` — task — **Not Started**
   - `M13.3` A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates `a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates` — task — **Not Started**
   - `M13.4` A milestone held for its full review says so in validate, list-nodes and why-blocked `a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked` — task — **Not Started**
@@ -228,7 +228,6 @@ Do not pick these up.
 
 - `M12.1` on `feature/rm-a-review-fix-round-budget-that-defers-new-input-class-findings-to-a-follow-up-leaf` since 2026-11-04
 - `M12.3` on `feature/rm-scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves` since 2026-11-04
-- `M13.1` on `feature/rm-say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote` since 2026-11-04
 - `M13.3` on `feature/rm-a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates` since 2026-11-04
 - `M13.5` on `feature/rm-refresh-profiles-installs-only-the-profiles-the-roster-names-and-suggests-the-alias-for-a-near-miss` since 2026-11-04
 - `M13.6` on `feature/rm-safe-release-candidate-install-recipe-pipx-and-uv-tool-upgrades-and-checking-which-binary-is-on-path` since 2026-11-04
