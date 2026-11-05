@@ -226,7 +226,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M14.7` | session end finds this agent's session by worktree and branch when the derived id has no record | task | Agentic-led | Complete |
 | `M14.8` | The implementation-zone check runs before a review is spent, and knows about sibling repositories | task | Agentic-led | Not Started |
 | `M14.9` | review rca launches the root-cause analyst like review delegate, and says what to do when no analyst is available | task | Agentic-led | Not Started |
-| `M14.10` | Escalation recognises a converging loop and handoff status shows the findings trend | task | Agentic-led | Not Started |
+| `M14.10` | Escalation recognises a converging loop and handoff status shows the findings trend | task | Agentic-led | Complete |
 | `M14.11` | The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes | task | Agentic-led | Complete |
 | `M15` | rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction | phase | — | Not Started |
 | `M15.1` | RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command | task | Agentic-led | Complete |
@@ -249,7 +249,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.18` | planned_test_changes can be edited after pickup, and an unplanned test removal is a required reviewer check | task | Agentic-led | Complete |
 | `M15.19` | Cursor worker cost is estimated when the harness reports a display name for the rostered model | task | Agentic-led | Complete |
 | `M15.20` | Touch zones that miss what acceptance needs are flagged at plan time, and the brief's zone section stays short | task | Agentic-led | Not Started |
-| `M15.21` | Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments | task | Agentic-led | Not Started |
+| `M15.21` | Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments | task | Agentic-led | Complete |
 | `M15.22` | Project preferences the workflow respects: local decisions, a PR body footer, the summary commit rule, and local landing for the root repository | task | Agentic-led | Not Started |
 | `M15.23` | A project declares its merge-blocking CI commands per touch zone; ready always runs them and the review packet shows their result at the reviewed commit | task | Agentic-led | Not Started |
 | `M15.24` | ready does not record false evidence: a passing run whose output shows a failed command is flagged, and --run-argv runs a command without a shell | task | Agentic-led | Not Started |
