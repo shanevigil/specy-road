@@ -65,11 +65,13 @@ specy-road --version
 
 If those disagree, or `specy-road --version` is older than your project's
 `.specyrd/manifest.json` / `AGENTS.md` minimum, an earlier `specy-road` on
-`PATH` is usually the cause — reinstall with `pipx` / `uv tool` and check
-`which` again.
+`PATH` is usually the cause — see
+[Which install is running](docs/install-and-usage.md#which-install-is-running)
+(including a stale `specyrd` launcher that makes a reinstall fail). Upgrade with
+`pip install -U specy-road`, `pipx upgrade specy-road` or `uv tool upgrade specy-road`.
 
-Release candidates (`X.Y.ZrcN`) publish to **TestPyPI** and need a different
-command — including one extra flag for `uv pip`. See
+Release candidates (`X.Y.ZrcN`) publish to **TestPyPI**: download the pinned
+wheel alone, check its sha256, and install its dependencies from PyPI only. See
 [docs/install-and-usage.md](docs/install-and-usage.md#install-a-release-candidate-testpypi).
 
 The full install + everyday usage guide is at
