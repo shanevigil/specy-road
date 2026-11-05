@@ -71,6 +71,12 @@ def _plan_text(repo: Path, capsys) -> str:
 
 def test_text_plan_always_names_the_roster_ref(tmp_path: Path, capsys) -> None:
     repo = plan_repo(tmp_path)
+    chunk = repo / "roadmap" / "phases" / "M1.json"
+    data = json.loads(chunk.read_text(encoding="utf-8"))
+    data["nodes"][0]["acceptance"] = ["src/a.py exists", "nothing else breaks"]
+    chunk.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "acceptance in zone")
     plan, err = op.build_orchestration_plan(repo, today=date(2026, 11, 1))
     assert err is None and plan.roster_ref and plan.roster_drift is None
     out = _plan_text(repo, capsys)
