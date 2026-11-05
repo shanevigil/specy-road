@@ -133,6 +133,18 @@ def walk_foreign(steps: list[Deletion]) -> tuple[list[Path], list[str]]:
     return sorted(set(found)), unreadable
 
 
+def head_state(d: Path) -> tuple[str, str | None]:
+    """``(what HEAD is on, its commit or None)`` in ``d``: the branch it names, born or not (``symbolic-ref``
+    names an unborn branch too, where ``rev-parse --abbrev-ref`` fails), marked when it has no commit yet;
+    else ``HEAD (detached at <sha>)``; else ``an unreadable HEAD``."""
+    sha = git_out(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"], d) or None
+    code, out, _msg = git_run(["symbolic-ref", "-q", "--short", "HEAD"], d)
+    if not code and out.strip():
+        name = os.fsdecode(out.removesuffix(b"\n"))
+        return (name if sha else f"{name} (no commits yet)"), sha
+    return (f"HEAD (detached at {sha[:12]})" if sha else "an unreadable HEAD"), sha
+
+
 def foreign_refusal(wt: Path, d: Path) -> str:
     """Why ``d``, another repository's linked worktree, checkout (a ``.git`` directory, or a ``.git`` file
     naming its own git directory, as a submodule's does) or bare repository, refuses."""
@@ -144,10 +156,10 @@ def foreign_refusal(wt: Path, d: Path) -> str:
         repo = common.parent if common.name == ".git" else common
     else:
         repo = d if bare or (d / ".git").is_dir() else (common or d)
-    branch = git_out(["rev-parse", "--abbrev-ref", "HEAD"], d) or "unknown"
-    upstream = git_out(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], d)
+    branch, sha = head_state(d)
+    upstream = git_out(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], d) if sha else None
     span = ["@{u}..HEAD"] if upstream else ["HEAD", "--not", "--remotes"]
-    log = git_out(["log", "--oneline", *span], d)   # every one: removal would lose them all
+    log = git_out(["log", "--oneline", *span], d) if sha else ""   # every one: removal would lose them all
     lacks = f"its upstream {upstream}" if upstream else "every remote-tracking ref"
     if log is None:
         commits = f"commits {lacks} lacks cannot be listed"

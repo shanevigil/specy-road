@@ -85,6 +85,7 @@ def test_a_checkout_of_another_repository_refuses_with_commits_no_remote_holds(t
     out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
     assert out.returncode == 1
     assert f"sibling/ is a checkout of another repository, {sib}, on HEAD" in out.stderr
+    assert f"on HEAD (detached at {git(sib, 'rev-parse', 'HEAD')[:12]})" in out.stderr
     assert "commits every remote-tracking ref lacks: " in out.stderr and "detached clone work" in out.stderr
     assert sib.is_dir() and wt.is_dir()
 
@@ -301,3 +302,15 @@ def test_every_directory_of_every_kind_prune_deletes_is_scanned(tmp_path: Path) 
     why = _refused_both_ways(root, *plants, linked, clone, wt)
     for d in plants:
         assert f"{_shown(wt, d)}/ is a" in why
+
+
+def test_unborn_foreign_branches_are_named_and_survive(tmp_path: Path) -> None:
+    """An empty checkout and an orphan linked worktree have a branch but no commit: each is named."""
+    root, wt = _landed_leaf_ignoring_sibling(tmp_path)
+    empty, orphan = wt / "sibling-empty", wt / "sibling-orphan"
+    git(tmp_path, "init", "-q", "-b", "private-unborn", str(empty))
+    git(_other_repo(tmp_path), "worktree", "add", "-q", "--orphan", "-b", "orphan-unborn", str(orphan))
+    why = _refused_both_ways(root, empty, orphan, wt)
+    assert f"sibling-empty/ is a checkout of another repository, {empty}, on private-unborn (no commits yet)" in why
+    assert "sibling-orphan/ is a linked worktree of another repository" in why
+    assert "on orphan-unborn (no commits yet)" in why and "unknown" not in why
