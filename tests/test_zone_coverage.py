@@ -104,6 +104,20 @@ def _labels(acceptance: str, *, zones: list[str], tracked: set[str] = set(_TRACK
             set(),
             id="a1-ignore-url",
         ),
+        pytest.param(
+            "See https://example.com/?file=NOTES.txt next",
+            ["src/"],
+            _TRACKED,
+            set(),
+            id="a1-ignore-url-query-with-suffix",
+        ),
+        pytest.param(
+            "See README.md/section next",
+            ["src/"],
+            frozenset({"README.md", "docs/api.json", "src/a.py"}),
+            set(),
+            id="a1-ignore-root-file-as-fake-directory",
+        ),
         pytest.param("Mention `docs` in backticks only", ["src/"], _TRACKED, set(), id="a1-backtick-word-without-slash-or-suffix"),
     ],
 )

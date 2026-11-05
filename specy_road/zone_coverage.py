@@ -32,6 +32,11 @@ _BARE_SUFFIX = re.compile(
     + r"))(?![\w./-])",
     re.IGNORECASE,
 )
+_URL = re.compile(r"https?://[^\s]+")
+
+
+def _strip_urls(text: str) -> str:
+    return _URL.sub(" ", text)
 
 
 def _acceptance(node: dict) -> list[str]:
@@ -60,7 +65,8 @@ def _has_known_suffix(path: str) -> bool:
 
 
 def _top_level_dirs(tracked: set[str]) -> set[str]:
-    return {p.split("/", 1)[0] for p in tracked if p}
+    """First path segment of tracked paths under a directory (``/`` in the git path)."""
+    return {p.split("/", 1)[0] for p in tracked if "/" in p}
 
 
 def _path_forms(path: str, prefix: str) -> set[str]:
@@ -97,7 +103,7 @@ def _tokens(line: str) -> list[tuple[str, bool, bool]]:
 
     for raw in _BACKTICK.findall(line):
         add(raw, True)
-    scrub = _BACKTICK.sub(" ", line)
+    scrub = _strip_urls(_BACKTICK.sub(" ", line))
     for raw in _SLASH_TOKEN.findall(scrub):
         add(raw, False)
     for raw in _BARE_DIR.findall(scrub):
@@ -147,8 +153,11 @@ def uncovered_acceptance_paths(
       candidate only when it contains ``/`` and its first segment is a tracked top-level
       directory at ``ref`` (includes ``docs/`` and ``docs/api``), or it ends in a known
       suffix (``_BARE_SUFFIX`` extraction). A bare word with neither (e.g. ``docs``,
-      ``tests``) is prose, not a path.
-    * **Ignored:** other prose (``input/output``, ``read/write``, ``M12/M13``, URLs, …).
+      ``tests``) is prose, not a path. **Tracked top-level directory** means a directory
+      that has tracked files under it (first segment of git paths that contain ``/``),
+      not a root-level file name.
+    * **Ignored:** other prose and complete URL spans (``scheme://…`` through whitespace,
+      removed before bare extraction so query strings are not scanned).
 
     For each candidate not covered by a touch zone: if it is an existing tracked file
     or directory (with or without a trailing ``/`` on the token), list that path;
