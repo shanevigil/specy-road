@@ -9,7 +9,8 @@ the same ``HEAD``:
   test-integrity findings and RCA escalations.
 * **Population.** A completed leaf is one whose ``chore(rm-<codename>): complete, deregister`` commit (written by
   ``finish-this-task`` before it lands) is reachable from ``HEAD`` — never a node's status. The window is the last
-  ``quality_window`` of them in ``git log --topo-order`` order (:func:`completed_leaves`).
+  ``quality_window`` of them in gate-commit order: where each one's newest gate commit sits in ``git log
+  --topo-order`` (its completion commit when it has no gate commit) (:func:`completed_leaves`).
 * **Zones.** The live graph's touch zones for the codename; for a leaf no longer live (archived), the graph as
   committed at its completion commit.
 * **No tally.** A completed leaf whose gate commit carries no trailer (landed before it existed) counts as landed
@@ -112,27 +113,29 @@ def quality_policy(root: Path) -> dict[str, Any]:
 
 
 def completed_leaves(root: Path) -> list[tuple[str, str, dict[str, int] | None]]:
-    """Newest-first ``(codename, completion commit, tally or None)`` per distinct codename whose completion commit
-    is reachable from ``HEAD``. The tally is the newest gate commit's trailer for that codename. Empty when git
-    cannot answer."""
+    """``(codename, completion commit, tally or None)`` per distinct codename whose completion commit is reachable
+    from ``HEAD``, newest first in **gate-commit order**: each leaf sits where its newest gate commit sits in
+    ``git log --topo-order``, so a leaf approved later but finished earlier is still the newer one. A completion with
+    no gate commit (landed without the review gate) sits where its completion commit does. The tally is that gate
+    commit's trailer. Empty when git cannot answer."""
     # --full-history: under a pathspec git otherwise follows only one parent of a merge it finds TREESAME, which
     # would drop every completion that landed on the other side of a feature merge.
     out = git_stdout(["log", "--topo-order", "--full-history", "--format=%x1e%H%x1f%B", f"--grep={_GATE}",
                       f"--grep={_DONE}", "--", "."], root) or ""
-    done: list[tuple[str, str]] = []
-    tallies: dict[str, dict[str, int] | None] = {}
-    for chunk in out.split("\x1e")[1:]:
+    done: dict[str, tuple[int, str]] = {}                        # codename -> (log position, completion commit)
+    gates: dict[str, tuple[int, dict[str, int] | None]] = {}     # codename -> (log position, tally)
+    for pos, chunk in enumerate(out.split("\x1e")[1:]):
         sha, _, body = chunk.partition("\x1f")
         lines = body.strip().splitlines()
         m = _SUBJECT.match(lines[0]) if lines else None
         if not m:
             continue
-        name = m["codename"]
-        if m["what"] == _DONE and name not in {c for c, _ in done}:
-            done.append((name, sha))
-        elif m["what"] == _GATE and name not in tallies:
-            tallies[name] = next((t[1] for t in map(parse_tally, lines) if t), None)
-    return [(name, sha, tallies.get(name)) for name, sha in done]
+        seen = done if m["what"] == _DONE else gates
+        if m["codename"] not in seen:   # newest first: keep the first one met
+            seen[m["codename"]] = (pos, sha) if m["what"] == _DONE else (
+                pos, next((t[1] for t in map(parse_tally, lines) if t), None))
+    order = sorted(done, key=lambda name: (gates.get(name, done[name])[0], name))
+    return [(name, done[name][1], gates[name][1] if name in gates else None) for name in order]
 
 
 def leaf_areas(zones: Iterable[Any] | None, depth: int, prefix: str = "") -> list[str]:

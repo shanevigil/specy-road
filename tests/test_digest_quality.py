@@ -32,12 +32,17 @@ def _gate_commit(repo: Path, codename: str, tally: str | None = None) -> None:
     commit(repo, f"chore(rm-{codename}): mark implementation reviewed\n\n{trailers}")
 
 
-def _land(repo: Path, codename: str, tally: str | None = None) -> None:
-    """Gate, then finish-this-task's completion commit: the leaf is completed in HEAD's history."""
-    _gate_commit(repo, codename, tally)
+def _complete(repo: Path, codename: str) -> None:
+    """finish-this-task's completion commit: the leaf is completed in HEAD's history."""
     with (repo / "roadmap" / "registry.yaml").open("a", encoding="utf-8") as fh:
         fh.write(f"# done {codename}\n")
     commit(repo, f"chore(rm-{codename}): complete, deregister")
+
+
+def _land(repo: Path, codename: str, tally: str | None = None) -> None:
+    """Gate, then complete."""
+    _gate_commit(repo, codename, tally)
+    _complete(repo, codename)
 
 
 def _quality(text: str) -> list[str]:
@@ -165,3 +170,23 @@ def test_a_leaf_whose_branch_nets_no_change_under_the_project_still_counts(repo:
         "| `roadmap` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |",
         "| `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |",
     ]
+
+
+def test_the_window_follows_gate_order_not_completion_order(repo: Path) -> None:
+    """Gate M0.1, gate M0.2, complete M0.2, complete M0.1: M0.2 was approved last, so a window of one holds it."""
+    _set_policy(repo, "  quality_window: 1\n")
+    _gate_commit(repo, "contracts-bootstrap", _tally("M0.1", 4, 0))
+    _gate_commit(repo, "roadmap-ci", _tally("M0.2", 2, 1))
+    _complete(repo, "roadmap-ci")
+    _complete(repo, "contracts-bootstrap")
+    assert _quality(render_digest(repo)) == [
+        "| `roadmap` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |",
+        "| `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |",
+    ]
+
+
+def test_a_completion_without_a_gate_commit_sits_where_it_completed(repo: Path) -> None:
+    _set_policy(repo, "  quality_window: 1\n")
+    _land(repo, "contracts-bootstrap", _tally("M0.1", 4, 0))
+    _complete(repo, "api-contract-outline")   # landed without the review gate: newest by its completion
+    assert _quality(render_digest(repo)) == ["| `shared` | 1 | 1 | — | — | 0 | 0 |"]

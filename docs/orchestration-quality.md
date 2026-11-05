@@ -21,12 +21,13 @@ Every input is tracked, so every checkout and CI get the same bytes for the same
 
 | Input | Source |
 | --- | --- |
-| Completed leaves | Each codename's `chore(rm-<codename>): complete, deregister` commit (written by `finish-this-task`) reachable from `HEAD`, in `git log --topo-order --full-history` order. A node's status is never read, so a leaf approved but not finished is not counted. |
+| Completed leaves | Each codename whose `chore(rm-<codename>): complete, deregister` commit (written by `finish-this-task`) is reachable from `HEAD`. A node's status is never read, so a leaf approved but not finished is not counted. |
+| Order | Gate-commit order: where the leaf's newest `mark implementation reviewed` commit sits in `git log --topo-order --full-history`, newest first. A leaf approved later but finished earlier is still the newer one. A completion with no gate commit sits where its completion commit does. |
 | Touch zones | The live graph. For a leaf no longer live (archived), the graph as committed at its completion commit. |
 | Tally | The newest `Review-tally` trailer on the codename's gate commit. A completed leaf without one landed before the trailer existed and counts as **no tally**. |
 | Policy | `quality_window`, `quality_area_depth` and `quality_threshold` from `roadmap/orchestration.yaml` as committed at `HEAD`. Never the working tree or `orchestration.local.yaml`. |
 
-The window is the last `quality_window` (default 50) completed leaves with touch zones. An area is the first `quality_area_depth` path components (default 1) of a touch zone, relative to the project root, and a leaf counts once per distinct area. Each area's row shows:
+The window is the last `quality_window` (default 50) completed leaves with touch zones, in that order. An area is the first `quality_area_depth` path components (default 1) of a touch zone, relative to the project root, and a leaf counts once per distinct area. Each area's row shows:
 
 - leaves landed
 - leaves with no tally (left out of every rate)
