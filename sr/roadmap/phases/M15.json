@@ -14,33 +14,6 @@
     },
     {
       "acceptance": [
-        "The 'Install a release candidate (TestPyPI)' section moves to docs/install-release-candidates.md; docs/install-and-usage.md keeps a two-line pointer with the same anchor text and stays within 400 lines, and every link to the old anchor (docs/upgrading.md, docs/release-runbook.md) points at the new file",
-        "The new doc shows installing an RC with an extra ([gui] as the example) for pip, pipx and uv tool from the sha256-checked wheel, and the direct-wheel-URL form (\"specy-road[gui] @ https://test-files.pythonhosted.org/.../specy_road-<ver>-py3-none-any.whl\") for uv tool and pipx, with how its sha256 is checked; it says that uv tool keeps a URL in its receipt, unlike a local wheel path that later disappears",
-        "It states that TestPyPI is never an index for extras or dependencies, in any form (--index-url, --extra-index-url, uv --index or --extra-index-url, any index strategy such as unsafe-best-match or first-index), because a squatted dependency name there can outrank PyPI and its setup.py runs; it names no third-party package or uploader",
-        "The extras list in install docs names every key of [project.optional-dependencies] in pyproject.toml except dev (today [gui] is missing); a test reads pyproject.toml and fails when an extra is not named in docs/install-and-usage.md or docs/install-release-candidates.md",
-        "docs/release-runbook.md A.3 step 5 (Announce the RC) says the announcement carries the filled-in pip, pipx and uv tool commands, with [gui], and the wheel's direct URL and sha256; the human publishing the release posts them. release-runbook.md stays within its 900-line override by rewording, not adding net lines. Out of scope: an rc-install-command CLI command, and changing what CI publishes"
-      ],
-      "codename": "rc-install-docs-cover-extras-and-direct-wheel-url",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M15.1",
-      "node_key": "f11ae6a1-4e8d-43f8-9aed-391000c71679",
-      "parent_id": "M15",
-      "planning_dir": "planning/M15.1_rc-install-docs-cover-extras-and-direct-wheel-url_f11ae6a1-4e8d-43f8-9aed-391000c71679.md",
-      "sibling_order": 1,
-      "status": "Not Started",
-      "title": "RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command",
-      "touch_zones": [
-        "docs/install-and-usage.md",
-        "docs/install-release-candidates.md",
-        "docs/upgrading.md",
-        "docs/release-runbook.md",
-        "tests/"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
         "specy_road/reviewer_auth.py decides a claude-code reviewer's launch mode once, for both review delegate and prompt --channel cli: bare only when the reviewer's environment has ANTHROPIC_API_KEY or the user settings bare mode reads define apiKeyHelper; otherwise explicit mode (--setting-sources user and --strict-mcp-config with no --mcp-config, so no repository hooks, project settings or MCP servers load) which reads the subscription login; the RUN record and the filed REVIEW carry the mode used (bare or explicit)",
         "Explicit mode keeps M8.3's reviewer restrictions (the --disallowedTools list, the structured-output schema, the hand-off --add-dir); a test asserts the argv for each mode, that explicit argv never contains --bare, and that bare is never chosen without a key or apiKeyHelper. The key's value is never printed or logged",
         "When a roster entry or flag forces bare and no key is available, review delegate and prompt --channel cli refuse before launching (no RUN record is opened, exit 1) and name the fixes: export ANTHROPIC_API_KEY, configure apiKeyHelper, or let specy-road choose explicit mode; orchestrate plan prints one 'reviewer auth:' notice per such claude-code reviewer entry instead of staffing it silently",
@@ -66,7 +39,8 @@
         "specy_road/orchestrate_plan.py",
         "docs/orchestration-reviewer-output.md",
         "docs/orchestration-models.md",
-        "tests/"
+        "tests/",
+        "docs/orchestration-workers.md"
       ],
       "type": "task"
     },
@@ -99,7 +73,8 @@
         "specy_road/templates/specyrd/commands/specyrd-prompt.md",
         "docs/orchestration-reviewer-output.md",
         "CHANGELOG.md",
-        "tests/"
+        "tests/",
+        "specy_road/schemas/review-record.schema.json"
       ],
       "type": "task"
     },
@@ -130,7 +105,11 @@
         "docs/git-workflow.md",
         "docs/git-workflow-parallel-prs.md",
         "specy_road/templates/specyrd/commands/specyrd-finish.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/reconcile_branch_cli.py",
+        "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
+        "specy_road/bundled_scripts/abort_task_pickup.py",
+        "specy_road/bundled_scripts/abort_task_pickup_own_commit.py"
       ],
       "type": "task"
     },
@@ -248,7 +227,9 @@
         "specy_road/cli.py",
         "specy_road/cli_usage.py",
         "docs/brainstorming.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/do_next_task_leaf_guards.py",
+        "specy_road/bundled_scripts/session_plan_render.py"
       ],
       "type": "task"
     },
@@ -277,7 +258,12 @@
         "specy_road/worker_adapter_claude.py",
         "specy_road/harness_binary.py",
         "docs/orchestration-harness-launch.md",
-        "tests/"
+        "tests/",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "specy_road/worker_adapter_parsers.py",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/review_delegate.py",
+        "specy_road/bundled_scripts/role_prompt_cli.py"
       ],
       "type": "task"
     },
@@ -367,7 +353,10 @@
         "specy_road/shared_zones.py",
         "specy_road/bundled_scripts/validate_registry_overlap.py",
         "docs/grind-session.md",
-        "tests/"
+        "tests/",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "specy_road/bundled_scripts/session_plan_git.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py"
       ],
       "type": "task"
     },
@@ -400,7 +389,9 @@
         "specy_road/on_complete_pickup.py",
         "docs/orchestration-workers.md",
         "docs/orchestration-worker-sync.md",
-        "tests/"
+        "tests/",
+        "specy_road/worker_ops_message.py",
+        "specy_road/worker_runner_ready.py"
       ],
       "type": "task"
     },
@@ -432,7 +423,8 @@
         "specy_road/agent_ignores.py",
         "specy_road/templates/project/.gitignore",
         "docs/orchestration-chores.md",
-        "tests/"
+        "tests/",
+        "specy_road/review_target_chore.py"
       ],
       "type": "task"
     },
@@ -489,7 +481,8 @@
         "specy_road/review_record_rules.py",
         "specy_road/templates/project/schemas/roadmap.schema.json",
         "docs/acceptance-evidence.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/role_prompt_rca.py"
       ],
       "type": "task"
     }
