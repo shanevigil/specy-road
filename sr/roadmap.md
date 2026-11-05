@@ -263,7 +263,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.36` | Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode | task | Agentic-led | Not Started |
 | `M15.37` | Review notes: a part joined by a comma or 'and' is a second observation only when it names a defect | task | Agentic-led | Not Started |
 | `M15.38` | add-node caps a title-derived codename at 64 characters so the planning file name fits | task | Agentic-led | Complete |
-| `M15.39` | A roadmap write that fails part-way restores every file it changed | task | Agentic-led | Not Started |
+| `M15.39` | A roadmap write that fails part-way restores every file it changed | task | Agentic-led | Complete |
 | `M15.40` | finish-this-task: a failed merge landing reports after the land check output and undoes its bookkeeping commit | task | Agentic-led | Not Started |
 | `M16` | lean core: harden and optimize code and docs, all delivered functionality kept | phase | — | Not Started |
 | `M16.0` | Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs | task | Agentic-led | Not Started |
