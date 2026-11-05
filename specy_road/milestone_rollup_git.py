@@ -5,10 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from specy_road.finish_land_deterministic import (
-    DETERMINISTIC_PATHS,
     DeterministicResolveError,
     codename_from_branch,
     reconcile_or_rollback,
+    resolvable_conflict,
     resolve_deterministic_paths,
     unmerged_paths,
 )
@@ -74,25 +74,30 @@ def _cherry_pick_deterministically(
     short = bookkeeping_commit[:8]
     pre_sha = rev_parse_head(repo)
 
+    graph: list[str] = []
+    bookkeeping: str | None = None
     code, out = git_code(["cherry-pick", "--no-commit", bookkeeping_commit], repo)
     if code != 0:
-        unmerged = unmerged_paths(repo)
-        stray = [p for p in unmerged if p not in DETERMINISTIC_PATHS]
-        if not unmerged or stray:
+        graph, bookkeeping, problem = resolvable_conflict(
+            repo, out, codename=codename, revs=[f"{bookkeeping_commit}^!"],
+            branch=leaf_branch, integration_branch=integration_branch,
+        )
+        if problem is not None:
             _undo_staged_pick(repo, pre_sha)
             return (
                 False,
                 f"cherry-pick {short} onto {integration_branch} failed "
-                f"(resolve conflicts on {integration_branch}, then continue): {out}",
+                f"(resolve conflicts on {integration_branch}, then continue): {problem}",
             )
         print(
             "[ok] resolving generated bookkeeping conflict in "
-            f"{', '.join(unmerged)} from {integration_branch}"
+            f"{', '.join(unmerged_paths(repo))} from {integration_branch}"
         )
 
     try:
         staged = resolve_deterministic_paths(
-            repo, codename=codename, other_ref=bookkeeping_commit
+            repo, codename=codename, other_ref=bookkeeping_commit,
+            graph_paths=graph, bookkeeping=bookkeeping,
         )
     except DeterministicResolveError as exc:
         _undo_staged_pick(repo, pre_sha)

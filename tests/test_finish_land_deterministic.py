@@ -9,9 +9,14 @@ whatever the feature branch's stale copy happens to say.
 
 from __future__ import annotations
 
+import json
 import subprocess
+import sys
 from pathlib import Path
 
+import pytest
+
+from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from specy_road.finish_land_deterministic import (
     codename_from_branch,
     merge_feature_deterministically,
@@ -19,7 +24,14 @@ from specy_road.finish_land_deterministic import (
 from specy_road.finish_land_integration import land_merge_feature_into_integration
 from specy_road.milestone_rollup_git import cherry_pick_bookkeeping_to_integration
 from specy_road.registry_yaml import read_registry, registry_path, write_registry
-from tests.test_finish_merge_mode import _bootstrap, _commit, _git
+from tests.review_repo_helpers import commit_file, git
+from tests.test_finish_merge_mode import (
+    _bootstrap,
+    _commit,
+    _finish_cli,
+    _git,
+    merge_mode_finish_repo,
+)
 
 
 def _out(repo: Path, *args: str) -> str:
@@ -255,3 +267,64 @@ def test_a_rollup_conflict_outside_the_deterministic_paths_still_fails(
     assert "cherry-pick" in err
     assert _out(repo, "status", "--porcelain") == ""
     assert _out(repo, "rev-parse", "master") == before
+
+
+def _chunk_commit(repo: Path, message: str, **fields) -> None:
+    """Rewrite M1.1 in ``roadmap/phases/M1.json`` with ``fields`` set, and commit it."""
+    chunk = repo / "roadmap" / "phases" / "M1.json"
+    nodes = load_json_chunk(chunk)
+    nodes[0].update(fields)
+    write_json_chunk(chunk, nodes)
+    commit_file(repo, "roadmap/phases/M1.json", chunk.read_text(encoding="utf-8"), message)
+
+
+@pytest.mark.parametrize("own_edit", [False, True], ids=["inherited-only", "own-edit"])
+def test_a_roadmap_chunk_conflict_lands_only_when_the_branch_inherited_it(
+    tmp_path: Path, monkeypatch, own_edit: bool
+) -> None:
+    """The integration branch moves the finishing node after the branch merged it in.
+
+    finish's bookkeeping flips the node's status on the line next to the moved
+    field, so the landing merge conflicts in the chunk. With nothing but
+    inherited content and that flip, the chunk lands as the integration
+    branch's version with the node Complete; with an edit of the branch's own
+    there, finish refuses, names the chunk and leaves the branch as it was.
+    """
+    repo, bare = merge_mode_finish_repo(tmp_path, monkeypatch)
+    git(repo, "checkout", "-q", "dev")
+    _chunk_commit(repo, "integration edits the goal", goal="Do the thing well.")
+    git(repo, "checkout", "-q", "feature/rm-thing")
+    git(repo, "merge", "-q", "--no-edit", "dev")   # the branch inherits that edit
+    if own_edit:
+        _chunk_commit(repo, "the branch retitles its node", title="Thing, retitled")
+    git(repo, "checkout", "-q", "dev")
+    _chunk_commit(repo, "integration moves the node", sibling_order=2)
+    git(repo, "push", "-q", "origin", "dev")
+    git(repo, "checkout", "-q", "feature/rm-thing")
+    pre = git(repo, "rev-parse", "HEAD")
+    dev_before = git(bare, "rev-parse", "dev")
+
+    result = _finish_cli(repo)
+
+    if own_edit:
+        assert result.returncode == 1, result.stdout
+        errors = [ln for ln in result.stderr.splitlines() if ln.startswith("error:")]
+        assert len(errors) == 1 and "roadmap/phases/M1.json" in errors[0], result.stderr
+        assert "git merge dev" in errors[0], result.stderr
+        assert git(bare, "rev-parse", "dev") == dev_before
+        assert git(repo, "rev-parse", "HEAD") == pre   # no bookkeeping commit left
+        assert git(repo, "status", "--porcelain", "--untracked-files=no") == ""
+        return
+    assert result.returncode == 0, result.stdout + result.stderr
+    landed = json.loads(git(bare, "show", "dev:roadmap/phases/M1.json"))["nodes"][0]
+    assert (landed["status"], landed["sibling_order"], landed["goal"]) == (
+        "Complete", 2, "Do the thing well.",
+    )
+    git(repo, "checkout", "-q", "dev")
+    git(repo, "reset", "-q", "--hard", "origin/dev")
+    for command in ("export", "digest"):
+        check = subprocess.run(
+            [sys.executable, "-m", "specy_road.cli", command, "--check", "--repo-root", str(repo)],
+            cwd=repo, capture_output=True, text=True, check=False,
+        )
+        assert check.returncode == 0, check.stdout + check.stderr
