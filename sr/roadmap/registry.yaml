@@ -136,7 +136,8 @@ entries:
       - specy_road/bundled_scripts/roadmap_id_rewrite_staging.py
     started: '2026-11-05'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-05T23:05:04+00:00'
   - codename: steering-file-guard
     node_id: M21.7
     branch: feature/rm-steering-file-guard
