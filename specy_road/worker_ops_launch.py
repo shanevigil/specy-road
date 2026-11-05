@@ -164,10 +164,23 @@ def _preflight(entry: dict[str, Any], repo_root: Path) -> None:
         raise WorkerError(f"preflight failed (exit {rc}): {cmd}; nothing was launched")
 
 
-def _auth_preflight(repo_root: Path, entry: dict[str, Any], harness: str) -> None:
-    """M15.36: a claude-code worker forced to bare with no key or ``apiKeyHelper`` is refused. A ``channels.cli``
-    command is run as written, so its mode is not checked here."""
-    if harness != "claude-code" or (entry.get("channels") or {}).get("cli"):
+def _selected_cli(entry: dict[str, Any], cli: str | None, *, resuming: bool) -> str | None:
+    """The roster command this turn runs, ``None`` when it runs the harness's default: the one answer the auth check
+    and the adapter both take (M15.36). A launch runs ``cli``. A resume runs ``channels.cli_resume`` when set, else
+    ``cli`` (it keeps the launch's permissions on a harness whose resume is its own command, where ``{session_flag}``
+    is refused), unless that command names no session placeholder (``resume_form_note``): only the default command
+    then knows the resume flag. A command that cannot run stays selected, so the adapter refuses it with its reason."""
+    if not resuming:
+        return cli
+    chosen = (entry.get("channels") or {}).get("cli_resume") or cli
+    return None if resume_form_note(chosen, None) else chosen
+
+
+def _auth_preflight(repo_root: Path, entry: dict[str, Any], harness: str, *, resuming: bool = False) -> None:
+    """M15.36: a claude-code turn on the default command, forced to bare with no key or ``apiKeyHelper``, is refused.
+    One bounded rule, on the command this turn runs (:func:`_selected_cli`): the default command is checked, and a
+    roster command is run as written and never parsed, so a ``--bare`` written into it is the adopter's to authenticate."""
+    if harness != "claude-code" or _selected_cli(entry, (entry.get("channels") or {}).get("cli"), resuming=resuming):
         return
     prof = pinned_profile_for_entry(repo_root, entry)
     problem = claude_worker_refusal(entry, prof.launch_mode() if prof is not None and prof.ok else None)
@@ -175,17 +188,18 @@ def _auth_preflight(repo_root: Path, entry: dict[str, Any], harness: str) -> Non
         raise WorkerError(problem)
 
 
-def _launch_checks(repo_root: Path, entry: dict[str, Any], harness: str, node: dict[str, Any], model: str) -> None:
+def _launch_checks(repo_root: Path, entry: dict[str, Any], harness: str, node: dict[str, Any], model: str, *,
+                   resuming: bool = False) -> None:
     """Every refusal a launch or resume makes from the roster entry, the leaf, the profile and the environment
     (M15.36): eligibility, a broken profile, the Claude Code auth check, then the roster ``preflight``. ``delegate``
-    and ``worker message``/``resume`` run it before they reconcile a dead wrapper, apply ``--rework``, queue a
-    message, or write a record, event, lease, prompt or log, so a refusal leaves worker state as it was."""
+    and ``worker message``/``resume`` (``resuming``) run it before they reconcile a dead wrapper, apply ``--rework``,
+    queue a message, or write a record, event, lease, prompt or log, so a refusal leaves worker state as it was."""
     if not entry.get("roster_free"):
         _check_eligible(entry, node, model)
     prof = pinned_profile_for_entry(repo_root, entry)
     if prof is not None and not prof.ok:
         raise WorkerError(f"profile for {entry.get('id')!r}: " + "; ".join(prof.errors))
-    _auth_preflight(repo_root, entry, harness)
+    _auth_preflight(repo_root, entry, harness, resuming=resuming)
     _preflight(entry, repo_root)
 
 

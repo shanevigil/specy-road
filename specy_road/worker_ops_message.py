@@ -16,7 +16,7 @@ from specy_road.review_files import reviews_dir
 from specy_road.worker_adapters import Unsupported, adapter_for
 from specy_road.worker_lease import acquire_lease
 from specy_road.runtime_paths import project_prefix
-from specy_road.worker_ops_launch import _cli_for, _entry_and_harness, _launch_checks, _target, worker_env
+from specy_road.worker_ops_launch import _cli_for, _entry_and_harness, _launch_checks, _selected_cli, _target, worker_env
 from specy_road.worker_ops_slots import _slot_or_existing, _wrapper_gone
 from specy_road.worker_process import process_alive, require_branch, wrapper_alive
 from specy_road.worker_runner import spawn
@@ -38,13 +38,6 @@ CONTINUE_PROMPT = ("Continue the task from where you stopped. Re-read the brief 
                    "first; if the hand-off is already written, say so and stop.\n")
 
 
-def _resume_cli(entry: dict[str, Any], cli: str | None) -> str | None:
-    """The roster's ``channels.cli_resume`` when it sets one, else the launch command: a resumed turn keeps the
-    launch's permissions on a harness whose resume is its own command (``codex exec resume``, ``agent -p --resume``),
-    where ``{session_flag}`` is refused. The schema requires it to name ``{session}`` or ``{session_flag}``."""
-    return (entry.get("channels") or {}).get("cli_resume") or cli
-
-
 def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: bool = False, *,
           no_queue: bool = False) -> WorkerRecord:
     require_writer(rec)
@@ -57,7 +50,7 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: boo
             chore = open_chore(repo_root, rec.node_id)   # a closed chore takes no more turns
             entry, _ = _entry_and_harness(repo_root, rec.model, rec.harness, roster_free=chore is not None)
             _launch_checks(repo_root, entry, rec.harness,
-                           chore_node(chore) if chore else _target(repo_root, rec.node_id).node, rec.model)
+                           chore_node(chore) if chore else _target(repo_root, rec.node_id).node, rec.model, resuming=True)
             checked.append(entry)
         return checked[0]
 
@@ -88,7 +81,7 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: boo
     if other:
         raise WorkerError(f"{rec.node_id} already has an active worker ({other.worker_id}); {rec.worker_id} stays {rec.state}")
     cli, api_id, mode, effort = _cli_for(repo_root, entry, rec.harness)
-    cli = _resume_cli(entry, cli)
+    cli = _selected_cli(entry, cli, resuming=True)   # the command the auth check above was run for
     n = rec.last_event_seq + 1
     prompt = repo_root / "work" / f"prompt-{rec.worker_id}-{kind}-{n}.md"
     prompt.parent.mkdir(parents=True, exist_ok=True)   # a linked worktree may have no work/ yet

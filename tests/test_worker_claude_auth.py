@@ -26,8 +26,8 @@ def account(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "empty-claude-config"))
 
 
-def _repo(tmp_path: Path, *, bare: bool) -> Path:
-    repo = claude_code_reviewer_repo(tmp_path)
+def _repo(tmp_path: Path, *, bare: bool, channels: str = "") -> Path:
+    repo = claude_code_reviewer_repo(tmp_path, channels)
     if bare:   # the profile's access.launch_mode forces bare (a roster entry takes no launch_mode)
         prof = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
         prof.write_text(prof.read_text().replace("launch_mode: full", "launch_mode: bare", 1))
@@ -87,15 +87,31 @@ def test_forced_bare_without_a_key_is_refused_before_any_worker_state(
     assert _files(repo) == before and not ws.list_records(repo)
 
 
-def test_resume_follows_the_same_rule(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, account: None) -> None:
+def _channels(**commands: str) -> str:
+    """Roster YAML for ``channels``, as :func:`claude_code_reviewer_repo` inserts it."""
+    return "    channels:\n" + "".join(f"      {k}: '{v}'\n" for k, v in commands.items()) if commands else ""
+
+
+def _delegated(repo: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[ws.WorkerRecord, list[Launch]]:
+    """An idle worker with a session, launched with a key that is then gone: the next turn has no credentials."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", KEY)
-    repo = _repo(tmp_path, bare=True)
     launches: list[Launch] = []
     monkeypatch.setattr(ops, "spawn", lambda root, rec, launch, **kw: launches.append(launch))
     rec, _ = ops.delegate(repo, "M1.1", "opus")
     ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "6f1c1b7e-0000-4000-8000-000000000001"))
     ws.set_state(repo, rec, "idle", pid=None)
-    monkeypatch.delenv("ANTHROPIC_API_KEY")   # the key is gone by the next turn
+    monkeypatch.delenv("ANTHROPIC_API_KEY")
+    return rec, launches
+
+
+@pytest.mark.parametrize("channels", [
+    {},                                                              # the default command throughout
+    {"cli": "wrapper {prompt}"},                                     # no session placeholder: a resume runs the default
+])
+def test_resume_follows_the_same_rule(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, account: None,
+                                      channels: dict[str, str]) -> None:
+    repo = _repo(tmp_path, bare=True, channels=_channels(**channels))
+    rec, launches = _delegated(repo, monkeypatch)
     before = _files(repo)
     for send in (lambda: ops.message(repo, rec.worker_id, "go on"), lambda: ops.resume(repo, rec.worker_id)):
         with pytest.raises(ws.WorkerError, match=r"^worker auth: opus forces bare mode"):
@@ -112,6 +128,34 @@ def test_resume_follows_the_same_rule(tmp_path: Path, monkeypatch: pytest.Monkey
             send()
     assert _files(repo) == before and ws.load_record(repo, rec.worker_id).state == "running"
     assert len(launches) == 1
+    monkeypatch.setenv("ANTHROPIC_API_KEY", KEY)   # the key is back: the command that was refused is what runs
+    ops.message(repo, rec.worker_id, "go on")
+    assert launches[-1].argv[1:3] == ["-p", "--bare"] and "--resume" in launches[-1].argv
+
+
+@pytest.mark.parametrize("channels", [
+    {"cli": "wrapper {session_flag} {prompt}"},                      # the launch command resumes
+    {"cli": "wrapper {prompt}", "cli_resume": "wrapper {session_flag} {prompt}"},
+    {"cli_resume": "wrapper {session_flag} {prompt}"},               # only the resume is a roster command
+])
+def test_a_resume_on_a_roster_command_is_run_as_written(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, account: None,
+                                                        channels: dict[str, str]) -> None:
+    repo = _repo(tmp_path, bare=True, channels=_channels(**channels))
+    rec, launches = _delegated(repo, monkeypatch)
+    ops.message(repo, rec.worker_id, "go on")
+    assert launches[-1].argv[:2] == ["sh", "-c"] and launches[-1].argv[2].startswith("wrapper --resume ")
+
+
+def test_a_launch_is_checked_on_its_own_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, account: None) -> None:
+    """A ``cli_resume`` says nothing about the launch, which runs the default command; a ``cli`` launch runs as written."""
+    repo = _repo(tmp_path / "resume-only", bare=True, channels=_channels(cli_resume="wrapper {session_flag} {prompt}"))
+    with pytest.raises(ws.WorkerError, match=r"^worker auth: opus forces bare mode"):
+        ops.delegate(repo, "M1.1", "opus")
+    repo = _repo(tmp_path / "custom", bare=True, channels=_channels(cli="wrapper {prompt}"))
+    launches: list[Launch] = []
+    monkeypatch.setattr(ops, "spawn", lambda root, rec, launch, **kw: launches.append(launch))
+    ops.delegate(repo, "M1.1", "opus")
+    assert launches[0].argv[:2] == ["sh", "-c"]
 
 
 def test_a_refused_rework_leaves_the_completed_worker_as_it_was(
