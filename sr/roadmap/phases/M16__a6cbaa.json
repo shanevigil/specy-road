@@ -110,7 +110,8 @@
     {
       "codename": "ready-to-tag-0-3-1",
       "dependencies": [
-        "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0"
+        "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0",
+        "4830d6a5-8004-46b8-b748-e7194f614aa2"
       ],
       "execution_milestone": "Human-led",
       "id": "M16.66",
@@ -122,6 +123,31 @@
       "title": "Gate: ready to tag 0.3.1",
       "touch_zones": [],
       "type": "gate"
+    },
+    {
+      "acceptance": [
+        "move-node <ID> --to-parent <P> gives the moved node the next free display id under P (one past the highest existing child id, gaps allowed) and renumbers only the moved subtree beneath it; no node outside the moved subtree changes its display id, planning-sheet file name, registry node_id or touch-zone text",
+        "The previous whole-outline renumber stays available only as an explicit `move-node ... --renumber-outline` (and the PM GUI's drag-and-drop keeps its current call path unchanged); the help text and docs/roadmap-authoring.md say which ids each form changes",
+        "The moved subtree's planning sheets, registry claims (node_id) and touch-zone references are rewritten atomically with the move, as today; a history 'renumbered' event is recorded only for nodes whose id changed",
+        "Tests: moving a leaf out of the middle of a milestone leaves every sibling and every other milestone's ids unchanged; a claimed moved leaf keeps its claim under the new id; moving a subtree renumbers only its descendants; --renumber-outline reproduces today's behaviour. Out of scope: changing the GUI drag behaviour"
+      ],
+      "codename": "move-node-keeps-other-ids",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.67",
+      "node_key": "4830d6a5-8004-46b8-b748-e7194f614aa2",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.67_move-node-keeps-other-ids_4830d6a5-8004-46b8-b748-e7194f614aa2.md",
+      "sibling_order": 68,
+      "status": "Not Started",
+      "title": "move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit",
+      "touch_zones": [
+        "specy_road/bundled_scripts/roadmap_move_node.py",
+        "specy_road/bundled_scripts/roadmap_outline_renumber.py",
+        "docs/roadmap-authoring.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
