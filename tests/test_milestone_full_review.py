@@ -8,14 +8,14 @@ the first leaf's branch point to the integration tip; approval through
 
 from __future__ import annotations
 
-import json
-import shutil
 from pathlib import Path
 
 import pytest
 import yaml
 
-from tests.helpers import DOGFOOD
+from tests.milestone_repo_helpers import (
+    LEAVES, branch_leaf, chunk_path, land_leaf, make_milestone_repo, merge_leaf, set_status,
+)
 from tests.review_repo_helpers import commit_file, git
 
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
@@ -27,86 +27,15 @@ from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.review_files import reviews_dir
 from specy_road.review_target import resolve_target
 
-KEYS = {"M2": "50000000-0000-4000-8000-000000000001", "M2.1": "50000000-0000-4000-8000-000000000002",
-        "M2.2": "50000000-0000-4000-8000-000000000003"}
-LEAVES = {"M2.1": "alpha", "M2.2": "beta"}
 POLICY_OFF = "version: 1\npolicy: {milestone_full_review: false}\n"
 
 
-def _node(nid: str, parent: str | None, kind: str, codename: str | None = None) -> dict:
-    slug = codename or "unnamed"
-    return {"id": nid, "node_key": KEYS[nid], "parent_id": parent, "type": kind, "title": f"Node {nid}",
-            "planning_dir": f"planning/{nid}_{slug}_{KEYS[nid]}.md", "status": "Not Started",
-            "touch_zones": ["src"], "dependencies": [], **({"codename": codename} if codename else {})}
-
-
-def _chunk(root: Path) -> Path:
-    return root / "roadmap" / "phases" / "M2.json"
-
-
 def _statuses(root: Path) -> dict[str, str]:
-    return {n["id"]: n["status"] for n in load_json_chunk(_chunk(root))}
+    return {n["id"]: n["status"] for n in load_json_chunk(chunk_path(root))}
 
 
 def _effective_rollup(root: Path, nid: str) -> str:
     return next(n["rollup_status"] for n in load_roadmap(root)["nodes"] if n["id"] == nid)
-
-
-def _set_status(root: Path, nid: str, status: str) -> None:
-    nodes = load_json_chunk(_chunk(root))
-    next(n for n in nodes if n["id"] == nid)["status"] = status
-    _chunk(root).write_text(json.dumps({"nodes": nodes}, indent=2) + "\n", encoding="utf-8")
-
-
-def _branch_leaf(root: Path, nid: str) -> None:
-    """Pickup-shaped branch for ``nid``: register, implement, complete; left checked out, not merged."""
-    codename = LEAVES[nid]
-    git(root, "checkout", "-q", "-b", f"feature/rm-{codename}", "dev")
-    commit_file(root, "roadmap/registry.yaml", f"version: 1\nentries: []\n# {codename}\n",
-                f"chore(rm-{codename}): register as in-progress")
-    commit_file(root, f"src/{codename}.py", f"print({codename!r})\n", f"feat({codename}): implement")
-    _set_status(root, nid, "Complete")
-    git(root, "add", "roadmap/phases/M2.json")
-    git(root, "commit", "-qm", f"chore(rm-{codename}): complete, deregister")
-
-
-def _merge_leaf(root: Path, nid: str) -> None:
-    git(root, "checkout", "-q", "dev")
-    git(root, "merge", "-q", "--no-ff", "--no-edit", f"feature/rm-{LEAVES[nid]}")
-
-
-def _land_leaf(root: Path, nid: str) -> None:
-    _branch_leaf(root, nid)
-    _merge_leaf(root, nid)
-
-
-def make_milestone_repo(tmp_path: Path, *, orchestration: str | None = None, land: bool = True) -> Path:
-    """``dev`` with phase ``M2`` over leaves ``M2.1`` and ``M2.2``, both landed unless ``land`` is false."""
-    root = tmp_path / "r"
-    (root / "roadmap" / "phases").mkdir(parents=True)
-    git(root, "init", "-q", "-b", "dev")
-    git(root, "config", "user.email", "t@e.com")
-    git(root, "config", "user.name", "T")
-    shutil.copytree(DOGFOOD / "schemas", root / "schemas")
-    nodes = [_node("M2", None, "phase"), _node("M2.1", "M2", "task", "alpha"), _node("M2.2", "M2", "task", "beta")]
-    (root / "roadmap" / "manifest.json").write_text(json.dumps({"version": 1, "includes": ["phases/M2.json"]}))
-    _chunk(root).write_text(json.dumps({"nodes": nodes}, indent=2) + "\n", encoding="utf-8")
-    for n in nodes:
-        sheet = root / n["planning_dir"]
-        sheet.parent.mkdir(parents=True, exist_ok=True)
-        sheet.write_text(f"# {n['id']}\n\n## Intent\n\nDo it.\n\n## References\n", encoding="utf-8")
-    (root / "roadmap" / "git-workflow.yaml").write_text(
-        "version: 1\nintegration_branch: dev\nremote: origin\nrequire_implementation_review_before_finish: true\n")
-    (root / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n")
-    if orchestration is not None:
-        (root / "roadmap" / "orchestration.yaml").write_text(orchestration)
-    (root / ".gitignore").write_text("work/reviews/\n.specyrd/\n")
-    git(root, "add", "-A")
-    git(root, "commit", "-qm", "graph")
-    if land:
-        for nid in LEAVES:
-            _land_leaf(root, nid)
-    return root
 
 
 def _review(root: Path, model: str = "human", commit: str | None = None) -> None:
@@ -161,7 +90,7 @@ def test_milestone_packet_covers_both_leaves_and_base_overrides(tmp_path: Path) 
 def test_milestone_packet_without_a_registration_commit_needs_base(tmp_path: Path, capsys) -> None:
     root = make_milestone_repo(tmp_path, land=False)
     for nid in LEAVES:   # finished straight on dev, with no pickup commit to anchor the range
-        _set_status(root, nid, "Complete")
+        set_status(root, nid, "Complete")
     git(root, "add", "roadmap/phases/M2.json")
     git(root, "commit", "-qm", "landed without pickup")
     with pytest.raises(SystemExit):
@@ -265,13 +194,13 @@ def test_mark_implementation_reviewed_refuses_a_leaf_id_and_an_open_milestone(tm
 def test_an_approval_before_the_last_leaf_lands_never_releases_the_hold(tmp_path: Path, capsys) -> None:
     """Sol's regression: the tip approved after alpha covers less than the milestone; beta is still on its branch."""
     root = make_milestone_repo(tmp_path, land=False)
-    _land_leaf(root, "M2.1")
+    land_leaf(root, "M2.1")
     _review(root)   # approves dev as it stands: alpha only
-    _branch_leaf(root, "M2.2")   # finish-this-task runs here, before the merge
+    branch_leaf(root, "M2.2")   # finish-this-task runs here, before the merge
     assert complete_rolled_up_ancestors(root, "M2.2") == []
     assert _statuses(root)["M2"] == "Not Started"
     assert "[hold] M2 rolled up to Complete but its leaves M2.2 have not landed on refs/heads/dev" in capsys.readouterr().out
-    _merge_leaf(root, "M2.2")   # landed: the old approval is for an earlier commit
+    merge_leaf(root, "M2.2")   # landed: the old approval is for an earlier commit
     assert complete_rolled_up_ancestors(root, "M2.2") == []
     assert "its full review is not approved at refs/heads/dev" in capsys.readouterr().out
     _review(root)   # a fresh review of the landed tip
@@ -281,8 +210,8 @@ def test_an_approval_before_the_last_leaf_lands_never_releases_the_hold(tmp_path
 
 def test_an_unfinished_milestone_is_not_awaiting_its_full_review(tmp_path: Path, capsys) -> None:
     root = make_milestone_repo(tmp_path, land=False)
-    _land_leaf(root, "M2.1")
-    _branch_leaf(root, "M2.2")
+    land_leaf(root, "M2.1")
+    branch_leaf(root, "M2.2")
     reviews_dir(root, "M2").mkdir(parents=True)
     assert _cli(["handoff", "status", "M2", "--repo-root", str(root)]) == 1
     out = capsys.readouterr().out
