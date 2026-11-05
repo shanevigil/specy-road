@@ -11,8 +11,8 @@ order, and nothing else:
 
 1. ``refresh-schemas``  — ``schemas/``
 2. ``refresh-profiles`` — missing ``model-profiles/`` files, never overwriting
-3. shipped docs         — the ``docs/`` files the ``.specyrd/AGENTS.md`` load order names,
-   when missing (never overwriting)
+3. shipped docs and templates — missing ``docs/`` files the ``.specyrd/AGENTS.md`` load order names
+   and missing ``work/*.template.md`` files prompts reference (never overwriting)
 4. ``refresh-stubs``    — IDE skills and the managed blocks (``--prune`` deletes
    the stubs this version no longer installs, and ``.cursor``/``.codex`` copies
    of the skills that are links or verbatim stubs)
@@ -63,6 +63,11 @@ from specy_road.git_subprocess import git_text
 from specy_road.init_project import project_template_root
 from specy_road.managed_block import resolves_outside
 from specy_road.runtime_paths import add_repo_root_arg, git_root, project_root, source_scan_root
+from specy_road.upgrade_templates import (
+    copy_missing_work_templates,
+    work_template_ship_plan,
+    work_template_skip_message,
+)
 from specy_road.version_skew import print_install_report
 
 CHECKLIST = (
@@ -106,12 +111,7 @@ def copy_missing_docs(project: Path, *, dry_run: bool = False, declined: list[st
 _DECLINED = {"refused": "refuse", "skipped": "skip", "failed": "fail"}
 
 
-def _refresh(project: Path, checkout: Path, *, preview: bool, prune: bool) -> dict[str, str]:
-    """Run the refreshes for real on ``checkout`` (the plan's mirror); ``preview`` changes only the wording.
-
-    Returns ``{checkout-relative path: refuse | skip | fail}`` for each path they left as it was.
-    """
-    verb = "would write" if preview else "wrote"
+def _report_schemas(project: Path, verb: str) -> None:
     _section("refresh-schemas")
     new = {f"{SCHEMAS_DIRNAME}/{name}" for name in missing_schema_names(project)}
     schemas = refresh_schemas(project)
@@ -120,6 +120,8 @@ def _refresh(project: Path, checkout: Path, *, preview: bool, prune: bool) -> di
     if not schemas:
         print("schemas/ already current")
 
+
+def _report_profiles(project: Path, verb: str) -> None:
     _section("refresh-profiles")
     profiles, kept = refresh_profiles(project)
     for rel in profiles:
@@ -128,14 +130,28 @@ def _refresh(project: Path, checkout: Path, *, preview: bool, prune: bool) -> di
     if notice:
         print(notice)
 
+
+def _report_shipped_docs(project: Path, verb: str, existence_root: Path) -> list[str]:
     _section("shipped docs")
     declined_docs: list[str] = []
     docs = copy_missing_docs(project, declined=declined_docs)
+    to_copy, refused = work_template_ship_plan(existence_root)
     for rel in docs:
         print(f"{verb} {rel} (named in the .specyrd/AGENTS.md load order)")
+    for rel in to_copy:
+        print(f"{verb} {rel} (work template referenced by prompts)")
+    for rel in refused:
+        print(work_template_skip_message(rel))
     if not docs:
         print("every shipped doc the load order names is present")
+    if not to_copy and not refused:
+        print("every work template prompts reference is present")
+    return declined_docs
 
+
+def _report_stubs_declined(
+    project: Path, checkout: Path, *, preview: bool, prune: bool, declined_docs: list[str],
+) -> dict[str, str]:
     _section("refresh-stubs")
     print_migration(project, _prefix(checkout, project))
     written, orphans = refresh_stubs(checkout, project=project, prune=prune)
@@ -150,6 +166,25 @@ def _refresh(project: Path, checkout: Path, *, preview: bool, prune: bool) -> di
         if sep and action:
             declined[rel] = action
     return declined
+
+
+def _refresh(
+    project: Path,
+    checkout: Path,
+    *,
+    preview: bool,
+    prune: bool,
+    existence_project: Path | None = None,
+) -> dict[str, str]:
+    """Run the refreshes for real on ``checkout`` (the plan's mirror); ``preview`` changes only the wording.
+
+    Returns ``{checkout-relative path: refuse | skip | fail}`` for each path they left as it was.
+    """
+    verb = "would write" if preview else "wrote"
+    _report_schemas(project, verb)
+    _report_profiles(project, verb)
+    declined_docs = _report_shipped_docs(project, verb, existence_project or project)
+    return _report_stubs_declined(project, checkout, preview=preview, prune=prune, declined_docs=declined_docs)
 
 
 def _check(project: Path) -> tuple[bool, bool]:
@@ -230,7 +265,18 @@ def _report_line_caps(before: dict[str, tuple[int, int]], after: dict[str, tuple
 
 
 def _plan(project: Path, checkout: Path, *, preview: bool, prune: bool):
-    return make_plan(checkout, project, lambda p, c: _refresh(p, c, preview=preview, prune=prune))
+    real = project.resolve()
+
+    def refresh(sandbox_project: Path, sandbox_checkout: Path) -> dict[str, str]:
+        return _refresh(
+            sandbox_project,
+            sandbox_checkout,
+            preview=preview,
+            prune=prune,
+            existence_project=real,
+        )
+
+    return make_plan(checkout, project, refresh)
 
 
 def _apply(project: Path, checkout: Path, *, prune: bool) -> None:
@@ -241,6 +287,7 @@ def _apply(project: Path, checkout: Path, *, prune: bool) -> None:
     if stale:
         raise ValueError(f"{', '.join(stale)} changed while the upgrade ran; nothing was written, run it again")
     apply_plan(plan)
+    copy_missing_work_templates(project)
     _report_line_caps(before, _capped_lines(project))
 
 
@@ -258,6 +305,7 @@ def _dry_run(project: Path, checkout: Path, *, prune: bool) -> int:
         copy_project = copy.to_sandbox(project.resolve())
         before = _capped_lines(copy_project)
         apply_plan(plan, copy.to_sandbox)
+        copy_missing_work_templates(copy_project, existence_root=project)
         _report_line_caps(before, _capped_lines(copy_project))
         valid, _digest_ok = _check(copy_project)
     changed = plan.changed_since()
