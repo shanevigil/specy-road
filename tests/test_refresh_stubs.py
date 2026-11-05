@@ -9,7 +9,9 @@ blocks, and nothing else.
 
 from __future__ import annotations
 
+import difflib
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -21,7 +23,9 @@ from specy_road.bundled_scripts.refresh_stubs import (
     stubs_are_stale,
     warn_if_stubs_stale,
 )
+from specy_road.managed_block import HTML_COMMENT, render_block
 
+MANIFEST = ".specyrd/manifest.json"
 OLD_VERSION = "0.1.4"
 OLD_DEV_STUBS = (
     "specyrd-validate",
@@ -250,10 +254,13 @@ def test_diff_previews_skills_and_managed_blocks_without_writing(
     assert _manifest(root)["specyrd_version"] == OLD_VERSION
 
 
+@pytest.mark.parametrize("agents_block", [None, "full", "minimal"])
 def test_the_diff_is_what_a_refresh_then_writes(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], agents_block: str | None
 ) -> None:
     root = _old_repo(tmp_path)
+    if agents_block:
+        (root / MANIFEST).write_text(json.dumps(_manifest(root) | {"agents_block": agents_block}), encoding="utf-8")
     main(["--diff", "--repo-root", str(root)])
     sections = _diff_sections(capsys.readouterr().out)
 
@@ -267,6 +274,53 @@ def test_the_diff_is_what_a_refresh_then_writes(
     claude = (root / "CLAUDE.md").read_text(encoding="utf-8")
     assert added("CLAUDE.md") == claude[len(CONSUMER_CLAUDE_MD):].splitlines()
     assert added(".gitignore") == (root / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert added("AGENTS.md") == (root / "AGENTS.md").read_text(encoding="utf-8").splitlines()   # M13.3: same setting
+    section = _between_markers((root / "AGENTS.md").read_text(encoding="utf-8"))
+    assert (len(section) == 3) == (agents_block == "minimal")
+
+
+def _between_markers(text: str) -> list[str]:
+    lines = text.splitlines()
+    return lines[lines.index(HTML_COMMENT.start):lines.index(HTML_COMMENT.end) + 1]
+
+
+@pytest.mark.parametrize(("layout", "manifest", "agents"), [
+    ("embedded", "minimal", "no-block"),
+    ("embedded", "full", "stale"),
+    ("embedded", "missing", "none"),
+    ("embedded", "missing", "stale"),
+    ("nested", "minimal", "stale"),
+    ("nested", "minimal", "none"),
+    ("nested", "full", "no-block"),
+])
+def test_the_agents_md_preview_is_what_a_refresh_then_writes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], layout: str, manifest: str, agents: str
+) -> None:
+    """M13.3 R2: --diff renders AGENTS.md with the real run's agents_block, nested project root included."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    prefix = "sr/" if layout == "nested" else ""
+    project = tmp_path / prefix
+    project.mkdir(parents=True, exist_ok=True)
+    if manifest != "missing":
+        (tmp_path / MANIFEST).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / MANIFEST).write_text(json.dumps({
+            "specyrd_version": __version__, "agents": {}, "project_root": prefix.rstrip("/") or ".",
+            "agents_block": manifest}), encoding="utf-8")
+    path = project / "AGENTS.md"
+    if agents != "none":
+        stale = render_block(["- an old rule"], style=HTML_COMMENT) if agents == "stale" else ""
+        path.write_text(f"# Ours\n\n{stale}\nOur text.\n", encoding="utf-8")
+    before = path.read_text(encoding="utf-8") if path.is_file() else None
+
+    main(["--diff", "--repo-root", str(project)])
+    preview = _diff_sections(capsys.readouterr().out)[f"{prefix}AGENTS.md"]
+    assert path.read_text(encoding="utf-8") == before if before is not None else not path.exists()
+    main(["--repo-root", str(project)])
+    after = path.read_text(encoding="utf-8")
+
+    expected = "".join(difflib.unified_diff((before or "").splitlines(keepends=True), after.splitlines(keepends=True)))
+    assert preview == [ln for ln in expected.splitlines() if not ln.startswith(("--- ", "+++ "))]
+    assert (len(_between_markers(after)) == 3) == (manifest == "minimal")
 
 
 def test_diff_on_a_current_repo_shows_nothing(

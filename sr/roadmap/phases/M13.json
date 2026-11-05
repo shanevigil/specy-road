@@ -60,7 +60,9 @@
         "specy_road/bundled_scripts/upgrade.py",
         "specy_road/file_limits_engine.py",
         "tests/",
-        "specy_road/templates/project/constraints/file-limits.yaml"
+        "specy_road/templates/project/constraints/file-limits.yaml",
+        "specy_road/bundled_scripts/upgrade_preview.py",
+        "specy_road/bundled_scripts/upgrade_plan.py"
       ],
       "type": "task"
     },
@@ -79,7 +81,7 @@
       "parent_id": "M13",
       "planning_dir": "planning/M13.3_a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates_6069463a-3a1a-4778-853a-a4dffb1a1ede.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates",
       "touch_zones": [
         "specy_road/agents_md_block.py",
@@ -115,7 +117,8 @@
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
         "specy_road/bundled_scripts/validate_roadmap.py",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/validate_notices.py"
       ],
       "type": "task"
     },
@@ -286,7 +289,7 @@
     {
       "acceptance": [
         "upgrade prints the M13.8 catalogue entries newer than the version stamped in the managed block it replaced (or the repo's pin when there is no block), one line each; none when the stamp is current; a test with an older stamp pins the list",
-        "When the repo's pin (manifest pin or a requirements file) is below the minimum upgrade just wrote into the managed block, upgrade says so plainly, naming the pin's file and both versions. A release-candidate trial is recorded as a 'pin_trial' key in .specyrd/manifest.json naming the trialled version (set by the project, documented in the upgrade guide; no CLI flag); while the running version equals pin_trial, validate prints the pin mismatch once as a trial note instead of a warning, and the key is ignored (warning returns) once the running version changes; the manifest schema accepts the key; a test covers the warning, the trial note and its expiry",
+        "When the repo's pin (manifest pin or a requirements file) is below the minimum upgrade just wrote into the managed block, upgrade says so plainly, naming the pin's file and both versions. A release-candidate trial is recorded as a 'pin_trial' key in .specyrd/manifest.json naming the trialled version (set by the project, documented in the upgrade guide; no CLI flag); while the running version equals pin_trial, validate prints the pin mismatch once as a trial note instead of a warning, and the key is ignored (warning returns) once the running version changes; a test covers the warning, the trial note and its expiry",
         "upgrade's closing hint names the kinds of new untracked files it actually created (schemas, model profiles, skills, .specyrd/ files) instead of always saying 'schema and skill files'; a test where only schemas are new pins it",
         "upgrade --report-duplicates lists paragraphs of project text outside the managed block that closely restate a paragraph of .specyrd/AGENTS.md (normalised word overlap above a stated threshold), naming file:line and the matching rules heading; report only. Out of scope: rewriting or deleting project text, and the heading-level notice M13.3 owns"
       ],
@@ -309,7 +312,8 @@
         "specy_road/upgrade_report.py",
         "specy_road/version_pin.py",
         "specy_road/agent_text_report.py",
-        "tests/"
+        "tests/",
+        "docs/upgrading.md"
       ],
       "type": "task"
     },
@@ -341,7 +345,9 @@
         "tests/",
         "specy_road/context_notice_cache.py",
         "specy_road/agents_md_block.py",
-        "specy_road/bundled_scripts/validate_roadmap.py"
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/ignore_report.py",
+        "specy_road/bundled_scripts/validate_notices.py"
       ],
       "type": "task"
     },
