@@ -5,7 +5,7 @@
 This leaf adds four project preferences. Each one is optional, and leaving it out keeps today's behaviour:
 
 - **A1:** `decisions add --local` writes the gitignored `roadmap/decisions.local.yaml`. `decisions list` (text and `--json`) and `orchestrate plan` (`plan_preferences`) merge that file over `roadmap/decisions.yaml`, matching by id. A local entry wins over a tracked one with the same id. `list` names each entry's source: `(local)` / `(shared)` at the end of the text line, and `"source"` in JSON. `decisions close` closes an entry in the file it came from. New `D#`/`P#` ids skip ids used in either file. The path is in the managed `.gitignore` block.
-- **A2:** `pr_body_footer` (a non-empty string in the schema) is added after the brief in `work/pr-body-<ID>.md`. When the key is absent, the body is byte-identical to before.
+- **A2:** `pr_body_footer` (a string with at least one non-whitespace character, schema `pattern: \S`) is added, stripped, after the brief in `work/pr-body-<ID>.md`. When the key is absent, the body is byte-identical to before.
 - **A3:** `implementation_summary: commit | local` chooses the summary wording in the pickup prompt (`do_next_prompt.py`) and in `prompt --role executor` (`role_prompt_rca.executor_preamble`).
   - `commit` keeps the existing wording.
   - `local` says to leave the summary uncommitted, because the review packet reads it from the worktree.
@@ -37,12 +37,29 @@ Not changed (outside the zones):
 - `.gitignore` at the git root and `sr/schemas/git-workflow.schema.json`. `upgrade` / `refresh-stubs` refresh them.
 - `review_deferral.py`, which still reads only the tracked ledger for its own deferral records.
 
+## Fix round 1 (review of `af4d1164`, `grok-4.7-low`)
+
+Before the fixes, `origin/WIP/improvements-0-3-1` was merged into this branch as the coordinator instructed (`ba09e8e8`, no conflicts).
+
+- **Finding 1. Class: a preference value the schema accepts but the code treats as unset (schema and behaviour disagree).** A whitespace-only `pr_body_footer` passed `minLength: 1` and then stripped to `None`. Fix, as the planner decided: the schema now has `"pattern": "\\S"`, so empty and whitespace-only footers fail `validate` (`validate_git_workflow_contract` exits 1 and names the key). The strip stays, for surrounding whitespace on real text. Every key this leaf adds was audited for the same gap. Two parametrised tests now pin it: each schema-valid value takes effect through its accessor, and each empty, whitespace-only, unknown, wrong-case, null or wrongly typed value fails `validate`.
+- **Finding 2. Class: a defensive branch no caller can reach.** The `reviews is None` → `commit` branch in `executor_preamble` was removed. Its only caller, `build_prompt`, always passes `reviews_dir(root, node_id)`. I checked the leaf's other additions for the same class and removed `merge_ledgers`' `isinstance(e, dict)` filters (its inputs are schema-checked by `load_merged` first) and `pr_body_footer`'s `isinstance(text, str)` check (a loaded config is schema-valid, so the value is a string or absent).
+
+## Probes
+
+- `pr_body_footer` values `""`, `" "`, `"\n"`, `" \t\n "`, `3`, `null`, `["x"]`: all refused by the schema, and `validate` exits 1 naming the key.
+- `pr_body_footer` values `"Tool X"`, `"  Tool X\n"`, multi-line text: accepted by the schema; the accessor returns the stripped text, never `None`.
+- `implementation_summary` values `""`, `" "`, `"Commit"`, `"push"`, `null`, `true`: refused by the enum, and `validate` exits 1. `commit` and `local`: accepted and honoured by `implementation_summary_rule`.
+- `land` values `""`, `" "`, `"Local"`, `"manual"`, `null`, `1`: refused, and `validate` exits 1. `push` and `local`: accepted and honoured by `root_land`.
+- An invalid config at the accessor level: `_value` returns `None`, so every accessor falls back to its default. `validate` is what reports it (it already exits on any git-workflow schema error).
+- `decisions.local.yaml` with an empty or malformed entry: refused by the same `decisions.schema.json` as the tracked file (`test_local_decision_and_broken_local_ledger`), so nothing the schema accepts is dropped by the merge.
+- `summary_ignore_rule` with a negated (`!`) match: treated as not ignored, so the notice and the commit wording agree (existing test).
+- Reachability of the other new guards: `land_root_locally`'s missing-local-branch refusal is reachable (tested). `_load`'s not-a-mapping check is reachable (YAML may be a list). `_merge_here`'s `if check` is reachable (no land check configured). All kept.
+- `executor_preamble` callers: one (`role_prompt.build_prompt`), and it always passes `reviews`. The branch was removed.
+
 ## Verification
 
-- `python -m pytest -n 4 -q -p no:cacheprovider tests/test_project_preferences.py`: 13 passed.
-- Related suites (decisions, preferences, PR body, finish modes and land check, nested land modes, merge mode, do-next prompt, agent ignores, validate, chore, cleanup, human acceptance, runtime dirs): 283 passed.
-- Full suite `python -m pytest -n 4 -q -p no:cacheprovider`: 4127 passed.
-- `specy-road file-limits` OK. `ruff check` (C901) OK on all changed files. `specy-road validate --repo-root tests/fixtures/specy_road_dogfood` and `specy-road validate` OK.
+- Fix round, after merging the integration line: `tests/test_project_preferences.py` 38 passed. The targeted suites (decisions, preferences, PR body, finish modes and land check, nested land modes, merge mode, do-next prompt, agent ignores, validate, chore, cleanup, human acceptance, runtime dirs, project layouts) 244 passed. `ruff check specy_road tests scripts` OK. `specy-road file-limits` OK (`validate_roadmap_checks.py` is 399 lines).
+- Round 0: full suite `python -m pytest -n 4 -q -p no:cacheprovider`, 4127 passed. `specy-road validate --repo-root tests/fixtures/specy_road_dogfood` and `specy-road validate` OK.
 
 ## Walkthrough
 
@@ -69,18 +86,18 @@ Not changed (outside the zones):
 - `land_root_locally`: refuses when there is no local integration branch (`land: local` never creates one from the remote).
 - `retry_merge_landing`: under `local`, checks `refs/heads/<ib>` and skips the fetch.
 - `delete_landed_branch(local_only=)`: leaves the remote copy alone under `land: local` (deleting it would be a push).
-- `executor_preamble`: `reviews` absent → `commit`. That is a defensive default; the only caller always passes `reviews`.
 - `cmd_close`: refuses with the first problem when a ledger fails its schema (before, the failure came from the write instead).
 
 ### Mocks
 - none
 
 ### Tests
+- `test_every_schema_valid_preference_takes_effect` (parametrised): fix round; no schema-valid value reads as unset.
+- `test_schema_refuses_what_the_workflow_would_not_honour` (parametrised): fix round; empty, whitespace-only, unknown and wrongly typed values fail `validate`.
 - `test_local_preference_is_merged_over_the_tracked_ledger`: A1 merge, precedence, source, plan and close.
 - `test_local_decision_and_broken_local_ledger`: `--local` for a decision, and an error that names the broken local file.
 - `test_local_ledger_is_in_the_managed_ignore_block`: A1's gitignore entry.
 - `test_pr_body_footer_is_appended`, `test_pr_body_without_footer_is_unchanged`: A2.
-- `test_schema_checks_the_new_keys`: the three schema keys accept and refuse values as specified.
 - `test_pickup_prompt_follows_implementation_summary`: A3 pickup wording; no `add -f`.
 - `test_ignored_summary_wins_over_commit_and_validate_says_so`: A3 conflict notice and the negation case.
 - `test_executor_role_prompt_follows_implementation_summary`: A3 for `prompt --role executor`.
