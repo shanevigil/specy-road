@@ -69,6 +69,26 @@ The `origin/WIP/improvements-0-3-1` merge went in first (5c0949a8), with no conf
 - Other merge points for findings: `_turn_findings` is the only place steering findings are combined. Result: it now ends in `merged`.
 - Full suite after the merge: 5,032 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
 
+## Fix round 2 (review `gpt-6.1-sol-low` at e84e9049)
+
+The `origin/WIP/improvements-0-3-1` merge went in first, with no conflicts.
+
+These findings are new input shapes of one open-ended problem: reading git config without running git. So rather than chase each shape, the fix states one bounded rule, in the `git_config_text` docstring, the `git_snapshot` docstring and docs/orchestration-steering-files.md.
+
+The rule: what depends on the parse is bounded. A config file's change is always reported by the digest of its bytes. The hooks directories watched are `<common>/hooks` and `<worktree-gitdir>/hooks` always, plus every `core.hooksPath` value read. So a value read wrongly, or an `includeIf` condition left unevaluated, can only add a watched directory; it can never drop the default one. This is a deliberate superset of A1's "hooksPath when set, else the defaults".
+
+- **R1, class: bytes git accepts before the syntax proper.** `parse_config` now drops a leading UTF-8 BOM. It is the only entry point, so files reached through includes get the same treatment.
+- **R2, class: a hooks directory chosen by a condition the snapshot does not evaluate.** Removed by the rule above: the defaults are no longer replaced by a candidate value.
+- **Test.** The parametrized hooks test has two new shapes: a BOM before the first section, and an `includeIf "gitdir:/nowhere/"` naming a hooksPath. It now asks git, run in the worker checkout with conditions evaluated, which hooks directory is in use, and writes the hook there. It requires exactly one `git_hook` finding with that exact path, plus `git_probes_skipped`.
+
+## Probes (round 2)
+
+- The new BOM and nonmatching-include cases, run against round-1 `steering_paths.py` and `git_config_text.py` in a scratch worktree: both fail there and pass now. (A first version of the BOM case passed on round-1 code, because the BOM did not precede the hooksPath section; the test now puts that section first.)
+- Git accepts a BOM-prefixed config: the test's `git config --get core.hooksPath` returns the directory.
+- Other readers in the change that could meet a BOM: `yaml.safe_load` of the registry handles one (probe returned the parsed entries). The `.git` gitdir line and `commondir` are written by git itself and carry none.
+- Other decisions taken on a parsed value: the hooks directories (now a superset) and which includes are followed (already every one, conditions not evaluated). Displayed `;key=value` values only describe a finding; detection is by digest.
+- Targeted tests: 104 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
+
 ## Added
 
 - `specy_road/steering_paths.py`: the list, `Scope` and snapshots per class, `changes`, `SteeringWatch` with `git_changes`, `rest_changes` and `without_steering_paths`, and `config_values`, a no-git config reader. Required by A1 and A2.
@@ -81,4 +101,5 @@ The `origin/WIP/improvements-0-3-1` merge went in first (5c0949a8), with no conf
 - `docs/orchestration-steering-files.md`: a file-limit split of the docs.
 - Tests: `tests/test_steering_file_guard.py` covers A5. Helpers: `_layout`, a linked worktree with a linked `.venv` and a second worktree on `dev`; `_turn`, which brackets one turn with `TurnWatch` and `close_turn`; plus `_write`, `_registry_add_other`, `_commit_policy_from_second`, `_finish`, `_set_zones` and `_denies`. No mocks.
 - Fix round 1: `git_config_text.py` (`parse_config`, `read_chain`, and helpers `_eol`, `_section`, `_value`, `_includes`) for R1. `steering_paths.watched_values` replaces `config_values` (display only). `SteeringWatch.merged` replaces `without_steering_paths` (R3). Tests: the parametrized `test_a_hook_in_the_configured_hooks_path_is_found_however_git_config_spells_it` (R1, with git as oracle); two new `CASES` entries, `forged_review_in_worktree` (R2) and `escaping_symlink_at_harness_path` (R3), plus the `_link` helper; the clean turn also writes its own READY in the worker checkout (R2 exemption).
+- Fix round 2: no new helpers. The leading-BOM strip in `parse_config` and the superset in `git_snapshot` replace the earlier "hooksPath else defaults" choice. The round-1 test `test_a_hook_in_the_configured_hooks_path_is_found_however_git_config_spells_it` became `test_a_hook_in_the_hooks_directory_git_uses_is_found_however_the_config_reads`, with five shapes and git deciding the directory in use.
 - `tests/test_finish_work_cleanup._config_on_dev`: keeps the changed test under the 80-line function cap, which the fixture fix above would otherwise have exceeded.
