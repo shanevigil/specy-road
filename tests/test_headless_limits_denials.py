@@ -23,7 +23,7 @@ from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
 from specy_road import worker_turn_check as tc
 from specy_road.bundled_scripts import refresh_profiles as rp
-from specy_road.bundled_scripts.role_prompt import run_bare_reviewer
+from specy_road.bundled_scripts.role_prompt_cli import run_default_reviewer   # M8.3's name for run_bare_reviewer
 from specy_road.review_delegate import delegate
 from specy_road.review_files import reviews_dir
 from specy_road.worker_adapter_codex import CODEX_MEMORY_OFF
@@ -158,7 +158,8 @@ def test_review_delegate_and_the_bare_reviewer_command_disable_background_tasks(
     (reviews / "PACKET.md").write_text("# Review packet\n\n**Commit under review:** HEAD\n")
     fake = _harness(tmp_path, monkeypatch, "claude", lines=[INIT])
     delegate(repo, "M1.1", "opus", retries=0, backoff=0, sleep=lambda _s: None)
-    assert run_bare_reviewer(None, _prompt(tmp_path), repo, "m", reviews, None) == 0
+    # M8.3: 0 only when a record was filed; this fake prints no verdict, so the run is a rerun request (1).
+    assert run_default_reviewer(None, _prompt(tmp_path), repo, "m", reviews, None).state == "rerun"
     # --bare already keeps auto memory off; background work would hold `claude -p` open up to 10 minutes idle.
     assert _envs(fake) == [{"CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": None}] * 2
 

@@ -18,6 +18,10 @@ A finished worker no longer takes a `policy.max_workers` slot. A registry claim 
 
 Unchanged: `specy_road/worker_orphans.py`, `specy_road/worker_ops_slots.py`, `specy_road/orphaned_claims.py` (new), `specy_road/bundled_scripts/review_cli.py`, `specy_road/bundled_scripts/doctor.py`, `specy_road/bundled_scripts/worker_cli.py`, `specy_road/bundled_scripts/grind_session_events.py`, `specy_road/templates/specyrd/commands/specyrd-orchestrate.md`, `tests/`.
 
+## Merge
+
+`origin/WIP/improvements-0-3-1` conflicted in `worker_cli.py` where M15.13 moved `sync` into `worker_cli_sync.py`. The resolution keeps that import and `cmd_sync`, and keeps the delegate error hint (`append_claim_hint`).
+
 ## Checks
 
 - `pytest -n 4 tests/test_orphaned_claims.py tests/test_worker_orphans.py tests/test_doctor.py tests/test_worker_cli.py tests/test_session_presence.py tests/test_review_cli.py tests/test_worker_resume_failed.py tests/test_worker_turn_check.py tests/test_grind_session.py tests/test_grind_session_step.py tests/test_grind_session_claude.py`: 162 passed.

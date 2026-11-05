@@ -12,6 +12,7 @@ from specy_road.git_workflow_config import (
 )
 from specy_road.git_subprocess import head_sha
 from specy_road.impact import impact_for_zones, section_lines
+from specy_road.workflow_prefs import implementation_summary_rule, summary_handling
 from specy_road.bundled_scripts.planning_artifacts import (
     ancestor_planning_paths,
     normalize_planning_dir,
@@ -270,8 +271,8 @@ def _finish_instruction_lines(
                 "**## Walkthrough** (numbered steps for the reviewer), ending with "
                 "an `## Added` inventory: every helper, branch or guard, mock and "
                 "test you added, one line each with its reason (`none` under a "
-                "heading is fine), and commit it on the feature branch by explicit "
-                "path: reviewers judge it, and finish removes it from `work/`."
+                "heading is fine), "
+                + summary_handling(implementation_summary_rule(repo_root, node_id))
             ),
             (
                 "5. Hand off for review: write "

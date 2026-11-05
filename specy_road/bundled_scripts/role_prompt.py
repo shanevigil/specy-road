@@ -36,20 +36,29 @@ like the roster; a working-tree copy that differs is refused. ``paste`` and ``su
 A reviewer on a ``claude-code`` roster entry without ``channels.cli`` runs bare instead
 (:meth:`ClaudeCode.reviewer_launch`): a fresh session reading a branch it did not write runs none
 of that branch's hooks or MCP servers, and the reviewer prompt asks it to record ``--launch-mode``.
+A ``codex`` or ``cursor`` entry without ``channels.cli`` runs its adapter's read-only reviewer command
+the same way; any other reviewer command (a roster ``channels.cli``, an ``access.cli``) runs as written but
+captured, with the structured-output flags its program takes (Antigravity ``agy``:
+:func:`~specy_road.worker_adapter_base.reviewer_cli`). A reviewer prompt ends with the review output schema
+(:mod:`specy_road.review_record_write`); on ``--channel cli`` specy-road reads the final JSON object and files
+``REVIEW-<model>.md`` from it, reports a run that wrote anything else as a review failure, and a missing or
+malformed object as a rerun request. A reviewer it does not read back (``paste``, ``subagent``) files with
+``review record``.
 """
 
 from __future__ import annotations
 
 import argparse
-import os
-import shlex
-import subprocess
+import contextlib
 import sys
 from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_prompt import SUBAGENT_LINE
 from specy_road.bundled_scripts.generate_brief import index, render_brief, verify_cmd_lines
 from specy_road.bundled_scripts.review_packet import build_packet
+from specy_road.bundled_scripts.role_prompt_cli import (READ_BACK_HARNESSES, close_cli_review_run,
+                                                        preflight as run_preflight, resolve_cli, run_plain_cli,
+                                                        run_reviewer_channel)
 from specy_road.bundled_scripts.role_prompt_rca import (
     DATA_LINE,
     coordinator_preamble,
@@ -70,14 +79,11 @@ from specy_road.orchestrate_plan import (
     node_sensitivity,
     unavailable_prompt_error,
 )
-from specy_road.worker_adapter_parsers import effort_note
-from specy_road.worker_adapters import ADAPTERS, placeholder_problem, substitute_prompt
 from specy_road.orchestration_config import substitute_for
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.bundled_scripts.role_prompt_stream import stream_and_capture
-from specy_road.orchestration_role_env import CLAUDE_REVIEWER_AVOID_ENV
 from specy_road.review_files import PACKET_NAME, reviews_dir
+from specy_road.review_record_write import Outcome, ReviewRunBusy, review_run_lock, schema_lines
 from specy_road.review_gate import delta_basis
 from specy_road.review_lessons import reviewer_lesson_lines
 from specy_road.review_resumed_delta import resumed_delta_on
@@ -119,6 +125,20 @@ LAUNCH_MODE_LINES = [
     "interactive session does.",
     "",
 ]
+READ_BACK_LINES = [
+    "**specy-road files your record.** It launched this session and reads your final message: end it with the JSON "
+    "object described at the end of this prompt, and skip the `review record` and `--launch-mode` steps above. "
+    "Write no file at all (your notes belong in the object's `notes`), and do not commit, push or run `gh`: "
+    "a run that writes anything else is reported as a review failure, and output with no valid object is a rerun "
+    "request, never a verdict. That includes caches and build output in ignored or `work/` paths: specy-road runs "
+    "you with no Python bytecode and no pytest cache, so re-run commands that only read.",
+    "",
+]
+PASTED_LINES = [
+    "End your reply with the JSON object described at the end of this prompt as well; nothing reads this "
+    "session back, so you still file the record yourself with `review record` as above.",
+    "",
+]
 
 
 def has_subagents(prof: Profile | None) -> bool:
@@ -149,27 +169,29 @@ def reviewer_packet(root: Path, node_id: str, model: str, t: ReviewTarget,
 
 
 def reviewer_lines(root: Path, node_id: str, model: str, t: ReviewTarget, ref: str | None,
-                   loop, config: dict | None = None) -> tuple[list[str], str | None, str]:
+                   loop, read_back: bool = True, config: dict | None = None) -> tuple[list[str], str | None, str]:
     """``(preamble lines, packet text, error)`` for a reviewer; the packet is ``None`` on error. The preamble
     lets a resumed session approve when the packet is ``model``'s delta and ``policy.reviewer_resumed_delta``
-    is on (M11.36). ``config``'s ``policy.signed_reviews`` adds ``--sign-key`` to the record command."""
+    is on (M11.36); ``read_back`` (specy-road reads its final message and files the record, as
+    ``review delegate`` and ``--channel cli`` do) says not to file it by hand (M8.3). ``config``'s
+    ``policy.signed_reviews`` adds ``--sign-key`` to the record command."""
     signed = bool(((config or {}).get("policy") or {}).get("signed_reviews"))
     packet, err = reviewer_packet(root, node_id, model, t, ref)
     if packet is None:
         return [], None, err
     # reviewer_packet writes PACKET-<model>.md only for a delta round (and removes a stale one first)
     resumed = (reviews_dir(root, node_id) / f"PACKET-{model}.md").is_file() and resumed_delta_on(root)
-    return ((reviewer_preamble(node_id, model, ref, resumed_delta=resumed, signed=signed) + REMOVED_TEXT_LINES + PROBE_RULES_LINES
-             + LAUNCH_MODE_LINES + verify_cmd_lines(root) + reviewer_lesson_lines(root) + escalated_note(loop, node_id)),
-            packet, "")
+    return (reviewer_preamble(node_id, model, ref, resumed_delta=resumed, signed=signed) + REMOVED_TEXT_LINES
+            + PROBE_RULES_LINES + LAUNCH_MODE_LINES + verify_cmd_lines(root) + reviewer_lesson_lines(root)
+            + escalated_note(loop, node_id) + (READ_BACK_LINES if read_back else PASTED_LINES)), packet, ""
 
 
 def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
-                 ref: str | None = None, context_feedback: bool = False,
+                 ref: str | None = None, context_feedback: bool = False, read_back: bool = True,
                  force_reason: str | None = None) -> tuple[str, Profile | None, str | None]:
     """``(text, profile, error)``; ``ref`` names the branch or commit under review, as ``review-packet --ref``;
-    ``context_feedback`` adds the pilot's three-line block to an executor prompt; ``force_reason`` starts an
-    ``rca`` prompt although the loop is not escalated (:func:`review_rca.rca_trigger`)."""
+    ``context_feedback`` adds the pilot's three-line block to an executor prompt; ``read_back``: :func:`reviewer_lines`;
+    ``force_reason`` starts an ``rca`` prompt although the loop is not escalated (:func:`review_rca.rca_trigger`)."""
     config, err = pinned_config(root)
     if err:
         return "", None, f"orchestration config: {err}"
@@ -227,7 +249,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
         if context_feedback:
             lines += CONTEXT_FEEDBACK_LINES
     elif role == "reviewer":
-        preamble, packet, err = reviewer_lines(root, node_id, model, t, ref, loop, config)
+        preamble, packet, err = reviewer_lines(root, node_id, model, t, ref, loop, read_back, config)
         if packet is None:
             return "", prof, err
         lines += preamble
@@ -238,7 +260,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
         lines += coordinator_decision_lines()
     lines += profile_lines(prof, role, zones)
     if role == "reviewer":
-        lines += ["---", "", packet.rstrip(), ""]
+        lines += ["---", "", packet.rstrip(), "", "---", ""] + schema_lines()
     else:
         lines += ["---", "", render_brief(node_id, index(nodes), repo_root=root, include_history=False).rstrip(), ""]
     if role == "rca":
@@ -246,69 +268,21 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
     return "\n".join(lines) + "\n", prof, None
 
 
-def run_bare_reviewer(prof: Profile | None, prompt_path: Path, root: Path, model: str | None, reviews: Path,
-                      level: str | None, transcript: list[str] | None = None) -> int:
-    """The default Claude Code reviewer command: bare, with ``--add-dir`` for the hand-off directory."""
-    api_id = prof.api_id if prof is not None else model
-    api_id = None if (api_id or "").strip().lower() in ("", "unknown") else api_id   # unknown: the harness default
-    launch = ADAPTERS["claude-code"].reviewer_launch(prompt_path, api_id, reviews, level)
-    print("note: the reviewer runs with --bare (no repository hooks, MCP servers or CLAUDE.md), and bare mode "
-          "never reads your subscription login: it needs ANTHROPIC_API_KEY (or an apiKeyHelper)", file=sys.stderr)
-    print(f"running: {shlex.join(launch.argv)} < {prompt_path}", file=sys.stderr)
-    env = {**os.environ, **CLAUDE_REVIEWER_AVOID_ENV}   # as `review delegate`'s reviewer (harness_env)
-    try:
-        if transcript is None:
-            return subprocess.run(launch.argv, input=launch.stdin, text=True, cwd=root, env=env, check=False).returncode
-        return stream_and_capture(launch.argv, cwd=root, transcript=transcript, stdin=launch.stdin, env=env)
-    except OSError as e:   # e.g. no `claude` on PATH
-        print(f"error: could not launch claude: {e.strerror}", file=sys.stderr)
-        if transcript is not None:
-            transcript.append(f"error: could not launch claude: {e.strerror}")
-        return 1
-
-
 def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflight: str | None = None,
                     entry_cli: str | None = None, *, harness: str | None = None, role: str | None = None,
-                    model: str | None = None, reviews: Path | None = None,
                     transcript: list[str] | None = None) -> int:
-    if preflight:
-        # Proposal §3.6: e.g. confirm which process owns a local model's port.
-        # It runs before anything else is even inspected: a failed check stops
-        # the command whatever else is wrong.
-        print(f"preflight: {preflight}", file=sys.stderr)
-        rc = subprocess.run(preflight, shell=True, cwd=root, check=False).returncode
-        if rc != 0:
-            print(f"error: preflight failed (exit {rc}); nothing was sent", file=sys.stderr)
-            return rc
+    """Any role but a reviewer's (:func:`run_reviewer_channel`): the cli as written. The ``preflight`` runs before
+    anything else is even inspected: a failed check stops the command whatever else is wrong."""
+    rc = run_preflight(preflight, root)
+    if rc:
+        return rc
     # `rca` is a reviewer's turn; a harness the roster does not name has no effort flag.
     level = prof.effort("reviewer" if role == "rca" else role) if prof and role else None
-    if role == "reviewer" and harness == "claude-code" and not entry_cli and reviews is not None:
-        return run_bare_reviewer(prof, prompt_path, root, model, reviews, level, transcript)
-    cli = entry_cli or (prof.cli() if prof else None)   # the roster's channels.cli wins, as `worker delegate` has it
-    if not cli:
-        print("error: --channel cli needs a roster `channels.cli` or an `access.cli` in the model's profile", file=sys.stderr)
+    cli, effort, err = resolve_cli(prof, entry_cli, harness, level)
+    if err:
+        print(f"error: {err}", file=sys.stderr)
         return 1
-    why = placeholder_problem(cli)
-    if why:
-        print(f"error: the cli has {why}: {cli}", file=sys.stderr)
-        return 1
-    note = effort_note(cli, level)
-    if note:
-        print(note, file=sys.stderr)
-    effort = ADAPTERS.get(harness or "generic", ADAPTERS["generic"]).effort_flag(level)
-    # The template, not the expansion: "<prompt>" would echo the whole brief.
-    print(f"running: {cli} (prompt: {prompt_path})", file=sys.stderr)
-    try:
-        cmd = substitute_prompt(cli, prompt_path, effort=effort)
-        if transcript is None:
-            return subprocess.run(cmd, shell=True, cwd=root, check=False).returncode
-        return stream_and_capture(cmd, cwd=root, transcript=transcript, shell=True)
-    except OSError as e:   # E2BIG: "<prompt>" puts the whole text on the command line
-        print(f"error: could not launch the cli: {e.strerror}; if the prompt is too long for a command line, "
-              'use {prompt} (its file path) instead of "<prompt>"', file=sys.stderr)
-        if transcript is not None:
-            transcript.append(f"error: could not launch the cli: {e.strerror}")
-        return 1
+    return run_plain_cli(str(cli), prompt_path, root, effort, transcript)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -330,6 +304,9 @@ def main(argv: list[str] | None = None) -> None:
                    help="rca only: build a root-cause prompt although the loop is not escalated "
                         "(a coordinator-initiated analysis); needs --reason")
     p.add_argument("--reason", help="With --force: why the analysis is due; the prompt and the RCA record carry it")
+    p.add_argument("--sign-key", type=Path, metavar="PATH",
+                   help="Reviewer --channel cli: sign the filed record with this OpenSSH private key "
+                        "(`review record --sign-key`; needed under policy.signed_reviews)")
     add_repo_root_arg(p)
     ns = p.parse_args(argv)
     if ns.force and ns.role != "rca":
@@ -337,14 +314,29 @@ def main(argv: list[str] | None = None) -> None:
     if ns.force != bool((ns.reason or "").strip()):
         p.error("--force needs a non-empty --reason, and --reason needs --force")
     root = resolve_repo_root(ns)
+    lock = contextlib.ExitStack()
+    if ns.role == "reviewer" and ns.channel == "cli":   # the leaf's run lock before the run writes any of its files
+        try:
+            lock.enter_context(review_run_lock(reviews_dir(root, ns.node_id)))
+        except ReviewRunBusy as e:
+            print(f"error: {e}", file=sys.stderr)
+            raise SystemExit(1) from None
+    with lock:
+        _run(ns, root)
+
+
+def _run(ns: argparse.Namespace, root: Path) -> None:
+    """:func:`main` after its arguments: write the prompt and, with ``--channel cli``, run it."""
+    config, _ = pinned_config(root)
+    entry = next((e for e in config.get("roster") or [] if e.get("id") == ns.model), {})
+    entry_cli = (entry.get("channels") or {}).get("cli")
+    read_back = ns.channel == "cli"   # every --channel cli reviewer turn is read back and filed
     text, prof, err = build_prompt(root, ns.node_id, role=ns.role, model=ns.model, ref=ns.ref,
-                                   context_feedback=ns.context_feedback,
+                                   context_feedback=ns.context_feedback, read_back=read_back,
                                    force_reason=ns.reason if ns.force else None)
     if err:
         print(f"error: {err}", file=sys.stderr)
         raise SystemExit(1)
-    config, _ = pinned_config(root)
-    entry = next((e for e in config.get("roster") or [] if e.get("id") == ns.model), {})
     out = ns.output or root / "work" / f"prompt-{ns.node_id}-{ns.role}-{ns.model}.md"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(text, encoding="utf-8")
@@ -354,11 +346,9 @@ def main(argv: list[str] | None = None) -> None:
     if ns.channel != "cli":
         raise SystemExit(0)
     if ns.role != "reviewer":
-        raise SystemExit(run_cli_channel(prof, out, root, entry.get("preflight"),
-                                         (entry.get("channels") or {}).get("cli"),
-                                         harness=entry.get("harness"), role=ns.role, model=ns.model,
-                                         reviews=reviews_dir(root, ns.node_id)))
-    from specy_road.reviewer_run_failure import close_reviewer_cli_run, fail_reviewer_cli_run, open_reviewer_cli_run
+        raise SystemExit(run_cli_channel(prof, out, root, entry.get("preflight"), entry_cli,
+                                         harness=entry.get("harness"), role=ns.role))
+    from specy_road.reviewer_run_failure import open_reviewer_cli_run
     try:
         reviewer_target = resolve_target(root, ns.node_id, ns.ref)
     except ReviewTargetError as e:
@@ -366,15 +356,15 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(1)
     reviewer_run = open_reviewer_cli_run(root, reviewer_target, ns.model, entry.get("harness"))
     transcript: list[str] = []
-    try:
-        rc = run_cli_channel(prof, out, root, entry.get("preflight"), (entry.get("channels") or {}).get("cli"),
-                             harness=entry.get("harness"), role=ns.role, model=ns.model,
-                             reviews=reviews_dir(root, ns.node_id), transcript=transcript)
-        close_reviewer_cli_run(root, reviewer_target, ns.model, reviewer_run, rc, transcript)
+    try:   # the run record is closed from the filing outcome, an interrupt's included: never from older records
+        filed = run_reviewer_channel(prof, out, root, entry, ns.model, reviews_dir(root, ns.node_id), ns.ref,
+                                     transcript, ns.sign_key)
     except BaseException as e:
-        fail_reviewer_cli_run(reviewer_run, e)
+        close_cli_review_run(root, reviewer_target, ns.model, reviewer_run,
+                             Outcome("rerun", f"interrupted: {e or type(e).__name__}", exit=None), transcript)
         raise
-    raise SystemExit(rc)
+    close_cli_review_run(root, reviewer_target, ns.model, reviewer_run, filed, transcript)
+    raise SystemExit(filed.exit or (0 if filed.state == "recorded" else 1))
 
 
 if __name__ == "__main__":

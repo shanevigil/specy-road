@@ -63,16 +63,47 @@ def _terminal_message(repo: Path, worker_id: str) -> str | None:
     return None
 
 
-def _sync_event_lines(events: list[dict[str, Any]], e: dict[str, Any]) -> list[str]:
+def _tool_use_only(e: dict[str, Any]) -> bool:
+    if e.get("type") != "output" or e.get("summary") != "(tool use)":
+        return False
+    msg = (e.get("detail") or {}).get("message")
+    return not msg or str(msg).strip() == "(tool use)"
+
+
+def _sync_event_lines(events: list[dict[str, Any]], e: dict[str, Any], *, worker_id: str) -> list[str]:
     lines = [f"  #{e['seq']} {e['type']} ({e['source']}): {e['summary']}"]
     detail = e.get("detail") or {}
     msg = detail.get("message")
     if e["type"] == "completion" and not detail.get("ready"):
         msg = msg or _harness_message_before(events, e["seq"])
+        if "READY file missing" in (e.get("summary") or ""):
+            lines.append(f"  `specy-road worker resume {worker_id} --ready-only`")
     if e["type"] == "error" and e.get("source") == "worker":
         msg = msg or _harness_message_before(events, e["seq"])
     if msg:
         lines.append(f"  {msg}")
+    return lines
+
+
+def sync_event_lines(events: list[dict[str, Any]], delta: list[dict[str, Any]], worker_id: str, *,
+                     verbose: bool = False) -> list[str]:
+    """Render ``delta`` events for ``sync``; collapse consecutive tool-only ``output`` lines unless ``verbose``."""
+    if verbose:
+        return [line for e in delta for line in _sync_event_lines(events, e, worker_id=worker_id)]
+    lines: list[str] = []
+    i = 0
+    while i < len(delta):
+        e = delta[i]
+        if _tool_use_only(e):
+            j = i + 1
+            while j < len(delta) and _tool_use_only(delta[j]):
+                j += 1
+            if j - i > 1:
+                lines.append(f"  #{delta[i]['seq']}-#{delta[j - 1]['seq']} output: {j - i} tool uses")
+                i = j
+                continue
+        lines += _sync_event_lines(events, e, worker_id=worker_id)
+        i += 1
     return lines
 
 
