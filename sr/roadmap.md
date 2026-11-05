@@ -222,7 +222,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M14.4.3` | worker reconcile and the post-run check see sibling repositories | task | Agentic-led | Not Started |
 | `M14.5` | An approve with no recorded probe is flagged, and policy can refuse to count it | task | Agentic-led | Not Started |
 | `M14.6` | Reviewer usage is visible: review usage, reviewers in the node total, RUN logs kept per round | task | Agentic-led | Complete |
-| `M14.7` | session end finds this agent's session by worktree and branch when the derived id has no record | task | Agentic-led | Not Started |
+| `M14.7` | session end finds this agent's session by worktree and branch when the derived id has no record | task | Agentic-led | Complete |
 | `M14.8` | The implementation-zone check runs before a review is spent, and knows about sibling repositories | task | Agentic-led | Not Started |
 | `M14.9` | review rca launches the root-cause analyst like review delegate, and says what to do when no analyst is available | task | Agentic-led | Not Started |
 | `M14.10` | Escalation recognises a converging loop and handoff status shows the findings trend | task | Agentic-led | Not Started |

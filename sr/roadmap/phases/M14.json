@@ -251,7 +251,7 @@
       "parent_id": "M14",
       "planning_dir": "planning/M14.7_session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record_9fbad01b-0e89-45bd-a951-702227d79f31.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "session end finds this agent's session by worktree and branch when the derived id has no record",
       "touch_zones": [
         "specy_road/bundled_scripts/session_cli.py",

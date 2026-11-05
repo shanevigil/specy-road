@@ -5,7 +5,8 @@ An agent announces itself before its first edit (``start``), renews on long
 work (``touch``), and withdraws when done (``end``); ``end <id>`` retires a
 record the same user left behind (a closed terminal's). ``end`` with no id,
 when the derived id has no record (a harness that runs each command in a new
-POSIX session), ends this user's only live session. ``list`` is what the
+POSIX session), ends this user's only live session, or the only one on this
+worktree and branch when several are live. ``list`` is what the
 others read; ``handoff status`` shows the same. ``check`` is the commit guard:
 exit 1 when the staged paths (or ``--path`` ones) overlap another live
 session's, so a pre-commit hook can refuse a commit that would land on
@@ -30,6 +31,7 @@ from specy_road.session_presence import (
     list_sessions,
     load_session,
     own_live_sessions,
+    own_session_here,
     session_path,
     start_session,
     warn_lines,
@@ -44,12 +46,24 @@ def _agent(ns: argparse.Namespace) -> str:
     return ns.agent or default_agent_id()
 
 
+def _presence_agent(root: Path, ns: argparse.Namespace) -> str:
+    """``start``/``touch`` id: explicit flag or env, else derived, else the record here when ``touch``."""
+    agent = _agent(ns)
+    if ns.session_cmd != "touch" or ns.agent or env_agent_id():
+        return agent
+    if session_path(root, agent).is_file():
+        return agent
+    here = own_session_here(root, worktree=Path.cwd())
+    return here.agent if here else agent
+
+
 def cmd_start(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     try:
         # `touch` without --path renews and keeps the paths; `start` without them records none.
         paths = ns.path if (ns.path or ns.session_cmd != "touch") else None
-        s = start_session(root, _agent(ns), paths=paths, note=ns.note or "",
+        agent = _presence_agent(root, ns)
+        s = start_session(root, agent, paths=paths, note=ns.note or "",
                           ttl_hours=ns.ttl_hours, worktree=Path.cwd())
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
@@ -85,6 +99,12 @@ def _end_own(root: Path, derived: str) -> int:
     if len(mine) == 1:
         end_session(root, mine[0].agent)
         print(f"ended your only live session {mine[0].agent} here (this shell's id {derived} has no record)")
+        return 0
+    here = own_session_here(root, worktree=Path.cwd())
+    if here:
+        end_session(root, here.agent)
+        print(f"ended {here.agent}: the only live session for this worktree and branch "
+              f"(this shell's id {derived} has no record)")
         return 0
     print(f"error: no record for {derived}, and you have {len(mine)} live sessions here; "
           "end one with `specy-road session end <id>`:", file=sys.stderr)
