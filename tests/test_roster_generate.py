@@ -27,6 +27,8 @@ MISSING_INVALID = (f"invalid profile: {MISSING_REL}, accepted form "
                    "model-profiles/<family-dir>/<profile-id>.md")
 MALFORMED = "anthropic/claude-opus-5-5"
 INVALID = f"invalid profile: {MALFORMED}, accepted form {OPUS_REL}"
+BACKSLASH = r"model-profiles\anthropic-claude\claude-opus-5-5.md"
+BACKSLASH_INVALID = f"invalid profile: {BACKSLASH}, accepted form {OPUS_REL}"
 
 
 # --- A1: models roster ------------------------------------------------------------
@@ -118,8 +120,33 @@ def test_profile_value_problem_accepts_only_a_profile_file_under_model_profiles(
     repo = make_profile_repo(tmp_path)
     assert profile_value_problem(repo, OPUS_REL) is None
     assert profile_value_problem(repo, MALFORMED) == INVALID
+    assert profile_value_problem(repo, BACKSLASH) == BACKSLASH_INVALID
     assert profile_value_problem(repo, "no-such-model") == \
         "invalid profile: no-such-model, accepted form model-profiles/<family-dir>/<profile-id>.md"
+
+
+def test_validate_names_backslash_profile_with_accepted_form_when_canonical_file_exists(tmp_path: Path, capsys) -> None:
+    repo = make_profile_repo(tmp_path)
+    (repo / "roadmap" / "orchestration.yaml").write_text(
+        "version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+        f"  - {{id: opus, family: anthropic, profile: '{BACKSLASH}', roles: [executor]}}\n"
+        "policy: {reviewers_required: 1}\n")
+    capsys.readouterr()
+    validate_at(repo, no_overlap_warn=True)
+    err = capsys.readouterr().err
+    assert f"warning: roster entry 'opus' in roadmap/orchestration.yaml: {BACKSLASH_INVALID}" in err
+    assert "cannot read" not in err
+
+
+def test_worktree_plan_reports_backslash_profile_with_accepted_form(tmp_path: Path) -> None:
+    roster = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+              f"  - {{id: opus, family: anthropic, profile: '{BACKSLASH}', roles: [executor]}}\n"
+              "policy: {reviewers_required: 1}\n")
+    plan, err = op.build_orchestration_plan(plan_repo(tmp_path, roster), roster_from_worktree=True)
+    assert err is None and plan is not None
+    problems = plan.batches[0][0].problems
+    assert problems == [f"opus: {BACKSLASH_INVALID}"]
+    assert not any("cannot read" in p for p in problems)
 
 
 def test_plan_reports_an_invalid_profile_and_suppresses_the_may_process_hint(tmp_path: Path) -> None:
