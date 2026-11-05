@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_cursor_usage_cost import PROFILES
+from tests.test_cursor_usage_cost import PROFILES, _priced_repo
 from tests.test_worker_adapters import CLAUDE_RESULT, CURSOR_RESULT, FULL_INIT
 
 from specy_road import worker_runner as wr
@@ -89,6 +89,30 @@ def test_real_mismatch_keeps_a_cost_the_harness_reported(tmp_path: Path) -> None
     assert ev.summary.endswith("; model mismatch: told claude-sonnet-5-5, harness reported claude-opus-5-5")
     assert ev.detail["cost_usd"] == 0.01 and "$0.0100" in ev.summary
     assert "cost_from_roster" not in ev.detail
+
+
+CLAUDE_ROSTER = """version: 1
+roster:
+  - {id: human, family: human, roles: [coordinator, reviewer]}
+  - id: claude-opus-5-5
+    family: anthropic
+    harness: claude-code
+    profile: model-profiles/anthropic-claude/claude-opus-5-5.md
+    roles: [executor]
+policy: {}
+"""
+
+
+@pytest.mark.parametrize(("reported", "priced"), [("claude-fable-5-1", False), ("Claude Opus 5.5", True)])
+def test_claude_turn_without_a_harness_cost_is_roster_priced_unless_a_real_mismatch(
+        tmp_path: Path, reported: str, priced: bool) -> None:
+    """A Claude result with no ``total_cost_usd`` gets the roster fill; a real mismatch drops it, a name does not."""
+    repo = _priced_repo(tmp_path, CLAUDE_ROSTER, ("anthropic-claude/claude-opus-5-5.md",))
+    result = {k: v for k, v in CLAUDE_RESULT.items() if k != "total_cost_usd"}
+    ev = _run_turn(repo, "claude-code", "claude-opus-5-5", [{**FULL_INIT, "model": reported}, result])
+    assert ("model mismatch" not in ev.summary) is priced
+    assert (ev.detail["cost_usd"] is not None and ev.detail["cost_is_estimate"] is True) is priced
+    assert ("$?" in ev.summary) is not priced and "cost_from_roster" not in ev.detail
 
 
 def test_normalise_treats_case_spaces_dots_hyphens_alike() -> None:
