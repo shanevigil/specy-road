@@ -111,3 +111,43 @@ needs no change, because the key stays unset by default.
 - `test_refuses_a_correctness_finding_on_an_id_an_earlier_round_passed`: A4(b), naming round 1, with nothing written.
 - `test_a_finding_on_an_earlier_commit_needs_a_block_there`: the no-blocking-record guard.
 - `test_rca_prompt_states_the_deferral_rule_and_shape`: the analyst prompt carries the rule and the `deferred_findings` shape.
+
+## Fix round 1
+
+This round answers Sol's (gpt-6.1-sol) block of `6f5d36dc`, which listed required changes R1 to R5. It was preceded by a merge of `origin/WIP/improvements-0-3-1`. The fix commit is `e60f0ebc`. Each R-regression in `tests/test_review_defer.py` fails at `6f5d36dc` and passes now: 8 failed, and 1 positive control passed, when run in a throwaway worktree.
+
+- **R1.** `review_deferral.uncovered()` lists what a blocking record names that the deferred items leave open: each failed acceptance id that no item names, and each findings category with more findings than items.
+  - `review defer` refuses a record when `coverage_problems()` finds any such gap. A correctness finding on an id that passed earlier can never be deferred, so a block that contains one can never be resolved.
+  - The gate removes a block only when the closed-decision items cover all of it.
+  - Tests: `test_r1_a_partial_deferral_neither_applies_nor_hides_the_rest_of_the_block` (covers the CLI refusal and the gate with a hand-written marker), and `test_r1_a_deferral_covering_every_finding_of_the_block_resolves_it`.
+- **R2.** `apply_deferrals()` reads markers first, and reads `decisions.yaml` only when a marker names that block. An unreadable ledger closes nothing, so the block keeps counting.
+  - Test: `test_r2_no_marker_means_the_ledger_is_never_read`, with `entries: [` in the ledger, checked through `evaluate_gate` and `handoff status`.
+- **R3.** Collision evidence is limited to RCA records with a smaller `trigger.round` and to markers with a smaller `round`. Markers now record `round`.
+  - Test: `test_r3_a_later_record_is_not_earlier_evidence`.
+- **R4.** `fix_round_budget(repo_root, config, loop, node_id)` returns `next` as a command only, shell-quoted, and puts the explanation in `next_why`. The commands are:
+  - a forced RCA naming a concrete analyst: the first rostered non-human reviewer that is not a party;
+  - `review defer` for `defer_findings`;
+  - an executor prompt for the latest READY's agent for `continue_with_class_fix`, `restart_executor_fresh`, `fix_tests` and `fix_environment`;
+  - a reviewer prompt for the latest blocking reviewer for `change_or_reprompt_reviewer`;
+  - otherwise a complete `specy-road decisions add … --kind decision` that records the action for a human.
+  - Test: `test_r4_a_non_defer_rca_names_a_runnable_step_for_its_action`, parametrised over three actions. The `decisions add` case is actually run.
+- **R5.**
+  - `_follow_up_problems()` checks every whitespace-collapsed title and acceptance line before anything is written.
+  - The roadmap writes (follow-up leaves plus the decision) run inside a `TreeSnapshot` of `roadmap/` and `planning/`, which is restored on failure.
+  - The marker is written last.
+  - Tests: `test_r5_an_empty_second_title_fails_before_any_node_is_written` and `test_r5_a_failed_roadmap_write_is_rolled_back`.
+- **Docs.** `docs/orchestration-review.md` and `docs/design-notes/review-loop-rca.md` now describe the coverage rule, the earlier-rounds-only rule, `next` and `next_why`, and the rollback.
+- **Other changes.** My own round-0 assertion on the forced-RCA command was updated to the new concrete command, `--model sol`.
+
+### Added (fix round 1)
+- `review_deferral.uncovered`, `coverage_problems` (R1).
+- `review_deferral._closed_decisions` (R2): a lazy, error-tolerant ledger read.
+- `review_deferral._next_for` and `_EXECUTOR_ACTIONS` (R4).
+- `review_defer._norm`, `_follow_up_problems` (R5).
+- `review_defer._record`: the roadmap writes, wrapped in a snapshot (R5).
+- Guards:
+  - earlier-round filters on the RCA records and markers (R3);
+  - snapshot restore on `ValueError`, `OSError` or `SystemExit` (R5);
+  - when no analyst is found, the forced-RCA command falls back to `MODEL`, which `next_why` explains (R4).
+- Mocks: `close_entry` monkeypatched to raise, used in the R5 rollback test.
+- Tests: the eight R-tests named above, plus the helper `_two_fail_round`. `tests.test_review_cli._ready` is reused for a valid READY.
