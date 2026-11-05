@@ -11,7 +11,7 @@ Run `specyrd init` again with a different `--ai` value (`cursor`, `claude-code`,
 
 ## Updating after `pip install -U specy-road`
 
-Run **`specy-road upgrade`** (`--dry-run` first). It runs `refresh-schemas` (`schemas/`), `refresh-profiles` (missing `model-profiles/`) and `refresh-stubs`, then `validate`. `refresh-stubs` rewrites only the paths [`manifest.json`](manifest.json) records, adds stubs that shipped since you initialized, and re-applies the managed blocks; with `--prune` it also deletes the stubs this version no longer installs (the pre-0.3.0 `*/commands/specyrd-*.md`). None of them touches your roadmap.
+Run **`specy-road upgrade`** (`--dry-run` first). It runs, in order: `refresh-schemas`, `refresh-profiles`, shipped docs and templates, `refresh-stubs`, `validate`, and `digest --check`. Shipped docs and templates means missing `docs/` files the AGENTS load order names and missing `work/*.template.md` files prompts reference (never overwriting). `refresh-stubs` rewrites only the paths [`manifest.json`](manifest.json) records, adds stubs that shipped since you initialized, and re-applies the managed blocks; with `--prune` it also deletes the stubs this version no longer installs (the pre-0.3.0 `*/commands/specyrd-*.md`). None of them touches your roadmap.
 
 ## What this tool owns
 
