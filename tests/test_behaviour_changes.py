@@ -76,3 +76,33 @@ def test_toolkit_docs_and_templates_do_not_say_the_first_commit_registers_the_wo
         if pattern.search(line)
     ]
     assert hits == []
+
+
+def _notices(tmp_path: Path, capsys, text: str) -> list[str]:
+    (tmp_path / "AGENTS.md").write_text(text + "\n", encoding="utf-8")
+    warn_contradicted_instructions(tmp_path)
+    return capsys.readouterr().out.splitlines()
+
+
+def test_a_line_matching_two_entries_prints_one_notice_with_both_behaviours(tmp_path: Path, capsys) -> None:
+    line = "Run `specy-road finish-this-task --on-complete auto`; finish-this-task never deletes the source branch."
+    out = _notices(tmp_path, capsys, line)
+    assert len(out) == 1 and out[0].startswith("agents: notice — AGENTS.md:1:")
+    for entry in CATALOGUE:
+        if entry.command == "finish-this-task":
+            assert f"since {entry.since}: {entry.now}" in out[0]
+
+
+@pytest.mark.parametrize("line", [
+    "The first commit registers the service worker.",
+    "Register the plugin in the first commit of the app.",
+    "`specy-road finish-this-task` never deletes uncommitted work.",
+])
+def test_unrelated_prose_prints_no_notice(tmp_path: Path, capsys, line: str) -> None:
+    assert _notices(tmp_path, capsys, line) == []
+
+
+def test_the_historical_commandless_first_commit_sentence_is_still_reported(tmp_path: Path, capsys) -> None:
+    line = "4. **First commit** registers the work in `registry.yaml` — no implementation before that commit."
+    out = _notices(tmp_path, capsys, line)
+    assert len(out) == 1 and out[0].startswith("agents: notice — AGENTS.md:1:")

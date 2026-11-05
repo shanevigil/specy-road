@@ -6,7 +6,8 @@ project text that still states the old behaviour. ``validate`` reports such
 lines (:mod:`specy_road.agent_text_report`); it never rewrites them.
 
 A pattern that could match ordinary prose requires the command's name on the
-same line.
+same line; the commandless first-commit pattern instead requires the claim's
+context (feature branch, registry, claim, in-progress or "the work").
 """
 
 from __future__ import annotations
@@ -61,7 +62,7 @@ CATALOGUE: tuple[BehaviourChange, ...] = (
         flags=("--delete-branch",),
         now="`--delete-branch` (merge mode) deletes the feature branch locally and on the remote once the merge lands",
         contradicts=_line_with(
-            r"\bfinish-this-task\b", r"\b(?:does\s+not|doesn't|never|won't|will\s+not)\s+delete"
+            r"\bfinish-this-task\b", r"\b(?:does\s+not|doesn't|never|won't|will\s+not)\s+delete\w*\b.*\bbranch"
         ),
     ),
     BehaviourChange(
@@ -70,6 +71,10 @@ CATALOGUE: tuple[BehaviourChange, ...] = (
         flags=("--base",),
         now="pickup commits the claim to roadmap/registry.yaml on the integration branch (`--base`) before "
         "it creates the feature branch; no commit on the feature branch registers the work",
-        contradicts=re.compile(r"\bfirst\s+commit\b.*\bregister|\bregist\w*\b.*\bfirst\s+commit\b", re.IGNORECASE),
+        contradicts=_line_with(
+            r"\bfirst\s+commit\b",
+            r"\bregister(?:s|ed|ing)?\b",
+            r"\bfeature[-\s]branch|\bregistry\b|\bclaim\b|\bin-progress\b|\bthe\s+work\b",
+        ),
     ),
 )

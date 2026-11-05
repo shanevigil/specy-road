@@ -19,15 +19,15 @@ _EXCERPT = 120
 
 
 def contradicted_lines(lines: list[tuple[int, str]]):
-    """``(line number, line, entry)`` per numbered line a catalogue pattern matches."""
+    """``(line number, line, entries)`` per numbered line one or more catalogue patterns match."""
     for lineno, line in lines:
-        for entry in CATALOGUE:
-            if entry.contradicts is not None and entry.contradicts.search(line):
-                yield lineno, line, entry
+        entries = tuple(e for e in CATALOGUE if e.contradicts is not None and e.contradicts.search(line))
+        if entries:
+            yield lineno, line, entries
 
 
 def warn_contradicted_instructions(project_root: Path) -> None:
-    """One ``agents: notice`` line on stdout per contradicted instruction, naming file:line."""
+    """One ``agents: notice`` line on stdout per contradicting source line, naming file:line."""
     root = project_root.resolve()
     checkout = git_root(root) or root
     for path in agent_files(root):
@@ -36,8 +36,9 @@ def warn_contradicted_instructions(project_root: Path) -> None:
         except (OSError, UnicodeDecodeError):
             continue
         rel = path.relative_to(checkout)
-        for lineno, line, entry in contradicted_lines(agent_file_lines_outside_block(text)):
+        for lineno, line, entries in contradicted_lines(agent_file_lines_outside_block(text)):
             excerpt = line.strip()
             if len(excerpt) > _EXCERPT:
                 excerpt = excerpt[: _EXCERPT - 1] + "…"
-            print(f'agents: notice — {rel}:{lineno}: says "{excerpt}"; since {entry.since}: {entry.now}')
+            now = "; ".join(f"since {e.since}: {e.now}" for e in entries)
+            print(f'agents: notice — {rel}:{lineno}: says "{excerpt}"; {now}')
