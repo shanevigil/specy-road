@@ -28,7 +28,8 @@ distinct family when ``reviewers_distinct_families`` is set. With ``policy.integ
 finding the node did not declare in ``planned_test_changes`` on the integration branch is a problem too
 (:mod:`specy_road.integrity_gate`). Each ``policy.strong_review`` item the leaf's touch zones meet needs one counted
 approval from its ``require_one_of`` (:mod:`specy_road.review_strong`). An approval naming ``delta_from`` (a delta
-review) must also meet :func:`delta_problem`.
+review) must also meet :func:`delta_problem`. A block a human-applied deferral names (reviewer and commit) does not
+count (:func:`specy_road.review_deferral.apply_deferrals`).
 """
 
 from __future__ import annotations
@@ -54,6 +55,7 @@ from specy_road.review_gate_ready import (  # noqa: F401 — public names re-exp
     write_human_approval)
 from specy_road.review_signing import (  # noqa: F401 — SigningError re-exported
     SigningError, notes_problem, verify)
+from specy_road.review_deferral import apply_deferrals
 from specy_road.review_bookkeeping import CARRY_NOTE, count_at_later_commit, only_planning_or_review_bookkeeping_since
 from specy_road.review_files import (HUMAN, PACKET_NAME, ReviewFile, executor_blocked_gate_problems, latest_ready,
                                      list_review_history, list_reviews, review_semantic_errors, reviews_dir,
@@ -311,14 +313,9 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
     config, err = effective_config(repo_root, ref)
     err = ref_err or err
     policy = config["policy"]
-    result = GateResult(
-        node_id=node["id"],
-        commit=full_sha(repo_root, commit),
-        required=int(policy["reviewers_required"]),
-        distinct_families=bool(policy["reviewers_distinct_families"]),
-        config_error=err,
-        config=config,
-    )
+    result = GateResult(node_id=node["id"], commit=full_sha(repo_root, commit),
+                        required=int(policy["reviewers_required"]),
+                        distinct_families=bool(policy["reviewers_distinct_families"]), config_error=err, config=config)
     for review in list_reviews(repo_root, node["id"], acceptance_ids(node)):
         if review.ok and review.data.get("node_id") != node["id"]:
             review.errors.append(f"node_id is {review.data.get('node_id')!r}, not {node['id']!r}")
@@ -337,6 +334,7 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
                                       if why == FRESH_SESSION else why or "not eligible"))
         else:
             _count(result, counted)
+    apply_deferrals(repo_root, result)   # a human-applied deferral resolves only the block it names
     ready = latest_ready(repo_root, node["id"], branch, acceptance_ids(node))
     result.verifier_problems = verifier_gate_problems(ready, result.approvals)
     if ready is not None and same_commit(repo_root, ready.data["commit"], result.commit):
