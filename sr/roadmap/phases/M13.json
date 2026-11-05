@@ -157,7 +157,7 @@
       "parent_id": "M13",
       "planning_dir": "planning/M13.6_safe-release-candidate-install-recipe-pipx-and-uv-tool-upgrades-and-checking-which-binary-is-on-path_0f32efb8-3780-4e45-8fbc-333b064e5a9c.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Safe release-candidate install recipe, pipx and uv tool upgrades, and checking which binary is on PATH",
       "touch_zones": [
         "docs/install-and-usage.md",
