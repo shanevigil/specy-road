@@ -132,7 +132,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.21_linked-worktrees-resolve-root-and-symlinked-envs_b502d0b5-af11-4b1e-802c-5283e4f7a506.md",
       "sibling_order": 21,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments",
       "touch_zones": [
         "specy_road/runtime_paths.py",

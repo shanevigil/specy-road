@@ -248,7 +248,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.18` planned_test_changes can be edited after pickup, and an unplanned test removal is a required reviewer check `planned-test-changes-editable-and-removals-surfaced` — task — **Complete**
   - `M15.19` Cursor worker cost is estimated when the harness reports a display name for the rostered model `cursor-cost-with-display-name-models` — task — **Complete**
   - `M15.20` Touch zones that miss what acceptance needs are flagged at plan time, and the brief's zone section stays short `zones-missing-what-acceptance-needs-flagged` — task — **Not Started**
-  - `M15.21` Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments `linked-worktrees-resolve-root-and-symlinked-envs` — task — **Not Started**
+  - `M15.21` Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments `linked-worktrees-resolve-root-and-symlinked-envs` — task — **Complete**
   - `M15.22` Project preferences the workflow respects: local decisions, a PR body footer, the summary commit rule, and local landing for the root repository `project-preferences-local-decisions-footer-summary-landing` — task — **Not Started**
 
 ## Dependencies that were removed
@@ -277,11 +277,28 @@ Do not pick these up.
 - `M15.11` on `feature/rm-working-roster-in-one-command-and-validated-profiles` since 2026-11-04
 - `M15.13` on `feature/rm-worker-loop-friction-sync-until-and-ready-only-resume` since 2026-11-04
 - `M15.20` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
-- `M15.21` on `feature/rm-linked-worktrees-resolve-root-and-symlinked-envs` since 2026-11-04
 - `M15.22` on `feature/rm-project-preferences-local-decisions-footer-summary-landing` since 2026-11-04
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M15.8` on `feature/rm-promoted-leaf-is-never-stuck-on-an-empty-approach` since 2026-11-04
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
+
+## Quality by area
+
+Review cost of the last 50 completed leaves, per touch-zone area, from the `Review-tally` trailers on their gate commits. Block rate is the share of tallied leaves with at least one blocking round; areas above 50% are **flagged** and listed first. Plan tighter acceptance there.
+
+| Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
+| --- | --- | --- | --- | --- | --- | --- |
+| `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
+| `README.md` | 1 | 1 | — | — | 0 | 0 |
+| `docs` | 34 | 34 | — | — | 0 | 0 |
+| `gui` | 1 | 1 | — | — | 0 | 0 |
+| `research` | 1 | 1 | — | — | 0 | 0 |
+| `roadmap` | 3 | 3 | — | — | 0 | 0 |
+| `schemas` | 2 | 2 | — | — | 0 | 0 |
+| `specy_road` | 48 | 48 | — | — | 0 | 0 |
+| `tests` | 49 | 49 | — | — | 0 | 0 |
+
+Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
 ## Reaching the detail behind this
 
