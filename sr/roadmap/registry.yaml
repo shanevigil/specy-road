@@ -23,6 +23,7 @@ entries:
       - specy_road/review_write_check.py
       - specy_road/reviewer_run_failure.py
       - specy_road/review_usage.py
+      - specy_road/worker_adapter_parsers.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
