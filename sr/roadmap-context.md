@@ -243,7 +243,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.12` Shared documentation zones do not serialize grind-session batches `shared-doc-zones-do-not-serialize-batches` — task — **Complete**
   - `M15.13` Worker loop friction: sync waits for the events that matter, tool-use noise collapses, rework after a completed worker, a READY-only resume, a quieter pickup `worker-loop-friction-sync-until-and-ready-only-resume` — task — **Not Started**
   - `M15.14` Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored `chores-at-parity-with-leaves` — task — **Not Started**
-  - `M15.15` upgrade ships the work/ templates every prompt references, and the .specyrd README matches upgrade's steps `upgrade-ships-the-templates-prompts-reference` — task — **Not Started**
+  - `M15.15` upgrade ships the work/ templates every prompt references, and the .specyrd README matches upgrade's steps `upgrade-ships-the-templates-prompts-reference` — task — **Complete**
   - `M15.16` Role-observed acceptance needs evidence from that role, and coordinator probes are not acceptance `role-observed-acceptance-needs-that-role` — task — **Not Started**
   - `M15.17` Review friction: delegate builds a missing packet, the packet skips ignored evidence and numbers suppressions correctly, refusals quote the line, and superseded failed runs say so `review-friction-packet-and-record` — task — **Not Started**
   - `M15.18` planned_test_changes can be edited after pickup, and an unplanned test removal is a required reviewer check `planned-test-changes-editable-and-removals-surfaced` — task — **Complete**
@@ -279,7 +279,6 @@ Do not pick these up.
 - `M12.4.1` on `feature/rm-per-area-quality-scores-in-the-digest-from-review-history` since 2026-11-04
 - `M14.10` on `feature/rm-escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend` since 2026-11-04
 - `M15.13` on `feature/rm-worker-loop-friction-sync-until-and-ready-only-resume` since 2026-11-04
-- `M15.15` on `feature/rm-upgrade-ships-the-templates-prompts-reference` since 2026-11-05
 - `M15.20` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M15.21` on `feature/rm-linked-worktrees-resolve-root-and-symlinked-envs` since 2026-11-04
 - `M15.22` on `feature/rm-project-preferences-local-decisions-footer-summary-landing` since 2026-11-04
