@@ -8,6 +8,7 @@ The work: detection after each turn, a refusal at finish, and per-file denies wh
 The listed zones plus `specy_road/schemas/worker-record.schema.json`, which the coordinator added for the flag enum (1da375e1). Two new files sit **outside** the zones. Both are splits forced by the 400-line cap in `sr/constraints/file-limits.yaml`, which plain `specy-road file-limits` uses. Please add them to the zones:
 
 - `specy_road/steering_gate.py`: finish's refusal (`zones_or_exit`, `steering_or_exit`, `steering_hits`) and the Claude Code denies (`claude_denies`). With them inside, `steering_paths.py` was 465 lines.
+- `specy_road/git_config_text.py` (fix round 1): the git-config(1) text parser and include follower behind the git snapshot (R1); in `steering_paths.py` it would have pushed that file past 400 lines.
 - `docs/orchestration-steering-files.md`: the steering-file list and its rules. `docs/orchestration-workers.md` was already at 400 lines. It now carries the list in short form, in its existing post-run paragraph (no lines added), and links to the new doc from that paragraph and its flag and reconcile rows.
 
 `finish_task.py` was also at 400 lines. Its implementation-check call became one `zones_or_exit` call, which runs `implementation_or_exit` and then `steering_or_exit`, so the file did not grow.
@@ -49,6 +50,25 @@ The listed zones plus `specy_road/schemas/worker-record.schema.json`, which the 
 - **The next turn's start is not guarded.** It still runs `git status` (`git_state` in `TurnWatch.__init__`), and after a `core.fsmonitor` change that would run the changed command. The sticky flag and reconcile are the human's signal. Blocking a resume is not part of this leaf's acceptance.
 - **Cost.** A snapshot of this repository (3,700 review files) takes about 0.5 s at each end of a turn.
 
+## Fix round 1 (review `gpt-6.1-sol-low` at c4d9c4de)
+
+The `origin/WIP/improvements-0-3-1` merge went in first (5c0949a8), with no conflicts.
+
+- **R1, class: git config read differently from how git reads it.** The line-based reader kept trailing comments, mishandled quotes and escapes, and never followed includes. As a result, the check watched a hooks directory git does not use. It is replaced by `git_config_text.parse_config`, which implements git-config(1) syntax. `read_chain` follows `include.path` and `includeIf.*.path` to git's depth of 10, without evaluating conditions, so the result is a superset of what git reads. `git_snapshot` hashes every file in that chain and watches each `core.hooksPath` value it sets, or the default directories when none is set. Still without running git.
+- **R2, class: a per-checkout class implemented for only one checkout.** `review_file` read only the main checkout, and so did `env_bin`. Both now go through `scope.tops`, like the tree, git and registry classes. Entries are still keyed by real path, so the worker's linked `.venv` and its main-checkout source stay a single entry. The own-READY exemption applies in both checkouts.
+- **R3, class: one path reached by two detectors.** Overlaps: a harness or shell file that is also a new escaping symlink, and a `core.hooksPath` inside `.claude/hooks` (git_hook plus harness), which before this fix came from two separate snapshots. These are no longer patched per detector. A single `SteeringWatch.merged` (it replaces `without_steering_paths`) keeps one `steering_file` per path, choosing the first class in `CLASSES` order. It also drops porcelain and committed-outside-zones mentions of that path.
+
+## Probes
+
+- `git config --file` (oracle) compared with `parse_config` for three `core.hooksPath` spellings: a trailing `#` comment; a quoted value containing `#` and `;`, followed by a `;` comment; an escaped `"` plus a backslash continuation. Result: equal, asserted in the new test.
+- New tests run against the round-0 `steering_paths.py` and `worker_turn_check.py` in a scratch worktree. Result: all 5 new cases fail there (3 spellings, forged REVIEW in the worktree, escaping symlink at `.claude/settings.json`) and pass now.
+- `core.hooksPath` set only in a file named by `[include] path`, with a hook written there during the turn. Result: one `git_hook` finding (probe script, not kept as a test).
+- `core.hooksPath = .claude/hooks` with a hook written there. Result: one finding, class `harness`, with no duplicate `git_hook` (probe script).
+- Every snapshot class against "both checkouts": tree, git, registry and symlink already covered both; reviews and env_bin were fixed here. `policy_blob` reads one ref shared by both, so it is correctly read once.
+- Other parsers of git files in the change: `_gitdirs` reads only the `gitdir:` line and `commondir`. Result: no config syntax involved.
+- Other merge points for findings: `_turn_findings` is the only place steering findings are combined. Result: it now ends in `merged`.
+- Full suite after the merge: 5,032 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
+
 ## Added
 
 - `specy_road/steering_paths.py`: the list, `Scope` and snapshots per class, `changes`, `SteeringWatch` with `git_changes`, `rest_changes` and `without_steering_paths`, and `config_values`, a no-git config reader. Required by A1 and A2.
@@ -60,4 +80,5 @@ The listed zones plus `specy_road/schemas/worker-record.schema.json`, which the 
 - `FLAG_STEERING = "steering_changed"`: the schema enum value and its description sentence.
 - `docs/orchestration-steering-files.md`: a file-limit split of the docs.
 - Tests: `tests/test_steering_file_guard.py` covers A5. Helpers: `_layout`, a linked worktree with a linked `.venv` and a second worktree on `dev`; `_turn`, which brackets one turn with `TurnWatch` and `close_turn`; plus `_write`, `_registry_add_other`, `_commit_policy_from_second`, `_finish`, `_set_zones` and `_denies`. No mocks.
+- Fix round 1: `git_config_text.py` (`parse_config`, `read_chain`, and helpers `_eol`, `_section`, `_value`, `_includes`) for R1. `steering_paths.watched_values` replaces `config_values` (display only). `SteeringWatch.merged` replaces `without_steering_paths` (R3). Tests: the parametrized `test_a_hook_in_the_configured_hooks_path_is_found_however_git_config_spells_it` (R1, with git as oracle); two new `CASES` entries, `forged_review_in_worktree` (R2) and `escaping_symlink_at_harness_path` (R3), plus the `_link` helper; the clean turn also writes its own READY in the worker checkout (R2 exemption).
 - `tests/test_finish_work_cleanup._config_on_dev`: keeps the changed test under the 80-line function cap, which the fixture fix above would otherwise have exceeded.
