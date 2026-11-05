@@ -12,7 +12,7 @@ import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
 from tests.test_cursor_usage_cost import PROFILES
-from tests.test_worker_adapters import CURSOR_RESULT
+from tests.test_worker_adapters import CLAUDE_RESULT, CURSOR_RESULT, FULL_INIT
 
 from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
@@ -46,25 +46,31 @@ def _repo(tmp_path: Path) -> Path:
     return repo
 
 
+def _run_turn(repo: Path, harness: str, model: str, lines: list[dict]) -> ws.WorkerEvent:
+    """Run a fake ``harness`` turn told ``--model model`` that prints ``lines``; return its usage event."""
+    spec = repo.parent / "turn.json"
+    spec.write_text(json.dumps(lines))
+    script = repo.parent / "fake-harness.py"
+    script.write_text("import json, sys\nfor l in json.load(open(sys.argv[1])):\n    print(json.dumps(l), flush=True)\n")
+    rec = ws.create_record(repo, "M1.1", harness, model, repo)
+    argv = [sys.executable, str(script), str(spec), "--model", model, "--workspace", str(repo)]
+    assert wr.run(repo, rec.worker_id, Launch(argv)) == 0
+    return next(e for e in ws.events_since(repo, rec.worker_id) if e.type == "usage")
+
+
 def _usage_event(tmp_path: Path, reported: str) -> ws.WorkerEvent:
     """Run a fake cursor turn printing an init line naming ``reported`` and the recorded result line."""
     repo = _repo(tmp_path)
     init = {"type": "system", "subtype": "init", "apiKeySource": "login", "cwd": str(repo),
             "session_id": "<session>", "model": reported, "permissionMode": "default"}
-    spec = tmp_path / "turn.json"
-    spec.write_text(json.dumps([init, CURSOR_RESULT]))
-    script = tmp_path / "fake-cursor.py"
-    script.write_text("import json, sys\nfor l in json.load(open(sys.argv[1])):\n    print(json.dumps(l), flush=True)\n")
-    rec = ws.create_record(repo, "M1.1", "cursor", SLUG, repo)
-    argv = [sys.executable, str(script), str(spec), "--model", SLUG, "--workspace", str(repo)]
-    assert wr.run(repo, rec.worker_id, Launch(argv)) == 0
-    return next(e for e in ws.events_since(repo, rec.worker_id) if e.type == "usage")
+    return _run_turn(repo, "cursor", SLUG, [init, CURSOR_RESULT])
 
 
 def test_display_name_is_the_rostered_slug_and_the_turn_is_priced(tmp_path: Path) -> None:
     ev = _usage_event(tmp_path, "Grok 4.6 High")
     assert "model mismatch" not in ev.summary
     assert ev.detail["cost_usd"] == 0.021228 and ev.detail["cost_is_estimate"] is True
+    assert "cost_from_roster" not in ev.detail   # the roster-fill marker is not stored
     assert "$0.0212 est." in ev.summary
 
 
@@ -73,6 +79,16 @@ def test_real_mismatch_keeps_the_note_and_leaves_cost_unknown(tmp_path: Path) ->
     assert ev.summary.endswith(f"; model mismatch: told {SLUG}, harness reported Composer 2.5")
     assert "$?" in ev.summary
     assert ev.detail["cost_usd"] is None and ev.detail["cost_is_estimate"] is None
+
+
+def test_real_mismatch_keeps_a_cost_the_harness_reported(tmp_path: Path) -> None:
+    """Claude's ``total_cost_usd`` is parsed as an estimate but is not a roster fill: a mismatch keeps it (R1)."""
+    repo = _repo(tmp_path)
+    init = {**FULL_INIT, "model": "claude-opus-5-5"}
+    ev = _run_turn(repo, "claude-code", "claude-sonnet-5-5", [init, {**CLAUDE_RESULT, "total_cost_usd": 0.01}])
+    assert ev.summary.endswith("; model mismatch: told claude-sonnet-5-5, harness reported claude-opus-5-5")
+    assert ev.detail["cost_usd"] == 0.01 and "$0.0100" in ev.summary
+    assert "cost_from_roster" not in ev.detail
 
 
 def test_normalise_treats_case_spaces_dots_hyphens_alike() -> None:

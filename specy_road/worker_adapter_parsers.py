@@ -192,6 +192,9 @@ def _init_detail(d: dict[str, Any]) -> dict[str, Any]:
 
 
 #: The ``usage`` event's detail, in this order; a field the harness did not report is ``None``, never 0.
+#: Set by :func:`apply_roster_price_estimate` on the cost it filled; read and dropped by ``worker_models.usage_event``.
+ROSTER_PRICED = "cost_from_roster"
+
 USAGE_FIELDS = ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_tokens", "cost_usd",
                 "cost_is_estimate", "num_turns", "harness_version")
 
@@ -297,7 +300,7 @@ def apply_roster_price_estimate(usage: dict[str, Any], model_id: str, repo_root:
     cost = estimate_usage_cost(usage, mtok_rates(prof.data))
     if cost is None:
         return usage
-    return {**usage, "cost_usd": cost, "cost_is_estimate": True}
+    return {**usage, "cost_usd": cost, "cost_is_estimate": True, ROSTER_PRICED: True}
 
 
 def usage_fields(u: Any, *, cost: Any = None, num_turns: Any = None, estimate: bool | None = None) -> dict[str, Any]:

@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.model_names import roster_match, same_model
-from specy_road.worker_adapter_parsers import _WORD, model_from_argv, usage_text
+from specy_road.worker_adapter_parsers import _WORD, ROSTER_PRICED, model_from_argv, usage_text
 from specy_road.worker_state import WorkerEvent
 
 #: Spans ``sh`` reads literally: single-quoted, double-quoted without a substitution inside, a backslash escape.
@@ -81,10 +81,14 @@ def mismatch_note(detail: dict[str, Any], harness_model: object = None, profile:
 def usage_event(repo_root: Path, detail: dict[str, Any]) -> dict[str, Any]:
     """The ``summary`` and ``detail`` of a turn's ``usage`` event (M15.19). The told model is compared with the
     reported one through its roster entry and profile; on a real mismatch a roster-price estimate is dropped,
-    since it priced a model the harness did not run (a cost the harness reported is kept)."""
+    since it priced a model the harness did not run. A cost the harness reported is kept, estimate or not (Claude's
+    ``total_cost_usd``): only :data:`~specy_road.worker_adapter_parsers.ROSTER_PRICED` marks a roster fill, and the
+    marker is not stored."""
+    detail = dict(detail)
+    roster_priced = detail.pop(ROSTER_PRICED, None)
     told, ran = detail.get("requested_model"), detail.get("observed_model")
     entry, prof = roster_match(repo_root, str(told)) if told and ran else ({}, None)
     note = mismatch_note(detail, entry.get("harness_model"), prof)
-    if note and detail.get("cost_is_estimate"):
-        detail = {**detail, "cost_usd": None, "cost_is_estimate": None}
+    if note and roster_priced:
+        detail.update(cost_usd=None, cost_is_estimate=None)
     return {"summary": f"usage: {usage_text(detail)}{note}", "detail": detail}
