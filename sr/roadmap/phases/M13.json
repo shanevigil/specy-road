@@ -67,7 +67,7 @@
     {
       "acceptance": [
         "A project setting (agents_block: minimal in .specyrd/manifest.json, default full) makes refresh-stubs and upgrade write a root AGENTS.md block of at most 3 lines that points at .specyrd/AGENTS.md; the default full block is unchanged and stays within its existing budget (17 lines, 2,063 bytes in tests/test_enforced_rules_pointers.py), because the block is specy-road's text inside a file the developer owns; docs/install-and-usage.md says why the full block repeats the floor bullets and names the minimal setting; validate's context lines reflect the smaller block; a test renders both",
-        "When upgrade or refresh-stubs first creates .specyrd/AGENTS.md it prints the new file's headings and names each heading of the project's own AGENTS.md text (outside the managed block) that matches one of them case-insensitively, with one line saying to compare and drop the stale copy; a test with a duplicated heading asserts the line",
+        "When upgrade or refresh-stubs first creates .specyrd/AGENTS.md it prints the new file's headings and names each heading of the project's own AGENTS.md text (outside the managed block) that matches one of them case-insensitively, with one line saying to compare and drop the stale copy; a test with a duplicated heading asserts the line; the heading scan is a hint with a bounded input class: ATX headings indented 0-3 spaces, skipping fenced code (``` or ~~~ fences opened with 0-3 spaces of indent, closed by a matching fence at least as long) and HTML comments (<!-- ... -->, single- or multi-line); setext headings, other HTML blocks, indented code, list or blockquote nesting and other CommonMark constructs are out of scope and are documented as such",
         "Each harness's validate context line ends with a per-harness total in lines and bytes, counting a file imported twice (CLAUDE.md imports) once and saying so",
         "Out of scope: removing the floor bullets from the default block, editing project text outside managed blocks, and rewriting .specyrd/AGENTS.md content"
       ],
@@ -157,7 +157,7 @@
       "parent_id": "M13",
       "planning_dir": "planning/M13.6_safe-release-candidate-install-recipe-pipx-and-uv-tool-upgrades-and-checking-which-binary-is-on-path_0f32efb8-3780-4e45-8fbc-333b064e5a9c.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Safe release-candidate install recipe, pipx and uv tool upgrades, and checking which binary is on PATH",
       "touch_zones": [
         "docs/install-and-usage.md",
@@ -277,7 +277,7 @@
     {
       "acceptance": [
         "upgrade prints the M13.8 catalogue entries newer than the version stamped in the managed block it replaced (or the repo's pin when there is no block), one line each; none when the stamp is current; a test with an older stamp pins the list",
-        "When the repo's pin (manifest pin or a requirements file) is below the minimum upgrade just wrote into the managed block, upgrade says so plainly, naming the pin's file and both versions. A release-candidate pin-mismatch warning can be acknowledged (for example a trial marker recorded in .specyrd/manifest.json naming the version), after which validate stops repeating it until the running version changes; a test covers the warning, the acknowledgement and its expiry",
+        "When the repo's pin (manifest pin or a requirements file) is below the minimum upgrade just wrote into the managed block, upgrade says so plainly, naming the pin's file and both versions. A release-candidate trial is recorded as a 'pin_trial' key in .specyrd/manifest.json naming the trialled version (set by the project, documented in the upgrade guide; no CLI flag); while the running version equals pin_trial, validate prints the pin mismatch once as a trial note instead of a warning, and the key is ignored (warning returns) once the running version changes; the manifest schema accepts the key; a test covers the warning, the trial note and its expiry",
         "upgrade's closing hint names the kinds of new untracked files it actually created (schemas, model profiles, skills, .specyrd/ files) instead of always saying 'schema and skill files'; a test where only schemas are new pins it",
         "upgrade --report-duplicates lists paragraphs of project text outside the managed block that closely restate a paragraph of .specyrd/AGENTS.md (normalised word overlap above a stated threshold), naming file:line and the matching rules heading; report only. Out of scope: rewriting or deleting project text, and the heading-level notice M13.3 owns"
       ],
