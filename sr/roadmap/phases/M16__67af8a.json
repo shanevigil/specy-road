@@ -123,18 +123,26 @@
     },
     {
       "acceptance": [
-        "Runs after M16.65's fix-before-0.3.1 leaves land (the planner adds each such leaf as a dependency of this leaf as well as of M16.66): README.md, AGENTS.md, CLAUDE.md, docs/, constitution/ and constraints/README.md name only commands, options and config keys in the 0.3.1 command inventory (M16.0's tests/parity inventory after M16.62's alias removal), checked by a test that scans them for removed command and alias names",
-        "suggested_prompts/*.md match the real formats at the branch head (templates under specy_road/templates/project/, JSON schemas, validators, docs/roadmap-authoring.md), per CLAUDE.md's adoption-prompt rule; this sheet lists each prompt checked and what changed",
-        "CHANGELOG.md's [Unreleased] section is consolidated into one adopter-facing summary for the release: Added, Changed, Deprecated and Removed (each removed alias or config form with its replacement), Fixed, and an Upgrading section (run specy-road upgrade; the roster run: migration; the checks: block); no version heading is written and project.version is untouched, since the maintainer writes both at promotion",
+        "A new test tests/test_docs_shipped_commands.py (at the path M16.24's tests/support/layout.csv assigns, if that has landed) reuses M16.32's invocation extraction (shell fences and single-line code spans beginning with specy-road or specyrd; shlex; stop at a shell operator or a bare --; documented placeholders skipped) over README.md, AGENTS.md, CLAUDE.md, docs/**/*.md, constitution/**/*.md and constraints/README.md, and fails with `<path>: <token>` when a command path or option is not canonical in M16.0's parity inventory after M16.62; it also fails when a code span or YAML key is exactly baseline_cmd, land_check_cmd, verify_cmd, one of the four grind_session_* keys, pinned, gui-next or M16.14's legacy review-before-finish key, unless the same line names its replacement; prose outside code spans is ignored; table-driven rows cover canonical command, unknown command, unknown option, argument after --, placeholder, removed config token, same-line replacement and prose mention; no network or harness launch; the scanned docs are fixed until it passes",
+        "suggested_prompts/*.md match the real formats at the branch head (templates under specy_road/templates/project/, JSON schemas, validators, docs/roadmap-authoring.md), per CLAUDE.md's adoption-prompt rule; this sheet has one line per suggested_prompts/*.md file at pickup, each `unchanged` or naming the lines edited; command and option tokens in prompts stay covered by M16.32's tests/test_suggested_prompts_commands.py",
+        "CHANGELOG.md's [Unreleased] section is consolidated into one adopter-facing summary (Added, Changed, Deprecated and Removed, Fixed, Upgrading); Deprecated and Removed list each M16.62 removal as old -> replacement: every former tests/parity/command_map.yaml alias, baseline_cmd, land_check_cmd, verify_cmd, M16.14's review-before-finish key, the four grind_session_* keys, roster `pinned` and the `[gui-next]` extra; Upgrading names specy-road upgrade, the roster run: migration and the checks: block; the diff adds no `## [0.3.1]` or `## [v0.3.1]` heading, does not change project.version and creates no tag (human-owned at promotion)",
         "validate, export --check and digest --check on sr/ and the dogfood fixture, file-limits, tests/test_docs_links.py and M16.31's release-candidate pin scan pass; this sheet lists every doc touched and the promotion steps from docs/release-runbook.md, marking the human-owned ones (version bump, CHANGELOG heading, tag)",
-        "Estimated net line change (informational, not a gate): package 0; docs small"
+        "Estimated net line change (informational, not a gate): package 0; docs small; one new test about +120"
       ],
       "codename": "release-docs-0-3-1",
       "dependencies": [
         "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0",
-        "d0c9dfae-8a1b-46f5-9e40-0686ecb1a67d",
+        "3d08dc0a-5e36-45e6-9c64-2afb0bf110c5",
+        "98d51a48-dcd5-419f-bc34-16ae75aef21b",
         "a0733044-eec3-4411-bec8-e6f31fac6456",
-        "98d51a48-dcd5-419f-bc34-16ae75aef21b"
+        "b47e4275-a0ab-4165-ad9e-9a27cc522791",
+        "c44976af-41a0-4627-8789-16dcf49dd12b",
+        "d0994708-469d-46e8-ac14-3cc7105bbf6e",
+        "d0c9dfae-8a1b-46f5-9e40-0686ecb1a67d",
+        "e08a12a0-17fd-4251-b596-5a46e1e9335d",
+        "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf",
+        "f533afb6-f6fb-4394-9beb-d8a5c49ed95d",
+        "f8ad690d-5f67-4493-bd07-62324d09cdb2"
       ],
       "id": "M16.70",
       "node_key": "15c488ad-2531-4d82-a3a9-363e626a3872",
@@ -151,7 +159,10 @@
         "docs/",
         "suggested_prompts/",
         "constitution/",
-        "constraints/README.md"
+        "constraints/README.md",
+        "tests/test_docs_shipped_commands.py",
+        "tests/repo/test_docs_shipped_commands.py",
+        "sr/planning/M16.70_release-docs-0-3-1_15c488ad-2531-4d82-a3a9-363e626a3872.md"
       ],
       "type": "task"
     }
