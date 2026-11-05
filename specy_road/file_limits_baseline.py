@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import math
 import re
 import sys
@@ -221,12 +220,7 @@ def write_baseline(
         print(f"file-limits baseline: refusing to write {cfg_path}; {exc}", file=sys.stderr)
         return 1
     cfg_path.write_text(new_text, encoding="utf-8")
-    new_cfg = yaml.safe_load(new_text) or {}
-    if not isinstance(new_cfg, dict):
-        cfg_path.write_text(raw, encoding="utf-8")
-        print(f"file-limits baseline: refusing to write {cfg_path}; appended text is invalid.", file=sys.stderr)
-        return 1
-    if run_file_limits_scan(root, new_cfg, respect_gitignore=respect_gitignore):
+    if run_file_limits_scan(root, yaml.safe_load(new_text) or {}, respect_gitignore=respect_gitignore):
         cfg_path.write_text(raw, encoding="utf-8")
         print(
             f"file-limits baseline: appended entries did not resolve today's failures in {cfg_path}; "
