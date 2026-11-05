@@ -48,39 +48,80 @@ Touch zones confirmed accurate: `specy_road/worktree_prune.py`, `specy_road/bund
   36 passed; `specy-road file-limits` OK; `ruff check` clean. The full suite was not rerun this round,
   as instructed.
 
-## Fix round 1: deletion-path audit
+## Fix round 2 (Sol R1–R2, after merging origin/WIP/improvements-0-3-1)
 
-`remove()` deletes, in order: each configured nested repo (`git -C <copy> worktree remove --force <dir>`
-for a linked worktree, `shutil.rmtree` for a clone), then the leaf worktree (`git worktree remove --force`),
-which also deletes its admin directory `.git/worktrees/<name>`. Nothing is deleted unless `plan.refusals`
-is empty (CLI), and `remove()` itself refuses when `plan.foreign` is not empty.
+Root cause: foreign repositories were discovered from `git status`, which lists only changed or ignored
+paths (R1), and the output was decoded in text mode, which changes `\r` to `\n` (R2). Discovery no longer
+uses git status:
 
-Before any path is checked, the plan already refuses on these: a worker `running` in the worktree, an
-unreadable `git-workflow.yaml` (nested repos would go unchecked), and a remote that cannot be read.
+- `_walk_foreign(wt, exempt)` replaces `_foreign_dirs`. It walks the leaf worktree with `os.walk`
+  (`followlinks=False`, `str` paths, no newline translation) and finds every directory below the root
+  that holds a `.git` entry (file, directory or link) or is laid out as a bare repository (`HEAD`
+  file, `objects/` and `refs/`). Each configured nested repo directory is exempt itself but its contents
+  are walked. The walk does not descend into a `.git` directory, or into a repository it found (that
+  repository already refuses). Any directory `os.walk` cannot read (`onerror`) becomes a refusal in
+  `PrunePlan.unscanned`. `remove()` refuses on that list as well as on `plan.foreign`.
+- `_foreign_refusal()` classifies the directory as a linked worktree (git-dir ≠ common dir), a checkout
+  (a `.git` directory, or a `.git` file naming its own git directory, as a submodule's does), or a bare
+  clone, then names the repository, branch and unlanded commits as before.
+- `_status()` (still used to list changed and ignored paths and to refuse uncommitted work) runs git
+  directly as bytes (`text=False`), splits on NUL, and decodes each field with `os.fsdecode`.
+  `git_subprocess.run` is text-mode and outside the touch zones, so it is not used here.
+- New CLI regressions in `tests/test_worktree_prune_foreign.py`. Each asserts that preview and `--yes`
+  both exit 1 and the repository survives:
+  - a foreign checkout in a clean tracked `vendor/` directory;
+  - an initialized submodule at its recorded commit, with a branch that exists only in the submodule;
+  - an ignored checkout named `sibling\rname`;
+  - a directory with mode 000 (this one asserts the "cannot read … Permission denied" refusal).
+- Red/green: with `worktree_prune.py` at `b4ddb345`, the four new tests fail (4 failed, 4 passed); with
+  the fix all pass. Targeted run: `python -m pytest -q tests/test_worktree_prune_foreign.py
+  tests/test_worktree_prune.py` → 40 passed. `specy-road file-limits` OK; `ruff` clean. Full suite not
+  run, as instructed.
 
-| Path deleted | Check that protects it |
-|---|---|
-| Leaf worktree tracked files at `HEAD` | HEAD, local and remote-tracking leaf branch, and the leaf branch on the remote must all be merged into the remote's `ls-remote` integration tip |
-| Leaf worktree modified or staged tracked files (including renames) | `-z` status → "uncommitted or untracked" refusal |
-| Leaf worktree untracked, non-ignored files and directories | same refusal; a `.git` among them is also named as a foreign repository |
-| Leaf worktree ignored files | listed one by one in the preview; deleted only with `--yes` (by design) |
-| Directory holding a `.git` file or directory (another repo's linked worktree or checkout) at any depth in untracked or ignored paths, any name | `_foreign_dirs` on unquoted `-z` paths and their parents → foreign refusal naming repo, branch and commits its upstream lacks; `remove()` guard (R1) |
-| Path that is not valid text | the status read fails → "cannot read git status" refusal |
-| Leaf admin dir `.git/worktrees/<name>` (`HEAD`, index) | HEAD merged check; index changes caught by status |
-| Configured nested linked worktree | its status, its stash (any whose subject does not name another branch), and its HEAD must be held by a branch or remote-tracking ref of the copy |
-| Configured nested full clone | its status, any stash, and every branch and remote-tracking tip must be held by the copy's refs |
-| Ignored files inside a configured nested repo | listed in the preview |
-| Foreign `.git` directory inside a configured nested repo's changed or ignored paths | `_foreign_dirs(d, …)` → foreign refusal (R2) |
+## Deletion-path audit (updated in fix round 2)
 
-Paths not protected (outside A1's `.git`-entry definition; reported here, not fixed):
-- Per-worktree refs (`refs/worktree/*`, `refs/bisect/*`) in the leaf's admin directory are not checked.
-- A full nested clone's tags, reflog-only commits, hooks and config are not checked.
-- A bare repository (no `.git` entry) inside an ignored directory is not detected as foreign. Its files
-  appear only in the preview's list of ignored files.
-- A tracked submodule that sits at its recorded commit does not appear in status, so it is not scanned.
-  I checked locally that `git worktree remove --force` deletes a worktree with an initialized submodule,
-  submodule gitdir included. Branches or stashes that exist only in that submodule would be lost.
-  A submodule moved off its recorded commit shows as changed and is refused.
+`remove()` deletes, in order: each configured nested repo (`git -C <copy> worktree remove --force` for a
+linked worktree, `shutil.rmtree` for a clone), then the leaf worktree (`git worktree remove --force`),
+which also deletes its admin dir `.git/worktrees/<name>`. Every subtree it deletes lies under the leaf
+worktree root, and the filesystem walk covers that whole root. Nothing is deleted while `plan.refusals`
+is non-empty (CLI), and `remove()` refuses on its own when `plan.foreign` or `plan.unscanned` is
+non-empty. Before any of this, the plan refuses on a running worker, an unreadable
+`git-workflow.yaml`, or a remote that cannot be read.
+
+| Path deleted | Discovery | Check that protects it |
+|---|---|---|
+| Any directory below the leaf root holding a `.git` file, directory or link (another repo's linked worktree, a checkout, an initialized submodule, a `--separate-git-dir` checkout), tracked or untracked, clean or not, ignored or not, any name | filesystem walk (`os.walk`, links not followed) | foreign refusal naming repository, branch and commits its upstream lacks; `remove()` guard |
+| A directory laid out as a bare repository (`HEAD`, `objects/`, `refs/`) | filesystem walk | foreign refusal ("bare clone"); `remove()` guard |
+| Contents of a configured nested repo (the repo itself is exempt) | filesystem walk | the same foreign refusal for any repository inside it |
+| A directory the walk cannot read (permission denied) | `os.walk` `onerror` | "cannot read <dir>: …" refusal; `remove()` guard |
+| Leaf worktree tracked files at `HEAD` | git refs | HEAD and the leaf branch (local, remote-tracking, and on the remote via `ls-remote`) must be merged into the remote's integration tip |
+| Leaf modified, staged (including renames) or untracked non-ignored files | `git status -z`, read as bytes | "uncommitted or untracked" refusal |
+| Leaf ignored files | `git status -z`, read as bytes | listed one by one in the preview; deleted only with `--yes` (by design) |
+| Leaf admin dir `.git/worktrees/<name>` (`HEAD`, index) | git | HEAD merged check; index changes caught by status |
+| Configured nested linked worktree | `nested_repos` config + `is_repo_top` | its status, its stash (any whose subject does not name another branch), and its HEAD must be held by a branch or remote-tracking ref of the copy |
+| Configured nested full clone | `nested_repos` config + `is_repo_top` | its status, any stash, and every branch and remote-tracking tip must be held by the copy's refs |
+
+Inputs probed by hand through the CLI (scratch repos built with the public test helpers; probe at
+`/tmp/m14probe/`), each found safe:
+
+- **Ignored symlink to a foreign repository** (`sibling-link -> ../foreign`): the walk does not follow
+  it. Preview lists `sibling-link` and `--yes` exits 0 and removes the leaf; the target, its `.git` and
+  its files all survive, because only the link is deleted. An untracked, non-ignored symlink refuses
+  as "uncommitted or untracked".
+- **`.git` as a symlink to another repo's git directory**: refuses (checkout, branch `private`, commit
+  listed); exit 1 both ways; both survive.
+- **`.git` file (`gitdir:` link)**: covered by the linked-worktree and submodule tests; refuses.
+- **Bare repository directory** (`sibling.git`, an empty bare init): refuses as a bare clone; exit 1
+  both ways; it survives. Its commit list reads "cannot be listed", since it has no commits.
+- **Nested worktrees**: another repo's worktree inside a foreign checkout refuses on the outer checkout.
+  The main repository's own linked worktree inside the leaf refuses as a linked worktree, with
+  `git -C <main> worktree remove <dir>` as the next step. Exit 1 both ways; all survive.
+- **Permission-denied subdirectory** (mode 000): refuses with "cannot read <dir>: Permission denied";
+  exit 1 both ways (regression test). It is not skipped silently.
+
+Still not checked (no `.git` entry and no repository shape): per-worktree refs (`refs/worktree/*`,
+`refs/bisect/*`) in the leaf's admin directory, and a configured nested full clone's tags, reflog-only
+commits, hooks and config.
 
 ## Added
 
@@ -96,4 +137,13 @@ Paths not protected (outside A1's `.git`-entry definition; reported here, not fi
 - Round 1: `_landed_leaf_ignoring_sibling()` builds the leaf from public helpers and takes optional nested repos — R3, and setup for the R2 test.
 - Test `test_foreign_worktrees_whose_names_git_quotes_refuse_and_survive` — R1 regression through the CLI.
 - Test `test_a_foreign_worktree_inside_a_configured_nested_clone_refuses_and_survives` — R2 regression through the CLI.
+- Round 2: `_walk_foreign()` (replaces `_foreign_dirs`) — R1/R2: discovery from the filesystem, not git status.
+- Round 2: `PrunePlan.unscanned`, its refusal and its `remove()` guard — an unreadable directory refuses instead of being skipped.
+- Round 2: bare-repository shape check in the walk, and "bare clone" / submodule-aware kind in `_foreign_refusal()` — the audit's bare-repo and submodule inputs.
+- Round 2: `_status()` runs git as bytes and splits on NUL — R2: no newline translation of paths.
+- Round 2 test helpers `_own_checkout`, `_refused_both_ways` — shared setup and assertions for the new CLI regressions.
+- Test `test_a_foreign_checkout_in_a_clean_tracked_directory_refuses_and_survives` — R1, clean tracked dir.
+- Test `test_an_initialized_submodule_refuses_and_survives` — R1, submodule at its recorded commit.
+- Test `test_an_ignored_foreign_checkout_with_a_carriage_return_in_its_name_refuses_and_survives` — R2.
+- Test `test_an_unreadable_directory_refuses_instead_of_being_skipped` — permission-denied refuses.
 - Mocks: none.
