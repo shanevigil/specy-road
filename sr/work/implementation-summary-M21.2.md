@@ -4,7 +4,7 @@
 
 - `move_nodes(root, moves, *, renumber_outline, new_parent)` in `roadmap_move_node.py`: every move runs in memory, then one `stage_id_rewrite` stages one `AtomicWritePlan` and validates once. `move_node` is a one-move call, and `move_node_outline`, so `apply_indent` / `apply_outdent`, go through it.
 - `apply_indent` / `apply_outdent` / `move_node_outline` now return the `old -> new` map (`None` on a no-op) instead of a bool. The GUI routes answer `changed: id_map is not None`, so their shape is unchanged.
-- `specy-road indent`, `outdent`, `group-nodes` and `group_nodes()` in the new `roadmap_outline_group.py`; `POST /outline/group` (`GroupOutlineBody`) calls the same function. Every refusal is a 400 with a string detail, a malformed body and a locked milestone included; only bytes that are not JSON stay FastAPI's 422.
+- `specy-road indent`, `outdent`, `group-nodes` and `group_nodes()` in the new `roadmap_outline_group.py`; `POST /outline/group` (`GroupOutlineBody`) calls the same function. Every refusal is a 400 with a string detail, a malformed body, bytes that are not JSON and a locked milestone included: the route parses the raw request bytes itself.
 - `docs/roadmap-authoring.md` and `cli_usage` list the commands.
 
 ## Touch zones (final list)
@@ -34,7 +34,23 @@ Reviewer `gpt-6.1-sol-low` blocked `3f446e67` on two findings; `origin/WIP/impro
 - **A1, class: an output that differs from the acceptance's fixed no-op text.** Removed the extra branch: `cmd_indent` passes one constant.
 - **A4, class: a refusal of `/outline/group` input answered with anything but a 400.** Wider than the finding: every malformed body was a 422. `group_nodes` now owns the lock refusal (a `ValueError`, shared by CLI and GUI), and the route validates the body inside the same `try`. Both separate lock paths (`cmd_group`'s pre-check and the route's `_pm_milestone_lock_guard` call) are gone.
 
+## Fix round 2
+
+Reviewer `gpt-6.1-sol-low` blocked `3cb76933` on one finding; `origin/WIP/improvements-0-3-1` is merged in.
+
+- **A4, class: request bytes FastAPI parses before the route runs, so its 422 answers instead of the route's 400.** Removed the class rather than the instance: the route no longer declares a body. A dependency hands it the raw bytes and `GroupOutlineBody.model_validate_json` parses and validates them in one step inside the existing `try`, so there is no framework-side parse left to fail. No new branch; the route's `except ValueError` is unchanged. Contract test extended with truncated JSON (`{`) and non-JSON bytes, both sent as `application/json`.
+- **Decision:** the route ignores `Content-Type`: any body that parses as a valid group request is accepted (valid JSON under `text/plain` is a 200). The other routes are unchanged and still answer 422 for malformed JSON; A4 asks for 400 only on `/outline/group` and keeps the existing endpoint shapes.
+
 ## Probes
+
+- Round 2: `/outline/group`, `application/json` body `{`: 422 before, 400 now (test).
+- Round 2: `/outline/group`, `application/json` body `not json`: 400 (test).
+- Round 2: `/outline/group`, bytes `\xff\xfe` (not UTF-8), form-encoded `a=1`, JSON `null`, JSON `"x"`, a partial object under `text/plain`: all 400 with a string detail, tree unchanged (one-off probe, not kept as a test).
+- Round 2: `/outline/group`, valid body under `text/plain`: 200 (probe; see the decision above).
+- Round 2: empty body and no body: 400, `json_invalid` (existing `no-body` test case).
+- Round 2: request-level checks still run first: missing or stale fingerprint is 428/412 before any body parse, from the same `require_pm_gui_write_header` dependency (existing tests in the GUI suites pass).
+- Round 2: other routes in the change that take a JSON body (`/nodes/{id}/indent`, `/nodes/{id}/outdent`, `/outline/move`): malformed JSON still 422; existing contract, out of A4's scope, left alone.
+- Round 2: CLI `group-nodes`, `indent`, `outdent` take no JSON input; the class does not reach them.
 
 - Indent, nothing above (`M1.1`): exit 1, `no previous sibling`, tree unchanged (test).
 - Indent, gate above: same no-op and message (test, was the finding).
@@ -45,7 +61,7 @@ Reviewer `gpt-6.1-sol-low` blocked `3f446e67` on two findings; `origin/WIP/impro
 - GUI indent/outdent no-op: still 200 `{"ok": true, "changed": false}` (existing contract test).
 - `/outline/group` locked: 409 before, 400 now (test).
 - `/outline/group` missing field, empty object, list body, no body, `node_ids` not a list: 422 before, 400 now (probe, then tests).
-- `/outline/group` body that is not JSON: still 422, raised before the route runs. Accepted limit, stated in the route docstring.
+- `/outline/group` body that is not JSON: was 422 (raised before the route ran, accepted as a limit in fix round 1; reopened in fix round 2, see below).
 - `/outline/group` with a corrupt chunk, missing chunk or missing manifest: 412 from the fingerprint check before the route runs, so the old guard's 409 for an unreadable roadmap is not reachable through it (probe).
 - Other statuses on the route: 412/428 fingerprint and 403 read-only are request-level, not input refusals; left alone.
 - `group_nodes` refusal order: lock check comes after the sibling check and before anything is derived or staged; tree unchanged (tests).
