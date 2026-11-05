@@ -27,6 +27,11 @@ No other paths were required. `review_record_write._review_record` already calls
 
 - Removed unused `ReviewRecordTrace.target_resolved` alias (only `roster_resolved` is used).
 
+## Fix round (Sol-low block on `a4ba3e64`)
+
+- `read_rejected_marker` validates YAML and mapping front matter; malformed files become a `marker unreadable: <path>` line while status commands continue.
+- `review list --json` exits 1 when `review_list_payload` carries an `error`, matching text mode.
+
 ## Probes
 
 - Unrostered model with a missing notes path: roster check runs first; no `REJECTED-*.md` and no reviews directory (`test_unrostered_model_with_missing_notes_writes_no_marker`).
@@ -36,10 +41,12 @@ No other paths were required. `review_record_write._review_record` already calls
 - Milestone with open leaves before roster lookup: returns `milestone_open_problem` without a marker (`test_an_unfinished_milestone_is_not_awaiting_its_full_review`).
 - Delegate and direct `review record` refusals after roster resolution: still write markers (`test_delegated_refusal_writes_the_same_marker`, existing A1 tests).
 - Repo-wide search for `target_resolved` callers before removal: only the dead alias in `review_rejected.py`; no external references.
+- Sequence-valued and malformed YAML `REJECTED-*.md` on disk: `review list` and `handoff status` print `marker unreadable: …` and complete (`test_malformed_rejected_marker_is_reported_without_breaking_list`).
+- Unknown node and bad `--ref` with `review list --json`: exit 1 with JSON `error` and stderr `error:` (`test_review_list_json_exits_nonzero_on_target_resolution_errors`).
 
 ## Added
 
-- `write_rejected`, `clear_rejected`, `rejected_state`, `ReviewRecordTrace`, `run_review_record` in `review_rejected.py` — marker I/O, age formatting, roster-gated tracing, and the full `review record` command.
+- `write_rejected`, `clear_rejected`, `rejected_state`, `read_rejected_marker`, `unreadable_rejected_lines`, `ReviewRecordTrace`, `run_review_record` in `review_rejected.py` — marker I/O, safe reads, age formatting, roster-gated tracing, and the full `review record` command.
 - `_review_record_setup`, `_review_record_validate`, `_review_record_signed_data`, `_review_record_finish` in `review_rejected.py` — split `run_review_record` for ruff C901 without behaviour change.
 - `refused_text`, `refused_by_model`, `extend_handoff_refused`, `print_refused_list`, `review_list_payload` in `review_run_status.py` — display, handoff JSON, and list JSON payloads.
 - `refused` / `extend_handoff_refused` / `review list --json` wiring in `review_cli.py`.

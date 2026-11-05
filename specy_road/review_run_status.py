@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.review_files import list_reviews, reviews_dir
-from specy_road.review_rejected import REJECTED_PREFIX, rejected_state
+from specy_road.review_rejected import REJECTED_PREFIX, rejected_state, unreadable_rejected_lines
 from specy_road.review_target import ReviewTargetError, resolve_target, same_commit
 
 
@@ -65,6 +65,8 @@ def refused_by_model(repo_root: Path, node_id: str, commit: str | None) -> dict[
 
 
 def extend_handoff_refused(st: dict[str, Any], lines: list[str]) -> None:
+    for unreadable in st.get("refused_unreadable") or []:
+        lines.append(f"  {unreadable}")
     fams = {r["model"]: r["family"] for r in st.get("reviewer_eligibility") or []}
     for model, info in sorted((st.get("refused") or {}).items()):
         fam = fams.get(model)
@@ -88,6 +90,7 @@ def review_list_payload(repo_root: Path, node_id: str, ref: str | None) -> dict[
             return {"node_id": node_id, "error": str(e)}
         t = None
     commit = t.commit if t else None
+    reviews = reviews_dir(repo_root, node_id)
     return {
         "node_id": node_id,
         "ref": t.ref if t else None,
@@ -99,5 +102,6 @@ def review_list_payload(repo_root: Path, node_id: str, ref: str | None) -> dict[
             for r in list_reviews(repo_root, node_id)
         ],
         "refused": refused_by_model(repo_root, node_id, commit),
+        "refused_unreadable": unreadable_rejected_lines(reviews),
         "review_runs": run_states(repo_root, node_id, commit),
     }

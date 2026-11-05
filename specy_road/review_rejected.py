@@ -61,7 +61,13 @@ def _age(when: datetime, now: datetime) -> str:
     return "under 1m"
 
 
-def _read_marker(path: Path) -> tuple[dict, str] | None:
+def read_rejected_marker(path: Path) -> tuple[dict[str, Any], str] | str | None:
+    """Read ``REJECTED-*.md`` front matter.
+
+    Returns ``(data, body)`` when valid, ``None`` when the file is absent or not a marker block, or a single
+    ``marker unreadable: <path>`` line when YAML is malformed or front matter is not a mapping with ``commit`` and
+    ``refused_at``.
+    """
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
@@ -70,9 +76,28 @@ def _read_marker(path: Path) -> tuple[dict, str] | None:
         return None
     parts = text.split("---\n", 2)
     if len(parts) < 3:
-        return None
-    data = yaml.safe_load(parts[1]) or {}
-    return data, parts[2]
+        return f"marker unreadable: {path}"
+    try:
+        loaded = yaml.safe_load(parts[1])
+    except yaml.YAMLError:
+        return f"marker unreadable: {path}"
+    if not isinstance(loaded, dict):
+        return f"marker unreadable: {path}"
+    if not loaded.get("commit") or not loaded.get("refused_at"):
+        return f"marker unreadable: {path}"
+    return loaded, parts[2]
+
+
+def unreadable_rejected_lines(reviews: Path) -> list[str]:
+    """Every ``marker unreadable: …`` line for ``REJECTED-*.md`` under ``reviews``."""
+    if not reviews.is_dir():
+        return []
+    lines: list[str] = []
+    for path in sorted(reviews.glob(f"{REJECTED_PREFIX}*.md")):
+        read = read_rejected_marker(path)
+        if isinstance(read, str):
+            lines.append(read)
+    return lines
 
 
 def _parse_when(value: object) -> datetime | None:
@@ -93,10 +118,10 @@ def rejected_state(reviews: Path, model: str, commit: str | None,
         return None
     root = repo_root or _repo_root(reviews)
     path = rejected_path(reviews, model)
-    parsed = _read_marker(path)
-    if not parsed:
+    read = read_rejected_marker(path)
+    if read is None or isinstance(read, str):
         return None
-    data, body = parsed
+    data, body = read
     if not same_commit(root, data.get("commit"), commit):
         return None
     node_id = reviews.name

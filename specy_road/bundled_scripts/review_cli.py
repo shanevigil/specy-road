@@ -35,7 +35,7 @@ from specy_road.red_green import cmd_red_green
 from specy_road.review_files import (
     REVIEW_LAUNCH_MODES, executor_blocked_display_lines, latest_ready, list_ready,
     list_reviews, node_ids_with_reviews, non_gating_verify_problems, render_front_matter,
-    review_path, reviews_root, round_span, write_review,
+    review_path, reviews_dir, reviews_root, round_span, write_review,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, trial_merge
 from specy_road.review_rejected import run_review_record
@@ -47,7 +47,8 @@ from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_next_step import fix_round_budget
 from specy_road.bundled_scripts.review_defer import add_parser as add_defer_parser
 from specy_road.orphaned_claims import orphaned_claims, report_lines
-from specy_road.review_run_status import extend_handoff_refused, print_refused_list, refused_by_model, review_list_payload
+from specy_road.review_run_status import (extend_handoff_refused, print_refused_list, refused_by_model,
+                                          review_list_payload, unreadable_rejected_lines)
 from specy_road.review_target import (ReviewTarget, ReviewTargetError, milestone_status,
                                       resolve_target, same_commit)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -108,6 +109,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         "review_runs": (runs := run_states(root, node_id, gate.commit)),
         "policy": gate_policy_summary(gate, runs), "reviewer_eligibility": reviewer_eligibility(root, t.node, gate, branch),
         "refused": refused_by_model(root, node_id, gate.commit),
+        "refused_unreadable": unreadable_rejected_lines(reviews_dir(root, node_id)),
         "policy_met": gate.passed,
         "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
                         "blocking": tm.code_conflicts} if tm and tm.conflicts else None,
@@ -273,6 +275,8 @@ def _print_review_list_text(root: Path, ns: argparse.Namespace, t: ReviewTarget 
               + ("" if r.ok else f" — invalid: {'; '.join(r.errors)}") + (" — stale: not the commit under review" if stale else ""))
     if t:
         print_refused_list(root, ns.node_id, t.commit)
+    for line in unreadable_rejected_lines(reviews_dir(root, ns.node_id)):
+        print(line)
     print("\n".join(run_lines(run_states(root, ns.node_id, t.commit if t else None))) or "No delegated review runs.")
     print(round_span(root, ns.node_id)["line"])
     loop = loop_state(root, ns.node_id)
@@ -297,7 +301,10 @@ def cmd_review_list(ns: argparse.Namespace) -> int:
     """Filed records and RCA records, the gate at the commit under review, then any escalation; reads only."""
     root = resolve_repo_root(ns)
     if ns.json:
-        print(json.dumps(review_list_payload(root, ns.node_id, ns.ref), indent=2))
+        payload = review_list_payload(root, ns.node_id, ns.ref)
+        print(json.dumps(payload, indent=2))
+        if payload.get("error"):
+            return _fail(payload["error"])
         return 0
     try:
         t = resolve_target(root, ns.node_id, ns.ref)

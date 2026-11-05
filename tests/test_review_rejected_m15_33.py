@@ -120,3 +120,31 @@ def test_delegated_refusal_writes_the_same_marker(tmp_path: Path) -> None:
                          "--repo-root", str(repo)])
     assert e.value.code == 1
     assert rejected_path(reviews_dir(repo, "M1.1"), "opus").is_file()
+
+
+def test_malformed_rejected_marker_is_reported_without_breaking_list(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    reviews = reviews_dir(repo, "M1.1")
+    reviews.mkdir(parents=True, exist_ok=True)
+    bad = reviews / "REJECTED-opus.md"
+    bad.write_text("---\n[one, two]\n---\nstill here\n")
+    run_review_cli("review", "list", "M1.1", "--repo-root", str(repo))
+    assert f"marker unreadable: {bad}" in capsys.readouterr().out
+    capsys.readouterr()
+    run_review_cli("handoff", "status", "M1.1", "--repo-root", str(repo))
+    assert f"marker unreadable: {bad}" in capsys.readouterr().out
+
+
+def test_review_list_json_exits_nonzero_on_target_resolution_errors(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    capsys.readouterr()
+    assert run_review_cli("review", "list", "M9.9", "--json", "--repo-root", str(repo)) == 1
+    out = capsys.readouterr()
+    assert "unknown node" in out.err.lower()
+    assert json.loads(out.out)["error"]
+    capsys.readouterr()
+    assert run_review_cli("review", "list", "M1.1", "--ref", "not-a-valid-ref", "--json",
+                          "--repo-root", str(repo)) == 1
+    out = capsys.readouterr()
+    assert out.err.startswith("error:")
+    assert json.loads(out.out)["error"]
