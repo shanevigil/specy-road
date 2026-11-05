@@ -30,7 +30,7 @@ FILES = ("pkg/worker_ops_launch.py", "pkg/worker_ops_stop.py", "pkg/core.py", "d
 UNTRACKED = "touch zones that match no tracked file and are not a directory"
 
 
-def _git_repo(root: Path, files=FILES) -> Path:
+def zone_git_repo(root: Path, files=FILES) -> Path:
     for rel in files:
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         (root / rel).write_text("x = 1\n", encoding="utf-8")
@@ -47,7 +47,7 @@ def _node(zones: list[str], status: str = "Not Started", nid: str = "M1.1") -> d
 
 
 def test_a_name_prefix_is_named_with_the_glob_to_use(tmp_path: Path, capsys) -> None:
-    _git_repo(tmp_path)
+    zone_git_repo(tmp_path)
 
     warn_untracked_zones([_node(["pkg/worker_ops_"])], tmp_path)
 
@@ -61,13 +61,13 @@ def test_a_name_prefix_is_named_with_the_glob_to_use(tmp_path: Path, capsys) -> 
 
 
 def test_missing_paths_and_unmatched_globs_on_open_nodes_share_one_notice(tmp_path: Path, capsys) -> None:
-    _git_repo(tmp_path)
+    zone_git_repo(tmp_path)
     nodes = [
         _node(["pkg/new_module.py", "pkg/core.py"]),
         _node(["pkg/nope_*.py", "pkg/worker_ops_*.py"], status="In Progress", nid="M1.2"),
     ]
 
-    warn_untracked_zones(nodes, tmp_path)
+    warn_untracked_zones(nodes, tmp_path, claims=[{"node_id": "M1.1"}])   # claimed: named, not counted
 
     out, err = capsys.readouterr()
     assert err == ""   # stdout: --strict counts stderr lines, and new-file zones are expected
@@ -78,7 +78,7 @@ def test_missing_paths_and_unmatched_globs_on_open_nodes_share_one_notice(tmp_pa
 
 
 def test_the_written_node_s_zones_are_a_stderr_warning(tmp_path: Path, capsys) -> None:
-    _git_repo(tmp_path)
+    zone_git_repo(tmp_path)
 
     warn_written_zones("M1.1", ["pkg/new_module.py", "pkg/core.py", "pkg/worker_ops_"], tmp_path)
 
@@ -90,7 +90,7 @@ def test_the_written_node_s_zones_are_a_stderr_warning(tmp_path: Path, capsys) -
 
 @pytest.mark.parametrize("zone", ["pkg/core.py", "pkg", "pkg/", "pkg/worker_ops_*.py", "pkg/worker_ops_*", "docs"])
 def test_files_directories_and_matching_globs_are_quiet(tmp_path: Path, capsys, zone: str) -> None:
-    _git_repo(tmp_path)
+    zone_git_repo(tmp_path)
 
     warn_untracked_zones([_node([zone])], tmp_path)
 
@@ -98,7 +98,7 @@ def test_files_directories_and_matching_globs_are_quiet(tmp_path: Path, capsys, 
 
 
 def test_settled_nodes_are_left_alone(tmp_path: Path, capsys) -> None:
-    _git_repo(tmp_path)
+    zone_git_repo(tmp_path)
 
     warn_untracked_zones([_node(["pkg/worker_ops_", "pkg/gone.py"], status="Complete")], tmp_path)
 
@@ -113,7 +113,7 @@ def test_outside_git_the_check_is_silent(tmp_path: Path, capsys) -> None:
 
 
 def test_untracked_zones_keep_globs_and_directories_and_leave_prefixes_out(tmp_path: Path) -> None:
-    _git_repo(tmp_path)
+    zone_git_repo(tmp_path)
     (tmp_path / "work").mkdir()   # a directory with no tracked file is still a directory
     tracked = tracked_files(tmp_path)
 
@@ -123,7 +123,7 @@ def test_untracked_zones_keep_globs_and_directories_and_leave_prefixes_out(tmp_p
 
 
 def test_a_nested_project_matches_zones_from_either_root(tmp_path: Path) -> None:
-    _git_repo(tmp_path, files=("sr/schemas/a.json", "pkg/core.py"))
+    zone_git_repo(tmp_path, files=("sr/schemas/a.json", "pkg/core.py"))
     tracked = tracked_files(tmp_path / "sr")
 
     assert untracked_zones(["schemas/a.json", "sr/schemas/a.json", "pkg/core.py"], tracked) == []
@@ -133,7 +133,7 @@ def test_a_nested_project_matches_zones_from_either_root(tmp_path: Path) -> None
 @pytest.fixture
 def crud_git_repo(tmp_path: Path) -> Path:
     crud_fixture_repo(tmp_path)
-    return _git_repo(tmp_path)
+    return zone_git_repo(tmp_path)
 
 
 def _validate(root: Path, *flags: str) -> subprocess.CompletedProcess[str]:
@@ -154,6 +154,8 @@ def test_validate_reports_a_not_started_node_s_missing_path_and_unmatched_glob(c
     assert r.returncode == 0, r.stderr
 
     v = _validate(crud_git_repo)
+    assert f"roadmap: notice — {UNTRACKED}: 1 node(s) (by status: Not Started 1);" in v.stdout   # counted only
+    v = _validate(crud_git_repo, "--all")
 
     assert v.returncode == 0, v.stderr
     assert "OK: roadmap and registry validate." in v.stdout

@@ -82,6 +82,7 @@ GITIGNORE_LINES = [
     "work/brainstorm-*-prompt.md",
     "work/brainstorm-closed/*-prompt.md",
     "roadmap/orchestration.local.yaml",
+    "roadmap/decisions.local.yaml",   # `decisions add --local`: this clone's decisions overlay (M15.22)
     LOCAL_MD,
 ]
 
@@ -91,9 +92,9 @@ _GITIGNORE_NOTE = (
     "PR body re-inlines the brief and summary); review records (a commit would\n"
     "move the branch past the reviewed commit); session, worker and worktree\n"
     "state; the `chore garden` run record; brainstorm prompts; per-checkout\n"
-    "orchestration availability overlay.\n"
+    "orchestration availability overlay; per-clone decisions overlay.\n"
     "Also never committed: .specyrd/AGENTS.local.md, your personal addendum to\n"
-    "specy-road's agent rules. `.specyrd/manifest.json` stays tracked."
+    "specy-road's agent rules. `.specyrd/manifest.json`, when present, stays tracked."
 )
 
 

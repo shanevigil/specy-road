@@ -12,6 +12,9 @@ model=$1 prompt=$2 effort=$3
 last=$(mktemp "${TMPDIR:-/tmp}/codex-last.XXXXXX") || exit 1
 trap 'rm -f "$last"' EXIT
 set -- -m "$model" ${effort:+-c model_reasoning_effort="$effort"} -s workspace-write --add-dir "$REVIEWS" --skip-git-repo-check -o "$last"
+if [ -f "$prompt" ] && [ -f "$(dirname "$0")/review-addendum.md" ]; then
+  merged=$(mktemp "${TMPDIR:-/tmp}/review-prompt.XXXXXX") && cat "$prompt" "$(dirname "$0")/review-addendum.md" > "$merged" && prompt=$merged
+fi
 mkdir -p "$REVIEWS/.transcripts"
 side="$REVIEWS/.transcripts/codex-$(date +%Y%m%dT%H%M%S)-$$.log"
 if [ -f "$prompt" ]; then codex exec "$@" - < "$prompt" > "$side" 2>&1; else codex exec "$@" "$prompt" </dev/null > "$side" 2>&1; fi

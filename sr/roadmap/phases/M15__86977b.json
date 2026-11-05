@@ -165,7 +165,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.22_project-preferences-local-decisions-footer-summary-landing_28fd4390-9084-4f8d-9304-1f7d6e6a88c7.md",
       "sibling_order": 22,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Project preferences the workflow respects: local decisions, a PR body footer, the summary commit rule, and local landing for the root repository",
       "touch_zones": [
         "specy_road/decisions.py",

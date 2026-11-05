@@ -20,10 +20,8 @@ from specy_road.decisions import (
     format_open_entry,
     format_preference,
     open_questions,
-    read_decisions,
-    schema_errors,
-    schema_path_for_write,
 )
+from specy_road.decisions_local import LOCAL, SHARED, load_merged, next_free_id
 from specy_road.model_profiles import ROLES
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
@@ -85,13 +83,13 @@ def _add_preference(root: Path, ns: argparse.Namespace) -> int:
         entry = add_preference(
             root, summary=ns.summary, role=ns.role, models=ns.model, applies_to=ns.applies_to,
             expires=ns.expires, why=ns.why, node_id=ns.node, preference_id=ns.id,
-            supersedes=ns.supersedes, asked=ns.asked,
+            supersedes=ns.supersedes, asked=ns.asked, local=ns.local,
         )
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
     tail = f"; closed {ns.supersedes}" if ns.supersedes else ""
-    print(f"added {entry['id']} (preference){tail} → {decisions_path(root)}")
+    print(f"added {entry['id']} (preference){tail} → {decisions_path(root, ns.local)}")
     return 0
 
 
@@ -100,6 +98,8 @@ def cmd_add(ns: argparse.Namespace) -> int:
     if err := _kind_flag_error(ns):
         print(f"error: {err}", file=sys.stderr)
         return 1
+    # One id sequence across both ledgers: a new entry must not shadow, or be shadowed by, the other's.
+    ns.id = ns.id or next_free_id(root, "P" if ns.kind == PREFERENCE else "D")
     if ns.kind == PREFERENCE:
         return _add_preference(root, ns)
     options = [_parse_option(o) for o in ns.option]
@@ -117,48 +117,50 @@ def cmd_add(ns: argparse.Namespace) -> int:
             decision_id=ns.id,
             needed_by=ns.needed_by,
             asked=ns.asked,
+            local=ns.local,
         )
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
-    print(f"added {entry['id']} (open) → {decisions_path(root)}")
+    print(f"added {entry['id']} (open) → {decisions_path(root, ns.local)}")
     return 0
 
 
 def cmd_list(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
-    path = decisions_path(root)
-    doc = read_decisions(path)
-    errs = schema_errors(doc, schema_path_for_write(root))
+    doc, local_ids, errs = load_merged(root)
     if errs:
         for line in errs:
             print(f"decisions.schema: {line}", file=sys.stderr)
         return 1
     prefs, questions = active_preferences(doc), open_questions(doc)
     if ns.json:
-        print(json.dumps(prefs + questions, indent=2))
+        print(json.dumps([{**e, "source": LOCAL if e["id"] in local_ids else SHARED} for e in prefs + questions],
+                         indent=2))
         return 0
     if not prefs and not questions:
-        print("No open decisions in roadmap/decisions.yaml.")
+        print("No open decisions in roadmap/decisions.yaml or roadmap/decisions.local.yaml.")
         return 0
-    for e in prefs:
-        print(format_preference(e))
-        print()
-    for e in questions:
-        print(format_open_entry(e))
+    for e in prefs + questions:   # each entry names its ledger: local wins over shared for the same id
+        head, rest = (format_preference(e) if e in prefs else format_open_entry(e)).split("\n", 1)
+        print(f"{head}  ({LOCAL if e['id'] in local_ids else SHARED})\n{rest}")
         print()
     return 0
 
 
 def cmd_close(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
-    doc = read_decisions(decisions_path(root))
-    target = next((e for e in doc.get("entries") or [] if isinstance(e, dict) and e.get("id") == ns.decision_id), None)
+    doc, local_ids, errs = load_merged(root)
+    if errs:
+        print(f"error: {errs[0]}", file=sys.stderr)
+        return 1
+    target = next((e for e in doc["entries"] if e.get("id") == ns.decision_id), None)
     if not target:
-        print(f"error: no decision {ns.decision_id!r} in roadmap/decisions.yaml", file=sys.stderr)
+        print(f"error: no decision {ns.decision_id!r} in roadmap/decisions.yaml or roadmap/decisions.local.yaml",
+              file=sys.stderr)
         return 1
     sheet = None if target.get("kind") == PREFERENCE else _sheet_for_node(root, target["node"])[1]
-    close_entry(root, ns.decision_id, ns.answer, sheet_text=sheet)
+    close_entry(root, ns.decision_id, ns.answer, sheet_text=sheet, local=ns.decision_id in local_ids)
     print(f"closed {ns.decision_id!r}")
     return 0
 
@@ -191,6 +193,9 @@ def build_parser() -> argparse.ArgumentParser:
                      help="Preference: a leaf kind it covers, such as docs or data; repeat (default: every leaf)")
     add.add_argument("--expires", help="Preference: active through this date (YYYY-MM-DD) or until this datetime")
     add.add_argument("--supersedes", metavar="ID", help="Preference: close this open preference in the same write")
+    add.add_argument("--local", action="store_true",
+                     help="Write the gitignored roadmap/decisions.local.yaml (this clone only, no commit needed) "
+                          "instead of roadmap/decisions.yaml; readers merge it over the tracked ledger, local wins")
     add_repo_root_arg(add)
     add.set_defaults(func=cmd_add)
 
