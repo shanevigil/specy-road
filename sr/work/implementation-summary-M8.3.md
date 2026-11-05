@@ -667,6 +667,44 @@ Tests in `tests/test_review_record_write.py`:
 
 All changed files are inside M8.3's zones: `review_answer`, `review_write_check`, `review_record_write`, `review_delegate`, `worker_adapter_base/claude/codex/cursor`, `worker_adapters`, both docs, and `tests/`.
 
+## Fix round (Sol-low block at `e559ea74`; Sol block at `26d95ca0`)
+
+WIP merged first (`ed936c6b`), no conflicts.
+
+### Sol-low F1: tests coupled to fake-harness call count and order
+
+- **Class:** a test that asserts how many launches the fake harness recorded, or reads a launch by its position, instead of by what the launch observably was. Fake-call position is not behaviour; it breaks if the toolkit adds a preflight or probe call.
+- **Design:** a new public helper, `tests/review_delegate_helpers.launches(calls, flag)`, selects launches by an argv flag: `--session-id` for a fresh turn, `--resume` for a resumed one. Retry counts are now asserted only from the run record's `attempts`.
+- **Changed:**
+  - `test_review_record_write_closure.py`: the Codex resume test selects resumes by `exec resume`, asserts no `-o` (fresh) launch, and asserts a single attempt. The retried-Codex test selects the fresh launch by `-o` and the resume by `exec resume`; it keeps the `attempts` capacity list `[True, False]`.
+  - `test_review_delegate.py`:
+    - success: selects the fresh launch with `launches`;
+    - capacity retry: every `--resume` launch names the fresh session and gets the continue prompt; the count is from `attempts`;
+    - retry-never-files: `attempts == [True, False]`;
+    - bounded retries: `attempts` gives three capacity errors;
+    - resume: some `--resume` launch names the recorded session;
+    - zero retries and capacity-in-review-text: `attempts` only.
+  - `test_review_files.py`: both Claude reviewer tests select the launch by argv prefix (`claude -p`, `sh -c`), not `calls[0]` or a one-element unpack.
+- Every outcome, argv, prompt and no-record assertion is kept.
+
+### Sol (`26d95ca0`) R1-R4: status at this tip
+
+- R1 (identical-byte writes to `RUN-<model>.json` / `.log`) was **withdrawn by the maintainer's rescope** on WIP `25e8e930`. Those are run files specy-road writes, which the A2 tripwire leaves out. Identical-byte rewrites are documented as out of scope. No code is added for R1.
+- R2 (a valid result, then a truncated result line) was fixed by the A3 table in the rescope round. It has a table row and an end-to-end `review delegate --json` test.
+- R3 (Codex `turn.started` after a completed turn) was fixed by the same table, which requires `turn.completed` in the final turn. It is a table row.
+- R4 (stale `sr/roadmap.md`) was fixed in `90cb2766`. `specy-road export --check` passes at this tip.
+
+## Probes
+
+- `grep` over every test file this branch changes for `(call,) =`, `len(fake_calls`, `calls[0]`, positional `first, second` unpacks, and reading `calls.read_text()` by position: all instances fixed. The one remaining `[-1]` selects among argv-filtered fresh launches.
+- `FAKE_CODEX` / `FAKE_AGY` in `review_delegate_helpers` write the launch's argv to a file: each test reads flags out of that argv (`--output-schema`, `-o`, `sandbox_mode=read-only`), never a count. Left as is.
+- The `FAKE` script picks its step by call index (`min(len(calls), len(steps))`): that is how the fake scripts a sequence, not an assertion. Each test's outcome is asserted from the run record. Left as is.
+- `test_one_leafs_reviewer_runs_take_turns` and the bad-option test assert that `calls.json` does not exist (no launch at all): that is observable, not a count. Left as is.
+- Sol R2 class (malformed lines after a valid answer) over all four `TURNS` rows: Claude Code and Cursor truncated-result rows give a rerun; Codex with an unparseable line in the final turn gives a rerun; generic with an extra or truncated envelope gives a rerun.
+- Sol R3 class (a later turn opening after an answer): Codex `turn.started` after `turn.completed` gives a rerun. Claude Code and Cursor treat one process as one turn, and `run_text` takes only the last attempt's output.
+- `specy-road export --check` (from `sr/`): OK. `specy-road file-limits`: OK. `ruff check` on the changed tests: clean.
+- Targeted `pytest -q -n 4 -p no:cacheprovider` over the 17 core reviewer files: 453 passed.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).

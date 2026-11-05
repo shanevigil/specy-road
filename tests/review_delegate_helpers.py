@@ -77,6 +77,13 @@ def fake_calls(spec: Path) -> list[list[str]]:
     return json.loads(spec.with_name("calls.json").read_text())
 
 
+def launches(calls: list[list[str]], flag: str) -> list[list[str]]:
+    """The launches whose argv carries ``flag`` (``--session-id``: a fresh turn; ``--resume``: a resumed one), so a
+    test selects a launch by what it observably was, never by how many calls came before it. Retry counts come from
+    the run record's ``attempts``."""
+    return [c for c in calls if flag in c]
+
+
 def verdict_step(repo: Path, verdict: str = "approve", model: str = "opus") -> dict:
     """A step whose final JSON specy-road files as a valid REVIEW-opus.md for the commit under review."""
     return {"answer": review_output(git(repo, "rev-parse", "HEAD"), model=model, verdict=verdict,

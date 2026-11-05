@@ -14,8 +14,8 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import script_subprocess_env
-from tests.review_delegate_helpers import (CAPACITY, delegate_repo, delegate_roster, fake_calls, set_steps,
-                                           verdict_step)
+from tests.review_delegate_helpers import (CAPACITY, delegate_repo, delegate_roster, fake_calls, launches,
+                                           set_steps, verdict_step)
 from tests.review_repo_helpers import commit_file, git, make_review_repo
 from tests.test_models_and_prompt import run_main
 
@@ -49,7 +49,7 @@ def test_success_builds_the_prompt_launches_and_records_the_session(tmp_path: Pa
     run = json.loads(capsys.readouterr().out)
     assert run["state"] == "complete" and run["harness"] == "claude-code" and run["reason"] is None
     assert run["commit"] == git(repo, "rev-parse", "HEAD") and len(run["attempts"]) == 1
-    (call,) = fake_calls(spec)
+    call = launches(fake_calls(spec), "--session-id")[-1]          # the fresh launch, by its argv
     assert call[1] == "--session-id" and run["session_id"] == call[2]   # chosen up front, reported back
     prompt = Path(call[0]).read_text()
     assert "## Your role: reviewer" in prompt and "# Review packet" in prompt
@@ -67,9 +67,9 @@ def test_a_capacity_error_is_retried_with_backoff_and_resumes_the_session(tmp_pa
     assert run["state"] == "complete"
     assert [a["capacity"] for a in run["attempts"]] == [True, True, False]
     assert waits == [2.0, 4.0]                              # doubling, between attempts only
-    first, second, third = fake_calls(spec)
-    assert first[1] == "--session-id" and second[1:3] == third[1:3] == ["--resume", first[2]]
-    assert "Continue the review" in Path(second[0]).read_text()
+    (fresh,), resumed = launches(fake_calls(spec), "--session-id"), launches(fake_calls(spec), "--resume")
+    assert resumed and all(c[c.index("--resume") + 1] == fresh[2] for c in resumed)   # each retry resumes it
+    assert all("Continue the review" in Path(c[0]).read_text() for c in resumed)
 
 
 def test_a_retry_never_files_an_earlier_attempts_answer(tmp_path: Path) -> None:
@@ -78,7 +78,7 @@ def test_a_retry_never_files_an_earlier_attempts_answer(tmp_path: Path) -> None:
     first = {"say": json.dumps(verdict_step(repo)["answer"]), "error": CAPACITY, "exit": 1}
     set_steps(repo, spec, first, {"raw": "not a verdict"})
     run = delegate(repo, "M1.1", "opus", retries=1, backoff=0, sleep=lambda _s: None)
-    assert len(fake_calls(spec)) == 2 and run["outcome"] == "rerun"
+    assert [a["capacity"] for a in run["attempts"]] == [True, False] and run["outcome"] == "rerun"
     assert not (reviews_dir(repo, "M1.1") / "REVIEW-opus.md").exists()
 
 
@@ -106,8 +106,8 @@ def test_capacity_retries_are_bounded_and_end_incomplete(tmp_path: Path, capsys)
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, {"error": CAPACITY, "exit": 1})
     assert _delegate(repo, "--retries", "2") == 1
-    assert len(fake_calls(spec)) == 3
     run = load_run(repo, "M1.1", "opus")
+    assert [a["capacity"] for a in run["attempts"]] == [True, True, True]
     assert run["state"] == "incomplete" and "capacity error after 3 attempt(s)" in run["reason"]
     assert "incomplete" in capsys.readouterr().out
 
@@ -149,7 +149,7 @@ def test_resume_continues_the_recorded_session(tmp_path: Path, capsys) -> None:
     assert _delegate(repo) == 1
     sid = load_run(repo, "M1.1", "opus")["session_id"]
     assert _delegate(repo, "--resume") == 0
-    assert fake_calls(spec)[1][1:3] == ["--resume", sid]
+    assert any(c[c.index("--resume") + 1] == sid for c in launches(fake_calls(spec), "--resume"))
     commit_file(repo, "src/a.py", "print('moved')\n", "moved")
     capsys.readouterr()
     assert _delegate(repo, "--resume") == 1                           # the session reviewed another commit
@@ -188,7 +188,7 @@ def test_zero_retries_still_makes_the_first_attempt_and_ends_incomplete(tmp_path
     set_steps(repo, spec, {"error": CAPACITY, "exit": 1})
     assert _delegate(repo, "--retries", "0", "--json") == 1             # --backoff 0: no wait, no crash
     run = json.loads(capsys.readouterr().out)
-    assert len(fake_calls(spec)) == 1 and [a["capacity"] for a in run["attempts"]] == [True]
+    assert [a["capacity"] for a in run["attempts"]] == [True]
     assert run["state"] == "incomplete" and "capacity error after 1 attempt(s)" in run["reason"]
 
 
@@ -259,7 +259,7 @@ def test_review_text_that_mentions_capacity_is_not_a_capacity_error(tmp_path: Pa
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, {"say": said, "exit": 1})
     run = delegate(repo, "M1.1", "opus", retries=3, backoff=0, sleep=lambda _s: None)
-    assert len(fake_calls(spec)) == 1 and [a["capacity"] for a in run["attempts"]] == [False]   # no retry
+    assert [a["capacity"] for a in run["attempts"]] == [False]   # no retry
     assert run["state"] == "incomplete" and "capacity" not in run["reason"]
     assert said not in run["events"][-1]["error"]
 

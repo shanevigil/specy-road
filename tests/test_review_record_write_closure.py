@@ -121,8 +121,10 @@ def test_a_codex_resume_whose_last_answer_event_has_no_text_is_a_rerun(tmp_path:
     save_run(run_path(repo, "M1.1", "sol"), {"node_id": "M1.1", "model": "sol", "harness": "codex", "commit": head,
                                              "session_id": sid, "state": "incomplete", "attempts": [], "events": []})
     run = delegate(repo, "M1.1", "sol", resume=True, sleep=lambda _s: None)
-    (argv,) = [json.loads(line) for line in calls.read_text().splitlines()]
-    assert argv[:2] == ["exec", "resume"] and sid in argv and "-o" not in argv   # a resume: no -o file
+    argvs = [json.loads(line) for line in calls.read_text().splitlines()]
+    resumed = [a for a in argvs if a[:2] == ["exec", "resume"]]
+    assert resumed and all(sid in a and "-o" not in a for a in resumed)          # a resume: no -o file
+    assert not [a for a in argvs if "-o" in a] and len(run["attempts"]) == 1      # no fresh turn, no retry
     if null_last:
         assert run["outcome"] == "rerun" and run["state"] == "incomplete"
         assert "carries no answer" in run["reason"]
@@ -134,8 +136,8 @@ def test_a_codex_resume_whose_last_answer_event_has_no_text_is_a_rerun(tmp_path:
 def test_a_retried_codex_turn_never_files_the_failed_fresh_turns_answer_file(tmp_path: Path, monkeypatch) -> None:
     repo, _head, calls = _codex(tmp_path, monkeypatch, resume_texts=["not a verdict"])
     run = delegate(repo, "M1.1", "sol", retries=1, backoff=0, sleep=lambda _s: None)
-    fresh, resumed = [json.loads(line) for line in calls.read_text().splitlines()]
-    assert "-o" in fresh and resumed[:2] == ["exec", "resume"]               # the -o answer was written, then retried
+    argvs = [json.loads(line) for line in calls.read_text().splitlines()]
+    assert [a for a in argvs if "-o" in a] and [a for a in argvs if a[:2] == ["exec", "resume"]]   # by argv
     assert [a["capacity"] for a in run["attempts"]] == [True, False]
     assert run["outcome"] == "rerun" and "not one complete JSON object" in run["reason"]
     assert not rf.review_path(repo, "M1.1", "sol").exists()
