@@ -173,7 +173,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.7` | Executors cannot change the files that steer harnesses and specy-road unnoticed | task | Agentic-led | Not Started |
 | `M21.8` | The queued-message worker test waits for the idle state, not just the second completion event | task | — | Complete |
 | `M21.9` | A freshly initialized project passes its own checks | task | — | Not Started |
-| `M21.10` | doctor works in a repo with no remote | task | — | Not Started |
+| `M21.10` | doctor works in a repo with no remote | task | — | Complete |
 | `M21.11` | Help text names installed commands | task | — | Complete |
 | `M21.12` | A review record is refused for joined observations only when one of them names a defect | task | — | Not Started |
 
