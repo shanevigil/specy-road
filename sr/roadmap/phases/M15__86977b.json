@@ -62,7 +62,8 @@
         "specy_road/review_record_rules.py",
         "specy_road/schemas/review-record.schema.json",
         "specy_road/review_files.py",
-        "specy_road/bundled_scripts/role_prompt_rca.py"
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "specy_road/bundled_scripts/roadmap_crud_ops.py"
       ],
       "type": "task"
     },
@@ -175,7 +176,10 @@
         "specy_road/finish_modes.py",
         "specy_road/templates/project/schemas/git-workflow.schema.json",
         "docs/git-workflow-preferences.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "specy_road/agent_ignores.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py"
       ],
       "type": "task"
     },
