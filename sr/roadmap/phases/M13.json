@@ -109,7 +109,7 @@
       "parent_id": "M13",
       "planning_dir": "planning/M13.4_a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked_d46518be-f58a-450d-a52f-cd6b08817346.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A milestone held for its full review says so in validate, list-nodes and why-blocked",
       "touch_zones": [
         "specy_road/finish_ancestor_rollup.py",
