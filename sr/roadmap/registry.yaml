@@ -143,3 +143,16 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
+  - codename: shared-doc-zones-do-not-serialize-batches
+    node_id: M15.12
+    branch: feature/rm-shared-doc-zones-do-not-serialize-batches
+    touch_zones:
+      - specy_road/bundled_scripts/session_plan_render.py
+      - specy_road/bundled_scripts/session_plan.py
+      - specy_road/shared_zones.py
+      - specy_road/bundled_scripts/validate_registry_overlap.py
+      - docs/grind-session.md
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
