@@ -195,17 +195,6 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record
-    node_id: M14.7
-    branch: feature/rm-session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record
-    touch_zones:
-      - specy_road/bundled_scripts/session_cli.py
-      - specy_road/session_presence.py
-      - tests/
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-05T08:39:17+00:00'
   - codename: file-limits-baseline-and-upgrade-report
     node_id: M15.7
     branch: feature/rm-file-limits-baseline-and-upgrade-report
