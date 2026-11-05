@@ -105,6 +105,10 @@
           "minimum": 1,
           "description": "A leaf's review loop is escalated for root-cause analysis after this many review rounds since its last analysis. Default 5."
         },
+        "escalate_when_converging": {
+          "type": "boolean",
+          "description": "When false (the default), a converging loop (over the last escalate_same_acceptance_blocks rounds the blocking-finding count never rose and fell at least once, and the latest round fails no acceptance id) is not escalated by the same_family or review_rounds rule; `handoff status` says 'converging; escalation deferred'. same_acceptance, forced analyses and max_fix_rounds still apply. True restores the earlier behaviour, which escalated regardless of trend; projects that relied on it must set true. Default false."
+        },
         "max_fix_rounds": {
           "type": "integer",
           "minimum": 1,
