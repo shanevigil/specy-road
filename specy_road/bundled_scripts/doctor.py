@@ -28,6 +28,10 @@ open claim, open rollup or unfinished worker holds is "live", and ``--fix`` leav
 it and its worktree (:mod:`specy_road.doctor_worktrees`).
 
 Nothing changes without ``--fix``, and ``--fix`` asks once per kind.
+
+With no such git remote there is nothing to compare against, which is not a failure: doctor says
+so in one line and lists only the stashes. A remote that is configured but cannot be fetched still
+fails.
 """
 
 from __future__ import annotations
@@ -49,6 +53,7 @@ from specy_road.doctor_worktrees import (  # noqa: F401 — SAME_PATCH, TEMP_WOR
     merged_how, worktree_findings,
 )
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_text
+from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.nested_repos import report_unpushed
 from specy_road.orchestration_pinned import pinned_config
 from specy_road.orphaned_claims import orphaned_claims, report_lines
@@ -192,6 +197,11 @@ def _stash_findings(root: Path) -> list[Finding]:
     return found
 
 
+def _stash_section(root: Path) -> tuple[str, str, list[Finding]]:
+    return ("stash", "Stashes specy-road left behind (git stash show -p --include-untracked <sha>):",
+            _stash_findings(root))
+
+
 def _sections(ctx: _Ctx) -> list[tuple[str, str, list[Finding]]]:
     """(kind, heading, findings) in report order."""
     branches, merged_local = _branch_findings(ctx)
@@ -202,8 +212,7 @@ def _sections(ctx: _Ctx) -> list[tuple[str, str, list[Finding]]]:
         ("registry", (f"Registry rows on {ctx.target} with no branch (advisory: another clone's "
                       "claim looks the same until it pushes its branch) or whose leaf is Complete:"),
          _registry_findings(ctx)),
-        ("stash", "Stashes specy-road left behind (git stash show -p --include-untracked <sha>):",
-         _stash_findings(ctx.root)),
+        _stash_section(ctx.root),
     ]
 
 
@@ -248,6 +257,18 @@ def _fix(sections: list[tuple[str, str, list[Finding]]], yes: bool) -> int:
     return 1 if failures else 0
 
 
+def _no_remote_sections(root: Path, ns: argparse.Namespace) -> list[tuple[str, str, list[Finding]]] | None:
+    """Only the stash section when the remote :func:`fetch_integration` would fetch is not configured, else ``None``."""
+    _base, remote, warns = resolve_integration_defaults(root, explicit_base=ns.base, explicit_remote=ns.remote)
+    if git_code(["remote", "get-url", remote], root)[0] == 0 or git_code(["rev-parse", "--git-dir"], root)[0]:
+        return None   # configured, or not a repository: fetch_integration resolves it again and reports either
+    for w in warns:
+        print(f"warning: {w}", file=sys.stderr)
+    print(f"doctor: no git remote named {remote!r} is configured; "
+          "skipped fetch and the branch, worktree and registry checks that compare against it.")
+    return [_stash_section(root)]
+
+
 def _context(ns: argparse.Namespace) -> _Ctx | None:
     root = resolve_repo_root(ns)
     fetched = fetch_integration(root, ns)
@@ -284,16 +305,21 @@ def _print_cursor_force(root: Path) -> None:
 
 def cmd_doctor(ns: argparse.Namespace) -> int:
     print_install_report()
-    warn_if_running_version_older(resolve_repo_root(ns))
-    bad_config = report_checkout(resolve_repo_root(ns))   # gate mismatch, env_setup failure: exit 1 after the listing
-    report_unpushed(resolve_repo_root(ns))   # advisory: nested-repo commits no remote has
-    _print_cursor_force(resolve_repo_root(ns))   # advisory: cursor workers that run without the sandbox
-    ctx = _context(ns)
-    if ctx is None:
-        return 1
-    sections = _sections(ctx)
+    root = resolve_repo_root(ns)
+    warn_if_running_version_older(root)
+    bad_config = report_checkout(root)   # gate mismatch, env_setup failure: exit 1 after the listing
+    report_unpushed(root)   # advisory: nested-repo commits no remote has
+    _print_cursor_force(root)   # advisory: cursor workers that run without the sandbox
+    sections = _no_remote_sections(root, ns)
+    clean = "Nothing to tidy: no toolkit stash."
+    if sections is None:
+        ctx = _context(ns)
+        if ctx is None:
+            return 1
+        sections = _sections(ctx)
+        clean = "Nothing to tidy: no stale branch, worktree, registry row or toolkit stash."
     if not any(found for _k, _h, found in sections):
-        print("Nothing to tidy: no stale branch, worktree, registry row or toolkit stash.")
+        print(clean)
     else:
         for _kind, heading, found in sections:
             if found:
@@ -304,7 +330,7 @@ def cmd_doctor(ns: argparse.Namespace) -> int:
             print("Nothing removed. Re-run with --fix to remove them (it asks per kind).")
         else:
             bad_config = _fix(sections, ns.yes) or bad_config
-    _print_orphaned_claims(ctx.root)   # after the branch section, so it is not read as one of those rows
+    _print_orphaned_claims(root)   # after the branch section, so it is not read as one of those rows
     return int(bad_config)
 
 
