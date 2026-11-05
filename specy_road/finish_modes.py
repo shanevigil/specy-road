@@ -208,7 +208,26 @@ def delete_landed_branch(
     if remote_ok:
         print(f"[ok] deleted {branch} on {remote}")
     if failure is not None:
+        sys.stdout.flush()
         print(f"[warn] --delete-branch: {failure['message']}", file=sys.stderr)
+
+
+def report_landed(
+    repo: Path, outcome: str, *, branch: str, ib: str, remote: str, delete_branch: bool,
+    local_only: bool, sess_path: Path | None = None,
+) -> None:
+    """Run every step that follows a landing, then print ``[ok] <outcome>`` last (M15.40 A1).
+
+    Whatever those steps print (session cleanup, ``--delete-branch``) comes
+    first, so the outcome is the final line under any option.
+    """
+    if sess_path is not None:
+        remove_on_complete_session(sess_path)
+    if delete_branch:
+        delete_landed_branch(repo, branch=branch, ib=ib, remote=remote, local_only=local_only)
+    sys.stdout.flush()
+    sys.stderr.flush()
+    print(f"\n[ok] {outcome}", flush=True)
 
 
 # What finish-this-task's bookkeeping commit writes; anything else in that commit was never reviewed.
@@ -276,9 +295,8 @@ def retry_merge_landing(
     target, where = (f"refs/heads/{ib}", f"local {ib}") if local else (f"refs/remotes/{remote}/{ib}", f"{ib} on {remote}")
     if git_ok(["merge-base", "--is-ancestor", branch, target], repo)[0]:
         done = "" if delete_branch else "; nothing to do"
-        print(f"\n[ok] {branch} is already merged into {where}{done}")
-        if delete_branch:
-            delete_landed_branch(repo, branch=branch, ib=ib, remote=remote, local_only=local)
+        report_landed(repo, f"{branch} is already merged into {where}{done}", branch=branch, ib=ib,
+                      remote=remote, delete_branch=delete_branch, local_only=local)
         raise SystemExit(0)
     ok, err_msg, done_msg = land_on_integration(
         repo, remote=remote, ib=ib, branch=branch, land_check_cmd=land_check_cmd,
@@ -289,9 +307,8 @@ def retry_merge_landing(
             ib, err_msg, delete_branch=delete_branch, land_check_cmd=land_check_cmd,
             repo=repo,
         )
-    print(f"\n[ok] {done_msg}")
-    if delete_branch:
-        delete_landed_branch(repo, branch=branch, ib=ib, remote=remote, local_only=local)
+    report_landed(repo, done_msg, branch=branch, ib=ib, remote=remote,
+                  delete_branch=delete_branch, local_only=local)
     raise SystemExit(0)
 
 
@@ -347,11 +364,8 @@ def apply_on_complete_mode(
         land_check_cmd=args.land_check_cmd,
     )
     if ok:
-        print(f"\n[ok] {done_msg}")
-        remove_on_complete_session(sess_path)
-        if args.delete_branch:
-            delete_landed_branch(repo, branch=branch, ib=ib, remote=gw_remote,
-                                 local_only=root_land(repo) == LAND_LOCAL)
+        report_landed(repo, done_msg, branch=branch, ib=ib, remote=gw_remote, sess_path=sess_path,
+                      delete_branch=args.delete_branch, local_only=root_land(repo) == LAND_LOCAL)
         return
 
     if on_mode == "merge":

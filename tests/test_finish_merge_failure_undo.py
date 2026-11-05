@@ -195,3 +195,50 @@ def test_restore_failure_after_reset_saves_a_copy(tmp_path: Path, capsys) -> Non
     assert f"saved at {saved}" in err
     assert "still on" not in err
     assert "put each file named above back at its path, then run `specy-road finish-this-task`" in err
+
+
+#: Finish as a version before M15.40's undo ran it: a failed landing keeps the bookkeeping commit.
+_NO_UNDO = """
+import sys
+from unittest import mock
+import specy_road.bundled_scripts.finish_task as ft
+with mock.patch.object(ft, "merge_undo_snapshot", lambda *_a: None):
+    ft.main(sys.argv[1:])
+"""
+
+
+def _last_line(result) -> str:
+    return [line for line in result.stdout.splitlines() if line.strip()][-1]
+
+
+@pytest.mark.parametrize("options", [
+    [],
+    ["--delete-branch"],
+    ["--delete-branch", "--push", "--no-cleanup-work"],
+    ["--delete-branch", "--land-check-cmd", CHECK],
+])
+def test_a_landed_finish_prints_its_outcome_last(tmp_path: Path, monkeypatch, options) -> None:
+    """A1 (review round 2): whatever runs after the landing (--delete-branch among it) prints before the outcome."""
+    repo, _bare = _repo(tmp_path, monkeypatch)
+    result = _run(repo, ["-m", "specy_road.cli", "finish-this-task", *options])
+    assert result.returncode == 0, result.stdout
+    assert _last_line(result) == f"[ok] merged {BRANCH} into dev and pushed to origin", result.stdout
+    if "--delete-branch" in options:
+        assert f"[ok] deleted local branch {BRANCH}" in result.stdout
+
+
+def test_a_retried_landing_prints_its_outcome_last(tmp_path: Path, monkeypatch) -> None:
+    """A1/A3: the retry path's landing and its "already merged" exit both end on the outcome."""
+    repo, bare = _repo(tmp_path, monkeypatch)
+    hook = bare / "hooks" / "pre-receive"
+    hook.write_text("#!/bin/sh\nexit 1\n")
+    hook.chmod(0o755)
+    assert _run(repo, ["-c", _NO_UNDO]).returncode == 1   # bookkeeping kept, as an older finish left it
+    hook.unlink()
+    landed = _run(repo, ["-m", "specy_road.cli", "finish-this-task", "--on-complete", "merge"])
+    assert landed.returncode == 0, landed.stdout
+    assert _last_line(landed) == f"[ok] merged {BRANCH} into dev and pushed to origin", landed.stdout
+    again = _run(repo, ["-m", "specy_road.cli", "finish-this-task", "--on-complete", "merge", "--delete-branch"])
+    assert again.returncode == 0, again.stdout
+    assert f"[ok] deleted local branch {BRANCH}" in again.stdout
+    assert _last_line(again) == f"[ok] {BRANCH} is already merged into dev on origin", again.stdout
