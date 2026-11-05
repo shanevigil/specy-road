@@ -6,14 +6,15 @@
 **Not for:** toolkit-contributor topics — branching, PR workflow, npm build, audits ([`contributor-guide.md`](contributor-guide.md)) — or the detail behind each workflow ([`pm-workflow.md`](pm-workflow.md), [`dev-workflow.md`](dev-workflow.md)).
 
 **Must know without reading on:**
-- Python 3.11+ and git with a configured remote are required; there is no offline mode. `pip install specy-road` (extras: `[gui-next]`, `[review]`); an RC pins an exact version from TestPyPI with `--extra-index-url https://pypi.org/simple/`.
+- Python 3.11+ and git with a configured remote are required; there is no offline mode. `pip install specy-road` (extras: `[gui-next]`, `[review]`); pipx and uv tool work too. An RC is downloaded from TestPyPI as one exact wheel (`--no-deps`), sha256-checked, then installed with dependencies from PyPI only; never pair a TestPyPI `--index-url` with `--extra-index-url`.
 - New project: `specy-road init project`, set `integration_branch` / `remote` in `roadmap/git-workflow.yaml`, then `specy-road validate` and `specy-road export`.
 - After `pip install -U specy-road`: `specy-road upgrade --prune` (runs `refresh-schemas`, `refresh-profiles`, copies missing load-order docs, `refresh-stubs`, then `validate`; `--dry-run` first); never `init project --force` for that.
 - Add `--repo-root /path/to/consumer/repo` to every command run from outside the consumer repo.
 - Dev loop: `specy-road do-next-available-task` → implement → `review-packet` + `mark-implementation-reviewed` → `specy-road finish-this-task --on-complete merge|pr`.
 
 **Read further for:**
-- prerequisites, PyPI, TestPyPI RCs, `uv pip`, source checkout → "Requirements", "Install", "Install from source (toolkit contributors)"
+- prerequisites, PyPI, pipx and uv tool, TestPyPI RCs, `uv pip`, source checkout → "Requirements", "Install", "Install a release candidate (TestPyPI)", "Install from source (toolkit contributors)"
+- several installs or a stale `specyrd` launcher on `PATH` → "Which install is running"
 - what `init project` writes and the upgrade commands → "Initialize a new consumer project"
 - command sequences → "Everyday workflow (PM)", "Everyday workflow (DEV / coding agent)", "Everyday workflow (GUI)"
 - what a brief contains → "Brief generation"
@@ -38,65 +39,60 @@
 
 ## Install
 
-For application teams, install the published package from PyPI:
+For application teams, install the published package from PyPI with the tool you prefer:
 
 ```bash
-pip install specy-road
+pip install specy-road        # into the active virtualenv
+pipx install specy-road       # isolated CLI on PATH; preferred on a maintainer machine
+uv tool install specy-road    # the same, with uv
 ```
 
-Optional extras:
+Optional extras (pipx and uv tool take the same quoted spec):
 
 ```bash
 pip install "specy-road[gui-next]"  # PM Gantt UI deps
 pip install "specy-road[review]"    # LLM review (`specy-road review-node`)
 ```
 
-On a maintainer machine use `pipx install specy-road` or `uv tool install specy-road`;
-check `which specy-road` and `specy-road --version`. Commands (not `--version`) warn when running older than `.specyrd/manifest.json` / `AGENTS.md`.
+Upgrade to a new final release with the tool that installed it: `pip install -U specy-road`, `pipx upgrade specy-road` or `uv tool upgrade specy-road`.
+Commands (not `--version`) warn when running older than `.specyrd/manifest.json` / `AGENTS.md`.
+
+### Which install is running
+
+```bash
+which -a specy-road specyrd            # every launcher on PATH; the first one runs
+specy-road --version                   # the version that first launcher runs
+readlink -f "$(command -v specyrd)"    # where a symlinked launcher (pipx, uv tool) really points
+```
+
+A repo virtualenv, `pip install --user`, pipx and uv tool can each put a `specy-road` and a `specyrd` on `PATH`, and the earlier `PATH` entry wins: if `which -a` lists more than one, or `--version` is older than you installed, remove the installs you do not want. `specy-road doctor` lists the launchers too once your version ships that check.
+
+**Stale `specyrd` launcher.** A `specyrd` left behind by an earlier install (a `~/.local/bin/specyrd` from `pip install --user`, or one from an uninstalled tool) makes `pipx install` or `uv tool install` stop at `specyrd` after `specy-road` was already handled, so a second attempt fails the same way. Resolve it with `readlink -f` as above, uninstall the install it belongs to (`pip uninstall specy-road` in that environment, `pipx uninstall specy-road`, `uv tool uninstall specy-road`), or `rm` the launcher if its environment no longer exists, then install once more.
 
 ### Install a release candidate (TestPyPI)
 
-Prereleases (`X.Y.ZrcN`) publish to **TestPyPI**, not PyPI. Pin the exact
-version and keep real PyPI as an extra index so dependencies still resolve:
+Prereleases (`X.Y.ZrcN`) publish to **TestPyPI**, not PyPI. Do not install one with TestPyPI as `--index-url` and PyPI as `--extra-index-url`: with both indexes the resolver may take any dependency from TestPyPI, where anyone can register a missing name ([supply-chain-security.md](supply-chain-security.md#release-candidates-from-testpypi)).
+Instead download only the exact pinned wheel from TestPyPI, check its sha256 against the value in the RC announcement, and install it with its dependencies from PyPI only:
 
 ```bash
-pip install --index-url https://test.pypi.org/simple/ \
-            --extra-index-url https://pypi.org/simple/ \
-            "specy-road==0.3.1rc1"
+pip download --no-deps --only-binary :all: -d rc/ \
+    --index-url https://test.pypi.org/simple/ "specy-road==0.3.1rc1"
+sha256sum rc/specy_road-0.3.1rc1-py3-none-any.whl   # must equal the announced sha256
+pip install --no-deps rc/specy_road-0.3.1rc1-py3-none-any.whl
+pip install rc/specy_road-0.3.1rc1-py3-none-any.whl  # adds its dependencies, from PyPI only
 ```
 
-**`--pre` is not needed when you pin an exact prerelease.** Add `--pre` only for
-an unpinned install or `pip index versions specy-road`.
-
-**`uv pip` needs one extra flag.** By default uv only considers versions from
-the first index that contains a package at all — that is PyPI, which has no
-RC — so it reports `No solution found`:
+With uv (no pip needed in the virtualenv; `uv venv` and `uv sync` install none):
 
 ```bash
-uv pip install --index-url https://test.pypi.org/simple/ \
-               --extra-index-url https://pypi.org/simple/ \
-               --index-strategy unsafe-best-match \
-               "specy-road==0.3.1rc1"
+uvx pip download --no-deps --only-binary :all: -d rc/ \
+    --index-url https://test.pypi.org/simple/ "specy-road==0.3.1rc1"
+sha256sum rc/specy_road-0.3.1rc1-py3-none-any.whl   # must equal the announced sha256
+uv pip install rc/specy_road-0.3.1rc1-py3-none-any.whl   # dependencies from PyPI, uv's default index
 ```
 
-That default is uv's protection against dependency-confusion attacks, and
-`unsafe-best-match` relaxes it for **every** package in the resolution, not just
-this one. Prefer plain `pip` in a throwaway virtualenv for RC evaluation, and
-keep RCs out of the environment that builds your product. See
-[supply-chain-security.md](supply-chain-security.md).
-
-**If the virtualenv has no pip** (`uv venv` and `uv sync` do not install one),
-bootstrap it first:
-
-```bash
-.venv/bin/python -m ensurepip --upgrade
-```
-
-Then verify what you actually got:
-
-```bash
-specy-road --version
-```
+For an isolated CLI, install the checked wheel with `pipx install --force rc/<wheel>` or `uv tool install --force rc/<wheel>`, and go back to a final release with `pipx install --force specy-road` or `uv tool install --force specy-road`.
+The dependency steps assume PyPI is your only configured index (no `PIP_EXTRA_INDEX_URL` or `UV_EXTRA_INDEX_URL`). An exact pin needs no `--pre`. Then confirm the result with `specy-road --version` ("Which install is running").
 
 RCs are for evaluation: pin a final release for day-to-day work. `specy-road validate` warns once when the running version is not the one your repo pins (`"pin": "<version>"` in `.specyrd/manifest.json`, else the first `specy-road==<version>` line in a `requirements*.txt` at the checkout root), so an accidental upgrade is not mistaken for a deliberate one. Expect an RC to warn too that IDE stubs and JSON schemas were written by an older version: once your team accepts the new version, update the pin and run `specy-road upgrade`.
 
@@ -147,12 +143,12 @@ The roadmap starts with task M1.1, whose acceptance criteria and planning sheet 
 
 ### Keeping a consumer repo current after an upgrade
 
-`pip install -U specy-road` upgrades the CLI. What it copied into your repo
+`pip install -U specy-road` (or `pipx upgrade specy-road`, `uv tool upgrade specy-road`) upgrades the CLI. What it copied into your repo
 (schemas, model profiles, IDE skills, the managed blocks) does **not** follow
 along. One command brings it up to date and then checks the result:
 
 ```bash
-pip install -U specy-road
+pip install -U specy-road         # or: pipx upgrade specy-road / uv tool upgrade specy-road
 
 specy-road upgrade --dry-run      # what each refresh would write
 specy-road upgrade --prune        # write, delete stubs this version dropped, validate

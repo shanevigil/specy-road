@@ -307,24 +307,17 @@ inspection.
 ## A. RC release to TestPyPI
 
 Use case: "I want to test a candidate end-to-end before the real
-publish." Result: a `vX.Y.Z-rcN` artifact on **TestPyPI**, installable
-via:
-
-```bash
-pip install --index-url https://test.pypi.org/simple/ \
-            --extra-index-url https://pypi.org/simple/ \
-            specy-road==X.Y.ZrcN
-```
-
-(The `--extra-index-url` is required so transitive deps still resolve
-from real PyPI.)
+publish." Result: a `vX.Y.Z-rcN` artifact on **TestPyPI**, installed by
+downloading the exact pinned wheel with `--no-deps`, checking its sha256,
+and installing it with dependencies from PyPI only. Never use or announce
+TestPyPI as `--index-url` plus PyPI as `--extra-index-url`: that lets any
+dependency resolve from TestPyPI ([supply-chain-security.md](supply-chain-security.md#release-candidates-from-testpypi)).
 
 An exact prerelease pin needs no `--pre`; asking for the *latest* prerelease
 does, which is why §A.1 uses it against an unpinned name. The consumer-facing
-version of this recipe — including the extra flag `uv pip` needs and its
-supply-chain caveat — is
+recipe (pip, uv, pipx and uv tool) is
 [install-and-usage.md](install-and-usage.md#install-a-release-candidate-testpypi).
-Point adopters there rather than at this runbook.
+Point adopters there rather than at this runbook; A.3 step 5 announces it.
 
 ### A.1 Pre-flight verification (the verify-then-cut pattern)
 
@@ -345,10 +338,9 @@ python -m venv /tmp/verify-pypi
 #    previous RC exists yet)
 python -m venv /tmp/verify-testpypi
 /tmp/verify-testpypi/bin/pip install -q --upgrade pip
-/tmp/verify-testpypi/bin/pip install -q --pre \
-  --index-url https://test.pypi.org/simple/ \
-  --extra-index-url https://pypi.org/simple/ \
-  specy-road
+/tmp/verify-testpypi/bin/pip download -q --pre --no-deps --only-binary :all: \
+  -d /tmp/verify-testpypi/rc --index-url https://test.pypi.org/simple/ specy-road
+/tmp/verify-testpypi/bin/pip install -q /tmp/verify-testpypi/rc/specy_road-*.whl
 /tmp/verify-testpypi/bin/specy-road --help | head -5
 ```
 
@@ -376,11 +368,9 @@ Add a CHANGELOG block at the top (above `## [Unreleased]`):
 ## [v0.2.0-rc1] - YYYY-MM-DD
 
 First prerelease for v0.2.0. Routed to TestPyPI by
-release-publish.yml. Smoke install:
-
-    pip install --index-url https://test.pypi.org/simple/ \
-                --extra-index-url https://pypi.org/simple/ \
-                specy-road==0.2.0rc1
+release-publish.yml. Install with the TestPyPI recipe in
+docs/install-and-usage.md ("Install a release candidate");
+wheel sha256 `<from A.3 step 4>`.
 
 ### Headline changes vs v0.1.0
 
@@ -503,15 +493,24 @@ After the merge:
    ```bash
    python -m venv /tmp/smoke
    /tmp/smoke/bin/pip install --upgrade pip
-   /tmp/smoke/bin/pip install --pre \
-     --index-url https://test.pypi.org/simple/ \
-     --extra-index-url https://pypi.org/simple/ \
-     specy-road==0.2.0rc1
+   /tmp/smoke/bin/pip download --no-deps --only-binary :all: -d /tmp/smoke/rc \
+     --index-url https://test.pypi.org/simple/ specy-road==0.2.0rc1
+   sha256sum /tmp/smoke/rc/specy_road-0.2.0rc1-py3-none-any.whl
+   /tmp/smoke/bin/pip install /tmp/smoke/rc/specy_road-0.2.0rc1-py3-none-any.whl
    /tmp/smoke/bin/specy-road --help
    /tmp/smoke/bin/python -c "import specy_road; print(specy_road.__version__)"
    ```
 
-   The version printed must be `0.2.0rc1`.
+   The version printed must be `0.2.0rc1`. The `sha256sum` must match the
+   wheel in the publish run's `dist/` and on TestPyPI's file listing
+   (`https://test.pypi.org/project/specy-road/0.2.0rc1/#files`).
+
+5. **Announce the RC.** The announcement (GitHub Release notes, chat, or
+   mail) carries the recipe from
+   [install-and-usage.md](install-and-usage.md#install-a-release-candidate-testpypi)
+   with the exact version filled in (`pip download --no-deps` of the pin
+   from TestPyPI, `sha256sum`, `pip install --no-deps` of the wheel, then
+   its dependencies from PyPI only) and the wheel's sha256 from step 4.
 
 ### A.4 Cleanup
 
