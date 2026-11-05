@@ -18,7 +18,8 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git
-from tests.test_worker_cli import _repo, run_worker_cli, wait_for_worker
+from tests.test_worker_cli import run_worker_cli, wait_for_worker
+from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import worker_lease as lease
 from specy_road import worker_ops as ops
@@ -61,7 +62,7 @@ def _foreign_worker(clone: Path, node: str = "M1.2") -> ws.WorkerRecord:
 
 
 def test_a_linked_worktree_shares_the_checkout_id_and_a_clone_does_not(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     _, clone = _remote_and_clone(tmp_path, repo)
     wt = tmp_path / "wt"
     git(repo, "worktree", "add", "-q", "-b", "feature/rm-wt", str(wt), "dev")
@@ -71,7 +72,7 @@ def test_a_linked_worktree_shares_the_checkout_id_and_a_clone_does_not(tmp_path:
 
 
 def test_two_checkouts_share_one_limit(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     remote, clone = _remote_and_clone(tmp_path, repo)
     theirs = _foreign_worker(clone)
     assert _leases(remote) == [f"{lease.checkout_id(clone)}/{theirs.worker_id}"]
@@ -81,7 +82,7 @@ def test_two_checkouts_share_one_limit(tmp_path: Path, capsys) -> None:
 
 
 def test_a_foreign_lease_counts_when_its_branch_also_exists_here(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     _, clone = _remote_and_clone(tmp_path, repo)
     git(clone, "branch", "feature/rm-other")
     _foreign_worker(clone)
@@ -93,7 +94,7 @@ def test_a_foreign_lease_counts_when_its_branch_also_exists_here(tmp_path: Path)
 
 
 def test_leases_from_another_owner_count(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     _, clone = _remote_and_clone(tmp_path, repo)
     git(clone, "config", "user.name", "Someone Else")
     _foreign_worker(clone)
@@ -105,7 +106,7 @@ def test_leases_from_another_owner_count(tmp_path: Path) -> None:
 
 def test_a_lease_pushed_second_is_refused_and_withdrawn(tmp_path: Path) -> None:
     """Both launches got past their first count; the one that recounts after pushing sees the other and yields."""
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     remote, clone = _remote_and_clone(tmp_path, repo)
     theirs = _foreign_worker(clone)
     mine = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
@@ -115,7 +116,7 @@ def test_a_lease_pushed_second_is_refused_and_withdrawn(tmp_path: Path) -> None:
 
 
 def test_the_lease_follows_the_record(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     remote, _clone = _remote_and_clone(tmp_path, repo)
     cid = lease.checkout_id(repo)
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0
@@ -126,7 +127,7 @@ def test_the_lease_follows_the_record(tmp_path: Path) -> None:
 
 
 def test_sync_releases_a_dead_or_stale_workers_lease(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     remote, _clone = _remote_and_clone(tmp_path, repo)
     dead = _idle(repo, "M1.1")
     stale = _idle(repo, "M1.2", "sid-2")
@@ -153,7 +154,7 @@ def _rejecting(remote: Path) -> None:
 
 
 def test_an_unreachable_remote_refuses_unless_offline(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     _unreachable(tmp_path, repo)
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
     err = capsys.readouterr().err
@@ -172,7 +173,7 @@ def test_an_unreachable_remote_refuses_unless_offline(tmp_path: Path, capsys) ->
 
 
 def test_offline_is_bound_into_the_op_id(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     _unreachable(tmp_path, repo)
     args = ("worker", "delegate", "M1.1", "--model", "opus", "--op-id", "op-1", "--repo-root", str(repo))
     assert run_worker_cli(*args, "--offline") == 0
@@ -183,7 +184,7 @@ def test_offline_is_bound_into_the_op_id(tmp_path: Path, capsys) -> None:
 
 
 def test_a_rejected_lease_push_refuses_message_and_resume(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     remote, _clone = _remote_and_clone(tmp_path, repo)
     _rejecting(remote)
     rec = _idle(repo, "M1.1")
@@ -196,7 +197,7 @@ def test_a_rejected_lease_push_refuses_message_and_resume(tmp_path: Path, capsys
 
 
 def test_a_rejected_lease_push_refuses_a_launch(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     remote, _clone = _remote_and_clone(tmp_path, repo)
     _rejecting(remote)
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
@@ -206,7 +207,7 @@ def test_a_rejected_lease_push_refuses_a_launch(tmp_path: Path, capsys) -> None:
 
 def test_sync_keeps_a_lease_created_after_its_first_read(tmp_path: Path, monkeypatch) -> None:
     """The sweep reads the remote, then a launch lands before it deletes: the new worker's lease survives."""
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     remote, _clone = _remote_and_clone(tmp_path, repo)
     cid = lease.checkout_id(repo)
     stale = _idle(repo, "M1.1")
@@ -230,7 +231,7 @@ def _id_file(repo: Path) -> Path:
 
 
 def test_a_missing_checkout_id_is_created_and_the_count_still_holds(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     _, clone = _remote_and_clone(tmp_path, repo)
     _foreign_worker(clone)
     _id_file(repo).unlink(missing_ok=True)
@@ -244,7 +245,7 @@ def test_a_missing_checkout_id_is_created_and_the_count_still_holds(tmp_path: Pa
 def test_an_empty_or_unusable_checkout_id_is_rewritten_and_the_limit_holds(tmp_path: Path, capsys,
                                                                            content: str) -> None:
     """An id file with no uuid in it is uninitialized, never "no id, so no leases": a new id is written and counted."""
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     _, clone = _remote_and_clone(tmp_path, repo)
     _foreign_worker(clone)
     _id_file(repo).write_text(content, encoding="utf-8")
@@ -255,7 +256,7 @@ def test_an_empty_or_unusable_checkout_id_is_rewritten_and_the_limit_holds(tmp_p
 
 
 def test_a_launch_after_an_empty_checkout_id_leases_under_the_new_one(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     remote, _clone = _remote_and_clone(tmp_path, repo)
     _id_file(repo).write_text("", encoding="utf-8")
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0
@@ -264,7 +265,7 @@ def test_a_launch_after_an_empty_checkout_id_leases_under_the_new_one(tmp_path: 
 
 
 def test_a_checkout_id_that_cannot_be_written_refuses_the_launch(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     _remote_and_clone(tmp_path, repo)
     (_id_file(repo) / "x").mkdir(parents=True)   # not a file, and not one that can be set aside and removed
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
@@ -274,7 +275,7 @@ def test_a_checkout_id_that_cannot_be_written_refuses_the_launch(tmp_path: Path,
 
 def test_offline_still_counts_the_lease_refs_last_fetched(tmp_path: Path, capsys) -> None:
     """--offline skips the push and the fetch; a foreign worker known from the last fetch still counts."""
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     _, clone = _remote_and_clone(tmp_path, repo)
     _foreign_worker(clone)
     ops.sync(repo)   # an online worker command: fetches the lease refs into this checkout
@@ -292,7 +293,7 @@ def test_offline_still_counts_the_lease_refs_last_fetched(tmp_path: Path, capsys
 
 def test_offline_warns_and_launches_on_a_stale_mirror(tmp_path: Path, capsys) -> None:
     """The local-only escape: a foreign worker started after the last fetch is not seen, and the warning says so."""
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     remote, clone = _remote_and_clone(tmp_path, repo)
     ops.sync(repo)   # the last fetch: no foreign worker yet
     theirs = _foreign_worker(clone)   # started since, so this checkout's mirror is stale
@@ -303,7 +304,7 @@ def test_offline_warns_and_launches_on_a_stale_mirror(tmp_path: Path, capsys) ->
 
 
 def test_concurrent_first_calls_agree_on_one_checkout_id(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     with ThreadPoolExecutor(8) as pool:
         ids = list(pool.map(lambda _i: lease.checkout_id(repo), range(32)))
     assert len(set(ids)) == 1 and ids[0] == _id_file(repo).read_text(encoding="utf-8").strip()
@@ -311,7 +312,7 @@ def test_concurrent_first_calls_agree_on_one_checkout_id(tmp_path: Path) -> None
 
 
 def test_an_adopted_worker_in_another_clone_counts(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     remote, clone = _remote_and_clone(tmp_path, repo)
     adopted = ops.adopt(clone, "M1.1", "claude-code", str(uuid.uuid4()))
     assert _leases(remote) == [f"{lease.checkout_id(clone)}/{adopted.worker_id}"]
@@ -321,7 +322,7 @@ def test_an_adopted_worker_in_another_clone_counts(tmp_path: Path, capsys) -> No
 
 
 def test_an_adopt_whose_lease_cannot_be_pushed_is_refused(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     remote, clone = _remote_and_clone(tmp_path, repo)
     _rejecting(remote)
     with pytest.raises(ws.WorkerError, match="origin rejected the lease for w-0001"):
@@ -330,7 +331,7 @@ def test_an_adopt_whose_lease_cannot_be_pushed_is_refused(tmp_path: Path) -> Non
 
 
 def test_sync_pushes_a_lease_for_an_active_worker_without_one(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     remote, _clone = _remote_and_clone(tmp_path, repo)
     rec = _idle(repo, "M1.1")   # registered before leases existed, or launched --offline
     assert _leases(remote) == []
@@ -339,7 +340,7 @@ def test_sync_pushes_a_lease_for_an_active_worker_without_one(tmp_path: Path) ->
 
 
 def test_a_retry_returns_the_existing_worker_while_the_remote_is_down(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     _unreachable(tmp_path, repo)
     rec = _idle(repo, "M1.1")
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--json", "--repo-root", str(repo)) == 0
@@ -352,7 +353,7 @@ def test_a_retry_returns_the_existing_worker_while_the_remote_is_down(tmp_path: 
 
 
 def test_a_linked_worktree_counts_the_main_checkouts_workers(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     _idle(repo, "M1.2")
     wt = tmp_path / "wt"
     git(repo, "worktree", "add", "-q", "-b", "feature/rm-wt", str(wt), "dev")
@@ -362,14 +363,14 @@ def test_a_linked_worktree_counts_the_main_checkouts_workers(tmp_path: Path, cap
 
 
 def test_an_idle_worker_resumes_in_its_own_slot(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     rec = _idle(repo, "M1.1")
     ops.resume(repo, rec.worker_id)
     assert wait_for_worker(repo, rec.worker_id).state == "idle"
 
 
 def test_a_resume_is_refused_when_other_workers_fill_the_limit(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     rec = _idle(repo, "M1.1")
     _idle(repo, "M1.2", "sid-2")   # launched under a higher limit, since lowered
     assert run_worker_cli("worker", "message", rec.worker_id, "--text", "x", "--repo-root", str(repo)) == 1

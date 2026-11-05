@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.test_worker_cli import _repo, run_worker_cli, wait_for_worker
+from tests.test_worker_cli import run_worker_cli, wait_for_worker
 
 from specy_road import worker_ops as ops
 from specy_road import worker_runner as wr
@@ -20,6 +20,7 @@ from specy_road import worker_state as ws
 
 FAKE_SLOW = '''
 import json, sys, time
+from tests.worker_repo_helpers import make_worker_repo
 from pathlib import Path
 prompt = Path(sys.argv[1])
 turn_file = prompt.with_name(prompt.name + ".turn")
@@ -109,7 +110,7 @@ def test_two_cli_messages_during_a_live_turn_are_appended_and_delivered(tmp_path
 
 
 def test_no_queue_refuses_a_live_turn(tmp_path: Path, monkeypatch) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
     ws.set_state(repo, rec, "running", pid=None)
@@ -120,7 +121,7 @@ def test_no_queue_refuses_a_live_turn(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_list_and_sync_show_queued_message(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.mutate(repo, rec, lambda r: (setattr(r, "provider_session_id", "sid-1"), setattr(r, "queued_message", "wait for it")))
     ws.set_state(repo, rec, "running", pid=None)
@@ -133,7 +134,7 @@ def test_list_and_sync_show_queued_message(tmp_path: Path, capsys) -> None:
 
 
 def test_terminate_drops_queued_message(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
     ws.set_state(repo, rec, "running", pid=None)
@@ -145,7 +146,7 @@ def test_terminate_drops_queued_message(tmp_path: Path) -> None:
 
 
 def test_deliver_and_message_launch_one_turn(tmp_path: Path, monkeypatch) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
     ws.set_state(repo, rec, "idle", pid=None)
