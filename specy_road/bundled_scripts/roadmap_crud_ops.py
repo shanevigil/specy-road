@@ -429,6 +429,7 @@ from specy_road.bundled_scripts.roadmap_crud_delete import (  # noqa: E402,F401
     cmd_archive,
     cmd_remove_node,
     delete_roadmap_node_hard,
+    rehearsal_root,
     remove_node_blockers,
     remove_roadmap_node,
 )

@@ -359,7 +359,10 @@ def _p_remove_node(sub: argparse._SubParsersAction) -> None:
     sp.add_argument(
         "--dry-run",
         action="store_true",
-        help="Run the same checks and print what would be removed; write nothing",
+        help=(
+            "Rehearse on a scratch copy (same commit and validate as real removal); "
+            "the live repo is not written"
+        ),
     )
     sp.set_defaults(func=cmd_remove_node)
 

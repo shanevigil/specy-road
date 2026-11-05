@@ -156,6 +156,7 @@ def test_remove_node_dry_run_eligible_writes_nothing(tmp_path: Path, capsys) -> 
     assert "would remove node M99.2" in r.stdout
     assert "planning sheet: planning/" in r.stdout
     assert _tree_bytes(tmp_path) == before
+    assert any(n["id"] == "M99.2" for n in load_roadmap(tmp_path)["nodes"])
 
 
 def test_remove_node_dry_run_blocked_writes_nothing(tmp_path: Path) -> None:

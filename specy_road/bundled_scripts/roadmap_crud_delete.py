@@ -14,7 +14,11 @@ collision is historical.
 
 from __future__ import annotations
 
+import contextlib
+import shutil
 import sys
+import tempfile
+from collections.abc import Iterator
 from pathlib import Path
 
 from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
@@ -23,6 +27,8 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load
 from specy_road.bundled_scripts.roadmap_gui_lib import registry_by_node_id
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.registry_yaml import read_registry, registry_path
+
+_GRAPH_TOPS = frozenset({"roadmap", "planning"})
 
 
 def remove_node_blockers(root: Path, node_id: str) -> list[str]:
@@ -70,19 +76,33 @@ def planning_sheet_delete_plan(root: Path, planning_dir: object) -> Path | None:
     return path if path.is_file() else None
 
 
-def remove_roadmap_node(root: Path, node_id: str, *, dry_run: bool = False) -> None:
-    """Remove a never-started leaf and its planning sheet when nothing blocks it.
+@contextlib.contextmanager
+def rehearsal_root(root: Path) -> Iterator[Path]:
+    """Throwaway project root for ``--dry-run``: graph trees copied, the rest linked.
 
-    Eligibility blockers are checked against the on-disk graph with no self-heal
-    pass. The resulting graph is validated the same way for real removal and
-    ``--dry-run``: stage the chunk delete and planning-sheet unlink in an
-    :class:`~specy_road.bundled_scripts.roadmap_chunk_atomic.AtomicWritePlan`,
-    write, run ``validate_callback``, then commit (real) or always rollback
-    (dry-run). Any refusal leaves every path byte-identical.
-
-    Raises ``ValueError`` if not found, not removable, or if the resulting graph
-    fails validation.
+    The live ``root`` is never written. Same layout idea as ``apply --dry-run``.
     """
+    with tempfile.TemporaryDirectory(prefix="specy-road-remove-") as tmp:
+        scratch = Path(tmp)
+        for entry in root.iterdir():
+            if entry.name == ".git":
+                continue
+            dst = scratch / entry.name
+            if entry.name not in _GRAPH_TOPS:
+                try:
+                    dst.symlink_to(entry, target_is_directory=entry.is_dir())
+                    continue
+                except OSError:
+                    pass
+            if entry.is_dir():
+                shutil.copytree(entry, dst, symlinks=True)
+            elif entry.is_file():
+                shutil.copy2(entry, dst)
+        yield scratch
+
+
+def _commit_remove(root: Path, node_id: str) -> Path | None:
+    """Apply one removal on ``root``; return the planning sheet path if any."""
     from specy_road.bundled_scripts.roadmap_chunk_router import validate_callback
     from specy_road.bundled_scripts.roadmap_crud_ops import node_index_in_chunk, unknown_node_msg
 
@@ -106,20 +126,43 @@ def remove_roadmap_node(root: Path, node_id: str, *, dry_run: bool = False) -> N
     plan.stage_chunk(chunk, nodes_after)
     if sheet is not None:
         plan.stage_delete(sheet)
-    validate = validate_callback(root)
+    plan.commit(validate_callback(root))
+    return sheet
+
+
+def remove_roadmap_node(root: Path, node_id: str, *, dry_run: bool = False) -> None:
+    """Remove a never-started leaf and its planning sheet when nothing blocks it.
+
+    Eligibility is checked on the live graph with no self-heal pass. Real removal
+    commits through :class:`~specy_road.bundled_scripts.roadmap_chunk_atomic.AtomicWritePlan`.
+    ``--dry-run`` rehearses the same commit on :func:`rehearsal_root` so the live
+    tree is not written or unlinked; only after rehearsal succeeds does it print
+    what would be removed.
+
+    Raises ``ValueError`` if not found, not removable, or if the resulting graph
+    fails validation.
+    """
     if dry_run:
-        try:
-            plan.write()
-            validate()
-        finally:
-            plan.rollback()
+        sheet = planning_sheet_delete_plan(
+            root,
+            next(
+                (
+                    n.get("planning_dir")
+                    for n in load_roadmap(root)["nodes"]
+                    if n.get("id") == node_id
+                ),
+                None,
+            ),
+        )
+        with rehearsal_root(root) as scratch:
+            _commit_remove(scratch, node_id)
         print(f"would remove node {node_id}")
         if sheet is not None:
             print(f"planning sheet: {sheet.relative_to(root).as_posix()}")
         else:
             print("planning sheet: (none)")
         return
-    plan.commit(validate)
+    _commit_remove(root, node_id)
 
 
 def delete_roadmap_node_hard(root: Path, node_id: str) -> None:
