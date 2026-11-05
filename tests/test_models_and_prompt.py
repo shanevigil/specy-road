@@ -137,8 +137,7 @@ def test_models_show_prints_fields_and_section(tmp_path: Path, capsys) -> None:
 
 def test_models_show_prints_a_bad_launch_mode_and_delegate_reads_a_good_one(tmp_path: Path, capsys,
                                                                             monkeypatch) -> None:
-    from specy_road import worker_ops as ops  # noqa: PLC0415 — only this test needs the worker side
-    from specy_road import worker_state as ws  # noqa: PLC0415
+    from specy_road import worker_ops as ops, worker_state as ws  # noqa: PLC0415 — only this test needs the worker side
     repo = make_profile_repo(tmp_path)
     launches = []
     monkeypatch.setattr(ops, "spawn", lambda root, rec, launch, **kw: launches.append(launch))
@@ -149,6 +148,7 @@ def test_models_show_prints_a_bad_launch_mode_and_delegate_reads_a_good_one(tmp_
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
     prof_path.write_text(prof_path.read_text().replace("launch_mode: full", "launch_mode: bare", 1))
     commit_profile(repo)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")   # M15.36: forced bare needs a key
     ops.message(repo, rec.worker_id, "go on")   # the resume reads the pinned profile again
     assert launches[1].launch_mode == "bare" and launches[1].argv[:4] == ["claude", "-p", "--bare", "--resume"]
     prof_path.write_text(prof_path.read_text().replace("launch_mode: bare", "launch_mode: lean", 1))

@@ -45,10 +45,10 @@ def test_default_commands_follow_the_documented_cli_flags(tmp_path: Path) -> Non
     p = tmp_path / "p.md"
     p.write_text("do the thing")
     c = wa.adapter_for("claude-code").launch(p, tmp_path, "claude-opus-5-5", None)
-    assert c.argv[:2] == ["claude", "-p"] and "--session-id" in c.argv and c.session_id in c.argv
-    assert c.argv[-1] == wa.STDIN_INSTRUCTION and c.stdin == "do the thing" and "stream-json" in c.argv
+    assert c.argv[:4] == ["claude", "-p", "--setting-sources", "user,project,local"] and c.session_id in c.argv
+    assert c.argv[-1] == wa.STDIN_INSTRUCTION and c.stdin == "do the thing" and {"stream-json", "--session-id"} <= {*c.argv}
     r = wa.adapter_for("claude-code").resume("sid", p, tmp_path, "m", None)
-    assert r.argv[2:4] == ["--resume", "sid"] and r.stdin == "do the thing"
+    assert r.argv[2:6] == ["--setting-sources", "user,project,local", "--resume", "sid"] and r.stdin == "do the thing"
     x = wa.adapter_for("codex").launch(p, tmp_path, "gpt-6.1-sol", None)
     assert x.argv[:3] == ["codex", "exec", "--json"] and x.argv[-1] == "-" and x.stdin == "do the thing"
     xr = wa.adapter_for("codex").resume("t1", p, tmp_path, "m", None)
