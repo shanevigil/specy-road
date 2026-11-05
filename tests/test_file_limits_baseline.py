@@ -127,6 +127,70 @@ def test_write_baseline_with_override_limits_empty_flow_list(tmp_path: Path) -> 
     assert run_file_limits_scan(tmp_path, cfg) is False
 
 
+def test_write_baseline_empty_flow_list_preserves_inline_comment(tmp_path: Path) -> None:
+    (tmp_path / "constraints").mkdir()
+    cfg_path = tmp_path / "constraints" / "file-limits.yaml"
+    cfg_path.write_text(
+        'max_lines_per_file: 2\napplies_to_globs:\n  - "**/*.py"\n'
+        "override_limits: [] # existing comment\n",
+        encoding="utf-8",
+    )
+    _write_layout(tmp_path, {"wide.py": "x\n" * 3})
+    assert write_baseline(tmp_path) == 0
+    text = cfg_path.read_text(encoding="utf-8")
+    assert "override_limits: # existing comment" in text or "override_limits:  # existing comment" in text
+    cfg = yaml.safe_load(text)
+    assert run_file_limits_scan(tmp_path, cfg) is False
+
+
+def test_write_baseline_inserts_after_in_sequence_comments_and_later_rows(tmp_path: Path) -> None:
+    (tmp_path / "constraints").mkdir()
+    cfg_path = tmp_path / "constraints" / "file-limits.yaml"
+    cfg_path.write_text(
+        "max_lines_per_file: 100\n"
+        "applies_to_globs:\n  - \"**/*.py\"\n"
+        "override_limits:\n"
+        "  - name: first\n"
+        "    file_globs:\n      - \"keep.py\"\n"
+        "    max_lines_per_file: 100\n"
+        "# existing comment\n"
+        "  - name: restrictive\n"
+        "    file_globs:\n      - \"wide.py\"\n"
+        "    max_lines_per_file: 2\n",
+        encoding="utf-8",
+    )
+    _write_layout(tmp_path, {"wide.py": "x\n" * 3, "keep.py": "y\n"})
+    assert write_baseline(tmp_path) == 0
+    text = cfg_path.read_text(encoding="utf-8")
+    assert "# existing comment" in text
+    cfg = yaml.safe_load(text)
+    baseline_idx = next(
+        i for i, e in enumerate(cfg["override_limits"]) if str(e.get("name", "")).startswith("baseline-")
+    )
+    restrictive_idx = next(i for i, e in enumerate(cfg["override_limits"]) if e.get("name") == "restrictive")
+    assert baseline_idx > restrictive_idx
+    assert run_file_limits_scan(tmp_path, cfg) is False
+
+
+def test_write_baseline_appends_to_populated_flow_override_list(tmp_path: Path) -> None:
+    (tmp_path / "constraints").mkdir()
+    cfg_path = tmp_path / "constraints" / "file-limits.yaml"
+    cfg_path.write_text(
+        "max_lines_per_file: 2\n"
+        "applies_to_globs:\n  - \"**/*.py\"\n"
+        "override_limits: [{name: keep, file_globs: [keep.py], max_lines_per_file: 100}]\n",
+        encoding="utf-8",
+    )
+    _write_layout(tmp_path, {"wide.py": "x\n" * 3, "keep.py": "y\n"})
+    assert write_baseline(tmp_path) == 0
+    text = cfg_path.read_text(encoding="utf-8")
+    cfg = yaml.safe_load(text)
+    names = [e.get("name") for e in cfg["override_limits"]]
+    assert "keep" in names
+    assert any(str(n).startswith("baseline-") for n in names)
+    assert run_file_limits_scan(tmp_path, cfg) is False
+
+
 def test_write_baseline_with_double_quote_in_filename(tmp_path: Path) -> None:
     (tmp_path / "constraints").mkdir()
     cfg_path = tmp_path / "constraints" / "file-limits.yaml"
