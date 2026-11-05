@@ -163,8 +163,9 @@ def enclosing_worktree_root(named: Path) -> Path:
 
     The docs say to export the variable, so a worker running in a linked worktree of the same repository
     (same common git dir) would otherwise resolve the main checkout and be refused as off its branch. The
-    same project-relative path in the enclosing worktree wins, silently; a working directory in another
-    repository, or outside git, keeps ``named``.
+    same project-relative path in the enclosing worktree wins, silently, even when this worktree's branch
+    lacks it (the command then fails on that path here, not on the main checkout); a working directory in another repository,
+    or outside git, keeps ``named``.
     """
     here = _worktree_and_common_dir(Path.cwd())
     there = _worktree_and_common_dir(named) if named.is_dir() else None
@@ -174,7 +175,7 @@ def enclosing_worktree_root(named: Path) -> Path:
         candidate = here[0] / named.relative_to(there[0])
     except ValueError:
         return named
-    return candidate if candidate.is_dir() else named
+    return candidate   # even when missing here: never back to the checkout the variable names
 
 
 def project_root(explicit: Path | str | None = None) -> Path:

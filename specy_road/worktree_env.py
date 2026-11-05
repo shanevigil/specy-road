@@ -16,7 +16,7 @@ Split from :mod:`specy_road.git_workflow_config` for the file limit.
 
 from __future__ import annotations
 
-import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -48,15 +48,41 @@ def link_paths(conf: dict[str, Any] | None) -> list[str]:
 
 
 def linked_status_paths(repo_root: Path, leaf_root: Path) -> set[str]:
-    """Each ``link`` path as ``git status`` in ``leaf_root``'s worktree names it (git-root-relative, no slash),
-    for ``worker delegate``'s clean-tree check: a symlink made by hand before the exclude existed is not work."""
+    """Each ``link`` path that is, in ``leaf_root``, a symlink to its main-checkout source, as ``git status``
+    names it (git-root-relative, no slash), for ``worker delegate``'s clean-tree check: a symlink made by
+    hand before the exclude existed is not work. A file or directory of the same name still counts."""
+    main = main_project_root(repo_root)
     top = git_top(leaf_root)
     out = set()
-    for rel in link_paths(env_setup_config(main_project_root(repo_root))):
-        path = Path(os.path.normpath(leaf_root / rel))
-        if path.is_relative_to(top):
-            out.add(path.relative_to(top).as_posix())
+    for rel in link_paths(env_setup_config(main)):
+        try:
+            source = bounded_path(main, rel, git_top(main), rel, "the main checkout", "link")
+            target = link_target(leaf_root, rel, top)
+        except EnvSetupError:
+            continue
+        if target.is_symlink() and target.resolve() == source:
+            out.add(target.relative_to(top).as_posix())
     return out
+
+
+def link_target(leaf_root: Path, rel: str, leaf_top: Path) -> Path:
+    """Where the link ``rel`` goes in the leaf: its parent resolved (a symlinked directory on the way is
+    followed, so it cannot carry the link out) and bounded by ``leaf_top``; the final component is not
+    followed, so an existing or dangling link there is still seen and refused. A newline is refused too:
+    no ``info/exclude`` line can name it."""
+    path = leaf_root / rel
+    target = path.parent.resolve() / path.name
+    if path.name == ".." or "\n" in rel or "\r" in rel or not target.is_relative_to(leaf_top) or target == leaf_top:
+        raise EnvSetupError(f"env_setup: cannot link to {rel!r}: {target} is not a path inside the leaf worktree {leaf_top}")
+    return target
+
+
+def exclude_pattern(rel: str) -> str:
+    """``rel`` as an anchored ``info/exclude`` line matching that one name: ``\\ * ? [`` and trailing spaces
+    are escaped, since git reads them as pattern syntax (``env[1]`` would match ``env1``, not itself)."""
+    body = re.sub(r"([\\*?\[])", r"\\\1", rel)
+    stripped = body.rstrip(" ")
+    return "/" + stripped + "\\ " * (len(body) - len(stripped))
 
 
 def exclude_links(leaf_top: Path, targets: list[Path]) -> None:
@@ -71,7 +97,7 @@ def exclude_links(leaf_top: Path, targets: list[Path]) -> None:
         raise EnvSetupError(f"env_setup: cannot find the git exclude file for {leaf_top}")
     exclude = Path(rel)
     have = exclude.read_text(encoding="utf-8").splitlines() if exclude.is_file() else []
-    lines = [f"/{t.relative_to(leaf_top).as_posix()}" for t in targets]
+    lines = [exclude_pattern(t.relative_to(leaf_top).as_posix()) for t in targets]
     new = [ln for ln in dict.fromkeys(lines) if ln not in have]
     if new:
         exclude.parent.mkdir(parents=True, exist_ok=True)
@@ -118,9 +144,7 @@ def link_into(conf: dict[str, Any], repo_root: Path, leaf_root: Path, keep: str)
     for rel in link_paths(conf):
         try:
             source = bounded_path(repo_root, rel, git_top(repo_root), f"from {rel!r}", "the main checkout", "link")
-            target = Path(os.path.normpath(leaf_root / rel))   # not resolved: the link itself, not what it names
-            if not target.is_relative_to(leaf_top):
-                raise EnvSetupError(f"env_setup: cannot link to {rel!r}: {target} is outside the leaf worktree {leaf_top}")
+            target = link_target(leaf_root, rel, leaf_top)
         except EnvSetupError as e:
             raise EnvSetupError(str(e) + keep) from None
         if not source.exists():

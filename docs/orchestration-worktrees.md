@@ -11,7 +11,8 @@ recorded in `.specyrd/manifest.json`, then discovery (see `specy_road/runtime_pa
 
 If `SPECY_ROAD_REPO_ROOT` names a checkout and the current directory is inside a **different worktree of the
 same repository** (git reports the same common git directory for both), the command uses the same
-project-relative path in the worktree you are in, and prints nothing about it. So an exported
+project-relative path in the worktree you are in, and prints nothing about it, even when that path does not
+exist on this worktree's branch (the command then fails there rather than using the main checkout). So an exported
 `SPECY_ROAD_REPO_ROOT=/path/to/main/sr` does not send `specy-road ready` in a leaf worktree back to the main
 checkout, where it would be refused for being on the wrong branch. If the current directory is in a different
 repository, or outside git, the variable is used as written, as before.
@@ -46,7 +47,8 @@ env_setup:
 ```
 
 The steps run in this order: `copy`, then `link`, then `cmd`. You can combine the forms. A missing source, or
-a link path that already exists in the worktree, stops the pickup or launch, and the worktree stays as it is.
+a link path that already exists in the worktree, or one whose parent directory resolves outside the worktree
+(through a symlinked directory), stops the pickup or launch, and the worktree stays as it is.
 
 ### Why linked names go in `.git/info/exclude`
 
@@ -56,7 +58,9 @@ path, specy-road adds an anchored line (`/node_modules`, or `/sr/node_modules` i
 the exclude file that `git rev-parse --git-path info/exclude` names in the worktree. Git keeps `info/exclude`
 in the **common** git directory, so this file is `.git/info/exclude` of the main checkout and applies to
 every worktree of the repository. In the main checkout the line matches the real directory, which was
-already ignored. `worker delegate`'s clean-tree check also skips untracked entries that are declared `link`
-paths, so a symlink someone made by hand before the exclude line existed does not block a launch.
+already ignored. Characters git reads as pattern syntax (`\`, `*`, `?`, `[`, trailing spaces) are escaped,
+so the line matches only that name. `worker delegate`'s clean-tree check also skips an untracked declared
+`link` path when it is a symlink to that path in the main checkout, so a symlink someone made by hand before
+the exclude line existed does not block a launch; an ordinary file or directory of that name still does.
 
 Out of scope: copying a whole environment (use `cmd` to build one, or `link` to share it).
