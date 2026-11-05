@@ -38,7 +38,8 @@
         "The `[gui-next]` extra stays as an alias of `[gui]` for one release with a note (project.version untouched); every moved doc's inbound links resolve (link-check test)",
         "The roster part of the workers reference (from today's orchestration-roster.md) documents an entry as two groups: core fields (id, family, roles, may_process, public_key, available, paused_until, unavailable_until, family_pinned) that the gate, eligibility and the local overlay read, and the `run:` block chosen by `run.harness`, with M16.63's per-harness field table and one example per harness; the version-1 form is named as deprecated until M16.62",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
-        "Estimated net line change (informational, not a gate): docs about -1,500 in docs/ (archived text excluded)"
+        "Estimated net line change (informational, not a gate): docs about -1,500 in docs/ (archived text excluded)",
+        "Stale notes found by the 2026-11-05 milestone audit (sr/work/milestone-audit-2026-11-05.md) are fixed: the 'Deferred past 0.3.1rc2' note is removed from M5.4, M5.6, M5.7, M5.8, M7.1, M7.2 and M8.1–M8.7; the held/proposed/'do not pick up' notes on M9, M9.1 and M9.10 and M10's 'acceptance and touch zones still to author' become a one-line landed note; M10.20's sheet drops 'deferred until after rc3'; regression-prevention.md marks 'Open decision: what green means' and 'M9.10 stays proposed' settled (M9.1 and M9.10 landed; M16.14's checks: block); the scaffold phase sheets of M7, M8, M9 and M10 get Intent and Approach, and phases M7–M11 get a goal, both from the audit's Purpose lines"
       ],
       "codename": "docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra",
       "dependencies": [
@@ -62,7 +63,9 @@
         "pyproject.toml",
         "constraints/file-limits.yaml",
         "specy_road/templates/project/",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "sr/roadmap/phases/",
+        "sr/planning/"
       ],
       "type": "task"
     },

@@ -68,6 +68,57 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "work/prompt-<NODE_ID>.md written by do-next-available-task (and by grind-session's pickup) has exactly one `base: <full sha>` line in its execution-target section: the commit the leaf branch was created from, or for a resumed branch its merge base with the integration branch",
+        "The shared-checkout clause in specy_road/templates/specyrd/agents-rules.md says prompts written by do-next-available-task and specy-road prompt carry `base:`, and keeps 'ask' only for a plan or prompt from elsewhere that names none; its provenance comment says the same",
+        "Tests: a fresh claim's prompt and a resumed claim's prompt each carry the expected sha; the template test pins the new clause text"
+      ],
+      "codename": "pickup-prompt-base",
+      "dependencies": [
+        "01db66ad-a91c-48e3-953e-4083f5f14a13"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M19.3",
+      "node_key": "7641dc02-b1ad-4a6a-af7c-94944c5a7570",
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.3_pickup-prompt-base_7641dc02-b1ad-4a6a-af7c-94944c5a7570.md",
+      "sibling_order": 3,
+      "status": "Not Started",
+      "title": "The pickup prompt names its base commit",
+      "touch_zones": [
+        "specy_road/bundled_scripts/do_next_prompt.py",
+        "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
+        "specy_road/templates/specyrd/agents-rules.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The 'Task pickup' bullet in specy_road/templates/specyrd/agents-rules.md no longer names `--local`: it says pickup pushes the claim and not to skip that step; its provenance comment no longer calls --local 'the only opt-out'",
+        "`do-next-available-task --help` and docs/dev-workflow.md still document --local, and its behaviour is unchanged",
+        "Tests: the rendered managed block contains no `--local`, and the pickup --help still lists it"
+      ],
+      "codename": "no-local-in-block",
+      "dependencies": [
+        "7641dc02-b1ad-4a6a-af7c-94944c5a7570",
+        "01db66ad-a91c-48e3-953e-4083f5f14a13"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M19.4",
+      "node_key": "ae0f5bc8-b0ba-4ae7-8469-f8b6079dc4ff",
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.4_no-local-in-block_ae0f5bc8-b0ba-4ae7-8469-f8b6079dc4ff.md",
+      "sibling_order": 4,
+      "status": "Not Started",
+      "title": "The managed block stops naming pickup's --local opt-out",
+      "touch_zones": [
+        "specy_road/templates/specyrd/agents-rules.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }

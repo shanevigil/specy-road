@@ -19,3 +19,7 @@ Take the leaves in any order that keeps touch zones apart; M11.8 is Mixed becaus
   `specy-road search "<query>" --kind shared`. Do not leave an example path in
   this section — anything matching a real file under `shared/` counts as a
   citation, including inside a comment or a code fence.
+
+## Decisions and notes
+- 2026-11-05 (D6): M5–M11 were recorded Complete without policy.milestone_full_review. The maintainer waived it: the themes were fulfilled long ago, and sr/work/milestone-audit-2026-11-05.md confirms all seven, with the M5, M8 and M11 gaps filed as M18.2–M18.5 and M19.3–M19.4.
+- D6: waive: M5–M11 recorded Complete without policy.milestone_full_review; themes fulfilled per sr/work/milestone-audit-2026-11-05.md, gaps filed as M18.2–M18.5 and M19.3–M19.4 (maintainer, 2026-11-05)

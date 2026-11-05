@@ -338,8 +338,14 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M17.1` | 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface | gate | Human-led | Not Started |
 | `M18` | Orchestration and review-loop features (after 0.3.1) | phase | — | Not Started |
 | `M18.1` | Reviewers check that code is well-formed and that fixes do not degrade it | task | — | Not Started |
+| `M18.2` | Harness-facts records for the Copilot CLI and Antigravity agy | task | Agentic-led | Not Started |
+| `M18.3` | The shared-checkout guard sees file-tool edits and refuses ending a live peer's session | task | Agentic-led | Not Started |
+| `M18.4` | Unattended Codex and Cursor executors warn when reviews are unsigned | task | Agentic-led | Not Started |
+| `M18.5` | worker sync prints a paused_until line for a worker paused by a usage limit | task | Agentic-led | Not Started |
 | `M19` | Adopter-project features: upgrade, agent-file layering, planning hygiene, project tooling (after 0.3.1) | phase | — | Not Started |
 | `M19.1` | Configurable code-analysis tools | task | — | Not Started |
 | `M19.2` | Research reminders leave validate | task | — | Not Started |
+| `M19.3` | The pickup prompt names its base commit | task | Agentic-led | Not Started |
+| `M19.4` | The managed block stops naming pickup's --local opt-out | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

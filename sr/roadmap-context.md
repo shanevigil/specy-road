@@ -338,9 +338,15 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M17.1` 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface `pm-gui-orchestration-plan` — gate — **Not Started**
 - `M18` Orchestration and review-loop features (after 0.3.1) `orch-review-loop` — phase — **Not Started**
   - `M18.1` Reviewers check that code is well-formed and that fixes do not degrade it `review-code-quality` — task — **Not Started**
+  - `M18.2` Harness-facts records for the Copilot CLI and Antigravity agy `harness-facts-copilot-agy` — task — **Not Started**
+  - `M18.3` The shared-checkout guard sees file-tool edits and refuses ending a live peer's session `guard-file-tools` — task — **Not Started**
+  - `M18.4` Unattended Codex and Cursor executors warn when reviews are unsigned `unsigned-review-warning` — task — **Not Started**
+  - `M18.5` worker sync prints a paused_until line for a worker paused by a usage limit `sync-paused-until-hint` — task — **Not Started**
 - `M19` Adopter-project features: upgrade, agent-file layering, planning hygiene, project tooling (after 0.3.1) `adopter-features` — phase — **Not Started**
   - `M19.1` Configurable code-analysis tools `analysis-tools` — task — **Not Started**
   - `M19.2` Research reminders leave validate `research-due-in-doctor` — task — **Not Started**
+  - `M19.3` The pickup prompt names its base commit `pickup-prompt-base` — task — **Not Started**
+  - `M19.4` The managed block stops naming pickup's --local opt-out `no-local-in-block` — task — **Not Started**
 
 ## Open gates
 
