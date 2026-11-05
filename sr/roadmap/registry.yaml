@@ -160,16 +160,6 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: rework-prompt-carries-the-accepted-rca
-    node_id: M15.6
-    branch: feature/rm-rework-prompt-carries-the-accepted-rca
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt_rework.py
-      - specy_road/rework_rca.py
-      - tests/
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked
     node_id: M13.4
     branch: feature/rm-a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked

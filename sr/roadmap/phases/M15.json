@@ -166,7 +166,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.6_rework-prompt-carries-the-accepted-rca_c80c3636-1dd9-4001-8520-f0c4e6402be4.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt_rework.py",
