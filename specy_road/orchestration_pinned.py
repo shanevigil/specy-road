@@ -31,6 +31,7 @@ from specy_road.model_profiles import (
 from specy_road.orchestration_config import ORCHESTRATION_REL, effective_config, orchestration_yaml_path
 from specy_road.review_policy_ref import integration_name, policy_source
 from specy_road.review_target import full_sha
+from specy_road.roster_profile_check import profile_value_problem
 
 
 def pinned_config(repo_root: Path) -> tuple[dict[str, Any], str | None]:
@@ -180,14 +181,19 @@ def pinned_profile_for_entry(repo_root: Path, entry: dict[str, Any]) -> Profile 
     ref, err = policy_source(repo_root)
     if err:
         return Profile(repo_root / str(entry.get("profile") or entry.get("id")), {}, errors=[err])
-    if ref is None:
-        return profile_for_entry(repo_root, entry)
-    sha = full_sha(repo_root, ref) or ref
     rel = entry.get("profile")
+    why = profile_rel_problem(repo_root, str(rel)) if rel else None
+    if why:
+        return Profile(repo_root / str(rel), {}, errors=[why])
+    sha = full_sha(repo_root, ref) or ref if ref is not None else None
+    # A value naming no file here or at the ref is reported as itself, with the accepted form, not as
+    # "not committed": that sentence sends the adopter to commit a file that does not exist.
+    if rel and not (repo_root / str(rel)).is_file() and (
+            sha is None or _blob(repo_root, sha, Path(str(rel)).as_posix()) is None):
+        return Profile(repo_root / str(rel), {}, errors=[str(profile_value_problem(repo_root, rel))])
+    if ref is None or sha is None:
+        return profile_for_entry(repo_root, entry)
     if rel:
-        why = profile_rel_problem(repo_root, str(rel))
-        if why:
-            return Profile(repo_root / str(rel), {}, errors=[why])
         prof = _pinned_at(repo_root, sha, Path(str(rel)).as_posix(), ref)
         return prof.for_id(entry.get("id")) or prof
     paths = _committed_profile_paths(str(repo_root), sha)

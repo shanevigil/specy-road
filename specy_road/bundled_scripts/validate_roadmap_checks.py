@@ -11,7 +11,7 @@ from jsonschema import Draft202012Validator
 
 from specy_road.bundled_scripts.planning_artifacts import collect_planning_artifact_errors
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
-from specy_road.model_profiles import roster_profile_gaps
+from specy_road.roster_profile_check import report_roster_profiles
 from specy_road.review_gate import review_required
 from specy_road.review_gate_agreement import gate_config_mismatch
 from specy_road.runtime_paths import default_user_repo_root, git_root
@@ -384,8 +384,7 @@ def run_validation(
         raise SystemExit(1)
 
     warn_stale_parent_status(nodes)
-    for launchable, msg in roster_profile_gaps(r):   # unlaunchable: a stdout notice --strict does not count
-        print(f"{'warning' if launchable else 'notice'}: {msg}", file=sys.stderr if launchable else sys.stdout)
+    report_roster_profiles(r)   # unmatched ids, and profile: values that do not resolve
     warn_touch_zones_match_nothing(nodes, r, git_root=git_root(r) or r)
     warn_untracked_zones(nodes, r)
     warn_authoring_gaps(nodes, r, gate, show_all=show_all, strict_authoring=strict_authoring)

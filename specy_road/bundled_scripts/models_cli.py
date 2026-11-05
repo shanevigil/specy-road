@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""CLI for `specy-road models list|show|stale`.
+"""CLI for `specy-road models list|show|stale|roster`.
 
 ``list`` is the roster as the gate sees it — each entry's family, roles, and
 whether its profile loads — plus any profile no roster entry points at.
 ``show`` prints one profile's machine fields and a chosen body section.
 ``stale`` names profiles whose research is too old, superseded, or served
 under a moving alias (proposal §7.3), and exits 1 when any rostered model is.
+``roster`` prints roster entries built from the shipped profiles (or adds them with ``--write``).
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ from specy_road.model_profiles import (
 )
 from specy_road.orchestration_config import roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
+from specy_road.roster_generate import RosterError, format_entries, missing_profile_files, roster_entries, write_entries
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
@@ -166,6 +168,28 @@ def cmd_stale(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline 2026-10
     return 1 if any(p.path in rostered for p, _ in stale) else 0
 
 
+def cmd_roster(ns: argparse.Namespace) -> int:
+    root = resolve_repo_root(ns)
+    requests = [(role, pid) for role in ROLES for pid in getattr(ns, role) or []]
+    if not requests:
+        print("error: name at least one profile with --executor, --reviewer or --coordinator", file=sys.stderr)
+        return 2
+    try:
+        entries = roster_entries(requests)
+        if not ns.write:
+            print(format_entries(entries), end="")
+        else:
+            added, skipped = write_entries(root, entries)
+            print(f"added to roadmap/orchestration.yaml: {', '.join(added) or 'none'}"
+                  + (f"; already rostered: {', '.join(skipped)}" if skipped else ""))
+    except RosterError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    for note in missing_profile_files(root, entries):
+        print(f"note: {note}", file=sys.stderr)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="specy-road")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -190,6 +214,14 @@ def build_parser() -> argparse.ArgumentParser:
     st.add_argument("--json", action="store_true")
     add_repo_root_arg(st)
     st.set_defaults(func=cmd_stale)
+
+    ro = msub.add_parser("roster", help="Roster entries from the shipped profiles, in the form validate accepts")
+    for role in ROLES:
+        ro.add_argument(f"--{role}", action="append", metavar="PROFILE_ID",
+                        help=f"A profile id (file name, api_id or alias) to roster as {role}; repeatable")
+    ro.add_argument("--write", action="store_true", help="Add the entries to roadmap/orchestration.yaml")
+    add_repo_root_arg(ro)
+    ro.set_defaults(func=cmd_roster)
     return p
 
 
