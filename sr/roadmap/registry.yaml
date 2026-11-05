@@ -70,6 +70,7 @@ entries:
       - specy_road/bundled_scripts/session_cli.py
       - tests/
       - specy_road/bundled_scripts/refresh_stubs_report.py
+      - specy_road/written_entry.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
