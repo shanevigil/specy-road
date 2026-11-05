@@ -142,9 +142,9 @@ expire automatically when capacity returns.
 
 ```yaml
 roster:
-  - id: claude-opus-5.5
+  - id: claude-opus-5-5
     family: anthropic
-    profile: model-profiles/anthropic/claude-opus-5.5.md
+    profile: model-profiles/anthropic-claude/claude-opus-5-5.md
     roles: [coordinator, reviewer, executor]
     channels:
       cli: 'claude -p --model claude-opus-5-5 "$(cat {prompt})"'
@@ -152,7 +152,7 @@ roster:
     may_process: [public, internal]
   - id: composer-2.5
     family: cursor
-    profile: model-profiles/cursor/composer-2.5.md
+    profile: model-profiles/cursor-composer/composer-2.5.md
     roles: [executor]
     channels: { paste: cursor, cli: 'cursor-agent -m composer-2.5 -p {prompt}' }
     subagent_family_lock: cursor
