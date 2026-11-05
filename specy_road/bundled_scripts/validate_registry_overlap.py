@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import contextlib
 import sys
+from collections.abc import Iterable
 from contextvars import ContextVar
+from pathlib import Path
 from typing import NamedTuple
+
+from specy_road.shared_zones import DEFAULT_SHARED_ZONES, resolve_shared_zones, shared_ignores
 
 AuthoringOverlapScope = NamedTuple(
     "AuthoringOverlapScope",
@@ -72,12 +76,17 @@ def _clash_suppressed_by_broad_summary(
     return False
 
 
+def _counted_clash(x: str, y: str, shared: Iterable[str]) -> bool:
+    """A clash that is not only through a shared zone (:mod:`specy_road.shared_zones`)."""
+    return _touch_zones_clash(x, y) and not shared_ignores(x, y, shared)
+
+
 def _first_independent_pair_clash(
-    za: list[str], zb: list[str], *, summarized_broad: set[str]
+    za: list[str], zb: list[str], *, summarized_broad: set[str], shared: Iterable[str]
 ) -> tuple[str, str] | None:
     for x in za:
         for y in zb:
-            if not _touch_zones_clash(x, y):
+            if not _counted_clash(x, y, shared):
                 continue
             if _clash_suppressed_by_broad_summary(x, y, summarized_broad):
                 continue
@@ -85,10 +94,12 @@ def _first_independent_pair_clash(
     return None
 
 
-def _first_touch_zone_clash(za: list[str], zb: list[str]) -> tuple[str, str] | None:
+def _first_touch_zone_clash(
+    za: list[str], zb: list[str], shared: Iterable[str]
+) -> tuple[str, str] | None:
     for x in za:
         for y in zb:
-            if _touch_zones_clash(x, y):
+            if _counted_clash(x, y, shared):
                 return x, y
     return None
 
@@ -104,12 +115,14 @@ def _claims_in_broad_zone_tree(entries: list[dict], zone: str) -> set[str]:
     return names
 
 
-def _broad_zone_summaries(entries: list[dict]) -> list[tuple[str, list[str]]]:
+def _broad_zone_summaries(
+    entries: list[dict], shared: Iterable[str]
+) -> list[tuple[str, list[str]]]:
     exact: dict[str, set[str]] = {}
     for entry in entries:
         cn = entry.get("codename") or "?"
         for zone in entry.get("touch_zones") or []:
-            if _is_broad_touch_zone(zone):
+            if _is_broad_touch_zone(zone) and not shared_ignores(zone, zone, shared):
                 exact.setdefault(zone, set()).add(cn)
     return sorted(
         (zone, sorted(_claims_in_broad_zone_tree(entries, zone)))
@@ -124,13 +137,17 @@ def touch_zone_overlap(
     scope_label: str | None = None,
     scope_touch_zones: list[str] | None = None,
     scope_node_id: str | None = None,
+    shared: Iterable[str] = DEFAULT_SHARED_ZONES,
 ) -> None:
     """Warn if entries share a touch zone path (heuristic).
 
     With ``scope_touch_zones``, only warn for registry claims that clash with
     that node (add-node / edit-node). Otherwise list all clashes: broad shared
-    zones once per zone, other claim pairs one line each.
+    zones once per zone, other claim pairs one line each. A clash where one
+    zone is itself one of ``shared`` (``grind.shared_zones``) is not reported,
+    the rule ``grind-session --plan`` batches by.
     """
+    shared = tuple(shared)
     if scope_touch_zones is not None:
         label = scope_label or "?"
         scoped = sorted(scope_touch_zones)
@@ -138,7 +155,7 @@ def touch_zone_overlap(
             if scope_node_id and entry.get("node_id") == scope_node_id:
                 continue
             zb = sorted(entry.get("touch_zones") or [])
-            clash = _first_touch_zone_clash(scoped, zb)
+            clash = _first_touch_zone_clash(scoped, zb, shared)
             if clash is None:
                 continue
             x, y = clash
@@ -150,7 +167,7 @@ def touch_zone_overlap(
             )
         return
 
-    summaries = _broad_zone_summaries(entries)
+    summaries = _broad_zone_summaries(entries, shared)
     summarized_broad = {zone for zone, _ in summaries}
     for zone, cns in summaries:
         joined = ", ".join(cns)
@@ -168,7 +185,7 @@ def touch_zone_overlap(
             zb = sorted(b.get("touch_zones") or [])
             bc = b.get("codename") or "?"
             clash = _first_independent_pair_clash(
-                za, zb, summarized_broad=summarized_broad
+                za, zb, summarized_broad=summarized_broad, shared=shared
             )
             if clash is None:
                 continue
@@ -185,15 +202,18 @@ def warn_registry_touch_zone_overlap(
     *,
     no_overlap_warn: bool,
     overlap_scope: AuthoringOverlapScope | None,
+    repo_root: Path | None = None,
 ) -> None:
     if not entries or no_overlap_warn:
         return
+    shared = resolve_shared_zones(repo_root) if repo_root else DEFAULT_SHARED_ZONES
     if overlap_scope is not None:
         touch_zone_overlap(
             entries,
             scope_label=overlap_scope.label,
             scope_touch_zones=overlap_scope.touch_zones,
             scope_node_id=overlap_scope.node_id,
+            shared=shared,
         )
     else:
-        touch_zone_overlap(entries)
+        touch_zone_overlap(entries, shared=shared)
