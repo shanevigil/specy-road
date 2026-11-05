@@ -101,6 +101,7 @@ entries:
       - specy_road/file_limits_engine.py
       - tests/
       - specy_road/templates/project/constraints/file-limits.yaml
+      - specy_road/bundled_scripts/upgrade_preview.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
