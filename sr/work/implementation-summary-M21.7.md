@@ -110,6 +110,16 @@ The `origin/WIP/improvements-0-3-1` merge went in first (registry rows only), wi
 - Every place that takes a git-steering decision: `git_snapshot` (now git-named plus candidates) and `_turn_findings` (now one fail-closed `except`). `rest_changes` runs only after that gate.
 - Full suite: 5,036 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
 
+## Merge with M15.36 (coordinator, after fix round 3)
+
+`origin/WIP/improvements-0-3-1` conflicted in `specy_road/worker_adapter_claude.py`, but only in the import block. The merge (f3c06d1e) keeps both features. Launch and resume now pass M15.36's explicit worker mode (`_worker_mode`: `--bare` plus its settings path, or `--setting-sources user,project,local`) and then this leaf's `claude_denies` rules, ahead of `EXECUTOR_PERMISSIONS`. The two flag sets do not collide: `--setting-sources` takes a single value, and `--allowedTools` still ends the `--disallowedTools` list. M15.36's auth preflight lives in `worker_ops_launch.py`, which merged cleanly. The round-3 items are present after the merge: CRLF read as LF in `parse_config`, and fail-closed `_turn_findings`.
+
+Tests after the merge:
+- Targeted, for both areas (the steering guard, the turn check, the adapters, Claude worker auth, reviewer auth, the config dir, roster dry-run and the finish fixtures): 186 passed.
+- Full suite: 5,098 passed.
+- `ruff check specy_road tests scripts`: clean.
+- `specy-road file-limits`: OK.
+
 ## Added
 
 - `specy_road/steering_paths.py`: the list, `Scope` and snapshots per class, `changes`, `SteeringWatch` with `git_changes`, `rest_changes` and `without_steering_paths`, and `config_values`, a no-git config reader. Required by A1 and A2.
