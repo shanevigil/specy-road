@@ -461,6 +461,33 @@
         "specy_road/bundled_scripts/role_prompt_rca.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "review delegate tells the harness the model as worker delegate and docs/orchestration-models.md say: the entry's harness_model, else the profile's id, else the roster id when the entry has no profile (review_delegate._Harness no longer calls harness_model(entry, '') for a missing profile); a test with a claude-code entry with no profile and no harness_model asserts the roster id is the launch's model argument",
+        "When the model still resolves to none (a profile whose api_id is unknown and no harness_model) and the entry does not declare routing: dynamic, review delegate refuses before launch (no RUN record is opened, exit 1) with '<id>: no model would be passed to <harness>, so it would run its own default model; set harness_model on the roster entry, or routing: dynamic to accept the harness's choice'; tests for the refusal and for a routing: dynamic entry that launches",
+        "review delegate reads the model the harness reported (review_model_check.reported_model over the last attempt's text, M15.3) and passes check()'s result to file_review as prompt --channel cli --run does, so a delegated record carries harness_model and, on a mismatch, model_mismatch, which the gate excludes; RUN-<model>.json gains requested_model (the id passed, or null) and reported_model (or null); a fake-harness test reporting another model asserts model_mismatch on the record and that review list reports 'harness ran a different model'",
+        "entry_routing returns dynamic for an entry on any harness whose resolved model is none (today only cursor), and routing_problem's message for such an entry says no model was passed and names harness_model before pinned: true; a test with a claude-code entry whose profile api_id is unknown. Out of scope: worker delegate (executor) launches, the paste and subagent channels, and a harness that reports no model (M15.3's warning stays)"
+      ],
+      "codename": "delegated-reviewer-always-runs-a-named-model",
+      "dependencies": [
+        "7e865197-c8d6-4ce4-a2d1-dc2b974a17d0"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.31",
+      "node_key": "311116ea-4199-49bf-8858-11c48b99828c",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.31_delegated-reviewer-always-runs-a-named-model_311116ea-4199-49bf-8858-11c48b99828c.md",
+      "sibling_order": 31,
+      "status": "Not Started",
+      "title": "A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported",
+      "touch_zones": [
+        "specy_road/review_delegate.py",
+        "specy_road/orchestration_config.py",
+        "docs/orchestration-models.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
