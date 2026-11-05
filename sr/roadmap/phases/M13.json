@@ -264,7 +264,7 @@
       "parent_id": "M13",
       "planning_dir": "planning/M13.10_upgrade-guide-moving-to-the-split-rules-files-previewing-an-uninstalled-version-telling-old-installs-apart_30507388-ed3e-439c-bbf9-0ae841070bab.md",
       "sibling_order": 10,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Upgrade guide: moving to the split rules files, previewing an uninstalled version, telling old installs apart",
       "touch_zones": [
         "docs/upgrading.md",

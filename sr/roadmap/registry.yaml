@@ -121,15 +121,3 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: upgrade-guide-moving-to-the-split-rules-files-previewing-an-uninstalled-version-telling-old-installs-apart
-    node_id: M13.10
-    branch: feature/rm-upgrade-guide-moving-to-the-split-rules-files-previewing-an-uninstalled-version-telling-old-installs-apart
-    touch_zones:
-      - docs/upgrading.md
-      - docs/install-and-usage.md
-      - CHANGELOG.md
-      - tests/
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-05T02:57:42+00:00'
