@@ -85,21 +85,33 @@ runs the read-only command above with the entry's model, and any other entry
 its `channels.cli`. Refused before launch, with the reason: an entry without
 either (the profile's `access.cli` is an example and is never run for a
 reviewer), a model whose profile `api_id` is `unknown` (the harness would run
-its own default under the rostered id), and a `channels.cli` passing `--force`,
-`--yolo` or `--dangerously-skip-permissions`.
+its own default under the rostered id; checked for a `channels.cli` too), and a
+`channels.cli` passing `--force`, `--yolo` or `--dangerously-skip-permissions`.
+The flag check is one rule: the command is split as `sh` splits words
+(`shlex` in POSIX mode with `punctuation_chars`, so `;`, `&`, `|`, `(`, `)`,
+`<` and `>` are separate tokens and quotes are removed), and a token whose name
+(the part before any `=`) is exactly one of the flags refuses it: `--force;`,
+`--force&&x`, `(--force)` and `'--force'` all do, a quoted argument that only
+mentions `--force` among other words does not. Flags the shell produces at run
+time (`$VAR`, `$(...)`, aliases, a script the command runs) are out of scope; a
+command the tokenizer cannot split (an unbalanced quote) is refused.
 
 The reviewer runs in the leaf's own worktree, the one `git worktree list`
 shows with the claimed branch checked out, never in a checkout on the
-integration branch; `--worktree PATH` names another. With none, `prompt`
-refuses and names `--worktree PATH` and the `git worktree add` that creates
-one.
+integration branch; `--worktree PATH` names another. Either must be the top
+of a git checkout, must not have the integration branch checked out, and must
+have `HEAD` at the claimed branch's tip; otherwise `prompt` refuses. With no
+worktree at all, it refuses and names `--worktree PATH` and the `git worktree
+add` that creates one.
 
 After the run, `specy_road/review_model_check.py` compares the model the
 harness reported (its first `system/init` event's `model`, as worker usage
-reads it) with the roster entry's id, `harness_model` and profile names, after
+reads it, and each `result` event's `model`, or the one key of its
+`modelUsage`) with the roster entry's id, `harness_model` and profile names, after
 normalising case, separators and display names (`Claude Opus 5.5` is
-`claude-opus-5-5`). The filed record carries `harness_model`; on a real
-mismatch it also carries `model_mismatch: true`, and the gate does not count
+`claude-opus-5-5`). Any reported model that differs is a mismatch, so a line
+the model printed can add one but never hide one. The filed record carries
+`harness_model`; on a real mismatch it also carries `model_mismatch: true`, and the gate does not count
 it (`harness ran a different model`), which `handoff status` lists under who
 can still approve. A harness that reports no model (Codex, plain-text
 commands) is a warning only.

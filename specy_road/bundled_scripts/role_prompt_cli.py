@@ -23,7 +23,8 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.bundled_scripts.role_prompt_stream import stream_and_capture
-from specy_road.git_subprocess import git_ok
+from specy_road.git_subprocess import git_ok, git_text
+from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.model_profiles import Profile
 from specy_road.orchestration_role_env import CLAUDE_REVIEWER_AVOID_ENV
 from specy_road.review_record_write import (Outcome, answer_scratch, close_review_run, replace_file, run_and_file,
@@ -73,55 +74,99 @@ def resolve_cli(prof: Profile | None, entry_cli: str | None, harness: str | None
     return cli, ADAPTERS.get(harness or "generic", ADAPTERS["generic"]).effort_flag(level), ""
 
 
-def bypass_flag(cli: str) -> str | None:
-    """The first of :data:`BYPASS_FLAGS` ``cli`` passes (alone or as ``--flag=value``), else ``None``."""
+def bypass_problem(cli: str) -> str:
+    """Why the reviewer command ``cli`` may not run, else ``""``: it passes one of :data:`BYPASS_FLAGS`.
+
+    One bounded rule. ``cli`` is split as ``sh`` would split its words, by :class:`shlex.shlex` in POSIX mode with
+    ``punctuation_chars``, so ``;``, ``&``, ``|``, ``(``, ``)``, ``<`` and ``>`` are tokens of their own (``--force;``,
+    ``--force&&x`` and ``(--force)`` all yield ``--force``) and quotes are removed (``'--force'`` is ``--force``, as
+    the program receives it). A token matches when it, or its part before the first ``=``, is exactly one of the
+    flags. A quoted argument that only contains a flag among other text (``"use --force here"``) is one token and
+    does not match. Out of scope, because the tokenizer does not expand them: flags produced by the shell at run
+    time (``$VAR``, ``$(...)``, backquotes, aliases, a script the command runs). A command the tokenizer cannot
+    split (an unbalanced quote) is refused."""
+    lexer = shlex.shlex(cli, posix=True, punctuation_chars=True)
+    lexer.whitespace_split = True
     try:
-        words = shlex.split(cli)
-    except ValueError:   # unbalanced quotes: still refuse a flag that is plainly there
-        words = cli.split()
-    return next((f for w in words for f in BYPASS_FLAGS if w == f or w.startswith(f + "=")), None)
+        words = list(lexer)
+    except ValueError as e:
+        return f"the reviewer's channels.cli cannot be split into words ({e}), so it cannot be checked: {cli}"
+    flag = next((w.split("=", 1)[0] for w in words if w.split("=", 1)[0] in BYPASS_FLAGS), None)
+    if flag:
+        return (f"the reviewer's channels.cli passes {flag}, which lets it write or skips its permission checks; "
+                f"a reviewer runs read-only: {cli}")
+    return ""
+
+
+def model_problem(prof: Profile | None, model: str) -> tuple[str | None, str]:
+    """``(api id, error)``: the roster ``model``'s API id (its profile's ``api_id``, else the roster id), or why it has
+    none (``unknown`` or empty: the harness would run some default model under this roster id). Every reviewer
+    launch path checks it, a custom ``channels.cli`` too."""
+    api_id = prof.api_id if prof is not None else model
+    if (api_id or "").strip().lower() in ("", "unknown"):
+        return None, (f"{model!r} resolves to no API model id (its profile's api_id is unknown), so the harness "
+                      "would run some other model under this roster id; set the profile's api_id")
+    return api_id, ""
 
 
 def reviewer_command(prof: Profile | None, entry: dict[str, Any], model: str) -> tuple[str | None, str | None, str]:
     """``(api id, custom cli, error)`` for the roster ``entry``'s reviewer, from the entry only: a claude-code, codex
-    or cursor entry without ``channels.cli`` runs its adapter's read-only command with the entry's model (the API
-    id, which must be known), any other entry its ``channels.cli``, which must pass none of :data:`BYPASS_FLAGS`.
-    The profile's ``access.cli`` is never used: it is an example, often with ``--force`` and no ``--model``."""
+    or cursor entry without ``channels.cli`` runs its adapter's read-only command with the entry's model, any other
+    entry its ``channels.cli``. Refused (``error``, nothing launched) by :func:`model_problem` on every path and
+    :func:`bypass_problem` on a ``channels.cli``. The profile's ``access.cli`` is never used: it is an example,
+    often with ``--force`` and no ``--model``."""
     harness, entry_cli = entry.get("harness"), (entry.get("channels") or {}).get("cli")
-    if harness in READ_BACK_HARNESSES and not entry_cli:
-        api_id = prof.api_id if prof is not None else model
-        if (api_id or "").strip().lower() in ("", "unknown"):
-            return None, None, (f"{model!r} resolves to no API model id (its profile's api_id is unknown), so the "
-                                "harness would run its own default model under this roster id; set the profile's "
-                                "api_id. Nothing was launched")
-        return api_id, None, ""
-    if not entry_cli:
-        return None, None, (f"a {harness or 'generic'} reviewer needs a roster channels.cli; the profile's "
-                            "access.cli is never run for a reviewer. Nothing was launched")
-    flag = bypass_flag(entry_cli)
-    if flag:
-        return None, None, (f"the reviewer's channels.cli passes {flag}, which lets it write or skips its "
-                            f"permission checks; a reviewer runs read-only. Nothing was launched: {entry_cli}")
-    return None, entry_cli, ""
+    api_id, err = model_problem(prof, model)
+    if not err and not entry_cli and harness not in READ_BACK_HARNESSES:
+        err = (f"a {harness or 'generic'} reviewer needs a roster channels.cli; the profile's access.cli is never "
+               "run for a reviewer")
+    err = err or (bypass_problem(entry_cli) if entry_cli else "")
+    if err:
+        return None, None, f"{err}. Nothing was launched"
+    return api_id, entry_cli or None, ""
+
+
+def worktree_problem(root: Path, path: Path, t: ReviewTarget) -> str:
+    """Why a reviewer may not run in ``path``, else ``""``: it must be the top of a git checkout, must not have the
+    integration branch checked out, and, when the leaf has a claimed branch, must have its ``HEAD`` at that branch's
+    tip. Both an explicit ``--worktree`` and the one :func:`leaf_worktree` finds are checked."""
+    top = git_text(["rev-parse", "--show-toplevel"], path) if path.is_dir() else None
+    if not top or Path(top).resolve() != path.resolve():
+        return f"{path} is not the top of a git checkout"
+    base = resolve_integration_defaults(root, explicit_base=None, explicit_remote=None)[0]
+    if git_text(["branch", "--show-current"], path) == base:
+        return f"{path} has the integration branch {base} checked out, and a reviewer never runs there"
+    branch = (t.entry or {}).get("branch")
+    tip = git_text(["rev-parse", "--verify", "--quiet", f"refs/heads/{branch}^{{commit}}"], root) if branch else None
+    if branch and (not tip or git_text(["rev-parse", "HEAD"], path) != tip):
+        return f"{path} is not at the tip of the leaf's claimed branch {branch}"
+    return ""
 
 
 def leaf_worktree(root: Path, t: ReviewTarget, explicit: Path | None = None) -> tuple[Path | None, str]:
     """``(path, error)``: where a reviewer runs, the worktree with the leaf's claimed branch checked out (``git
-    worktree list``), never a checkout on the integration branch; ``explicit`` (``--worktree``) overrides."""
-    if explicit is not None:
-        return (explicit.resolve(), "") if explicit.is_dir() else (None, f"--worktree {explicit}: no such directory")
-    branch = (t.entry or {}).get("branch")
+    worktree list``), or ``explicit`` (``--worktree``); either must pass :func:`worktree_problem`."""
+    path = explicit.resolve() if explicit is not None else _claimed_worktree(root, (t.entry or {}).get("branch"))
+    if path is None:
+        branch, codename = (t.entry or {}).get("branch"), (t.entry or {}).get("codename") or "<codename>"
+        return None, (f"no worktree has {branch or f'a claimed branch of {t.node_id}'} checked out, and a reviewer "
+                      "runs in the leaf's own worktree, never in a checkout on the integration branch: pass "
+                      f"--worktree PATH, or create it with `git worktree add work/.worktrees/{codename} "
+                      f"{branch or '<branch>'}`")
+    err = worktree_problem(root, path, t)
+    return (None, f"{'--worktree ' if explicit is not None else ''}{err}") if err else (path, "")
+
+
+def _claimed_worktree(root: Path, branch: str | None) -> Path | None:
+    """The worktree ``git worktree list`` shows with ``branch`` checked out, else ``None``."""
     ok, out = git_ok(["worktree", "list", "--porcelain"], root) if branch else (False, "")
     path: Path | None = None
     for line in out.splitlines() if ok else []:
         if line.startswith("worktree "):
             path = Path(line[len("worktree "):])
         elif line == f"branch refs/heads/{branch}" and path is not None:
-            return path, ""
-    codename = (t.entry or {}).get("codename") or "<codename>"
-    return None, (f"no worktree has {branch or f'a claimed branch of {t.node_id}'} checked out, and a reviewer runs "
-                  "in the leaf's own worktree, never in a checkout on the integration branch: pass --worktree PATH, "
-                  f"or create it with `git worktree add work/.worktrees/{codename} {branch or '<branch>'}`")
+            return path
+    return None
 
 
 def show_cli(prof: Profile | None, prompt_path: Path, entry_cli: str | None, harness: str | None,

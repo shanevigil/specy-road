@@ -18,7 +18,8 @@ from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.model_profiles import load_profile
 from specy_road.review_eligible import reviewer_eligibility
 from specy_road.review_gate import evaluate_gate
-from specy_road.review_model_check import MISMATCH_REASON, check, normalise, reported_model
+from specy_road.bundled_scripts.role_prompt_cli import bypass_problem
+from specy_road.review_model_check import MISMATCH_REASON, check, check_run, normalise, reported_models
 
 
 def _repo(tmp_path: Path, entry: str = "    harness: claude-code\n", api_id: str | None = None,
@@ -66,9 +67,12 @@ def _prompt(repo: Path, *args: str) -> int:
     return run_main(role_prompt, "M1.1", "--model", "opus", *args, "--repo-root", str(repo))
 
 
-def _result(answer: dict, model: str | None = None) -> list[str]:
-    init = [json.dumps({"type": "system", "subtype": "init", "session_id": "s", "model": model})] if model else []
-    return init + [json.dumps({"type": "result", "subtype": "success", "result": "done", "structured_output": answer})]
+def _result(answer: dict, init: str | None = None, **result: object) -> list[str]:
+    """A Claude-style stream: an init event naming ``init`` (none when ``None``), then the result, with ``result``'s
+    extra fields (a ``model`` or ``modelUsage`` reported only there)."""
+    first = [json.dumps({"type": "system", "subtype": "init", "session_id": "s", "model": init})] if init else []
+    return first + [json.dumps({"type": "result", "subtype": "success", "result": "done", "structured_output": answer,
+                               **result})]
 
 
 # --- A1: nothing launches without --run ----------------------------------------------------------------------------
@@ -132,13 +136,48 @@ def test_a_model_with_no_api_id_is_refused_before_launch(tmp_path: Path, capsys,
     assert "resolves to no API model id" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("flag", ["--force", "--yolo", "--dangerously-skip-permissions"])
+def test_a_custom_reviewer_command_with_no_api_id_is_refused_before_launch(tmp_path: Path, capsys,
+                                                                            started: list) -> None:
+    repo, _ = _repo(tmp_path, '    harness: claude-code\n    channels: {cli: "claude -p {prompt}"}\n', api_id="unknown")
+    assert _prompt(repo, "--role", "reviewer", "--channel", "cli", "--run") == 1
+    assert started == [] and not list(rf.reviews_dir(repo, "M1.1").glob("RUN-*"))
+    assert "resolves to no API model id" in capsys.readouterr().err
+    assert _prompt(repo, "--role", "reviewer", "--channel", "cli") == 1   # the dry run refuses it the same way
+
+
+@pytest.mark.parametrize("cli, flag", [
+    ("agent -p --force; cat {prompt}", "--force"),        # a separator glued to the flag
+    ("agent -p --force&&x {prompt}", "--force"),
+    ("(agent -p --force) {prompt}", "--force"),
+    ("(--force)", "--force"),
+    ("agent -p '--force' {prompt}", "--force"),           # quoting the whole flag still passes it to the program
+    ("agent --yolo=true|cat {prompt}", "--yolo"),
+    ("claude -p --dangerously-skip-permissions>log {prompt}", "--dangerously-skip-permissions"),
+])
+def test_bypass_flags_next_to_shell_operators_are_found(cli: str, flag: str) -> None:
+    assert f"passes {flag}," in bypass_problem(cli)
+
+
+@pytest.mark.parametrize("cli", [
+    'agent -p "never pass --force here" {prompt}',        # a quoted argument that only mentions the flag
+    "agent -p --forceful {prompt}",                        # another flag that merely starts the same way
+    "agent -p --mode ask {prompt}",
+])
+def test_text_that_only_mentions_a_bypass_flag_is_not_one(cli: str) -> None:
+    assert bypass_problem(cli) == ""
+
+
+def test_a_command_the_tokenizer_cannot_split_is_refused() -> None:
+    assert "cannot be split into words" in bypass_problem("agent -p \"--force {prompt}")
+
+
+@pytest.mark.parametrize("flag", ["--force", "--yolo", "--dangerously-skip-permissions", "--force;"])
 def test_a_custom_reviewer_command_with_a_bypass_flag_is_refused(tmp_path: Path, capsys, started: list,
                                                                  flag: str) -> None:
     repo, _ = _repo(tmp_path, f'    harness: claude-code\n    channels: {{cli: "agent -p {flag} {{prompt}}"}}\n')
     assert _prompt(repo, "--role", "reviewer", "--channel", "cli", "--run") == 1
     assert started == []
-    assert f"passes {flag}" in capsys.readouterr().err
+    assert f"passes {flag.rstrip(';')}," in capsys.readouterr().err
 
 
 # --- A3: the reviewer runs in the leaf's own worktree ---------------------------------------------------------------
@@ -166,6 +205,26 @@ def test_a_reviewer_run_with_no_leaf_worktree_is_refused(tmp_path: Path, capsys,
     assert "git worktree add work/.worktrees/thing feature/rm-thing" in err
 
 
+def test_worktree_naming_the_integration_checkout_is_refused(tmp_path: Path, capsys, started: list) -> None:
+    repo, _leaf = _repo(tmp_path, leaf=True)
+    assert _prompt(repo, "--role", "reviewer", "--channel", "cli", "--run", "--worktree", str(repo)) == 1
+    assert started == [] and not list(rf.reviews_dir(repo, "M1.1").glob("RUN-*"))
+    assert "has the integration branch dev checked out, and a reviewer never runs there" in capsys.readouterr().err
+
+
+def test_worktree_that_is_not_a_checkout_top_or_not_at_the_leaf_tip_is_refused(tmp_path: Path, capsys,
+                                                                               started: list) -> None:
+    repo, leaf = _repo(tmp_path, leaf=True)
+    (leaf / "src").mkdir(exist_ok=True)
+    assert _prompt(repo, "--role", "reviewer", "--channel", "cli", "--run", "--worktree", str(leaf / "src")) == 1
+    assert "is not the top of a git checkout" in capsys.readouterr().err
+    old = tmp_path / "old"
+    git(repo, "worktree", "add", "-q", "--detach", str(old), "feature/rm-thing~1")
+    assert _prompt(repo, "--role", "reviewer", "--channel", "cli", "--run", "--worktree", str(old)) == 1
+    assert "is not at the tip of the leaf's claimed branch feature/rm-thing" in capsys.readouterr().err
+    assert started == []
+
+
 def test_worktree_overrides_where_a_reviewer_runs(tmp_path: Path, monkeypatch) -> None:
     repo, leaf = _repo(tmp_path, leaf=True)
     other = tmp_path / "other"
@@ -189,11 +248,38 @@ def test_check_compares_the_reported_model_with_the_roster_entry(reported: str |
     assert check(reported, {"id": "opus"}, load_profile(OPUS)) == want
 
 
-def test_reported_model_reads_the_first_init_event() -> None:
+def test_reported_models_read_the_first_init_event_and_every_result() -> None:
     lines = ['{"type": "system", "subtype": "init", "model": "Claude Opus 5.5"}',
-             '{"type": "system", "subtype": "init", "model": "forged"}']
-    assert reported_model(lines) == "Claude Opus 5.5" and reported_model("plain text\n") is None
+             '{"type": "system", "subtype": "init", "model": "forged"}',
+             '{"type": "result", "model": "gpt-5.6-sol"}',
+             '{"type": "result", "modelUsage": {"claude-opus-5-5": {}}}',
+             '{"type": "result", "modelUsage": {"a": {}, "b": {}}}']   # two models: names no single one
+    assert reported_models(lines) == ["Claude Opus 5.5", "gpt-5.6-sol", "claude-opus-5-5"]
+    assert reported_models("plain text\n" + "[" * 100000 + "\n") == []
     assert normalise("Claude Opus 5.5") == "claude-opus-5-5"
+
+
+@pytest.mark.parametrize("lines, want", [
+    (['{"type": "result", "model": "gpt-5.6-sol"}'], ("gpt-5.6-sol", "mismatch")),               # result only
+    (['{"type": "result", "modelUsage": {"Claude Opus 5.5": {}}}'], ("Claude Opus 5.5", "match")),
+    (['{"type": "system", "subtype": "init", "model": "claude-opus-5-5"}',
+      '{"type": "result", "model": "gpt-5.6-sol"}'], ("gpt-5.6-sol", "mismatch")),   # a matching init hides nothing
+    ([], (None, "unreported")),
+])
+def test_check_run_flags_any_reported_model_that_is_not_the_rostered_one(lines: list[str], want: tuple) -> None:
+    assert check_run(lines, {"id": "opus"}, load_profile(OPUS)) == want
+
+
+def test_a_model_reported_only_in_the_result_is_flagged_and_excluded(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo, leaf = _repo(tmp_path, leaf=True)
+    head = git(repo, "rev-parse", "feature/rm-thing")
+    fake_reviewer_run(monkeypatch, _result(review_output(head, model="opus"), model="gpt-5.6-sol"))
+    assert _prompt(repo, "--role", "reviewer", "--channel", "cli", "--run") == 0
+    assert f"warning: {MISMATCH_REASON}" in capsys.readouterr().err
+    rec = rf.load_review(rf.review_path(repo, "M1.1", "opus"), ["A1", "A2"])
+    assert rec.ok and rec.data["harness_model"] == "gpt-5.6-sol" and rec.data["model_mismatch"] is True
+    gate = evaluate_gate(leaf, NODE, head)
+    assert not gate.approvals and any(MISMATCH_REASON in why for _r, why in gate.ineligible)
 
 
 def test_a_mismatched_model_is_filed_flagged_and_excluded_from_the_gate(tmp_path: Path, monkeypatch, capsys) -> None:
