@@ -11,7 +11,14 @@ applies_to_globs:
   - "**/*.md"
 
 # Merged with legacy `exclude_globs` (same Path.glob semantics as `applies_to_globs`).
-# exclude_path_globs:
+# The root agent files are yours: specy-road budgets only what it owns (its
+# managed blocks and .specyrd/ files), so they are left uncapped by default.
+# To cap them too, delete them from this list, e.g.:
+#   exclude_path_globs:
+#     - "**/node_modules/**"
+exclude_path_globs:
+  - "AGENTS.md"
+  - "CLAUDE.md"
 #   - "**/node_modules/**"
 #   - "**/Generated/**"
 
