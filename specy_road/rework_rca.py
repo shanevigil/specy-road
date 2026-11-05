@@ -3,79 +3,96 @@
 After an RCA was accepted, ``worker delegate --rework`` used to send only the blocking reviews, one of which
 proposed the opposite design. :func:`governing_rca` finds the leaf's accepted ``RCA-<round>.md`` — valid
 under :func:`review_rca.loop_state`'s checks, and, for ``defer_findings``, applied by ``review defer`` (the
-M12.1 next-step rules in :mod:`review_next_step`) — when it analysed the round of at least one carried
-blocking review. :func:`rca_lines` renders its design and required changes first, with the sentence that
-overrules a contradicting review fix; :func:`filed` marks each review as filed before or after it.
+M12.1 next-step rules in :mod:`review_next_step`) — when it was filed after at least one carried blocking
+review. :func:`rca_lines` renders its design and required changes first, with the sentence that overrules a
+contradicting review fix; :func:`filed` marks each review as filed before or after it.
 
-An RCA file that cannot be read (front matter or schema) at or after the oldest carried review's round may
-be the accepted one, so :func:`governing_rca` raises :class:`RcaNotCarried` rather than leave it out.
+"Filed" is filing provenance: a file's modification time, which ``review record`` (``REVIEW-*.md``) and the
+analyst (``RCA-*.md``) set when they write it. Which commit a review names says nothing about when it was filed.
+
+:func:`check_inputs` reads every record file the rework section loads as bytes and decodes it before any
+loader does; with blocking reviews to carry, an RCA file whose front matter or schema is broken may be the
+accepted one. Both raise :class:`RcaNotCarried`, naming the file, rather than crash or leave the RCA out.
 """
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from specy_road.review_deferral import marker_path
-from specy_road.review_files import ReviewFile, list_rcas
+from specy_road.review_files import HISTORY_DIRNAME, RCA_PREFIX, REVIEW_PREFIX, ReviewFile, list_rcas, reviews_dir
 from specy_road.review_rca import loop_state
-from specy_road.review_target import full_sha
 
 
 class RcaNotCarried(Exception):
-    """An RCA that may be the accepted one cannot be rendered into the prompt."""
+    """A record the rework section needs cannot be read, or the accepted RCA cannot be rendered into it."""
 
 
 @dataclass(frozen=True)
 class RcaDoc:
     record: ReviewFile
-    commits: frozenset[str]   # the commits of the rounds it analysed (rounds 1..trigger.round)
 
     @property
     def name(self) -> str:
         return self.record.path.name
 
 
-def _key(root: Path, commit: str) -> str:
-    return full_sha(root, commit) or commit
+def filed_at(r: ReviewFile) -> int:
+    """When ``r`` was filed: its file's modification time in nanoseconds."""
+    return (r.on_disk or r.path).stat().st_mtime_ns
 
 
-def _file_round(path: Path) -> int | None:
-    m = re.fullmatch(r"RCA-(\d+)\.md", path.name)
-    return int(m.group(1)) if m else None
+def _record_files(root: Path, node_id: str) -> list[Path]:
+    """``RCA-*.md``, ``REVIEW-*.md`` (prefix in any case, as :func:`review_files.list_reviews` matches it) and
+    ``history/*.md``: every record file the rework section loads."""
+    d = reviews_dir(root, node_id)
+    if not d.is_dir():
+        return []
+    top = [p for p in d.iterdir() if p.is_file() and p.suffix.lower() == ".md"
+           and (p.name.startswith(RCA_PREFIX) or p.name.lower().startswith(REVIEW_PREFIX.lower()))]
+    h = d / HISTORY_DIRNAME
+    return sorted(top) + (sorted(h.glob("*.md")) if h.is_dir() else [])
+
+
+def check_inputs(root: Path, node_id: str) -> None:
+    """Raise :class:`RcaNotCarried` naming the first record file that cannot be read as UTF-8: the loaders read
+    text and would raise ``UnicodeDecodeError`` without the path."""
+    for p in _record_files(root, node_id):
+        try:
+            p.read_bytes().decode("utf-8")
+        except (OSError, UnicodeDecodeError) as e:
+            raise RcaNotCarried(f"{p} cannot be read as UTF-8 ({type(e).__name__}: {e}); re-save it as UTF-8 "
+                                "or remove it, then delegate --rework") from None
 
 
 def governing_rca(root: Path, node_id: str, blocks: list[ReviewFile]) -> RcaDoc | None:
-    """The accepted RCA newer than the oldest of ``blocks``; ``None`` when there is none (or no blocks).
-    Raises :class:`RcaNotCarried` when it, or an unreadable RCA that may be it, cannot be rendered."""
+    """The accepted RCA filed after the oldest of ``blocks``; ``None`` when there is none (or no blocks).
+    Raises :class:`RcaNotCarried` when a record file cannot be read as UTF-8 (:func:`check_inputs`), an RCA
+    file's front matter or schema is broken (it may be the accepted one), or the accepted RCA has no design."""
+    check_inputs(root, node_id)
     if not blocks:
         return None
-    loop = loop_state(root, node_id)
-    index = {c: i for i, c in enumerate((r.commit for r in loop.rounds), 1)}
-    # A carried review not in the review history came after every round an RCA analysed.
-    oldest = min(index.get(_key(root, str(r.data["commit"])), len(loop.rounds) + 1) for r in blocks)
     for r in list_rcas(root, node_id):
-        n = _file_round(r.path)
-        if not r.ok and (n is None or n >= oldest):
+        if not r.ok:
             raise RcaNotCarried(f"{r.path} cannot be read ({'; '.join(r.errors)}), and it may be the accepted "
                                 "root-cause analysis; fix or remove it, then delegate --rework")
+    loop = loop_state(root, node_id)
+    oldest = min(filed_at(r) for r in blocks)
     accepted = [r for r in loop.rcas if r.ok and (r.data["recommended_action"]["type"] != "defer_findings"
                                                     or marker_path(root, node_id, r.path.name).exists())]
-    rec = max(accepted, key=lambda r: int(r.data["trigger"]["round"]), default=None)
-    if rec is None or int(rec.data["trigger"]["round"]) < oldest:
+    rec = max(accepted, key=filed_at, default=None)
+    if rec is None or filed_at(rec) <= oldest:
         return None
     if not str(rec.data["recommended_action"]["instructions"]).strip():
         raise RcaNotCarried(f"{rec.path} is the accepted root-cause analysis, but its "
                             "recommended_action.instructions (the design) is empty; fill it, then delegate --rework")
-    done = int(rec.data["trigger"]["round"])
-    return RcaDoc(rec, frozenset(rnd.commit for rnd in loop.rounds[:done]))
+    return RcaDoc(rec)
 
 
-def filed(root: Path, doc: RcaDoc, review: ReviewFile) -> str:
-    """``filed before RCA-<n>.md`` when ``review``'s commit is in a round the RCA analysed, else ``after``."""
-    when = "before" if _key(root, str(review.data["commit"])) in doc.commits else "after"
-    return f"filed {when} {doc.name}"
+def filed(doc: RcaDoc, review: ReviewFile) -> str:
+    """``filed before RCA-<n>.md`` when ``review`` was filed before the RCA was, else ``filed after``."""
+    return f"filed {'before' if filed_at(review) < filed_at(doc.record) else 'after'} {doc.name}"
 
 
 def rca_lines(doc: RcaDoc) -> list[str]:

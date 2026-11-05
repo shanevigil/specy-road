@@ -24,7 +24,7 @@ from pathlib import Path
 
 from specy_road.review_files import ReviewFile, list_reviews
 from specy_road.review_target import ReviewTarget, same_commit
-from specy_road.rework_rca import RcaDoc, RcaNotCarried, filed, governing_rca, rca_lines
+from specy_road.rework_rca import RcaDoc, RcaNotCarried, check_inputs, filed, governing_rca, rca_lines
 from specy_road.worker_state import WorkerError, WorkerRecord, active_for_node, events_since, list_records
 
 
@@ -68,7 +68,7 @@ CLASS_AUDIT_LINES = [
 def _review_lines(root: Path, r: ReviewFile, tip: str | None, rca: RcaDoc | None = None) -> list[str]:
     commit = str(r.data["commit"])
     where = "the branch tip" if tip and same_commit(root, commit, tip) else "an earlier commit"
-    where += f"; {filed(root, rca, r)}" if rca is not None else ""
+    where += f"; {filed(rca, r)}" if rca is not None else ""
     changes = r.data.get("required_changes") or []
     if not changes:
         failed = sorted(k for k, v in (r.data.get("acceptance") or {}).items() if v == "fail")
@@ -79,7 +79,12 @@ def _review_lines(root: Path, r: ReviewFile, tip: str | None, rca: RcaDoc | None
 
 
 def rework_lines(root: Path, node_id: str, t: ReviewTarget) -> list[str]:
-    """The ``## Rework`` section of ``node_id``'s executor prompt; ``[]`` when there is nothing to rework from."""
+    """The ``## Rework`` section of ``node_id``'s executor prompt; ``[]`` when there is nothing to rework from.
+    A record file that cannot be read yields a section that names it (``worker delegate --rework`` refuses)."""
+    try:
+        check_inputs(root, node_id)
+    except RcaNotCarried as e:
+        return ["## Rework", "", f"**The rework records could not be read:** {e}.", ""]
     blocks, prev = blocking_reviews(root, node_id), stopped_worker(root, node_id)
     if not blocks and prev is None:
         return []
@@ -112,6 +117,10 @@ def rework_check(root: Path, node_id: str) -> None:
     if active is not None:
         raise WorkerError(f"{active.worker_id} is still active on {node_id} ({active.state}): `worker message` or "
                           f"`worker resume` it, or `worker terminate` it, then delegate --rework")
+    try:
+        check_inputs(root, node_id)
+    except RcaNotCarried as e:
+        raise WorkerError(f"--rework refused: {e}") from None
     blocks, prev = blocking_reviews(root, node_id), stopped_worker(root, node_id)
     if not blocks and prev is None:
         raise WorkerError(f"nothing to rework on {node_id}: no blocking review record and no terminated or failed "
