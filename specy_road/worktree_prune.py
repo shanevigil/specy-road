@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import shutil
 import subprocess
 from dataclasses import dataclass, field
@@ -42,7 +43,7 @@ from specy_road.bundled_scripts.grind_session_cleanup import merged_into
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_code, git_stdout, git_text, run
 from specy_road.git_workflow_config import load_git_workflow_config, resolve_integration_defaults
-from specy_road.nested_repos import _common_dir, is_repo_top, nested_repos
+from specy_road.nested_repos import nested_repos
 from specy_road.review_files import reviews_root
 from specy_road.runtime_paths import project_prefix
 from specy_road.worker_state import list_records
@@ -50,6 +51,26 @@ from specy_road.worker_state import list_records
 
 class PruneError(RuntimeError):
     """The leaf or its worktree cannot be found."""
+
+
+def _git_path(args: list[str], d: Path) -> Path | None:
+    """The one path ``git <args>`` prints in ``d``, read as bytes: text mode's universal newlines and
+    stripping would turn a '\\r' in it into '\\n' or drop a trailing space. ``None`` on failure."""
+    try:
+        r = subprocess.run(["git", *args], cwd=d, capture_output=True, timeout=DEFAULT_TIMEOUT, check=False)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    out = r.stdout.removesuffix(b"\n")
+    return Path(os.fsdecode(out)).resolve() if not r.returncode and out else None
+
+
+def _common_dir(d: Path) -> Path | None:
+    return _git_path(["rev-parse", "--path-format=absolute", "--git-common-dir"], d)
+
+
+def _is_repo_top(d: Path) -> bool:
+    """``d`` is the top of a git worktree (its own repository, not a directory of an enclosing one)."""
+    return d.is_dir() and _git_path(["rev-parse", "--show-toplevel"], d) == d.resolve()
 
 
 @dataclass
@@ -71,7 +92,7 @@ def leaf_worktree(root: Path, node_id: str) -> tuple[Path, Path, str]:
         raise PruneError(f"no roadmap node {node_id!r} with a codename")
     main = reviews_root(root).parent.parent
     wt = main / "work" / ".worktrees" / node["codename"]
-    if not is_repo_top(wt) or _common_dir(wt) != _common_dir(main):
+    if not _is_repo_top(wt) or _common_dir(wt) != _common_dir(main):
         raise PruneError(f"{wt} is not a worktree of this repository; nothing to prune")
     return main, wt, f"feature/rm-{node['codename']}"
 
@@ -146,7 +167,7 @@ def _check_nested(plan: PrunePlan, main: Path, prefix: str) -> None:
     leaf_root = plan.worktree / prefix
     for nr in nested_repos(main):
         d, src = leaf_root / nr.path, main / nr.path
-        if not is_repo_top(d):
+        if not _is_repo_top(d):
             continue
         linked = _common_dir(d) == _common_dir(src)
         plan.nested.append((src, d, linked))
@@ -175,15 +196,18 @@ _SHOWN = 20   # commits listed per foreign repository; a checkout with no remote
 
 
 def _walk_foreign(wt: Path, exempt: set[Path]) -> tuple[list[Path], list[str]]:
-    """``(foreign, unreadable)``: every directory below ``wt``, but not in ``exempt``, holding a ``.git``
-    entry (file, directory or link) or laid out as a bare repository; and each directory that could not
-    be read, which refuses too, since what is in it is unknown.
+    """``(foreign, unreadable)``: every directory below ``wt``, but not in ``exempt`` (or an exempt
+    repository's own ``.git``), holding a ``.git`` entry (file, directory or link) or laid out as a bare
+    repository; and each directory that could not be read, which refuses too, since what is in it is unknown.
 
     Walks the filesystem itself, not git's view of it: a clean tracked directory, or a submodule at its
     recorded commit, is in no status output. Links are never followed (removal deletes the link, not
-    its target). A found repository is not descended into: it refuses already.
+    its target). A found repository is not descended into: it refuses already. An exempt full clone's
+    ``.git`` directory is walked like the rest: removal deletes it, and another repository's worktree
+    may sit inside it.
     """
     found, unreadable = [], []
+    exempt = exempt | {e / ".git" for e in exempt}
 
     def unread(e: OSError) -> None:
         unreadable.append(f"cannot read {e.filename}: {e.strerror}; removal would delete what it holds unchecked")
@@ -194,8 +218,6 @@ def _walk_foreign(wt: Path, exempt: set[Path]) -> tuple[list[Path], list[str]]:
         if d != wt and d not in exempt and (".git" in dirs or ".git" in files or bare):
             found.append(d)
             dirs.clear()
-        elif ".git" in dirs:
-            dirs.remove(".git")   # this worktree's or an exempt repository's own git directory
     return sorted(found), unreadable
 
 
@@ -203,8 +225,8 @@ def _foreign_refusal(wt: Path, d: Path) -> str:
     """Why ``d``, another repository's linked worktree, checkout (a ``.git`` directory, or a ``.git`` file
     naming its own git directory, as a submodule's does) or bare repository, refuses."""
     common = _common_dir(d)
-    git_dir = git_text(["rev-parse", "--absolute-git-dir"], d)
-    linked = bool(common and git_dir) and Path(git_dir).resolve() != common
+    git_dir = _git_path(["rev-parse", "--absolute-git-dir"], d)
+    linked = bool(common and git_dir) and git_dir != common
     bare = not (d / ".git").exists() and not os.path.islink(d / ".git")
     if linked:
         repo = common.parent if common.name == ".git" else common
@@ -221,9 +243,9 @@ def _foreign_refusal(wt: Path, d: Path) -> str:
         lines = log.splitlines()
         more = " (and more)" if len(lines) > _SHOWN else ""
         commits = f"commits {lacks} lacks: {'; '.join(lines[:_SHOWN])}{more}" if lines else f"no commits {lacks} lacks"
-    kind, step = (("linked worktree", f"`git -C {repo} worktree remove {d}`") if linked
+    kind, step = (("linked worktree", f"`git -C {shlex.quote(str(repo))} worktree remove {shlex.quote(str(d))}`") if linked
                   else ("bare clone" if bare else "checkout", "move it out of the worktree"))
-    return (f"{d.relative_to(wt).as_posix()}/ is a {kind} of another repository, {repo or 'unknown'}, on {branch}; "
+    return (f"{d.relative_to(wt).as_posix()}/ is a {kind} of another repository, {repo}, on {branch}; "
             f"{commits}; removal would delete it: land or push those commits, then {step}")
 
 

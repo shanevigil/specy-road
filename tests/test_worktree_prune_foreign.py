@@ -7,6 +7,9 @@ listed among the ignored files and deleted with the worktree.
 
 from __future__ import annotations
 
+import re
+import shlex
+import subprocess
 from pathlib import Path
 
 from tests.pickup_repo_helpers import FEATURE, make_pickup_project, run_specy_road
@@ -29,15 +32,15 @@ def _landed_leaf_ignoring_sibling(tmp_path: Path, nested: tuple[str, ...] = ()) 
     return root, wt
 
 
-def _other_repo(tmp_path: Path) -> Path:
+def _other_repo(tmp_path: Path, name: str = "other") -> Path:
     """A second repository on ``main``, pushed to its own bare origin."""
-    other = tmp_path / "other"
-    git(tmp_path, "init", "-q", "--bare", "-b", "main", str(tmp_path / "other.git"))
+    other = tmp_path / name
+    git(tmp_path, "init", "-q", "--bare", "-b", "main", str(tmp_path / f"{name}.git"))
     git(tmp_path, "init", "-q", "-b", "main", str(other))
     git(other, "config", "user.email", "t@e.com")
     git(other, "config", "user.name", "T")
     commit_file(other, "core.py", "x = 1\n", "other base")
-    git(other, "remote", "add", "origin", str(tmp_path / "other.git"))
+    git(other, "remote", "add", "origin", str(tmp_path / f"{name}.git"))
     git(other, "push", "-q", "-u", "origin", "main")
     return other
 
@@ -84,7 +87,7 @@ def test_a_checkout_of_another_repository_refuses_with_commits_no_remote_holds(t
 
 def test_foreign_worktrees_whose_names_git_quotes_refuse_and_survive(tmp_path: Path) -> None:
     root, wt = _landed_leaf_ignoring_sibling(tmp_path)
-    other = _other_repo(tmp_path)
+    other = _other_repo(tmp_path, "other repo")
     sibs = [wt / "sibling space", wt / "siblíng"]   # porcelain without -z prints both in "..." with escapes
     for i, sib in enumerate(sibs):
         git(other, "worktree", "add", "-q", "-b", f"topic{i}", str(sib), "main")
@@ -95,6 +98,11 @@ def test_foreign_worktrees_whose_names_git_quotes_refuse_and_survive(tmp_path: P
         assert "sibling space/ is a linked worktree of another repository" in out.stderr
         assert "siblíng/ is a linked worktree of another repository" in out.stderr
         assert all(sib.is_dir() for sib in sibs) and wt.is_dir()
+    # The suggested next step names each path as one shell word, so it runs as printed once the work is pushed.
+    step = re.search(r"`(git -C [^`]* worktree remove [^`]*sibling space[^`]*)`", out.stderr)
+    assert step and shlex.split(step[1]) == ["git", "-C", str(other.resolve()), "worktree", "remove", str(sibs[0])]
+    assert subprocess.run(shlex.split(step[1]), capture_output=True, check=False).returncode == 0
+    assert not sibs[0].exists()
 
 
 def test_a_foreign_worktree_inside_a_configured_nested_clone_refuses_and_survives(tmp_path: Path) -> None:
@@ -184,3 +192,30 @@ def test_an_unreadable_directory_refuses_instead_of_being_skipped(tmp_path: Path
     finally:
         locked.chmod(0o755)
     assert (locked / "inner" / ".git").is_dir()
+
+
+def test_a_foreign_worktree_inside_a_configured_clones_git_directory_refuses_and_survives(tmp_path: Path) -> None:
+    root, wt = _landed_leaf_ignoring_sibling(tmp_path, (UNCOVERED,))
+    clone = wt / UNCOVERED
+    git(root, "clone", "-q", str(root / UNCOVERED), str(clone))
+    sib = clone / ".git" / "foreign-worktree"   # removing the clone deletes its .git and this with it
+    git(_other_repo(tmp_path), "worktree", "add", "-q", "-b", "topic", str(sib), "main")
+    commit_file(sib, "core.py", "x = 2\n", "work inside the clone's git directory")
+    plan = plan_prune(root, "M1")
+    assert plan.foreign == [sib]   # the clone and its own .git stay exempt
+    assert remove(plan) is not None and sib.is_dir() and clone.is_dir()
+    why = _refused_both_ways(root, sib, clone, wt)
+    assert f"{UNCOVERED}/.git/foreign-worktree/ is a linked worktree of another repository" in why
+    assert "work inside the clone's git directory" in why
+
+
+def test_an_owning_repository_with_a_carriage_return_in_its_name_is_named_exactly(tmp_path: Path) -> None:
+    root, wt = _landed_leaf_ignoring_sibling(tmp_path)
+    other = _other_repo(tmp_path, "other\rrepo")   # text-mode decoding would name other\nrepo, which does not exist
+    sib = wt / "sibling"
+    git(other, "worktree", "add", "-q", "-b", "topic", str(sib), "main")
+    plan = plan_prune(root, "M1")
+    why = "\n".join(plan.refusals)
+    assert f"linked worktree of another repository, {other.resolve()}, on topic" in why
+    assert f"git -C {shlex.quote(str(other.resolve()))} worktree remove" in why
+    _refused_both_ways(root, sib, wt)
