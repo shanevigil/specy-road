@@ -112,6 +112,30 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "_second_observation in specy_road/review_record_rules.py returns a refusal only when at least one of the joined parts names a defect (_named_defect); two or more neutral observations joined by a comma or by and, but, while, whereas, although, though, yet or plus are accepted under one explanation; the docstring states this one rule",
+        "Table-driven rows in tests/test_review_record_rules.py: the two refused lines from the 2026-11-05 M21.8 review (neutral parts joined by plus) are accepted; 'X fails plus Y crashes' and 'X fails, Y crashes' under one explanation are still refused with the existing message naming the joining word; existing rows that refuse a defect-naming part keep passing; rows that only refused neutral joined parts are changed to expect acceptance and listed in the sheet",
+        "clause_problem's other rules are unchanged: an unexplained clause that names a defect is refused, and a reason that itself names a defect is refused; CHANGELOG.md [Unreleased] Fixed records the change",
+        "Estimated net line change (informational, not a gate): package about +2, tests about +20"
+      ],
+      "codename": "joined-observations-need-a-defect",
+      "dependencies": [],
+      "id": "M21.12",
+      "node_key": "50155a9c-8f7d-47e7-9fe3-ff77461243ac",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.12_joined-observations-need-a-defect_50155a9c-8f7d-47e7-9fe3-ff77461243ac.md",
+      "sibling_order": 11,
+      "status": "Not Started",
+      "title": "A review record is refused for joined observations only when one of them names a defect",
+      "touch_zones": [
+        "specy_road/review_record_rules.py",
+        "tests/test_review_record_rules.py",
+        "tests/test_review_friction_m15_17.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
