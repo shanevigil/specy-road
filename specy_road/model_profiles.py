@@ -24,6 +24,7 @@ from typing import Any, Callable
 import yaml
 
 from specy_road.orchestration_config import load_orchestration_config
+from specy_road.runtime_paths import specy_road_package_dir
 
 PROFILES_REL = Path("model-profiles")
 PROFILE_SCHEMA = 2
@@ -297,6 +298,52 @@ def closest_profile(model_id: str, profiles: list[Profile]) -> Profile | None:
     return max(profiles, key=score, default=None)
 
 
+#: Harness/vendor tokens a roster id may carry before a model's own id (``cursor-gpt-5.6-sol-high``).
+_ID_PREFIXES = ("cursor", "codex", "copilot", "agy", "anthropic", "openai", "google", "xai")
+#: Effort tokens a roster id may carry after it (``gpt-5.6-sol-high``).
+_ID_SUFFIXES = ("none", "minimal", "low", "medium", "high", "xhigh", "max")
+
+
+def _norm_id(name: str) -> str:
+    return re.sub(r"[._]", "-", name.lower())
+
+
+def _id_forms(model_id: str) -> set[str]:
+    """``model_id`` normalised, with and without one known prefix and one known effort suffix."""
+    forms = {_norm_id(model_id)}
+    forms |= {f[len(pre) + 1:] for f in list(forms) for pre in _ID_PREFIXES if f.startswith(pre + "-")}
+    forms |= {f.rsplit("-", 1)[0] for f in list(forms) if f.rsplit("-", 1)[-1] in _ID_SUFFIXES and "-" in f}
+    return forms
+
+
+def near_miss_profile(model_id: str, profiles: list[Profile]) -> Profile | None:
+    """The one profile whose ``api_id``, file name or alias equals ``model_id`` up to punctuation
+    and a harness/vendor prefix or effort suffix (:func:`_id_forms`); ``None`` when none or several do."""
+    forms = _id_forms(model_id)
+    hits: dict[str, Profile] = {}
+    for p in profiles:
+        aliases = p.data.get("aliases") if isinstance(p.data.get("aliases"), list) else []
+        if forms & {_norm_id(str(n)) for n in (p.api_id, p.path.stem, *aliases)}:
+            hits.setdefault(p.api_id, p)
+    return next(iter(hits.values())) if len(hits) == 1 else None
+
+
+def _near_miss_fix(repo_root: Path, model_id: str, bundled: list[Profile]) -> str:
+    """The roster line that matches ``model_id`` to its near-miss bundled profile, ``""`` without one."""
+    near = near_miss_profile(model_id, bundled)
+    if near is None:
+        return ""
+    rel = f"{PROFILES_REL.as_posix()}/{near.path.relative_to(bundled_profiles_root() / PROFILES_REL).as_posix()}"
+    add = "" if (repo_root / rel).is_file() else ", then run `specy-road refresh-profiles` to add the file"
+    return (f"; it differs from bundled api_id {near.api_id} only in punctuation or a vendor/effort "
+            f"prefix or suffix: add `profile: {rel}` to that entry{add}")
+
+
+def bundled_profiles_root() -> Path:
+    """The project template whose ``model-profiles/`` this specy-road version ships."""
+    return specy_road_package_dir() / "templates" / "project"
+
+
 def _launchable(entry: dict[str, Any]) -> bool:
     """The entry names a ``harness`` or a ``channels.cli``, so a worker can be started for it."""
     channels = entry.get("channels")
@@ -315,6 +362,7 @@ def roster_profile_gaps(repo_root: Path) -> list[tuple[bool, str]]:
                if {"executor", "reviewer"} & set(e.get("roles") or [])]
     missing = unmatched_roster_ids(entries, lambda entry: profile_for_entry(repo_root, entry))
     profiles = list_profiles(repo_root) if missing else []
+    bundled = list_profiles(bundled_profiles_root()) if missing else []
     by_id = {e["id"]: e for e in entries}
     out = []
     for mid in missing:
@@ -322,6 +370,7 @@ def roster_profile_gaps(repo_root: Path) -> list[tuple[bool, str]]:
         hint = (f"closest profile is {display_rel(repo_root, near.path)} (api_id {near.data.get('api_id')}); "
                 "list the id in its `aliases` or give the entry `profile:`") if near else \
             f"no profiles under {PROFILES_REL}/; add one or give the entry `profile:`"
+        hint += _near_miss_fix(repo_root, str(mid), bundled)
         out.append((_launchable(by_id[mid]),
                     f"roster entry {mid!r} in roadmap/orchestration.yaml matches no model profile by api_id, "
                     f"file name or alias, so its model notes never reach its prompts; {hint}"))

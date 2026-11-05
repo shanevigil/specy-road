@@ -18,6 +18,7 @@ are the interactive commands where a user is watching for it.
 
 from __future__ import annotations
 
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -57,13 +58,48 @@ def working_tree_clean(repo_root: Path, *, except_work: bool = False) -> bool:
     return not git_checked(args, repo_root)
 
 
+#: How many dirty paths a refusal lists before it summarises the rest as a count.
+UNCLEAN_PATHS_SHOWN = 20
+
+
+def dirty_paths(repo_root: Path, *, except_work: bool = False) -> list[str]:
+    """``git status --porcelain`` lines (status, then path) the clean-tree check sees."""
+    args = ["status", "--porcelain", *(_OUTSIDE_WORK if except_work else ())]
+    return [line for line in git_capture(repo_root, *args).splitlines() if line.strip()]
+
+
+#: The stash message the unclean-tree hint uses, so ``git stash list`` shows whose entry it is.
+UNCLEAN_STASH_MESSAGE = "specy-road: unclean tree"
+
+
+def unclean_tree_details(repo_root: Path, paths: list[str], *, except_work: bool = False) -> list[str]:
+    """The paths that keep the tree unclean (at most 20, then a count) and how to clear them.
+
+    The stash command runs as printed: it names this checkout and the same
+    pathspec the check uses, so it sets aside exactly what was listed.
+    """
+    lines = [f"  {p}" for p in paths[:UNCLEAN_PATHS_SHOWN]]
+    if len(paths) > UNCLEAN_PATHS_SHOWN:
+        lines.append(f"  … and {len(paths) - UNCLEAN_PATHS_SHOWN} more")
+    pathspec = " ".join(shlex.quote(a) for a in (_OUTSIDE_WORK if except_work else ("--", ":/")))
+    stash = f"git -C {shlex.quote(str(repo_root))} stash push -u -m {shlex.quote(UNCLEAN_STASH_MESSAGE)} {pathspec}"
+    lines.append(f"  Set them all aside, then retry: `{stash}`")
+    lines.append("  Or commit them, or discard them (git restore for tracked edits; delete untracked files).")
+    if except_work:
+        lines.append("  Changes under work/ are ignored by this check.")
+    return lines
+
+
 def assert_working_tree_clean(repo_root: Path, detail: str = "", *, except_work: bool = False) -> None:
-    """Exit 1 unless the working tree is clean."""
+    """Exit 1 unless the working tree is clean, naming the paths that are not."""
     if working_tree_clean(repo_root, except_work=except_work):
         return
     print(UNCLEAN_TREE_MESSAGE, file=sys.stderr)
     if detail:
         print(f"  {detail}", file=sys.stderr)
+    paths = dirty_paths(repo_root, except_work=except_work)
+    for line in unclean_tree_details(repo_root, paths, except_work=except_work):
+        print(line, file=sys.stderr)
     raise SystemExit(1)
 
 
