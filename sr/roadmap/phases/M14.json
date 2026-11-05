@@ -183,34 +183,6 @@
     },
     {
       "acceptance": [
-        "The reviewer prompt (PROBE_RULES_LINES) asks for each probe as a commands_rerun entry starting 'probe:' (the input tried and what it returned); review record counts them into a probes field it fills, and on an approve with zero probes prints a warning naming the reviewer and the rule and records unprobed: true",
-        "policy.require_probe (default false) makes an approve with zero probes ineligible, with the reason 'approve with no recorded probe' that handoff status already prints for ineligible records; a test pins both settings",
-        "Out of scope: judging probe quality, and a default strong_review for numeric or statistical zones (projects already name high-risk zones in policy.strong_review; specy-road cannot tell which zones are numeric). docs/orchestration-review.md shows a strong_review example for such zones",
-        "The reviewer prompt (PROBE_RULES_LINES) also asks the reviewer to name, in notes, one thing the evidence it relied on would not catch (for example: counting processes does not show that a window rendered); a test pins the line. Out of scope: checking the answer"
-      ],
-      "codename": "an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M14.5",
-      "node_key": "98c9b4cc-2a26-4f71-b31a-f146d2664ff7",
-      "parent_id": "M14",
-      "planning_dir": "planning/M14.5_an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it_98c9b4cc-2a26-4f71-b31a-f146d2664ff7.md",
-      "sibling_order": 5,
-      "status": "Not Started",
-      "title": "An approve with no recorded probe is flagged, and policy can refuse to count it",
-      "touch_zones": [
-        "specy_road/review_record_rules.py",
-        "specy_road/review_eligible.py",
-        "specy_road/schemas/review-record.schema.json",
-        "specy_road/templates/project/schemas/orchestration.schema.json",
-        "docs/orchestration-review.md",
-        "tests/",
-        "specy_road/review_gate.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
         "review delegate keeps each round's RUN-<model>.json and .log under work/reviews/<ID>/history/ (round and commit in the name) instead of overwriting them; the current files stay where they are",
         "specy-road review usage <ID> prints tokens and cost per reviewer run (model, round, commit), parsed with the same harness usage parsers worker usage uses, '?' when not reported, and a total; --json gives the same data",
         "worker usage's node total adds reviewer usage on a separate line (executors, reviewers, total); a test with two review rounds asserts both survive and are summed. Out of scope: usage for reviews run outside review delegate",

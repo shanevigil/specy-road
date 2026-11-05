@@ -384,32 +384,6 @@
         "docs/install-release-candidates.md"
       ],
       "type": "task"
-    },
-    {
-      "acceptance": [
-        "validate prints at most one notice per sentence of project text outside managed blocks (root AGENTS.md, CLAUDE.md, .specyrd/AGENTS.team.md) when that sentence names a catalogue command as a literal token AND contains a mandate cue from a fixed, documented list ('must', 'always', 'never omit', 'in non-TTY/agent contexts pass', 'unattended runs pass'); the notice names file:line, the instruction and the current behaviour from the M13.8 catalogue; it reports only and never rewrites project text",
-        "Sentences are split by one stated rule (on '. ', '; ' and line breaks, outside backtick spans); a bare command example with no mandate cue never matches; the lint is documented as a best-effort hint: paraphrases without a listed cue are false negatives and out of scope",
-        "Tests: the four cited stale sentences match (positives); bare examples such as `specy-road finish-this-task --on-complete merge`, correct current guidance, and unrelated prose (e.g. 'The first commit registers the service worker.') do not (negatives, parametrized); running the lint over the toolkit's own docs/, specy_road/templates/ and AGENTS.md finds nothing"
-      ],
-      "codename": "validate-flags-project-agent-text-that-mandates-a-changed-behaviour-best-effort-hint",
-      "dependencies": [
-        "f7af5b48-1dd5-41f8-a55b-781cd48a8c18"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M13.14",
-      "node_key": "ef79760f-c6d0-4a12-afe6-7f2c6a1eb1a2",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.14_validate-flags-project-agent-text-that-mandates-a-changed-behaviour-best-effort-hint_ef79760f-c6d0-4a12-afe6-7f2c6a1eb1a2.md",
-      "sibling_order": 14,
-      "status": "Not Started",
-      "title": "validate flags project agent text that mandates a changed behaviour (best-effort hint)",
-      "touch_zones": [
-        "specy_road/agent_text_report.py",
-        "specy_road/bundled_scripts/validate_notices.py",
-        "specy_road/bundled_scripts/validate_roadmap.py",
-        "tests/"
-      ],
-      "type": "task"
     }
   ]
 }

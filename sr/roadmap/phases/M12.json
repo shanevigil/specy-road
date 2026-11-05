@@ -250,36 +250,6 @@
         "specy_road/bundled_scripts/grind_session.py"
       ],
       "type": "task"
-    },
-    {
-      "acceptance": [
-        "Every command specy_road/cli.py registers (its dispatch tables) yields its argparse parser without running the command, through a build_parser() (or equivalent) that specy_road/cli_parsers.py reaches by command name, including nested subcommands (review record, worker delegate, handoff status …); a parity test walks every registered command and subcommand and fails naming any that yields no parser; cli.py itself grows by at most two lines",
-        "The stale-command scan in validate, and M12.3's garden scan through the same function, reports each 'specy-road <cmd> [<sub>] --flag' mention in the files it already scans whose flag that command or subcommand does not accept, as file:line, the command, the unknown flag and the closest valid flag (difflib); valid flags, short options and flags after a bare -- are not reported; a fixture with one stale and one valid flag pins the output",
-        "Commands that take free-form passthrough arguments are exempt by declaration, not by guess: a parser that uses argparse.REMAINDER or a declared passthrough group (grind-session's implement-hook passthrough), and anything after a bare --, is not checked, and the exemption list is printed by the parity test; behaviour of every command is unchanged",
-        "Out of scope: whether a valid flag's behaviour changed (M13.8's behaviour-change catalogue), checking flag values, and prose mentions without a specy-road command"
-      ],
-      "codename": "every-command-exposes-its-parser-and-the-stale-command-scan-reports-flags-a-command-does-not-accept",
-      "dependencies": [
-        "14d90a55-fc3f-49f3-9c1b-c1cac57e09c9"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M12.6",
-      "node_key": "d3326b0f-f95d-4705-989f-d4c1e60babe4",
-      "parent_id": "M12",
-      "planning_dir": "planning/M12.6_every-command-exposes-its-parser-and-the-stale-command-scan-reports-flags-a-command-does-not-accept_d3326b0f-f95d-4705-989f-d4c1e60babe4.md",
-      "sibling_order": 6,
-      "status": "Not Started",
-      "title": "Every command exposes its parser, and the stale-command scan reports flags a command does not accept",
-      "touch_zones": [
-        "specy_road/cli_parsers.py",
-        "specy_road/bundled_scripts/",
-        "specy_road/bundled_scripts/validate_stale_flags.py",
-        "specy_road/bundled_scripts/validate_stale_commands.py",
-        "specy_road/bundled_scripts/chore_cli.py",
-        "tests/",
-        "specy_road/cli.py"
-      ],
-      "type": "task"
     }
   ]
 }

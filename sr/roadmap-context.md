@@ -197,7 +197,6 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M12.4.2` A tracked tech-debt ledger that planning can turn into leaves `a-tracked-tech-debt-ledger-that-planning-can-turn-into-leaves` — task — **Not Started**
     - `M12.4.3` Per-model review evidence: block rate and overturned approvals feed orchestrate plan `per-model-review-evidence-block-rate-and-overturned-approvals-feed-orchestrate-plan` — task — **Not Started**
   - `M12.5` The orchestrator cleans up landed leaves and stale worktrees automatically, saving hand-off files first `the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` — task — **Not Started**
-  - `M12.6` Every command exposes its parser, and the stale-command scan reports flags a command does not accept `every-command-exposes-its-parser-and-the-stale-command-scan-reports-flags-a-command-does-not-accept` — task — **Not Started**
 - `M13` rc3 adopter feedback: upgrade and adoption friction `rc3-adopter-feedback-upgrade-and-adoption-friction` — phase — **Not Started**
   - `M13.1` Say which install is running and flag managed blocks an older version wrote `say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote` — task — **Complete**
   - `M13.2` upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap `upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap` — task — **Complete**
@@ -212,7 +211,6 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M13.11` upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs `upgrade-says-what-changed-for-this-repo-behaviour-changes-a-pin-below-the-new-minimum-the-new-files-and-duplicated-paragraphs` — task — **Not Started**
   - `M13.12` Quieter, accurate validate notices: untracked touch zones, the managed .gitignore comment, and tracked files under new ignore rules `quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules` — task — **Complete**
   - `M13.13` upgrade --prompt writes an agent upgrade prompt filled in from this repo `upgrade-prompt-writes-an-agent-upgrade-prompt-filled-in-from-this-repo` — task — **Not Started**
-  - `M13.14` validate flags project agent text that mandates a changed behaviour (best-effort hint) `validate-flags-project-agent-text-that-mandates-a-changed-behaviour-best-effort-hint` — task — **Not Started**
 - `M14` Nested repos and review-gate integrity `nested-repos-and-review-gate-integrity` — phase — **Not Started**
   - `M14.1` Approvals never carry across unreviewed changes in a sibling repository `approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` — task — **Not Started**
   - `M14.2` doctor never offers to remove a live leaf's worktree or branch `doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch` — task — **Complete**
@@ -221,7 +219,6 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M14.4.1` Per nested repository, land by push, locally or by hand, and base worktrees on the remote or local tip `per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip` — task — **Complete**
     - `M14.4.2` review-packet includes sibling repository diffs `review-packet-includes-sibling-repository-diffs` — task — **Not Started**
     - `M14.4.3` worker reconcile and the post-run check see sibling repositories `worker-reconcile-and-the-post-run-check-see-sibling-repositories` — task — **Not Started**
-  - `M14.5` An approve with no recorded probe is flagged, and policy can refuse to count it `an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it` — task — **Not Started**
   - `M14.6` Reviewer usage is visible: review usage, reviewers in the node total, RUN logs kept per round `reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round` — task — **Complete**
   - `M14.7` session end finds this agent's session by worktree and branch when the derived id has no record `session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record` — task — **Complete**
   - `M14.8` The implementation-zone check runs before a review is spent, and knows about sibling repositories `the-implementation-zone-check-runs-before-a-review-is-spent-and-knows-about-sibling-repositories` — task — **Not Started**
@@ -379,7 +376,6 @@ Do not pick these up.
 - `M12.5` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M13.9` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M14.1` on `feature/rm-approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` since 2026-11-05
-- `M14.5` on `feature/rm-an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it` since 2026-11-05
 - `M15.2` on `feature/rm-claude-code-reviewer-works-on-a-subscription-login` since 2026-11-05
 - `M15.20` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M15.25` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05

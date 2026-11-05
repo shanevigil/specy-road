@@ -295,6 +295,7 @@
         "cli_args declares `--json`, `--ref`, `--model` and `--base`/`--remote` once; every other declaration of those options is replaced; help goldens are unchanged except those options' help strings, which the transcript test allows by option name",
         "`specy-road validate` imports at most half as many modules as the M16.2 baseline records (counted by a test); `validate --help` wall time is printed by lean_metrics, not gated",
         "The CLI imports without the gui and review extras (tests/test_cli_imports_without_gui_extra.py green)",
+        "The stale-command scan in validate (and M12.3's garden scan through the same function) uses the build_parser() registry to report each 'specy-road <cmd> [<sub>] --flag' mention whose flag that command does not accept, as file:line, the command, the unknown flag and the closest valid flag; valid flags, short options, declared passthrough (argparse.REMAINDER or a declared group) and anything after a bare -- are not reported; a fixture with one stale and one valid flag pins the output (absorbed from M12.6 by maintainer triage 2026-11-05)",
         "Expected net line delta: package about -80"
       ],
       "codename": "every-command-exposes-build-parser-imports-lazily-and-shares-the-common-argument-helpers",
