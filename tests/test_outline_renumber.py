@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from specy_road.bundled_scripts.roadmap_outline_renumber import renumber_display_ids_inplace
+import pytest
+
+from specy_road.bundled_scripts.roadmap_outline_renumber import (
+    lowest_free_child_id,
+    renumber_display_ids_inplace,
+)
 from specy_road.bundled_scripts.roadmap_layout import (
     compute_depths,
     dependency_inheritance_display,
@@ -105,3 +110,23 @@ def test_dependency_inheritance_display_splits_explicit() -> None:
     assert inh["M0.1.1"]["inherited"] == []
     assert inh["M0.1"]["explicit"] == []
     assert inh["M0.1"]["inherited"] == ["MX"]
+
+
+@pytest.mark.parametrize(
+    ("ids", "parent", "ignore", "expected"),
+    [
+        # Children start at 1 and fill the lowest gap.
+        (["M2", "M2.1", "M2.4"], "M2", set(), "M2.2"),
+        # The moved subtree's own ids count as free.
+        (["M2", "M2.1", "M2.4"], "M2", {"M2.1"}, "M2.1"),
+        # Roots start at 0 when M0 exists, else at 1.
+        (["M0", "M2"], None, set(), "M1"),
+        (["M2"], None, set(), "M1"),
+        (["M1", "M2"], None, set(), "M3"),
+    ],
+)
+def test_lowest_free_child_id(
+    ids: list[str], parent: str | None, ignore: set[str], expected: str
+) -> None:
+    nodes = [{"id": i} for i in ids]
+    assert lowest_free_child_id(nodes, parent, ignore_ids=ignore) == expected

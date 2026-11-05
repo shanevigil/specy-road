@@ -86,9 +86,24 @@ def _minimal_repo(dest: Path) -> tuple[str, str, str]:
     return nk0, nk1, nk2
 
 
-def test_reorder_siblings_syncs_planning_files(tmp_path: Path) -> None:
+def test_reorder_siblings_changes_only_sibling_order_by_default(tmp_path: Path) -> None:
     nk0, nk1, nk2 = _minimal_repo(tmp_path)
+    before = {p.name: p.read_bytes() for p in (tmp_path / "planning").glob("*.md")}
+
     reorder_siblings(tmp_path, "M0", ["M0.2", "M0.1"])
+
+    by_key = {n["node_key"]: n for n in load_roadmap(tmp_path)["nodes"]}
+    assert (by_key[nk1]["id"], by_key[nk2]["id"]) == ("M0.1", "M0.2")
+    assert (by_key[nk2]["sibling_order"], by_key[nk1]["sibling_order"]) == (0, 1)
+    after = {p.name: p.read_bytes() for p in (tmp_path / "planning").glob("*.md")}
+    assert after == before
+
+
+def test_reorder_siblings_with_renumber_outline_syncs_planning_files(
+    tmp_path: Path,
+) -> None:
+    nk0, nk1, nk2 = _minimal_repo(tmp_path)
+    reorder_siblings(tmp_path, "M0", ["M0.2", "M0.1"], renumber_outline=True)
 
     validate_at(tmp_path, no_overlap_warn=True, require_registry=True)
 

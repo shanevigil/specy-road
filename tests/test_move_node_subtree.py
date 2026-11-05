@@ -58,6 +58,66 @@ def test_moving_a_leaf_out_of_the_middle_of_a_milestone(
         assert "M1.2.4 ->" not in r.stdout
 
 
+@pytest.mark.parametrize(
+    ("args", "expected"),
+    [
+        # A chosen free id under the new parent.
+        (("M1.2.2", "--id", "M2.3"), {NK_A22: "M2.3"}),
+        # The lowest gap under M2 (M2.1 and M2.4 exist).
+        (("M1.2.2", "--fill-gaps"), {NK_A22: "M2.2"}),
+        # A subtree's descendants follow the chosen id, keeping their gaps.
+        (
+            ("M1.2", "--id", "M2.2"),
+            {NK_A2: "M2.2", NK_A21: "M2.2.1", NK_A22: "M2.2.2", NK_A24: "M2.2.4"},
+        ),
+    ],
+    ids=["id", "fill-gaps", "subtree-id"],
+)
+def test_a_move_can_take_a_chosen_or_lowest_free_id(
+    tmp_path: Path, args: tuple[str, ...], expected: dict[str, str]
+) -> None:
+    wide_fixture(tmp_path)
+    before = ids_by_key(tmp_path)
+
+    r = run_move_node(tmp_path, "--repo-root", str(tmp_path), "--to-parent", "M2", *args)
+    assert r.returncode == 0, r.stderr
+
+    after = ids_by_key(tmp_path)
+    assert {k: after[k] for k in expected} == expected
+    assert unchanged_except(before, after, set(expected))
+
+
+@pytest.mark.parametrize(
+    ("flags", "reason"),
+    [
+        (("--id", "M2.4"), "already taken"),
+        (("--id", "M2.x"), "malformed"),
+        (("--id", "m2.2"), "malformed"),
+        (("--id", "M1.5"), "not a direct child id of M2"),
+        (("--id", "M2.2.1"), "not a direct child id of M2"),
+        (("--id", "M2.2", "--fill-gaps"), "mutually exclusive"),
+        (("--id", "M2.2", "--renumber-outline"), "cannot be combined with --renumber-outline"),
+        (("--fill-gaps", "--renumber-outline"), "cannot be combined with --renumber-outline"),
+    ],
+    ids=[
+        "taken", "malformed", "lowercase", "wrong-parent", "too-deep",
+        "id-with-fill-gaps", "id-with-renumber", "fill-gaps-with-renumber",
+    ],
+)
+def test_a_bad_chosen_id_is_refused_and_writes_nothing(
+    tmp_path: Path, flags: tuple[str, ...], reason: str
+) -> None:
+    wide_fixture(tmp_path)
+    files = [tmp_path / "roadmap" / "phases" / "T.json", tmp_path / "roadmap" / "registry.yaml"]
+    before = ([f.read_bytes() for f in files], sheet_names(tmp_path))
+
+    r = run_move_node(tmp_path, "--repo-root", str(tmp_path), "M1.2.2", "--to-parent", "M2", *flags)
+
+    assert r.returncode == 1
+    assert reason in r.stderr
+    assert ([f.read_bytes() for f in files], sheet_names(tmp_path)) == before
+
+
 def test_a_subtree_move_renumbers_only_its_descendants(tmp_path: Path) -> None:
     wide_fixture(tmp_path)
     before_nodes = load_roadmap(tmp_path)["nodes"]

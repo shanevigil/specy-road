@@ -12,7 +12,6 @@ from specy_road.bundled_scripts.roadmap_crud_ops import (
     append_node_to_chunk,
     delete_roadmap_node_hard,
     edit_node_set_pairs,
-    run_validate_raise,
 )
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
@@ -21,15 +20,18 @@ from specy_road.bundled_scripts.roadmap_outline_ops import (
     apply_indent,
     apply_outdent,
     move_node_outline,
-    persist_merged_nodes,
     reorder_siblings,
-    sync_registry_node_ids,
 )
-from specy_road.bundled_scripts.roadmap_outline_renumber import renumber_display_ids_inplace
-from specy_road.bundled_scripts.sync_planning_artifacts import sync_planning_artifacts
+from specy_road.bundled_scripts.roadmap_outline_renumber import check_chosen_child_id
 
 from specy_road.gui_app_helpers import get_repo_root, next_child_id
-from specy_road.gui_app_models import AddNodeBody, MoveOutlineBody, PatchBody, ReorderBody
+from specy_road.gui_app_models import (
+    AddNodeBody,
+    MoveOutlineBody,
+    OutlineShiftBody,
+    PatchBody,
+    ReorderBody,
+)
 from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 from specy_road.pm_gui_concurrency import (
     PM_GUI_FINGERPRINT_HEADER,
@@ -81,29 +83,13 @@ def _node_id_for_key(nodes: list[dict[str, Any]], node_key: str) -> str | None:
     return None
 
 
-def _canonical_ids_after_add(
-    root: Path, provisional_new_id: str, inserted_node_key: str
-) -> str:
-    """Renumber display ids after insert (same pipeline as outline reorder)."""
-    nodes3 = list(load_roadmap(root)["nodes"])
-    old_to_new = renumber_display_ids_inplace(nodes3)
-    sync_planning_artifacts(root, nodes3)
-    persist_merged_nodes(root, nodes3)
-    sync_registry_node_ids(root, old_to_new)
-    run_validate_raise(root)
-    return next(
-        (n["id"] for n in nodes3 if n.get("node_key") == inserted_node_key),
-        old_to_new.get(provisional_new_id, provisional_new_id),
-    )
-
-
 def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     nodes = load_roadmap(root)["nodes"]
     by_id = {n["id"]: n for n in nodes}
     ref = body.reference_node_id
     _pm_milestone_lock_guard(root, ref, nodes=nodes)
     if ref not in by_id:
-        raise HTTPException(status_code=404, detail="reference node not found")
+        raise HTTPException(status_code=400, detail="reference node not found")
     ref_node = by_id[ref]
     parent_id: str | None = ref_node.get("parent_id")
     if is_gate(body.type) and parent_id in (None, ""):
@@ -129,7 +115,14 @@ def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:  # noqa
     ix = siblings.index(ref)
     insert_at = ix if body.position == "above" else ix + 1
 
-    new_id = next_child_id(nodes, parent_id)
+    # The new node takes the next free id under its parent, or a requested
+    # free one; no other node's id changes (no whole-outline renumber).
+    if body.new_id is not None:
+        try:
+            check_chosen_child_id(nodes, parent_id, body.new_id, ignore_ids=set())
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+    new_id = body.new_id or next_child_id(nodes, parent_id)
     if any(n["id"] == new_id for n in nodes):
         raise HTTPException(status_code=409, detail="generated id already exists")
 
@@ -143,8 +136,6 @@ def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:  # noqa
         "dependencies": [],
         "touch_zones": [],
     }
-
-    inserted_key = new_node["node_key"]
 
     try:
         # append_node_to_chunk delegates to the chunk router, which validates
@@ -169,11 +160,7 @@ def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:  # noqa
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    try:
-        final_id = _canonical_ids_after_add(root, new_id, inserted_key)
-    except (SystemExit, OSError, ValueError) as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    return {"ok": "true", "id": final_id}
+    return {"ok": "true", "id": new_id}
 
 
 def _api_patch_node(
@@ -214,7 +201,9 @@ def _api_reorder(
     _pm_milestone_lock_guard(root, *body.ordered_child_ids)
     pid: str | None = body.parent_id
     try:
-        reorder_siblings(root, pid, body.ordered_child_ids)
+        reorder_siblings(
+            root, pid, body.ordered_child_ids, renumber_outline=body.renumber_outline
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {"ok": "true"}
@@ -243,6 +232,9 @@ def _api_outline_move(
             body.node_key,
             body.new_parent_id,
             body.new_index,
+            new_id=body.new_id,
+            fill_gaps=body.fill_gaps,
+            renumber_outline=body.renumber_outline,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -251,12 +243,14 @@ def _api_outline_move(
 
 def _api_indent(
     node_id: str,
+    body: OutlineShiftBody | None = None,
     _pm: None = Depends(require_pm_gui_write_header),
 ) -> dict[str, Any]:
     root = get_repo_root()
     _pm_milestone_lock_guard(root, node_id)
+    renumber = body.renumber_outline if body is not None else False
     try:
-        changed = apply_indent(root, node_id)
+        changed = apply_indent(root, node_id, renumber_outline=renumber)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {"ok": True, "changed": changed}
@@ -264,12 +258,14 @@ def _api_indent(
 
 def _api_outdent(
     node_id: str,
+    body: OutlineShiftBody | None = None,
     _pm: None = Depends(require_pm_gui_write_header),
 ) -> dict[str, Any]:
     root = get_repo_root()
     _pm_milestone_lock_guard(root, node_id)
+    renumber = body.renumber_outline if body is not None else False
     try:
-        changed = apply_outdent(root, node_id)
+        changed = apply_outdent(root, node_id, renumber_outline=renumber)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {"ok": True, "changed": changed}

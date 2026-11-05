@@ -1,16 +1,14 @@
-"""Outline move/reorder: update parent_id + sibling_order, renumber display ids, persist chunks."""
+"""Outline move/reorder: update parent_id + sibling_order, renumber display ids (subtree-only by default), persist chunks."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, roadmap_dir, write_json_chunk
-from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
 from specy_road.bundled_scripts.roadmap_gui_tree import indent_parent_id, outdent_parent_id
 from specy_road.bundled_scripts.roadmap_layout import sibling_sort_key
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_outline_renumber import can_indent_to_parent, renumber_display_ids_inplace
-from specy_road.bundled_scripts.sync_planning_artifacts import sync_planning_artifacts
 from specy_road.registry_yaml import registry_path
 from specy_road.node_kinds import allows_children, is_gate, parent_type_allowed
 from specy_road.bundled_scripts.roadmap_chunk_utils import manifest_includes
@@ -52,8 +50,18 @@ def reorder_siblings(
     root: Path,
     parent_id: str | None,
     ordered_child_ids: list[str],
+    *,
+    renumber_outline: bool = False,
 ) -> None:
-    """Set sibling_order for children of parent_id and renumber all display ids."""
+    """Set ``sibling_order`` for the children of ``parent_id``; no id changes.
+
+    Outline order is ``sibling_order``-driven (``sibling_sort_key``), so a
+    reorder needs no renumber. ``renumber_outline=True`` also renumbers every
+    display id from the new shape. Either way the write is staged through one
+    ``AtomicWritePlan`` and validated before anything reaches disk.
+    """
+    from specy_road.bundled_scripts.roadmap_move_node import stage_id_rewrite
+
     nodes = list(load_roadmap(root)["nodes"])
     by_id = {n["id"]: n for n in nodes}
     cur = _siblings(nodes, parent_id, by_id)
@@ -61,11 +69,14 @@ def reorder_siblings(
         raise ValueError("ordered_child_ids must match current children of parent_id")
     for i, nid in enumerate(ordered_child_ids):
         by_id[nid]["sibling_order"] = i
-    old_to_new = renumber_display_ids_inplace(nodes)
-    sync_planning_artifacts(root, nodes)
-    persist_merged_nodes(root, nodes)
-    sync_registry_node_ids(root, old_to_new)
-    run_validate_raise(root)
+    old_to_new = renumber_display_ids_inplace(nodes) if renumber_outline else {}
+    stage_id_rewrite(
+        root,
+        nodes,
+        nodes if renumber_outline else [],
+        old_to_new,
+        claims_in_map_only=False,
+    )
 
 
 def _validate_reparent_target(
@@ -141,10 +152,16 @@ def move_node_outline(
     node_key: str,
     new_parent_id: str | None,
     new_index: int,
+    *,
+    new_id: str | None = None,
+    fill_gaps: bool = False,
+    renumber_outline: bool = False,
 ) -> None:
     """
     Reparent ``node_key`` under ``new_parent_id`` (None = root) at sibling index ``new_index``.
-    Renumbers display ids for the whole roadmap. Subtree moves with the node.
+    Subtree moves with the node. Renumbers only the moved subtree, like the
+    ``move-node`` CLI (``new_id`` / ``fill_gaps`` choose the moved node's id);
+    ``renumber_outline=True`` renumbers display ids for the whole roadmap.
 
     Atomic: the chunk rewrites, planning-sheet renames and registry update are
     staged together and validated before any of them reaches disk. This used to
@@ -154,13 +171,25 @@ def move_node_outline(
     """
     from specy_road.bundled_scripts.roadmap_move_node import move_node
 
-    move_node(root, node_key, new_parent_id, new_index)
+    move_node(
+        root,
+        node_key,
+        new_parent_id,
+        new_index,
+        renumber_outline=renumber_outline,
+        new_id=new_id,
+        fill_gaps=fill_gaps,
+    )
 
 
-def apply_indent(repo_root: Path, node_id: str) -> bool:
+def apply_indent(
+    repo_root: Path, node_id: str, *, renumber_outline: bool = False
+) -> bool:
     """Nest under the sibling above (same parent). Returns False if no-op."""
     nodes = list(load_roadmap(repo_root)["nodes"])
     by_id = {n["id"]: n for n in nodes}
+    if node_id not in by_id:
+        raise ValueError(f"unknown node id {node_id!r}")
     new_parent = indent_parent_id(by_id, node_id)
     if new_parent is None:
         return False
@@ -173,14 +202,20 @@ def apply_indent(repo_root: Path, node_id: str) -> bool:
         if (n.get("parent_id") or None) == new_parent and n["id"] != node_id
     ]
     sibs.sort(key=lambda x: sibling_sort_key(x, by_id))
-    move_node_outline(repo_root, nk, new_parent, len(sibs))
+    move_node_outline(
+        repo_root, nk, new_parent, len(sibs), renumber_outline=renumber_outline
+    )
     return True
 
 
-def apply_outdent(repo_root: Path, node_id: str) -> bool:
+def apply_outdent(
+    repo_root: Path, node_id: str, *, renumber_outline: bool = False
+) -> bool:
     """Become sibling after former parent. Returns False if no-op."""
     nodes = list(load_roadmap(repo_root)["nodes"])
     by_id = {n["id"]: n for n in nodes}
+    if node_id not in by_id:
+        raise ValueError(f"unknown node id {node_id!r}")
     target = outdent_parent_id(by_id, node_id)
     if target is None:
         return False
@@ -191,7 +226,13 @@ def apply_outdent(repo_root: Path, node_id: str) -> bool:
     new_parent_id = None if target == "" else target
     gp_sibs = ordered_sibling_ids(nodes, new_parent_id, by_id)
     pi = gp_sibs.index(parent_of)
-    move_node_outline(repo_root, n["node_key"], new_parent_id, pi + 1)
+    move_node_outline(
+        repo_root,
+        n["node_key"],
+        new_parent_id,
+        pi + 1,
+        renumber_outline=renumber_outline,
+    )
     return True
 
 

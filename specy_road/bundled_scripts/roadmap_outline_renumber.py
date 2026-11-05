@@ -1,13 +1,17 @@
 """Display-id renumbering (node_key stable).
 
 Two forms: :func:`renumber_display_ids_inplace` rewrites every id from the
-tree shape (the PM GUI's outline drag, ``move-node --renumber-outline``), and
-:func:`assign_subtree_ids_inplace` renumbers only a moved subtree
-(``move-node``'s default), so no other node's id changes.
+tree shape (``move-node --renumber-outline``, or a PM GUI request with
+``renumber_outline: true``), and :func:`assign_subtree_ids_inplace` renumbers
+only a moved subtree (``move-node``'s and the PM GUI's default), so no other
+node's id changes. The moved node's own id comes from
+:func:`next_free_child_id`, :func:`lowest_free_child_id` (``--fill-gaps``) or
+a caller's choice checked by :func:`check_chosen_child_id` (``--id``).
 """
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 
 from specy_road.bundled_scripts.roadmap_layout import sibling_sort_key
@@ -149,6 +153,58 @@ def next_free_child_id(
     ]
     highest = max((k for k in taken if k is not None), default=0)
     return f"{prefix}{highest + 1}"
+
+
+DISPLAY_ID_RE = re.compile(r"^M[0-9]+(\.[0-9]+)*$")
+
+
+def subtree_ids(nodes: list[dict], root_id: str) -> set[str]:
+    """``root_id`` and every id below it, following ``parent_id`` links."""
+    out = {root_id}
+    grew = True
+    while grew:
+        grew = False
+        for n in nodes:
+            if n.get("parent_id") in out and n["id"] not in out:
+                out.add(n["id"])
+                grew = True
+    return out
+
+
+def lowest_free_child_id(
+    nodes: list[dict], parent_id: str | None, *, ignore_ids: set[str]
+) -> str:
+    """The smallest unused child id of ``parent_id`` (``None`` = root).
+
+    Children start at 1; at the root, at 0 when ``M0`` exists, else 1. Ids in
+    ``ignore_ids`` (the moved subtree) count as free.
+    """
+    taken = {n["id"] for n in nodes if n["id"] not in ignore_ids}
+    prefix = "M" if parent_id is None else f"{parent_id}."
+    k = 0 if parent_id is None and "M0" in taken else 1
+    while f"{prefix}{k}" in taken:
+        k += 1
+    return f"{prefix}{k}"
+
+
+def check_chosen_child_id(
+    nodes: list[dict], parent_id: str | None, new_id: str, *, ignore_ids: set[str]
+) -> None:
+    """Raise ``ValueError`` unless ``new_id`` is a free direct child id of ``parent_id``.
+
+    Well-formed means :data:`DISPLAY_ID_RE`; a direct child is ``parent_id``
+    plus exactly one numeric segment (``Mk`` at the root); free means no node
+    outside ``ignore_ids`` (the moved subtree) has it.
+    """
+    if not DISPLAY_ID_RE.match(new_id):
+        raise ValueError(
+            f"id {new_id!r} is malformed (expected {DISPLAY_ID_RE.pattern})"
+        )
+    if (new_id.rpartition(".")[0] or None) != parent_id:
+        where = "the roadmap root (Mk)" if parent_id is None else f"{parent_id} ({parent_id}.k)"
+        raise ValueError(f"id {new_id!r} is not a direct child id of {where}")
+    if any(n["id"] == new_id for n in nodes if n["id"] not in ignore_ids):
+        raise ValueError(f"id {new_id!r} is already taken by another node")
 
 
 def assign_subtree_ids_inplace(
