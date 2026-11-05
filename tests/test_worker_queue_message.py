@@ -66,10 +66,11 @@ def test_message_while_running_queues_and_delivers(tmp_path: Path, capsys) -> No
     assert queued.queued_message == "follow up"
     assert "message_queued" in [e.type for e in ws.events_since(repo, rec.worker_id)]
     deadline = time.time() + 30
+    # worker_runner writes the completion event before _exit_state clears running → idle.
     while time.time() < deadline:
         types = [e.type for e in ws.events_since(repo, rec.worker_id)]
-        if types.count("completion") >= 2:
-            final = ws.load_record(repo, rec.worker_id)
+        final = ws.load_record(repo, rec.worker_id)
+        if types.count("completion") >= 2 and final.state != "running":
             break
         time.sleep(0.1)
     else:
