@@ -259,8 +259,9 @@ def add_ready_parser(sub: argparse._SubParsersAction) -> None:
                         "is refused")
     r.add_argument("--run-argv", action="append", default=[], metavar="JSON",
                    help="Like --run but runs a JSON array of strings without a shell (repeatable); invalid JSON "
-                        "or a value that is not a non-empty JSON array of strings (e.g. not-json, [], {}, [1], "
-                        '[""]) is refused before anything runs; e.g. ["echo", "ok"] is accepted')
+                        "or a value that is not a non-empty JSON array of strings whose first element is non-empty "
+                        "(e.g. not-json, [], {}, [1], [\"\"]) is refused before anything runs; later elements may "
+                        'be empty or whitespace; e.g. ["echo", "ok"] or ["echo", ""] is accepted')
     r.add_argument("--verify", action="append", default=[], metavar="CMD=EXIT",
                    help="A verifier or test you ran and its exit, without its output (repeatable); "
                         "a non-zero exit is refused")

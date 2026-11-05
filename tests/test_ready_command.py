@@ -20,7 +20,7 @@ from specy_road.review_gate_ready import add_ready_parser
 
 # Examples named in ``--run-argv`` help (must stay in sync with ``add_ready_parser``).
 RUN_ARGV_HELP_REFUSED = ("not-json", "[]", "{}", "[1]", '[""]')
-RUN_ARGV_HELP_ACCEPTED = '["echo", "ok"]'
+RUN_ARGV_HELP_ACCEPTED = ('["echo", "ok"]', '["echo", ""]')
 
 
 def _run_argv_help() -> str:
@@ -218,20 +218,57 @@ def test_ready_run_argv_without_shell_and_refuses_bad_json(tmp_path: Path, monke
 
 def test_run_argv_help_examples_match_parse_run_argv() -> None:
     help_text = _run_argv_help()
-    assert "not a non-empty JSON array of strings" in help_text
+    assert "first element is non-empty" in help_text
     for spec in RUN_ARGV_HELP_REFUSED:
         assert spec in help_text
         with pytest.raises(ValueError):
             parse_run_argv(spec)
-    assert RUN_ARGV_HELP_ACCEPTED in help_text
-    assert parse_run_argv(RUN_ARGV_HELP_ACCEPTED) == ["echo", "ok"]
+    for spec in RUN_ARGV_HELP_ACCEPTED:
+        assert spec in help_text
+        assert parse_run_argv(spec) == json.loads(spec)
+
+
+@pytest.mark.parametrize(
+    "spec",
+    ["not-json", "[]", "{}", "[1]", '[""]', '["", "tail"]'],
+    ids=["invalid_json", "empty_array", "non_array", "non_string", "empty_program", "empty_program_with_tail"],
+)
+def test_parse_run_argv_refuses_invalid_shapes(spec: str) -> None:
+    with pytest.raises(ValueError):
+        parse_run_argv(spec)
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["echo", ""],
+        ["echo", "   "],
+        ["python3", "-c", "import sys; print(sys.argv[1:])", "héllo"],
+    ],
+    ids=["empty_later", "whitespace_later", "unicode_later"],
+)
+def test_parse_run_argv_accepts_later_empty_whitespace_or_unicode(argv: list[str]) -> None:
+    spec = json.dumps(argv)
+    assert parse_run_argv(spec) == argv
+
+
+def test_ready_run_argv_passes_empty_later_argument(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    monkeypatch.chdir(repo)
+    spec = json.dumps(["python3", "-c", "import sys; print(repr(sys.argv[1:]))", ""])
+    capsys.readouterr()
+    assert _cli("ready", "M1.1", "--model", "opus", "--run-argv", spec, "--verify", "ruff .=0",
+                "--repo-root", str(repo)) == 0
+    r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
+    assert r.ok, r.errors
+    assert "['']" in r.data["verify"][-1]["tail"]
 
 
 def test_ready_run_argv_help_accepted_example_runs(tmp_path: Path, monkeypatch, capsys) -> None:
     repo = make_review_repo(tmp_path)
     monkeypatch.chdir(repo)
     capsys.readouterr()
-    assert _cli("ready", "M1.1", "--model", "opus", "--run-argv", RUN_ARGV_HELP_ACCEPTED, "--verify", "ruff .=0",
+    assert _cli("ready", "M1.1", "--model", "opus", "--run-argv", RUN_ARGV_HELP_ACCEPTED[0], "--verify", "ruff .=0",
                 "--repo-root", str(repo)) == 0
     r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
     assert r.ok, r.errors

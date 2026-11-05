@@ -54,13 +54,15 @@ def run_argv(argv: list[str]) -> dict[str, Any]:
 
 
 def parse_run_argv(spec: str) -> list[str]:
-    """``spec`` is a JSON array of non-empty strings; refused before any run when invalid."""
+    """JSON array of strings with at least one element; the first must be non-empty (later elements may be empty)."""
     try:
         parsed = json.loads(spec)
     except json.JSONDecodeError as e:
         raise ValueError(f"{spec!r}: not valid JSON ({e})") from e
     if not isinstance(parsed, list) or not parsed:
         raise ValueError(f"{spec!r}: expected a non-empty JSON array of strings")
-    if not all(isinstance(x, str) and x for x in parsed):
+    if not all(isinstance(x, str) for x in parsed):
         raise ValueError(f"{spec!r}: expected a non-empty JSON array of strings")
+    if not parsed[0]:
+        raise ValueError(f"{spec!r}: the first element must be a non-empty string")
     return parsed
