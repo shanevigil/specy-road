@@ -26,7 +26,10 @@ nested repo itself) or laid out as a bare repository refuses, naming its
 repository, branch and the commits its upstream lacks: removal would delete it,
 and this command never prunes another repository's worktree. They are found by
 walking the filesystem, links not followed, so clean tracked directories are
-seen too; a directory the walk cannot read refuses.
+seen too; a directory the walk cannot read refuses. What is walked is what
+removal deletes (:func:`specy_road.worktree_delete_set.deletions`): each
+directory, a full clone's ``.git`` and a linked worktree's administrative
+directory included.
 """
 
 from __future__ import annotations
@@ -35,60 +38,33 @@ import os
 import re
 import shlex
 import shutil
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from specy_road.bundled_scripts.grind_session_cleanup import merged_into
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.git_subprocess import DEFAULT_TIMEOUT
-from specy_road.git_workflow_config import load_git_workflow_config, resolve_integration_defaults
+from specy_road.git_workflow_config import (
+    load_git_workflow_config,
+    resolve_integration_defaults,
+)
 from specy_road.nested_repos import nested_repos
 from specy_road.review_files import reviews_root
 from specy_road.runtime_paths import project_prefix
 from specy_road.worker_state import list_records
+from specy_road.worktree_delete_set import (
+    cmd,
+    common_dir,
+    deletions,
+    foreign_refusal,
+    git_out,
+    git_run,
+    is_repo_top,
+    walk_foreign,
+)
 
 
 class PruneError(RuntimeError):
     """The leaf or its worktree cannot be found."""
-
-
-# Every git call in this module goes through _git, which reads bytes: git prints paths (its own output,
-# and in messages), and text mode's universal newlines and stripping would turn a '\\r' in one into '\\n'
-# or drop an edge space. Paths are decoded with os.fsdecode only, which round-trips any name.
-def _git(args: list[str], d: Path) -> tuple[int, bytes, str]:
-    """``(exit code, stdout bytes, message)``: the message is stderr (or stdout), decoded for display."""
-    try:
-        r = subprocess.run(["git", *args], cwd=d, capture_output=True, timeout=DEFAULT_TIMEOUT, check=False)
-    except (OSError, ValueError, subprocess.SubprocessError) as e:
-        return -1, b"", str(e)
-    return r.returncode, r.stdout, os.fsdecode(r.stderr or r.stdout).strip()
-
-
-def _out(args: list[str], d: Path) -> str | None:
-    """``git <args>``'s stdout in ``d`` less its final newline, or ``None`` on failure."""
-    code, out, _msg = _git(args, d)
-    return None if code else os.fsdecode(out.removesuffix(b"\n"))
-
-
-def _git_path(args: list[str], d: Path) -> Path | None:
-    """The one path ``git <args>`` prints in ``d``, or ``None`` on failure or none printed."""
-    out = _out(args, d)
-    return Path(out).resolve() if out else None
-
-
-def _cmd(*argv: object) -> str:
-    """A command to show: built from its argument list, each one shell-quoted, never formatted."""
-    return f"`{shlex.join(str(a) for a in argv)}`"
-
-
-def _common_dir(d: Path) -> Path | None:
-    return _git_path(["rev-parse", "--path-format=absolute", "--git-common-dir"], d)
-
-
-def _is_repo_top(d: Path) -> bool:
-    """``d`` is the top of a git worktree (its own repository, not a directory of an enclosing one)."""
-    return d.is_dir() and _git_path(["rev-parse", "--show-toplevel"], d) == d.resolve()
 
 
 @dataclass
@@ -110,7 +86,7 @@ def leaf_worktree(root: Path, node_id: str) -> tuple[Path, Path, str]:
         raise PruneError(f"no roadmap node {node_id!r} with a codename")
     main = reviews_root(root).parent.parent
     wt = main / "work" / ".worktrees" / node["codename"]
-    if not _is_repo_top(wt) or _common_dir(wt) != _common_dir(main):
+    if not is_repo_top(wt) or common_dir(wt) != common_dir(main):
         raise PruneError(f"{wt} is not a worktree of this repository; nothing to prune")
     return main, wt, f"feature/rm-{node['codename']}"
 
@@ -121,8 +97,8 @@ def _status(d: Path, skip: tuple[str, ...] = ()) -> tuple[list[str], list[str]] 
     # '\r' in a name into '\n'), each record ending in NUL; a rename or copy record carries its source
     # path as the next field. --untracked-files=all names each file inside an untracked or ignored
     # directory, so the list says exactly what removal deletes. Foreign repositories are not found from
-    # this list (a clean tracked one is not in it): see _walk_foreign.
-    code, out, _msg = _git(["status", "--porcelain=v1", "-z", "--ignored", "--untracked-files=all"], d)
+    # this list (a clean tracked one is not in it): see walk_foreign.
+    code, out, _msg = git_run(["status", "--porcelain=v1", "-z", "--ignored", "--untracked-files=all"], d)
     if code:
         return None
     changed, ignored = [], []
@@ -150,14 +126,14 @@ def _stashes(d: Path, branch: str, linked: bool) -> list[str] | None:
         m = _STASH_ON.match(subject)
         return bool(m) and m.group(1) not in (branch, "(no branch)")
 
-    out = _out(["stash", "list", "--format=%gs"], d)
+    out = git_out(["stash", "list", "--format=%gs"], d)
     if out is None:
         return None
     return [s for s in out.split("\n") if s and not (linked and names_another_branch(s))]
 
 
 def _held(repo: Path, sha: str, refs: list[str]) -> bool:
-    return bool(_out(["for-each-ref", "--count=1", "--contains", sha, *refs], repo))
+    return bool(git_out(["for-each-ref", "--count=1", "--contains", sha, *refs], repo))
 
 
 def _lost_tips(src: Path, d: Path, linked: bool) -> list[str] | None:
@@ -168,9 +144,9 @@ def _lost_tips(src: Path, d: Path, linked: bool) -> list[str] | None:
     deleted since), so they are tips to keep, never a place that keeps them. ``None`` when a clone's refs
     cannot be listed.
     """
-    tips = [("HEAD", _out(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"], d))]
+    tips = [("HEAD", git_out(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"], d))]
     if not linked:
-        out = _out(["for-each-ref", "--format=%(refname:short) %(objectname)", "refs/heads", "refs/remotes"], d)
+        out = git_out(["for-each-ref", "--format=%(refname:short) %(objectname)", "refs/heads", "refs/remotes"], d)
         if out is None:
             return None
         tips += [tuple(line.rsplit(" ", 1)) for line in out.split("\n") if line]
@@ -181,9 +157,9 @@ def _check_nested(plan: PrunePlan, main: Path, prefix: str) -> None:
     leaf_root = plan.worktree / prefix
     for nr in nested_repos(main):
         d, src = leaf_root / nr.path, main / nr.path
-        if not _is_repo_top(d):
+        if not is_repo_top(d):
             continue
-        linked = _common_dir(d) == _common_dir(src)
+        linked = common_dir(d) == common_dir(src)
         plan.nested.append((src, d, linked))
         label = f"nested repo {nr.path} ({'linked worktree' if linked else 'full clone'})"
         state = _status(d)
@@ -206,73 +182,6 @@ def _check_nested(plan: PrunePlan, main: Path, prefix: str) -> None:
                                  f"{', '.join(lost)}")
 
 
-_SHOWN = 20   # commits listed per foreign repository; a checkout with no remote could list its whole history
-
-
-def _deleted(plan: PrunePlan) -> list[Path]:
-    """Every directory :func:`remove` deletes, with all it holds, in its order: the scan walks this same list."""
-    return [d for _src, d, _linked in plan.nested] + [plan.worktree]
-
-
-def _walk_foreign(roots: list[Path]) -> tuple[list[Path], list[str]]:
-    """``(foreign, unreadable)``: every directory in or below ``roots`` holding a ``.git`` entry (file,
-    directory or link) or laid out as a bare repository, other than a root itself or a root's own
-    ``.git``; and each directory that could not be read, which refuses too, since what is in it is unknown.
-
-    Each root is walked whole (one inside another once), the filesystem itself, not git's view of it: a
-    clean tracked directory, or a submodule at its recorded commit, is in no status output; a full
-    clone's ``.git`` directory is walked like the rest, since removal deletes it too. Links are never
-    followed (removal deletes the link, not its target). A found repository is not descended into: it
-    refuses already.
-    """
-    found, unreadable = [], []
-    exempt = {*roots, *(r / ".git" for r in roots)}
-
-    def unread(e: OSError) -> None:
-        unreadable.append(f"cannot read {e.filename}: {e.strerror}; removal would delete what it holds unchecked")
-
-    real = [r.resolve() for r in roots]
-    for root, rr in zip(roots, real):
-        if any(o != rr and rr.is_relative_to(o) for o in real):
-            continue   # walked with the root that holds it
-        for top, dirs, files in os.walk(root, onerror=unread):
-            d = Path(top)
-            bare = "HEAD" in files and {"objects", "refs"} <= set(dirs)
-            if d not in exempt and (".git" in dirs or ".git" in files or bare):
-                found.append(d)
-                dirs.clear()
-    return sorted(set(found)), unreadable
-
-
-def _foreign_refusal(wt: Path, d: Path) -> str:
-    """Why ``d``, another repository's linked worktree, checkout (a ``.git`` directory, or a ``.git`` file
-    naming its own git directory, as a submodule's does) or bare repository, refuses."""
-    common = _common_dir(d)
-    git_dir = _git_path(["rev-parse", "--absolute-git-dir"], d)
-    linked = bool(common and git_dir) and git_dir != common
-    bare = not (d / ".git").exists() and not os.path.islink(d / ".git")
-    if linked:
-        repo = common.parent if common.name == ".git" else common
-    else:
-        repo = d if bare or (d / ".git").is_dir() else (common or d)
-    branch = _out(["rev-parse", "--abbrev-ref", "HEAD"], d) or "unknown"
-    upstream = _out(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], d)
-    span = ["@{u}..HEAD"] if upstream else ["HEAD", "--not", "--remotes"]
-    log = _out(["log", "--oneline", f"--max-count={_SHOWN + 1}", *span], d)
-    lacks = f"its upstream {upstream}" if upstream else "every remote-tracking ref"
-    if log is None:
-        commits = f"commits {lacks} lacks cannot be listed"
-    else:
-        lines = log.split("\n") if log else []
-        more = " (and more)" if len(lines) > _SHOWN else ""
-        commits = f"commits {lacks} lacks: {'; '.join(lines[:_SHOWN])}{more}" if lines else f"no commits {lacks} lacks"
-    kind, step = (("linked worktree", _cmd("git", "-C", repo, "worktree", "remove", d)) if linked
-                  else ("bare clone" if bare else "checkout", "move it out of the worktree"))
-    shown = d.relative_to(wt).as_posix() if d.is_relative_to(wt) else str(d)
-    return (f"{shown}/ is a {kind} of another repository, {repo}, on {branch}; "
-            f"{commits}; removal would delete it: land or push those commits, then {step}")
-
-
 def _remote_heads(main: Path, remote: str, branches: list[str]) -> tuple[dict[str, str], str | None]:
     """``({branch: sha}, None)``: the remote's actual tips of those of ``branches`` it has, with their commits here.
 
@@ -281,17 +190,17 @@ def _remote_heads(main: Path, remote: str, branches: list[str]) -> tuple[dict[st
     the remote, or any of those commits, cannot be read.
     """
     want = {f"refs/heads/{b}": b for b in branches}
-    code, out, msg = _git(["ls-remote", remote, *want], main)
+    code, out, msg = git_run(["ls-remote", remote, *want], main)
     if code:
         return {}, f"cannot read {remote} ({shlex.join(['git', 'ls-remote', remote])}: {msg})"
     lines = os.fsdecode(out).split("\n")
     tips = {want[ref]: sha for sha, _, ref in (line.partition("\t") for line in lines) if ref in want}
     if tips:
-        code, _out_b, msg = _git(["fetch", "--no-tags", "--no-write-fetch-head", remote,
+        code, _out_b, msg = git_run(["fetch", "--no-tags", "--no-write-fetch-head", remote,
                                   *(f"refs/heads/{b}" for b in tips)], main)
         if code:
             return {}, f"cannot fetch {', '.join(tips)} from {remote}: {msg}"
-    missing = [b for b, sha in tips.items() if _git(["cat-file", "-e", f"{sha}^{{commit}}"], main)[0]]
+    missing = [b for b, sha in tips.items() if git_run(["cat-file", "-e", f"{sha}^{{commit}}"], main)[0]]
     if missing:
         return {}, f"the commits {remote} has at {', '.join(missing)} are not here after fetching them"
     return tips, None
@@ -302,7 +211,7 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
     main, wt, branch = leaf_worktree(root, node_id)
     plan, prefix = PrunePlan(main, wt, branch), project_prefix(main)
     plan.refusals += [f"worker {r.worker_id} is running in it; wait for it or "
-                      f"{_cmd('specy-road', 'worker', 'terminate', r.worker_id)}" for r in list_records(main)
+                      f"{cmd('specy-road', 'worker', 'terminate', r.worker_id)}" for r in list_records(main)
                       if r.state == "running" and Path(r.worktree).resolve().is_relative_to(wt.resolve())]
     _cfg, cfg_err = load_git_workflow_config(main)
     if cfg_err:   # nested_repos would read as none, and their clones would go unchecked with the worktree
@@ -320,10 +229,10 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         target = f"{remote}'s {base} ({tips[base][:12]})"
         # Every leaf ref that exists, local, remote-tracking and on the remote: any may hold work the
         # others lack, and with none (the branch deleted after landing) the worktree's HEAD alone is checked.
-        heads = [("the worktree's HEAD", _out(["rev-parse", "HEAD"], wt) or "HEAD")]
+        heads = [("the worktree's HEAD", git_out(["rev-parse", "HEAD"], wt) or "HEAD")]
         heads += [(label, ref) for label, ref in ((branch, f"refs/heads/{branch}"),
                                                   (f"{remote}/{branch}", f"refs/remotes/{remote}/{branch}"))
-                  if _out(["rev-parse", "--verify", "--quiet", ref], main)]
+                  if git_out(["rev-parse", "--verify", "--quiet", ref], main)]
         if branch in tips:
             heads.append((f"{branch} on {remote}", tips[branch]))
         plan.refusals += [f"{label} is not merged into {target}" for label, ref in heads
@@ -337,9 +246,11 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         plan.ignored = ignored + plan.ignored
         if changed:
             plan.refusals.append(f"uncommitted or untracked: {', '.join(changed)}")
-    # The scan walks exactly what remove() deletes; each configured repo is exempt itself, not what it holds.
-    plan.foreign, plan.unscanned = _walk_foreign(_deleted(plan))
-    plan.refusals += [_foreign_refusal(wt, d) for d in plan.foreign] + plan.unscanned
+    # The scan walks exactly what remove() deletes (deletions), admin directories included.
+    steps, problems = deletions(plan.nested, plan.main, plan.worktree)
+    plan.refusals += problems
+    plan.foreign, plan.unscanned = walk_foreign(steps)
+    plan.refusals += [foreign_refusal(wt, d) for d in plan.foreign] + plan.unscanned
     stashes = _stashes(wt, branch, linked=True)
     if stashes is None:
         plan.refusals.append("cannot read the stash list")
@@ -360,16 +271,18 @@ def remove(plan: PrunePlan) -> str | None:
             ", ".join(str(d) for d in plan.foreign)
     if plan.unscanned:
         return "; ".join(plan.unscanned)
-    owner = {d: src for src, d, linked in plan.nested if linked} | {plan.worktree: plan.main}
-    for d in _deleted(plan):   # the list plan_prune walked
-        if d in owner:
-            argv = ["worktree", "remove", "--force", str(d)]
-            code, _o, msg = _git(argv, owner[d])
+    steps, problems = deletions(plan.nested, plan.main, plan.worktree)   # the list plan_prune walked
+    if problems:
+        return "; ".join(problems)
+    for step in steps:
+        if step.owner:
+            argv = ["worktree", "remove", "--force", str(step.path)]
+            code, _o, msg = git_run(argv, step.owner)
             if code:
-                return f"{_cmd('git', '-C', owner[d], *argv)} failed: {msg}"
+                return f"{cmd('git', '-C', step.owner, *argv)} failed: {msg}"
         else:
             try:
-                shutil.rmtree(d)
+                shutil.rmtree(step.path)
             except OSError as e:
-                return f"cannot remove {d}: {e}"
+                return f"cannot remove {step.path}: {e}"
     return None

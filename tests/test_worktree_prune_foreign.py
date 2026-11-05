@@ -14,7 +14,7 @@ from pathlib import Path
 
 from tests.pickup_repo_helpers import FEATURE, make_pickup_project, run_specy_road
 from tests.review_repo_helpers import commit_file, git
-from tests.test_nested_repo_worktrees import UNCOVERED, add_nested_repo
+from tests.test_nested_repo_worktrees import COVERED, UNCOVERED, add_nested_repo
 
 from specy_road.worktree_prune import plan_prune, remove
 
@@ -243,3 +243,57 @@ def test_every_foreign_repository_in_anything_removal_deletes_refuses_at_any_dep
         assert f"{d.relative_to(wt).as_posix()}/ is a checkout of another repository" in why
     for d in linked:
         assert f"{d.relative_to(wt).as_posix()}/ is a linked worktree of another repository" in why
+
+
+def _admin(wt: Path) -> Path:
+    """The administrative directory ``git worktree remove`` deletes with the linked worktree ``wt``."""
+    return Path(git(wt, "rev-parse", "--absolute-git-dir"))
+
+
+def _shown(wt: Path, d: Path) -> str:
+    return d.relative_to(wt).as_posix() if d.is_relative_to(wt) else str(d)
+
+
+def test_a_foreign_worktree_in_the_leafs_administrative_directory_refuses_and_survives(tmp_path: Path) -> None:
+    root, wt = _landed_leaf_ignoring_sibling(tmp_path)
+    other, admin = _other_repo(tmp_path), _admin(wt)
+    sib, checkout = admin / "sibling", admin / "logs" / "sibling-checkout"
+    git(other, "worktree", "add", "-q", "-b", "topic", str(sib), "main")
+    git(sib, "push", "-q", "-u", "origin", "topic")
+    commit_file(sib, "core.py", "x = 2\n", "work in the admin directory")
+    _own_checkout(checkout, "private", "checkout in the admin directory")
+    plan = plan_prune(root, "M1")
+    assert plan.foreign == sorted([sib, checkout])
+    assert remove(plan) is not None and sib.is_dir() and checkout.is_dir() and wt.is_dir()
+    why = _refused_both_ways(root, sib, checkout, wt)
+    assert f"{sib}/ is a linked worktree of another repository, {other.resolve()}, on topic" in why
+    assert "commits its upstream origin/topic lacks: " in why and "work in the admin directory" in why
+    assert f"{checkout}/ is a checkout of another repository, {checkout}, on private" in why
+    assert "checkout in the admin directory" in why
+
+
+def test_every_directory_of_every_kind_prune_deletes_is_scanned(tmp_path: Path) -> None:
+    """The leaf and its admin directory, a configured linked worktree and its admin directory, a configured
+    full clone and its .git: foreign checkouts and linked worktrees at depths 1 to 3 in each all refuse."""
+    root, wt = _landed_leaf_ignoring_sibling(tmp_path, (COVERED, UNCOVERED))
+    linked, clone = wt / COVERED, wt / UNCOVERED
+    git(root / COVERED, "worktree", "add", "-q", "--detach", str(linked), "main")
+    (Path(git(root / COVERED, "rev-parse", "--absolute-git-dir")) / "info" / "exclude").write_text("sibling*/\n")
+    git(root, "clone", "-q", str(root / UNCOVERED), str(clone))
+    (clone / ".git" / "info" / "exclude").write_text("sibling*/\n")
+    other = _other_repo(tmp_path)
+    plants: list[Path] = []
+    for n, base in enumerate([wt, _admin(wt), linked, _admin(linked), clone, clone / ".git"]):
+        checkouts = [base / f"sibling-c{n}", base / f"sibling-d{n}" / "x" / "y"]
+        for d in checkouts:
+            _own_checkout(d, "private", f"private work {d.name} {n}")
+        sib = base / f"sibling-w{n}" / "w"
+        git(other, "worktree", "add", "-q", "-b", f"topic{n}", str(sib), "main")
+        plants += [*checkouts, sib]
+    plan = plan_prune(root, "M1")
+    assert {d for _src, d, _linked in plan.nested} == {linked, clone}
+    assert plan.foreign == sorted(plants)
+    assert remove(plan) is not None and all(d.is_dir() for d in plants)
+    why = _refused_both_ways(root, *plants, linked, clone, wt)
+    for d in plants:
+        assert f"{_shown(wt, d)}/ is a" in why
