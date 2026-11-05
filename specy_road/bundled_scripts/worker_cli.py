@@ -17,6 +17,7 @@ from specy_road.bundled_scripts.worker_cli_args import FixRound
 from specy_road.bundled_scripts.worker_cli_render import (_line, _row, _sync_event_lines, sync_worker_header,
                                                        timeline, timeline_lines, usage, usage_json_payload,
                                                        usage_lines)
+from specy_road.orphaned_claims import append_claim_hint
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload
 from specy_road.worker_adapters import ADAPTERS, Unsupported
@@ -389,7 +390,8 @@ def main(argv: list[str] | None = None) -> None:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(2) from None
     except (WorkerError, LeaseError) as e:
-        print(f"error: {e}", file=sys.stderr)
+        claimed = getattr(ns, "node_id", None) if getattr(ns, "worker_cmd", None) == "delegate" else None
+        print("error: " + append_claim_hint(resolve_repo_root(ns), claimed, str(e)), file=sys.stderr)
         raise SystemExit(1) from None
 
 

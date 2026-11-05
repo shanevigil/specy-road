@@ -22,6 +22,8 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
+from specy_road.orphaned_claims import stays_claimed
+
 EXIT_OK = 0
 EXIT_GENERIC = 1
 EXIT_NO_LEAVES = 2
@@ -74,10 +76,10 @@ class EventEmitter:
         if event == "resumed":
             return f"{prefix}: {node} -> {fields.get('branch')}"
         if event == "hook_failed":
-            return (
-                f"{prefix}: phase={fields.get('phase')} "
-                f"node={node} rc={fields.get('rc')}"
-            )
+            line = f"{prefix}: phase={fields.get('phase')} node={node} rc={fields.get('rc')}"
+            if fields.get("phase") == "implement" and node:
+                line += f"; {stays_claimed(str(node))}"
+            return line
         if event == "stopped":
             return f"{prefix}: {fields.get('reason')}" + (f" at {node}" if node else "")
         if event == "plan":

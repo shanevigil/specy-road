@@ -138,6 +138,7 @@ def test_dry_run_lists_every_kind_and_changes_nothing(doctor_repo, capsys) -> No
     assert TOOLKIT_STASH in out
     assert ": mine" not in out
     assert "Nothing removed. Re-run with --fix" in out
+    assert "Claims with no live worker" in out and "abort-task-pickup" in out
     assert _has(repo, "refs/heads/feature/rm-open")
     assert _has(bare, "refs/heads/feature/rm-gone")
     assert len(git(repo, "stash", "list").splitlines()) == 2
@@ -180,10 +181,12 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
         assert _has(bare, f"refs/heads/{branch}")
 
     assert _exit(["--repo-root", str(repo)]) == 0
-    listed = [line for line in capsys.readouterr().out.splitlines() if line.startswith("  ")]
+    out = capsys.readouterr().out
+    listed = [line for line in out.split("Claims with no live worker")[0].splitlines() if line.startswith("  ")]
     assert len(listed) == 2   # only what --fix leaves
     assert any("wt-wip  — detached at" in line for line in listed)
     assert any("wt-thing  — branch feature/rm-thing live: claimed by M1.1" in line for line in listed)
+    assert "M1.1" in out.split("Claims with no live worker", 1)[1]   # the claim is reported, not released
 
 
 def test_detached_worktrees_are_listed_and_fix_removes_only_clean_ones(doctor_repo, capsys) -> None:

@@ -95,7 +95,7 @@ def _stale_origin(repo: Path, rev: str = "dev") -> None:
     git(repo, "update-ref", "refs/remotes/origin/dev", rev)
 
 
-# --- A1: what holds a slot: only a leaf unclaimed AND Complete at every integration ref frees it ---------------
+# --- A1: what holds a slot: starting, running, idle, paused_by_limit; a finished record never does ----------
 
 def test_a_completed_worker_on_a_landed_leaf_frees_its_slot(tmp_path: Path) -> None:
     repo, _ = _repo(tmp_path, max_workers=1)
@@ -130,17 +130,17 @@ def test_each_ref_cause_alone_orphans_the_worker(tmp_path: Path, cause: str) -> 
     assert wait_for_worker(repo, mine.worker_id).state == "idle"
 
 
-def test_a_completed_worker_on_an_unfinished_leaf_holds_its_slot(tmp_path: Path, capsys) -> None:
+def test_a_completed_worker_on_an_unfinished_leaf_does_not_hold_its_slot(tmp_path: Path) -> None:
+    """M15.26: a completed record keeps the leaf (it is not orphaned) but never takes a max_workers slot."""
     repo, _ = _repo(tmp_path, max_workers=1)
     mine = _worker(repo, "M1.1", "idle", session="sid-1")
     _claim(repo, "M1.2", OTHER)
     held = _worker(repo, "M1.2", "completed", branch=OTHER)   # a review block may still send it a fix round
     assert orphans(repo) == {}
-    assert run_worker_cli("worker", "resume", mine.worker_id, "--repo-root", str(repo)) == 1
-    err = capsys.readouterr().err
-    assert (f"1 workers active, policy max_workers is 1; 1 completed: {held.worker_id}; "
-            f"`specy-road worker terminate {held.worker_id}` frees it") in err
-    assert ws.load_record(repo, mine.worker_id).state == "idle"
+    assert holding_slots(repo, ws.list_records(repo)) == [mine]
+    ops.resume(repo, mine.worker_id)   # the one slot is free: completed does not hold it
+    assert wait_for_worker(repo, mine.worker_id).state == "idle"
+    assert ws.load_record(repo, held.worker_id).state == "completed"
 
 
 def test_a_running_worker_on_a_landed_leaf_still_holds_its_slot(tmp_path: Path) -> None:
@@ -166,7 +166,8 @@ def test_a_gone_worktree_alone_orphans_the_worker(tmp_path: Path) -> None:
 def test_a_reopened_leaf_keeps_its_worker_against_a_stale_complete_integration_ref(
         tmp_path: Path, capsys, stale: str) -> None:
     """origin/dev last fetched while the leaf was Complete; dev has since reopened it, claimed. The refs
-    disagree, so the worker keeps its slot, is not orphaned, and survives terminate --orphaned."""
+    disagree, so the worker is not orphaned and survives terminate --orphaned. A completed record still
+    takes no max_workers slot."""
     repo, _ = _repo(tmp_path, max_workers=1)
     mine = _worker(repo, "M1.1", "idle", session="sid-1")
     _claim(repo, "M1.2", OTHER)
@@ -182,9 +183,8 @@ def test_a_reopened_leaf_keeps_its_worker_against_a_stale_complete_integration_r
     assert run_worker_cli("worker", "list", "--json", "--repo-root", str(repo)) == 0
     assert {w["worker_id"]: w["orphaned"] for w in json.loads(capsys.readouterr().out)["workers"]} == {
         mine.worker_id: None, held.worker_id: None}
-    assert holding_slots(repo, [held]) == [held]
-    assert run_worker_cli("worker", "resume", mine.worker_id, "--repo-root", str(repo)) == 1
-    assert f"1 completed: {held.worker_id}" in capsys.readouterr().err
+    assert holding_slots(repo, [held]) == []   # completed never takes a slot, even while the refs disagree
+    assert [r.worker_id for r in holding_slots(repo, ws.list_records(repo))] == [mine.worker_id]
     assert run_worker_cli("worker", "terminate", "--orphaned", "--repo-root", str(repo)) == 0
     assert "No orphaned workers." in capsys.readouterr().out
     assert ws.load_record(repo, held.worker_id).state == "completed"
@@ -196,7 +196,7 @@ def test_a_landing_not_yet_on_the_remote_tracking_ref_keeps_the_worker_until_it_
     _stale_origin(repo)   # origin/dev: still claimed, not in its graph
     rec = _worker(repo, "M1.2", "completed", branch=OTHER)
     _land(repo, "M1.2")
-    assert orphans(repo) == {} and holding_slots(repo, [rec]) == [rec]
+    assert orphans(repo) == {} and holding_slots(repo, [rec]) == []   # completed, so no slot, but not orphaned yet
     _stale_origin(repo)   # pushed and fetched: the refs agree
     assert orphans(repo) == {rec.worker_id: "no claim on M1.2 on dev and origin/dev; M1.2 is Complete on dev and origin/dev"}
 
@@ -219,8 +219,7 @@ def test_an_older_lanes_registry_snapshot_neither_frees_nor_keeps_a_worker(tmp_p
             mine.worker_id: None, held.worker_id: None}
         assert run_worker_cli("worker", "terminate", "--orphaned", "--repo-root", str(lane)) == 0
         assert "No orphaned workers." in capsys.readouterr().out
-        assert run_worker_cli("worker", "resume", mine.worker_id, "--repo-root", str(lane)) == 1   # still held
-        assert f"1 completed: {held.worker_id}" in capsys.readouterr().err
+        assert holding_slots(lane, [held]) == []   # completed never holds the slot; the lanes still agree it is not orphaned
     assert ws.load_record(repo, held.worker_id).state == "completed"
 
     _land(repo, "M1.2")   # the leaf really lands; the new lane's snapshot still shows the claim
@@ -234,7 +233,7 @@ def test_an_unreadable_integration_registry_keeps_the_worker(tmp_path: Path) -> 
     _status_on_dev(repo, "M1.2", "In Progress")   # open, and no claim visible once the registry cannot be read
     rec = _worker(repo, "M1.2", "completed", branch=OTHER)
     _on_dev(repo, "roadmap/registry.yaml", lambda _text: "entries: [\n", "break the registry")
-    assert orphans(repo) == {} and holding_slots(repo, [rec]) == [rec]
+    assert orphans(repo) == {} and holding_slots(repo, [rec]) == []   # not orphaned, and completed takes no slot
 
 
 def test_no_integration_branch_keeps_the_worker(tmp_path: Path) -> None:
@@ -242,20 +241,46 @@ def test_no_integration_branch_keeps_the_worker(tmp_path: Path) -> None:
     _land(repo, "M1.2")
     rec = _worker(repo, "M1.2", "completed", branch=OTHER)
     git(repo, "branch", "-q", "-m", "dev", "elsewhere")   # neither dev nor origin/dev: nothing authoritative to read
-    assert orphans(repo) == {} and holding_slots(repo, [rec]) == [rec]
+    assert orphans(repo) == {} and holding_slots(repo, [rec]) == []
 
 
 # --- A2: the refusal names running and held workers apart ---------------------------------------------------------
 
 def test_the_refusal_lists_running_and_held_workers_separately(tmp_path: Path) -> None:
     repo, _ = _repo(tmp_path)
-    recs = [_worker(repo, "M1.1", s) for s in ("running", "starting", "completed")]
-    msg = str(lease.slot_error(recs, [], 3))
-    assert msg == ("3 workers active, policy max_workers is 3; 2 running: w-0001, w-0002; 1 completed: w-0003; "
+    recs = [_worker(repo, "M1.1", s) for s in ("running", "starting", "idle", "completed", "failed")]
+    counted = holding_slots(repo, recs)
+    assert [r.state for r in counted] == ["running", "starting", "idle"]
+    msg = str(lease.slot_error(counted, [], 3))
+    assert msg == ("3 workers active, policy max_workers is 3; 2 running: w-0001, w-0002; 1 idle: w-0003; "
                    "`specy-road worker terminate w-0003` frees it, or wait for a running one to finish or raise the limit")
-    assert str(lease.slot_error(recs[:2], ["c/w-0009"], 3)) == (
+    assert "completed" not in msg and "failed" not in msg
+    assert str(lease.slot_error(counted[:2], ["c/w-0009"], 3)) == (
         "2 workers active (and 1 leased by other checkouts: c/w-0009), policy max_workers is 3; "
         "2 running: w-0001, w-0002; wait for one to finish or raise the limit")
+
+
+def test_finished_records_leave_a_slot_and_two_running_workers_refuse(tmp_path: Path, monkeypatch, capsys) -> None:
+    """M15.26: 19 completed or failed records plus one running worker, max_workers 2, leave a slot free;
+    two running workers refuse. A pid-less running record would be swept to failed before the cap, so the
+    sweep is held off: this test is the cap, not the dead-wrapper rule."""
+    monkeypatch.setattr("specy_road.worker_ops_slots.wrapper_gone", lambda *_a, **_k: False)
+    repo, _ = _repo(tmp_path, max_workers=2)
+    for n, state in enumerate(["completed"] * 10 + ["failed"] * 9):
+        _worker(repo, f"M9.{n}", state)
+    running = _worker(repo, "M8.1", "running")
+    second = _worker(repo, "M8.2", "running")
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    err = capsys.readouterr().err
+    assert (f"2 workers active, policy max_workers is 2; 2 running: {running.worker_id}, {second.worker_id}; "
+            "wait for one to finish or raise the limit") in err
+    assert "completed" not in err and "failed" not in err
+    assert err.rstrip().endswith("M1.1 stays claimed with no worker: retry `specy-road worker delegate M1.1` "
+                                 "or release it with `specy-road abort-task-pickup`")
+    ws.set_state(repo, second, "failed", pid=None)   # one running left: the slot is free
+    assert [r.worker_id for r in holding_slots(repo, ws.list_records(repo))] == [running.worker_id]
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0
+    assert "max_workers" not in capsys.readouterr().err
 
 
 # --- A3: list, sync, terminate --orphaned --------------------------------------------------------------------------
