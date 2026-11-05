@@ -364,7 +364,8 @@
         "specy_road/bundled_scripts/role_prompt_rework.py",
         "specy_road/worker_ops_message.py",
         "specy_road/bundled_scripts/worker_cli.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/worker_cli_args.py"
       ],
       "type": "task"
     }

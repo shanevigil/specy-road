@@ -112,6 +112,7 @@ entries:
       - specy_road/worker_ops_message.py
       - specy_road/bundled_scripts/worker_cli.py
       - tests/
+      - specy_road/bundled_scripts/worker_cli_args.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
