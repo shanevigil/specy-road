@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, roadmap_dir
 from specy_road.bundled_scripts.roadmap_crud_ops import (
@@ -253,17 +253,22 @@ def _api_outline_move(
     return {"ok": "true"}
 
 
+async def _raw_body(request: Request) -> bytes:
+    return await request.body()
+
+
 def _api_outline_group(
-    payload: Any = Body(None),
+    raw: bytes = Depends(_raw_body),
     _pm: None = Depends(require_pm_gui_write_header),
 ) -> dict[str, Any]:
-    """Every refusal is a 400 with a detail: the body is validated here, not by
-    FastAPI (a pydantic ``ValidationError`` is a ``ValueError``), and ``group_nodes``
-    refuses the rest. Only bytes that are not JSON stay the framework's 422.
+    """Every refusal is a 400 with a detail. The route parses the raw request bytes
+    itself (FastAPI never sees a body to answer 422 for), so bytes that are not JSON,
+    a body of the wrong shape (a pydantic ``ValidationError`` is a ``ValueError``)
+    and whatever ``group_nodes`` refuses all reach the same ``except``.
     """
     root = get_repo_root()
     try:
-        body = GroupOutlineBody.model_validate(payload)
+        body = GroupOutlineBody.model_validate_json(raw)
         id_map = group_nodes(
             root, body.into_new, body.title, body.node_ids, node_type=body.type
         )

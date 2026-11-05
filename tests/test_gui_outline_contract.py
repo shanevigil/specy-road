@@ -46,10 +46,14 @@ def client(repo: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(create_app())
 
 
-def _post(client: TestClient, url: str, body: dict | None = None):
+def _post(client: TestClient, url: str, body: dict | list | bytes | None = None):
+    """``bytes`` are sent as-is under ``Content-Type: application/json``."""
     fp = client.get("/api/roadmap").json()["fingerprint"]
     kw: dict = {"headers": {"X-PM-Gui-Fingerprint": str(fp)}}
-    if body is not None:
+    if isinstance(body, bytes):
+        kw["headers"]["Content-Type"] = "application/json"
+        kw["content"] = body
+    elif body is not None:
         kw["json"] = body
     return client.post(url, **kw)
 
@@ -154,15 +158,17 @@ def test_outline_group_returns_the_id_map(client: TestClient, repo: Path) -> Non
         [],
         {"into_new": "M1.4", "node_ids": ["M1.1"]},
         {"into_new": "M1.4", "title": "G", "node_ids": "M1.1"},
+        b"{",
+        b"not json",
     ],
     ids=[
         "unknown", "empty", "duplicate", "not-siblings", "taken", "empty-title",
         "gate-parent", "unknown-type", "no-body", "empty-body", "list-body",
-        "missing-title", "ids-not-a-list",
+        "missing-title", "ids-not-a-list", "truncated-json", "not-json",
     ],
 )
 def test_outline_group_refusals_are_400_with_a_string_detail(
-    client: TestClient, repo: Path, body: dict | list | None
+    client: TestClient, repo: Path, body: dict | list | bytes | None
 ) -> None:
     before = tree_bytes(repo)
 
