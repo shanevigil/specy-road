@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import re
 import shlex
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -133,6 +134,7 @@ policy: {reviewers_required: 1}
     ("agent -p {prompt} --trust --sandbox=disabled --force; true", ["--trust", "--sandbox=disabled", "--force"], True),
     ("agent -p {prompt} --sandbox disabled; true", ["--sandbox", "disabled"], False),
     ("agent -p {prompt} --sandbox; true", ["--sandbox"], False),  # an operator is not the flag's value
+    ("agent -p {prompt} --sandbox\ntrue", ["--sandbox"], False),  # nor is the next line
     ("agent -p {prompt} '--force;'", [], False),                 # a quoted operator is part of the word
     ("agent -p {prompt} --force\\;", [], False),
     ("agent -p {prompt} 'try --force; then stop'", [], False),
@@ -147,19 +149,38 @@ def test_a_custom_cursor_command_is_read_as_the_shell_splits_it(tmp_path: Path, 
         assert len(force_warnings([{"id": "custom", "harness": "cursor", "channels": {channel: cli}}])) == forces
 
 
+@pytest.mark.parametrize("spelling", [
+    "--for\\\nce", "--yo\\\nlo", "--force\\\n", "\\\n--force", '"--for\\\nce"',   # a continuation joins the word
+    "--for\\\n\\\nce", "--fo''rce", '--fo""r\\ce',
+    "--force \\", "--force\\",                               # a trailing backslash is a literal
+    "'--for\\\nce'",                                        # single quotes keep it
+    "--force\\\\\n",                                       # an escaped backslash, then a real newline
+    '"--force\\\\\n"',
+])
+def test_launch_and_resume_record_the_flags_the_shell_passes(tmp_path: Path, spelling: str) -> None:
+    printed = subprocess.run(["sh", "-c", f"printf '%s\\0' {spelling}"], capture_output=True, text=True, check=True)
+    shell_passes = [w for w in printed.stdout.split("\0") if w in ("--force", "--yolo")]
+    cli = f"agent -p {{prompt}} --resume {{session}} {spelling}"
+    cursor, prompt = wa.adapter_for("cursor"), tmp_path / "prompt.md"
+    assert launch_permissions(cursor.launch(prompt, tmp_path, None, cli).argv) == shell_passes
+    assert launch_permissions(cursor.resume("sess-1", prompt, tmp_path, "m", cli).argv) == shell_passes
+    warned = force_warnings([{"id": "custom", "harness": "cursor", "channels": {"cli": cli}}])
+    assert len(warned) == len(shell_passes)
+
+
 @pytest.mark.parametrize("cli", ["agent -p {prompt} -w; true", "agent -p {prompt} --worktree|cat",
                                  "agent -p {prompt} --worktree=mine&& true", "agent -pw {prompt}",
-                                 "agent -p {prompt} -wmine"])
+                                 "agent -p {prompt} -wmine", "agent -p {prompt} --work\\\ntree"])
 def test_a_custom_cursor_command_never_asks_for_its_own_worktree(tmp_path: Path, cli: str) -> None:
     with pytest.raises(wa.Unsupported, match="never pass -w"):
         wa.adapter_for("cursor").launch(tmp_path / "prompt.md", tmp_path, None, cli)
 
 
-def test_an_unbalanced_custom_cursor_command_is_refused_not_read(tmp_path: Path) -> None:
+def test_an_unbalanced_custom_cursor_command_is_refused_and_its_earlier_words_still_warn(tmp_path: Path) -> None:
     cli = "agent -p {prompt} --force 'unbalanced"
     with pytest.raises(wa.Unsupported):
         wa.adapter_for("cursor").launch(tmp_path / "prompt.md", tmp_path, None, cli)
-    assert force_warnings([{"id": "custom", "harness": "cursor", "channels": {"cli": cli}}]) == []
+    assert force_warnings([{"id": "custom", "harness": "cursor", "channels": {"cli": cli}}]) != []
 
 
 def _documented(lang: str, needle: str) -> str:

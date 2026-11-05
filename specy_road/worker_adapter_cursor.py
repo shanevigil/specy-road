@@ -75,7 +75,10 @@ SANDBOX_FLAGS = ("--trust", "--sandbox", "enabled")
 #: A roster entry's ``cursor_force: true``: ``--force`` force-allows every command that is not explicitly denied.
 FORCE_FLAGS = ("--trust", "--force")
 #: The characters that end a shell word unquoted: ``--force; true`` passes ``--force`` to ``agent``.
-_SHELL_OPERATORS = "();<>|&`"
+_SHELL_OPERATORS = "();<>|&`\n"
+#: What the shell reads as quoted: a single-quoted string, a double-quoted string, or one escaped character.
+_QUOTED = re.compile(r"""'[^']*'|"(?:\\.|[^"\\])*"|\\.""", re.S)
+_ESCAPED = re.compile(r"\\.", re.S)
 #: ``agent``'s short switches that take no value: one word may cluster them (``-pf`` is ``-p -f``), and anything after
 #: ``-H``, ``-e`` or ``-w`` in a word is that option's value, so ``-Hf`` passes no ``-f``.
 _SWITCHES = "-[vpfh]*"
@@ -93,19 +96,34 @@ def permission_flags(force: bool) -> list[str]:
     return list(FORCE_FLAGS if force else SANDBOX_FLAGS)
 
 
+def _joined_lines(command: str) -> str:
+    """``command`` without its line continuations: the shell drops a backslash-newline before it splits words,
+    in double quotes too, and keeps it in single quotes."""
+    def unit(quoted: re.Match[str]) -> str:
+        if quoted[0].startswith("'"):
+            return quoted[0]
+        return _ESCAPED.sub(lambda e: "" if e[0] == "\\\n" else e[0], quoted[0])
+    return _QUOTED.sub(unit, command)
+
+
 def _shell_words(command: str) -> list[str]:
-    """``command``'s words and operators, the one reading of a custom command here: quotes and backslashes as the shell
-    takes them, an unquoted :data:`_SHELL_OPERATORS` character ending a word and standing as its own item.
+    """``command``'s words and operators, the one reading of a custom command here, and its bounded rule: POSIX
+    quoting only. Quotes, backslashes and line continuations are taken as ``sh`` takes them, and an unquoted
+    :data:`_SHELL_OPERATORS` character ends a word and stands as its own item.
 
     Every word of the line counts, in any of its commands, so this errs toward finding a flag: ``rm -f x; agent`` and a
-    ``# --force`` comment match. It reads text and expands nothing: a flag in ``$FLAGS``, in a wrapper script or inside
-    a quoted ``sh -c '...'`` is not seen. Unbalanced quotes give no words; the custom-command check refuses those."""
-    lexer = shlex.shlex(command, posix=True, punctuation_chars=_SHELL_OPERATORS)
-    lexer.whitespace_split, lexer.commenters = True, ""
+    ``# --force`` comment match. It runs and expands nothing, so a word the shell builds at run time is not seen:
+    ``$FLAGS``, ``--fo$(:)rce``, bash's ``$'--force'``, a wrapper script, a quoted ``sh -c '...'``. Where the text stops
+    parsing (an open quote, which the custom-command check refuses, or a trailing backslash, which ``sh`` passes on
+    as a literal), the words before that point still count."""
+    lexer = shlex.shlex(_joined_lines(command), posix=True, punctuation_chars=_SHELL_OPERATORS)
+    lexer.whitespace_split, lexer.whitespace, lexer.commenters = True, " \t", ""
+    words: list[str] = []
     try:
-        return list(lexer)
+        words.extend(lexer)
     except ValueError:
-        return []
+        pass
+    return words
 
 
 def _words(argv: list[str]) -> list[str]:

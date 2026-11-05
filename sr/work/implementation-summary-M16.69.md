@@ -149,6 +149,43 @@ The `-w` refusal is stricter as a result: `-w; true`, `--worktree|cat` and `-pw`
 - Other `shlex.split` users: `worker_adapter_base.reviewer_cli` (agy reviewers, its `--dangerously-skip-permissions` refusal has the same shape) predates this leaf and is not Cursor; **not changed**, a candidate for intake. `tool_call_guard`, `orchestration_role_guard`, `review_pre_existing`, `worker_models`, `grind_session_implement` are outside this leaf's change and zones; not audited further.
 - New tests against the ba701596 adapter: 16 of 42 in the file fail there; all 42 pass on this one.
 
+## Fix round 2 (review of 8fb5f1ff, `gpt-6.1-sol-low`)
+
+**Finding's class.** The reader differed from `sh` on text the shell rewrites or ends before it splits words: a
+backslash-newline disappears, so `--for\<newline>ce` reaches `agent` as `--force`. The same class held two more
+holes, found by comparing the reader with real `sh`:
+- A trailing backslash: `agent {prompt} --force \` is accepted and runs with `--force`, but the parse error made the
+  reader return no words, so neither the warning nor the record saw it. This also corrects round 1's claim that
+  everything unparsable is refused: only open quotes are.
+- A newline counted as whitespace, so `--sandbox<newline>true` recorded `true` as the flag's value.
+
+**Fix.** Still the one reader, and every check gets it: `_joined_lines` removes continuations with the shell's quoting
+rules (not inside single quotes), a newline is an operator, and words before a parse stop are kept. The rule is now
+stated as a bound, in the `_shell_words` docstring and the docs: **POSIX quoting only; nothing is run or expanded.**
+Accepted limits, added to round 1's: any word built at run time (`--fo$(:)rce`) is not seen, and that includes
+bash's `$'--force'` (`dash` passes it as `$--force`, which the reader agrees with).
+
+**Behaviour change.** An open-quote command now warns on the words before the quote. It was silent before; it is
+still refused at launch.
+
+The tests compare with real `sh` instead of expected lists: `test_launch_and_resume_record_the_flags_the_shell_passes`
+runs each spelling through `sh -c printf` and asserts `Cursor.launch`, `Cursor.resume` and `force_warnings` agree.
+
+## Probes (fix round 2)
+
+- `--for\<newline>ce`, `--yo\<newline>lo`, double continuation, continuation before or after the flag, in double quotes: `Cursor.launch`, `Cursor.resume`, `force_warnings` all match real `sh`.
+- `'--for\<newline>ce'` (single quotes keep it): no flag, matches `sh`.
+- Escaped backslash then newline, bare and in double quotes (`--force\\<newline>`): no flag, matches `sh`, so a naive replace would have been wrong here.
+- Empty quotes and escapes in a word (`--fo''rce`, `--fo""r\ce`): recorded as `--force`, matches `sh`.
+- Trailing backslash: `--force \` is recorded and warns; `--force\` is not a flag; both match `sh`, and `sh` printed `[--force][\]` for the first.
+- `--sandbox<newline>true`: records `--sandbox` alone.
+- `-w` refusal through the same reader: `--work\<newline>tree` refused.
+- Open quote: `Cursor.launch` refuses; `force_warnings` warns on the earlier `--force`.
+- CRLF line ends: `--force\r` is not a flag (`sh` keeps the `\r`), so nothing is recorded; a tab still separates words (`--sandbox<tab>enabled`).
+- `$'--force'`: `dash` printed `$--force` and the reader gives the same; bash-as-`sh` is an accepted limit, stated in the docstring and docs.
+- Comment and `$FLAGS` limits from round 1: unchanged, documented.
+- New tests against the 8fb5f1ff adapter: 10 of 57 in the file fail there; all pass on this one.
+
 ## Added
 
 - `SANDBOX_FLAGS`, `FORCE_FLAGS`, `permission_flags(force)` (worker_adapter_cursor.py): the one place the default and the opt-in flags are stated (A1).
@@ -157,7 +194,9 @@ The `-w` refusal is stricter as a result: `-w; true`, `--worktree|cat` and `-pw`
 - `force_warnings(roster)`: the one warning text plan and doctor print (A3).
 - `_words(argv)`, `launch_permissions(argv)`: the flags a Cursor launch passed, for the `launched` event (A1, A3).
 - `_shell_words(command)`, `_SHELL_OPERATORS`, `_SWITCHES`, `_PERMISSION`, `_WORKTREE` (fix round 1): the one reading of a custom command, used by the permission record, the warning and the `-w` refusal; replaces three separate `shlex.split` calls (A1, A3).
-- Tests `test_a_custom_cursor_command_is_read_as_the_shell_splits_it`, `test_a_custom_cursor_command_never_asks_for_its_own_worktree`, `test_an_unbalanced_custom_cursor_command_is_refused_not_read` (test_worker_resume_permissions.py, fix round 1): the rule's clauses through `Cursor.launch` and `force_warnings` (A1, A3).
+- `_joined_lines(command)`, `_QUOTED`, `_ESCAPED` (fix round 2): line continuations removed by the shell's quoting rules, before words are split (A1, A3).
+- Test `test_launch_and_resume_record_the_flags_the_shell_passes` (test_worker_resume_permissions.py, fix round 2): each spelling compared with real `sh` through launch, resume and the warning (A1, A3).
+- Tests `test_a_custom_cursor_command_is_read_as_the_shell_splits_it`, `test_a_custom_cursor_command_never_asks_for_its_own_worktree`, `test_an_unbalanced_custom_cursor_command_is_refused_and_its_earlier_words_still_warn` (test_worker_resume_permissions.py, fix round 1): the rule's clauses through `Cursor.launch` and `force_warnings` (A1, A3).
 - `launch_options(entry, harness)` (worker_ops_launch.py): maps `cursor_force` to the adapter keyword for cursor only, used by launch and resume (A1).
 - Branch in worker_runner.run: `detail.permissions` on a cursor worker's `launched` event (A1, A3).
 - `OrchestrationPlan.cursor_force_warnings` field and its `to_dict` key, and the render line in orchestrate_cli (A3).
