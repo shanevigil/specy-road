@@ -157,6 +157,7 @@ entries:
       - specy_road/bundled_scripts/do_next_task_pickup_helpers.py
       - specy_road/bundled_scripts/abort_task_pickup.py
       - specy_road/bundled_scripts/abort_task_pickup_own_commit.py
+      - specy_road/bundled_scripts/do_next_task_self_heal.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
