@@ -82,13 +82,18 @@ findings, because it is a report. It edits nothing tracked.
 | `ratchet-grew` | A `policy.ratchet_paths` baseline with lines added since the newest tag (`git describe --tags --abbrev=0`), reported as `<path>: +N line(s) since <tag>`. With no tag, or no integration branch to read the policy from, the scan reports nothing and says why once on stderr. |
 
 `--open-chores --under <PARENT>` adds at most one leaf under `PARENT` per class
-with findings, through the same write as `add-node`: title from the class (for
-example `Garden: stale command mentions`), codename `garden-<class>`, one
-acceptance line per finding path (the first 10, then a count of the rest) and
-the finding paths as touch zones. While a leaf with that codename is not
-Complete, a second run adds nothing for its class and prints its id; once it is
-Complete, the next run adds `garden-<class>-2`. A parent inside a milestone whose execution is `active` or
-`pending_mr` is refused, as `add-node` refuses it. The leaves are picked up,
+with findings by running `add-node` itself, so every check `add-node` makes
+applies (parent exists, milestone lock, unique id, title and codename, chunk
+routing). The leaf gets its title from the class (for example `Garden: stale
+command mentions`), codename `garden-<class>`, one acceptance line per finding
+path (the first 10, then a count of the rest) and the finding paths as touch
+zones. A node belongs to a class when its codename (`garden-<class>` or
+`garden-<class>-N`) or its title (`<title>` or `<title> (N)`) says so, under
+any parent. While a live leaf of the class is not Complete, a run adds nothing
+for it and prints that leaf's id. Otherwise the new leaf is generation N + 1,
+where N is the highest generation any live or archived node of the class
+carries, so a number is never reused. When `add-node` refuses, the run exits 1
+with its reason. The leaves are picked up,
 delegated and reviewed like any other; gardening never fixes a finding itself.
 
 ### Cadence

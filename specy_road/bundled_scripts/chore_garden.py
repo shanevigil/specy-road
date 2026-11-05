@@ -16,6 +16,8 @@ which ``validate`` reads for ``policy.garden_cadence_days``.
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import re
 import sys
@@ -34,7 +36,6 @@ from specy_road.bundled_scripts.validate_stale_commands import (
 from specy_road.git_subprocess import git_text
 from specy_road.harness_instruction_files import RULES_MD
 from specy_road.integrity import _ratchet_findings, integration_ratchet_paths
-from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 from specy_road.orchestration_config import effective_config
 from specy_road.review_policy_ref import policy_source
 from specy_road.runtime_paths import git_root
@@ -142,42 +143,63 @@ def _acceptance(cls: str, found: list[Finding]) -> list[str]:
     return lines
 
 
+def _generation(cls: str, codename: object, title: object) -> int | None:
+    """The ``cls`` garden generation a codename or title names (1 for the unnumbered first); ``None`` if neither does."""
+    for text, pattern in ((codename, rf"garden-{cls}(?:-(\d+))?"), (title, re.escape(CLASSES[cls]) + r"(?: \((\d+)\))?")):
+        m = re.fullmatch(pattern, str(text or "").strip())
+        if m:
+            return int(m.group(1) or 1)
+    return None
+
+
+def _add_node(root: Path, argv: list[str]) -> str | None:
+    """Run the ``add-node`` command itself (every check it makes); its refusal, or ``None`` once written."""
+    from specy_road.bundled_scripts.roadmap_crud import main  # noqa: PLC0415 — via validate_roadmap, it imports this
+
+    err = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):   # its write report
+            main(["--repo-root", str(root), "add-node", *argv])
+    except SystemExit as e:
+        if e.code:
+            lines = [ln.removeprefix("error: ") for ln in err.getvalue().splitlines() if ln.strip()]
+            return next((ln for ln in lines if ln.startswith(("roadmap", "parent_id", "invalid"))), lines[-1] if lines
+                        else f"exit {e.code}")
+    return None
+
+
 def open_chores(root: Path, findings: list[Finding], under: str) -> list[str]:
-    """One leaf under ``under`` per class with findings, unless a non-Complete one is open; what was done."""
-    # Lazy: roadmap_crud_ops imports validate_roadmap, which imports this module.
-    from specy_road.bundled_scripts.roadmap_crud_ops import append_node_to_chunk  # noqa: PLC0415
-    from specy_road.bundled_scripts.roadmap_crud_prepare import next_sibling_order  # noqa: PLC0415
+    """One leaf under ``under`` per class with findings, through ``add-node``; what was done.
+
+    A class is skipped while a live leaf of it is not Complete. Otherwise the new leaf's generation is one more
+    than the highest any live or archived node of the class carries, so a number is never reused.
+    """
+    from specy_road.archive_index import iter_archived_summaries  # noqa: PLC0415
     from specy_road.bundled_scripts.roadmap_layout import next_child_id  # noqa: PLC0415
     from specy_road.bundled_scripts.roadmap_load import load_roadmap  # noqa: PLC0415
-    from specy_road.bundled_scripts.roadmap_node_keys import new_node_key  # noqa: PLC0415
 
-    nodes = load_roadmap(root)["nodes"]
-    if under not in {n["id"] for n in nodes}:
-        raise WorkerError(f"--under {under}: no such node in the roadmap")
-    try:   # the lock add-node and brainstorm promotion honour
-        assert_pm_nodes_not_milestone_locked(nodes, under)
-    except ValueError as e:
-        raise WorkerError(f"--under {under}: {e} Pass another --under parent, or run after the milestone closes.") from e
     done: list[str] = []
     for cls, title in CLASSES.items():
         found = [f for f in findings if f.cls == cls]
         if not found:
             continue
-        # Codenames and titles are unique, so a class filed again after its leaf is Complete gets a number.
-        mine = [n for n in nodes if re.fullmatch(rf"garden-{cls}(-\d+)?", n.get("codename") or "")]
-        still_open = next((n for n in mine if n.get("status") != "Complete"), None)
+        nodes = load_roadmap(root)["nodes"]   # live only: archived nodes are out of the graph
+        live = [(n, g) for n in nodes if (g := _generation(cls, n.get("codename"), n.get("title"))) is not None]
+        still_open = next((n for n, _ in live if n.get("status") != "Complete"), None)
         if still_open:
             done.append(f"{cls}: {still_open['id']} is still open; added nothing")
             continue
-        gen = f"-{len(mine) + 1}" if mine else ""
-        node = {"id": next_child_id(nodes, under), "node_key": new_node_key(), "parent_id": under,
-                "type": "task", "title": f"{title} ({len(mine) + 1})" if mine else title,
-                "codename": f"garden-{cls}{gen}", "status": "Not Started",
-                "acceptance": _acceptance(cls, found), "touch_zones": sorted({f.path for f in found}),
-                "sibling_order": next_sibling_order(root, under, None)}
-        append_node_to_chunk(root, None, node)
-        nodes = load_roadmap(root)["nodes"]
-        done.append(f"{cls}: added {node['id']} ({node['title']})")
+        archived = [g for _rec, s in iter_archived_summaries(root) if (g := _generation(cls, None, s.get("title")))]
+        gen = max([g for _, g in live] + archived, default=0) + 1
+        node_id, node_title = next_child_id(nodes, under), title if gen == 1 else f"{title} ({gen})"
+        refused = _add_node(root, ["--id", node_id, "--parent-id", under, "--type", "task", f"--title={node_title}",
+                                   f"--codename=garden-{cls}" + ("" if gen == 1 else f"-{gen}"),
+                                   *(f"--touch-zone={z}" for z in sorted({f.path for f in found})),
+                                   *(f"--acceptance={a}" for a in _acceptance(cls, found))])
+        if refused:
+            raise WorkerError(f"--under {under}: add-node refused the {cls} leaf: {refused.rstrip('.')}. "
+                              "Pass another --under parent, or fix what add-node names, then run again.")
+        done.append(f"{cls}: added {node_id} ({node_title})")
     return done
 
 

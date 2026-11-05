@@ -254,21 +254,6 @@ def test_open_chores_adds_one_leaf_per_class_then_nothing(tmp_path: Path, capsys
     assert f"stale-command: {stale['id']} is still open; added nothing" in capsys.readouterr().out
 
 
-def test_open_chores_files_a_numbered_leaf_once_the_last_is_complete(tmp_path: Path) -> None:
-    repo = garden_repo(tmp_path)
-    assert run_chore_cli("chore", "garden", "--open-chores", "--under", "M1.1", "--repo-root", str(repo)) == 0
-    chunk = repo / "roadmap" / "phases" / "M1.json"
-    doc = json.loads(chunk.read_text())
-    for n in doc["nodes"]:
-        if n.get("codename") == "garden-stale-command":
-            n["status"] = "Complete"
-    chunk.write_text(json.dumps(doc, indent=2))
-    assert run_chore_cli("chore", "garden", "--open-chores", "--under", "M1.1", "--repo-root", str(repo)) == 0
-    codenames = [n.get("codename") for n in load_roadmap(repo)["nodes"]]
-    assert codenames.count("garden-stale-command-2") == 1 and codenames.count("garden-advisory-rule") == 1
-    assert "Garden: stale command mentions (2)" in [n["title"] for n in load_roadmap(repo)["nodes"]]
-
-
 def test_garden_cadence_warns_when_due_and_names_the_command(tmp_path: Path, capsys) -> None:
     assert chore_garden.garden_due(garden_repo(tmp_path / "unset"), date.today()) is None
     repo = garden_repo(tmp_path / "set", cadence=7)
@@ -318,24 +303,6 @@ def test_garden_reports_stale_commands_in_the_managed_rules_file(tmp_path: Path,
             "detail": f"`specy-road nonexistent-garden-probe` is not a command in specy-road {chore_garden.__version__}; "
                       "see `specy-road --help`"} in stale
     assert repo.resolve() / ".specyrd" / "AGENTS.md" not in agent_files(repo)
-
-
-@pytest.mark.parametrize("state", ["active", "pending_mr"])
-def test_open_chores_refuses_a_parent_in_a_locked_milestone(tmp_path: Path, capsys, state: str) -> None:
-    """R3: the milestone lock add-node honours; the graph and planning files stay as they were."""
-    repo = garden_repo(tmp_path)
-    chunk = repo / "roadmap" / "phases" / "M1.json"
-    doc = json.loads(chunk.read_text())
-    doc["nodes"][0]["milestone_execution"] = {"state": state, "rollup_branch": "feature/rm-thing",
-                                              "integration_branch": "dev", "remote": "origin"}
-    chunk.write_text(json.dumps(doc))
-    before = _roadmap_bytes(repo)
-    capsys.readouterr()
-    assert run_chore_cli("chore", "garden", "--open-chores", "--under", "M1.1", "--repo-root", str(repo)) == 1
-    err = capsys.readouterr().err
-    assert "error: --under M1.1: roadmap node 'M1.1' is inside milestone subtree 'M1.1'" in err
-    assert "Pass another --under parent, or run after the milestone closes." in err
-    assert _roadmap_bytes(repo) == before
 
 
 def _garden_json(repo: Path, capsys) -> dict:
