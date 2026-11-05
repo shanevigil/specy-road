@@ -22,14 +22,16 @@ import sys
 from datetime import date
 
 from specy_road.decisions import format_preference
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.orchestrate_plan import OrchestrationPlan, build_orchestration_plan
 from specy_road.orchestration_pinned import WORKTREE_REF
+from specy_road.planning_scaffold_check import needs_approach_line
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 DRY_RUN_BANNER = "DRY RUN: roster from the working tree, nothing may launch from this plan"
 
 
-def render(plan: OrchestrationPlan) -> list[str]:
+def render(plan: OrchestrationPlan, needs_approach: str | None = None) -> list[str]:
     pol = plan.policy
     unit = "distinct-family" if pol.get("reviewers_distinct_families") else "any-family"
     dry = plan.roster_ref == WORKTREE_REF
@@ -65,6 +67,8 @@ def render(plan: OrchestrationPlan) -> list[str]:
         lines.append(f"active claims (not reassigned): {', '.join(plan.active)}")
     if plan.unauthored:
         lines.append(f"unauthored (not assigned; pickup skips them): {', '.join(plan.unauthored)}")
+    if needs_approach:
+        lines.append(needs_approach)
     return lines + preference_lines(plan)
 
 
@@ -94,7 +98,9 @@ def cmd_plan(ns: argparse.Namespace) -> int:
             print(DRY_RUN_BANNER, file=sys.stderr)
         print(json.dumps(plan.to_dict(), indent=2))
     else:
-        print("\n".join(render(plan)))
+        nodes = load_roadmap(root)["nodes"]
+        needs = needs_approach_line(root, nodes, list(plan.unauthored))
+        print("\n".join(render(plan, needs)))
     return 0 if plan.ok else 1
 
 

@@ -202,7 +202,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M13.1` | Say which install is running and flag managed blocks an older version wrote | task | Agentic-led | Complete |
 | `M13.2` | upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap | task | Agentic-led | Complete |
 | `M13.3` | A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates | task | Agentic-led | Complete |
-| `M13.4` | A milestone held for its full review says so in validate, list-nodes and why-blocked | task | Agentic-led | Not Started |
+| `M13.4` | A milestone held for its full review says so in validate, list-nodes and why-blocked | task | Agentic-led | Complete |
 | `M13.5` | refresh-profiles installs only the profiles the roster names, and suggests the alias for a near miss | task | Agentic-led | Complete |
 | `M13.6` | Safe release-candidate install recipe, pipx and uv tool upgrades, and checking which binary is on PATH | task | Agentic-led | Complete |
 | `M13.7` | Clearer notices: symlinked skill dirs, new ignore rules over tracked files, and session end | task | Agentic-led | Complete |
@@ -212,17 +212,18 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M13.11` | upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs | task | Agentic-led | Not Started |
 | `M13.12` | Quieter, accurate validate notices: untracked touch zones, the managed .gitignore comment, and tracked files under new ignore rules | task | Agentic-led | Not Started |
 | `M13.13` | upgrade --prompt writes an agent upgrade prompt filled in from this repo | task | Agentic-led | Not Started |
+| `M13.14` | validate flags project agent text that mandates a changed behaviour (best-effort hint) | task | Agentic-led | Not Started |
 | `M14` | Nested repos and review-gate integrity | phase | — | Not Started |
 | `M14.1` | Approvals never carry across unreviewed changes in a sibling repository | task | Agentic-led | Not Started |
 | `M14.2` | doctor never offers to remove a live leaf's worktree or branch | task | Agentic-led | Complete |
-| `M14.3` | worktree prune refuses to delete another repository's worktree or checkout | task | Agentic-led | Not Started |
+| `M14.3` | worktree prune refuses to delete another repository's worktree or checkout | task | Agentic-led | Complete |
 | `M14.4` | nested_repos that a project can adopt without pushing: local landing, local base, sibling diffs and checks | milestone | — | Not Started |
 | `M14.4.1` | Per nested repository, land by push, locally or by hand, and base worktrees on the remote or local tip | task | Agentic-led | Complete |
 | `M14.4.2` | review-packet includes sibling repository diffs | task | Agentic-led | Not Started |
 | `M14.4.3` | worker reconcile and the post-run check see sibling repositories | task | Agentic-led | Not Started |
 | `M14.5` | An approve with no recorded probe is flagged, and policy can refuse to count it | task | Agentic-led | Not Started |
-| `M14.6` | Reviewer usage is visible: review usage, reviewers in the node total, RUN logs kept per round | task | Agentic-led | Not Started |
-| `M14.7` | session end finds this agent's session by worktree and branch when the derived id has no record | task | Agentic-led | Not Started |
+| `M14.6` | Reviewer usage is visible: review usage, reviewers in the node total, RUN logs kept per round | task | Agentic-led | Complete |
+| `M14.7` | session end finds this agent's session by worktree and branch when the derived id has no record | task | Agentic-led | Complete |
 | `M14.8` | The implementation-zone check runs before a review is spent, and knows about sibling repositories | task | Agentic-led | Not Started |
 | `M14.9` | review rca launches the root-cause analyst like review delegate, and says what to do when no analyst is available | task | Agentic-led | Not Started |
 | `M14.10` | Escalation recognises a converging loop and handoff status shows the findings trend | task | Agentic-led | Not Started |
@@ -231,11 +232,11 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.1` | RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command | task | Agentic-led | Complete |
 | `M15.2` | A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch | task | Agentic-led | Not Started |
 | `M15.3` | prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged | task | Agentic-led | Not Started |
-| `M15.4` | Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current | task | Agentic-led | Not Started |
+| `M15.4` | Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current | task | Agentic-led | Complete |
 | `M15.5` | Host effects policy: workers and reviewers do not take over the screen or change shared services, the guard denies such commands, and a message can interrupt a turn | task | Agentic-led | Not Started |
 | `M15.6` | The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes | task | Agentic-led | Complete |
 | `M15.7` | file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count | task | Agentic-led | Not Started |
-| `M15.8` | A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it | task | Agentic-led | Not Started |
+| `M15.8` | A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it | task | Agentic-led | Complete |
 | `M15.9` | Harness launches survive large prompts and a harness binary off PATH, for every role | task | Agentic-led | Not Started |
 | `M15.10` | Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff | task | Agentic-led | Complete |
 | `M15.11` | A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors | task | Agentic-led | Not Started |

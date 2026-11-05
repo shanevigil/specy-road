@@ -16,7 +16,7 @@ from specy_road.bundled_scripts.brainstorm_session import (
     prompt_path,
     write_session,
 )
-from specy_road.bundled_scripts.planning_sheet_bootstrap import placeholder_sheet
+from specy_road.bundled_scripts.planning_sheet_bootstrap import placeholder_sheet, promote_placeholder
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
 
@@ -70,10 +70,10 @@ def test_approach_lists_critics_and_verdict_as_constraints(repo: Path) -> None:
     assert "- feasibility critic: needs the token service first" in approach
     assert "- value critic: only large merchants gain" in approach
     assert "- Verdict (strong): Principle 3; overlap with M0.1 is adjacent only" in approach
-    assert "Constraints, major steps, and how you will verify done." in approach
+    assert approach.strip().endswith(promote_placeholder(node_id))
 
 
-def test_approach_is_left_alone_without_critics_or_verdict(repo: Path) -> None:
+def test_approach_is_only_the_placeholder_without_critics_or_verdict(repo: Path) -> None:
     s = BrainstormSession(slug="pay", topic="t", under="M1")
     add_idea(s, title="Plain idea", rationale="r").status = "accepted"
 
@@ -81,7 +81,7 @@ def test_approach_is_left_alone_without_critics_or_verdict(repo: Path) -> None:
 
     approach = _section(_sheet(repo, node_id), "Approach")
     assert "converge pass" not in approach
-    assert approach.strip() == "Constraints, major steps, and how you will verify done."
+    assert approach.strip() == promote_placeholder(node_id)
 
 
 def test_the_seeded_sheet_still_counts_as_unauthored(repo: Path) -> None:
