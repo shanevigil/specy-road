@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from specy_road.written_entry import Written
+
 NEXT_STEP = "Next: specy-road validate (specy-road upgrade runs the whole sequence)."
 
 
@@ -29,36 +31,42 @@ def _linked_dir(repo_root: Path, rel: Path) -> Path | None:
 def resolve_linked(written: list[str], repo_root: Path | None) -> list[str]:
     """``written`` with each entry under a symlinked directory named by its real path, once.
 
-    Entries are ``"<rel>"`` or ``"<rel> (<outcome>)"``. Two entries whose parent
-    directories resolve to the same place are one file: it is listed under its
-    real path with ``(<link> → <target>)`` appended. A skill-folder entry that *is*
-    the real directory of a listed file is that same skill and is dropped, in
-    either direction (``.agents/skills`` → ``.claude/skills`` or the reverse): a
-    real run reports it unchanged, so the dry run reports the same lines.
+    Only a :class:`~specy_road.written_entry.Written` entry is resolved: its path
+    and outcome are fields, never parsed back out of the display line, so a path
+    containing `` (`` survives whole. Any other string is printed as it is. Two
+    entries whose parent directories resolve to the same place are one file: it
+    is listed under its real path with ``(<link> → <target>)`` appended. A
+    skill-folder entry that *is* the real directory of a listed file is that same
+    skill and is dropped, in either direction (``.agents/skills`` →
+    ``.claude/skills`` or the reverse): a real run reports it unchanged, so the
+    dry run reports the same lines.
     """
     if repo_root is None:
         return list(written)
     root = repo_root.resolve()
     entries = []
     for entry in written:
-        rel = entry.partition(" (")[0]
-        link = _linked_dir(repo_root, Path(rel))
-        entries.append((entry, (repo_root / rel).parent.resolve() / Path(rel).name, link))
-    parents = {real.parent for _, real, _ in entries}
+        if not isinstance(entry, Written):
+            entries.append((entry, None, None))
+            continue
+        link = _linked_dir(repo_root, Path(entry.path))
+        entries.append((entry, (repo_root / entry.path).parent.resolve() / Path(entry.path).name, link))
+    parents = {real.parent for _, real, _ in entries if real is not None}
     linked_parents = {real.parent for _, real, link in entries if link is not None}
     # A directory entry that is the real folder of a listed file is that file's
     # skill, whichever way the symlink points. A real run never lists it.
     folded = {real for _, real, link in entries if real in parents and (link is not None or real in linked_parents)}
-    lines: dict[Path, list[str]] = {}
+    lines: dict[object, list[str]] = {}
     for entry, real, link in entries:
-        if real in folded:
+        if real is None:
+            lines.setdefault(entry, [entry, ""])
+        elif real in folded:
             continue
-        _, sep, rest = entry.partition(" (")
-        if link is None or not real.is_relative_to(root):
+        elif link is None or not real.is_relative_to(root):
             lines.setdefault(real, [entry, ""])
-            continue
-        line = lines.setdefault(real, [f"{real.relative_to(root).as_posix()}{sep}{rest}", ""])
-        line[1] = _link_note(repo_root, link)
+        else:
+            shown = Written(real.relative_to(root).as_posix(), entry.outcome)
+            lines.setdefault(real, [shown, ""])[1] = _link_note(repo_root, link)
     return [base + note for base, note in lines.values()]
 
 

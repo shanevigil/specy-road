@@ -15,6 +15,7 @@ import pytest
 
 from specy_road.agent_ignores import GITIGNORE, MATCH_LIMIT, apply_and_report
 from specy_road.managed_block import MARKER_END, MARKER_START
+from specy_road.written_entry import Written
 from specy_road.bundled_scripts.refresh_stubs import main
 from specy_road.bundled_scripts.refresh_stubs_report import report
 
@@ -91,7 +92,8 @@ def test_a_link_out_of_the_repo_and_back_names_its_target_absolutely(tmp_path: P
 
 def test_the_report_folds_two_names_for_one_file_into_its_real_path(tmp_path: Path, capsys) -> None:
     repo = _linked_skills_repo(tmp_path)
-    written = [".agents/skills/x/SKILL.md", ".claude/skills/x/SKILL.md", ".gitignore (updated)"]
+    written = [Written(".agents/skills/x/SKILL.md"), Written(".claude/skills/x/SKILL.md"),
+               Written(".gitignore", "updated")]
     report(written, [], dry_run=True, footer=False, repo_root=repo)
     assert capsys.readouterr().out.splitlines() == [
         f"would write .claude/skills/x/SKILL.md {NOTE}",
@@ -171,3 +173,101 @@ def test_a_later_negation_keeps_the_file_visible_and_unlisted(tmp_path: Path, ca
     assert "prompt-keep" not in out
     assert "  work/prompt-a.md (work/prompt-*.md): still tracked; git keeps tracking it" in out.splitlines()
     assert "?? work/prompt-keep.md" in _status(repo)
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_a_negation_before_the_block_loses_to_the_new_rule_and_is_listed(
+        tmp_path: Path, capsys, dry_run: bool) -> None:
+    repo = _repo_with_prompts(tmp_path, untracked=0)
+    before = f"!work/prompt-keep.md\n{MARKER_START}\n{MARKER_END}\n"
+    (repo / GITIGNORE).write_text(before, encoding="utf-8")
+    (repo / "work" / "prompt-keep.md").write_text("k\n", encoding="utf-8")
+    apply_and_report(repo, "", [], dry_run=dry_run)
+    assert "  work/prompt-keep.md (work/prompt-*.md): untracked; now hidden from git status" in (
+        capsys.readouterr().out.splitlines())
+    if dry_run:
+        assert (repo / GITIGNORE).read_text(encoding="utf-8") == before
+    else:
+        assert "prompt-keep" not in _status(repo)
+
+
+def _generic_repo(tmp_path: Path, rel_dir: str, *, link_to: str | None = None) -> Path:
+    """A ``generic`` pack recorded under ``rel_dir``, optionally a symlink to ``link_to`` (repo-relative)."""
+    stub_dir = tmp_path / rel_dir
+    stub_dir.parent.mkdir(parents=True, exist_ok=True)
+    if link_to:
+        (tmp_path / link_to).mkdir(parents=True)
+        stub_dir.symlink_to(Path(*[".."] * (len(Path(rel_dir).parts) - 1), link_to))
+    else:
+        stub_dir.mkdir()
+    for name in ("specyrd-validate.md", "specyrd-brief.md"):
+        (stub_dir / name).write_text("stale\n", encoding="utf-8")
+    (tmp_path / ".specyrd").mkdir()
+    recorded = [f"{rel_dir}/specyrd-validate.md", f"{rel_dir}/specyrd-brief.md"]
+    (tmp_path / ".specyrd" / "manifest.json").write_text(
+        json.dumps({"agents": {"generic": recorded}}), encoding="utf-8")
+    return tmp_path
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+@pytest.mark.parametrize("rel_dir", ["docs/team (commands)", "docs/équipe #1 !x"])
+def test_a_generic_dir_with_parentheses_or_odd_characters_is_reported_whole(
+        tmp_path: Path, capsys, dry_run: bool, rel_dir: str) -> None:
+    repo = _generic_repo(tmp_path, rel_dir)
+    main(["--repo-root", str(repo), *(["--dry-run"] if dry_run else [])])
+    verb = "would write" if dry_run else "wrote"
+    out = capsys.readouterr().out.splitlines()
+    for name in ("specyrd-validate.md", "specyrd-brief.md"):
+        assert f"{verb} {rel_dir}/{name}" in out
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_a_symlinked_generic_dir_with_parentheses_reports_its_real_path(tmp_path: Path, capsys, dry_run: bool) -> None:
+    repo = _generic_repo(tmp_path, "docs/team (commands)", link_to="actual")
+    main(["--repo-root", str(repo), *(["--dry-run"] if dry_run else [])])
+    verb = "would write" if dry_run else "wrote"
+    out = capsys.readouterr().out.splitlines()
+    for name in ("specyrd-validate.md", "specyrd-brief.md"):
+        assert f"{verb} actual/{name} (docs/team (commands) → actual)" in out
+
+
+def _untracked(repo: Path) -> set[str]:
+    return {ln[3:].strip('"') for ln in _git(repo, "-c", "core.quotePath=false", "status", "--porcelain",
+                                           "--untracked-files=all").splitlines() if ln.startswith("?? ")}
+
+
+_PROBES = {
+    "odd names": ("", None, ["work/prompt-a b.md", "work/prompt-β.md", "work/prompt-#x.md", "work/prompt-!y.md",
+                             "work/reviews/#r.json", "work/reviews/!r.json", "#top.md", "!top.md"]),
+    "no trailing newline": ("", b"node_modules", ["work/prompt-n.md", "notes.md"]),
+    "crlf": ("", b"!work/prompt-keep.md\r\n" + MARKER_START.encode() + b"\r\n" + MARKER_END.encode() + b"\r\n",
+             ["work/prompt-keep.md", "work/prompt-other.md"]),
+    "nested project": ("sr/", None, ["sr/work/prompt-x.md", "sr/work/.sessions/s.json", "work/prompt-y.md"]),
+}
+
+
+@pytest.mark.parametrize("probe", sorted(_PROBES))
+def test_the_hidden_list_is_exactly_what_git_status_stops_showing(tmp_path: Path, capsys, probe: str) -> None:
+    prefix, gitignore, files = _PROBES[probe]
+    repo = _repo_with_prompts(tmp_path, untracked=0)
+    if gitignore is not None:
+        (repo / GITIGNORE).write_bytes(gitignore)
+    for rel in files:
+        (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        (repo / rel).write_text("x\n", encoding="utf-8")
+    apply_and_report(repo, prefix, [], dry_run=True)
+    dry = capsys.readouterr().out
+    shown = _untracked(repo)
+    apply_and_report(repo, prefix, [])
+    assert capsys.readouterr().out == dry                       # dry and real agree
+    listed = {ln[2:].split(" (")[0] for ln in dry.splitlines() if ln.endswith("now hidden from git status")}
+    assert listed == shown - _untracked(repo) - {GITIGNORE} and listed
+
+
+def test_diff_shows_stubs_under_a_parenthesised_dir(tmp_path: Path, capsys) -> None:
+    repo = _generic_repo(tmp_path, "docs/team (commands)")
+    main(["--repo-root", str(repo), "--diff"])
+    out = capsys.readouterr().out.splitlines()
+    for name in ("specyrd-validate.md", "specyrd-brief.md"):
+        assert f"+++ b/docs/team (commands)/{name}" in out
+        assert f"would write docs/team (commands)/{name}" not in out   # diffed, not left as a bare line
