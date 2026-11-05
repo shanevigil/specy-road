@@ -322,6 +322,7 @@ Do not pick these up.
 - `M15.22` on `feature/rm-project-preferences-local-decisions-footer-summary-landing` since 2026-11-04
 - `M15.24` on `feature/rm-ready-flags-failure-tails-and-takes-argv` since 2026-11-05
 - `M15.25` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
+- `M15.26` on `feature/rm-claims-with-no-worker-are-reported-and-never-hold-slots` since 2026-11-05
 - `M15.27` on `feature/rm-cursor-usage-sums-segments-and-flags-undercounts` since 2026-11-05
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
