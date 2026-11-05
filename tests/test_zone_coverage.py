@@ -14,9 +14,14 @@ from specy_road.bundled_scripts.grind_session_args import parse_grind_session_ar
 from specy_road.bundled_scripts.grind_session import run_session
 from specy_road.bundled_scripts.session_plan_render import render_session_plan_text
 from specy_road.bundled_scripts.session_plan_git import gather_session_plan
-from specy_road.zone_coverage import NEW_OUTSIDE, uncovered_acceptance_paths
+from specy_road.zone_coverage import BEST_EFFORT_HINT, NEW_OUTSIDE, uncovered_acceptance_paths
 from tests.review_repo_helpers import git
 from tests.test_orchestrate_plan import ROSTER, plan_repo
+
+
+def _warn_suffix(*parts: str) -> str:
+    body = ", ".join(parts)
+    return f"M1.1: acceptance names paths outside touch zones ({BEST_EFFORT_HINT}): {body}"
 
 
 def _leaf_repo(tmp_path: Path) -> Path:
@@ -47,7 +52,7 @@ def test_uncovered_acceptance_path_is_listed_and_covered_one_is_not(tmp_path: Pa
     assert labels == ["docs/outside.md"]
 
 
-def test_nonexistent_path_outside_zones_is_new_file_outside_zones(tmp_path: Path) -> None:
+def test_nonexistent_backticked_path_with_suffix_is_new_file_outside_zones(tmp_path: Path) -> None:
     repo = plan_repo(tmp_path, roster=ROSTER)
     chunk = repo / "roadmap" / "phases" / "M1.json"
     data = json.loads(chunk.read_text(encoding="utf-8"))
@@ -58,6 +63,89 @@ def test_nonexistent_path_outside_zones_is_new_file_outside_zones(tmp_path: Path
     git(repo, "commit", "-qm", "acceptance")
 
     assert uncovered_acceptance_paths(repo, _node(repo)) == [NEW_OUTSIDE]
+
+
+@pytest.mark.parametrize(
+    "phrase",
+    [
+        "Compare input/output for the CLI",
+        "Use read/write mode",
+        "Coordinate M12/M13 handoff",
+        "See https://example.com/foo/bar for details",
+    ],
+)
+def test_prose_slash_phrases_without_path_shape_are_ignored(phrase: str) -> None:
+    node = {"acceptance": [phrase], "touch_zones": ["src/"]}
+    tracked = {"src/a.py"}
+
+    assert uncovered_acceptance_paths(Path("/tmp"), node, tracked=tracked) == []
+
+
+@pytest.mark.parametrize(
+    ("acceptance", "tracked", "zones", "want", "avoid"),
+    [
+        (
+            "Update `input/output`",
+            {"src/a.py"},
+            ["src/"],
+            set(),
+            {NEW_OUTSIDE},
+        ),
+        (
+            "Ship `CHANGELOG.md` beside the tree",
+            {"src/a.py"},
+            ["src/"],
+            {NEW_OUTSIDE},
+            {"CHANGELOG.md"},
+        ),
+        (
+            "Edit docs/existing.md",
+            {"docs/existing.md", "src/a.py"},
+            ["src/"],
+            {"docs/existing.md"},
+            set(),
+        ),
+        (
+            "See `docs` tree",
+            {"docs/readme.md"},
+            ["src/"],
+            {"docs"},
+            set(),
+        ),
+        (
+            "Add docs/new.md in the next commit",
+            {"docs/readme.md"},
+            ["src/"],
+            {NEW_OUTSIDE},
+            {"docs/new.md"},
+        ),
+        (
+            "Update `docs/api/schema.json`",
+            {"docs/api/schema.json"},
+            ["docs/"],
+            set(),
+            {NEW_OUTSIDE, "docs/api/schema.json"},
+        ),
+        (
+            "Extend docs/contracts",
+            {"docs/contracts/api.yaml"},
+            ["src/"],
+            {"docs/contracts"},
+            set(),
+        ),
+    ],
+)
+def test_path_candidate_rule(
+    acceptance: str,
+    tracked: set[str],
+    zones: list[str],
+    want: set[str],
+    avoid: set[str],
+) -> None:
+    node = {"acceptance": [acceptance], "touch_zones": zones}
+    labels = set(uncovered_acceptance_paths(Path("/tmp"), node, tracked=tracked))
+    assert want <= labels
+    assert not labels & avoid
 
 
 @pytest.mark.parametrize(
@@ -77,7 +165,7 @@ def test_nonexistent_path_outside_zones_is_new_file_outside_zones(tmp_path: Path
         ),
     ],
 )
-def test_existence_classifies_tracked_dirs_files_and_new_paths(
+def test_backticked_existence_classifies_tracked_dirs_files_and_new_paths(
     token: str,
     tracked: set[str],
     zones: list[str],
@@ -117,23 +205,19 @@ def test_orchestrate_plan_warns_once_per_leaf(tmp_path: Path, capsys) -> None:
     plan, err = op.build_orchestration_plan(repo, today=date(2026, 11, 1))
     assert err is None and plan is not None
     a = plan.batches[0][0]
-    assert a.warnings == [
-        "M1.1: acceptance names paths outside touch zones: docs/outside.md"
-    ]
+    assert a.warnings == [_warn_suffix("docs/outside.md")]
     print("\n".join(orchestrate_cli.render(plan)))
     out = capsys.readouterr().out
-    assert "! M1.1: acceptance names paths outside touch zones: docs/outside.md" in out
+    assert f"! {_warn_suffix('docs/outside.md')}" in out
 
 
 def test_grind_session_plan_warns_once_per_leaf(tmp_path: Path) -> None:
     repo = _leaf_repo(tmp_path)
     _nodes, _reg, plan = gather_session_plan(repo, None)
     assert len(plan.zone_coverage) == 1
-    assert plan.zone_coverage[0]["message"] == (
-        "M1.1: acceptance names paths outside touch zones: docs/outside.md"
-    )
+    assert plan.zone_coverage[0]["message"] == _warn_suffix("docs/outside.md")
     text = render_session_plan_text(plan)
-    assert "! M1.1: acceptance names paths outside touch zones: docs/outside.md" in text
+    assert f"! {_warn_suffix('docs/outside.md')}" in text
 
 
 def test_grind_session_plan_json_includes_zone_coverage(tmp_path: Path, capsys) -> None:
@@ -142,5 +226,5 @@ def test_grind_session_plan_json_includes_zone_coverage(tmp_path: Path, capsys) 
     plan = json.loads(capsys.readouterr().out.splitlines()[0])
     assert plan["zone_coverage"] == [{
         "node_id": "M1.1",
-        "message": "M1.1: acceptance names paths outside touch zones: docs/outside.md",
+        "message": _warn_suffix("docs/outside.md"),
     }]
