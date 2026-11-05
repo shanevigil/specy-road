@@ -35,9 +35,12 @@ if step.get("write"):
     w = step["write"]
     os.makedirs(os.path.dirname(w["path"]), exist_ok=True)       # a new directory too
     open(w["path"], "w").write(w["text"])
-if step.get("symlink"):   # a path replaced by a symlink (a tracked file's typechange, or a new link)
+if step.get("symlink"):   # a path replaced by a symlink (a tracked file's typechange, a directory, or a new link)
+    import shutil
     ln = step["symlink"]
-    if os.path.lexists(ln["path"]):
+    if os.path.isdir(ln["path"]) and not os.path.islink(ln["path"]):
+        shutil.rmtree(ln["path"])
+    elif os.path.lexists(ln["path"]):
         os.unlink(ln["path"])
     os.symlink(ln["target"], ln["path"])
 if step.get("say"):   # an assistant message before the result
@@ -51,8 +54,12 @@ elif step.get("error"):
                       "result": step["error"], "session_id": sid}), flush=True)
 else:
     # a step's "result" fields (usage, cost, turns) ride on the result line, as Claude's stream-json carries them
-    print(json.dumps({"type": "result", "subtype": "success", "result": answer, "session_id": sid,
-                      **step.get("result", {})}), flush=True)
+    # "unescaped": the line as a harness writes UTF-8 JSON (U+2028 and the like left raw inside strings)
+    raw = not step.get("unescaped")
+    answer = json.dumps(step["answer"], ensure_ascii=raw) if "answer" in step else answer
+    sys.stdout.buffer.write((json.dumps({"type": "result", "subtype": "success", "result": answer, "session_id": sid,
+                                         **step.get("result", {})}, ensure_ascii=raw) + "\\n").encode("utf-8"))
+    sys.stdout.flush()
 if step.get("after"):   # a line printed after the final message (a truncated event)
     print(step["after"], flush=True)
 sys.exit(step.get("exit", 0))

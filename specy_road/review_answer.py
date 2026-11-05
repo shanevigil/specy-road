@@ -92,7 +92,7 @@ def _result(structured: bool) -> Callable[[dict[str, Any]], Any]:
     """A ``result`` event: ``None`` when it is an error, else its ``structured_output`` (``structured``: the harness
     validated it against ``--json-schema``) or its ``result`` text."""
     def body(d: dict[str, Any]) -> Any:
-        if d.get("type") != "result":
+        if event_type(d) != "result":
             return NOT_TERMINAL
         if d.get("is_error"):
             return None
@@ -103,7 +103,7 @@ def _result(structured: bool) -> Callable[[dict[str, Any]], Any]:
 
 def _agent_message(d: dict[str, Any]) -> Any:
     item = d.get("item") or {}
-    done = d.get("type") == "item.completed" and isinstance(item, dict) and item.get("type") == "agent_message"
+    done = event_type(d) == "item.completed" and isinstance(item, dict) and event_type(item) == "agent_message"
     return item.get("text") if done else NOT_TERMINAL
 
 
@@ -124,6 +124,20 @@ TURNS: dict[str, Turn] = {
 }
 
 
+def event_type(d: dict[str, Any]) -> str | None:
+    """An event object's ``type`` when it is a string, else ``None``: a list, object, number or ``null`` there is no
+    event type of any harness (and a list or object would not even hash), so the object is no harness event."""
+    t = d.get("type")
+    return t if isinstance(t, str) else None
+
+
+def stream_lines(text: str) -> list[str]:
+    """A harness's output as its lines: split on ``\\n`` only, the delimiter of JSON Lines. ``str.splitlines`` also
+    splits on U+2028, U+2029, U+0085 and other characters that a JSON string may carry unescaped, which would cut a
+    valid event in two. A ``\\r`` before the ``\\n`` is JSON whitespace and stays harmless."""
+    return text.split("\n")
+
+
 def _object(line: str) -> dict[str, Any] | None:
     try:
         d = json.loads(line)
@@ -137,19 +151,19 @@ def final_answer(adapter: Adapter, text: str, output: Path | None = None) -> dic
     final message to): the schema-valid object of the final turn's last terminal message, or a :class:`Rerun`
     (module docstring)."""
     row = TURNS.get(adapter.harness, TURNS["generic"])
-    lines = text.splitlines()
+    lines = stream_lines(text)
     parsed = [_object(line) if line.strip() else None for line in lines]
-    native = [i for i, d in enumerate(parsed) if d is not None and d.get("type") in row.events]
+    native = [i for i, d in enumerate(parsed) if d is not None and event_type(d) in row.events]
     if not native:
         return _answer(text, envelope=True)
-    first = max((i for i in native if parsed[i]["type"] in row.start), default=native[0])
+    first = max((i for i in native if event_type(parsed[i]) in row.start), default=native[0])
     turn: list[dict[str, Any]] = []
     for n, (line, d) in enumerate(zip(lines[first:], parsed[first:]), first + 1):
         if d is None and line.strip():
             return Rerun(RERUN + f"line {n} of the final turn is not one JSON object (a cut-off or stray line)")
         if d is not None:
             turn.append(d)
-    if row.end and not any(d.get("type") == row.end for d in turn):
+    if row.end and not any(event_type(d) == row.end for d in turn):
         return Rerun(RERUN + f"the final turn did not complete (no {row.end})")
     bodies = [b for b in map(row.terminal, turn) if b is not NOT_TERMINAL]
     if not bodies:

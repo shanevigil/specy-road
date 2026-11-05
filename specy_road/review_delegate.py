@@ -46,7 +46,7 @@ from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.orchestration_role_env import harness_env
 from specy_road.review_files import reviews_dir
-from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, ReviewRunBusy, answer_scratch,
+from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, ReviewRunBusy, answer_scratch, append_log,
                                             close_review_run, file_review, final_answer, review_run_lock, reviewer_env,
                                             run_text, snapshot, write_schema)
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
@@ -123,6 +123,7 @@ class _Harness:
         self.can_resume = self.adapter.caps.resume
         self.output: Path | None = None   # answer_scratch's file: where a fresh Codex turn writes its answer (-o)
         self.log = Path()   # the run's transcript, RUN-<model>.log
+        self.replaced: list[Path] = []   # a symlink at the run record, replaced by specy-road's own update
 
     def launch(self, prompt: Path, session: str | None) -> Launch:
         """A fresh turn, or a resume of ``session`` (an id the harness reported)."""
@@ -146,7 +147,7 @@ def _turn(h: _Harness, launch: Launch) -> dict[str, Any]:
     out: dict[str, Any] = {"exit": None, "session_id": None, "errors": [], "tail": []}
     # the role and the harness's avoid-list for installed guard hooks (M8.5, M11.62), no caches (M8.3)
     env = reviewer_env(harness_env(os.environ, "reviewer", harness=h.harness))
-    with h.log.open("a", encoding="utf-8", newline="") as raw:
+    with append_log(h.log) as raw:   # never through a symlink (review_write_check)
         raw.write(f"[review delegate] {_now()} {launch.argv[0]}\n")
         try:
             proc = subprocess.Popen(launch.argv, cwd=h.cwd, env=env, text=True, encoding="utf-8",
@@ -216,6 +217,8 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
         cap = turn_capacity_error(turn["errors"], turn["tail"]) if failed else None
         said = cap or next(iter(turn["errors"]), "")
         run["attempts"].append({"at": _now(), "exit": turn["exit"], "capacity": bool(cap), "error": said[:300] or None})
+        if path.is_symlink():   # replaced below, never followed; the tripwire still reports it (review_write_check)
+            h.replaced.append(path)
         save_run(path, run)
         if not cap:
             return f"harness exited {turn['exit']}: {said[:200] or 'no error text'}" if failed else ""
@@ -238,7 +241,7 @@ def _close(repo_root: Path, t: ReviewTarget, model: str, run: dict[str, Any], pa
     nothing (``filed`` is ``None``: its reviewer wrote its own verdict file, M8.2), so ``close_run`` judges it by
     that file."""
     log = path.with_suffix(".log")
-    tail = log.read_text(encoding="utf-8", errors="replace").splitlines()[-20:] if log.is_file() else []
+    tail = log.read_text(encoding="utf-8", errors="replace").split("\n")[-20:] if log.is_file() else []
     last = run["attempts"][-1] if run["attempts"] else {}
     errors = [last["error"]] if last.get("error") else []
     if filed is None:
@@ -296,7 +299,7 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
             reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
             filed = None if before is None else file_review(
                 repo_root, node_id, model, reviews, answer=final_answer(h.adapter, run_text(log), answer),
-                before=before, after=snapshot(cwd, reviews, model, before), ref=ref,
+                before=before, after=snapshot(cwd, reviews, model, before).with_symlinks(h.replaced), ref=ref,
                 launch_mode=h.launch_mode, sign_key=sign_key)
             _close(repo_root, t, model, run, path, reason, filed)
         except BaseException as e:   # an interrupt or a launch refusal still closes the record

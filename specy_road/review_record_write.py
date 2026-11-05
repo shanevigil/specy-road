@@ -48,7 +48,7 @@ from typing import Any, Literal
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.generate_brief import index, load_nodes
 from specy_road.review_answer import (FILLED_BY_SPECY_ROAD, Rerun, drop_nulls, final_answer,  # noqa: F401 — re-exported
-                                      output_schema)
+                                      output_schema, stream_lines)
 from specy_road.review_files import render_front_matter, review_path
 from specy_road.integrity_removals import target_unplanned_removals
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
@@ -56,6 +56,8 @@ from specy_road.review_write_check import (  # re-exported: the post-run write c
     LOCK_NAME,
     OUTPUT_SCHEMA_NAME,
     Snapshot,
+    append_log,
+    replace_file,
     snapshot,
     written,
 )
@@ -106,8 +108,7 @@ def write_schema(root: Path, reviews: Path, ref: str | None = None) -> Path:
     :func:`review_run_lock`, before the run's first snapshot, so the reviewer may not change it."""
     path = reviews / OUTPUT_SCHEMA_NAME
     reviews.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(strict_schema(*acceptance_keys(root, reviews.name, ref)), indent=2) + "\n",
-                    encoding="utf-8")
+    replace_file(path, json.dumps(strict_schema(*acceptance_keys(root, reviews.name, ref)), indent=2) + "\n")
     return path
 
 
@@ -168,7 +169,7 @@ def reviewer_env(env: dict[str, str]) -> dict[str, str]:
 def run_text(log: Path) -> str:
     """This turn's raw output: the log after its last :data:`RUN_MARK` line."""
     try:
-        lines = log.read_text(encoding="utf-8", errors="replace").splitlines()
+        lines = stream_lines(log.read_text(encoding="utf-8", errors="replace"))
     except OSError:
         return ""
     start = max((i + 1 for i, line in enumerate(lines) if RUN_MARK.match(line)), default=0)
@@ -230,7 +231,7 @@ def file_review(root: Path, node_id: str, model: str, reviews: Path, *, answer: 
         return Outcome("rerun", answer.reason)
     record = {k: v for k, v in answer.items() if k != "notes"}
     notes = reviews / f"notes-{model}.md"
-    notes.write_text(render_front_matter(record, "\n" + answer["notes"].strip() + "\n"), encoding="utf-8")
+    replace_file(notes, render_front_matter(record, "\n" + answer["notes"].strip() + "\n"))   # never through a link
     rc, said = _review_record(root, node_id, model, record["verdict"], notes, ref, launch_mode, sign_key)
     if rc != 0:
         return Outcome("rerun", f"rerun requested: review record refused the output: {said[-400:]}")
@@ -242,8 +243,7 @@ def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path, transcript: list
     line (and to ``transcript``, which ``prompt --channel cli``'s run record keeps: M11.72) and each event's
     summary echoed to stderr as it arrives; for ``prompt --channel cli``, whose terminal would otherwise show raw
     JSON lines."""
-    log.parent.mkdir(parents=True, exist_ok=True)
-    with log.open("a", encoding="utf-8", newline="") as raw:
+    with append_log(log) as raw:   # never through a symlink
         raw.write(f"[review prompt] {datetime.now(timezone.utc).replace(microsecond=0).isoformat()} {launch.argv[0]}\n")
         try:
             proc = subprocess.Popen(launch.argv, cwd=cwd, text=True, encoding="utf-8", errors="replace",

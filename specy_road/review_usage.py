@@ -99,7 +99,7 @@ def _log_turns(harness: str, log: Path, events: list[WorkerEvent]) -> list[dict[
     if not log.is_file():
         return []
     adapter, launch, turns = adapter_for(harness), Launch(argv=[]), []
-    for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
+    for line in log.read_text(encoding="utf-8", errors="replace").split("\n"):   # JSON Lines: U+2028 is no break
         for p in adapter.parse_events(line, launch):
             if p.usage is None:
                 continue

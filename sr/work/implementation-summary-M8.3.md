@@ -789,6 +789,66 @@ Conflicts in `specy_road/review_delegate.py`, `tests/review_delegate_helpers.py`
 
 Verification: 68 test files that import the reviewer, delegate, usage, run-record or adapter modules, `pytest -q -n 4 -p no:cacheprovider`: 1005 passed. `ruff check specy_road tests scripts`: clean. `file-limits`: OK. `export --check`: OK.
 
+## Fix round 4 (Sol-low block at `b148b290`: R1-R3)
+
+WIP merged first (`--no-edit`), no conflicts.
+
+### R1: specy-road wrote through a reviewer's symlink while recovering
+
+- **Class:** specy-road writing into the hand-off directory, once the reviewer has started, through a path the reviewer may have replaced with a symlink, either the file or a parent directory. The named instance was `Snapshot.restore` writing the old record bytes through `REVIEW-opus.md -> src/a.py`. The same class reaches:
+  - `notes-<model>.md` written by `file_review`;
+  - `RUN-<model>.json` (and its fixed `.tmp` name) written by `save_run`;
+  - `RUN-<model>.log`, appended in `_turn` and `run_logged`, and rewritten as the transcript in `close_cli_review_run` and `close_reviewer_cli_run`;
+  - the schema file;
+  - `review record`'s own `REVIEW-<model>.md` and `history/` writes after a passing tripwire;
+  - restore's `unlink`s through a symlinked `history/`.
+- **Design:**
+  1. **No symlink in the hand-off directory, ever.** specy-road never makes one, so `_handoff` reports every symlink there as a review failure, changed or not (`written` always counts a `SYMLINK` entry). That covers the directory itself, a subdirectory, and a file at an excluded name (notes, run files, lock). A tripwire pass therefore guarantees `review record` and the notes write see no symlink.
+  2. **specy-road's own writes never follow one.**
+     - `replace_file` writes a fresh exclusive `mkstemp` file beside the path, then `os.replace`s it over the path; a rename replaces a link rather than writing through it. It is used by `save_run` (no more fixed `.tmp` name), the notes, the transcript logs, the schema and restore.
+     - `append_log` opens with `O_NOFOLLOW`; on a symlink the turn's output goes to `/dev/null` and the tripwire reports the link.
+  3. **Restore replaces paths; it never follows them.** It runs against the hand-off directory as fixed before the run. It removes every symlink there (deepest first), makes every parent a real directory again (`real_dirs`), and only then unlinks the run's own records and puts the old ones back with `replace_file`.
+  4. **A symlink at `RUN-<model>.json` is not lost.** `review delegate`'s between-turn record update replaces it, which would remove the evidence. `_attempts` notes the link, and the after-snapshot reports it (`Snapshot.with_symlinks`).
+
+### R2: a non-string event `type`
+
+- **Class:** a JSON value from the harness used as a set member or compared as an event type without checking that it is a string. Instances: the `row.events` and `row.start` membership tests (a list or object raises `TypeError`), `row.end`, the `result` and `agent_message` checks, and the nested `item.type`.
+- **Design:** one accessor, `review_answer.event_type(d)`, returns the `type` only when it is a string. Every table decision goes through it, so a non-string `type` is no harness event. The object then falls to the generic row and is schema-checked, which gives a rerun request.
+
+### R3: U+2028 split as a line
+
+- **Class:** harness output split with `str.splitlines`, which also breaks on U+2028, U+2029, U+0085 and C0 separators. A UTF-8 JSON string may carry the first three raw. Instances: `final_answer`, `run_text`, `review_usage._log_turns` (M14.6; usage would drop a turn), and the error tail in `review_delegate._close`.
+- **Design:** `review_answer.stream_lines` splits on `\n` only, the JSON Lines delimiter, and every instance uses it or `split("\n")`. Live reading of harness stdout already uses universal newlines (`\n`, `\r`), not `splitlines`.
+
+### Tests: `tests/test_review_untrusted_output.py` (new, 47 cases; public `delegate` and `final_answer`)
+
+- **R1:**
+  - With a block on file, the next reviewer turn replaces each of `REVIEW-opus.md`, `notes-opus.md`, `RUN-opus.json`, `RUN-opus.log`, `.review-run.lock` and `RUN-opus.json.tmp` with a symlink to `src/a.py`. Each run is a review failure naming the path; `src/a.py` is byte-identical; the link is gone; the record is the earlier block as a regular file.
+  - `history/` replaced by a symlink to `src/`: a review failure; `src/` unchanged; `history/` is a real directory again with its record copies.
+  - A symlink planted before the run: still a failure.
+- **R2:** `{"type": v, "result": null}` with `v` in `[]`, `{}`, `["result"]`, `{"x": 1}`, `1` and `null`, on all four adapters: a schema-invalid rerun. Through `review delegate` with a generic reviewer (list and object): a rerun, no record.
+- **R3:** U+2028, U+2029 and U+0085 raw in the notes string, on all four adapters: the answer is returned intact. End to end, a fake Claude writes its result line with U+2028 unescaped (new fake option `unescaped`): `run_text` keeps it, the run is recorded, and `notes-opus.md` holds it.
+- The fake harness's `symlink` step now also replaces a directory.
+
+Touch zones: `specy_road/reviewer_run_failure.py` (`save_run`) and `specy_road/review_usage.py` (`_log_turns`) were added to M8.3's zones (`sr/roadmap/phases/M8.json`, `registry.yaml`).
+
+## Probes (fix round 4)
+
+- Every write specy-road makes into the hand-off directory after the reviewer starts (`grep write_text|write_bytes|open(|save_run` over `review_record_write`, `review_delegate`, `role_prompt_cli`, `reviewer_run_failure`, `review_write_check`): all now go through `replace_file` or `append_log`. The lock is opened before the run, and the prompt files and archive moves happen before it too.
+- `save_run`'s fixed `RUN-<model>.json.tmp` name, a second R1 path: replaced by `mkstemp`. Tested with a planted `.tmp` symlink: the source is unchanged.
+- `RUN-<model>.json` symlink erased by the between-turn update: reported through `with_symlinks`. Tested.
+- `RUN-<model>.log` symlink: `O_NOFOLLOW` sends the output to `/dev/null`, and the link is reported. Tested. `run_text` reads through the link, but read-only, and the run fails first.
+- `review record` (outside the zones) writes `REVIEW-<model>.md` and a `history/` copy only after a tripwire pass, which now guarantees no symlink anywhere in the hand-off directory.
+- Restore with the hand-off directory itself symlinked: the link is removed and a real directory is made; the records are written from memory. Restore uses the place fixed before the run, not the caller's path.
+- `real_dirs` on a regular file standing where a directory belongs: unlinked and made a directory.
+- `event_type` on every adapter's `parse_events` and `final_answer` with `type` and nested `item.type` and `message.content` set to `[]`, `{}`, `1`, `null` and `true` (scratch probe): no exception anywhere.
+- `_result`'s `is_error` and `structured_output`, and `_agent_message`'s text: they take no hashing path; a non-string text falls to "not one complete JSON object".
+- Line splitting: `grep splitlines` over the reviewer modules finds none left. Live stdout iteration uses universal newlines only (a raw `\r` cannot occur inside a valid JSON string).
+- Raw C0 separators (`\x0b`, `\x0c`, `\x1c`-`\x1e`) cannot occur in valid JSON strings (they must be escaped), so they are not tested as raw characters.
+- No test in this branch imports a `_`-prefixed name from another test module (`grep` over the changed test files).
+- Sol (`26d95ca0`) R1-R4: unchanged. R1 is withdrawn by the rescope; R2 and R3 are fixed by `TURNS`; R4 is fixed.
+- Verification: 69 importer test files, `pytest -q -n 4 -p no:cacheprovider`: 1052 passed. `ruff check specy_road tests scripts`: clean. `file-limits`: OK. `export --check`: OK.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).

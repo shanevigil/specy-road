@@ -10,6 +10,7 @@ from typing import Any
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.review_files import list_reviews, reviews_dir
+from specy_road.review_write_check import replace_file
 from specy_road.review_target import ReviewTarget, same_commit
 
 RUN_PREFIX = "RUN-"
@@ -38,10 +39,10 @@ def _read_json(path: Path) -> dict[str, Any] | None:
 
 
 def save_run(path: Path, run: dict[str, Any]) -> None:
+    """Write the run record atomically and never through a symlink (a reviewer's, at the record or at a fixed
+    temporary name): :func:`~specy_road.review_write_check.replace_file`."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps(run, indent=2) + "\n", encoding="utf-8")
-    tmp.replace(path)
+    replace_file(path, json.dumps(run, indent=2) + "\n")
 
 
 def capacity_error(texts: list[str]) -> str | None:
@@ -163,7 +164,7 @@ def close_reviewer_cli_run(repo_root: Path, t: ReviewTarget, model: str, path: P
     run = _read_json(path) or {}
     log = Path(run.get("log") or path.with_suffix(".log"))
     log.parent.mkdir(parents=True, exist_ok=True)
-    log.write_text("\n".join(output_lines) + ("\n" if output_lines else ""), encoding="utf-8")
+    replace_file(log, "\n".join(output_lines) + ("\n" if output_lines else ""))
     tail = [ln.strip() for ln in output_lines[-20:] if ln.strip()]
     prefix = f"harness exited {exit_code}" if exit_code != 0 else ""
     # A clean exit is an error only when no record for this commit exists after the run.
