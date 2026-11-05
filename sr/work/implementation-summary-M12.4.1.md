@@ -15,6 +15,41 @@ Areas whose block rate is above `quality_threshold` are marked **flagged** and l
 
 **Rework (this round):** the first commit (`ab4c6382`) added the trailer through `review_gate.commit_trailers`. A1 says `review_gate.py` is at its line cap and is not edited. Commit `9db695d8` restores `review_gate.py` byte-for-byte to the base and has `mark_implementation_reviewed.py` append `review_tally.tally_trailers(ROOT, gate)` after the `Reviewed-by` lines (leaf gate only; the milestone full-review commit is not a leaf landing). It also moves the "Quality by area" docs into the zoned `docs/orchestration-quality.md`, leaving a one-paragraph pointer in `docs/orchestration-review.md`.
 
+## Fix round 1: population and sources
+
+The reviewer `gpt-6.1-sol` blocked `052cad44` (R1–R6). The shared root cause was that the tally's population and inputs were never defined precisely. Commit `8fc1bd76` defines them once, in `specy_road/review_tally.py`, from tracked data only. It also merges `origin/WIP/improvements-0-3-1` (`86ab32d8`; one import conflict in `orchestrate_plan.py`, resolved by keeping both imports).
+
+| Input | Tracked source | Covered by |
+| --- | --- | --- |
+| Population (completed leaves) | Each codename's `chore(rm-<codename>): complete, deregister` commit reachable from `HEAD`, in `git log --topo-order --full-history` order. Never node status (R2). | `test_digest_quality.py::test_a_gated_leaf_that_has_not_completed_is_not_counted_and_evicts_nothing`, `::test_a_leaf_whose_branch_nets_no_change_under_the_project_still_counts` |
+| Zones | The live graph by codename. For an archived leaf, the graph at its completion commit (`load_roadmap_nodes_at_ref`) (R4). | `::test_an_archived_completed_leaf_keeps_its_place_in_the_window` (public `archive_node`) |
+| Tally | The newest `Review-tally` trailer on the codename's gate commit. A completed leaf without one counts as landed with no tally, so legacy-only history still prints rows (R3). | `::test_legacy_only_history_counts_its_leaves_with_no_rates`, `::test_quality_section_lists_flagged_areas_first_with_their_numbers` |
+| Reviewer kinds | The review history merged with every record the passing gate counted (`gate.approvals + gate.blocks`), keyed by (resolved commit, model) the way `review_rounds` keys them. A human `REVIEW-human.md` with no history copy is therefore a round. The trailer gains `approvals=` (R1). | `test_review_tally.py::test_a_human_approval_with_no_history_copy_is_one_round` (runs `mark_implementation_reviewed.main --yes`: rounds=1, approvals=1), `::test_tally_trailer_counts_the_leafs_review_records` (history and live copy of the same record counted once) |
+| Policy | `roadmap/orchestration.yaml` as committed at `HEAD` (`quality_policy`), with defaults when absent or invalid there. Never `orchestration.local.yaml` or the working tree (R5). | `test_digest_quality.py::test_a_local_overlay_cannot_change_the_committed_quality_policy`, `::test_quality_section_is_byte_identical_across_runs_clocks_overlays_and_checkouts` (malformed and valid overlay) |
+
+R6: `tests/test_review_tally.py` no longer imports `_repo`/`_run`. It builds its repo with the public `make_review_repo` and calls `mark_implementation_reviewed.main(["--yes", ...])` directly.
+
+Two further changes:
+
+- **History simplification.** `--full-history` was added after a probe showed that git's default history simplification under the project pathspec drops a feature branch whose net change under the project is zero (claim, approve, deregister). That is the usual case in the nested `sr/` layout. A regression test pins it, and it fails without the flag.
+- **Routing.** It now matches a zone to a flagged area by path prefix (`quality_review`), so it does not depend on the plan's own `quality_area_depth`. The areas themselves come from the HEAD policy.
+
+**Generated file outside the zones:** with R3, this repo's `sr/roadmap-context.md` now gains a "Quality by area" section listing its 50 completed legacy leaves as no-tally rows, so `specy-road digest --check` (repo root) reports drift until `finish-this-task` regenerates it. I did not edit it: it is generated, outside the touch zones, and finish regenerates it on landing. The dogfood fixture's digest is unaffected.
+
+## Probes
+
+- Class R1 (a record the gate counts but history lacks): `_counted_rounds` adds every counted approval and block under its own record commit. That covers delta/carry records, substitutes and the interactive human approval. The milestone close path writes no tally (not a leaf landing). Result: one code path, tested.
+- Class R1 (a duplicate history and live copy): `_two_rounds` writes `history/002.md` and `REVIEW-human.md` for the same commit and model. Result: rounds=2, not 3.
+- Class R2 (a not-completed leaf in the population): the digest and `quality_routing` both use `area_quality`, which uses `completed_leaves`. No other reader. Result: covered by one test.
+- Class R2/R4 (merge topology dropping completions): with no `--full-history`, the TREESAME-merge test fails. With it, the test passes.
+- Class R3 (a non-empty window with no tallies): `area_quality` returns rows whenever the window is non-empty, with rates `None` printed as `—`. Result: legacy-only test passes. The section is absent only with no completed leaf.
+- Class R4 (a leaf absent from the live graph): an archived or renamed codename falls back to the graph at its completion commit. A codename found in neither (for example a chore) is skipped. Result: archive test passes, with the same rows as before archiving.
+- Class R5 (a per-checkout input): the inputs are the policy (now HEAD), review records (never read by the digest), the overlay (never read), the clock (never read) and the live graph (the same working-tree graph the whole digest renders and `--check` compares). Result: the byte-identity test covers a clock mock, extra local records, malformed and valid overlays, and a clone.
+- Class R6 (private cross-module test imports): `grep` of the new tests finds imports only from `tests.review_repo_helpers`, `tests.test_orchestrate_plan` (public `ROSTER`, `only_assignment`, `plan_repo`), `tests.test_digest` (public `headings`) and `tests.test_history_walk` (public `commit`, `git`, `repo`).
+- Red-green against `052cad44`'s `review_tally.py` and `digest.py`: the R1, R2, R3, R4, R5 and merge-topology regressions all fail there and pass at `8fc1bd76`.
+- Runtime: `specy-road digest` on `sr/` (50 completed leaves) runs in about 1.75 s.
+- `specy-road file-limits`: OK. `tests/test_digest.py` would have hit 418 lines, so the quality tests moved to the new `tests/test_digest_quality.py`.
+
 ## Changes
 
 - `specy_road/review_tally.py` (new): `leaf_tally`, `format_tally`, `tally_trailers(repo_root, gate)`, `parse_tally`, `gate_history`, `leaf_areas`, `AreaQuality`, `area_quality`, `flagged_areas`, `quality_review`.
@@ -25,7 +60,7 @@ Areas whose block rate is above `quality_threshold` are marked **flagged** and l
 - `specy_road/templates/project/schemas/orchestration.schema.json`: the four matching properties.
 - `docs/orchestration-quality.md` (new): trailer, digest section and routing. `docs/orchestration-review.md`: a short "Quality by area" pointer.
 - `specy_road/review_gate.py`: unchanged from the base (the first commit's edit is reverted).
-- `tests/test_review_tally.py` (new), `tests/test_digest.py` (extended).
+- `tests/test_review_tally.py` (new), `tests/test_digest_quality.py` (new).
 
 Final touch zones are the brief's list. `specy_road/review_rca.py`, `specy_road/bundled_scripts/digest_cli.py` and `specy_road/review_gate.py` are read but not changed (A1 says not to edit `review_gate.py`, and `digest_cli` gets no new flag per the planning sheet). No change was needed outside the zones.
 
@@ -50,6 +85,31 @@ Final touch zones are the brief's list. `specy_road/review_rca.py`, `specy_road/
 4. `tests/test_review_tally.py` pins the trailer's counts, the end-to-end gate commit, and routing on and off.
 
 ## Added
+
+Fix round 1 changes to the inventory below:
+
+- `_counted_rounds`: merges the history with the gate's counted records, by (commit, model) (R1).
+- `leaf_tally(repo_root, gate)`: now takes the gate, so its counts come from the gate's own evaluation. Adds `approvals` (R1).
+- `quality_policy`: the policy at `HEAD` with defaults (R5).
+- `completed_leaves`: replaces `gate_history`. It returns completion commits reachable from `HEAD` (with `--full-history`) plus each codename's newest tally (R2, R3).
+- `_project_zones`: shared zone normalisation for `leaf_areas` and `quality_review`.
+- `_window`: zones come from the live graph, with the graph at the completion commit for archived leaves (R4).
+- `flagged_areas(root, policy)`: loads the full live graph itself, rather than the plan's possibly `under`-filtered nodes.
+- `quality_review`: prefix match against flagged areas.
+- `tests/test_digest_quality.py` (new, moved from `tests/test_digest.py`):
+  - helpers `_land`, `_tally`, `_set_policy`, `SECTION`
+  - `test_a_gated_leaf_that_has_not_completed_is_not_counted_and_evicts_nothing` (R2)
+  - `test_an_archived_completed_leaf_keeps_its_place_in_the_window` (R4)
+  - `test_a_local_overlay_cannot_change_the_committed_quality_policy` (R5)
+  - `test_legacy_only_history_counts_its_leaves_with_no_rates` (R3)
+  - `test_a_leaf_whose_branch_nets_no_change_under_the_project_still_counts` (merge topology)
+  - the byte-identity test, extended with overlays
+- `tests/test_review_tally.py`:
+  - helpers `_gate_repo`, `_mark_reviewed` (public helpers, R6)
+  - `test_a_human_approval_with_no_history_copy_is_one_round` (R1)
+- Removed: `gate_history` and `AreaQuality`'s use of the policy argument (`area_quality(root, nodes)` reads `quality_policy`).
+
+Inventory from the earlier rounds:
 
 - `specy_road/review_tally.py`: a new module for the trailer and the per-area math. `review_gate.py` is at its cap, and A1 names this file.
 - `leaf_tally`: counts rounds, blocking rounds, findings per category, integrity findings and RCA escalations from the local records when the gate commit is made.
