@@ -296,16 +296,17 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
+| `docs` **flagged** | 34 | 32 | 4.00 | 100% | 0 | 0 |
+| `specy_road` **flagged** | 47 | 45 | 4.00 | 100% | 0 | 0 |
+| `tests` **flagged** | 49 | 47 | 4.00 | 100% | 0 | 0 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
-| `README.md` | 1 | 1 | — | — | 0 | 0 |
-| `docs` | 34 | 34 | — | — | 0 | 0 |
+| `README.md` | 2 | 2 | — | — | 0 | 0 |
 | `gui` | 1 | 1 | — | — | 0 | 0 |
 | `research` | 1 | 1 | — | — | 0 | 0 |
-| `roadmap` | 3 | 3 | — | — | 0 | 0 |
-| `schemas` | 2 | 2 | — | — | 0 | 0 |
-| `specy_road` | 48 | 48 | — | — | 0 | 0 |
+| `roadmap` | 2 | 2 | — | — | 0 | 0 |
+| `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
+| `schemas` | 1 | 1 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
-| `tests` | 49 | 49 | — | — | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
