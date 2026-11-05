@@ -275,6 +275,7 @@ Do not pick these up.
 - `M14.7` on `feature/rm-session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record` since 2026-11-05
 - `M15.11` on `feature/rm-working-roster-in-one-command-and-validated-profiles` since 2026-11-04
 - `M15.13` on `feature/rm-worker-loop-friction-sync-until-and-ready-only-resume` since 2026-11-04
+- `M15.15` on `feature/rm-upgrade-ships-the-templates-prompts-reference` since 2026-11-05
 - `M15.20` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M15.21` on `feature/rm-linked-worktrees-resolve-root-and-symlinked-envs` since 2026-11-04
 - `M15.22` on `feature/rm-project-preferences-local-decisions-footer-summary-landing` since 2026-11-04
