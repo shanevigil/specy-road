@@ -89,8 +89,9 @@ def test_a_missing_digest_is_a_next_step_not_a_failure(tmp_path: Path, capsys) -
     assert "Run specy-road digest" in out and "Not specy-road sync" in out
 
 
-def test_dry_run_writes_nothing_and_skips_validate(tmp_path: Path, capsys) -> None:
+def test_dry_run_writes_nothing_and_validates_a_copy(tmp_path: Path, capsys) -> None:
     root = _old_repo(tmp_path)
+    status = subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True).stdout
 
     assert run_upgrade(root, dry_run=True, prune=True) == 0
 
@@ -98,10 +99,12 @@ def test_dry_run_writes_nothing_and_skips_validate(tmp_path: Path, capsys) -> No
     assert "would remove .cursor/commands/specyrd-validate.md" in out
     assert "migration: 1 command stubs (*/commands/) become 1 skills under .agents/skills/" in out
     assert f"would write {SHIPPED_DOC}" in out
-    assert "== validate" not in out
+    assert "== validate" in out and "OK: roadmap and registry validate." in out
+    assert "== other worktrees" not in out
     assert (root / OLD_STUB).is_file()
     assert not (root / SHIPPED_DOC).exists()
     assert not (root / "schemas" / "orchestration.schema.json").exists()
+    assert subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True).stdout == status
 
 
 def test_a_doc_the_project_has_is_kept(tmp_path: Path) -> None:
