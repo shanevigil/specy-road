@@ -101,7 +101,7 @@ Quieter, accurate validate notices. Commits `36e8aabf` and `cc417326`, then a fi
 - `_untracked_line` optional `hidden` argument: appends the counted clause (A1).
 - `ignore_report.untrack_command`: the `git rm --cached` line, quoted with `shlex`, and a pointer to the rest when the list is capped (A3).
 - `validate_notices._patterns`, `notice_repeated_ignore_patterns`: the repeated-pattern notice (A4).
-- `context_notice_cache.py` (`HASH_FILENAME`, `_hash_path`, `_changed`, `report_context_warnings`): fold unchanged context warnings (A5).
+- `context_notice_cache.py` (`HASH_FILENAME`, `_hash_path`, `_record`, `report_context_warnings`): fold unchanged context warnings (A5).
 - Guard in `report_context_warnings`: no warnings means no cache write and a stale hash is removed, so the fixture and clean repos stay clean (A5).
 - `context_notice_cache._record`: the single cache read/compare/write; every report records, and empty text means no file (fix round 3; replaced `_changed`).
 - Tests (fix round 3) in `tests/test_m13_12_context_cache.py`: an unfolded report in between, a change then a fold, empty then non-empty, fold off then on.
