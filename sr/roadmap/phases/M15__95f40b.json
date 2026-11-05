@@ -167,7 +167,8 @@
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
         "specy_road/bundled_scripts/planning_artifacts.py",
         "docs/roadmap-authoring.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/roadmap_codename_cap.py"
       ],
       "type": "task"
     },

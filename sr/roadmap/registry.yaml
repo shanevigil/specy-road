@@ -182,6 +182,7 @@ entries:
       - specy_road/bundled_scripts/planning_artifacts.py
       - docs/roadmap-authoring.md
       - tests/
+      - specy_road/bundled_scripts/roadmap_codename_cap.py
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
