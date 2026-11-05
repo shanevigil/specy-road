@@ -7,6 +7,7 @@ them through that module.
 from __future__ import annotations
 
 import hashlib
+import shlex
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,7 @@ from specy_road.nested_repos import in_nested, nested_changes, nested_prefixes
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_target import ReviewTarget, ReviewTargetError, _registry_entry, resolve_target
 from specy_road.runtime_paths import git_root, project_prefix, rebase_to_project
+from specy_road.steering_paths import FLAG_STEERING
 from specy_road.worker_lease import sync_leases
 from specy_road.worker_process import branch_mismatch
 from specy_road.worker_state import (
@@ -137,6 +139,20 @@ def _bookkeeping(path: str, node_id: str, prefix: str = "") -> bool:
                                                    *RUNTIME_WORK_DIRS)))
 
 
+def steering_findings(repo_root: Path, rec: WorkerRecord) -> list[dict[str, Any]]:
+    """The ``steering_file`` findings of the ``post_run_check`` events since the last reconcile (a dismissal
+    does not count): what the sticky ``steering_changed`` flag stands for, empty when it is not set."""
+    if FLAG_STEERING not in rec.flags:
+        return []
+    out: list[dict[str, Any]] = []
+    for e in events_since(repo_root, rec.worker_id, 0):
+        if e.type == "reconcile" and "dismissed" not in (e.detail or {}):
+            out = []
+        elif e.type == "post_run_check":
+            out += [f for f in (e.detail or {}).get("findings") or [] if f.get("kind") == "steering_file"]
+    return out
+
+
 def reconcile(repo_root: Path, worker_id: str) -> tuple[WorkerRecord, dict[str, Any]]:
     with workers_lock(repo_root):   # one reading of checkpoint, lease and flags
         return _reconcile_locked(repo_root, load_record(repo_root, worker_id))
@@ -189,6 +205,8 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
         and (err or (prompt_hash != rec.contract_hash and not brief_same))
     )
     off_branch = branch_mismatch(Path(rec.worktree), rec.branch)   # the tree moved off the worker's branch (B12)
+    steering = steering_findings(repo_root, rec)   # listed below, then the sticky flag is cleared (M21.7)
+    clear_flag(repo_root, rec, FLAG_STEERING)
     if outside or contract_changed or off_branch:
         add_flag(repo_root, rec, FLAG_RECONCILE)
     else:
@@ -197,13 +215,14 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
              "outside_touch_zones": outside, "untracked": untracked,
              "untracked_outside_touch_zones": untracked_outside, "claimed": t.entry is not None,
              "contract_changed": contract_changed, "branch_mismatch": off_branch, "epoch": rec.instruction_epoch,
-             "needs_reconcile": FLAG_RECONCILE in rec.flags}
+             "needs_reconcile": FLAG_RECONCILE in rec.flags, "steering": steering}
     append_event(repo_root, rec, "reconcile", source="orchestrator", authority="orchestrator",
                  summary=(f"{len(changed)} path(s) changed, "
                           + (f"{len(nested_changed)} in nested repos, " if nested_changed else "")
                           + f"{len(outside)} outside touch zones"
                           + (f"; {len(untracked_outside)} untracked outside them" if untracked_outside else "")
-                          + ("; contract changed" if contract_changed else "") + (f"; {off_branch}" if off_branch else "")),
+                          + ("; contract changed" if contract_changed else "") + (f"; {off_branch}" if off_branch else "")
+                          + (f"; {len(steering)} steering file change(s), steering_changed cleared" if steering else "")),
                  detail=delta)
     return rec, delta
 
@@ -240,6 +259,9 @@ def reconcile_lines(o: dict[str, Any]) -> list[str]:
     lines += [f"  warning: untracked, outside touch zones: {p}" for p in d["untracked_outside_touch_zones"]]
     if d["contract_changed"]:
         lines.append("  the leaf's brief changed since delegation")
+    # One `path class before after` line per steering_file finding the cleared steering_changed flag stood for.
+    lines += ["  " + " ".join(shlex.quote(str(f.get(k))) for k in ("path", "class", "before", "after"))
+              for f in d.get("steering") or []]
     return lines
 
 

@@ -10,6 +10,12 @@ porcelain) with the state at the turn's start, records the findings in one ``pos
 worker :data:`FLAG_POST_RUN` (a clean turn clears it), and reports a turn stopped by a usage limit, which the
 wrapper turns into :data:`PAUSED_BY_LIMIT` with the record's ``limit_reset_at``, whatever the exit code.
 
+Steering files (M21.7, :mod:`specy_road.steering_paths`) are compared first: the git half (hooks, config) from the
+filesystem before any post-turn git command, so ``git status`` never runs under a ``core.fsmonitor`` or hook the
+turn changed; on such a change the git probes are skipped (a ``git_probes_skipped`` finding). Each changed steering
+file is one ``steering_file`` finding, which replaces a ``porcelain`` or ``committed_outside_zones`` mention of the
+same path, and sets the sticky :data:`FLAG_STEERING`, which only ``worker reconcile`` clears.
+
 The paused state lives here and in that one record field; ``worker resume`` and ``worker message`` consult
 :func:`limit_gate`. Deterministic: no model reads anything, only the parsed events and git.
 """
@@ -30,6 +36,7 @@ from specy_road.git_changed_paths import branch_commit_paths
 from specy_road.git_subprocess import git_text, head_sha, run
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import project_prefix, rebase_to_project
+from specy_road.steering_paths import FLAG_STEERING, SteeringWatch
 from specy_road.worker_adapter_base import Parsed
 from specy_road.worker_reconcile import _bookkeeping
 from specy_road.worker_state import WorkerError, WorkerRecord, add_flag, append_event, clear_flag, mutate, status_entries
@@ -81,6 +88,12 @@ class TurnWatch:
     def __init__(self, repo_root: Path, rec: WorkerRecord, *, now: Callable[[], datetime] = _utcnow) -> None:
         self.repo_root, self.rec, self.now = repo_root, rec, now
         self.before = git_state(Path(rec.worktree))
+        self.steering: SteeringWatch | None = None
+        self.steering_error: str | None = None
+        try:   # the steering snapshot (M21.7); a failure is a finding, never a lost turn
+            self.steering = SteeringWatch(repo_root, Path(rec.worktree), rec.node_id, self.before.dirty)
+        except Exception as e:  # noqa: BLE001
+            self.steering_error = str(e)
         self.proc: subprocess.Popen | None = None   # the harness, once started: what the watchdog stops
         self.denials: list[str] = []
         self.failed: str | None = None   # the last error no completed turn followed: the turn failed
@@ -152,10 +165,11 @@ def _outside_zones(repo_root: Path, rec: WorkerRecord, start: str, end: str,
                   and not any(zone_matches(z, rebase_to_project(p, prefix) or p) for z in zones))
 
 
-def git_findings(repo_root: Path, rec: WorkerRecord, before: GitState) -> list[dict[str, Any]]:
-    """The worktree's git state now against ``before``: anything beyond the leaf's own commits and bookkeeping."""
+def git_findings(repo_root: Path, rec: WorkerRecord, before: GitState, after: GitState | None = None) -> list[dict[str, Any]]:
+    """The worktree's git state now (``after``, read here when not given) against ``before``: anything beyond the
+    leaf's own commits and bookkeeping."""
     wt = Path(rec.worktree)
-    after = git_state(wt)
+    after = after or git_state(wt)
     prefix = project_prefix(repo_root)
 
     def expected(p: str) -> bool:   # what reconcile never counts as a breach
@@ -191,25 +205,54 @@ def close_turn(repo_root: Path, rec: WorkerRecord, watch: TurnWatch, *, pause: b
     Every started turn ends here, a harness that could not start and a record already ``terminated``
     included. ``pause=False`` (the terminated record) still records a limit as a finding, but sets no
     ``limit_reset_at``: a terminated worker stays terminated."""
-    try:
-        found = watch.stream_findings() + git_findings(repo_root, rec, watch.before)
-    except Exception as e:  # noqa: BLE001 — the check must never cost the turn its exit record
-        found = [*watch.stream_findings(), {"kind": "check_error", "summary": f"git state not checked: {e}"}]
+    found = _turn_findings(repo_root, rec, watch)
     limit = watch.limit or watch.pending
     if limit:
         found.append({"kind": "usage_limit", "summary": f"usage limit ({limit.get('source')}); resets "
                                                         f"{limit.get('reset_at') or 'at an unstated time'}", **limit})
     # Exactly one event per turn, a clean one included (empty findings): the log shows the check ran.
-    append_event(repo_root, rec, "post_run_check", source="system", detail={"findings": found},
+    append_event(repo_root, rec, "post_run_check", source="system",
+                 detail={"findings": found},
                  summary=(f"post-run check: {len(found)} finding(s): " + "; ".join(f["summary"] for f in found))
                  if found else "post-run check: clean")
     if found:
         add_flag(repo_root, rec, FLAG_POST_RUN)
     else:
         clear_flag(repo_root, rec, FLAG_POST_RUN)
+    if any(f["kind"] == "steering_file" for f in found):
+        add_flag(repo_root, rec, FLAG_STEERING)   # sticky: a clean turn leaves it; worker reconcile clears it
     if limit and pause:
         mutate(repo_root, rec, lambda r: setattr(r, "limit_reset_at", limit.get("reset_at")))
     return bool(limit) and pause
+
+
+def _turn_findings(repo_root: Path, rec: WorkerRecord, watch: TurnWatch) -> list[dict[str, Any]]:
+    """The turn's findings. Git steering is compared first, from the
+    filesystem: when it changed (or cannot be compared), no post-turn git command runs."""
+    found, steer, sw = watch.stream_findings(), [], watch.steering
+    if sw is None:
+        found.append({"kind": "check_error", "summary": f"steering files not checked: {watch.steering_error}"})
+    try:
+        steer = sw.git_changes() if sw else []
+    except Exception as e:  # noqa: BLE001 — the check must never cost the turn its exit record
+        found.append({"kind": "check_error", "summary": f"git steering not checked: {e}; git probes skipped"})
+        return found
+    after = None
+    if steer:
+        found.append({"kind": "git_probes_skipped", "summary": "git steering changed: post-turn git probes skipped"})
+    else:
+        try:
+            after = git_state(Path(rec.worktree))
+            found += git_findings(repo_root, rec, watch.before, after)
+        except Exception as e:  # noqa: BLE001
+            found.append({"kind": "check_error", "summary": f"git state not checked: {e}"})
+    if sw is not None:
+        try:
+            steer += sw.rest_changes(after.dirty if after else None, git_ok=after is not None)
+        except Exception as e:  # noqa: BLE001
+            found.append({"kind": "check_error", "summary": f"steering files not checked: {e}"})
+        found = sw.without_steering_paths(found, steer)
+    return found + steer
 
 
 def limit_gate(rec: WorkerRecord, now: datetime | None = None) -> None:

@@ -212,6 +212,8 @@ executor's reach (another user, a hardware key or an agent the executor cannot r
 the integration branch on the host (pushes through a reviewed PR, a code owner on
 `roadmap/orchestration.yaml`), so the executor cannot roster a key of its own. Triage:
 [design-notes/context-regressions-2026-11-04-triage.md](design-notes/context-regressions-2026-11-04-triage.md).
+Since M21.7 such a change is no longer silent: the post-run check reports each changed steering file (roster, other leaves' registry rows, `work/reviews/`, harness and git hooks and config, shell startup, the linked interpreter) and flags the worker `steering_changed`, finish refuses an in-tree steering path no touch zone names exactly, and Claude Code executors are denied edits to them at launch ([orchestration-steering-files.md](orchestration-steering-files.md)).
+That detects and refuses; it does not prevent a write, restore one or isolate the executor: OS isolation, signing and the risk posture model stay with M20.
 
 `specy-road handoff status [<NODE_ID>] [--json]` shows each node's state:
 
