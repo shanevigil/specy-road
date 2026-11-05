@@ -21,6 +21,7 @@ from specy_road.bundled_scripts.roadmap_explain import DependencyNode, Explanati
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.session_plan_git import gather_session_plan
 from specy_road.bundled_scripts.session_plan_render import zone_overlaps
+from specy_road.finish_ancestor_rollup import held_milestones, milestone_review_hold_notice
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
@@ -87,7 +88,7 @@ def _render_hold(node_id: str, hold: dict) -> list[str]:
     ]
 
 
-def _render_explanation(exp: Explanation, hold: dict | None = None) -> str:
+def _render_explanation(exp: Explanation, hold: dict | None = None, review_hold: str | None = None) -> str:
     header = f"{exp.node_id}" + (f" — {exp.title}" if exp.title else "")
     lines = [header, "", exp.summary]
     if exp.waiting_on:
@@ -106,6 +107,8 @@ def _render_explanation(exp: Explanation, hold: dict | None = None) -> str:
         ]
     if hold is not None:
         lines += _render_hold(exp.node_id, hold)
+    if review_hold is not None:
+        lines += ["", milestone_review_hold_notice(exp.node_id, review_hold)]
     return "\n".join(lines)
 
 
@@ -115,10 +118,11 @@ def cmd_why_blocked(ns: argparse.Namespace) -> int:
     reg = read_registry(registry_path(root))
     exp = explain(nodes, reg, ns.node_id)
     hold = plan_hold(root, ns.node_id) if exp.state == "ready" else None
+    review_hold = held_milestones(root, nodes).get(ns.node_id)
     if ns.json:
-        print(json.dumps({**asdict(exp), "plan_hold": hold}, indent=2))
+        print(json.dumps({**asdict(exp), "plan_hold": hold, "review_hold": review_hold}, indent=2))
     else:
-        print(_render_explanation(exp, hold))
+        print(_render_explanation(exp, hold, review_hold))
     if exp.state == "unknown":
         return EXIT_BAD_NODE
     return EXIT_BLOCKED if exp.state in ("blocked", "gated") else 0

@@ -24,45 +24,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end
-    node_id: M13.7
-    branch: feature/rm-clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end
-    touch_zones:
-      - specy_road/bundled_scripts/refresh_stubs.py
-      - specy_road/agent_ignores.py
-      - specy_road/bundled_scripts/session_cli.py
-      - tests/
-      - specy_road/bundled_scripts/refresh_stubs_report.py
-      - specy_road/written_entry.py
-      - specy_road/ignore_report.py
-      - docs/install-and-usage.md
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout
-    node_id: M14.3
-    branch: feature/rm-worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout
-    touch_zones:
-      - specy_road/worktree_prune.py
-      - specy_road/bundled_scripts/worktree_cli.py
-      - tests/
-      - specy_road/worktree_delete_set.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap
-    node_id: M13.2
-    branch: feature/rm-upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap
-    touch_zones:
-      - specy_road/bundled_scripts/upgrade.py
-      - specy_road/file_limits_engine.py
-      - tests/
-      - specy_road/templates/project/constraints/file-limits.yaml
-      - specy_road/bundled_scripts/upgrade_preview.py
-      - specy_road/bundled_scripts/upgrade_plan.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts
     node_id: M13.8
     branch: feature/rm-a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts
@@ -104,42 +65,6 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: parallel-pr-leaves-reconcile-bookkeeping-by-rule
-    node_id: M15.4
-    branch: feature/rm-parallel-pr-leaves-reconcile-bookkeeping-by-rule
-    touch_zones:
-      - specy_road/reconcile_branch.py
-      - specy_road/finish_pr_merge.py
-      - specy_road/cli.py
-      - specy_road/cli_usage.py
-      - specy_road/bundled_scripts/do_next_task.py
-      - specy_road/bundled_scripts/do_next_task_register.py
-      - docs/git-workflow.md
-      - docs/git-workflow-parallel-prs.md
-      - specy_road/templates/specyrd/commands/specyrd-finish.md
-      - tests/
-      - specy_road/bundled_scripts/reconcile_branch_cli.py
-      - specy_road/bundled_scripts/do_next_task_pickup_helpers.py
-      - specy_road/bundled_scripts/abort_task_pickup.py
-      - specy_road/bundled_scripts/abort_task_pickup_own_commit.py
-      - specy_road/bundled_scripts/do_next_task_self_heal.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked
-    node_id: M13.4
-    branch: feature/rm-a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked
-    touch_zones:
-      - specy_road/finish_ancestor_rollup.py
-      - specy_road/bundled_scripts/roadmap_query_cli.py
-      - specy_road/bundled_scripts/roadmap_crud_ops.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/bundled_scripts/validate_notices.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: working-roster-in-one-command-and-validated-profiles
     node_id: M15.11
     branch: feature/rm-working-roster-in-one-command-and-validated-profiles
@@ -177,6 +102,8 @@ entries:
       - specy_road/bundled_scripts/do_next_task_leaf_guards.py
       - specy_road/bundled_scripts/session_plan_render.py
       - specy_road/bundled_scripts/orchestrate_cli.py
+      - specy_road/bundled_scripts/brief_dependency_context.py
+      - specy_road/bundled_scripts/grind_session.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -247,5 +174,39 @@ entries:
       - specy_road/agent_ignores.py
       - specy_road/bundled_scripts/validate_roadmap_checks.py
     started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record
+    node_id: M14.7
+    branch: feature/rm-session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record
+    touch_zones:
+      - specy_road/bundled_scripts/session_cli.py
+      - specy_road/session_presence.py
+      - tests/
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
+  - codename: file-limits-baseline-and-upgrade-report
+    node_id: M15.7
+    branch: feature/rm-file-limits-baseline-and-upgrade-report
+    touch_zones:
+      - specy_road/file_limits_engine.py
+      - specy_road/file_limits_baseline.py
+      - specy_road/bundled_scripts/validate_file_limits.py
+      - specy_road/bundled_scripts/upgrade.py
+      - docs/file-limits.md
+      - tests/
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
+  - codename: upgrade-ships-the-templates-prompts-reference
+    node_id: M15.15
+    branch: feature/rm-upgrade-ships-the-templates-prompts-reference
+    touch_zones:
+      - specy_road/bundled_scripts/upgrade.py
+      - specy_road/upgrade_templates.py
+      - specy_road/templates/specyrd/dot-specyrd/README.md
+      - tests/
+    started: '2026-11-05'
     owner: savigil
     implementation_review: pending

@@ -79,7 +79,7 @@
       "parent_id": "M14",
       "planning_dir": "planning/M14.3_worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout_0562a77e-5ed0-48f3-9ab0-b119f9424629.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "worktree prune refuses to delete another repository's worktree or checkout",
       "touch_zones": [
         "specy_road/worktree_prune.py",

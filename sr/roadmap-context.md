@@ -200,12 +200,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M12.6` Every command exposes its parser, and the stale-command scan reports flags a command does not accept `every-command-exposes-its-parser-and-the-stale-command-scan-reports-flags-a-command-does-not-accept` — task — **Not Started**
 - `M13` rc3 adopter feedback: upgrade and adoption friction `rc3-adopter-feedback-upgrade-and-adoption-friction` — phase — **Not Started**
   - `M13.1` Say which install is running and flag managed blocks an older version wrote `say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote` — task — **Complete**
-  - `M13.2` upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap `upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap` — task — **Not Started**
+  - `M13.2` upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap `upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap` — task — **Complete**
   - `M13.3` A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates `a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates` — task — **Complete**
-  - `M13.4` A milestone held for its full review says so in validate, list-nodes and why-blocked `a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked` — task — **Not Started**
+  - `M13.4` A milestone held for its full review says so in validate, list-nodes and why-blocked `a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked` — task — **Complete**
   - `M13.5` refresh-profiles installs only the profiles the roster names, and suggests the alias for a near miss `refresh-profiles-installs-only-the-profiles-the-roster-names-and-suggests-the-alias-for-a-near-miss` — task — **Complete**
   - `M13.6` Safe release-candidate install recipe, pipx and uv tool upgrades, and checking which binary is on PATH `safe-release-candidate-install-recipe-pipx-and-uv-tool-upgrades-and-checking-which-binary-is-on-path` — task — **Complete**
-  - `M13.7` Clearer notices: symlinked skill dirs, new ignore rules over tracked files, and session end `clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end` — task — **Not Started**
+  - `M13.7` Clearer notices: symlinked skill dirs, new ignore rules over tracked files, and session end `clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end` — task — **Complete**
   - `M13.8` A behaviour-change catalogue, and validate reports project agent text it contradicts `a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts` — task — **Not Started**
   - `M13.9` Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice `notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` — task — **Not Started**
   - `M13.10` Upgrade guide: moving to the split rules files, previewing an uninstalled version, telling old installs apart `upgrade-guide-moving-to-the-split-rules-files-previewing-an-uninstalled-version-telling-old-installs-apart` — task — **Complete**
@@ -215,7 +215,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M14` Nested repos and review-gate integrity `nested-repos-and-review-gate-integrity` — phase — **Not Started**
   - `M14.1` Approvals never carry across unreviewed changes in a sibling repository `approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` — task — **Not Started**
   - `M14.2` doctor never offers to remove a live leaf's worktree or branch `doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch` — task — **Complete**
-  - `M14.3` worktree prune refuses to delete another repository's worktree or checkout `worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout` — task — **Not Started**
+  - `M14.3` worktree prune refuses to delete another repository's worktree or checkout `worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout` — task — **Complete**
   - `M14.4` nested_repos that a project can adopt without pushing: local landing, local base, sibling diffs and checks `nested-repos-that-a-project-can-adopt-without-pushing-local-landing-local-base-sibling-diffs-and-checks` — milestone — **Not Started**
     - `M14.4.1` Per nested repository, land by push, locally or by hand, and base worktrees on the remote or local tip `per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip` — task — **Complete**
     - `M14.4.2` review-packet includes sibling repository diffs `review-packet-includes-sibling-repository-diffs` — task — **Not Started**
@@ -231,7 +231,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.1` RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command `rc-install-docs-cover-extras-and-direct-wheel-url` — task — **Complete**
   - `M15.2` A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch `claude-code-reviewer-works-on-a-subscription-login` — task — **Not Started**
   - `M15.3` prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged `prompt-channel-cli-launches-nothing-without-run` — task — **Not Started**
-  - `M15.4` Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current `parallel-pr-leaves-reconcile-bookkeeping-by-rule` — task — **Not Started**
+  - `M15.4` Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current `parallel-pr-leaves-reconcile-bookkeeping-by-rule` — task — **Complete**
   - `M15.5` Host effects policy: workers and reviewers do not take over the screen or change shared services, the guard denies such commands, and a message can interrupt a turn `host-effects-policy-and-interruptible-worker-messages` — task — **Not Started**
   - `M15.6` The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes `rework-prompt-carries-the-accepted-rca` — task — **Complete**
   - `M15.7` file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count `file-limits-baseline-and-upgrade-report` — task — **Not Started**
@@ -267,21 +267,38 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M13.2` on `feature/rm-upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap` since 2026-11-04
-- `M13.4` on `feature/rm-a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked` since 2026-11-04
-- `M13.7` on `feature/rm-clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end` since 2026-11-04
 - `M13.8` on `feature/rm-a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts` since 2026-11-04
 - `M14.10` on `feature/rm-escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend` since 2026-11-04
-- `M14.3` on `feature/rm-worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout` since 2026-11-04
 - `M14.6` on `feature/rm-reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round` since 2026-11-04
+- `M14.7` on `feature/rm-session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record` since 2026-11-05
 - `M15.11` on `feature/rm-working-roster-in-one-command-and-validated-profiles` since 2026-11-04
 - `M15.13` on `feature/rm-worker-loop-friction-sync-until-and-ready-only-resume` since 2026-11-04
+- `M15.15` on `feature/rm-upgrade-ships-the-templates-prompts-reference` since 2026-11-05
 - `M15.20` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M15.21` on `feature/rm-linked-worktrees-resolve-root-and-symlinked-envs` since 2026-11-04
 - `M15.22` on `feature/rm-project-preferences-local-decisions-footer-summary-landing` since 2026-11-04
-- `M15.4` on `feature/rm-parallel-pr-leaves-reconcile-bookkeeping-by-rule` since 2026-11-04
+- `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M15.8` on `feature/rm-promoted-leaf-is-never-stuck-on-an-empty-approach` since 2026-11-04
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
+
+## Quality by area
+
+Review cost of the last 50 completed leaves, per touch-zone area, from the `Review-tally` trailers on their gate commits. Block rate is the share of tallied leaves with at least one blocking round; areas above 50% are **flagged** and listed first. Plan tighter acceptance there.
+
+| Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
+| --- | --- | --- | --- | --- | --- | --- |
+| `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
+| `README.md` | 2 | 2 | — | — | 0 | 0 |
+| `docs` | 33 | 33 | — | — | 0 | 0 |
+| `gui` | 1 | 1 | — | — | 0 | 0 |
+| `research` | 1 | 1 | — | — | 0 | 0 |
+| `roadmap` | 2 | 2 | — | — | 0 | 0 |
+| `schemas` | 2 | 2 | — | — | 0 | 0 |
+| `specy_road` | 47 | 47 | — | — | 0 | 0 |
+| `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
+| `tests` | 49 | 49 | — | — | 0 | 0 |
+
+Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
 ## Reaching the detail behind this
 
