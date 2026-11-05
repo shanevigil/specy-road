@@ -48,12 +48,12 @@ roster:
     roles: [executor, reviewer]
 ```
 
+The adapter resolves the binary whenever it builds a default command, from the roster entry every caller passes:
+launch, `worker message`'s resume, a reviewer's fresh or resumed turn, and the default resume a custom command
+without `{session}` falls back to all run the same binary.
+
 When nothing is found the launch is refused, naming the directories searched and `harness_bin`, instead of the harness
 failing with exit 127. The absolute path is what runs: Cursor's `agent create-chat` uses it too, a worker's
 `launched` event records it (`detail.argv0`), and a reviewer's `RUN-<model>.log` names it on its first line.
 
 A custom `channels.cli` runs as written: put the path in the command itself if the program is off `PATH`.
-
-**Resume via `worker message`.** That path does not yet pass the roster entry to the adapter, so it resolves from
-`PATH` and the install directories only (steps 2 and 3), not `harness_bin`. A binary only `harness_bin` can find
-needs a `channels.cli_resume` naming its full path until it does.

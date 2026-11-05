@@ -41,7 +41,6 @@ from typing import Any
 from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, load_chore
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text
-from specy_road.harness_binary import entry_binary
 from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_files import reviews_dir
@@ -120,7 +119,7 @@ class _Harness:
         self.chore = chore
         self.default = self.harness != "generic" and not self.cli and (not chore or isinstance(self.adapter, ClaudeCode))
         self.launch_mode = "bare" if self.default and isinstance(self.adapter, ClaudeCode) else self.mode
-        self.harness_bin = entry_binary(self.harness, entry, default=self.default)   # refused before any run starts
+        self.harness_bin = entry.get("harness_bin")   # resolved by the adapter whenever a default command is built
         self.can_resume = self.adapter.caps.resume
         self.output: Path | None = None   # answer_scratch's file: where a fresh Codex turn writes its answer (-o)
         self.log = Path()   # the run's transcript, RUN-<model>.log
@@ -135,7 +134,8 @@ class _Harness:
             return self.adapter.reviewer_launch(prompt, self.api_id, reviews, self.effort,
                                                 session=(sid, session is not None) if sid else None, **structured,
                                                 harness_bin=self.harness_bin)
-        kw = {"node_id": self.node_id, "repo_root": self.repo_root, "launch_mode": self.mode, "effort": self.effort}
+        kw = {"node_id": self.node_id, "repo_root": self.repo_root, "launch_mode": self.mode, "effort": self.effort,
+              "harness_bin": self.harness_bin}   # a custom command without {session} resumes with the default
         # A custom command gets its program's structured-output flags (Antigravity `agy`: --json-schema).
         cli = (reviewer_cli(self.cli, reviews_dir(self.repo_root, self.node_id) / OUTPUT_SCHEMA_NAME)
                if self.cli and not self.chore else self.cli)

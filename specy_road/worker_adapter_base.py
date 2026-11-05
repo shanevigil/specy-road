@@ -63,7 +63,7 @@ class Unsupported(Exception):
 
 #: What a harness is told when the prompt itself travels on stdin: an argv string is capped at 128 KiB on Linux.
 STDIN_INSTRUCTION = "The task is the text on standard input. Follow it exactly; it is the whole prompt."
-#: The program each harness's default command runs; a resolved ``harness_bin`` path replaces it (harness_binary).
+#: The program each harness's default command runs; :meth:`Adapter._program` resolves it (harness_binary).
 PROGRAMS = {"claude-code": "claude", "codex": "codex", "cursor": "agent"}
 #: The OS limit on one argument (Linux ``MAX_ARG_STRLEN``, its terminating NUL included): above it exec fails with
 #: Errno 7 (E2BIG), which a shell reports as exit 126 or 127.
@@ -208,8 +208,8 @@ class Adapter:
         """The harness's own read-only reviewer command; ``session`` is ``(id, resume)``, ``schema`` the review
         output schema file and ``output`` where a harness that can writes its final message. A ``generic`` entry
         has none: it runs its ``channels.cli`` and its final message is parsed as plain JSON. ``harness_bin``, on
-        every adapter's default command, is the resolved binary (:func:`specy_road.harness_binary.resolve`) that
-        replaces the program name (:meth:`_program`)."""
+        every adapter's launch, resume and reviewer command, is the roster entry's own value, resolved only when the
+        default command is built (:meth:`_program`)."""
         raise Unsupported(f"{self.harness}: no default reviewer command; set the roster's channels.cli")
 
     def parse(self, line: str) -> Parsed | None:
@@ -238,12 +238,11 @@ class Adapter:
         return None
 
     def _program(self, harness_bin: str | None) -> str:
-        """``argv[0]`` of the default command: the caller's resolved ``harness_bin``, else the binary found on
-        ``PATH`` or in the harness's install directories (a caller that has no roster entry, e.g. a resume)."""
-        if harness_bin:
-            return harness_bin
+        """``argv[0]`` of the default command: the binary the roster's ``harness_bin`` names, else the one on
+        ``PATH`` or in the harness's install directories. The one place every default command (launch, resume,
+        reviewer, a custom command's resume fallback) gets its program, so no caller can skip ``harness_bin``."""
         from specy_road.harness_binary import resolve  # noqa: PLC0415 — harness_binary imports this module
-        return resolve(self.harness)
+        return resolve(self.harness, harness_bin)
 
     def effort_flag(self, level: str | None) -> list[str]:
         """The arguments ``{effort}`` expands to for the model's own ``level``; none where the harness has no flag."""

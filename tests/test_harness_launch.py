@@ -187,9 +187,34 @@ def test_a_missing_binary_refuses_every_launch_before_anything_runs(tmp_path: Pa
         ops.delegate(repo, "M1.1", "comp")
     assert not ws.list_records(repo)
     entry = {"id": "comp", "family": "cursor", "harness": "cursor"}
+    reviews_dir(repo, "M1.1").mkdir(parents=True, exist_ok=True)
+    (reviews_dir(repo, "M1.1") / "PACKET.md").write_text("# Review packet\n")
     monkeypatch.setattr(review_delegate, "delegate_turn", lambda *a, **k: pytest.fail("the reviewer was launched"))
     with pytest.raises(hb.HarnessNotFound):
         review_delegate.delegate(repo, "M1.1", "comp", retries=0, sleep=lambda _s: None)
     monkeypatch.setattr(role_prompt_cli, "run_and_file", lambda *a, **k: pytest.fail("the reviewer was launched"))
-    out = role_prompt_cli.run_reviewer_channel(None, tmp_path / "p.md", repo, entry, "comp", tmp_path, None, [])
+    out = role_prompt_cli.run_reviewer_channel(None, tmp_path / "p.md", repo, entry, "comp",
+                                               reviews_dir(repo, "M1.1"), None, [])
     assert out.state == "rerun" and "not on PATH" in out.reason
+
+
+def test_worker_message_resumes_with_a_binary_only_harness_bin_reaches(tmp_path: Path, no_path: Path,
+                                                                       monkeypatch) -> None:
+    """R1: `agent` is on neither PATH nor ~/.local/bin; the roster's harness_bin is the only way to it, on the
+    launch and on `worker message`'s resume alike."""
+    monkeypatch.setattr(hb, "resolve", REAL_RESOLVE)
+    agent = _exe(tmp_path / "tools" / "agent")
+    repo = make_review_repo(tmp_path, orchestration=ROSTER.format(extra=f", harness_bin: {agent}"))
+    launches: list[Launch] = []
+    monkeypatch.setattr(ops, "spawn", lambda root, rec, launch, **kw: launches.append(launch))
+    rec, _ = ops.delegate(repo, "M1.1", "comp")
+    ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "chat-1"))
+    ws.set_state(repo, rec, "idle", pid=None)
+    ops.message(repo, rec.worker_id, "go on")
+    assert [la.argv[0] for la in launches] == [str(agent), str(agent)]
+    assert launches[1].argv[1:4] == ["-p", "--resume", "chat-1"]
+    # A custom command without {session} resumes with the default command: the same binary, not the bare name.
+    (tmp_path / "p.md").write_text("continue")
+    fallback = ADAPTERS["claude-code"].resume("s-1", tmp_path / "p.md", tmp_path, "m", "wrapper {prompt}",
+                                              harness_bin=str(agent))
+    assert fallback.argv[:2] == [str(agent), "-p"]

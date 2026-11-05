@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import os
 import shutil
-from typing import Any
 
 from specy_road.worker_adapter_base import PROGRAMS, Unsupported
 
@@ -40,10 +39,3 @@ def resolve(harness: str, harness_bin: str | None = None) -> str:
     raise HarnessNotFound(f"{harness}: `{program}` is not on PATH or in {', '.join(dirs)}; install it, or set the "
                           f"roster entry's harness_bin to its path")
 
-
-def entry_binary(harness: str, entry: dict[str, Any], *, default: bool = True) -> str | None:
-    """The resolved binary roster ``entry``'s default command runs (:func:`resolve` with its ``harness_bin``);
-    ``None`` for a custom command (``default`` false), which runs as written, or a ``generic`` harness."""
-    if not default or harness not in PROGRAMS:
-        return None
-    return resolve(harness, entry.get("harness_bin"))
