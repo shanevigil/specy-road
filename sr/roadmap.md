@@ -233,13 +233,13 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.3` | prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged | task | Agentic-led | Not Started |
 | `M15.4` | Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current | task | Agentic-led | Not Started |
 | `M15.5` | Host effects policy: workers and reviewers do not take over the screen or change shared services, the guard denies such commands, and a message can interrupt a turn | task | Agentic-led | Not Started |
-| `M15.6` | The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes | task | Agentic-led | Not Started |
+| `M15.6` | The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes | task | Agentic-led | Complete |
 | `M15.7` | file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count | task | Agentic-led | Not Started |
 | `M15.8` | A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it | task | Agentic-led | Not Started |
 | `M15.9` | Harness launches survive large prompts and a harness binary off PATH, for every role | task | Agentic-led | Not Started |
 | `M15.10` | Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff | task | Agentic-led | Complete |
 | `M15.11` | A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors | task | Agentic-led | Not Started |
-| `M15.12` | Shared documentation zones do not serialize grind-session batches | task | Agentic-led | Not Started |
+| `M15.12` | Shared documentation zones do not serialize grind-session batches | task | Agentic-led | Complete |
 | `M15.13` | Worker loop friction: sync waits for the events that matter, tool-use noise collapses, rework after a completed worker, a READY-only resume, a quieter pickup | task | Agentic-led | Not Started |
 | `M15.14` | Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored | task | Agentic-led | Not Started |
 | `M15.15` | upgrade ships the work/ templates every prompt references, and the .specyrd README matches upgrade's steps | task | Agentic-led | Not Started |
