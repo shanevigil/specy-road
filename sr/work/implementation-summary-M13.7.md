@@ -102,3 +102,60 @@ This round addresses Sol's (gpt-6.1-sol) block on a07d9e96, R1–R3, after mergi
 - `tests/test_m13_7_notices.py::test_a_path_the_new_rule_only_matches_as_a_pathspec_is_not_called_hidden` (dry and real): R2, `work/prompt-dir/sub.md`.
 - `tests/test_m13_7_notices.py::test_a_later_negation_keeps_the_file_visible_and_unlisted` (dry and real): R2, negation after the managed block, with the tracked notice kept.
 - Mocks: none.
+
+## Fix round 2
+
+This round addresses Sol's (gpt-6.1-sol) block on f800421e, R1 and R2, after merging `origin/WIP/improvements-0-3-1`. The code fix is commit `2e41f167`.
+
+- **R1 (A2): judge the `.gitignore` the update would actually write.** `_new_rule_matches` no longer passes the new rules through `core.excludesFile`. In a throwaway `git init` directory it:
+  1. copies the current `.gitignore` byte for byte, plus every nested `.gitignore`;
+  2. runs `git check-ignore --no-index -v -z` on the tracked files and on the untracked files git shows today;
+  3. updates the copy with `apply_agent_ignores` itself, using the same prefix and seed, so the block position, preserved text and line endings match the real write;
+  4. runs the check again.
+
+  A path is listed only when it is ignored afterwards and was not before; the rule shown is the one git names. If the copy does not change, nothing is listed. The real file is never touched, so dry and real runs print the same lines.
+- **R2 (A1): report entries are data, not reparsed strings.** The new `specy_road/written_entry.py` defines `Written(path, outcome)`. It is a `str` subclass whose text is still `"<path>"` or `"<path> (<outcome>)"`, so every existing caller, return value and string comparison is unchanged, while `.path` and `.outcome` stay fields. Producers in the zones now append `Written`: `refresh_stubs._write_if_changed`, `_refresh_pack`, the `CLAUDE.md` guide line, and `agent_ignores.apply_and_report`. Both readers had parsed with `partition(" (")`, and now read the fields:
+  - `resolve_linked`, the report;
+  - `_print_diffs`: managed-block previews are looked up by their whole line and carry their own path.
+
+  Plain strings, i.e. `agents_md_block` entries from outside the zones, are printed as they are and never parsed.
+
+**New file outside the listed zones:** `specy_road/written_entry.py`. Please add it to the leaf's touch zones, alongside `refresh_stubs_report.py`.
+
+### Fix round 2: probes
+
+| Input | Checked | Result |
+|---|---|---|
+| Parenthesised generic dir `docs/team (commands)/`, plain and symlinked (`→ actual`) | dry and real | Fixed (R2); each stub reported whole, the symlinked one as `actual/<name> (docs/team (commands) → actual)` |
+| Generic dir with unicode, spaces, `#` and `!` (`docs/équipe #1 !x`) | dry and real | Reported whole |
+| `refresh-stubs --diff` on a parenthesised dir | | **Real defect:** `_print_diffs` truncated the path at ` (` and printed no diff. Fixed with the same data change; new test `test_diff_shows_stubs_under_a_parenthesised_dir` |
+| Untracked files with spaces, unicode, a leading `#` or `!` in a name, and top-level `#top.md` and `!top.md` | | Listed exactly as git hides them; the top-level ones are unlisted because no rule matches them |
+| `.gitignore` with no trailing newline | | Correct |
+| CRLF `.gitignore` with a negation before the block | | Correct. The update rewrites the file with LF, and the sandbox copy goes through the same code, so the listing matches git. The previous code failed this probe |
+| Nested project prefix `sr/` | | Only `sr/…` paths listed; root-level `work/prompt-y.md` is not |
+
+For each A2 probe, the test asserts that the "now hidden" list equals the set of files that stop appearing in `git status --untracked-files=all` after the real update, and that the dry and real runs print the same output.
+
+**Red-green:** the new R1, R2, crlf and `--diff` cases fail on f800421e (7 failed in the file; `--diff` checked separately) and pass on 2e41f167.
+
+**Verification:**
+- Targeted run, 36 files: the earlier selection plus every test that imports `specyrd_init`, `init_project` or `run_init`: 714 passed.
+- `specy-road file-limits`: OK.
+- `ruff check`: clean.
+
+### Added (fix round 2)
+
+- `specy_road/written_entry.py` `Written`: carries each report item as path plus outcome while staying a `str`, so other callers are unaffected (R2).
+- `agent_ignores._ignored`: `check-ignore --no-index` in the sandbox, returning `{path: rule}` for ignored paths (R1).
+- Sandbox flow in `_new_rule_matches`: `git init`, copy the top and nested `.gitignore` files, check before, apply the real update, check after (R1).
+- Explicit copy of the top `.gitignore` even when `ls-files` does not list it, for example a `.gitignore` that ignores itself.
+- Early return in `_new_rule_matches` when the sandbox `.gitignore` is unchanged, which skips the second check.
+- Removed the round-1 `_check_ignore`, its `core.excludesFile` approach and the "new rule = line not in file" test.
+- `_block_previews` now returns `(path, text)`, so `_print_diffs` never parses a path out of a line (`--diff` defect).
+- `tests/test_m13_7_notices.py::test_a_negation_before_the_block_loses_to_the_new_rule_and_is_listed` (dry and real): R1.
+- `tests/test_m13_7_notices.py::test_a_generic_dir_with_parentheses_or_odd_characters_is_reported_whole` (2 dirs × dry and real): R2 and odd-character probes.
+- `tests/test_m13_7_notices.py::test_a_symlinked_generic_dir_with_parentheses_reports_its_real_path` (dry and real): R2 with a symlink.
+- `tests/test_m13_7_notices.py::test_the_hidden_list_is_exactly_what_git_status_stops_showing` (4 probes): the ignore-side probes, checked against git status.
+- `tests/test_m13_7_notices.py::test_diff_shows_stubs_under_a_parenthesised_dir`: the `--diff` defect.
+- `test_the_report_folds_two_names_for_one_file_into_its_real_path` now passes `Written` entries: plain strings are no longer parsed, by design.
+- Mocks: none.
