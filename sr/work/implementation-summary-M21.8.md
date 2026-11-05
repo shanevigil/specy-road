@@ -19,7 +19,7 @@ All existing assertions after the poll are unchanged.
 
 ### A3 verification (2026-11-05)
 
-Command (from git root):
+Planning sheet holds the canonical load+20-run command (PID capture and `kill` before `wait`). Executor also ran:
 
 ```bash
 stress-ng --cpu 4 --timeout 600s & LOAD_PID=$!
@@ -31,7 +31,7 @@ kill "$LOAD_PID" 2>/dev/null
 exit $FAIL
 ```
 
-Result: runs 1–20 all passed (`1 passed` each); exit 0. The same evidence is copied to the planning sheet checklist (fix round after review block on A3).
+Result: runs 1–20 all passed (`1 passed` each); exit 0. Fix round 2 re-ran the planning-sheet command (four busy Python loops); runs 1–20 ok; exit 0.
 
 ## Probes
 
@@ -39,6 +39,8 @@ Result: runs 1–20 all passed (`1 passed` each); exit 0. The same evidence is c
 - Other M21.8 planning artifacts — only this sheet; no duplicate checklist elsewhere.
 - `test_two_cli_messages_during_a_live_turn_are_appended_and_delivered` — still polls on completion count only; acceptance A1 names only `test_message_while_running_queues_and_delivers`; left unchanged.
 - Post-merge `tests/test_worker_queue_message.py` poll fix — still present after `origin/WIP/improvements-0-3-1` merge — unchanged.
+- Shell load scripts in this leaf (class: background CPU load without termination) — planning sheet had `wait` on endless loops; summary `stress-ng` path already kills load PID — sheet corrected; summary cross-references sheet as canonical.
+- Other verification snippets in `implementation-summary-M21.8.md` — only A3 blocks; both now terminate load before exit — ok.
 
 ## Added
 
