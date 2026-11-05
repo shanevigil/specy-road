@@ -120,13 +120,16 @@ def preference_notice(pref: dict[str, Any], cands: list[Candidate], today: date 
 
 
 def stamp_reviewer_auth_notices(batches: list[list[Assignment]], notices: list[str]) -> None:
-    """Put each notice on the first assignment that staffs that entry, so the plan text shows it once."""
+    """Put each notice on the first assignment that staffs that entry, so the plan text shows it once.
+
+    Each notice is ``reviewer auth: <id> ...``.
+    """
     pending = list(notices)
     for batch in batches:
         for assignment in batch:
             stay: list[str] = []
             for note in pending:
-                ident = note.split()[2] if len(note.split()) > 2 else ""
+                ident = note.split()[2]
                 if ident in assignment.reviewers:
                     assignment.notes.append(note)
                 else:

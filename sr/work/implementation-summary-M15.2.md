@@ -19,7 +19,7 @@ Left unchanged, outside the zones:
 ### Helpers
 
 - `reviewer_environment` — the reviewer harness environment the mode and the notices read, so a developer key in the process environment is the one the launch would see.
-- `user_settings_path` — `CLAUDE_CONFIG_DIR/settings.json`, else `HOME/.claude/settings.json`, else `claude_config_dir()`, the file bare mode's `apiKeyHelper` comes from.
+- `user_settings_path` — `CLAUDE_CONFIG_DIR/settings.json`, else `HOME/.claude/settings.json`, else `claude_config_dir()`, the file bare mode's `apiKeyHelper` comes from. Both env values are taken literally.
 - `load_user_settings` — that file as an object, or `{}` when it is missing or not JSON, without logging it.
 - `has_api_key` — a non-whitespace `ANTHROPIC_API_KEY`, without returning the value.
 - `has_api_key_helper` — a non-empty string `apiKeyHelper`, without returning the command.
@@ -32,7 +32,7 @@ Left unchanged, outside the zones:
 - `claude_default_reviewer` — that decision plus the note `review delegate` prints.
 - `launch_note` — the bare note (the previous prompt sentence) or the explicit-mode note, both of which mention the subscription login.
 - `claude_reviewer_auth_notices` — one `reviewer auth:` line per forced, unauthenticated claude-code reviewer entry, skipping `channels.cli` and non-reviewers.
-- `stamp_reviewer_auth_notices` — attaches each notice to the first assignment that staffs that roster id, so the existing plan renderer prints it once.
+- `stamp_reviewer_auth_notices` — attaches each notice to the first assignment that staffs that roster id, so the existing plan renderer prints it once. The id is the third word of `reviewer auth: <id> ...`.
 - `_run_launch_mode` — carries the decided mode from `run_default_reviewer` to `close_cli_review_run`, which writes it on the RUN record.
 - `claude_code_reviewer_repo` — public fixture in `tests/review_repo_helpers.py` (moved from a `_`-prefixed function in `tests/test_review_files.py`) so both the launch-argv tests and the reviewer-auth tests share it without importing a private name.
 - `_isolate` — drops `ANTHROPIC_API_KEY` and points `CLAUDE_CONFIG_DIR` at an empty directory so the developer's login cannot flip the mode.
@@ -60,6 +60,7 @@ Left unchanged, outside the zones:
 ### Tests
 
 - `test_bare_is_never_chosen_without_a_key_or_helper` — empty, whitespace and non-string credentials select explicit; a key or a helper string selects bare.
+- `test_a_settings_dir_with_surrounding_whitespace_still_yields_its_helper` — a settings directory whose path has leading and trailing whitespace is read as given, for `CLAUDE_CONFIG_DIR` and for `HOME`, and the helper there selects bare.
 - `test_auth_problem_names_the_fixes_and_never_the_key` — the refusal names the three fixes and does not contain the key.
 - `test_each_mode_keeps_the_restrictions_and_explicit_argv_has_no_bare` — both modes keep `--disallowedTools`, `--json-schema` and `--add-dir`; explicit argv has no `--bare` and no `--mcp-config`.
 - `test_notices_are_one_per_forced_claude_reviewer` — one notice per forced claude-code reviewer, none for codex, `channels.cli`, an unforced entry, or an executor, and none once a key or helper exists.
@@ -111,4 +112,15 @@ R5 class: a branch the only caller never takes. `run_reviewer_channel`'s `preche
 R6 class: a test whose setup and assertions are a subset of another test.
 
 - `test_a_forced_bare_auth_refusal_leaves_the_reviews_dir_unchanged` against `test_forced_bare_without_a_key_refuses_before_a_run_record`. Result: same `_isolate`, `_force_bare`, planted `RUN-opus.json`, and the same two commands. Its exit and directory assertions are already in the other test. The duplicate is deleted.
-- The other new tests in `tests/test_reviewer_auth.py`. Result: each one covers an input the others do not (mode choice, argv, notices, explicit launch, helper-only `--settings`, the plan notice). None of those is a subset of the forced-bare refusal test.
+- The other new tests in `tests/test_reviewer_auth.py`. Result: each one covers an input the others do not (mode choice, argv, notices, explicit launch, helper-only `--settings`, the plan notice, a settings path with surrounding whitespace). None of those is a subset of the forced-bare refusal test.
+
+R7 class: a directory env value was stripped before it was used as a path, so a helper at the literal path was missed. `CLAUDE_CONFIG_DIR` and `HOME` are that class.
+
+- `user_settings_path`. Result: both values are used as given. Empty is still absent, which is how `claude_config_dir` treats an empty `CLAUDE_CONFIG_DIR`.
+- `claude_config_dir` and `harness_env`. Result: neither strips those values. The new test compares `user_settings_path` with `claude_config_dir() / "settings.json"` for a config dir and a home that both have surrounding whitespace, and the helper there selects bare. `bare_settings_argv` passes that same path.
+- `has_api_key` and `has_api_key_helper`. Result: they still strip the credential, not a path. A whitespace-only key or helper stays absent. That is a different input.
+
+R8 class: a fallback for a notice that is not `reviewer auth: <id> ...`. No caller produces one.
+
+- `stamp_reviewer_auth_notices` callers under `specy_road/` and `tests/`. Result: production passes `claude_reviewer_auth_notices`, and the one test passes that same list. The length check is gone. The id is `note.split()[2]`.
+- Other parsing of a notice in this change. Result: none. The plan test counts the prefix; it does not extract an id from a short string.

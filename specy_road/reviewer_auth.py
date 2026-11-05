@@ -45,11 +45,12 @@ def user_settings_path(env: Mapping[str, str]) -> Path:
     """``<config>/settings.json``: the user settings bare mode's ``apiKeyHelper`` is read from.
 
     ``CLAUDE_CONFIG_DIR`` in ``env`` selects the account, else ``HOME/.claude``, else the process home.
+    Both values are taken literally, as :func:`claude_config_dir` and the launched environment do.
     """
-    configured = (env.get("CLAUDE_CONFIG_DIR") or "").strip()
+    configured = env.get("CLAUDE_CONFIG_DIR")
     if configured:
         return Path(configured) / "settings.json"
-    home = (env.get("HOME") or "").strip()
+    home = env.get("HOME")
     if home:
         return Path(home) / ".claude" / "settings.json"
     return claude_config_dir() / "settings.json"

@@ -14,8 +14,10 @@ from specy_road.orchestrate_assign import Assignment
 from specy_road.orchestrate_plan import stamp_reviewer_auth_notices
 from specy_road.review_delegate import delegate
 from specy_road.review_files import reviews_dir
+from specy_road.claude_config import claude_config_dir
 from specy_road.reviewer_auth import (
-    auth_problem, claude_reviewer_auth_notices, claude_reviewer_mode, launch_note,
+    auth_problem, bare_settings_argv, claude_reviewer_auth_notices, claude_reviewer_mode, launch_note,
+    load_user_settings, reviewer_environment, user_settings_path,
 )
 from specy_road.worker_adapter_base import REVIEWER_DISALLOWED, REVIEWER_NO_WRITES, STDIN_INSTRUCTION
 from specy_road.worker_adapter_claude import ClaudeCode
@@ -57,6 +59,28 @@ def test_bare_is_never_chosen_without_a_key_or_helper(env: dict, settings: dict,
     if mode == "bare":
         assert env.get("ANTHROPIC_API_KEY", "").strip() or (isinstance(settings.get("apiKeyHelper"), str)
                                                             and settings["apiKeyHelper"].strip())
+
+
+def test_a_settings_dir_with_surrounding_whitespace_still_yields_its_helper(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """``CLAUDE_CONFIG_DIR`` and ``HOME`` are the path as given, so a helper there is seen."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    account = tmp_path / " account "
+    account.mkdir()
+    (account / "settings.json").write_text(json.dumps({"apiKeyHelper": HELPER}))
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(account))
+    env = reviewer_environment()
+    assert user_settings_path(env) == claude_config_dir() / "settings.json"
+    assert claude_reviewer_mode(env, load_user_settings(env)) == "bare"
+    assert bare_settings_argv(env) == ["--settings", str(account / "settings.json")]
+    home = tmp_path / " home "
+    (home / ".claude").mkdir(parents=True)
+    (home / ".claude" / "settings.json").write_text(json.dumps({"apiKeyHelper": HELPER}))
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR")
+    monkeypatch.setenv("HOME", str(home))
+    env = reviewer_environment()
+    assert user_settings_path(env) == claude_config_dir() / "settings.json"
+    assert claude_reviewer_mode(env, load_user_settings(env)) == "bare"
 
 
 def test_auth_problem_names_the_fixes_and_never_the_key() -> None:
