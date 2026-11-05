@@ -47,7 +47,7 @@ from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, gi
 from specy_road.nested_repos import report_unpushed
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.version_skew import warn_if_running_version_older
+from specy_road.version_skew import print_install_report, warn_if_running_version_older
 
 TOOLKIT_STASH = re.compile(r"^On [^:]+: specy-road: ")
 # commit-tree needs an identity, and a CI runner may have none configured.
@@ -350,6 +350,7 @@ def _context(ns: argparse.Namespace) -> _Ctx | None:
 
 
 def cmd_doctor(ns: argparse.Namespace) -> int:
+    print_install_report()
     warn_if_running_version_older(resolve_repo_root(ns))
     bad_config = report_checkout(resolve_repo_root(ns))   # gate mismatch, env_setup failure: exit 1 after the listing
     report_unpushed(resolve_repo_root(ns))   # advisory: nested-repo commits no remote has
