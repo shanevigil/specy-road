@@ -57,7 +57,7 @@
       "parent_id": "M14",
       "planning_dir": "planning/M14.2_doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch_1c9269b9-323f-428a-9400-86738a763124.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "doctor never offers to remove a live leaf's worktree or branch",
       "touch_zones": [
         "specy_road/bundled_scripts/doctor.py",
@@ -84,7 +84,8 @@
       "touch_zones": [
         "specy_road/worktree_prune.py",
         "specy_road/bundled_scripts/worktree_cli.py",
-        "tests/"
+        "tests/",
+        "specy_road/worktree_delete_set.py"
       ],
       "type": "task"
     },
