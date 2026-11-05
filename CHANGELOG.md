@@ -13,6 +13,12 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `specy-road doctor` no longer fails in a repo with no remote. When the
+  resolved remote (`--remote`, `SPECY_ROAD_REMOTE`, `roadmap/git-workflow.yaml`,
+  else `origin`) is not configured, it says so in one line, skips the fetch and
+  the branch, worktree and registry sections, and still reports the install,
+  checkout, stashes and orphaned claims; `--fix` removes only the stashes it
+  listed. A configured remote whose fetch fails still exits 1.
 - Claude transcript and memory lookups honour `CLAUDE_CONFIG_DIR`: the worker
   wrappers, usage-limit detection from a transcript, the `MEMORY.md` context
   line and `grind-session`'s session lookup all read `~/.claude/projects`, so
