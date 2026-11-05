@@ -7,7 +7,9 @@ for each pick, and names every leaf the roster cannot staff under the current
 policy, with each `policy.strong_review` item a leaf's touch zones meet and the
 reviewers that can satisfy it. Ready means what pickup and `grind-session --plan`
 mean, so leaves pickup skips are listed apart, not assigned. Exit 1 when any
-ready leaf is unstaffable, so a coordinator script stops before dispatching. Assigns
+ready leaf is unstaffable, so a coordinator script stops before dispatching. With no
+rostered coordinator the line reads `coordinator: this session`; `--spread` assigns
+executors round-robin among the capable entries by leaf order. Assigns
 only: dispatch is `specy-road prompt`. Ends with the human's active routing
 preferences from `roadmap/decisions.yaml`, which the plan does not apply itself.
 `--roster-from-worktree` plans with the working tree's roster as a dry run: a banner
@@ -55,7 +57,8 @@ def render(plan: OrchestrationPlan, needs_approach: str | None = None) -> list[s
         for a in batch:
             tag = "" if a.sensitivity == "public" and a.eligibility == "any" else f"  [{a.sensitivity}, {a.eligibility}]"
             lines.append(f"  {a.node_id}{tag}")
-            lines.append(f"    coordinator: {a.coordinator or '-'}   executor: {a.executor or '-'}   "
+            coord = a.coordinator or ("this session" if a.coordinator_is_session else "-")
+            lines.append(f"    coordinator: {coord}   executor: {a.executor or '-'}   "
                          f"reviewers: {', '.join(a.reviewers) or '-'}")
             lines += [f"    strong review {s['item']}: one approval from {', '.join(s['require_one_of'])}; "
                       f"can satisfy it: {', '.join(s['can_satisfy']) or 'none'}" for s in a.strong_review]
@@ -88,7 +91,7 @@ def preference_lines(plan: OrchestrationPlan) -> list[str]:
 def cmd_plan(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     today = date.fromisoformat(ns.today) if ns.today else None
-    plan, err = build_orchestration_plan(root, under=ns.parent, today=today,
+    plan, err = build_orchestration_plan(root, under=ns.parent, today=today, spread=ns.spread,
                                          roster_from_worktree=ns.roster_from_worktree)
     if err or plan is None:
         print(f"error: {err}", file=sys.stderr)
@@ -112,6 +115,9 @@ def build_parser() -> argparse.ArgumentParser:
     plan = osub.add_parser("plan", help="Assign coordinator, executor, and reviewers per ready leaf")
     plan.add_argument("parent", nargs="?", help="Limit to leaves under this node (default: whole roadmap)")
     plan.add_argument("--today", help="YYYY-MM-DD, for availability and substitution checks")
+    plan.add_argument("--spread", action="store_true",
+                      help="Assign executors round-robin among the capable, available entries by leaf order, "
+                           "instead of always the cheapest")
     plan.add_argument("--json", action="store_true")
     plan.add_argument("--roster-from-worktree", action="store_true",
                       help="Dry run: plan with the working tree's roadmap/orchestration.yaml (uncommitted); "

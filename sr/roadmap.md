@@ -212,6 +212,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M13.11` | upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs | task | Agentic-led | Not Started |
 | `M13.12` | Quieter, accurate validate notices: untracked touch zones, the managed .gitignore comment, and tracked files under new ignore rules | task | Agentic-led | Not Started |
 | `M13.13` | upgrade --prompt writes an agent upgrade prompt filled in from this repo | task | Agentic-led | Not Started |
+| `M13.14` | validate flags project agent text that mandates a changed behaviour (best-effort hint) | task | Agentic-led | Not Started |
 | `M14` | Nested repos and review-gate integrity | phase | — | Not Started |
 | `M14.1` | Approvals never carry across unreviewed changes in a sibling repository | task | Agentic-led | Not Started |
 | `M14.2` | doctor never offers to remove a live leaf's worktree or branch | task | Agentic-led | Complete |
@@ -222,7 +223,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M14.4.3` | worker reconcile and the post-run check see sibling repositories | task | Agentic-led | Not Started |
 | `M14.5` | An approve with no recorded probe is flagged, and policy can refuse to count it | task | Agentic-led | Not Started |
 | `M14.6` | Reviewer usage is visible: review usage, reviewers in the node total, RUN logs kept per round | task | Agentic-led | Complete |
-| `M14.7` | session end finds this agent's session by worktree and branch when the derived id has no record | task | Agentic-led | Not Started |
+| `M14.7` | session end finds this agent's session by worktree and branch when the derived id has no record | task | Agentic-led | Complete |
 | `M14.8` | The implementation-zone check runs before a review is spent, and knows about sibling repositories | task | Agentic-led | Not Started |
 | `M14.9` | review rca launches the root-cause analyst like review delegate, and says what to do when no analyst is available | task | Agentic-led | Not Started |
 | `M14.10` | Escalation recognises a converging loop and handoff status shows the findings trend | task | Agentic-led | Not Started |
@@ -238,7 +239,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.8` | A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it | task | Agentic-led | Complete |
 | `M15.9` | Harness launches survive large prompts and a harness binary off PATH, for every role | task | Agentic-led | Not Started |
 | `M15.10` | Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff | task | Agentic-led | Complete |
-| `M15.11` | A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors | task | Agentic-led | Not Started |
+| `M15.11` | A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors | task | Agentic-led | Complete |
 | `M15.12` | Shared documentation zones do not serialize grind-session batches | task | Agentic-led | Complete |
 | `M15.13` | Worker loop friction: sync waits for the events that matter, tool-use noise collapses, rework after a completed worker, a READY-only resume, a quieter pickup | task | Agentic-led | Not Started |
 | `M15.14` | Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored | task | Agentic-led | Not Started |
