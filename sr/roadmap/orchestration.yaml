@@ -48,9 +48,12 @@ roster:
     roles: [reviewer]
     harness: codex
     harness_model: gpt-6.1-sol
-    # No channels.cli: specy-road runs Codex's own read-only reviewer command (M8.3). The workspace-write
-    # wrapper (sr/tools/codex-review.sh) makes Codex's Linux sandbox create and remove .codex/.git/.aws/.agents
-    # mount points in the checkout, which M8.3's post-run write check counts as reviewer writes.
+    # M8.3 (Codex's native read-only reviewer + post-run write check) is deferred and not on WIP, so without
+    # channels.cli Codex runs workspace-write without the main checkout's sr/work/reviews and cannot file.
+    # Use the wrapper (adds --add-dir $REVIEWS) until M8.3 lands; then drop channels.cli again (its write
+    # check counts the wrapper's Linux bwrap mount points as reviewer writes).
+    channels:
+      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/codex-review.sh" gpt-6.1-sol {prompt}'
   - id: gpt-5.6-sol-medium
     family: openai
     roles: [reviewer]
