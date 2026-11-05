@@ -25,7 +25,7 @@ from specy_road.bundled_scripts import doctor, orchestrate_cli
 from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
 from specy_road.orchestration_config import validate_orchestration_dict
-from specy_road.worker_adapter_cursor import launch_permissions
+from specy_road.worker_adapter_cursor import force_warnings, launch_permissions
 from specy_road.worker_adapter_parsers import output_mode_note, placeholder_problem, resume_form_note
 
 DOC = Path(__file__).resolve().parents[1] / "docs" / "orchestration-workers.md"
@@ -117,6 +117,49 @@ policy: {reviewers_required: 1}
     with pytest.raises(SystemExit):
         doctor.main(["--repo-root", str(repo)])
     assert [ln for ln in capsys.readouterr().err.splitlines() if ln.startswith("! cursor --force:")] == said
+
+
+@pytest.mark.parametrize(("cli", "passed", "forces"), [
+    ("agent -p {prompt} --force; true", ["--force"], True),      # an operator ends the word
+    ("agent -p {prompt} --yolo&& true", ["--yolo"], True),
+    ("agent -p {prompt} --force|cat", ["--force"], True),
+    ("agent -p {prompt} --force>log", ["--force"], True),
+    ("(agent -p {prompt} --force)", ["--force"], True),
+    ("`agent -p {prompt} --force`", ["--force"], True),
+    ("$(agent -p {prompt} --force)", ["--force"], True),
+    ("agent -p {prompt} -f", ["-f"], True),                      # the short alias, alone and clustered
+    ("agent -pf {prompt}", ["-pf"], True),
+    ("agent -p {prompt} --for\\ce", ["--force"], True),           # read as the shell reads it
+    ("agent -p {prompt} --trust --sandbox=disabled --force; true", ["--trust", "--sandbox=disabled", "--force"], True),
+    ("agent -p {prompt} --sandbox disabled; true", ["--sandbox", "disabled"], False),
+    ("agent -p {prompt} --sandbox; true", ["--sandbox"], False),  # an operator is not the flag's value
+    ("agent -p {prompt} '--force;'", [], False),                 # a quoted operator is part of the word
+    ("agent -p {prompt} --force\\;", [], False),
+    ("agent -p {prompt} 'try --force; then stop'", [], False),
+    ("agent -Hf -p {prompt}", [], False),                        # the value of -H, not a switch
+    ("agent -p {prompt} --force=true", [], False),               # `agent` refuses this as an unknown option
+])
+def test_a_custom_cursor_command_is_read_as_the_shell_splits_it(tmp_path: Path, cli: str, passed: list[str],
+                                                                forces: bool) -> None:
+    launch = wa.adapter_for("cursor").launch(tmp_path / "prompt.md", tmp_path, None, cli)
+    assert launch_permissions(launch.argv) == passed
+    for channel in ("cli", "cli_resume"):
+        assert len(force_warnings([{"id": "custom", "harness": "cursor", "channels": {channel: cli}}])) == forces
+
+
+@pytest.mark.parametrize("cli", ["agent -p {prompt} -w; true", "agent -p {prompt} --worktree|cat",
+                                 "agent -p {prompt} --worktree=mine&& true", "agent -pw {prompt}",
+                                 "agent -p {prompt} -wmine"])
+def test_a_custom_cursor_command_never_asks_for_its_own_worktree(tmp_path: Path, cli: str) -> None:
+    with pytest.raises(wa.Unsupported, match="never pass -w"):
+        wa.adapter_for("cursor").launch(tmp_path / "prompt.md", tmp_path, None, cli)
+
+
+def test_an_unbalanced_custom_cursor_command_is_refused_not_read(tmp_path: Path) -> None:
+    cli = "agent -p {prompt} --force 'unbalanced"
+    with pytest.raises(wa.Unsupported):
+        wa.adapter_for("cursor").launch(tmp_path / "prompt.md", tmp_path, None, cli)
+    assert force_warnings([{"id": "custom", "harness": "cursor", "channels": {"cli": cli}}]) == []
 
 
 def _documented(lang: str, needle: str) -> str:

@@ -71,7 +71,7 @@ Branch `feature/rm-cursor-workers-no-force-by-default`, base `7f3cc488`, change 
 **A3 — warnings and visible opt-in.**
 - `force_warnings(roster)` (worker_adapter_cursor.py): one `! cursor --force: <id> (...)` line per `cursor`
   entry, assigned or not, with `cursor_force: true` or with a `channels.cli` / `cli_resume` containing
-  `--force` or `--yolo`; it names the entry, how it opts in, and the risk ("runs every command not explicitly
+  `--force`, `-f` or `--yolo`; it names the entry, how it opts in, and the risk ("runs every command not explicitly
   denied, without Cursor's sandbox") with a pointer to docs/orchestration-workers.md (Permissions).
 - `orchestrate plan` prints them after the reviewer-auth notices; `--json` carries `cursor_force_warnings`
   (`OrchestrationPlan.cursor_force_warnings`). `doctor` prints them on stderr from the roster launches read
@@ -116,13 +116,48 @@ the opt-in argv is pinned in tests/test_worker_resume_permissions.py rather than
   `check_test_private_imports.py`, `check_machine_paths.py`, dogfood validate and export --check, and
   `specy-road validate` on sr/: all exit 0.
 
+## Fix round 1 (review of ba701596, `gpt-6.1-sol-low`)
+
+**Finding's class.** Each custom-command check read the command with plain `shlex.split`, which is not how the
+shell splits it: an unquoted operator stays in the word, so `--force; true` gave the word `--force;`. The result was
+a flag that reaches `agent` while the check sees a different word.
+
+**Fix.** One reader, `_shell_words` (`shlex.shlex` with the operators as punctuation), replaces the three
+`shlex.split` calls, and one table of patterns says which words count. The bounded rule, in its docstring and in
+docs/orchestration-workers.md (Permissions): words are split as the shell splits them, nothing is expanded, and every
+word of the line counts. **Accepted limits:** the rule errs toward a warning (`rm -f x; agent ...` and a `# --force`
+comment match, and the comment's flag would also be listed in `detail.permissions`); a flag inside `$FLAGS`, a wrapper
+script or a quoted `sh -c '...'` is not seen.
+
+**Beyond the finding.** The audit found a second spelling gap in the same checks: `agent` also takes `-f` and
+clustered short switches (`-pf`, `-pw`), so these are now recognised, and the warning text says `--force/-f/--yolo`.
+The `-w` refusal is stricter as a result: `-w; true`, `--worktree|cat` and `-pw` were accepted and are now refused.
+
+## Probes
+
+- `Cursor.launch` + `force_warnings` + `launch_permissions` on `agent -p {prompt} --force; true`: warning fired, `["--force"]` recorded (was none, `[]`).
+- Same for `--yolo&& true`, `--force|cat`, `--force>log`, `(agent ... --force)`, backticks, `$(agent ... --force)`: all warn and record the flag.
+- `force_warnings` on `channels.cli` and on `channels.cli_resume`, every case above: same result on both.
+- `_no_worktree_flag` (same class, not named by the review): `-w; true`, `--worktree|cat`, `--worktree=mine&& true`, `-pw`, `-wmine` all refused; `-w; true` was accepted before.
+- `--sandbox; true`: records `--sandbox` alone, so the new operator items are not taken as its value; `--sandbox disabled; true` records both words.
+- Quoted or escaped operators: `'--force;'`, `--force\;`, `'try --force; then stop'`: no flag and no warning; `sh -c` with `printf` confirmed `--force\;` reaches the command as the literal `--force;`.
+- Real `sh -c` splitting of `--force; true`, `--force&&true`, `--force|cat`, `--for\ce`: the command receives `--force` in each, as the reader says.
+- `agent --help` (2026.11.05-86047df): `-f` is `--force`; `-H`, `-e` take values, `-w` an optional one. So `-Hf` is not a force flag (tested).
+- Real `agent` argument parsing: `-pz` and `-fz` fail on `-z` alone, and `-pw` gets past parsing, so clusters are real; `--force=true` is an unknown option, so it stays unmatched (tested).
+- Unbalanced quotes: `Cursor.launch` refuses the command, and `force_warnings` gives none; the command cannot run.
+- Default (non-`sh -c`) argv: `test_cursor_default_command_is_sandboxed_unless_the_roster_opts_into_force` still gives exactly the two flag sets.
+- Other `shlex.split` users: `worker_adapter_base.reviewer_cli` (agy reviewers, its `--dangerously-skip-permissions` refusal has the same shape) predates this leaf and is not Cursor; **not changed**, a candidate for intake. `tool_call_guard`, `orchestration_role_guard`, `review_pre_existing`, `worker_models`, `grind_session_implement` are outside this leaf's change and zones; not audited further.
+- New tests against the ba701596 adapter: 16 of 42 in the file fail there; all 42 pass on this one.
+
 ## Added
 
 - `SANDBOX_FLAGS`, `FORCE_FLAGS`, `permission_flags(force)` (worker_adapter_cursor.py): the one place the default and the opt-in flags are stated (A1).
 - `force` keyword on `Cursor.launch` / `Cursor.resume`: carries the roster's `cursor_force` into the default command (A1).
-- `FORCE_WORDS`, `_forces(cli)`: detects `--force`/`--yolo` in a custom cursor command for the warning (A3, plan review).
+- `_FORCE`, `_forces(cli)`: detects `--force`/`-f`/`--yolo` in a custom cursor command for the warning (A3, plan review).
 - `force_warnings(roster)`: the one warning text plan and doctor print (A3).
 - `_words(argv)`, `launch_permissions(argv)`: the flags a Cursor launch passed, for the `launched` event (A1, A3).
+- `_shell_words(command)`, `_SHELL_OPERATORS`, `_SWITCHES`, `_PERMISSION`, `_WORKTREE` (fix round 1): the one reading of a custom command, used by the permission record, the warning and the `-w` refusal; replaces three separate `shlex.split` calls (A1, A3).
+- Tests `test_a_custom_cursor_command_is_read_as_the_shell_splits_it`, `test_a_custom_cursor_command_never_asks_for_its_own_worktree`, `test_an_unbalanced_custom_cursor_command_is_refused_not_read` (test_worker_resume_permissions.py, fix round 1): the rule's clauses through `Cursor.launch` and `force_warnings` (A1, A3).
 - `launch_options(entry, harness)` (worker_ops_launch.py): maps `cursor_force` to the adapter keyword for cursor only, used by launch and resume (A1).
 - Branch in worker_runner.run: `detail.permissions` on a cursor worker's `launched` event (A1, A3).
 - `OrchestrationPlan.cursor_force_warnings` field and its `to_dict` key, and the render line in orchestrate_cli (A3).

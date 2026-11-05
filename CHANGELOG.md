@@ -94,7 +94,8 @@ body. Keep section bodies focused; link to PRs for detail.
   default `false`, `cursor` entries only), which passes `--trust --force` on
   launch and resume. `orchestrate plan` and `doctor` warn once per entry that
   sets it, and per `cursor` entry whose `channels.cli` or `cli_resume` passes
-  `--force` or `--yolo`; a custom command keeps its own flags. A Cursor
+  `--force`, `-f` or `--yolo`, read as the shell splits the command (so
+  `--force; true` counts); a custom command keeps its own flags. A Cursor
   worker's `launched` event records the permission flags passed
   (`detail.permissions`). Where Cursor's sandbox cannot start (Ubuntu 24.04's
   AppArmor user-namespace restriction), the worker exits 1 at launch: fix the

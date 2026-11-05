@@ -10,6 +10,7 @@ or ``result``), token counts are summed in :func:`sum_cursor_turn_usage`.
 
 from __future__ import annotations
 
+import re
 import shlex
 import subprocess
 from pathlib import Path
@@ -73,8 +74,17 @@ def _prompt_args(prompt_path: Path) -> list[str]:
 SANDBOX_FLAGS = ("--trust", "--sandbox", "enabled")
 #: A roster entry's ``cursor_force: true``: ``--force`` force-allows every command that is not explicitly denied.
 FORCE_FLAGS = ("--trust", "--force")
-#: Words in a custom command that force-allow commands as ``--force`` does (``--yolo`` is its alias).
-FORCE_WORDS = ("--force", "--yolo")
+#: The characters that end a shell word unquoted: ``--force; true`` passes ``--force`` to ``agent``.
+_SHELL_OPERATORS = "();<>|&`"
+#: ``agent``'s short switches that take no value: one word may cluster them (``-pf`` is ``-p -f``), and anything after
+#: ``-H``, ``-e`` or ``-w`` in a word is that option's value, so ``-Hf`` passes no ``-f``.
+_SWITCHES = "-[vpfh]*"
+#: A word in a custom command that force-allows commands as ``--force`` does (``-f`` and ``--yolo`` are its aliases).
+_FORCE = re.compile(rf"--force|--yolo|{_SWITCHES}f.*")
+#: A word that is a whole permission flag, value included.
+_PERMISSION = re.compile(rf"--trust|--sandbox=.*|{_FORCE.pattern}")
+#: A word that asks ``agent`` for its own worktree.
+_WORKTREE = re.compile(rf"--worktree(=.*)?|{_SWITCHES}w.*")
 
 
 def permission_flags(force: bool) -> list[str]:
@@ -83,47 +93,53 @@ def permission_flags(force: bool) -> list[str]:
     return list(FORCE_FLAGS if force else SANDBOX_FLAGS)
 
 
+def _shell_words(command: str) -> list[str]:
+    """``command``'s words and operators, the one reading of a custom command here: quotes and backslashes as the shell
+    takes them, an unquoted :data:`_SHELL_OPERATORS` character ending a word and standing as its own item.
+
+    Every word of the line counts, in any of its commands, so this errs toward finding a flag: ``rm -f x; agent`` and a
+    ``# --force`` comment match. It reads text and expands nothing: a flag in ``$FLAGS``, in a wrapper script or inside
+    a quoted ``sh -c '...'`` is not seen. Unbalanced quotes give no words; the custom-command check refuses those."""
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=_SHELL_OPERATORS)
+    lexer.whitespace_split, lexer.commenters = True, ""
+    try:
+        return list(lexer)
+    except ValueError:
+        return []
+
+
 def _words(argv: list[str]) -> list[str]:
-    """``argv``'s words, with a custom launch's ``sh -c <command>`` split as the shell would read it."""
-    if len(argv) == 3 and argv[:2] == ["sh", "-c"]:
-        try:
-            return shlex.split(argv[2])
-        except ValueError:
-            return []
-    return argv
+    """``argv``'s words, with a custom launch's ``sh -c <command>`` read by :func:`_shell_words`."""
+    return _shell_words(argv[2]) if len(argv) == 3 and argv[:2] == ["sh", "-c"] else argv
 
 
 def launch_permissions(argv: list[str]) -> list[str]:
-    """The permission flags a Cursor launch actually passes, in argv order, for its ``launched`` event."""
+    """The permission flags a Cursor launch passes, in argv order and as written, for its ``launched`` event; a custom
+    command is read by the bounded rule of :func:`_shell_words`."""
     words, out = _words(argv), []
     for i, w in enumerate(words):
-        if w in ("--trust", *FORCE_WORDS):
+        if _PERMISSION.fullmatch(w):
             out.append(w)
         elif w == "--sandbox":
-            out += words[i:i + 2]
-        elif w.startswith("--sandbox="):
-            out.append(w)
+            out += [w, *(v for v in words[i + 1:i + 2] if v.strip(_SHELL_OPERATORS))]
     return out
 
 
 def _forces(cli: Any) -> bool:
-    try:
-        words = shlex.split(cli) if isinstance(cli, str) else []
-    except ValueError:
-        return False
-    return any(w in FORCE_WORDS for w in words)
+    return isinstance(cli, str) and any(_FORCE.fullmatch(w) for w in _shell_words(cli))
 
 
 def force_warnings(roster: list[dict[str, Any]]) -> list[str]:
     """One warning per ``cursor`` roster entry, assigned or not, that force-allows commands: ``cursor_force: true``
-    on the default command, or a ``channels.cli`` / ``cli_resume`` passing ``--force`` or ``--yolo``."""
+    on the default command, or a ``channels.cli`` / ``cli_resume`` passing ``--force``, ``-f`` or ``--yolo`` (by the
+    bounded rule of :func:`_shell_words`)."""
     out: list[str] = []
     for entry in roster:
         if entry.get("harness") != "cursor":
             continue
         channels = entry.get("channels") if isinstance(entry.get("channels"), dict) else {}
         how = ["cursor_force: true"] if entry.get("cursor_force") is True else []
-        how += [f"channels.{k} passes --force/--yolo" for k in ("cli", "cli_resume") if _forces(channels.get(k))]
+        how += [f"channels.{k} passes --force/-f/--yolo" for k in ("cli", "cli_resume") if _forces(channels.get(k))]
         if how:
             out.append(f"! cursor --force: {entry.get('id')} ({'; '.join(how)}) runs every command not explicitly "
                        "denied, without Cursor's sandbox; see docs/orchestration-workers.md (Permissions)")
@@ -131,13 +147,10 @@ def force_warnings(roster: list[dict[str, Any]]) -> list[str]:
 
 
 def _no_worktree_flag(cli: str | None) -> None:
-    """A custom command must not pass ``-w``/``--worktree``: ``agent`` would make its own worktree under
-    ``~/.cursor/worktrees`` and work there, not in the one specy-road created (harness-facts)."""
-    try:
-        words = shlex.split(cli) if cli else []
-    except ValueError:
-        return   # an unbalanced quote: the custom-command check refuses it with its own reason
-    if any(w in ("-w", "--worktree") or w.startswith("--worktree=") for w in words):
+    """A custom command must not pass ``-w``/``--worktree`` (by the bounded rule of :func:`_shell_words`): ``agent``
+    would make its own worktree under ``~/.cursor/worktrees`` and work there, not in the one specy-road created
+    (harness-facts)."""
+    if any(_WORKTREE.fullmatch(w) for w in _shell_words(cli or "")):
         raise Unsupported(f"channels.cli: cursor workers never pass -w/--worktree; specy-road creates the worktree: {cli}")
 
 
