@@ -115,6 +115,19 @@ def test_models_list_names_the_ref_and_the_uncommitted_diff(tmp_path: Path, caps
     assert "extra" not in {r["id"] for r in data["roster"]}   # the list itself is still the pinned roster
 
 
+def test_models_list_diff_is_not_masked_by_the_local_availability_overlay(tmp_path: Path, capsys) -> None:
+    repo = plan_repo(tmp_path)
+    _roster(repo, OPUS_OFF)                                    # uncommitted: opus available: false
+    _local(repo, "roster:\n  - {id: opus, available: true}\n")   # this clone's overlay says true
+    capsys.readouterr()
+    assert run_main(models_cli, "models", "list", "--repo-root", str(repo)) == 0
+    out = capsys.readouterr().out
+    assert "uncommitted roster changes (working tree vs dev" in out and "  changed: opus (available)\n" in out
+    assert run_main(models_cli, "models", "list", "--json", "--repo-root", str(repo)) == 0
+    data = json.loads(capsys.readouterr().out)
+    assert data["uncommitted_roster_changes"] == {"added": [], "removed": [], "changed": {"opus": ["available"]}}
+
+
 # A3 ------------------------------------------------------------------------------------------------
 
 MINI = "  - {id: mini, family: mistral, roles: [executor], class: cheap}\n"

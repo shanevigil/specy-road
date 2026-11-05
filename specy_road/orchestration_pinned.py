@@ -33,6 +33,7 @@ from specy_road.orchestration_config import (
     DEFAULT_CONFIG,
     ORCHESTRATION_REL,
     effective_config,
+    load_orchestration_config,
     orchestration_yaml_path,
 )
 from specy_road.review_policy_ref import integration_name, policy_source
@@ -66,21 +67,33 @@ def pinned_config(repo_root: Path, *, worktree: bool = False) -> tuple[dict[str,
 
 def roster_diff(repo_root: Path) -> tuple[dict[str, Any] | None, str | None]:
     """The working tree's roster against the pinned one, by entry id: ``{added, removed, changed}`` with
-    ``changed`` mapping an id to its differing fields; ``None`` when they agree (or outside git)."""
+    ``changed`` mapping an id to its differing fields; ``None`` when they agree (or outside git).
+
+    The two files are compared as written, before this clone's availability overlay, which would
+    otherwise apply the same values to both and hide an edited field."""
     ref, err = policy_source(repo_root)
     if err or ref is None:
         return None, err
-    pinned, err = effective_config(repo_root, ref)
-    mine, mine_err = effective_config(repo_root) if not err else ({}, None)
+    pinned, err = _file_roster(repo_root, ref)
+    mine, mine_err = _file_roster(repo_root) if not err else ([], None)
     if err or mine_err:
         return None, err or f"working tree: {mine_err}"
-    old = {str(e.get("id")): e for e in pinned.get("roster") or []}
-    new = {str(e.get("id")): e for e in mine.get("roster") or []}
+    old = {str(e.get("id")): e for e in pinned}
+    new = {str(e.get("id")): e for e in mine}
     changed = {i: sorted(k for k in {*old[i], *new[i]} if old[i].get(k) != new[i].get(k))
                for i in old.keys() & new.keys() if old[i] != new[i]}
     diff = {"added": sorted(new.keys() - old.keys()), "removed": sorted(old.keys() - new.keys()),
             "changed": dict(sorted(changed.items()))}
     return (diff if any(diff.values()) else None), None
+
+
+def _file_roster(repo_root: Path, ref: str | None = None) -> tuple[list[dict[str, Any]], str | None]:
+    """The validated file's roster at ``ref`` (working tree when ``None``), with no overlay applied;
+    an absent file is the default roster, as :func:`effective_config` has it."""
+    data, err = load_orchestration_config(repo_root, ref)
+    if err:
+        return [], err
+    return (DEFAULT_CONFIG if data is None else data).get("roster") or [], None
 
 
 class RosterReport(NamedTuple):
