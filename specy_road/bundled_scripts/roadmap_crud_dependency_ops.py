@@ -20,6 +20,7 @@ import yaml
 from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path
 from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs, repo_root, unknown_node_msg
 from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir
+from specy_road.bundled_scripts.effective_dependency_checks import newly_waiting_suffix
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
 
@@ -133,6 +134,7 @@ def cmd_add_dependency(args: object) -> None:
         print(f"[ok] {nid} already lists dependency {dep_key!r}")
         return
     cur.append(dep_key)
+    waits = newly_waiting_suffix(load_roadmap(root)["nodes"], nid, dep_key)
     try:
         edit_node_set_pairs(
             root, nid, [("dependencies", _dependencies_patch_value(cur))]
@@ -142,7 +144,7 @@ def cmd_add_dependency(args: object) -> None:
         raise SystemExit(1) from None
     chunk = find_chunk_path(root, nid)
     assert chunk is not None
-    print(f"[ok] added {dep_key!r} to {nid} in {chunk.relative_to(root)}")
+    print(f"[ok] added {dep_key!r} to {nid} in {chunk.relative_to(root)}{waits}")
 
 
 def _refuse_unlisted_dependency(root: Path, nid: str, ref: str, cur: list[str]) -> None:
