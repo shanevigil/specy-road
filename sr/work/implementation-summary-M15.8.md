@@ -55,22 +55,31 @@ still exact.
   `test_approach_is_left_alone_without_critics_or_verdict` was renamed to
   `…_is_only_the_placeholder_…` and asserts exact equality with it.
 
-## Known gap outside the zones
+## Fix round (grok-4.7-low)
 
-`brief_dependency_context.is_placeholder_intent` (outside the zones) checks a
-dependency's `## Intent` for `PROMOTE_PLACEHOLDER`. A new promoted sheet's
-Intent is the seeded rationale, so it is inlined, which is fine. A dependency
-sheet promoted before M15.8 still carries the legacy line, and it would now be
-inlined into briefs where it used to be swapped out. The fix is a one-line
-check for `LEGACY_PROMOTE_PLACEHOLDER` in that file. Also,
-`suggested_prompts/` was not checked for wording about promote's placeholder,
-because it is outside the zones.
+**Class:** Intent placeholder detection in briefs drifted from pickup after M15.8 moved
+promote's line to `## Approach`; `is_placeholder_intent` still matched
+`PROMOTE_PLACEHOLDER` in Intent but not `LEGACY_PROMOTE_PLACEHOLDER`.
+
+**Design:** `is_placeholder_intent` now delegates to
+`planning_sheet_bootstrap.sheet_placeholder` on the collapsed Intent body alone.
+`sheet_placeholder` also treats `_PROMOTE_MARK` under `## Intent` as promote's
+placeholder (misplaced new line), so brief, pickup, and `without_placeholder_intent`
+share one detector.
+
+**Fix round: probes**
+
+- `sheet_placeholder({"Intent": legacy})` → `(brainstorm promote's, Intent)`; pickup `placeholder_sheet` unchanged for legacy Intent.
+- `is_placeholder_intent` with legacy prose → True; `render_dependency_context` / full brief for dep M3 with `LEGACY_PROMOTED` → one-line unwritten notice, not inlined legacy sentence.
+- `without_placeholder_intent` on a sheet whose Intent contains only `LEGACY_PROMOTE_PLACEHOLDER` → swaps to `unwritten_sheet_line`.
+- Misplaced `_PROMOTE_MARK` in Intent only (existing `PROMOTED` fixture in `test_placeholder_intents_become_one_line_each`) → still one-line; `_render_one_dep` path uses same `is_placeholder_intent`.
+- Authored Intent without placeholder markers → `is_placeholder_intent` False; `test_written_intents_are_inlined_as_before` still passes.
+- `sheet_placeholder` on scaffold Intent template → still `(scaffold-planning's, Intent)`; ancestor scaffold brief swap unchanged.
 
 ## Verification
 
-- `python -m pytest -q -n 4` (the full suite): 4124 passed.
-- `specy-road file-limits`: OK.
-- `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: exit 0.
+- Targeted pytest (reviewer list + legacy brief tests): 123 passed.
+- `specy-road file-limits`: OK (via READY).
 
 ## Added
 
@@ -97,3 +106,8 @@ because it is outside the zones.
   - `test_author_approach_o_writes_only_the_prompt_file`: A2 `-o`.
   - `test_both_plans_print_one_needs_approach_line`: A3 line in both plans.
   - `test_no_needs_approach_line_for_an_intent_only_placeholder`: the line lists only Approach skips.
+- `tests/test_brief_placeholder_intent.py`:
+  - `test_legacy_promote_intent_in_dependency_brief_is_one_line`: fix round — legacy Intent in a dependency brief.
+  - legacy case in `test_without_placeholder_intent_swaps_only_the_intent_body`: fix round — `without_placeholder_intent` on pre-M15.8 Intent.
+- `brief_dependency_context.is_placeholder_intent` delegates to `sheet_placeholder` (fix round; file outside original zones, required by review).
+- `planning_sheet_bootstrap.sheet_placeholder`: `_PROMOTE_MARK` under `## Intent` counts as promote placeholder (fix round).

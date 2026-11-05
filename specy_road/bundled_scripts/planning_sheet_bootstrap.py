@@ -251,7 +251,8 @@ def approach_is_placeholder(bodies: dict[str, str]) -> bool:
 
 def sheet_placeholder(bodies: dict[str, str]) -> tuple[str, str] | None:
     """``(writer, section)`` of the first toolkit placeholder in a sheet's bodies, or ``None``."""
-    if LEGACY_PROMOTE_PLACEHOLDER in bodies.get("Intent", ""):
+    intent = bodies.get("Intent", "")
+    if LEGACY_PROMOTE_PLACEHOLDER in intent or _PROMOTE_MARK in intent:
         return "brainstorm promote's", "Intent"
     if _PROMOTE_MARK in bodies.get("Approach", ""):
         return "brainstorm promote's", "Approach"
