@@ -114,7 +114,10 @@ def exclude_links(leaf_top: Path, targets: list[Path]) -> None:
     new = [ln for ln in dict.fromkeys(lines) if ln not in have]
     if new:
         exclude.parent.mkdir(parents=True, exist_ok=True)
+        existing = exclude.read_text(encoding="utf-8") if exclude.is_file() else ""
         with exclude.open("a", encoding="utf-8") as fh:
+            if existing and not existing.endswith("\n"):
+                fh.write("\n")
             for ln in new:
                 fh.write(f"{ln}\n")
 

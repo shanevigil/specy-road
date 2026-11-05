@@ -20,7 +20,7 @@ from specy_road.review_files import load_ready, reviews_dir
 from specy_road.runtime_paths import REPO_ROOT_ENV, project_root
 from specy_road.worker_state import active_for_node
 from specy_road.git_workflow_config import load_git_workflow_config
-from specy_road.worktree_env import EnvSetupError, link_into, linked_status_paths, setup_worktree_env
+from specy_road.worktree_env import EnvSetupError, info_exclude_lines, link_into, linked_status_paths, setup_worktree_env
 
 # --- A1: the enclosing worktree wins ------------------------------------------------------------
 
@@ -319,3 +319,13 @@ def test_a_second_setup_does_not_corrupt_exclude_lines_with_vertical_tab(tmp_pat
     git(main, "worktree", "add", "-q", "-b", "lane2", str(lane2))
     assert setup_worktree_env(main, lane2) == ["linked second"]
     assert git(lane, "status", "--porcelain", "--untracked-files=all") == ""
+
+
+def test_exclude_append_starts_a_new_line_when_the_file_has_no_trailing_lf(tmp_path: Path) -> None:
+    root, lane = _linked_project(tmp_path)
+    exclude = Path(git(lane, "rev-parse", "--path-format=absolute", "--git-path", "info/exclude"))
+    existing = exclude.read_text(encoding="utf-8")
+    exclude.write_text(existing.removesuffix("\n"), encoding="utf-8")
+    assert setup_worktree_env(root, lane) == ["linked node_modules", "linked .venv"]
+    assert git(lane, "status", "--porcelain", "--untracked-files=all") == ""
+    assert info_exclude_lines(exclude.read_text(encoding="utf-8"))[-2:] == ["/node_modules", "/.venv"]

@@ -171,6 +171,7 @@ R1 class: a filesystem path read from git output as text, then split on newlines
 - `runtime_paths.git_root` / `project_prefix` (`git_text`, strip only): embedded newline in path survives; pre-leaf; unchanged.
 - `exclude_links` reading `info/exclude` with `splitlines`: file content is patterns, not git path output; link names with newlines refused at setup; fixed in fix round 3 for vertical tab (see below).
 - Public `project_root()` from linked worktree `lane` with `SPECY_ROAD_REPO_ROOT` naming `main\ncheckout`: returns `lane`, silent (test `test_a_checkout_path_with_a_newline_resolves_the_enclosing_worktree`).
+- `exclude_links` append when `info/exclude` lacks trailing LF: new pattern is its own record; status clean (fix round 4, test `test_exclude_append_starts_a_new_line_when_the_file_has_no_trailing_lf`).
 
 ## Fix round 3: `info/exclude` line records
 
@@ -186,6 +187,19 @@ Design: `info_exclude_lines` splits on LF only; `exclude_links` appends new patt
 - Git path reads (`git_path`, two queries): newline in checkout dirname; fix round 2; unchanged this round.
 - Link names with `\n`/`\r`: still refused at `link_target`; no exclude line can hold them; unchanged.
 - Tests asserting exclude content via `splitlines()` (`test_link_in_a_nested_project_excludes_git_root_relative_lines`): patterns are normal path segments without vertical tab; still valid.
+
+## Fix round 4: append without a record terminator
+
+Class: appending LF-delimited records to a byte stream that has content but no trailing LF (git's default `info/exclude` template can omit it).
+
+Design: before writing new patterns, emit one LF when the existing file body is non-empty and does not end with LF; append-only rewrite policy from fix round 3 unchanged.
+
+## Fix round: probes (continued)
+
+- `info/exclude` with final LF removed, then `setup_worktree_env` with `link: [node_modules]`: grok R1 reproduced glued `# *~/node_modules`; fixed with leading LF on append (test `test_exclude_append_starts_a_new_line_when_the_file_has_no_trailing_lf`).
+- `info/exclude` already ending with LF: append writes only new pattern lines; default git template path in `_linked_project`; unchanged.
+- Vertical-tab pattern after second-lane setup: fix round 3; still clean with this append guard.
+- No other code appends to `info/exclude` in this leaf; only `exclude_links`.
 
 ## Verification
 
@@ -242,3 +256,4 @@ Design: `info_exclude_lines` splits on LF only; `exclude_links` appends new patt
   - `test_link_in_a_nested_project_excludes_git_root_relative_lines`: fix round 1, nested prefix.
   - `test_a_checkout_path_with_a_newline_resolves_the_enclosing_worktree`: fix round 2, newline in a checkout path.
   - `test_a_second_setup_does_not_corrupt_exclude_lines_with_vertical_tab`: fix round 3, shared exclude append (sol-low R1).
+  - `test_exclude_append_starts_a_new_line_when_the_file_has_no_trailing_lf`: fix round 4, missing record terminator (grok R1).
