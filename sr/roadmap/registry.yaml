@@ -42,6 +42,7 @@ entries:
       - specy_road/templates/project/
       - tests/
       - specy_road/bundled_scripts/chore_garden.py
+      - specy_road/agent_ignores.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -91,6 +92,7 @@ entries:
       - specy_road/agent_ignores.py
       - specy_road/bundled_scripts/session_cli.py
       - tests/
+      - specy_road/bundled_scripts/refresh_stubs_report.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -104,6 +106,7 @@ entries:
       - suggested_prompts/bootstrap-agents-md.md
       - docs/install-and-usage.md
       - tests/
+      - specy_road/agents_md_report.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
