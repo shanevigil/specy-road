@@ -6,7 +6,8 @@ record at that commit (the latest per model) marks ``A<n>: fail``. A leaf is
 escalated when the last ``escalate_same_acceptance_blocks`` rounds all block on
 one acceptance id; when one reviewer family (from the roster) blocked that many
 of the rounds it reviewed in a row, whatever ids or models it named; or after
-``escalate_review_rounds`` rounds. A coordinator may also force an analysis with
+``escalate_review_rounds`` rounds. The last two rules wait while the loop converges
+(:mod:`specy_road.review_trend`) unless ``policy.escalate_when_converging``. A coordinator may also force an analysis with
 a reason (:func:`forced_escalation`). An ``RCA-*.md`` record resolves every
 round up to its ``trigger.round``, so counting restarts after each analysis.
 Thresholds come from the gate's policy (the integration branch). Design:
@@ -39,6 +40,7 @@ from specy_road.review_files import (
 )
 from specy_road.review_policy_ref import policy_source
 from specy_road.review_target import ReviewTarget, full_sha
+from specy_road.review_trend import converging, trend_status
 
 CLASSES = ("specification", "implementation", "test", "reviewer", "environment", "hard_problem")
 ACTIONS = ("amend_criterion", "split_leaf", "continue_with_class_fix", "restart_executor_fresh",
@@ -97,6 +99,11 @@ class LoopState:
     escalation: Escalation | None
     resolved: int = 0   # rounds an RCA record already covers
     marker_problems: list[str] = field(default_factory=list)   # malformed DEFERRAL-*.yaml (review_deferral)
+    converging: bool = False            # review_trend.converging over the rounds since the last RCA
+    deferred_converging: bool = False   # a same_family/review_rounds escalation waits because of it
+
+    def findings_trend(self) -> dict[str, Any]:
+        return trend_status(self.rounds, self.converging, self.deferred_converging)
 
     def problems(self) -> list[str]:
         return [f"{r.path.name}: invalid — {'; '.join(r.errors)}" for r in self.rcas if not r.ok] + self.marker_problems
@@ -187,6 +194,8 @@ def escalation(rounds: list[Round], policy: dict[str, Any], resolved: int = 0,
         ids = set.intersection(*(r.failed for r in window[-same:]))
         if ids:
             return Escalation("same_acceptance", len(rounds), sorted(ids, key=_id_key), same)
+    if not policy.get("escalate_when_converging", False) and converging(window, same):
+        return None   # same_family and review_rounds wait while the loop converges
     fam = _family_streak(window, family or (lambda m: m), same)
     if fam is not None:
         return Escalation("same_family", len(rounds), [], same, family=fam)
@@ -213,8 +222,11 @@ def loop_state(repo_root: Path, node_id: str) -> LoopState:
         r.errors.extend(_rca_semantic_errors(repo_root, node_id, r.data, rounds, policy, config, resolved))
         if r.ok:
             resolved = max(resolved, int(r.data["trigger"]["round"]))
-    return LoopState(rounds, rcas, escalation(rounds, policy, resolved, _family(config)), resolved,
-                     load_markers(repo_root, node_id)[1])
+    esc = escalation(rounds, policy, resolved, _family(config))
+    conv = converging(rounds[resolved:], int(policy["escalate_same_acceptance_blocks"]))
+    deferred = esc is None and conv and escalation(
+        rounds, {**policy, "escalate_when_converging": True}, resolved, _family(config)) is not None
+    return LoopState(rounds, rcas, esc, resolved, load_markers(repo_root, node_id)[1], conv, deferred)
 
 
 def escalated_note(loop: LoopState, node_id: str) -> list[str]:
