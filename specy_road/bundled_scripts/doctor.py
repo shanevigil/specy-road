@@ -23,6 +23,9 @@ Four kinds, each its own section:
 Merged is ancestry first. When ancestry fails, patch content decides: every
 commit has an equivalent upstream (``git cherry``: a rebase), or the branch's
 whole diff does (a squash). A rewritten landing is therefore still merged.
+A branch with no commit of its own is "no commits yet", never merged; a branch an
+open claim, open rollup or unfinished worker holds is "live", and ``--fix`` leaves
+it and its worktree (:mod:`specy_road.doctor_worktrees`).
 
 Nothing changes without ``--fix``, and ``--fix`` asks once per kind.
 """
@@ -36,13 +39,14 @@ import sys
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import Callable
 
 from specy_road.bundled_scripts.branches_cli import feature_branches, fetch_integration, live_branches
 from specy_road.bundled_scripts.do_next_task_self_heal import detect_stale_claims
 from specy_road.bundled_scripts.doctor_env_setup import report_checkout
-from specy_road.bundled_scripts.grind_session_cleanup import merged_into
 from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
+from specy_road.doctor_worktrees import (  # noqa: F401 — SAME_PATCH, TEMP_WORKTREES re-exported for callers
+    SAME_PATCH, TEMP_WORKTREES, Finding, has_own_commits, live_holders, merged_how, worktree_findings,
+)
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_text
 from specy_road.nested_repos import report_unpushed
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
@@ -50,21 +54,6 @@ from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.version_skew import print_install_report, warn_if_running_version_older
 
 TOOLKIT_STASH = re.compile(r"^On [^:]+: specy-road: ")
-# commit-tree needs an identity, and a CI runner may have none configured.
-_PROBE_IDENT = ["-c", "user.name=specy-road", "-c", "user.email=doctor@specy-road.invalid"]
-SAME_PATCH = "merged (same patch content)"
-#: ``mkdtemp`` prefixes of the detached worktrees land check, check-pre-existing, nested land and red/green make.
-TEMP_WORKTREES = ("specy-road-land-check-", "specy-road-pre-existing-", "specy-road-nested-land-",
-                  "specy-road-red-green-")
-
-
-@dataclass
-class Finding:
-    kind: str
-    name: str
-    reason: str
-    remove: Callable[[], str | None] | None   # the failure message, or None; None: --fix leaves it
-    done: str
 
 
 @dataclass
@@ -75,28 +64,7 @@ class _Ctx:
     base: str
     live: set[str]
     complete: dict[str, str]   # codename -> node id of a Complete leaf
-
-
-def _all_upstream(root: Path, target: str, ref: str) -> bool:
-    lines = (git_text(["cherry", target, ref], root) or "").splitlines()
-    return bool(lines) and all(line.startswith("-") for line in lines)
-
-
-def merged_how(root: Path, ref: str, target: str) -> str | None:
-    """``"merged"``, :data:`SAME_PATCH`, or ``None`` when ``target`` lacks ``ref``'s work."""
-    if merged_into(root, ref, target):
-        return "merged"
-    if _all_upstream(root, target, ref):
-        return SAME_PATCH
-    base = git_text(["merge-base", target, ref], root)
-    if base is None:   # an orphan branch shares no history with target
-        return None
-    # The whole branch as one commit on its merge base: what a squash lands.
-    squash = git_checked(
-        [*_PROBE_IDENT, "commit-tree", f"{ref}^{{tree}}", "-p", base, "-m", "doctor squash probe"],
-        root,
-    )
-    return SAME_PATCH if _all_upstream(root, target, squash) else None
+    held: dict[str, str]       # branch -> "live: …": never offered for removal (doctor_worktrees.live_holders)
 
 
 def _complete_leaves(nodes: list[dict]) -> dict[str, str]:
@@ -105,15 +73,18 @@ def _complete_leaves(nodes: list[dict]) -> dict[str, str]:
             and (n.get("status") or "").lower() == "complete"}
 
 
-def _branch_reason(ctx: _Ctx, ref: str, branch: str, node_id: str | None) -> tuple[str, bool]:
+def _branch_reason(ctx: _Ctx, ref: str, branch: str, node_id: str | None) -> tuple[str, bool | None]:
+    """The reason, and ``None`` when not merged, else whether the branch has a commit of its own."""
     row = "; registry row remains" if branch in ctx.live else ""
+    why = f"leaf {node_id} Complete" if node_id else "claim gone"
     how = merged_how(ctx.root, ref, ctx.target)
+    if how and not has_own_commits(ctx.root, ref, ctx.target):
+        return f"{why}, no commits yet{row}", False   # its tip is a commit target already had
     if how:
         leaf = f"; leaf {node_id} Complete" if row else ""
         return f"{how}{leaf}{row}", True
     ahead = git_checked(["rev-list", "--count", f"{ctx.target}..{ref}"], ctx.root)
-    why = f"leaf {node_id} Complete" if node_id else "claim gone"
-    return f"{why}, not merged: {ahead} commit(s) {ctx.target} lacks{row}", False
+    return f"{why}, not merged: {ahead} commit(s) {ctx.target} lacks{row}", None
 
 
 def _delete_local(root: Path, branch: str, sha: str | None) -> str | None:
@@ -129,22 +100,25 @@ def _delete_remote(root: Path, branch: str, sha: str | None, remote: str) -> str
     return f"left on {remote}. {out}" if code else None
 
 
-def _branch_findings(ctx: _Ctx) -> tuple[list[Finding], set[str]]:
+def _branch_findings(ctx: _Ctx) -> tuple[list[Finding], dict[str, bool]]:
     """Complete or unclaimed branches, and every local ``feature/rm-*`` that is merged.
 
-    The merged set feeds the worktree section, which lists a worktree on a merged
-    branch even when the branch itself stays: it is still claimed and its leaf is
-    not Complete.
+    The merged map (branch -> has a commit of its own) feeds the worktree section,
+    which judges a worktree on a merged branch even when the branch itself is not listed.
+    A live branch (:attr:`_Ctx.held`) or one with no commits yet is listed without a fix.
     """
     found: list[Finding] = []
-    merged_local: set[str] = set()
+    merged_local: dict[str, bool] = {}
     for prefix, where in (("refs/heads/", "local"), (f"refs/remotes/{ctx.remote}/", ctx.remote)):
         for b in feature_branches(ctx.root, prefix):
             node_id = ctx.complete.get(b.removeprefix("feature/rm-"))
-            reason, merged = _branch_reason(ctx, prefix + b, b, node_id)
-            if where == "local" and merged:
-                merged_local.add(b)
+            reason, own = _branch_reason(ctx, prefix + b, b, node_id)
+            if where == "local" and own is not None:
+                merged_local[b] = own
             if b in ctx.live and not node_id:
+                continue
+            if b in ctx.held or own is False:
+                found.append(Finding("branch", f"{where:<9} {b}", f"{ctx.held.get(b, reason)}, so --fix leaves it", None, ""))
                 continue
             sha = git_text(["rev-parse", prefix + b], ctx.root)
             if where == "local":
@@ -153,77 +127,6 @@ def _branch_findings(ctx: _Ctx) -> tuple[list[Finding], set[str]]:
                 remove, done = partial(_delete_remote, ctx.root, b, sha, ctx.remote), f"deleted {b} on {ctx.remote}"
             found.append(Finding("branch", f"{where:<9} {b}", reason, remove, done))
     return found, merged_local
-
-
-def _worktrees(root: Path) -> list[dict[str, str]]:
-    out = git_text(["worktree", "list", "--porcelain"], root) or ""
-    blocks = []
-    for chunk in out.split("\n\n"):
-        wt = dict(line.partition(" ")[::2] for line in chunk.splitlines())
-        if "worktree" in wt:
-            blocks.append(wt)
-    return blocks
-
-
-def _worktree_reason(ctx: _Ctx, wt: dict[str, str], merged_local: set[str]) -> str | None:
-    if "prunable" in wt:
-        return "directory missing"
-    branch = wt.get("branch", "").removeprefix("refs/heads/")
-    if not branch:
-        head = wt.get("HEAD", "")
-        how = merged_how(ctx.root, head, ctx.target) if head else None
-        if how == "merged":
-            return f"branch gone: detached at {head[:12]}, which {ctx.target} contains"
-        if how:
-            return f"branch gone: detached at {head[:12]}, {how}"
-        return f"detached at {head[:12]}"
-    if branch in merged_local:
-        return f"branch {branch} is merged"
-    return None
-
-
-def _ignored_note(path: Path) -> str:
-    """``git worktree remove`` deletes ignored files (``work/``…) without asking: say which."""
-    if not path.is_dir():
-        return ""
-    out = git_text(["status", "--porcelain", "--ignored"], path) or ""
-    ignored = [line[3:] for line in out.splitlines() if line.startswith("!! ")]
-    return f"; removing it deletes ignored {', '.join(ignored)}" if ignored else ""
-
-
-def _keep_detached(ctx: _Ctx, wt: dict[str, str]) -> str | None:
-    """Why ``--fix`` leaves a detached worktree: another command's, uncommitted changes, or a HEAD no ref holds."""
-    if Path(wt["worktree"]).parent.name.startswith(TEMP_WORKTREES):
-        return "a temporary worktree a running specy-road check may be using"
-    if git_text(["status", "--porcelain"], Path(wt["worktree"])):
-        return "uncommitted changes"
-    refs = ["for-each-ref", "--count=1", "--contains", wt.get("HEAD", ""), "refs/heads", "refs/remotes"]
-    if not git_text(refs, ctx.root):
-        return "commits no branch holds"
-    return None
-
-
-def _remove_worktree(root: Path, path: str) -> str | None:
-    code, out = git_code(["worktree", "remove", path], root)
-    return out if code else None
-
-
-def _worktree_findings(ctx: _Ctx, merged_local: set[str]) -> list[Finding]:
-    here = Path(git_checked(["rev-parse", "--show-toplevel"], ctx.root)).resolve()
-    found = []
-    for wt in _worktrees(ctx.root)[1:]:   # the first is the main worktree
-        path = wt["worktree"]
-        if "locked" in wt or Path(path).resolve() == here:
-            continue
-        reason = _worktree_reason(ctx, wt, merged_local)
-        if reason:
-            keep = None if "branch" in wt else _keep_detached(ctx, wt)
-            found.append(Finding(
-                "worktree", path,
-                reason + _ignored_note(Path(path)) + (f"; {keep}, so --fix leaves it" if keep else ""),
-                None if keep else partial(_remove_worktree, ctx.root, path), f"removed worktree {path}",
-            ))
-    return found
 
 
 def _prune_row(ctx: _Ctx, codename: str) -> str | None:
@@ -284,7 +187,7 @@ def _sections(ctx: _Ctx) -> list[tuple[str, str, list[Finding]]]:
     return [
         ("branch", f"feature/rm-* branches whose leaf is Complete or that nothing claims (against {ctx.target}):", branches),
         ("worktree", "Worktrees whose branch is gone or merged, and detached worktrees:",
-         _worktree_findings(ctx, merged_local)),
+         worktree_findings(ctx, merged_local)),
         ("registry", (f"Registry rows on {ctx.target} with no branch (advisory: another clone's "
                       "claim looks the same until it pushes its branch) or whose leaf is Complete:"),
          _registry_findings(ctx)),
@@ -346,7 +249,8 @@ def _context(ns: argparse.Namespace) -> _Ctx | None:
     if nodes is None or live is None:
         print(f"error: could not read the roadmap at {target}. Not listing anything.", file=sys.stderr)
         return None
-    return _Ctx(root, target, remote, base, live, _complete_leaves(nodes))
+    complete = _complete_leaves(nodes)
+    return _Ctx(root, target, remote, base, live, complete, live_holders(root, target, nodes, complete))
 
 
 def cmd_doctor(ns: argparse.Namespace) -> int:
