@@ -51,6 +51,9 @@ def test_a_linked_worktree_of_another_repository_refuses_and_survives(tmp_path: 
     sib = wt / "sibling"
     git(other, "worktree", "add", "-q", "-b", "topic", str(sib), "main")
     git(sib, "push", "-q", "-u", "origin", "topic")
+    private = [f"private-{i:02}" for i in range(1, 22)]   # with the next, more than 20 commits upstream lacks
+    for i, msg in enumerate(private):
+        commit_file(sib, "core.py", f"x = {i + 10}\n", msg)
     commit_file(sib, "core.py", "x = 2\n", "unpushed sibling work")
 
     plan = plan_prune(root, "M1")
@@ -66,6 +69,7 @@ def test_a_linked_worktree_of_another_repository_refuses_and_survives(tmp_path: 
         assert out.returncode == 1
         assert "sibling/ is a linked worktree of another repository" in out.stderr
         assert "unpushed sibling work" in out.stderr and "land or push those commits" in out.stderr
+        assert all(f" {msg}" in out.stderr for msg in private)   # every one, the oldest included
         assert sib.is_dir() and wt.is_dir()
     assert git(sib, "log", "-1", "--format=%s") == "unpushed sibling work"
 

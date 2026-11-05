@@ -56,9 +56,6 @@ def is_repo_top(d: Path) -> bool:
     return d.is_dir() and git_path(["rev-parse", "--show-toplevel"], d) == d.resolve()
 
 
-_SHOWN = 20   # commits listed per foreign repository; a checkout with no remote could list its whole history
-
-
 # The entries git keeps in a worktree's administrative directory (<common dir>/worktrees/<name>): only
 # these may make that directory itself look like a repository. Anything below it is scanned like the rest.
 _ADMIN_OWN = frozenset({"HEAD", "ORIG_HEAD", "FETCH_HEAD", "MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD",
@@ -150,14 +147,13 @@ def foreign_refusal(wt: Path, d: Path) -> str:
     branch = git_out(["rev-parse", "--abbrev-ref", "HEAD"], d) or "unknown"
     upstream = git_out(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], d)
     span = ["@{u}..HEAD"] if upstream else ["HEAD", "--not", "--remotes"]
-    log = git_out(["log", "--oneline", f"--max-count={_SHOWN + 1}", *span], d)
+    log = git_out(["log", "--oneline", *span], d)   # every one: removal would lose them all
     lacks = f"its upstream {upstream}" if upstream else "every remote-tracking ref"
     if log is None:
         commits = f"commits {lacks} lacks cannot be listed"
     else:
         lines = log.split("\n") if log else []
-        more = " (and more)" if len(lines) > _SHOWN else ""
-        commits = f"commits {lacks} lacks: {'; '.join(lines[:_SHOWN])}{more}" if lines else f"no commits {lacks} lacks"
+        commits = f"commits {lacks} lacks: {'; '.join(lines)}" if lines else f"no commits {lacks} lacks"
     kind, step = (("linked worktree", cmd("git", "-C", repo, "worktree", "remove", d)) if linked
                   else ("bare clone" if bare else "checkout", "move it out of the worktree"))
     shown = d.relative_to(wt).as_posix() if d.is_relative_to(wt) else str(d)
