@@ -13,6 +13,12 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `specy-road doctor` no longer fails in a repo with no remote. When the
+  resolved remote (`--remote`, `SPECY_ROAD_REMOTE`, `roadmap/git-workflow.yaml`,
+  else `origin`) is not configured, it says so in one line, skips the fetch and
+  the branch, worktree and registry sections, and still reports the install,
+  checkout, stashes and orphaned claims; `--fix` removes only the stashes it
+  listed. A configured remote whose fetch fails still exits 1.
 - `specy-road prompt --channel cli` no longer launches anything by itself: it
   writes the prompt and prints the command it would run, and starts a process
   (the roster's `preflight` included) only with the new `--run`, for every
@@ -31,6 +37,10 @@ body. Keep section bodies focused; link to PRs for detail.
   under another account a worker started fresh instead of resuming. The context
   meter's user `CLAUDE.md` now comes from the same directory, and the value is
   taken literally (a `~` in it is not expanded, as in the shell wrappers).
+- `review record` refuses a covered clause for joined observations only when a
+  joined part names a defect. Neutral parts joined by "plus", "but", "while" or
+  the like no longer cost a reviewer turn, and a defect part followed by a
+  neutral part is now refused after a comma or "and" as after any other joiner.
 - Help text names only what a pip install has: `specy-road --help` points
   add-node and scaffold-planning at `specy-road <cmd> -h` instead of
   `python specy_road/bundled_scripts/...` paths, and the `gui` line names
@@ -38,6 +48,13 @@ body. Keep section bodies focused; link to PRs for detail.
   by the init parser). Every bundled subcommand's `usage:` line reads
   `specy-road <cmd>` rather than its module file name, and help that cited a
   `docs/*.md` file a pip install lacks now links the published copy.
+- A new project passes its own checks: `init project` also writes `roadmap.md`
+  and `roadmap-context.md` from the scaffold graph (a `--dry-run` lists them; an
+  existing one without `--force` is left alone and neither is written), so
+  `export --check` and `digest --check` no longer exit 1 on a fresh scaffold.
+  `validate` no longer reports the starter's `my-executor` placeholder, and an
+  unmatched roster id is offered a closest profile only when a name of that
+  profile has a similarity ratio of at least 0.6.
 
 ### Added
 
