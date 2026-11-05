@@ -13,7 +13,7 @@
 - Malicious code (supply-chain tampering, exfiltration, weakening the gates) means closure, a ban and a report; the maintainer may close any PR.
 
 **Read further for:**
-- issue links, exemptions, the malicious-code policy → "Project stewardship"
+- issue links, exemptions, the malicious-code policy, what a refusal must print → "Project stewardship"
 - branch names, release pointers, Trusted Publisher setup, review rounds → "Branching, tagging, and release process"
 - the exact gate commands → "Local CI parity"
 - building the SPA, updating a clone, hooks, IDE stubs → "PM Gantt UI: build and install", "Updating an editable clone", "Pre-commit hook", "IDE command stubs (`specyrd`)"
@@ -81,6 +81,15 @@ trusted-publisher config, attempts to weaken the validate / file-limits
 By submitting a PR you accept this policy. If you spot suspicious
 activity in someone else's PR, please report it privately to the
 maintainer rather than commenting publicly on the PR thread.
+
+### Refusals
+
+A command that exits non-zero prints what failed, why, and the next command
+to run: a `specy-road …` or `git …` command, in backticks or at the start of a
+line, that a user can copy as written. A refusal that only says "no" costs a
+round trip to diagnose. Where the cause is a set of paths or ids, name them
+(a long list is capped, then counted). [`tests/test_refusals_name_their_fix.py`](../tests/test_refusals_name_their_fix.py)
+runs the refusals covered so far through the CLI and checks each names its fix.
 
 ---
 

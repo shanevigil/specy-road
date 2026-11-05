@@ -190,7 +190,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.82` | The integration branch passes ruff again and the land check runs it | task | Agentic-led | Complete |
 | `M12` | Harness engineering: cheaper gates, clearer refusals, less drift | phase | — | Not Started |
 | `M12.1` | A review fix-round budget that defers new-input-class findings to a follow-up leaf | task | Agentic-led | Not Started |
-| `M12.2` | Every refusal names its fix | task | Agentic-led | Not Started |
+| `M12.2` | Every refusal names its fix | task | Agentic-led | Complete |
 | `M12.3` | Scheduled gardening chores that find drift and open small chore leaves | task | Agentic-led | Not Started |
 | `M12.4` | Quality signals agents and PMs read first | milestone | — | Not Started |
 | `M12.4.1` | Per-area quality scores in the digest from review history | task | Agentic-led | Not Started |
@@ -200,8 +200,14 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M13.2` | upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap | task | Agentic-led | Not Started |
 | `M13.3` | A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates | task | Agentic-led | Not Started |
 | `M13.4` | A milestone held for its full review says so in validate, list-nodes and why-blocked | task | Agentic-led | Not Started |
-| `M13.5` | refresh-profiles installs only the profiles the roster names, and suggests the alias for a near miss | task | Agentic-led | Not Started |
+| `M13.5` | refresh-profiles installs only the profiles the roster names, and suggests the alias for a near miss | task | Agentic-led | Complete |
 | `M13.6` | Safe release-candidate install recipe, pipx and uv tool upgrades, and checking which binary is on PATH | task | Agentic-led | Not Started |
 | `M13.7` | Clearer notices: symlinked skill dirs, new ignore rules over tracked files, and session end | task | Agentic-led | Not Started |
+| `M13.8` | A behaviour-change catalogue, and validate reports project agent text it contradicts | task | Agentic-led | Not Started |
+| `M13.9` | Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice | task | Agentic-led | Not Started |
+| `M13.10` | Upgrade guide: moving to the split rules files, previewing an uninstalled version, telling old installs apart | task | Agentic-led | Not Started |
+| `M13.11` | upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs | task | Agentic-led | Not Started |
+| `M13.12` | Quieter, accurate validate notices: untracked touch zones, the managed .gitignore comment, and tracked files under new ignore rules | task | Agentic-led | Not Started |
+| `M13.13` | upgrade --prompt writes an agent upgrade prompt filled in from this repo | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
