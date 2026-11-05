@@ -426,7 +426,9 @@
         "docs/orchestration-harness-launch.md",
         "docs/orchestration-review.md",
         "tests/",
-        "specy_road/schemas/worker-record.schema.json"
+        "specy_road/schemas/worker-record.schema.json",
+        "specy_road/steering_gate.py",
+        "docs/orchestration-steering-files.md"
       ],
       "type": "task"
     },
