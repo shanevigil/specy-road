@@ -33,9 +33,9 @@ def _value(repo_root: Path, key: str) -> Any:
 
 
 def pr_body_footer(repo_root: Path) -> str | None:
-    """``pr_body_footer``, or ``None`` when unset."""
+    """``pr_body_footer`` stripped, or ``None`` when unset; the schema refuses an empty or whitespace-only one."""
     text = _value(repo_root, "pr_body_footer")
-    return text.strip() or None if isinstance(text, str) else None
+    return text.strip() if text else None
 
 
 def root_land(repo_root: Path) -> str:

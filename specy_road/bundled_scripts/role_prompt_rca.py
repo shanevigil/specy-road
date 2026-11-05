@@ -9,7 +9,7 @@ from specy_road.agent_ignores import RUNTIME_WORK_DIRS
 from specy_road.git_workflow_config import WORKER_LOGS_REL
 from specy_road.model_profiles import Profile
 from specy_road.review_files import PACKET_NAME
-from specy_road.workflow_prefs import SUMMARY_COMMIT, SUMMARY_LOCAL, implementation_summary_rule, summary_handling
+from specy_road.workflow_prefs import SUMMARY_LOCAL, implementation_summary_rule, summary_handling
 
 _CITE = re.compile(r"\s*\[S\d+(?:,\s*S\d+)*\]")
 DATA_LINE = (
@@ -140,7 +140,7 @@ def executor_preamble(node_id: str, model: str, zones: list[str], family_lock: s
                       reviews: Path | None = None, prefix: str = "") -> list[str]:
     z = ", ".join(f"`{x}`" for x in zones) or "_(none declared — propose them in your summary)_"
     # ``reviews`` is <main checkout's project root>/work/reviews/<id>; git-workflow.yaml is tracked there.
-    rule = implementation_summary_rule(reviews.parents[2]) if reviews else SUMMARY_COMMIT
+    rule = implementation_summary_rule(reviews.parents[2])
     lock = ([f"You may spawn sub-agents only of family `{family_lock}`; fanning out to another vendor "
              "defeats the reason you were chosen.", ""] if family_lock else [])
     return lock + [

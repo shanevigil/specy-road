@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 
 from specy_road.agent_ignores import GITIGNORE_LINES
 from specy_road.bundled_scripts import do_next_prompt as dnp
@@ -15,10 +16,13 @@ from specy_road.decisions import plan_preferences, read_decisions
 from specy_road.finish_land_local import land_on_integration
 from specy_road.finish_pr_body import write_pr_body
 from specy_road.git_workflow_config import validate_git_workflow_dict
-from specy_road.workflow_prefs import summary_rule_notice
+from specy_road.bundled_scripts.validate_roadmap import validate_git_workflow_contract
+from specy_road.workflow_prefs import implementation_summary_rule, pr_body_footer, root_land, summary_rule_notice
 from tests.test_decisions import _add_args, _decisions_repo, _run
 from tests.test_models_and_prompt import make_profile_repo
 
+_ACCESSORS = {"pr_body_footer": pr_body_footer, "implementation_summary": implementation_summary_rule,
+              "land": root_land}
 GW = "version: 1\nintegration_branch: master\nremote: origin\n"
 
 
@@ -89,12 +93,41 @@ def test_pr_body_without_footer_is_unchanged(tmp_path: Path) -> None:
     assert _pr_body(tmp_path, GW).endswith("</details>\n")
 
 
-def test_schema_checks_the_new_keys() -> None:
-    base = {"version": 1, "integration_branch": "main", "remote": "origin"}
-    assert validate_git_workflow_dict({**base, "pr_body_footer": "x", "implementation_summary": "local",
-                                       "land": "local"}) is None
-    for bad in ({"pr_body_footer": 3}, {"implementation_summary": "push"}, {"land": "manual"}):
-        assert validate_git_workflow_dict({**base, **bad}) is not None, bad
+BASE = {"version": 1, "integration_branch": "main", "remote": "origin"}
+
+
+@pytest.mark.parametrize("key,value,expected", [
+    ("pr_body_footer", "Tool X", "Tool X"),
+    ("pr_body_footer", "  Tool X\n", "Tool X"),   # surrounding whitespace is stripped, the text kept
+    ("pr_body_footer", "line one\nline two", "line one\nline two"),
+    ("implementation_summary", "commit", "commit"),
+    ("implementation_summary", "local", "local"),
+    ("land", "push", "push"),
+    ("land", "local", "local"),
+])
+def test_every_schema_valid_preference_takes_effect(tmp_path: Path, key: str, value: str, expected: str) -> None:
+    """Whatever the schema accepts, the accessor honours: no valid value reads as unset."""
+    assert validate_git_workflow_dict({**BASE, key: value}) is None
+    (tmp_path / "roadmap").mkdir()
+    (tmp_path / "roadmap" / "git-workflow.yaml").write_text(yaml.safe_dump({**BASE, key: value}), encoding="utf-8")
+    assert _ACCESSORS[key](tmp_path) == expected
+
+
+@pytest.mark.parametrize("key,value", [
+    ("pr_body_footer", ""), ("pr_body_footer", " "), ("pr_body_footer", "\n"), ("pr_body_footer", " \t\n "),
+    ("pr_body_footer", 3), ("pr_body_footer", None), ("pr_body_footer", ["x"]),
+    ("implementation_summary", ""), ("implementation_summary", " "), ("implementation_summary", "Commit"),
+    ("implementation_summary", "push"), ("implementation_summary", None), ("implementation_summary", True),
+    ("land", ""), ("land", " "), ("land", "Local"), ("land", "manual"), ("land", None), ("land", 1),
+])
+def test_schema_refuses_what_the_workflow_would_not_honour(tmp_path: Path, capsys, key: str, value) -> None:
+    """Empty, whitespace-only, unknown and wrongly typed values fail validate instead of reading as unset."""
+    assert validate_git_workflow_dict({**BASE, key: value}) is not None
+    (tmp_path / "roadmap").mkdir()
+    (tmp_path / "roadmap" / "git-workflow.yaml").write_text(yaml.safe_dump({**BASE, key: value}), encoding="utf-8")
+    with pytest.raises(SystemExit):
+        validate_git_workflow_contract(tmp_path)
+    assert key in capsys.readouterr().err
 
 
 # --- A3: implementation_summary: commit | local ----------------------------------------------

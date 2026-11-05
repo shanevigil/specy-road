@@ -40,6 +40,9 @@ pr_body_footer: "Generated with <your tool>; reviewed by <team>"
 `finish-this-task` appends this text to the PR/MR body it writes
 (`work/pr-body-<NODE_ID>.md`) after the brief snapshot, for attribution
 lines or checklists that the project requires. Without it, the body is unchanged.
+Surrounding whitespace is stripped. An empty or whitespace-only value fails the
+schema, so `validate` reports it; it is never read as "no footer". Likewise an
+`implementation_summary` or `land` value outside its enum fails `validate`.
 
 ## Implementation summary: `implementation_summary: commit | local`
 

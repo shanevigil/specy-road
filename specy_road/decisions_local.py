@@ -41,10 +41,12 @@ def _load(root: Path, *, local: bool) -> tuple[dict[str, Any], list[str]]:
 
 
 def merge_ledgers(shared: dict[str, Any], local: dict[str, Any]) -> tuple[dict[str, Any], set[str]]:
-    """``shared`` with ``local``'s entries over it by id (local wins), and the ids that came from ``local``."""
-    mine = [e for e in local.get("entries") or [] if isinstance(e, dict)]
-    ids = {e.get("id") for e in mine}
-    kept = [e for e in shared.get("entries") or [] if not (isinstance(e, dict) and e.get("id") in ids)]
+    """``shared`` with ``local``'s entries over it by id (local wins), and the ids that came from ``local``.
+
+    Both are schema-checked first (:func:`load_merged`), so every entry is a mapping with an id."""
+    mine = local.get("entries") or []
+    ids = {e["id"] for e in mine}
+    kept = [e for e in shared.get("entries") or [] if e["id"] not in ids]
     return {"version": shared.get("version", 1), "entries": kept + mine}, ids
 
 

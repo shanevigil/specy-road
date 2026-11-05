@@ -60,8 +60,8 @@
     },
     "pr_body_footer": {
       "type": "string",
-      "minLength": 1,
-      "description": "Text finish-this-task appends to the PR/MR body it writes (work/pr-body-<NODE_ID>.md), such as an attribution line. Omitted: the body is unchanged."
+      "pattern": "\\S",
+      "description": "Text finish-this-task appends to the PR/MR body it writes (work/pr-body-<NODE_ID>.md), such as an attribution line, with surrounding whitespace stripped. It must contain a non-whitespace character: an empty or whitespace-only value fails validation rather than meaning no footer. Omitted: the body is unchanged."
     },
     "implementation_summary": {
       "enum": ["commit", "local"],
