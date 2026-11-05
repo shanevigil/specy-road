@@ -237,7 +237,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.7` file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count `file-limits-baseline-and-upgrade-report` — task — **Not Started**
   - `M15.8` A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it `promoted-leaf-is-never-stuck-on-an-empty-approach` — task — **Not Started**
   - `M15.9` Harness launches survive large prompts and a harness binary off PATH, for every role `harness-launches-survive-large-prompts-and-binaries-off-path` — task — **Not Started**
-  - `M15.10` Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff `try-a-roster-before-it-lands` — task — **Not Started**
+  - `M15.10` Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff `try-a-roster-before-it-lands` — task — **Complete**
   - `M15.11` A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors `working-roster-in-one-command-and-validated-profiles` — task — **Not Started**
   - `M15.12` Shared documentation zones do not serialize grind-session batches `shared-doc-zones-do-not-serialize-batches` — task — **Not Started**
   - `M15.13` Worker loop friction: sync waits for the events that matter, tool-use noise collapses, rework after a completed worker, a READY-only resume, a quieter pickup `worker-loop-friction-sync-until-and-ready-only-resume` — task — **Not Started**
@@ -275,12 +275,12 @@ Do not pick these up.
 - `M14.3` on `feature/rm-worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout` since 2026-11-04
 - `M14.6` on `feature/rm-reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round` since 2026-11-04
 - `M15.1` on `feature/rm-rc-install-docs-cover-extras-and-direct-wheel-url` since 2026-11-04
-- `M15.10` on `feature/rm-try-a-roster-before-it-lands` since 2026-11-04
 - `M15.12` on `feature/rm-shared-doc-zones-do-not-serialize-batches` since 2026-11-04
 - `M15.18` on `feature/rm-planned-test-changes-editable-and-removals-surfaced` since 2026-11-04
 - `M15.19` on `feature/rm-cursor-cost-with-display-name-models` since 2026-11-04
 - `M15.21` on `feature/rm-linked-worktrees-resolve-root-and-symlinked-envs` since 2026-11-04
 - `M15.4` on `feature/rm-parallel-pr-leaves-reconcile-bookkeeping-by-rule` since 2026-11-04
+- `M15.6` on `feature/rm-rework-prompt-carries-the-accepted-rca` since 2026-11-04
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
 ## Reaching the detail behind this
