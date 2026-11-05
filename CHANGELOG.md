@@ -111,6 +111,9 @@ body. Keep section bodies focused; link to PRs for detail.
   order from it, and its `context:` line for Claude Code now counts the files a
   counted file `@`-imports (and notes `.specyrd/AGENTS.local.md` as
   machine-local, never counted).
+- `specy-road file-limits` now counts functions in `.tsx` files, so the same
+  tree can report different function counts under 0.3.1 than under 0.2.x, and
+  a local run can disagree with CI pinned to an older version.
 
 ### Fixed
 
