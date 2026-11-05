@@ -95,10 +95,12 @@ def rework_lines(root: Path, node_id: str, t: ReviewTarget) -> list[str]:
 
 
 def rework_check(root: Path, node_id: str) -> None:
-    """``worker delegate --rework``: refuse while the leaf has an active worker (``message`` or ``resume`` it, or
-    ``terminate`` it first) or when there is nothing to rework from; else say on stderr what the prompt carries."""
+    """``worker delegate --rework``: refuse while the leaf has a running or resumable-in-progress worker
+    (``message`` or ``resume`` it, or ``terminate`` it first), treat a ``completed`` worker as ended, or when there is
+    nothing to rework from; else say on stderr what the prompt carries."""
     active = active_for_node(root, node_id)
-    if active is not None:
+    completed = active if active is not None and active.state == "completed" else None
+    if active is not None and active.state != "completed":
         raise WorkerError(f"{active.worker_id} is still active on {node_id} ({active.state}): `worker message` or "
                           f"`worker resume` it, or `worker terminate` it, then delegate --rework")
     blocks, prev = blocking_reviews(root, node_id), stopped_worker(root, node_id)
@@ -107,4 +109,6 @@ def rework_check(root: Path, node_id: str) -> None:
                           "worker; delegate without --rework")
     carried = [f"{len(blocks)} blocking review(s) ({', '.join(r.data['model'] for r in blocks)})"] if blocks else []
     carried += [f"{prev.worker_id}'s last message ({prev.model}, {prev.state})"] if prev is not None else []
+    if completed is not None:
+        carried.append(f"{completed.worker_id} on {node_id} ({completed.state})")
     print(f"note: the executor prompt carries {' and '.join(carried)} under ## Rework", file=sys.stderr)

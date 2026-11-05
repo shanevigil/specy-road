@@ -31,6 +31,8 @@ from specy_road.worker_state import (
     workers_lock,
 )
 
+from specy_road.worker_runner_ready import READY_ONLY_PROMPT
+
 CONTINUE_PROMPT = ("Continue the task from where you stopped. Re-read the brief and the precondition "
                    "first; if the hand-off is already written, say so and stop.\n")
 
@@ -114,9 +116,11 @@ def message(repo_root: Path, worker_id: str, text: str | None, *, offline: bool 
         return _send(repo_root, rec, text, "message", offline, no_queue=no_queue)
 
 
-def resume(repo_root: Path, worker_id: str, *, offline: bool = False) -> WorkerRecord:
+def resume(repo_root: Path, worker_id: str, *, offline: bool = False, ready_only: bool = False) -> WorkerRecord:
+    prompt = READY_ONLY_PROMPT if ready_only else CONTINUE_PROMPT
+    kind = "ready-only" if ready_only else "resume"
     with workers_lock(repo_root):
-        return _send(repo_root, load_record(repo_root, worker_id), CONTINUE_PROMPT, "resume", offline, no_queue=True)
+        return _send(repo_root, load_record(repo_root, worker_id), prompt, kind, offline, no_queue=True)
 
 
 def interrupt(repo_root: Path, worker_id: str) -> None:
