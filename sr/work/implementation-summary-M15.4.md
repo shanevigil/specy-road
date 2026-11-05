@@ -1,57 +1,57 @@
 # Implementation summary: M15.4 — parallel PR-mode leaves reconcile bookkeeping by rule
 
 Branch `feature/rm-parallel-pr-leaves-reconcile-bookkeeping-by-rule`, base `cb279e0586b0c2d576f7484bf53bb237aea70bca`
-(rework for reviewer `gpt-6.1-sol` R1–R4 on top of the prior `8574f287` / `cb279e05` hand-off).
+(plus WIP merge and reviewer rework rounds through `gpt-6.1-sol` R1–R4 and `gpt-6.1-sol-low` R1).
 
 ## What changed (prior work, unchanged intent)
 
-- **A1–A4** as in the previous summary: `reconcile-branch`, pickup register digest, docs, and tests
+- **A1–A4** as in the brief: `reconcile-branch`, pickup register digest, docs, and tests
   (`tests/test_reconcile_branch.py`, `tests/test_pickup_register_digest.py` for acceptance scenarios).
 
-## Rework (R1–R4)
+## Rework (`gpt-6.1-sol` R1–R4)
 
-- **R1 — fetch before merge.** `reconcile_branch` checks `git_ok` on `git fetch` and exits 1 with a named
-  error before reading a possibly stale `remote/ib` ref. No merge or push on fetch failure.
-- **R2 — push when already merged.** When the integration tip is already contained locally (for example after
-  a merge commit succeeded but `git push` was rejected), reconcile still runs the upstream push path instead
-  of returning 0 early.
-- **R3 — abort after pushed pickup.** `_remove_registry_row_and_push` regenerates tracked generated files
-  via `regenerated_tracked_paths` and commits them with the registry row removal (explicit paths, same as
-  register). Lazy import avoids a register ↔ pickup_helpers ↔ self_heal import cycle.
-- **R4 — failed-pickup self-heal.** `attempt_self_cleanup` uses the same regeneration and explicit-path
-  commit before pushing the integration branch.
+- **R1 — fetch before merge.** `reconcile_branch` checks `git_ok` on `git fetch` and exits 1 before merge when fetch fails.
+- **R2 — push when already merged.** Upstream push runs even when the integration tip is already contained locally.
+- **R3 — abort after pushed pickup.** Deregister commit regenerates tracked generated files (`regenerated_tracked_paths`).
+- **R4 — failed-pickup self-heal.** Same regeneration on self-heal cleanup (lazy import avoids import cycle).
+
+## Fix round (`gpt-6.1-sol-low` R1)
+
+- **Integration ref after fetch.** After a successful `git fetch <remote> <ib>`, reconcile merges
+  ``FETCH_HEAD`` (via ``_integration_sha_after_fetch``), not ``base_ref``'s remote-tracking or local
+  branch, so a restricted ``remote.origin.fetch`` refspec cannot leave a stale ``origin/<ib>`` as the
+  merge source while fetch still retrieved the current tip.
 
 ## Probes
 
-- `reconcile_branch` with broken fetch URL and valid push URL, stale `origin/dev`, integration advanced on remote: exit 1, HEAD and remote feature ref unchanged (R1 class: failed fetch).
-- `reconcile_branch` with pre-receive hook rejecting `feature/rm-two` push, then hook removed and command retried: first exit 1 after local merge; second exit 0 with `origin/feature/rm-two` at the merge commit (R2 class: no-new-merge path without push).
-- Public CLI pickup → `abort-task-pickup`: `digest --check` on local `main` and on detached worktree at `origin/main` both pass (R3 class: pushed abort without digest regeneration).
-- Public CLI `do-next-available-task` with bare hook rejecting the first push to `main` only: exit 1; local and remote `main` pass `digest --check`; remote registry empty (R4 class: self-heal push without digest regeneration).
-- Lazy import sites in `abort_task_pickup._remove_registry_row_and_push` and `attempt_self_cleanup`: module import graph loads without cycle (register ↔ self_heal).
-- Reviewer focused pytest importer set (209 tests), `file-limits`, dogfood `validate`: pass.
+- `reconcile_branch` with broken fetch URL and valid push URL, stale `origin/dev`, integration advanced on remote: exit 1, HEAD and remote feature ref unchanged (failed fetch).
+- `reconcile_branch` with pre-receive hook rejecting feature push, then retry: upstream updated (no-new-merge push path).
+- Public CLI pickup → `abort-task-pickup`: `digest --check` on local `main` and detached `origin/main` worktree (pushed abort digest).
+- Public CLI `do-next-available-task` with first `main` push rejected: self-heal leaves remote digest current (failed-pickup cleanup digest).
+- Lazy imports in abort / self-heal: no register ↔ self_heal import cycle.
+
+## Fix round: probes
+
+- Restricted `remote.origin.fetch` (feature branch only) with `origin/dev` pinned stale via `update-ref`, integration advanced on bare remote: reconcile exit 0, `HEAD^2` equals remote `dev` tip, new integration file present (stale-tracking-ref class; merge uses fetch tip not `base_ref`).
+- `finish_pr_merge.pr_merge_integration_or_exit` still uses `base_ref` after fetch (finish preflight, not reconcile); unchanged — A1 is reconcile-only; same class noted for future alignment.
+- Targeted pytest importer set (210 tests) and `file-limits`: pass.
 
 ## Touch zones (final)
 
-Same as the brief, plus `specy_road/bundled_scripts/do_next_task_self_heal.py` (R4 regeneration in self-heal commit).
+Brief list plus `specy_road/bundled_scripts/do_next_task_self_heal.py` (R4).
 
 ## Added
 
 ### Helpers / modules
-- none (this round extends existing helpers).
+- `reconcile_branch._integration_sha_after_fetch`: reads the integration tip git stored in `FETCH_HEAD` after fetch (fix round).
 
 ### Branches / guards
-- `reconcile_branch`: fetch-failure guard before `base_ref` / merge (R1).
-- `reconcile_branch`: upstream push on already-contained integration ref (R2).
-- `abort_task_pickup._remove_registry_row_and_push`: regenerate tracked generated files in abort commit (R3).
-- `attempt_self_cleanup`: regenerate tracked generated files in self-heal commit (R4).
-- Lazy imports of `regenerated_tracked_paths` in abort and self-heal to break the import cycle.
+- Merge uses `FETCH_HEAD` SHA after successful fetch, not `base_ref` (fix round sol-low R1).
+- Prior round: fetch-failure guard, push on already-contained tip, abort/self-heal digest regeneration, lazy `regenerated_tracked_paths` imports.
 
 ### Mocks
 - none.
 
 ### Tests
-- `test_reconcile_refuses_when_fetch_fails_and_leaves_head`: R1 stale tracking ref + unavailable fetch.
-- `test_reconcile_retries_push_when_merge_is_already_committed`: R2 rejected-first-push then retry updates upstream.
-- `test_abort_after_pushed_pickup_regenerates_the_digest_on_integration`: R3 pushed abort leaves digest current locally and at `origin/main`.
-- `test_failed_pickup_self_heal_leaves_integration_digest_current`: R4 one-time registration push rejection; self-heal digest on integration.
-- `_digest_check_at_origin_main` helper in `test_pickup_register_digest.py`: detached worktree at `origin/main` for remote snapshot `digest --check`.
+- `test_reconcile_merges_the_fetch_head_tip_when_tracking_ref_is_stale`: sol-low R1 restricted refspec + stale `origin/dev`.
+- Prior round: fetch failure, push retry, pushed abort digest, self-heal digest, two-leaf reconcile scenarios, pickup digest, branch guards.
