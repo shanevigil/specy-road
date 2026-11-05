@@ -159,3 +159,54 @@ For each A2 probe, the test asserts that the "now hidden" list equals the set of
 - `tests/test_m13_7_notices.py::test_diff_shows_stubs_under_a_parenthesised_dir`: the `--diff` defect.
 - `test_the_report_folds_two_names_for_one_file_into_its_real_path` now passes `Written` entries: plain strings are no longer parsed, by design.
 - Mocks: none.
+
+## Fix round 3
+
+This round addresses Sol's (gpt-6.1-sol) block on 4a1551f5, R1–R3, after merging `origin/WIP/improvements-0-3-1`. The code fix is commit `e99dfa22`.
+
+- **R3: the note is advisory and never aborts or changes a write.** `apply_and_report` first asks `apply_agent_ignores(dry_run=True)` whether `.gitignore` will change, and only then works out the note. All git calls in the note go through `_git`, which raises `IgnoreCheckSkipped` on any unexpected exit; `check-ignore`'s exit 128 counts. That exception, `OSError`, `ValueError` (including decode errors) and `SubprocessError` (including timeouts) are caught. In their place the report prints exactly one line, `ignore check skipped: <reason>`, and never a guessed match list. The writes are the base's own `apply_agent_ignores(...)` call, unchanged and unconditional.
+- **R2: the scratch repositories carry the checkout's ignore settings.** `_ignore_config` reads:
+  - `core.ignorecase`, always passed as `-c`, defaulting to `false` when unset;
+  - `core.excludesFile` (`git config --path --get`, any scope), passed as `-c` when set;
+  - `info/exclude` (`git rev-parse --git-path`, which also works from a linked worktree), copied into the scratch repository's `.git/info/exclude`.
+
+  Git calls also drop `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_COMMON_DIR` and `GIT_OBJECT_DIRECTORY`. Inside a git hook those would point `git init` and `check-ignore` back at the real checkout, so the first would re-initialise it.
+- **R1: tracked files are judged on their own.** `_tracked_matches` writes only the rules the update adds (block lines that are not already a line of the file) to a scratch `.gitignore`. It lists every tracked path git says one of them matches, counting only matches from that file and ignoring any older rule that also matches. The untracked "now hidden" label keeps the before/after comparison on the real resulting file (`_newly_hidden`, unchanged in substance).
+
+**Red-green:** the 6 new R1–R3 cases fail on 4a1551f5 and pass on e99dfa22. The `GIT_DIR` test fails when `_REPO_ENV` is emptied.
+
+**Process note:** while running that red-green check I restored the file with `git checkout --`, which also discarded my uncommitted round-3 edit to `agent_ignores.py`. I re-applied the identical edit from this session's script before committing, then re-ran all checks; nothing else was affected.
+
+**Verification:**
+- Targeted run, 36 files (same selection as round 2): 721 passed.
+- `specy-road file-limits`: OK.
+- `ruff check`: clean.
+
+### Fix round 3: ignore-input audit
+
+| Input | Scratch repo | How / why |
+|---|---|---|
+| `core.ignorecase` | **Honoured** | Read from the checkout (all scopes) and passed as `-c` to every `check-ignore`. Defaults to `false` like git. Test: `test_ignorecase_from_the_checkout_is_honoured` |
+| `core.excludesFile` | **Honoured** | When set at any scope it is passed as `-c`, relative paths resolved against the checkout. When unset, the scratch repo uses the same per-user default (`$XDG_CONFIG_HOME/git/ignore`), because it runs as the same user with the same `HOME`/`XDG_CONFIG_HOME`. The tracked check counts only matches from its own `.gitignore`, so the global file never shows up as a "new rule" |
+| `info/exclude` | **Honoured** | Copied byte for byte into the "now hidden" scratch repo. Not used by the tracked check, which only asks which new rules match |
+| Nested `.gitignore` files | **Honoured** in the "now hidden" check | Every tracked one, and every untracked one git shows, is copied to the same path. **Gap:** an untracked nested `.gitignore` that git itself hides (it ignores itself, or sits under an ignored directory) is not copied. Files under an ignored directory are never candidates anyway. Deliberately **not** used by the tracked check, which asks only whether a new rule matches. An unreadable one makes the note skip (R3) |
+| Global gitignore | **Honoured** | It is `core.excludesFile` or its XDG default; see that row |
+| Sparse checkout | **Deliberately not used** | It does not affect ignore matching. Skip-worktree entries are still in the index, so `ls-files` lists them as tracked and the note calls them "still tracked", which is true |
+| `GIT_DIR` and other repository-location variables (hooks) | **Removed** for the note's git calls | Otherwise the scratch repository would be the checkout. Test: `test_a_git_dir_from_a_hook_does_not_point_the_scratch_repo_at_the_checkout` |
+
+### Added (fix round 3)
+
+- `IgnoreCheckSkipped` and `_git`: one place where a failed git call becomes "skip the note", with the git subcommand and its last stderr line (R3).
+- Dry-run pre-check in `apply_and_report`: the note is worked out only when `.gitignore` will change, so most refreshes start no extra git process.
+- try/except around the note in `apply_and_report`, printing `ignore check skipped: <reason>` (R3).
+- `_ignore_config`: `core.ignorecase`, `core.excludesFile` and `info/exclude` from the checkout (R2).
+- `_REPO_ENV` filter: keeps hook-set `GIT_DIR` and related variables from redirecting the scratch repository to the checkout.
+- `_scratch`: `git init` plus byte copies, shared by both checks.
+- `_tracked_matches`: tracked paths matched by the newly added rules alone (R1).
+- `_newly_hidden`: the round-2 before/after check on the resulting `.gitignore`, moved out unchanged in substance.
+- `source=` filter in `_ignored`: limits the tracked check to its own rules.
+- `tests/test_m13_7_notices.py::test_an_unreadable_nested_gitignore_skips_the_note_but_not_the_writes` (dry and real): R3.
+- `tests/test_m13_7_notices.py::test_ignorecase_from_the_checkout_is_honoured` (dry and real): R2.
+- `tests/test_m13_7_notices.py::test_a_tracked_file_an_older_rule_already_ignores_is_still_listed` (dry and real): R1, with the index unchanged.
+- `tests/test_m13_7_notices.py::test_a_git_dir_from_a_hook_does_not_point_the_scratch_repo_at_the_checkout`: the env guard.
+- Mocks: `monkeypatch.setenv` for `GIT_DIR`/`GIT_WORK_TREE` in that one test, to reproduce a hook environment.
