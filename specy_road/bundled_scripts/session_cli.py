@@ -84,7 +84,7 @@ def _end_own(root: Path, derived: str) -> int:
         return 0
     if len(mine) == 1:
         end_session(root, mine[0].agent)
-        print(f"session {mine[0].agent}: ended (no record for {derived}; it was your only live session here)")
+        print(f"ended your only live session {mine[0].agent} here (this shell's id {derived} has no record)")
         return 0
     print(f"error: no record for {derived}, and you have {len(mine)} live sessions here; "
           "end one with `specy-road session end <id>`:", file=sys.stderr)

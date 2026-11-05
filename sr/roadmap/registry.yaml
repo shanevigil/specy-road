@@ -24,21 +24,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end
-    node_id: M13.7
-    branch: feature/rm-clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end
-    touch_zones:
-      - specy_road/bundled_scripts/refresh_stubs.py
-      - specy_road/agent_ignores.py
-      - specy_road/bundled_scripts/session_cli.py
-      - tests/
-      - specy_road/bundled_scripts/refresh_stubs_report.py
-      - specy_road/written_entry.py
-      - specy_road/ignore_report.py
-      - docs/install-and-usage.md
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout
     node_id: M14.3
     branch: feature/rm-worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout
@@ -184,6 +169,7 @@ entries:
       - specy_road/bundled_scripts/session_plan_render.py
       - specy_road/bundled_scripts/orchestrate_cli.py
       - specy_road/bundled_scripts/brief_dependency_context.py
+      - specy_road/bundled_scripts/grind_session.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
