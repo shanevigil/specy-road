@@ -117,9 +117,13 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.3` Opt-in rewrite of prose id references after a move, and a standalone rename-refs `rewrite-id-refs` — task — **Not Started**
   - `M21.4` remove-node deletes an empty never-started node and names every blocker otherwise `remove-node` — task — **Not Started**
   - `M21.5` apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once `apply-restructure-ops` — task — **Not Started**
-  - `M21.6` validate and add-dependency catch cycles made through inherited group dependencies `inherited-dep-cycles` — task — **Not Started**
+  - `M21.6` validate and add-dependency catch cycles made through inherited group dependencies `inherited-dep-cycles` — task — **Complete**
   - `M21.7` Executors cannot change the files that steer harnesses and specy-road unnoticed `steering-file-guard` — task — **Not Started**
   - `M21.8` The queued-message worker test waits for the idle state, not just the second completion event `queue-message-test-waits-for-idle` — task — **Not Started**
+  - `M21.9` A freshly initialized project passes its own checks `init-passes-own-checks` — task — **Not Started**
+  - `M21.10` doctor works in a repo with no remote `doctor-without-a-remote` — task — **Not Started**
+  - `M21.11` Help text names installed commands `help-names-installed-commands` — task — **Not Started**
+  - `M21.12` A review record is refused for joined observations only when one of them names a defect `joined-observations-need-a-defect` — task — **Not Started**
 - `M17` 0.3.2: PM GUI shows orchestration and worktree state `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface `pm-gui-orchestration-plan` — gate — **Not Started**
 - `M18` Orchestration and review-loop features (after 0.3.1) `orch-review-loop` — phase — **Not Started**
@@ -141,6 +145,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M18.16` A review that stops before filing leaves a trace: every reviewer channel opens a RUN record, and review list shows started but not filed `every-reviewer-channel-leaves-a-run-record` — task — **Not Started**
   - `M18.17` Under delta review, one approval per round still checks the whole leaf against the merge base on a fixed checklist `one-full-leaf-checklist-review-per-round` — task — **Not Started**
   - `M18.18` Plan review after planning, and a staleness check before pickup `plan-review-and-pickup-staleness` — task — **Not Started**
+  - `M18.19` orchestrate plan and review delegate apply reviewer preferences from the decisions ledger and say when they do `plan-applies-preferences` — task — **Not Started**
 - `M19` Adopter-project features: upgrade, agent-file layering, planning hygiene, project tooling (after 0.3.1) `adopter-features` — phase — **Not Started**
   - `M19.1` Configurable code-analysis tools `analysis-tools` — task — **Not Started**
   - `M19.2` Research reminders leave validate `research-due-in-doctor` — task — **Not Started**
@@ -155,6 +160,11 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M19.11` Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored `chores-at-parity-with-leaves` — task — **Not Started**
   - `M19.12` List shipped nodes with no result after N days `list-shipped-nodes-with-no-result-after-n-days` — milestone — **Not Started**
   - `M19.13` Store a pointer and a human verdict for outcomes, never the metric itself `store-a-pointer-and-a-human-verdict-for-outcomes-never-the-metric-itself` — milestone — **Not Started**
+  - `M19.14` Human decisions get recorded and shown: agent rule, digest, review status and decisions add --help `decisions-discoverable` — task — **Not Started**
+  - `M19.15` Decision ids take a project prefix (default DEC-) and warn when a new id already appears in governance files `decision-id-prefix` — task — **Not Started**
+  - `M19.16` validate notices sheet acceptance that drifted from the node, and gate dependencies the gate never names `sheet-acceptance-drift` — task — **Not Started**
+  - `M19.17` validate notices governance files that require a field validate strips, and names the replacement `governance-deprecated-fields` — task — **Not Started**
+  - `M19.18` A ratified scope boundary in the decisions ledger, with validate and digest notices for phases beyond it `scope-boundary` — task — **Not Started**
 - `M20` Agent safety and governance posture (after 0.3.1) `agent-safety-posture` — phase — **Not Started**
   - `M20.1` Posture advisor: plan the M20 leaves from the research `plan-m20-from-research` — task — **Not Started**
   - `M20.2` Probe each reviewer harness for instruction-file leakage into fresh sessions `fresh-reviewer-leak-probe` — task — **Not Started**
@@ -230,7 +240,6 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.1` on `feature/rm-move-node-chosen-id` since 2026-11-05
-- `M21.6` on `feature/rm-inherited-dep-cycles` since 2026-11-05
 - `M21.7` on `feature/rm-steering-file-guard` since 2026-11-05
 - `M21.8` on `feature/rm-queue-message-test-waits-for-idle` since 2026-11-05
 
@@ -240,9 +249,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 28 | 17 | 6.18 | 91% | 15 | 3 |
-| `specy_road` **flagged** | 47 | 24 | 5.04 | 83% | 23 | 6 |
-| `tests` **flagged** | 50 | 27 | 5.04 | 83% | 23 | 6 |
+| `docs` **flagged** | 29 | 17 | 5.75 | 83% | 15 | 3 |
+| `specy_road` **flagged** | 47 | 23 | 4.88 | 79% | 23 | 6 |
+| `tests` **flagged** | 50 | 26 | 4.88 | 79% | 23 | 6 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |

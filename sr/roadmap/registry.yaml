@@ -137,18 +137,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: inherited-dep-cycles
-    node_id: M21.6
-    branch: feature/rm-inherited-dep-cycles
-    touch_zones:
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - specy_road/bundled_scripts/roadmap_layout.py
-      - specy_road/bundled_scripts/roadmap_crud_dependency_ops.py
-      - docs/roadmap-authoring.md
-      - tests/
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
   - codename: steering-file-guard
     node_id: M21.7
     branch: feature/rm-steering-file-guard
@@ -163,6 +151,8 @@ entries:
       - docs/orchestration-review.md
       - tests/
       - specy_road/schemas/worker-record.schema.json
+      - specy_road/steering_gate.py
+      - docs/orchestration-steering-files.md
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
@@ -171,6 +161,8 @@ entries:
     branch: feature/rm-queue-message-test-waits-for-idle
     touch_zones:
       - tests/test_worker_queue_message.py
+      - planning/M21.8_queue-message-test-waits-for-idle_9a94e9ff-94d7-4166-bb4a-fbe6ba5d6daf.md
+      - sr/planning/M21.8_queue-message-test-waits-for-idle_9a94e9ff-94d7-4166-bb4a-fbe6ba5d6daf.md
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
