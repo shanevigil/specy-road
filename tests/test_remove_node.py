@@ -227,6 +227,28 @@ def test_refused_remove_node_on_blockers_preserves_tree(tmp_path: Path) -> None:
     assert _tree_bytes(tmp_path) == before
 
 
+def test_dry_run_succeeds_when_manifest_chunk_is_an_in_repo_symlink(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    chunk = tmp_path / "roadmap" / "phases" / "T.json"
+    storage = tmp_path / "roadmap" / "T-storage.json"
+    storage.write_bytes(chunk.read_bytes())
+    chunk.unlink()
+    chunk.symlink_to(storage.resolve())
+    before = _tree_bytes(tmp_path)
+    r = run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "remove-node",
+        "M99.2",
+        "--dry-run",
+    )
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert "would remove node M99.2" in r.stdout
+    assert _tree_bytes(tmp_path) == before
+    assert any(n["id"] == "M99.2" for n in load_roadmap(tmp_path)["nodes"])
+
+
 def test_archive_hard_remove_refuses_registry_claim(tmp_path: Path) -> None:
     crud_fixture_repo(tmp_path)
     write_registry_claim(tmp_path, "M99.2", "two", "feature/rm-two", "Pat")

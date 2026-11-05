@@ -15,6 +15,7 @@ collision is historical.
 from __future__ import annotations
 
 import contextlib
+import os
 import shutil
 import sys
 import tempfile
@@ -76,15 +77,59 @@ def planning_sheet_delete_plan(root: Path, planning_dir: object) -> Path | None:
     return path if path.is_file() else None
 
 
+def _materialize_graph_symlinks(scratch: Path, live: Path) -> None:
+    """Copy symlink targets that resolve outside ``scratch`` but live under ``live``.
+
+    ``copytree(..., symlinks=True)`` keeps absolute links pointing at the live
+    repo; ``find_chunk_path`` then skips them as outside ``roadmap/``. Same rule
+    as supported in-repo chunk symlinks only (targets under ``live``).
+    """
+    scratch = scratch.resolve()
+    live = live.resolve()
+    for top in _GRAPH_TOPS:
+        tree = scratch / top
+        if not tree.is_dir():
+            continue
+        anchor = tree.resolve()
+        for link in sorted(tree.rglob("*"), reverse=True):
+            if not link.is_symlink():
+                continue
+            raw = os.readlink(link)
+            target = Path(raw)
+            resolved = target.resolve() if target.is_absolute() else (link.parent / target).resolve()
+            try:
+                resolved.relative_to(anchor)
+                continue
+            except ValueError:
+                pass
+            try:
+                rel = resolved.relative_to(live)
+            except ValueError as e:
+                raise ValueError(
+                    f"dry-run rehearsal: symlink {link.relative_to(scratch)!s} "
+                    f"points outside the repository: {raw!r}"
+                ) from e
+            source = scratch / rel
+            if not source.is_file():
+                raise ValueError(
+                    f"dry-run rehearsal: missing symlink target {rel.as_posix()!r} "
+                    f"for {link.relative_to(scratch)!s}"
+                )
+            link.unlink()
+            link.write_bytes(source.read_bytes())
+
+
 @contextlib.contextmanager
 def rehearsal_root(root: Path) -> Iterator[Path]:
     """Throwaway project root for ``--dry-run``: graph trees copied, the rest linked.
 
-    The live ``root`` is never written. Same layout idea as ``apply --dry-run``.
+    The live ``root`` is never written. In-repo chunk symlinks are materialized
+    in the scratch copy so rehearsal matches real removal on the same layout.
     """
     with tempfile.TemporaryDirectory(prefix="specy-road-remove-") as tmp:
         scratch = Path(tmp)
-        for entry in root.iterdir():
+        live = root.resolve()
+        for entry in live.iterdir():
             if entry.name == ".git":
                 continue
             dst = scratch / entry.name
@@ -98,6 +143,7 @@ def rehearsal_root(root: Path) -> Iterator[Path]:
                 shutil.copytree(entry, dst, symlinks=True)
             elif entry.is_file():
                 shutil.copy2(entry, dst)
+        _materialize_graph_symlinks(scratch, live)
         yield scratch
 
 
@@ -136,8 +182,8 @@ def remove_roadmap_node(root: Path, node_id: str, *, dry_run: bool = False) -> N
     Eligibility is checked on the live graph with no self-heal pass. Real removal
     commits through :class:`~specy_road.bundled_scripts.roadmap_chunk_atomic.AtomicWritePlan`.
     ``--dry-run`` rehearses the same commit on :func:`rehearsal_root` so the live
-    tree is not written or unlinked; only after rehearsal succeeds does it print
-    what would be removed.
+    tree is not written or unlinked; in-repo chunk symlinks are materialized in
+    the scratch copy before rehearsal.
 
     Raises ``ValueError`` if not found, not removable, or if the resulting graph
     fails validation.
