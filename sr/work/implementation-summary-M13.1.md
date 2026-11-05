@@ -30,3 +30,10 @@
 - `::test_validate_warns_on_block_from_other_version_with_matching_manifest` — A2: manifest at the running version, AGENTS.md block from 0.0.1, via `cli.main(["validate", ...])`; also asserts the older-than-recorded message stays silent.
 - `::test_claude_md_block_from_other_version_warns` — CLAUDE.md block covered too.
 - Mocks: `monkeypatch` of `sys.prefix` and `sys.argv` in the two launcher tests, so the running install is a temp directory.
+
+## Fix round 1
+
+- **R2** — `warn_if_blocks_written_by_other_version()` now uses its own `_BLOCK_WRITTEN` regex (`\d[\w.+-]*\w`), so the CLAUDE.md template's `X;` parses as `X`. `_AGENTS_WRITTEN` and the older-than-recorded / pin paths are unchanged. Added `_BLOCK_WRITTEN` (reason: the reused `\S+` swallowed the `;`).
+- **R1** — `launchers_on_path()` treats an empty PATH component as the current directory (`os.getcwd()`), in PATH order, with the same resolution and running flag. Removed guard: the skip of empty components.
+- Tests added in `tests/test_version_skew_install.py`: `test_empty_path_component_is_the_current_directory` (foreign `./specy-road` ahead of the running install via a leading empty component: both records and the shadow warning), `test_generated_claude_md_block_at_running_version_is_silent` and `test_generated_claude_md_block_from_older_version_names_clean_version` (real `apply_agent_guide_block` output; the older one is generated with `agent_guide_block.__version__` monkeypatched to `0.0.1`).
+- Merged `origin/WIP/improvements-0-3-1` first. Targeted tests: 73 passed; `specy-road file-limits` OK.
