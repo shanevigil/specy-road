@@ -49,6 +49,7 @@ HIDDEN_NOTE = "untracked; now hidden from git status"
 REAL_HEADER = ".gitignore: new rules match files already in the tree (nothing was untracked):"
 ESTIMATE_HEADER = ("estimated (dry run): .gitignore's new rules would match files already in the tree "
                    "(nothing is untracked); the real run reports exactly what changed:")
+UNTRACK_LABEL = "  to stop tracking them, run from the git root (specy-road never runs it):"
 #: What to do about a tracked file a new rule matches: printed after the command, which is never run for you.
 UNTRACK_HINT = ("  keep tracking a file meant to be shared (the rule only hides new files); "
                 "untrack one that is session scratch")
@@ -239,13 +240,23 @@ def print_matches(matches: list[Match] | str, *, estimated: bool) -> None:
         print(f"  … and {len(matches) - MATCH_LIMIT} more")
     tracked = [path for path, _, note in matches if note == TRACKED_NOTE]
     if tracked:
-        print(untrack_command(tracked, [path for path, _, note in matches[:MATCH_LIMIT] if note == TRACKED_NOTE]))
+        for line in untrack_lines(tracked, [path for path, _, note in matches[:MATCH_LIMIT] if note == TRACKED_NOTE]):
+            print(line)
         print(UNTRACK_HINT)
 
 
-def untrack_command(tracked: list[str], listed: list[str]) -> str:
-    """The ``git rm --cached`` line for the ``listed`` tracked paths, and how to find the rest of ``tracked``."""
-    rest = len(tracked) - len(listed)
-    more = f" ({rest} more: git ls-files -ci --exclude-standard)" if rest else ""
-    command = " ".join(shlex.quote(p) for p in listed)
-    return f"  to stop tracking, from the git root (never run for you): git rm --cached -- {command}{more}"
+def command_line(argv: list[str]) -> str:
+    """A line to copy and paste: ``argv`` shell-quoted, indented, and nothing else on it."""
+    return "    " + shlex.join(argv)
+
+
+def untrack_lines(tracked: list[str], listed: list[str]) -> list[str]:
+    """The ``git rm --cached`` command for the ``listed`` tracked paths, each command on a line of its own.
+
+    When ``tracked`` has more than were listed, a note line and the command that lists them follow.
+    """
+    lines = [UNTRACK_LABEL, command_line(["git", "rm", "--cached", "--", *listed])]
+    if rest := len(tracked) - len(listed):
+        lines += [f"  {rest} more tracked file(s) match a new rule; this lists every tracked file git ignores:",
+                  command_line(["git", "ls-files", "-ci", "--exclude-standard"])]
+    return lines

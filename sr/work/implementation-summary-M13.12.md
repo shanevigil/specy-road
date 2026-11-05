@@ -86,6 +86,32 @@ Quieter, accurate validate notices. Commits `36e8aabf` and `cc417326`, then a fi
 - Dogfood fixture after the full suite: `git status --ignored -- tests/fixtures` is clean (no context warnings there, so no hash file).
 - Full suite: 4488 passed.
 
+## Fix round 4 (review `gpt-6.1-sol-low` on `2606d2df`; merged `origin/WIP/improvements-0-3-1`)
+
+- **Class: a copy-paste command line carrying text other than its shell-quoted argv.** The overflow note `(N more: …)` was appended to the `git rm --cached` command, and a prose label sat before it on the same line, so pasting the line failed.
+- **Design change:** one builder, `ignore_report.command_line(argv)`, returns four spaces plus `shlex.join(argv)` and nothing else. `untrack_lines` (which replaced `untrack_command`) prints:
+  - the label (`UNTRACK_LABEL`) on its own line;
+  - the `git rm --cached -- …` command on its own line;
+  - when more tracked files match than are listed, a note line, then `git ls-files -ci --exclude-standard` as a command line of its own.
+
+## Probes (fix round 4)
+
+- Paths with a space, `'`, `"`, `( )` and `$HOME;`: the printed command round-trips through `shlex.split` to `git rm --cached -- <paths>`. Test: `test_odd_paths_round_trip_through_the_shell`.
+- 21 tracked matches (`MATCH_LIMIT + 1`) whose names contain spaces and parentheses:
+  - two command lines, each round-tripping to the intended argv (the first 20 paths; `git ls-files -ci --exclude-standard`);
+  - the overflow note is its own line.
+
+  Test: `test_more_tracked_matches_than_listed_put_the_overflow_on_its_own_line`. It would fail on `2606d2df`.
+- Dry-run and real-run notes print the same lines (existing `test_the_dry_run_estimate_lists_what_the_real_run_reports`): still passes.
+- Other commands this leaf prints:
+  - the touch-zone notice's `` `specy-road validate --all` `` sits in prose, in backticks, with no arguments to quote;
+  - the `specy-road edit-node <NODE_ID> --set touch_zones=<paths>` hint is existing text with placeholders, not a runnable command;
+  - the folded context line `(validate --context shows them)` is acceptance-specified wording;
+  - the repeated-pattern notice and `UNTRACK_HINT` contain no command.
+
+  None of these embeds a path or other data.
+- Tests that import `agent_ignores`, `ignore_report`, `refresh_stubs`, `init_project` or `upgrade`: 659 passed. Other targeted suites: 150 passed. The fixture tree is clean.
+
 ## Verification
 
 - `python -m pytest -q -n 4`: 4409 passed, 1 failed before the `test_validate_strict.py` update. All 7 tests in that file pass after it. After the fix round and the merge: 4459 passed.
@@ -99,7 +125,9 @@ Quieter, accurate validate notices. Commits `36e8aabf` and `cc417326`, then a fi
 - `touch_zone_tracked._hidden`: the `N [more] node(s) (by status: …)` clause (A1).
 - `warn_untracked_zones` kwargs `claims`, `show_all`: claims passed in rather than re-read; `--all` lists everything (A1).
 - `_untracked_line` optional `hidden` argument: appends the counted clause (A1).
-- `ignore_report.untrack_command`: the `git rm --cached` line, quoted with `shlex`, and a pointer to the rest when the list is capped (A3).
+- `ignore_report.command_line` / `untrack_lines` / `UNTRACK_LABEL` (fix round 4, replaced `untrack_command`): each copy-paste command is a line of its own, built only from `shlex.join(argv)`; the overflow note is a separate line (A3).
+- Tests in `tests/test_m13_12_untrack_command.py` (fix round 4): odd paths and 21 tracked matches round-trip through `shlex.split` (A3).
+- (superseded) `ignore_report.untrack_command`: the `git rm --cached` line, quoted with `shlex`, and a pointer to the rest when the list is capped (A3).
 - `validate_notices._patterns`, `notice_repeated_ignore_patterns`: the repeated-pattern notice (A4).
 - `context_notice_cache.py` (`HASH_FILENAME`, `_hash_path`, `_record`, `report_context_warnings`): fold unchanged context warnings (A5).
 - Guard in `report_context_warnings`: no warnings means no cache write and a stale hash is removed, so the fixture and clean repos stay clean (A5).

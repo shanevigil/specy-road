@@ -88,8 +88,9 @@ def test_a_tracked_match_prints_the_untrack_command_and_when_to_keep_tracking(tm
     repo = repo_with_prompts(tmp_path, untracked=0)
     apply_and_report(repo, "", [])
     out = capsys.readouterr().out.splitlines()
-    assert out[-2:] == [
-        "  to stop tracking, from the git root (never run for you): git rm --cached -- work/prompt-a.md",
+    assert out[-3:] == [
+        "  to stop tracking them, run from the git root (specy-road never runs it):",
+        "    git rm --cached -- work/prompt-a.md",
         "  keep tracking a file meant to be shared (the rule only hides new files); "
         "untrack one that is session scratch",
     ]
