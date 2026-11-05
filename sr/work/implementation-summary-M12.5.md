@@ -15,7 +15,13 @@ retire landed worktrees, moving their hand-off files to the main checkout first.
 
     `execute(plan)` does nothing when the plan has any refusal. Otherwise it saves the hand-off files, terminates the workers, calls `remove()` and ends the session records. `cleanup_after_land` is `execute(plan_cleanup(...))`, and sweep uses the same pair. A refusal therefore moves nothing, which is a behaviour change from round 0, where hand-off files were moved even when the cleanup then refused.
   - `_salvage_list` walks with `os.walk`, which does not follow links, and skips symlinked files. It stops at any directory that holds a `.git` file, directory or link, or has a bare-repository layout, and adds a refusal for it, so the salvage step never moves a `.git` entry or anything inside a repository.
-  - `sweep` (A3/A7) first runs `terminate_orphaned`, except in `--dry-run`. It then judges every linked worktree from `git worktree list` with M14.2's rules: `live_holders` plus `_live`, and `classify`/`evidence_kind`/`merged_how` for "merged with own commits". A detached `HEAD` must be contained in the integration branch. Each worktree that passes then goes through the same `plan_cleanup`/`execute` pair, and the output is one line: `removed`, `would remove`, or `kept <path>: <reason>`. Locked worktrees, the current worktree, missing directories and `TEMP_WORKTREES` (running specy-road checks) are kept. `--delete-local-branch` reuses `grind_session_cleanup.delete_local_branch` against the integration ref. Remote branches are never deleted (A5).
+  - `sweep` (A3/A7) first runs `terminate_orphaned`, except in `--dry-run`. **Fix round 2:** each linked worktree from `git worktree list` is then judged by one function on git facts, `sweep_decision(ctx, wt)`, which returns either a keep reason or a `CleanupPlan`:
+    1. removability: locked, this command's own worktree, directory missing, or a temp check worktree;
+    2. M14.2's live rules (`live_holders` plus `_live`: claim, non-terminal worker, live session);
+    3. landed: the branch tip, or the detached `HEAD`, is an ancestor of the integration ref (`merged_into`, that is `git merge-base --is-ancestor`); otherwise kept as "`… is not an ancestor of <target>`";
+    4. `plan_cleanup`'s refusals.
+
+    Doctor's display labels (`classify`, `evidence_kind`, `merged_how`) no longer decide anything here, so a contained branch with no commits of its own is removed once nothing holds it, and a same-patch or squashed one is kept. A worktree with a plan then goes through `execute`, and the output is one line: `removed`, `would remove`, or `kept <path>: <reason>`. Locked worktrees, the current worktree, missing directories and `TEMP_WORKTREES` (running specy-road checks) are kept. `--delete-local-branch` reuses `grind_session_cleanup.delete_local_branch` against the integration ref. Remote branches are never deleted (A5).
 - **`specy_road/worktree_prune.py`.** `plan_prune` now delegates to the new `plan_worktree(main, wt, branch)`, so sweep can apply the same checks to any worktree. An empty branch (detached) skips the branch refs. Behaviour for `plan_prune` is unchanged.
 - **`specy_road/bundled_scripts/worktree_cli.py`.** Adds the `cleanup` and `sweep` subcommands. On refusal, cleanup prints `error: not cleaning up <ID>:` plus one `  - <reason>` line per reason and exits 1.
 - **`specy_road/session_presence.py`.** Adds `end_sessions_for(repo_root, worktree, branch)`, which ends every record (live or expired) whose worktree is inside the removed one or whose branch is the leaf's.
@@ -35,7 +41,8 @@ The final list is the brief's list as given. Every changed path is inside it. Th
 
 - `pytest -q -n 4 tests/test_worktree_cleanup.py`: 18 passed (fix round 1). The 6 new foreign-repository cases fail on 146da5ba (run in a temporary detached worktree).
 - Targeted suites after the fix (cleanup, prune, prune-foreign, grind-session, orchestration-config, session-plan, doctor-live, linked-worktrees-root): 273 passed. `ruff`: clean.
-- Merged `origin/WIP/improvements-0-3-1` twice: the first conflict in `orchestration_config.py` was resolved by keeping both sides; the second merge was clean.
+- Fix round 2: `tests/test_worktree_cleanup.py` 19 passed; targeted suites (cleanup, prune, prune-foreign, grind-session, orchestration-config, doctor, doctor-live) 253 passed; ruff, file-limits and the private-import check clean. The new test fails on 00bb116f (run in a temporary detached worktree).
+- Merged `origin/WIP/improvements-0-3-1` three times (the third, in fix round 2, was clean): the first conflict in `orchestration_config.py` was resolved by keeping both sides; the second merge was clean.
 - `pytest -q -n 4` (full suite): 4412 passed in round 0; rerun by `specy-road ready` for this commit.
 - `specy-road file-limits`: OK.
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: exit 0.
@@ -62,6 +69,22 @@ Class: the cleanup acted on the tree (moved hand-off files) before the planner h
 - `--delete-local-branch` touches only the local branch ref, after a removal that succeeded (read).
 - Not changed: a destination under the main checkout's `reviews_root` that is itself a symlink. That directory is the main checkout's own and outside the worktree being removed.
 
+Fix round 2 class: a display label or heuristic (doctor's `classify` / `evidence_kind` / `merged_how`) decided a git fact ("is this tip in the integration branch?").
+
+- Sweep, contained branch with no commits of its own, nothing holding it: removed. Before the fix it was kept as "no commits yet". Covered by a test.
+- Sweep, contained detached `HEAD`: removed. Covered by a test.
+- Sweep, dirty contained branch (tracked file modified): kept, "uncommitted or untracked: .gitignore". Covered by a test.
+- Sweep, unmerged branch: kept, "branch … is not an ancestor of origin/main". Covered by a test.
+- Sweep, same-patch branch (cherry-picked onto a moved `main`): kept as not an ancestor. Covered by a test. A cherry-pick onto the same parent within the same second produced the identical commit, a real ancestor; that was a test-setup artifact, not a defect.
+- Sweep, fresh contained branch with a registry claim (M14.2's case): still kept by the claim rule, before the ancestry check. The existing four-line sweep test covers it.
+- Sweep, live session or worker on a contained branch: still kept by the live rules. Existing test.
+- `worktree cleanup <ID>`: never used the labels. `plan_worktree` judges the worktree's `HEAD` and the local, remote-tracking and on-remote branch tips with `merged_into` against the remote's actual tip (read).
+- Remote-tip check inside sweep: after the local ancestry check, `plan_cleanup` → `plan_worktree` still refuses when the remote's integration tip lacks the commits, so a merge that exists only locally is kept (read; covered by prune's tests).
+- `--delete-local-branch`: `delete_local_branch` decides with `merged_into` (read).
+- `grind_session_cleanup.after_landing`: reaches only `cleanup_after_land` and `sweep`, both covered above (read).
+- `terminate_orphaned` decides from registry and status at refs, not from labels (read).
+- No other use of `classify`, `evidence_kind` or `merged_how` remains in this leaf's code (grep).
+
 ## Added
 
 - `worktree_cleanup.REGENERABLE` / `regenerable()`: the ignored-file allow-list from A2.
@@ -73,7 +96,7 @@ Class: the cleanup acted on the tree (moved hand-off files) before the planner h
 - `worktree_cleanup._workers_in()`: finds the leaf's workers so cleanup can terminate idle ones (A1).
 - `worktree_cleanup.cleanup_after_land()`: `worktree cleanup <ID>` (A1/A2/A6).
 - Guard in `plan_cleanup`: refuses on a non-running, non-held active worker, and on a human-leased held worker, because `terminate` would kill or raise on it.
-- `worktree_cleanup._gate()`: sweep's keep reasons. Locked, current worktree, missing directory and temp check worktrees are guards so that sweep never removes a running check's or its own worktree. The live and merged rules come from M14.2 (A3).
+- `worktree_cleanup.sweep_decision()` (replaces round 0's `_gate`): sweep's single keep/remove decision on git facts. Locked, current worktree, missing directory and temp check worktrees are guards so that sweep never removes a running check's or its own worktree. The live rules come from M14.2, and landed means `merge-base --is-ancestor` (A3, fix round 2).
 - `worktree_cleanup._sweep_one()` / `sweep()`: `worktree sweep` (A3/A6/A7).
 - `worktree_prune.plan_worktree()`: `plan_prune`'s checks for any worktree. Added a branch-empty guard for detached worktrees.
 - `session_presence.end_sessions_for()`: ends the removed worktree's and branch's session records (A6).
@@ -92,4 +115,5 @@ Class: the cleanup acted on the tree (moved hand-off files) before the planner h
   - `test_grind_session_cleans_up_each_landed_leaf_and_sweeps_by_policy`, with `off` and `between_leaves` cases (A4)
   - `test_cleanup_refuses_another_repository_in_the_hand_off_tree_and_moves_nothing`, with `worktree` (linked, unlanded commit, owner's `git worktree list` still valid), `clone` and `gitfile` cases (F1)
   - `test_sweep_keeps_a_worktree_holding_another_repository_in_its_hand_off_tree`, the same three cases, `--dry-run` and real (F1)
+  - `test_sweep_decides_on_ancestry_not_on_doctors_label` (fix round 2, A3): a contained branch with no commits and a contained detached `HEAD` are removed; a dirty contained branch is kept with "uncommitted or untracked: .gitignore"; unmerged and same-patch (cherry-picked onto a moved `main`) branches are kept as "not an ancestor". It covers both `--dry-run` and a real run, and fails on 00bb116f.
   - Helpers `_foreign` and `_foreign_intact`: build and check the three foreign-repository kinds (F1)
