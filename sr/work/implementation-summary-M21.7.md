@@ -120,6 +120,25 @@ Tests after the merge:
 - `ruff check specy_road tests scripts`: clean.
 - `specy-road file-limits`: OK.
 
+## Fix round 4 (review `gpt-6.1-sol-low` at a3e1a12b)
+
+The `origin/WIP/improvements-0-3-1` merge went in first, with no conflicts.
+
+- **R1, class: an entry that is a symlink, recorded by its link text only.** A write through an unchanged link (into the file it resolves to) left the value unchanged. `env_bin` already handled this with its own copy of the rule; hooks, harness, shell startup, policy and review files did not. Rather than add another per-class branch, `_value` is now the one rule every class compares:
+  - a regular file: its sha256;
+  - a link: `link:<text>`, plus `@<sha256>` of what it resolves to when that is a regular file;
+  - anything else: `dir`, `other` (a fifo or a socket), or `absent`.
+
+  `_env_bin` lost its special branch and now calls `_add` like the other classes. `_links`, the porcelain symlink detector, reads link text with `os.readlink`, so its comparison of link targets does not change with content. Enumeration stays bounded: hooks are direct entries only, and a link to a directory is not walked. That bound is stated in `_value`'s docstring and the docs.
+
+## Probes (round 4)
+
+- The new hooks-test shape `unchanged_symlink_written_through`: a default-hooks `pre-commit` linked to a file, written through the link, run against the round-3 `steering_paths.py` in a scratch worktree. It fails there and passes now: one `git_hook` finding with the same link text and a different `@sha256`, plus `git_probes_skipped`.
+- The same write-through on the other classes: a pre-existing `.claude/settings.json`, `.envrc` and worktree `work/reviews/M1.1/REVIEW-x.md`, each a link to a file outside, written through. Result: one finding each (`harness`, `shell_startup`, `review_file`) (probe script).
+- The bound: a hooks-directory entry that links to a directory, with a file written inside that directory. Result: no finding, as documented. Git runs only hook files named directly in the hooks directory, never one inside a subdirectory, so this is inert.
+- Other places that read through or record links: the git config chain and the registry read file contents, which already follow links. The `env_setup.link` venv write-through case (A5) still passes under the single rule. `worker_turn_check._content` (porcelain, not steering) is unchanged: steering paths found in porcelain are replaced by their `steering_file` finding.
+- Targeted tests: 187 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK (`steering_paths.py` at 400 lines after shortening `_value`'s own new docstring).
+
 ## Added
 
 - `specy_road/steering_paths.py`: the list, `Scope` and snapshots per class, `changes`, `SteeringWatch` with `git_changes`, `rest_changes` and `without_steering_paths`, and `config_values`, a no-git config reader. Required by A1 and A2.
@@ -134,4 +153,5 @@ Tests after the merge:
 - Fix round 1: `git_config_text.py` (`parse_config`, `read_chain`, and helpers `_eol`, `_section`, `_value`, `_includes`) for R1. `steering_paths.watched_values` replaces `config_values` (display only). `SteeringWatch.merged` replaces `without_steering_paths` (R3). Tests: the parametrized `test_a_hook_in_the_configured_hooks_path_is_found_however_git_config_spells_it` (R1, with git as oracle); two new `CASES` entries, `forged_review_in_worktree` (R2) and `escaping_symlink_at_harness_path` (R3), plus the `_link` helper; the clean turn also writes its own READY in the worker checkout (R2 exemption).
 - Fix round 2: no new helpers. The leading-BOM strip in `parse_config` and the superset in `git_snapshot` replace the earlier "hooksPath else defaults" choice. The round-1 test `test_a_hook_in_the_configured_hooks_path_is_found_however_git_config_spells_it` became `test_a_hook_in_the_hooks_directory_git_uses_is_found_however_the_config_reads`, with five shapes and git deciding the directory in use.
 - Fix round 3: `git_config_text.git_reads` (git, at turn start only) and `Scope.git_known` (R1); `steering_paths._resolved`, which never raises; the CRLF line in `parse_config`. Tests: the `crlf_continuation` shape in `HOOKS_CONFIGS`, and the fsmonitor test parametrized over `snapshot` (`taken` / `unavailable`; the latter makes the public `steering_paths.file_snapshot` raise with monkeypatch, R2).
+- Fix round 4: no new helper. `_value` now carries the link-resolution rule and `_env_bin`'s copy of it was removed. Test: the `unchanged_symlink_written_through` shape in `HOOKS_CONFIGS`, with `DEFAULT_HOOKS` naming the two shapes where git uses the default directory.
 - `tests/test_finish_work_cleanup._config_on_dev`: keeps the changed test under the 80-line function cap, which the fixture fix above would otherwise have exceeded.
