@@ -122,17 +122,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: archived-summary-exempt-from-file-limits
-    node_id: M15.32
-    branch: feature/rm-archived-summary-exempt-from-file-limits
-    touch_zones:
-      - specy_road/file_limits_engine.py
-      - docs/file-limits.md
-      - tests/
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-05T20:35:05+00:00'
   - codename: refused-review-record-leaves-a-trace
     node_id: M15.33
     branch: feature/rm-refused-review-record-leaves-a-trace

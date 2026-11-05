@@ -40,7 +40,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.26` A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim `claims-with-no-worker-are-reported-and-never-hold-slots` — task — **Complete**
   - `M15.27` worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length `cursor-usage-sums-segments-and-flags-undercounts` — task — **Complete**
   - `M15.31` A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported `delegated-reviewer-always-runs-a-named-model` — task — **Not Started**
-  - `M15.32` An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure `archived-summary-exempt-from-file-limits` — task — **Not Started**
+  - `M15.32` An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure `archived-summary-exempt-from-file-limits` — task — **Complete**
   - `M15.33` A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed `refused-review-record-leaves-a-trace` — task — **Not Started**
   - `M15.34` The executor prompt states the test rules that the reviewer's excess checklist enforces `executor-prompt-states-the-test-rules` — task — **Complete**
   - `M15.35` The review packet never lists .git or a path under it as an uncommitted reference `packet-never-lists-dot-git-as-uncommitted` — task — **Complete**
@@ -165,8 +165,6 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
-- 2026-11-05 `M15.30` stopped depending on `2535829e-6a0d-40e3-aa42-9b0506bb9fe9` (no longer live)
-- 2026-11-05 `M16.18` stopped depending on `M16.47 One check_assignment decides eligibility for every launch and for the gate`
 - 2026-11-05 `M16.12` stopped depending on `M16.7 Commands run in the CLI's process: no python -m re-launch, no cwd globals`
 - 2026-11-05 `M16.12` stopped depending on `M16.10 One LLM client module replaces the provider code inside review_node`
 - 2026-11-05 `M16.15` stopped depending on `M16.1 Parity harness: a review-gate decision table covering every review policy`
@@ -190,7 +188,9 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M16.32` stopped depending on `M16.13 review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session`
 - 2026-11-05 `M16.32` stopped depending on `M16.30 AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer`
 - 2026-11-05 `M16.4` stopped depending on `M16.2 Baseline metrics, a coverage floor in CI, and the M16 working rules written down`
-- _…and 34 earlier — `specy-road history --json`_
+- 2026-11-05 `M16.4` stopped depending on `M16.0 Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs`
+- 2026-11-05 `M16.6` stopped depending on `M16.3 Delete dead and unwired code from a decided list, and add vulture as an advisory CI step`
+- _…and 32 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -217,7 +217,6 @@ Do not pick these up.
 - `M14.1` on `feature/rm-approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` since 2026-11-05
 - `M15.2` on `feature/rm-claude-code-reviewer-works-on-a-subscription-login` since 2026-11-05
 - `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
-- `M15.32` on `feature/rm-archived-summary-exempt-from-file-limits` since 2026-11-05
 - `M15.33` on `feature/rm-refused-review-record-leaves-a-trace` since 2026-11-05
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
@@ -231,12 +230,15 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 29 | 20 | 6.56 | 100% | 15 | 2 |
-| `specy_road` **flagged** | 47 | 29 | 5.17 | 83% | 23 | 4 |
-| `tests` **flagged** | 50 | 32 | 5.17 | 83% | 23 | 4 |
+| `docs` **flagged** | 34 | 28 | 8.17 | 100% | 13 | 1 |
+| `specy_road` **flagged** | 47 | 37 | 7.20 | 100% | 17 | 3 |
+| `tests` **flagged** | 49 | 39 | 7.20 | 100% | 17 | 3 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
+| `research` | 1 | 1 | — | — | 0 | 0 |
+| `roadmap` | 1 | 1 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
+| `schemas` | 1 | 1 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
