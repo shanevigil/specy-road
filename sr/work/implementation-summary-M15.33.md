@@ -46,6 +46,10 @@ No other paths were required. `review_record_write._review_record` already calls
 
 - Dropped duplicate age formatting in `review_rejected.py`; `rejected_state` uses public `relative_age` from `orphaned_claims.py` (formerly private `_age`).
 
+## Fix round (Sol-low block on `20cb931a`)
+
+- Removed unused `write=` on `ReviewRecordTrace.refuse` and redundant `_active` (marker writes keyed only on `commit` after `roster_resolved`).
+
 ## Probes
 
 - Unrostered model with a missing notes path: roster check runs first; no `REJECTED-*.md` and no reviews directory (`test_unrostered_model_with_missing_notes_writes_no_marker`).
@@ -61,6 +65,10 @@ No other paths were required. `review_record_write._review_record` already calls
 - `REJECTED-*.md` with invalid UTF-8: `marker unreadable` on text list, handoff status, and `refused_unreadable` in list JSON (`test_invalid_utf8_rejected_marker_is_unreadable_in_status_interfaces`); other marker readers only call `read_rejected_marker` / `unreadable_rejected_lines`.
 - Escalation line when `t is None`: condition is `t is None or not gate.passed`; `gate` is assigned only in the `else` branch, so no other `gate is None` paths in `review_cli.py`.
 - Repo-wide search for the same ``Nd``/``Nh``/``Nm``/``under 1m`` age formatter: only `orphaned_claims._age` and the copy in `review_rejected`; consolidated as `relative_age` in `orphaned_claims`, one caller in `rejected_state`.
+- All `ReviewRecordTrace.refuse` call sites in `review_rejected.py`: seven calls, none passed `write=False`; parameter and branch removed.
+- `ReviewRecordTrace._active` vs unset `commit`: refusals before `roster_resolved` never call `refuse`; after roster, `commit` alone gates writes — `_active` removed as duplicate guard.
+- Leaf helpers `_parse_when` (`review_rejected`) vs `orphaned_claims._parse_when`: latter adds date-only `started` handling; refusal `refused_at` is always full ISO from `write_rejected` — not merged to avoid coupling registry parsing to markers.
+- `review_run_status` / `review_cli` M15.33 additions: no unused parameters or unreachable branches found beyond `refuse`/`_active`.
 
 ## Added
 

@@ -131,17 +131,15 @@ class ReviewRecordTrace:
         self.reviews = reviews_dir(repo_root, node_id)
         self.model = model
         self.commit: str | None = None
-        self._active = False
 
-    def refuse(self, msg: str, fail, *, write: bool = True) -> int:
-        if write and self._active and self.commit:
+    def refuse(self, msg: str, fail) -> int:
+        if self.commit:
             write_rejected(self.reviews, self.model, self.commit, msg)
         return fail(msg)
 
     def roster_resolved(self, commit: str | None) -> None:
         """Call only after the model is on the roster; later refusals may write ``REJECTED-<model>.md``."""
         self.commit = commit
-        self._active = True
 
 
 def _review_record_setup(ns: Any, root: Path, trace: ReviewRecordTrace, fail: Any) -> tuple[Any, Any, dict] | int:
