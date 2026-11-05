@@ -3,7 +3,8 @@
 The reviewer prompt is :func:`build_prompt`'s (``prompt --role reviewer``), so
 the reviewer keeps the packet-only, edit-nothing rules. The roster entry's
 harness runs it through the worker adapters: a ``claude-code`` entry without
-``channels.cli`` runs bare (:meth:`ClaudeCode.reviewer_launch`) with a session
+``channels.cli`` runs bare or explicit (:func:`specy_road.reviewer_auth.claude_reviewer_mode`,
+:meth:`ClaudeCode.reviewer_launch`) with a session
 id chosen up front, a ``codex`` or ``cursor`` one its adapter's read-only
 reviewer command, any other its ``channels.cli``. Unlike a worker, the
 command waits for the turn: a reviewer has one job, and its outcome is whether
@@ -52,6 +53,7 @@ from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, ReviewR
 from specy_road.review_run_status import superseded_by
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.review_usage import add_parser as add_usage_parser, archive_round
+from specy_road.reviewer_auth import claude_default_reviewer
 from specy_road.reviewer_run_failure import capacity_error, valid_record  # noqa: F401 — re-exported
 from specy_road.reviewer_run_failure import gate_policy_summary as _gate_policy_summary
 from specy_road.reviewer_run_failure import (_now, _read_json, close_run, run_path as _run_path, save_run,
@@ -121,8 +123,14 @@ class _Harness:
         # so it keeps the launch it had before M8.3: Claude Code's bare reviewer command, else the adapter's own.
         self.chore = chore
         self.default = self.harness != "generic" and not self.cli and (not chore or isinstance(self.adapter, ClaudeCode))
-        self.launch_mode = "bare" if self.default and isinstance(self.adapter, ClaudeCode) else self.mode
+        self.auth_error: str | None = None
+        self.note: str | None = None
         self.harness_bin = entry.get("harness_bin")   # resolved by the adapter whenever a default command is built
+        if self.default and isinstance(self.adapter, ClaudeCode):
+            profile_mode = prof.launch_mode() if prof is not None else None
+            self.launch_mode, self.auth_error, self.note = claude_default_reviewer(entry, profile_mode)
+        else:
+            self.launch_mode = self.mode
         self.can_resume = self.adapter.caps.resume
         self.output: Path | None = None   # answer_scratch's file: where a fresh Codex turn writes its answer (-o)
         self.log = Path()   # the run's transcript, RUN-<model>.log
@@ -134,9 +142,10 @@ class _Harness:
             sid = session or (str(uuid.uuid4()) if isinstance(self.adapter, ClaudeCode) else None)
             reviews = reviews_dir(self.repo_root, self.node_id)
             structured = {} if self.chore else {"schema": reviews / OUTPUT_SCHEMA_NAME, "output": self.output}
+            extra = {"mode": self.launch_mode} if isinstance(self.adapter, ClaudeCode) else {}
             return self.adapter.reviewer_launch(prompt, self.api_id, reviews, self.effort,
-                                                session=(sid, session is not None) if sid else None, **structured,
-                                                harness_bin=self.harness_bin)
+                                                session=(sid, session is not None) if sid else None,
+                                                **structured, **extra, harness_bin=self.harness_bin)
         kw = {"node_id": self.node_id, "repo_root": self.repo_root, "launch_mode": self.mode, "effort": self.effort,
               "harness_bin": self.harness_bin}   # a custom command without {session} resumes with the default
         # A custom command gets its program's structured-output flags (Antigravity `agy`: --json-schema).
@@ -246,6 +255,8 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
     entry = _entry(repo_root, model)
     cwd = (worktree or Path(git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root)).resolve()
     h = _Harness(repo_root, entry, node_id, cwd, chore=chore is not None)
+    if h.auth_error:   # forced bare with no key: before the lock, the prompt files and the RUN record
+        raise DelegateError(h.auth_error)
     path, reviews = run_path(repo_root, node_id, model), reviews_dir(repo_root, node_id)
     lock = contextlib.ExitStack()
     try:   # one reviewer run per leaf, taken before the run writes any of its files: they would cross-fail
@@ -257,13 +268,16 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
         if chore is None and not resume:   # M15.17: a missing or other-commit packet is built, not refused
             ensure_packet(repo_root, t, ref)
         text, session = _start(repo_root, t, model, ref, h, resume)
-        _preflight(entry, cwd)
+        _preflight(entry, cwd)   # M8.3: after the lock, before the RUN record is saved
+        if h.note:   # bare mode and the subscription login, same sentence prompt prints
+            print(h.note, file=sys.stderr)
         prompts = (_prompt_file(repo_root, node_id, model, text),
                    _prompt_file(repo_root, node_id, model, CHORE_RESUME_PROMPT if chore else RESUME_PROMPT, "-resume"))
         archive_round(repo_root, node_id, model)   # M14.6: the previous round's RUN json, log and notes, kept in history/
         run = {"node_id": node_id, "model": model, "harness": h.harness, "ref": t.ref, "commit": t.commit,
                "state": "running", "session_id": session, "resumed": resume, "source": "review-delegate",
                "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
+               "launch_mode": h.launch_mode,
                "log": str(path.with_suffix(".log"))}
         save_run(path, run)
         h.log = log = path.with_suffix(".log")

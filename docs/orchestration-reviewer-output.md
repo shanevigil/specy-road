@@ -10,11 +10,13 @@ reviewer command passes the harness's structured-output flag where there is one:
 
 | Harness | Reviewer command | Where the JSON comes from |
 |---|---|---|
-| Claude Code | `--bare`, `--allowedTools Read,Glob,Grep,Bash`, `--disallowedTools` (below), `--json-schema '<schema>'` | the `result` event's `structured_output`, else its text |
+| Claude Code | bare or explicit (below); both use `--allowedTools Read,Glob,Grep,Bash`, `--disallowedTools` (below), `--json-schema '<schema>'` and `--add-dir` | the `result` event's `structured_output`, else its text |
 | Codex | `codex exec --json -c sandbox_mode=read-only -c approval_policy=never --output-schema <file> -o <answer file> -` (the answer file is in a private temporary directory, outside the checkout and the hand-off directory) | at `turn.completed`, the `-o` file; a resume (which documents neither flag) the turn's last `agent_message` |
 | Cursor | `agent -p --output-format stream-json --mode ask --trust` (no `--force`) | the last `result` event's text |
 | Antigravity (`agy`, a `generic` entry) | its roster `channels.cli` (never the profile's `access.cli`), with `--json-schema <schema file>`, `--output-format json`, `--sandbox` and `--print-timeout 30m` added after `agy` where absent; `--dangerously-skip-permissions` is refused | the envelope's `structured_output` |
 | anything else (`channels.cli`, `generic`, or a plain-text wrapper on any harness) | as written | the whole output, as one final message (a JSON envelope's `structured_output`) |
+
+Claude Code's mode is decided once for `review delegate` and `prompt --channel cli` (`specy_road/reviewer_auth.py`). **Bare** (`--bare`) only when the reviewer's environment has `ANTHROPIC_API_KEY` or the user settings bare mode reads define `apiKeyHelper`. When the helper is the only credential, bare mode also passes `--settings` with that user-settings path, so the helper command is not on the argv or in the log. **Explicit** otherwise: `--setting-sources user --strict-mcp-config` and no `--mcp-config`, so no repository hooks, project settings or MCP servers load, and the subscription login is read. Explicit argv never contains `--bare`. Both modes keep the `--disallowedTools` list, the `--json-schema` and the hand-off `--add-dir`. A profile `access.launch_mode: bare`, or a roster entry `launch_mode: bare`, forces bare; with no key and no `apiKeyHelper`, both commands refuse before launch (no RUN record, exit 1) and name the fixes: export `ANTHROPIC_API_KEY`, configure `apiKeyHelper`, or let specy-road choose explicit mode. The RUN record and the filed REVIEW carry `launch_mode` `bare` or `explicit`. The key's value is never printed or logged. `orchestrate plan` prints one `reviewer auth:` notice per such entry.
 
 One reader takes every harness's answer, strictly (A3). Each harness has one
 row in `TURNS` (`specy_road/review_answer.py`) declaring its turn boundary and
@@ -121,7 +123,7 @@ commands) is a warning only.
 A reviewer cannot forge a record because specy-road files it from the run's
 final JSON; it cannot write the repository or `work/reviews/<ID>/` because
 each default reviewer launch is read-only: Codex `sandbox_mode=read-only`;
-Cursor `--mode ask` without `--force`; Claude Code with `--allowedTools
+Cursor `--mode ask` without `--force`; Claude Code, bare and explicit alike, with `--allowedTools
 Read,Glob,Grep,Bash` and `--disallowedTools Write Edit NotebookEdit
 "Bash(git commit *)" "Bash(git push *)" "Bash(gh *)"`. Tests pin each argv.
 Prevention is the boundary.

@@ -19,7 +19,7 @@ from tests.review_delegate_helpers import (CAPACITY, delegate_repo, delegate_ros
 from tests.review_repo_helpers import commit_file, git, make_review_repo
 from tests.test_models_and_prompt import run_main
 
-from specy_road.bundled_scripts import review_cli, role_prompt
+from specy_road.bundled_scripts import review_cli, role_prompt, role_prompt_cli
 from specy_road.review_delegate import DelegateError, capacity_error, delegate, load_run
 from specy_road.review_record_write import review_run_lock
 from specy_road.reviewer_run_failure import save_run, run_path, turn_capacity_error
@@ -193,7 +193,10 @@ def test_zero_retries_still_makes_the_first_attempt_and_ends_incomplete(tmp_path
     assert run["state"] == "incomplete" and "capacity error after 1 attempt(s)" in run["reason"]
 
 
-def test_bare_reviewer_launch_tracks_a_session_only_when_asked(tmp_path: Path) -> None:
+def test_bare_reviewer_launch_tracks_a_session_only_when_asked(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "claude"))
     prompt = tmp_path / "p.md"
     prompt.write_text("x")
     plain = ClaudeCode().reviewer_launch(prompt, "m", tmp_path)
@@ -272,7 +275,7 @@ def test_prompt_cli_exception_closes_the_run_incomplete(tmp_path: Path, monkeypa
     def boom(*_a, **_k):
         raise RuntimeError("harness exploded")
 
-    monkeypatch.setattr(role_prompt, "run_reviewer_channel", boom)
+    monkeypatch.setattr(role_prompt_cli, "run_reviewer_channel", boom)
     with pytest.raises(RuntimeError, match="harness exploded"):
         role_prompt.main(["M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
                           "--repo-root", str(repo)])

@@ -62,10 +62,8 @@ from pathlib import Path
 from specy_road.bundled_scripts.do_next_prompt import SUBAGENT_LINE
 from specy_road.bundled_scripts.generate_brief import index, render_brief, verify_cmd_lines
 from specy_road.bundled_scripts.review_packet import build_packet
-from specy_road.bundled_scripts.role_prompt_cli import (READ_BACK_HARNESSES, close_cli_review_run, leaf_worktree,
-                                                        preflight as run_preflight, resolve_cli, reviewer_command,
-                                                        run_plain_cli, run_reviewer_channel, show_cli,
-                                                        show_reviewer)
+from specy_road.bundled_scripts.role_prompt_cli import (READ_BACK_HARNESSES, preflight as run_preflight, resolve_cli,
+                                                        reviewer_launch_block, reviewer_turn, run_plain_cli)
 from specy_road.bundled_scripts.role_prompt_rca import (
     DATA_LINE,
     coordinator_preamble,
@@ -292,6 +290,18 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
     return run_plain_cli(str(cli), prompt_path, root, effort, transcript)
 
 
+def show_cli(prof: Profile | None, prompt_path: Path, entry_cli: str | None, harness: str | None,
+             role: str | None) -> int:
+    """``prompt --channel cli`` without ``--run``, any role but a reviewer's: print the command, start nothing."""
+    level = prof.effort("reviewer" if role == "rca" else role) if prof and role else None
+    cli, _effort, err = resolve_cli(prof, entry_cli, harness, level)
+    if err:
+        print(f"error: {err}", file=sys.stderr)
+        return 1
+    print(f"would run: {cli} (prompt: {prompt_path}); add --run to launch it", file=sys.stderr)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(prog="specy-road prompt", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -331,8 +341,13 @@ def main(argv: list[str] | None = None) -> None:
         p.error("--run applies only to --channel cli")
     root = resolve_repo_root(ns)
     lock = contextlib.ExitStack()
-    if ns.role == "reviewer" and ns.channel == "cli" and ns.run:   # the leaf's run lock before the run writes any of its files
-        try:
+    if ns.role == "reviewer" and ns.channel == "cli" and ns.run:   # bare-mode auth only: the roster preflight still runs after the RUN opens
+        config, _err = pinned_config(root)
+        entry = next((e for e in config.get("roster") or [] if e.get("id") == ns.model), {})
+        blocked = reviewer_launch_block(pinned_profile_for_entry(root, entry), entry, root)
+        if blocked is not None:
+            raise SystemExit(blocked.exit or 1)
+        try:   # the leaf's run lock before the run writes any of its files
             lock.enter_context(review_run_lock(reviews_dir(root, ns.node_id)))
         except ReviewRunBusy as e:
             print(f"error: {e}", file=sys.stderr)
@@ -367,30 +382,8 @@ def _run(ns: argparse.Namespace, root: Path) -> None:
             raise SystemExit(show_cli(prof, out, entry_cli, entry.get("harness"), ns.role))
         raise SystemExit(run_cli_channel(prof, out, root, entry.get("preflight"), entry_cli,
                                          harness=entry.get("harness"), role=ns.role))
-    from specy_road.reviewer_run_failure import open_reviewer_cli_run
-    try:
-        reviewer_target = resolve_target(root, ns.node_id, ns.ref)
-    except ReviewTargetError as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1)
-    cwd, err = leaf_worktree(root, reviewer_target, ns.worktree)
-    err = err or reviewer_command(prof, entry, ns.model)[2]   # refused before any run record or process
-    if err:
-        print(f"error: {err}", file=sys.stderr)
-        raise SystemExit(1)
-    if not ns.run:
-        raise SystemExit(show_reviewer(prof, out, entry, ns.model, reviews_dir(root, ns.node_id), cwd))
-    reviewer_run = open_reviewer_cli_run(root, reviewer_target, ns.model, entry.get("harness"))
-    transcript: list[str] = []
-    try:   # the run record is closed from the filing outcome, an interrupt's included: never from older records
-        filed = run_reviewer_channel(prof, out, root, entry, ns.model, reviews_dir(root, ns.node_id), ns.ref,
-                                     transcript, ns.sign_key, cwd=cwd)
-    except BaseException as e:
-        close_cli_review_run(root, reviewer_target, ns.model, reviewer_run,
-                             Outcome("rerun", f"interrupted: {e or type(e).__name__}", exit=None), transcript)
-        raise
-    close_cli_review_run(root, reviewer_target, ns.model, reviewer_run, filed, transcript)
-    raise SystemExit(filed.exit or (0 if filed.state == "recorded" else 1))
+    raise SystemExit(reviewer_turn(prof, out, root, entry, ns.model, ns.node_id, ns.ref, ns.worktree, ns.sign_key,
+                                   run=ns.run))
 
 
 if __name__ == "__main__":

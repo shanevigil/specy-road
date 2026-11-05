@@ -77,6 +77,7 @@ from specy_road.orchestrate_assign import (  # noqa: F401 — re-exported: calle
 )
 from specy_road.orchestration_pinned import WORKTREE_REF, pinned_config, pinned_profile_for_entry, roster_source
 from specy_road.review_tally import flagged_areas
+from specy_road.reviewer_auth import claude_reviewer_auth_notices
 from specy_road.roster_local import local_roster_ids
 from specy_road.runtime_paths import project_prefix
 
@@ -93,6 +94,7 @@ class OrchestrationPlan:
     preferences_not_applied: list[dict[str, Any]] = field(default_factory=list)   # active, for the coordinator
     preferences_error: str | None = None   # the ledger could not be read; the plan still stands
     local_roster: list[str] = field(default_factory=list)   # ids this clone's roster_add contributed
+    reviewer_auth_notices: list[str] = field(default_factory=list)   # one per forced-bare entry, assigned or not
 
     @property
     def ok(self) -> bool:
@@ -104,7 +106,8 @@ class OrchestrationPlan:
                 "batches": [[a.to_dict() for a in b] for b in self.batches],
                 "blocked": self.blocked, "active": self.active, "unauthored": self.unauthored,
                 "preferences_not_applied": self.preferences_not_applied,
-                "preferences_error": self.preferences_error, "local_roster": self.local_roster}
+                "preferences_error": self.preferences_error, "local_roster": self.local_roster,
+                "reviewer_auth_notices": self.reviewer_auth_notices}
 
 
 def preference_notice(pref: dict[str, Any], cands: list[Candidate], today: date | None) -> dict[str, Any]:
@@ -139,8 +142,11 @@ def build_orchestration_plan(root: Path, *, under: str | None = None, today: dat
     batches = [[assign_leaf(by_id[nid], cands, config, today, drift, prefix,
                             order.index(nid) if spread else None, flagged) for nid in batch if nid in by_id]
                for batch in sp.parallel_batches]
+    notices = claude_reviewer_auth_notices([
+        (str(c.entry.get("id")), c.entry, c.profile.launch_mode() if c.profile is not None else None) for c in cands])
     prefs, pref_err = plan_preferences(root, today)
     return OrchestrationPlan(under, dict(config["policy"]), batches,
                              [b.node_id for b in sp.blocked], list(sp.active),
                              [u.node_id for u in sp.unauthored], ref, drift,
-                             [preference_notice(p, cands, today) for p in prefs], pref_err, local), None
+                             [preference_notice(p, cands, today) for p in prefs], pref_err, local,
+                             notices), None
