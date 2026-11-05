@@ -245,7 +245,7 @@ def cmd_add(args: object) -> None:
             extra_paths=heal_paths,
         )
         chunk_path = append_node_to_chunk(root, getattr(args, "chunk", None), node)
-    except ValueError as e:
+    except (ValueError, OSError) as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
     assert chunk_path.relative_to(root).as_posix() in report.written
@@ -389,7 +389,7 @@ def cmd_edit(args: object) -> None:
             sync_codename=bool(getattr(args, "sync_codename", False)),
             notify=lambda msg: print(f"[note] {msg}", file=sys.stderr),
         )
-    except ValueError as e:
+    except (ValueError, OSError) as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from None
     print_node_chunk_write_report(report, verb="updated")
