@@ -5,7 +5,6 @@ Written by specy-road {{SPECYRD_VERSION}} (minimum {{SPECYRD_VERSION}}); `specy-
 **Read `.specyrd/AGENTS.md` before any roadmap, registry or git work:** it holds specy-road's full rules (load order, task loop, review, lean changes). Then read `.specyrd/AGENTS.team.md` (this repository's additions) and `.specyrd/AGENTS.local.md` (yours, gitignored) when present; they add to the rules, never relax the floor below.
 <!-- prevents: an agent working from this stub alone, or reading the addenda as permission to relax the toolkit's rules | enforced: advisory; validate warns when this stub or .specyrd/AGENTS.md is missing or stale | ref: docs/design-notes/agent-guidance-and-shared-checkouts.md, 2026-11-04 -->
 
-The rules below repeat the floor of `.specyrd/AGENTS.md` on purpose, so an agent that reads only this file (Codex) still has it; `"agents_block": "minimal"` in `.specyrd/manifest.json` drops them.
 The rules below hold even if you read nothing else:
 
 - **Floor:** specy-road's rules on the registry, branches, review and a shared working tree are a floor; project rules may add to them, never relax them. On a conflict, stop and ask a human.

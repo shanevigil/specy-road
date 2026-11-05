@@ -46,7 +46,6 @@ def test_full_and_minimal_sections_render_and_refresh_stubs_honours_the_setting(
     assert run_init_project(tmp_path) == 0
     full = render_agents_lines(tmp_path)
     assert full == render_agents_lines()
-    assert any(ln.startswith("The rules below repeat the floor of `.specyrd/AGENTS.md` on purpose") for ln in full)
     assert sum(ln.startswith("- **") for ln in full) == 7   # the floor bullets stay in the default
     assert len(_section(tmp_path)) == len(full) + 2
 

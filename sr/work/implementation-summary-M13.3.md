@@ -42,3 +42,16 @@ The listed zones, plus **`specy_road/agents_md_report.py` (new)**. `agents_md_bl
 - Test `…::test_upgrade_names_project_headings_the_new_rules_file_repeats`: A2, with a duplicated heading under different case and spacing; also checks that upgrade honours `minimal` and that the notice does not repeat once the file exists.
 - Test `…::test_claude_code_total_counts_a_doubly_imported_file_once`: A3's double-import note and total.
 - Updated expected context lines in `tests/test_agents_md_block.py` (3 tests) and `tests/test_context_meter_harnesses.py` (1 test) for the new totals format, plus the stub budget in `tests/test_enforced_rules_pointers.py`, as described above.
+
+## Fix round 1 (maintainer decision)
+
+Maintainer principle (2026-11-04): the root `AGENTS.md` and `CLAUDE.md` belong to the developer, and specy-road budgets only what it owns. A1 was rewritten in f19b16ec to match.
+
+- Removed the reason line I had added to `specy_road/templates/specyrd/agents-md-block.md`. The full block is byte-for-byte what it was at base `94c56865`.
+- Reverted `tests/test_enforced_rules_pointers.py` to base: `_STUB_LINES, _STUB_BYTES = 17, 2063` with its original comment.
+- `docs/install-and-usage.md` needed no change: its bullet already says the full block repeats the seven floor rules so an agent that reads only `AGENTS.md` (Codex) still has them, and names `"agents_block": "minimal"`.
+- `tests/test_agents_md_report.py` no longer asserts the removed line. The minimal setting, the overlap notice and the per-harness totals are unchanged.
+- The note above that `sr/AGENTS.md` is stale no longer applies, because the full block is unchanged.
+- Verified with the targeted tests (81 passed) and `specy-road file-limits` (OK).
+
+Added in this round: none; one test assertion was removed because the line it checked no longer exists.
