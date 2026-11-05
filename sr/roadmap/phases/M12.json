@@ -28,7 +28,7 @@
       "parent_id": "M12",
       "planning_dir": "planning/M12.1_a-review-fix-round-budget-that-defers-new-input-class-findings-to-a-follow-up-leaf_62e2e3ed-1a48-44d8-b140-1911b0e7fed9.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A review fix-round budget that defers new-input-class findings to a follow-up leaf",
       "touch_zones": [
         "specy_road/review_rca.py",
@@ -87,7 +87,7 @@
       "parent_id": "M12",
       "planning_dir": "planning/M12.3_scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves_14d90a55-fc3f-49f3-9c1b-c1cac57e09c9.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Scheduled gardening chores that find drift and open small chore leaves",
       "touch_zones": [
         "specy_road/bundled_scripts/chore_cli.py",
@@ -116,7 +116,7 @@
     },
     {
       "acceptance": [
-        "Each leaf's gate commit (mark-implementation-reviewed) carries a 'Review-tally:' trailer recording its review rounds, blocks, findings per category, integrity findings and RCA escalations, built in a new specy_road/review_tally.py and added through review_gate.commit_trailers with at most a one-line call (review_gate.py is at its line cap); roadmap-context.md gains a 'Quality by area' section: per touch-zone prefix (top-level directory under the project, configurable depth), leaves landed, mean review rounds per leaf, block rate, integrity findings and RCA escalations, over the last N completed leaves (default 50), computed only from those trailers in tracked git history, never from gitignored work/reviews/, so digest --check gives the same result on every machine and in CI; leaves landed before the trailer existed are counted as 'no tally' and excluded from rates",
+        "Each leaf's gate commit (mark-implementation-reviewed) carries a 'Review-tally:' trailer recording its review rounds, blocks, findings per category, integrity findings and RCA escalations, built in a new specy_road/review_tally.py and added at the gate commit by mark_implementation_reviewed.py calling review_tally.py (review_gate.py is at its line cap and is not edited); roadmap-context.md gains a 'Quality by area' section: per touch-zone prefix (top-level directory under the project, configurable depth), leaves landed, mean review rounds per leaf, block rate, integrity findings and RCA escalations, over the last N completed leaves (default 50), computed only from those trailers in tracked git history, never from gitignored work/reviews/, so digest --check gives the same result on every machine and in CI; leaves landed before the trailer existed are counted as 'no tally' and excluded from rates",
         "Areas worse than a policy threshold are listed first with the numbers; digest --check stays deterministic (no timestamps or wall-clock inputs); empty history prints nothing",
         "orchestrate plan may route strong_review to a leaf whose touch zones fall in a flagged area when policy.quality_routing is on (default off); a test pins both settings"
       ],
@@ -140,7 +140,9 @@
         "specy_road/orchestrate_plan.py",
         "specy_road/review_gate.py",
         "specy_road/templates/project/schemas/orchestration.schema.json",
-        "specy_road/review_tally.py"
+        "specy_road/review_tally.py",
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "docs/orchestration-quality.md"
       ],
       "type": "task"
     },
@@ -172,7 +174,10 @@
         "specy_road/cli.py",
         "specy_road/digest.py",
         "specy_road/bundled_scripts/validate_roadmap.py",
-        "specy_road/bundled_scripts/finish_task.py"
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/debt_ledger.py",
+        "docs/debt-ledger.md",
+        "specy_road/bundled_scripts/validate_notices.py"
       ],
       "type": "task"
     },
@@ -199,7 +204,9 @@
         "specy_road/orchestrate_plan.py",
         "specy_road/bundled_scripts/models_cli.py",
         "docs/orchestration-models.md",
-        "tests/"
+        "tests/",
+        "specy_road/orchestration_config.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json"
       ],
       "type": "task"
     },
@@ -209,7 +216,10 @@
         "cleanup refuses, removes nothing and prints one line per reason when the worktree has commits not on the integration branch, uncommitted changes or untracked files git does not ignore, or ignored files outside a known-regenerable list (__pycache__ and tool caches, node_modules, work/prompt-*.md, work/brief-*.md, work/.on-complete-*.yaml, .specyrd/cache/) once hand-off files are moved; reuses worktree_prune.plan_prune (including M14.3's foreign-worktree refusal) and worker terminate; a test per refusal",
         "specy-road worktree sweep [--dry-run] lists every linked worktree (wherever it lives, e.g. under .claude/worktrees/ or a temp dir) whose branch or detached HEAD is contained in the integration branch, with no registry claim (so never a claimed or deferred leaf's), no live or resumable worker, no live session, and nothing unsaved by the cleanup rules; it removes each (moving hand-off files first) or with --dry-run only reports; output is one line per worktree: removed, would remove, or kept with the reason; it uses M14.2's live-leaf rules rather than a copy; a test with a claimed, a live-session, a dirty and a removable worktree pins the four lines",
         "grind-session runs cleanup after each leaf it lands, and policy.worktree_sweep (off by default; between_leaves) makes it run sweep between leaves; the specyrd-orchestrate command tells the coordinator to run worktree cleanup <ID> after finish and worktree sweep --dry-run at the start of a session; docs/orchestration-chores.md documents both",
-        "Out of scope: deleting remote branches (never); local branch deletion only with --delete-local-branch, only for a branch the integration branch contains; cleaning the main checkout's work/ files (finish-this-task's cleanup already owns those)"
+        "Out of scope: deleting remote branches (never); local branch deletion only with --delete-local-branch, only for a branch the integration branch contains; cleaning the main checkout's work/ files (finish-this-task's cleanup already owns those)",
+        "worktree cleanup and sweep also end the session presence records tied to the removed worktree or its deleted branch (the leaf's worker, reviewer and session entries), so session list shows none for a landed leaf; a test with a leftover reviewer and session record asserts both are gone after cleanup",
+        "sweep removes a pickup-created worktree whose branch the integration branch contains (the reported case: it stayed after finish, and branch pruning skipped its branch as '(worktree)'), and after removal the branch is no longer skipped; a test covers it",
+        "docs/orchestration-chores.md warns that gh pr merge --delete-branch can remove a leaf's branch while its worktree still holds uncommitted or ignored hand-off files, and says to run worktree cleanup <ID> (which saves hand-off files first) before deleting the branch"
       ],
       "codename": "the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first",
       "dependencies": [
@@ -233,7 +243,9 @@
         "specy_road/templates/project/schemas/orchestration.schema.json",
         "specy_road/templates/specyrd/commands/specyrd-orchestrate.md",
         "docs/orchestration-chores.md",
-        "tests/"
+        "tests/",
+        "specy_road/session_presence.py",
+        "specy_road/bundled_scripts/grind_session.py"
       ],
       "type": "task"
     },
@@ -262,7 +274,8 @@
         "specy_road/bundled_scripts/validate_stale_flags.py",
         "specy_road/bundled_scripts/validate_stale_commands.py",
         "specy_road/bundled_scripts/chore_cli.py",
-        "tests/"
+        "tests/",
+        "specy_road/cli.py"
       ],
       "type": "task"
     }

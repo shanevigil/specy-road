@@ -78,6 +78,7 @@ GITIGNORE_LINES = [
     ".specyrd/cache/",
     *SESSION_WORK_FILES,
     *RUNTIME_WORK_DIRS,
+    "work/chores/.garden.json",   # `chore garden`'s run record; chore records beside it are left to the project
     "work/brainstorm-*-prompt.md",
     "work/brainstorm-closed/*-prompt.md",
     "roadmap/orchestration.local.yaml",
@@ -89,7 +90,8 @@ _GITIGNORE_NOTE = (
     "`history`, `search` and `brainstorm`; pickup and finish session files (a\n"
     "PR body re-inlines the brief and summary); review records (a commit would\n"
     "move the branch past the reviewed commit); session, worker and worktree\n"
-    "state; brainstorm prompts; per-checkout orchestration availability overlay.\n"
+    "state; the `chore garden` run record; brainstorm prompts; per-checkout\n"
+    "orchestration availability overlay.\n"
     "Also never committed: .specyrd/AGENTS.local.md, your personal addendum to\n"
     "specy-road's agent rules. `.specyrd/manifest.json` stays tracked."
 )

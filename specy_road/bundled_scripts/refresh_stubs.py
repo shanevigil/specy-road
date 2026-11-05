@@ -35,7 +35,7 @@ from pathlib import Path
 
 from specy_road import __version__
 from specy_road.agent_guide_block import AGENT_GUIDE, apply_agent_guide_block
-from specy_road.agents_md_block import AGENTS_FILES, apply_agents_and_report, apply_agents_files, print_migration
+from specy_road.agents_md_block import AGENTS_FILES, agents_block_mode, apply_agents_and_report, apply_agents_files, print_migration
 from specy_road.agent_ignores import CURSOR_INDEXING_IGNORE, GITIGNORE, apply_agent_ignores, apply_and_report
 from specy_road.runtime_paths import (
     add_repo_root_arg,
@@ -296,7 +296,7 @@ def _block_previews(repo_root: Path, prefix: str, tmp: Path) -> dict[str, tuple[
     (tmp / prefix).mkdir(parents=True, exist_ok=True)
     apply_agent_guide_block(tmp, prefix)
     apply_agent_ignores(tmp, prefix)
-    apply_agents_files(tmp / prefix)
+    apply_agents_files(tmp / prefix, mode=agents_block_mode(repo_root / prefix))   # the setting is not copied to tmp
     return {f"{rel} ({o})": (rel, (tmp / rel).read_text(encoding="utf-8"))
             for rel in rels if (tmp / rel).is_file() for o in (CREATED, UPDATED)}
 
