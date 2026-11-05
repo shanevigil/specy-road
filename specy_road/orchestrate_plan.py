@@ -94,6 +94,7 @@ class OrchestrationPlan:
     preferences_not_applied: list[dict[str, Any]] = field(default_factory=list)   # active, for the coordinator
     preferences_error: str | None = None   # the ledger could not be read; the plan still stands
     local_roster: list[str] = field(default_factory=list)   # ids this clone's roster_add contributed
+    reviewer_auth_notices: list[str] = field(default_factory=list)   # one per forced-bare entry, assigned or not
 
     @property
     def ok(self) -> bool:
@@ -105,7 +106,8 @@ class OrchestrationPlan:
                 "batches": [[a.to_dict() for a in b] for b in self.batches],
                 "blocked": self.blocked, "active": self.active, "unauthored": self.unauthored,
                 "preferences_not_applied": self.preferences_not_applied,
-                "preferences_error": self.preferences_error, "local_roster": self.local_roster}
+                "preferences_error": self.preferences_error, "local_roster": self.local_roster,
+                "reviewer_auth_notices": self.reviewer_auth_notices}
 
 
 def preference_notice(pref: dict[str, Any], cands: list[Candidate], today: date | None) -> dict[str, Any]:
@@ -117,24 +119,6 @@ def preference_notice(pref: dict[str, Any], cands: list[Candidate], today: date 
         if why:
             notes.append(f"{m}: {why}")
     return {**pref, "roster_notes": notes}
-
-
-def stamp_reviewer_auth_notices(batches: list[list[Assignment]], notices: list[str]) -> None:
-    """Put each notice on the first assignment that staffs that entry, so the plan text shows it once.
-
-    Each notice is ``reviewer auth: <id> ...``.
-    """
-    pending = list(notices)
-    for batch in batches:
-        for assignment in batch:
-            stay: list[str] = []
-            for note in pending:
-                ident = note.split()[2]
-                if ident in assignment.reviewers:
-                    assignment.notes.append(note)
-                else:
-                    stay.append(note)
-            pending = stay
 
 
 def build_orchestration_plan(root: Path, *, under: str | None = None, today: date | None = None,
@@ -160,9 +144,9 @@ def build_orchestration_plan(root: Path, *, under: str | None = None, today: dat
                for batch in sp.parallel_batches]
     notices = claude_reviewer_auth_notices([
         (str(c.entry.get("id")), c.entry, c.profile.launch_mode() if c.profile is not None else None) for c in cands])
-    stamp_reviewer_auth_notices(batches, notices)
     prefs, pref_err = plan_preferences(root, today)
     return OrchestrationPlan(under, dict(config["policy"]), batches,
                              [b.node_id for b in sp.blocked], list(sp.active),
                              [u.node_id for u in sp.unauthored], ref, drift,
-                             [preference_notice(p, cands, today) for p in prefs], pref_err, local), None
+                             [preference_notice(p, cands, today) for p in prefs], pref_err, local,
+                             notices), None

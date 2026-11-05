@@ -10,8 +10,6 @@ from pathlib import Path
 import pytest
 
 from specy_road import review_files as rf
-from specy_road.orchestrate_assign import Assignment
-from specy_road.orchestrate_plan import stamp_reviewer_auth_notices
 from specy_road.review_delegate import delegate
 from specy_road.review_files import reviews_dir
 from specy_road.claude_config import claude_config_dir
@@ -126,10 +124,6 @@ def test_notices_are_one_per_forced_claude_reviewer(tmp_path: Path, monkeypatch:
     notes = claude_reviewer_auth_notices(rows)
     assert [n.split()[2] for n in notes] == ["opus", "fable"]
     assert all(all(fix in n for fix in FIXES) for n in notes)
-    a1 = Assignment("M1", "public", "any", reviewers=["opus", "sol"])
-    a2 = Assignment("M2", "public", "any", reviewers=["opus", "fable"])
-    stamp_reviewer_auth_notices([[a1, a2]], notes)
-    assert a1.notes == [notes[0]] and a2.notes == [notes[1]]   # each entry once, on the first leaf that staffs it
     monkeypatch.setenv("ANTHROPIC_API_KEY", SECRET)
     assert claude_reviewer_auth_notices(rows) == []
     (tmp_path / "empty-claude-config").mkdir()
@@ -263,6 +257,12 @@ roster:
     profile: model-profiles/anthropic-claude/claude-opus-5-5.md
     roles: [coordinator, executor, reviewer]
     class: senior
+  - id: idle
+    family: anthropic
+    harness: claude-code
+    profile: model-profiles/anthropic-claude/claude-opus-5-5.md
+    roles: [reviewer]
+    available: false
   - id: sol
     family: openai
     profile: model-profiles/openai-gpt/gpt-6.1-sol.md
@@ -283,9 +283,17 @@ policy:
     git(repo, "commit", "-qm", "force bare")
     assert run_main(orchestrate_cli, "orchestrate", "plan", "--today", "2026-11-01", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
-    assert out.count("reviewer auth:") == 1 and "opus" in out.split("reviewer auth:", 1)[1].splitlines()[0]
-    assert all(fix in out for fix in FIXES)
+    said = [ln for ln in out.splitlines() if ln.startswith("reviewer auth:")]
+    assert [ln.split()[2] for ln in said] == ["opus", "idle"] and all(all(fix in ln for fix in FIXES) for ln in said)
+    assert run_main(orchestrate_cli, "orchestrate", "plan", "--json", "--today", "2026-11-01",
+                    "--repo-root", str(repo)) == 0
+    data = json.loads(capsys.readouterr().out)
+    reviewers = [r for batch in data["batches"] for leaf in batch for r in leaf["reviewers"]]
+    notes = [n for batch in data["batches"] for leaf in batch for n in leaf["notes"]]
+    assert "opus" in reviewers and "idle" not in reviewers
+    assert data["reviewer_auth_notices"] == said and not any(n.startswith("reviewer auth:") for n in notes)
     monkeypatch.setenv("ANTHROPIC_API_KEY", SECRET)
-    assert run_main(orchestrate_cli, "orchestrate", "plan", "--today", "2026-11-01", "--repo-root", str(repo)) == 0
-    again = capsys.readouterr().out
-    assert "reviewer auth:" not in again and SECRET not in again
+    assert run_main(orchestrate_cli, "orchestrate", "plan", "--json", "--today", "2026-11-01",
+                    "--repo-root", str(repo)) == 0
+    again = json.loads(capsys.readouterr().out)
+    assert again["reviewer_auth_notices"] == [] and SECRET not in json.dumps(again)
