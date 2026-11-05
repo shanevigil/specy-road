@@ -1,39 +1,40 @@
 # Implementation summary: M13.8
 
+## Scope (split maintainer 2026-11-04, WIP 25ffc3d1)
+
+This leaf now covers **A1** (behaviour-change catalogue), **A2** (`version_pin` move + validate re-export), and **A3** (pickup `--base` stale-registration pattern + `docs/roadmap-authoring.md` rewrite). Project-text **validate notices** moved to **M13.14**.
+
 ## Touch zones
 
-`specy_road/behaviour_changes.py`, `specy_road/agent_text_report.py`, `specy_road/version_pin.py`, `specy_road/bundled_scripts/validate_roadmap.py`, `tests/`, `docs/roadmap-authoring.md`.
+`specy_road/behaviour_changes.py`, `specy_road/version_pin.py`, `specy_road/bundled_scripts/validate_roadmap.py`, `tests/`, `docs/roadmap-authoring.md`.
 
-## Fix round: mandate cue (planner A2 clarification)
+## Removed for M13.14
 
-A line is reported only when it **instructs** stale behaviour: each catalogue `contradicts` pattern includes shared `_MANDATE_CUE` (must/always/approve/when tests pass/never pass|run|delete/push/non-TTY/unattended/prescriptive first-commit steps) plus command anchor (except `--base` optional anchor). Bare command examples without mandating words are valid usage and stay silent.
+Deleted `specy_road/agent_text_report.py` and its `validate_at` hook; removed lint tests from `tests/test_behaviour_changes.py`. **M13.14** can reuse the full lint implementation from commit **`aba60158`** on this branch history (`warn_contradicted_instructions`, mandate cues, per-line directives).
 
-## Fix round: probes
+## What remains
 
-- CITED five-sentence fixture — five notices, unchanged.
-- `BARE_VALID_USAGE` (planner bare merge/yes lines plus prior minimum pairings) — no notices.
-- `test_explicitly_stale_instructions_are_reported_despite_guidance_vocabulary` — three notices (Always/Approve/after branching).
-- Zero-notice corpus — no hits.
-- Near-miss corpus — no notices.
-- Sol integration-branch-first near-miss — no notice.
+- **`behaviour_changes.py`:** five-entry `CATALOGUE` with `contradicts` / `current` / mandate cues (for M13.14 to consume).
+- **`version_pin.py`:** `pinned_version`, `warn_if_pin_differs`; re-exported from `validate_roadmap`.
+- **`docs/roadmap-authoring.md`:** integration-branch registration before feature branch (400 lines).
 
 ## Verification
 
-- `python -m pytest -n 4 -q $(rg -l '…behaviour_changes|agent_text_report|version_pin|validate_roadmap…' tests)` — 286 passed
-- `python -m pytest -n 4 -q tests/test_behaviour_changes.py` — 39 passed
+- `python -m pytest -n 4 -q tests/test_behaviour_changes.py tests/test_validate_roadmap.py tests/test_validate_stale_commands.py` — 44 passed
+- `ruff check specy_road tests scripts` — OK
 - `specy-road file-limits` — OK
 
 ## Added
 
 ### Helpers
-- `behaviour_changes._MANDATE_CUE` — shared instructive-language regex combined into every entry's `contradicts` via `_all_of`.
+- none (this scope change removes code)
 
 ### Branches and guards
-- All five catalogue entries: stale match requires mandate cue in the same sentence (mandate round).
+- none
 
 ### Mocks
 - none
 
 ### Tests
-- `test_bare_valid_command_examples_print_no_notice` — parametrized bare valid usage (mandate round).
-- `test_mandated_stale_instruction_with_bare_command_name_prints_a_notice` — bare command token still reports when `must` mandates (R3 + mandate).
+- `test_every_entry_names_a_registered_command_and_flag` — A1
+- `test_toolkit_docs_and_templates_do_not_say_the_first_commit_registers_the_work` — A3 pattern scan
