@@ -187,7 +187,7 @@
       "parent_id": "M13",
       "planning_dir": "planning/M13.7_clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end_bf5ffc69-0d63-4e1c-9159-7ba00872b009.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Clearer notices: symlinked skill dirs, new ignore rules over tracked files, and session end",
       "touch_zones": [
         "specy_road/bundled_scripts/refresh_stubs.py",

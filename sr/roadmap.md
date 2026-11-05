@@ -205,7 +205,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M13.4` | A milestone held for its full review says so in validate, list-nodes and why-blocked | task | Agentic-led | Not Started |
 | `M13.5` | refresh-profiles installs only the profiles the roster names, and suggests the alias for a near miss | task | Agentic-led | Complete |
 | `M13.6` | Safe release-candidate install recipe, pipx and uv tool upgrades, and checking which binary is on PATH | task | Agentic-led | Complete |
-| `M13.7` | Clearer notices: symlinked skill dirs, new ignore rules over tracked files, and session end | task | Agentic-led | Not Started |
+| `M13.7` | Clearer notices: symlinked skill dirs, new ignore rules over tracked files, and session end | task | Agentic-led | Complete |
 | `M13.8` | A behaviour-change catalogue, and validate reports project agent text it contradicts | task | Agentic-led | Not Started |
 | `M13.9` | Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice | task | Agentic-led | Not Started |
 | `M13.10` | Upgrade guide: moving to the split rules files, previewing an uninstalled version, telling old installs apart | task | Agentic-led | Complete |
