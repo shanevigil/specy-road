@@ -8,16 +8,6 @@ The current state of this project's roadmap, generated from the merged graph, th
 
 Status is the computed rollup: a non-leaf is Complete only when every leaf descendant is.
 
-- `M14` Nested repos and review-gate integrity `nested-repos-and-review-gate-integrity` — phase — **In Progress**
-  - `M14.1` Approvals never carry across unreviewed changes in a sibling repository `approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` — task — **Complete**
-  - `M14.2` doctor never offers to remove a live leaf's worktree or branch `doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch` — task — **Complete**
-  - `M14.3` worktree prune refuses to delete another repository's worktree or checkout `worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout` — task — **Complete**
-  - `M14.4` nested_repos that a project can adopt without pushing: local landing, local base, sibling diffs and checks `nested-repos-that-a-project-can-adopt-without-pushing-local-landing-local-base-sibling-diffs-and-checks` — milestone — **In Progress**
-    - `M14.4.1` Per nested repository, land by push, locally or by hand, and base worktrees on the remote or local tip `per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip` — task — **Complete**
-  - `M14.6` Reviewer usage is visible: review usage, reviewers in the node total, RUN logs kept per round `reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round` — task — **Complete**
-  - `M14.7` session end finds this agent's session by worktree and branch when the derived id has no record `session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record` — task — **Complete**
-  - `M14.10` Escalation recognises a converging loop and handoff status shows the findings trend `escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend` — task — **Complete**
-  - `M14.11` The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes `the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes` — task — **Complete**
 - `M15` rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction `rc3-multi-harness-adoption-friction` — phase — **Not Started**
   - `M15.1` RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command `rc-install-docs-cover-extras-and-direct-wheel-url` — task — **Complete**
   - `M15.2` A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch `claude-code-reviewer-works-on-a-subscription-login` — task — **Complete**
@@ -215,6 +205,7 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 - 2026-11-05 `M11` (81 nodes) — `specy-road show-archive M11-e10fe30c-20261105`
 - 2026-11-05 `M12` (6 nodes) — `specy-road show-archive M12-eecba3f4-20261105`
 - 2026-11-05 `M13` (11 nodes) — `specy-road show-archive M13-2fe2e067-20261105`
+- 2026-11-05 `M14` (10 nodes) — `specy-road show-archive M14-20b59415-20261105`
 
 ## Claimed and in flight
 

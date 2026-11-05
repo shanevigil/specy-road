@@ -3639,6 +3639,201 @@
           "node_key": "538b8591-af5b-4a0c-8b37-d3d988eb9a5f"
         }
       ]
+    },
+    {
+      "archive_id": "M14-20b59415-20261105",
+      "archived_at": "2026-11-05T20:54:51+00:00",
+      "bundle": null,
+      "chunk": "roadmap/archive/chunks/M14-20b59415-20261105.json",
+      "depth": "shallow",
+      "git": {
+        "closed_at": null,
+        "integration_branch": null,
+        "merge_commit": null,
+        "nearest_tag": null,
+        "rollup_branch": null,
+        "rollup_tip": null
+      },
+      "node_keys": [
+        "20b59415-c2bf-47de-97b2-a7601d55e101",
+        "5eeb46d2-6aef-4582-8f8b-41c2dc19b53b",
+        "1c9269b9-323f-428a-9400-86738a763124",
+        "0562a77e-5ed0-48f3-9ab0-b119f9424629",
+        "a79fbbda-4540-4925-af8e-ad360f980299",
+        "a4c7eb62-3185-46b6-918f-02f74745b42a",
+        "41e2d7f0-c541-4c5e-b9b2-d16f2c131997",
+        "9fbad01b-0e89-45bd-a951-702227d79f31",
+        "998f2688-6fde-470f-9d8b-3448f396c9ec",
+        "e008e1d8-42d1-4ee0-a067-1f24f880c5cf"
+      ],
+      "nodes_summary": [
+        {
+          "id": "M14",
+          "node_key": "20b59415-c2bf-47de-97b2-a7601d55e101",
+          "status": "Complete",
+          "title": "Nested repos and review-gate integrity",
+          "type": "phase"
+        },
+        {
+          "id": "M14.1",
+          "node_key": "5eeb46d2-6aef-4582-8f8b-41c2dc19b53b",
+          "status": "Complete",
+          "title": "Approvals never carry across unreviewed changes in a sibling repository",
+          "type": "task"
+        },
+        {
+          "id": "M14.2",
+          "node_key": "1c9269b9-323f-428a-9400-86738a763124",
+          "status": "Complete",
+          "title": "doctor never offers to remove a live leaf's worktree or branch",
+          "type": "task"
+        },
+        {
+          "id": "M14.3",
+          "node_key": "0562a77e-5ed0-48f3-9ab0-b119f9424629",
+          "status": "Complete",
+          "title": "worktree prune refuses to delete another repository's worktree or checkout",
+          "type": "task"
+        },
+        {
+          "id": "M14.4",
+          "node_key": "a79fbbda-4540-4925-af8e-ad360f980299",
+          "status": "Not Started",
+          "title": "nested_repos that a project can adopt without pushing: local landing, local base, sibling diffs and checks",
+          "type": "milestone"
+        },
+        {
+          "id": "M14.4.1",
+          "node_key": "a4c7eb62-3185-46b6-918f-02f74745b42a",
+          "status": "Complete",
+          "title": "Per nested repository, land by push, locally or by hand, and base worktrees on the remote or local tip",
+          "type": "task"
+        },
+        {
+          "id": "M14.6",
+          "node_key": "41e2d7f0-c541-4c5e-b9b2-d16f2c131997",
+          "status": "Complete",
+          "title": "Reviewer usage is visible: review usage, reviewers in the node total, RUN logs kept per round",
+          "type": "task"
+        },
+        {
+          "id": "M14.7",
+          "node_key": "9fbad01b-0e89-45bd-a951-702227d79f31",
+          "status": "Complete",
+          "title": "session end finds this agent's session by worktree and branch when the derived id has no record",
+          "type": "task"
+        },
+        {
+          "id": "M14.10",
+          "node_key": "998f2688-6fde-470f-9d8b-3448f396c9ec",
+          "status": "Complete",
+          "title": "Escalation recognises a converging loop and handoff status shows the findings trend",
+          "type": "task"
+        },
+        {
+          "id": "M14.11",
+          "node_key": "e008e1d8-42d1-4ee0-a067-1f24f880c5cf",
+          "status": "Complete",
+          "title": "The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes",
+          "type": "task"
+        }
+      ],
+      "planning": [
+        {
+          "origin": "planning/M14_nested-repos-and-review-gate-integrity_20b59415-c2bf-47de-97b2-a7601d55e101.md",
+          "stored": "roadmap/archive/planning/M14-20b59415-20261105/M14_nested-repos-and-review-gate-integrity_20b59415-c2bf-47de-97b2-a7601d55e101.md"
+        },
+        {
+          "origin": "planning/M14.1_approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository_5eeb46d2-6aef-4582-8f8b-41c2dc19b53b.md",
+          "stored": "roadmap/archive/planning/M14-20b59415-20261105/M14.1_approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository_5eeb46d2-6aef-4582-8f8b-41c2dc19b53b.md"
+        },
+        {
+          "origin": "planning/M14.2_doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch_1c9269b9-323f-428a-9400-86738a763124.md",
+          "stored": "roadmap/archive/planning/M14-20b59415-20261105/M14.2_doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch_1c9269b9-323f-428a-9400-86738a763124.md"
+        },
+        {
+          "origin": "planning/M14.3_worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout_0562a77e-5ed0-48f3-9ab0-b119f9424629.md",
+          "stored": "roadmap/archive/planning/M14-20b59415-20261105/M14.3_worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout_0562a77e-5ed0-48f3-9ab0-b119f9424629.md"
+        },
+        {
+          "origin": "planning/M14.4_nested-repos-that-a-project-can-adopt-without-pushing-local-landing-local-base-sibling-diffs-and-checks_a79fbbda-4540-4925-af8e-ad360f980299.md",
+          "stored": "roadmap/archive/planning/M14-20b59415-20261105/M14.4_nested-repos-that-a-project-can-adopt-without-pushing-local-landing-local-base-sibling-diffs-and-checks_a79fbbda-4540-4925-af8e-ad360f980299.md"
+        },
+        {
+          "origin": "planning/M14.4.1_per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip_a4c7eb62-3185-46b6-918f-02f74745b42a.md",
+          "stored": "roadmap/archive/planning/M14-20b59415-20261105/M14.4.1_per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip_a4c7eb62-3185-46b6-918f-02f74745b42a.md"
+        },
+        {
+          "origin": "planning/M14.6_reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round_41e2d7f0-c541-4c5e-b9b2-d16f2c131997.md",
+          "stored": "roadmap/archive/planning/M14-20b59415-20261105/M14.6_reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round_41e2d7f0-c541-4c5e-b9b2-d16f2c131997.md"
+        },
+        {
+          "origin": "planning/M14.7_session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record_9fbad01b-0e89-45bd-a951-702227d79f31.md",
+          "stored": "roadmap/archive/planning/M14-20b59415-20261105/M14.7_session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record_9fbad01b-0e89-45bd-a951-702227d79f31.md"
+        },
+        {
+          "origin": "planning/M14.10_escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend_998f2688-6fde-470f-9d8b-3448f396c9ec.md",
+          "stored": "roadmap/archive/planning/M14-20b59415-20261105/M14.10_escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend_998f2688-6fde-470f-9d8b-3448f396c9ec.md"
+        },
+        {
+          "origin": "planning/M14.11_the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes_e008e1d8-42d1-4ee0-a067-1f24f880c5cf.md",
+          "stored": "roadmap/archive/planning/M14-20b59415-20261105/M14.11_the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes_e008e1d8-42d1-4ee0-a067-1f24f880c5cf.md"
+        }
+      ],
+      "root_node_id": "M14",
+      "root_node_key": "20b59415-c2bf-47de-97b2-a7601d55e101",
+      "sources": [
+        {
+          "chunk": "phases/M14.json",
+          "index": 0,
+          "node_key": "20b59415-c2bf-47de-97b2-a7601d55e101"
+        },
+        {
+          "chunk": "phases/M14.json",
+          "index": 1,
+          "node_key": "5eeb46d2-6aef-4582-8f8b-41c2dc19b53b"
+        },
+        {
+          "chunk": "phases/M14.json",
+          "index": 2,
+          "node_key": "1c9269b9-323f-428a-9400-86738a763124"
+        },
+        {
+          "chunk": "phases/M14.json",
+          "index": 3,
+          "node_key": "0562a77e-5ed0-48f3-9ab0-b119f9424629"
+        },
+        {
+          "chunk": "phases/M14.json",
+          "index": 4,
+          "node_key": "a79fbbda-4540-4925-af8e-ad360f980299"
+        },
+        {
+          "chunk": "phases/M14.json",
+          "index": 5,
+          "node_key": "a4c7eb62-3185-46b6-918f-02f74745b42a"
+        },
+        {
+          "chunk": "phases/M14.json",
+          "index": 8,
+          "node_key": "41e2d7f0-c541-4c5e-b9b2-d16f2c131997"
+        },
+        {
+          "chunk": "phases/M14.json",
+          "index": 9,
+          "node_key": "9fbad01b-0e89-45bd-a951-702227d79f31"
+        },
+        {
+          "chunk": "phases/M14.json",
+          "index": 12,
+          "node_key": "998f2688-6fde-470f-9d8b-3448f396c9ec"
+        },
+        {
+          "chunk": "phases/M14.json",
+          "index": 13,
+          "node_key": "e008e1d8-42d1-4ee0-a067-1f24f880c5cf"
+        }
+      ]
     }
   ],
   "version": 1

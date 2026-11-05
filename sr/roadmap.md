@@ -8,16 +8,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 
 | ID | Title | Type | Gate | Status |
 |----|-------|------|------|--------|
-| `M14` | Nested repos and review-gate integrity | phase | — | In Progress |
-| `M14.1` | Approvals never carry across unreviewed changes in a sibling repository | task | Agentic-led | Complete |
-| `M14.2` | doctor never offers to remove a live leaf's worktree or branch | task | Agentic-led | Complete |
-| `M14.3` | worktree prune refuses to delete another repository's worktree or checkout | task | Agentic-led | Complete |
-| `M14.4` | nested_repos that a project can adopt without pushing: local landing, local base, sibling diffs and checks | milestone | — | In Progress |
-| `M14.4.1` | Per nested repository, land by push, locally or by hand, and base worktrees on the remote or local tip | task | Agentic-led | Complete |
-| `M14.6` | Reviewer usage is visible: review usage, reviewers in the node total, RUN logs kept per round | task | Agentic-led | Complete |
-| `M14.7` | session end finds this agent's session by worktree and branch when the derived id has no record | task | Agentic-led | Complete |
-| `M14.10` | Escalation recognises a converging loop and handoff status shows the findings trend | task | Agentic-led | Complete |
-| `M14.11` | The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes | task | Agentic-led | Complete |
 | `M15` | rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction | phase | — | Not Started |
 | `M15.1` | RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command | task | Agentic-led | Complete |
 | `M15.2` | A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch | task | Agentic-led | Complete |
