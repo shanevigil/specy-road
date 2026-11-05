@@ -219,6 +219,7 @@ Do not pick these up.
 - `M14.1` on `feature/rm-approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` since 2026-11-05
 - `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
 - `M15.33` on `feature/rm-refused-review-record-leaves-a-trace` since 2026-11-05
+- `M15.36` on `feature/rm-worker-launch-never-depends-on-claude-default-mode` since 2026-11-05
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
