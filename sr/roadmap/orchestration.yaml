@@ -36,6 +36,28 @@ roster:
     billing_route: cursor_subscription
     channels:
       cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/cursor-review.sh" grok-4.7-high {prompt}'
+  - id: grok-4.7-low
+    family: xai
+    roles: [reviewer]
+    profile: model-profiles/spacexai-grok/grok-4.7.md
+    harness: cursor
+    harness_model: grok-4.7-low
+    # Same wrapper as cursor-grok-4.6-high: cursor-review.sh runs agent --model grok-4.7-low (explicit, Auto off).
+    # Set by the coordinator on the maintainer instruction to use light reviewers (2026-11-04); maintainer to confirm.
+    pinned: true
+    billing_route: cursor_subscription
+    # Low reasoning effort for faster reviews (maintainer, 2026-11-04).
+    channels:
+      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/cursor-review.sh" grok-4.7-low {prompt}'
+  - id: gpt-6.1-sol-low
+    family: openai
+    roles: [reviewer]
+    profile: model-profiles/openai-gpt/gpt-6.1-sol.md
+    harness: codex
+    harness_model: gpt-6.1-sol
+    # Low reasoning effort for faster reviews (maintainer, 2026-11-04). Wrapper until M8.3 lands, as for gpt-6.1-sol.
+    channels:
+      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/codex-review.sh" gpt-6.1-sol {prompt} low'
   - id: claude-opus-5-5-review
     family: anthropic
     roles: [reviewer]

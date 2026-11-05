@@ -16,7 +16,7 @@ import pytest
 
 from tests.helpers import script_subprocess_env
 from tests.review_repo_helpers import delegate_layout, git, make_review_repo, review_text
-from tests.test_milestone_full_review import make_milestone_repo
+from tests.milestone_repo_helpers import make_milestone_repo
 from tests.test_review_gate import TWO_FAMILIES
 from tests.test_roadmap_crud import crud_fixture_repo, run_crud
 

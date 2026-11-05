@@ -109,7 +109,8 @@
         "specy_road/bundled_scripts/reconcile_branch_cli.py",
         "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
         "specy_road/bundled_scripts/abort_task_pickup.py",
-        "specy_road/bundled_scripts/abort_task_pickup_own_commit.py"
+        "specy_road/bundled_scripts/abort_task_pickup_own_commit.py",
+        "specy_road/bundled_scripts/do_next_task_self_heal.py"
       ],
       "type": "task"
     },
@@ -166,7 +167,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.6_rework-prompt-carries-the-accepted-rca_c80c3636-1dd9-4001-8520-f0c4e6402be4.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt_rework.py",
@@ -282,7 +283,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.10_try-a-roster-before-it-lands_2cebdd4b-b1e0-4a40-9b9b-8768fc530b26.md",
       "sibling_order": 10,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff",
       "touch_zones": [
         "specy_road/orchestration_pinned.py",
@@ -346,7 +347,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.12_shared-doc-zones-do-not-serialize-batches_e6e3dd29-22ab-4b59-9ca3-2ecd479879d8.md",
       "sibling_order": 12,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Shared documentation zones do not serialize grind-session batches",
       "touch_zones": [
         "specy_road/bundled_scripts/session_plan_render.py",
