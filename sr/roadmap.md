@@ -193,7 +193,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M12.2` | Every refusal names its fix | task | Agentic-led | Complete |
 | `M12.3` | Scheduled gardening chores that find drift and open small chore leaves | task | Agentic-led | Complete |
 | `M12.4` | Quality signals agents and PMs read first | milestone | — | Not Started |
-| `M12.4.1` | Per-area quality scores in the digest from review history | task | Agentic-led | Not Started |
+| `M12.4.1` | Per-area quality scores in the digest from review history | task | Agentic-led | Complete |
 | `M12.4.2` | A tracked tech-debt ledger that planning can turn into leaves | task | Agentic-led | Not Started |
 | `M12.4.3` | Per-model review evidence: block rate and overturned approvals feed orchestrate plan | task | Agentic-led | Not Started |
 | `M12.5` | The orchestrator cleans up landed leaves and stale worktrees automatically, saving hand-off files first | task | Agentic-led | Not Started |
@@ -206,7 +206,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M13.5` | refresh-profiles installs only the profiles the roster names, and suggests the alias for a near miss | task | Agentic-led | Complete |
 | `M13.6` | Safe release-candidate install recipe, pipx and uv tool upgrades, and checking which binary is on PATH | task | Agentic-led | Complete |
 | `M13.7` | Clearer notices: symlinked skill dirs, new ignore rules over tracked files, and session end | task | Agentic-led | Complete |
-| `M13.8` | A behaviour-change catalogue, and validate reports project agent text it contradicts | task | Agentic-led | Not Started |
+| `M13.8` | A behaviour-change catalogue, and validate reports project agent text it contradicts | task | Agentic-led | Complete |
 | `M13.9` | Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice | task | Agentic-led | Not Started |
 | `M13.10` | Upgrade guide: moving to the split rules files, previewing an uninstalled version, telling old installs apart | task | Agentic-led | Complete |
 | `M13.11` | upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs | task | Agentic-led | Not Started |
@@ -243,7 +243,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.12` | Shared documentation zones do not serialize grind-session batches | task | Agentic-led | Complete |
 | `M15.13` | Worker loop friction: sync waits for the events that matter, tool-use noise collapses, rework after a completed worker, a READY-only resume, a quieter pickup | task | Agentic-led | Not Started |
 | `M15.14` | Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored | task | Agentic-led | Not Started |
-| `M15.15` | upgrade ships the work/ templates every prompt references, and the .specyrd README matches upgrade's steps | task | Agentic-led | Not Started |
+| `M15.15` | upgrade ships the work/ templates every prompt references, and the .specyrd README matches upgrade's steps | task | Agentic-led | Complete |
 | `M15.16` | Role-observed acceptance needs evidence from that role, and coordinator probes are not acceptance | task | Agentic-led | Not Started |
 | `M15.17` | Review friction: delegate builds a missing packet, the packet skips ignored evidence and numbers suppressions correctly, refusals quote the line, and superseded failed runs say so | task | Agentic-led | Not Started |
 | `M15.18` | planned_test_changes can be edited after pickup, and an unplanned test removal is a required reviewer check | task | Agentic-led | Complete |
