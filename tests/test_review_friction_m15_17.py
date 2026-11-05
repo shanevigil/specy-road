@@ -185,12 +185,6 @@ def test_the_reported_shape_is_refused_with_the_word_and_both_parts() -> None:
                                     'base" and "HEAD of the leaf branch"')
 
 
-def test_two_independent_observations_joined_by_and_are_still_refused() -> None:
-    line = "The cache key ignores the branch and valid input crashes, not a defect because it is handled."
-    assert clause_problem(line) == ('says "valid input crashes", two observations joined by "and": '
-                                    '"The cache key ignores the branch" and "valid input crashes"')
-
-
 # A5 — a failed run superseded by a record filed later at the same commit
 
 

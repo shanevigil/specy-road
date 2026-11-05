@@ -20,6 +20,18 @@ Base `4a8d93bb`; code commit `d5f88a7b`.
 
 The coordinator pointed to refused reviewer answers in the main checkout's `RUN-*.log` files (M12.5, M13.12 and M14.1 ×2; the M15.2 log has no refusal, and the M8.3 logs' refusals come from test repos inside those runs). I ran each final answer through `approve_defect_problem`. Each one is still refused, so the rules are not widened, and each refusal now names its trigger (`"and"`/`"plus"` with both parts, or the defect word in the reason) and quotes the line. Four of them are verbatim cases in `test_a_real_refusal_names_its_trigger_and_quotes_the_line`. The M12.5 run was first refused with `verdict: approve with required_changes listed; use block`. That message comes from `specy_road/review_files.py` (`review_semantic_errors`), which is outside the touch zones and is a different rule from A4's, so I left it unchanged.
 
+## Fix round 1 (gpt-6.1-sol-low)
+
+Required change: `test_two_independent_observations_joined_by_and_are_still_refused` duplicated `test_clause_problem`. I moved its input, with its expected refusal unchanged, into `test_clause_problem` in `tests/test_review_record_rules.py` as a new row (that input was not already a row there) and deleted the standalone test. I made no other changes.
+
+## Probes
+
+- Class: a standalone single-input `clause_problem` assertion in the new file that duplicates a row class of `test_clause_problem`.
+- `test_two_independent_observations_joined_by_and_are_still_refused`: its input was not already a row, so I added it to `test_clause_problem` and removed the standalone test. Both files pass (120 tests).
+- `test_the_reported_shape_is_refused_with_the_word_and_both_parts`: this is A6's named reported shape (`base and HEAD`) and is not a row of `test_clause_problem`. I kept it, because the coordinator said to make no other changes; it could move into `test_clause_problem` the same way if reviewers want that.
+- `test_a_conjunction_inside_quotes_is_not_a_split_point` (4 inputs): these test quoted spans (A6), which no `test_clause_problem` row covers. I kept them.
+- `test_a_real_refusal_names_its_trigger_and_quotes_the_line`: this checks the whole `approve_defect_problem` message, not `clause_problem`, so it is not a duplicate. I kept it.
+
 ## Touch zones (final)
 
 These are the zones as listed. I edited `review_delegate.py`, `review_delegate_packet.py` (new), `review_run_status.py` (new), `review_record_rules.py`, `bundled_scripts/review_packet_uncommitted_refs.py` and `tests/`. I did not need to change `integrity.py`, `review_record_write.py` or `bundled_scripts/review_cli.py`. Note that `file_review` in `review_record_write.py` still keeps only the last 400 characters of a refusal in the run reason, so a delegated run's reason shows the quoted lines but may cut off the rule sentence.
@@ -46,5 +58,5 @@ These are the zones as listed. I edited `review_delegate.py`, `review_delegate_p
 - `review_run_status.superseded_by` / `_run_time`: decides whether a failed run is superseded (A5).
 - `run_states` `superseded` key, the `run_lines` suffix and the `run_problems` exclusion: mark superseded runs in review list and handoff status (A5).
 - `review_delegate.gate_policy_summary` wrapper: a superseded run is no reviewer failure on the policy line (A5).
-- Tests: the 21 in `tests/test_review_friction_m15_17.py` (17, plus 4 on real refused answers), one or more per acceptance item, including a negative A5 case (a record filed before the run does not supersede it) and an A2 case (a matching glob is present).
+- Tests: the 20 in `tests/test_review_friction_m15_17.py` (16, plus 4 on real refused answers; the independent-observations case moved into `test_clause_problem` in fix round 1), one or more per acceptance item, including a negative A5 case (a record filed before the run does not supersede it) and an A2 case (a matching glob is present).
 - Mocks: none (the tests reuse the existing fake reviewer harness from `tests/review_delegate_helpers.py`).

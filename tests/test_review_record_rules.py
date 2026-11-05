@@ -291,6 +291,9 @@ def test_record_refuses_an_approve_whose_explained_finding_joins_a_second_defect
     ("The cache miss is expected and the cache key ignores the branch name, not a defect because it is handled.",
      'is an observation, two observations joined by "and": "The cache miss is expected" and '
      '"the cache key ignores the branch name"'),
+    ("The cache key ignores the branch and valid input crashes, not a defect because it is handled.",
+     'says "valid input crashes", two observations joined by "and": "The cache key ignores the branch" and '
+     '"valid input crashes"'),
     ("x y; not a defect because the fallback handles it, so the message is lost.", 'says "is lost" in its reason'),
     ("The parser accepts malformed input, so invalid configuration reaches execution. Not a defect because the "
      "parser is outside this leaf.", None),
