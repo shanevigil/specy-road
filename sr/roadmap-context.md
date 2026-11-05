@@ -31,7 +31,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.27` worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length `cursor-usage-sums-segments-and-flags-undercounts` — task — **Complete**
   - `M15.31` A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported `delegated-reviewer-always-runs-a-named-model` — task — **Not Started**
   - `M15.32` An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure `archived-summary-exempt-from-file-limits` — task — **Complete**
-  - `M15.33` A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed `refused-review-record-leaves-a-trace` — task — **Not Started**
+  - `M15.33` A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed `refused-review-record-leaves-a-trace` — task — **Complete**
   - `M15.34` The executor prompt states the test rules that the reviewer's excess checklist enforces `executor-prompt-states-the-test-rules` — task — **Complete**
   - `M15.35` The review packet never lists .git or a path under it as an uncommitted reference `packet-never-lists-dot-git-as-uncommitted` — task — **Complete**
   - `M15.36` Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode `worker-launch-never-depends-on-claude-default-mode` — task — **Not Started**
@@ -161,8 +161,8 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
-- 2026-11-05 `M15.30` stopped depending on `2535829e-6a0d-40e3-aa42-9b0506bb9fe9` (no longer live)
 - 2026-11-05 `M16.18` stopped depending on `M16.47 One check_assignment decides eligibility for every launch and for the gate`
+- 2026-11-05 `M18.17` stopped depending on `2535829e-6a0d-40e3-aa42-9b0506bb9fe9` (no longer live)
 - 2026-11-05 `M16.12` stopped depending on `M16.7 Commands run in the CLI's process: no python -m re-launch, no cwd globals`
 - 2026-11-05 `M16.12` stopped depending on `M16.10 One LLM client module replaces the provider code inside review_node`
 - 2026-11-05 `M16.15` stopped depending on `M16.1 Parity harness: a review-gate decision table covering every review policy`
@@ -212,7 +212,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
-- `M15.33` on `feature/rm-refused-review-record-leaves-a-trace` since 2026-11-05
 - `M15.36` on `feature/rm-worker-launch-never-depends-on-claude-default-mode` since 2026-11-05
 - `M16.68` on `feature/rm-finish-resolves-inherited-roadmap-conflicts` since 2026-11-05
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
@@ -227,11 +226,13 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 29 | 18 | 6.18 | 91% | 15 | 3 |
-| `specy_road` **flagged** | 47 | 26 | 5.10 | 81% | 23 | 5 |
-| `tests` **flagged** | 50 | 29 | 5.10 | 81% | 23 | 5 |
+| `docs` **flagged** | 33 | 27 | 8.17 | 100% | 13 | 1 |
+| `specy_road` **flagged** | 47 | 36 | 6.91 | 100% | 21 | 3 |
+| `tests` **flagged** | 49 | 38 | 6.91 | 100% | 21 | 3 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
+| `research` | 1 | 1 | — | — | 0 | 0 |
+| `roadmap` | 1 | 1 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
 

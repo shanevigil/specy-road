@@ -89,18 +89,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: refused-review-record-leaves-a-trace
-    node_id: M15.33
-    branch: feature/rm-refused-review-record-leaves-a-trace
-    touch_zones:
-      - specy_road/review_rejected.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_run_status.py
-      - tests/
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-05T21:38:18+00:00'
   - codename: worker-launch-never-depends-on-claude-default-mode
     node_id: M15.36
     branch: feature/rm-worker-launch-never-depends-on-claude-default-mode
