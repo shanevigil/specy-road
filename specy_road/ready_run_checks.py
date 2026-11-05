@@ -32,7 +32,7 @@ def _tail(stdout: str) -> str:
 
 
 def _finish(cmd: str, returncode: int, stdout: str) -> dict[str, Any]:
-    tail = _tail(stdout or "")
+    tail = _tail(stdout)
     out: dict[str, Any] = {"cmd": cmd, "exit": returncode, "tail": tail or "(no output)"}
     if returncode == 0 and (warn := tail_warning(tail)):
         out["warning"] = warn

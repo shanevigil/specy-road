@@ -10,9 +10,25 @@ import pytest
 from tests.review_repo_helpers import diverge, git, make_review_repo
 from tests.test_models_and_prompt import make_profile_repo
 
+import argparse
+
 from specy_road.bundled_scripts import review_cli, review_packet, role_prompt
 from specy_road.cli import registered_agent_command_names
+from specy_road.ready_run_checks import parse_run_argv
 from specy_road.review_files import load_ready, reviews_dir
+from specy_road.review_gate_ready import add_ready_parser
+
+# Examples named in ``--run-argv`` help (must stay in sync with ``add_ready_parser``).
+RUN_ARGV_HELP_REFUSED = ("not-json", "[]", "{}", "[1]", '[""]')
+RUN_ARGV_HELP_ACCEPTED = '["echo", "ok"]'
+
+
+def _run_argv_help() -> str:
+    p = argparse.ArgumentParser()
+    sub = p.add_subparsers()
+    add_ready_parser(sub)
+    ready = sub.choices["ready"]
+    return next(a.help for a in ready._actions if a.dest == "run_argv")
 
 
 def _cli(*args: str) -> int:
@@ -198,3 +214,25 @@ def test_ready_run_argv_without_shell_and_refuses_bad_json(tmp_path: Path, monke
     capsys.readouterr()
     assert _cli("ready", "M1.1", "--model", "opus", "--run-argv", "[]", "--repo-root", str(repo)) == 1
     assert "non-empty JSON array" in capsys.readouterr().err
+
+
+def test_run_argv_help_examples_match_parse_run_argv() -> None:
+    help_text = _run_argv_help()
+    assert "not a non-empty JSON array of strings" in help_text
+    for spec in RUN_ARGV_HELP_REFUSED:
+        assert spec in help_text
+        with pytest.raises(ValueError):
+            parse_run_argv(spec)
+    assert RUN_ARGV_HELP_ACCEPTED in help_text
+    assert parse_run_argv(RUN_ARGV_HELP_ACCEPTED) == ["echo", "ok"]
+
+
+def test_ready_run_argv_help_accepted_example_runs(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    monkeypatch.chdir(repo)
+    capsys.readouterr()
+    assert _cli("ready", "M1.1", "--model", "opus", "--run-argv", RUN_ARGV_HELP_ACCEPTED, "--verify", "ruff .=0",
+                "--repo-root", str(repo)) == 0
+    r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
+    assert r.ok, r.errors
+    assert r.data["verify"][-1]["tail"].strip() == "ok"

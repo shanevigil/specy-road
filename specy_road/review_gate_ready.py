@@ -170,6 +170,37 @@ def _ready_errors(text: str, node_id: str, t: Any) -> list[str]:
         return load_ready(Path(td) / "READY.md", node_id, (t.entry or {}).get("branch"), acceptance_ids(t.node)).errors
 
 
+_RED_GREEN_HINT = ("Fix it, or, if it is a check meant to fail without the fix, pass it as --red-green "
+                   "instead of --verify or --run")
+
+
+def _live_run_rows(runs: list[str], argv_runs: list[list[str]]) -> tuple[list[dict[str, Any]], str | None]:
+    """Run ``--run`` and ``--run-argv`` verifiers; return new rows or a refusal message."""
+    rows: list[dict[str, Any]] = []
+    for cmd in runs:
+        if not cmd:
+            continue
+        print(f"running: {cmd}", file=sys.stderr)
+        v = run_check(cmd)
+        if v["exit"] != 0:
+            return rows, (f"failing verifier: `{cmd}` exited {v['exit']}; its last lines:\n{v['tail']}\n"
+                          f"{_RED_GREEN_HINT}")
+        if w := v.get("warning"):
+            print(f"warning: {w}", file=sys.stderr)
+        rows.append(v)
+    for argv in argv_runs:
+        cmd = shlex.join(argv)
+        print(f"running: {cmd}", file=sys.stderr)
+        v = run_argv(argv)
+        if v["exit"] != 0:
+            return rows, (f"failing verifier: `{cmd}` exited {v['exit']}; its last lines:\n{v['tail']}\n"
+                          f"{_RED_GREEN_HINT}")
+        if w := v.get("warning"):
+            print(f"warning: {w}", file=sys.stderr)
+        rows.append(v)
+    return rows, None
+
+
 def cmd_ready(ns: argparse.Namespace) -> int:
     """Write ``READY-<model>.md`` for ``HEAD``, validated by the loader ``handoff status`` uses; exit 1 on refusal.
 
@@ -200,38 +231,17 @@ def cmd_ready(ns: argparse.Namespace) -> int:
     body = ready_body(red_green, ns.note)
     if errs := _ready_errors(render_front_matter(data, body), ns.node_id, t):
         return _refuse("; ".join(errs))
-    for cmd in runs:
-        if not cmd:
-            continue
-        print(f"running: {cmd}", file=sys.stderr)
-        v = run_check(cmd)
-        if v["exit"] != 0:
-            return _refuse(f"failing verifier: `{cmd}` exited {v['exit']}; its last lines:\n{v['tail']}\n"
-                           f"{_RED_GREEN_HINT}")
-        if w := v.get("warning"):
-            print(f"warning: {w}", file=sys.stderr)
-        verify.append(v)
-    for argv in argv_runs:
-        cmd = shlex.join(argv)
-        print(f"running: {cmd}", file=sys.stderr)
-        v = run_argv(argv)
-        if v["exit"] != 0:
-            return _refuse(f"failing verifier: `{cmd}` exited {v['exit']}; its last lines:\n{v['tail']}\n"
-                           f"{_RED_GREEN_HINT}")
-        if w := v.get("warning"):
-            print(f"warning: {w}", file=sys.stderr)
-        verify.append(v)
-    text = render_front_matter(data, body)
+    live, refuse = _live_run_rows(runs, argv_runs)
+    if refuse:
+        return _refuse(refuse)
+    verify.extend(live)
+    text = render_front_matter({**data, "verify": verify}, body)
     if errs := _ready_errors(text, ns.node_id, t):
         return _refuse("; ".join(errs))
     dest = reviews_dir(root, ns.node_id) / f"{READY_PREFIX}{ns.model}.md"
     write_review(dest, text)
     print(f"Wrote {dest} at {t.commit[:12]}")
     return 0
-
-
-_RED_GREEN_HINT = ("Fix it, or, if it is a check meant to fail without the fix, pass it as --red-green "
-                   "instead of --verify or --run")
 
 
 def _refuse(msg: str) -> int:
@@ -249,7 +259,8 @@ def add_ready_parser(sub: argparse._SubParsersAction) -> None:
                         "is refused")
     r.add_argument("--run-argv", action="append", default=[], metavar="JSON",
                    help="Like --run but runs a JSON array of strings without a shell (repeatable); invalid JSON "
-                        "or a non-empty array of strings is refused before anything runs")
+                        "or a value that is not a non-empty JSON array of strings (e.g. not-json, [], {}, [1], "
+                        '[""]) is refused before anything runs; e.g. ["echo", "ok"] is accepted')
     r.add_argument("--verify", action="append", default=[], metavar="CMD=EXIT",
                    help="A verifier or test you ran and its exit, without its output (repeatable); "
                         "a non-zero exit is refused")
