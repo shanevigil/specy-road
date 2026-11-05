@@ -153,8 +153,13 @@ def test_a_custom_reviewer_command_with_no_api_id_is_refused_before_launch(tmp_p
     ("agent -p '--force' {prompt}", "--force"),           # quoting the whole flag still passes it to the program
     ("agent --yolo=true|cat {prompt}", "--yolo"),
     ("claude -p --dangerously-skip-permissions>log {prompt}", "--dangerously-skip-permissions"),
+    ("agent -p --for\\\nce {prompt}", "--force"),           # a line continuation inside the flag
+    ('agent -p "--for\\\nce" {prompt}', "--force"),         # ... inside double quotes, where sh joins it too
+    ("agent -p '--for\\\nce' {prompt}", "--force"),         # ... inside single quotes: sh keeps it; refused anyway
+    ("agent -p a#b --force {prompt}", "--force"),           # '#' inside a word starts no comment
+    ("agent -p {prompt} # no --force here", "--force"),     # a flag in a comment: refused anyway
 ])
-def test_bypass_flags_next_to_shell_operators_are_found(cli: str, flag: str) -> None:
+def test_bypass_flags_are_found_as_sh_reads_its_words(cli: str, flag: str) -> None:
     assert f"passes {flag}," in bypass_problem(cli)
 
 
@@ -171,13 +176,20 @@ def test_a_command_the_tokenizer_cannot_split_is_refused() -> None:
     assert "cannot be split into words" in bypass_problem("agent -p \"--force {prompt}")
 
 
-@pytest.mark.parametrize("flag", ["--force", "--yolo", "--dangerously-skip-permissions", "--force;"])
+@pytest.mark.parametrize("cli, flag", [
+    ("agent -p --force {prompt}", "--force"),
+    ("agent -p --yolo {prompt}", "--yolo"),
+    ("agent -p --dangerously-skip-permissions {prompt}", "--dangerously-skip-permissions"),
+    ("agent -p --force; {prompt}", "--force"),
+    ("agent -p --for\\\nce {prompt}", "--force"),           # split across a line continuation
+])
 def test_a_custom_reviewer_command_with_a_bypass_flag_is_refused(tmp_path: Path, capsys, started: list,
-                                                                 flag: str) -> None:
-    repo, _ = _repo(tmp_path, f'    harness: claude-code\n    channels: {{cli: "agent -p {flag} {{prompt}}"}}\n')
+                                                                 cli: str, flag: str) -> None:
+    block = "".join(f"        {line}\n" for line in cli.split("\n"))   # a YAML literal block keeps the backslash-newline
+    repo, _ = _repo(tmp_path, f"    harness: claude-code\n    channels:\n      cli: |-\n{block}")
     assert _prompt(repo, "--role", "reviewer", "--channel", "cli", "--run") == 1
-    assert started == []
-    assert f"passes {flag.rstrip(';')}," in capsys.readouterr().err
+    assert started == [] and not list(rf.reviews_dir(repo, "M1.1").glob("RUN-*"))
+    assert f"passes {flag}," in capsys.readouterr().err
 
 
 # --- A3: the reviewer runs in the leaf's own worktree ---------------------------------------------------------------

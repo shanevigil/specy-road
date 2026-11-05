@@ -40,9 +40,11 @@ of that branch's hooks or MCP servers, and the reviewer prompt asks it to record
 A ``codex`` or ``cursor`` entry without ``channels.cli`` runs its adapter's read-only reviewer command
 the same way, with the entry's model; an entry whose model resolves to no API id (``unknown``) is refused. Any
 other reviewer runs its roster ``channels.cli`` as written but captured, and is refused without one (never the
-profile's ``access.cli``) or when it passes ``--force``, ``--yolo`` or ``--dangerously-skip-permissions``. A
-reviewer runs in the leaf's own worktree, the one with the claimed branch checked out (``--worktree PATH``
-overrides), and is refused when there is none. It is with the structured-output flags its program takes (Antigravity ``agy``:
+profile's ``access.cli``) or when it passes ``--force``, ``--yolo`` or ``--dangerously-skip-permissions``, each
+word read as ``sh`` reads it (line continuations joined, shell operators split off, quotes removed, ``#`` ordinary;
+flags the shell expands at run time are out of scope). A reviewer runs in the leaf's own worktree, the one with
+the claimed branch checked out (``--worktree PATH`` overrides), and is refused when there is none. Its command
+gets the structured-output flags its program takes (Antigravity ``agy``:
 :func:`~specy_road.worker_adapter_base.reviewer_cli`). A reviewer prompt ends with the review output schema
 (:mod:`specy_road.review_record_write`); on ``--channel cli --run`` specy-road reads the final JSON object and files
 ``REVIEW-<model>.md`` from it, reports a run that wrote anything else as a review failure, and a missing or

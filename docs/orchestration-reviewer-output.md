@@ -94,13 +94,18 @@ reviewer), a model that resolves to none (a profile `api_id` of `unknown` and
 no `harness_model`: the harness would run its own default under the rostered id;
 checked for a `channels.cli` too), and a
 `channels.cli` passing `--force`, `--yolo` or `--dangerously-skip-permissions`.
-The flag check is one rule: the command is split as `sh` splits words
-(`shlex` in POSIX mode with `punctuation_chars`, so `;`, `&`, `|`, `(`, `)`,
-`<` and `>` are separate tokens and quotes are removed), and a token whose name
-(the part before any `=`) is exactly one of the flags refuses it: `--force;`,
-`--force&&x`, `(--force)` and `'--force'` all do, a quoted argument that only
-mentions `--force` among other words does not. Flags the shell produces at run
-time (`$VAR`, `$(...)`, aliases, a script the command runs) are out of scope; a
+The flag check is one rule: the command is split as `sh` reads its words,
+erring towards seeing more. Every backslash-newline (a line continuation) is
+removed first, then `shlex` in POSIX mode with `punctuation_chars` and no
+comment character splits the rest, so `;`, `&`, `|`, `(`, `)`, `<` and `>` are
+separate tokens, quotes are removed and `#` is an ordinary character. A token
+whose name (the part before any `=`) is exactly one of the flags refuses it:
+`--force;`, `--force&&x`, `(--force)`, `'--force'`, `--for\` + newline + `ce`
+and `a#b --force` all do; a quoted argument that only mentions `--force` among
+other words does not. It is conservative on purpose: a flag inside a `#`
+comment, or a backslash-newline inside single quotes (which `sh` keeps), also
+refuses. Flags the shell produces at run time (`$VAR`, `$'...'`, `$(...)`,
+brace expansion, aliases, a script the command runs) are out of scope; a
 command the tokenizer cannot split (an unbalanced quote) is refused.
 
 The reviewer runs in the leaf's own worktree, the one `git worktree list`

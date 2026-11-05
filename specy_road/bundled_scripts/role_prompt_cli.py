@@ -83,16 +83,19 @@ def resolve_cli(prof: Profile | None, entry_cli: str | None, harness: str | None
 def bypass_problem(cli: str) -> str:
     """Why the reviewer command ``cli`` may not run, else ``""``: it passes one of :data:`BYPASS_FLAGS`.
 
-    One bounded rule. ``cli`` is split as ``sh`` would split its words, by :class:`shlex.shlex` in POSIX mode with
-    ``punctuation_chars``, so ``;``, ``&``, ``|``, ``(``, ``)``, ``<`` and ``>`` are tokens of their own (``--force;``,
-    ``--force&&x`` and ``(--force)`` all yield ``--force``) and quotes are removed (``'--force'`` is ``--force``, as
-    the program receives it). A token matches when it, or its part before the first ``=``, is exactly one of the
-    flags. A quoted argument that only contains a flag among other text (``"use --force here"``) is one token and
-    does not match. Out of scope, because the tokenizer does not expand them: flags produced by the shell at run
-    time (``$VAR``, ``$(...)``, backquotes, aliases, a script the command runs). A command the tokenizer cannot
-    split (an unbalanced quote) is refused."""
-    lexer = shlex.shlex(cli, posix=True, punctuation_chars=True)
-    lexer.whitespace_split = True
+    One bounded rule: ``cli`` is split as ``sh`` reads its words, erring towards seeing more. Every backslash-newline
+    (``sh``'s line continuation) is removed first, so ``--for\\<newline>ce`` is ``--force``. The rest is split by
+    :class:`shlex.shlex` in POSIX mode with ``punctuation_chars`` and no comment character, so ``;``, ``&``, ``|``,
+    ``(``, ``)``, ``<`` and ``>`` are tokens of their own (``--force;``, ``--force&&x`` and ``(--force)`` all yield
+    ``--force``), quotes are removed (``'--force'`` is ``--force``, as the program receives it), and ``#`` is an
+    ordinary character (``a#b --force`` keeps its ``--force``). A token matches when it, or its part before the first
+    ``=``, is exactly one of the flags. A quoted argument that only contains a flag among other text (``"use --force
+    here"``) is one token and does not match. Conservative by design: a flag in a ``#`` comment, or a backslash-newline
+    inside single quotes (where ``sh`` keeps it), also refuses. Out of scope, because the tokenizer does not expand
+    them: flags produced by the shell at run time (``$VAR``, ``$'...'``, ``$(...)``, backquotes, brace expansion,
+    aliases, a script the command runs). A command the tokenizer cannot split (an unbalanced quote) is refused."""
+    lexer = shlex.shlex(cli.replace("\\\n", ""), posix=True, punctuation_chars=True)
+    lexer.whitespace_split, lexer.commenters = True, ""
     try:
         words = list(lexer)
     except ValueError as e:
