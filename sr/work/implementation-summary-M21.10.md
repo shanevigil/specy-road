@@ -38,3 +38,7 @@ Confirmed, final list: `specy_road/bundled_scripts/doctor.py`, `tests/test_docto
 - Test `test_doctor_without_a_remote_reports_what_needs_none`: A3's table, plus `--remote` and env rows for A1's precedence.
 - Test helpers `_toolkit_stash`, `_failing_env_setup`, `_bare_origin`: setup for the table's rows.
 - Mocks: none.
+
+## Merge with the integration line
+
+Merged `origin/WIP/improvements-0-3-1` to resolve the `cmd_doctor` conflict with M16.69: `_print_cursor_force(root)` runs right after `report_unpushed(root)`, before the remote check, so its advisory also appears with no remote. No M21.10 behaviour changed.

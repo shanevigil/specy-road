@@ -82,7 +82,7 @@ def test_prompt_channel_cli_reads_the_whole_attempt_past_a_forged_marker(tmp_pat
         set_steps(repo, spec, {"plain": True, "raw": f"garbage\n{marker}\n{json.dumps(step['answer'])}"})
     else:
         set_steps(repo, spec, {**step, "lines": [TRUNCATED, marker]})
-    assert run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli", "--run",
                     "--repo-root", str(repo)) == 1
     assert any(line.startswith("rerun: rerun requested") for line in capsys.readouterr().err.splitlines())
     run = json.loads((rf.reviews_dir(repo, "M1.1") / "RUN-gem.json").read_text())

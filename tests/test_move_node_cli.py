@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts.roadmap_move_node import move_node
+from specy_road.bundled_scripts.roadmap_outline_ops import reorder_siblings
 from tests.move_node_helpers import (
     NK_A1,
     NK_B,
@@ -102,8 +103,17 @@ def test_a_node_cannot_move_under_its_own_descendant(tmp_path: Path) -> None:
     assert "descendant" in r.stderr
 
 
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda root: move_node(root, NK_A1, "M2", None),
+        # The PM GUI's reorder used to persist, then validate, too.
+        lambda root: reorder_siblings(root, None, ["M2", "M1"]),
+    ],
+    ids=["move", "reorder"],
+)
 def test_a_rejected_move_leaves_the_working_tree_untouched(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mutate
 ) -> None:
     """The defect this command could have inherited: persist, then validate."""
     base_fixture(tmp_path)
@@ -119,7 +129,7 @@ def test_a_rejected_move_leaves_the_working_tree_untouched(
         "specy_road.bundled_scripts.roadmap_move_node.run_validate_raise", boom
     )
     with pytest.raises(ValueError, match="synthetic"):
-        move_node(tmp_path, NK_A1, "M2", None)
+        mutate(tmp_path)
 
     assert (chunk.read_bytes(), sheet.read_bytes(), registry.read_bytes()) == before
     assert sheet.is_file()

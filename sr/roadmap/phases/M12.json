@@ -102,6 +102,147 @@
         "specy_road/bundled_scripts/grind_session.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "`grind-session --workers N` (N >= 1; the default 1 keeps today's one-leaf loop) runs one tick every `grind.tick_seconds` (git-workflow.schema.json, integer >= 5, default 60) and keeps up to N live workers: it claims ready, unclaimed, unheld leaves in pickup order into their own worktrees (as `do-next-available-task --worktree` does) and runs `worker delegate` with orchestrate assign's executor; a leaf is skipped while one of its zones overlaps a reserving claim's zones under shared_zones.py's rule, emitting one `not_delegated` event per leaf and reason (the overlapping claim and zone, or the capped model) when that reason first applies; `policy.max_workers_per_model` (orchestration.schema.json, a map of roster id to integer >= 1) caps live workers per model in `worker delegate`'s slot check, whose refusal names the model and its cap",
+        "Each tick, in this order: a registered claim whose gate is met at its branch tip is landed with finish-this-task (M16.14's land checks) whether or not a worker record exists; a claim whose READY names its tip, with a clean post-run check, no live `review run` for the leaf and a selected reviewer without a gate-accepted record at that tip (M18.24's predicate), gets a detached `review run` child that the tick does not wait for, so later ticks keep landing and delegating other leaves; a claim with no live worker, no READY and no worker record is delegated again under the same caps",
+        "A claim with a live worker always reserves its zones, held or not; a held leaf (one id per line in the gitignored work/grind-hold.txt, `#` starts a reason, re-read every tick) is never claimed, messaged, reviewed or landed, and without a live worker reserves no zones; with `grind.release_zones_in_review: true` (git-workflow.schema.json, default false) a claim whose READY names its tip and whose worker is not live stops reserving its zones, and any writing turn the loop sends it (message, resume, rework, an M18.21 fix round) waits until it can reserve them again; while the integration checkout has uncommitted tracked changes the loop takes no git action and emits one `waiting_dirty_checkout` event per dirty spell",
+        "Every action is one JSON line in the grind event log (delegated, not_delegated, review_started, landed, held_skip, waiting_dirty_checkout, cap_reached naming the model); the loop reads --workers and grind.* from flags and git-workflow.yaml and policy.max_workers_per_model from the orchestration config, and no setting from an environment variable; after a restart it re-evaluates every claim from the M16.15 snapshot, lands a claim whose gate is met at its tip with no `landed` event for that tip (an interrupted landing), completes the bookkeeping of a claim already merged, and starts no review for a leaf whose `review run` child is still alive",
+        "Tests through the public CLI with a stub harness, a fixed clock and rendezvous files (no network, no sleeps): two leaves sharing a zone go one after the other and two disjoint leaves together; a per-model cap of 1 holds the second leaf; a held leaf is skipped and a held leaf with a live worker keeps its zones; a met gate with no worker record lands; a READY tip with one approval and one missing reviewer starts one review run and the next tick starts none; an orphaned claim is delegated again; release_zones_in_review frees a READY claim's zones and its rework waits for them; a dirty checkout gives one event over several ticks; restarts with an interrupted landing, an already-merged claim and a live review child each give one landing result and no duplicate reviewer launch; `--workers 1` gives the M16.19 grind table's rows unchanged. Out of scope: automatic fix rounds (M18.21), supervision (M18.22), account pools (M18.23)",
+        "Estimated net line change (informational, not a gate): package about +420, tests about +420"
+      ],
+      "codename": "unattended-grind-loop",
+      "dependencies": [
+        "275b701c-4eb9-4214-ae77-7ab34a7d197a",
+        "51f22f17-0d11-4dc4-8709-d39d406991c5",
+        "6434cf7b-842b-4532-96e3-1821655a5fb5",
+        "74ac34a2-084a-4dd3-84ec-ac37b20dd983",
+        "ef742d24-c774-456d-b5d6-c5e4cee5098f",
+        "fba72c3a-24a5-4c6b-b174-0e581d8b8450"
+      ],
+      "id": "M18.20",
+      "node_key": "93090bae-7125-4985-b4b4-eb442dd27cf0",
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.20_unattended-grind-loop_93090bae-7125-4985-b4b4-eb442dd27cf0.md",
+      "sibling_order": 19,
+      "status": "Not Started",
+      "title": "Unattended grind loop: several workers at once, zone-overlap scheduling, per-model caps, review hand-off and landing when the gate is met",
+      "touch_zones": [
+        "specy_road/orchestration/grind/",
+        "specy_road/orchestration/workers/",
+        "specy_road/orchestration_config.py",
+        "specy_road/git_workflow_config.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "docs/grind-session.md",
+        "docs/orchestration-workers.md",
+        "tests/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The M18.20 loop writes work/grind-heartbeat.json each tick (pid, tick time, tick_seconds, --workers); `doctor` and `grind-session --status` read it with the M16.15 snapshot, the grind event log and M18.24's waiting tickets and report the rows of one table in new specy_road/orchestration/supervision.py, each firing when age > threshold: `loop_silent` (heartbeat pid dead, or heartbeat older than 3 x tick_seconds), `worker_failed` (state failed, no later event on its leaf), `worker_stalled` (running, no event for 45 min), `leaf_idle` (completed or idle worker whose leaf has no review run, fix round or landing for 15 min), `review_queue` (a waiting ticket older than 15 min with no review slot held), `leaf_undelegated` (a `not_delegated` event 30 min old for a leaf still ready and unclaimed, with its reason), `checkout_dirty` (a `waiting_dirty_checkout` event 5 min old while the checkout is still dirty)",
+        "Ages come only from those records: with no heartbeat (no grind session) no loop row fires, a row whose onset record is missing does not fire, and a malformed heartbeat or record gives one warning naming the file; each problem is one line naming the row id, the leaf or worker, its age and the next command; `--json` lists the same objects; the thresholds are named constants in that table and docs/orchestration.md lists them; every row is a doctor warning, so doctor's exit codes are unchanged",
+        "The report is read-only: it restarts, re-sends and terminates nothing; docs/grind-session.md shows restarting a dead loop from the user's own supervisor (a cron or systemd example)",
+        "Tests with a fixed clock (no sleeps): for each time row, one second below its threshold gives no row and one second above gives the row; plus no heartbeat, a dead loop pid, a malformed heartbeat (one warning, exit code unchanged) and a healthy busy loop with no rows",
+        "Estimated net line change (informational, not a gate): package about +220, tests about +250"
+      ],
+      "codename": "orchestration-supervision",
+      "dependencies": [
+        "93090bae-7125-4985-b4b4-eb442dd27cf0",
+        "b5ca5d95-58a9-472c-9f90-0004d0fbd46f",
+        "ef742d24-c774-456d-b5d6-c5e4cee5098f",
+        "fba72c3a-24a5-4c6b-b174-0e581d8b8450"
+      ],
+      "id": "M18.22",
+      "node_key": "a8854bf1-51c3-4b33-bbf9-5d7dc82ae964",
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.22_orchestration-supervision_a8854bf1-51c3-4b33-bbf9-5d7dc82ae964.md",
+      "sibling_order": 21,
+      "status": "Not Started",
+      "title": "doctor reports a stalled orchestration: a silent loop, failed or stalled workers, idle leaves, a stuck review queue, undelegated ready leaves and a dirty checkout",
+      "touch_zones": [
+        "specy_road/orchestration/supervision.py",
+        "specy_road/orchestration/grind/",
+        "specy_road/bundled_scripts/doctor.py",
+        "docs/orchestration.md",
+        "docs/grind-session.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "`specy-road review run <NODE_ID>` (new specy_road/review_run.py, registered from review_delegate's parser as M18.10's `review rca` is, so review_cli gains no subcommand code) builds the packet for the branch tip and refuses before any launch when `trial_merge().problem()` is set or M18.9's zone check refuses; it then runs, one at a time under the per-leaf review_run_lock, each reviewer that M18.19's selection returns for the leaf with its recorded executor and that has no gate-accepted record at the pinned tip; the next starts only after the previous filed a gate-accepted approval, so a block or an incomplete run ends the run, and gate-accepted records already filed are kept and not re-run",
+        "`policy.max_concurrent_reviews` (integer >= 1, orchestration.schema.json, default no cap) is enforced where review delegate launches a reviewer, so a direct `review delegate` counts too: a slot file under work/reviews/.slots/ holds the owner's pid and a random token and is reclaimed only when that pid is dead or its command line lacks the token; a waiter writes work/reviews/.slots/waiting/<seq>-<token> (leaf, pid, token, start time), takes slots in sequence order and deletes the ticket when it takes one; `--no-wait` exits 3 printing `queued: no review slot`; a second `review run` for a leaf with one running exits 0 at once, printing that run's pid, and touches no slot or ticket",
+        "When `review record` refuses a reviewer's final answer (a record refusal, not a capacity error), `review delegate` resumes the same session once with the refusal text (the offending lines and rule M15.17 prints) and asks for a corrected final answer; when the harness cannot resume that session the run ends incomplete, naming the refusal and the rerun command; a second refusal is final; `--refusal-retries 0` turns the retry off; the RUN record lists both attempts",
+        "Tests through the public CLI with a stub reviewer, rendezvous files and a fixed clock (no network, no sleeps): a trial-merge conflict, a zone refusal and an empty or ineligible selection each launch nothing; a malformed or other-commit record does not count as filed; a block stops the second reviewer; an existing approval is kept and only the missing reviewer runs; a cap of 1 makes a second leaf wait and take the slot when the first releases it; a dead-pid slot and a live pid whose command line lacks the token are reclaimed and a live owner's slot is not; a duplicate run returns at once; a refused answer then a valid one files one record; two refusals, and a refusal with no resumable session, end incomplete",
+        "Estimated net line change (informational, not a gate): package about +280, tests about +300"
+      ],
+      "codename": "review-run-queue",
+      "dependencies": [
+        "1fea55d6-5e9c-481f-8fd9-a6ee6cc4f995",
+        "5fa51e45-9e09-4119-826d-43c6d304f243",
+        "c15ccf3e-ca26-4965-bd75-d3d7795a1ea0",
+        "ca41116c-978b-4215-a69e-2f52400009fa"
+      ],
+      "id": "M18.24",
+      "node_key": "ef742d24-c774-456d-b5d6-c5e4cee5098f",
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.24_review-run-queue_ef742d24-c774-456d-b5d6-c5e4cee5098f.md",
+      "sibling_order": 23,
+      "status": "Not Started",
+      "title": "review run: the required reviewers in order for one leaf, a concurrency cap across leaves, and one retry on a refused record",
+      "touch_zones": [
+        "specy_road/review_run.py",
+        "specy_road/review_delegate.py",
+        "specy_road/review_run_status.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "docs/orchestration-review.md",
+        "tests/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "`edit-node` on a leaf with a registry claim that changes touch_zones or acceptance refuses without `--reason <text>`; with it, the same change appends `- <date> <fields changed>: <reason>` under `## Amendments` in the leaf's planning sheet (adding the heading when missing); on an unclaimed leaf edit-node behaves as today and records the line only when `--reason` is given; `--set-acceptance-line N=<text>` replaces and `--append-acceptance-line N=<text>` extends acceptance line N (1-based), leaving the other lines unchanged, and an index out of range is refused",
+        "Run from the integration checkout on a claimed leaf with a linked worktree, edit-node checks every refusal (reason, index, uncommitted changes in the leaf worktree or other uncommitted tracked changes in the integration checkout, the leaf's worker running) before healing or writing any file, then commits the node and sheet change on the leaf branch and on the integration branch (`roadmap(<ID>): amend <fields> (<reason>)`), so neither checkout keeps an uncommitted path; when the second commit fails the first is rolled back (ref and files restored) and the command exits non-zero naming the step",
+        "Git in the leaf worktree runs for this path with hooks, fsmonitor and commit signing disabled (`-c core.hooksPath=/dev/null -c core.fsmonitor=false -c commit.gpgsign=false`), so an executor-written hook or config runs nothing during the dirty check or the commit",
+        "After a zone amendment, the worker's post-run out-of-zone findings for paths the new zones cover are cleared and a worker event (worker-event.schema.json) records the clearing; findings outside zones the amendment does not cover are kept; approvals at earlier commits are stale as for any new commit, and `review status` names the amendment line as the reason a review is needed",
+        "Tests through the public CLI: a claimed leaf without --reason is refused; with it, the sheet line and both commits exist and both checkouts are clean; a dirty leaf worktree, a running worker and a failed second commit each leave both trees' bytes and refs unchanged; a sentinel hook and fsmonitor command in the leaf worktree do not run; a covered out-of-zone finding is cleared and an uncovered one kept; review status shows the earlier approval as stale with the amendment reason; one-line acceptance edits by index work and an out-of-range index is refused",
+        "Estimated net line change (informational, not a gate): package about +200, tests about +220"
+      ],
+      "codename": "claimed-leaf-amendments",
+      "dependencies": [
+        "af6d3c1a-cccf-481d-ab9f-503e834b47d7",
+        "2fcf08ee-20e7-4751-a9ab-e64e163f5e2a",
+        "51f22f17-0d11-4dc4-8709-d39d406991c5"
+      ],
+      "id": "M18.26",
+      "node_key": "17040843-a82f-4361-95c3-1deee23bba4e",
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.26_claimed-leaf-amendments_17040843-a82f-4361-95c3-1deee23bba4e.md",
+      "sibling_order": 25,
+      "status": "Not Started",
+      "title": "Amending a claimed leaf's touch zones or one acceptance line records the reason, commits on the leaf branch and re-arms its review",
+      "touch_zones": [
+        "specy_road/bundled_scripts/roadmap_crud*.py",
+        "specy_road/orchestration/workers/",
+        "specy_road/schemas/worker-event.schema.json",
+        "specy_road/git_subprocess.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_status_render.py",
+        "docs/roadmap-authoring.md",
+        "docs/orchestration-review.md",
+        "tests/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }

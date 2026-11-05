@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from specy_road.bundled_scripts.roadmap_outline_renumber import renumber_display_ids_inplace
+import pytest
+
+from specy_road.bundled_scripts.roadmap_outline_renumber import (
+    lowest_free_child_id,
+    next_free_child_id,
+    renumber_display_ids_inplace,
+)
 from specy_road.bundled_scripts.roadmap_layout import (
     compute_depths,
     dependency_inheritance_display,
@@ -105,3 +111,42 @@ def test_dependency_inheritance_display_splits_explicit() -> None:
     assert inh["M0.1.1"]["inherited"] == []
     assert inh["M0.1"]["explicit"] == []
     assert inh["M0.1"]["inherited"] == ["MX"]
+
+
+@pytest.mark.parametrize(
+    ("ids", "parent", "ignore", "expected"),
+    [
+        # Children start at 1 and fill the lowest gap.
+        (["M2", "M2.1", "M2.4"], "M2", set(), "M2.2"),
+        # The moved subtree's own ids count as free.
+        (["M2", "M2.1", "M2.4"], "M2", {"M2.1"}, "M2.1"),
+        # Roots start at 0 when M0 exists, else at 1.
+        (["M0", "M2"], None, set(), "M1"),
+        (["M2"], None, set(), "M1"),
+        (["M1", "M2"], None, set(), "M3"),
+        # M0 sets the base even when it is the moved node, and stays free.
+        (["M0", "M2"], None, {"M0"}, "M0"),
+        (["M0", "M1"], None, {"M0"}, "M0"),
+    ],
+)
+def test_lowest_free_child_id(
+    ids: list[str], parent: str | None, ignore: set[str], expected: str
+) -> None:
+    nodes = [{"id": i} for i in ids]
+    assert lowest_free_child_id(nodes, parent, ignore_ids=ignore) == expected
+
+
+@pytest.mark.parametrize(
+    ("ids", "expected"),
+    [
+        # The moved sole root M0 keeps the project's base: M0, not M1.
+        (["M0"], "M0"),
+        (["M0", "M1"], "M2"),
+        (["M1"], "M1"),
+    ],
+)
+def test_next_free_root_id_when_the_moved_node_is_left_out(
+    ids: list[str], expected: str
+) -> None:
+    nodes = [{"id": i, "node_key": i, "parent_id": None} for i in ids]
+    assert next_free_child_id(nodes, None, exclude_key=ids[0]) == expected

@@ -183,3 +183,31 @@ entries:
     answer: 'ship: D5''s hold was lifted and v0.3.1-rc3 shipped (tag on main from
       PR #140, 2026-11-04); this entry supersedes D5 (maintainer, 2026-11-05)'
     closed: '2026-11-05T19:00:02+00:00'
+  - id: D8
+    node: M16.69
+    kind: decision
+    summary: 'Temporary exception: the toolkit''s Composer and Grok Cursor executors
+      (composer-2.5, grok-4.7-exec) opt into cursor_force'
+    why_now: 'M16.69 makes Cursor workers launch with --trust --sandbox enabled by
+      default. On the maintainer''s machine (Ubuntu 24.04.5, kernel.apparmor_restrict_unprivileged_userns=1,
+      agent 2026.11.05-86047df) agent -p with --sandbox enabled exits 1 before its
+      first event: ''Sandbox mode is enabled but not available on this system. Sandbox
+      failed to start, possibly due to AppArmor configuration.'' The same turn with
+      --trust --force edited a file, ran pytest and committed. Without the opt-in
+      the grind''s Cursor executors cannot run at all (A2, sr/work/implementation-summary-M16.69.md).'
+    options:
+      - label: keep
+        effect: 'composer-2.5 and grok-4.7-exec keep cursor_force: true until M20
+          provides isolation or Cursor''s sandbox starts on this host; plan and doctor
+          warn about both on every run'
+      - label: drop
+        effect: Remove cursor_force from both; those executors fail at launch on this
+          host until the sandbox is enabled (AppArmor profile for agent, or the userns
+          restriction relaxed)
+    recommendation: keep
+    recommendation_reason: The default stays sandboxed for every adopter; the exception
+      is two named entries, visible in plan and doctor, and ends with M20 or a working
+      sandbox
+    default_if_unanswered: keep
+    asked: '2026-11-05'
+    status: open

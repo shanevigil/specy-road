@@ -109,7 +109,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.36_worker-launch-never-depends-on-claude-default-mode_858543e9-c22b-4224-ac40-964bfef8d0ec.md",
       "sibling_order": 25,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode",
       "touch_zones": [
         "specy_road/worker_adapter_claude.py",

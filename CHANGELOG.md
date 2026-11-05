@@ -19,12 +19,31 @@ body. Keep section bodies focused; link to PRs for detail.
   the branch, worktree and registry sections, and still reports the install,
   checkout, stashes and orphaned claims; `--fix` removes only the stashes it
   listed. A configured remote whose fetch fails still exits 1.
+- `specy-road prompt --channel cli` no longer launches anything by itself: it
+  writes the prompt and prints the command it would run, and starts a process
+  (the roster's `preflight` included) only with the new `--run`, for every
+  role. A reviewer run takes its command from the roster entry only (never the
+  profile's `access.cli`), refuses a model with no API id and a `channels.cli`
+  passing `--force`, `--yolo` or `--dangerously-skip-permissions`, and runs in
+  the leaf's own worktree (`--worktree PATH` overrides), refusing when there is
+  none. The filed record carries `harness_model`, the model the harness
+  reported; when it is not the rostered model it also carries
+  `model_mismatch`, and the gate does not count it ("harness ran a different
+  model").
+
 - Claude transcript and memory lookups honour `CLAUDE_CONFIG_DIR`: the worker
   wrappers, usage-limit detection from a transcript, the `MEMORY.md` context
   line and `grind-session`'s session lookup all read `~/.claude/projects`, so
   under another account a worker started fresh instead of resuming. The context
   meter's user `CLAUDE.md` now comes from the same directory, and the value is
   taken literally (a `~` in it is not expanded, as in the shell wrappers).
+- Help text names only what a pip install has: `specy-road --help` points
+  add-node and scaffold-planning at `specy-road <cmd> -h` instead of
+  `python specy_road/bundled_scripts/...` paths, and the `gui` line names
+  `specy-road init gui --install-gui` (the old `init --install-gui` was refused
+  by the init parser). Every bundled subcommand's `usage:` line reads
+  `specy-road <cmd>` rather than its module file name, and help that cited a
+  `docs/*.md` file a pip install lacks now links the published copy.
 
 ### Added
 
@@ -94,6 +113,19 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- Cursor workers launch and resume with `--trust --sandbox enabled` instead of
+  `--force --trust`: `--force` force-allowed every command not explicitly
+  denied. A roster entry opts back in with `cursor_force: true` (boolean,
+  default `false`, `cursor` entries only), which passes `--trust --force` on
+  launch and resume. `orchestrate plan` and `doctor` warn once per entry that
+  sets it, and per `cursor` entry whose `channels.cli` or `cli_resume` passes
+  `--force`, `-f` or `--yolo`, read as the shell splits the command (so
+  `--force; true` counts); a custom command keeps its own flags. A Cursor
+  worker's `launched` event records the permission flags passed
+  (`detail.permissions`). Where Cursor's sandbox cannot start (Ubuntu 24.04's
+  AppArmor user-namespace restriction), the worker exits 1 at launch: fix the
+  host or set `cursor_force` (docs/orchestration-workers.md, Cursor
+  permissions).
 - specy-road's agent rules move out of your `AGENTS.md` into
   `.specyrd/AGENTS.md` under the project root, a file specy-road owns and
   `upgrade` rewrites whole. The managed block in `AGENTS.md` becomes a 17-line

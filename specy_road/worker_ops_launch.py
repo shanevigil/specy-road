@@ -25,6 +25,7 @@ from specy_road.orchestration_config import harness_model, roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_files import reviews_dir, reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
+from specy_road.reviewer_auth import claude_worker_refusal
 from specy_road.runtime_paths import REPO_ROOT_ENV, git_root, project_prefix
 from specy_road.worker_adapter_parsers import effort_note, output_mode_note, resume_form_note
 from specy_road.worker_adapters import adapter_for
@@ -142,6 +143,12 @@ def _cli_for(repo_root: Path, entry: dict[str, Any], harness: str) -> tuple[str 
     return cli, api_id, prof.launch_mode(), effort
 
 
+def launch_options(entry: dict[str, Any], harness: str) -> dict[str, Any]:
+    """The roster entry's harness-specific launch keywords: ``cursor_force`` (default false) as the Cursor
+    adapter's ``force``, on launch and resume alike; none for any other harness."""
+    return {"force": entry.get("cursor_force") is True} if harness == "cursor" else {}
+
+
 def _report_cli(entry: dict[str, Any], harness: str, cli: str | None) -> None:
     """Before a launch, on stderr: a custom command a resumed turn cannot run again (it would fall back to the
     harness's default command and its permissions), and one whose output is text only."""
@@ -161,6 +168,45 @@ def _preflight(entry: dict[str, Any], repo_root: Path) -> None:
     rc = subprocess.run(str(cmd), shell=True, cwd=repo_root, check=False).returncode  # noqa: S602 — adopter's own roster
     if rc != 0:
         raise WorkerError(f"preflight failed (exit {rc}): {cmd}; nothing was launched")
+
+
+def _selected_cli(entry: dict[str, Any], cli: str | None, *, resuming: bool) -> str | None:
+    """The roster command this turn runs, ``None`` when it runs the harness's default: the one answer the auth check
+    and the adapter both take (M15.36). A launch runs ``cli``. A resume runs ``channels.cli_resume`` when set, else
+    ``cli`` (it keeps the launch's permissions on a harness whose resume is its own command, where ``{session_flag}``
+    is refused), unless that command names no session placeholder (``resume_form_note``): only the default command
+    then knows the resume flag. A command that cannot run stays selected, so the adapter refuses it with its reason."""
+    if not resuming:
+        return cli
+    chosen = (entry.get("channels") or {}).get("cli_resume") or cli
+    return None if resume_form_note(chosen, None) else chosen
+
+
+def _auth_preflight(repo_root: Path, entry: dict[str, Any], harness: str, *, resuming: bool = False) -> None:
+    """M15.36: a claude-code turn on the default command, forced to bare with no key or ``apiKeyHelper``, is refused.
+    One bounded rule, on the command this turn runs (:func:`_selected_cli`): the default command is checked, and a
+    roster command is run as written and never parsed, so a ``--bare`` written into it is the adopter's to authenticate."""
+    if harness != "claude-code" or _selected_cli(entry, (entry.get("channels") or {}).get("cli"), resuming=resuming):
+        return
+    prof = pinned_profile_for_entry(repo_root, entry)
+    problem = claude_worker_refusal(entry, prof.launch_mode() if prof is not None and prof.ok else None)
+    if problem:
+        raise WorkerError(problem)
+
+
+def _launch_checks(repo_root: Path, entry: dict[str, Any], harness: str, node: dict[str, Any], model: str, *,
+                   resuming: bool = False) -> None:
+    """Every refusal a launch or resume makes from the roster entry, the leaf, the profile and the environment
+    (M15.36): eligibility, a broken profile, the Claude Code auth check, then the roster ``preflight``. ``delegate``
+    and ``worker message``/``resume`` (``resuming``) run it before they reconcile a dead wrapper, apply ``--rework``,
+    queue a message, or write a record, event, lease, prompt or log, so a refusal leaves worker state as it was."""
+    if not entry.get("roster_free"):
+        _check_eligible(entry, node, model)
+    prof = pinned_profile_for_entry(repo_root, entry)
+    if prof is not None and not prof.ok:
+        raise WorkerError(f"profile for {entry.get('id')!r}: " + "; ".join(prof.errors))
+    _auth_preflight(repo_root, entry, harness, resuming=resuming)
+    _preflight(entry, repo_root)
 
 
 def _brief_into(wt: Path, repo_root: Path, node_id: str, t) -> None:
@@ -216,13 +262,26 @@ def _existing_after_rework(repo_root: Path, node_id: str, *, foreign: list[str] 
     return _slot_or_existing(repo_root, node_id, foreign=foreign)
 
 
+def _existing_unless_rework(repo_root: Path, node_id: str, *, foreign: list[str] | None = None,
+                            rework: bool = False) -> WorkerRecord | None:
+    """The leaf's worker, as :func:`_slot_or_existing`; with ``rework`` a ``completed`` one is not returned and not
+    yet terminated: that waits for the last lock section, after every refusal (M15.36)."""
+    existing = _slot_or_existing(repo_root, node_id, foreign=foreign)
+    if rework and existing is not None and existing.state == "completed":
+        others = [r for r in list_records(repo_root, active_only=True)
+                  if r.node_id == node_id and r.worker_id != existing.worker_id]
+        return others[0] if others else None
+    return existing
+
+
 def delegate(repo_root: Path, node_id: str, model: str | None, *, harness: str | None = None,
              worktree: Path | None = None, offline: bool = False, rework: bool = False) -> tuple[WorkerRecord, bool]:
     """``(record, created)``: an active worker on the leaf is returned, not duplicated.
 
     The existing-worker check, the cap and the launch happen under the workers lock, so two concurrent delegates
-    on one leaf launch one harness. The roster's ``preflight`` and the prompt build run **between** two lock
-    sections, not under one: a hook witness must never queue behind them. ``offline`` counts this checkout's
+    on one leaf launch one harness. Every refusal (:func:`_launch_checks`, the roster's ``preflight`` included) and
+    the prompt build run **between** two lock sections, not under one: a hook witness must never queue behind them.
+    ``--rework`` terminates a completed record only in the last section, so a refused delegate leaves it as it was. ``offline`` counts this checkout's
     workers only and pushes no lease (worker_lease). ``node_id`` may be a chore slug (chore_cli), whose
     ``--model`` and ``--harness`` are the defaults here."""
     chore = open_chore(repo_root, node_id)
@@ -231,17 +290,16 @@ def delegate(repo_root: Path, node_id: str, model: str | None, *, harness: str |
     if not model:
         raise WorkerError(f"--model is required for {node_id}")
     entry, harness = _entry_and_harness(repo_root, model, harness, roster_free=chore is not None)
+    _auth_preflight(repo_root, entry, harness)   # before even the lock file: it needs only the entry and environment
     with workers_lock(repo_root):   # before any network read: a retry is answered while the remote is down
-        if existing := _existing_after_rework(repo_root, node_id, rework=rework, offline=offline):
+        if existing := _existing_unless_rework(repo_root, node_id, rework=rework):
             return existing, False
     foreign = foreign_leases(repo_root, offline=offline)   # other checkouts' workers: a network read, so outside the lock
     with workers_lock(repo_root):
-        if existing := _existing_after_rework(repo_root, node_id, foreign=foreign, rework=rework, offline=offline):
+        if existing := _existing_unless_rework(repo_root, node_id, foreign=foreign, rework=rework):
             return existing, False
     t = chore_target(repo_root, chore) if chore else _target(repo_root, node_id)
-    if not entry.get("roster_free"):
-        _check_eligible(entry, t.node, model)
-    _preflight(entry, repo_root)
+    _launch_checks(repo_root, entry, harness, t.node, model)   # M15.36: before --rework or a launch writes state
     text, _prof, err = (chore_prompt(chore, "executor", model, repo_root), None, None) if chore else \
         build_prompt(repo_root, node_id, role="executor", model=model)
     if err:
@@ -297,7 +355,8 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     _report_cli(entry, harness, cli)
     reviews_dir(repo_root, node_id).mkdir(parents=True, exist_ok=True)   # a harness may refuse an --add-dir that is missing
     launch = worker_env(adapter_for(harness).launch(prompt, wt, api_id, cli, node_id=node_id, repo_root=repo_root,
-                                                    launch_mode=mode, effort=effort, harness_bin=entry.get("harness_bin")), wt / prefix)
+                                                    launch_mode=mode, effort=effort, harness_bin=entry.get("harness_bin"),
+                                                    **launch_options(entry, harness)), wt / prefix)
     rec = create_record(repo_root, node_id, harness, model, wt, branch=branch,
                         contract_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
                         billing_route=entry.get("billing_route"))

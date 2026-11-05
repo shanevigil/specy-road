@@ -55,10 +55,12 @@ from specy_road.doctor_worktrees import (  # noqa: F401 — SAME_PATCH, TEMP_WOR
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_text
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.nested_repos import report_unpushed
+from specy_road.orchestration_pinned import pinned_config
 from specy_road.orphaned_claims import orphaned_claims, report_lines
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.version_skew import print_install_report, warn_if_running_version_older
+from specy_road.worker_adapter_cursor import force_warnings
 
 TOOLKIT_STASH = re.compile(r"^On [^:]+: specy-road: ")
 
@@ -293,12 +295,21 @@ def _print_orphaned_claims(root: Path) -> None:
         print(f"  {line}")
 
 
+def _print_cursor_force(root: Path) -> None:
+    """Advisory: one line per roster ``cursor`` entry that launches with ``--force`` (the roster launches read).
+    An unreadable roster is left to ``validate`` and ``orchestrate plan``."""
+    config, err = pinned_config(root)
+    for line in [] if err else force_warnings(config.get("roster") or []):
+        print(line, file=sys.stderr)
+
+
 def cmd_doctor(ns: argparse.Namespace) -> int:
     print_install_report()
     root = resolve_repo_root(ns)
     warn_if_running_version_older(root)
     bad_config = report_checkout(root)   # gate mismatch, env_setup failure: exit 1 after the listing
     report_unpushed(root)   # advisory: nested-repo commits no remote has
+    _print_cursor_force(root)   # advisory: cursor workers that run without the sandbox
     sections = _no_remote_sections(root, ns)
     clean = "Nothing to tidy: no toolkit stash."
     if sections is None:
