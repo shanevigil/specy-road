@@ -3,7 +3,8 @@
 A linked worktree holds tracked files only, so it starts with no virtual environment and none of the ignored
 files (``.python-version``, ``.env``) the main checkout has. ``copy`` names files copied from the main
 checkout's project root to the same project-relative path in the worktree (``{from, to}`` to rename one);
-``cmd`` then runs at the worktree's project root. ``do-next-available-task --worktree`` and ``worker delegate``
+``link`` names paths symlinked from the main checkout into the same place (``node_modules``, ``.venv``), each
+added to ``info/exclude`` (:func:`exclude_links`); ``cmd`` then runs at the worktree's project root. ``do-next-available-task --worktree`` and ``worker delegate``
 run both once, when they create the worktree; ``doctor`` runs ``cmd`` in the main checkout.
 
 A copy path may climb with ``../`` from a nested project root to its git root and no further: a source
@@ -15,11 +16,13 @@ Split from :mod:`specy_road.git_workflow_config` for the file limit.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
 
+from specy_road.git_subprocess import git_text
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.review_files import reviews_root
 
@@ -39,6 +42,43 @@ def copy_pairs(conf: dict[str, Any]) -> list[tuple[str, str]]:
     return [(c, c) if isinstance(c, str) else (c["from"], c["to"]) for c in conf.get("copy") or []]
 
 
+def link_paths(conf: dict[str, Any] | None) -> list[str]:
+    """``env_setup.link``: project-relative paths symlinked from the main checkout."""
+    return list((conf or {}).get("link") or [])
+
+
+def linked_status_paths(repo_root: Path, leaf_root: Path) -> set[str]:
+    """Each ``link`` path as ``git status`` in ``leaf_root``'s worktree names it (git-root-relative, no slash),
+    for ``worker delegate``'s clean-tree check: a symlink made by hand before the exclude existed is not work."""
+    top = git_top(leaf_root)
+    out = set()
+    for rel in link_paths(env_setup_config(main_project_root(repo_root))):
+        path = Path(os.path.normpath(leaf_root / rel))
+        if path.is_relative_to(top):
+            out.add(path.relative_to(top).as_posix())
+    return out
+
+
+def exclude_links(leaf_top: Path, targets: list[Path]) -> None:
+    """Add an anchored ``/<path>`` line per symlink to the exclude file git reads in ``leaf_top``.
+
+    Git reads ``info/exclude`` from the **common** git dir, so the line holds in every worktree of the
+    repository, the main checkout included (where it matches the real directory, already ignored). A
+    directory-only pattern such as ``node_modules/`` never matches a symlink, which git sees as a file.
+    """
+    rel = git_text(["rev-parse", "--path-format=absolute", "--git-path", "info/exclude"], leaf_top)
+    if not rel:
+        raise EnvSetupError(f"env_setup: cannot find the git exclude file for {leaf_top}")
+    exclude = Path(rel)
+    have = exclude.read_text(encoding="utf-8").splitlines() if exclude.is_file() else []
+    lines = [f"/{t.relative_to(leaf_top).as_posix()}" for t in targets]
+    new = [ln for ln in dict.fromkeys(lines) if ln not in have]
+    if new:
+        exclude.parent.mkdir(parents=True, exist_ok=True)
+        text = "\n".join(have) + ("\n" if have else "")
+        exclude.write_text(text + "".join(f"{ln}\n" for ln in new), encoding="utf-8")
+
+
 def run_setup_cmd(cmd: str, cwd: Path) -> tuple[int, str]:
     """``(exit code, stdout and stderr together)`` of ``cmd`` run by the shell in ``cwd``."""
     r = subprocess.run(cmd, shell=True, cwd=cwd, stdout=subprocess.PIPE,  # noqa: S602 — adopter's own config
@@ -52,11 +92,11 @@ def git_top(root: Path) -> Path:
     return next((p for p in (here, *here.parents) if (p / ".git").exists()), here)
 
 
-def bounded_path(root: Path, rel: str, top: Path, entry: str, where: str) -> Path:
-    """``root / rel`` resolved, which must stay under ``top``; else :class:`EnvSetupError` naming the copy ``entry``."""
+def bounded_path(root: Path, rel: str, top: Path, entry: str, where: str, verb: str = "copy") -> Path:
+    """``root / rel`` resolved, which must stay under ``top``; else :class:`EnvSetupError` naming the ``entry``."""
     path = (root / rel).resolve()
     if not path.is_relative_to(top):
-        raise EnvSetupError(f"env_setup: cannot copy {entry}: {rel!r} is {path}, outside {where} {top} "
+        raise EnvSetupError(f"env_setup: cannot {verb} {entry}: {rel!r} is {path}, outside {where} {top} "
                             "('../' may reach the git root only)")
     return path
 
@@ -71,8 +111,34 @@ def main_project_root(repo_root: Path) -> Path:
     return reviews_root(repo_root).parents[1]   # <main project root>/work/reviews
 
 
+def link_into(conf: dict[str, Any], repo_root: Path, leaf_root: Path, keep: str) -> list[str]:
+    """Symlink each ``env_setup.link`` path from the main checkout's project root ``repo_root`` into
+    ``leaf_root`` and exclude the links (:func:`exclude_links`); one line per link. ``keep`` ends each error."""
+    leaf_top, done, links = git_top(leaf_root), [], []
+    for rel in link_paths(conf):
+        try:
+            source = bounded_path(repo_root, rel, git_top(repo_root), f"from {rel!r}", "the main checkout", "link")
+            target = Path(os.path.normpath(leaf_root / rel))   # not resolved: the link itself, not what it names
+            if not target.is_relative_to(leaf_top):
+                raise EnvSetupError(f"env_setup: cannot link to {rel!r}: {target} is outside the leaf worktree {leaf_top}")
+        except EnvSetupError as e:
+            raise EnvSetupError(str(e) + keep) from None
+        if not source.exists():
+            raise EnvSetupError(f"env_setup: cannot link {rel}: {source} does not exist." + keep)
+        if target.is_symlink() or target.exists():
+            raise EnvSetupError(f"env_setup: cannot link {rel}: {target} already exists in the worktree." + keep)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.symlink_to(source, target_is_directory=source.is_dir())
+        links.append(target)
+        done.append(f"linked {rel}")
+    if links:
+        exclude_links(leaf_top, links)
+    return done
+
+
 def setup_worktree_env(repo_root: Path, leaf_root: Path) -> list[str]:
-    """Copy ``env_setup.copy`` from the main checkout into ``leaf_root``, then run ``env_setup.cmd`` there.
+    """Copy ``env_setup.copy`` and symlink ``env_setup.link`` from the main checkout into ``leaf_root``, then
+    run ``env_setup.cmd`` there.
 
     ``repo_root`` is the project root of the checkout running the command, which may be a linked worktree
     (``worker delegate``); the setting and every copy source come from the main checkout's project root,
@@ -99,6 +165,7 @@ def setup_worktree_env(repo_root: Path, leaf_root: Path) -> list[str]:
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(source, target)
         done.append(f"copied {src}" + (f" to {dest}" if dest != src else ""))
+    done += link_into(conf, repo_root, leaf_root, keep)
     cmd = conf.get("cmd")
     if cmd:
         code, out = run_setup_cmd(cmd, leaf_root)

@@ -151,11 +151,38 @@ def discover_project_root(start: Path | None = None) -> Path | None:
     return None
 
 
+def _worktree_and_common_dir(start: Path) -> tuple[Path, Path] | None:
+    """``(worktree top, common git dir)`` of the checkout holding ``start``, or ``None`` outside one."""
+    out = git_text(["rev-parse", "--path-format=absolute", "--show-toplevel", "--git-common-dir"], start)
+    lines = (out or "").splitlines()
+    return (Path(lines[0]).resolve(), Path(lines[1]).resolve()) if len(lines) == 2 else None
+
+
+def enclosing_worktree_root(named: Path) -> Path:
+    """``named`` (from ``SPECY_ROAD_REPO_ROOT``), moved into the worktree the working directory is in.
+
+    The docs say to export the variable, so a worker running in a linked worktree of the same repository
+    (same common git dir) would otherwise resolve the main checkout and be refused as off its branch. The
+    same project-relative path in the enclosing worktree wins, silently; a working directory in another
+    repository, or outside git, keeps ``named``.
+    """
+    here = _worktree_and_common_dir(Path.cwd())
+    there = _worktree_and_common_dir(named) if named.is_dir() else None
+    if here is None or there is None or here[0] == there[0] or here[1] != there[1]:
+        return named
+    try:
+        candidate = here[0] / named.relative_to(there[0])
+    except ValueError:
+        return named
+    return candidate if candidate.is_dir() else named
+
+
 def project_root(explicit: Path | str | None = None) -> Path:
     """Resolve the specy-road project root.
 
     Order, most explicit first: the ``--repo-root`` a caller passed, then
-    ``SPECY_ROAD_REPO_ROOT``, then the root recorded in
+    ``SPECY_ROAD_REPO_ROOT`` (in the enclosing worktree when the working
+    directory is in another worktree of that repository), then the root recorded in
     ``.specyrd/manifest.json``, then discovery upward from the working
     directory, then the git root, then the working directory.
     """
@@ -163,7 +190,7 @@ def project_root(explicit: Path | str | None = None) -> Path:
         return Path(explicit).resolve()
     env = os.environ.get(REPO_ROOT_ENV)
     if env and env.strip():
-        return Path(env.strip()).resolve()
+        return enclosing_worktree_root(Path(env.strip()).resolve())
     top = git_root()
     if top is not None:
         recorded = recorded_project_root(top)
