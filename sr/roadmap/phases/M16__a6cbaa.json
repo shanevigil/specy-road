@@ -174,7 +174,7 @@
       "parent_id": "M16",
       "planning_dir": "planning/M16.68_finish-resolves-inherited-roadmap-conflicts_f0e9d130-9b74-479d-a401-ccee402e63a4.md",
       "sibling_order": 68,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "finish resolves roadmap chunk conflicts the branch only inherited",
       "touch_zones": [
         "specy_road/finish_land_deterministic.py",
