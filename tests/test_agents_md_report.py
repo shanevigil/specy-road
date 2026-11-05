@@ -11,6 +11,8 @@ import json
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from specy_road.agent_guide_block import AGENT_GUIDE
 from specy_road.agents_md_block import (
     AGENTS_MD,
@@ -20,6 +22,7 @@ from specy_road.agents_md_block import (
     print_injected_context,
     render_agents_lines,
 )
+from specy_road.bundled_scripts.refresh_stubs import main as refresh_stubs_main
 from specy_road.bundled_scripts.refresh_stubs import refresh_stubs
 from specy_road.bundled_scripts.upgrade import run_upgrade
 from specy_road.init_project import run_init_project
@@ -91,17 +94,45 @@ def test_upgrade_names_project_headings_the_new_rules_file_repeats(tmp_path: Pat
     assert "rules: " not in capsys.readouterr().out
 
 
-def test_claude_code_total_counts_a_doubly_imported_file_once(tmp_path: Path, capsys, monkeypatch) -> None:
+@pytest.mark.parametrize(("own", "matched"), [
+    ("# Ours\n\n   ## Task loop\n", ["3 \"Task loop\""]),                       # R1: up to three spaces of indent
+    ("# Ours\n\n##\tTask loop ##\n", ["3 \"Task loop\""]),                     # a tab after the run; closing #'s
+    ("# Ours\n\nTask loop\n---------\n", ["3 \"Task loop\""]),                 # setext level 2
+    ("# Ours\n\n```markdown\n## Task loop\n```\n", []),                       # R2: a fenced example
+    ("~~~~\n## Task loop\n~~~\n```\n## Load order\n~~~~\n## Finding things\n", ["7 \"Finding things\""]),
+    ("# Ours\n\n    ## Task loop\n\t## Load order\n", []),                    # indented code, not headings
+    ("# Ours\n\n```\n## Task loop\n", []),                                    # an unclosed fence runs to the end
+    ("- item\n---\n\nTask loop\n\n---\n", []),                                   # thematic breaks, not underlines
+], ids=["indent-3", "tab-closing-run", "setext", "fenced", "fence-kinds", "indented-code", "unclosed-fence",
+        "thematic-break"])
+def test_refresh_stubs_names_only_real_matching_headings(tmp_path: Path, capsys, own: str, matched: list[str]) -> None:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    assert run_init_project(tmp_path) == 0
+    (tmp_path / RULES_MD).unlink()
+    (tmp_path / AGENTS_MD).write_text(own, encoding="utf-8")
+    capsys.readouterr()
+
+    refresh_stubs_main(["--repo-root", str(tmp_path)])
+    out = capsys.readouterr().out.splitlines()
+    assert [ln.split(":", 2)[2].split(" (outside")[0] for ln in out if ln.startswith(f"rules: {AGENTS_MD}:")] == matched
+    assert (f"rules: compare these with {RULES_MD} and drop the copy that is stale" in out) == bool(matched)
+
+
+@pytest.mark.parametrize(("files", "note"), [
+    ({AGENT_GUIDE: "# Claude\n@.specyrd/AGENTS.md\n@.specyrd/AGENTS.team.md\n",
+      RULES_MD: "# rules\n@AGENTS.team.md\n", TEAM_MD: "# team\n"}, f"{TEAM_MD} imported twice"),
+    ({AGENT_GUIDE: "# Claude\n@shared.md\n@shared.md\n", "shared.md": "# Shared\n"}, "shared.md imported twice"),  # R3
+], ids=["two-importers", "one-importer-twice"])
+def test_claude_code_total_counts_a_doubly_imported_file_once(tmp_path: Path, capsys, monkeypatch,
+                                                               files: dict[str, str], note: str) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "no-home"))
     monkeypatch.delenv("CODEX_HOME", raising=False)
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
-    files = {AGENT_GUIDE: "# Claude\n@.specyrd/AGENTS.md\n@.specyrd/AGENTS.team.md\n",
-             RULES_MD: "# rules\n@AGENTS.team.md\n", TEAM_MD: "# team\n"}
     for rel, text in files.items():
         (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / rel).write_text(text, encoding="utf-8")
-    size = sum(len(t) for t in files.values())
+    lines, size = sum(t.count("\n") for t in files.values()), sum(len(t) for t in files.values())
 
     print_injected_context(tmp_path)
     claude = next(ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("context: Claude Code"))
-    assert claude.endswith(f"; total 6 lines, {size} bytes ({TEAM_MD} imported twice, counted once)")
+    assert claude.endswith(f"; total {lines} lines, {size} bytes ({note}, counted once)")

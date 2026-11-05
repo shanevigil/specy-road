@@ -17,6 +17,7 @@ from specy_road import __version__
 from specy_road.harness_instruction_files import AGENTS_MD, RULES_MD, _imports_in, claude_paths, claude_rules
 from specy_road.managed_block import HTML_COMMENT, _split
 from specy_road.runtime_paths import SPECYRD_MANIFEST, git_root
+from specy_road.text_sections import normalize_heading
 
 #: ``agents_block`` in ``.specyrd/manifest.json``: ``full`` (default) or ``minimal``.
 MINIMAL = "minimal"
@@ -26,7 +27,12 @@ _MINIMAL_LINE = (
     "Then read `.specyrd/AGENTS.team.md` and `.specyrd/AGENTS.local.md` when present; "
     "they add to the rules, never relax them."
 )
-_HEADING = re.compile(r"^#{2,6}\s+(.+?)\s*#*\s*$")
+#: CommonMark ATX heading, level 2-6: up to three spaces of indent, an optional closing run of ``#``.
+_ATX = re.compile(r"^ {0,3}#{2,6}[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$")
+_ATX_ANY = re.compile(r"^ {0,3}#{1,6}(?:[ \t]|$)")
+_SETEXT_2 = re.compile(r"^ {0,3}-+[ \t]*$")   # a ``---`` underline makes the paragraph above it a level-2 heading
+_CODE_INDENT = re.compile(r"^(?: {4}|\t)")   # indented code, unless it continues an open paragraph
+_LIST_OR_QUOTE = re.compile(r"^ {0,3}(?:[-*+]|\d+[.)]|>)(?:[ \t]|$)")   # ends a paragraph: ``---`` under it is a rule
 
 
 def agents_block_mode(project_root: Path) -> str:
@@ -45,12 +51,33 @@ def minimal_lines() -> list[str]:
 
 
 def _headings(text: str) -> list[tuple[int, str]]:
-    """``(line number, heading text)`` for each ``##``-or-deeper heading."""
-    return [(n, m.group(1)) for n, line in enumerate(text.splitlines(), 1) if (m := _HEADING.match(line))]
+    """``(line number, heading text)`` for each ``##``-or-deeper heading outside fenced code (CommonMark ATX or setext)."""
+    from specy_road.bundled_scripts.validate_stale_commands import (   # lazy: it imports the CLI
+        _fence_closes,
+        _fence_marker,
+        _opening_is_code_span,
+    )
 
-
-def _key(heading: str) -> str:
-    return " ".join(heading.split()).casefold()
+    found: list[tuple[int, str]] = []
+    fence: tuple[str, int] | None = None
+    para: list[tuple[int, str]] = []   # the open paragraph, which a ``---`` underline turns into a heading
+    for n, line in enumerate(text.splitlines(), 1):
+        if fence is not None:
+            fence = None if _fence_closes(line, fence) else fence
+            continue
+        if (marker := _fence_marker(line)) is not None and not _opening_is_code_span(line):
+            fence, para = (marker[0], marker[1]), []
+        elif para and _SETEXT_2.match(line):
+            found.append((para[0][0], " ".join(t.strip() for _n, t in para)))
+            para = []
+        elif (m := _ATX.match(line)) or _ATX_ANY.match(line) or not line.strip():
+            found += [(n, m.group(1))] if m else []
+            para = []
+        elif _LIST_OR_QUOTE.match(line):
+            para = []
+        elif para or not _CODE_INDENT.match(line):
+            para.append((n, line))
+    return found
 
 
 def print_rules_overlap(project_root: Path, rules: str, prefix: str = "") -> None:
@@ -65,8 +92,8 @@ def print_rules_overlap(project_root: Path, rules: str, prefix: str = "") -> Non
     before, block, _after = _split(text, HTML_COMMENT)
     first = before.count("\n") + 1   # the managed section's lines, which are specy-road's own
     ours = range(first, first + block.count("\n") + 1) if block is not None else range(0)
-    keys = {_key(h) for _n, h in new}
-    dupes = [(n, h) for n, h in _headings(text) if _key(h) in keys and n not in ours]
+    keys = {normalize_heading(h) for _n, h in new}
+    dupes = [(n, h) for n, h in _headings(text) if normalize_heading(h) in keys and n not in ours]
     for n, heading in dupes:
         print(f"rules: {prefix}{AGENTS_MD}:{n} \"{heading}\" (outside the specy-road section) "
               f"matches a heading in {prefix}{RULES_MD}")
@@ -87,7 +114,7 @@ def claude_reread(loaded: list[Path], root: Path, top: Path) -> str:
     direct = {p.resolve() for p in (*claude_paths(root), *claude_rules(root, top))}
     reached = Counter(p.resolve() for p in loaded if p.resolve() in direct)
     for importer in loaded:
-        reached.update({p.resolve() for p in _imports_in(importer)})
+        reached.update(p.resolve() for p in _imports_in(importer))   # each @ line counts, even twice in one file
     notes = []
     for path in loaded:
         n = reached[path.resolve()]
