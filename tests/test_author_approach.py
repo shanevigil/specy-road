@@ -26,11 +26,19 @@ from specy_road.bundled_scripts.planning_sheet_bootstrap import (
     PROMOTE_PLACEHOLDER,
     placeholder_sheet,
     promote_placeholder,
+    render_feature_sheet_template,
 )
 from specy_road.planning_scaffold_check import scaffold_sheet
 
 COMMAND = "`specy-road author-approach M1`"
 PHASE = "## Intent\n\nShip the export to every adopter.\n\n## Approach\n\nOne leaf per format.\n"
+
+
+def _scaffold_with_authored_approach(nid: str = "M1") -> str:
+    raw = render_feature_sheet_template(nid)
+    head, rest = raw.split("## Approach\n\n", 1)
+    _scaffold_approach, tail = rest.split("\n\n## Tasks", 1)
+    return f"{head}## Approach\n\nShip nightly via cron.\n\n## Tasks{tail}"
 
 
 def _promoted(tmp_path: Path, **over: dict) -> tuple[Path, list[dict]]:
@@ -136,8 +144,20 @@ def test_both_plans_print_one_needs_approach_line(tmp_path: Path, capsys) -> Non
     assert capsys.readouterr().out.count(line) == 1
 
 
-def test_no_needs_approach_line_for_an_intent_only_placeholder(tmp_path: Path, capsys) -> None:
+def test_needs_approach_line_for_fully_scaffolded_sheets(tmp_path: Path, capsys) -> None:
     root, _nodes = unauthored_repo(tmp_path, {"M1": "scaffold", "M2": FILLED})
+    line = (f"needs Approach (pickup skips them until ## Approach is written): M1; "
+            f"{COMMAND} prints the prompt to write each")
+    capsys.readouterr()
+    run_session(parse_grind_session_args(["--plan", "--repo-root", str(root)]))
+    assert line in capsys.readouterr().out
+    with pytest.raises(SystemExit):
+        orchestrate_cli.main(["orchestrate", "plan", "--today", "2026-11-01", "--repo-root", str(root)])
+    assert line in capsys.readouterr().out
+
+
+def test_needs_approach_line_omits_leaves_with_authored_approach(tmp_path: Path, capsys) -> None:
+    root, _nodes = unauthored_repo(tmp_path, {"M1": _scaffold_with_authored_approach(), "M2": FILLED})
     capsys.readouterr()
     run_session(parse_grind_session_args(["--plan", "--repo-root", str(root)]))
     assert "needs Approach" not in capsys.readouterr().out

@@ -13,6 +13,7 @@ applies and the rendering names, so both read the same comparison.
 from __future__ import annotations
 
 from dataclasses import asdict
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from specy_road.nested_repos import describe_unpushed
@@ -90,7 +91,12 @@ def _fmt(ids) -> str:
     return ", ".join(vals) if vals else "—"
 
 
-def render_session_plan_text(plan: SessionPlan) -> str:
+def render_session_plan_text(
+    plan: SessionPlan,
+    *,
+    repo_root: Path | None = None,
+    nodes: list[dict] | None = None,
+) -> str:
     lines: list[str] = []
     scope = f" (under {plan.under})" if plan.under else ""
     lines.append(f"# grind-session plan{scope}")
@@ -108,7 +114,7 @@ def render_session_plan_text(plan: SessionPlan) -> str:
     lines.extend(_render_dispatch(plan))
     lines.extend(_render_finished_on_branch(plan))
     lines.extend(_render_blocked(plan))
-    lines.extend(_render_misc(plan))
+    lines.extend(_render_misc(plan, repo_root=repo_root, nodes=nodes))
     lines.extend(_render_nested_unpushed(plan))
     return "\n".join(lines) + "\n"
 
@@ -246,7 +252,12 @@ def _render_blocked(plan: SessionPlan) -> list[str]:
     return lines
 
 
-def _render_misc(plan: SessionPlan) -> list[str]:
+def _render_misc(
+    plan: SessionPlan,
+    *,
+    repo_root: Path | None = None,
+    nodes: list[dict] | None = None,
+) -> list[str]:
     lines: list[str] = []
     if plan.unauthored:
         lines.append(
@@ -254,8 +265,9 @@ def _render_misc(plan: SessionPlan) -> list[str]:
             "(pickup skips these):**"
         )
         lines.extend(f"- `{u.node_id}`: {u.reason}" for u in plan.unauthored)
-        needs = needs_approach_line({u.node_id: u.reason for u in plan.unauthored})
-        lines.extend([f"**{needs}**"] if needs else [])
+        if repo_root is not None and nodes is not None:
+            needs = needs_approach_line(repo_root, nodes, [u.node_id for u in plan.unauthored])
+            lines.extend([f"**{needs}**"] if needs else [])
         lines.append("")
     if plan.needs_codename:
         lines.append(

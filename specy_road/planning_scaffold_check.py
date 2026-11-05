@@ -19,6 +19,7 @@ from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
 from specy_road.bundled_scripts.planning_sheet_bootstrap import (
     _section_bodies,
+    approach_is_placeholder,
     open_pickable_leaves,
     placeholder_reason,
     placeholder_sheet,
@@ -54,10 +55,26 @@ def pickup_unauthored_leaves(root: Path, nodes: list[dict]) -> dict[str, str]:
     return out
 
 
-def needs_approach_line(reasons: dict[str, str]) -> str | None:
-    """One line naming the leaves skipped for a placeholder ``## Approach`` (id -> reason
-    from :func:`pickup_unauthored_leaves`) and the ``author-approach`` call for them all."""
-    ids = [nid for nid, reason in reasons.items() if f"specy-road author-approach {nid}`" in reason]
+def needs_approach_line(root: Path, nodes: list[dict], leaf_ids: list[str]) -> str | None:
+    """One line naming leaves whose ``## Approach`` is still a placeholder and the
+    ``author-approach`` call for them all.
+
+    Detects Approach placeholders on the sheet, not via the first skip reason from
+    :func:`sheet_placeholder` (a fully scaffolded sheet reports ``## Intent`` first).
+    """
+    by_id = {n["id"]: n for n in nodes if isinstance(n.get("id"), str)}
+    ids: list[str] = []
+    for nid in leaf_ids:
+        n = by_id.get(nid)
+        if n is None:
+            continue
+        try:
+            rel = normalize_planning_dir(n.get("planning_dir") or "")
+            bodies = _section_bodies(resolve_planning_path(root, rel).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if approach_is_placeholder(bodies):
+            ids.append(nid)
     if not ids:
         return None
     return (f"needs Approach (pickup skips them until ## Approach is written): {', '.join(ids)}; "

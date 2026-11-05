@@ -76,9 +76,30 @@ share one detector.
 - Authored Intent without placeholder markers → `is_placeholder_intent` False; `test_written_intents_are_inlined_as_before` still passes.
 - `sheet_placeholder` on scaffold Intent template → still `(scaffold-planning's, Intent)`; ancestor scaffold brief swap unchanged.
 
+## Fix round (gpt-6.1-sol-low, F1 / A3)
+
+**Class:** The plan “needs Approach” line inferred Approach skips from pickup skip
+reason text (author-approach hint), but `sheet_placeholder` reports `## Intent`
+first on fully scaffolded sheets, so both plans omitted leaves that still had a
+placeholder Approach.
+
+**Design:** `needs_approach_line(root, nodes, leaf_ids)` calls
+`approach_is_placeholder` on each leaf’s sheet bodies. `grind-session --plan`
+passes `repo_root` and `nodes` into `render_session_plan_text` so the line
+matches `orchestrate plan`.
+
+**Fix round: probes**
+
+- Fully scaffolded M1 (Intent and Approach placeholders): `needs_approach_line` lists M1; `grind-session --plan` and `orchestrate plan` both print the line (replacing the old negative test).
+- Promoted M1 with placeholder Approach only: still listed (promote path unchanged).
+- Scaffold Intent with authored Approach prose (`_scaffold_with_authored_approach`): `approach_is_placeholder` False → no “needs Approach” line in `--plan`.
+- Pickup skip reason for fully scaffolded sheet still names Intent first; guard unchanged.
+- `orchestrate plan --json`: still no needs line in JSON (text path only).
+- Direct `render_session_plan_text(plan)` without `repo_root`/`nodes`: omits needs line (callers that only render stored plans).
+
 ## Verification
 
-- Targeted pytest (reviewer list + legacy brief tests): 123 passed.
+- Targeted pytest (Sol reviewer list): 84 passed.
 - `specy-road file-limits`: OK (via READY).
 
 ## Added
@@ -89,9 +110,10 @@ share one detector.
 - `planning_sheet_bootstrap.approach_is_placeholder(bodies)`: author-approach's "still a placeholder" test (promote or scaffold Approach).
 - `planning_sheet_bootstrap.sheet_placeholder(bodies)`: one detection order shared by `placeholder_sheet` and `scaffold_sheet`, replacing two copies.
 - `planning_sheet_bootstrap.placeholder_reason(...)`: one reason format; adds the author-approach hint for `## Approach`.
-- `planning_scaffold_check.needs_approach_line(reasons)`: the single "needs Approach" line both plans print.
+- `planning_scaffold_check.needs_approach_line(root, nodes, leaf_ids)`: lists leaves via `approach_is_placeholder`, not skip-reason hints (F1 fix).
 - `orchestrate_cli.render(..., needs_approach=None)` parameter plus the `cmd_plan` lookup: prints that line in `orchestrate plan`.
-- `session_plan_render._render_misc` branch: prints that line in `grind-session --plan`.
+- `session_plan_render.render_session_plan_text(..., repo_root=, nodes=)` and `_render_misc`: prints that line in `grind-session --plan` when root and nodes are passed.
+- `grind_session._emit_plan`: passes root and nodes into plan text render (F1 fix).
 - `specy_road/bundled_scripts/author_approach.py` (`_sheet`, `_ancestor_intents`, `render_prompt`, `build_parser`, `main`): the new command (A2).
 - `cli.py` `_SCRIPTS["author-approach"]` and the `cli_usage.py` lines: command wiring and help.
 - Mocks: none new. Tests reuse `pick_leaf`'s existing monkeypatches.
@@ -104,8 +126,9 @@ share one detector.
   - `test_author_approach_prints_the_prompt_and_changes_nothing`: A2 content and read-only.
   - `test_author_approach_skips_an_authored_leaf`: A2 skip.
   - `test_author_approach_o_writes_only_the_prompt_file`: A2 `-o`.
-  - `test_both_plans_print_one_needs_approach_line`: A3 line in both plans.
-  - `test_no_needs_approach_line_for_an_intent_only_placeholder`: the line lists only Approach skips.
+  - `test_both_plans_print_one_needs_approach_line`: A3 line in both plans (promoted Approach placeholder).
+  - `test_needs_approach_line_for_fully_scaffolded_sheets`: F1 — fully scaffolded leaf in both plans.
+  - `test_needs_approach_line_omits_leaves_with_authored_approach`: F1 — authored Approach, scaffold Intent only.
 - `tests/test_brief_placeholder_intent.py`:
   - `test_legacy_promote_intent_in_dependency_brief_is_one_line`: fix round — legacy Intent in a dependency brief.
   - legacy case in `test_without_placeholder_intent_swaps_only_the_intent_body`: fix round — `without_placeholder_intent` on pre-M15.8 Intent.

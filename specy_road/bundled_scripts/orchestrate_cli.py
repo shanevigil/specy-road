@@ -25,7 +25,7 @@ from specy_road.decisions import format_preference
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.orchestrate_plan import OrchestrationPlan, build_orchestration_plan
 from specy_road.orchestration_pinned import WORKTREE_REF
-from specy_road.planning_scaffold_check import needs_approach_line, pickup_unauthored_leaves
+from specy_road.planning_scaffold_check import needs_approach_line
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 DRY_RUN_BANNER = "DRY RUN: roster from the working tree, nothing may launch from this plan"
@@ -98,8 +98,8 @@ def cmd_plan(ns: argparse.Namespace) -> int:
             print(DRY_RUN_BANNER, file=sys.stderr)
         print(json.dumps(plan.to_dict(), indent=2))
     else:
-        reasons = pickup_unauthored_leaves(root, load_roadmap(root)["nodes"])
-        needs = needs_approach_line({nid: reasons[nid] for nid in plan.unauthored if nid in reasons})
+        nodes = load_roadmap(root)["nodes"]
+        needs = needs_approach_line(root, nodes, list(plan.unauthored))
         print("\n".join(render(plan, needs)))
     return 0 if plan.ok else 1
 
