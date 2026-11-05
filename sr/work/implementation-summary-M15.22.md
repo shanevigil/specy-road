@@ -88,6 +88,8 @@ Before the fixes, `origin/WIP/improvements-0-3-1` was merged into this branch as
 - `delete_landed_branch(local_only=)`: leaves the remote copy alone under `land: local` (deleting it would be a push).
 - `cmd_close`: refuses with the first problem when a ledger fails its schema (before, the failure came from the write instead).
 
+- `tests/decisions_repo_helpers.py` (new): `decisions_repo`, `run_decisions`, `add_args`, `SHEET`. These were moved unchanged from `tests/test_decisions.py` (where they were `_decisions_repo`, `_run`, `_add_args`), so neither this leaf's tests nor `test_decision_preferences.py` import underscore-prefixed names. Every caller is updated and no assertion changed. `scripts/check_test_private_imports.py` reports 0 new private references.
+
 ### Mocks
 - none
 
