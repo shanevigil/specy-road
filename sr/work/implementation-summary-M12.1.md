@@ -151,3 +151,53 @@ This round answers Sol's (gpt-6.1-sol) block of `6f5d36dc`, which listed require
   - when no analyst is found, the forced-RCA command falls back to `MODEL`, which `next_why` explains (R4).
 - Mocks: `close_entry` monkeypatched to raise, used in the R5 rollback test.
 - Tests: the eight R-tests named above, plus the helper `_two_fail_round`. `tests.test_review_cli._ready` is reused for a valid READY.
+
+## Fix round 2
+
+This round answers Sol's block of `ee9f8fd6` (R1–R3), after a merge of `origin/WIP/improvements-0-3-1`. The fix commit is `07134dd7`. I made each fix by design, so the same class of finding can't reappear in another form:
+
+- **R1: one coverage check.** `review_deferral.block_problems(rounds, idx, reviewer, items)` replaces the earlier category-count and acceptance-set checks (`uncovered`). `review defer` (through `coverage_problems`) and the gate (`apply_deferrals`) both use it, against the review history. The rules:
+  - Each item binds one to one to a finding in the blocking record: same category, and same text. The item's `finding` may carry a `<round>/<reviewer>: ` prefix.
+  - Every finding in the record must be bound, and every failed acceptance id must be named by an item.
+  - No correctness item may name an acceptance id that an earlier round passed. This check moved here from `deferral_problems`, so a hand-written marker can't skip it.
+  - A record doesn't link findings to criteria. So a block with any correctness finding that also fails an id an earlier round passed is never resolved.
+  - Consequence: a block that lists no findings (an id fails, but the findings lists are empty) can't be deferred, because there is nothing to bind to. Earlier tests that deferred such blocks now file a real boundary finding.
+- **R3: item rounds.** An item's round is the round of its blocking commit (`round_of`, now public). `deferral_problems(..., covers)` refuses an item whose round is later than the RCA's `trigger.round`. Earlier-class evidence is checked against the item's own round. RCA records count when their `trigger.round` is earlier; markers count when their item's `round` is earlier. Markers now store a `round` per item.
+- **R2: one transaction.** `TreeSnapshot((roadmap, planning), (marker,))` covers the follow-up leaves, the decision entry and the marker write. Any `ValueError`, `OSError`, `SystemExit` or `YAMLError` restores all three.
+- **Tests.** The regression tests now live in `tests/test_review_defer_rounds.py`, split out of `tests/test_review_defer.py` because of the 400-line file limit. All round-2 tests fail at `ee9f8fd6` and pass now:
+  - `test_round2_r1_items_bind_to_original_findings` (two cases: crossed categories, and swapped acceptance ids).
+  - `test_round2_r2_a_marker_write_failure_rolls_back_everything`: the review directory is readable but not writable.
+  - `test_round2_r3_an_item_round_comes_from_its_blocking_commit`: an RCA-1 item citing a round-3 commit is refused; RCA-3 for the same item is refused, citing RCA-2.
+  - `test_round2_probe_the_gate_applies_the_correctness_rule_to_a_hand_written_marker`: covers the one real defect my probes found.
+- **Earlier tests changed.** Four existing tests now file a round with a real finding (`_two_fail_round`), as binding requires. Two assertions follow the new message text. The rollback test now asserts the rollback message, `could not apply …: ledger write failed`, because with an empty-findings fixture it was passing on the refusal instead.
+- **Targeted run.** The 10 review, RCA, gate, CLI and decisions test files: 148 passed. `specy-road file-limits` is OK, ruff is clean, and `check_test_private_imports` exits 0.
+
+### Fix round 2: probes
+
+I attacked the check through the public `review defer` and `evaluate_gate`. Each probe ran in a throwaway repo; the probe script lives outside the repo.
+
+- **Correctness item on an earlier-passing id, via a hand-written marker:** a real defect. The gate didn't apply this item-level rule, so it resolved a block that `review defer` would have refused. Fixed by moving the rule into `block_problems`; the regression test is named above.
+- **Item citing a reviewer absent from that round:** safe. Refused ("no blocking record from sol at that commit").
+- **Item citing a commit absent from the history:** safe. Refused.
+- **Item citing a passing record** (the reviewer approved that commit): safe. Refused ("no blocking record").
+- **Duplicate items, including the same commit cited by short and full SHA:** safe. Items are grouped by round, and binding is one to one, so the second copy binds nothing and the whole record is refused.
+- **Item quoting only part of a finding's text:** safe. It doesn't bind ("is no unlisted boundary finding"), and the full finding stays undeferred.
+- **Input class with mixed case, tabs, newlines and runs of spaces:** safe. `"\tCRLF\nLINE   Endings "` matches an earlier `"crlf line endings"` and is refused.
+- **Marker whose RCA file was removed after apply:** safe by design. The gate still resolves the block, because the closed decision is the approval and the marker is re-checked against the history. Re-filing a new `RCA-2.md` is refused as "already applied", so nothing can be applied twice.
+- **Reviewer re-files the same commit with an extra finding after a deferral:** safe. The gate re-binds against the latest record, and the block counts again.
+- **Hand-written marker on a block with no findings, or a REVIEW file with no history copy:** safe. The block keeps counting.
+- **Closed decision recorded for another node:** safe. The block keeps counting.
+- **One block's findings split across two RCAs:** conservative. `review defer` checks each record's coverage on its own, so the second, partial record is refused. A block is deferred by one record or not at all.
+
+### Added (fix round 2)
+- `review_deferral.block_problems`: the single binding check (R1).
+- `review_deferral._binds`, `_passed_before`, `_evidence`: helpers for that check (R1, R3).
+- `review_deferral.round_of`: made public (it was `_round_of`); used by `review defer` to set each marker item's round.
+- `review_deferral.coverage_problems`: now groups items by round and calls `block_problems`.
+- `deferral_problems`: gains `covers` (R3); its correctness check moved into `block_problems`.
+- `review_defer`: the marker write is inside the snapshot transaction (R2); marker items carry `round`.
+- Removed: `review_deferral.uncovered`, replaced by `block_problems`.
+- Tests:
+  - `tests/test_review_defer_rounds.py`: the new module, holding the fix-round-1 and fix-round-2 regressions.
+  - Helper `_forge_closed_deferral`, a hand-written closed decision plus marker for gate probes.
+  - The four round-2 tests named above.
