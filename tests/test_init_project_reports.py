@@ -62,6 +62,42 @@ def test_dry_run_matches_outside_a_repository(tmp_path: Path, capsys) -> None:
     assert set(entry.split(" (")[0] for entry in real) == _on_disk(tmp_path)
 
 
+@pytest.mark.parametrize("sub", ["", "sr"])
+def test_generated_files_are_listed_and_only_the_real_run_writes_them(tmp_path: Path, capsys, sub: str) -> None:
+    _git_init(tmp_path)
+    prefix = f"{sub}/" if sub else ""
+    before = _on_disk(tmp_path)
+
+    assert run_init_project(tmp_path / sub, dry_run=True, profiles="none") == 0
+    dry = _listed(capsys.readouterr().out)
+    assert _on_disk(tmp_path) == before
+
+    assert run_init_project(tmp_path / sub, profiles="none") == 0
+    real = _listed(capsys.readouterr().out)
+
+    assert dry == real
+    assert {f"{prefix}roadmap.md", f"{prefix}roadmap-context.md"} <= set(real)
+    assert _on_disk(tmp_path) - before == {entry.split(" (")[0] for entry in real}
+
+
+def test_an_existing_roadmap_md_survives_unless_forced(tmp_path: Path, capsys) -> None:
+    _git_init(tmp_path)
+    mine = tmp_path / "roadmap.md"
+    mine.write_text("# Our plans\n", encoding="utf-8")
+
+    assert run_init_project(tmp_path, profiles="none") == 0
+
+    assert "skipped (exists): roadmap.md" in capsys.readouterr().out
+    assert mine.read_text(encoding="utf-8") == "# Our plans\n"
+    assert not (tmp_path / "roadmap-context.md").exists()
+
+    assert run_init_project(tmp_path, force=True, profiles="none") == 0
+
+    assert "wrote roadmap.md" in capsys.readouterr().out.splitlines()
+    assert mine.read_text(encoding="utf-8") != "# Our plans\n"
+    assert (tmp_path / "roadmap-context.md").is_file()
+
+
 def test_existing_gitignore_reported_as_updated_with_the_runtime_rules(tmp_path: Path, capsys) -> None:
     _git_init(tmp_path)
     gi = tmp_path / ".gitignore"
