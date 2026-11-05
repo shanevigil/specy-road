@@ -228,7 +228,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M14.10` Escalation recognises a converging loop and handoff status shows the findings trend `escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend` — task — **Not Started**
   - `M14.11` The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes `the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes` — task — **Complete**
 - `M15` rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction `rc3-multi-harness-adoption-friction` — phase — **Not Started**
-  - `M15.1` RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command `rc-install-docs-cover-extras-and-direct-wheel-url` — task — **Not Started**
+  - `M15.1` RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command `rc-install-docs-cover-extras-and-direct-wheel-url` — task — **Complete**
   - `M15.2` A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch `claude-code-reviewer-works-on-a-subscription-login` — task — **Not Started**
   - `M15.3` prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged `prompt-channel-cli-launches-nothing-without-run` — task — **Not Started**
   - `M15.4` Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current `parallel-pr-leaves-reconcile-bookkeeping-by-rule` — task — **Not Started**
@@ -274,13 +274,13 @@ Do not pick these up.
 - `M14.2` on `feature/rm-doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch` since 2026-11-04
 - `M14.3` on `feature/rm-worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout` since 2026-11-04
 - `M14.6` on `feature/rm-reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round` since 2026-11-04
-- `M15.1` on `feature/rm-rc-install-docs-cover-extras-and-direct-wheel-url` since 2026-11-04
 - `M15.10` on `feature/rm-try-a-roster-before-it-lands` since 2026-11-04
 - `M15.12` on `feature/rm-shared-doc-zones-do-not-serialize-batches` since 2026-11-04
 - `M15.18` on `feature/rm-planned-test-changes-editable-and-removals-surfaced` since 2026-11-04
 - `M15.19` on `feature/rm-cursor-cost-with-display-name-models` since 2026-11-04
 - `M15.21` on `feature/rm-linked-worktrees-resolve-root-and-symlinked-envs` since 2026-11-04
 - `M15.4` on `feature/rm-parallel-pr-leaves-reconcile-bookkeeping-by-rule` since 2026-11-04
+- `M15.6` on `feature/rm-rework-prompt-carries-the-accepted-rca` since 2026-11-04
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
 ## Reaching the detail behind this

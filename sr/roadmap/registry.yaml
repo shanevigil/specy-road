@@ -195,21 +195,6 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: rc-install-docs-cover-extras-and-direct-wheel-url
-    node_id: M15.1
-    branch: feature/rm-rc-install-docs-cover-extras-and-direct-wheel-url
-    touch_zones:
-      - docs/install-and-usage.md
-      - docs/install-release-candidates.md
-      - docs/upgrading.md
-      - docs/release-runbook.md
-      - tests/
-      - README.md
-      - docs/supply-chain-security.md
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-05T05:49:05+00:00'
   - codename: parallel-pr-leaves-reconcile-bookkeeping-by-rule
     node_id: M15.4
     branch: feature/rm-parallel-pr-leaves-reconcile-bookkeeping-by-rule
