@@ -7,7 +7,7 @@
 
 **Must know without reading on:**
 - Python 3.11+ and git with a configured remote are required; there is no offline mode. `pip install specy-road` (extras: `[gui]`, `[gui-next]`, `[review]`); pipx and uv tool work too. An RC is one exact wheel from TestPyPI, sha256-checked, with dependencies from PyPI only; TestPyPI is never an index ([`install-release-candidates.md`](install-release-candidates.md)).
-- New project: `specy-road init project`, set `integration_branch` / `remote` in `roadmap/git-workflow.yaml`, then `specy-road validate` and `specy-road export`.
+- New project: `specy-road init project` (it also writes `roadmap.md` and `roadmap-context.md`), set `integration_branch` / `remote` in `roadmap/git-workflow.yaml`, make the first commit, then `specy-road validate`.
 - After `pip install -U specy-road`: `specy-road upgrade --prune` (runs `refresh-schemas`, `refresh-profiles`, copies missing load-order docs, `refresh-stubs`, then `validate`; `--dry-run` first); never `init project --force` for that.
 - Add `--repo-root /path/to/consumer/repo` to every command run from outside the consumer repo.
 - Dev loop: `specy-road do-next-available-task` → implement → `review-packet` + `mark-implementation-reviewed` → `specy-road finish-this-task --on-complete merge|pr`.
@@ -110,14 +110,14 @@ specy-road --version          # confirm which build you are on
 specy-road init project
 # Edit roadmap/git-workflow.yaml so integration_branch and remote match
 # your team's trunk (e.g. integration_branch: dev, remote: origin).
+git add -A && git commit -m "Initialize specy-road"
 specy-road validate
-specy-road export
 ```
 
 `init project` writes `.gitignore`, `.cursorindexingignore`, `roadmap/`, `planning/`, `constitution/`, `constraints/`,
-`shared/`, `schemas/`, `work/`, `model-profiles/`, `research/`, `docs/` (`supply-chain-security.md`, `model-profiles-research-notes.md`), `vision.md`, a specy-road stub in `AGENTS.md` (a managed block: an `AGENTS.md` you already have keeps everything outside the markers),
+`shared/`, `schemas/`, `work/`, `model-profiles/`, `research/`, `docs/` (`supply-chain-security.md`, `model-profiles-research-notes.md`), `vision.md`, the generated `roadmap.md` and `roadmap-context.md` (both committed; an existing one is left alone and neither is written, unless you pass `--force`), a specy-road stub in `AGENTS.md` (a managed block: an `AGENTS.md` you already have keeps everything outside the markers),
 the rules it points at in `.specyrd/AGENTS.md`, and `.specyrd/AGENTS.team.md` for your team's own ([agent rules](optional-ai-tooling-patterns.md#agent-rules-agentsmd-and-specyrd)).
-The roadmap starts with task M1.1, whose acceptance criteria and planning sheet are the setup steps above and more. It refuses to overwrite an existing scaffold unless you pass `--force` (`--dry-run` previews).
+The roadmap starts with task M1.1, whose acceptance criteria and planning sheet are the setup steps above and more. It refuses to overwrite an existing scaffold unless you pass `--force` (`--dry-run` previews). Make the first commit before `validate`: until then it reports the untracked `vision.md` as an unknown touch zone.
 
 ### Keeping a consumer repo current after an upgrade
 

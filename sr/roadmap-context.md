@@ -120,7 +120,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.6` validate and add-dependency catch cycles made through inherited group dependencies `inherited-dep-cycles` — task — **Complete**
   - `M21.7` Executors cannot change the files that steer harnesses and specy-road unnoticed `steering-file-guard` — task — **Not Started**
   - `M21.8` The queued-message worker test waits for the idle state, not just the second completion event `queue-message-test-waits-for-idle` — task — **Complete**
-  - `M21.9` A freshly initialized project passes its own checks `init-passes-own-checks` — task — **Not Started**
+  - `M21.9` A freshly initialized project passes its own checks `init-passes-own-checks` — task — **Complete**
   - `M21.10` doctor works in a repo with no remote `doctor-without-a-remote` — task — **Not Started**
   - `M21.11` Help text names installed commands `help-names-installed-commands` — task — **Complete**
   - `M21.12` A review record is refused for joined observations only when one of them names a defect `joined-observations-need-a-defect` — task — **Not Started**
@@ -249,7 +249,6 @@ Do not pick these up.
 - `M21.2` on `feature/rm-outline-group-cli` since 2026-11-05
 - `M21.4` on `feature/rm-remove-node` since 2026-11-05
 - `M21.7` on `feature/rm-steering-file-guard` since 2026-11-05
-- `M21.9` on `feature/rm-init-passes-own-checks` since 2026-11-05
 
 ## Quality by area
 
@@ -257,12 +256,12 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 3 | 0 | 3.67 | 67% | 5 | 0 |
-| `docs` **flagged** | 26 | 11 | 5.40 | 87% | 24 | 3 |
+| `docs` **flagged** | 27 | 11 | 5.12 | 81% | 25 | 3 |
 | `planning` **flagged** | 1 | 0 | 3.00 | 100% | 0 | 0 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 48 | 19 | 4.59 | 79% | 33 | 6 |
-| `tests` **flagged** | 50 | 20 | 4.53 | 80% | 33 | 6 |
+| `specy_road` **flagged** | 48 | 18 | 4.47 | 77% | 34 | 6 |
+| `tests` **flagged** | 50 | 19 | 4.42 | 77% | 34 | 6 |
+| `CHANGELOG.md` | 4 | 0 | 3.00 | 50% | 6 | 0 |
 | `README.md` | 1 | 1 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 

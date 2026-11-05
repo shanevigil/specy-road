@@ -38,6 +38,13 @@ body. Keep section bodies focused; link to PRs for detail.
   by the init parser). Every bundled subcommand's `usage:` line reads
   `specy-road <cmd>` rather than its module file name, and help that cited a
   `docs/*.md` file a pip install lacks now links the published copy.
+- A new project passes its own checks: `init project` also writes `roadmap.md`
+  and `roadmap-context.md` from the scaffold graph (a `--dry-run` lists them; an
+  existing one without `--force` is left alone and neither is written), so
+  `export --check` and `digest --check` no longer exit 1 on a fresh scaffold.
+  `validate` no longer reports the starter's `my-executor` placeholder, and an
+  unmatched roster id is offered a closest profile only when a name of that
+  profile has a similarity ratio of at least 0.6.
 
 ### Added
 
