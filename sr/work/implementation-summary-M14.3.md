@@ -346,6 +346,61 @@ and its regression and property tests are still in place and pass.
   test module. The only cross-module imports are `FEATURE`, `make_pickup_project`, `run_specy_road`,
   `commit_file`, `git`, `COVERED`, `UNCOVERED` and `add_nested_repo`.
 
+## Fix round 6: what HEAD is on, unborn and detached (gpt-6.1-sol-low R1, after merging origin/WIP/improvements-0-3-1)
+
+**Class:** a HEAD state that `rev-parse --abbrev-ref HEAD` misreports. On an unborn branch, as in an
+empty checkout or an orphan worktree, it fails, and the refusal fell back to "unknown". On a detached
+HEAD it prints a bare `HEAD`, with no commit.
+
+**Fix:** one new function, `head_state(d)` in `worktree_delete_set.py`, now names HEAD everywhere a
+foreign refusal does.
+- It reads the branch with `git symbolic-ref -q --short HEAD`, as bytes, decoded with `os.fsdecode`.
+  This names a branch whether or not it has a commit. When there is no commit it adds "(no commits yet)".
+- Otherwise it reports `HEAD (detached at <sha12>)`. The existing "on HEAD" text is kept as a prefix.
+- If neither works, it reports "an unreadable HEAD".
+- `foreign_refusal()` skips the upstream and `log` reads when HEAD has no commit, because they would
+  fail and wrongly say the commits "cannot be listed". It reports "no commits … lacks" instead.
+
+**Tests:**
+- New `test_unborn_foreign_branches_are_named_and_survive` covers an empty checkout on
+  `private-unborn` and another repository's `--orphan` linked worktree on `orphan-unborn`. Through the
+  CLI, preview and `--yes` both exit 1 and name each branch with "(no commits yet)". "unknown" does
+  not appear, and every directory survives.
+- `test_a_checkout_of_another_repository_refuses_with_commits_no_remote_holds` gains an assertion for
+  `on HEAD (detached at <sha12>)`. Its existing "on HEAD" assertion is unchanged.
+
+**Results:**
+- Red/green: with `worktree_delete_set.py` at `39f9d281`, both tests fail and the other 12 pass.
+- With the fix, `python -m pytest -q -n 4 tests/test_worktree_prune.py tests/test_worktree_prune_foreign.py
+  tests/test_nested_repo_worktrees.py tests/test_nested_unpushed_report.py` gives 78 passed.
+- `specy-road file-limits` is OK and `ruff` is clean.
+
+`gpt-6.1-sol`'s block is on `60a4d9e8` and was addressed by fix round 4 (`405c5bae`). Its tests still
+pass.
+
+### Fix round: probes
+
+- **Foreign refusal branch, unborn checkout:** names `private-unborn (no commits yet)` (test).
+- **Foreign refusal branch, unborn linked worktree** (`--orphan`): names `orphan-unborn (no commits yet)`
+  (test).
+- **Foreign refusal branch, detached:** `HEAD (detached at <sha12>)` (test).
+- **Foreign refusal branch, empty bare repository:** `symbolic-ref` works in a bare repo, so it names
+  its unborn default branch instead of "unknown".
+- **Foreign refusal commits when unborn:** no `log` or `@{u}` call is made, so the result is
+  "no commits … lacks" instead of "cannot be listed".
+- **Foreign refusal repository when unborn or detached:** taken from `--git-common-dir` and
+  `--absolute-git-dir`, which do not depend on HEAD, so it is unchanged.
+- **Configured nested repo `_lost_tips`:** a detached HEAD is labelled `HEAD (<sha12>)`, with its
+  commit. An unborn HEAD has no commit to lose and is skipped. A clone's branches are listed by
+  `for-each-ref`, which includes no unborn branch.
+- **Stash refusals:** they quote git's own subjects, which already name the branch or `(no branch)`.
+- **Leaf merged check** (`the worktree's HEAD`, `worktree_prune.py:232`, which predates this leaf): an
+  unborn leaf falls back to the literal `HEAD`. That check is not a foreign refusal and is outside
+  A1/A2, so it is unchanged and only reported here.
+- **Commits on a foreign checkout's other local branches:** not listed. A1 asks for the commits on the
+  branch HEAD is on, and the whole checkout still refuses, so nothing is deleted.
+- **Test imports:** no `_`-prefixed name is imported from another test module.
+
 ## Deletion-path audit (updated in fix rounds 2 and 3)
 
 `remove()` deletes, in order: each configured nested repo (`git -C <copy> worktree remove --force` for a
@@ -435,4 +490,7 @@ commits, hooks and config.
 - Test `test_a_foreign_worktree_in_the_leafs_administrative_directory_refuses_and_survives`: R1.
 - Test `test_every_directory_of_every_kind_prune_deletes_is_scanned`: the property test across all six delete-set members.
 - Round 5: removed `_SHOWN`, `--max-count` and the "(and more)" slice. The linked-worktree test now has 22 unlanded commits and asserts every one is listed.
+- Round 6: `head_state()` names the branch HEAD is on, born or unborn (`symbolic-ref`), or the commit a detached HEAD is at.
+- Round 6: `foreign_refusal()` makes no upstream or log reads for a HEAD with no commit.
+- Test `test_unborn_foreign_branches_are_named_and_survive`, and the detached assertion in the no-remote checkout test.
 - Mocks: none.
