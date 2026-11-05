@@ -47,7 +47,7 @@ from typing import Any, Literal
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.generate_brief import index, load_nodes
-from specy_road.review_answer import (FILLED_BY_SPECY_ROAD, Rerun, drop_nulls, events, final_answer,  # noqa: F401
+from specy_road.review_answer import (FILLED_BY_SPECY_ROAD, Rerun, drop_nulls, events, final_answer,
                                       output_schema, stream_lines)
 from specy_road.review_files import render_front_matter, review_path
 from specy_road.integrity_removals import target_unplanned_removals
@@ -142,10 +142,10 @@ def review_run_lock(reviews: Path) -> Iterator[None]:
     reviews.mkdir(parents=True, exist_ok=True)
     with (reviews / LOCK_NAME).open("a+") as f:
         try:
-            import fcntl  # noqa: PLC0415 — POSIX; Windows has msvcrt
+            import fcntl   # POSIX; Windows has msvcrt
             fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except ImportError:
-            import msvcrt  # noqa: PLC0415
+            import msvcrt
             try:
                 msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
             except OSError:
@@ -242,7 +242,7 @@ def _review_record(root: Path, node_id: str, model: str, verdict: str, notes: Pa
                    launch_mode: str | None, sign_key: Path | None) -> tuple[int, str]:
     """``review record`` itself, its output captured (a ``--json`` caller owns stdout); ``sign_key`` as its
     ``--sign-key``."""
-    from specy_road.bundled_scripts.review_cli import cmd_review_record  # noqa: PLC0415 — review_cli imports this module's callers
+    from specy_road.bundled_scripts.review_cli import cmd_review_record   # deferred: review_cli imports this module's callers
     ns = argparse.Namespace(node_id=node_id, model=model, verdict=verdict, file=str(notes), ref=ref,
                             launch_mode=launch_mode, sign_key=sign_key, repo_root=root)
     buf = io.StringIO()

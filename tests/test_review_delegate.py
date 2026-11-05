@@ -67,8 +67,9 @@ def test_a_capacity_error_is_retried_with_backoff_and_resumes_the_session(tmp_pa
     assert run["state"] == "complete"
     assert [a["capacity"] for a in run["attempts"]] == [True, True, False]
     assert waits == [2.0, 4.0]                              # doubling, between attempts only
-    (fresh,), resumed = launches(fake_calls(spec), "--session-id"), launches(fake_calls(spec), "--resume")
-    assert resumed and all(c[c.index("--resume") + 1] == fresh[2] for c in resumed)   # each retry resumes it
+    sid, resumed = run["session_id"], launches(fake_calls(spec), "--resume")   # selected by argv, never counted
+    assert any(c[c.index("--session-id") + 1] == sid for c in launches(fake_calls(spec), "--session-id"))
+    assert resumed and all(c[c.index("--resume") + 1] == sid for c in resumed)   # each retry resumes that session
     assert all("Continue the review" in Path(c[0]).read_text() for c in resumed)
 
 

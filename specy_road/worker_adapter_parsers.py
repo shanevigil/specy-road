@@ -168,7 +168,7 @@ def loads_untrusted(text: str) -> Any:
     recursion (``RecursionError``) or anything else the decoder raises is an unreadable line, not a crash."""
     try:
         return json.loads(text)
-    except Exception:   # noqa: BLE001 — total by design: ValueError, RecursionError, MemoryError, …
+    except Exception:   # total by design: ValueError, RecursionError, MemoryError, …
         return UNREADABLE
 
 

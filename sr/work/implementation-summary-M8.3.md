@@ -924,6 +924,50 @@ WIP merged first (`--no-edit`), no conflicts.
 - Chore reviewers (M8.2) still judge by their own verdict file through `close_run`. That is unchanged and outside M8.3's filing path.
 - Verification: 71 importer test files, `pytest -q -n 4 -p no:cacheprovider`: 1111 passed. `ruff check specy_road tests scripts` (plus `--select F401,F821` on the moved code): clean. `file-limits`: OK (`review_delegate.py` 368 lines, `review_record_write.py` 382). `export --check`: OK.
 
+## Fix round 7 (Sol-low block at `40d66c96`: F1 run state, F2 launch count)
+
+WIP merged first (`--no-edit`), no conflicts.
+
+### F1: the prompt-CLI close took its log path from the reviewer-writable run file
+
+- **Class:** specy-road locating or deciding something from data in a reviewer-writable place. `close_cli_review_run` re-read `RUN-<model>.json` after the harness, and wrote the transcript to that file's `log` path. A reviewer that pointed `log` at `src/a.py` had specy-road overwrite it.
+- **Rule now:** every path specy-road writes or reads to decide something is derived from the node id, the model and the hand-off directory, never read from file content. A run's own state stays in memory from open to close.
+  - `open_reviewer_cli_run` returns `(path, record)`. `role_prompt.main` keeps the pair and hands it to `close_cli_review_run` on success, on failure and on an interrupt. The close reads nothing back, and the log is always `path.with_suffix(".log")`.
+  - `review delegate` already kept its record and attempt spans in memory (fix round 6). Its log is `run_path(...).with_suffix(".log")`.
+  - The `log` field is still written to the run file for people, and is never read (`grep`).
+  - Consolidated: the dead `reviewer_run_failure.close_reviewer_cli_run` and `fail_reviewer_cli_run` are deleted. Nothing called them, and the first read the same `log` field.
+  - `replace_file`, specy-road's only writer in the hand-off directory, now also refuses a symlinked parent directory (`ELOOP`). It already replaced, rather than followed, a symlink at the path.
+  - `review usage` picks its log parser from the run file's `harness` through `ADAPTERS.get(…, generic)`. An unknown value reads as generic instead of raising out of `adapter_for`.
+- **Tests:** `tests/test_review_run_state_trusted.py` (new):
+  - `prompt --channel cli` whose reviewer overwrites `RUN-gem.json` with `log` set to `src/a.py`: for a **recorded** filing and a **failed** filing (rerun), `src/a.py` is byte-identical, the run file is specy-road's own (`source`, `log`), and the transcript is in `RUN-gem.log`.
+  - `review delegate` whose reviewer forges `RUN-opus.json` (log path and an empty attempt span): recorded from specy-road's own span, the source unchanged, and the saved record equal to the in-memory one.
+  - `replace_file` refuses a symlinked directory and writes nothing there.
+  - `review usage` with a forged `harness` in a run file: no crash.
+
+### F2: the exact-one fake-launch unpack
+
+- **Class:** a test asserting how many fake launches happened (fix round 1's class). `test_a_capacity_error_is_retried_with_backoff_and_resumes_the_session` unpacked exactly one `--session-id` launch.
+- **Fix:** select by the observable result. Some `--session-id` launch names `run["session_id"]`, and every `--resume` launch resumes that session. The retry count stays on `run["attempts"]`. `grep` over this branch's test files finds no other count or one-element unpack on fake calls; the fake's step picker by call index is how it scripts a sequence, not an assertion.
+
+### No `noqa`
+
+This repository's ruff selects only `C901`, so the `noqa` comments this branch had added (`BLE001`, `F401`, `PLC0415`) were inert. They are removed, and their explanations kept as plain comments. The branch now adds no `noqa` line.
+
+## Probes (fix round 7)
+
+- Every read-back of `RUN-<model>.json` in the reviewer path, as path or control:
+  - `close_cli_review_run`: removed (in memory).
+  - `close_reviewer_cli_run` / `fail_reviewer_cli_run`: deleted (dead).
+  - `review_delegate._start` for `--resume`: `session_id` (validated by `check_session_id`), `harness` (must equal the roster's) and `commit` (`same_commit` through `git rev-parse --verify`). Values, not paths, all checked. At rest the file is specy-road's last write, since every run ends with `save_run` of the in-memory record.
+  - `run_states`, `run_lines`, `incomplete_lines`, the gate note: display only. "Current" is computed with `same_commit`.
+  - `review_usage`: `model` and `commit` are labels; `harness` picks a parser, now generic when unknown; the log path is derived (`p.with_suffix(".log")`).
+  - `archive_round`: `commit` is sanitized to `[0-9A-Za-z]{,12}` for a file name inside `history/`, and the paths are derived.
+- Attempt spans: `review delegate` reads them from its in-memory run, and `prompt --channel cli` from `run_logged`'s span. The copies in the run file are never read.
+- Notes and records: `notes-<model>.md` is written by specy-road at a derived path and read back by `review record` from that same path. `REVIEW-<model>.md` is written by `review record`, and signatures are verified by the gate. No path is taken from either file's content.
+- Every write in the hand-off directory goes through `replace_file` (no symlink at the path or as its directory) or `append_log` (`O_NOFOLLOW`), at a derived path.
+- Fake-launch counting in the tests: removed at `test_review_delegate.py:70`; none other found.
+- Verification: 72 importer test files, `pytest -q -n 4 -p no:cacheprovider`: 1115 passed before the `review usage` change. Afterwards, the new file and `test_review_usage.py`: 15 passed. `ruff check specy_road tests scripts`: clean. `file-limits`: OK. `export --check`: OK.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).

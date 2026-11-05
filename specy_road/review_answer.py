@@ -158,7 +158,7 @@ def final_answer(adapter: Adapter, text: str, output: Path | None = None) -> dic
     ``prompt --channel cli``. An interrupt still propagates."""
     try:
         return _final_answer(adapter, text, output)
-    except Exception as e:   # noqa: BLE001 — total by design (docstring)
+    except Exception as e:   # total by design (docstring)
         return Rerun(UNREADABLE_ANSWER.format(type(e).__name__))
 
 
@@ -167,7 +167,7 @@ def events(adapter: Adapter, line: str, launch: Any) -> list[Any]:
     read is no event (it is still in the log, and :func:`final_answer` judges it)."""
     try:
         return adapter.parse_events(line, launch)
-    except Exception:   # noqa: BLE001 — untrusted output (final_answer)
+    except Exception:   # untrusted output (final_answer)
         return []
 
 

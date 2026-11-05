@@ -129,15 +129,17 @@ def close_run(repo_root: Path, t: ReviewTarget, model: str, run: dict[str, Any],
     record_reviewer_failure_event(run, err)
 
 
-def open_reviewer_cli_run(repo_root: Path, t: ReviewTarget, model: str, harness: str) -> Path:
-    """Start a ``RUN-<model>.json`` for ``prompt --channel cli`` (reviewer role only)."""
+def open_reviewer_cli_run(repo_root: Path, t: ReviewTarget, model: str, harness: str) -> tuple[Path, dict[str, Any]]:
+    """Start a ``RUN-<model>.json`` for ``prompt --channel cli`` (reviewer role only): ``(its path, the record)``.
+    The caller keeps the record in memory until it closes it (:func:`~specy_road.bundled_scripts.role_prompt_cli.
+    close_cli_review_run`): the file is in the reviewer's hand-off directory, so nothing is read back from it."""
     path = run_path(repo_root, t.node["id"], model)
     run = {"node_id": t.node["id"], "model": model, "harness": harness or "generic", "ref": t.ref,
            "commit": t.commit, "state": "running", "session_id": None, "resumed": False, "source": "prompt-cli",
            "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
            "log": str(path.with_suffix(".log"))}
     save_run(path, run)
-    return path
+    return path, run
 
 
 def gate_policy_summary(gate: Any, runs: list[dict[str, Any]]) -> str:
@@ -145,32 +147,3 @@ def gate_policy_summary(gate: Any, runs: list[dict[str, Any]]) -> str:
     note = reviewer_failure_gate_note(runs)
     base = gate.summary()
     return f"{base} — {note}" if not gate.passed and note else base
-
-
-def fail_reviewer_cli_run(path: Path, exc: BaseException) -> None:
-    """Close a prompt-cli RUN left ``running`` when the harness raises (interrupt, crash)."""
-    run = _read_json(path) or {}
-    err = f"interrupted: {exc or type(exc).__name__}"
-    run.update(state="incomplete", reason=err)
-    record_reviewer_failure_event(run, err)
-    run["ended_at"] = _now()
-    save_run(path, run)
-
-
-def close_reviewer_cli_run(repo_root: Path, t: ReviewTarget, model: str, path: Path, exit_code: int,
-                           output_lines: list[str]) -> None:
-    """Finish a reviewer ``prompt --channel cli`` run: compare records and file a reviewer-failure when needed."""
-    run = _read_json(path) or {}
-    log = Path(run.get("log") or path.with_suffix(".log"))
-    log.parent.mkdir(parents=True, exist_ok=True)
-    replace_file(log, "\n".join(output_lines) + ("\n" if output_lines else ""))
-    tail = [ln.strip() for ln in output_lines[-20:] if ln.strip()]
-    prefix = f"harness exited {exit_code}" if exit_code != 0 else ""
-    # A clean exit is an error only when no record for this commit exists after the run.
-    filed = exit_code == 0 and valid_record(repo_root, t, model)[0]
-    run["attempts"] = [{"at": _now(), "exit": exit_code, "capacity": bool(turn_capacity_error([], output_lines)),
-                        "error": None if filed else
-                        harness_error_line(exit_code=exit_code, errors=[], tail=tail, fallback=prefix)[:300] or None}]
-    close_run(repo_root, t, model, run, exit_code=exit_code, errors=[], tail=output_lines, reason_prefix=prefix)
-    run["ended_at"] = _now()
-    save_run(path, run)

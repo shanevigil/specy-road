@@ -25,7 +25,7 @@ from specy_road.orchestration_role_env import CLAUDE_REVIEWER_AVOID_ENV
 from specy_road.review_record_write import (Outcome, answer_scratch, close_review_run, replace_file, run_and_file,
                                             write_schema)
 from specy_road.review_target import ReviewTarget
-from specy_road.reviewer_run_failure import _now, _read_json, harness_error_line, save_run, turn_capacity_error
+from specy_road.reviewer_run_failure import _now, harness_error_line, save_run, turn_capacity_error
 from specy_road.worker_adapter_parsers import effort_note
 from specy_road.worker_adapters import ADAPTERS, Launch, Unsupported, placeholder_problem, reviewer_cli, substitute_prompt
 
@@ -131,14 +131,17 @@ def run_custom_reviewer(prof: Profile | None, cli: str, prompt_path: Path, root:
                         transcript, sign_key)
 
 
-def close_cli_review_run(root: Path, t: ReviewTarget, model: str, path: Path, filed: Outcome,
+def close_cli_review_run(root: Path, t: ReviewTarget, model: str, opened: tuple[Path, dict[str, Any]], filed: Outcome,
                          transcript: list[str]) -> None:
     """Finish ``prompt --channel cli``'s reviewer run record from its filing (an interrupt passes a rerun request):
-    the transcript as the log, one attempt, and :func:`~specy_road.review_record_write.close_review_run`."""
-    run = _read_json(path) or {}
-    log = Path(run.get("log") or path.with_suffix(".log"))
-    log.parent.mkdir(parents=True, exist_ok=True)
-    replace_file(log, "\n".join(transcript) + ("\n" if transcript else ""))   # never through a symlink
+    the transcript as the log, one attempt, and :func:`~specy_road.review_record_write.close_review_run`.
+
+    ``opened`` is :func:`~specy_road.reviewer_run_failure.open_reviewer_cli_run`'s ``(path, record)``, kept in
+    memory across the harness call. Nothing is read back from the run file, which sits in the reviewer's hand-off
+    directory: the record is specy-road's own, and the log is always ``RUN-<model>.log`` beside it, never a path
+    from file content."""
+    path, run = opened
+    replace_file(path.with_suffix(".log"), "\n".join(transcript) + ("\n" if transcript else ""))   # no symlink
     tail = [ln.strip() for ln in transcript[-20:] if ln.strip()]
     failed = filed.exit not in (0, None)
     run["attempts"] = [{"at": _now(), "exit": filed.exit, "capacity": bool(turn_capacity_error([], transcript)),

@@ -56,7 +56,7 @@ from pathlib import Path
 from specy_road.bundled_scripts.do_next_prompt import SUBAGENT_LINE
 from specy_road.bundled_scripts.generate_brief import index, render_brief, verify_cmd_lines
 from specy_road.bundled_scripts.review_packet import build_packet
-from specy_road.bundled_scripts.role_prompt_cli import (READ_BACK_HARNESSES, close_cli_review_run,  # noqa: F401
+from specy_road.bundled_scripts.role_prompt_cli import (READ_BACK_HARNESSES, close_cli_review_run,
                                                         preflight as run_preflight, resolve_cli, run_plain_cli,
                                                         run_reviewer_channel)
 from specy_road.bundled_scripts.role_prompt_rca import (

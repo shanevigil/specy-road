@@ -56,7 +56,11 @@ def _own_records(reviews: Path, model: str) -> list[Path]:
 
 def replace_file(path: Path, data: bytes | str) -> None:
     """Make ``path`` a regular file holding ``data`` without following a symlink at ``path``: write a temporary file
-    created exclusively beside it, then rename it over ``path`` (a rename replaces a symlink, never its target)."""
+    created exclusively beside it, then rename it over ``path`` (a rename replaces a symlink, never its target). A
+    symlinked parent directory is refused (``ELOOP``): the write would land wherever it points. Callers pass paths
+    they derive themselves (node id, model, hand-off directory), never a path read from a file."""
+    if path.parent.is_symlink():
+        raise OSError(errno.ELOOP, "refusing to write through a symlinked directory", str(path.parent))
     raw = data.encode("utf-8") if isinstance(data, str) else data
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
     try:
