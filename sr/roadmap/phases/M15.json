@@ -93,7 +93,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.4_parallel-pr-leaves-reconcile-bookkeeping-by-rule_b1a7472a-784c-4b57-a15e-75d664b9e942.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current",
       "touch_zones": [
         "specy_road/reconcile_branch.py",
@@ -232,7 +232,8 @@
         "specy_road/bundled_scripts/do_next_task_leaf_guards.py",
         "specy_road/bundled_scripts/session_plan_render.py",
         "specy_road/bundled_scripts/orchestrate_cli.py",
-        "specy_road/bundled_scripts/brief_dependency_context.py"
+        "specy_road/bundled_scripts/brief_dependency_context.py",
+        "specy_road/bundled_scripts/grind_session.py"
       ],
       "type": "task"
     },

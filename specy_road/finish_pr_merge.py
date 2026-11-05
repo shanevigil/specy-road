@@ -62,13 +62,16 @@ def _abort(repo: Path, detail: str) -> str:
     return detail
 
 
-def merge_integration_resolving_bookkeeping(repo: Path, *, ref: str, ib: str, branch: str) -> str | None:
+def merge_integration_resolving_bookkeeping(
+    repo: Path, *, ref: str, ib: str, branch: str, drop_row: bool = True
+) -> str | None:
     """Merge ``ref`` into the checked-out ``branch``, resolving the three bookkeeping paths.
 
     ``None`` once the merge commit exists; otherwise why it could not, with the
-    merge aborted and ``branch`` where it was.
+    merge aborted and ``branch`` where it was. ``drop_row=False`` keeps this
+    leaf's row from ``ref``: a branch that has not finished still holds its claim.
     """
-    codename = codename_from_branch(branch)
+    codename = codename_from_branch(branch) if drop_row else None
     pre_sha = git_text(["rev-parse", "HEAD"], repo)
     if not pre_sha:
         return f"could not read {branch} HEAD before merging"
