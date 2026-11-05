@@ -385,6 +385,7 @@ Do not pick these up.
 - `M15.25` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
 - `M15.32` on `feature/rm-archived-summary-exempt-from-file-limits` since 2026-11-05
+- `M15.33` on `feature/rm-refused-review-record-leaves-a-trace` since 2026-11-05
 - `M15.34` on `feature/rm-executor-prompt-states-the-test-rules` since 2026-11-05
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 
