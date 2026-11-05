@@ -237,7 +237,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.6` The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes `rework-prompt-carries-the-accepted-rca` — task — **Complete**
   - `M15.7` file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count `file-limits-baseline-and-upgrade-report` — task — **Not Started**
   - `M15.8` A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it `promoted-leaf-is-never-stuck-on-an-empty-approach` — task — **Complete**
-  - `M15.9` Harness launches survive large prompts and a harness binary off PATH, for every role `harness-launches-survive-large-prompts-and-binaries-off-path` — task — **Not Started**
+  - `M15.9` Harness launches survive large prompts and a harness binary off PATH, for every role `harness-launches-survive-large-prompts-and-binaries-off-path` — task — **Complete**
   - `M15.10` Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff `try-a-roster-before-it-lands` — task — **Complete**
   - `M15.11` A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors `working-roster-in-one-command-and-validated-profiles` — task — **Complete**
   - `M15.12` Shared documentation zones do not serialize grind-session batches `shared-doc-zones-do-not-serialize-batches` — task — **Complete**
@@ -356,7 +356,6 @@ Do not pick these up.
 - `M15.25` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
-- `M15.9` on `feature/rm-harness-launches-survive-large-prompts-and-binaries-off-path` since 2026-11-05
 
 ## Quality by area
 
@@ -364,9 +363,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 34 | 29 | 9.40 | 100% | 10 | 1 |
-| `specy_road` **flagged** | 47 | 38 | 7.78 | 100% | 14 | 3 |
-| `tests` **flagged** | 49 | 40 | 7.78 | 100% | 14 | 3 |
+| `docs` **flagged** | 34 | 28 | 8.17 | 100% | 13 | 1 |
+| `specy_road` **flagged** | 47 | 37 | 7.20 | 100% | 17 | 3 |
+| `tests` **flagged** | 49 | 39 | 7.20 | 100% | 17 | 3 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
 | `research` | 1 | 1 | — | — | 0 | 0 |

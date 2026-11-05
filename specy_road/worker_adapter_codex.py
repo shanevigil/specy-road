@@ -52,38 +52,38 @@ class Codex(Adapter):
 
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
-               effort: str | None = None) -> Launch:
+               effort: str | None = None, harness_bin: str | None = None) -> Launch:
         custom = self._custom(cli, prompt_path, effort=effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return custom
-        return Launch(["codex", "exec", "--json", *_model_flag("-m", model), *self.effort_flag(effort), *CODEX_POLICY,
+        return Launch([self._program(harness_bin), "exec", "--json", *_model_flag("-m", model), *self.effort_flag(effort), *CODEX_POLICY,
                        *CODEX_MEMORY_OFF, "-C", str(worktree), *self._add_dir(worktree, repo_root, node_id), "-"],
                       stdin=_text(prompt_path), env={"CODEX_HOME": str(profile_home(model))})
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
-               effort: str | None = None) -> Launch:
+               effort: str | None = None, harness_bin: str | None = None) -> Launch:
         custom = self._custom(cli, prompt_path, session_id, effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return custom
         # Same policy as the launch, prompt on stdin again (128 KiB argv cap). `exec resume` takes neither --sandbox,
         # -C (the wrapper runs it in the worktree) nor a documented --add-dir, so the policy goes in as config overrides.
         home = session_home(session_id) or profile_home(model)   # where the launch left the thread
-        return Launch(["codex", "exec", "resume", "--json", *_model_flag("-m", model), *self.effort_flag(effort),
+        return Launch([self._program(harness_bin), "exec", "resume", "--json", *_model_flag("-m", model), *self.effort_flag(effort),
                        *CODEX_POLICY, *CODEX_MEMORY_OFF, session_id, "-"],
                       stdin=_text(prompt_path), session_id=session_id, env={"CODEX_HOME": str(home)})
 
     def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,
                         session: tuple[str, bool] | None = None, *, schema: Path | None = None,
-                        output: Path | None = None) -> Launch:
+                        output: Path | None = None, harness_bin: str | None = None) -> Launch:
         """A reviewer's turn in the read-only sandbox: it writes nothing, so it needs no writable root, and the
         verdict comes back as the final message, shaped by ``--output-schema`` and written to ``-o``. Both flags
         are documented for ``codex exec`` only, so a resume (``session`` is ``(id, True)``) leaves them out and
         its last ``agent_message`` is parsed instead; a fresh turn cannot choose its thread id."""
         if session and session[1]:
-            return Launch(["codex", "exec", "resume", "--json", *self.effort_flag(effort), *CODEX_REVIEW_POLICY,
+            return Launch([self._program(harness_bin), "exec", "resume", "--json", *self.effort_flag(effort), *CODEX_REVIEW_POLICY,
                            session[0], "-"], stdin=_text(prompt_path), session_id=session[0])
-        return Launch(["codex", "exec", "--json", *_model_flag("-m", model), *self.effort_flag(effort),
+        return Launch([self._program(harness_bin), "exec", "--json", *_model_flag("-m", model), *self.effort_flag(effort),
                        *CODEX_REVIEW_POLICY, *(["--output-schema", str(schema)] if schema else []),
                        *(["-o", str(output)] if output else []), "-"], stdin=_text(prompt_path))
 

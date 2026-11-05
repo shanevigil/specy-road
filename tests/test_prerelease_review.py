@@ -103,6 +103,7 @@ def test_the_cli_channel_neither_echoes_the_prompt_nor_crashes_on_a_huge_one(tmp
     assert run_cli_channel(None, prompt, tmp_path, entry_cli='true "<prompt>"') == 0
     err = capsys.readouterr().err
     assert '"<prompt>"' in err and "SECRET-BRIEF" not in err
-    prompt.write_text("x" * 4_000_000)   # beyond any ARG_MAX: launching raises E2BIG
+    prompt.write_text("x" * 4_000_000)   # beyond any ARG_MAX: refused before exec (M15.9 A2), never E2BIG
     assert run_cli_channel(None, prompt, tmp_path, entry_cli='true "<prompt>"') == 1
-    assert "could not launch the cli" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "over the OS limit of 128 KiB for one argument" in err and "use {prompt}" in err

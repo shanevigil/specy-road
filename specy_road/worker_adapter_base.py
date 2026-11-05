@@ -63,6 +63,36 @@ class Unsupported(Exception):
 
 #: What a harness is told when the prompt itself travels on stdin: an argv string is capped at 128 KiB on Linux.
 STDIN_INSTRUCTION = "The task is the text on standard input. Follow it exactly; it is the whole prompt."
+#: The program each harness's default command runs; :meth:`Adapter._program` resolves it (harness_binary).
+PROGRAMS = {"claude-code": "claude", "codex": "codex", "cursor": "agent"}
+#: The OS limit on one argument (Linux ``MAX_ARG_STRLEN``, its terminating NUL included): above it exec fails with
+#: Errno 7 (E2BIG), which a shell reports as exit 126 or 127.
+ARG_LIMIT = 128 * 1024
+
+
+def file_instruction(prompt_path: Path) -> str:
+    """What a harness that takes its prompt only as an argument (Cursor's ``agent -p``) is told instead of the
+    prompt: the file to read, so the argument stays short whatever the prompt's size."""
+    return (f"The task is the text of the file {prompt_path}. Read all of it before anything else and follow it "
+            "exactly; it is the whole prompt.")
+
+
+def oversized_arg(argv: list[str]) -> str | None:
+    """Why ``argv`` cannot be exec'd (an argument over :data:`ARG_LIMIT`), naming the fix; ``None`` when it can."""
+    size = max((len(a.encode("utf-8")) + 1 for a in argv), default=0)
+    if size <= ARG_LIMIT:
+        return None
+    return (f"the launch command has a {size // 1024} KiB argument, over the OS limit of {ARG_LIMIT // 1024} KiB for "
+            'one argument: its "<prompt>" puts the prompt text on the command line; use {prompt} (the prompt '
+            "file's path, e.g. `< {prompt}`) instead")
+
+
+def checked(launch: Launch) -> Launch:
+    """``launch``, refused (:class:`Unsupported`) before exec when :func:`oversized_arg` says it cannot run."""
+    why = oversized_arg(launch.argv)
+    if why:
+        raise Unsupported(why)
+    return launch
 
 
 #: A model's own effort level as its harness's arguments; Cursor has no flag (its model ids carry the effort).
@@ -159,25 +189,27 @@ class Adapter:
 
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
-               effort: str | None = None) -> Launch:
+               effort: str | None = None, harness_bin: str | None = None) -> Launch:
         why = placeholder_problem(cli)
         if why:
             raise Unsupported(f"generic harness needs a roster channels.cli or profile access.cli: {why}")
         self._session_flag_check(cli, {ph for _s, _e, ph, _p in _tokens(cli)})
         cli = reviews_dir_into(cli, repo_root, node_id)
-        return Launch(["sh", "-c", substitute_prompt(cli, prompt_path, effort=self.effort_flag(effort))])
+        return checked(Launch(["sh", "-c", substitute_prompt(cli, prompt_path, effort=self.effort_flag(effort))]))
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
-               effort: str | None = None) -> Launch:
+               effort: str | None = None, harness_bin: str | None = None) -> Launch:
         raise Unsupported(f"{self.harness}: resume is not supported")
 
     def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,
                         session: tuple[str, bool] | None = None, *, schema: Path | None = None,
-                        output: Path | None = None) -> Launch:
+                        output: Path | None = None, harness_bin: str | None = None) -> Launch:
         """The harness's own read-only reviewer command; ``session`` is ``(id, resume)``, ``schema`` the review
         output schema file and ``output`` where a harness that can writes its final message. A ``generic`` entry
-        has none: it runs its ``channels.cli`` and its final message is parsed as plain JSON."""
+        has none: it runs its ``channels.cli`` and its final message is parsed as plain JSON. ``harness_bin``, on
+        every adapter's launch, resume and reviewer command, is the roster entry's own value, resolved only when the
+        default command is built (:meth:`_program`)."""
         raise Unsupported(f"{self.harness}: no default reviewer command; set the roster's channels.cli")
 
     def parse(self, line: str) -> Parsed | None:
@@ -204,6 +236,13 @@ class Adapter:
     def session_flag(self, session_id: str, resume: bool) -> list[str] | None:
         """The arguments ``{session_flag}`` expands to; ``None`` where the harness has no such flag."""
         return None
+
+    def _program(self, harness_bin: str | None) -> str:
+        """``argv[0]`` of the default command: the binary the roster's ``harness_bin`` names, else the one on
+        ``PATH`` or in the harness's install directories. The one place every default command (launch, resume,
+        reviewer, a custom command's resume fallback) gets its program, so no caller can skip ``harness_bin``."""
+        from specy_road.harness_binary import resolve  # noqa: PLC0415 — harness_binary imports this module
+        return resolve(self.harness, harness_bin)
 
     def effort_flag(self, level: str | None) -> list[str]:
         """The arguments ``{effort}`` expands to for the model's own ``level``; none where the harness has no flag."""
@@ -245,4 +284,4 @@ class Adapter:
         flag = self.session_flag(sid, session_id is not None) if "{session_flag}" in named else None
         effort_args = self.effort_flag(effort)
         cli = reviews_dir_into(cli, repo_root, node_id)
-        return Launch(["sh", "-c", substitute_prompt(cli, prompt_path, sid, flag, effort_args)], session_id=sid)
+        return checked(Launch(["sh", "-c", substitute_prompt(cli, prompt_path, sid, flag, effort_args)], session_id=sid))

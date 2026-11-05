@@ -297,7 +297,7 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     _report_cli(entry, harness, cli)
     reviews_dir(repo_root, node_id).mkdir(parents=True, exist_ok=True)   # a harness may refuse an --add-dir that is missing
     launch = worker_env(adapter_for(harness).launch(prompt, wt, api_id, cli, node_id=node_id, repo_root=repo_root,
-                                                    launch_mode=mode, effort=effort), wt / prefix)
+                                                    launch_mode=mode, effort=effort, harness_bin=entry.get("harness_bin")), wt / prefix)
     rec = create_record(repo_root, node_id, harness, model, wt, branch=branch,
                         contract_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
                         billing_route=entry.get("billing_route"))

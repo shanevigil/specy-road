@@ -455,7 +455,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.9_harness-launches-survive-large-prompts-and-binaries-off-path_5e31fbd5-36c8-4fd8-bc36-15cd9cc478f9.md",
       "sibling_order": 9,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Harness launches survive large prompts and a harness binary off PATH, for every role",
       "touch_zones": [
         "specy_road/worker_adapter_cursor.py",
