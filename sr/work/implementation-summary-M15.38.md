@@ -10,6 +10,10 @@
 
 Removed two unreachable guards: `cap_codename_slug` empty-`parts` return (all-hyphen slugs already exit on `strip("-")`), and `derive_codename_with_collision_suffix` empty-`slug` return after a non-empty `title_to_codename` result. Behaviour and tests unchanged.
 
+## Fix round (gpt-6.1-sol-low)
+
+Re-export `CODENAME_MAX_CHARS` from `roadmap_edit_fields` (imported from `roadmap_codename_cap`; single literal `64` remains only in the cap module). `derive_codename_with_collision_suffix` and M15.38 tests import the constant via `roadmap_edit_fields`.
+
 ## Probes
 
 - `cap_codename_slug` with hyphen-only input (`"---"`, `"----"`) — returns `""` at the post-`strip("-")` guard; never reaches word split.
@@ -19,12 +23,16 @@ Removed two unreachable guards: `cap_codename_slug` empty-`parts` return (all-hy
 - `_with_suffix` collision path — `max_base` is at least 59 for 4-char suffixes; non-empty `uncapped` keeps `base` non-empty under the same cap invariant.
 - `codename_was_derived` / `maybe_sync_codename_from_title` — use `cap_codename_slug` only on non-empty uncapped slugs or empty titles; no duplicate empty-capped checks added elsewhere.
 - Reviewer’s targeted pytest list (77 tests) — all pass after removal.
+- A1 public surface — `from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_MAX_CHARS` resolves to `64` (re-export from cap module).
+- Literal `64` for codename cap — only `roadmap_codename_cap.CODENAME_MAX_CHARS`; error messages use the constant, not a second literal.
+- `codename_length_error` / `cap_codename_slug` defaults — read `CODENAME_MAX_CHARS` from the cap module only; no duplicate definition.
+- `roadmap_crud_ops` — imports length helper from cap module only; does not define or hardcode the cap.
 
 ## Acceptance
 
 | ID | Status |
 |----|--------|
-| A1 | `CODENAME_MAX_CHARS = 64` in `roadmap_codename_cap.py`; `cap_codename_slug` / `derived_codename_from_title` used in `derive_codename_with_collision_suffix`, `_derive_codename` (via prepare), and `maybe_sync_codename_from_title`. `title_to_codename` unchanged. `codename_was_derived` accepts uncapped or capped slug. |
+| A1 | `CODENAME_MAX_CHARS = 64` defined in `roadmap_codename_cap.py` and re-exported from `roadmap_edit_fields`; `cap_codename_slug` / `derived_codename_from_title` used in `derive_codename_with_collision_suffix`, `_derive_codename` (via prepare), and `maybe_sync_codename_from_title`. `title_to_codename` unchanged. `codename_was_derived` accepts uncapped or capped slug. |
 | A2 | `codename_length_error` + checks in `cmd_add` and `_set_codename`; one-line `error:` message, exit 1, no writes on refuse. |
 | A3 | `planning_filename_for_node` raises `ValueError` naming the node when UTF-8 filename length exceeds 255. `docs/roadmap-authoring.md` codename row documents the 64-character cap. |
 | A4 | Three tests in `tests/test_roadmap_crud_atomicity.py` (long title add, 65-char `--codename`, 65-char `edit-node --set codename=`). |
