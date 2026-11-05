@@ -341,7 +341,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.27_cursor-usage-sums-segments-and-flags-undercounts_eb4e416f-8d09-49b7-9da4-c4b90bb83145.md",
       "sibling_order": 27,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length",
       "touch_zones": [
         "specy_road/worker_adapter_cursor.py",
