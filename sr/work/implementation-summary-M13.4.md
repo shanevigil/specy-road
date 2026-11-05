@@ -20,6 +20,15 @@ Final list: as given; `specy_road/bundled_scripts/validate_notices.py` is the ne
 - `python -m pytest -n 4 -q`: 4119 passed.
 - `specy-road file-limits`: OK. `specy-road validate|export --check|digest --check --repo-root tests/fixtures/specy_road_dogfood`: exit 0, no held milestones in the fixture.
 
+## Probes
+
+(R1: private-name imports from other test modules.)
+
+- `tests/test_milestone_review_hold_notice.py` imports from `tests.test_milestone_full_review`: only `POLICY_OFF`, `set_node_status`, `make_milestone_repo` (no underscore names).
+- `tests/test_milestone_full_review.py`: `_set_status` renamed to public `set_node_status`; no remaining `_set_status` symbol or callers in that file.
+- All importers of `tests.test_milestone_full_review` in this branch (`test_milestone_review_hold_notice.py`, `test_refusals_name_their_fix.py`): no private-name imports.
+- `python scripts/check_test_private_imports.py`: exit 0, 0 new private references.
+
 ## Added
 
 - `_review_commands()` (finish_ancestor_rollup.py): one source for the review command text shared by the next-steps line and the notice.
