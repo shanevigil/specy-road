@@ -6,7 +6,8 @@
         "Each old name works for one release with one deprecation line, is hidden from top-level help and is a row of tests/parity/command_map.yaml",
         "The canonical command count (`cli._known_commands()` minus alias rows) is at most 56: 68 minus the 14 names that M16.11, M16.12, M16.13 and this leaf retire (registry-prune, branches, refresh-stubs, refresh-schemas, refresh-profiles, handoff, review-packet, lessons, start-milestone-session, reconcile-milestone-status, open-milestone-pr, scaffold-planning, author-approach, archive-node) plus the 2 new groups (milestone, planning); the renames update to self-update and session to presence are net zero",
         "Docs, templates, skills and stubs, and suggested_prompts use the new names; the stale-command check passes; goldens differ only for map rows",
-        "Expected net line delta: package about -70"
+        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
+        "Estimated net line change (informational, not a gate): package about -70"
       ],
       "codename": "milestone-and-planning-command-groups-and-archive-hard-remove-replaces-archive-node",
       "dependencies": [
@@ -34,7 +35,8 @@
         "specy_road/templates/project/",
         "specy_road/templates/specyrd/",
         "tests/parity/",
-        "tests/"
+        "tests/",
+        "CHANGELOG.md"
       ],
       "type": "task"
     },
@@ -44,7 +46,7 @@
         "A result is recorded with the commit it ran on and counts only for that commit; land refuses when a merge-blocking entry's result for the commit to land is missing or failed",
         "A table test covers matching zone pass, matching zone fail, no matching zone, stale result and missing result, and the M16.1 decision table gains these rows",
         "A repo without zone entries behaves as before: parity harness and the M16.14 migration table unchanged",
-        "Expected net line delta: package about +80 (named new behaviour)"
+        "Estimated net line change (informational, not a gate): package about +80 (named new behaviour)"
       ],
       "codename": "checks-entries-scoped-to-touch-zones-block-a-merge-when-they-fail-held-m15-23-s-purpose",
       "dependencies": [
@@ -73,9 +75,9 @@
       "acceptance": [
         "Before folding, tests/parity/workers/ holds a table built from the existing worker tests: delegate, sync, message, handoff, reclaim, terminate, reconcile, slot counting under max_workers, lease expiry, outbox replay after a crash, and each harness hook format; each row asserts the state file and events at pickup",
         "worker_ops_launch, worker_ops_message, worker_ops_slots and worker_ops_lifecycle fold into one ops module; the `sys.modules[__name__].__class__` swap is removed; tests patch public names on the module that owns them",
-        "The worker rows of the code report's Appendix A are applied: worker_cli_args and worker_hook into worker_cli, worker_schema into worker_state, worker_exit into worker_runner, worker_witness into worker_lease, worker_adapter_cursor and worker_adapter_claude into worker_adapters; each result stays under 750 lines, is rewrapped and has its width entry lowered",
+        "The worker rows of the code report's Appendix A are applied: worker_cli_args and worker_hook into worker_cli, worker_schema into worker_state, worker_exit into worker_runner, worker_witness into worker_lease, worker_adapter_cursor and worker_adapter_claude into worker_adapters; each result stays within the 1,000-line cap (not squashed to get under the 750-line warning), is rewrapped and has its width entry lowered",
         "Parity harness, decision table, state table and the worker table unchanged",
-        "Expected net line delta: package about -350"
+        "Estimated net line change (informational, not a gate): package about -350"
       ],
       "codename": "worker-ops-parts-and-the-worker-siblings-fold-into-their-parents-and-the-module-class-swap-goes",
       "dependencies": [
@@ -104,7 +106,7 @@
         "`check_assignment(config, model, node, role, context)` replaces the five checks; for every row and caller it gives the same allow or refuse and the same first refusal, and the same message where a test asserted it at pickup; caller-specific defaults are passed in `context`, not re-derived",
         "The review gate reads dependencies through `RoadmapIndex.unmet` (M16.5)",
         "Parity harness and decision table unchanged",
-        "Expected net line delta: package about -120"
+        "Estimated net line change (informational, not a gate): package about -120"
       ],
       "codename": "one-check-assignment-decides-eligibility-for-every-launch-and-for-the-gate",
       "dependencies": [
@@ -133,7 +135,7 @@
         "Before the rewrite, tests/parity/guard/ holds one parametrised table with a row for every allow and deny case in the existing guard tests (input, harness, expected verdict and rule); a case test is removed only when its row exists and it is in this leaf's planned_test_changes",
         "`classify_segment` is replaced by three rule tables (wrapper unwrapping, git verb rules, opaque-construct rules) evaluated by small functions; no new rule class; no function over ruff's C901 limit and no `noqa: C901`",
         "Every table row gives the same verdict; guard race and integration tests outside the table are kept",
-        "Expected net line delta: package about -120; tests about -500"
+        "Estimated net line change (informational, not a gate): package about -120; tests about -500"
       ],
       "codename": "the-guard-classifier-becomes-three-rule-tables-with-every-verdict-unchanged",
       "dependencies": [
@@ -159,7 +161,7 @@
         "Chore, decision and preference, and lesson code moves under specy_road/orchestration/; shared internal adapters keep each record type's path, schema, ordering, ids, metadata and write behaviour; no new on-disk format",
         "tests/parity/records/ fixtures (a decisions.yaml with every kind including an expired preference, a review-lessons.md with prose around the lessons, a chore record mid-execution) load and save byte-identical",
         "Preference routing and lesson injection into reviewer prompts give the same prompt text as at pickup",
-        "Expected net line delta: package about -60"
+        "Estimated net line change (informational, not a gate): package about -60"
       ],
       "codename": "chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte",
       "dependencies": [
@@ -189,7 +191,8 @@
         "The four `grind_session_*` keys (max_limit_waits, max_limit_wait_hours, limit_wait_grace_seconds, max_empty_retries) move under `grind:`; a migration table (absent, old form only, new form only, both) gives the same effective values, with the new form winning when both are present",
         "`upgrade` rewrites them; applying twice gives the same file; `--dry-run` writes nothing; validate accepts both forms for one release and prints one notice for the old form",
         "Grind table (M16.19) and parity harness unchanged",
-        "Expected net line delta: package about 0 (migration code offsets the per-key readers)"
+        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
+        "Estimated net line change (informational, not a gate): package about 0 (migration code offsets the per-key readers)"
       ],
       "codename": "grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade",
       "dependencies": [
@@ -210,15 +213,16 @@
         "specy_road/bundled_scripts/upgrade.py",
         "specy_road/bundled_scripts/validate_roadmap.py",
         "docs/grind-session.md",
-        "tests/"
+        "tests/",
+        "CHANGELOG.md"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "review_packet_observed, review_packet_nested and review_packet_uncommitted_refs fold into review_packet, which stays under 750 lines, is rewrapped and has its width entry lowered",
+        "review_packet_observed, review_packet_nested and review_packet_uncommitted_refs fold into review_packet, which stays within the 1,000-line cap (not squashed to get under the 750-line warning), is rewrapped and has its width entry lowered",
         "PACKET.md on the parity fixtures is byte-identical; parity harness and decision table unchanged",
-        "Expected net line delta: package about -100"
+        "Estimated net line change (informational, not a gate): package about -100"
       ],
       "codename": "the-review-packet-fragments-fold-into-review-packet",
       "dependencies": [
@@ -244,7 +248,7 @@
       "acceptance": [
         "No test module imports from another `test_*.py` (from 98), the `*_repo_helpers.py` modules and the 53 byte-identical helper groups are replaced by tests/support, and no test writes manifest.json by hand (from 41 files); a grep test enforces all three",
         "Collected test ids unchanged apart from moved helpers; covered-arc set unchanged; slow (over 1 s) and repo-consistency tests carry markers",
-        "Expected net line delta: tests about -1,400"
+        "Estimated net line change (informational, not a gate): tests about -1,400"
       ],
       "codename": "tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support",
       "dependencies": [
@@ -269,7 +273,7 @@
         "The per-leaf and per-round files listed in this sheet (file names carrying a roadmap id, round, slice or finding id, listed by a committed grep before pickup) fold into the module or flow file they test; a file is not folded only for having few tests",
         "No test or file name carries a round, slice or roadmap id; finding ids survive only as comments or parametrize ids",
         "Collected test count and covered-arc set unchanged; renamed test ids equal this leaf's planned_test_changes",
-        "Expected net line delta: tests about -250"
+        "Estimated net line change (informational, not a gate): tests about -250"
       ],
       "codename": "tests-per-leaf-and-per-round-test-files-fold-into-the-file-for-the-module-or-flow-they-test",
       "dependencies": [
@@ -293,7 +297,7 @@
         "Applies exactly the rows of tests/support/dedupe/review-gate.csv: a delete only where the row names the surviving test and the assertion it makes, a fold into a parametrised table, and keep rows untouched",
         "The covered-arc set of the subsystem's modules is unchanged and total coverage stays at or above fail_under; removed and renamed test ids equal this leaf's planned_test_changes",
         "Tables this leaf creates assert structured results, not message text",
-        "Expected net line delta: tests about -3,000"
+        "Estimated net line change (informational, not a gate): tests about -3,000"
       ],
       "codename": "tests-apply-the-dedupe-worklist-for-review-gate",
       "dependencies": [
@@ -318,7 +322,7 @@
         "Applies exactly the rows of tests/support/dedupe/worker.csv: a delete only where the row names the surviving test and the assertion it makes, a fold into a parametrised table, and keep rows untouched",
         "The covered-arc set of the subsystem's modules is unchanged and total coverage stays at or above fail_under; removed and renamed test ids equal this leaf's planned_test_changes",
         "Tables this leaf creates assert structured results, not message text",
-        "Expected net line delta: tests about -3,000"
+        "Estimated net line change (informational, not a gate): tests about -3,000"
       ],
       "codename": "tests-apply-the-dedupe-worklist-for-worker",
       "dependencies": [
@@ -344,7 +348,7 @@
         "The covered-arc set of the subsystem's modules is unchanged and total coverage stays at or above fail_under; removed and renamed test ids equal this leaf's planned_test_changes",
         "Tables this leaf creates assert structured results, not message text",
         "One table asserts that every refusal message names its fix; it is the only place refusal prose is asserted",
-        "Expected net line delta: tests about -3,000"
+        "Estimated net line change (informational, not a gate): tests about -3,000"
       ],
       "codename": "tests-apply-the-dedupe-worklist-for-the-rest",
       "dependencies": [
@@ -366,10 +370,10 @@
     },
     {
       "acceptance": [
-        "human: the maintainer's decision on Hypothesis as a dev dependency is recorded in this sheet before pickup; if no, this leaf writes table tests for the same invariants instead",
-        "One property (or table) per subject and no others: outline indent then outdent restores parent and sibling order; managed-block replace is idempotent and leaves text outside the block byte-identical; registry YAML load then dump round-trips; planning-sheet and READY front matter parse then render round-trips; each guard table row keeps its verdict when the command is wrapped in each wrapper the table already unwraps",
+        "Hypothesis is a test-only dev dependency (approved by the maintainer, 2026-11-05): added to the `dev` extra with an exact pin, requirements-ci.txt regenerated with pip-compile and `pip-audit -r requirements-ci.txt` clean, as docs/supply-chain-security.md requires; it is never in project.dependencies",
+        "One Hypothesis property per subject and no others: outline indent then outdent restores parent and sibling order; managed-block replace is idempotent and leaves text outside the block byte-identical; registry YAML load then dump round-trips; planning-sheet and READY front matter parse then render round-trips; each guard table row keeps its verdict when the command is wrapped in each wrapper the table already unwraps",
         "A single-input test that a property covers is removed only when it is in this leaf's planned_test_changes",
-        "Expected net line delta: tests about -600"
+        "Estimated net line change (informational, not a gate): tests about -600"
       ],
       "codename": "tests-five-named-properties-replace-the-single-input-tests-they-cover",
       "dependencies": [
@@ -387,7 +391,9 @@
       "touch_zones": [
         "tests/property/",
         "pyproject.toml",
-        "tests/"
+        "tests/",
+        "requirements-ci.in",
+        "requirements-ci.txt"
       ],
       "type": "task"
     },
@@ -407,11 +413,12 @@
     },
     {
       "acceptance": [
-        "Every row of tests/parity/command_map.yaml, the old config forms (baseline_cmd, land_check_cmd, verify_cmd, the review-before-finish switch and the four grind_session_* keys) with their validate notices, and every re-export listed in M16.6's sheet are removed",
+        "Every row of tests/parity/command_map.yaml, the old config forms (baseline_cmd, land_check_cmd, verify_cmd, the review-before-finish switch, the four grind_session_* keys and the version-1 roster form with `pinned`) with their validate notices and dual-read paths (orchestration.schema.json then accepts only version 2), and every re-export listed in M16.6's sheet are removed",
         "A removed command name exits with code 2 and one stderr line naming its replacement (REPLACED_COMMANDS)",
         "Deprecated review policies are not removed here",
         "Goldens are regenerated once and their diff shows only the removed aliases and notices",
-        "Expected net line delta: package about -300"
+        "CHANGELOG.md's [Unreleased] section records each removal (old name -> new name) and marks the earlier deprecation entries as removed; no version heading is written",
+        "Estimated net line change (informational, not a gate): package about -300"
       ],
       "codename": "after-the-alias-window-delete-the-deprecated-command-aliases-config-form-fallbacks-and-re-export-shims",
       "dependencies": [
@@ -431,17 +438,18 @@
         "docs/",
         "suggested_prompts/",
         "tests/parity/",
-        "tests/"
+        "tests/",
+        "CHANGELOG.md"
       ],
       "type": "task"
     },
     {
       "acceptance": [
         "Each item in this sheet's checklist (the code report's section 4 list, with delete or keep decided before pickup) is applied; a delete removes the code and its tests, and a keep is only for a production importer that exists at pickup",
-        "behaviour_changes.py follows M16.34's recorded decision on M13.14: deleted unless that leaf is kept",
+        "behaviour_changes.py is kept: triage round 1 removed M13.14 but kept M13.8's catalogue for held M13.11; its docstring stops naming M13.14 as its consumer and the vulture whitelist lists it",
         "CI runs vulture at 60% confidence over specy_road and scripts with a whitelist for routes, fixtures and entry points, as a non-blocking step",
         "Parity harness unchanged; the removed tests equal this leaf's planned_test_changes",
-        "Expected net line delta: package about -400, tests about -150"
+        "Estimated net line change (informational, not a gate): package about -400, tests about -150"
       ],
       "codename": "delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step",
       "dependencies": [

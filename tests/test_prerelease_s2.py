@@ -79,6 +79,8 @@ def test_rerunning_finish_retries_a_failed_merge_landing(tmp_path: Path, monkeyp
     hook = bare / "hooks" / "pre-receive"
     hook.write_text("#!/bin/sh\nexit 1\n")   # the landing's push is refused
     hook.chmod(0o755)
+    # A branch an earlier finish (before M15.40's undo) left on its bookkeeping commit.
+    monkeypatch.setattr(finish_task, "merge_undo_snapshot", lambda *_a: None)
     assert _finish(repo) == 1
     assert "run `specy-road finish-this-task --on-complete merge` again" in capsys.readouterr().err
     hook.unlink()
