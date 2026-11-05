@@ -60,7 +60,8 @@ entries:
       - tests/
     started: '2026-11-04'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-05T01:40:26+00:00'
   - codename: refresh-profiles-installs-only-the-profiles-the-roster-names-and-suggests-the-alias-for-a-near-miss
     node_id: M13.5
     branch: feature/rm-refresh-profiles-installs-only-the-profiles-the-roster-names-and-suggests-the-alias-for-a-near-miss
