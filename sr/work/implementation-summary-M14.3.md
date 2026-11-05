@@ -78,7 +78,7 @@ uses git status:
   tests/test_worktree_prune.py` → 40 passed. `specy-road file-limits` OK; `ruff` clean. Full suite not
   run, as instructed.
 
-## Fix round 3 (Sol R1–R4)
+## Fix round 3, first pass (Sol R1–R4; commit e34762f7)
 
 The findings fall into three classes:
 
@@ -142,6 +142,85 @@ The nested-repo suites (`test_nested_repo_worktrees.py`, `test_nested_unpushed_r
   runs with exit 0 (regression test).
 - R4: no other `or 'unknown'` fallback on a value that is always truthy. `branch`'s `or "unknown"`
   stays, because `git_text` returns `None` when `rev-parse` fails.
+
+## Fix round 3: invariants (commit ebe9b8c3, after merging origin/WIP/improvements-0-3-1)
+
+The first pass fixed each finding where it was reported. This pass makes each fix hold for the whole
+module by construction.
+
+1. **The scan set equals the delete set.** `_deleted(plan)` returns the configured nested repos followed
+   by the leaf worktree.
+   - `remove()` deletes exactly that list, in that order. A linked worktree goes through
+     `git worktree remove` against its owner (`plan.main` for the leaf); any other entry goes through
+     `shutil.rmtree`.
+   - `plan_prune()` passes the same list to `_walk_foreign(roots)`, which walks each root whole with
+     `os.walk` and does not follow links. A root inside another root is walked with the outer one.
+   - The only exemptions are each root itself and the root's own `.git` entry, never their contents. A
+     full clone's `.git` directory is therefore walked.
+   - Pinned by `test_every_foreign_repository_in_anything_removal_deletes_refuses_at_any_depth`. It
+     places checkouts and linked worktrees at depths 1 to 3 in the leaf, inside the clone, and inside
+     the clone's `.git` (`info/`, `refs/…/deep`, `.git/sibling-linked`). It asserts:
+     - `plan.foreign` equals exactly that set;
+     - `remove(plan)` refuses;
+     - preview and `--yes` both exit 1, name every one, and every directory survives.
+   - Also pinned by `test_a_foreign_worktree_inside_a_configured_clones_git_directory_refuses_and_survives`.
+2. **Bytes in, bytes out.** Every git call in the module goes through `_git()`.
+   - `_git()` runs `subprocess.run` as bytes. `-z` is used where git has it (`status`).
+   - Output is decoded only with `os.fsdecode`, and `_out()` removes only the final newline.
+   - Paths come from `_git_path()`.
+   - `git_text`, `git_stdout`, `git_code` and `run` are no longer imported. A grep for them, for
+     `splitlines` and for `text=` in the module finds nothing.
+   - Pinned by `test_an_owning_repository_with_a_carriage_return_in_its_name_is_named_exactly`
+     (owner `other\rrepo`) and `test_an_ignored_foreign_checkout_with_a_carriage_return_in_its_name_refuses_and_survives`.
+3. **Commands are built, not formatted.** Every command shown is built with `shlex.join` from an
+   argument list.
+   - `_cmd(*argv)` covers: the foreign worktree's `git -C <repo> worktree remove <dir>`,
+     `specy-road worker terminate <id>`, and `remove()`'s `git -C <owner> worktree remove --force <dir>`
+     failure message.
+   - `ls-remote` uses `shlex.join` without backticks. Its text is unchanged for a plain remote name, so
+     the existing `test_worktree_prune.py` assertion still holds unmodified.
+   - Pinned by `test_foreign_worktrees_whose_names_git_quotes_refuse_and_survive`. It uses owner
+     `other repo` and destination `sibling space`, and checks that `shlex.split` of the printed command
+     yields exactly those two paths and that running it exits 0.
+
+Red/green: with `worktree_prune.py` at `955713b9`, 4 tests fail (the three above plus the
+any-depth test) and 7 pass. With the fix:
+`python -m pytest -q -n 4 tests/test_worktree_prune.py tests/test_worktree_prune_foreign.py
+tests/test_nested_repo_worktrees.py tests/test_nested_unpushed_report.py` gives 75 passed.
+`specy-road file-limits` is OK (`worktree_prune.py` is 375 lines) and `ruff` is clean. The full suite
+was not run.
+
+### Every place a path enters or leaves the module
+
+| Place | Direction | Covered by |
+|---|---|---|
+| `_status()`: `git status --porcelain=v1 -z` | in (git) | 2: bytes, NUL-split, `os.fsdecode` |
+| `_git_path()`: `--git-common-dir`, `--show-toplevel`, `--absolute-git-dir`, used by `_common_dir`, `_is_repo_top`, `leaf_worktree`, `_check_nested` and `_foreign_refusal` | in (git) | 2 |
+| `_git()` messages (stderr from `worktree remove`, `ls-remote`, `fetch`) | in (git), shown | 2: `os.fsdecode`; stripped for display only |
+| `_out()`: stash subjects, ref names, SHAs, `log --oneline` subjects | in (git); not paths | 2, which applies to every call anyway |
+| `_walk_foreign()`: `os.walk` over `_deleted(plan)` | in (filesystem) | 1. `str` paths, so no newline translation |
+| `os.walk` `onerror` → "cannot read {e.filename}" | out (text, not a command) | 1: the error refuses |
+| `nested_repos(main)` paths → `leaf_root / nr.path` | in (config) | 1: they are roots of the walk and of `remove()` |
+| `list_records(main)` worker worktree paths | in (JSON) | not git output; compared as `Path`s |
+| Foreign refusal: `{shown}/ is a … of another repository, {repo}` | out (prose) | 2 (exact path); `shown` is absolute when outside the leaf |
+| Foreign refusal next step `git -C … worktree remove …` | out (command) | 3 |
+| Worker refusal `specy-road worker terminate <id>` | out (command) | 3 |
+| `remove()` failure `git -C <owner> worktree remove --force <dir> failed` | out (command) | 3 |
+| `remove()` failure `cannot remove {d}: {e}`, `PruneError` texts, `plan.ignored` list | out (prose / list) | not commands. `ignored` comes from `_status` (2) |
+| `remove()` argv `["worktree", "remove", "--force", str(d)]` | out (to git) | passed as a list, never through a shell |
+
+### Probes (round 3 invariants)
+
+- Grep of `worktree_prune.py` for `git_text|git_stdout|git_code|run(|splitlines|text=`: only `_git`'s
+  `subprocess.run` remains.
+- Grep for backtick commands and `git -C`: every one goes through `_cmd`. `ls-remote` uses `shlex.join`.
+- Any-depth tree (8 foreign repositories, including 3 inside the clone's `.git`): all 8 refuse and all
+  survive (new test).
+- A configured nested path that resolves outside the leaf: `_walk_foreign` walks it as its own root, and
+  the refusal shows its absolute path. Not reachable in tests: no `..` paths are configured. `_status`'s
+  existing skip computation (`relative_to(wt)`) is unchanged from before this leaf.
+- A configured clone's submodule (`.git/modules/sub`) still refuses as before (probe `/tmp/m143probe`).
+- The existing `test_worktree_prune.py` ls-remote assertion passes unmodified. No test was loosened.
 
 ## Deletion-path audit (updated in fix rounds 2 and 3)
 
@@ -218,4 +297,9 @@ commits, hooks and config.
 - Test `test_a_foreign_worktree_inside_a_configured_clones_git_directory_refuses_and_survives`: R1.
 - Test `test_an_owning_repository_with_a_carriage_return_in_its_name_is_named_exactly`: R2.
 - Test `test_foreign_worktrees_whose_names_git_quotes_refuse_and_survive` extended to check that the printed command splits and runs: R3.
+- Round 3 invariants: `_git()` and `_out()` are the module's only git entry points, bytes only (invariant 2). They replace `git_text`, `git_stdout`, `git_code` and `run`.
+- Round 3 invariants: `_cmd()` builds every shown command with `shlex.join` (invariant 3).
+- Round 3 invariants: `_deleted()` is the single list that `remove()` deletes and `_walk_foreign()` walks. `remove()` was rewritten to loop over it (invariant 1).
+- Round 3 invariants: `_walk_foreign(roots)` walks every root, skips nested ones, and exempts only the roots and their own `.git` entries.
+- Test `test_every_foreign_repository_in_anything_removal_deletes_refuses_at_any_depth`: pins invariant 1.
 - Mocks: none.
