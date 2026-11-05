@@ -8,6 +8,7 @@ pattern. Report only: those files are the developer's, so nothing is rewritten.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from specy_road.behaviour_changes import CATALOGUE
@@ -18,12 +19,69 @@ from specy_road.runtime_paths import git_root
 _EXCERPT = 120
 
 
-def contradicted_lines(lines: list[tuple[int, str]]):
-    """``(line number, line, entries)`` per numbered line one or more catalogue patterns match."""
+_SENTENCE_END = re.compile(r"(?<![0-9])[.!?](?=\s+[^\s])")
+_BLOCK_START = re.compile(r"^\s*(?:[-*+>|#]|\d+[.)])\s?")
+_FENCE = re.compile(r"^\s*(?:```|~~~)")
+
+
+def sentences(line: str) -> list[str]:
+    """``line`` split after each ``.``, ``!`` or ``?`` followed by more text (not after a list number like ``4.``)."""
+    return [part for part in _SENTENCE_END.split(line) if part.strip()]
+
+
+def _paragraphs(lines: list[tuple[int, str]]):
+    """``[(line number, text), ...]`` per Markdown paragraph, so a sentence wrapped over lines is read whole.
+
+    A blank line, a gap in numbering (a stripped managed block), a list item, quote, table row or
+    heading starts a new paragraph; each line inside a code fence is its own paragraph.
+    """
+    para: list[tuple[int, str]] = []
+    fenced = False
+    prev = None
     for lineno, line in lines:
-        entries = tuple(e for e in CATALOGUE if e.contradicts is not None and e.contradicts.search(line))
-        if entries:
-            yield lineno, line, entries
+        if _FENCE.match(line):
+            fenced = not fenced
+            line = ""
+        if para and (fenced or not line.strip() or _BLOCK_START.match(line) or lineno != prev + 1):
+            yield para
+            para = []
+        if line.strip():
+            para.append((lineno, line.strip()))
+        prev = lineno
+    if para:
+        yield para
+
+
+def _sentence_starts(para: list[tuple[int, str]]):
+    """``(line number where it starts, sentence)`` per sentence of one paragraph."""
+    text, starts = "", []
+    for lineno, line in para:
+        starts.append((len(text), lineno))
+        text += line + " "
+    pos = 0
+    for part in _SENTENCE_END.split(text):
+        offset = text.index(part, pos)
+        pos = offset + len(part)
+        if part.strip():
+            yield max(n for start, n in starts if start <= offset + len(part) - len(part.lstrip())), part.strip()
+
+
+def contradicted_lines(lines: list[tuple[int, str]]):
+    """``(line number, sentence, entries)`` per source line on which a reported sentence starts.
+
+    Sentences are read whole across wrapped lines; several sentences or entries starting on one
+    line are combined, so each line gets at most one result.
+    """
+    found: dict[int, tuple[list[str], list]] = {}
+    for para in _paragraphs(lines):
+        for lineno, sentence in _sentence_starts(para):
+            entries = [e for e in CATALOGUE if e.contradicted_by(sentence)]
+            if entries:
+                said, hit = found.setdefault(lineno, ([], []))
+                said.append(sentence)
+                hit.extend(e for e in entries if e not in hit)
+    for lineno, (said, hit) in sorted(found.items()):
+        yield lineno, " ".join(said), tuple(hit)
 
 
 def warn_contradicted_instructions(project_root: Path) -> None:
