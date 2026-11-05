@@ -39,7 +39,9 @@
         "specy_road/decisions.py",
         "docs/orchestration-review.md",
         "docs/design-notes/review-loop-rca.md",
-        "tests/"
+        "tests/",
+        "specy_road/review_deferral.py",
+        "specy_road/bundled_scripts/review_defer.py"
       ],
       "type": "task"
     },
@@ -93,7 +95,8 @@
         "docs/orchestration-chores.md",
         "specy_road/templates/project/",
         "tests/",
-        "specy_road/bundled_scripts/chore_garden.py"
+        "specy_road/bundled_scripts/chore_garden.py",
+        "specy_road/agent_ignores.py"
       ],
       "type": "task"
     },

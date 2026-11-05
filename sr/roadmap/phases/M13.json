@@ -84,7 +84,8 @@
         "specy_road/templates/specyrd/claude-md-block.md",
         "suggested_prompts/bootstrap-agents-md.md",
         "docs/install-and-usage.md",
-        "tests/"
+        "tests/",
+        "specy_road/agents_md_report.py"
       ],
       "type": "task"
     },
@@ -133,7 +134,8 @@
       "touch_zones": [
         "specy_road/bundled_scripts/refresh_profiles.py",
         "specy_road/model_profiles.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/upgrade.py"
       ],
       "type": "task"
     },
@@ -184,7 +186,8 @@
         "specy_road/bundled_scripts/refresh_stubs.py",
         "specy_road/agent_ignores.py",
         "specy_road/bundled_scripts/session_cli.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/refresh_stubs_report.py"
       ],
       "type": "task"
     }
