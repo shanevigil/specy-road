@@ -14,11 +14,12 @@
     },
     {
       "acceptance": [
-        "tests/parity/ enumerates every command and subcommand from the CLI's own command tables (no hand-kept list) and compares each `--help` with a golden transcript under tests/parity/golden/; an added or removed command fails naming it, and one documented environment variable regenerates the goldens",
+        "tests/parity/ reads the command set from the CLI's own tables (`cli._known_commands()`, each command's subcommands and the `specyrd` parser) and compares it with the golden set under tests/parity/golden/ in both directions; a command, subcommand or alias present on one side only fails the test naming it; one documented environment variable regenerates the goldens",
+        "Each name in that set has a golden `--help` transcript; tests/parity/command_map.yaml exists with no rows, and a test fails when a transcript differs from its golden unless the name is a row of that map (later leaves add rows: old invocation, new invocation, allowed difference)",
         "An end-to-end test drives a temp repo through init project, add-node, scaffold-planning, pickup, ready, two review records, the gate check and finish, once with on_complete: merge and once with on_complete: pr (offline, no hosting service), asserting exit codes, registry rows, roadmap status and git state after each step",
-        "`upgrade --dry-run` on a fixture shaped like a 0.3.1rc3 consumer repo, and validate, export --check and digest --check on the dogfood fixture, are compared with golden outputs (paths and timestamps normalised)",
+        "`upgrade --dry-run` on a fixture shaped like a 0.3.1rc3 consumer repo, and validate, export --check and digest --check on the dogfood fixture, match golden outputs with paths and timestamps normalised; digest goldens leave out sections derived from git history (such as 'Quality by area'), so the goldens do not depend on the branch",
         "The harness is green on HEAD at pickup, carries the `parity` pytest marker so later leaves can run it alone, and adds no package code",
-        "Expected net line delta: package 0; tests about +500 (one of three additive M16 leaves, repaid by M16.25)"
+        "Expected net line delta: package 0; tests about +550"
       ],
       "codename": "parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs",
       "dependencies": [],
@@ -37,11 +38,12 @@
     },
     {
       "acceptance": [
-        "A table of fixture cases (review records, READY files, commits and policy settings) maps each case to the expected gate verdict and reason code, covering every review policy the gate reads: delta, resumed delta, red-green, pre-existing, deferral, RCA escalation, strong review, agreement, and the defaults",
-        "The table drives the gate through the same public entry points that finish-this-task, mark-implementation-reviewed and the review status/list commands use, and asserts structured verdicts, not message prose",
-        "A test fails when the orchestration schema gains a policy key that no table row exercises",
-        "Green on HEAD at pickup; adds no package code",
-        "Expected net line delta: package 0; tests about +350"
+        "Rows cover each reason code the gate's public result can return at pickup (the list is generated from the code and committed with the table), with one refusal row and, where a policy can approve, one approval row per code; plus the defaults and these interactions: stale vs current commit, executor, coordinator and fresh-session exclusions, missing and invalid signatures, reviewer count and distinct families, reviewer disagreement, an approval carried across commits, delta with red-green, deferral with strong review",
+        "Rows for `review record` filed from a reviewer's final message: clean JSON, JSON with narration around it, and notes that break a notes rule; each asserts the outcome at pickup (this guards the one-shot filing path from M8.3 against the M16 review folds)",
+        "At least one READY and one REVIEW file per record format found under sr/work/reviews are copied verbatim into tests/parity/review_gate/records/ and read by today's reader",
+        "The table drives the gate through the public entry points finish-this-task, mark-implementation-reviewed and the review status and list commands use, and asserts structured results; where a row's result has no reason code, it asserts the structured fields that exist and the sheet lists the row",
+        "A test fails when the orchestration schema gains a policy key that no row exercises; green on HEAD at pickup; adds no package code",
+        "Expected net line delta: package 0; tests about +450"
       ],
       "codename": "parity-harness-a-review-gate-decision-table-covering-every-review-policy",
       "dependencies": [],
@@ -60,13 +62,19 @@
     },
     {
       "acceptance": [
-        "`python scripts/lean_metrics.py` writes constraints/lean-baseline.json: package and test lines and files per subsystem, test functions and collected items, functions over ruff C901 (waivers ignored), `noqa: C901` count, lines over 100 characters, command and subcommand count, config and policy key count, modules imported by `specy-road validate`, and `validate --help` wall time; `--check` prints the deltas against the baseline",
-        "CI fails when combined line and branch coverage (subprocesses included) drops below a floor set from HEAD at pickup and at least 89%, via [tool.coverage] in pyproject.toml; project.version is not touched",
-        "constraints/README.md states the M16 rules: every leaf is behaviour-preserving, declares and meets a net line delta, adds no config key, policy key or command without retiring one (the `checks:` block is the named exception), and adopter feedback is parked for triage after M16",
-        "Expected net line delta: package 0; scripts about +150 (maintainer-only, not shipped)"
+        "constraints/lean-baseline.json records the baseline commit; at that commit M14.1, M15.2, M15.3, M15.7, M15.9, M15.17 and M15.20 are each Complete or recorded as deferred in M16.34's sheet, and the M16.0 and M16.1 harnesses are green",
+        "`python scripts/lean_metrics.py` writes the baseline: package and test lines and files per subsystem, test functions and collected items, functions over ruff C901 (waivers ignored), `noqa: C901` count, lines over 100 characters, canonical command count (`cli._known_commands()` minus the alias rows of tests/parity/command_map.yaml) and alias count, config and policy key count, modules imported by `specy-road validate`, `validate --help` wall time, and full-suite wall time as the median of three runs with a fixed worker count, coverage off and all extras installed (settings and machine recorded); `--check` prints deltas",
+        "`python scripts/lean_metrics.py --contexts` (opt-in, not run in CI) runs the suite under coverage.py with per-test contexts, subprocesses included, and writes the covered arcs per test to work/lean/contexts.json for the test-lane leaves",
+        "[tool.coverage.report] fail_under is the single coverage.py total measured at the baseline commit, rounded down to a whole percent, and CI fails below it; branch coverage is printed, not gated; project.version is not touched",
+        "constraints/README.md states the M16 rules: behaviour-preserving except the two named exceptions (zone-scoped `checks:` gates in M16.52 and the complexity gate in M16.22); each leaf declares and meets a net line delta; no new config key, policy key or command without retiring one; adopter feedback is parked; the review-finding test rule of the recommendation section 3.4 item 4 (all five conditions); after a second block of the same class the planner rescopes or splits the leaf; a leaf past four review rounds is split or rescoped; reviewers check the acceptance lines and the leaf's parity tables, and a new input class goes to intake",
+        "Expected net line delta: package 0; scripts about +200 (maintainer-only, not shipped)"
       ],
       "codename": "baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down",
-      "dependencies": [],
+      "dependencies": [
+        "b7db8132-bda6-4fb9-8a71-3932fde03766",
+        "de3d165f-d76a-4430-b54e-9dea18809691",
+        "eaee2f90-4953-4580-b772-570043326e4b"
+      ],
       "execution_milestone": "Agentic-led",
       "id": "M16.2",
       "node_key": "fce532e1-9ed0-4da1-9f16-2465c6e73df0",
@@ -86,100 +94,55 @@
     },
     {
       "acceptance": [
-        "Every item in the dead-code list of the code report (section 4: unreferenced functions, test-only functions, unused locals and imports, and migrate_stable_node_keys.py) is deleted with its tests, or kept with a one-line reason in the leaf's summary if a production caller exists at pickup",
-        "behaviour_changes.py is deleted only if it still has no production importer and the M16 triage (M16.34) has not kept M13.14; otherwise it stays and the summary says so",
-        "CI runs vulture at 60% confidence over specy_road and scripts with a whitelist for routes, fixtures and entry points, as a non-blocking step",
-        "Parity harness (M16.0, M16.1) unchanged; full suite and coverage floor green",
-        "Expected net line delta: package about -400, tests about -150"
+        "specy_road/clock.py defines `utc_now()` and `utc_now_iso()`; the nine now helpers in session_presence, worker_witness, reviewer_run_failure, worker_lease, worker_outbox, grind_session_events, decisions, worker_turn_check and worker_state are replaced, and a test fails on `datetime.now(timezone.utc)` anywhere in specy_road outside clock.py",
+        "specy_road/fs_atomic.py defines `atomic_write_text()`; the hand-written temp-file writers in worker_state (and worker_outbox's import of its private helper), history_cache, brainstorm_session, roadmap_chunk_atomic, reviewer_run_failure and worker_lease call it, and a test fails on `os.replace(` in specy_road outside fs_atomic.py and an allowlist committed with the test",
+        "A parametrised test per replaced writer asserts the encoding, newline handling, file mode and the leftover temp file on a failed write are what they were at pickup",
+        "Parity harness unchanged",
+        "Expected net line delta: package about -60"
       ],
-      "codename": "delete-dead-and-unwired-code-and-add-vulture-as-an-advisory-ci-step",
+      "codename": "shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers",
       "dependencies": [
-        "b7db8132-bda6-4fb9-8a71-3932fde03766",
-        "fce532e1-9ed0-4da1-9f16-2465c6e73df0"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M16.3",
-      "node_key": "bdf86710-8da3-4c1b-a1db-c11e0a5c1613",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.3_delete-dead-and-unwired-code-and-add-vulture-as-an-advisory-ci-step_bdf86710-8da3-4c1b-a1db-c11e0a5c1613.md",
-      "sibling_order": 4,
-      "status": "Not Started",
-      "title": "Delete dead and unwired code, and add vulture as an advisory CI step",
-      "touch_zones": [
-        "specy_road/bundled_scripts/migrate_stable_node_keys.py",
-        "specy_road/behaviour_changes.py",
-        "specy_road/bundled_scripts/roadmap_chunk_utils.py",
-        "specy_road/finish_land_integration.py",
-        "specy_road/milestone_session.py",
-        "specy_road/upgrade_templates.py",
-        "specy_road/managed_block.py",
-        "specy_road/bundled_scripts/export_roadmap_md.py",
-        "specy_road/bundled_scripts/planning_sheet_bootstrap.py",
-        "specy_road/bundled_scripts/review_packet.py",
-        "scripts/vulture_whitelist.py",
-        ".github/workflows/validate.yml",
-        "tests/"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "One `utc_now()`/`utc_now_iso()` and one `atomic_write_text()` exist, and no other module defines a now helper, calls `datetime.now(timezone.utc)` inline, or writes a temp file and `os.replace`s it by hand (a grep test enforces both)",
-        "Git queries go through git_subprocess (`git_root`, `current_branch_name`, `is_worktree_root(path, branch)`): no module outside it runs `rev-parse --show-toplevel` or `branch --show-current`, and the private git wrappers in worktree_delete_set, update_specy_road, repo_ops, ignore_report, integrity and pm_publish are gone",
-        "`_save_registry` and `REGISTRY_REL` are defined once, in registry_yaml",
-        "Modules under specy_road/worker_*, session_* and grind_session_* switch to the helpers in this leaf only by import; their other code is left for M16.16 and M16.19",
-        "Parity harness unchanged; expected net line delta: package about -170"
-      ],
-      "codename": "shared-helpers-for-time-atomic-writes-git-queries-and-registry-i-o-replace-their-copies",
-      "dependencies": [
-        "b7db8132-bda6-4fb9-8a71-3932fde03766",
-        "fce532e1-9ed0-4da1-9f16-2465c6e73df0"
+        "bdf86710-8da3-4c1b-a1db-c11e0a5c1613"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.4",
       "node_key": "95c1e571-3280-4f29-893b-f8e891092e78",
       "parent_id": "M16",
-      "planning_dir": "planning/M16.4_shared-helpers-for-time-atomic-writes-git-queries-and-registry-i-o-replace-their-copies_95c1e571-3280-4f29-893b-f8e891092e78.md",
+      "planning_dir": "planning/M16.4_shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers_95c1e571-3280-4f29-893b-f8e891092e78.md",
       "sibling_order": 5,
       "status": "Not Started",
-      "title": "Shared helpers for time, atomic writes, git queries and registry I/O replace their copies",
+      "title": "Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers",
       "touch_zones": [
-        "specy_road/git_subprocess.py",
-        "specy_road/runtime_paths.py",
-        "specy_road/fs_atomic.py",
         "specy_road/clock.py",
-        "specy_road/registry_yaml.py",
-        "specy_road/worktree_delete_set.py",
-        "specy_road/bundled_scripts/update_specy_road.py",
-        "specy_road/bundled_scripts/repo_ops.py",
-        "specy_road/ignore_report.py",
-        "specy_road/integrity.py",
-        "specy_road/pm_publish.py",
+        "specy_road/fs_atomic.py",
+        "specy_road/session_presence.py",
+        "specy_road/worker_witness.py",
+        "specy_road/reviewer_run_failure.py",
+        "specy_road/worker_lease.py",
+        "specy_road/worker_outbox.py",
+        "specy_road/bundled_scripts/grind_session_events.py",
+        "specy_road/decisions.py",
+        "specy_road/worker_turn_check.py",
+        "specy_road/worker_state.py",
         "specy_road/history_cache.py",
         "specy_road/bundled_scripts/brainstorm_session.py",
         "specy_road/bundled_scripts/roadmap_chunk_atomic.py",
-        "specy_road/reviewer_run_failure.py",
-        "specy_road/bundled_scripts/finish_task.py",
-        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
-        "specy_road/bundled_scripts/abort_task_pickup.py",
-        "specy_road/pm_integration_registry.py",
-        "specy_road/registry_remote_overlay_merge.py",
-        "specy_road/review_target.py",
+        "specy_road/",
         "tests/"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "A `RoadmapIndex` built from the loaded graph exposes by_id, by_key, status, effective dependencies, `unmet(node)` and `ready()`; pickup, the grind plan, why-blocked, the brief and the digest all use it, and the four separate readiness derivations are gone",
-        "The ad-hoc `{n['id']: n}` / `{n['node_key']: n}` index builds and linear id lookups in the package fall from about 58 to at most 5 (a grep test records the count)",
-        "dogfood `export --check` and `digest --check` outputs, the parity harness and the do-next, session-plan, why-blocked, brief and digest tests are unchanged",
-        "Expected net line delta: package about -300"
+        "`RoadmapIndex` exposes by_id, by_key, status, effective_dependencies, `unmet(node)` and `ready()`; a table test over a builder-made graph covers dependencies inherited from ancestors, gate nodes, milestone nodes, stable keys and outline (pickup) order",
+        "The four readiness derivations (do_next_available's two forms, session_plan's `_classify` and `_compute_waves`, roadmap_explain) and the effective-dependency maps in roadmap_layout, brief_dependency_context and digest call the index; no other function in those seven modules computes unmet dependencies",
+        "A test counts `{n['id']: n}` and `{n['node_key']: n}` builds and linear id lookups in specy_road against a committed baseline that may only shrink; there is no target number",
+        "Dogfood export --check and digest --check, the parity harness, and the do-next, session-plan, why-blocked, brief and digest tests are unchanged; digest output does not change",
+        "Expected net line delta: package about -250"
       ],
       "codename": "one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready",
       "dependencies": [
-        "b7db8132-bda6-4fb9-8a71-3932fde03766",
-        "fce532e1-9ed0-4da1-9f16-2465c6e73df0"
+        "3b4b0524-3dc1-4acb-9d9f-1b8fd01be350"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.5",
@@ -204,55 +167,50 @@
     },
     {
       "acceptance": [
-        "bundled_scripts/ holds only command entry points: the library modules imported by package code (at least the 29 the code report lists, including roadmap_load, roadmap_chunk_utils, roadmap_crud_ops, brief rendering and review_node's LLM client) live in the package, and no package module imports a bundled_scripts entry point",
-        "scripts/check_import_layers.py fails CI when package code imports a bundled_scripts entry point or when a strongly connected import component grows past its committed baseline; after this leaf no component exceeds 10 modules (from 45 and 25)",
-        "Function-level imports that existed only to dodge those cycles are removed (count recorded in the lean-metrics delta)",
-        "Parity harness unchanged; full suite and `scripts/check_test_private_imports.py` green with updated import paths",
-        "Expected net line delta: package about -200"
+        "The 29 library modules named in this sheet (the code report's section 5 list, review_node's LLM client excluded: it moves in M16.10) move from bundled_scripts/ to the specy_road package with `git mv`; no other module moves",
+        "A moved module keeps a one-line re-export at its old path only if a console entry point, a shipped template or a documented `python specy_road/bundled_scripts/...` command names that path; each kept re-export is listed in this sheet for M16.62",
+        "Imports are updated and nothing else changes; parity harness, full suite and `scripts/check_test_private_imports.py` green",
+        "Expected net line delta: package about -40"
       ],
-      "codename": "library-code-moves-out-of-bundled-scripts-the-two-large-import-cycles-are-broken-and-a-layering-gate-keeps-them-broken",
+      "codename": "the-29-package-imported-library-modules-move-out-of-bundled-scripts",
       "dependencies": [
-        "bdf86710-8da3-4c1b-a1db-c11e0a5c1613",
-        "95c1e571-3280-4f29-893b-f8e891092e78",
         "34598a66-ab29-4a34-aea5-919d3970cbce"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.6",
       "node_key": "8ae7a813-4e43-4590-9f7d-d20b1691dbce",
       "parent_id": "M16",
-      "planning_dir": "planning/M16.6_library-code-moves-out-of-bundled-scripts-the-two-large-import-cycles-are-broken-and-a-layering-gate-keeps-them-broken_8ae7a813-4e43-4590-9f7d-d20b1691dbce.md",
+      "planning_dir": "planning/M16.6_the-29-package-imported-library-modules-move-out-of-bundled-scripts_8ae7a813-4e43-4590-9f7d-d20b1691dbce.md",
       "sibling_order": 7,
       "status": "Not Started",
-      "title": "Library code moves out of bundled_scripts, the two large import cycles are broken, and a layering gate keeps them broken",
+      "title": "The 29 package-imported library modules move out of bundled_scripts",
       "touch_zones": [
         "specy_road/bundled_scripts/",
         "specy_road/",
-        "scripts/check_import_layers.py",
-        ".github/workflows/validate.yml",
         "tests/"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "The top-level CLI imports a command's module and calls its `main(argv)` in the same process; no command re-launches `python -m` for itself or a sibling command, and the six module-level `ROOT = Path.cwd()` globals are gone",
-        "Every command module exposes `build_parser()` and the parity inventory reads parsers from it (the parser half of held M12.6); `specy-road validate` imports at most half the modules it did at the M16.2 baseline and `validate --help` is at least 30% faster",
-        "One `SpecyError(message, exit_code)` is the base of the toolkit's error classes and is printed and turned into an exit code once, in cli_entry; shared helpers declare `--json`, `--ref`, `--model` and `--base/--remote`",
-        "stdout, stderr and exit codes are byte-identical on the parity harness",
-        "Expected net line delta: package about -250"
+        "Before the switch, tests/parity/process/ records through today's subprocess path the stdout, stderr and exit code of: two commands run one after the other from two different repo roots, `doctor` with a registry row to prune (its nested registry_prune run), `mark-implementation-reviewed --yes` (its nested specy_road.cli run), a usage error, and `--version`",
+        "The top-level CLI imports a command's module and calls its `main(argv)` in the same process; no command re-launches `python -m` for itself or a sibling; the module-level `ROOT = Path.cwd()` globals in mark_implementation_reviewed, pm_sync, do_next_task, abort_task_pickup, finish_task and start_milestone_session are gone, and so are `cli._args_repo_root_first`, `cli_entry.run_forwarded_cli` and the guard CLI's prefix stripping",
+        "Every recorded case gives byte-identical stdout, stderr and exit code in process, including two `main(argv)` calls in one process from two repo roots",
+        "Parity harness byte-identical",
+        "Expected net line delta: package about -100"
       ],
-      "codename": "commands-run-in-process-with-lazy-imports-one-error-type-and-shared-argument-helpers",
+      "codename": "commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals",
       "dependencies": [
-        "8ae7a813-4e43-4590-9f7d-d20b1691dbce"
+        "cf05fbd9-5071-4aca-a730-53a36d888301"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.7",
       "node_key": "6902ede7-bde3-4667-b192-366c09681589",
       "parent_id": "M16",
-      "planning_dir": "planning/M16.7_commands-run-in-process-with-lazy-imports-one-error-type-and-shared-argument-helpers_6902ede7-bde3-4667-b192-366c09681589.md",
+      "planning_dir": "planning/M16.7_commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals_6902ede7-bde3-4667-b192-366c09681589.md",
       "sibling_order": 8,
       "status": "Not Started",
-      "title": "Commands run in-process with lazy imports, one error type and shared argument helpers",
+      "title": "Commands run in the CLI's process: no python -m re-launch, no cwd globals",
       "touch_zones": [
         "specy_road/cli.py",
         "specy_road/cli_entry.py",
@@ -260,18 +218,23 @@
         "specy_road/bundled_scripts/orchestration_guard_cli.py",
         "specy_road/bundled_scripts/doctor.py",
         "specy_road/bundled_scripts/mark_implementation_reviewed.py",
-        "specy_road/cli_args.py",
-        "specy_road/errors.py",
+        "specy_road/bundled_scripts/pm_sync.py",
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/bundled_scripts/abort_task_pickup.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/bundled_scripts/start_milestone_session.py",
+        "tests/parity/process/",
         "tests/"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "ruff selects E501 with `line-length = 100` for specy_road, scripts and tests; every file that has longer lines at pickup is listed in a committed baseline (per-file ignore), and a test fails if a listed file is clean (it must leave the list) or a new file is added to it",
-        "No code is reformatted in this leaf; the fold leaves (M16.9, M16.10, M16.16-M16.19, M16.21) rewrap the files they touch and take them off the list",
-        "The consumer template's constraints/file-limits.yaml follows the maintainer's decision recorded in this sheet before pickup (keep 400, or match the toolkit's 1,000 with a 750 warning), with docs/file-limits.md and upgrade notes saying what an adopter sees",
-        "Expected net line delta: package 0; config about +40"
+        "human: the maintainer's choice for the consumer template default (keep 400, or 1,000 with a 750 warning) is recorded in this sheet before pickup",
+        "scripts/line_width_baseline.json records, per file under specy_road, scripts and tests, the number of lines over 100 characters at pickup (counted with `ruff check --select E501 --line-length 100 --output-format json`); a test fails when a file's count rises or a file outside the baseline has any, and when a count falls the entry must be lowered in the same change",
+        "No code is reformatted in this leaf; the fold leaves rewrap the files they merge and lower their entries",
+        "The consumer template's constraints/file-limits.yaml follows the recorded choice, with docs/file-limits.md and the upgrade notes saying what an adopter sees; the toolkit stays at 1,000 lines with a 750 warning",
+        "Expected net line delta: package 0; config about +40 plus the generated baseline file"
       ],
       "codename": "a-100-character-line-width-rule-with-a-shrink-only-baseline-and-the-consumer-file-limit-default-decided",
       "dependencies": [
@@ -292,96 +255,87 @@
         "scripts/line_width_baseline.json",
         "specy_road/templates/project/constraints/file-limits.yaml",
         "docs/file-limits.md",
-        "tests/"
+        "tests/test_line_width_baseline.py"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "The single-importer siblings listed for pickup, finish, PM UI and roadmap CRUD in the code report's fold list (Appendix A) are merged into their importer where the result stays under 750 lines, and each merged file is rewrapped to 100 characters and removed from the width baseline",
-        "Re-export lines, cap-only docstrings and cycle-dodging imports between the merged modules are gone; nested_repos and nested_repos_land no longer form a cycle",
-        "Parity harness, dogfood outputs and full suite unchanged; no public import path used by a console entry point changes",
-        "Expected net line delta: package about -350; files about -20"
+        "The merges in this sheet's table are applied: do_next_task_virtual_complete, do_next_task_held_claim, do_next_task_leaf_guards and registration_pickup_commit into do_next_task; abort_task_pickup_own_commit into abort_task_pickup; finish_task_gates and finish_task_args into finish_task; finish_land_check into finish_land_integration; the rows marked leave are left",
+        "Each merged file is rewrapped to 100 characters, its width-baseline entry lowered, and stays under 750 lines; re-export lines, cap-only docstrings, cycle-dodging imports between the merged modules and comments naming a roadmap id or review round in them are gone",
+        "Parity harness, dogfood outputs and full suite unchanged; no console entry point's import path changes",
+        "Expected net line delta: package about -200; files -8"
       ],
-      "codename": "fold-the-cap-driven-splits-in-pickup-finish-milestone-and-the-pm-ui-server-into-their-parents",
+      "codename": "fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents",
       "dependencies": [
-        "8ae7a813-4e43-4590-9f7d-d20b1691dbce",
+        "fba72c3a-24a5-4c6b-b174-0e581d8b8450",
         "c840cf76-95c4-4688-a587-3bc06824fad5"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.9",
       "node_key": "d9fbe9b7-3b23-4095-9bf5-a8da923d2075",
       "parent_id": "M16",
-      "planning_dir": "planning/M16.9_fold-the-cap-driven-splits-in-pickup-finish-milestone-and-the-pm-ui-server-into-their-parents_d9fbe9b7-3b23-4095-9bf5-a8da923d2075.md",
+      "planning_dir": "planning/M16.9_fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents_d9fbe9b7-3b23-4095-9bf5-a8da923d2075.md",
       "sibling_order": 10,
       "status": "Not Started",
-      "title": "Fold the cap-driven splits in pickup, finish, milestone and the PM UI server into their parents",
+      "title": "Fold the cap-driven splits in pickup and finish into their parents",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_task*.py",
-        "specy_road/bundled_scripts/finish_task*.py",
-        "specy_road/finish_*.py",
-        "specy_road/milestone_*.py",
-        "specy_road/bundled_scripts/abort_task_pickup*.py",
         "specy_road/bundled_scripts/registration_pickup_commit.py",
-        "specy_road/gui_app*.py",
-        "specy_road/bundled_scripts/roadmap_gui_*.py",
-        "specy_road/bundled_scripts/roadmap_crud*.py",
-        "specy_road/nested_repos*.py",
+        "specy_road/bundled_scripts/abort_task_pickup*.py",
+        "specy_road/bundled_scripts/finish_task*.py",
+        "specy_road/finish_task_gates.py",
+        "specy_road/finish_land_check.py",
+        "specy_road/finish_land_integration.py",
+        "scripts/line_width_baseline.json",
         "tests/"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "The brainstorm CLI is two modules (parser, handlers) with no `v2` names and one `_load`/slug helper; the three managed-block writers (agents_md_block, agent_guide_block, managed_block) share one engine and the two reporters are one",
-        "The provider client (Azure, OpenAI, Anthropic) lives in llm_client.py, which review_node, brainstorm_chat, the GUI routes and llm_throughput import by public name; review_node's file-limit override is removed",
-        "The misc rows of the code report's fold list (validate_notices, doctor_env_setup, refresh_stubs_report, upgrade_templates, archive_git, search_fallback, file_limits_jsx) are merged where the result stays under 750 lines, rewrapped and removed from the width baseline",
-        "Parity harness unchanged, including brainstorm and refresh-stubs transcripts",
-        "Expected net line delta: package about -500"
+        "The Azure, OpenAI and Anthropic client code in review_node moves to specy_road/llm_client.py under public names; review_node, brainstorm_chat, roadmap_gui_remote, the GUI route modules and llm_throughput import those names, and no module imports an underscore name from review_node",
+        "brainstorm_chat's own `_complete_anthropic` and `complete_chat` copies are removed; llm_client exposes a client factory tests can replace without patching private names",
+        "review_node's override is removed from constraints/file-limits.yaml",
+        "Parity harness unchanged, review-node and brainstorm transcripts included",
+        "Expected net line delta: package about -80"
       ],
-      "codename": "fold-brainstorm-agent-file-and-miscellaneous-splits-and-extract-one-llm-client-from-review-node",
+      "codename": "one-llm-client-module-replaces-the-provider-code-inside-review-node",
       "dependencies": [
-        "8ae7a813-4e43-4590-9f7d-d20b1691dbce",
-        "c840cf76-95c4-4688-a587-3bc06824fad5"
+        "b89bc064-4355-4957-85d6-31504463269f"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.10",
       "node_key": "3793b31b-d61a-460f-a4b2-23f9af3f1350",
       "parent_id": "M16",
-      "planning_dir": "planning/M16.10_fold-brainstorm-agent-file-and-miscellaneous-splits-and-extract-one-llm-client-from-review-node_3793b31b-d61a-460f-a4b2-23f9af3f1350.md",
+      "planning_dir": "planning/M16.10_one-llm-client-module-replaces-the-provider-code-inside-review-node_3793b31b-d61a-460f-a4b2-23f9af3f1350.md",
       "sibling_order": 11,
       "status": "Not Started",
-      "title": "Fold brainstorm, agent-file and miscellaneous splits, and extract one LLM client from review_node",
+      "title": "One LLM client module replaces the provider code inside review_node",
       "touch_zones": [
-        "specy_road/bundled_scripts/brainstorm_*.py",
-        "specy_road/agents_md_*.py",
-        "specy_road/agent_guide_block.py",
-        "specy_road/managed_block.py",
-        "specy_road/bundled_scripts/refresh_stubs*.py",
-        "specy_road/upgrade_templates.py",
         "specy_road/bundled_scripts/review_node.py",
         "specy_road/llm_client.py",
+        "specy_road/bundled_scripts/brainstorm_chat.py",
+        "specy_road/bundled_scripts/roadmap_gui_remote.py",
+        "specy_road/gui_app_routes_*.py",
         "specy_road/bundled_scripts/llm_throughput.py",
-        "specy_road/archive_*.py",
-        "specy_road/search_*.py",
-        "specy_road/file_limits_js*.py",
-        "specy_road/bundled_scripts/validate_notices.py",
-        "specy_road/bundled_scripts/doctor_env_setup.py",
+        "constraints/file-limits.yaml",
         "tests/"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "`doctor --prune [--kind branches|registry|worktrees|stashes]` plans and applies every cleanup through one planner (one 'merged?' and one 'live?' rule); `worktree prune <ID>` stays as the single-leaf path and the orchestrator's automatic cleanup calls the same planner",
-        "`branches prune`, `registry-prune` and `grind-session --delete-merged-branches` still work for one release, print one deprecation line naming the new form, and are registered in REPLACED_COMMANDS",
-        "The planner's merged-into check no longer lives in a grind CLI module",
-        "Docs, templates and suggested_prompts name the new form in the same change; the stale-command check passes; parity transcripts differ only by the deprecation line",
+        "Before the switch, tests/parity/cleanup/ holds one fixture repo with: a merged feature branch, an unmerged one, a branch whose leaf is Complete, a claimed branch, a live worktree, a merged clean worktree, a merged dirty worktree, a registry row with no branch, a registry row for a Complete leaf, a specy-road stash and a foreign stash; it records the dry-run action list of `doctor`, `branches prune`, `registry-prune`, `worktree prune <ID>` and `grind-session --delete-merged-branches` on that fixture",
+        "`doctor --prune` with `--kind` branches, registry, worktrees or stashes plans through one planner with one merged rule and one live rule (live read from the M16.15 snapshot); for each old command the planner selects nothing the old command did not select on the fixture, any item an old command selected and the planner does not is listed in this sheet, and applying removes exactly the planned items",
+        "`worktree prune <ID>` stays as the single-leaf path on the same planner; `branches prune`, `registry-prune` and `grind-session --delete-merged-branches` still work for one release, print one deprecation line naming the new form, are hidden from top-level help and are rows of tests/parity/command_map.yaml",
+        "Docs, templates and suggested_prompts name the new form in the same change; the stale-command check passes; goldens differ only for map rows",
         "Expected net line delta: package about -300"
       ],
       "codename": "doctor-prune-is-the-one-cleanup-path-branches-prune-registry-prune-and-the-grind-cleanup-become-aliases",
       "dependencies": [
-        "6902ede7-bde3-4667-b192-366c09681589"
+        "af6d3c1a-cccf-481d-ab9f-503e834b47d7",
+        "01db66ad-a91c-48e3-953e-4083f5f14a13"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.11",
@@ -403,22 +357,23 @@
         "docs/",
         "suggested_prompts/",
         "specy_road/templates/project/",
+        "tests/parity/cleanup/",
+        "tests/parity/command_map.yaml",
         "tests/"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "`upgrade` performs what refresh-stubs, refresh-schemas and refresh-profiles do (each still selectable with `--only`), and those commands remain as one-release aliases with a deprecation line",
-        "`upgrade` prints one report with fixed sections (files added or changed, schema and profile refreshes, notices) built from data the refresh steps already compute; held M13.11's extra sections (behaviour changes, pin below minimum, duplicated paragraphs) slot into it only if the M16 triage keeps M13.11",
-        "`update` (fast-forward a toolkit clone) is renamed `self-update`, with `update` kept as an alias for one release",
-        "Docs, templates and suggested_prompts use the new names; parity transcripts differ only by deprecation lines; `upgrade --dry-run` golden output is unchanged apart from the report layout, which the leaf's summary shows",
+        "`upgrade` performs what refresh-stubs, refresh-schemas and refresh-profiles do, each selectable with `--only stubs`, `--only schemas` or `--only profiles`; the three commands stay as hidden one-release aliases with one deprecation line and are rows of tests/parity/command_map.yaml",
+        "`upgrade` prints one report with four fixed sections (files added or changed, schema refreshes, profile refreshes, notices) built only from data the refresh steps compute at pickup; the before and after `upgrade --dry-run` outputs on the rc3-shaped fixture are committed, and the set of reported lines is the same, only headings and grouping differ",
+        "`update` (fast-forward a toolkit clone) is renamed `self-update`, with `update` a hidden one-release alias and a map row; the update scenarios (M16.53) pass under both names",
+        "M13.11's extra report sections are not part of this leaf; docs, templates and suggested_prompts use the new names; goldens differ only for map rows",
         "Expected net line delta: package about -200"
       ],
       "codename": "upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update",
       "dependencies": [
-        "6902ede7-bde3-4667-b192-366c09681589",
-        "3793b31b-d61a-460f-a4b2-23f9af3f1350"
+        "b5ca5d95-58a9-472c-9f90-0004d0fbd46f"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.12",
@@ -438,45 +393,70 @@
         "docs/install-and-usage.md",
         "suggested_prompts/",
         "specy_road/templates/project/",
+        "tests/parity/",
         "tests/"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "`review status` replaces `handoff status` and `review list` (one read path over work/reviews/); `milestone` and `planning` groups hold the milestone-session and planning commands; `archive --deep` and `archive --hard-remove` replace `archive-node`; `decisions --kind lesson` replaces the lessons command; `session` (presence records) becomes `presence`",
-        "Each old name works for one release with one deprecation line and is registered in REPLACED_COMMANDS; the top-level command count is at most 50 (from 68)",
-        "Docs, templates, skills/stubs and suggested_prompts use the new names in the same change; the stale-command check passes",
-        "Parity transcripts differ only by the deprecation lines and the new group help",
-        "Expected net line delta: package about -150"
+        "`review status [NODE_ID] [--ref] [--json]` shows what `handoff status` and `review list` show today (READY hand-offs, filed records with verdict, commit and family, and the gate evaluation) with handoff status's exit codes (0 met or complete_no_claim, 1 not met, 2 undeterminable); a parity row per old invocation checks that every line the old command printed is present",
+        "`review packet` replaces `review-packet` with the same flags and output; `decisions --kind lesson` replaces `lessons` with the same record file and format; `presence` (start, touch, end, list, check) replaces `session` with the same records under work/.sessions/",
+        "Each old name works for one release with one deprecation line, is hidden from top-level help and is a row of tests/parity/command_map.yaml",
+        "Docs, templates, skills and stubs, and suggested_prompts use the new names in the same change; the stale-command check passes; goldens differ only for map rows",
+        "Expected net line delta: package about -80"
       ],
-      "codename": "command-groups-and-renames-milestone-planning-archive-deep-review-status-decisions-kind-lesson-presence",
+      "codename": "review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session",
       "dependencies": [
-        "b5ca5d95-58a9-472c-9f90-0004d0fbd46f",
         "fcb9f89a-2bad-423c-8d52-eb748967a367"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.13",
       "node_key": "ca41116c-978b-4215-a69e-2f52400009fa",
       "parent_id": "M16",
-      "planning_dir": "planning/M16.13_command-groups-and-renames-milestone-planning-archive-deep-review-status-decisions-kind-lesson-presence_ca41116c-978b-4215-a69e-2f52400009fa.md",
+      "planning_dir": "planning/M16.13_review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session_ca41116c-978b-4215-a69e-2f52400009fa.md",
       "sibling_order": 14,
       "status": "Not Started",
-      "title": "Command groups and renames: milestone, planning, archive --deep, review status, decisions --kind lesson, presence",
+      "title": "review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session",
       "touch_zones": [
         "specy_road/cli.py",
         "specy_road/cli_usage.py",
         "specy_road/bundled_scripts/review_cli.py",
-        "specy_road/bundled_scripts/archive_cli.py",
+        "specy_road/bundled_scripts/review_packet.py",
         "specy_road/bundled_scripts/decisions_cli.py",
         "specy_road/bundled_scripts/lessons_cli.py",
         "specy_road/bundled_scripts/session_cli.py",
-        "specy_road/bundled_scripts/start_milestone_session.py",
-        "specy_road/bundled_scripts/scaffold_planning.py",
         "docs/",
         "suggested_prompts/",
         "specy_road/templates/project/",
+        "specy_road/templates/specyrd/",
+        "tests/parity/",
         "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Applies exactly the rows of tests/support/dedupe/pickup-finish.csv: a delete only where the row names the surviving test and the assertion it makes, a fold into a parametrised table, and keep rows untouched",
+        "The covered-arc set of the subsystem's modules is unchanged and total coverage stays at or above fail_under; removed and renamed test ids equal this leaf's planned_test_changes",
+        "Tables this leaf creates assert structured results, not message text",
+        "Expected net line delta: tests about -2,500"
+      ],
+      "codename": "tests-apply-the-dedupe-worklist-for-pickup-and-finish",
+      "dependencies": [
+        "21cc96e6-1e15-425e-a4b0-9c821fe30c55"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.58",
+      "node_key": "086cd41a-9d4b-4377-8ebd-ee563a0d20df",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.58_tests-apply-the-dedupe-worklist-for-pickup-and-finish_086cd41a-9d4b-4377-8ebd-ee563a0d20df.md",
+      "sibling_order": 59,
+      "status": "Not Started",
+      "title": "Tests: apply the dedupe worklist for pickup and finish",
+      "touch_zones": [
+        "tests/",
+        "tests/support/dedupe/"
       ],
       "type": "task"
     }
