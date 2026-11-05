@@ -1,0 +1,256 @@
+{
+  "nodes": [
+    {
+      "codename": "nested-repos-and-review-gate-integrity",
+      "dependencies": [],
+      "id": "M14",
+      "node_key": "20b59415-c2bf-47de-97b2-a7601d55e101",
+      "planning_dir": "planning/M14_nested-repos-and-review-gate-integrity_20b59415-c2bf-47de-97b2-a7601d55e101.md",
+      "sibling_order": 13,
+      "status": "Not Started",
+      "title": "Nested repos and review-gate integrity",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "acceptance": [
+        "A sibling repository is a git repository top (its own .git) under the project root, at most two directories deep, that the root repository ignores or does not track, and that nested_repos does not configure; specy_road/sibling_repos.py lists them with their HEAD and whether their worktree is dirty",
+        "When the project has any sibling repository, the gate's bookkeeping carry never applies: an approval at an older root commit is stale even when only the planning sheet, summary or review files changed, and handoff status says why (sibling repositories present, nested_repos unset) instead of 'approvals still count'; a test reproduces the reported case (rework changed only sibling code, root changed only its summary) and asserts the old approval does not count",
+        "handoff ready writes sibling_heads {path: sha} into READY and review record writes the same into the review record; an approval whose recorded sibling_heads differ from the current ones is stale even at the same root commit; a record without sibling_heads in a project that has sibling repositories counts only at the same root commit, as today",
+        "validate warns once when the project has sibling repositories and nested_repos is unset, naming them and docs/git-workflow.md's nested_repos section; validate_roadmap.py stays within 400 lines (fold its run of warn_* calls into one loop to make room). Out of scope: diffing sibling repos into the packet (M14.4.2) and configuring nested_repos automatically"
+      ],
+      "codename": "approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M14.1",
+      "node_key": "5eeb46d2-6aef-4582-8f8b-41c2dc19b53b",
+      "parent_id": "M14",
+      "planning_dir": "planning/M14.1_approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository_5eeb46d2-6aef-4582-8f8b-41c2dc19b53b.md",
+      "sibling_order": 1,
+      "status": "Not Started",
+      "title": "Approvals never carry across unreviewed changes in a sibling repository",
+      "touch_zones": [
+        "specy_road/review_bookkeeping.py",
+        "specy_road/sibling_repos.py",
+        "specy_road/review_gate_ready.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/schemas/review-record.schema.json",
+        "specy_road/schemas/handoff.schema.json",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "doctor does not list as merged, and --fix never removes, a worktree or branch whose branch has an open registry claim or a running or resumable worker record; the finding, if any, says 'live: claimed by <node>' or 'live: worker <W>' and has no fix",
+        "A branch counts as merged only when it has at least one commit of its own (its reflog shows a commit after creation, or its tip is not the commit it was created at); a branch with no commits yet is reported as 'no commits yet', never as merged; a test creates a claimed worktree on a fresh branch and asserts doctor --fix leaves it",
+        "doctor.py stays within 400 lines: the worktree findings move to specy_road/doctor_worktrees.py. Out of scope: changing what doctor reports for unclaimed merged branches with commits"
+      ],
+      "codename": "doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M14.2",
+      "node_key": "1c9269b9-323f-428a-9400-86738a763124",
+      "parent_id": "M14",
+      "planning_dir": "planning/M14.2_doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch_1c9269b9-323f-428a-9400-86738a763124.md",
+      "sibling_order": 2,
+      "status": "Not Started",
+      "title": "doctor never offers to remove a live leaf's worktree or branch",
+      "touch_zones": [
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/doctor_worktrees.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "worktree prune (preview and removal) refuses when any directory it would delete contains a .git file or directory belonging to another repository (a linked worktree of a sibling, or a sibling checkout), naming the directory, its repository and its branch, and listing commits on that branch that its upstream lacks; nothing is deleted; exit 1 with the next step (land or push those commits, or remove that worktree with git -C <repo> worktree remove)",
+        "A test with a linked worktree of a second repository inside the leaf's worktree asserts the refusal and that the directory still exists; configured nested_repos keep today's checks. Out of scope: pruning sibling worktrees itself"
+      ],
+      "codename": "worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M14.3",
+      "node_key": "0562a77e-5ed0-48f3-9ab0-b119f9424629",
+      "parent_id": "M14",
+      "planning_dir": "planning/M14.3_worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout_0562a77e-5ed0-48f3-9ab0-b119f9424629.md",
+      "sibling_order": 3,
+      "status": "Not Started",
+      "title": "worktree prune refuses to delete another repository's worktree or checkout",
+      "touch_zones": [
+        "specy_road/worktree_prune.py",
+        "specy_road/bundled_scripts/worktree_cli.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "codename": "nested-repos-that-a-project-can-adopt-without-pushing-local-landing-local-base-sibling-diffs-and-checks",
+      "dependencies": [],
+      "id": "M14.4",
+      "node_key": "a79fbbda-4540-4925-af8e-ad360f980299",
+      "parent_id": "M14",
+      "planning_dir": "planning/M14.4_nested-repos-that-a-project-can-adopt-without-pushing-local-landing-local-base-sibling-diffs-and-checks_a79fbbda-4540-4925-af8e-ad360f980299.md",
+      "sibling_order": 4,
+      "status": "Not Started",
+      "title": "nested_repos that a project can adopt without pushing: local landing, local base, sibling diffs and checks",
+      "touch_zones": [],
+      "type": "milestone"
+    },
+    {
+      "acceptance": [
+        "A nested_repos entry accepts land: push|local|manual (default push, today's behaviour) and base: remote|local (default remote); the schema documents both",
+        "land: local merges the leaf branch into the nested repo's local integration branch (updating the ref only if it has not moved, never pushing); land: manual makes finish-this-task stop before landing the main repository, print the merge command for each nested repo, and exit 1 with 're-run finish-this-task after merging'; a test per mode asserts no push happens for local and manual",
+        "base: local starts the nested worktree from the local integration branch, refusing when it is behind its remote only if the entry says so; a test with a local-only commit asserts the worktree contains it",
+        "nested_repos.py stays within 400 lines: landing moves to specy_road/nested_repos_land.py. Out of scope: per-repo review policy and changing push-mode behaviour"
+      ],
+      "codename": "per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M14.4.1",
+      "node_key": "a4c7eb62-3185-46b6-918f-02f74745b42a",
+      "parent_id": "M14.4",
+      "planning_dir": "planning/M14.4.1_per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip_a4c7eb62-3185-46b6-918f-02f74745b42a.md",
+      "sibling_order": 1,
+      "status": "Not Started",
+      "title": "Per nested repository, land by push, locally or by hand, and base worktrees on the remote or local tip",
+      "touch_zones": [
+        "specy_road/nested_repos.py",
+        "specy_road/nested_repos_land.py",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "review-packet --extra-diff <path>=<base> (repeatable) appends that repository's diff base..HEAD, with its changed-path list and HEAD sha, in the same format as configured nested repos; a path outside the project or not a repository top is refused with the next step",
+        "A changed path that lies inside a sibling repository (M14.1) is reported once per repository ('in sibling repository <path>, not configured: pass --extra-diff <path>=<base> or configure nested_repos') instead of one 'named in the packet but not at commit' line per file; a test pins both",
+        "review_packet.py stays within 400 lines: its argument parser moves to review_packet_args.py. Out of scope: choosing a base automatically for unconfigured siblings"
+      ],
+      "codename": "review-packet-includes-sibling-repository-diffs",
+      "dependencies": [
+        "5eeb46d2-6aef-4582-8f8b-41c2dc19b53b"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M14.4.2",
+      "node_key": "f0a62afe-4c5a-4d6a-866e-7306faf8087b",
+      "parent_id": "M14.4",
+      "planning_dir": "planning/M14.4.2_review-packet-includes-sibling-repository-diffs_f0a62afe-4c5a-4d6a-866e-7306faf8087b.md",
+      "sibling_order": 2,
+      "status": "Not Started",
+      "title": "review-packet includes sibling repository diffs",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/bundled_scripts/review_packet_nested.py",
+        "specy_road/bundled_scripts/review_packet_args.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The post-run check covers configured nested repos as reconcile does: a changed or untracked path in one is a finding, never 'clean'",
+        "For each sibling repository (M14.1), reconcile and the post-run check report its changed and untracked paths (for example an untracked artifacts/ directory) as a warning naming the repository and saying it is not configured, so it is not checked against touch zones; neither reports clean while such paths exist; a test with an untracked directory in a sibling pins both outputs",
+        "Out of scope: touch-zone enforcement inside unconfigured siblings, and cleaning anything"
+      ],
+      "codename": "worker-reconcile-and-the-post-run-check-see-sibling-repositories",
+      "dependencies": [
+        "5eeb46d2-6aef-4582-8f8b-41c2dc19b53b"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M14.4.3",
+      "node_key": "9569ba5c-720a-4b80-bb13-f0e6b5736422",
+      "parent_id": "M14.4",
+      "planning_dir": "planning/M14.4.3_worker-reconcile-and-the-post-run-check-see-sibling-repositories_9569ba5c-720a-4b80-bb13-f0e6b5736422.md",
+      "sibling_order": 3,
+      "status": "Not Started",
+      "title": "worker reconcile and the post-run check see sibling repositories",
+      "touch_zones": [
+        "specy_road/worker_reconcile.py",
+        "specy_road/worker_turn_check.py",
+        "specy_road/sibling_repos.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The reviewer prompt (PROBE_RULES_LINES) asks for each probe as a commands_rerun entry starting 'probe:' (the input tried and what it returned); review record counts them into a probes field it fills, and on an approve with zero probes prints a warning naming the reviewer and the rule and records unprobed: true",
+        "policy.require_probe (default false) makes an approve with zero probes ineligible, with the reason 'approve with no recorded probe' that handoff status already prints for ineligible records; a test pins both settings",
+        "Out of scope: judging probe quality, and a default strong_review for numeric or statistical zones (projects already name high-risk zones in policy.strong_review; specy-road cannot tell which zones are numeric). docs/orchestration-review.md shows a strong_review example for such zones"
+      ],
+      "codename": "an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M14.5",
+      "node_key": "98c9b4cc-2a26-4f71-b31a-f146d2664ff7",
+      "parent_id": "M14",
+      "planning_dir": "planning/M14.5_an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it_98c9b4cc-2a26-4f71-b31a-f146d2664ff7.md",
+      "sibling_order": 5,
+      "status": "Not Started",
+      "title": "An approve with no recorded probe is flagged, and policy can refuse to count it",
+      "touch_zones": [
+        "specy_road/review_record_rules.py",
+        "specy_road/review_eligible.py",
+        "specy_road/schemas/review-record.schema.json",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "review delegate keeps each round's RUN-<model>.json and .log under work/reviews/<ID>/history/ (round and commit in the name) instead of overwriting them; the current files stay where they are",
+        "specy-road review usage <ID> prints tokens and cost per reviewer run (model, round, commit), parsed with the same harness usage parsers worker usage uses, '?' when not reported, and a total; --json gives the same data",
+        "worker usage's node total adds reviewer usage on a separate line (executors, reviewers, total); a test with two review rounds asserts both survive and are summed. Out of scope: usage for reviews run outside review delegate"
+      ],
+      "codename": "reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M14.6",
+      "node_key": "41e2d7f0-c541-4c5e-b9b2-d16f2c131997",
+      "parent_id": "M14",
+      "planning_dir": "planning/M14.6_reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round_41e2d7f0-c541-4c5e-b9b2-d16f2c131997.md",
+      "sibling_order": 6,
+      "status": "Not Started",
+      "title": "Reviewer usage is visible: review usage, reviewers in the node total, RUN logs kept per round",
+      "touch_zones": [
+        "specy_road/review_delegate.py",
+        "specy_road/review_usage.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/bundled_scripts/worker_cli_render.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the derived id has no record and the user has several live sessions, session end ends the one whose recorded worktree is this checkout and whose branch is the current branch, when exactly one matches, and says which and why; otherwise it refuses as today and lists them",
+        "session start prints the id it recorded and the export line, and the same match rule lets touch find the record; a test with two live sessions in two worktrees asserts end from each worktree ends its own. Out of scope: changing how ids are derived, and the wording M13.7 owns"
+      ],
+      "codename": "session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record",
+      "dependencies": [
+        "bf5ffc69-0d63-4e1c-9159-7ba00872b009"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M14.7",
+      "node_key": "9fbad01b-0e89-45bd-a951-702227d79f31",
+      "parent_id": "M14",
+      "planning_dir": "planning/M14.7_session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record_9fbad01b-0e89-45bd-a951-702227d79f31.md",
+      "sibling_order": 7,
+      "status": "Not Started",
+      "title": "session end finds this agent's session by worktree and branch when the derived id has no record",
+      "touch_zones": [
+        "specy_road/bundled_scripts/session_cli.py",
+        "specy_road/session_presence.py",
+        "tests/"
+      ],
+      "type": "task"
+    }
+  ]
+}

@@ -251,7 +251,8 @@
       "acceptance": [
         "New docs/upgrading.md has a 'Migrating to the split rules files' section: for each kind of project text, whether it belongs in .specyrd/AGENTS.team.md (repository-specific specy-road policy), stays in the root AGENTS.md (project rules), or can be deleted (generic mechanics .specyrd/AGENTS.md now holds), with one example each and the rule 'keep it when unsure'",
         "It shows a scratch-virtualenv recipe for previewing a version you have not installed (create venv, hash-checked --no-deps install per M13.6, run that venv's specy-road upgrade --dry-run against the repo, delete the venv), and shows pip show specy-road (and the pipx and uv tool equivalents) for telling installs apart when an old 0.1.x has no --version",
-        "docs/install-and-usage.md links to it by changing an existing line, keeping the file within its 400-line cap. The existing Unreleased section of CHANGELOG.md gains a line explaining that file-limits now counts functions in .tsx files, so local and CI counts differ across versions; no version heading is added. Out of scope: code changes"
+        "docs/install-and-usage.md links to it by changing an existing line, keeping the file within its 400-line cap. The existing Unreleased section of CHANGELOG.md gains a line explaining that file-limits now counts functions in .tsx files, so local and CI counts differ across versions; no version heading is added. Out of scope: code changes",
+        "The upgrade guide notes that a uv tool install from a local wheel records that file's path in uv's receipt, so uv tool upgrade needs the file to still exist; keep the wheel or reinstall from the index"
       ],
       "codename": "upgrade-guide-moving-to-the-split-rules-files-previewing-an-uninstalled-version-telling-old-installs-apart",
       "dependencies": [

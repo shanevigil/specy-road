@@ -195,6 +195,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M12.4` | Quality signals agents and PMs read first | milestone | — | Not Started |
 | `M12.4.1` | Per-area quality scores in the digest from review history | task | Agentic-led | Not Started |
 | `M12.4.2` | A tracked tech-debt ledger that planning can turn into leaves | task | Agentic-led | Not Started |
+| `M12.4.3` | Per-model review evidence: block rate and overturned approvals feed orchestrate plan | task | Agentic-led | Not Started |
 | `M13` | rc3 adopter feedback: upgrade and adoption friction | phase | — | Not Started |
 | `M13.1` | Say which install is running and flag managed blocks an older version wrote | task | Agentic-led | Not Started |
 | `M13.2` | upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap | task | Agentic-led | Not Started |
@@ -209,5 +210,16 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M13.11` | upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs | task | Agentic-led | Not Started |
 | `M13.12` | Quieter, accurate validate notices: untracked touch zones, the managed .gitignore comment, and tracked files under new ignore rules | task | Agentic-led | Not Started |
 | `M13.13` | upgrade --prompt writes an agent upgrade prompt filled in from this repo | task | Agentic-led | Not Started |
+| `M14` | Nested repos and review-gate integrity | phase | — | Not Started |
+| `M14.1` | Approvals never carry across unreviewed changes in a sibling repository | task | Agentic-led | Not Started |
+| `M14.2` | doctor never offers to remove a live leaf's worktree or branch | task | Agentic-led | Not Started |
+| `M14.3` | worktree prune refuses to delete another repository's worktree or checkout | task | Agentic-led | Not Started |
+| `M14.4` | nested_repos that a project can adopt without pushing: local landing, local base, sibling diffs and checks | milestone | — | Not Started |
+| `M14.4.1` | Per nested repository, land by push, locally or by hand, and base worktrees on the remote or local tip | task | Agentic-led | Not Started |
+| `M14.4.2` | review-packet includes sibling repository diffs | task | Agentic-led | Not Started |
+| `M14.4.3` | worker reconcile and the post-run check see sibling repositories | task | Agentic-led | Not Started |
+| `M14.5` | An approve with no recorded probe is flagged, and policy can refuse to count it | task | Agentic-led | Not Started |
+| `M14.6` | Reviewer usage is visible: review usage, reviewers in the node total, RUN logs kept per round | task | Agentic-led | Not Started |
+| `M14.7` | session end finds this agent's session by worktree and branch when the derived id has no record | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
