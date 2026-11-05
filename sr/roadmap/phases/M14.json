@@ -114,7 +114,7 @@
       "parent_id": "M14.4",
       "planning_dir": "planning/M14.4.1_per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip_a4c7eb62-3185-46b6-918f-02f74745b42a.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Per nested repository, land by push, locally or by hand, and base worktrees on the remote or local tip",
       "touch_zones": [
         "specy_road/nested_repos.py",

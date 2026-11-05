@@ -215,7 +215,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M14.2` | doctor never offers to remove a live leaf's worktree or branch | task | Agentic-led | Not Started |
 | `M14.3` | worktree prune refuses to delete another repository's worktree or checkout | task | Agentic-led | Not Started |
 | `M14.4` | nested_repos that a project can adopt without pushing: local landing, local base, sibling diffs and checks | milestone | — | Not Started |
-| `M14.4.1` | Per nested repository, land by push, locally or by hand, and base worktrees on the remote or local tip | task | Agentic-led | Not Started |
+| `M14.4.1` | Per nested repository, land by push, locally or by hand, and base worktrees on the remote or local tip | task | Agentic-led | Complete |
 | `M14.4.2` | review-packet includes sibling repository diffs | task | Agentic-led | Not Started |
 | `M14.4.3` | worker reconcile and the post-run check see sibling repositories | task | Agentic-led | Not Started |
 | `M14.5` | An approve with no recorded probe is flagged, and policy can refuse to count it | task | Agentic-led | Not Started |
