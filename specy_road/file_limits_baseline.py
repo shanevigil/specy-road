@@ -26,6 +26,65 @@ from specy_road.runtime_paths import project_root, source_scan_root
 _FILE_STEP = 50
 _FUNC_STEP = 20
 _BASELINE_NAME = re.compile(r"^baseline-(\d{4}-\d{2}-\d{2})-(\d+)$")
+_TOP_LEVEL_KEY = re.compile(r"^[A-Za-z_][\w.-]*\s*:")
+_TRAILING_POLICY_KEYS = ("roadmap_manifest_max_lines", "roadmap_json_chunk_max_lines", "hard_alerts")
+
+
+def _is_top_level_line(line: str) -> bool:
+    if not line.strip():
+        return False
+    if line.lstrip().startswith("#"):
+        return line[0] not in " \t"
+    return line[0] not in " \t" and _TOP_LEVEL_KEY.match(line) is not None
+
+
+def _override_limits_header_index(lines: list[str]) -> int | None:
+    for i, line in enumerate(lines):
+        if re.match(r"^override_limits\s*:", line):
+            return i
+    return None
+
+
+def _insert_index_for_new_override_rows(lines: list[str]) -> tuple[int, bool]:
+    """Return ``(line index to insert before, need ``override_limits:`` header)``."""
+    header = _override_limits_header_index(lines)
+    if header is not None:
+        insert_at = len(lines)
+        for i in range(header + 1, len(lines)):
+            if _is_top_level_line(lines[i]):
+                insert_at = i
+                break
+        return insert_at, False
+    for i, line in enumerate(lines):
+        key = line.split(":", 1)[0].strip()
+        if key in _TRAILING_POLICY_KEYS:
+            return i, True
+    return len(lines), True
+
+
+def _loads_file_limits_mapping(text: str) -> dict | None:
+    try:
+        cfg = yaml.safe_load(text)
+    except yaml.YAMLError:
+        return None
+    return cfg if isinstance(cfg, dict) else None
+
+
+def append_baseline_yaml_text(existing_text: str, block: str) -> str:
+    if not block.strip():
+        return existing_text
+    block_lines = block.rstrip("\n").splitlines()
+    lines = existing_text.splitlines()
+    insert_at, need_header = _insert_index_for_new_override_rows(lines)
+    new_lines = lines[:insert_at]
+    if need_header:
+        new_lines.append("override_limits:")
+    new_lines.extend(block_lines)
+    new_lines.extend(lines[insert_at:])
+    result = "\n".join(new_lines)
+    if existing_text.endswith("\n") or not result.endswith("\n"):
+        result += "\n"
+    return result
 
 
 def round_up_to_step(value: int, step: int) -> int:
@@ -156,21 +215,6 @@ def format_baseline_entries(
     return "\n".join(lines) + ("\n" if lines else "")
 
 
-def append_baseline_yaml_text(existing_text: str, block: str) -> str:
-    if not block.strip():
-        return existing_text
-    text = existing_text
-    if not text.endswith("\n"):
-        text += "\n"
-    if "override_limits:" not in text:
-        if text.strip():
-            text += "\n"
-        text += "override_limits:\n"
-    elif not text.endswith("\n\n"):
-        text += "\n"
-    return text + block
-
-
 def failure_hint(config_rel: str) -> str:
     return (
         f"file-limits: add override_limits entries in {config_rel} with "
@@ -222,7 +266,15 @@ def write_baseline(
     if dry_run:
         print(block, file=out, end="")
         return 0
-    cfg_path.write_text(append_baseline_yaml_text(raw, block), encoding="utf-8")
+    new_text = append_baseline_yaml_text(raw, block)
+    if _loads_file_limits_mapping(new_text) is None:
+        print(
+            f"file-limits baseline: refusing to write {cfg_path}; "
+            "appended text would not load as YAML.",
+            file=sys.stderr,
+        )
+        return 1
+    cfg_path.write_text(new_text, encoding="utf-8")
     print(f"file-limits baseline: appended to {cfg_path.relative_to(project)}", file=out)
     return 0
 

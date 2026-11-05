@@ -76,8 +76,38 @@ def test_append_keeps_existing_comments(tmp_path: Path) -> None:
     block = '  - name: baseline-2026-11-05-1\n    file_globs:\n      - "a.py"\n    max_lines_per_file: 50\n'
     out = append_baseline_yaml_text(raw, block)
     assert "# keep me" in out
-    assert out.endswith(block + "\n") or block in out
+    assert "override_limits:" in out
+    assert yaml.safe_load(out)["override_limits"][0]["name"] == "baseline-2026-11-05-1"
 
+
+def test_write_baseline_inserts_inside_override_limits_before_roadmap_keys(tmp_path: Path) -> None:
+    (tmp_path / "constraints").mkdir()
+    cfg_path = tmp_path / "constraints" / "file-limits.yaml"
+    cfg_path.write_text(
+        "max_lines_per_file: 10\n"
+        "max_lines_per_function: 5\n"
+        "applies_to_globs:\n  - \"**/*.py\"\n"
+        "override_limits:\n"
+        "  - name: existing\n"
+        "    file_globs:\n      - \"keep.py\"\n"
+        "    max_lines_per_file: 100\n"
+        "roadmap_manifest_max_lines: 500\n"
+        "roadmap_json_chunk_max_lines: 500\n",
+        encoding="utf-8",
+    )
+    _write_layout(tmp_path, {"wide.py": "x\n" * 11})
+    assert write_baseline(tmp_path) == 0
+    text = cfg_path.read_text(encoding="utf-8")
+    cfg = yaml.safe_load(text)
+    assert cfg["roadmap_manifest_max_lines"] == 500
+    assert cfg["roadmap_json_chunk_max_lines"] == 500
+    names = [entry["name"] for entry in cfg["override_limits"]]
+    baseline_names = [n for n in names if str(n).startswith("baseline-")]
+    assert "existing" in names
+    assert len(baseline_names) == 1
+    assert names.index("existing") < names.index(baseline_names[0])
+    assert text.index("baseline-") < text.index("roadmap_manifest_max_lines")
+    assert run_file_limits_scan(tmp_path, cfg) is False
 
 def test_write_baseline_buckets_pass_and_rerun_is_idempotent(tmp_path: Path) -> None:
     (tmp_path / "constraints").mkdir()
