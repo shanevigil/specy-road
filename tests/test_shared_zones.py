@@ -19,7 +19,12 @@ from specy_road.bundled_scripts.validate_registry_overlap import (
     warn_registry_touch_zone_overlap,
 )
 from specy_road.git_workflow_config import load_git_workflow_config
-from specy_road.shared_zones import resolve_shared_zones
+from specy_road.shared_zones import (
+    DEFAULT_SHARED_ZONES,
+    ignored_shared_zones,
+    resolve_shared_zones,
+    zones_overlap,
+)
 
 _SHARED = ["planning/", "shared/"]
 
@@ -215,3 +220,20 @@ def test_aliased_shared_zone_is_reported_once_in_text_and_json(configured, tmp_p
         text = render_session_plan_text(plan)
         assert text.count("Shared zones ignored for overlap") == 1
         assert "overlap (leaves meet only there): `notes/team/`; two" in text
+
+
+def test_zones_overlap_iterable_shared_matches_tuple() -> None:
+    """Non-shared file under a shared directory: ``iter(shared)`` must match a tuple."""
+    a, b = "planning/x.md", "planning/"
+    assert zones_overlap(a, b, DEFAULT_SHARED_ZONES) is False
+    assert zones_overlap(a, b, iter(DEFAULT_SHARED_ZONES)) is False
+
+
+def test_ignored_shared_zones_iterable_leaf_ids_matches_list() -> None:
+    zones = {
+        "a": ["planning/", "shared/"],
+        "b": ["planning/x.md", "shared/api.md"],
+    }
+    expected = ["planning/", "shared/"]
+    assert ignored_shared_zones(zones, ["a", "b"], DEFAULT_SHARED_ZONES) == expected
+    assert ignored_shared_zones(zones, iter(["a", "b"]), DEFAULT_SHARED_ZONES) == expected

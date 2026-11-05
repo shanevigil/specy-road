@@ -70,7 +70,10 @@ def zones_overlap(a: str, b: str, shared: Iterable[str]) -> bool:
     """
     if not (in_zone_tree(a, b) or in_zone_tree(b, a)):
         return False
-    return not (is_shared_zone(a, shared) or is_shared_zone(b, shared))
+    shared_keys = {zone_key(z) for z in shared}
+    return not (
+        zone_key(a) in shared_keys or zone_key(b) in shared_keys
+    )
 
 
 def effective_overlap(
@@ -92,6 +95,7 @@ def ignored_shared_zones(
     """Shared zones that would have held a leaf back: one of ``leaf_ids`` names the
     zone itself and another names it or a path under it."""
     out: list[str] = []
+    leaf_ids = list(leaf_ids)
     for zone in unique_zones(shared):
         names_it = touches = 0
         for nid in leaf_ids:
