@@ -139,6 +139,37 @@ Merged `origin/WIP/improvements-0-3-1` first. It was clean: roadmap and planning
 
 **Not done:** "use it for delegate". `review_delegate.py` resolves its model with `harness_model(entry, api)` and passes `""` for a missing profile, which gives the harness default instead of the roster id, and it doesn't reject `unknown`. The file is outside this leaf's zones and A5 puts delegate's launch path out of scope, so it was not changed. Fixing it means adding `review_delegate.py` to the zones (or a follow-up leaf) and calling `resolve_effective_model` there. `prompt` has no resume path.
 
+## Fix round 4 (gpt-6.1-sol-low blocked 1dafbf68)
+
+Merged `origin/WIP/improvements-0-3-1` first. It was clean, and WIP added tests only.
+
+- **Finding (A2):** `--for\` + newline + `ce` in a custom reviewer command passed the bypass check, but `sh` joins
+  the line continuation and runs `--force`.
+- **Class:** the tokenizer reads the command differently from `sh` in a way that hides a word. Probing found a
+  second instance: shlex treats `#` as a comment even inside a word, so `agent a#b --force` lost its `--force`, while
+  `sh` passes `a#b` and `--force`.
+- **One bounded rule, stated once** (in `bypass_problem`'s docstring, the `prompt --help` text from the
+  `role_prompt` module docstring, and `docs/orchestration-reviewer-output.md`): the command is split as `sh` reads its
+  words, erring towards seeing more.
+  - Every backslash-newline is removed first.
+  - `shlex` runs in POSIX mode with `punctuation_chars` and no comment character.
+  - A token whose name (the part before any `=`) is exactly a bypass flag refuses the command.
+  - Conservative clauses: a flag inside a `#` comment refuses, and so does a backslash-newline inside single quotes,
+    where `sh` keeps it.
+  - Out of scope, as documented: what the shell expands at run time (`$VAR`, `$'...'`, `$(...)`, backquotes, brace
+    expansion, aliases, scripts).
+- **No added branches.** The change is the input passed to the lexer and one attribute set on it; the function's
+  control flow is unchanged.
+- **Tests:**
+  - The rule table (`test_bypass_flags_are_found_as_sh_reads_its_words`) gains one row per clause: a continuation
+    unquoted, inside double quotes, and inside single quotes (conservative); a mid-word `#`; and a flag in a comment
+    (conservative).
+  - The public CLI refusal test now takes whole commands through a YAML block scalar, so a real backslash-newline
+    reaches the roster. It asserts refusal before launch: exit 1, no process, no run record.
+  - All six new rows fail on `1dafbf68`'s code with this test file (exit 1), and pass now.
+- **File limit:** this round's own new docstring paragraph was reflowed to 120 columns with no words removed;
+  `role_prompt_cli.py` is at 400 lines.
+
 ## Probes
 
 - Unknown API id with a `channels.cli`, run and dry run: refused before launch, with no process and no run record (tested).
@@ -196,6 +227,16 @@ Merged `origin/WIP/improvements-0-3-1` first. It was clean: roadmap and planning
 - Fix round 3 / A1: the preview still refuses a command it can't show (unknown model, bypass flag, no `channels.cli`), with exit 1 and no process (existing tests).
 - Fix round 3 / A1: other preview paths that hit launch-only state: `show_cli` (other roles) never needed a worktree, and the run lock and auth block in `main` run only with `--run` (read `role_prompt.main` and `_run`).
 - Fix round 3 / existing fixtures: tests whose fake harness reports the roster id still match, because their entries have no profile, so the effective model is the id (601 targeted tests pass).
+
+- Fix round 4: a backslash-newline outside quotes, inside double quotes, and inside single quotes: all refused (table rows; `sh -c` confirmed it joins the first two and keeps the third).
+- Fix round 4: a mid-word `#` (`a#b --force`): refused (table row; `sh -c` confirmed `--force` is passed). A real comment that mentions a flag: refused, conservatively (table row).
+- Fix round 4: other quoting forms that `sh` concatenates (`--for''ce`, `--for"ce"`, `--for\ce`): shlex in POSIX mode already yields `--force` (probed).
+- Fix round 4: other places in the zones that tokenize a reviewer command for safety: only `bypass_problem`, which runs on every `channels.cli` before launch (grep for `shlex` in `role_prompt_cli.py` and `role_prompt.py`).
+- Fix round 4: `worker_adapter_base.reviewer_cli`'s agy check (`shlex.split`, outside the zones) runs after `bypass_problem` in the prompt path, so anything it misses is already refused; not changed.
+- Fix round 4: `review delegate`'s custom commands have no bypass check. Outside the zones and out of A5's scope; not changed (as in earlier rounds).
+- Fix round 4: text specy-road substitutes into the command after the check (`{prompt}`, `"<prompt>"`, `{effort}`): the prompt goes in as one quoted argument or a file path, and the effort flags come from fixed adapter tables, so neither adds roster-controlled words.
+- Fix round 4: an unbalanced quote is still refused (existing test).
+- Fix round 4: complexity. `bypass_problem` has no new branch, and there is no `noqa: C901` in the zoned files (grep).
 
 ## Final touch zones
 
