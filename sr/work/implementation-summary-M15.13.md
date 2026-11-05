@@ -78,6 +78,10 @@ No zone additions or removals beyond the new sync module and doc.
 - **Completed-only regression:** public CLI test asserts `created`, new worker id, stderr last-message note — no blocking review file.
 - **`REWORK_ENDED_WORKER_STATES` constant in `role_prompt_rework.py`:** single ended-state set for rework (R1 consolidation).
 
+### Precheck: public lease test helpers
+
+- **`tests/worker_lease_helpers.py`:** `remote_and_clone`, `remote_leases`, `idle_worker`, `checkout_id_file` (promoted from `test_worker_max_workers_global`); M15.13 and lease-race tests import only public names.
+
 ## Added
 
 - `worker_cli_sync.py` module (`parse_sync_until`, `wait_for_typed_event`, `wait_for_sync`, `cmd_sync`, `add_sync_parser`): A1/A2 CLI surface and wait loop without bloating `worker_cli.py`

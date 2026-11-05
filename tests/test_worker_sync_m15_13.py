@@ -189,14 +189,14 @@ def test_rework_refuses_idle_worker_without_a_block(tmp_path: Path, capsys) -> N
 
 def test_rework_offline_does_not_delete_completed_worker_leases(tmp_path: Path, monkeypatch) -> None:
     from specy_road import worker_lease as wl
-    from tests.test_worker_max_workers_global import _leases, _remote_and_clone
+    from tests.worker_lease_helpers import remote_and_clone, remote_leases
 
     repo, _ = make_worker_repo(tmp_path)
-    remote, _ = _remote_and_clone(tmp_path, repo)
+    remote, _ = remote_and_clone(tmp_path, repo)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
     rec = wait_for_worker(repo, "w-0001")
     ws.set_state(repo, rec, "completed", pid=None)
-    before = _leases(remote)
+    before = remote_leases(remote)
     assert any(rec.worker_id in ref for ref in before)
     pushes: list[list[str]] = []
     real_run = wl.run
@@ -208,7 +208,7 @@ def test_rework_offline_does_not_delete_completed_worker_leases(tmp_path: Path, 
     monkeypatch.setattr(wl, "run", track)
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--rework", "--offline",
                           "--repo-root", str(repo)) == 0
-    assert _leases(remote) == before
+    assert remote_leases(remote) == before
     assert not any(a[0:2] == ["push", "--quiet"] and "--delete" in a for a in pushes)
     wait_for_worker(repo, "w-0002")
 
