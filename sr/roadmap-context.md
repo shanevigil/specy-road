@@ -109,7 +109,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M16.66` Gate: ready to tag 0.3.1 `ready-to-tag-0-3-1` — gate — **Not Started**
   - `M16.67` move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit `move-node-keeps-other-ids` — task — **Complete**
   - `M16.68` finish resolves roadmap chunk conflicts the branch only inherited `finish-resolves-inherited-roadmap-conflicts` — task — **Complete**
-  - `M16.69` Cursor workers launch sandboxed without --force unless the roster opts in `cursor-workers-no-force-by-default` — task — **Not Started**
+  - `M16.69` Cursor workers launch sandboxed without --force unless the roster opts in `cursor-workers-no-force-by-default` — task — **Complete**
   - `M16.70` Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships `release-docs-0-3-1` — task — **Not Started**
 - `M21` rc4 stabilization: fixes filed after the themed-milestone rule `rc4-stabilization` — phase — **Not Started**
   - `M21.1` move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree `move-node-chosen-id` — task — **Complete**
@@ -239,7 +239,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.69` on `feature/rm-cursor-workers-no-force-by-default` since 2026-11-05
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -258,11 +257,12 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 26 | 12 | 5.57 | 86% | 23 | 3 |
+| `CHANGELOG.md` **flagged** | 3 | 0 | 3.67 | 67% | 5 | 0 |
+| `docs` **flagged** | 26 | 11 | 5.40 | 87% | 24 | 3 |
 | `planning` **flagged** | 1 | 0 | 3.00 | 100% | 0 | 0 |
-| `specy_road` **flagged** | 48 | 20 | 4.64 | 79% | 32 | 6 |
-| `tests` **flagged** | 50 | 21 | 4.59 | 79% | 32 | 6 |
-| `CHANGELOG.md` | 2 | 0 | 4.00 | 50% | 4 | 0 |
+| `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
+| `specy_road` **flagged** | 48 | 19 | 4.59 | 79% | 33 | 6 |
+| `tests` **flagged** | 50 | 20 | 4.53 | 80% | 33 | 6 |
 | `README.md` | 1 | 1 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 

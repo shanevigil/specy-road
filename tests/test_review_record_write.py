@@ -196,7 +196,8 @@ def test_cursor_reviewer_runs_ask_mode_without_force(tmp_path: Path) -> None:
     assert resumed.argv == ["agent", "-p", "--resume", "s1", "--output-format", "stream-json", "--mode", "ask",
                             "--trust", told] and resumed.session_id == "s1"
     assert "Review-only runs omit `--force`" in M87_NOTE.read_text(encoding="utf-8")   # the note the code matches
-    assert "--force" in Cursor().launch(prompt, tmp_path, None, None).argv              # executors keep it
+    assert "--force" not in Cursor().launch(prompt, tmp_path, None, None).argv          # executors: sandboxed
+    assert "--force" in Cursor().launch(prompt, tmp_path, None, None, force=True).argv  # unless the roster opts in
 
 
 def test_codex_reviewer_runs_read_only_with_the_output_schema(tmp_path: Path) -> None:
