@@ -14,7 +14,7 @@ from typing import Any
 
 from specy_road.review_files import list_reviews, reviews_dir
 from specy_road.review_rejected import REJECTED_PREFIX, rejected_state
-from specy_road.review_target import same_commit
+from specy_road.review_target import ReviewTargetError, resolve_target, same_commit
 
 
 def _run_time(run: dict[str, Any]) -> float | None:
@@ -75,3 +75,29 @@ def extend_handoff_refused(st: dict[str, Any], lines: list[str]) -> None:
 def print_refused_list(repo_root: Path, node_id: str, commit: str | None) -> None:
     for model, info in refused_by_model(repo_root, node_id, commit).items():
         print(f"REJECTED-{model}.md: {refused_text(info['age'], info['reason'])}")
+
+
+def review_list_payload(repo_root: Path, node_id: str, ref: str | None) -> dict[str, Any]:
+    """Machine-readable ``review list`` body, including the ``refused`` map (M15.33 A2)."""
+    from specy_road.review_delegate import run_states
+
+    try:
+        t = resolve_target(repo_root, node_id, ref)
+    except ReviewTargetError as e:
+        if not str(e).startswith("no registry claim"):
+            return {"node_id": node_id, "error": str(e)}
+        t = None
+    commit = t.commit if t else None
+    return {
+        "node_id": node_id,
+        "ref": t.ref if t else None,
+        "commit": commit,
+        "reviews": [
+            {"file": r.path.name, "model": r.data.get("model"), "verdict": r.data.get("verdict"),
+             "family": r.data.get("family"), "commit": r.data.get("commit"), "ok": r.ok,
+             "stale": t is not None and r.ok and not same_commit(repo_root, r.data.get("commit"), t.commit)}
+            for r in list_reviews(repo_root, node_id)
+        ],
+        "refused": refused_by_model(repo_root, node_id, commit),
+        "review_runs": run_states(repo_root, node_id, commit),
+    }

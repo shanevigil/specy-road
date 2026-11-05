@@ -47,7 +47,7 @@ from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_next_step import fix_round_budget
 from specy_road.bundled_scripts.review_defer import add_parser as add_defer_parser
 from specy_road.orphaned_claims import orphaned_claims, report_lines
-from specy_road.review_run_status import extend_handoff_refused, print_refused_list, refused_by_model
+from specy_road.review_run_status import extend_handoff_refused, print_refused_list, refused_by_model, review_list_payload
 from specy_road.review_target import (ReviewTarget, ReviewTargetError, milestone_status,
                                       resolve_target, same_commit)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -261,15 +261,7 @@ def cmd_review_record(ns: argparse.Namespace) -> int:
     return run_review_record(ns, resolve_repo_root(ns), _fail, _relabel_independence)
 
 
-def cmd_review_list(ns: argparse.Namespace) -> int:
-    """Filed records and RCA records, the gate at the commit under review, then any escalation; reads only."""
-    root = resolve_repo_root(ns)
-    try:
-        t = resolve_target(root, ns.node_id, ns.ref)
-    except ReviewTargetError as e:
-        if not str(e).startswith("no registry claim"):
-            return _fail(str(e))
-        t = None
+def _print_review_list_text(root: Path, ns: argparse.Namespace, t: ReviewTarget | None) -> int:
     reviews = list_reviews(root, ns.node_id)
     if not reviews:
         print(f"No review records for {ns.node_id}.")
@@ -285,6 +277,7 @@ def cmd_review_list(ns: argparse.Namespace) -> int:
     print(round_span(root, ns.node_id)["line"])
     loop = loop_state(root, ns.node_id)
     _print_rcas(loop)
+    gate = None
     if t is None:
         print("gate: not evaluated — no registry claim names the commit under review; "
               "pass --ref <branch or commit>")
@@ -295,9 +288,24 @@ def cmd_review_list(ns: argparse.Namespace) -> int:
             print(f"  - {p}")
         for line in milestone_status(t, "approved" if gate.passed else "waiting")[1]:
             print(line)
-    if loop.escalation and (t is None or not gate.passed):
+    if loop.escalation and (t is None or gate is None or not gate.passed):
         print(_escalation_line(ns.node_id, loop.escalation.describe()).strip())
     return 0
+
+
+def cmd_review_list(ns: argparse.Namespace) -> int:
+    """Filed records and RCA records, the gate at the commit under review, then any escalation; reads only."""
+    root = resolve_repo_root(ns)
+    if ns.json:
+        print(json.dumps(review_list_payload(root, ns.node_id, ns.ref), indent=2))
+        return 0
+    try:
+        t = resolve_target(root, ns.node_id, ns.ref)
+    except ReviewTargetError as e:
+        if not str(e).startswith("no registry claim"):
+            return _fail(str(e))
+        t = None
+    return _print_review_list_text(root, ns, t)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -332,6 +340,8 @@ def build_parser() -> argparse.ArgumentParser:
         sp = rsub.add_parser(name, help=about)
         sp.add_argument("node_id")
         sp.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+        if name == "list":
+            sp.add_argument("--json", action="store_true", help="Machine-readable output including refused markers")
         add_repo_root_arg(sp)
         sp.set_defaults(func=fn)
     add_delegate_parser(rsub)

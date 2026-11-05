@@ -8,10 +8,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
+from tests.review_delegate_helpers import delegate_repo, run_review_cli, set_steps, verdict_step
 from tests.review_repo_helpers import commit_file, git, make_review_repo, review_output, review_text
 from tests.test_review_cli import ONE_AI
-from tests.test_review_friction_m15_17 import _run
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_files import list_reviews, reviews_dir
@@ -25,14 +24,20 @@ def _record(repo: Path, verdict: str = "approve", findings: dict | None = None, 
     data["findings"].update(findings or {})
     p = repo.parent / f"notes-{model}.md"
     p.write_text("---\n" + yaml.safe_dump(data, sort_keys=False) + "---\n" + notes)
-    return _run("review", "record", "M1.1", "--model", model, "--verdict", verdict, "--file", str(p),
-                "--repo-root", str(repo))
+    return run_review_cli("review", "record", "M1.1", "--model", model, "--verdict", verdict, "--file", str(p),
+                          "--repo-root", str(repo))
 
 
 def _status(repo: Path, capsys) -> dict:
     capsys.readouterr()
-    _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    run_review_cli("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
     return json.loads(capsys.readouterr().out)["nodes"][0]
+
+
+def _list_json(repo: Path, capsys) -> dict:
+    capsys.readouterr()
+    run_review_cli("review", "list", "M1.1", "--json", "--repo-root", str(repo))
+    return json.loads(capsys.readouterr().out)
 
 
 def test_list_reviews_ignores_a_rejected_marker(tmp_path: Path) -> None:
@@ -63,9 +68,19 @@ def test_roster_miss_does_not_write_a_marker(tmp_path: Path) -> None:
     reviews = reviews_dir(repo, "M1.1")
     p = repo.parent / "notes.md"
     p.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="not-on-roster"))
-    assert _run("review", "record", "M1.1", "--model", "not-on-roster", "--verdict", "approve",
-                "--file", str(p), "--repo-root", str(repo)) == 1
+    assert run_review_cli("review", "record", "M1.1", "--model", "not-on-roster", "--verdict", "approve",
+                          "--file", str(p), "--repo-root", str(repo)) == 1
     assert not rejected_path(reviews, "not-on-roster").exists()
+
+
+def test_unrostered_model_with_missing_notes_writes_no_marker(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    reviews = reviews_dir(repo, "M1.1")
+    missing = repo / "no-such-notes.md"
+    assert run_review_cli("review", "record", "M1.1", "--model", "ghost", "--verdict", "approve",
+                          "--file", str(missing), "--repo-root", str(repo)) == 1
+    assert not rejected_path(reviews, "ghost").exists()
+    assert not reviews.is_dir()
 
 
 def test_handoff_status_and_list_show_refused_text_and_json(tmp_path: Path, capsys) -> None:
@@ -73,16 +88,18 @@ def test_handoff_status_and_list_show_refused_text_and_json(tmp_path: Path, caps
     stale = review_text(git(repo, "rev-parse", "HEAD~1"), model="opus")
     p = repo.parent / "notes-opus.md"
     p.write_text(stale)
-    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve", "--file", str(p),
-                "--repo-root", str(repo)) == 1
+    assert run_review_cli("review", "record", "M1.1", "--model", "opus", "--verdict", "approve", "--file", str(p),
+                          "--repo-root", str(repo)) == 1
     st = _status(repo, capsys)
     assert "Re-review the current commit" in st["refused"]["opus"]["reason"]
     assert "age" in st["refused"]["opus"]
-    _run("handoff", "status", "M1.1", "--repo-root", str(repo))
+    listed = _list_json(repo, capsys)
+    assert listed["refused"]["opus"]["reason"] == st["refused"]["opus"]["reason"]
+    run_review_cli("handoff", "status", "M1.1", "--repo-root", str(repo))
     text = capsys.readouterr().out
     assert "record refused" in text and "Re-review the current commit" in text
     capsys.readouterr()
-    _run("review", "list", "M1.1", "--repo-root", str(repo))
+    run_review_cli("review", "list", "M1.1", "--repo-root", str(repo))
     assert "REJECTED-opus.md: record refused" in capsys.readouterr().out
 
 

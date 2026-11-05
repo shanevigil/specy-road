@@ -17,7 +17,7 @@ from specy_road.review_files import archive_review, render_front_matter, review_
 from specy_road.review_gate import evaluate_gate, rerun_problem
 from specy_road.review_record_rules import check_record
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
-from specy_road.review_target import ReviewTargetError, resolve_target, same_commit
+from specy_road.review_target import ReviewTargetError, milestone_open_problem, resolve_target, same_commit
 from specy_road.toolkit_version import stamp_review_toolkit_version
 
 REJECTED_PREFIX = "REJECTED-"
@@ -123,42 +123,49 @@ class ReviewRecordTrace:
         self.commit: str | None = None
         self._active = False
 
-    def target_resolved(self, commit: str | None) -> None:
-        self.commit = commit
-        self._active = True
-
     def refuse(self, msg: str, fail, *, write: bool = True) -> int:
         if write and self._active and self.commit:
             write_rejected(self.reviews, self.model, self.commit, msg)
         return fail(msg)
 
+    def roster_resolved(self, commit: str | None) -> None:
+        """Call only after the model is on the roster; later refusals may write ``REJECTED-<model>.md``."""
+        self.commit = commit
+        self._active = True
 
-def run_review_record(ns: Any, root: Path, fail: Any, relabel: Any) -> int:
-    """``review record`` implementation; refusals after the target resolves write ``REJECTED-<model>.md``."""
+    def target_resolved(self, commit: str | None) -> None:
+        self.roster_resolved(commit)
+
+
+def run_review_record(ns: Any, root: Path, fail: Any, relabel: Any) -> int:  # noqa: C901
+    """``review record`` implementation; refusals after the target and roster resolve write ``REJECTED-<model>.md``."""
     trace = ReviewRecordTrace(root, ns.node_id, ns.model)
     try:
         t = resolve_target(root, ns.node_id, ns.ref)
     except ReviewTargetError as e:
         return fail(str(e))
-    trace.target_resolved(t.commit)
-    rec, err = check_record(ns, root, t)
-    if err:
-        return trace.refuse(err, fail)
     gate = evaluate_gate(root, t.node, t.commit, branch=(t.entry or {}).get("branch"))
     if gate.config_error:
-        return trace.refuse(f"orchestration config: {gate.config_error}", fail)
+        return fail(f"orchestration config: {gate.config_error}")
+    if mile := milestone_open_problem(t):
+        return fail(mile)
     config = gate.config
     entry = next((e for e in config["roster"] if e.get("id") == ns.model), None)
     if entry is None:
-        return trace.refuse(f"{ns.model!r} is not in the roster on the integration branch "
-                            "(roadmap/orchestration.yaml); a review from it would not count", fail, write=False)
+        return fail(f"{ns.model!r} is not in the roster on the integration branch "
+                    "(roadmap/orchestration.yaml); a review from it would not count")
+    trace.roster_resolved(gate.commit)
+    rec, err = check_record(ns, root, t)
+    if err:
+        return trace.refuse(err, fail)
     if "reviewer" not in (entry.get("roles") or []) and not substitute_for(config, ns.node_id, ns.model):
         return trace.refuse(f"{ns.model!r} has no reviewer role and no active substitution covers {ns.node_id}", fail)
     why = rerun_problem(config["policy"], rec["data"])
     if why:
         return trace.refuse(f"{ns.file}: does not count — {why}; list what you re-ran in commands_rerun", fail)
+    # The body's hash rides in the front matter, so a signature covers the notes too.
     data = {**rec["data"], "commit": gate.commit, NOTES_KEY: notes_digest(rec["body"])}
-    if ns.launch_mode:
+    if ns.launch_mode:   # before signing: the signature covers it
         data["launch_mode"] = ns.launch_mode
     data = stamp_review_toolkit_version(data)
     if ns.sign_key:
@@ -179,7 +186,7 @@ def run_review_record(ns: Any, root: Path, fail: Any, relabel: Any) -> int:
     data["family"] = entry["family"]
     dest = review_path(root, ns.node_id, ns.model)
     text = render_front_matter(data, rec["body"])
-    write_review(dest, text)
+    write_review(dest, text)   # replaces a record filed as review-<model>.md, whatever the filesystem's case rules
     clear_rejected(trace.reviews, ns.model)
     archive_review(root, ns.node_id, ns.model, text)
     print(f"Wrote {dest}")
