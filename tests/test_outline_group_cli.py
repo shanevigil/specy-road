@@ -99,14 +99,40 @@ def test_a_shift_with_nothing_to_do_exits_1_and_writes_nothing(
     assert tree_bytes(repo) == before
 
 
-def test_indent_under_a_gate_names_the_refusal_not_a_missing_sibling(repo: Path) -> None:
-    _make_gate(repo, "M2.1")
+def _deepen_to_the_cap(root: Path) -> None:
+    """Hang two siblings at the outline depth cap (8 segments) under M2.1."""
+    chain = ["M2.1.1", "M2.1.1.1", "M2.1.1.1.1", "M2.1.1.1.1.1", "M2.1.1.1.1.1.1"]
+    ids = [*chain, f"{chain[-1]}.1", f"{chain[-1]}.2"]
+    parents = ["M2.1", *chain, chain[-1]]
+    extra = [
+        task_node(nid, f"20000000-0000-4000-8000-0000000dd0{i:02d}", parent, f"deep-{i}")
+        for i, (nid, parent) in enumerate(zip(ids, parents))
+    ]
+    extra[-1]["sibling_order"] = 1
+    chunk = root / "roadmap" / "phases" / "T.json"
+    write_json_chunk(chunk, load_json_chunk(chunk) + extra)
+    for n in extra:
+        (root / n["planning_dir"]).write_text("# sheet\n", encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("arrange", "node_id"),
+    [
+        (lambda root: _make_gate(root, "M2.1"), "M2.4"),
+        (_deepen_to_the_cap, "M2.1.1.1.1.1.1.2"),
+    ],
+    ids=["gate-above", "depth-cap"],
+)
+def test_no_sibling_above_that_can_take_the_node_is_the_same_no_op(
+    repo: Path, arrange, node_id: str
+) -> None:
+    arrange(repo)
     before = tree_bytes(repo)
 
-    r = run_cli(repo, "indent", "M2.4")
+    r = run_cli(repo, "indent", node_id)
 
     assert r.returncode == 1
-    assert "M2.4 cannot nest under M2.1" in r.stderr
+    assert "no previous sibling" in r.stderr
     assert tree_bytes(repo) == before
 
 

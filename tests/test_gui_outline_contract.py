@@ -149,14 +149,20 @@ def test_outline_group_returns_the_id_map(client: TestClient, repo: Path) -> Non
         {"into_new": "M1.4", "title": "", "node_ids": ["M1.1"]},
         {"into_new": "M1.4", "title": "G", "node_ids": ["M1.1"], "type": "gate"},
         {"into_new": "M1.4", "title": "G", "node_ids": ["M1.1"], "type": "epic"},
+        None,
+        {},
+        [],
+        {"into_new": "M1.4", "node_ids": ["M1.1"]},
+        {"into_new": "M1.4", "title": "G", "node_ids": "M1.1"},
     ],
     ids=[
         "unknown", "empty", "duplicate", "not-siblings", "taken", "empty-title",
-        "gate-parent", "unknown-type",
+        "gate-parent", "unknown-type", "no-body", "empty-body", "list-body",
+        "missing-title", "ids-not-a-list",
     ],
 )
 def test_outline_group_refusals_are_400_with_a_string_detail(
-    client: TestClient, repo: Path, body: dict
+    client: TestClient, repo: Path, body: dict | list | None
 ) -> None:
     before = tree_bytes(repo)
 
@@ -167,14 +173,17 @@ def test_outline_group_refusals_are_400_with_a_string_detail(
     assert tree_bytes(repo) == before
 
 
-def test_outline_group_under_a_locked_milestone_is_409(client: TestClient, repo: Path) -> None:
+def test_outline_group_under_a_locked_milestone_is_a_400_refusal(
+    client: TestClient, repo: Path
+) -> None:
     lock_milestone(repo, NK_A)
     before = tree_bytes(repo)
     body = {"into_new": "M1.4", "title": "G", "node_ids": ["M1.1"]}
 
     r = _post(client, "/api/outline/group", body)
 
-    assert r.status_code == 409
+    assert r.status_code == 400
+    assert "active milestone execution" in r.json()["detail"]
     assert tree_bytes(repo) == before
 
 

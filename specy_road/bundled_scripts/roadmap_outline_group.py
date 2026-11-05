@@ -121,11 +121,14 @@ def group_nodes(
     The new parent takes the earliest listed sibling's position and a codename
     and sheet derived as ``add-node`` derives them; its children become
     ``into_new.1..N`` in argument order, each keeping its descendants' suffixes.
-    Returns the ``old -> new`` id map; every refusal is a ``ValueError``.
+    Returns the ``old -> new`` id map; every refusal, a locked milestone
+    included, is a ``ValueError``.
     """
     nodes = list(load_roadmap(root)["nodes"])
     by_id = {n["id"]: n for n in nodes}
     parent_id = _common_parent(by_id, node_ids)
+    # A locked parent locks its whole subtree, so the listed ids cover it.
+    assert_pm_nodes_not_milestone_locked(nodes, *node_ids)
     check_chosen_child_id(nodes, parent_id, into_new, ignore_ids=set())
     node: dict = {
         "id": into_new,
@@ -164,7 +167,12 @@ def _run_shift(
     shift: Callable[[Path, str], dict[str, str] | None],
     noop: str,
 ) -> None:
-    """Run ``apply_indent`` / ``apply_outdent``; a no-op exits 1 printing ``noop``."""
+    """Run ``apply_indent`` / ``apply_outdent``; a no-op exits 1 printing ``noop``.
+
+    One fixed message per command: for indent, ``no previous sibling`` means no
+    sibling above can take the node (there is none, it is a gate, or the outline
+    depth cap would be passed).
+    """
     try:
         old_to_new = shift(root, node_id)
     except ValueError as e:
@@ -181,12 +189,10 @@ def cmd_indent(args: argparse.Namespace) -> None:
     root = repo_root(args)
     node_id = args.node_id
     above = indent_parent_id(_shift_target(root, node_id), node_id)
-    noop = "no previous sibling"
     if above is not None:
         # The sibling above becomes the parent: its subtree gains a node.
         _refuse_if_milestone_locked(root, above)
-        noop = f"{node_id} cannot nest under {above} (node type or outline depth)"
-    _run_shift(root, node_id, apply_indent, noop)
+    _run_shift(root, node_id, apply_indent, "no previous sibling")
 
 
 def cmd_outdent(args: argparse.Namespace) -> None:
@@ -198,10 +204,6 @@ def cmd_outdent(args: argparse.Namespace) -> None:
 def cmd_group(args: argparse.Namespace) -> None:
     root = repo_root(args)
     try:
-        # A locked parent locks its whole subtree, so the listed ids cover it.
-        assert_pm_nodes_not_milestone_locked(
-            load_roadmap(root)["nodes"], *args.node_ids
-        )
         old_to_new = group_nodes(
             root, args.into_new, args.title, args.node_ids, node_type=args.type
         )
@@ -254,8 +256,9 @@ def build_parser() -> argparse.ArgumentParser:
         sub,
         "indent",
         "Nest a node and its subtree under the sibling above it, as the PM UI's "
-        "indent does; only that subtree's ids change. With no sibling above, "
-        "exits 1 and writes nothing.",
+        "indent does; only that subtree's ids change. With no sibling above "
+        "that can take it (none, a gate, or the outline depth cap), exits 1 "
+        "printing `no previous sibling` and writes nothing.",
         cmd_indent,
     )
     _add_shift_parser(
