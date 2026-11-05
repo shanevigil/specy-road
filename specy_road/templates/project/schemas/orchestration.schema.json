@@ -105,6 +105,11 @@
           "minimum": 1,
           "description": "A leaf's review loop is escalated for root-cause analysis after this many review rounds since its last analysis. Default 5."
         },
+        "max_fix_rounds": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Fix-round budget: after this many blocking review rounds on one leaf, `handoff status` reports fix_round_budget_spent and names the command that resolves it (a root-cause analysis, then `specy-road review defer` for a defer_findings record). Unset (the default): no budget."
+        },
         "stall_after_seconds": {
           "type": "integer",
           "minimum": 1,
@@ -129,6 +134,11 @@
         "red_green": {
           "type": "boolean",
           "description": "When true, every Python test function the leaf adds or changes must fail at the merge base (with the head's changed test files overlaid) and pass at head, or pass on both when the node's planned_test_changes on the integration branch lists it as `preserve: <path>::<name>`; `specy-road review red-green` records the outcomes in work/reviews/<NODE_ID>/RED-GREEN.md and the review gate reads them for the commit under review. Default false."
+        },
+        "garden_cadence_days": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "When set, `specy-road validate` warns that gardening is due once more than this many days have passed since `specy-road chore garden` last ran (recorded in work/chores/.garden.json), or when it never has. Unset: no warning."
         },
         "ratchet_paths": {
           "type": "array",

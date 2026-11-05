@@ -78,8 +78,9 @@ def test_report_prints_one_line_per_harness_and_never_warns(repo: Path, capsys) 
     lines = out.splitlines()
     assert [ln.split(" reads ")[0] for ln in lines] == [
         "context: Codex", "context: Claude Code", "context: Cursor", "context: Copilot"]
-    assert lines[2] == "context: Cursor reads AGENTS.md 1 lines, 9 bytes — 9 bytes per session; no documented limit"
-    assert lines[3].endswith("— 40,010 bytes per session; no documented limit")
+    assert lines[2] == ("context: Cursor reads AGENTS.md 1 lines, 9 bytes — no documented limit; "
+                        "total 1 lines, 9 bytes per session")
+    assert lines[3].endswith("— no documented limit; total 2 lines, 40,010 bytes per session")
     assert err == ""
 
 
