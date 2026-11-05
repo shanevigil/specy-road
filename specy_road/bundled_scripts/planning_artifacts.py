@@ -65,12 +65,22 @@ def codename_to_slug(codename: str | None) -> str:
     return s if s else "unnamed"
 
 
+_PLANNING_FILENAME_NAME_MAX = 255
+
+
 def planning_filename_for_node(n: dict) -> str:
     """Canonical filename: ``<id>_<slug>_<node_key>.md`` (node_key lowercased)."""
     nid = n["id"]
     slug = codename_to_slug(n.get("codename"))
     nk = str(n["node_key"]).strip().lower()
-    return f"{nid}_{slug}_{nk}.md"
+    name = f"{nid}_{slug}_{nk}.md"
+    byte_len = len(name.encode("utf-8"))
+    if byte_len > _PLANNING_FILENAME_NAME_MAX:
+        raise ValueError(
+            f"planning filename for node {nid!r} would be {byte_len} bytes; "
+            f"the limit is {_PLANNING_FILENAME_NAME_MAX}",
+        )
+    return name
 
 
 def expected_planning_rel(n: dict) -> str:

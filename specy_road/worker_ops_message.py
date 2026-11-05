@@ -32,6 +32,8 @@ from specy_road.worker_state import (
     workers_lock,
 )
 
+from specy_road.worker_runner_ready import READY_ONLY_PROMPT
+
 CONTINUE_PROMPT = ("Continue the task from where you stopped. Re-read the brief and the precondition "
                    "first; if the hand-off is already written, say so and stop.\n")
 
@@ -81,7 +83,8 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: boo
     prompt.write_text(text, encoding="utf-8")
     reviews_dir(repo_root, rec.node_id).mkdir(parents=True, exist_ok=True)   # as delegate: before the argv names it
     launch = worker_env(adapter.resume(sid, prompt, Path(rec.worktree), api_id, cli, node_id=rec.node_id,
-                                       repo_root=repo_root, launch_mode=mode, effort=effort),
+                                       repo_root=repo_root, launch_mode=mode, effort=effort,
+                                       harness_bin=entry.get("harness_bin")),   # as delegate: the adapter resolves it
                         Path(rec.worktree) / project_prefix(repo_root))   # as delegate set it
     acquire_lease(repo_root, rec, new=rec.state == "failed", offline=offline)   # a failed worker's was released
     append_event(repo_root, rec, "message", source="orchestrator", authority="orchestrator",
@@ -116,9 +119,11 @@ def message(repo_root: Path, worker_id: str, text: str | None, *, offline: bool 
         return _send(repo_root, rec, text, "message", offline, no_queue=no_queue)
 
 
-def resume(repo_root: Path, worker_id: str, *, offline: bool = False) -> WorkerRecord:
+def resume(repo_root: Path, worker_id: str, *, offline: bool = False, ready_only: bool = False) -> WorkerRecord:
+    prompt = READY_ONLY_PROMPT if ready_only else CONTINUE_PROMPT
+    kind = "ready-only" if ready_only else "resume"
     with workers_lock(repo_root):
-        return _send(repo_root, load_record(repo_root, worker_id), CONTINUE_PROMPT, "resume", offline, no_queue=True)
+        return _send(repo_root, load_record(repo_root, worker_id), prompt, kind, offline, no_queue=True)
 
 
 def interrupt(repo_root: Path, worker_id: str) -> None:

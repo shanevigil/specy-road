@@ -1,4 +1,10 @@
-"""Full-tree id renumbering from parent_id + sibling_order (display ids; node_key stable)."""
+"""Display-id renumbering (node_key stable).
+
+Two forms: :func:`renumber_display_ids_inplace` rewrites every id from the
+tree shape (the PM GUI's outline drag, ``move-node --renumber-outline``), and
+:func:`assign_subtree_ids_inplace` renumbers only a moved subtree
+(``move-node``'s default), so no other node's id changes.
+"""
 
 from __future__ import annotations
 
@@ -114,4 +120,65 @@ def renumber_display_ids_inplace(nodes: list[dict]) -> dict[str, str]:
             else:
                 pk = p["node_key"]
                 n["parent_id"] = key_to_new_id[pk]
+    return old_to_new
+
+
+def _numeric_last_segment(nid: str, prefix: str) -> int | None:
+    """``k`` when ``nid`` is ``<prefix><k>`` with an integer ``k``, else None."""
+    if not nid.startswith(prefix):
+        return None
+    rest = nid[len(prefix):]
+    return int(rest) if rest.isdigit() else None
+
+
+def next_free_child_id(
+    nodes: list[dict], parent_id: str | None, *, exclude_key: str | None = None
+) -> str:
+    """One past the highest numbered child of ``parent_id`` (``None`` = root).
+
+    Gaps are left alone, so no existing sibling's id changes. ``exclude_key``
+    leaves the node being moved out of the count, so moving the last child of
+    a parent back under it keeps its number.
+    """
+    prefix = "M" if parent_id is None else f"{parent_id}."
+    taken = [
+        _numeric_last_segment(n["id"], prefix)
+        for n in nodes
+        if (n.get("parent_id") or None) == parent_id
+        and n.get("node_key") != exclude_key
+    ]
+    highest = max((k for k in taken if k is not None), default=0)
+    return f"{prefix}{highest + 1}"
+
+
+def assign_subtree_ids_inplace(
+    nodes: list[dict], moved_key: str, new_id: str
+) -> dict[str, str]:
+    """Give the node ``moved_key`` the id ``new_id`` and renumber its subtree only.
+
+    Each descendant keeps its own last id segment under its parent's new id
+    (``M1.2.3`` moved to ``M4.7`` becomes ``M4.7.3``), so gaps inside the
+    subtree survive. Every other node keeps its ``id`` and ``parent_id``; the
+    moved node's ``parent_id`` is whatever the caller already set. Returns
+    ``old_id -> new_id`` for the subtree only.
+    """
+    moved = next(n for n in nodes if n.get("node_key") == moved_key)
+    children: dict[str, list[dict]] = defaultdict(list)
+    for n in nodes:
+        if n is not moved and isinstance(n.get("parent_id"), str):
+            children[n["parent_id"]].append(n)
+
+    # (node, new id, new parent id); collected before anything is rewritten.
+    renames: list[tuple[dict, str, str | None]] = []
+
+    def visit(node: dict, nid: str, parent: str | None) -> None:
+        renames.append((node, nid, parent))
+        for child in children.get(node["id"], []):
+            visit(child, f"{nid}.{child['id'].rsplit('.', 1)[-1]}", nid)
+
+    visit(moved, new_id, moved.get("parent_id"))
+    old_to_new = {node["id"]: nid for node, nid, _parent in renames}
+    for node, nid, parent in renames:
+        node["id"] = nid
+        node["parent_id"] = parent
     return old_to_new

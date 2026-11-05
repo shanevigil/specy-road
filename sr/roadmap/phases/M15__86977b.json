@@ -18,8 +18,8 @@
       "node_key": "86977bbe-582b-4434-8c5e-56ec9669a5a5",
       "parent_id": "M15",
       "planning_dir": "planning/M15.17_review-friction-packet-and-record_86977bbe-582b-4434-8c5e-56ec9669a5a5.md",
-      "sibling_order": 17,
-      "status": "Not Started",
+      "sibling_order": 12,
+      "status": "Complete",
       "title": "Review friction: delegate builds a missing packet, the packet skips ignored evidence and numbers suppressions correctly, refusals quote the line, and superseded failed runs say so",
       "touch_zones": [
         "specy_road/review_delegate.py",
@@ -47,7 +47,7 @@
       "node_key": "52977306-d74f-402c-bd68-2f53de204394",
       "parent_id": "M15",
       "planning_dir": "planning/M15.18_planned-test-changes-editable-and-removals-surfaced_52977306-d74f-402c-bd68-2f53de204394.md",
-      "sibling_order": 18,
+      "sibling_order": 13,
       "status": "Complete",
       "title": "planned_test_changes can be edited after pickup, and an unplanned test removal is a required reviewer check",
       "touch_zones": [
@@ -80,7 +80,7 @@
       "node_key": "ff8e2df5-393e-4d32-8576-03103c4c052f",
       "parent_id": "M15",
       "planning_dir": "planning/M15.19_cursor-cost-with-display-name-models_ff8e2df5-393e-4d32-8576-03103c4c052f.md",
-      "sibling_order": 19,
+      "sibling_order": 14,
       "status": "Complete",
       "title": "Cursor worker cost is estimated when the harness reports a display name for the rostered model",
       "touch_zones": [
@@ -100,11 +100,11 @@
       "codename": "zones-missing-what-acceptance-needs-flagged",
       "dependencies": [],
       "execution_milestone": "Agentic-led",
-      "id": "M15.20",
+      "id": "M18.13",
       "node_key": "b743c74e-2ca9-4d5d-a7c4-02790089a684",
-      "parent_id": "M15",
-      "planning_dir": "planning/M15.20_zones-missing-what-acceptance-needs-flagged_b743c74e-2ca9-4d5d-a7c4-02790089a684.md",
-      "sibling_order": 20,
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.13_zones-missing-what-acceptance-needs-flagged_b743c74e-2ca9-4d5d-a7c4-02790089a684.md",
+      "sibling_order": 12,
       "status": "Not Started",
       "title": "Touch zones that miss what acceptance needs are flagged at plan time, and the brief's zone section stays short",
       "touch_zones": [
@@ -133,7 +133,7 @@
       "node_key": "b502d0b5-af11-4b1e-802c-5283e4f7a506",
       "parent_id": "M15",
       "planning_dir": "planning/M15.21_linked-worktrees-resolve-root-and-symlinked-envs_b502d0b5-af11-4b1e-802c-5283e4f7a506.md",
-      "sibling_order": 21,
+      "sibling_order": 15,
       "status": "Complete",
       "title": "Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments",
       "touch_zones": [
@@ -164,8 +164,8 @@
       "node_key": "28fd4390-9084-4f8d-9304-1f7d6e6a88c7",
       "parent_id": "M15",
       "planning_dir": "planning/M15.22_project-preferences-local-decisions-footer-summary-landing_28fd4390-9084-4f8d-9304-1f7d6e6a88c7.md",
-      "sibling_order": 22,
-      "status": "Not Started",
+      "sibling_order": 16,
+      "status": "Complete",
       "title": "Project preferences the workflow respects: local decisions, a PR body footer, the summary commit rule, and local landing for the root repository",
       "touch_zones": [
         "specy_road/decisions.py",
@@ -201,7 +201,7 @@
       "node_key": "f11ae6a1-4e8d-43f8-9aed-391000c71679",
       "parent_id": "M15",
       "planning_dir": "planning/M15.1_rc-install-docs-cover-extras-and-direct-wheel-url_f11ae6a1-4e8d-43f8-9aed-391000c71679.md",
-      "sibling_order": 1,
+      "sibling_order": 0,
       "status": "Complete",
       "title": "RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command",
       "touch_zones": [
@@ -212,39 +212,6 @@
         "tests/",
         "README.md",
         "docs/supply-chain-security.md"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "ci_gates in roadmap/git-workflow.yaml is schema-checked (git-workflow.schema.json has additionalProperties false, so the key is added there): a list of {name, cmd, paths}, name matching [A-Za-z0-9._-]+, cmd a non-empty string, paths an optional list of globs matched against the leaf's changed paths as touch zones are (finish_implementation_check.in_zones), no paths meaning every leaf; new specy_road/ci_gates.py reads it (git_workflow_config.py is at 396 lines and gains nothing) and refuses a duplicate name, naming it; tests for a valid list, a missing cmd (schema error) and a duplicate name",
-        "specy-road ready runs every gate whose paths match at least one path the READY records as changed (base...HEAD), from the project root as land_check_cmd runs, after the cheap refusals and after the executor's own --run commands, whether or not the executor passed any; each result is a verify row carrying gate: <name>; a non-zero exit refuses with the gate's name and output tail and never suggests --red-green; a gate skipped because no changed path matches is named in the READY body as skipped; tests with a fake failing gate, a passing gate, and a gate skipped by paths",
-        "The review packet gains a CI gates section (new specy_road/bundled_scripts/review_packet_ci_gates.py; review_packet.py, 392 lines, changes only one call line) listing every declared gate that applies to the leaf with its exit and tail from the READY when the READY commit is the commit under review, and in bold 'missing from READY' or 'not run at the commit under review' otherwise; one test per state",
-        "verify_cmd_lines (verify_cmd_config.py), which the executor brief and the reviewer prompt already carry, adds one sentence naming the leaf's applicable gates and saying a missing, stale or failing gate blocks; the project template git-workflow.yaml gains a commented ci_gates example, and new docs/git-workflow-ci-gates.md documents the key. Out of scope: running gates inside the review gate or at landing (land_check_cmd stays), auto-fix modes, per-gate timeouts, and declaring this toolkit's own gates in sr/roadmap/git-workflow.yaml (coordinator bookkeeping after landing)"
-      ],
-      "codename": "ci-gates-run-by-ready-and-shown-in-the-packet",
-      "dependencies": [
-        "4bbfe087-bdb9-4cff-8e15-8cb0badedabc"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M15.23",
-      "node_key": "2535829e-6a0d-40e3-aa42-9b0506bb9fe9",
-      "parent_id": "M15",
-      "planning_dir": "planning/M15.23_ci-gates-run-by-ready-and-shown-in-the-packet_2535829e-6a0d-40e3-aa42-9b0506bb9fe9.md",
-      "sibling_order": 23,
-      "status": "Not Started",
-      "title": "A project declares its merge-blocking CI commands per touch zone; ready always runs them and the review packet shows their result at the reviewed commit",
-      "touch_zones": [
-        "specy_road/ci_gates.py",
-        "specy_road/review_gate_ready.py",
-        "specy_road/ready_run_checks.py",
-        "specy_road/bundled_scripts/review_packet.py",
-        "specy_road/bundled_scripts/review_packet_ci_gates.py",
-        "specy_road/verify_cmd_config.py",
-        "specy_road/templates/project/schemas/git-workflow.schema.json",
-        "specy_road/templates/project/roadmap/git-workflow.yaml",
-        "docs/git-workflow-ci-gates.md",
-        "tests/"
       ],
       "type": "task"
     },
@@ -261,8 +228,8 @@
       "node_key": "4bbfe087-bdb9-4cff-8e15-8cb0badedabc",
       "parent_id": "M15",
       "planning_dir": "planning/M15.24_ready-flags-failure-tails-and-takes-argv_4bbfe087-bdb9-4cff-8e15-8cb0badedabc.md",
-      "sibling_order": 24,
-      "status": "Not Started",
+      "sibling_order": 17,
+      "status": "Complete",
       "title": "ready does not record false evidence: a passing run whose output shows a failed command is flagged, and --run-argv runs a command without a shell",
       "touch_zones": [
         "specy_road/ready_run_checks.py",
@@ -282,11 +249,11 @@
       "codename": "stash-changes-attributed-to-the-owning-branch",
       "dependencies": [],
       "execution_milestone": "Agentic-led",
-      "id": "M15.25",
+      "id": "M18.14",
       "node_key": "795d8d86-f245-463f-92cd-0351c0930b41",
-      "parent_id": "M15",
-      "planning_dir": "planning/M15.25_stash-changes-attributed-to-the-owning-branch_795d8d86-f245-463f-92cd-0351c0930b41.md",
-      "sibling_order": 25,
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.14_stash-changes-attributed-to-the-owning-branch_795d8d86-f245-463f-92cd-0351c0930b41.md",
+      "sibling_order": 13,
       "status": "Not Started",
       "title": "A change to the shared stash is attributed to the worker whose branch made it, not to whichever worker's turn ended while the entry existed",
       "touch_zones": [
@@ -309,8 +276,8 @@
       "node_key": "4bd33f34-dd57-4ef9-a511-27051f646dd2",
       "parent_id": "M15",
       "planning_dir": "planning/M15.26_claims-with-no-worker-are-reported-and-never-hold-slots_4bd33f34-dd57-4ef9-a511-27051f646dd2.md",
-      "sibling_order": 26,
-      "status": "Not Started",
+      "sibling_order": 18,
+      "status": "Complete",
       "title": "A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim",
       "touch_zones": [
         "specy_road/worker_orphans.py",
@@ -327,8 +294,8 @@
     },
     {
       "acceptance": [
-        "A sanitized fixture under tests/fixtures/ holds a multi-segment Cursor stream-json turn (only type, subtype, session_id and usage fields kept; no prompt or content text), taken from a real long turn's worker log; the implementation summary states which line types carry usage and whether each count is per segment or a running total, as observed in that fixture",
-        "The cursor adapter counts every usage-bearing line of a turn: per-segment counts are summed and a running total is taken once at its last value, so the turn's usage, as worker usage sums it, equals the turn's real total; a test with the fixture asserts output_tokens equal the sum of the segments, and a single-result short turn keeps today's numbers",
+        "A sanitized fixture under tests/fixtures/ holds a real long Cursor stream-json turn from this toolkit's own grind (only type, subtype, session_id and usage fields kept; no prompt or content text); the implementation summary states which line types carry usage, as observed. Planner finding 2026-11-05: in real composer-2.5 logs only the type=result line carries usage, once per turn (10 results, 10 usage-bearing lines in one worker log), so there are no intermediate segments to sum",
+        "The cursor adapter takes a turn's usage from its result line as today; if a turn ever has more than one usage-bearing line, the adapter sums them and the summary says so; a test with the real fixture pins today's single-result numbers. The undercount is surfaced by A3's plausibility mark rather than corrected (planner 2026-11-05, from the real-log finding)",
         "worker usage (and --json, as possible_undercount: true) marks a turn as 'possible undercount' when it lasted 20 minutes or more (from its start event to its usage event) and reported fewer than 300 output tokens per minute, both constants in new specy_road/worker_usage_plausibility.py; tests: the reported shape (6,092 s, 10,136 output tokens) is marked and a 5-minute turn with 17,000 is not. Out of scope: other harnesses' parsers, diff size as a signal, and correcting the recorded cost"
       ],
       "codename": "cursor-usage-sums-segments-and-flags-undercounts",
@@ -340,8 +307,8 @@
       "node_key": "eb4e416f-8d09-49b7-9da4-c4b90bb83145",
       "parent_id": "M15",
       "planning_dir": "planning/M15.27_cursor-usage-sums-segments-and-flags-undercounts_eb4e416f-8d09-49b7-9da4-c4b90bb83145.md",
-      "sibling_order": 27,
-      "status": "Not Started",
+      "sibling_order": 19,
+      "status": "Complete",
       "title": "worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length",
       "touch_zones": [
         "specy_road/worker_adapter_cursor.py",
@@ -363,11 +330,11 @@
         "c740f23d-72c3-41de-88c6-0ee0a7663ce4"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M15.28",
+      "id": "M18.15",
       "node_key": "2a7c0c08-cd90-436c-b2f9-64bd05627b8a",
-      "parent_id": "M15",
-      "planning_dir": "planning/M15.28_rework-carries-current-blocks-and-a-coordinator-note_2a7c0c08-cd90-436c-b2f9-64bd05627b8a.md",
-      "sibling_order": 28,
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.15_rework-carries-current-blocks-and-a-coordinator-note_2a7c0c08-cd90-436c-b2f9-64bd05627b8a.md",
+      "sibling_order": 14,
       "status": "Not Started",
       "title": "--rework carries blocks at the branch tip as required changes, lists older blocks as possibly resolved, and takes a coordinator note placed above the reviews",
       "touch_zones": [
@@ -390,11 +357,11 @@
         "2278f4ad-6118-44da-bca8-39d904afee8d"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M15.29",
+      "id": "M18.16",
       "node_key": "e716461f-1e04-4374-a33b-18028d5c4db3",
-      "parent_id": "M15",
-      "planning_dir": "planning/M15.29_every-reviewer-channel-leaves-a-run-record_e716461f-1e04-4374-a33b-18028d5c4db3.md",
-      "sibling_order": 29,
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.16_every-reviewer-channel-leaves-a-run-record_e716461f-1e04-4374-a33b-18028d5c4db3.md",
+      "sibling_order": 15,
       "status": "Not Started",
       "title": "A review that stops before filing leaves a trace: every reviewer channel opens a RUN record, and review list shows started but not filed",
       "touch_zones": [
@@ -415,15 +382,15 @@
       ],
       "codename": "one-full-leaf-checklist-review-per-round",
       "dependencies": [
-        "2535829e-6a0d-40e3-aa42-9b0506bb9fe9",
+        "449eeb3e-1874-4b25-841c-2b1fed8e2363",
         "46ce74ef-458b-401f-8abd-93e6a99b28c1"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M15.30",
+      "id": "M18.17",
       "node_key": "6c8427bd-d786-4c08-baff-ef876a273f9f",
-      "parent_id": "M15",
-      "planning_dir": "planning/M15.30_one-full-leaf-checklist-review-per-round_6c8427bd-d786-4c08-baff-ef876a273f9f.md",
-      "sibling_order": 30,
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.17_one-full-leaf-checklist-review-per-round_6c8427bd-d786-4c08-baff-ef876a273f9f.md",
+      "sibling_order": 16,
       "status": "Not Started",
       "title": "Under delta review, one approval per round still checks the whole leaf against the merge base on a fixed checklist",
       "touch_zones": [
@@ -436,6 +403,42 @@
         "specy_road/bundled_scripts/review_packet_checklist.py",
         "docs/orchestration-full-leaf-checklist.md",
         "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "No adapter puts the prompt text on the command line: cursor's executor, resume and reviewer launches (M8.3's --mode ask included) pass a short instruction naming the prompt file, or stdin, as claude-code's STDIN_INSTRUCTION does; a test for every adapter and every role (executor, reviewer, rca) builds a launch from a 200 KiB prompt and asserts no argv element exceeds 32 KiB",
+        "A launch whose argv would still exceed the OS single-argument limit (a custom channels.cli with \"<prompt>\") is refused before exec with the size and the {prompt} placeholder fix, never as Errno 7 from the harness",
+        "specy_road/harness_binary.py resolves the harness binary (claude, agent, codex) before launch: a roster entry's optional harness_bin, else PATH, else the harness's documented install dirs (~/.local/bin for the Cursor agent CLI); not found means a refusal naming the dirs searched and harness_bin, not exit 127; the resolved path is what runs and is recorded. Out of scope: the cursor reviewer's --force (M8.3 already removes it)"
+      ],
+      "codename": "harness-launches-survive-large-prompts-and-binaries-off-path",
+      "dependencies": [
+        "2278f4ad-6118-44da-bca8-39d904afee8d"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.9",
+      "node_key": "5e31fbd5-36c8-4fd8-bc36-15cd9cc478f9",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.9_harness-launches-survive-large-prompts-and-binaries-off-path_5e31fbd5-36c8-4fd8-bc36-15cd9cc478f9.md",
+      "sibling_order": 6,
+      "status": "Complete",
+      "title": "Harness launches survive large prompts and a harness binary off PATH, for every role",
+      "touch_zones": [
+        "specy_road/worker_adapter_cursor.py",
+        "specy_road/worker_adapter_codex.py",
+        "specy_road/worker_adapter_base.py",
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/harness_binary.py",
+        "docs/orchestration-harness-launch.md",
+        "tests/",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "specy_road/worker_adapter_parsers.py",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/review_delegate.py",
+        "specy_road/bundled_scripts/role_prompt_cli.py",
+        "specy_road/worker_ops_message.py",
+        "docs/orchestration-workers.md"
       ],
       "type": "task"
     }

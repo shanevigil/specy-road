@@ -1,0 +1,2145 @@
+{
+  "nodes": [
+    {
+      "codename": "rc2-field-feedback",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11",
+      "node_key": "e10fe30c-201f-4170-998c-0cc6847f84f4",
+      "planning_dir": "planning/M11_rc2-field-feedback_e10fe30c-201f-4170-998c-0cc6847f84f4.md",
+      "sibling_order": 10,
+      "status": "Complete",
+      "title": "rc2 field feedback: worktrees, workers and the review loop",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "acceptance": [
+        "review-packet, review record, handoff status and worker delegate run in a linked worktree all read and write the leaf's review directory at one documented location (the main checkout's work/reviews/<ID>/, as the executor prompt already states); no command reads READY from the worktree while another writes PACKET.md to the main checkout",
+        "The reviewer prompt names that directory as the one path the reviewer must be able to write, so a harness sandboxed to the worktree can be launched with it as a writable root; docs/orchestration-review.md says so",
+        "A test runs review-packet, review record and handoff status from a linked worktree and shows they agree on the directory"
+      ],
+      "codename": "worktree-paths-agree",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.1",
+      "node_key": "9eaab693-8897-4e18-977c-f83b7e7a69b9",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.1_worktree-paths-agree_9eaab693-8897-4e18-977c-f83b7e7a69b9.md",
+      "sibling_order": 1,
+      "status": "Complete",
+      "title": "In a git worktree, every command resolves work/ paths the same way and a sandboxed reviewer can file its record",
+      "touch_zones": [
+        "specy_road/review_files.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/review_gate_ready.py",
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "worker message W --text ... resumes a worker in state failed or stalled when its record holds a native session id, instead of refusing with 'delegate again'; a failed worker without a session id is still refused with that hint",
+        "The resumed turn counts against max_workers like any other launch; docs/orchestration-workers.md lists which states can be resumed",
+        "Tests cover resuming a failed worker with and without a session id"
+      ],
+      "codename": "resume-failed-workers",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.2",
+      "node_key": "37fbae4e-2d6f-42a8-8b7b-1465e680776d",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.2_resume-failed-workers_37fbae4e-2d6f-42a8-8b7b-1465e680776d.md",
+      "sibling_order": 2,
+      "status": "Complete",
+      "title": "worker message resumes a failed or stalled worker whose native session id is known",
+      "touch_zones": [
+        "specy_road/worker_ops.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The executor and reviewer clean-tree preconditions and delegation's uncommitted-work check ignore specy-road's own runtime state (work/.workers/ and the other generated work/ bookkeeping), in the main checkout, a linked worktree and a separate clone",
+        "init project (and refresh) make sure those runtime paths are ignored by git in a new project, so a fresh clone starts clean",
+        "A test delegates in a fresh clone and shows the precondition passes while an unrelated untracked file still fails it"
+      ],
+      "codename": "runtime-dirs-not-dirty",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.3",
+      "node_key": "d6ce85d8-6e44-41b3-881a-292ca185cc50",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.3_runtime-dirs-not-dirty_d6ce85d8-6e44-41b3-881a-292ca185cc50.md",
+      "sibling_order": 3,
+      "status": "Complete",
+      "title": "specy-road's own runtime directories never fail the clean-tree checks",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "specy_road/worker_reconcile.py",
+        "specy_road/worker_ops.py",
+        "specy_road/agent_ignores.py",
+        "specy_road/templates/project/",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "worker delegate and worker message/resume refuse a launch that would exceed policy.max_workers, counting live workers in the main checkout, in every linked worktree, and (through lease refs on the configured remote) in other clones. With --offline the count uses this checkout plus the last-fetched lease refs, the command warns that the global limit was not verified, and docs name --offline as the explicit local-only escape (maintainer decision 2026-11-02)",
+        "docs/orchestration-workers.md states what is counted and how a separate clone is included (for example through the claims on the integration branch)",
+        "Tests show a resume refused at the limit and two checkouts sharing one limit"
+      ],
+      "codename": "max-workers-global",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.4",
+      "node_key": "5c014d93-e0e4-4d94-a066-9a2534c7b870",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.4_max-workers-global_5c014d93-e0e4-4d94-a066-9a2534c7b870.md",
+      "sibling_order": 4,
+      "status": "Complete",
+      "title": "max_workers counts live workers across checkouts and applies to resumes",
+      "touch_zones": [
+        "specy_road/worker_ops.py",
+        "specy_road/worker_state.py",
+        "specy_road/orchestration_config.py",
+        "docs/orchestration-workers.md",
+        "tests/",
+        "specy_road/worker_lease.py",
+        "specy_road/worker_runner.py",
+        "specy_road/worker_process.py",
+        "specy_road/worker_reconcile.py",
+        "specy_road/bundled_scripts/worker_cli.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A claim whose feature branch exists locally is never reported as stale, whether or not the branch has been pushed, so a successful pickup prints no stale-claim warning",
+        "The stale-claim warning and its fix lines (abort-task-pickup --force, removing the row) are printed only when neither a local nor a remote feature branch exists, and say which was checked",
+        "Tests cover a local-only branch (no warning) and a missing branch (warning)"
+      ],
+      "codename": "pickup-claim-heuristic",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.5",
+      "node_key": "9124114c-7995-42a4-bde4-b1eda63ca0c5",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.5_pickup-claim-heuristic_9124114c-7995-42a4-bde4-b1eda63ca0c5.md",
+      "sibling_order": 5,
+      "status": "Complete",
+      "title": "Pickup's stale-claim check tests the local branch and never advises deleting a live claim",
+      "touch_zones": [
+        "specy_road/bundled_scripts/do_next_task_self_heal.py",
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "worker reconcile compares changed paths with the leaf's current touch zones (the claim row as edit-node now keeps it), not the zones snapshotted at delegation",
+        "Paths that arrive only through a merge of the integration branch into the leaf branch are not reported as outside the touch zones",
+        "'The leaf's brief changed since delegation' is reported only when the leaf's own contract changed (acceptance, touch zones, sheet), not whenever the integration branch moved; tests cover all three"
+      ],
+      "codename": "reconcile-current-contract",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.6",
+      "node_key": "6fdec849-e299-453b-a5e7-369c210b6e05",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.6_reconcile-current-contract_6fdec849-e299-453b-a5e7-369c210b6e05.md",
+      "sibling_order": 6,
+      "status": "Complete",
+      "title": "worker reconcile judges a worker against the leaf's current contract",
+      "touch_zones": [
+        "specy_road/worker_reconcile.py",
+        "specy_road/git_changed_paths.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road review delegate <ID> --model <roster id> builds the reviewer prompt, launches the roster entry's harness, records the reviewer's native session id, and can resume it",
+        "A provider capacity or rate-limit error is retried with backoff a bounded number of times; a run that ends without a valid record is reported as incomplete for that commit, and handoff status never presents an older commit's record as the current verdict",
+        "docs/orchestration-review.md documents the command; tests use a fake harness for success, a capacity error then success, and a run that writes no record"
+      ],
+      "codename": "review-delegate",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.7",
+      "node_key": "2d7324a8-cfd7-4eca-8662-113e963c98b4",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.7_review-delegate_2d7324a8-cfd7-4eca-8662-113e963c98b4.md",
+      "sibling_order": 7,
+      "status": "Complete",
+      "title": "review delegate runs a rostered reviewer like worker delegate runs an executor",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_delegate.py",
+        "specy_road/worker_adapters.py",
+        "specy_road/review_files.py",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A review policy setting (on by default) lets a fix round after an approval be reviewed from a delta packet: the diff since the last commit that reviewer approved, plus that reviewer's notes. The delta packet is used only when every changed path in the delta is a documentation or test file, the delta touches at most three files, the integrity report for the delta has no findings (no removed or skipped tests, no lost asserts), and every path is inside the leaf's touch zones; otherwise the round gets a full packet. There is no line-count limit",
+        "A delta approval counts only when the same reviewer has a counting approval of the earlier commit named in delta_from. A counting approval of a commit is that reviewer's latest record on it (two spellings of one commit are the same commit) and only when that record is an approve that passes the gate's ordinary eligibility checks: rostered reviewer, any required fresh session and signature, and a result for every acceptance id in the brief. If that approval itself names delta_from, it counts only while its basis is a counting approval under this same rule; once a basis stops counting, every delta approval that depends on it stops counting. A later block by the same reviewer on that commit replaces the approval, and a later eligible approval restores it. The gate still needs both distinct families at the commit under review. The --full flag and the policy set to off force a full fresh review of that commit: no delta packet is built, and no approval that names delta_from counts. A block is not a delta approval. Which diffs may use a delta packet is unchanged: documentation or test files, at most three files, a clean integrity report, paths inside the touch zones, and no line-count limit. (rewritten from RCA-4, maintainer-approved 2026-11-02)",
+        "docs/orchestration-review.md documents the rule and the policy key; tests cover an eligible delta, a delta with a source file, a delta over three files, a delta with an integrity finding, a reviewer that did not approve the earlier commit, and the policy off"
+      ],
+      "codename": "delta-review-packet",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.8",
+      "node_key": "0aae8208-413d-4d60-b7b8-c83f9c31b522",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.8_delta-review-packet_0aae8208-413d-4d60-b7b8-c83f9c31b522.md",
+      "sibling_order": 8,
+      "status": "Complete",
+      "title": "An opt-in delta review packet for small fix rounds",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/review_gate.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "docs/orchestration-review.md",
+        "tests/",
+        "specy_road/schemas/review-record.schema.json",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/orchestration_config.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "An acceptance item can be marked human (for example a 'human:' prefix or a per-item flag in the schema); reviewers are told to mark it n/a with the reason 'human', and the review gate does not count it as a fail",
+        "finish-this-task refuses while a human item has no recorded decision on the planning sheet, and says how to record it",
+        "docs/roadmap-authoring.md documents the marker; tests cover a reviewer skip and the finish refusal"
+      ],
+      "codename": "human-acceptance",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.9",
+      "node_key": "a10ebda9-1fa9-4c54-a84d-cdff292accb9",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.9_human-acceptance_a10ebda9-1fa9-4c54-a84d-cdff292accb9.md",
+      "sibling_order": 9,
+      "status": "Complete",
+      "title": "Acceptance items a human must satisfy are marked and handled as such",
+      "touch_zones": [
+        "specy_road/templates/project/schemas/roadmap.schema.json",
+        "sr/schemas/",
+        "schemas/",
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "specy_road/finish_task_gates.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "docs/roadmap-authoring.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "edit-node --add touch_zones=<path> and --remove touch_zones=<path> change one entry without restating the list; the same works for dependencies and acceptance",
+        "The claim row follows as it does for --set (M10.14); tests cover add, remove, a duplicate add and removing a missing entry"
+      ],
+      "codename": "edit-node-add-remove",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.10",
+      "node_key": "e94870e8-7925-47e5-99ef-9bd104bfd3d5",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.10_edit-node-add-remove_e94870e8-7925-47e5-99ef-9bd104bfd3d5.md",
+      "sibling_order": 10,
+      "status": "Complete",
+      "title": "edit-node can add and remove single list entries",
+      "touch_zones": [
+        "specy_road/bundled_scripts/roadmap_crud_ops.py",
+        "specy_road/bundled_scripts/roadmap_crud_argparse.py",
+        "docs/roadmap-authoring.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A leaf that pickup would skip (for example a scaffold sheet with no acceptance) is not listed as ready by orchestrate plan or grind-session --plan; all three call one readiness function",
+        "orchestrate plan ranks executor candidates using roster class and billing_route when cost data is unknown, instead of always choosing one model",
+        "Tests show the three commands agree on a fixture, and a roster with cheap and senior classes is ranked accordingly"
+      ],
+      "codename": "one-readiness-rule",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.11",
+      "node_key": "78faa6a4-7a22-4c84-866d-bd7c71037af5",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.11_one-readiness-rule_78faa6a4-7a22-4c84-866d-bd7c71037af5.md",
+      "sibling_order": 11,
+      "status": "Complete",
+      "title": "orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route",
+      "touch_zones": [
+        "specy_road/orchestrate_plan.py",
+        "specy_road/bundled_scripts/session_plan.py",
+        "specy_road/bundled_scripts/do_next_available.py",
+        "specy_road/bundled_scripts/orchestrate_cli.py",
+        "docs/orchestration.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road ready <ID> --verify '<cmd>=<exit>' ... writes READY-<model>.md in the leaf's review directory with valid front matter and the current commit, and refuses a non-zero verifier unless it is marked as red-green evidence",
+        "The executor prompt tells executors to write READY with this command; handoff status still validates hand-written files",
+        "Tests cover a valid write, a refused failing verifier, and the prompt text"
+      ],
+      "codename": "ready-command",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.12",
+      "node_key": "28811e9e-94e6-4934-b182-a79d5d0ceca5",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.12_ready-command_28811e9e-94e6-4934-b182-a79d5d0ceca5.md",
+      "sibling_order": 12,
+      "status": "Complete",
+      "title": "specy-road ready writes a valid READY hand-off",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_gate_ready.py",
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "specy_road/cli.py",
+        "specy_road/cli_usage.py",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "With a review policy setting (on by default), when the last leaf under a milestone lands, the milestone is not rolled up to Complete until a full review of its combined change (merge base of its first leaf to the integration tip) is approved by both families; review-packet <MILESTONE_ID> builds that packet",
+        "handoff status and review list show a milestone awaiting its full review; setting the policy off restores the current rollup; docs/orchestration-review.md documents it",
+        "Tests cover the rollup held, the milestone packet's range, approval releasing the rollup, and the policy off"
+      ],
+      "codename": "milestone-full-review",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.13",
+      "node_key": "b0b6bb18-c235-4783-b69a-7aadde34b219",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.13_milestone-full-review_b0b6bb18-c235-4783-b69a-7aadde34b219.md",
+      "sibling_order": 13,
+      "status": "Complete",
+      "title": "A milestone gets one full review of its combined change before it is marked complete",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/review_gate.py",
+        "specy_road/finish_ancestor_rollup.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "sr/schemas/",
+        "docs/orchestration-review.md",
+        "tests/",
+        "specy_road/review_target.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/bundled_scripts/roadmap_load.py",
+        "specy_road/review_gate_ready.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "worker message W --text ... on a worker with a live turn records the message as queued instead of refusing, and the wrapper delivers it as the next turn when the current one ends (a --no-queue flag keeps today's refusal)",
+        "worker list and sync show a queued message; terminating the worker drops the queue with a note; tests cover queue, delivery and terminate"
+      ],
+      "codename": "queue-worker-message",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.14",
+      "node_key": "41e44d38-974f-486c-9eef-5ff224c74ff0",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.14_queue-worker-message_41e44d38-974f-486c-9eef-5ff224c74ff0.md",
+      "sibling_order": 14,
+      "status": "Complete",
+      "title": "worker message queues a follow-up for a worker whose turn is still running",
+      "touch_zones": [
+        "specy_road/worker_ops.py",
+        "specy_road/worker_runner.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "docs/orchestration-workers.md",
+        "tests/",
+        "specy_road/bundled_scripts/worker_cli_render.py",
+        "specy_road/schemas/worker-event.schema.json",
+        "specy_road/schemas/worker-record.schema.json",
+        "specy_road/worker_state.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Pickup refuses a leaf whose planning sheet still has the scaffold or promote placeholder under Intent or Approach, even when the leaf has acceptance criteria, naming the sheet and the section to write (an --allow-scaffold-planning flag keeps today's behaviour)",
+        "grind-session --plan and orchestrate plan list such leaves as unauthored, matching pickup; tests cover a leaf with acceptance and a scaffold Approach"
+      ],
+      "codename": "pickup-refuses-scaffold-sheet",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.15",
+      "node_key": "f12c077c-a36d-4aa1-937d-28152012cf2e",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.15_pickup-refuses-scaffold-sheet_f12c077c-a36d-4aa1-937d-28152012cf2e.md",
+      "sibling_order": 15,
+      "status": "Complete",
+      "title": "Pickup and finish agree on unwritten planning sheets",
+      "touch_zones": [
+        "specy_road/planning_scaffold_check.py",
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/bundled_scripts/do_next_available.py",
+        "docs/roadmap-authoring.md",
+        "tests/",
+        "specy_road/bundled_scripts/do_next_task_args.py",
+        "specy_road/bundled_scripts/do_next_task_leaf_guards.py",
+        "specy_road/bundled_scripts/session_plan_git.py",
+        "specy_road/bundled_scripts/session_plan_render.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the only paths changed since an approved commit are the leaf's own planning sheet or specy-road bookkeeping (implementation summary, review hand-offs), the gate still counts the earlier approvals and handoff status says so",
+        "Any other changed path makes the approvals stale as today; tests cover a sheet-only delta, a summary-only delta, and a mixed delta"
+      ],
+      "codename": "sheet-edits-keep-approvals",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.16",
+      "node_key": "4bc4501a-7a1b-446d-876f-6b22b3902a6a",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.16_sheet-edits-keep-approvals_4bc4501a-7a1b-446d-876f-6b22b3902a6a.md",
+      "sibling_order": 16,
+      "status": "Complete",
+      "title": "A commit that changes only planning or bookkeeping files keeps existing approvals",
+      "touch_zones": [
+        "specy_road/review_gate.py",
+        "specy_road/review_files.py",
+        "docs/orchestration-review.md",
+        "tests/",
+        "specy_road/review_bookkeeping.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "edit-node (and add-node) print the chunk file the node was read from and every file written; when the chunk router moves a node, the output says moved from X to Y and lists all files to commit, including the manifest",
+        "Tests cover an in-place edit and a relocation, checking the printed file names match the files on disk"
+      ],
+      "codename": "edit-node-names-chunks",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.17",
+      "node_key": "b0dc8ed9-8928-426b-9cd7-0adb92ee713c",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.17_edit-node-names-chunks_b0dc8ed9-8928-426b-9cd7-0adb92ee713c.md",
+      "sibling_order": 17,
+      "status": "Complete",
+      "title": "edit-node names every chunk file it changes, and relocation is loud",
+      "touch_zones": [
+        "specy_road/bundled_scripts/roadmap_crud_ops.py",
+        "specy_road/bundled_scripts/roadmap_crud_argparse.py",
+        "tests/",
+        "specy_road/bundled_scripts/roadmap_crud_chunk_report.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "add-node and edit-node print overlap warnings only for claims that overlap the node being added or edited; validate keeps the full list, collapsed to one line per pair",
+        "Broad shared zones such as tests/ are reported once as a summary instead of once per claim pair; tests cover each case"
+      ],
+      "codename": "quieter-overlap-warnings",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.18",
+      "node_key": "bc246e83-fbbc-4125-b4a1-41e415bf6a70",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.18_quieter-overlap-warnings_bc246e83-fbbc-4125-b4a1-41e415bf6a70.md",
+      "sibling_order": 18,
+      "status": "Complete",
+      "title": "Registry overlap warnings show only what concerns the command at hand",
+      "touch_zones": [
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/bundled_scripts/roadmap_crud_ops.py",
+        "tests/",
+        "specy_road/bundled_scripts/validate_registry_overlap.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A test runs a real pickup while another worker's work/.workers event log is being appended and shows no events are lost and no stash entry is left"
+      ],
+      "codename": "pickup-no-work-stash",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.19",
+      "node_key": "174228c2-0ffe-4dc5-80b6-2556bd0ec707",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.19_pickup-no-work-stash_174228c2-0ffe-4dc5-80b6-2556bd0ec707.md",
+      "sibling_order": 19,
+      "status": "Complete",
+      "title": "Pickup never stashes work/ around the registry commit",
+      "touch_zones": [
+        "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/worker_reconcile.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the roster on the integration ref differs from the working tree or the local integration branch, orchestrate plan and validate say the roster is read from <remote>/<integration> and that the change must be committed and pushed (not only committed); with no roster on the integration ref and no working-tree file they say so and point at docs/orchestration.md instead of the may_process hint",
+        "Tests cover a committed-but-unpushed roster and no roster at all"
+      ],
+      "codename": "roster-source-explained",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.20",
+      "node_key": "54602ab6-9a86-4d1b-81cb-30bc13a9bc61",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.20_roster-source-explained_54602ab6-9a86-4d1b-81cb-30bc13a9bc61.md",
+      "sibling_order": 20,
+      "status": "Complete",
+      "title": "orchestrate plan and validate say where the roster is read from",
+      "touch_zones": [
+        "specy_road/orchestration_pinned.py",
+        "specy_road/orchestrate_plan.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "docs/orchestration.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A git-workflow.yaml nested_repos list names separately versioned repositories under the project root; delegate and pickup create matching worktrees (a feature branch for repos the leaf's touch zones cover, detached otherwise) inside the leaf worktree",
+        "worker reconcile diffs the nested repos too, and finish merges the leaf's nested branches; docs describe the layout; tests use a fixture with one nested repo",
+        "review-packet includes the leaf's diffs in each configured nested repo (field: reviewers had to be given a hand-written addendum)"
+      ],
+      "codename": "nested-repo-worktrees",
+      "dependencies": [
+        "14933e19-770a-4026-8ef6-14d1aa315567"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.22",
+      "node_key": "0e58af0e-895f-4a7c-b3c9-e5cb788d598f",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.22_nested-repo-worktrees_0e58af0e-895f-4a7c-b3c9-e5cb788d598f.md",
+      "sibling_order": 22,
+      "status": "Complete",
+      "title": "Worker worktrees can include nested sibling repositories",
+      "touch_zones": [
+        "specy_road/git_workflow_config.py",
+        "specy_road/worker_ops.py",
+        "specy_road/worker_reconcile.py",
+        "specy_road/finish_land_integration.py",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "docs/git-workflow.md",
+        "tests/",
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/nested_repos.py",
+        "specy_road/bundled_scripts/review_packet_nested.py",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/finish_implementation_check.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A roster entry can set channels.cli_resume (or an extra_args list appended to both default commands), so worker message and resume keep the launch's permissions on every harness, including codex and cursor where {session_flag} is refused; tests cover the launch and resume argv for both fields",
+        "worker delegate reports, before launching, a custom channels.cli (or access.cli) that has no usable resume form (no session placeholder and no cli_resume) instead of silently falling back to the default command on resume, and one that uses a text-only output mode (for example agent -p --output-format text, or no output format), which keeps only the last message, suggesting the stream-json form; a test covers each report",
+        "docs/orchestration-workers.md gives one complete hands-off Claude Code executor example: a settings file with allow and deny lists and the channels.cli line that uses it with --permission-mode acceptEdits --settings <file> {session_flag}, with no bare Edit or Write allow rule; the docs warn that a bare Edit allow in dontAsk mode lets a worker write anywhere (including the main checkout) and that relative deny rules cover only the worker's own worktree",
+        "A test checks that the example settings file parses and that its deny list covers git push",
+        "docs/orchestration-workers.md says that a Claude Code permission denial under -p does not stop the run (it appears as a permission_denied message and in the result's permission_denials, and the turn exits 0), replacing 'may stop at a shell permission' and the installation check that expects a stop; the hands-off example's deny list uses the prefix form Bash(git push *) and Bash(gh pr *); and a test asserts that the Codex resume argv repeats every launch policy flag, since exec resume carries only the conversation."
+      ],
+      "codename": "resume-keeps-permissions",
+      "dependencies": [
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.23",
+      "node_key": "6e0a98be-987f-4e0d-bc0a-f1d0fe79b216",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.23_resume-keeps-permissions_6e0a98be-987f-4e0d-bc0a-f1d0fe79b216.md",
+      "sibling_order": 23,
+      "status": "Complete",
+      "title": "A custom launch command's permissions carry through resume",
+      "touch_zones": [
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_ops.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "docs/orchestration-workers.md",
+        "tests/",
+        "specy_road/worker_adapter_parsers.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/worker_adapter_base.py",
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/worker_ops_message.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A roster channels.cli can receive the main checkout's work/reviews/<ID> directory (for example a {reviews_dir} placeholder), so a custom launch can allow the executor to write READY there",
+        "The Codex and Cursor adapters pass the equivalent allowed-directory option when the installed harness supports it (checked against model-profiles/harness-facts.yaml), or the docs state that the harness has none; tests cover the argv"
+      ],
+      "codename": "worktree-handoff-writable",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.24",
+      "node_key": "5021c591-ae29-4b76-b422-66c0a4d51c13",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.24_worktree-handoff-writable_5021c591-ae29-4b76-b422-66c0a4d51c13.md",
+      "sibling_order": 24,
+      "status": "Complete",
+      "title": "Executors and reviewers in a worktree can write and check the right places",
+      "touch_zones": [
+        "specy_road/worker_adapters.py",
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "In merge mode, the push notice prints the total number of commits the push will carry and how many are not from this leaf branch, and still prints a count when the remote-tracking ref or local branch is absent; docs/git-workflow.md's merge-mode bullet mentions the notice",
+        "An end-to-end finish test pushes an unrelated local commit and checks the printed total and not-from-leaf counts"
+      ],
+      "codename": "merge-push-disclosure",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.25",
+      "node_key": "4e0d89c4-53ac-4c00-9c0d-92b843fd43c2",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.25_merge-push-disclosure_4e0d89c4-53ac-4c00-9c0d-92b843fd43c2.md",
+      "sibling_order": 25,
+      "status": "Complete",
+      "title": "finish-this-task says what merge mode will push before it pushes",
+      "touch_zones": [
+        "specy_road/finish_land_integration.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/finish_modes.py",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Shipped model profiles cover the Cursor ids the docs recommend: a GPT-5.6 Sol profile exists and lists its effort-suffixed Cursor ids (for example gpt-5.6-sol-high, -xhigh) as aliases, and the shipped Grok and Composer profiles list theirs",
+        "models list (or validate) names roster ids that match no profile; a test covers an alias match and an unmatched id"
+      ],
+      "codename": "profile-aliases",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.26",
+      "node_key": "6035e56d-9837-45c8-b068-11a15da268ba",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.26_profile-aliases_6035e56d-9837-45c8-b068-11a15da268ba.md",
+      "sibling_order": 26,
+      "status": "Complete",
+      "title": "A model profile can match harness model ids that carry an effort suffix",
+      "touch_zones": [
+        "specy_road/model_profiles.py",
+        "specy_road/templates/project/model-profiles/",
+        "specy_road/templates/project/schemas/",
+        "docs/orchestration-models.md",
+        "tests/",
+        "specy_road/bundled_scripts/models_cli.py",
+        "model-profiles/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "prompt prints its 'Wrote <path>' line on stderr, so redirecting stdout never captures it in place of the prompt; a test covers it",
+        "finish-this-task prints each validate warning at most once per run; a test finishes a leaf while another open leaf lacks acceptance and counts that warning's lines",
+        "validate's missing-planning_dir error lists every node without one and names specy-road scaffold-planning <ID> as the fix; a test covers two such nodes",
+        "When a worker finishes and a READY file for its leaf exists but cannot be parsed (for example missing front matter), the completion event says 'READY file invalid: <reason>' with the same reason handoff status gives, instead of 'READY file missing'; a test covers an invalid and a missing READY",
+        "worker list and worker sync show each worker's worktree path (or a worker show <id> prints it with the branch), so a coordinator can queue reviews without reading work/.workers/<id>.yaml; a test covers the output"
+      ],
+      "codename": "small-cli-fixes",
+      "dependencies": [
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.27",
+      "node_key": "1e874f38-9169-41f3-8500-d90f747d04b4",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.27_small-cli-fixes_1e874f38-9169-41f3-8500-d90f747d04b4.md",
+      "sibling_order": 27,
+      "status": "Complete",
+      "title": "Small CLI fixes from field use",
+      "touch_zones": [
+        "specy_road/bundled_scripts/session_cli.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/bundled_scripts/worker_cli_render.py",
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_ops.py",
+        "tests/",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/worker_runner.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py",
+        "specy_road/finish_ancestor_rollup.py",
+        "specy_road/worker_runner_ready.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road chore start <slug> creates an unregistered work item under work/ (no roadmap node, branch or registry row) that worker delegate, message, sync, usage and review accept in place of a node id, optionally with a roster-free --model and --harness",
+        "chore close writes a short record (summary, usage, reviewer verdict); tests cover start, delegate, sync and close"
+      ],
+      "codename": "chore-mode",
+      "dependencies": [
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.28",
+      "node_key": "b5486e44-e4be-43e3-899d-48ebd108f562",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.28_chore-mode_b5486e44-e4be-43e3-899d-48ebd108f562.md",
+      "sibling_order": 28,
+      "status": "Complete",
+      "title": "A light chore mode for work outside the roadmap",
+      "touch_zones": [
+        "specy_road/bundled_scripts/chore_cli.py",
+        "specy_road/worker_ops.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/cli.py",
+        "docs/orchestration-workers.md",
+        "tests/",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/worker_ops_message.py",
+        "specy_road/worker_reconcile.py",
+        "specy_road/worker_orphans.py",
+        "specy_road/review_delegate.py",
+        "specy_road/cli_usage.py",
+        "docs/orchestration-chores.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road doctor warns when the running version is older than the version recorded in the AGENTS.md managed block or .specyrd/manifest.json, naming both and the likely cause (an older install earlier on PATH)",
+        "The generated AGENTS.md stub states the minimum specy-road version, and commands warn once when the running version is older than it",
+        "README and docs/install-and-usage.md document one supported install route for the CLI on a maintainer machine (for example uv tool install or pipx) and how to check which install is on PATH; tests cover older, equal and newer"
+      ],
+      "codename": "doctor-version-skew",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.29",
+      "node_key": "367c4c28-1e0e-4e69-9d85-9c432e4aee08",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.29_doctor-version-skew_367c4c28-1e0e-4e69-9d85-9c432e4aee08.md",
+      "sibling_order": 29,
+      "status": "Complete",
+      "title": "doctor warns when the running specy-road is older than the project's stubs",
+      "touch_zones": [
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/cli.py",
+        "specy_road/templates/",
+        "README.md",
+        "docs/install-and-usage.md",
+        "tests/",
+        "specy_road/version_skew.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "An optional env_setup command in roadmap/git-workflow.yaml runs in a new worktree when delegate or pickup creates it; a failure stops the launch with the command's output",
+        "doctor reports a configured env_setup and whether it succeeds in the main checkout; docs give a uv workspace example (uv sync --all-packages --all-groups --locked) and warn that a plain uv sync in a workspace removes other members' packages; tests cover success, failure and no setting",
+        "env_setup can also name ignored files to copy from the main checkout into a new worktree (for example .python-version, or .env.example copied to .env), and doctor compares each worktree environment's Python version with the main checkout's and warns on a mismatch (field: a worktree environment was silently built on a different Python because the pin file is ignored)"
+      ],
+      "codename": "worktree-env-setup",
+      "dependencies": [
+        "0e58af0e-895f-4a7c-b3c9-e5cb788d598f",
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.30",
+      "node_key": "e442e4b8-d057-4e6d-b520-9ec4b28f356e",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.30_worktree-env-setup_e442e4b8-d057-4e6d-b520-9ec4b28f356e.md",
+      "sibling_order": 30,
+      "status": "Complete",
+      "title": "Leaf worktrees get the project's environment set up",
+      "touch_zones": [
+        "specy_road/git_workflow_config.py",
+        "specy_road/worker_ops.py",
+        "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/bundled_scripts/doctor_env_setup.py",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "docs/git-workflow.md",
+        "tests/",
+        "specy_road/worktree_env.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road worktree prune <ID> removes the leaf's worktree only when the leaf branch is merged into the integration branch and the worktree has no uncommitted changes, untracked non-ignored files or stashes, and lists ignored files it would delete (with --yes to proceed)",
+        "When nested_repos are configured, it also refuses if any nested repo in the worktree holds commits on no branch of the main checkout's copy or any remote, uncommitted changes or stashes, and handles both linked worktrees and full clones; tests cover each refusal and a clean prune"
+      ],
+      "codename": "worktree-prune",
+      "dependencies": [
+        "0e58af0e-895f-4a7c-b3c9-e5cb788d598f"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.31",
+      "node_key": "4f1db491-c309-4ba9-b5d7-d5d91a9cf9b6",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.31_worktree-prune_4f1db491-c309-4ba9-b5d7-d5d91a9cf9b6.md",
+      "sibling_order": 31,
+      "status": "Complete",
+      "title": "A safe command to retire a leaf worktree",
+      "touch_zones": [
+        "specy_road/bundled_scripts/worktree_cli.py",
+        "specy_road/worktree_prune.py",
+        "specy_road/cli.py",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "doctor and grind-session --plan list configured nested repos with branches that are ahead of their upstream, have no upstream, or have no remote, naming the repo, branch and commit count",
+        "Tests cover ahead, no upstream, no remote and clean"
+      ],
+      "codename": "nested-unpushed-report",
+      "dependencies": [
+        "0e58af0e-895f-4a7c-b3c9-e5cb788d598f"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.32",
+      "node_key": "66a3455f-0e4e-4947-8cb5-cee6a60ddcf0",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.32_nested-unpushed-report_66a3455f-0e4e-4947-8cb5-cee6a60ddcf0.md",
+      "sibling_order": 32,
+      "status": "Complete",
+      "title": "Unpushed nested-repo commits are reported",
+      "touch_zones": [
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/bundled_scripts/session_plan.py",
+        "specy_road/bundled_scripts/session_plan_git.py",
+        "specy_road/bundled_scripts/session_plan_render.py",
+        "specy_road/nested_repos.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A roster entry can declare routing: fixed (the default) or routing: dynamic; the review gate does not count a dynamic entry's approval toward the distinct-family requirement unless the entry also pins its model (for example a pinned: true flag the maintainer sets after checking the harness honours it), and handoff status says why an approval was not counted",
+        "Worker usage records keep the requested model and, when the harness stream reports one, the observed model (beside the harness version already recorded); worker sync flags a mismatch",
+        "Docs explain the rule (a harness that cascades or runs its own critic underneath could put the same family on both sides) and that a harness's internal critic is supporting evidence, never a gate approval; tests cover fixed, dynamic, dynamic-pinned and a mismatch",
+        "A cursor entry launched without --model (profile api_id unknown) or with model auto counts as routing: dynamic, because fresh Cursor CLI installs default to Auto model routing; a test covers both."
+      ],
+      "codename": "dynamic-routing-reviewers",
+      "dependencies": [
+        "f2ed72a7-5b45-4457-8649-e65c6fe42b0e",
+        "35380c40-e3ba-4d90-913d-342ecd12d964"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.33",
+      "node_key": "abfffa4b-36f6-4fc1-8754-ab8bc26e9fb8",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.33_dynamic-routing-reviewers_abfffa4b-36f6-4fc1-8754-ab8bc26e9fb8.md",
+      "sibling_order": 33,
+      "status": "Complete",
+      "title": "A reviewer whose harness routes models dynamically does not count as an independent family by default",
+      "touch_zones": [
+        "specy_road/orchestration_config.py",
+        "specy_road/review_gate.py",
+        "specy_road/worker_adapter_parsers.py",
+        "specy_road/worker_runner.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "docs/orchestration.md",
+        "docs/orchestration-models.md",
+        "tests/",
+        "specy_road/worker_models.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road decisions add|list|close keeps open human decisions in one tracked roadmap/decisions.yaml. Schema validation runs before add writes the file and before list prints it. Each open entry has id, node, kind (exactly decision or human-action), a plain-words summary, why now and what it blocks, at least one option with its effect, the recommendation and its reason, the default the agent applies if unanswered, asked, and status open. needed_by is optional. asked and needed_by are calendar dates written YYYY-MM-DD that datetime.date.fromisoformat accepts. add rejects any other string before writing. list exits non-zero when schema validation rejects the file, including a YYYY-MM-DD that is not a real calendar day, such as 2026-99-99 or 2026-02-30. Datetimes, times, and time zones are out of scope. list prints every open entry, entries with needed_by first in ascending date order, entries without needed_by last. close records the answer and the closed time only when the node's planning sheet has a matching decision line (optional list marker or checkbox in front). The decision block is the body of the first level-2 section whose heading normalises to decisions and notes or decisions, taken only after CommonMark fences are removed from the whole sheet. A fence opens on a backtick or tilde run of length at least 3 and closes on a later run of the same character at least that long. Lines inside a fence do not count, and a decision heading that appears only inside a fence is not the decision block. A matching line that appears only in another section does not count. Indented code blocks, HTML comments, and blockquotes are out of scope and need not be stripped. (rewritten from RCA-3, maintainer-approved 2026-11-02)",
+        "The orchestrate skill and the coordinator prompt tell the agent to read decisions list each turn (as with worker sync), to search the ledger and planning-sheet decision blocks before asking anything, to ask at most four at once in the self-contained shape with no bare ids, and to end any turn that has open entries with one 'Decisions waiting on you' block listing all of them below the status",
+        "docs/orchestration.md describes the ledger and the question shape; tests cover add, list ordering, close requiring the sheet record, and schema validation"
+      ],
+      "codename": "decision-ledger",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.34",
+      "node_key": "bc3055ab-39c6-4972-b8a7-bf83e135d26a",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.34_decision-ledger_bc3055ab-39c6-4972-b8a7-bf83e135d26a.md",
+      "sibling_order": 34,
+      "status": "Complete",
+      "title": "Open human decisions live in one tracked ledger and every question is self-contained",
+      "touch_zones": [
+        "specy_road/decisions.py",
+        "specy_road/bundled_scripts/decisions_cli.py",
+        "specy_road/cli.py",
+        "specy_road/templates/project/schemas/",
+        "specy_road/templates/specyrd/commands/specyrd-orchestrate.md",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "docs/orchestration.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A roster entry can set harness_model (the id the harness CLI expects, for example claude-opus-5-5 for roster id claude-opus-5.5); the default adapters pass it to --model, falling back to the roster id; validate warns when a Claude Code entry's id contains a dot and no harness_model is set",
+        "When a worker exits non-zero before its first stream event, its error event summary includes the harness's last error line from the log (for example an HTTP 404 for an unknown model), not only a pointer to the log; tests cover the mapping, the fallback and the early-failure summary",
+        "Resume passes the same model flag as the launch on claude-code, codex and cursor (today all three default resume commands drop it, and Codex documents that a resume keeps only the conversation, not flags); tests pin the resume argv with and without harness_model."
+      ],
+      "codename": "roster-harness-model-id",
+      "dependencies": [
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.35",
+      "node_key": "f2ed72a7-5b45-4457-8649-e65c6fe42b0e",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.35_roster-harness-model-id_f2ed72a7-5b45-4457-8649-e65c6fe42b0e.md",
+      "sibling_order": 35,
+      "status": "Complete",
+      "title": "A roster entry maps to the harness's own model id, and a failed start says why",
+      "touch_zones": [
+        "specy_road/orchestration_config.py",
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_runner.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "docs/orchestration-models.md",
+        "tests/",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/worker_adapter_codex.py",
+        "specy_road/worker_adapter_cursor.py",
+        "specy_road/review_delegate.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/worker_exit.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the review policy allows it (a key, off by default), a reviewer that resumes its own earlier session may approve a delta: the record names delta_from (the commit it last approved) and the delta it read, fresh_session may be false, and the approval counts only under M11.8's delta rules; any other resumed approval is still refused by reviewer_fresh_session",
+        "handoff status says when an approval was refused only for fresh_session and whether a resumed delta would be allowed; docs and tests cover allowed, refused (policy off), and a resumed full review"
+      ],
+      "codename": "resumed-delta-approval",
+      "dependencies": [
+        "0aae8208-413d-4d60-b7b8-c83f9c31b522",
+        "35380c40-e3ba-4d90-913d-342ecd12d964"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.36",
+      "node_key": "17d67a22-2e77-4f9f-9627-a051cdc2c225",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.36_resumed-delta-approval_17d67a22-2e77-4f9f-9627-a051cdc2c225.md",
+      "sibling_order": 36,
+      "status": "Complete",
+      "title": "A resumed reviewer session may approve a delta it was shown",
+      "touch_zones": [
+        "specy_road/review_gate.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "docs/orchestration-review.md",
+        "tests/",
+        "specy_road/review_resumed_delta.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "sr/schemas/orchestration.schema.json",
+        "specy_road/bundled_scripts/role_prompt_rca.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "review-packet lists, in a warning section and on stderr, every repository path named in the brief, the planning sheet or the implementation summary that does not exist at the reviewed commit (untracked or uncommitted), so the coordinator can commit it before a reviewer starts",
+        "Tests cover a named untracked file, a named committed file and a path-like string that is not a repository path"
+      ],
+      "codename": "packet-uncommitted-refs",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.37",
+      "node_key": "f1463500-d122-4d16-b18c-97d36d9dd71f",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.37_packet-uncommitted-refs_f1463500-d122-4d16-b18c-97d36d9dd71f.md",
+      "sibling_order": 37,
+      "status": "Complete",
+      "title": "review-packet warns when the brief or summary names a file not committed at the reviewed commit",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_packet.py",
+        "tests/",
+        "specy_road/bundled_scripts/review_packet_uncommitted_refs.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the gate is not met, handoff status lists each rostered reviewer (including a human entry) and whether it can supply a counting approval at this commit, and for each excluded one the reason (same family as an approval already counted, wrote a fix commit on this leaf, executor of the leaf, not a reviewer role, or rejected record)",
+        "Tests cover a human reviewer listed as eligible, an author-excluded reviewer and a same-family reviewer"
+      ],
+      "codename": "handoff-eligible-reviewers",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.38",
+      "node_key": "35380c40-e3ba-4d90-913d-342ecd12d964",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.38_handoff-eligible-reviewers_35380c40-e3ba-4d90-913d-342ecd12d964.md",
+      "sibling_order": 38,
+      "status": "Complete",
+      "title": "handoff status says who can still supply a missing approval",
+      "touch_zones": [
+        "specy_road/review_gate.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "tests/",
+        "specy_road/review_eligible.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A roster entry can set available: false or paused_until: <date or datetime>, read from a local untracked roadmap/orchestration.local.yaml overlay (so availability changes need no push) as well as the shared roster; orchestrate plan skips unavailable entries for every role, and worker delegate and review delegate refuse them with the reason",
+        "Past review records by an unavailable entry still count at their commit; tests cover available: false, a paused_until in the past and future, and the overlay",
+        "When a worker is paused by a usage limit with a parsed reset time (M8.2), worker sync prints the roster entry and the reset time with the paused_until line to put in roadmap/orchestration.local.yaml; a test covers the printed line. (Depends on M8.2's paused-by-limit state; drop this sentence if M8.2 lands later.)"
+      ],
+      "codename": "roster-availability",
+      "dependencies": [
+        "35380c40-e3ba-4d90-913d-342ecd12d964",
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.39",
+      "node_key": "effe1668-f68c-4ff8-be70-61296b3cf696",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.39_roster-availability_effe1668-f68c-4ff8-be70-61296b3cf696.md",
+      "sibling_order": 39,
+      "status": "Complete",
+      "title": "A roster entry can be marked unavailable without deleting it",
+      "touch_zones": [
+        "specy_road/orchestration_config.py",
+        "specy_road/orchestrate_plan.py",
+        "specy_road/worker_ops.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "docs/orchestration.md",
+        "tests/",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/templates/project/.gitignore",
+        "specy_road/review_eligible.py",
+        "specy_road/agent_ignores.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "worker reconcile on a worker whose leaf has no registry claim (already merged) uses the node's touch zones from the roadmap instead of refusing, and worker reconcile --dismiss '<reason>' clears needs_reconcile with the reason recorded as an event; worker list and sync stop showing a dismissed or reconciled worker as needing reconcile",
+        "reconcile reports committed changes and untracked files separately; untracked-only paths outside the zones are a warning, not a failure; tests cover a merged leaf, dismiss, and an untracked file outside the zones"
+      ],
+      "codename": "reconcile-merged-and-untracked",
+      "dependencies": [
+        "6a0429e2-027e-4d14-8d7d-9e3e19676467",
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.40",
+      "node_key": "14933e19-770a-4026-8ef6-14d1aa315567",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.40_reconcile-merged-and-untracked_14933e19-770a-4026-8ef6-14d1aa315567.md",
+      "sibling_order": 40,
+      "status": "Complete",
+      "title": "worker reconcile works on merged leaves and separates untracked files",
+      "touch_zones": [
+        "specy_road/worker_reconcile.py",
+        "specy_road/worker_ops.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "validate and doctor report an error-level finding when roadmap/orchestration.yaml requires reviewers (reviewers_required > 0) but git-workflow.yaml leaves require_implementation_review_before_finish off, naming both settings and the one-line fix; mark-implementation-reviewed's 'nothing to do' message says the gate is not enforced at finish",
+        "Tests cover the mismatch, both on, and both off"
+      ],
+      "codename": "gate-config-agree",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.41",
+      "node_key": "90113962-a768-4e51-9af4-d26e903c87f0",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.41_gate-config-agree_90113962-a768-4e51-9af4-d26e903c87f0.md",
+      "sibling_order": 41,
+      "status": "Complete",
+      "title": "The two review-gate settings cannot silently disagree",
+      "touch_zones": [
+        "specy_road/bundled_scripts/validate_roadmap_checks.py",
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/git_workflow_config.py",
+        "docs/orchestration-review.md",
+        "tests/",
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "specy_road/review_gate_agreement.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "session start prints an export SPECY_ROAD_AGENT_ID=<id> line, and session end with no id, when no SPECY_ROAD_AGENT_ID is set and the derived id has no record, ends the single live session owned by this user in this checkout (and lists them if there are several) instead of reporting 'no record'",
+        "Tests cover the derived id differing between start and end, one live session, and several"
+      ],
+      "codename": "session-end-default",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.42",
+      "node_key": "b19b342c-cefe-4632-89e0-e937fb48710e",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.42_session-end-default_b19b342c-cefe-4632-89e0-e937fb48710e.md",
+      "sibling_order": 42,
+      "status": "Complete",
+      "title": "session end finds the session the same agent started",
+      "touch_zones": [
+        "specy_road/session_presence.py",
+        "specy_road/bundled_scripts/session_cli.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "init project --dry-run lists every path the real run would create or change (including AGENTS.md, .specyrd/manifest.json, .cursorindexingignore and the .gitignore managed block), its count equals the number of listed lines, and a test compares the dry-run list with the real run's on an empty directory and on one with an existing .gitignore",
+        "When an existing .gitignore gains or changes its managed block, init project reports it as added or updated rather than 'skipped (exists)', and the managed block carries the template's run-time rules (work/.on-complete-*.yaml, work/prompt-*.md, work/pr-body-*.md, work/.milestone-session.yaml); a test covers a pre-existing .gitignore",
+        "In the nested layout init project writes no .gitignore under the project root (the git-root managed block covers those paths with the project prefix); a test covers the nested layout"
+      ],
+      "codename": "init-project-reports-writes",
+      "dependencies": [
+        "27d1e4aa-a2e8-4ad2-8369-f431163cce87"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.43",
+      "node_key": "12cd9d17-8a37-4149-b7eb-2acdc740c4ff",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.43_init-project-reports-writes_12cd9d17-8a37-4149-b7eb-2acdc740c4ff.md",
+      "sibling_order": 43,
+      "status": "Complete",
+      "title": "init project reports exactly what it writes",
+      "touch_zones": [
+        "specy_road/init_project.py",
+        "specy_road/agent_ignores.py",
+        "specy_road/templates/project/.gitignore",
+        "tests/",
+        "docs/pm-workflow.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "init project --profiles <family-or-api_id,...|none|all> (default all, so today's behaviour is unchanged) installs only the named model profiles plus model-profiles/README.md and harness-facts.yaml; tests cover none, one named profile and the default",
+        "refresh-profiles --only <api_id> adds a single missing profile, and refresh-profiles without --only still adds every missing one; a test covers both"
+      ],
+      "codename": "init-profiles-subset",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.44",
+      "node_key": "27d1e4aa-a2e8-4ad2-8369-f431163cce87",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.44_init-profiles-subset_27d1e4aa-a2e8-4ad2-8369-f431163cce87.md",
+      "sibling_order": 44,
+      "status": "Complete",
+      "title": "init project can install only the model profiles a project uses",
+      "touch_zones": [
+        "specy_road/init_project.py",
+        "specy_road/cli_init_argparse.py",
+        "specy_road/bundled_scripts/refresh_profiles.py",
+        "tests/",
+        "docs/orchestration-models.md",
+        "specy_road/cli.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A specy-road or specyrd mention in AGENTS.md or CLAUDE.md warns only inside a code span or fenced block, after a run verb, as a command-led list item, or when followed by a flag, path, quoted argument or id-like argument; plain prose such as 'trying specy-road here', 'when specy-road runs it' and 'nothing specy-road surprises me' never warns, and tests cover each prose sentence and each command-shaped context",
+        "docs/install-and-usage.md states the rule as the contexts that warn, not as a noun-phrase exception"
+      ],
+      "codename": "stale-command-prose",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.45",
+      "node_key": "80d33104-b5d7-4a24-be20-0544c89042c9",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.45_stale-command-prose_80d33104-b5d7-4a24-be20-0544c89042c9.md",
+      "sibling_order": 45,
+      "status": "Complete",
+      "title": "The stale-command warning fires only on command-shaped mentions",
+      "touch_zones": [
+        "specy_road/bundled_scripts/validate_stale_commands.py",
+        "tests/",
+        "docs/install-and-usage.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "validate --strict does not count the notices for open leaves that pickup already skips as unauthored (placeholder sheet, no acceptance) as failing warnings, and --strict-authoring restores counting them; a test shows a fresh init project plus one placeholder leaf passing the starter leaf's stated validate check",
+        "brief replaces a dependency's or ancestor's ## Intent that is still scaffold-planning's or brainstorm promote's placeholder with one line naming the node and saying its planning sheet is not written yet; a test shows the placeholder text absent from the brief"
+      ],
+      "codename": "placeholder-leaves-strict-brief",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.46",
+      "node_key": "cd4aa744-037f-4091-8f8d-ab621409316c",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.46_placeholder-leaves-strict-brief_cd4aa744-037f-4091-8f8d-ab621409316c.md",
+      "sibling_order": 46,
+      "status": "Complete",
+      "title": "Placeholder leaves neither fail validate --strict nor pad briefs",
+      "touch_zones": [
+        "specy_road/templates/project/roadmap/phases/M1.json",
+        "specy_road/templates/project/planning/M1.1_project-setup_b2c3d4e5-f6a7-4890-b123-456789abcdef.md",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/bundled_scripts/brief_acceptance.py",
+        "specy_road/bundled_scripts/brief_dependency_context.py",
+        "tests/",
+        "docs/roadmap-authoring.md",
+        "specy_road/bundled_scripts/generate_brief.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "In a nested project, validate's touch-zone check treats a zone as matching when it names an existing path relative to either the project root or the git root, the same rule finish and review-packet use; a test with an In Progress node whose zone names a file outside the project root shows no warning, and a misspelled zone still warns",
+        "docs/roadmap-authoring.md's touch_zones row says zones may be written from either root and gives an example for code outside the project root"
+      ],
+      "codename": "validate-zones-git-root",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.47",
+      "node_key": "dd1b37a5-5c3a-4d82-b497-9767bcb480ce",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.47_validate-zones-git-root_dd1b37a5-5c3a-4d82-b497-9767bcb480ce.md",
+      "sibling_order": 47,
+      "status": "Complete",
+      "title": "validate checks git-root touch zones in a nested project",
+      "touch_zones": [
+        "specy_road/bundled_scripts/validate_touch_zones.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py",
+        "tests/",
+        "docs/roadmap-authoring.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "list-nodes shows a leaf with an active registry claim as '<status> (claimed)' and list-nodes --json adds claimed: true and the claim's branch; tests cover a claimed and an unclaimed leaf",
+        "brief prints the claim's branch and owner next to the node's status when a claim exists; a test covers it",
+        "docs/pm-workflow.md walks one leaf through pickup, finish and PR merge under on_complete: pr, distinguishing node status from the registry claim and saying where the claim is held until the PR merges"
+      ],
+      "codename": "claimed-leaf-status",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.48",
+      "node_key": "04cf2d19-1c5e-4dfa-b624-ec26031e09fd",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.48_claimed-leaf-status_04cf2d19-1c5e-4dfa-b624-ec26031e09fd.md",
+      "sibling_order": 48,
+      "status": "Complete",
+      "title": "A claimed leaf reads as claimed in list-nodes and brief",
+      "touch_zones": [
+        "specy_road/bundled_scripts/roadmap_crud_ops.py",
+        "specy_road/bundled_scripts/generate_brief.py",
+        "tests/",
+        "docs/pm-workflow.md",
+        "specy_road/bundled_scripts/registry_claim_status.py",
+        "constraints/file-limits.yaml"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "review-packet judges 'outside touch zones' against the union of the claim row's zones and the node's touch_zones read at the reviewed commit; a test adds a zone to the node in a commit on the feature branch while the checkout running review-packet is on the integration branch, and shows the file no longer flagged",
+        "Well-known lockfiles (package-lock.json, yarn.lock, pnpm-lock.yaml, poetry.lock, uv.lock, Cargo.lock, go.sum) are listed and never inlined without a .gitattributes entry, linguist-generated=false opts one back in, and a listed generated file does not stop later files from being inlined; a test covers a large lockfile that sorts before a source file"
+      ],
+      "codename": "packet-zones-at-commit",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.49",
+      "node_key": "4fc343e1-0baf-4635-a715-a6cf446d552f",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.49_packet-zones-at-commit_4fc343e1-0baf-4635-a715-a6cf446d552f.md",
+      "sibling_order": 49,
+      "status": "Complete",
+      "title": "The review packet takes touch zones from the reviewed commit and treats lockfiles as generated",
+      "touch_zones": [
+        "specy_road/review_target.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "tests/",
+        "docs/orchestration-review.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When finish-this-task cleanup meets a tracked work/implementation-summary-<ID>.md, it moves it to work/done/implementation-summary-<ID>.md in the finish commit instead of deleting it, while the brief and prompt are still removed; a test finishes a leaf with a committed summary and shows it at the new path in the finish commit",
+        "docs/git-workflow.md and docs/dev-workflow.md describe where a finished leaf's summary is kept"
+      ],
+      "codename": "finish-keeps-summary",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.50",
+      "node_key": "5e71e2e6-4c2d-4b25-a878-9ee40ab398bd",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.50_finish-keeps-summary_5e71e2e6-4c2d-4b25-a878-9ee40ab398bd.md",
+      "sibling_order": 50,
+      "status": "Complete",
+      "title": "finish keeps a committed implementation summary in history",
+      "touch_zones": [
+        "specy_road/finish_work_artifacts.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "tests/",
+        "docs/git-workflow.md",
+        "docs/dev-workflow.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "GET /api/planning/file and GET /api/workspace/file, and every successful PUT to them, return the hash of the bytes read or written; a PUT whose X-Base-Content-Hash does not match the file on disk gets 409 with the current content and nothing is written, and the UI shows the conflict instead of overwriting; edits by other writers after that one check, a second check, and file locks against other writers are out of scope; tests cover a stale save refused and a fresh save accepted",
+        "specy-road gui --read-only serves every GET route and refuses every write route with 403; a test covers one read and one write",
+        "docs/pm-gui.md lists the read-only JSON routes, and an unknown /api/ path returns a JSON 404 instead of the HTML shell; a test covers the 404"
+      ],
+      "codename": "dashboard-safe-saves",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.51",
+      "node_key": "d3ede8ba-aa5e-4c2a-aef0-0b2abcc3efb9",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.51_dashboard-safe-saves_d3ede8ba-aa5e-4c2a-aef0-0b2abcc3efb9.md",
+      "sibling_order": 51,
+      "status": "Complete",
+      "title": "Dashboard saves never overwrite newer disk edits, and the read API is documented",
+      "touch_zones": [
+        "specy_road/gui_app_routes_planning.py",
+        "specy_road/gui_app_routes_workspace.py",
+        "specy_road/gui_app.py",
+        "specy_road/cli.py",
+        "gui/pm-gantt/src/api.ts",
+        "tests/",
+        "docs/pm-gui.md",
+        "specy_road/pm_gantt_static/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Under on_complete: pr, finish-this-task trial-merges the integration tip into the finish commit; when the only conflicts are roadmap/registry.yaml and the generated roadmap files, it commits a merge that keeps the integration branch's rows minus this leaf's row and regenerates the derived files, and when other paths conflict it names them and pushes nothing",
+        "Tests cover an integration branch that gained another claim after pickup (resolved, branch merges cleanly) and a code conflict (reported, nothing pushed)"
+      ],
+      "codename": "pr-mode-registry-conflict",
+      "dependencies": [
+        "04cf2d19-1c5e-4dfa-b624-ec26031e09fd"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.52",
+      "node_key": "fe1a3718-b3ae-4c2f-85e7-8e14b05e763c",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.52_pr-mode-registry-conflict_fe1a3718-b3ae-4c2f-85e7-8e14b05e763c.md",
+      "sibling_order": 52,
+      "status": "Complete",
+      "title": "PR mode predicts and resolves the registry conflict",
+      "touch_zones": [
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/finish_modes.py",
+        "specy_road/review_gate_ready.py",
+        "tests/",
+        "docs/git-workflow.md",
+        "specy_road/finish_pr_merge.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "do-next-available-task --worktree, run in the main checkout on the integration branch, registers and pushes the claim and creates the leaf branch checked out in a linked worktree under work/.worktrees/<codename>, leaving the main checkout on the integration branch; a test shows the main checkout's branch unchanged and the claim on the remote",
+        "Pickup run inside a linked worktree without --local fails with a message naming --worktree from the main checkout; docs/git-workflow.md documents the worktree flow and the --local alternative"
+      ],
+      "codename": "pickup-into-worktree",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.53",
+      "node_key": "506fa374-4f3b-4d82-881b-315253ebab87",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.53_pickup-into-worktree_506fa374-4f3b-4d82-881b-315253ebab87.md",
+      "sibling_order": 53,
+      "status": "Complete",
+      "title": "A worktree-based flow can claim leaves without pushing from the worktree",
+      "touch_zones": [
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/bundled_scripts/do_next_task_args.py",
+        "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
+        "tests/",
+        "docs/git-workflow.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "pytest-xdist is in the development dependencies and CI runs the suite with pytest -n auto; the full suite passes both with -n auto and serially, and any test that depends on shared state or run order is fixed rather than marked to run serially",
+        "docs/git-workflow.md's land_check_cmd section recommends a parallel test command for projects whose suite is parallel-safe, says what makes a suite parallel-safe, and shows an example; the contributor guide and the common-commands section of CLAUDE.md use pytest -n auto",
+        "The toolkit's own roadmap/git-workflow.yaml under sr/ sets land_check_cmd to the parallel suite, so finish runs it on the merge commit before pushing"
+      ],
+      "codename": "parallel-test-suite",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.54",
+      "node_key": "265cc066-599d-49d8-bd04-9d5258af8e50",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.54_parallel-test-suite_265cc066-599d-49d8-bd04-9d5258af8e50.md",
+      "sibling_order": 54,
+      "status": "Complete",
+      "title": "The test suite and land check run in parallel",
+      "touch_zones": [
+        "pyproject.toml",
+        ".github/workflows/validate.yml",
+        "sr/roadmap/git-workflow.yaml",
+        "docs/git-workflow.md",
+        "docs/contributor-guide.md",
+        "CLAUDE.md",
+        "tests/",
+        "requirements-ci.txt",
+        "requirements-ci.in"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The executor prompt says that when a change would push a file over a file-limits cap, the executor moves the new or related code into a new module (and records the new file in the implementation summary for the zone update), and never deletes or shortens unrelated docstrings, comments or user-facing text to fit",
+        "The reviewer prompt asks the reviewer to check the diff for removed docstrings, comments or messages unrelated to the leaf and to require their restoration; tests cover both prompt sentences"
+      ],
+      "codename": "file-limit-split-not-delete",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.55",
+      "node_key": "1bdf3541-c94d-40be-a77f-26a514d6ae9f",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.55_file-limit-split-not-delete_1bdf3541-c94d-40be-a77f-26a514d6ae9f.md",
+      "sibling_order": 55,
+      "status": "Complete",
+      "title": "Executors split modules to meet file limits instead of deleting documentation",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/templates/",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "worker delegate (and message/resume) creates the main checkout's work/reviews/<ID> directory before building any launch that names it as an allowed or workspace directory, so a leaf with no review files yet launches on every adapter; a regression test delegates a fresh leaf on the Cursor adapter (fake agent binary that fails when the directory is missing) and on Claude Code"
+      ],
+      "codename": "reviews-dir-before-launch",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.56",
+      "node_key": "42c62620-e154-432d-b77b-8cfad8be7bbe",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.56_reviews-dir-before-launch_42c62620-e154-432d-b77b-8cfad8be7bbe.md",
+      "sibling_order": 56,
+      "status": "Complete",
+      "title": "Delegate creates the reviews directory before a harness is told to allow it",
+      "touch_zones": [
+        "specy_road/worker_ops.py",
+        "specy_road/worker_adapters.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A worker in state completed (or idle) whose leaf is Complete on the integration branch, or no longer claimed, no longer counts toward policy.max_workers; a completed worker on an unfinished leaf still holds its slot so it can be resumed for a fix round",
+        "When delegate refuses at the limit, the message lists running and held-but-idle workers separately (for example '2 running, 1 completed: w-0001; worker terminate frees it'); tests cover a finished-leaf worker freeing its slot, an unfinished one holding it, and the message",
+        "finish-this-task terminates the finished leaf's own idle or completed workers (recording an event), and worker list and sync mark any held worker as orphaned when its leaf is Complete, its claim is gone or its worktree no longer exists; worker terminate --orphaned ends all of them in one step and prints what it ended; tests cover finish cleanup, each orphan cause and the bulk command"
+      ],
+      "codename": "completed-worker-frees-slot",
+      "dependencies": [
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.57",
+      "node_key": "6a0429e2-027e-4d14-8d7d-9e3e19676467",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.57_completed-worker-frees-slot_6a0429e2-027e-4d14-8d7d-9e3e19676467.md",
+      "sibling_order": 57,
+      "status": "Complete",
+      "title": "A completed worker on a finished leaf does not hold a max_workers slot",
+      "touch_zones": [
+        "specy_road/worker_ops.py",
+        "specy_road/worker_state.py",
+        "specy_road/worker_lease.py",
+        "docs/orchestration-workers.md",
+        "tests/",
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/worker_ops_slots.py",
+        "specy_road/worker_orphans.py",
+        "specy_road/worker_reconcile.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road decisions can record a preference entry (kind preference) that states a routing rule in plain words and optional structured fields: role, preferred roster ids in order, and the leaf kinds it applies to (for example docs or data only); decisions list shows active preferences first and drops expired ones; whether a model is available or paused is not a preference: it is read from the roster availability fields (M11.39), so the two never disagree",
+        "The orchestrate skill and coordinator prompt tell the coordinator to read active preferences at the start of each session and before each delegate or review launch, to record a preference whenever the human states one in chat, and to close or update it when the human changes it; orchestrate plan prints the active preferences it did not apply automatically",
+        "docs/orchestration.md explains that preferences are per project and session-durable (they survive a context reset, an account switch or a different agent taking over) and are not roster config; tests cover add, expiry, listing order and the plan notice"
+      ],
+      "codename": "session-routing-preferences",
+      "dependencies": [
+        "effe1668-f68c-4ff8-be70-61296b3cf696"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.58",
+      "node_key": "0f7f80f3-23c0-4824-ac19-58e173360f5d",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.58_session-routing-preferences_0f7f80f3-23c0-4824-ac19-58e173360f5d.md",
+      "sibling_order": 58,
+      "status": "Complete",
+      "title": "The coordinator records the session's routing preferences where the next session can read them",
+      "touch_zones": [
+        "specy_road/decisions.py",
+        "specy_road/bundled_scripts/decisions_cli.py",
+        "specy_road/templates/project/schemas/",
+        "specy_road/templates/specyrd/commands/specyrd-orchestrate.md",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "docs/orchestration.md",
+        "tests/",
+        "specy_road/bundled_scripts/orchestrate_cli.py",
+        "specy_road/orchestrate_plan.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy_road/worker_ops.py and specy_road/worker_adapters.py (each at the 400-line cap) are split by responsibility into smaller modules (for example delegate/launch, message/resume, slot and lease checks; and one module per harness adapter plus a shared base), each well under the cap, with every name other modules or tests import still importable from its old module path",
+        "Behaviour is unchanged: the full suite passes with no test edited except import lines, specy-road integrity reports no removed or weakened tests, and every docstring and comment moves with its code; the implementation summary maps each moved function to its new module"
+      ],
+      "codename": "split-worker-modules",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.59",
+      "node_key": "6cb421f0-05d8-4db3-b111-58b8708a3f53",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.59_split-worker-modules_6cb421f0-05d8-4db3-b111-58b8708a3f53.md",
+      "sibling_order": 59,
+      "status": "Complete",
+      "title": "Split worker_ops and worker_adapters so parallel leaves stop colliding",
+      "touch_zones": [
+        "specy_road/worker_ops.py",
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_ops_",
+        "specy_road/worker_adapter_",
+        "tests/",
+        "specy_road/worker_adapter_base.py",
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/worker_adapter_codex.py",
+        "specy_road/worker_adapter_cursor.py",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/worker_ops_lifecycle.py",
+        "specy_road/worker_ops_message.py",
+        "specy_road/worker_ops_slots.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "harness-facts.yaml carries rows F1-F22 of the 2026-11-02 triage (recorded in a design note under docs/design-notes/), each labelled documented with the vendor URL or runtime with its capture; no row rests only on the unsourced OpenAI report; refresh-profiles --check passes after --render",
+        "WORKFLOW_WORDS also contains goal, loop, queue, persist, gist, fleet, teleport, remote and spawn; every identifier in the accepted captures that now matches has a relationship; a test shows a capture that adds persist failing the diff until it is classified",
+        "The Codex captures are refreshed from an installed codex-cli 0.166.0 or later (--version, --help, exec --help, features list), and docs/orchestration-workers.md cites the captured versions instead of 'codex-cli 0.165.0' and 'verified … on 2026-10-27'"
+      ],
+      "codename": "harness-facts-nov-refresh",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.60",
+      "node_key": "c0c1edb5-8b5c-4287-b48d-f158baafde83",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.60_harness-facts-nov-refresh_c0c1edb5-8b5c-4287-b48d-f158baafde83.md",
+      "sibling_order": 61,
+      "status": "Complete",
+      "title": "The harness facts fixture takes the 2026-11-02 sourced findings and watches the new scope-escape feature names",
+      "touch_zones": [
+        "specy_road/templates/project/model-profiles/harness-facts.yaml",
+        "specy_road/templates/project/model-profiles/harness-captures/",
+        "specy_road/templates/project/model-profiles/README.md",
+        "specy_road/harness_facts.py",
+        "docs/orchestration-workers.md",
+        "docs/design-notes/",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "validate's Claude context line counts .claude/rules/*.md (recursive) beside the CLAUDE.md family and reports the auto-memory MEMORY.md (first 200 lines or 25 KB) as a machine-local note; a test with a rules file and a memory file covers both",
+        "Cursor's line notes nested AGENTS.md files below the root (applied when the agent edits a file there) and Copilot's counts .github/instructions/* files; a test covers each",
+        "A Claude instruction file over 4 MiB is reported as not loaded, never counted; a test covers it"
+      ],
+      "codename": "meter-claude-rules-and-nested",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.61",
+      "node_key": "cd54ad06-f1fa-4ebb-a22a-d09af76245b3",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.61_meter-claude-rules-and-nested_cd54ad06-f1fa-4ebb-a22a-d09af76245b3.md",
+      "sibling_order": 62,
+      "status": "Complete",
+      "title": "The context meter counts Claude rules, auto memory, Cursor nested AGENTS.md and Copilot path instructions",
+      "touch_zones": [
+        "specy_road/agents_md_block.py",
+        "docs/install-and-usage.md",
+        "tests/",
+        "specy_road/harness_instruction_files.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A Claude Code result line whose permission_denials list is non-empty records a permission_denied worker event naming each denied tool and its input, and flags the worker, even when subtype is success, is_error is false and the exit code is 0; a test replays such a line.",
+        "A usage limit is recognised from the turn's text, never its exit code: a Claude result or api_error text that claude_code_limits.classify_limit reads as a limit (including subtype success with exit 0, and exit 1 with no result line, where the last message is read from ~/.claude/projects/<project>/<session-id>.jsonl), a system/api_retry line with error rate_limit, and a Codex turn.failed whose text says 'try again at <time>' each put the worker in paused-by-limit with the parsed reset time when there is one; a test replays one line per case.",
+        "Claude Code worker and reviewer launches either set CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 in the harness environment, as harness-facts.yaml states, or the fixture row and the 'Backgrounded tests' paragraph of docs/orchestration-workers.md say that claude -p waits up to 10 minutes of idle for background work it started; a test checks the environment the wrapper passes.",
+        "The Codex memory overrides the launch passes are checked against the captured `codex features list` (memory v2 is on by default for fresh profiles since 0.165), and a key the capture does not list fails refresh-profiles --check instead of being passed and ignored."
+      ],
+      "codename": "headless-limits-denials",
+      "dependencies": [
+        "6cb421f0-05d8-4db3-b111-58b8708a3f53",
+        "f4d6efe0-4286-44f8-a36e-d30947c401d6"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.62",
+      "node_key": "eda7b3fe-97ec-4eba-9a95-3df7ed230209",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.62_headless-limits-denials_eda7b3fe-97ec-4eba-9a95-3df7ed230209.md",
+      "sibling_order": 60,
+      "status": "Complete",
+      "title": "Headless runs report usage limits and denied actions instead of looking like success",
+      "touch_zones": [
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_adapter_parsers.py",
+        "specy_road/worker_runner.py",
+        "docs/orchestration-workers.md",
+        "tests/",
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/orchestration_role_env.py",
+        "specy_road/review_delegate.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/role_prompt_stream.py",
+        "specy_road/harness_facts.py",
+        "specy_road/bundled_scripts/refresh_profiles.py",
+        "docs/orchestration-models.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "do-next-available-task exits 6 with the held claim named when this checkout already holds a claim whose branch exists locally, unless --allow-second-claim is passed; the AGENTS.md stub's description of exit 6 matches the command's behaviour; tests cover refusal, the override and a claim whose branch is gone"
+      ],
+      "codename": "pickup-second-claim-guard",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.63",
+      "node_key": "cabfd63c-1329-4e9f-9b32-aaeaeaa851d6",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.63_pickup-second-claim-guard_cabfd63c-1329-4e9f-9b32-aaeaeaa851d6.md",
+      "sibling_order": 63,
+      "status": "Complete",
+      "title": "do-next-available-task refuses a second claim in a checkout that already holds one",
+      "touch_zones": [
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/bundled_scripts/do_next_task_args.py",
+        "specy_road/templates/",
+        "tests/",
+        "specy_road/bundled_scripts/do_next_task_held_claim.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "abort-task-pickup accepts untracked files that pickup accepts (untracked files survive the branch switch it makes) and refuses only on tracked changes; when it refuses, the error names which paths blocked it and why; tests cover untracked coordinator notes under work/ and a tracked change"
+      ],
+      "codename": "abort-untracked-like-pickup",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.64",
+      "node_key": "099973ff-86a7-4fbb-9882-6231169d204b",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.64_abort-untracked-like-pickup_099973ff-86a7-4fbb-9882-6231169d204b.md",
+      "sibling_order": 64,
+      "status": "Complete",
+      "title": "abort-task-pickup treats untracked files the way pickup does",
+      "touch_zones": [
+        "specy_road/bundled_scripts/abort_task_pickup.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "why-blocked <ID> reports a plan hold when grind-session --plan holds the leaf behind another by touch-zone overlap (naming the holding leaf and the overlapping zones) and says whether pickup honours the hold; tests cover a dependency block, a zone hold and a free leaf"
+      ],
+      "codename": "why-blocked-plan-holds",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.65",
+      "node_key": "a2c70000-f148-4d74-bee8-bd8dd01eb619",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.65_why-blocked-plan-holds_a2c70000-f148-4d74-bee8-bd8dd01eb619.md",
+      "sibling_order": 65,
+      "status": "Complete",
+      "title": "why-blocked reports touch-zone holds from the plan",
+      "touch_zones": [
+        "specy_road/bundled_scripts/roadmap_query_cli.py",
+        "specy_road/bundled_scripts/session_plan.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When specy-road runs from a git checkout, --version prints the version plus the commit sha and a dirty marker; worker records and review records store that same toolkit version string; tests cover a checkout, a dirty checkout and a non-checkout install"
+      ],
+      "codename": "version-shows-checkout-sha",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.66",
+      "node_key": "84185e5e-d8cc-487d-a0a5-103e757360f3",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.66_version-shows-checkout-sha_84185e5e-d8cc-487d-a0a5-103e757360f3.md",
+      "sibling_order": 66,
+      "status": "Complete",
+      "title": "specy-road --version identifies the code when run from a checkout",
+      "touch_zones": [
+        "specy_road/cli.py",
+        "specy_road/version_skew.py",
+        "specy_road/worker_runner.py",
+        "specy_road/review_files.py",
+        "tests/",
+        "specy_road/schemas/review-record.schema.json",
+        "specy_road/schemas/worker-record.schema.json",
+        "specy_road/toolkit_version.py",
+        "specy_road/worker_state.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_gate_ready.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "worker usage reports an estimated cost for Cursor turns (and any harness that reports tokens without cost) from the same price table orchestrate plan uses, pricing cached input separately when a cached rate is known, and marks the figure as an estimate; tests cover a Cursor result line with cached input and a model with no price"
+      ],
+      "codename": "cursor-usage-cost",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.67",
+      "node_key": "94746b89-1891-49c5-ad57-6b3526f4a6d9",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.67_cursor-usage-cost_94746b89-1891-49c5-ad57-6b3526f4a6d9.md",
+      "sibling_order": 67,
+      "status": "Complete",
+      "title": "Worker usage prices Cursor runs from the roster's price table",
+      "touch_zones": [
+        "specy_road/worker_adapter_parsers.py",
+        "specy_road/worker_adapter_cursor.py",
+        "specy_road/cli_usage.py",
+        "tests/",
+        "specy_road/worker_adapter_base.py",
+        "specy_road/worker_adapter_codex.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the leaf has blocking review records (at the branch tip or an earlier commit), the executor prompt inlines each blocking reviewer's required changes under a 'Rework' heading and says to build on the existing commits; worker delegate --rework makes this explicit and is the documented path when the previous worker is terminated or cannot be resumed; tests cover a leaf with and without blocking records",
+        "worker delegate --rework on a leaf whose previous worker was terminated or failed (for example its model became unavailable) also carries that worker's last final message into the new prompt, so a model change mid-leaf loses nothing; a test covers a takeover by a different model"
+      ],
+      "codename": "rework-findings-in-prompt",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.68",
+      "node_key": "4baf83c6-0d3d-423b-93ee-2d8037b65166",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.68_rework-findings-in-prompt_4baf83c6-0d3d-423b-93ee-2d8037b65166.md",
+      "sibling_order": 68,
+      "status": "Complete",
+      "title": "A re-delegated executor starts from the blocking review findings",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/review_gate.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When a leaf adds or changes a field in a bundled schema (policy, review record, registry, worker record), the review gate, handoff status and finish-this-task validate that leaf's records against the schemas at the leaf's commit, not only the installed copy, so an approved leaf can land without a manual retry; tests cover a leaf that adds a policy key"
+      ],
+      "codename": "branch-schema-for-gate-and-finish",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.69",
+      "node_key": "8aa58292-b00a-47d6-9d63-54a57e47d440",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.69_branch-schema-for-gate-and-finish_8aa58292-b00a-47d6-9d63-54a57e47d440.md",
+      "sibling_order": 69,
+      "status": "Complete",
+      "title": "A leaf that adds a schema key can be gated and finished",
+      "touch_zones": [
+        "specy_road/review_files.py",
+        "specy_road/review_gate.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/git_workflow_config.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "tests/",
+        "specy_road/schema_revision.py",
+        "specy_road/worker_state.py",
+        "specy_road/worker_schema.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "add-node, edit-node and validate warn when a touch zone matches no tracked file and is not a directory (for example a name prefix such as specy_road/worker_ops_, which the matcher treats as a literal path), and either support explicit glob zones (for example specy_road/worker_ops_*.py) or say in the warning that prefixes are not supported",
+        "The brief lists, under the touch zones, the modules that import each zoned file (one level), so an executor sees likely call sites before it starts; docs/roadmap-authoring.md says how to choose zones; tests cover the warning, globs if supported, and the call-site list"
+      ],
+      "codename": "zones-checked-at-authoring",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.70",
+      "node_key": "85605152-67f2-4099-a3ed-588f1566cbc8",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.70_zones-checked-at-authoring_85605152-67f2-4099-a3ed-588f1566cbc8.md",
+      "sibling_order": 70,
+      "status": "Complete",
+      "title": "Touch zones are checked when they are written",
+      "touch_zones": [
+        "specy_road/bundled_scripts/roadmap_crud_ops.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py",
+        "specy_road/bundled_scripts/generate_brief.py",
+        "docs/roadmap-authoring.md",
+        "tests/",
+        "specy_road/bundled_scripts/brief_call_sites.py",
+        "specy_road/bundled_scripts/touch_zone_tracked.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "handoff status marks a leaf escalated when one reviewer family has blocked it three times in a row on the same leaf, across different acceptance ids or reviewer models, and prompt --role rca accepts --force with a recorded reason for a coordinator-initiated analysis",
+        "docs/roadmap-authoring.md has a short checklist for acceptance criteria (state what is out of scope, bound concurrency and input classes, name the observable check), and the planning-sheet template points to it; tests cover the new escalation rule and --force"
+      ],
+      "codename": "review-loops-escalate",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.71",
+      "node_key": "773d61e8-07d6-4741-a137-008f3234d01b",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.71_review-loops-escalate_773d61e8-07d6-4741-a137-008f3234d01b.md",
+      "sibling_order": 71,
+      "status": "Complete",
+      "title": "Review loops escalate on their own and criteria are written with bounds",
+      "touch_zones": [
+        "specy_road/review_rca.py",
+        "specy_road/review_gate.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "docs/roadmap-authoring.md",
+        "docs/orchestration-review.md",
+        "tests/",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/planning_sheet_bootstrap.py",
+        "specy_road/templates/planning-node/feature-sheet.md.template",
+        "specy_road/schemas/rca-record.schema.json"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "review delegate (and prompt --channel cli for reviewers) detects a run that exits without writing a review record for the commit under review, records a reviewer-failure event with the harness's own error line (for example a usage limit, a model at capacity, or not logged in), and handoff status shows it next to the gate line instead of a silent 'not met'; tests cover a usage-limit failure and a successful run"
+      ],
+      "codename": "reviewer-failure-visible",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.72",
+      "node_key": "e4a94617-e5fe-4d77-8dd5-8ae2e0b431d1",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.72_reviewer-failure-visible_e4a94617-e5fe-4d77-8dd5-8ae2e0b431d1.md",
+      "sibling_order": 72,
+      "status": "Complete",
+      "title": "A reviewer run that ends without a record is reported as a failure",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_delegate.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_gate.py",
+        "tests/",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/review_delegate.py",
+        "specy_road/reviewer_run_failure.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road ready runs the same trial merge with the integration branch that handoff status uses and, when it conflicts, prints the conflicting paths and tells the executor to merge the integration branch before handing off; tests cover a clean and a conflicting leaf"
+      ],
+      "codename": "ready-warns-integration-conflict",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.73",
+      "node_key": "a245310c-1353-4fd3-89d4-be6cc19241ef",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.73_ready-warns-integration-conflict_a245310c-1353-4fd3-89d4-be6cc19241ef.md",
+      "sibling_order": 73,
+      "status": "Complete",
+      "title": "specy-road ready warns when the leaf no longer merges cleanly",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_gate.py",
+        "tests/",
+        "specy_road/review_ready_merge.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "do-next-available-task, finish-this-task and abort-task-pickup take one repository lock (for example under .git/specy-road/) before switching branches or committing in the main checkout, wait in arrival order with a timeout and a message naming the holder, and release it on exit; tests cover two concurrent callers and a stale lock left by a killed process"
+      ],
+      "codename": "pickup-finish-shared-lock",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.74",
+      "node_key": "b4a57d7e-258e-4f66-9afc-3f4ffe5004cb",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.74_pickup-finish-shared-lock_b4a57d7e-258e-4f66-9afc-3f4ffe5004cb.md",
+      "sibling_order": 74,
+      "status": "Complete",
+      "title": "Pickup and finish in one checkout take a shared lock in order",
+      "touch_zones": [
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/bundled_scripts/abort_task_pickup.py",
+        "specy_road/repo_lock.py",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The reviewer prompt tells every reviewer to (1) run the tests that import each changed module, not only the executor's selection, (2) try at least one input per changed public function that the diff's tests do not use and report it under commands_rerun, (3) fail an acceptance item whose observed behaviour differs from its text, even when the difference looks minor, and (4) list every defect its notes describe under required_changes or explain why it is not a defect; a test pins the four rules in the rendered prompt",
+        "review record refuses an approve whose notes or findings name a defect without a matching required_changes entry or an explicit 'not a defect because' line, with a message saying which; a test covers the refusal and an approve with no findings"
+      ],
+      "codename": "reviewer-probe-rules",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.75",
+      "node_key": "fad49524-fd80-4585-86c5-6855921d0ed8",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.75_reviewer-probe-rules_fad49524-fd80-4585-86c5-6855921d0ed8.md",
+      "sibling_order": 75,
+      "status": "Complete",
+      "title": "Reviewer prompt asks for independent probes, not the executor's own checks",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt.py",
+        "docs/orchestration-review.md",
+        "tests/",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_record_rules.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "validate (or orchestrate plan) warns when a roster entry with a reviewer or executor role matches no model profile by api_id, file name or alias, naming the entry and the closest profile; the shipped profiles carry aliases for the harness ids they document (for example cursor-grok-4.6-high and gpt-5.6-sol-high); a test covers a matched and an unmatched roster id"
+      ],
+      "codename": "profile-alias-coverage",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.76",
+      "node_key": "9025e735-d94d-4074-92de-191f5457d561",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.76_profile-alias-coverage_9025e735-d94d-4074-92de-191f5457d561.md",
+      "sibling_order": 76,
+      "status": "Complete",
+      "title": "Every roster model reaches its profile notes",
+      "touch_zones": [
+        "specy_road/model_profiles.py",
+        "specy_road/templates/project/model-profiles/",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A reviewer run that filed its review record for the commit under review is recorded as complete with no error in RUN-<model>.json, and the 'no review record was filed' error appears only when no record for that commit exists after the run; a test covers both"
+      ],
+      "codename": "run-record-no-false-failure",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.77",
+      "node_key": "ceeb3342-6ba7-40f0-8563-6a6831182c26",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.77_run-record-no-false-failure_ceeb3342-6ba7-40f0-8563-6a6831182c26.md",
+      "sibling_order": 77,
+      "status": "Complete",
+      "title": "A completed reviewer run does not report a missing record",
+      "touch_zones": [
+        "specy_road/reviewer_run_failure.py",
+        "specy_road/review_delegate.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A tracked project file (for example constraints/review-lessons.md, created by init project with a short header) lists known defect classes, one per entry with a one-line rule and an optional example, and every reviewer prompt includes its entries under a 'Project review lessons' heading; a test pins the inclusion",
+        "specy-road lessons add --rule <text> [--example <text>] [--from <NODE_ID>] appends an entry and specy-road lessons list prints them; an entry naming --from records the leaf it came from; tests cover add, list and a missing file"
+      ],
+      "codename": "review-lessons",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.78",
+      "node_key": "bc1266c1-cff7-45ce-99ef-8baff6f93b90",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.78_review-lessons_bc1266c1-cff7-45ce-99ef-8baff6f93b90.md",
+      "sibling_order": 78,
+      "status": "Complete",
+      "title": "Review lessons: escaped defect classes feed every reviewer prompt",
+      "touch_zones": [
+        "specy_road/review_lessons.py",
+        "specy_road/bundled_scripts/lessons_cli.py",
+        "specy_road/cli.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/templates/project/",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "orchestration.yaml policy accepts an optional strong_review list, each item naming touch-zone paths or directory prefixes and the roster ids allowed to count as the strong approval (for example zones: [specy_road/review_gate.py, specy_road/schemas/], require_one_of: [gpt-5.6-sol-medium, claude-opus-5-5-review]); the review gate, handoff status and mark-implementation-reviewed require at least one counting approval from that set when the leaf's touch zones intersect an item, and name the unmet item when they refuse",
+        "orchestrate plan shows, for each ready leaf, which strong_review item applies and which reviewers can satisfy it; tests cover a leaf inside and outside a strong zone, an approval from the set and one from outside it"
+      ],
+      "codename": "risk-tiered-review",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.79",
+      "node_key": "1b324096-545d-4e7b-baa2-450bee0e78a7",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.79_risk-tiered-review_1b324096-545d-4e7b-baa2-450bee0e78a7.md",
+      "sibling_order": 79,
+      "status": "Complete",
+      "title": "Leaves that touch high-risk zones need a stronger reviewer",
+      "touch_zones": [
+        "specy_road/orchestration_config.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "sr/schemas/orchestration.schema.json",
+        "specy_road/review_gate.py",
+        "specy_road/review_eligible.py",
+        "specy_road/bundled_scripts/orchestrate_cli.py",
+        "specy_road/orchestrate_plan.py",
+        "docs/orchestration-review.md",
+        "tests/",
+        "specy_road/review_strong.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "roadmap/git-workflow.yaml accepts an optional verify_cmd (for example 'python -m pytest -n 4 -p no:cacheprovider') that executor briefs and reviewer prompts give as the command to run the leaf's tests (with test paths appended), separate from land_check_cmd; when it is unset the prompts say to cap parallel test workers when other workers share the machine",
+        "docs/orchestration-workers.md explains that concurrent workers each running a full parallel suite oversubscribe the CPU, and recommends verify_cmd with a small worker count plus land_check_cmd for the full suite at landing; tests cover the prompt text with and without verify_cmd"
+      ],
+      "codename": "test-worker-cap",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.80",
+      "node_key": "090fe219-a5b0-4737-b9d8-d44749f0bb10",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.80_test-worker-cap_090fe219-a5b0-4737-b9d8-d44749f0bb10.md",
+      "sibling_order": 80,
+      "status": "Complete",
+      "title": "Executors and reviewers run tests with a bounded worker count",
+      "touch_zones": [
+        "specy_road/git_workflow_config.py",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/generate_brief.py",
+        "docs/git-workflow.md",
+        "docs/orchestration-workers.md",
+        "tests/",
+        "specy_road/verify_cmd_config.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "ruff check specy_road tests scripts passes on the branch: uncommitted_refs_section and load_availability_overlay are split so each stays under the C901 limit with no behaviour change (the existing tests for the review packet's uncommitted-references section and for orchestration.local.yaml pass unchanged)",
+        "roadmap/git-workflow.yaml land_check_cmd for this repository runs ruff check before pytest (one shell command), and docs/git-workflow.md's land_check_cmd example shows that lint belongs in the land check when CI enforces it; a test is not required for the yaml change"
+      ],
+      "codename": "wip-ruff-clean",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.82",
+      "node_key": "29461e62-7961-4fc1-bdc9-901d25cd57d5",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.82_wip-ruff-clean_29461e62-7961-4fc1-bdc9-901d25cd57d5.md",
+      "sibling_order": 81,
+      "status": "Complete",
+      "title": "The integration branch passes ruff again and the land check runs it",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_packet_uncommitted_refs.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/orchestration_local_overlay.py",
+        "sr/roadmap/git-workflow.yaml",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    }
+  ]
+}

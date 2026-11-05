@@ -1,232 +1,6 @@
 {
   "nodes": [
     {
-      "codename": "rc3-adopter-feedback-upgrade-and-adoption-friction",
-      "dependencies": [],
-      "id": "M13",
-      "node_key": "2fe2e067-75bb-4527-8c7a-3e5a54e32e71",
-      "planning_dir": "planning/M13_rc3-adopter-feedback-upgrade-and-adoption-friction_2fe2e067-75bb-4527-8c7a-3e5a54e32e71.md",
-      "sibling_order": 12,
-      "status": "Not Started",
-      "title": "rc3 adopter feedback: upgrade and adoption friction",
-      "touch_zones": [],
-      "type": "phase"
-    },
-    {
-      "acceptance": [
-        "A helper in version_skew.py lists every specy-road and specyrd executable on PATH in PATH order with its resolved target (symlinks followed) and whether it belongs to the running interpreter (sys.prefix); specy-road doctor prints that list and warns when the first one on PATH is not the running install; a test builds a PATH with two fake launchers and asserts the order and the warning",
-        "validate warns (non-fatal) when the 'Written by specy-road X' line of any managed block (root AGENTS.md, CLAUDE.md) names a version other than the running one, even when .specyrd/manifest.json specyrd_version matches; the warning names the file, both versions and specy-road upgrade; a test pins manifest at the running version with a block from an older one",
-        "Out of scope: changing the existing older-than-recorded and pin warnings, installing or removing launchers, and the upgrade output (M13.2)"
-      ],
-      "codename": "say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M13.1",
-      "node_key": "0df02f07-4621-455d-83a3-155de03dadb8",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.1_say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote_0df02f07-4621-455d-83a3-155de03dadb8.md",
-      "sibling_order": 1,
-      "status": "Complete",
-      "title": "Say which install is running and flag managed blocks an older version wrote",
-      "touch_zones": [
-        "specy_road/version_skew.py",
-        "specy_road/bundled_scripts/doctor.py",
-        "tests/"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "upgrade's first lines name the running version, sys.prefix and the launcher list from M13.1; under --dry-run the first line reads 'previewing what specy-road <version> would write'",
-        "upgrade --dry-run also runs validate, against a temporary copy of the project with the refreshes applied (the checkout is never written), prints its errors and exits with validate's code; a test injects a validate error the new version raises and asserts --dry-run exits 1 before anything is written",
-        "After writing, upgrade checks every file it wrote or rewrote against the project's file-limits caps and names each one its own write pushed over the cap (path, old and new line count, cap); a file already over the cap before the upgrade is not blamed on it; a test covers both",
-        "init project's constraints/file-limits.yaml template no longer caps the developer-owned root agent files (AGENTS.md, CLAUDE.md) by default: they are excluded from the default globs, with a commented example of how a project opts them in; specy-road budgets only what it owns (its managed blocks and .specyrd/ files, already pinned by tests); a test asserts a freshly initialised project's file-limits does not apply to root AGENTS.md or CLAUDE.md. This toolkit repo's own constraints/file-limits.yaml is out of scope",
-        "upgrade's help and module docstring name pip, pipx and uv tool upgrades instead of only 'pip install -U'. Out of scope: changing which refreshes run or their order, and digest drift wording beyond pointing at validate's notices",
-        "After writing, upgrade lists every other worktree from git worktree list (path and branch) with one line saying it was not upgraded and still has the old managed files while sharing this install, and the command to run there; nothing is listed when there is only one worktree; a test with a second linked worktree pins the lines"
-      ],
-      "codename": "upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap",
-      "dependencies": [
-        "0df02f07-4621-455d-83a3-155de03dadb8"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M13.2",
-      "node_key": "1726dab4-730d-414d-a79d-fef0b03b8983",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.2_upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap_1726dab4-730d-414d-a79d-fef0b03b8983.md",
-      "sibling_order": 2,
-      "status": "Complete",
-      "title": "upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap",
-      "touch_zones": [
-        "specy_road/bundled_scripts/upgrade.py",
-        "specy_road/file_limits_engine.py",
-        "tests/",
-        "specy_road/templates/project/constraints/file-limits.yaml",
-        "specy_road/bundled_scripts/upgrade_preview.py",
-        "specy_road/bundled_scripts/upgrade_plan.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "A project setting (agents_block: minimal in .specyrd/manifest.json, default full) makes refresh-stubs and upgrade write a root AGENTS.md block of at most 3 lines that points at .specyrd/AGENTS.md; the default full block is unchanged and stays within its existing budget (17 lines, 2,063 bytes in tests/test_enforced_rules_pointers.py), because the block is specy-road's text inside a file the developer owns; docs/install-and-usage.md says why the full block repeats the floor bullets and names the minimal setting; validate's context lines reflect the smaller block; a test renders both",
-        "When upgrade or refresh-stubs first creates .specyrd/AGENTS.md it prints the new file's headings and names each heading of the project's own AGENTS.md text (outside the managed block) that matches one of them case-insensitively, with one line saying to compare and drop the stale copy; a test with a duplicated heading asserts the line; the heading scan is a hint with a bounded input class: ATX headings indented 0-3 spaces, skipping fenced code (``` or ~~~ fences opened with 0-3 spaces of indent, closed by a matching fence at least as long) and HTML comments (<!-- ... -->, single- or multi-line); setext headings, other HTML blocks, indented code, list or blockquote nesting and other CommonMark constructs are out of scope and are documented as such",
-        "Each harness's validate context line ends with a per-harness total in lines and bytes, counting a file imported twice (CLAUDE.md imports) once and saying so",
-        "Out of scope: removing the floor bullets from the default block, editing project text outside managed blocks, and rewriting .specyrd/AGENTS.md content"
-      ],
-      "codename": "a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M13.3",
-      "node_key": "6069463a-3a1a-4778-853a-a4dffb1a1ede",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.3_a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates_6069463a-3a1a-4778-853a-a4dffb1a1ede.md",
-      "sibling_order": 3,
-      "status": "Complete",
-      "title": "A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates",
-      "touch_zones": [
-        "specy_road/agents_md_block.py",
-        "specy_road/templates/specyrd/agents-md-block.md",
-        "specy_road/templates/specyrd/claude-md-block.md",
-        "suggested_prompts/bootstrap-agents-md.md",
-        "docs/install-and-usage.md",
-        "tests/",
-        "specy_road/agents_md_report.py",
-        "specy_road/bundled_scripts/refresh_stubs.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "validate prints one notice per milestone whose rollup is held by policy.milestone_full_review, with the hold reason milestone_review_hold gives and the three ways out (review it with the commands that do so, record it Complete, or set milestone_full_review: false); upgrade shows them because it runs validate; a test pins the notice for a milestone whose leaves are all Complete",
-        "why-blocked <ID> on a held milestone prints the same reason and ways out; list-nodes marks a held milestone (for example 'In Progress (review hold)') and its --json output carries the reason",
-        "docs/orchestration-review.md's milestone full review section shows the notice and the three ways out. Out of scope: changing when the hold applies (including exempting milestones completed before an upgrade), and the hold's default"
-      ],
-      "codename": "a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M13.4",
-      "node_key": "d46518be-f58a-450d-a52f-cd6b08817346",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.4_a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked_d46518be-f58a-450d-a52f-cd6b08817346.md",
-      "sibling_order": 4,
-      "status": "Complete",
-      "title": "A milestone held for its full review says so in validate, list-nodes and why-blocked",
-      "touch_zones": [
-        "specy_road/finish_ancestor_rollup.py",
-        "specy_road/bundled_scripts/roadmap_query_cli.py",
-        "specy_road/bundled_scripts/roadmap_crud_ops.py",
-        "specy_road/bundled_scripts/validate_roadmap.py",
-        "docs/orchestration-review.md",
-        "tests/",
-        "specy_road/bundled_scripts/validate_notices.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "refresh-profiles (and upgrade, which calls it) writes by default only the bundled profiles a roster entry in roadmap/orchestration.yaml names, plus model-profiles/README.md; --profiles all keeps today's behaviour; a repo with no roster gets only the README and a line naming --profiles all; a test covers roster, no roster and all",
-        "The 'matches no model profile' warning names the closest bundled api_id when one differs only in punctuation or a vendor/effort prefix or suffix (claude-opus-5.5 vs claude-opus-5-5; cursor-gpt-5.6-sol-high vs gpt-5.6-sol) and prints the roster line that fixes it; no near match keeps today's text; a test pins both examples",
-        "Out of scope: editing the roster automatically, deleting profiles already written, and changing profile content"
-      ],
-      "codename": "refresh-profiles-installs-only-the-profiles-the-roster-names-and-suggests-the-alias-for-a-near-miss",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M13.5",
-      "node_key": "c35736be-a985-4dec-a66d-00d52d2f0ab5",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.5_refresh-profiles-installs-only-the-profiles-the-roster-names-and-suggests-the-alias-for-a-near-miss_c35736be-a985-4dec-a66d-00d52d2f0ab5.md",
-      "sibling_order": 5,
-      "status": "Complete",
-      "title": "refresh-profiles installs only the profiles the roster names, and suggests the alias for a near miss",
-      "touch_zones": [
-        "specy_road/bundled_scripts/refresh_profiles.py",
-        "specy_road/model_profiles.py",
-        "tests/",
-        "specy_road/bundled_scripts/upgrade.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "docs/install-and-usage.md replaces the --index-url TestPyPI plus --extra-index-url PyPI recipe with: pip download --no-deps of the exact pinned version from TestPyPI, a sha256 check against the published value, then pip install --no-deps of that wheel with dependencies installed from PyPI only; it says why (any dependency could resolve from TestPyPI) and gives the uv equivalent",
-        "docs/release-runbook.md's RC announcement step publishes that recipe and the wheel's sha256",
-        "Install and upgrade sections cover pip, pipx and uv tool for both final releases and RCs, and a 'Which install is running' subsection shows which -a specy-road specyrd, specy-road --version, resolving a symlinked launcher, and clearing a stale specyrd launcher that makes a second install fail",
-        "A docs test asserts no doc pairs a TestPyPI --index-url with --extra-index-url in an install command. Out of scope: publishing to a different index, signing wheels, and code changes to upgrade (M13.2)"
-      ],
-      "codename": "safe-release-candidate-install-recipe-pipx-and-uv-tool-upgrades-and-checking-which-binary-is-on-path",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M13.6",
-      "node_key": "0f32efb8-3780-4e45-8fbc-333b064e5a9c",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.6_safe-release-candidate-install-recipe-pipx-and-uv-tool-upgrades-and-checking-which-binary-is-on-path_0f32efb8-3780-4e45-8fbc-333b064e5a9c.md",
-      "sibling_order": 6,
-      "status": "Complete",
-      "title": "Safe release-candidate install recipe, pipx and uv tool upgrades, and checking which binary is on PATH",
-      "touch_zones": [
-        "docs/install-and-usage.md",
-        "docs/release-runbook.md",
-        "docs/supply-chain-security.md",
-        "README.md",
-        "tests/"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "When a stub directory refresh-stubs reports (for example .agents/skills) is a symlink, the report prints the resolved path once, or notes 'symlink to <target>', instead of listing the same files twice under two names; a test with a symlinked skills dir pins it",
-        "When an upgrade or refresh adds a .gitignore rule, it lists files already in the tree that the new rule matches, marking tracked ones (git keeps tracking them) and untracked ones (now hidden), at most 20 then a count; a test with one tracked and one untracked match pins the lines",
-        "session end, when the shell's derived id has no record and it ends the user's only live session, leads with the session it ended and why (for example 'ended your live session <A> (this shell's id <B> has no record)'); behaviour unchanged; a test pins the text",
-        "Out of scope: changing which ignore rules ship, untracking files, and session end behaviour"
-      ],
-      "codename": "clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M13.7",
-      "node_key": "bf5ffc69-0d63-4e1c-9159-7ba00872b009",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.7_clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end_bf5ffc69-0d63-4e1c-9159-7ba00872b009.md",
-      "sibling_order": 7,
-      "status": "Complete",
-      "title": "Clearer notices: symlinked skill dirs, new ignore rules over tracked files, and session end",
-      "touch_zones": [
-        "specy_road/bundled_scripts/refresh_stubs.py",
-        "specy_road/agent_ignores.py",
-        "specy_road/bundled_scripts/session_cli.py",
-        "tests/",
-        "specy_road/bundled_scripts/refresh_stubs_report.py",
-        "specy_road/written_entry.py",
-        "specy_road/ignore_report.py",
-        "docs/install-and-usage.md"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "specy_road/behaviour_changes.py holds a tracked catalogue of behaviour changes that invalidate common project instructions, each with the version it shipped in, a one-line 'now' statement, the command and flags it concerns, and an optional pattern for project text that contradicts it; it starts with the four cited cases (mark-implementation-reviewed --yes on your own work, finish-this-task --on-complete differing from the recorded mode needs --override-on-complete, pickup --local, finish-this-task --delete-branch); a test asserts every entry names a registered command and flag",
-        "To keep validate_roadmap.py under the 400-line cap, pinned_version and warn_if_pin_differs move to specy_road/version_pin.py (validate_roadmap re-exports them so existing imports and tests still work). Out of scope: printing the catalogue during upgrade (M13.11), and checking prose that names no command",
-        "The catalogue has an entry for pickup registering the claim on the integration branch before the feature branch exists, with a pattern for project text saying the first commit on the feature branch registers the work (as earlier init-era root AGENTS.md, docs/git-workflow.md and constitution/principles.md copies say). This toolkit's own docs/roadmap-authoring.md ('Before starting implementation', steps 3 and 4) says the same today and is rewritten to the integration-branch order without adding net lines (the file is at 400); a test runs the pattern over the toolkit's docs/ and specy_road/templates/ and finds nothing (specy_road/templates/project/ has no such sentence today). Out of scope (split to M13.14, maintainer 2026-11-04): validate notices for project text that contradicts the catalogue"
-      ],
-      "codename": "a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M13.8",
-      "node_key": "f7af5b48-1dd5-41f8-a55b-781cd48a8c18",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.8_a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts_f7af5b48-1dd5-41f8-a55b-781cd48a8c18.md",
-      "sibling_order": 8,
-      "status": "Complete",
-      "title": "A behaviour-change catalogue, and validate reports project agent text it contradicts",
-      "touch_zones": [
-        "specy_road/behaviour_changes.py",
-        "specy_road/version_pin.py",
-        "specy_road/bundled_scripts/validate_roadmap.py",
-        "tests/",
-        "docs/roadmap-authoring.md"
-      ],
-      "type": "task"
-    },
-    {
       "acceptance": [
         "validate gives an agents: notice when CLAUDE.md exists, root AGENTS.md has project text outside its managed block, and CLAUDE.md does not import @AGENTS.md, saying Claude Code never reads that text and naming the line to add; no notice when the import is present or AGENTS.md is only the block",
         "The load-order section of .specyrd/AGENTS.md states in one sentence that it is a default a project may replace, and that roadmap-context.md first is the one step to keep. validate gives a notice when the project's own AGENTS.md text defines a load order (a numbered list under a heading containing 'load order'), naming the entries in specy-road's load order that it omits (roadmap-context.md first)",
@@ -241,11 +15,11 @@
         "f7af5b48-1dd5-41f8-a55b-781cd48a8c18"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M13.9",
+      "id": "M19.7",
       "node_key": "3b109b88-7434-4fcd-8a4c-064f5830eff6",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.9_notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice_3b109b88-7434-4fcd-8a4c-064f5830eff6.md",
-      "sibling_order": 9,
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.7_notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice_3b109b88-7434-4fcd-8a4c-064f5830eff6.md",
+      "sibling_order": 6,
       "status": "Not Started",
       "title": "Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice",
       "touch_zones": [
@@ -254,33 +28,6 @@
         "tests/",
         "specy_road/agents_md_block.py",
         "specy_road/bundled_scripts/upgrade.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "New docs/upgrading.md has a 'Migrating to the split rules files' section: for each kind of project text, whether it belongs in .specyrd/AGENTS.team.md (repository-specific specy-road policy), stays in the root AGENTS.md (project rules), or can be deleted (generic mechanics .specyrd/AGENTS.md now holds), with one example each and the rule 'keep it when unsure'",
-        "It shows a scratch-virtualenv recipe for previewing a version you have not installed (create venv, hash-checked --no-deps install per M13.6, run that venv's specy-road upgrade --dry-run against the repo, delete the venv), and shows pip show specy-road (and the pipx and uv tool equivalents) for telling installs apart when an old 0.1.x has no --version",
-        "docs/install-and-usage.md links to it by changing an existing line, keeping the file within its 400-line cap. The existing Unreleased section of CHANGELOG.md gains a line explaining that file-limits now counts functions in .tsx files, so local and CI counts differ across versions; no version heading is added. Out of scope: code changes",
-        "The upgrade guide notes that a uv tool install from a local wheel records that file's path in uv's receipt, so uv tool upgrade needs the file to still exist; keep the wheel or reinstall from the index"
-      ],
-      "codename": "upgrade-guide-moving-to-the-split-rules-files-previewing-an-uninstalled-version-telling-old-installs-apart",
-      "dependencies": [
-        "0f32efb8-3780-4e45-8fbc-333b064e5a9c"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M13.10",
-      "node_key": "30507388-ed3e-439c-bbf9-0ae841070bab",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.10_upgrade-guide-moving-to-the-split-rules-files-previewing-an-uninstalled-version-telling-old-installs-apart_30507388-ed3e-439c-bbf9-0ae841070bab.md",
-      "sibling_order": 10,
-      "status": "Complete",
-      "title": "Upgrade guide: moving to the split rules files, previewing an uninstalled version, telling old installs apart",
-      "touch_zones": [
-        "docs/upgrading.md",
-        "docs/install-and-usage.md",
-        "CHANGELOG.md",
-        "tests/"
       ],
       "type": "task"
     },
@@ -298,11 +45,11 @@
         "3b109b88-7434-4fcd-8a4c-064f5830eff6"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M13.11",
+      "id": "M19.8",
       "node_key": "614bae1a-02e5-4266-be5c-f567e95c5a54",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.11_upgrade-says-what-changed-for-this-repo-behaviour-changes-a-pin-below-the-new-minimum-the-new-files-and-duplicated-paragraphs_614bae1a-02e5-4266-be5c-f567e95c5a54.md",
-      "sibling_order": 11,
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.8_upgrade-says-what-changed-for-this-repo-behaviour-changes-a-pin-below-the-new-minimum-the-new-files-and-duplicated-paragraphs_614bae1a-02e5-4266-be5c-f567e95c5a54.md",
+      "sibling_order": 7,
       "status": "Not Started",
       "title": "upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs",
       "touch_zones": [
@@ -312,40 +59,6 @@
         "specy_road/agent_text_report.py",
         "tests/",
         "docs/upgrading.md"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "validate's 'touch zones that match no tracked file' notice lists at most 10 entries, In Progress or claimed nodes first, and gives a count of the rest by status; Not Started unclaimed leaves are counted, not listed; validate --all prints the full list; a test with 85 such nodes pins a bounded line. validate_roadmap_checks.py changes only the call line, staying within its cap; the existing 'from ... validate_notices import' line in validate_roadmap.py may gain names (planner 2026-11-05: no other import or signature change)",
-        "The managed .gitignore comment and the init template say '.specyrd/manifest.json stays tracked' only when the repo has a manifest (or reword it so it is true either way); a test covers a repo with no stub pack",
-        "For a tracked file matched by a newly added managed ignore rule (M13.7 lists them), the notice prints the git rm --cached command and says when to keep tracking instead. Out of scope: untracking anything automatically, and which ignore rules ship",
-        "When the managed .gitignore block repeats a pattern the file already lists above the markers, validate prints one notice naming the repeated patterns and saying they can be removed from above the markers (never edits the file); a test with two repeats pins the line and a file with none prints nothing",
-        "The context: warning lines (always-injected context per harness) print in full only when their content changed since the last validate in this checkout (a hash in .specyrd/cache/, new module specy_road/context_notice_cache.py), else one line 'context: N warnings unchanged (validate --context shows them)'; upgrade always prints them in full; validate_roadmap.py and agents_md_block.py change only call lines; tests for first run, unchanged run and changed run"
-      ],
-      "codename": "quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules",
-      "dependencies": [
-        "bf5ffc69-0d63-4e1c-9159-7ba00872b009"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M13.12",
-      "node_key": "538b8591-af5b-4a0c-8b37-d3d988eb9a5f",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.12_quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules_538b8591-af5b-4a0c-8b37-d3d988eb9a5f.md",
-      "sibling_order": 12,
-      "status": "Not Started",
-      "title": "Quieter, accurate validate notices: untracked touch zones, the managed .gitignore comment, and tracked files under new ignore rules",
-      "touch_zones": [
-        "specy_road/bundled_scripts/touch_zone_tracked.py",
-        "specy_road/bundled_scripts/validate_roadmap_checks.py",
-        "specy_road/agent_ignores.py",
-        "specy_road/templates/project/.gitignore",
-        "tests/",
-        "specy_road/context_notice_cache.py",
-        "specy_road/agents_md_block.py",
-        "specy_road/bundled_scripts/validate_roadmap.py",
-        "specy_road/ignore_report.py",
-        "specy_road/bundled_scripts/validate_notices.py"
       ],
       "type": "task"
     },
@@ -368,11 +81,11 @@
         "f11ae6a1-4e8d-43f8-9aed-391000c71679"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M13.13",
+      "id": "M19.9",
       "node_key": "bd6783a8-ba79-4012-86ed-e2d0f9bbed31",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.13_upgrade-prompt-writes-an-agent-upgrade-prompt-filled-in-from-this-repo_bd6783a8-ba79-4012-86ed-e2d0f9bbed31.md",
-      "sibling_order": 13,
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.9_upgrade-prompt-writes-an-agent-upgrade-prompt-filled-in-from-this-repo_bd6783a8-ba79-4012-86ed-e2d0f9bbed31.md",
+      "sibling_order": 8,
       "status": "Not Started",
       "title": "upgrade --prompt writes an agent upgrade prompt filled in from this repo",
       "touch_zones": [
@@ -382,32 +95,6 @@
         "docs/upgrading.md",
         "tests/",
         "docs/install-release-candidates.md"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "validate prints at most one notice per sentence of project text outside managed blocks (root AGENTS.md, CLAUDE.md, .specyrd/AGENTS.team.md) when that sentence names a catalogue command as a literal token AND contains a mandate cue from a fixed, documented list ('must', 'always', 'never omit', 'in non-TTY/agent contexts pass', 'unattended runs pass'); the notice names file:line, the instruction and the current behaviour from the M13.8 catalogue; it reports only and never rewrites project text",
-        "Sentences are split by one stated rule (on '. ', '; ' and line breaks, outside backtick spans); a bare command example with no mandate cue never matches; the lint is documented as a best-effort hint: paraphrases without a listed cue are false negatives and out of scope",
-        "Tests: the four cited stale sentences match (positives); bare examples such as `specy-road finish-this-task --on-complete merge`, correct current guidance, and unrelated prose (e.g. 'The first commit registers the service worker.') do not (negatives, parametrized); running the lint over the toolkit's own docs/, specy_road/templates/ and AGENTS.md finds nothing"
-      ],
-      "codename": "validate-flags-project-agent-text-that-mandates-a-changed-behaviour-best-effort-hint",
-      "dependencies": [
-        "f7af5b48-1dd5-41f8-a55b-781cd48a8c18"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M13.14",
-      "node_key": "ef79760f-c6d0-4a12-afe6-7f2c6a1eb1a2",
-      "parent_id": "M13",
-      "planning_dir": "planning/M13.14_validate-flags-project-agent-text-that-mandates-a-changed-behaviour-best-effort-hint_ef79760f-c6d0-4a12-afe6-7f2c6a1eb1a2.md",
-      "sibling_order": 14,
-      "status": "Not Started",
-      "title": "validate flags project agent text that mandates a changed behaviour (best-effort hint)",
-      "touch_zones": [
-        "specy_road/agent_text_report.py",
-        "specy_road/bundled_scripts/validate_notices.py",
-        "specy_road/bundled_scripts/validate_roadmap.py",
-        "tests/"
       ],
       "type": "task"
     }

@@ -27,7 +27,8 @@
         "properties": {
           "cmd": { "type": "string", "minLength": 1 },
           "exit": { "type": "integer" },
-          "tail": { "type": "string" }
+          "tail": { "type": "string" },
+          "warning": { "type": "string", "description": "A tail line suggesting a command failed though exit was 0." }
         }
       }
     },

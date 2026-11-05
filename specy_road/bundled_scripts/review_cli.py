@@ -47,6 +47,7 @@ from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_next_step import fix_round_budget
 from specy_road.bundled_scripts.review_defer import add_parser as add_defer_parser
+from specy_road.orphaned_claims import orphaned_claims, report_lines
 from specy_road.review_record_rules import check_record
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
 from specy_road.review_target import ReviewTarget, ReviewTargetError, milestone_status, resolve_target, same_commit
@@ -221,14 +222,13 @@ def cmd_handoff_status(ns: argparse.Namespace) -> int:
     workers = list_records(root, active_only=True)
     if ns.json:
         print(json.dumps({"sessions": [s.to_dict() for s in sessions],
-                          "workers": [w.to_dict() for w in workers], "nodes": out}, indent=2))
+                          "workers": [w.to_dict() for w in workers], "nodes": out, "orphaned_claims": orphaned_claims(root)}, indent=2))
     else:
         if sessions:
-            print("Live sessions: " + ", ".join(
-                f"{s.agent} ({s.branch or '-'}: {', '.join(s.paths) or 'no paths'})" for s in sessions))
+            print("Live sessions: " + ", ".join(f"{s.agent} ({s.branch or '-'}: {', '.join(s.paths) or 'no paths'})" for s in sessions))
         if workers:
-            print("Workers: " + ", ".join(
-                f"{w.worker_id} ({w.node_id} {w.harness} {w.state}, lease {w.lease.get('holder')})" for w in workers))
+            print("Workers: " + ", ".join(f"{w.worker_id} ({w.node_id} {w.harness} {w.state}, lease {w.lease.get('holder')})" for w in workers))
+        any(map(print, report_lines(orphaned_claims(root))))
         if not out:
             print(f"No hand-offs under {reviews_root(root)}.")
         else:

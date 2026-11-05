@@ -23,11 +23,12 @@ from typing import Any
 
 from specy_road.bundled_scripts.worker_cli_render import _sum_usage
 from specy_road.review_files import HISTORY_DIRNAME, reviews_dir
+from specy_road.review_answer import events as safe_events
 from specy_road.reviewer_run_failure import _read_json
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worker_adapter_base import Launch
 from specy_road.worker_adapter_parsers import USAGE_FIELDS, usage_text
-from specy_road.worker_adapters import adapter_for
+from specy_road.worker_adapters import ADAPTERS
 from specy_road.worker_state import WorkerEvent
 from specy_road.worker_usage_delta import turn_usage
 
@@ -98,9 +99,9 @@ def _log_turns(harness: str, log: Path, events: list[WorkerEvent]) -> list[dict[
     """Each turn's usage in ``log``; ``events`` carries a resumed session's earlier totals and is extended."""
     if not log.is_file():
         return []
-    adapter, launch, turns = adapter_for(harness), Launch(argv=[]), []
-    for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
-        for p in adapter.parse_events(line, launch):
+    adapter, launch, turns = ADAPTERS.get(harness, ADAPTERS["generic"]), Launch(argv=[]), []
+    for line in log.read_text(encoding="utf-8", errors="replace").split("\n"):   # JSON Lines: U+2028 is no break
+        for p in safe_events(adapter, line, launch):   # total: untrusted output (review_answer)
             if p.usage is None:
                 continue
             detail = turn_usage({**dict.fromkeys(USAGE_FIELDS), **p.usage}, events)

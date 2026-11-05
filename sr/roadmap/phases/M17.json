@@ -1,0 +1,39 @@
+{
+  "nodes": [
+    {
+      "codename": "pm-gui-orchestration-view",
+      "dependencies": [],
+      "execution_milestone": "Human-led",
+      "id": "M17",
+      "node_key": "be53d706-287c-4f1f-bb62-8ff1da6c2dfe",
+      "planning_dir": "planning/M17_pm-gui-orchestration-view_be53d706-287c-4f1f-bb62-8ff1da6c2dfe.md",
+      "sibling_order": 16,
+      "status": "Not Started",
+      "title": "0.3.2: PM GUI shows orchestration and worktree state",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "acceptance": [
+        "The 0.3.2 PM GUI shows orchestration and worktree state by reading only `specy_road.orchestration`'s snapshot (tests/fixtures/orchestration_snapshot_v1.json, `schema: 1`); it imports no worker_* or gui_app_routes_workers internals, and a missing field is a snapshot interface change with a new schema number",
+        "The GUI work owns docs/pm-gui.md's existing sections (M16.31 only appends brainstorm and LLM-review sections)",
+        "This placeholder is not dispatchable: the maintainer replaces it with planned leaves after M16.15 and M16.42 merge"
+      ],
+      "codename": "pm-gui-orchestration-plan",
+      "dependencies": [
+        "fba72c3a-24a5-4c6b-b174-0e581d8b8450",
+        "af6d3c1a-cccf-481d-ab9f-503e834b47d7"
+      ],
+      "execution_milestone": "Human-led",
+      "id": "M17.1",
+      "node_key": "6074421f-382e-452e-9cdb-9ad693eddc64",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.1_pm-gui-orchestration-plan_6074421f-382e-452e-9cdb-9ad693eddc64.md",
+      "sibling_order": 1,
+      "status": "Not Started",
+      "title": "0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface",
+      "touch_zones": [],
+      "type": "gate"
+    }
+  ]
+}

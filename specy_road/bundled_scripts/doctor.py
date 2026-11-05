@@ -50,6 +50,7 @@ from specy_road.doctor_worktrees import (  # noqa: F401 — SAME_PATCH, TEMP_WOR
 )
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_text
 from specy_road.nested_repos import report_unpushed
+from specy_road.orphaned_claims import orphaned_claims, report_lines
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.version_skew import print_install_report, warn_if_running_version_older
@@ -261,6 +262,16 @@ def _context(ns: argparse.Namespace) -> _Ctx | None:
     return _Ctx(root, target, remote, base, live, complete, *live_holders(root, target, nodes, complete))
 
 
+def _print_orphaned_claims(root: Path) -> None:
+    """Report-only: ``--fix`` does not release these (they are not in :data:`FIX_ORDER`)."""
+    lines = report_lines(orphaned_claims(root))
+    if not lines:
+        return
+    print("Claims with no live worker (report only; --fix does not release them):")
+    for line in lines:
+        print(f"  {line}")
+
+
 def cmd_doctor(ns: argparse.Namespace) -> int:
     print_install_report()
     warn_if_running_version_older(resolve_repo_root(ns))
@@ -272,16 +283,18 @@ def cmd_doctor(ns: argparse.Namespace) -> int:
     sections = _sections(ctx)
     if not any(found for _k, _h, found in sections):
         print("Nothing to tidy: no stale branch, worktree, registry row or toolkit stash.")
-        return int(bad_config)
-    for _kind, heading, found in sections:
-        if found:
-            print(heading)
-            for f in found:
-                print(f"  {f.name}  — {f.reason}")
-    if not ns.fix:
-        print("Nothing removed. Re-run with --fix to remove them (it asks per kind).")
-        return int(bad_config)
-    return _fix(sections, ns.yes) or int(bad_config)
+    else:
+        for _kind, heading, found in sections:
+            if found:
+                print(heading)
+                for f in found:
+                    print(f"  {f.name}  — {f.reason}")
+        if not ns.fix:
+            print("Nothing removed. Re-run with --fix to remove them (it asks per kind).")
+        else:
+            bad_config = _fix(sections, ns.yes) or bad_config
+    _print_orphaned_claims(ctx.root)   # after the branch section, so it is not read as one of those rows
+    return int(bad_config)
 
 
 def build_parser() -> argparse.ArgumentParser:

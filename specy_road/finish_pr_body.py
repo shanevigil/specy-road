@@ -7,6 +7,9 @@ context). Reviewers — including QC reviewers who are not the
 implementer — get both narratives in the PR view without having to
 clone the repo and run ``specy-road brief``.
 
+``pr_body_footer`` in ``roadmap/git-workflow.yaml`` (M15.22), when set, is
+appended after the brief; unset, the body is unchanged.
+
 Snapshot semantics: the body is generated once at finish-this-task
 time. The roadmap may change later (codename rename, planning sheet
 edit); the PR body deliberately does NOT update.
@@ -16,6 +19,8 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Iterable
+
+from specy_road.workflow_prefs import pr_body_footer
 
 
 def _read_or_placeholder(path: Path, label: str) -> str:
@@ -35,8 +40,9 @@ def compose_pr_body(
     codename: str | None,
     branch: str,
     integration_branch: str,
+    footer: str | None = None,
 ) -> str:
-    """Render the PR/MR body markdown. Pure: no side effects."""
+    """Render the PR/MR body markdown. Pure: no side effects. ``footer`` is ``pr_body_footer``."""
     impl_summary = _read_or_placeholder(
         work_dir / f"implementation-summary-{node_id}.md",
         "implementation summary",
@@ -73,6 +79,8 @@ def compose_pr_body(
         "</details>",
         "",
     ]
+    if footer:
+        parts += [footer, ""]
     return "\n".join(parts)
 
 
@@ -89,6 +97,8 @@ def write_pr_body(
 
     Returns the path to the file. Caller is responsible for surfacing it
     in the printed PR/MR command (e.g. ``gh pr create --body-file``).
+    ``work_dir`` is the project root's ``work/``, so its parent holds the
+    ``roadmap/git-workflow.yaml`` whose ``pr_body_footer`` is appended.
     """
     work_dir.mkdir(parents=True, exist_ok=True)
     out = work_dir / f"pr-body-{node_id}.md"
@@ -99,6 +109,7 @@ def write_pr_body(
         codename=codename,
         branch=branch,
         integration_branch=integration_branch,
+        footer=pr_body_footer(work_dir.parent, node_id),
     )
     out.write_text(body, encoding="utf-8")
     return out

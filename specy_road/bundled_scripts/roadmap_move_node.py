@@ -10,11 +10,16 @@ re-pointing ``planning_dir``.
 
 Two things had to be true before a CLI could be put over it, and only one was:
 
-* **A move renumbers.** The subtree takes new ids, and so do both sibling
-  ranges it leaves and joins. That is correct — an id is a position in the
-  outline, not an identity, which is why ``node_key`` exists — but a command
-  that silently changed ids would be the same surprise the codename guard
-  exists to prevent. So the ``old -> new`` map is printed.
+* **A move renumbers.** The subtree takes new ids — an id is a position in
+  the outline, not an identity, which is why ``node_key`` exists — but a
+  command that silently changed ids would be the same surprise the codename
+  guard exists to prevent. So the ``old -> new`` map is printed. By default
+  only the moved subtree is renumbered: the moved node takes the next free
+  id under its new parent (gaps are allowed) and its descendants follow it,
+  so no sibling's or other milestone's id, sheet, claim or zone changes and
+  every id cited elsewhere stays true. ``--renumber-outline`` (and the PM
+  GUI's drag, through ``move_node_outline``) instead renumbers the whole
+  outline from its shape, closing the gaps the move leaves.
 * **It was not atomic.** ``move_node_outline`` persists chunks, renames sheets
   and rewrites the registry, and only *then* validates; a rejected move left
   all three behind. That is the defect the ``v0.1.4`` round fixed for
@@ -51,6 +56,8 @@ from specy_road.bundled_scripts.roadmap_outline_ops import (
     ordered_sibling_ids,
 )
 from specy_road.bundled_scripts.roadmap_outline_renumber import (
+    assign_subtree_ids_inplace,
+    next_free_child_id,
     renumber_display_ids_inplace,
 )
 from specy_road.bundled_scripts.planning_artifacts import resolve_planning_path
@@ -132,27 +139,39 @@ def _rewrite_touch_zones(items: list, renamed: dict[str, str]) -> bool:
 
 
 def _stage_registry_ids(
-    plan: AtomicWritePlan, root: Path, old_to_new: dict[str, str]
+    plan: AtomicWritePlan,
+    root: Path,
+    renamed: dict[str, str],
+    *,
+    claims_in_map_only: bool,
 ) -> None:
     """Stage the registry rewrite so claims still point at the moved nodes.
 
     A claim carries its own copy of the node's touch zones, which the finish
-    check reads first, so those segments are rewritten too.
+    check reads first, so those segments are rewritten too. With
+    ``claims_in_map_only`` (a subtree move) only claims whose ``node_id`` is a
+    renamed id are touched at all; another claim keeps its zones even when one
+    names a moved id.
     """
     path = registry_path(root)
-    if not old_to_new or not path.is_file():
+    if not renamed or not path.is_file():
         return
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or not isinstance(data.get("entries"), list):
         return
-    renamed = {o: n for o, n in old_to_new.items() if o != n}
-    changed = _rewrite_touch_zones(data["entries"], renamed)
-    for entry in data["entries"]:
+    entries = [
+        e
+        for e in data["entries"]
+        if not claims_in_map_only
+        or (isinstance(e, dict) and e.get("node_id") in renamed)
+    ]
+    changed = _rewrite_touch_zones(entries, renamed)
+    for entry in entries:
         if not isinstance(entry, dict):
             continue
         nid = entry.get("node_id")
-        if isinstance(nid, str) and nid in old_to_new:
-            entry["node_id"] = old_to_new[nid]
+        if isinstance(nid, str) and nid in renamed:
+            entry["node_id"] = renamed[nid]
             changed = True
     if changed:
         plan.stage_text(
@@ -164,10 +183,18 @@ def _stage_registry_ids(
 
 
 def move_node(
-    root: Path, node_key: str, new_parent_id: str | None, new_index: int | None
+    root: Path,
+    node_key: str,
+    new_parent_id: str | None,
+    new_index: int | None,
+    *,
+    renumber_outline: bool = True,
 ) -> dict[str, str]:
     """Re-parent ``node_key`` and renumber. Returns the ``old -> new`` id map.
 
+    ``renumber_outline=True`` (the PM GUI's drag) renumbers every display id
+    from the tree shape; ``False`` (the CLI's default) renumbers only the moved
+    subtree, so the map and every sheet, claim and zone rewrite cover only it.
     Nothing reaches disk until the whole prospective graph validates.
     """
     nodes = list(load_roadmap(root)["nodes"])
@@ -190,14 +217,27 @@ def move_node(
 
     _detach_reindex_old_parent(nodes, by_id, moved.get("parent_id"), old_id)
     _attach_at_index(nodes, by_id, moved, old_id, new_parent_id, new_index)
-    old_to_new = renumber_display_ids_inplace(nodes)
-    _rewrite_touch_zones(nodes, {o: n for o, n in old_to_new.items() if o != n})
-    sheet_moves = plan_planning_artifact_moves(nodes)
+    # ``scope`` is every node a rewrite may touch and ``renamed`` the one id map
+    # every step uses. A subtree move scopes both to the subtree, so no node,
+    # sheet or claim outside it changes, even where its text names a moved id.
+    if renumber_outline:
+        old_to_new = renumber_display_ids_inplace(nodes)
+        scope = nodes
+    else:
+        new_id = next_free_child_id(nodes, new_parent_id, exclude_key=node_key)
+        old_to_new = assign_subtree_ids_inplace(nodes, node_key, new_id)
+        new_ids = set(old_to_new.values())
+        scope = [n for n in nodes if n["id"] in new_ids]
+    renamed = {o: n for o, n in old_to_new.items() if o != n}
+    _rewrite_touch_zones(scope, renamed)
+    sheet_moves = plan_planning_artifact_moves(scope)
 
     plan = AtomicWritePlan(root)
     _stage_merged_nodes(plan, root, nodes)
     _stage_planning_moves(plan, root, sheet_moves)
-    _stage_registry_ids(plan, root, old_to_new)
+    _stage_registry_ids(
+        plan, root, renamed, claims_in_map_only=not renumber_outline
+    )
     plan.commit(lambda: run_validate_raise(root))
     return old_to_new
 
@@ -233,7 +273,13 @@ def cmd_move(args: argparse.Namespace) -> None:
         _refuse_if_milestone_locked(root, parent_id)
 
     try:
-        old_to_new = move_node(root, node["node_key"], parent_id, args.index)
+        old_to_new = move_node(
+            root,
+            node["node_key"],
+            parent_id,
+            args.index,
+            renumber_outline=args.renumber_outline,
+        )
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from None
@@ -249,7 +295,8 @@ def cmd_move(args: argparse.Namespace) -> None:
         print(f"  {old} -> {new}")
     print(
         "\nPlanning sheets, touch-zone path segments equal to an old id, and "
-        "roadmap/registry.yaml were updated to match. "
+        "roadmap/registry.yaml were updated to match (only for the renumbered "
+        "nodes and their claims unless --renumber-outline was given). "
         "Any feature/rm-* branch keeps its codename; only ids moved."
     )
 
@@ -258,10 +305,14 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="specy-road move-node",
         description=(
-            "Re-parent a node and its subtree, renumbering display ids across "
-            "the roadmap. Renames planning sheets, rewrites touch-zone path "
-            "segments equal to an old id, and updates registry claims in the "
-            "same transaction."
+            "Re-parent a node and its subtree. The node takes the next free id "
+            "under its new parent and its descendants follow it; no other id "
+            "changes (--renumber-outline renumbers the whole roadmap instead). "
+            "In the same transaction it renames the renumbered nodes' planning "
+            "sheets and, in those nodes and their registry claims, rewrites "
+            "node_id and touch-zone path segments equal to an old id; nothing "
+            "outside the moved subtree is rewritten. With --renumber-outline "
+            "every node and claim is in scope."
         ),
     )
     p.add_argument("node_id", metavar="NODE_ID", help="The node to move (e.g. M1.2).")
@@ -275,11 +326,24 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--renumber-outline",
+        action="store_true",
+        help=(
+            "Renumber every display id in the roadmap from the tree shape, as "
+            "the PM GUI's drag does, closing the gaps the move leaves. Siblings "
+            "and other milestones may change id, sheet name and claims."
+        ),
+    )
+    p.add_argument(
         "--index",
         type=int,
         default=None,
         metavar="N",
-        help="Position among the new siblings, 0-based (default: last).",
+        help=(
+            "Position among the new siblings, 0-based (default: last). Sets the "
+            "outline order only; without --renumber-outline the id is still the "
+            "next free one."
+        ),
     )
     add_repo_root_arg(p)
     p.set_defaults(func=cmd_move)

@@ -2,9 +2,9 @@
 
 All on-disk roadmap mutations from the chunk router go through
 :class:`AtomicWritePlan`. Original bytes for every affected path are
-captured before we write any bytes, so a validation failure restores the
-working tree to byte-for-byte its prior state. Net-new files are unlinked
-on rollback.
+captured before we write any bytes, so a validation failure, or a write
+that fails part-way, restores the working tree to byte-for-byte its prior
+state. Net-new files and leftover temporary files are unlinked on rollback.
 
 Chunks and the manifest are not the only files a roadmap mutation touches:
 adding a node scaffolds its planning sheet, and renaming a node moves that
@@ -37,6 +37,7 @@ class AtomicWritePlan:
     deletions: set[Path] = field(default_factory=set)
     snapshots: dict[Path, bytes | None] = field(default_factory=dict)
     new_paths: set[Path] = field(default_factory=set)
+    tmp_paths: list[Path] = field(default_factory=list)
     _staged: bool = False
 
     def stage_chunk(self, abs_path: Path, nodes: list[dict]) -> None:
@@ -69,7 +70,9 @@ class AtomicWritePlan:
         for path in (*self.pending, *self.deletions):
             if path in self.snapshots:
                 continue
-            if path.is_file():
+            # os.path.isfile: a name the OS refuses (ENAMETOOLONG) is a new
+            # path whose write fails later, not a crash before snapshots exist.
+            if os.path.isfile(path):
                 self.snapshots[path] = path.read_bytes()
             else:
                 self.snapshots[path] = None
@@ -78,15 +81,17 @@ class AtomicWritePlan:
     def write(self) -> None:
         """Write all pending payloads atomically (per-file ``os.replace``)."""
         self._snapshot()
+        # Staged from the first byte on, so a failure part-way rolls back.
+        self._staged = True
         for path, text in self.pending.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_name(f".{path.name}.tmp-{uuid.uuid4().hex}")
+            self.tmp_paths.append(tmp)
             tmp.write_text(text, encoding="utf-8")
             os.replace(tmp, path)
         for path in self.deletions:
             if path.is_file():
                 path.unlink()
-        self._staged = True
 
     def rollback(self) -> None:
         """Restore every snapshotted file to its original bytes (or unlink if new)."""
@@ -102,12 +107,17 @@ class AtomicWritePlan:
             except OSError:
                 # Best-effort restore; keep going so other files revert.
                 pass
+        for tmp in self.tmp_paths:
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
         self._staged = False
 
     def commit(self, validate: Callable[[], None]) -> None:
         """Write, then run ``validate``; rollback and re-raise on any failure."""
-        self.write()
         try:
+            self.write()
             validate()
         except BaseException:
             self.rollback()

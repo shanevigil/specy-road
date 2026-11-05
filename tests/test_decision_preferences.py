@@ -12,7 +12,8 @@ from specy_road import orchestrate_plan as op
 from specy_road.bundled_scripts import orchestrate_cli
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.decisions import add_preference, preference_active, read_decisions, schema_errors
-from tests.test_decisions import SKILL, _add_args, _decisions_repo, _run
+from tests.decisions_repo_helpers import add_args, decisions_repo, run_decisions
+from tests.test_decisions import SKILL
 from tests.test_orchestrate_plan import ROSTER, plan_repo
 
 
@@ -25,8 +26,8 @@ def _ledger(repo: Path) -> list[dict]:
 
 
 def test_add_preference_writes_structured_fields_without_a_node(tmp_path: Path) -> None:
-    repo = _decisions_repo(tmp_path)
-    assert _run(_prefer(
+    repo = decisions_repo(tmp_path)
+    assert run_decisions(_prefer(
         repo, "--summary", "Docs-only leaves go to sol while its budget lasts", "--role", "executor",
         "--model", "sol", "--model", "opus", "--applies-to", "docs", "--applies-to", "data",
         "--expires", "2026-11-07", "--why", "opus budget is low this week",
@@ -35,7 +36,7 @@ def test_add_preference_writes_structured_fields_without_a_node(tmp_path: Path) 
     assert e["id"] == "P1" and e["kind"] == "preference" and e["status"] == "open" and "node" not in e
     assert e["models"] == ["sol", "opus"] and e["applies_to"] == ["docs", "data"]
     assert e["role"] == "executor" and e["expires"] == "2026-11-07" and e["why_now"]
-    assert _run(_add_args(repo)) == 0   # decision ids keep their own D# sequence
+    assert run_decisions(add_args(repo)) == 0   # decision ids keep their own D# sequence
     assert [x["id"] for x in _ledger(repo)] == ["P1", "D1"]
 
 
@@ -47,15 +48,15 @@ def test_add_preference_writes_structured_fields_without_a_node(tmp_path: Path) 
     (["--kind", "preference", "--summary", "x", "--expires", "2026-02-30"], "not a calendar date"),
 ])
 def test_add_refuses_flags_the_kind_does_not_take(tmp_path: Path, capsys, argv_tail: list[str], needle: str) -> None:
-    repo = _decisions_repo(tmp_path)
-    assert _run(["decisions", "add", "--repo-root", str(repo), *argv_tail]) == 1
+    repo = decisions_repo(tmp_path)
+    assert run_decisions(["decisions", "add", "--repo-root", str(repo), *argv_tail]) == 1
     assert needle in capsys.readouterr().err
     assert not (repo / "roadmap" / "decisions.yaml").is_file()
 
 
 def test_decision_refuses_preference_flags(tmp_path: Path, capsys) -> None:
-    repo = _decisions_repo(tmp_path)
-    assert _run(_add_args(repo, "--model", "sol")) == 1
+    repo = decisions_repo(tmp_path)
+    assert run_decisions(add_args(repo, "--model", "sol")) == 1
     assert "--model apply only to --kind preference" in capsys.readouterr().err
 
 
@@ -78,35 +79,35 @@ def test_expiry_is_inclusive_through_the_date_and_exact_for_a_datetime() -> None
 
 
 def test_list_shows_active_preferences_first_and_drops_expired(tmp_path: Path, capsys) -> None:
-    repo = _decisions_repo(tmp_path)
-    assert _run(_add_args(repo, "--id", "Ddue", "--needed-by", "2026-11-05", "--summary", "Due question")) == 0
-    assert _run(_prefer(repo, "--summary", "Expired rule", "--expires", "2020-01-01", "--id", "Pold")) == 0
-    assert _run(_prefer(repo, "--summary", "Later rule", "--asked", "2026-11-02", "--id", "Plater")) == 0
-    assert _run(_prefer(repo, "--summary", "Earlier rule", "--asked", "2026-11-01",
+    repo = decisions_repo(tmp_path)
+    assert run_decisions(add_args(repo, "--id", "Ddue", "--needed-by", "2026-11-05", "--summary", "Due question")) == 0
+    assert run_decisions(_prefer(repo, "--summary", "Expired rule", "--expires", "2020-01-01", "--id", "Pold")) == 0
+    assert run_decisions(_prefer(repo, "--summary", "Later rule", "--asked", "2026-11-02", "--id", "Plater")) == 0
+    assert run_decisions(_prefer(repo, "--summary", "Earlier rule", "--asked", "2026-11-01",
                         "--expires", "2999-01-01", "--id", "Pearly")) == 0
     capsys.readouterr()
-    assert _run(["decisions", "list", "--repo-root", str(repo)]) == 0
+    assert run_decisions(["decisions", "list", "--repo-root", str(repo)]) == 0
     out = capsys.readouterr().out
     assert "Pold" not in out and "Expired rule" not in out
     assert out.index("Pearly") < out.index("Plater") < out.index("Ddue")
-    assert _run(["decisions", "list", "--json", "--repo-root", str(repo)]) == 0
+    assert run_decisions(["decisions", "list", "--json", "--repo-root", str(repo)]) == 0
     assert [e["id"] for e in json.loads(capsys.readouterr().out)] == ["Pearly", "Plater", "Ddue"]
     assert any(e["id"] == "Pold" and e["status"] == "open" for e in _ledger(repo))   # dropped, not closed
 
 
 def test_supersede_and_close_a_preference_without_a_sheet_record(tmp_path: Path, capsys) -> None:
-    repo = _decisions_repo(tmp_path)
-    assert _run(_prefer(repo, "--summary", "Use sol for docs", "--model", "sol")) == 0
-    assert _run(_prefer(repo, "--summary", "Use flash for docs", "--model", "flash", "--supersedes", "P1")) == 0
+    repo = decisions_repo(tmp_path)
+    assert run_decisions(_prefer(repo, "--summary", "Use sol for docs", "--model", "sol")) == 0
+    assert run_decisions(_prefer(repo, "--summary", "Use flash for docs", "--model", "flash", "--supersedes", "P1")) == 0
     old, new = _ledger(repo)
     assert old["status"] == "closed" and old["answer"] == "superseded by P2" and old.get("closed")
     assert new["status"] == "open"
-    assert _run(_prefer(repo, "--summary", "again", "--supersedes", "P1")) == 1
+    assert run_decisions(_prefer(repo, "--summary", "again", "--supersedes", "P1")) == 1
     assert "not an open preference" in capsys.readouterr().err
-    assert _run(["decisions", "close", "P2", "--answer", "human dropped it", "--repo-root", str(repo)]) == 0
+    assert run_decisions(["decisions", "close", "P2", "--answer", "human dropped it", "--repo-root", str(repo)]) == 0
     assert _ledger(repo)[1]["status"] == "closed"
     capsys.readouterr()
-    assert _run(["decisions", "list", "--repo-root", str(repo)]) == 0
+    assert run_decisions(["decisions", "list", "--repo-root", str(repo)]) == 0
     assert "No open decisions" in capsys.readouterr().out
 
 
@@ -150,7 +151,7 @@ def test_plan_without_preferences_or_with_a_broken_ledger(tmp_path: Path, capsys
 
 
 def test_coordinator_prompt_and_skill_name_the_preference_routine(tmp_path: Path) -> None:
-    repo = _decisions_repo(tmp_path)
+    repo = decisions_repo(tmp_path)
     text, _, err = build_prompt(repo, "M1.1", role="coordinator", model="human")
     assert err is None
     for blob in (text, SKILL.read_text(encoding="utf-8")):

@@ -55,7 +55,7 @@ from specy_road.bundled_scripts.validate_roadmap_checks import (
     warn_touch_zones_match_nothing,
 )
 from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
-from specy_road.bundled_scripts.validate_notices import notice_milestone_review_holds
+from specy_road.bundled_scripts.validate_notices import notice_milestone_review_holds, notice_repeated_ignore_patterns, parse_validate_args, report_context_warnings
 from specy_road.bundled_scripts.validate_self_heal import auto_heal_roadmap
 from specy_road.bundled_scripts.validate_registry_overlap import (
     authoring_overlap_scope,
@@ -226,8 +226,9 @@ def validate_at(
     validate_orchestration_contract(root)
     for warn in (warn_if_pin_differs, warn_if_schemas_stale, warn_if_stubs_stale, warn_if_skills_mirrored,
                  warn_if_agents_md_block_stale, warn_missing_load_order_paths, warn_unregistered_commands,
-                 warn_if_context_over_limits, warn_if_generated_files_ignored, warn_research_register,
-                 warn_garden_due, warn_unconfigured_sibling_repos):
+                 lambda r: report_context_warnings(r, warn_if_context_over_limits),
+                 warn_if_generated_files_ignored, warn_research_register, warn_garden_due,
+                 warn_unconfigured_sibling_repos):
         warn(root)
 
     if auto_heal:
@@ -256,6 +257,7 @@ def validate_at(
         strict_authoring=strict_authoring,
     )
     notice_milestone_review_holds(root, roadmap["nodes"])
+    notice_repeated_ignore_patterns(root)
 
 
 def main() -> None:
@@ -297,7 +299,7 @@ def main() -> None:
         "that init project writes, when the file does not exist.",
     )
     add_repo_root_arg(parser)
-    args = parser.parse_args()
+    args = parse_validate_args(parser)
     root = (args.repo_root or default_user_repo_root()).resolve()
     with _counting_stderr() as stderr:
         validate_at(
