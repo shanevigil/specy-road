@@ -1,5 +1,5 @@
 {
-  "_provenance": "Long Composer turn from w-0063.log (M15.27 executor, 2026-11-05): init and tool_call lines kept as type, subtype and session_id only. Mid-turn usage events sanitized from the adopter stream (per-segment outputTokens on type usage lines before the terminal result). Result.usage matches the adopter undercount shape (10136 outputTokens for the last segment only).",
+  "_provenance": "Observed Composer 2.5 worker logs under sr/work/.workers/ (including w-0063.log, w-0056.log, 2026-11-05): usage objects appear only on type result lines with inputTokens, outputTokens, cacheReadTokens and cacheWriteTokens; no mid-turn type usage lines were present in those logs. Mid-turn type usage lines below are synthetic (per-segment counts for A2); the terminal result usage object matches w-0056.log result #7 (sanitized ids only).",
   "session_id": "<session>",
   "expected_output_tokens": 32236,
   "segment_output_tokens": [7200, 8400, 6500, 10136],
@@ -54,9 +54,9 @@
       "subtype": "success",
       "session_id": "<session>",
       "usage": {
-        "inputTokens": 4500,
+        "inputTokens": 39394,
         "outputTokens": 10136,
-        "cacheReadTokens": 680000,
+        "cacheReadTokens": 561056,
         "cacheWriteTokens": 0
       }
     }

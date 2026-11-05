@@ -53,3 +53,12 @@ def run_fake_harness_turn(repo: Path, script: Path, rec: ws.WorkerRecord, lines:
     spec = script.parent / f"turn-{rec.worker_id}-{ws.load_record(repo, rec.worker_id).last_event_seq}.json"
     spec.write_text(json.dumps({"lines": lines, "exit": exit_code}))
     wr.run(repo, rec.worker_id, Launch([sys.executable, str(script), str(spec)]))
+
+
+def reset_cursor_adapter_via_init(adapter=None):
+    """Clear the shared Cursor adapter's per-turn usage list the way a real stream does (``system``/``init``)."""
+    from specy_road import worker_adapters as wa
+
+    cu = adapter or wa.adapter_for("cursor")
+    cu.parse(json.dumps({"type": "system", "subtype": "init", "session_id": "test-reset"}))
+    return cu

@@ -1,6 +1,14 @@
 """The ``cursor`` harness adapter: ``agent -p`` stream-json (slice 7b).
 
 Split from :mod:`specy_road.worker_adapters` for the file limit; callers reach it through that module.
+
+Usage combining (one turn, several usage-bearing stream lines):
+
+- ``type: usage`` without ``subtype: session`` — per-segment counts (summed).
+- ``type: usage`` with ``subtype: session`` — session running total for token keys (last line wins).
+- ``assistant`` / ``message.usage`` — per-segment (summed).
+- ``result`` / ``usage`` — per-segment unless the usage object sets ``\"total\": true``, then session running total.
+- When the stream cannot mark session totals, segment lines are summed; never infer running totals from monotonic numbers.
 """
 
 from __future__ import annotations
@@ -8,20 +16,20 @@ from __future__ import annotations
 import shlex
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from specy_road.worker_adapter_base import Adapter, Capabilities, Launch, Parsed, Unsupported, _model_flag
-from specy_road.worker_adapter_parsers import _json, _snip, _text, usage_fields
+from specy_road.worker_adapter_parsers import _json, _num, _snip, _text, usage_fields
 from specy_road.worker_sessions import session_id_problem
 from specy_road.worker_usage_delta import SESSION_TOKENS
 
 _TOKEN_KEYS = SESSION_TOKENS
+UsageKind = Literal["segment", "session"]
+UsageEntry = tuple[dict[str, Any], UsageKind]
 
 
-def _raw_usage(d: dict[str, Any] | None) -> Any:
+def _raw_usage(d: dict[str, Any]) -> Any:
     """The harness usage object on a stream line, if any."""
-    if not d:
-        return None
     if d.get("usage") is not None:
         return d.get("usage")
     msg = d.get("message")
@@ -30,44 +38,67 @@ def _raw_usage(d: dict[str, Any] | None) -> Any:
     return None
 
 
-def _sum_segments(segments: list[dict[str, Any]]) -> dict[str, Any]:
+def _usage_kind(d: dict[str, Any]) -> UsageKind | None:
+    """How token counts on this line combine, from the stream line only."""
+    t = d.get("type")
+    if t == "usage":
+        return "session" if d.get("subtype") == "session" else "segment"
+    if t == "assistant" and _raw_usage(d) is not None:
+        return "segment"
+    if t == "result":
+        raw = _raw_usage(d)
+        if isinstance(raw, dict) and raw.get("total") is True:
+            return "session"
+        if raw is not None:
+            return "segment"
+    return None
+
+
+def _sum_segment_fields(segments: list[dict[str, Any]]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for k in _TOKEN_KEYS:
         vals = [s[k] for s in segments if s.get(k) is not None]
         out[k] = sum(vals) if vals else None
-    for k in ("cost_usd", "cost_is_estimate", "num_turns", "harness_version"):
-        out[k] = next((s[k] for s in reversed(segments) if s.get(k) is not None), None)
     return out
 
 
-def _dominates(last: dict[str, Any], prior: dict[str, Any]) -> bool:
-    """True when ``last``'s output count looks like a running total over summed prior segments."""
-    lo, po = last.get("output_tokens"), prior.get("output_tokens")
-    return lo is not None and po is not None and lo >= po and po > 0
-
-
-def combine_cursor_turn_usage(segments: list[dict[str, Any]]) -> dict[str, Any]:
+def combine_cursor_turn_usage(entries: list[UsageEntry]) -> dict[str, Any]:
     """One turn's token counts from every usage-bearing line Cursor printed for it."""
-    if not segments:
+    if not entries:
         return usage_fields(None)
-    if len(segments) == 1:
-        return segments[0]
-    outs = [s["output_tokens"] for s in segments if s.get("output_tokens") is not None]
-    if len(outs) == len(segments) and all(outs[i] <= outs[i + 1] for i in range(len(outs) - 1)):
-        last = dict(segments[-1])
-        su = {k: last[k] for k in _TOKEN_KEYS if last.get(k) is not None}
+    segments = [fields for fields, kind in entries if kind == "segment"]
+    sessions = [fields for fields, kind in entries if kind == "session"]
+    if sessions and not segments:
+        out = dict(sessions[-1])
+        su = {k: out[k] for k in _TOKEN_KEYS if out.get(k) is not None}
         if su:
-            last["session_usage"] = su
-        return last
-    prior = _sum_segments(segments[:-1])
-    last = segments[-1]
-    if _dominates(last, prior):
-        total = dict(last)
+            out["session_usage"] = su
+        return _merge_meta(out, entries)
+    out = _sum_segment_fields(segments) if segments else usage_fields(None)
+    if sessions:
+        last = sessions[-1]
         su = {k: last[k] for k in _TOKEN_KEYS if last.get(k) is not None}
+        for k in _TOKEN_KEYS:
+            if last.get(k) is not None:
+                out[k] = last[k]
         if su:
-            total["session_usage"] = su
-        return total
-    return _sum_segments(segments)
+            out["session_usage"] = su
+    return _merge_meta(out, entries)
+
+
+def _merge_meta(out: dict[str, Any], entries: list[UsageEntry]) -> dict[str, Any]:
+    for k in ("cost_usd", "cost_is_estimate", "num_turns", "harness_version"):
+        out[k] = next((fields[k] for fields, _ in reversed(entries) if fields.get(k) is not None), out.get(k))
+    return out
+
+
+def merge_cursor_result_usage(entries: list[UsageEntry], result: dict[str, Any]) -> dict[str, Any]:
+    """Usage for a terminal ``result`` line: combined stream segments plus ``num_turns`` from the result."""
+    usage = combine_cursor_turn_usage(entries)
+    nt = _num(result.get("num_turns"), whole=True)
+    if nt is not None:
+        usage["num_turns"] = nt
+    return usage
 
 
 def create_chat(worktree: Path) -> str:
@@ -105,14 +136,18 @@ class Cursor(Adapter):
                               "new prompt: verify)")
 
     def __init__(self) -> None:
-        self._usage_segments: list[dict[str, Any]] = []
+        self._usage_entries: list[UsageEntry] = []
 
-    def _track_usage(self, d: dict[str, Any] | None) -> None:
-        if d and d.get("type") == "system" and d.get("subtype") == "init":
-            self._usage_segments = []
+    def _track_usage(self, d: dict[str, Any]) -> None:
+        if d.get("type") == "system" and d.get("subtype") == "init":
+            self._usage_entries = []
+            return
+        kind = _usage_kind(d)
+        if kind is None:
+            return
         raw = _raw_usage(d)
         if raw is not None:
-            self._usage_segments.append(usage_fields(raw))
+            self._usage_entries.append((usage_fields(raw), kind))
 
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
@@ -160,9 +195,11 @@ class Cursor(Adapter):
             ok = not d.get("is_error")
             summary = f"{d.get('subtype')}: {_snip(text)}" if ok else _snip(text) or f"{d.get('subtype')}: error"
             detail = {"message": text} if text else None
-            usage = combine_cursor_turn_usage(self._usage_segments) if self._usage_segments else usage_fields(d.get("usage"),
-                                                                                                            num_turns=d.get("num_turns"))
-            self._usage_segments = []
+            if self._usage_entries:
+                usage = merge_cursor_result_usage(self._usage_entries, d)
+            else:
+                usage = usage_fields(d.get("usage"), num_turns=d.get("num_turns"))
+            self._usage_entries = []
             return Parsed("turn_completed" if ok else "error", summary, sid, detail, usage)
         return None
 

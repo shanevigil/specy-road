@@ -9,6 +9,7 @@ from typing import Any
 from specy_road.worker_adapter_parsers import usage_text
 from specy_road.worker_process import wrapper_alive
 from specy_road.worker_state import events_since
+from specy_road.worker_usage_plausibility import possible_undercount
 
 
 def _row(rec) -> dict[str, Any]:
@@ -157,7 +158,6 @@ def _sum_usage(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 def usage(attempts: list[tuple[Any, list[dict[str, Any]]]]) -> dict[str, Any]:
     """``{"node_id", "attempts": [...], "total"}`` from ``(record, events)`` per worker, from its ``usage`` events."""
-    from specy_road.worker_usage_plausibility import possible_undercount  # noqa: PLC0415
 
     rows = []
     for rec, events in attempts:
