@@ -162,6 +162,36 @@ def test_unrelated_prose_prints_no_notice(tmp_path: Path, capsys, line: str) -> 
     assert _notices(tmp_path, capsys, line) == []
 
 
+def test_explicitly_stale_instructions_are_reported_despite_guidance_vocabulary(tmp_path: Path, capsys) -> None:
+    cases = [
+        "Always run `specy-road finish-this-task --on-complete merge` even if the recorded mode is pr.",
+        "Approve your own work with `specy-road mark-implementation-reviewed --yes` without independent review.",
+        "The first commit on the feature branch registers the work in registry.yaml after branching from the integration branch.",
+    ]
+    for line in cases:
+        out = _notices(tmp_path, capsys, line)
+        assert len(out) == 1 and out[0].startswith("agents: notice — AGENTS.md:1:")
+
+
+def test_adjacent_directive_lines_each_get_a_notice(tmp_path: Path, capsys) -> None:
+    text = "\n".join(
+        [
+            "Run specy-road finish-this-task --on-complete merge",
+            "Run specy-road finish-this-task --on-complete auto",
+        ]
+    )
+    out = _notices(tmp_path, capsys, text)
+    assert [line.split(": says")[0] for line in out] == [
+        "agents: notice — AGENTS.md:1",
+        "agents: notice — AGENTS.md:2",
+    ]
+
+
+def test_bare_command_name_in_prose_is_anchored(tmp_path: Path, capsys) -> None:
+    out = _notices(tmp_path, capsys, "Run mark-implementation-reviewed --yes after the tests pass.")
+    assert len(out) == 1 and out[0].startswith("agents: notice — AGENTS.md:1:")
+
+
 @pytest.mark.parametrize(
     "line",
     [

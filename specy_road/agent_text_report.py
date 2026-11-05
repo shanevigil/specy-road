@@ -22,6 +22,20 @@ _EXCERPT = 120
 _SENTENCE_END = re.compile(r"(?<![0-9])[.!?](?=\s+[^\s])")
 _BLOCK_START = re.compile(r"^\s*(?:[-*+>|#]|\d+[.)])\s?")
 _FENCE = re.compile(r"^\s*(?:```|~~~)")
+_DIRECTIVE = re.compile(r"\b(?:Run\s+)?specy-road\b|^Run\s+[a-z]", re.IGNORECASE)
+
+
+def _is_directive_line(line: str) -> bool:
+    return bool(_DIRECTIVE.search(line.strip()))
+
+
+def _record(found: dict[int, tuple[list[str], list]], lineno: int, text: str, entries: list) -> None:
+    if not entries:
+        return
+    said, hit = found.setdefault(lineno, ([], []))
+    if text not in said:
+        said.append(text)
+    hit.extend(e for e in entries if e not in hit)
 
 
 def sentences(line: str) -> list[str]:
@@ -73,17 +87,29 @@ def _sentence_starts(para: list[tuple[int, str]]):
 def contradicted_lines(lines: list[tuple[int, str]]):
     """``(line number, sentence, entries)`` per source line on which a reported sentence starts.
 
-    Sentences are read whole across wrapped lines; several sentences or entries starting on one
-    line are combined, so each line gets at most one result.
+    Wrapped sentences are read whole across lines. Adjacent directive lines each get their own
+    notice when both match independently.
     """
     found: dict[int, tuple[list[str], list]] = {}
     for para in _paragraphs(lines):
+        directive_hits = [
+            (lineno, line)
+            for lineno, line in para
+            if _is_directive_line(line) and any(e.contradicted_by(line) for e in CATALOGUE)
+        ]
+        if len(directive_hits) >= 2:
+            for lineno, line in directive_hits:
+                entries = [e for e in CATALOGUE if e.contradicted_by(line)]
+                _record(found, lineno, line, entries)
+            continue
+        if len(para) == 1:
+            lineno, line = para[0]
+            entries = [e for e in CATALOGUE if e.contradicted_by(line)]
+            _record(found, lineno, line, entries)
+            continue
         for lineno, sentence in _sentence_starts(para):
             entries = [e for e in CATALOGUE if e.contradicted_by(sentence)]
-            if entries:
-                said, hit = found.setdefault(lineno, ([], []))
-                said.append(sentence)
-                hit.extend(e for e in entries if e not in hit)
+            _record(found, lineno, sentence, entries)
     for lineno, (said, hit) in sorted(found.items()):
         yield lineno, " ".join(said), tuple(hit)
 

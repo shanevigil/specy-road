@@ -5,11 +5,12 @@ concerns, one line on what happens now, and optionally a pattern for project
 text that still states the old behaviour. ``validate`` reports such text
 (:mod:`specy_road.agent_text_report`); it never rewrites it.
 
-Matching is per sentence (read whole across wrapped lines). Entries 1–4 require
-the sentence to name ``command`` as a literal token (``specy-road <command>``
-or inside backticks). Entry 5 (pickup ``--base``) also matches init-era prose
-that names no command. A sentence that matches ``current`` describes today's
-behaviour and is never reported.
+Matching is per sentence (read whole across wrapped lines) or per physical line when
+each line is its own directive. Entries 1–4 require the sentence to name ``command``
+(``specy-road <command>``, backticks, or a bare ``<command>`` token). Entry 5
+(pickup ``--base``) also matches init-era prose that names no command. A sentence
+that matches ``current`` states today's behaviour (not merely vocabulary from a
+stale instruction) and is never reported.
 """
 
 from __future__ import annotations
@@ -44,7 +45,10 @@ class BehaviourChange:
             return False
         if self.command_anchor:
             cmd = re.escape(self.command)
-            if not re.search(rf"\bspecy-road\s+{cmd}\b|`[^`]*(?<![\w-]){cmd}(?![\w-])[^`]*`", sentence):
+            if not re.search(
+                rf"\bspecy-road\s+{cmd}\b|`[^`]*(?<![\w-]){cmd}(?![\w-])[^`]*`|\b{cmd}\b",
+                sentence,
+            ):
                 return False
         if not self.contradicts.search(sentence):
             return False
@@ -60,9 +64,19 @@ CATALOGUE: tuple[BehaviourChange, ...] = (
         "satisfy the policy, and an agent never approves its own work",
         contradicts=re.compile(r"--yes\b", re.IGNORECASE),
         current=re.compile(
-            r"\b(?:never|do\s+not|don't|must\s+not|no\s+longer|only\s+when|refuse\w*|independent|recorded|"
-            r"review\s+records?|already\s+satisf\w*|closes\s+the\s+gate|policy\s+met|"
-            r"reviews?\s+are\s+already|handoff\s+status|review-packet)\b",
+            r"(?:`--yes`\s+never|\bnever\b[^.!?]{0,100}--yes\b|--yes\b[^.!?]{0,100}\bnever\b|"
+            r"only\s+when\s+(?:the\s+)?(?:review\s+records?|recorded\s+reviews?|reviews?\s+are\s+already)|"
+            r"review\s+records?\s+already\s+satisf\w*|no\s+longer\s+approves|"
+            r"(?:\brefuse\w*|refuses)[^.!?]{0,20}`?--yes`?|`?--yes`?\s+refuses|"
+            r"on\s+your\s+own\s+work|"
+            r"interactive human approval and `--yes` behave|"
+            r"review-packet[\s\S]{0,400}handoff\s+status[\s\S]{0,200}mark-implementation-reviewed|"
+            r"mark-implementation-reviewed.{0,60}--yes.{0,60}closes\s+the\s+gate|"
+            r"has no `--yes`|no `--yes`|"
+            r"mark-implementation-reviewed --yes[^.]{0,40}finish-this-task[^.]{0,20}refuse|"
+            r"pre-finish-cmd[^.!?]{0,160}mark-implementation-reviewed|"
+            r"independent\s+review\s+and\s+runs[^`]{0,20}`mark-implementation-reviewed\s+--yes`|"
+            r"review record[^.!?]{0,80}mark-implementation-reviewed\s+--yes`)",
             re.IGNORECASE,
         ),
     ),
@@ -74,8 +88,11 @@ CATALOGUE: tuple[BehaviourChange, ...] = (
         "`--override-on-complete` is passed, a person's choice that agents do not make",
         contradicts=re.compile(r"--on-complete[ =]+[`'\"]?(?:merge|auto)\b", re.IGNORECASE),
         current=re.compile(
-            r"--override-on-complete|\brecorded\b|\brefuse\w*|\bdiffer\w*|merge\|pr|pr\|merge|on_complete=|"
-            r"opens\s+a\s+PR\b|^specy-road finish-this-task --on-complete merge$",
+            r"(?:--override-on-complete|refused\s+when\s+(?:it\s+)?differs\s+from\s+the\s+recorded|"
+            r"differs\s+from\s+the\s+recorded\s+mode|merge\|pr|pr\|merge|on_complete=|opens\s+a\s+PR\b|"
+            r"^specy-road finish-this-task --on-complete merge$|"
+            r"finish-this-task --on-complete merge[^.]{0,160}\bagain\b|"
+            r"With `--on-complete merge`, finish)",
             re.IGNORECASE,
         ),
     ),
@@ -108,7 +125,11 @@ CATALOGUE: tuple[BehaviourChange, ...] = (
             r"\bregister(?:s|ed|ing)?\b",
             r"\bfeature[-\s]branch|\bregistry\.yaml\b|\bregister\s+as\s+in-progress\b",
         ),
-        current=re.compile(r"\bintegration\s+branch\b|--base\b", re.IGNORECASE),
+        current=re.compile(
+            r"(?:--base\b|integration\s+branch.{0,160}before.{0,60}feature\s+branch|"
+            r"registers?\s+on\s+the\s+integration\s+branch\s+before\s+creat)",
+            re.IGNORECASE | re.DOTALL,
+        ),
         command_anchor=False,
     ),
 )
