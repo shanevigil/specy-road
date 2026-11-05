@@ -12,6 +12,7 @@ from typing import Any
 
 import yaml
 
+from specy_road.orphaned_claims import relative_age
 from specy_road.orchestration_config import substitute_for
 from specy_road.review_files import archive_review, list_reviews, render_front_matter, review_path, reviews_dir, write_review
 from specy_road.review_gate import evaluate_gate, rerun_problem
@@ -47,20 +48,6 @@ def clear_rejected(reviews: Path, model: str) -> None:
 
 def _repo_root(reviews: Path) -> Path:
     return reviews.parent.parent.parent
-
-
-def _age(when: datetime, now: datetime) -> str:
-    seconds = max(0, int((now - when).total_seconds()))
-    days, rest = divmod(seconds, 86400)
-    hours, rest = divmod(rest, 3600)
-    minutes = rest // 60
-    if days:
-        return f"{days}d"
-    if hours:
-        return f"{hours}h"
-    if minutes:
-        return f"{minutes}m"
-    return "under 1m"
 
 
 def read_rejected_marker(path: Path) -> tuple[dict[str, Any], str] | str | None:
@@ -134,7 +121,7 @@ def rejected_state(reviews: Path, model: str, commit: str | None,
     if when is None:
         return None
     first = body.strip().split("\n", 1)[0] if body.strip() else ""
-    return _age(when, now or datetime.now(timezone.utc)), first
+    return relative_age(when, now or datetime.now(timezone.utc)), first
 
 
 class ReviewRecordTrace:

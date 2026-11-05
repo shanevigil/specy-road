@@ -42,6 +42,10 @@ No other paths were required. `review_record_write._review_record` already calls
 - `read_rejected_marker` treats any read or YAML parse failure (including `UnicodeDecodeError`) as `marker unreadable: <path>`; absent paths still return `None`.
 - Removed unreachable `gate is None` from the escalation guard in `_print_review_list_text` (`t is None` already short-circuits).
 
+## Fix round (Sol-low block on `2e2b8d11`)
+
+- Dropped duplicate age formatting in `review_rejected.py`; `rejected_state` uses public `relative_age` from `orphaned_claims.py` (formerly private `_age`).
+
 ## Probes
 
 - Unrostered model with a missing notes path: roster check runs first; no `REJECTED-*.md` and no reviews directory (`test_unrostered_model_with_missing_notes_writes_no_marker`).
@@ -56,11 +60,13 @@ No other paths were required. `review_record_write._review_record` already calls
 - Lowercase `review-<model>.md` at the gate commit with a valid record: `refused` omitted in handoff JSON and list JSON (`test_a_lowercase_review_record_suppresses_the_refusal`); canonical-path-only check would have left the marker visible.
 - `REJECTED-*.md` with invalid UTF-8: `marker unreadable` on text list, handoff status, and `refused_unreadable` in list JSON (`test_invalid_utf8_rejected_marker_is_unreadable_in_status_interfaces`); other marker readers only call `read_rejected_marker` / `unreadable_rejected_lines`.
 - Escalation line when `t is None`: condition is `t is None or not gate.passed`; `gate` is assigned only in the `else` branch, so no other `gate is None` paths in `review_cli.py`.
+- Repo-wide search for the same ``Nd``/``Nh``/``Nm``/``under 1m`` age formatter: only `orphaned_claims._age` and the copy in `review_rejected`; consolidated as `relative_age` in `orphaned_claims`, one caller in `rejected_state`.
 
 ## Added
 
-- `write_rejected`, `clear_rejected`, `rejected_state`, `read_rejected_marker`, `unreadable_rejected_lines`, `ReviewRecordTrace`, `run_review_record` in `review_rejected.py` — marker I/O, safe reads, age formatting, roster-gated tracing, and the full `review record` command.
+- `write_rejected`, `clear_rejected`, `rejected_state`, `read_rejected_marker`, `unreadable_rejected_lines`, `ReviewRecordTrace`, `run_review_record` in `review_rejected.py` — marker I/O, safe reads, roster-gated tracing, and the full `review record` command.
 - `_review_record_setup`, `_review_record_validate`, `_review_record_signed_data`, `_review_record_finish` in `review_rejected.py` — split `run_review_record` for ruff C901 without behaviour change.
 - `refused_text`, `refused_by_model`, `extend_handoff_refused`, `print_refused_list`, `review_list_payload` in `review_run_status.py` — display, handoff JSON, and list JSON payloads.
 - `refused` / `extend_handoff_refused` / `review list --json` wiring in `review_cli.py`.
+- `relative_age` in `orphaned_claims.py` — shared ``Nd``/``Nh``/``Nm``/``under 1m`` formatter (renamed from `_age`; used by orphaned-claim reports and `rejected_state`).
 - `tests/test_review_rejected_m15_33.py` — A1–A3 plus fix-round boundary tests for list JSON, missing notes, and roster ordering.
