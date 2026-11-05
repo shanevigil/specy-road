@@ -194,3 +194,24 @@ def test_plan_and_validate_apply_one_overlap_rule(a: str, b: str, overlap: bool,
     scope = AuthoringOverlapScope("b", "M1.2", [b])
     warn_registry_touch_zone_overlap(entries, no_overlap_warn=False, overlap_scope=scope)
     assert ("possible overlap" in capsys.readouterr().err) is overlap
+
+
+@pytest.mark.parametrize("configured", [
+    ("notes/team/", "./notes/team/"),
+    ("notes/team/", "notes//team/", " notes/team "),
+    ("notes/team/", "notes/x/../team/"),
+])
+def test_aliased_shared_zone_is_reported_once_in_text_and_json(configured, tmp_path: Path) -> None:
+    yaml_list = ", ".join(f"'{z}'" for z in configured)
+    repo = _repo(tmp_path, f"grind:\n  shared_zones: [{yaml_list}]\n")
+    assert resolve_shared_zones(repo) == ("notes/team/",)
+    zone_lists = [["notes/team/", "src/a.py"], ["./notes/team/", "src/b.py"]]
+    for shared in (configured, resolve_shared_zones(repo)):
+        plan = _plan(zone_lists, shared_zones=shared)
+        assert plan.parallel_batches == [["M1.1", "M1.2"]]
+        assert session_plan_to_dict(plan, fields=("shared_zones_ignored",)) == {
+            "shared_zones_ignored": ["notes/team/"]
+        }
+        text = render_session_plan_text(plan)
+        assert text.count("Shared zones ignored for overlap") == 1
+        assert "overlap (leaves meet only there): `notes/team/`; two" in text

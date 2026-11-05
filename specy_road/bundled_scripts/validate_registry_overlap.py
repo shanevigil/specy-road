@@ -56,7 +56,7 @@ def current_authoring_overlap_scope() -> AuthoringOverlapScope | None:
 
 
 def _is_broad_touch_zone(zone: str) -> bool:
-    return zone.strip().endswith("/")
+    return norm_zone(zone).endswith("/")
 
 
 def _clash_suppressed_by_broad_summary(
@@ -94,7 +94,7 @@ def _first_touch_zone_clash(
     return None
 
 
-def _claimsin_zone_tree(entries: list[dict], zone: str) -> set[str]:
+def _claims_in_zone_tree(entries: list[dict], zone: str) -> set[str]:
     names: set[str] = set()
     for entry in entries:
         cn = entry.get("codename") or "?"
@@ -115,7 +115,7 @@ def _broad_zone_summaries(
             if _is_broad_touch_zone(zone) and not is_shared_zone(zone, shared):
                 exact.setdefault(norm_zone(zone), set()).add(cn)
     return sorted(
-        (zone, sorted(_claimsin_zone_tree(entries, zone)))
+        (zone, sorted(_claims_in_zone_tree(entries, zone)))
         for zone, owners in exact.items()
         if len(owners) >= 2
     )

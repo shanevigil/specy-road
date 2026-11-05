@@ -40,6 +40,14 @@ def in_zone_tree(path: str, zone: str) -> bool:
     return p == z or p.startswith(z + "/")
 
 
+def unique_zones(zones: Iterable[str]) -> list[str]:
+    """``zones`` with spellings of one path (:func:`zone_key`) collapsed to the first."""
+    seen: dict[str, str] = {}
+    for zone in zones:
+        seen.setdefault(zone_key(zone), zone)
+    return list(seen.values())
+
+
 def is_shared_zone(zone: str, shared: Iterable[str]) -> bool:
     return zone_key(zone) in {zone_key(z) for z in shared}
 
@@ -51,7 +59,7 @@ def resolve_shared_zones(repo_root: Path) -> tuple[str, ...]:
     """
     data, err = load_git_workflow_config(repo_root)
     zones = ((data or {}).get("grind") or {}).get("shared_zones") if not err else None
-    return DEFAULT_SHARED_ZONES if zones is None else tuple(zones)
+    return DEFAULT_SHARED_ZONES if zones is None else tuple(unique_zones(zones))
 
 
 def zones_overlap(a: str, b: str, shared: Iterable[str]) -> bool:
@@ -84,7 +92,7 @@ def ignored_shared_zones(
     """Shared zones that would have held a leaf back: one of ``leaf_ids`` names the
     zone itself and another names it or a path under it."""
     out: list[str] = []
-    for zone in shared:
+    for zone in unique_zones(shared):
         names_it = touches = 0
         for nid in leaf_ids:
             mine = zones.get(nid, [])
