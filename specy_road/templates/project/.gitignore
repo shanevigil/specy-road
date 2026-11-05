@@ -32,7 +32,7 @@
 #
 # Derived indexes for `specy-road history` and `specy-road search`
 # (.specyrd/cache/). Rebuilt from git and the working tree on demand, so they
-# are never committed; .specyrd/manifest.json stays tracked.
+# are never committed; .specyrd/manifest.json, when present, stays tracked.
 #
 # roadmap.md and roadmap-context.md are deliberately absent from this file.
 # Both are generated, and both are COMMITTED: `roadmap.md` is the human index
