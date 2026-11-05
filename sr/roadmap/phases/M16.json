@@ -19,7 +19,7 @@
         "An end-to-end test drives a temp repo through init project, add-node, scaffold-planning, pickup, ready, two review records, the gate check and finish, once with on_complete: merge and once with on_complete: pr (offline, no hosting service), asserting exit codes, registry rows, roadmap status and git state after each step",
         "`upgrade --dry-run` on a fixture shaped like a 0.3.1rc3 consumer repo, and validate, export --check and digest --check on the dogfood fixture, match golden outputs with paths and timestamps normalised; digest goldens leave out sections derived from git history (such as 'Quality by area'), so the goldens do not depend on the branch",
         "The harness is green on HEAD at pickup, carries the `parity` pytest marker so later leaves can run it alone, and adds no package code",
-        "Expected net line delta: package 0; tests about +550"
+        "Estimated net line change (informational, not a gate): package 0; tests about +550"
       ],
       "codename": "parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs",
       "dependencies": [],
@@ -43,7 +43,7 @@
         "At least one READY and one REVIEW file per record format found under sr/work/reviews are copied verbatim into tests/parity/review_gate/records/ and read by today's reader",
         "The table drives the gate through the public entry points finish-this-task, mark-implementation-reviewed and the review status and list commands use, and asserts structured results; where a row's result has no reason code, it asserts the structured fields that exist and the sheet lists the row",
         "A test fails when the orchestration schema gains a policy key that no row exercises; green on HEAD at pickup; adds no package code",
-        "Expected net line delta: package 0; tests about +450"
+        "Estimated net line change (informational, not a gate): package 0; tests about +450"
       ],
       "codename": "parity-harness-a-review-gate-decision-table-covering-every-review-policy",
       "dependencies": [],
@@ -63,11 +63,12 @@
     {
       "acceptance": [
         "constraints/lean-baseline.json records the baseline commit; at that commit M14.1, M15.2, M15.3, M15.7, M15.9, M15.17 and M15.20 are each Complete or recorded as deferred in M16.34's sheet, and the M16.0 and M16.1 harnesses are green",
-        "`python scripts/lean_metrics.py` writes the baseline: package and test lines and files per subsystem, test functions and collected items, functions over ruff C901 (waivers ignored), `noqa: C901` count, lines over 100 characters, canonical command count (`cli._known_commands()` minus the alias rows of tests/parity/command_map.yaml) and alias count, config and policy key count, modules imported by `specy-road validate`, `validate --help` wall time, and full-suite wall time as the median of three runs with a fixed worker count, coverage off and all extras installed (settings and machine recorded); `--check` prints deltas",
+        "`python scripts/lean_metrics.py` writes the baseline: package and test lines and files per subsystem, test functions and collected items, functions over ruff C901 (waivers ignored), `noqa: C901` count, lines over 100 characters, canonical command count (`cli._known_commands()` minus the alias rows of tests/parity/command_map.yaml) and alias count, config and policy key count, modules imported by `specy-road validate`, `validate --help` wall time, and full-suite wall time as the median of three runs with a fixed worker count, coverage off and all extras installed (settings and machine recorded); `--check` prints deltas; every number is a measurement, not a gate (the coverage floor below is the only CI failure this leaf adds)",
         "`python scripts/lean_metrics.py --contexts` (opt-in, not run in CI) runs the suite under coverage.py with per-test contexts, subprocesses included, and writes the covered arcs per test to work/lean/contexts.json for the test-lane leaves",
         "[tool.coverage.report] fail_under is the single coverage.py total measured at the baseline commit, rounded down to a whole percent, and CI fails below it; branch coverage is printed, not gated; project.version is not touched",
-        "constraints/README.md states the M16 rules: behaviour-preserving except the two named exceptions (zone-scoped `checks:` gates in M16.52 and the complexity gate in M16.22); each leaf declares and meets a net line delta; no new config key, policy key or command without retiring one; adopter feedback is parked; the review-finding test rule of the recommendation section 3.4 item 4 (all five conditions); after a second block of the same class the planner rescopes or splits the leaf; a leaf past four review rounds is split or rescoped; reviewers check the acceptance lines and the leaf's parity tables, and a new input class goes to intake",
-        "Expected net line delta: package 0; scripts about +200 (maintainer-only, not shipped)"
+        "constraints/README.md states the M16 rules: behaviour-preserving except the two named exceptions (zone-scoped `checks:` gates in M16.52 and the complexity gate in M16.22); each leaf carries an informational line-change estimate, never a gate; no new config key, policy key or command without retiring one; adopter feedback is parked; the review-finding test rule of the recommendation section 3.4 item 4 (all five conditions); after a second block of the same class the planner rescopes or splits the leaf; a leaf past four review rounds is split or rescoped; reviewers check the acceptance lines and the leaf's parity tables, and a new input class goes to intake",
+        "constraints/README.md states the M16 quality rules (maintainer, 2026-11-05, revision 3): behaviour is preserved (the parity harness, the decision table and the leaf's own tables); code a leaf touches moves toward best practice: small single-purpose functions, clear module boundaries, no new import cycle (M16.36), explicit dependencies (module globals and functions that call the clock or git themselves are given those as parameters where a test needs a seam; no dependency-injection framework), one statement of each rule rather than copies; no touched function rises in complexity (the M16.22 rule); docstrings and comments that explain intent are kept or improved, never stripped to save lines; names say what the code does; no code squashing (joined statements, removed blank lines, shortened names or deleted explanations to meet a number); the quality metrics (M16.8's ruff family baseline, line width, M16.36's layering gate) never regress in a leaf; line-count estimates are informational and never by themselves a review finding or a gate",
+        "Estimated net line change (informational, not a gate): package 0; scripts about +200 (maintainer-only, not shipped)"
       ],
       "codename": "baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down",
       "dependencies": [
@@ -98,7 +99,7 @@
         "specy_road/fs_atomic.py defines `atomic_write_text()`; the hand-written temp-file writers in worker_state (and worker_outbox's import of its private helper), history_cache, brainstorm_session, roadmap_chunk_atomic, reviewer_run_failure and worker_lease call it, and a test fails on `os.replace(` in specy_road outside fs_atomic.py and an allowlist committed with the test",
         "A parametrised test per replaced writer asserts the encoding, newline handling, file mode and the leftover temp file on a failed write are what they were at pickup",
         "Parity harness unchanged",
-        "Expected net line delta: package about -60"
+        "Estimated net line change (informational, not a gate): package about -60"
       ],
       "codename": "shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers",
       "dependencies": [
@@ -138,7 +139,7 @@
         "The four readiness derivations (do_next_available's two forms, session_plan's `_classify` and `_compute_waves`, roadmap_explain) and the effective-dependency maps in roadmap_layout, brief_dependency_context and digest call the index; no other function in those seven modules computes unmet dependencies",
         "A test counts `{n['id']: n}` and `{n['node_key']: n}` builds and linear id lookups in specy_road against a committed baseline that may only shrink; there is no target number",
         "Dogfood export --check and digest --check, the parity harness, and the do-next, session-plan, why-blocked, brief and digest tests are unchanged; digest output does not change",
-        "Expected net line delta: package about -250"
+        "Estimated net line change (informational, not a gate): package about -250"
       ],
       "codename": "one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready",
       "dependencies": [
@@ -170,7 +171,7 @@
         "The 29 library modules named in this sheet (the code report's section 5 list, review_node's LLM client excluded: it moves in M16.10) move from bundled_scripts/ to the specy_road package with `git mv`; no other module moves",
         "A moved module keeps a one-line re-export at its old path only if a console entry point, a shipped template or a documented `python specy_road/bundled_scripts/...` command names that path; each kept re-export is listed in this sheet for M16.62",
         "Imports are updated and nothing else changes; parity harness, full suite and `scripts/check_test_private_imports.py` green",
-        "Expected net line delta: package about -40"
+        "Estimated net line change (informational, not a gate): package about -40"
       ],
       "codename": "the-29-package-imported-library-modules-move-out-of-bundled-scripts",
       "dependencies": [
@@ -197,7 +198,7 @@
         "The top-level CLI imports a command's module and calls its `main(argv)` in the same process; no command re-launches `python -m` for itself or a sibling; the module-level `ROOT = Path.cwd()` globals in mark_implementation_reviewed, pm_sync, do_next_task, abort_task_pickup, finish_task and start_milestone_session are gone, and so are `cli._args_repo_root_first`, `cli_entry.run_forwarded_cli` and the guard CLI's prefix stripping",
         "Every recorded case gives byte-identical stdout, stderr and exit code in process, including two `main(argv)` calls in one process from two repo roots",
         "Parity harness byte-identical",
-        "Expected net line delta: package about -100"
+        "Estimated net line change (informational, not a gate): package about -100"
       ],
       "codename": "commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals",
       "dependencies": [
@@ -230,13 +231,17 @@
     },
     {
       "acceptance": [
-        "human: the maintainer's choice for the consumer template default (keep 400, or 1,000 with a 750 warning) is recorded in this sheet before pickup",
+        "The consumer template's constraints/file-limits.yaml matches the toolkit: max_lines_per_file 1,000 with a 750-line warning (maintainer decision, 2026-11-05)",
         "scripts/line_width_baseline.json records, per file under specy_road, scripts and tests, the number of lines over 100 characters at pickup (counted with `ruff check --select E501 --line-length 100 --output-format json`); a test fails when a file's count rises or a file outside the baseline has any, and when a count falls the entry must be lowered in the same change",
-        "No code is reformatted in this leaf; the fold leaves rewrap the files they merge and lower their entries",
-        "The consumer template's constraints/file-limits.yaml follows the recorded choice, with docs/file-limits.md and the upgrade notes saying what an adopter sees; the toolkit stays at 1,000 lines with a 750 warning",
-        "Expected net line delta: package 0; config about +40 plus the generated baseline file"
+        "scripts/ruff_quality_baseline.json records, per file under specy_road, scripts and tests, the number of ruff findings per rule family — C901 (waivers ignored), PL, B, SIM, RET, N, and D102/D103 (docstrings on public methods and functions) — counted at pickup by scripts/ruff_quality_baseline.py with `ruff check --select <family> --output-format json`; tests/test_ruff_quality_baseline.py fails when a file's count in a family rises or a file outside the baseline has a finding; `python scripts/ruff_quality_baseline.py --shrink` lowers entries and never raises one",
+        "The families are selected only by the baseline script: pyproject.toml's ruff selection and today's `ruff check` CI gate are unchanged, and no tool other than ruff is added (mypy, radon and duplication detectors are out of scope for M16)",
+        "`python scripts/lean_metrics.py --check` (M16.2) prints each family's total and its delta from the baseline commit, and docs/release-runbook.md's checklist records those totals, the width total and M16.36's import-cycle count for each release",
+        "No code is reformatted or fixed in this leaf; the fold leaves rewrap the files they merge and lower their width entries",
+        "upgrade never rewrites an existing project's constraints/file-limits.yaml: it prints one notice naming the new template default when the project's values differ, and docs/file-limits.md and docs/upgrading.md say the same; the rc3-shaped `upgrade --dry-run` golden differs only by that notice; the toolkit stays at 1,000 lines with a 750 warning",
+        "CHANGELOG.md's [Unreleased] section records the new consumer default and that upgrade leaves existing projects' files alone; no version heading is written",
+        "Estimated net line change (informational, not a gate): package 0; config about +40; scripts and tests about +150 plus the two generated baseline files"
       ],
-      "codename": "a-100-character-line-width-rule-with-a-shrink-only-baseline-and-the-consumer-file-limit-default-decided",
+      "codename": "ruff-quality-baseline",
       "dependencies": [
         "fce532e1-9ed0-4da1-9f16-2465c6e73df0"
       ],
@@ -244,10 +249,10 @@
       "id": "M16.8",
       "node_key": "c840cf76-95c4-4688-a587-3bc06824fad5",
       "parent_id": "M16",
-      "planning_dir": "planning/M16.8_a-100-character-line-width-rule-with-a-shrink-only-baseline-and-the-consumer-file-limit-default-decided_c840cf76-95c4-4688-a587-3bc06824fad5.md",
+      "planning_dir": "planning/M16.8_ruff-quality-baseline_c840cf76-95c4-4688-a587-3bc06824fad5.md",
       "sibling_order": 9,
       "status": "Not Started",
-      "title": "A 100-character line-width rule with a shrink-only baseline, and the consumer file-limit default decided",
+      "title": "Ruff quality rule families and the 100-character width with shrink-only baselines, and the consumer file-limit default decided",
       "touch_zones": [
         "pyproject.toml",
         "constraints/file-limits.yaml",
@@ -255,16 +260,24 @@
         "scripts/line_width_baseline.json",
         "specy_road/templates/project/constraints/file-limits.yaml",
         "docs/file-limits.md",
-        "tests/test_line_width_baseline.py"
+        "tests/test_line_width_baseline.py",
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/upgrade.py",
+        "docs/upgrading.md",
+        "scripts/ruff_quality_baseline.py",
+        "scripts/ruff_quality_baseline.json",
+        "tests/test_ruff_quality_baseline.py",
+        "scripts/lean_metrics.py",
+        "docs/release-runbook.md"
       ],
       "type": "task"
     },
     {
       "acceptance": [
         "The merges in this sheet's table are applied: do_next_task_virtual_complete, do_next_task_held_claim, do_next_task_leaf_guards and registration_pickup_commit into do_next_task; abort_task_pickup_own_commit into abort_task_pickup; finish_task_gates and finish_task_args into finish_task; finish_land_check into finish_land_integration; the rows marked leave are left",
-        "Each merged file is rewrapped to 100 characters, its width-baseline entry lowered, and stays under 750 lines; re-export lines, cap-only docstrings, cycle-dodging imports between the merged modules and comments naming a roadmap id or review round in them are gone",
+        "Each merged file is rewrapped to 100 characters, its width-baseline entry lowered, and stays within the 1,000-line cap (not squashed to get under the 750-line warning); re-export lines, cap-only docstrings, cycle-dodging imports between the merged modules and comments naming a roadmap id or review round in them are gone",
         "Parity harness, dogfood outputs and full suite unchanged; no console entry point's import path changes",
-        "Expected net line delta: package about -200; files -8"
+        "Estimated net line change (informational, not a gate): package about -200; files -8"
       ],
       "codename": "fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents",
       "dependencies": [
@@ -298,7 +311,7 @@
         "brainstorm_chat's own `_complete_anthropic` and `complete_chat` copies are removed; llm_client exposes a client factory tests can replace without patching private names",
         "review_node's override is removed from constraints/file-limits.yaml",
         "Parity harness unchanged, review-node and brainstorm transcripts included",
-        "Expected net line delta: package about -80"
+        "Estimated net line change (informational, not a gate): package about -80"
       ],
       "codename": "one-llm-client-module-replaces-the-provider-code-inside-review-node",
       "dependencies": [
@@ -330,7 +343,8 @@
         "`doctor --prune` with `--kind` branches, registry, worktrees or stashes plans through one planner with one merged rule and one live rule (live read from the M16.15 snapshot); for each old command the planner selects nothing the old command did not select on the fixture, any item an old command selected and the planner does not is listed in this sheet, and applying removes exactly the planned items",
         "`worktree prune <ID>` stays as the single-leaf path on the same planner; `branches prune`, `registry-prune` and `grind-session --delete-merged-branches` still work for one release, print one deprecation line naming the new form, are hidden from top-level help and are rows of tests/parity/command_map.yaml",
         "Docs, templates and suggested_prompts name the new form in the same change; the stale-command check passes; goldens differ only for map rows",
-        "Expected net line delta: package about -300"
+        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
+        "Estimated net line change (informational, not a gate): package about -300"
       ],
       "codename": "doctor-prune-is-the-one-cleanup-path-branches-prune-registry-prune-and-the-grind-cleanup-become-aliases",
       "dependencies": [
@@ -359,7 +373,8 @@
         "specy_road/templates/project/",
         "tests/parity/cleanup/",
         "tests/parity/command_map.yaml",
-        "tests/"
+        "tests/",
+        "CHANGELOG.md"
       ],
       "type": "task"
     },
@@ -369,7 +384,8 @@
         "`upgrade` prints one report with four fixed sections (files added or changed, schema refreshes, profile refreshes, notices) built only from data the refresh steps compute at pickup; the before and after `upgrade --dry-run` outputs on the rc3-shaped fixture are committed, and the set of reported lines is the same, only headings and grouping differ",
         "`update` (fast-forward a toolkit clone) is renamed `self-update`, with `update` a hidden one-release alias and a map row; the update scenarios (M16.53) pass under both names",
         "M13.11's extra report sections are not part of this leaf; docs, templates and suggested_prompts use the new names; goldens differ only for map rows",
-        "Expected net line delta: package about -200"
+        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
+        "Estimated net line change (informational, not a gate): package about -200"
       ],
       "codename": "upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update",
       "dependencies": [
@@ -394,7 +410,8 @@
         "suggested_prompts/",
         "specy_road/templates/project/",
         "tests/parity/",
-        "tests/"
+        "tests/",
+        "CHANGELOG.md"
       ],
       "type": "task"
     },
@@ -404,7 +421,8 @@
         "`review packet` replaces `review-packet` with the same flags and output; `decisions --kind lesson` replaces `lessons` with the same record file and format; `presence` (start, touch, end, list, check) replaces `session` with the same records under work/.sessions/",
         "Each old name works for one release with one deprecation line, is hidden from top-level help and is a row of tests/parity/command_map.yaml",
         "Docs, templates, skills and stubs, and suggested_prompts use the new names in the same change; the stale-command check passes; goldens differ only for map rows",
-        "Expected net line delta: package about -80"
+        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
+        "Estimated net line change (informational, not a gate): package about -80"
       ],
       "codename": "review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session",
       "dependencies": [
@@ -431,7 +449,8 @@
         "specy_road/templates/project/",
         "specy_road/templates/specyrd/",
         "tests/parity/",
-        "tests/"
+        "tests/",
+        "CHANGELOG.md"
       ],
       "type": "task"
     },
@@ -440,7 +459,7 @@
         "Applies exactly the rows of tests/support/dedupe/pickup-finish.csv: a delete only where the row names the surviving test and the assertion it makes, a fold into a parametrised table, and keep rows untouched",
         "The covered-arc set of the subsystem's modules is unchanged and total coverage stays at or above fail_under; removed and renamed test ids equal this leaf's planned_test_changes",
         "Tables this leaf creates assert structured results, not message text",
-        "Expected net line delta: tests about -2,500"
+        "Estimated net line change (informational, not a gate): tests about -2,500"
       ],
       "codename": "tests-apply-the-dedupe-worklist-for-pickup-and-finish",
       "dependencies": [

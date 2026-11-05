@@ -93,6 +93,8 @@ def test_finish_delete_branch_deletes_it_locally_and_on_the_remote(
 def test_a_retried_landing_deletes_the_branch(tmp_path: Path, monkeypatch, capsys) -> None:
     """The bookkeeping commit already exists; the re-run only lands, and still deletes."""
     repo, bare = _merge_mode_repo(tmp_path, monkeypatch)
+    # A branch an earlier finish (before M15.40's undo) left on its bookkeeping commit.
+    monkeypatch.setattr(finish_task, "merge_undo_snapshot", lambda *_a: None)
     hook = bare / "hooks" / "pre-receive"
     hook.write_text("#!/bin/sh\nexit 1\n")
     hook.chmod(0o755)

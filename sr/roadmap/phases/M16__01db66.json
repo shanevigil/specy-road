@@ -2,11 +2,11 @@
   "nodes": [
     {
       "acceptance": [
-        "AGENTS.md is the only agent entry; CLAUDE.md is at most 20 lines that point to it plus Claude-specific notes; branch policy and the version-numbers rule each appear in one place and are linked elsewhere",
+        "AGENTS.md is the only agent entry; CLAUDE.md points to it and holds only Claude-specific notes (about 20 lines, an estimate, not a gate); branch policy and the version-numbers rule each appear in one place and are linked elsewhere",
         "The load order is task-conditional: always purpose, principles and constraints; then by task (orchestration or review, roadmap data, dependencies or release, the dogfood fixture, sr/ roadmap work); supply-chain-security.md is not in the default order, here or in the consumer agents-rules template",
-        "tests/test_agent_start_up_reading.py sums the default start-up reading for this repo and for a freshly initialised consumer repo and fails above 400 lines",
+        "tests/test_agent_start_up_reading.py fails when a file in the default load order is missing or when the default start-up reading totals more than 400 lines, for this repo and for a freshly initialised consumer repo, and prints each total; CLAUDE.md's size (about 20 lines) is printed as a soft check, not enforced",
         "The shipped agents-rules.md loses its provenance comments and cites only files an adopter has",
-        "Expected net line delta: docs about -200"
+        "Estimated net line change (informational, not a gate): docs about -200"
       ],
       "codename": "agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer",
       "dependencies": [
@@ -33,10 +33,13 @@
     {
       "acceptance": [
         "Each file in docs/design-notes/ gets the disposition in this sheet's table (move to design-notes/ at the root, or archive to sr/design-notes-archive/); the design-notes file-limit overrides go",
-        "orchestration-workers, orchestration-roster and orchestration-chores merge into one workers reference; architecture folds into roadmap-authoring and install-release-candidates into install-and-usage; pm-gui-brainstorm and pm-llm-review are appended to pm-gui.md as new sections without rewriting its existing sections (0.3.2 extends them); optional-ai-tooling-patterns becomes a short pointer",
+        "orchestration-workers, orchestration-roster and orchestration-chores merge into one workers reference; architecture folds into roadmap-authoring and install-release-candidates into install-and-usage; pm-gui-brainstorm and pm-llm-review are appended to pm-gui.md as new sections (its existing sections belong to the PM GUI work in phase M17); optional-ai-tooling-patterns becomes a short pointer",
         "No doc outside CHANGELOG, pyproject and one install section names a specific release candidate; README's setup steps describe skills, not slash-command stubs; templates cite no doc an adopter cannot open",
         "The `[gui-next]` extra stays as an alias of `[gui]` for one release with a note (project.version untouched); every moved doc's inbound links resolve (link-check test)",
-        "Expected net line delta: docs about -1,500 in docs/ (archived text excluded)"
+        "The roster part of the workers reference (from today's orchestration-roster.md) documents an entry as two groups: core fields (id, family, roles, may_process, public_key, available, paused_until, unavailable_until, family_pinned) that the gate, eligibility and the local overlay read, and the `run:` block chosen by `run.harness`, with M16.63's per-harness field table and one example per harness; the version-1 form is named as deprecated until M16.62",
+        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
+        "Estimated net line change (informational, not a gate): docs about -1,500 in docs/ (archived text excluded)",
+        "Stale notes found by the 2026-11-05 milestone audit (sr/work/milestone-audit-2026-11-05.md) are fixed: the 'Deferred past 0.3.1rc2' note is removed from M5.4, M5.6, M5.7, M5.8, M7.1, M7.2 and M8.1–M8.7; the held/proposed/'do not pick up' notes on M9, M9.1 and M9.10 and M10's 'acceptance and touch zones still to author' become a one-line landed note; M10.20's sheet drops 'deferred until after rc3'; regression-prevention.md marks 'Open decision: what green means' and 'M9.10 stays proposed' settled (M9.1 and M9.10 landed; M16.14's checks: block); the scaffold phase sheets of M7, M8, M9 and M10 get Intent and Approach, and phases M7–M11 get a goal, both from the audit's Purpose lines"
       ],
       "codename": "docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra",
       "dependencies": [
@@ -59,7 +62,10 @@
         "README.md",
         "pyproject.toml",
         "constraints/file-limits.yaml",
-        "specy_road/templates/project/"
+        "specy_road/templates/project/",
+        "CHANGELOG.md",
+        "sr/roadmap/phases/",
+        "sr/planning/"
       ],
       "type": "task"
     },
@@ -69,7 +75,7 @@
         "Every doc a prompt cites is either shipped by init project or named with where an adopter finds it (installed package or toolkit repository); the governance deliverables table includes orchestration.yaml, model-profiles/ and review-lessons.md",
         "bootstrap-agents-md links the rules file instead of restating it, states the step order consistently with the other prompts, and covers the nested (sr/-style) layout and running from the git root",
         "tests/test_suggested_prompts_commands.py checks that every command and flag a prompt names exists in the parity inventory (M16.0) as a canonical name, not an alias",
-        "Expected net line delta: prompts about -60"
+        "Estimated net line change (informational, not a gate): prompts about -60"
       ],
       "codename": "suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout",
       "dependencies": [
@@ -91,12 +97,13 @@
     },
     {
       "acceptance": [
-        "`lean_metrics --check` compares package lines with the M16.2 baseline plus the sum of the declared package deltas of the M16 leaves before M16.62 plus the rewrap growth the fold leaves reported, and fails if package lines exceed that sum",
+        "`lean_metrics --check` prints package, test and docs lines and files, the C901 and long-line counts, and the command and alias counts against the M16.2 baseline, beside the sum of the leaves' informational estimates; none of the line numbers fails the check",
         "The canonical command count is at most 56 and the alias count is printed; coverage is at or above fail_under; M16.28's suite-time result holds",
+        "This sheet lists, for M16.62, every deprecated form still accepted at rc5 with the notice it prints: the tests/parity/command_map.yaml rows, the old checks keys and the review-before-finish switch (M16.14), the four grind_session_* keys (M16.50), the version-1 roster form (M16.63), the `[gui-next]` extra (M16.31) and the re-exports kept by M16.6; each has its CHANGELOG [Unreleased] entry",
         "The baseline is regenerated and committed as the rc5 end state, and the summary states the source lines, command count, test count and suite time reached",
-        "Expected net line delta: package 0"
+        "Estimated net line change (informational, not a gate): package 0"
       ],
-      "codename": "rc5-close-lean-metrics-checked-against-the-baseline-and-the-sum-of-the-leaf-budgets",
+      "codename": "rc5-close-lean-metrics-measured-against-the-baseline",
       "dependencies": [
         "79115c79-0035-4781-9d38-d5a3b117631d",
         "98d51a48-dcd5-419f-bc34-16ae75aef21b"
@@ -105,10 +112,10 @@
       "id": "M16.33",
       "node_key": "ed19381c-5265-4909-a70c-f9c5a9cf1853",
       "parent_id": "M16",
-      "planning_dir": "planning/M16.33_rc5-close-lean-metrics-checked-against-the-baseline-and-the-sum-of-the-leaf-budgets_ed19381c-5265-4909-a70c-f9c5a9cf1853.md",
+      "planning_dir": "planning/M16.33_rc5-close-lean-metrics-measured-against-the-baseline_ed19381c-5265-4909-a70c-f9c5a9cf1853.md",
       "sibling_order": 34,
       "status": "Not Started",
-      "title": "rc5 close: lean metrics checked against the baseline and the sum of the leaf budgets",
+      "title": "rc5 close: lean metrics measured against the baseline",
       "touch_zones": [
         "scripts/lean_metrics.py",
         "constraints/lean-baseline.json"
@@ -121,7 +128,7 @@
         "human: the maintainer records a decision per listed leaf in this sheet; the planner applies it with edit-node (dependencies, acceptance or status) and nothing else",
         "A 'keep' becomes a post-M16 leaf or an intake entry; it widens an M16 leaf only when the decision names that leaf and the acceptance line it adds",
         "No held leaf's status changes and no held leaf is started before its decision is recorded",
-        "Expected net line delta: 0"
+        "Estimated net line change (informational, not a gate): 0"
       ],
       "codename": "triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf",
       "dependencies": [],
@@ -144,7 +151,7 @@
         "Tests under tests/scenarios/roadmap_edit/ drive through CLI entry points or public functions each scenario listed in this sheet: outline indent, outdent and reparent including their validation errors, one row per roadmap_edit_fields setter, archive --auto and the restore errors, scaffold-planning new and --force, and update's fast-forward and dirty-tree refusal",
         "Green at pickup with no package change; a scenario that exposes a bug is committed as `xfail(strict=True)` naming a new leaf",
         "Line and branch coverage of the listed modules before and after are reported in the summary; they are not pass/fail",
-        "Expected net line delta: tests about +300"
+        "Estimated net line change (informational, not a gate): tests about +300"
       ],
       "codename": "tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold",
       "dependencies": [
@@ -169,7 +176,7 @@
         "A test fails when a module in specy_road other than git_subprocess passes `--show-toplevel` or `--show-current` to git",
         "`_save_registry` and `REGISTRY_REL` are defined once, in registry_yaml, and imported by finish_task, mark_implementation_reviewed, abort_task_pickup, pm_integration_registry, registry_remote_overlay_merge and review_target",
         "Parity harness unchanged",
-        "Expected net line delta: package about -110"
+        "Estimated net line change (informational, not a gate): package about -110"
       ],
       "codename": "git-queries-and-registry-i-o-go-through-one-helper-each",
       "dependencies": [
@@ -212,7 +219,7 @@
         "scripts/check_import_layers.py scans imports with the AST and writes constraints/import-layers-baseline.json: every strongly connected import component with its modules, and every import edge from package code into a bundled_scripts entry point",
         "CI fails when a component grows, a new component appears, or a new package-to-entry-point edge appears; a shrink must be written to the baseline in the same change",
         "No package code changes",
-        "Expected net line delta: package 0; scripts about +120"
+        "Estimated net line change (informational, not a gate): package 0; scripts about +120"
       ],
       "codename": "a-shrink-only-layering-gate-records-the-import-cycles-and-package-to-entry-point-imports",
       "dependencies": [
@@ -240,7 +247,7 @@
         "Package modules no longer import the entry points generate_brief, validate_roadmap or refresh_stubs: the functions they used live in package modules",
         "Function-level imports that existed only for this cycle are removed (count in the summary)",
         "Parity harness and full suite unchanged",
-        "Expected net line delta: package about -100"
+        "Estimated net line change (informational, not a gate): package about -100"
       ],
       "codename": "break-the-45-module-import-cycle-through-the-graph-loader-the-brief-and-validate",
       "dependencies": [
@@ -267,7 +274,7 @@
         "The 25-module component (roadmap CRUD, worker ops and chore CLI) is gone from constraints/import-layers-baseline.json",
         "Package modules no longer import the entry points chore_cli or grind_session_cleanup: `merged_into` and the chore helpers live in package modules, and doctor_worktrees, worktree_prune and finish_modes import them from there",
         "Function-level imports that existed only for this cycle are removed (count in the summary); parity harness and full suite unchanged",
-        "Expected net line delta: package about -60"
+        "Estimated net line change (informational, not a gate): package about -60"
       ],
       "codename": "break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli",
       "dependencies": [
@@ -291,11 +298,12 @@
     },
     {
       "acceptance": [
-        "Every command module exposes `build_parser()`; the parity inventory reads parsers from it and the golden command set is unchanged (the parser half of held M12.6)",
+        "Every command module exposes `build_parser()`; the parity inventory reads parsers from it and the golden command set is unchanged (the parser half of M12.6, which triage round 1 removed)",
         "cli_args declares `--json`, `--ref`, `--model` and `--base`/`--remote` once; every other declaration of those options is replaced; help goldens are unchanged except those options' help strings, which the transcript test allows by option name",
         "`specy-road validate` imports at most half as many modules as the M16.2 baseline records (counted by a test); `validate --help` wall time is printed by lean_metrics, not gated",
         "The CLI imports without the gui and review extras (tests/test_cli_imports_without_gui_extra.py green)",
-        "Expected net line delta: package about -80"
+        "The stale-command scan in validate (and M12.3's garden scan through the same function) uses the build_parser() registry to report each 'specy-road <cmd> [<sub>] --flag' mention whose flag that command does not accept, as file:line, the command, the unknown flag and the closest valid flag; valid flags, short options, declared passthrough (argparse.REMAINDER or a declared group) and anything after a bare -- are not reported; a fixture with one stale and one valid flag pins the output (absorbed from M12.6 by maintainer triage 2026-11-05)",
+        "Estimated net line change (informational, not a gate): package about -80"
       ],
       "codename": "every-command-exposes-build-parser-imports-lazily-and-shares-the-common-argument-helpers",
       "dependencies": [
@@ -324,7 +332,7 @@
         "specy_road/errors.py defines `SpecyError(message, exit_code)`; the 15 exception classes named in this sheet (WorkerError, ReviewError, DelegateError, BrainstormError and the others the code report counts) subclass it and keep their names and import paths",
         "cli_entry prints a SpecyError and exits with its code in one place; every `except` clause that catches one of those classes only to print it and exit is removed, and a test fails on such a clause; other exit sites are out of scope",
         "Messages that tests assert at pickup are byte-identical; parity harness and the M16.7 process corpus unchanged",
-        "Expected net line delta: package about -100"
+        "Estimated net line change (informational, not a gate): package about -100"
       ],
       "codename": "one-specyerror-base-for-the-15-error-classes-printed-and-turned-into-an-exit-code-once",
       "dependencies": [
@@ -351,7 +359,7 @@
         "nested_repos_land (250) merges into nested_repos (313); nested_repos, nested_repos_land and finish_implementation_check no longer form an import cycle (the layering baseline shrinks)",
         "milestone_session and on_complete_session read and write their session files through one shared helper (the 17-26 line clone goes); the files' paths and formats are unchanged",
         "The merged file is rewrapped and its width entry lowered; parity harness, the milestone scenarios (M16.27) and the full suite unchanged",
-        "Expected net line delta: package about -50"
+        "Estimated net line change (informational, not a gate): package about -50"
       ],
       "codename": "nested-repo-landing-folds-into-nested-repos-breaking-its-cycle-and-the-two-session-file-readers-become-one",
       "dependencies": [
@@ -382,8 +390,8 @@
         "The brainstorm CLI is two modules (parser, handlers) with no `v2` names and one `_load`/slug helper; brainstorm_cli_revise and brainstorm_close fold into them; brainstorm transcripts unchanged",
         "agents_md_block, agent_guide_block and managed_block write through one engine and agents_md_report merges into agents_md_block; refresh-stubs and `upgrade --dry-run` goldens unchanged",
         "A table test shows that replacing a managed block twice gives the same file and that text outside the block is byte-identical, for each of the three block kinds",
-        "Merged files are rewrapped and their width entries lowered; each stays under 750 lines",
-        "Expected net line delta: package about -300"
+        "Merged files are rewrapped and their width entries lowered; each stays within the 1,000-line cap (not squashed to get under the 750-line warning)",
+        "Estimated net line change (informational, not a gate): package about -300"
       ],
       "codename": "the-brainstorm-cli-becomes-two-modules-and-the-three-managed-block-writers-share-one-engine",
       "dependencies": [
@@ -410,9 +418,9 @@
     {
       "acceptance": [
         "The eight merges in this sheet's table are applied: validate_notices into validate_roadmap, doctor_env_setup into doctor, refresh_stubs_report into refresh_stubs, upgrade_templates into upgrade, archive_git into archive_plan, search_fallback into search_index, file_limits_jsx into file_limits_js, reconcile_branch into reconcile_branch_cli",
-        "Each merged file is rewrapped, its width entry lowered, and stays under 750 lines",
+        "Each merged file is rewrapped, its width entry lowered, and stays within the 1,000-line cap (not squashed to get under the 750-line warning)",
         "Parity harness and full suite unchanged",
-        "Expected net line delta: package about -120"
+        "Estimated net line change (informational, not a gate): package about -120"
       ],
       "codename": "fold-the-remaining-single-importer-siblings-from-the-code-report-s-misc-list",
       "dependencies": [
@@ -452,8 +460,8 @@
       "acceptance": [
         "The merges in this sheet's table are applied: gui_app_api, gui_app_routes_publish and gui_app_routes_workers into gui_app; roadmap_gui_pr_pickers into roadmap_gui_remote; roadmap_gui_settings_tokens into roadmap_gui_settings; roadmap_crud_delete into roadmap_crud_ops; bundled_scripts/roadmap_crud.py stays (a documented command path)",
         "PM UI routes and their JSON responses (GUI tests) and the outline and edit-field scenarios (M16.53) are unchanged; the worker routes keep reading what they read at pickup",
-        "Each merged file is rewrapped, its width entry lowered, and stays under 750 lines",
-        "Expected net line delta: package about -100"
+        "Each merged file is rewrapped, its width entry lowered, and stays within the 1,000-line cap (not squashed to get under the 750-line warning)",
+        "Estimated net line change (informational, not a gate): package about -100"
       ],
       "codename": "fold-the-pm-ui-server-and-roadmap-crud-splits-after-the-orchestration-snapshot-is-fixed",
       "dependencies": [

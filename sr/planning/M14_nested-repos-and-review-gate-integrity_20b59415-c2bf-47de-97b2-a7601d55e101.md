@@ -10,6 +10,7 @@ Make the review gate and the worktree tools trustworthy in projects that keep co
 - **Evidence and cost.** M14.5 flags an approve with no recorded probe; M14.6 makes reviewer usage visible; per-model block rates are M12.4.3, beside the per-area scores in M12.4.1.
 - **Session end.** M14.7 fixes `session end` picking no session when the user has several live ones (the derived id changes between a harness's shell calls).
 - Every file near the 400-line cap is paired with a new sibling module in its leaf's touch zones.
+- **Themed-milestone restructure (maintainer, 2026-11-05).** M14 takes no new leaves. It stays open until its in-flight leaf M14.1 lands, then is set Complete and archived. Its not-started leaves M14.4.2, M14.4.3, M14.8 and M14.9 belong to M18 (orchestration and review-loop features, after 0.3.1).
 
 ## Tasks / checklist
 

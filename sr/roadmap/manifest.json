@@ -1,23 +1,6 @@
 {
   "includes": [
-    "phases/M1.json",
     "phases/M2.json",
-    "phases/M3.json",
-    "phases/M3__106e62.json",
-    "phases/M4.json",
-    "phases/M4__d49ff7.json",
-    "phases/M5.json",
-    "phases/M6.json",
-    "phases/M7.json",
-    "phases/M8.json",
-    "phases/M9.json",
-    "phases/M10.json",
-    "phases/M10__2d5b98.json",
-    "phases/M11.json",
-    "phases/M11__174228.json",
-    "phases/M11__17d67a.json",
-    "phases/M11__1bdf35.json",
-    "phases/M11__a24531.json",
     "phases/M12.json",
     "phases/M13.json",
     "phases/M14.json",
@@ -27,7 +10,11 @@
     "phases/M16.json",
     "phases/M16__74ac34.json",
     "phases/M16__01db66.json",
-    "phases/M16__511edd.json"
+    "phases/M16__511edd.json",
+    "phases/M16__a6cbaa.json",
+    "phases/M17.json",
+    "phases/M18.json",
+    "phases/M19.json"
   ],
   "version": 1
 }

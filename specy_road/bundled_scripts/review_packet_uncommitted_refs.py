@@ -52,6 +52,8 @@ def _named_repo_path(token: str, root: Path, commit: str) -> str | None:
     raw = raw.lstrip("/").rstrip("/")
     if not raw or ".." in raw.split("/"):
         return None
+    if raw.split("/")[0] == ".git":
+        return None
     if "/" not in raw:
         if "." not in raw and raw not in _ROOT:
             return None
