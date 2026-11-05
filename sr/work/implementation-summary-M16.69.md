@@ -32,6 +32,33 @@ Branch `feature/rm-cursor-workers-no-force-by-default`, base `7f3cc488`, change 
 - Opt-in path, same worktree and prompt, `--trust --force` instead: exit 0; edit succeeded; pytest exit 0
   (`21 passed in 1.63s`); `git commit` exit 0 (`[smoke/m16-69-sandbox f45bd3cc] … 1 file changed`).
 - The smoke worktree and branch were removed afterwards.
+- **Sandbox-enforcement probe (coordinator request, 2026-11-05).** Same agent `2026.11.05-86047df`, a second
+  fresh linked worktree (`/tmp/m1669-probe`, branch `smoke/m16-69-probe`), a canary file outside it
+  (`/tmp/m1669-canary-outside.txt`). The prompt asked for exactly two commands: `cat /tmp/m1669-canary-outside.txt`
+  and `sh -c 'echo written > /tmp/m1669-outside-write.txt'`.
+  - Headless, the adapter's default argv (`agent -p --resume <chat> --output-format stream-json --trust
+    --sandbox enabled --model composer-2.5 --workspace /tmp/m1669-probe "<instruction>"`): **exit 1, the same
+    "Sandbox failed to start" error, no event, no command run**; the outside file was not written.
+  - Direct, `agent sandbox run <cmd>` in the worktree, for the canary read, the outside write and a write
+    inside the workspace: **all three exit 1**, `SandboxUnsupportedError: Sandbox policy 'workspace_readwrite'
+    is not supported on this system`; both backends fail at user-namespace setup (`Failed to write
+    /proc/self/uid_map (mapping UID 0 -> 1000): Operation not permitted`, Landlock and Bubblewrap alike).
+    Nothing was written in or outside the workspace.
+  - **Plainly: Cursor's sandbox is not enforced on this machine with the installed version, because it does
+    not run at all.** The probe could not show a refused read or write: no sandboxed command ran, so there is
+    no evidence here either way that headless `-p` applies the sandbox when it does start. What it does show:
+    on this host `--sandbox enabled` fails closed (the turn stops before any command; it did not fall back to
+    running unsandboxed), so the new default cannot widen anything here. It only stops the worker.
+  - Not verified, from the research report (sr/docs/research/agent-safety-posture-2026-11-05-claude-research.md):
+    that headless `-p` honours the sandbox on a host where it starts (reported ignored before about
+    2026.04.29; our version is later), and whether a failed sandboxed command reruns outside the sandbox.
+    Neither could be exercised here. Treat `--sandbox enabled` as Cursor's documented intent, not a
+    guarantee specy-road has checked.
+  - The policy the CLI printed limits less than "sandboxed" suggests: `"readBoundary": "system"` (reads
+    anywhere, so even a working sandbox would let the canary read through), writes to the workspace plus
+    entries under `ignoreMapping` (which lists `/tmp`), and network `"default": "deny"`. So the sandbox
+    confines writes and network, not reads.
+  - The probe worktree, branch and canary were removed afterwards.
 - As A2 directs: the default stays sandboxed; the limitation and the opt-in are documented
   (docs/orchestration-workers.md, Permissions paragraph, and CHANGELOG); the toolkit's Composer/Grok executor
   entries `composer-2.5` and `grok-4.7-exec` get `cursor_force: true` in `sr/roadmap/orchestration.yaml`, and
