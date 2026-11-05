@@ -31,6 +31,10 @@ body. Keep section bodies focused; link to PRs for detail.
   under another account a worker started fresh instead of resuming. The context
   meter's user `CLAUDE.md` now comes from the same directory, and the value is
   taken literally (a `~` in it is not expanded, as in the shell wrappers).
+- `review record` refuses a covered clause for joined observations only when a
+  joined part names a defect. Neutral parts joined by "plus", "but", "while" or
+  the like no longer cost a reviewer turn, and a defect part followed by a
+  neutral part is now refused after a comma or "and" as after any other joiner.
 - Help text names only what a pip install has: `specy-road --help` points
   add-node and scaffold-planning at `specy-road <cmd> -h` instead of
   `python specy_road/bundled_scripts/...` paths, and the `gui` line names
