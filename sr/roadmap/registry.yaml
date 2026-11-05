@@ -18,19 +18,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: every-refusal-names-its-fix
-    node_id: M12.2
-    branch: feature/rm-every-refusal-names-its-fix
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_crud_dependency_ops.py
-      - specy_road/bundled_scripts/mark_implementation_reviewed.py
-      - specy_road/bundled_scripts/abort_task_pickup.py
-      - specy_road/bundled_scripts/repo_ops.py
-      - docs/contributor-guide.md
-      - tests/
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves
     node_id: M12.3
     branch: feature/rm-scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves
@@ -81,6 +68,7 @@ entries:
       - specy_road/bundled_scripts/refresh_profiles.py
       - specy_road/model_profiles.py
       - tests/
+      - specy_road/bundled_scripts/upgrade.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
