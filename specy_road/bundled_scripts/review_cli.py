@@ -50,8 +50,8 @@ from specy_road.bundled_scripts.review_defer import add_parser as add_defer_pars
 from specy_road.orphaned_claims import orphaned_claims, report_lines
 from specy_road.review_record_rules import check_record
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
-from specy_road.review_target import (ReviewTarget, ReviewTargetError, milestone_status,
-                                      resolve_target, same_commit)
+from specy_road.review_target import ReviewTarget, ReviewTargetError, milestone_status, resolve_target, same_commit
+from specy_road.sibling_repos import sibling_heads_field
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.session_presence import list_sessions
 from specy_road.worker_state import list_records
@@ -280,7 +280,7 @@ def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline
     if why:
         return _fail(f"{ns.file}: does not count — {why}; list what you re-ran in commands_rerun")
     # The body's hash rides in the front matter, so a signature covers the notes too.
-    data = {**rec["data"], "commit": gate.commit, NOTES_KEY: notes_digest(rec["body"])}
+    data = {**rec["data"], "commit": gate.commit, NOTES_KEY: notes_digest(rec["body"]), **sibling_heads_field(root)}
     if ns.launch_mode:   # before signing: the signature covers it
         data["launch_mode"] = ns.launch_mode
     data = stamp_review_toolkit_version(data)
@@ -311,7 +311,7 @@ def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline
         if any(o.family == entry["family"] and o.model != ns.model for o in after.approvals + after.blocks):
             print(f"note: another counted review is also from family {entry['family']!r}; "
                   "it is less independent and counts once toward the distinct-family policy.")
-    print(f"policy: {after.summary()}")
+    print(f"policy: {gate_policy_summary(after, [])}")
     return 0
 
 

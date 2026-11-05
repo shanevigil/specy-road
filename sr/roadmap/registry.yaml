@@ -70,23 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository
-    node_id: M14.1
-    branch: feature/rm-approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository
-    touch_zones:
-      - specy_road/review_bookkeeping.py
-      - specy_road/sibling_repos.py
-      - specy_road/review_gate_ready.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/schemas/review-record.schema.json
-      - specy_road/schemas/handoff.schema.json
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - tests/
-      - specy_road/reviewer_run_failure.py
-      - specy_road/review_answer.py
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
   - codename: prompt-channel-cli-launches-nothing-without-run
     node_id: M15.3
     branch: feature/rm-prompt-channel-cli-launches-nothing-without-run

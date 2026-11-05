@@ -32,6 +32,7 @@
         }
       }
     },
+    "sibling_heads": { "$ref": "#/$defs/siblingHeads", "description": "HEAD of each sibling repository (a git repository under the project root that the root repository does not track and nested_repos does not configure) at `specy-road ready`, by project-relative path." },
     "blocked_on": {
       "type": "array",
       "description": "Acceptance criteria the executor could not meet without weakening tests or raising a baseline or cap.",
@@ -48,6 +49,7 @@
   },
   "$defs": {
     "sha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+    "siblingHeads": { "type": "object", "propertyNames": { "minLength": 1 }, "additionalProperties": { "$ref": "#/$defs/sha" } },
     "acceptanceId": { "type": "string", "pattern": "^A[1-9][0-9]*$" }
   }
 }

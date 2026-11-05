@@ -8,8 +8,8 @@ The current state of this project's roadmap, generated from the merged graph, th
 
 Status is the computed rollup: a non-leaf is Complete only when every leaf descendant is.
 
-- `M14` Nested repos and review-gate integrity `nested-repos-and-review-gate-integrity` — phase — **Not Started**
-  - `M14.1` Approvals never carry across unreviewed changes in a sibling repository `approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` — task — **Not Started**
+- `M14` Nested repos and review-gate integrity `nested-repos-and-review-gate-integrity` — phase — **In Progress**
+  - `M14.1` Approvals never carry across unreviewed changes in a sibling repository `approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` — task — **Complete**
   - `M14.2` doctor never offers to remove a live leaf's worktree or branch `doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch` — task — **Complete**
   - `M14.3` worktree prune refuses to delete another repository's worktree or checkout `worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout` — task — **Complete**
   - `M14.4` nested_repos that a project can adopt without pushing: local landing, local base, sibling diffs and checks `nested-repos-that-a-project-can-adopt-without-pushing-local-landing-local-base-sibling-diffs-and-checks` — milestone — **In Progress**
@@ -220,7 +220,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M14.1` on `feature/rm-approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` since 2026-11-05
 - `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
 - `M15.33` on `feature/rm-refused-review-record-leaves-a-trace` since 2026-11-05
 - `M15.36` on `feature/rm-worker-launch-never-depends-on-claude-default-mode` since 2026-11-05
@@ -237,8 +236,8 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `docs` **flagged** | 29 | 18 | 6.18 | 91% | 15 | 3 |
-| `specy_road` **flagged** | 47 | 27 | 5.10 | 80% | 23 | 5 |
-| `tests` **flagged** | 50 | 30 | 5.10 | 80% | 23 | 5 |
+| `specy_road` **flagged** | 47 | 26 | 5.10 | 81% | 23 | 5 |
+| `tests` **flagged** | 50 | 29 | 5.10 | 81% | 23 | 5 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |

@@ -28,7 +28,7 @@
       "parent_id": "M14",
       "planning_dir": "planning/M14.1_approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository_5eeb46d2-6aef-4582-8f8b-41c2dc19b53b.md",
       "sibling_order": 0,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Approvals never carry across unreviewed changes in a sibling repository",
       "touch_zones": [
         "specy_road/review_bookkeeping.py",
