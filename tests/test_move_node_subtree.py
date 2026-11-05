@@ -95,9 +95,9 @@ def test_a_move_can_take_a_chosen_or_lowest_free_id(
         (("--id", "m2.2"), "malformed"),
         (("--id", "M1.5"), "not a direct child id of M2"),
         (("--id", "M2.2.1"), "not a direct child id of M2"),
-        (("--id", "M2.2", "--fill-gaps"), "mutually exclusive"),
-        (("--id", "M2.2", "--renumber-outline"), "cannot be combined with --renumber-outline"),
-        (("--fill-gaps", "--renumber-outline"), "cannot be combined with --renumber-outline"),
+        (("--id", "M2.2", "--fill-gaps"), "--id (new_id) and --fill-gaps (fill_gaps) are mutually exclusive"),
+        (("--id", "M2.2", "--renumber-outline"), "--id (new_id) and --renumber-outline (renumber_outline) are mutually exclusive"),
+        (("--fill-gaps", "--renumber-outline"), "--fill-gaps (fill_gaps) and --renumber-outline (renumber_outline) are mutually exclusive"),
     ],
     ids=[
         "taken", "malformed", "lowercase", "wrong-parent", "too-deep",
@@ -116,6 +116,20 @@ def test_a_bad_chosen_id_is_refused_and_writes_nothing(
     assert r.returncode == 1
     assert reason in r.stderr
     assert ([f.read_bytes() for f in files], sheet_names(tmp_path)) == before
+
+
+def test_moving_m0_at_the_root_with_fill_gaps_keeps_m0(tmp_path: Path) -> None:
+    """The root base comes from the whole graph, so the moved M0 stays M0."""
+    wide_fixture(tmp_path)
+    root = ("--repo-root", str(tmp_path))
+    assert run_move_node(tmp_path, *root, "M2", "--to-parent", "null", "--id", "M0").returncode == 0
+    before = ids_by_key(tmp_path)
+
+    r = run_move_node(tmp_path, *root, "M0", "--to-parent", "null", "--fill-gaps")
+
+    assert r.returncode == 0, r.stderr
+    assert ids_by_key(tmp_path) == before
+    assert before[NK_B4] == "M0.4"
 
 
 def test_a_subtree_move_renumbers_only_its_descendants(tmp_path: Path) -> None:

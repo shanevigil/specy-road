@@ -97,6 +97,15 @@ def stage_id_rewrite(
     plan.commit(lambda: run_validate_raise(root))
 
 
+def _refuse_id_form_combinations(forms: dict[str, bool]) -> None:
+    """One rule: a move picks at most one id form (chosen id, lowest gap, whole outline)."""
+    given = [name for name, on in forms.items() if on]
+    if len(given) > 1:
+        raise ValueError(
+            f"{' and '.join(given)} are mutually exclusive: pick at most one id form"
+        )
+
+
 def _moved_node_id(
     nodes: list[dict],
     node_key: str,
@@ -132,16 +141,16 @@ def move_node(
     moved node takes ``new_id`` when given (a free direct child id of the new
     parent), the lowest free child id with ``fill_gaps``, else one past the
     highest. ``renumber_outline=True`` renumbers every display id from the tree
-    shape and cannot be combined with either. Nothing reaches disk until the
+    shape. At most one of the three id forms may be given. Nothing reaches disk until the
     whole prospective graph validates.
     """
-    if new_id is not None and fill_gaps:
-        raise ValueError("--id and --fill-gaps (new_id, fill_gaps) are mutually exclusive")
-    if renumber_outline and (new_id is not None or fill_gaps):
-        raise ValueError(
-            "--id/--fill-gaps renumber only the moved subtree and cannot be "
-            "combined with --renumber-outline (renumber_outline)"
-        )
+    _refuse_id_form_combinations(
+        {
+            "--id (new_id)": new_id is not None,
+            "--fill-gaps (fill_gaps)": fill_gaps,
+            "--renumber-outline (renumber_outline)": renumber_outline,
+        }
+    )
     nodes = list(load_roadmap(root)["nodes"])
     by_key = {n["node_key"]: n for n in nodes if isinstance(n.get("node_key"), str)}
     if node_key not in by_key:

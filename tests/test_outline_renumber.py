@@ -6,6 +6,7 @@ import pytest
 
 from specy_road.bundled_scripts.roadmap_outline_renumber import (
     lowest_free_child_id,
+    next_free_child_id,
     renumber_display_ids_inplace,
 )
 from specy_road.bundled_scripts.roadmap_layout import (
@@ -123,6 +124,9 @@ def test_dependency_inheritance_display_splits_explicit() -> None:
         (["M0", "M2"], None, set(), "M1"),
         (["M2"], None, set(), "M1"),
         (["M1", "M2"], None, set(), "M3"),
+        # M0 sets the base even when it is the moved node, and stays free.
+        (["M0", "M2"], None, {"M0"}, "M0"),
+        (["M0", "M1"], None, {"M0"}, "M0"),
     ],
 )
 def test_lowest_free_child_id(
@@ -130,3 +134,19 @@ def test_lowest_free_child_id(
 ) -> None:
     nodes = [{"id": i} for i in ids]
     assert lowest_free_child_id(nodes, parent, ignore_ids=ignore) == expected
+
+
+@pytest.mark.parametrize(
+    ("ids", "expected"),
+    [
+        # The moved sole root M0 keeps the project's base: M0, not M1.
+        (["M0"], "M0"),
+        (["M0", "M1"], "M2"),
+        (["M1"], "M1"),
+    ],
+)
+def test_next_free_root_id_when_the_moved_node_is_left_out(
+    ids: list[str], expected: str
+) -> None:
+    nodes = [{"id": i, "node_key": i, "parent_id": None} for i in ids]
+    assert next_free_child_id(nodes, None, exclude_key=ids[0]) == expected

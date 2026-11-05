@@ -182,14 +182,20 @@ def move_node_outline(
     )
 
 
-def apply_indent(
-    repo_root: Path, node_id: str, *, renumber_outline: bool = False
-) -> bool:
-    """Nest under the sibling above (same parent). Returns False if no-op."""
+def _load_with_node(repo_root: Path, node_id: str) -> tuple[list[dict], dict[str, dict]]:
+    """Load the graph for indent/outdent; an unknown ``node_id`` is a ``ValueError``."""
     nodes = list(load_roadmap(repo_root)["nodes"])
     by_id = {n["id"]: n for n in nodes}
     if node_id not in by_id:
         raise ValueError(f"unknown node id {node_id!r}")
+    return nodes, by_id
+
+
+def apply_indent(
+    repo_root: Path, node_id: str, *, renumber_outline: bool = False
+) -> bool:
+    """Nest under the sibling above (same parent). Returns False if no-op."""
+    nodes, by_id = _load_with_node(repo_root, node_id)
     new_parent = indent_parent_id(by_id, node_id)
     if new_parent is None:
         return False
@@ -212,10 +218,7 @@ def apply_outdent(
     repo_root: Path, node_id: str, *, renumber_outline: bool = False
 ) -> bool:
     """Become sibling after former parent. Returns False if no-op."""
-    nodes = list(load_roadmap(repo_root)["nodes"])
-    by_id = {n["id"]: n for n in nodes}
-    if node_id not in by_id:
-        raise ValueError(f"unknown node id {node_id!r}")
+    nodes, by_id = _load_with_node(repo_root, node_id)
     target = outdent_parent_id(by_id, node_id)
     if target is None:
         return False
