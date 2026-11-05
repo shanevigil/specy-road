@@ -207,6 +207,71 @@ The fix is commit `9c82212a`. The classification table is unchanged; only the ev
 - `ruff check` on the changed files: clean
 - Red/green: with `doctor_worktrees.py` from `96db4639`, all three `test_r5_*` fail.
 
+## Fix round 3: evidence scoping (coordinator)
+
+I merged `origin/WIP/improvements-0-3-1` first (`a141a492`). The fix is commit `91f52ec3`, which **supersedes** `9c82212a`'s remote-freshness design. `_pushed_fresh`, `_raw_reflog` and `_ZERO` are removed, and so is the `remote` parameter of `evidence_kind`.
+
+**Class removed by construction:** any evidence that git carried into a ref from another ref, and any evidence borrowed across refs.
+1. **Own-ref scoping (F1):** a local ref's evidence comes only from its own reflog entries after its newest creation event.
+   - The creation events are `branch: Created from …` (kind `creation-only`), `Branch: copied … to …` (`copy-only`) and the rename target's `Branch: renamed … to …` (`rename-only`). The brief calls the copy entry `branch: Copied from`; git 2.43 actually writes `Branch: copied refs/heads/<src> to refs/heads/<dst>`, and that is the string matched.
+   - Anything before the newest creation event belongs to another branch.
+   - A commit, merge or cherry-pick entry after that event, which the tip contains, is `commit`.
+   - If the creation event is the only entry and sits at the tip, the evidence is that event's kind, which reads as "no commits yet" with no fix.
+   - Anything else is `none`.
+2. **No cross-ref evidence (F2):** a remote-tracking ref's only evidence source is a finish merge (`Merge branch '<b>'`) on the integration branch that brought its tip in, giving `finish-merge`. A local namesake's reflog is never read for a remote ref, whether as positive or negative evidence, even at the same SHA.
+   - **Consequence:** a remote pushed fresh is no longer provably fresh. It reads `merged; no local evidence of own commits`, still with no fix.
+   - I changed `test_f3_…` from expecting "no commits yet" to that wording. Its no-removal assertion is unchanged: the bare ref still equals the fresh tip.
+3. **Table:** two rows added.
+   - `("none", "copy-only", "*", "*") → no commits yet, no fix` (F1).
+   - `("none", "finish-merge", "yes", "remote") → merged, fix` (F2). The general finish-merge row is now `local`.
+   - `tests/test_doctor_classification.py` has one case per row (rows 0–11). The coverage check treats `copy-only` as never merged and never fixable.
+
+### Reflog-writing operations and how each is classified
+
+Subjects were checked against git 2.43.
+
+| operation | ref and reflog subject written | classified as |
+|---|---|---|
+| `git branch b <start>` | `refs/heads/b`: `branch: Created from <start>` | creation event. Alone at the tip: `creation-only`, "no commits yet". Later commit entries the tip contains: `commit` |
+| `git checkout -b` / `git switch -c` | `branch: Created from HEAD` (or `<start>`) | same as branch create |
+| `git worktree add -b b <path> <start>` | `branch: Created from <start>` | same as branch create |
+| `git checkout -B b <start>` / `git branch -f`, b new | `branch: Created from <start>` | same as branch create |
+| `git checkout -B b <start>` / `git branch -f`, b existing | `branch: Reset to <start>`, appended after b's own entries | not a creation event. b's earlier commit entries were made on b, so they count only if the new tip contains them; otherwise `none` |
+| `git reset <x>` on a checked-out b | `reset: moving to <x>` | not a creation event; same as above |
+| `git branch -c/-C a b` | `refs/heads/b`: a's whole reflog, then `Branch: copied refs/heads/a to refs/heads/b` | creation event. a's entries are ignored. Alone at the tip: `copy-only`, "no commits yet". A commit after the copy: `commit` |
+| `git branch -m/-M a b` | `refs/heads/b`: a's reflog, then `Branch: renamed refs/heads/a to refs/heads/b` | creation event (rename target). Alone at the tip: `rename-only`, "no commits yet" (safe direction: a renamed merged branch is not offered for removal) |
+| `git commit` / `merge` / `cherry-pick` on b | `commit…`, `merge …`, `cherry-pick…` | `commit` evidence when after the newest creation event and contained in the tip |
+| `git push` | `refs/remotes/<r>/b`: `update by push` | never read. A remote ref's evidence is only `finish-merge` or `none` |
+| `git fetch` / `pull` / `clone` | `refs/remotes/<r>/b`: `fetch: …`, `pull: …`, `clone: …` | never read, same as push |
+| `git reflog expire`, or a reflog backend with no entries | none | no creation event: no `creation-*`. Contained, with a finish merge: `finish-merge`. Otherwise `none`, which reads "merged; no local evidence", no fix |
+
+### Probes (round 3, coordinator scoping)
+
+- `git branch -c feature/rm-done feature/rm-copied`, then `doctor --fix --yes`: copy kept as "no commits yet", source deleted (`test_r5_f1_…`).
+- `feature/rm-gone` recreated locally from the raw SHA of the remote tip: remote "merged" and deleted on origin by `--fix`; local "no commits yet" and kept (`test_r5_f2_a_local_namesake_at_the_remote_tip_keeps…`).
+- A fast-forward-landed remote with a local namesake recreated at its tip: the remote is "merged; no local evidence…" and kept. The namesake's creation-only reflog no longer leaks into the remote ref (`test_r5_f2_a_local_namesake_never_disproves…`).
+- Rename of the merged `feature/rm-done` to `feature/rm-moved`: "no commits yet", kept (`test_r6_…`).
+- Fresh branch renamed before its first commit: still "no commits yet" (`test_f2_…`).
+- Fresh pushed remote with a local namesake ahead: "merged; no local evidence…", kept (`test_f3_…`, wording updated as described).
+- Recreated from `origin/feature/rm-gone`: local "no commits yet" (`test_r1_…`).
+- Every reflog subject in the table above, checked in a throwaway repository: subjects as listed. `checkout -B` on an existing branch writes `branch: Reset to`, not a creation event.
+- `grep` for `_pushed_fresh`, `_raw_reflog`, `_CREATED`, `own_commit` and the four-argument `evidence_kind` call across `specy_road/` and the tests: no remaining references.
+
+### Added in round 3 (coordinator scoping)
+
+- `_CREATIONS` (subject → evidence kind), replacing `_CREATED`/`_RENAMED`: one table of creation events (F1).
+- `copy-only` in `EVIDENCE`, and table rows `copy-only` and `finish-merge`/`remote`: the two requested rows.
+- `_since_creation` now returns the kind of the creation event.
+- Removed: `_pushed_fresh`, `_raw_reflog`, `_ZERO`, and the `remote` argument of `evidence_kind` (F2: no cross-ref evidence).
+- Tests: `test_r5_f2_a_local_namesake_never_disproves_a_fast_forwarded_remote` (replaces the timestamp-rewriting test from `9c82212a`), `test_r6_a_renamed_branch_starts_at_its_rename`, and classification cases `row4`/`row7`.
+- Mocks: none.
+
+### Verification (round 3, targeted only)
+
+- `python -m pytest -q -n 4 -p no:cacheprovider tests/test_doctor.py tests/test_doctor_live.py tests/test_doctor_classification.py tests/test_gate_config_agree.py tests/test_nested_unpushed_report.py tests/test_worktree_env_setup.py tests/test_doctor_version_skew.py`: 93 passed
+- `specy-road file-limits`: OK (`doctor_worktrees.py` 284 lines, `doctor.py` 311)
+- `ruff check` on the changed files: clean
+
 ## Added
 
-The per-round inventories above (`## Added`, then `### Added in fix round 1`, `2` and `3`) list every addition. Round 3: `_raw_reflog`, `_pushed_fresh`, `_ZERO`, `Branch: copied` in `_CREATED`, finish-merge before remote freshness in `evidence_kind`, and the three `test_r5_*` tests. Mocks: none.
+The per-round inventories above (`## Added`, then `### Added in fix round 1`, `2` and `3`) list every addition. Round 3 as it stands after the coordinator's scoping: `_CREATIONS` (create, copy and rename-target creation events), the `copy-only` evidence and its table row, the `finish-merge`/`remote` table row, and the tests `test_r5_f1_…`, `test_r5_f2_…` (×2), `test_r6_…` and classification cases rows 0–11. Removed: `_raw_reflog`, `_pushed_fresh` and `_ZERO` (added in `9c82212a`, then dropped). Mocks: none.
