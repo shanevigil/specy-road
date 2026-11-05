@@ -18,7 +18,7 @@ from specy_road.finish_pr_body import write_pr_body
 from specy_road.git_workflow_config import validate_git_workflow_dict
 from specy_road.bundled_scripts.validate_roadmap import validate_git_workflow_contract
 from specy_road.workflow_prefs import implementation_summary_rule, pr_body_footer, root_land, summary_rule_notice
-from tests.test_decisions import _add_args, _decisions_repo, _run
+from tests.decisions_repo_helpers import add_args, decisions_repo, run_decisions
 from tests.test_models_and_prompt import make_profile_repo
 
 _ACCESSORS = {"pr_body_footer": pr_body_footer, "implementation_summary": implementation_summary_rule,
@@ -33,21 +33,21 @@ def _prefer(repo: Path, *extra: str) -> list[str]:
 
 
 def test_local_preference_is_merged_over_the_tracked_ledger(tmp_path: Path, capsys) -> None:
-    repo = _decisions_repo(tmp_path)
+    repo = decisions_repo(tmp_path)
     shared, local = repo / "roadmap" / "decisions.yaml", repo / "roadmap" / "decisions.local.yaml"
-    assert _run(_prefer(repo, "--summary", "Team rule: docs go to sol", "--id", "Pteam")) == 0
-    assert _run(_prefer(repo, "--summary", "Shared rule", "--id", "Pboth")) == 0
-    assert _run(_prefer(repo, "--local", "--summary", "My rule wins here", "--id", "Pboth")) == 0
-    assert _run(_prefer(repo, "--local", "--summary", "Only mine")) == 0   # next id free in both ledgers
+    assert run_decisions(_prefer(repo, "--summary", "Team rule: docs go to sol", "--id", "Pteam")) == 0
+    assert run_decisions(_prefer(repo, "--summary", "Shared rule", "--id", "Pboth")) == 0
+    assert run_decisions(_prefer(repo, "--local", "--summary", "My rule wins here", "--id", "Pboth")) == 0
+    assert run_decisions(_prefer(repo, "--local", "--summary", "Only mine")) == 0   # next id free in both ledgers
     assert [e["id"] for e in read_decisions(shared)["entries"]] == ["Pteam", "Pboth"]
     assert [e["id"] for e in read_decisions(local)["entries"]] == ["Pboth", "P1"]
     capsys.readouterr()
 
-    assert _run(["decisions", "list", "--json", "--repo-root", str(repo)]) == 0
+    assert run_decisions(["decisions", "list", "--json", "--repo-root", str(repo)]) == 0
     listed = {e["id"]: e for e in json.loads(capsys.readouterr().out)}
     assert listed["Pboth"]["summary"] == "My rule wins here" and listed["Pboth"]["source"] == "local"
     assert listed["Pteam"]["source"] == "shared" and listed["P1"]["source"] == "local"
-    assert _run(["decisions", "list", "--repo-root", str(repo)]) == 0
+    assert run_decisions(["decisions", "list", "--repo-root", str(repo)]) == 0
     out = capsys.readouterr().out
     assert "Shared rule" not in out and "My rule wins here" in out
     assert next(ln for ln in out.splitlines() if ln.startswith("Pboth ")).endswith("(local)")
@@ -55,18 +55,18 @@ def test_local_preference_is_merged_over_the_tracked_ledger(tmp_path: Path, caps
 
     prefs, err = plan_preferences(repo)
     assert err is None and {e["id"]: e["summary"] for e in prefs}["Pboth"] == "My rule wins here"
-    assert _run(["decisions", "close", "Pboth", "--answer", "done", "--repo-root", str(repo)]) == 0
+    assert run_decisions(["decisions", "close", "Pboth", "--answer", "done", "--repo-root", str(repo)]) == 0
     assert read_decisions(local)["entries"][0]["status"] == "closed"
     assert read_decisions(shared)["entries"][1]["status"] == "open"   # the tracked ledger is untouched
 
 
 def test_local_decision_and_broken_local_ledger(tmp_path: Path, capsys) -> None:
-    repo = _decisions_repo(tmp_path)
-    assert _run(_add_args(repo, "--local")) == 0
+    repo = decisions_repo(tmp_path)
+    assert run_decisions(add_args(repo, "--local")) == 0
     assert not (repo / "roadmap" / "decisions.yaml").is_file()
     (repo / "roadmap" / "decisions.local.yaml").write_text("version: 1\nentries:\n  - id: P1\n", encoding="utf-8")
     capsys.readouterr()
-    assert _run(["decisions", "list", "--repo-root", str(repo)]) == 1
+    assert run_decisions(["decisions", "list", "--repo-root", str(repo)]) == 1
     assert "decisions.schema: roadmap/decisions.local.yaml fails its schema" in capsys.readouterr().err
     assert plan_preferences(repo)[1].startswith("roadmap/decisions.local.yaml fails its schema")
 
