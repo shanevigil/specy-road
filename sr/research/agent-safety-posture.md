@@ -11,3 +11,4 @@ Runs: 2026-11-05 (first run, two independent reports: Claude Code research agent
 `docs/research/agent-safety-posture-2026-11-05-codex.md`). The prompt is written for a deep-research tool
 (ChatGPT Deep Research or Claude Research); paste-back reports go beside these as
 `docs/research/agent-safety-posture-<date>-<tool>.md`.
+2026-11-05 (v2 prompt, deep-research tools): ChatGPT Deep Research -> `docs/research/agent-safety-posture-2026-11-05-chatgpt-deep-research.md`; Claude Research -> `docs/research/agent-safety-posture-2026-11-05-claude-research.md`.
