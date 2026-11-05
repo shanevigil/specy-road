@@ -191,3 +191,13 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: stash-changes-attributed-to-the-owning-branch
+    node_id: M15.25
+    branch: feature/rm-stash-changes-attributed-to-the-owning-branch
+    touch_zones:
+      - specy_road/worker_turn_check.py
+      - specy_road/worker_turn_stash.py
+      - tests/
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
