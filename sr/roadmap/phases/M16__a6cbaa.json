@@ -428,7 +428,8 @@
         "tests/",
         "specy_road/schemas/worker-record.schema.json",
         "specy_road/steering_gate.py",
-        "docs/orchestration-steering-files.md"
+        "docs/orchestration-steering-files.md",
+        "specy_road/git_config_text.py"
       ],
       "type": "task"
     },
