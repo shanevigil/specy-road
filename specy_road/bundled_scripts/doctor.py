@@ -45,7 +45,8 @@ from specy_road.bundled_scripts.do_next_task_self_heal import detect_stale_claim
 from specy_road.bundled_scripts.doctor_env_setup import report_checkout
 from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.doctor_worktrees import (  # noqa: F401 — SAME_PATCH, TEMP_WORKTREES re-exported for callers
-    SAME_PATCH, TEMP_WORKTREES, Finding, has_own_commits, live_holders, merged_how, worktree_findings,
+    SAME_PATCH, TEMP_WORKTREES, Finding, NO_EVIDENCE, live_holders, merged_how, own_commit_evidence,
+    worktree_findings,
 )
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_text
 from specy_road.nested_repos import report_unpushed
@@ -65,6 +66,7 @@ class _Ctx:
     live: set[str]
     complete: dict[str, str]   # codename -> node id of a Complete leaf
     held: dict[str, str]       # branch -> "live: …": never offered for removal (doctor_worktrees.live_holders)
+    held_paths: dict[str, str]  # resolved worktree path -> "live: …" (workers, sessions)
 
 
 def _complete_leaves(nodes: list[dict]) -> dict[str, str]:
@@ -73,16 +75,23 @@ def _complete_leaves(nodes: list[dict]) -> dict[str, str]:
             and (n.get("status") or "").lower() == "complete"}
 
 
-def _branch_reason(ctx: _Ctx, ref: str, branch: str, node_id: str | None) -> tuple[str, bool | None]:
-    """The reason, and ``None`` when not merged, else whether the branch has a commit of its own."""
+def _branch_reason(ctx: _Ctx, ref: str, branch: str, node_id: str | None) -> tuple[str, str | None]:
+    """The reason, and the verdict: ``None`` when not merged, else ``"merged"`` (removable),
+    ``"fresh"`` (no commits yet) or ``"unproven"`` (contained, with no evidence of own commits).
+
+    A patch-content merge needs no evidence: its tip is not in the target, so it has commits.
+    """
     row = "; registry row remains" if branch in ctx.live else ""
     why = f"leaf {node_id} Complete" if node_id else "claim gone"
     how = merged_how(ctx.root, ref, ctx.target)
-    if how and not has_own_commits(ctx.root, ref, ctx.target):
-        return f"{why}, no commits yet{row}", False   # its tip is a commit target already had
+    leaf = f"; leaf {node_id} Complete" if row else ""
+    evidence = own_commit_evidence(ctx.root, ref, ctx.target) if how == "merged" else "present"
+    if how and evidence == "absent":
+        return f"{why}, no commits yet{row}", "fresh"   # its tip is a commit target already had
+    if how and evidence == "ambiguous":
+        return f"{how}{leaf}{row}; {NO_EVIDENCE}", "unproven"
     if how:
-        leaf = f"; leaf {node_id} Complete" if row else ""
-        return f"{how}{leaf}{row}", True
+        return f"{how}{leaf}{row}", "merged"
     ahead = git_checked(["rev-list", "--count", f"{ctx.target}..{ref}"], ctx.root)
     return f"{why}, not merged: {ahead} commit(s) {ctx.target} lacks{row}", None
 
@@ -100,24 +109,25 @@ def _delete_remote(root: Path, branch: str, sha: str | None, remote: str) -> str
     return f"left on {remote}. {out}" if code else None
 
 
-def _branch_findings(ctx: _Ctx) -> tuple[list[Finding], dict[str, bool]]:
+def _branch_findings(ctx: _Ctx) -> tuple[list[Finding], dict[str, str]]:
     """Complete or unclaimed branches, and every local ``feature/rm-*`` that is merged.
 
-    The merged map (branch -> has a commit of its own) feeds the worktree section,
+    The merged map (branch -> verdict of :func:`_branch_reason`) feeds the worktree section,
     which judges a worktree on a merged branch even when the branch itself is not listed.
-    A live branch (:attr:`_Ctx.held`) or one with no commits yet is listed without a fix.
+    A live branch (:attr:`_Ctx.held`), or a merged one without evidence of its own commits,
+    is listed without a fix.
     """
     found: list[Finding] = []
-    merged_local: dict[str, bool] = {}
+    merged_local: dict[str, str] = {}
     for prefix, where in (("refs/heads/", "local"), (f"refs/remotes/{ctx.remote}/", ctx.remote)):
         for b in feature_branches(ctx.root, prefix):
             node_id = ctx.complete.get(b.removeprefix("feature/rm-"))
-            reason, own = _branch_reason(ctx, prefix + b, b, node_id)
-            if where == "local" and own is not None:
-                merged_local[b] = own
+            reason, verdict = _branch_reason(ctx, prefix + b, b, node_id)
+            if where == "local" and verdict is not None:
+                merged_local[b] = verdict
             if b in ctx.live and not node_id:
                 continue
-            if b in ctx.held or own is False:
+            if b in ctx.held or verdict in ("fresh", "unproven"):
                 found.append(Finding("branch", f"{where:<9} {b}", f"{ctx.held.get(b, reason)}, so --fix leaves it", None, ""))
                 continue
             sha = git_text(["rev-parse", prefix + b], ctx.root)
@@ -250,7 +260,7 @@ def _context(ns: argparse.Namespace) -> _Ctx | None:
         print(f"error: could not read the roadmap at {target}. Not listing anything.", file=sys.stderr)
         return None
     complete = _complete_leaves(nodes)
-    return _Ctx(root, target, remote, base, live, complete, live_holders(root, target, nodes, complete))
+    return _Ctx(root, target, remote, base, live, complete, *live_holders(root, target, nodes, complete))
 
 
 def cmd_doctor(ns: argparse.Namespace) -> int:

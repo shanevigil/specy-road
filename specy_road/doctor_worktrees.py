@@ -1,9 +1,13 @@
 """``specy-road doctor``'s merged test, live-branch test and worktree findings.
 
-A branch is *live* when an open registry claim (its leaf not Complete), an open milestone rollup
-or a worker record that is not terminal holds it: doctor never offers to remove it or its worktree.
-A branch is *merged* only when it also has a commit of its own: a fresh claim's tip is an
-integration-branch commit, so ancestry alone would call it merged.
+A branch or worktree is *live* when an open registry claim (its leaf not Complete), an open
+milestone rollup, a worker record that is not terminal or a live session holds it: doctor reports
+it with that reason before anything else and never offers to remove it.
+
+An ancestry-merged branch is offered for removal only with positive evidence, on that exact ref,
+that it carried commits of its own (:func:`own_commit_evidence`): a fresh claim's tip is an
+integration-branch commit, so ancestry alone would call it merged. Without evidence it is
+reported, not removed.
 """
 
 from __future__ import annotations
@@ -13,7 +17,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any, Callable
 
-from specy_road import worker_state
+from specy_road import session_presence, worker_state
 from specy_road.bundled_scripts.grind_session_cleanup import merged_into
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_text
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
@@ -25,6 +29,10 @@ SAME_PATCH = "merged (same patch content)"
 #: ``mkdtemp`` prefixes of the detached worktrees land check, check-pre-existing, nested land and red/green make.
 TEMP_WORKTREES = ("specy-road-land-check-", "specy-road-pre-existing-", "specy-road-nested-land-",
                   "specy-road-red-green-")
+NO_EVIDENCE = "no local evidence of own commits — remove by hand if intended"
+#: Reflog subjects of entries that put a commit on the ref, and of entries that only name it.
+_COMMIT_ENTRIES = ("commit", "merge ", "cherry-pick")
+_NAMING_ENTRIES = ("branch: Created from", "Branch: renamed")
 
 
 @dataclass
@@ -58,31 +66,59 @@ def merged_how(root: Path, ref: str, target: str) -> str | None:
     return SAME_PATCH if _all_upstream(root, target, squash) else None
 
 
-def has_own_commits(root: Path, ref: str, target: str) -> bool:
-    """Whether ``ref`` has a commit made on it, not just the commit it was created at.
+def _is_ancestor(root: Path, a: str, b: str) -> bool:
+    return git_code(["merge-base", "--is-ancestor", a, b], root)[0] == 0
 
-    A local branch's reflog decides: an entry after its creation, or a tip that is not the
-    creation commit. A remote-tracking ref uses its local branch's reflog when there is one.
-    With no reflog, a tip on ``target``'s first-parent line is a commit ``target`` itself had,
-    which is where a fresh branch starts.
-    """
+
+def _finish_merge_brought(root: Path, ref: str, tip: str, target: str) -> bool:
+    """A ``Merge branch '<branch>'`` commit on ``target`` (finish-this-task's subject) brought ``tip`` in."""
     branch = ref.removeprefix("refs/heads/") if ref.startswith("refs/heads/") else ref.split("/", 3)[-1]
-    local = f"refs/heads/{branch}"
-    local_tip = git_text(["rev-parse", "--verify", "--quiet", local], root)
-    if local_tip:
-        log = (git_text(["reflog", "show", "--format=%H", local], root) or "").split()
-        if log:
-            return len(log) > 1 or log[-1] != local_tip
-    tip = git_text(["rev-parse", ref], root)
-    return tip not in (git_text(["rev-list", "--first-parent", target], root) or "").split()
+    log = git_text(["log", "--merges", "--fixed-strings", f"--grep=Merge branch '{branch}'",
+                    "--format=%P", target], root) or ""
+    for line in log.splitlines():
+        first, *others = line.split()
+        if not _is_ancestor(root, tip, first) and any(_is_ancestor(root, tip, p) for p in others):
+            return True
+    return False
 
 
-def live_holders(root: Path, target: str, nodes: list[dict[str, Any]], complete: dict[str, str]) -> dict[str, str]:
-    """Branch -> ``live: …`` for each branch a worker, an open claim or an open rollup holds."""
+def own_commit_evidence(root: Path, ref: str, target: str) -> str:
+    """``"present"``, ``"absent"`` or ``"ambiguous"``: did ``ref`` itself carry commits of its own?
+
+    Present: a finish merge commit on ``target`` brought this tip in, or this local ref's reflog has
+    a commit, merge or cherry-pick entry whose commit its tip contains. Absent: this local ref's
+    reflog holds only its creation and renames, all at its tip. Anything else (an expired reflog, a
+    fresh clone, a remote-tracking ref, a reset) is ambiguous. Evidence is never borrowed from
+    another ref, such as a remote ref's local namesake.
+    """
+    tip = git_text(["rev-parse", ref], root) or ""
+    if tip and _finish_merge_brought(root, ref, tip, target):
+        return "present"
+    if not tip or not ref.startswith("refs/heads/"):
+        return "ambiguous"
+    entries = [line.split("\t", 1) for line in
+               (git_text(["reflog", "show", "--format=%H%x09%gs", ref], root) or "").splitlines()]
+    entries = [e for e in entries if len(e) == 2]
+    if any(gs.startswith(_COMMIT_ENTRIES) and _is_ancestor(root, sha, tip) for sha, gs in entries):
+        return "present"
+    if entries and all(gs.startswith(_NAMING_ENTRIES) and sha == tip for sha, gs in entries):
+        return "absent"
+    return "ambiguous"
+
+
+def live_holders(root: Path, target: str, nodes: list[dict[str, Any]],
+                 complete: dict[str, str]) -> tuple[dict[str, str], dict[str, str]]:
+    """``live: …`` by branch and by resolved worktree path: workers, live sessions, open claims, open rollups."""
     held: dict[str, str] = {}
-    for rec in worker_state.list_records(root, active_only=True):
-        if rec.branch:
-            held.setdefault(rec.branch, f"live: worker {rec.worker_id} ({rec.state})")
+    paths: dict[str, str] = {}
+    running = [(f"live: worker {r.worker_id} ({r.state})", r.branch, r.worktree)
+               for r in worker_state.list_records(root, active_only=True)]
+    running += [(f"live: session {s.agent}", s.branch, s.worktree) for s in session_presence.list_sessions(root)]
+    for why, branch, worktree in running:
+        if branch:
+            held.setdefault(branch, why)
+        if worktree:
+            paths.setdefault(str(Path(worktree).resolve()), why)
     for reg in (read_registry(registry_path(root)), read_registry_at_ref(root, target, DEFAULT_TIMEOUT) or {}):
         for e in reg.get("entries") or []:
             if isinstance(e, dict) and e.get("branch") and e.get("codename") not in complete:
@@ -91,7 +127,7 @@ def live_holders(root: Path, target: str, nodes: list[dict[str, Any]], complete:
         me = n.get("milestone_execution")
         if isinstance(me, dict) and me.get("state") != "closed" and me.get("rollup_branch"):
             held.setdefault(me["rollup_branch"], f"live: open rollup of {n.get('id')}")
-    return held
+    return held, paths
 
 
 def _worktrees(root: Path) -> list[dict[str, str]]:
@@ -104,11 +140,29 @@ def _worktrees(root: Path) -> list[dict[str, str]]:
     return blocks
 
 
-def _worktree_reason(ctx: Any, wt: dict[str, str], merged_local: dict[str, bool]) -> tuple[str | None, bool]:
-    """The reason to list it, and whether ``--fix`` may remove it (a detached one is judged after)."""
+#: Why the worktree of a merged branch is listed, by the branch's verdict (``_branch_reason``).
+_MERGED_WORKTREE = {"merged": "is merged", "fresh": "has no commits yet", "unproven": f"is merged; {NO_EVIDENCE}"}
+
+
+def _live_reason(ctx: Any, wt: dict[str, str]) -> str | None:
+    branch = wt.get("branch", "").removeprefix("refs/heads/")
+    if branch and branch in ctx.held:
+        return f"branch {branch} {ctx.held[branch]}"
+    return ctx.held_paths.get(str(Path(wt["worktree"]).resolve()))
+
+
+def _worktree_reason(ctx: Any, wt: dict[str, str], merged_local: dict[str, str]) -> tuple[str | None, bool]:
+    """The reason to list it, and whether ``--fix`` may remove it (a detached one is judged after).
+
+    Liveness comes first, before a missing directory or a merged branch: a live worktree is
+    reported with its live reason and never removed.
+    """
+    live = _live_reason(ctx, wt)
+    branch = wt.get("branch", "").removeprefix("refs/heads/")
+    if live:
+        return (live, False) if "prunable" in wt or branch in merged_local or not branch else (None, False)
     if "prunable" in wt:
         return "directory missing", True
-    branch = wt.get("branch", "").removeprefix("refs/heads/")
     if not branch:
         head = wt.get("HEAD", "")
         how = merged_how(ctx.root, head, ctx.target) if head else None
@@ -119,11 +173,7 @@ def _worktree_reason(ctx: Any, wt: dict[str, str], merged_local: dict[str, bool]
         return f"detached at {head[:12]}", True
     if branch not in merged_local:
         return None, False
-    if branch in ctx.held:
-        return f"branch {branch} {ctx.held[branch]}", False
-    if not merged_local[branch]:
-        return f"branch {branch} has no commits yet", False
-    return f"branch {branch} is merged", True
+    return f"branch {branch} {_MERGED_WORKTREE[merged_local[branch]]}", merged_local[branch] == "merged"
 
 
 def _ignored_note(path: Path) -> str:
@@ -152,8 +202,8 @@ def _remove_worktree(root: Path, path: str) -> str | None:
     return out if code else None
 
 
-def worktree_findings(ctx: Any, merged_local: dict[str, bool]) -> list[Finding]:
-    """``merged_local``: local branches ``ctx.target`` contains -> whether each has a commit of its own."""
+def worktree_findings(ctx: Any, merged_local: dict[str, str]) -> list[Finding]:
+    """``merged_local``: local branches ``ctx.target`` has -> ``"merged"``, ``"fresh"`` or ``"unproven"``."""
     here = Path(git_checked(["rev-parse", "--show-toplevel"], ctx.root)).resolve()
     found = []
     for wt in _worktrees(ctx.root)[1:]:   # the first is the main worktree
