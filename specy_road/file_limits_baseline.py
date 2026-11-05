@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import math
 import re
 import sys
@@ -12,9 +13,8 @@ from pathlib import Path
 from typing import TextIO
 
 import yaml
-from yaml import compose
-from yaml.nodes import MappingNode
 
+from specy_road.file_limits_baseline_yaml import append_baseline_yaml_text, yaml_quoted_scalar
 from specy_road.file_limits_engine import (
     build_overlay_match_sets,
     collect_tracked_files,
@@ -29,8 +29,6 @@ from specy_road.runtime_paths import project_root, source_scan_root
 _FILE_STEP = 50
 _FUNC_STEP = 20
 _BASELINE_NAME = re.compile(r"^baseline-(\d{4}-\d{2}-\d{2})-(\d+)$")
-_TOP_LEVEL_KEY = re.compile(r"^[A-Za-z_][\w.-]*\s*:")
-_TRAILING_POLICY_KEYS = ("roadmap_manifest_max_lines", "roadmap_json_chunk_max_lines", "hard_alerts")
 
 
 def literal_path_glob(rel_posix: str) -> str:
@@ -48,134 +46,12 @@ def literal_path_glob(rel_posix: str) -> str:
     return "".join(out)
 
 
-def _yaml_quoted_scalar(value: str) -> str:
-    return yaml.dump(value, default_style='"', width=2**16).strip()
-
-
-def _inline_header_comment(text: str, val_end: int) -> str:
-    line_end = text.find("\n", val_end)
-    if line_end == -1:
-        line_end = len(text)
-    tail = text[val_end:line_end]
-    match = re.match(r"(\s+#.*)$", tail)
-    return match.group(1) if match else ""
-
-
-def _flow_override_limits_span(text: str) -> tuple[int, int, str] | None:
-    """Byte span of a flow-style ``override_limits`` value (from key line start through value end)."""
-    try:
-        root = compose(text)
-    except yaml.YAMLError:
-        return None
-    if not isinstance(root, MappingNode):
-        return None
-    for key_node, val_node in root.value:
-        if key_node.value != "override_limits":
-            continue
-        line_start = text.rfind("\n", 0, key_node.start_mark.index)
-        line_start = 0 if line_start == -1 else line_start + 1
-        val_start = val_node.start_mark.index
-        val_end = val_node.end_mark.index
-        if not text[val_start:val_end].lstrip().startswith("["):
-            return None
-        return line_start, val_end, _inline_header_comment(text, val_end)
-    return None
-
-
-def _render_override_limits_section(cfg: dict, block_lines: list[str], header_comment: str) -> str:
-    header = f"override_limits:{header_comment}" if header_comment else "override_limits:"
-    lines = [header]
-    for ov in cfg.get("override_limits") or []:
-        if isinstance(ov, dict):
-            lines.extend(_serialize_override_entry(ov))
-    lines.extend(block_lines)
-    return "\n".join(lines) + "\n"
-
-
-def _ends_override_limits_section(line: str) -> bool:
-    """True when a line ends the ``override_limits`` block list (not a column-zero comment)."""
-    if not line.strip():
-        return False
-    if line[0] in " \t":
-        return False
-    if line.lstrip().startswith("#"):
-        return False
-    return _TOP_LEVEL_KEY.match(line) is not None
-
-
-def _serialize_override_entry(ov: dict) -> list[str]:
-    name = ov.get("name")
-    if not isinstance(name, str):
-        return []
-    lines = [f"  - name: {_yaml_quoted_scalar(name)}"]
-    globs = ov.get("file_globs") or []
-    if globs:
-        lines.append("    file_globs:")
-        for g in globs:
-            lines.append(f"      - {_yaml_quoted_scalar(str(g))}")
-    if "max_lines_per_file" in ov:
-        lines.append(f"    max_lines_per_file: {int(ov['max_lines_per_file'])}")
-    if "max_lines_per_function" in ov:
-        lines.append(f"    max_lines_per_function: {int(ov['max_lines_per_function'])}")
-    return lines
-
-
-def _override_limits_header_index(lines: list[str]) -> int | None:
-    for i, line in enumerate(lines):
-        if re.match(r"^override_limits\s*:", line):
-            return i
-    return None
-
-
-def _insert_index_for_new_override_rows(lines: list[str]) -> tuple[int, bool]:
-    """Return ``(line index to insert before, need ``override_limits:`` header)``."""
-    header = _override_limits_header_index(lines)
-    if header is not None:
-        insert_at = len(lines)
-        for i in range(header + 1, len(lines)):
-            if _ends_override_limits_section(lines[i]):
-                insert_at = i
-                break
-        return insert_at, False
-    for i, line in enumerate(lines):
-        key = line.split(":", 1)[0].strip()
-        if key in _TRAILING_POLICY_KEYS:
-            return i, True
-    return len(lines), True
-
-
 def _loads_file_limits_mapping(text: str) -> dict | None:
     try:
         cfg = yaml.safe_load(text)
     except yaml.YAMLError:
         return None
     return cfg if isinstance(cfg, dict) else None
-
-
-def append_baseline_yaml_text(existing_text: str, block: str, *, cfg: dict | None = None) -> str:
-    if not block.strip():
-        return existing_text
-    block_lines = block.rstrip("\n").splitlines()
-    loaded = cfg if cfg is not None else _loads_file_limits_mapping(existing_text)
-    flow_span = _flow_override_limits_span(existing_text)
-    if flow_span is not None:
-        start, end, header_comment = flow_span
-        section = _render_override_limits_section(loaded or {}, block_lines, header_comment)
-        result = existing_text[:start] + section + existing_text[end:]
-        if existing_text.endswith("\n") or not result.endswith("\n"):
-            result += "\n"
-        return result
-    lines = existing_text.splitlines()
-    insert_at, need_header = _insert_index_for_new_override_rows(lines)
-    new_lines = lines[:insert_at]
-    if need_header:
-        new_lines.append("override_limits:")
-    new_lines.extend(block_lines)
-    new_lines.extend(lines[insert_at:])
-    result = "\n".join(new_lines)
-    if existing_text.endswith("\n") or not result.endswith("\n"):
-        result += "\n"
-    return result
 
 
 def round_up_to_step(value: int, step: int) -> int:
@@ -288,7 +164,7 @@ def format_baseline_entries(
         lines.append(f"  - name: baseline-{today}-{idx}")
         lines.append("    file_globs:")
         for rel in paths:
-            lines.append(f"      - {_yaml_quoted_scalar(literal_path_glob(rel))}")
+            lines.append(f"      - {yaml_quoted_scalar(literal_path_glob(rel))}")
         lines.append(f"    max_lines_per_file: {file_cap}")
         if func_cap > 0:
             lines.append(f"    max_lines_per_function: {func_cap}")
@@ -347,7 +223,15 @@ def write_baseline(
     if dry_run:
         print(block, file=out, end="")
         return 0
-    new_text = append_baseline_yaml_text(raw, block, cfg=cfg)
+    try:
+        new_text = append_baseline_yaml_text(raw, block, cfg=cfg)
+    except ValueError:
+        print(
+            f"file-limits baseline: refusing to write {cfg_path}; "
+            "append would alter existing override_limits entries.",
+            file=sys.stderr,
+        )
+        return 1
     if _loads_file_limits_mapping(new_text) is None:
         print(
             f"file-limits baseline: refusing to write {cfg_path}; "

@@ -197,6 +197,7 @@
       "touch_zones": [
         "specy_road/file_limits_engine.py",
         "specy_road/file_limits_baseline.py",
+        "specy_road/file_limits_baseline_yaml.py",
         "specy_road/bundled_scripts/validate_file_limits.py",
         "specy_road/bundled_scripts/upgrade.py",
         "docs/file-limits.md",
