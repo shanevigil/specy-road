@@ -134,7 +134,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.37_comma-or-and-part-counts-only-when-it-names-a-defect_33917212-11fd-4aee-bea6-37b23ae674ab.md",
       "sibling_order": 37,
-      "status": "Complete",
+      "status": "Not Started",
       "title": "Review notes: a part joined by a comma or 'and' is a second observation only when it names a defect",
       "touch_zones": [
         "specy_road/review_record_rules.py",
