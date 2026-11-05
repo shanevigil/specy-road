@@ -38,3 +38,18 @@ Confirmed as listed: `docs/install-and-usage.md`, `docs/release-runbook.md`, `do
 - `docs/install-and-usage.md` subsection "Which install is running": required by A3.
 - `docs/release-runbook.md` A.3 step 5 "Announce the RC": required by A2.
 - Mocks: none. Branches or guards in code: none (docs-only leaf).
+
+## Fix round 1
+
+Sol (gpt-6.1-sol) blocked A4 with R1. In the round-0 code, the fence recognizer cut every delimiter to three characters. An inner ```` ```bash ```` line therefore closed an outer ````` ````markdown ````` template, and a forbidden two-index install inside that template went undetected. Fixed in `d1c11d2b`, after merging `origin/WIP/improvements-0-3-1`.
+
+- `_FENCE` now captures the full run (`` `{3,} `` or `~{3,}`) and the text after it.
+- In `_fenced_commands`, a fence keeps its full opening delimiter. It closes only on a run of the same character that is at least as long and has nothing after it. An inner, shorter or info-string fence line is read as literal content of the outer fence.
+- New control in `test_the_detector_flags_the_two_index_form_and_passes_the_recipe`: a four-backtick `markdown` template that contains a three-backtick `bash` two-index `pip install`. The test asserts that the scanner flags it.
+- Red-green: the round-0 scanner (`c6cbce79`) does not flag that control (checked by running the old module on it), and the new scanner does. I also pointed the full gate at a temporary repo whose `README.md` holds the nested template, and it is now REJECTED.
+- Docs gate re-run: `pytest -q tests/test_docs_rc_install_recipe.py tests/test_release_harness.py` passed (20 tests). `specy-road file-limits` reports OK. As instructed, I did not run the full suite.
+
+### Added (round 1)
+
+- `tests/test_docs_rc_install_recipe.py` `nested` control case (the R1 reproduction), so the gate cannot regress on templates with nested fences.
+- Close-fence guard in `_fenced_commands` (same character, length at least the opener's, no info string), as R1 requires.
