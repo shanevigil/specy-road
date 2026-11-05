@@ -97,6 +97,7 @@ entries:
       - specy_road/bundled_scripts/review_cli.py
       - specy_road/review_run_status.py
       - tests/
+      - specy_road/orphaned_claims.py
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
@@ -119,6 +120,7 @@ entries:
       - specy_road/finish_land_deterministic.py
       - specy_road/milestone_rollup_git.py
       - tests/
+      - specy_road/finish_land_roadmap_graph.py
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
@@ -140,6 +142,20 @@ entries:
       - specy_road/worker_runner.py
       - sr/roadmap/orchestration.yaml
       - sr/roadmap/decisions.yaml
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
+  - codename: move-node-chosen-id
+    node_id: M21.1
+    branch: feature/rm-move-node-chosen-id
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_move_node.py
+      - specy_road/bundled_scripts/roadmap_outline_ops.py
+      - specy_road/bundled_scripts/roadmap_outline_renumber.py
+      - specy_road/gui_app_routes_nodes.py
+      - specy_road/gui_app_models.py
+      - docs/roadmap-authoring.md
+      - tests/
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending

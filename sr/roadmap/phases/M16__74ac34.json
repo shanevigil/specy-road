@@ -2,7 +2,8 @@
   "nodes": [
     {
       "acceptance": [
-        "Before the switch, tests/parity/checks_migration/ holds a table for baseline_cmd, land_check_cmd, verify_cmd and the review-before-finish switch: absent, blank, set, overridden on the CLI (`--verify-cmd`, `--verify`), disabled on the CLI where an option exists, old form only, new form only, and both forms; each row records at pickup the commands run, their arguments, cwd, added environment, the evidence recorded, and the executor and reviewer prompt text that names the verify command with its appended test paths",
+        "Before the switch, tests/parity/checks_migration/ records at pickup, for baseline_cmd, land_check_cmd, verify_cmd and the review-before-finish switch, the legacy rows: absent, blank, set, overridden on the CLI (`--verify-cmd`, `--verify`), and disabled on the CLI where an option exists; each records the commands run, their arguments, cwd, added environment, the evidence recorded, and the executor and reviewer prompt text that names the verify command with its appended test paths. A hand-written `checks:` equivalent of each row is committed beside it; after the switch each equivalent gives its row's recorded result, and mixed-form precedence (new form wins, one validate notice) has its own test",
+        "Before the switch, this sheet fixes the `checks:` entry schema: its fields (name, run, when, plus the fields M16.52 and M16.22 add), which are required, their defaults, the order entries run within one `when:` stage, CLI precedence for `--verify-cmd` and `--verify`, and the policy key the review-before-finish switch migrates to; the other lines are checked against it",
         "`checks:` in git-workflow.yaml names each command once with `when:` (baseline, ready, land, prompt); one reader replaces the three key readers; every table row gives the same commands, arguments, cwd, environment, evidence and prompt text from either form; with both forms present the new form wins and validate prints one notice",
         "`upgrade` rewrites the old keys and writes the policy equivalent of the review-before-finish switch, so every row's effective requirement is unchanged; applying twice gives the same file; `--dry-run` writes nothing; validate accepts both forms for one release with one notice for the old form",
         "No zone filter is added to migrated entries; ratchet_paths and ready's failed-command evidence (M15.24) mean what they meant at pickup; the M16.1 decision table is unchanged",
@@ -18,7 +19,7 @@
       "node_key": "74ac34a2-084a-4dd3-84ec-ac37b20dd983",
       "parent_id": "M16",
       "planning_dir": "planning/M16.14_one-checks-block-replaces-baseline-cmd-land-check-cmd-and-verify-cmd-with-the-same-commands-at-the-same-points_74ac34a2-084a-4dd3-84ec-ac37b20dd983.md",
-      "sibling_order": 15,
+      "sibling_order": 14,
       "status": "Not Started",
       "title": "One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points",
       "touch_zones": [
@@ -37,16 +38,22 @@
         "docs/git-workflow.md",
         "tests/parity/checks_migration/",
         "tests/",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/do_next_available.py",
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/finish_land_local.py",
+        "specy_road/review_gate.py",
+        "specy_road/bundled_scripts/do_next_prompt.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json"
       ],
       "type": "task"
     },
     {
       "acceptance": [
         "Before any reader switches, tests/parity/orchestration_state/ holds one fixture repo per row: a fresh manual executor claim with no worker, a claim with a live worker, a worker that exited clean, a worker that exited failed, a claim abandoned under M15.26's delivered rule, a claim with a review record and no worker, a worker with no leaf (chore), one leaf with two worktrees, and an unreadable worker state file; each row records `worker list`, `orchestrate plan --json` and doctor output and cleanup eligibility at pickup",
-        "`orchestration.state.snapshot(repo_root)` is read-only and returns exactly the fields listed in tests/fixtures/orchestration_snapshot_v1.json: `schema: 1`; per leaf key the claim (codename, branch, registered_at), workers (id, harness, model, status, pid_alive, started_at, ended_at), worktrees (path, branch, dirty) and reviews (model, verdict, commit, fresh_for_head); leafless workers; and status from the vocabulary in this sheet, with `unknown` for a source it cannot read",
-        "`worker list`, `orchestrate plan` and doctor's claim checks read the snapshot, and every row gives the same output and cleanup eligibility as at pickup; a manual claim is never reported abandoned and never frees a slot",
-        "The layering gate fails when the review gate, a CLI entry point or a gui_app module adds an import of an orchestration module other than `specy_road.orchestration`; imports present at pickup are baselined and may only shrink",
+        "`orchestration.state.snapshot(repo_root)` is read-only and returns exactly the fields listed in tests/fixtures/orchestration_snapshot_v1.json: `schema: 1`; per leaf key the claim (codename, branch, registered_at), workers (id, harness, model, status, pid_alive, started_at, ended_at), worktrees (path, branch, dirty) and reviews (model, verdict, commit, fresh_for_head); leafless workers; and status from the vocabulary and truth table in this sheet; the truth table, committed in this leaf's first commit before any package change, fixes the status for simultaneous workers, manual presence, a READY tip and unreadable inputs, and an unreadable source sets only its own fields to `unknown` without dropping readable ones",
+        "`worker list`, `orchestrate plan` and doctor's claim checks read the snapshot, and every row gives the same output and cleanup eligibility as at pickup; M15.26's delivered reporting and slot rules hold for every row, manual claims included, and the snapshot's status adds no exemption",
+        "The layering gate fails when the review gate, a CLI entry point or a gui_app module adds an import of an orchestration module other than `specy_road.orchestration`; imports present at pickup are baselined and may only shrink; when a later leaf moves one of those consumers, its baseline entries follow the recorded module rename (M16.36's rule) instead of counting as new imports",
         "docs/orchestration.md documents the snapshot fields as the read-only interface for other consumers (the PM GUI work is phase M17); writes stay in today's modules; no GUI change",
         "Estimated net line change (informational, not a gate): package about -100"
       ],
@@ -59,7 +66,7 @@
       "node_key": "fba72c3a-24a5-4c6b-b174-0e581d8b8450",
       "parent_id": "M16",
       "planning_dir": "planning/M16.15_orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui_fba72c3a-24a5-4c6b-b174-0e581d8b8450.md",
-      "sibling_order": 16,
+      "sibling_order": 15,
       "status": "Not Started",
       "title": "Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI",
       "touch_zones": [
@@ -82,8 +89,8 @@
     },
     {
       "acceptance": [
-        "The worker modules (adapters, runner, lease, lock, state, reconcile, ops, outbox, process, sessions, usage, witness, exit, schema) move under specy_road/orchestration/workers/ with `git mv`; code outside imports them through specy_road.orchestration",
-        "The worker test files pass with only import paths and patch targets edited (the summary shows that every changed test line is an import or a patch-target string); real subprocess, lease-race and crash-recovery tests are kept as they are",
+        "The worker modules (adapters, runner, lease, lock, state, reconcile, ops, outbox, process, sessions, usage, witness, exit, schema) move under specy_road/orchestration/workers/ with `git mv`; code outside imports them through specy_road.orchestration; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
+        "The worker test files pass with only import paths, patch targets and recorded fixture-path relocations edited (the summary shows that every changed test line is one of those); no assertion changes; real subprocess, lease-race and crash-recovery tests are kept as they are",
         "Parity harness, decision table and the M16.15 state table unchanged",
         "Estimated net line change (informational, not a gate): package about -50"
       ],
@@ -96,7 +103,7 @@
       "node_key": "51f22f17-0d11-4dc4-8709-d39d406991c5",
       "parent_id": "M16",
       "planning_dir": "planning/M16.16_worker-runtime-moves-into-orchestration-workers-with-import-path-edits-only_51f22f17-0d11-4dc4-8709-d39d406991c5.md",
-      "sibling_order": 17,
+      "sibling_order": 16,
       "status": "Not Started",
       "title": "Worker runtime moves into orchestration/workers with import-path edits only",
       "touch_zones": [
@@ -104,45 +111,18 @@
         "specy_road/worker_*.py",
         "specy_road/bundled_scripts/worker_cli*.py",
         "specy_road/bundled_scripts/worker_hook.py",
-        "tests/"
+        "tests/",
+        "specy_road/",
+        "scripts/line_width_baseline.json",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/import-layers-baseline.json",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "Roster, model-profile, harness-facts, orchestrate plan and assign, and role-prompt library modules move under specy_road/orchestration/ with `git mv` and import-path edits; role_prompt_stream folds into role_prompt",
-        "Their tests pass with only import paths and patch targets edited",
-        "Parity harness and decision table unchanged",
-        "Estimated net line change (informational, not a gate): package about -30"
-      ],
-      "codename": "roster-model-profiles-harness-facts-orchestrate-and-role-prompts-move-into-orchestration",
-      "dependencies": [
-        "d0c0d4f8-0294-4c8d-8d1d-e52dee8d3291"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M16.17",
-      "node_key": "67af8a9a-a8ef-4724-9702-be691a497a55",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.17_roster-model-profiles-harness-facts-orchestrate-and-role-prompts-move-into-orchestration_67af8a9a-a8ef-4724-9702-be691a497a55.md",
-      "sibling_order": 18,
-      "status": "Not Started",
-      "title": "Roster, model profiles, harness facts, orchestrate and role prompts move into orchestration",
-      "touch_zones": [
-        "specy_road/orchestration/roster/",
-        "specy_road/roster_*.py",
-        "specy_road/model_*.py",
-        "specy_road/harness_*.py",
-        "specy_road/orchestrate_*.py",
-        "specy_road/bundled_scripts/role_prompt*.py",
-        "specy_road/bundled_scripts/models_cli.py",
-        "specy_road/bundled_scripts/orchestrate_cli.py",
-        "tests/"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "tool_call_guard and its shapes, the role guard, role env and session presence move under specy_road/orchestration/guard/; orchestration_guard_adapters and orchestration_role_guard fold into orchestration_guard_cli and session_overlap into session_cli (Appendix A)",
+        "tool_call_guard and its shapes, the role guard, role env and session presence move under specy_road/orchestration/guard/; orchestration_guard_adapters and orchestration_role_guard fold into orchestration_guard_cli and session_overlap into session_cli (Appendix A); a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string (expected callers: do_next_prompt, review_cli, doctor_worktrees, orphaned_claims and worker_cli); classifier logic is unchanged (M16.48 introduces the tables)",
         "The guard tests pass with only import paths and patch targets edited, so the guard CLI and the three harness hook adapters give the same verdicts and output",
         "Parity harness unchanged",
         "Estimated net line change (informational, not a gate): package about -80"
@@ -156,7 +136,7 @@
       "node_key": "a536eb60-74a5-4a71-9556-d9cb752c881b",
       "parent_id": "M16",
       "planning_dir": "planning/M16.18_shared-checkout-guard-and-session-presence-move-into-orchestration_a536eb60-74a5-4a71-9556-d9cb752c881b.md",
-      "sibling_order": 19,
+      "sibling_order": 18,
       "status": "Not Started",
       "title": "Shared-checkout guard and session presence move into orchestration",
       "touch_zones": [
@@ -169,15 +149,19 @@
         "specy_road/bundled_scripts/orchestration_guard_cli.py",
         "specy_road/bundled_scripts/session_cli.py",
         "scripts/line_width_baseline.json",
-        "tests/"
+        "tests/",
+        "specy_road/",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/import-layers-baseline.json",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
     {
       "acceptance": [
         "Before the move, tests/parity/grind/ holds a table built from existing tests: resume in flight, each limit (leaves, limit waits, wait hours, empty retries), event log lines, `--step pickup` and `--step finish`, and exit codes 3 and 6; each row asserts the outcome at pickup",
-        "Grind session (plan, step, limits, events, in-flight, implement) lives under specy_road/orchestration/grind/; grind_session_limits and grind_session_step fold into grind_session, which stays within the 1,000-line cap (not squashed to get under the 750-line warning); the grind plan computes readiness with RoadmapIndex and reports claims from the M16.15 snapshot",
-        "Grind plan output on the dogfood fixture is byte-identical; the grind table, parity harness and state table unchanged",
+        "Grind session (plan, step, limits, events, in-flight, implement) lives under specy_road/orchestration/grind/; grind_session_limits and grind_session_step fold into grind_session, which stays within the 1,000-line cap (not squashed to get under the 750-line warning); the grind plan computes readiness with RoadmapIndex and reports claims from the M16.15 snapshot; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string (expected callers: cli, doctor_worktrees, finish_modes, worktree_prune, do_next_task and roadmap_crud_dependency_ops)",
+        "Grind plan output on the dogfood fixture, compared before and after on the same committed fixture and refs with a fixed clock and normalised temporary paths, is byte-identical; the grind table, parity harness and state table unchanged",
         "Estimated net line change (informational, not a gate): package about -200"
       ],
       "codename": "grind-session-and-its-plan-move-into-orchestration-read-the-index-and-the-snapshot-and-fold-their-cap-siblings",
@@ -189,7 +173,7 @@
       "node_key": "275b701c-4eb9-4214-ae77-7ab34a7d197a",
       "parent_id": "M16",
       "planning_dir": "planning/M16.19_grind-session-and-its-plan-move-into-orchestration-read-the-index-and-the-snapshot-and-fold-their-cap-siblings_275b701c-4eb9-4214-ae77-7ab34a7d197a.md",
-      "sibling_order": 20,
+      "sibling_order": 19,
       "status": "Not Started",
       "title": "Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings",
       "touch_zones": [
@@ -198,14 +182,18 @@
         "specy_road/bundled_scripts/session_plan*.py",
         "scripts/line_width_baseline.json",
         "tests/parity/grind/",
-        "tests/"
+        "tests/",
+        "specy_road/",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/import-layers-baseline.json",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "For each optional policy (delta, resumed delta, red-green, pre-existing, deferral, RCA escalation, strong review, agreement), the script reports three counts separately from sr/work/reviews (history included): replayable (record, config and commit reconstructed from git at the review's time, with that provenance listed), cited-only (a reason code names the policy but the outcome cannot be replayed) and unknown",
-        "For replayable cases it counts how many gate outcomes the policy changed (a block it caused, an approval it refused to count, a deferral it forced)",
+        "For each optional policy (delta, resumed delta, red-green, pre-existing, deferral, RCA escalation, strong review, agreement), the script reports three counts separately from sr/work/reviews (history included): replayable (record, config and commit reconstructed from git at the review's time, with that provenance listed), cited-only (a reason code names the policy but the outcome cannot be replayed) and unknown; one case is one node_key, commit and review round with its full record set, and a replayable case is compared with only the selected policy disabled",
+        "For replayable cases it counts how many outcomes the policy changed, per the policy-to-evaluator table in this sheet (each policy's public evaluator and the outcome fields compared): a gate block it caused, an approval it refused to count, an RCA escalation or a deferral it forced; a change in the suggested next step alone is not counted as a gate outcome",
         "The counts and a keep or deprecate recommendation per policy are attached to this sheet; an unused or unknown policy is not thereby a removal candidate",
         "human: the maintainer records a decision per policy in this sheet before M16.21 starts; 'deprecate' means a validate notice in rc5 only, and removing a policy needs a separate leaf the maintainer authorises after M16",
         "No package code changes",
@@ -220,22 +208,22 @@
       "node_key": "68912bae-f046-43f9-8576-a97d7c2577c8",
       "parent_id": "M16",
       "planning_dir": "planning/M16.20_review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome_68912bae-f046-43f9-8576-a97d7c2577c8.md",
-      "sibling_order": 21,
+      "sibling_order": 20,
       "status": "Not Started",
       "title": "Review-policy evidence: how often each optional review policy changed a gate outcome",
       "touch_zones": [
         "scripts/review_effort_study.py",
-        "sr/planning/"
+        "sr/planning/M16.20_review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome_68912bae-f046-43f9-8576-a97d7c2577c8.md"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "review_ready_merge, review_bookkeeping, review_gate_agreement, review_strong, review_resumed_delta and review_policy_ref fold into the gate and policy modules, review_eligible's remainder and review_next_step into review_cli, and review_defer (CLI) and review_deferral (rules) are renamed so the names say which is which; sizes in this sheet, each result within the 1,000-line cap (not squashed to get under the 750-line warning)",
+        "review_ready_merge, review_bookkeeping, review_gate_agreement, review_strong, review_resumed_delta and review_policy_ref fold into the gate and policy modules, review_eligible's remainder and review_next_step into review_cli, and review_defer (CLI) and review_deferral (rules) are renamed so the names say which is which; each merged module is at most 1,000 lines (not squashed to get under the 750-line warning) and the summary records each resulting file's line count; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string, except validate's deprecation notice (A2)",
         "Each policy the maintainer marked deprecated in M16.20 keeps its behaviour and its decision-table rows; validate prints one notice when a deprecated policy is in use; no policy is removed in M16",
         "The M16.1 rows for `review record` filed from a reviewer's final message are unchanged",
         "Moved files are rewrapped and leave the width baseline; no function rises above its merge-base complexity; parity harness unchanged",
-        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
+        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: a module or command rename as old name -> new name, removed at the 0.3.1 final tag under option A; a policy deprecation as a notice whose removal needs a separately authorised leaf after M16; no version heading is written",
         "Estimated net line change (informational, not a gate): package about -250"
       ],
       "codename": "fold-the-review-gate-and-escalation-fragments-and-mark-the-policies-the-evidence-did-not-keep-as-deprecated",
@@ -248,7 +236,7 @@
       "node_key": "5fa51e45-9e09-4119-826d-43c6d304f243",
       "parent_id": "M16",
       "planning_dir": "planning/M16.21_fold-the-review-gate-and-escalation-fragments-and-mark-the-policies-the-evidence-did-not-keep-as-deprecated_5fa51e45-9e09-4119-826d-43c6d304f243.md",
-      "sibling_order": 22,
+      "sibling_order": 21,
       "status": "Not Started",
       "title": "Fold the review gate and escalation fragments, and mark the policies the evidence did not keep as deprecated",
       "touch_zones": [
@@ -261,17 +249,21 @@
         "docs/orchestration.md",
         "scripts/line_width_baseline.json",
         "tests/",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/import-layers-baseline.json",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "complexity_delta scores every Python function in the leaf's diff and its merge-base version with ruff C901 at max-complexity 0 (so every score is visible), waivers ignored; a function is matched by qualified name within its file, following git rename detection for moved files, and a function with no merge-base match is new",
+        "complexity_delta scores every Python function in the leaf's diff and its merge-base version with ruff C901 at max-complexity 0 (so every score is visible), waivers ignored; a function is matched by qualified name within its file, following git rename detection for moved files; a function with no such match whose name equals exactly one function removed from another file in the same diff is matched to that function; any other function is new",
         "`ready` and the review packet list each matched function whose score rose (any increase, as the maintainer's rule states), each new function over the configured limit, and each added `noqa: C901`; a moved function whose score did not change is not listed",
-        "A `checks:` entry sets report or block; in block mode `ready` refuses with the list and the fix, the gate refuses an approval on a commit that fails, and a missing ruff blocks with an install hint (report mode says skipped)",
-        "A table test covers growth below the limit, an unchanged moved function, a renamed file, a new function under and over the limit, an added waiver, and ruff missing in each mode; the M16.1 decision table gains the block rows",
-        "sr/roadmap/git-workflow.yaml enables it in block mode; the coordinator retires the dispatcher's own check outside this leaf",
+        "A `checks:` entry sets report or block; `ready` records the result in its evidence with the commit it scored; in block mode `ready` refuses with the list and the fix, and the gate refuses an approval when the result for the approved commit is failed, missing or for another commit; a missing ruff blocks with an install hint (report mode records skipped)",
+        "A table test covers growth below the limit, an unchanged moved function, a renamed file, a function extracted into another file, a new function under and over the limit, an added waiver, a stale and a missing result, and ruff missing in each mode; the M16.1 decision table gains the block rows",
+        "sr/roadmap/git-workflow.yaml enables it in block mode",
         "Estimated net line change (informational, not a gate): package about +150 (requested by the maintainer)"
       ],
       "codename": "post-fix-refactor-gate-ready-and-the-review-packet-report-any-complexity-growth-and-policy-can-block-on-it",
@@ -283,7 +275,7 @@
       "node_key": "7b52d543-e78c-4e74-bcd1-24d5a8b3034b",
       "parent_id": "M16",
       "planning_dir": "planning/M16.22_post-fix-refactor-gate-ready-and-the-review-packet-report-any-complexity-growth-and-policy-can-block-on-it_7b52d543-e78c-4e74-bcd1-24d5a8b3034b.md",
-      "sibling_order": 23,
+      "sibling_order": 22,
       "status": "Not Started",
       "title": "Post-fix refactor gate: ready and the review packet report any complexity growth, and policy can block on it",
       "touch_zones": [
@@ -295,7 +287,8 @@
         "docs/orchestration-review.md",
         "sr/roadmap/git-workflow.yaml",
         "tests/parity/review_gate/",
-        "tests/"
+        "tests/",
+        "specy_road/review_gate.py"
       ],
       "type": "task"
     },
@@ -303,7 +296,7 @@
       "acceptance": [
         "tests/support/ provides a `roadmap_repo` builder (manifest, chunks, planning sheets, registry, git-workflow.yaml, deterministic node keys), a session-cached git repo and bare remote template copied per test, in-process `run_cli(argv)` and `run_cli_subprocess(argv)`, `dogfood_copy`, `api_client` and a fake harness, each with its own test",
         "test_worker_cli, test_models_and_prompt, test_orchestrate_plan and test_roadmap_crud, and the files that import from them, use tests/support instead of importing from each other",
-        "Collected test ids are unchanged apart from moved helpers, and the covered-arc set (lean_metrics --contexts) is unchanged at the same production commit",
+        "Existing test item ids are unchanged apart from moved helpers; the support-primitive tests A1 adds are listed separately in the summary; the covered-arc set of production code (lean_metrics --contexts) does not shrink at the same production commit",
         "Estimated net line change (informational, not a gate): tests about -600"
       ],
       "codename": "tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them",
@@ -315,7 +308,7 @@
       "node_key": "73c323a0-9890-48b5-b0fd-6d1f1232e08a",
       "parent_id": "M16",
       "planning_dir": "planning/M16.23_tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them_73c323a0-9890-48b5-b0fd-6d1f1232e08a.md",
-      "sibling_order": 24,
+      "sibling_order": 23,
       "status": "Not Started",
       "title": "Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them",
       "touch_zones": [
@@ -325,37 +318,44 @@
         "tests/test_models_and_prompt.py",
         "tests/test_orchestrate_plan.py",
         "tests/test_roadmap_crud.py",
-        "tests/"
+        "tests/",
+        "scripts/line_width_baseline.json",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "Test files move with `git mv` into tests/unit, tests/flows/<area>, tests/cli, tests/gui and tests/repo per a mapping file tests/support/layout.csv committed first in this leaf; only moves and import fixes",
+        "Test files move with `git mv` into tests/unit, tests/flows/<area>, tests/cli, tests/gui and tests/repo per a mapping file tests/support/layout.csv committed first in this leaf; only moves, import fixes, and replacing `Path(__file__).parents[N]` repo-root assumptions with tests/support's REPO helper; assertions and fixture contents unchanged; entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json change only by the layout.csv path mapping",
         "Collected test count and covered-arc set unchanged; test ids change only by path",
         "Estimated net line change (informational, not a gate): tests about -50"
       ],
       "codename": "tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only",
       "dependencies": [
-        "840167f3-ec33-428a-86cc-e6ea639f8d6b"
+        "840167f3-ec33-428a-86cc-e6ea639f8d6b",
+        "a0733044-eec3-4411-bec8-e6f31fac6456"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.24",
       "node_key": "33af9de4-c487-4e4e-ac48-253ffb8483f1",
       "parent_id": "M16",
       "planning_dir": "planning/M16.24_tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only_33af9de4-c487-4e4e-ac48-253ffb8483f1.md",
-      "sibling_order": 25,
+      "sibling_order": 24,
       "status": "Not Started",
       "title": "Tests: files move into unit, flows, cli, gui and repo lanes, moves only",
       "touch_zones": [
-        "tests/"
+        "tests/",
+        "scripts/line_width_baseline.json",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "scripts/test_dedupe_worklist.py reads the lean_metrics --contexts output and writes tests/support/dedupe/review-gate.csv, worker.csv, pickup-finish.csv and rest.csv: the identical-arc groups and the pairs with Jaccard 0.95 or more, each with a proposed action (delete, fold or keep) and, for delete or fold, the surviving test and the assertion it makes that covers the removed one",
-        "The worklists are committed and no test changes in this leaf; the coordinator sets planned_test_changes on M16.56 to M16.59 from them before pickup",
+        "scripts/test_dedupe_worklist.py reads the lean_metrics --contexts output (its commit recorded in each file) and writes candidate rows to tests/support/dedupe/review-gate.csv, worker.csv, pickup-finish.csv and rest.csv: the identical-arc groups and the pairs with Jaccard 0.95 or more, by stable test item id. The executor then records for every candidate an action (delete, fold or keep) and, for delete or fold, the surviving test, the assertion in it that covers the removed one and the fold destination; reviewers check those columns, and an undecided row is keep",
+        "No removal row in any worklist targets another row's surviving test; this leaf commits the four worklists and changes no test and no roadmap node; the planner sets planned_test_changes on M16.56 to M16.59 from them after this leaf merges, outside its diff",
         "Estimated net line change (informational, not a gate): scripts about +150"
       ],
       "codename": "tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it",
@@ -367,7 +367,7 @@
       "node_key": "3c8001e2-d1c2-4365-a0f2-be80807504ee",
       "parent_id": "M16",
       "planning_dir": "planning/M16.25_tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it_3c8001e2-d1c2-4365-a0f2-be80807504ee.md",
-      "sibling_order": 26,
+      "sibling_order": 25,
       "status": "Not Started",
       "title": "Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it",
       "touch_zones": [
@@ -378,8 +378,8 @@
     },
     {
       "acceptance": [
-        "No test monkeypatches or imports a `_`-prefixed name (from about 100 patches in 25 files); the runner, the clock (M16.4), the LLM client factory (M16.10) and the process command-line reader are public injection points; constraints/test-private-imports-baseline.txt is empty",
-        "No test calls `time.sleep`; stall and timeout tests use the injectable clock",
+        "Before edits, this sheet lists each reference in constraints/test-private-imports-baseline.txt with its resolution: a public seam in a named production module, or the test rewritten to a public interface; production code changes only in the modules that list names, and only to add those seams (expected: the runner, the clock (M16.4), the LLM client factory (M16.10) and the process command-line reader); no test monkeypatches or imports a `_`-prefixed name, and the baseline file is empty",
+        "Logical timeout and stall tests use the injectable clock instead of `time.sleep`; real process and race tests synchronise with explicit events or bounded waits; the child-process blocking fixtures that still sleep are listed in a committed allowlist, and a test fails on `time.sleep` in tests/ outside it",
         "Estimated net line change (informational, not a gate): tests about -500; package about +30 (seams)"
       ],
       "codename": "tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock",
@@ -391,7 +391,7 @@
       "node_key": "2f89d103-fb28-4584-a17e-3364cc5b1a99",
       "parent_id": "M16",
       "planning_dir": "planning/M16.26_tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock_2f89d103-fb28-4584-a17e-3364cc5b1a99.md",
-      "sibling_order": 27,
+      "sibling_order": 26,
       "status": "Not Started",
       "title": "Tests: public seams replace private-name patches, and no test sleeps on the wall clock",
       "touch_zones": [
@@ -399,7 +399,8 @@
         "specy_road/clock.py",
         "specy_road/orchestration/workers/",
         "specy_road/llm_client.py",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "specy_road/"
       ],
       "type": "task"
     },
@@ -419,7 +420,7 @@
       "node_key": "142b5d57-8272-439f-93a1-0aa3dc7cf88d",
       "parent_id": "M16",
       "planning_dir": "planning/M16.27_tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold_142b5d57-8272-439f-93a1-0aa3dc7cf88d.md",
-      "sibling_order": 28,
+      "sibling_order": 27,
       "status": "Not Started",
       "title": "Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold",
       "touch_zones": [
@@ -432,7 +433,7 @@
         "At most 50 collected test items start `specy-road`, `specyrd` or `python -m specy_road` in a subprocess, counted per item by a test hook; git commands and worker child processes are not counted, and real worker-process and race tests stay as they are",
         "All other CLI tests call `main(argv)` in process through tests/support run_cli",
         "Repo-consistency tests still run in CI (in a separate job if moved)",
-        "The median of three full-suite runs with the M16.2 settings is at most half the M16.2 baseline time; 35 s is printed by lean_metrics and not gated; coverage stays at or above fail_under",
+        "The median of three full-suite runs with the M16.2 settings, on the machine M16.2 recorded, is at most half the M16.2 baseline time and is recorded in the summary; suite time is never a CI failure; 35 s is printed by lean_metrics and not gated; coverage stays at or above fail_under",
         "Estimated net line change (informational, not a gate): tests about -500"
       ],
       "codename": "tests-a-cli-smoke-lane-of-at-most-50-subprocess-items-everything-else-in-process-suite-time-halved",
@@ -444,7 +445,7 @@
       "node_key": "79115c79-0035-4781-9d38-d5a3b117631d",
       "parent_id": "M16",
       "planning_dir": "planning/M16.28_tests-a-cli-smoke-lane-of-at-most-50-subprocess-items-everything-else-in-process-suite-time-halved_79115c79-0035-4781-9d38-d5a3b117631d.md",
-      "sibling_order": 29,
+      "sibling_order": 28,
       "status": "Not Started",
       "title": "Tests: a CLI smoke lane of at most 50 subprocess items, everything else in process, suite time halved",
       "touch_zones": [
@@ -468,7 +469,7 @@
       "node_key": "42e6f078-5c8e-4ac2-b6bc-519cdac7c399",
       "parent_id": "M16",
       "planning_dir": "planning/M16.29_constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions_42e6f078-5c8e-4ac2-b6bc-519cdac7c399.md",
-      "sibling_order": 30,
+      "sibling_order": 29,
       "status": "Not Started",
       "title": "Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions",
       "touch_zones": [

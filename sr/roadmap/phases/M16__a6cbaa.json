@@ -3,11 +3,12 @@
     {
       "acceptance": [
         "Before any reader changes, tests/parity/roster_forms/ holds the toolkit's sr/roadmap/orchestration.yaml as of pickup and a 0.3.1-shaped sample (a human entry, a manual reviewer, claude-code, codex and cursor entries, a dynamic-routing entry with and without `pinned`, and an orchestration.local.yaml with an availability patch and a `roster_add` entry), and records per entry: check_assignment's result for each M16.47 corpus row, the family attestation for an approval, the launch argv and added environment the harness adapter builds for an executor and a reviewer turn, the role-prompt text, and `orchestrate plan --json`",
-        "orchestration.schema.json accepts `version: 1` (today's flat entry, unchanged) and `version: 2`: core fields id, family, roles, may_process, public_key, available, paused_until, unavailable_until and family_pinned at entry level, and an optional `run:` object whose schema branch is chosen by `run.harness` (claude-code, codex, cursor, generic) and holds harness_bin, harness_model, profile, routing, billing_route, channels, preflight, class and subagent_family_lock under today's names; each branch accepts only the fields in this sheet's per-harness table and refuses another with a message naming the field and the harness",
+        "orchestration.schema.json accepts `version: 1` (today's flat entry, unchanged) and `version: 2`: core fields id, family, roles, may_process, public_key, available, paused_until, unavailable_until, family_pinned, class and subagent_family_lock at entry level (class and the family lock are eligibility inputs, so they stay core), and an optional `run:` object whose schema branch is chosen by `run.harness` (claude-code, codex, cursor, generic) and holds harness_bin, harness_model, profile, routing, billing_route, channels, preflight and cursor_force (cursor only, M16.69) under today's names; each branch accepts only the fields in this sheet's per-harness table, which the planner fills before dispatch from each adapter's and role_prompt's reads, and refuses another with a message naming the field and the harness; a valid and an invalid fixture per branch, and a human and a manual-reviewer entry without `run:`, are committed",
         "One loader returns the same entry model from either form, and every roster reader (eligibility, worker and review delegate, role prompt, orchestrate plan and assign, models, validate) reads that model; every parity row gives the same result from each version-1 roster and from the hand-written version-2 equivalent committed beside it",
         "The review gate and review_gate_ready read core fields only; the family attestation (today's routing_problem: family_pinned, else the run block's routing, harness, channels.cli `--model`, harness_model and the profile's api_id) is a function of `specy_road.orchestration` with the same result on every parity and decision-table row; the layering gate fails when a review_gate module imports the roster's run model",
         "validate accepts both forms for one release and prints one notice for a version-1 file that names `specy-road upgrade`; a version-2 entry with a run field at entry level is an error naming the field and `run:`; the M16.0 dogfood validate golden gains only that notice line",
-        "orchestration.local.yaml keeps today's rule that `roster:` patches set only available, paused_until and unavailable_until; `roster_add` entries are read in either form during the window and refused, as today, when they add a command without allow_local_cli; the gate still reads only the committed roster",
+        "orchestration.local.yaml keeps today's rule that `roster:` patches set only available, paused_until and unavailable_until; `roster_add` entries are read in either form during the window (an entry with `run:` is version 2, otherwise version 1; an entry with both `run:` and an entry-level run field is an error naming the field) and refused, as today, when they add a command without allow_local_cli; the gate still reads only the committed roster",
+        "roster_generate (behind `validate --generate-orchestration`) writes the file version it is asked for, a new file is version 2, and no writer appends an entry in the other form to an existing file; module paths in this leaf's zones resolve through M16.17's destination list",
         "No file is rewritten in this leaf (M16.64 migrates); the parity harness, the M16.1 decision table, the M16.47 eligibility corpus and the M16.15 state table are unchanged",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
         "Estimated net line change (informational, not a gate): package about +150 while both forms are read; M16.62 removes the version-1 path"
@@ -21,7 +22,7 @@
       "node_key": "a6cbaac4-954f-42dc-811b-81b9edb6922c",
       "parent_id": "M16",
       "planning_dir": "planning/M16.63_roster-core-and-run-block_a6cbaac4-954f-42dc-811b-81b9edb6922c.md",
-      "sibling_order": 64,
+      "sibling_order": 63,
       "status": "Not Started",
       "title": "Roster entries split into core fields and a typed run: block, read in both forms",
       "touch_zones": [
@@ -48,7 +49,7 @@
     },
     {
       "acceptance": [
-        "`upgrade` rewrites a version-1 roadmap/orchestration.yaml to version 2: core fields stay at entry level, `pinned` becomes `family_pinned`, every other harness field moves under `run:` with `harness` first; entry order, ids, values, `policy`, `substitutions` and every other top-level key are unchanged, and no comment line is dropped (a comment stays with the entry or field it annotated)",
+        "`upgrade` rewrites a version-1 roadmap/orchestration.yaml to version 2: core fields stay at entry level, `pinned` becomes `family_pinned`, every other harness field moves under `run:` with `harness` first; entry order, ids, values, `policy`, `substitutions` and every other top-level key are unchanged; a comment on the line immediately above a key, or on the same line after it, is on the line immediately above, or on the same line after, that same key in the after file, and no other comment line is dropped; the YAML shapes the rewrite supports are a committed table, and a file outside it is reported and left byte-identical",
         "`roster_add` entries in roadmap/orchestration.local.yaml are rewritten the same way when that file exists; its `roster:` availability patches are left as they are",
         "Applying twice gives the same files; `--dry-run` writes nothing and lists the rewrite in the upgrade report (M16.12); a version-2 file is left untouched; a file the rewrite cannot read is reported and left unchanged",
         "tests/parity/roster_forms/ holds before and after files for the toolkit's own sr/roadmap/orchestration.yaml and the 0.3.1-shaped sample: upgrade on each before file writes exactly its committed after file, each after file validates with no notice, and each gives the same M16.63 parity rows as its before file",
@@ -66,7 +67,7 @@
       "node_key": "66711ba8-3d38-427a-bf76-fdc3989e0c75",
       "parent_id": "M16",
       "planning_dir": "planning/M16.64_roster-upgrade-to-run-block_66711ba8-3d38-427a-bf76-fdc3989e0c75.md",
-      "sibling_order": 65,
+      "sibling_order": 64,
       "status": "Not Started",
       "title": "upgrade migrates rosters to core fields plus run:",
       "touch_zones": [
@@ -85,8 +86,8 @@
     },
     {
       "acceptance": [
-        "An end-to-end pass on the toolkit, run from a wheel built from the branch head in a clean virtual environment, follows this sheet's checklist (install, init project, the M16.0 leaf loop with on_complete merge and pr, upgrade on an rc3-shaped and an rc5-shaped repo, worker and review delegate on one leaf per harness the maintainer has, grind-session on the dogfood fixture, doctor --prune, the PM GUI server's read-only routes, and validate, export --check and digest --check on sr/ and the dogfood fixture); each step's result is recorded in this sheet",
-        "Every failure, and every feedback item the maintainer collects in this round, is an intake entry in this sheet with a disposition: fix before 0.3.1 (a new M16 leaf that M16.66 depends on, added by the planner) or after (post-M16 intake)",
+        "Before the pass, this sheet commits the E1-E8 checklist with each step's commands or routes and its expected result, and records which harness logins the maintainer has. The pass runs from a wheel built from the branch head in a clean virtual environment and covers: install, init project, the M16.0 leaf loop with on_complete merge and pr, upgrade on an rc3-shaped and an rc5-shaped repo, worker delegate and review delegate once each on claude-code, codex and cursor (or one sheet line per harness recording that the maintainer has no login for it), grind-session on the dogfood fixture, doctor --prune, the PM GUI server's read-only routes named in the checklist, and validate, export --check and digest --check on sr/ and the dogfood fixture; each step's result is recorded, and a skipped step names its reason and the maintainer's disposition",
+        "Every failure, and every feedback item the maintainer collects in this round, is an intake entry in this sheet with disposition `fix-before-0.3.1` or `after`; this leaf adds no roadmap node: the planner adds each fix leaf and its M16.66 dependency afterwards",
         "This leaf changes no product code; fixes land in their own leaves",
         "Estimated net line change (informational, not a gate): 0"
       ],
@@ -99,7 +100,7 @@
       "node_key": "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0",
       "parent_id": "M16",
       "planning_dir": "planning/M16.65_e2e-pass-and-fix-round_08ceae7d-08a4-4aa3-80ea-e0f74cd512e0.md",
-      "sibling_order": 66,
+      "sibling_order": 65,
       "status": "Not Started",
       "title": "End-to-end pass on the toolkit and a feedback-and-fix round before 0.3.1",
       "touch_zones": [
@@ -117,6 +118,7 @@
         "c44976af-41a0-4627-8789-16dcf49dd12b",
         "d0994708-469d-46e8-ac14-3cc7105bbf6e",
         "e08a12a0-17fd-4251-b596-5a46e1e9335d",
+        "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf",
         "f0e9d130-9b74-479d-a401-ccee402e63a4",
         "f533afb6-f6fb-4394-9beb-d8a5c49ed95d",
         "f8ad690d-5f67-4493-bd07-62324d09cdb2"
@@ -126,7 +128,7 @@
       "node_key": "2dce21fe-f676-42e5-a9a2-cd58a333d5fa",
       "parent_id": "M16",
       "planning_dir": "planning/M16.66_ready-to-tag-0-3-1_2dce21fe-f676-42e5-a9a2-cd58a333d5fa.md",
-      "sibling_order": 67,
+      "sibling_order": 66,
       "status": "Not Started",
       "title": "Gate: ready to tag 0.3.1",
       "touch_zones": [],
@@ -146,7 +148,7 @@
       "node_key": "4830d6a5-8004-46b8-b748-e7194f614aa2",
       "parent_id": "M16",
       "planning_dir": "planning/M16.67_move-node-keeps-other-ids_4830d6a5-8004-46b8-b748-e7194f614aa2.md",
-      "sibling_order": 68,
+      "sibling_order": 67,
       "status": "Complete",
       "title": "move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit",
       "touch_zones": [
@@ -170,13 +172,14 @@
       "node_key": "f0e9d130-9b74-479d-a401-ccee402e63a4",
       "parent_id": "M16",
       "planning_dir": "planning/M16.68_finish-resolves-inherited-roadmap-conflicts_f0e9d130-9b74-479d-a401-ccee402e63a4.md",
-      "sibling_order": 69,
+      "sibling_order": 68,
       "status": "Not Started",
       "title": "finish resolves roadmap chunk conflicts the branch only inherited",
       "touch_zones": [
         "specy_road/finish_land_deterministic.py",
         "specy_road/milestone_rollup_git.py",
-        "tests/"
+        "tests/",
+        "specy_road/finish_land_roadmap_graph.py"
       ],
       "type": "task"
     },
@@ -194,7 +197,7 @@
       "node_key": "3d08dc0a-5e36-45e6-9c64-2afb0bf110c5",
       "parent_id": "M16",
       "planning_dir": "planning/M16.69_cursor-workers-no-force-by-default_3d08dc0a-5e36-45e6-9c64-2afb0bf110c5.md",
-      "sibling_order": 70,
+      "sibling_order": 69,
       "status": "Not Started",
       "title": "Cursor workers launch sandboxed without --force unless the roster opts in",
       "touch_zones": [
@@ -217,19 +220,20 @@
     },
     {
       "acceptance": [
-        "move-node <ID> --to-parent <P> --id <NEW> gives the moved node NEW when NEW is a well-formed direct child id of P (or Mk at the root) and free, else exits 1 naming the reason and writes nothing; --fill-gaps takes the lowest free number under P; both renumber only the moved subtree (M16.67), and either combined with --renumber-outline is refused",
-        "One implementation for CLI and GUI: /outline/move, /nodes/{id}/indent, /nodes/{id}/outdent and /outline/reorder go through the same move_node path and renumber only the moved subtree by default (today move_node_outline passes renumber_outline=True and reorder_siblings renumbers every id, persisting before it validates); reorder changes sibling_order only and is atomic; whole-outline renumber happens only when a request passes the new optional renumber_outline: true; /outline/move also accepts optional new_id and fill_gaps; existing request and response shapes are unchanged",
-        "A new contract test pins the request and response shapes (ok, unknown node, refused) of POST /outline/move, /outline/reorder, /nodes/{id}/indent, /nodes/{id}/outdent and DELETE /nodes/{id}; the existing PM GUI API tests pass; CLI tests cover --id taken, malformed, under the wrong parent, and --fill-gaps",
-        "docs/roadmap-authoring.md says which ids each form changes; if gui/pm-gantt changes (only if it assumes contiguous ids after a move), npm ci && npm run lint && npm test && npm run build pass there. Out of scope: GUI add-node renumbering (_canonical_ids_after_add), new GUI controls, prose id references (M16.72)"
+        "move-node <ID> --to-parent <P> takes --id <NEW> or --fill-gaps; the two are mutually exclusive and either one with --renumber-outline is refused (each refusal exits 1 naming the reason and writes nothing). NEW must match ^M[0-9]+(\\.[0-9]+)*$, be P plus exactly one numeric segment (Mk at the root) and be absent from every node outside the moved subtree. --fill-gaps picks the smallest unused child suffix under P starting at 1 (at the root: starting at 0 when M0 exists, else 1), ignoring the moved subtree. Both renumber only the moved subtree (M16.67)",
+        "One implementation for CLI and GUI: /outline/move, /nodes/{id}/indent and /nodes/{id}/outdent share move_node and renumber only the moved subtree by default (today move_node_outline passes renumber_outline=True); /outline/reorder writes sibling_order only, through one AtomicWritePlan, and changes no id (today reorder_siblings renumbers every id and persists before validating). Whole-outline renumber happens only when a request passes the new optional renumber_outline: true; /outline/move also accepts optional new_id and fill_gaps; indent/outdent treat an omitted body as renumber_outline=false and accept an optional JSON body",
+        "PM GUI add-node (maintainer 2026-11-05): _canonical_ids_after_add stops renumbering the whole outline; the new node takes the next free id under its parent (or a requested free id) and no other node's id changes",
+        "A new contract test pins today's shapes: POST /outline/move and /outline/reorder 200 {ok: \"true\"}; /nodes/{id}/indent and /outdent 200 {ok: true, changed: bool}, with and without a body; DELETE /nodes/{id} 200 {ok: \"true\", node_id}; POST /nodes/add 200 {ok: \"true\", id}; unknown node or node_key 400; other refusals 400 with a string detail. The existing PM GUI API tests (tests/test_gui_app*.py, tests/test_roadmap_gui_*.py) pass; CLI tests cover --id taken, malformed, under the wrong parent, combined with --fill-gaps, and --fill-gaps",
+        "docs/roadmap-authoring.md says which ids each form changes. gui/pm-gantt is not edited (contiguousSubtreeIds slices visible rows by depth, not by id). Out of scope: new GUI controls, prose id references (M21.3)"
       ],
       "codename": "move-node-chosen-id",
       "dependencies": [],
       "execution_milestone": "Agentic-led",
-      "id": "M16.70",
+      "id": "M21.1",
       "node_key": "d0994708-469d-46e8-ac14-3cc7105bbf6e",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.70_move-node-chosen-id_d0994708-469d-46e8-ac14-3cc7105bbf6e.md",
-      "sibling_order": 71,
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.1_move-node-chosen-id_d0994708-469d-46e8-ac14-3cc7105bbf6e.md",
+      "sibling_order": 0,
       "status": "Not Started",
       "title": "move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree",
       "touch_zones": [
@@ -238,7 +242,6 @@
         "specy_road/bundled_scripts/roadmap_outline_renumber.py",
         "specy_road/gui_app_routes_nodes.py",
         "specy_road/gui_app_models.py",
-        "gui/pm-gantt/src/",
         "docs/roadmap-authoring.md",
         "tests/"
       ],
@@ -246,21 +249,21 @@
     },
     {
       "acceptance": [
-        "specy-road indent <ID> and outdent <ID> call the same apply_indent / apply_outdent the PM GUI endpoints use (subtree-only after M16.70), print the old -> new id map, and exit 1 with the reason when the move is a no-op or refused",
-        "group-nodes --into-new <NEW_ID> --title <T> [--type milestone] <ID...> creates the parent at NEW_ID (well-formed, free, a child of the listed nodes' common parent) and moves the listed siblings under it in the order given; nodes that are not siblings are refused; everything is staged in one AtomicWritePlan through a new move_nodes(root, moves) that move-node, indent and outdent also use",
+        "specy-road indent <ID> and outdent <ID> call the same apply_indent / apply_outdent the PM GUI endpoints use (subtree-only after M21.1), print the old -> new id map, and on a no-op exit 1 printing `no previous sibling` (indent) or `already at root` (outdent), writing nothing",
+        "group-nodes --into-new <NEW_ID> --title <T> [--type milestone] <ID...>: the listed ids must be distinct siblings, else refused before staging; NEW_ID must be a free well-formed child id of their common parent (M21.1 rule). The new parent takes the earliest listed sibling's position and gets a codename and planning sheet derived as add-node derives them; its children become NEW_ID.1..NEW_ID.N in argument order, descendant suffixes preserved. All of it is staged in one AtomicWritePlan through a new move_nodes(root, moves) that move-node, indent and outdent also use",
         "A batch validates once: a test grouping 10 siblings counts exactly one whole-roadmap validation (today each move validates, about 1.3 s each on sr/); a refused group leaves the tree byte-for-byte unchanged",
-        "An additive POST /outline/group calls the same function. PM GUI gates: the Python API tests for the PM GUI server (tests/test_gui_app*.py, tests/test_roadmap_gui_*.py) pass and the M16.70 contract test for /outline/move, /outline/reorder, /nodes/{id}/indent, /nodes/{id}/outdent and DELETE /nodes/{id} passes unchanged; any new request field is optional and additive. docs/roadmap-authoring.md and cli_usage list the commands. Out of scope: a GUI group control (no gui/pm-gantt change), prose id references (M16.72), apply kinds (M16.74)"
+        "New POST /outline/group calls the same function: body {into_new, title, node_ids, type (default milestone)}; 200 {ok: \"true\", id_map: {old: new}}; 400 {detail} for unknown or refused input; the M21.1 contract test adds these forms and its existing endpoint shapes pass unchanged, as do the PM GUI Python API tests (tests/test_gui_app*.py, tests/test_roadmap_gui_*.py). New fields on existing endpoints stay optional. docs/roadmap-authoring.md and cli_usage list the commands. Out of scope: a GUI group control (no gui/pm-gantt change), prose id references (M21.3), apply kinds (M21.5)"
       ],
       "codename": "outline-group-cli",
       "dependencies": [
         "d0994708-469d-46e8-ac14-3cc7105bbf6e"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.71",
+      "id": "M21.2",
       "node_key": "f533afb6-f6fb-4394-9beb-d8a5c49ed95d",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.71_outline-group-cli_f533afb6-f6fb-4394-9beb-d8a5c49ed95d.md",
-      "sibling_order": 72,
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.2_outline-group-cli_f533afb6-f6fb-4394-9beb-d8a5c49ed95d.md",
+      "sibling_order": 1,
       "status": "Not Started",
       "title": "CLI indent, outdent and group-nodes re-level siblings in one transaction validated once",
       "touch_zones": [
@@ -277,21 +280,21 @@
     },
     {
       "acceptance": [
-        "specy-road rename-refs <id-map.json> [--dry-run] rewrites whole-id matches only (M16.1 never matches M16.10 or M16.1.2), applying the map simultaneously so swaps and chains are safe, in live planning sheets and node title and acceptance text; it skips fenced code blocks and text between <!-- historical --> and <!-- /historical -->, prints counts per file and node, and --dry-run writes nothing",
+        "specy-road rename-refs <id-map.json> [--dry-run] substitutes map keys in one pass over the original text (swaps and chains safe). A key matches only when the preceding character is absent or outside [A-Za-z0-9_.] and the next text is neither a digit nor a dot followed by a digit (M16.1 never matches M16.10 or M16.1.2; M16.1_codename does match). Scope: each load_roadmap node's planning_dir file and that node's title and acceptance strings. Skipped: from a line whose trimmed text starts with three or more backticks through the next such line, and text between <!-- historical --> and <!-- /historical -->. It prints counts per file and node; --dry-run writes nothing",
         "move-node, group-nodes, indent and outdent take opt-in --rewrite-refs, feeding the move's own old -> new map to the same function inside the same transaction; without the flag no prose changes (today only touch-zone path segments are rewritten)",
-        "The PM GUI's /outline/move, indent, outdent and /outline/group accept optional rewrite_refs (default false) and call the same function. PM GUI gates: the Python API tests for the PM GUI server (tests/test_gui_app*.py, tests/test_roadmap_gui_*.py) pass and the M16.70 contract test for /outline/move, /outline/reorder, /nodes/{id}/indent, /nodes/{id}/outdent and DELETE /nodes/{id} passes unchanged; any new request field is optional and additive",
-        "Tests: boundary cases, fenced and historical blocks untouched, a swap map, dry-run byte-identical, a failed move rewrites nothing. Out of scope: docs/, CHANGELOG.md, work/, generated roadmap.md, git history"
+        "The PM GUI's /outline/move, indent, outdent and /outline/group accept optional rewrite_refs (default false) and call the same function. PM GUI gates: the Python API tests for the PM GUI server (tests/test_gui_app*.py, tests/test_roadmap_gui_*.py) pass and the M21.1 contract test passes unchanged; any new request field is optional and additive",
+        "Tests: boundary cases, fenced and historical blocks untouched, a swap map, dry-run byte-identical, a failed move rewrites nothing. docs/roadmap-authoring.md documents rename-refs, --rewrite-refs and the GUI rewrite_refs default false. Automatic rewriting excludes docs/, CHANGELOG.md, work/, generated roadmap.md and git history"
       ],
       "codename": "rewrite-id-refs",
       "dependencies": [
         "f533afb6-f6fb-4394-9beb-d8a5c49ed95d"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.72",
+      "id": "M21.3",
       "node_key": "e08a12a0-17fd-4251-b596-5a46e1e9335d",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.72_rewrite-id-refs_e08a12a0-17fd-4251-b596-5a46e1e9335d.md",
-      "sibling_order": 73,
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.3_rewrite-id-refs_e08a12a0-17fd-4251-b596-5a46e1e9335d.md",
+      "sibling_order": 2,
       "status": "Not Started",
       "title": "Opt-in rewrite of prose id references after a move, and a standalone rename-refs",
       "touch_zones": [
@@ -310,17 +313,20 @@
     {
       "acceptance": [
         "specy-road remove-node <ID> [--dry-run] removes the node and its planning sheet in one transaction only when its status is Not Started and it has no children, no registry claim and no dependents; otherwise it exits 1 listing every blocker (each child id, the claim's codename and branch, each dependent id), writing nothing (today can_hard_remove skips claims and status and stops at the first blocker)",
-        "The PM GUI's DELETE /nodes/{id} and archive-node --hard-remove call the same function, so the GUI also refuses claimed or started nodes; the response shape is unchanged (200 {ok, node_id}; 400 detail names the blockers). PM GUI gates: the Python API tests for the PM GUI server (tests/test_gui_app*.py, tests/test_roadmap_gui_*.py) pass and the M16.70 contract test for /outline/move, /outline/reorder, /nodes/{id}/indent, /nodes/{id}/outdent and DELETE /nodes/{id} passes unchanged; any new request field is optional and additive",
-        "Tests cover each blocker, a successful removal (chunk entry and sheet gone, graph validates) and the GUI DELETE contract; docs/roadmap-authoring.md and cli_usage name remove-node as the supported path. Out of scope: retiring or renaming archive-node (M16.45), the reversible archive command"
+        "--dry-run runs the same checks, prints the node id and planning-sheet path it would remove, exits 0 when eligible or 1 listing every blocker, and changes no bytes; a refused real removal also performs no self-heal write (today delete_roadmap_node_hard heals before checking)",
+        "The PM GUI's DELETE /nodes/{id} and archive-node --hard-remove call the same function, so the GUI also refuses claimed or started nodes; the response shape is unchanged (200 {ok, node_id}; 400 detail names the blockers). PM GUI gates: the Python API tests for the PM GUI server (tests/test_gui_app*.py, tests/test_roadmap_gui_*.py) pass and the M21.1 contract test passes unchanged; any new request field is optional and additive",
+        "Tests cover each blocker, dry-run (eligible and blocked, byte-identical tree), a successful removal (chunk entry and sheet gone, graph validates) and the GUI DELETE contract; docs/roadmap-authoring.md and cli_usage name remove-node as the supported path. Out of scope: retiring or renaming archive-node (M16.45), the reversible archive command"
       ],
       "codename": "remove-node",
-      "dependencies": [],
+      "dependencies": [
+        "d0994708-469d-46e8-ac14-3cc7105bbf6e"
+      ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.73",
+      "id": "M21.4",
       "node_key": "f8ad690d-5f67-4493-bd07-62324d09cdb2",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.73_remove-node_f8ad690d-5f67-4493-bd07-62324d09cdb2.md",
-      "sibling_order": 74,
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.4_remove-node_f8ad690d-5f67-4493-bd07-62324d09cdb2.md",
+      "sibling_order": 3,
       "status": "Not Started",
       "title": "remove-node deletes an empty never-started node and names every blocker otherwise",
       "touch_zones": [
@@ -336,10 +342,10 @@
     },
     {
       "acceptance": [
-        "apply accepts op: move-node, group-nodes, indent, outdent, remove-node and archive with their CLI options as fields (including id, fill_gaps and rewrite_refs); every entry is parsed by the real subcommand parser before anything runs, as today",
-        "A batch validates the graph once, after the last entry, instead of once per entry; a refused batch restores every file byte-for-byte, including planning-sheet renames, roadmap/registry.yaml and roadmap/archive/",
-        "--dry-run rehearses the batch on the scratch copy and prints the combined old -> new id map and the waves; nothing is written",
-        "Tests: a regroup change file (group, three moves, a removal, a dependency) applies in one run with one validation; a failing last entry restores everything. docs/roadmap-authoring.md and the suggested_prompts that describe apply list the new ops. Out of scope: a GUI batch endpoint"
+        "apply accepts op: move-node, group-nodes, indent, outdent, remove-node and archive. Each entry is parsed by its own command's parser (roadmap_move_node.build_parser, archive_cli.build_parser, the M21.2 and M21.4 parsers; roadmap_crud_argparse for the existing ops) before anything runs, and a parse error refuses the batch. Fields: node (the positional), nodes (group-nodes ids, in order), to_parent, into_new, title, type, id (destination), fill_gaps, rewrite_refs; an unknown field is refused before any entry runs. docs/roadmap-authoring.md shows one YAML example per new op",
+        "A batch validates the graph once, after the last entry, instead of once per entry; a refused batch restores every file byte-for-byte: roadmap/ (including registry.yaml and archive/), planning sheets including renames, and the generated roadmap.md and roadmap-context.md that archive regenerates",
+        "--dry-run rehearses the batch on the scratch copy, each entry resolving ids against the graph the earlier entries produced, then prints one old -> new line per surviving pre-batch node whose id changed, composed by node_key (unchanged, created and removed nodes omitted), followed by the existing wave lines; nothing is written",
+        "Tests: a regroup change file (group, three moves, a removal, a dependency) applies in one run with one validation; a batch with an archive entry followed by a refusing entry restores everything, generated files included. Out of scope: a GUI batch endpoint; suggested_prompts/ (none describes apply)"
       ],
       "codename": "apply-restructure-ops",
       "dependencies": [
@@ -347,11 +353,11 @@
         "f8ad690d-5f67-4493-bd07-62324d09cdb2"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.74",
+      "id": "M21.5",
       "node_key": "c44976af-41a0-4627-8789-16dcf49dd12b",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.74_apply-restructure-ops_c44976af-41a0-4627-8789-16dcf49dd12b.md",
-      "sibling_order": 75,
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.5_apply-restructure-ops_c44976af-41a0-4627-8789-16dcf49dd12b.md",
+      "sibling_order": 4,
       "status": "Not Started",
       "title": "apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once",
       "touch_zones": [
@@ -359,26 +365,25 @@
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
         "specy_road/bundled_scripts/roadmap_crud_argparse.py",
         "docs/roadmap-authoring.md",
-        "suggested_prompts/",
         "tests/"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "validate fails on a cycle among effective dependencies (a node's own plus every ancestor's, as do-next-available schedules them; a dependency on a group counts as one on each descendant), naming the cycle path, the inherited group edge and the leaf edge that closes it; today cycle_check walks explicit edges only, so such a cycle validates and never schedules",
+        "validate fails on a cycle in the scheduling graph, where a node waits on its effective_dependency_keys (its own plus every ancestor's, roadmap_layout.py) and, for a dependency target with children, on that target's leaf_ids_under_parent (as session_plan waits). The explicit-only diagnostic (`dependency cycle involving ...`) is unchanged; a cycle found only through inheritance or group completion prints `dependency cycle` with a deterministic path and, for each derived edge, the explicit dependency or parent-child rollup edge it comes from; a node that inherits a dependency on itself prints `inherited self-edge <id> via <ancestor>`",
         "add-dependency, set-dependencies, apply and the PM GUI dependency patch (all through edit_node_set_pairs) refuse such an edge with the same message and write nothing; the GUI patch returns 400 with that detail and its response shape is unchanged",
-        "add-dependency on a node with descendants prints the extra serialization: how many descendant leaves newly wait on the dependency, with the first few ids",
-        "Tests: an inherited cycle is refused by validate and add-dependency, the explicit-cycle case is unchanged, the serialization line prints; sr/ and the dogfood fixture still validate (no inherited cycles on 2026-11-05). Out of scope: changing inheritance semantics, GUI visualization"
+        "After a successful add-dependency on a node with descendants, when the prerequisite is not Complete, stdout after the [ok] line is `N descendant leaves now wait on <dep id>: <up to 5 ids in outline order>`, counting descendant non-gate leaves that are not Complete and whose pre-edit effective dependencies lack the added key; nothing extra prints when N is 0",
+        "Tests: an inherited cycle and an inherited self-edge are refused by validate and add-dependency, the explicit-cycle case is unchanged, the serialization line prints (and is absent when N is 0); sr/ and the dogfood fixture still validate (no inherited cycles on 2026-11-05). Out of scope: changing inheritance semantics, GUI visualization"
       ],
       "codename": "inherited-dep-cycles",
       "dependencies": [],
       "execution_milestone": "Agentic-led",
-      "id": "M16.75",
+      "id": "M21.6",
       "node_key": "b47e4275-a0ab-4165-ad9e-9a27cc522791",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.75_inherited-dep-cycles_b47e4275-a0ab-4165-ad9e-9a27cc522791.md",
-      "sibling_order": 76,
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.6_inherited-dep-cycles_b47e4275-a0ab-4165-ad9e-9a27cc522791.md",
+      "sibling_order": 5,
       "status": "Not Started",
       "title": "validate and add-dependency catch cycles made through inherited group dependencies",
       "touch_zones": [
@@ -387,6 +392,76 @@
         "specy_road/bundled_scripts/roadmap_crud_dependency_ops.py",
         "docs/roadmap-authoring.md",
         "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A new specy_road/steering_paths.py holds one documented list of steering paths, resolved per worker in the worktree and the main checkout. It covers: harness config and hooks (.claude/settings*.json, .claude/hooks/**, .codex/**, .cursor/*.json, .cursor/hooks/**); git hooks directories (common git dir, the worktree's gitdir, any core.hooksPath target) and the config values core.hooksPath, core.fsmonitor, core.sshCommand, include.path and includeIf.*.path; roadmap/orchestration.yaml, roadmap/orchestration.local.yaml and roadmap/git-workflow.yaml, in the tree and as blobs at the integration branch tip; registry entries other than the leaf's own; work/reviews/ files other than the leaf's own READY; root shell startup files (.bashrc, .bash_profile, .profile, .zshrc, .zshenv, .envrc); the bin/ entries of each env_setup link target; and any symlink made during the turn whose target leaves the worktree. docs/orchestration-workers.md lists them.",
+        "TurnWatch records each steering path's state (digest, link target or absent) before the harness starts. close_turn reports each change as a steering_file finding (path, class, before and after), separate from the zone and porcelain findings, and sets a sticky worker flag steering_changed. It shows in worker status --json and handoff status, a later clean turn does not clear it, and worker reconcile <id> clears it after listing the changes again.",
+        "finish-this-task refuses, before its bookkeeping commit, a leaf whose branch diff against the merge base changes an in-tree steering path (harness config and hooks, the three roadmap policy files, root shell startup files). The exception is a path that a touch zone names exactly (a directory or glob zone does not count). The message names each path and the next step: add that exact path to touch_zones with specy-road edit-node and get it reviewed, or revert it. Registry bookkeeping is exempt.",
+        "Claude Code executor launch and resume add --disallowedTools Edit/Write path rules for .claude/**, .codex/**, .cursor/**, .git/** and the three roadmap policy files, except paths the leaf's zones list exactly. Shell writes stay detection-only, as documented. docs/orchestration-harness-launch.md records Cursor's built-in write block (.cursor/*.json, .vscode/**, .git/hooks/**) and what Codex workspace-write already protects, without duplicating them; custom channels.cli commands get detection only. docs/orchestration-review.md 'What the gate cannot stop' says what this closes and what is left to M20 (OS isolation, signing).",
+        "Tests: a fake executor turn edits one steering path per class and yields one steering_file finding each: .claude/settings.json, .cursor/hooks.json, a hook in the common git dir, core.fsmonitor set in config, .envrc, a file under a linked .venv/bin, roadmap/orchestration.yaml committed on the integration branch from another checkout, a forged work/reviews REVIEW file. A turn that writes only READY, its own registry entry and in-zone code is clean. A leaf whose zones list .claude/settings.json exactly lands; the same diff without that zone is refused with the path named. The Claude argv carries the denies. specy-road file-limits passes. Out of scope: OS isolation, signing, the M20 posture model and doctor probes."
+      ],
+      "codename": "steering-file-guard",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M21.7",
+      "node_key": "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.7_steering-file-guard_ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf.md",
+      "sibling_order": 6,
+      "status": "Not Started",
+      "title": "Executors cannot change the files that steer harnesses and specy-road unnoticed",
+      "touch_zones": [
+        "specy_road/steering_paths.py",
+        "specy_road/worker_turn_check.py",
+        "specy_road/worker_reconcile.py",
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "docs/orchestration-workers.md",
+        "docs/orchestration-harness-launch.md",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Before the switch, a table in this sheet maps every flag and mode of refresh-stubs, refresh-schemas and refresh-profiles (including refresh-profiles' `--only API_ID` and its --check, --render and --capture modes) to an upgrade invocation; `upgrade --only stubs|schemas|profiles` selects a component, and profile selection uses a separate option the table names; each row gives the same files and output as the old invocation; the three commands stay as hidden one-release aliases with one deprecation line and are rows of tests/parity/command_map.yaml, which also lists upgrade's allowed help and report differences",
+        "`upgrade` prints one report with four fixed sections (files added or changed, schema refreshes, profile refreshes, notices) built only from data the refresh steps compute at pickup; the before and after `upgrade --dry-run` outputs on the rc3-shaped fixture are committed, and the set of reported lines is the same, only headings and grouping differ",
+        "`update` (fast-forward a toolkit clone) is renamed `self-update`, with `update` a hidden one-release alias and a map row; the update scenarios (M16.53) pass under both names",
+        "M13.11's extra report sections are not part of this leaf; docs, templates and suggested_prompts use the new names; goldens differ only for map rows",
+        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
+        "Estimated net line change (informational, not a gate): package about -200"
+      ],
+      "codename": "upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update",
+      "dependencies": [
+        "b5ca5d95-58a9-472c-9f90-0004d0fbd46f"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.12",
+      "node_key": "fcb9f89a-2bad-423c-8d52-eb748967a367",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.12_upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update_fcb9f89a-2bad-423c-8d52-eb748967a367.md",
+      "sibling_order": 12,
+      "status": "Not Started",
+      "title": "upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update",
+      "touch_zones": [
+        "specy_road/bundled_scripts/upgrade.py",
+        "specy_road/bundled_scripts/refresh_stubs.py",
+        "specy_road/bundled_scripts/update_specy_road.py",
+        "specy_road/upgrade_report.py",
+        "specy_road/cli.py",
+        "docs/upgrading.md",
+        "docs/install-and-usage.md",
+        "suggested_prompts/",
+        "specy_road/templates/project/",
+        "tests/parity/",
+        "tests/",
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/refresh_schemas.py",
+        "specy_road/bundled_scripts/refresh_profiles.py"
       ],
       "type": "task"
     }
