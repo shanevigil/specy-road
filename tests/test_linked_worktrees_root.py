@@ -272,3 +272,24 @@ def test_link_in_a_nested_project_excludes_git_root_relative_lines(tmp_path: Pat
     exclude = Path(git(lane, "rev-parse", "--path-format=absolute", "--git-path", "info/exclude"))
     assert exclude.read_text(encoding="utf-8").splitlines()[-2:] == ["/sr/node_modules", "/.venv"]
     assert linked_status_paths(project, lane / "sr") == {"sr/node_modules", ".venv"}
+
+
+def test_a_checkout_path_with_a_newline_resolves_the_enclosing_worktree(tmp_path: Path, monkeypatch, capsys) -> None:
+    main = tmp_path / "main\ncheckout"
+    (main / "roadmap").mkdir(parents=True)
+    (main / "roadmap" / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: main\nremote: origin\nenv_setup:\n  link: [node_modules]\n", encoding="utf-8")
+    (main / ".gitignore").write_text("node_modules/\n", encoding="utf-8")
+    git(main, "init", "-q", "-b", "main")
+    git(main, "-c", "user.email=t@e.com", "-c", "user.name=T", "add", "-A")
+    git(main, "-c", "user.email=t@e.com", "-c", "user.name=T", "commit", "-qm", "init")
+    (main / "node_modules").mkdir()
+    lane = tmp_path / "lane"
+    git(main, "worktree", "add", "-q", "-b", "lane", str(lane))
+    monkeypatch.setenv(REPO_ROOT_ENV, str(main))
+    monkeypatch.chdir(lane)
+    capsys.readouterr()
+    assert project_root() == lane.resolve()
+    assert capsys.readouterr() == ("", "")
+    assert setup_worktree_env(main, lane) == ["linked node_modules"]   # the exclude file sits under main\ncheckout
+    assert git(lane, "status", "--porcelain", "--untracked-files=all") == ""
