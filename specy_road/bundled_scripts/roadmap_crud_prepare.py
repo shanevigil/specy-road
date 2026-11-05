@@ -50,18 +50,32 @@ def derive_codename_with_collision_suffix(
     unnamed so ``validate`` can re-visit it later. ``max_words`` is passed
     through to ``title_to_codename`` (promote caps derived slugs).
     """
+    from specy_road.bundled_scripts.roadmap_codename_cap import (
+        cap_codename_slug,
+        CODENAME_MAX_CHARS,
+    )
     from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 
-    slug = title_to_codename(title, max_words=max_words)
+    uncapped = title_to_codename(title, max_words=max_words)
+    if not uncapped:
+        return None
+    slug = cap_codename_slug(uncapped)
     if not slug:
         return None
     if slug not in existing:
         return slug
-    tail = (node_key or "").replace("-", "")[-4:] or "x"
-    cand = f"{slug}-{tail}"
-    # Very defensive: extend the tail if still colliding.
-    if cand in existing and node_key:
-        cand = f"{slug}-{(node_key or '').replace('-', '')[-6:] or 'xx'}"
+
+    def _with_suffix(hex_len: int) -> str:
+        suffix = (node_key or "").replace("-", "")[-hex_len:] or ("x" * hex_len)[:hex_len]
+        max_base = CODENAME_MAX_CHARS - 1 - len(suffix)
+        base = cap_codename_slug(uncapped, max_chars=max_base)
+        return f"{base}-{suffix}"
+
+    cand = _with_suffix(4)
+    if cand not in existing:
+        return cand
+    if node_key:
+        return _with_suffix(6)
     return cand
 
 

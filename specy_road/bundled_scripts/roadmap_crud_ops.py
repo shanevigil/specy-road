@@ -31,6 +31,7 @@ from specy_road.bundled_scripts.roadmap_crud_chunk_report import (
     print_node_chunk_write_report,
     repo_rel,
 )
+from specy_road.bundled_scripts.roadmap_codename_cap import codename_length_error
 from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_PATTERN, ID_PATTERN, apply_set, merge_set_pairs
 from specy_road.bundled_scripts.roadmap_edit_list_fields import planned_test_change_items
 from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
@@ -198,9 +199,13 @@ def cmd_add(args: object) -> None:
     # scope expansion; same guard as cmd_edit. Root phases (None) pass through.
     if isinstance(parent_val, str) and parent_val.strip():
         _refuse_if_milestone_locked(root, parent_val)
-    if args.codename and not CODENAME_PATTERN.match(args.codename):
-        print(f"error: invalid codename: {args.codename!r}", file=sys.stderr)
-        raise SystemExit(1)
+    if args.codename:
+        if err := codename_length_error(args.codename):
+            print(f"error: {err}", file=sys.stderr)
+            raise SystemExit(1)
+        if not CODENAME_PATTERN.match(args.codename):
+            print(f"error: invalid codename: {args.codename!r}", file=sys.stderr)
+            raise SystemExit(1)
 
     node_key = new_node_key()
 
