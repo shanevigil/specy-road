@@ -19,7 +19,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.17_review-friction-packet-and-record_86977bbe-582b-4434-8c5e-56ec9669a5a5.md",
       "sibling_order": 17,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Review friction: delegate builds a missing packet, the packet skips ignored evidence and numbers suppressions correctly, refusals quote the line, and superseded failed runs say so",
       "touch_zones": [
         "specy_road/review_delegate.py",

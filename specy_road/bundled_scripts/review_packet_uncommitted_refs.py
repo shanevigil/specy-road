@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 import re
 import sys
 from pathlib import Path
@@ -14,6 +15,14 @@ from specy_road.runtime_paths import git_root
 UNCOMMITTED_REF_NOTE = ("_The brief, a planning sheet or the implementation summary names these paths, but they "
                         "are not in the tree at the commit under review (untracked or uncommitted). Commit them "
                         "before reviewers start._")
+_GLOB = re.compile(r"[*?[]")
+_QUERY = re.compile(r"\?\w+=")   # a link's query string ("x.md?plain=1"), not a glob's ?
+
+
+def is_glob(text: str) -> bool:
+    """True if ``text`` is a glob (``*``, ``?`` or ``[...]``): kept whole when a path is extracted, and matched
+    against files rather than looked up."""
+    return bool(_GLOB.search(text))
 _LINK = re.compile(r"\]\(\s*([^)\s#]+)")
 _CODE = re.compile(r"`([^`\n]+)`")
 _BRANCH = frozenset({"feature", "fix", "chore", "hotfix", "WIP", "release", "origin", "refs", "heads", "remotes"})
@@ -35,7 +44,7 @@ def _named_repo_path(token: str, root: Path, commit: str) -> str | None:
     raw = (token or "").strip().replace("\\", "/")
     if not raw or raw.startswith(("http://", "https://", "git@", "mailto:")):
         return None
-    raw = raw.split()[0].split("?")[0].split("#")[0]
+    raw = _QUERY.split(raw.split()[0])[0].split("#")[0]
     raw = raw.split("::", 1)[0]          # pytest node id: path::name
     raw = re.sub(r":\d+$", "", raw)      # editor / compiler :line
     while raw.startswith("./") or raw.startswith("../"):
@@ -46,14 +55,14 @@ def _named_repo_path(token: str, root: Path, commit: str) -> str | None:
     if "/" not in raw:
         if "." not in raw and raw not in _ROOT:
             return None
-        return raw if raw in _ROOT or _present(root, commit, raw) else None
+        return raw if raw in _ROOT or is_glob(raw) or _present(root, commit, raw) else None
     head, last = raw.split("/", 1)[0], raw.rsplit("/", 1)[-1]
     ext = last.rsplit(".", 1)[-1] if "." in last else ""
-    if head in _BRANCH or not last or (last not in _ROOT and not ext.isalpha()):
+    if head in _BRANCH or not last or (last not in _ROOT and not ext.isalpha() and not is_glob(last)):
         return None
     if head in _TOP:
         return raw
-    return raw if _present(root, commit, head) and _present(root, commit, raw) else None
+    return raw if _present(root, commit, head) and (is_glob(raw) or _present(root, commit, raw)) else None
 
 
 def _named_paths(text: str, root: Path, commit: str) -> list[str]:
@@ -94,13 +103,43 @@ def _packet_texts(root: Path, t: ReviewTarget, brief: str, node: dict, by_id: di
     return [brief] + [text for text in [summary, *sheets] if text]
 
 
-def _missing_refs(root: Path, commit: str, texts: list[str]) -> list[str]:
+def _ignored(root: Path, rel: str) -> bool:
+    """True if git ignores ``rel`` (``git check-ignore``), from the project root or the git top: build output,
+    caches and other paths no commit would hold."""
+    top = git_root(root) or root
+    return any(git_ok(["check-ignore", "-q", "--", rel], where)[0] for where in (root, top))
+
+
+def _glob_matches(root: Path, commit: str, rel: str) -> bool:
+    """True if the glob ``rel`` matches a file at ``commit`` or on disk (tracked, or untracked and not ignored),
+    project or git top. ``rel`` comes from packet text, so it is matched only with ``fnmatch.fnmatchcase``, which
+    takes any string (``**x``, a lone ``[``) without raising; a pattern it cannot match is unmatched."""
+    top = git_root(root) or root
+    for where in (root, top):   # git lists names relative to where it runs
+        names = (git_stdout(["ls-tree", "-r", "--name-only", commit, "--", "."], where) or "").splitlines()
+        names += (git_stdout(["ls-files", "-co", "--exclude-standard", "--", "."], where) or "").splitlines()
+        if any(fnmatch.fnmatchcase(n, rel) for n in names):
+            return True
+    return False
+
+
+def _missing_refs(root: Path, commit: str, texts: list[str]) -> tuple[list[str], int]:
+    """``(paths missing at commit, how many were skipped)``: a path git ignores, or a glob (a planning-sheet
+    pattern) that matches no file, is skipped, not listed; a glob that matches a file is present."""
     missing: list[str] = []
+    skipped: set[str] = set()
     for text in texts:
         for rel in _named_paths(text, root, commit):
-            if rel not in missing and not _exists_at_commit(root, commit, rel):
+            if rel in missing or rel in skipped or _exists_at_commit(root, commit, rel):
+                continue
+            if is_glob(rel):
+                if not _glob_matches(root, commit, rel):
+                    skipped.add(rel)
+            elif _ignored(root, rel):
+                skipped.add(rel)
+            else:
                 missing.append(rel)
-    return missing
+    return missing, len(skipped)
 
 
 def uncommitted_refs_section(root: Path, t: ReviewTarget, brief: str, node: dict, by_id: dict[str, dict],
@@ -108,7 +147,10 @@ def uncommitted_refs_section(root: Path, t: ReviewTarget, brief: str, node: dict
     out = ["## Uncommitted references", ""]
     if not t.commit:
         return out + ["_(cannot compute: no commit under review)_", ""]
-    missing = _missing_refs(root, t.commit, _packet_texts(root, t, brief, node, by_id))
+    missing, skipped = _missing_refs(root, t.commit, _packet_texts(root, t, brief, node, by_id))
+    if skipped:
+        print(f"note: {skipped} path(s) named in the packet but not at commit `{t.commit}` are not warned about: "
+              "git ignores them, or they are globs that match no file", file=sys.stderr)
     out += [computed, ""]
     if not missing:
         return out + ["_none_", ""]
