@@ -32,10 +32,8 @@ from specy_road.agents_md_block import (
     warn_if_context_over_limits,
     warn_missing_load_order_paths,
 )
-from specy_road.bundled_scripts.validate_stale_commands import (
-    unregistered_commands,
-    warn_unregistered_commands,
-)
+from specy_road.bundled_scripts.validate_stale_commands import unregistered_commands, warn_unregistered_commands
+from specy_road.bundled_scripts.chore_garden import warn_garden_due
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.init_project import project_template_root
@@ -275,6 +273,7 @@ def validate_at(
     warn_if_context_over_limits(root)
     warn_if_generated_files_ignored(root)
     warn_research_register(root)
+    warn_garden_due(root)
 
     if auto_heal:
         changed, _logs = auto_heal_roadmap(root)
