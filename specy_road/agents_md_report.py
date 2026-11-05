@@ -27,13 +27,11 @@ _MINIMAL_LINE = (
     "Then read `.specyrd/AGENTS.team.md` and `.specyrd/AGENTS.local.md` when present; "
     "they add to the rules, never relax them."
 )
-#: CommonMark ATX heading, level 2-6: up to three spaces of indent, an optional closing run of ``#``.
+#: An ATX heading, level 2-6, indented up to three spaces, with an optional closing run of ``#``.
 _ATX = re.compile(r"^ {0,3}#{2,6}[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$")
-_ATX_ANY = re.compile(r"^ {0,3}#{1,6}(?:[ \t]|$)")
-_SETEXT_2 = re.compile(r"^ {0,3}-+[ \t]*$")   # a ``---`` underline makes the paragraph above it a level-2 heading
-_CODE_INDENT = re.compile(r"^(?: {4}|\t)")   # indented code, unless it continues an open paragraph
-_LIST_OR_QUOTE = re.compile(r"^ {0,3}(?:[-*+]|\d+[.)]|>)(?:[ \t]|$)")   # ends a paragraph: ``---`` under it is a rule
-
+#: A code fence, indented up to three spaces: a run of 3+ backticks or tildes, then the info string.
+_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+_COMMENT = re.compile(r"<!--.*?-->")
 
 def agents_block_mode(project_root: Path) -> str:
     """``"minimal"`` when the git root's manifest says so, else ``"full"``."""
@@ -51,34 +49,33 @@ def minimal_lines() -> list[str]:
 
 
 def _headings(text: str) -> list[tuple[int, str]]:
-    """``(line number, heading text)`` for each ``##``-or-deeper heading outside fenced code (CommonMark ATX or setext)."""
-    from specy_road.bundled_scripts.validate_stale_commands import (   # lazy: it imports the CLI
-        _fence_closes,
-        _fence_marker,
-        _opening_is_code_span,
-    )
+    """``(line number, heading text)`` for each ``##``-or-deeper heading: a hint, so the input class is bounded.
 
+    Recognised: ATX headings indented 0-3 spaces. Skipped: fenced code (a backtick or tilde fence indented
+    0-3 spaces, closed by the same character at least as long) and HTML comments, on one line or several.
+    Out of scope: setext headings, other HTML blocks, indented code, list or blockquote nesting and every
+    other CommonMark construct.
+    """
     found: list[tuple[int, str]] = []
-    fence: tuple[str, int] | None = None
-    para: list[tuple[int, str]] = []   # the open paragraph, which a ``---`` underline turns into a heading
+    fence = ""        # the open fence's run, e.g. "````"
+    comment = False   # inside a ``<!--`` that has not closed yet
     for n, line in enumerate(text.splitlines(), 1):
-        if fence is not None:
-            fence = None if _fence_closes(line, fence) else fence
+        if comment:
+            comment = "-->" not in line
             continue
-        if (marker := _fence_marker(line)) is not None and not _opening_is_code_span(line):
-            fence, para = (marker[0], marker[1]), []
-        elif para and _SETEXT_2.match(line):
-            found.append((para[0][0], " ".join(t.strip() for _n, t in para)))
-            para = []
-        elif (m := _ATX.match(line)) or _ATX_ANY.match(line) or not line.strip():
-            found += [(n, m.group(1))] if m else []
-            para = []
-        elif _LIST_OR_QUOTE.match(line):
-            para = []
-        elif para or not _CODE_INDENT.match(line):
-            para.append((n, line))
+        if fence:
+            m = _FENCE.match(line)
+            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence) and not m.group(2).strip():
+                fence = ""
+            continue
+        if (m := _FENCE.match(line)) and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+            fence = m.group(1)   # a backtick in a backtick fence's info string makes it a code span instead
+            continue
+        line, opener, _rest = _COMMENT.sub("", line).partition("<!--")   # what precedes an unclosed comment still counts
+        comment = bool(opener)
+        if m := _ATX.match(line):
+            found.append((n, m.group(1)))
     return found
-
 
 def print_rules_overlap(project_root: Path, rules: str, prefix: str = "") -> None:
     """Before :data:`RULES_MD` is first created: its headings, and the project's own ``AGENTS.md`` headings it repeats."""
@@ -119,6 +116,6 @@ def claude_reread(loaded: list[Path], root: Path, top: Path) -> str:
     for path in loaded:
         n = reached[path.resolve()]
         if n > 1:
-            notes.append(f" ({path.relative_to(top).as_posix()} imported {'twice' if n == 2 else f'{n} times'}, "
+            notes.append(f" ({path.resolve().relative_to(top.resolve()).as_posix()} imported {'twice' if n == 2 else f'{n} times'}, "
                          "counted once)")
     return "".join(notes)

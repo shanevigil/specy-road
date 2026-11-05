@@ -97,14 +97,17 @@ def test_upgrade_names_project_headings_the_new_rules_file_repeats(tmp_path: Pat
 @pytest.mark.parametrize(("own", "matched"), [
     ("# Ours\n\n   ## Task loop\n", ["3 \"Task loop\""]),                       # R1: up to three spaces of indent
     ("# Ours\n\n##\tTask loop ##\n", ["3 \"Task loop\""]),                     # a tab after the run; closing #'s
-    ("# Ours\n\nTask loop\n---------\n", ["3 \"Task loop\""]),                 # setext level 2
     ("# Ours\n\n```markdown\n## Task loop\n```\n", []),                       # R2: a fenced example
     ("~~~~\n## Task loop\n~~~\n```\n## Load order\n~~~~\n## Finding things\n", ["7 \"Finding things\""]),
     ("# Ours\n\n    ## Task loop\n\t## Load order\n", []),                    # indented code, not headings
     ("# Ours\n\n```\n## Task loop\n", []),                                    # an unclosed fence runs to the end
-    ("- item\n---\n\nTask loop\n\n---\n", []),                                   # thematic breaks, not underlines
-], ids=["indent-3", "tab-closing-run", "setext", "fenced", "fence-kinds", "indented-code", "unclosed-fence",
-        "thematic-break"])
+    ("    ```\n## Task loop\n", ["2 \"Task loop\""]),                            # R1: 4-space backticks are no fence
+    ("   ```\n## Load order\n    ```\n```\n## Task loop\n", ["5 \"Task loop\""]),  # 3 spaces open; 4 do not close
+    ("<!--\n## Task loop\n-->\n<!-- ## Load order -->\n## Finding things <!-- ours -->\n",
+     ["5 \"Finding things\""]),                                                    # R2: HTML comments, multi- and one-line
+    ("# Ours\n<!-- dropped:\n## Task loop\n", []),                                # an unclosed comment runs to the end
+], ids=["indent-3", "tab-closing-run", "fenced", "fence-kinds", "indented-code", "unclosed-fence",
+        "indented-backticks", "fence-indent", "html-comments", "unclosed-comment"])
 def test_refresh_stubs_names_only_real_matching_headings(tmp_path: Path, capsys, own: str, matched: list[str]) -> None:
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     assert run_init_project(tmp_path) == 0
@@ -136,3 +139,21 @@ def test_claude_code_total_counts_a_doubly_imported_file_once(tmp_path: Path, ca
     print_injected_context(tmp_path)
     claude = next(ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("context: Claude Code"))
     assert claude.endswith(f"; total {lines} lines, {size} bytes ({note}, counted once)")
+
+
+def test_a_repeated_absolute_import_through_an_outside_link_names_the_file_in_the_repo(
+        tmp_path: Path, capsys, monkeypatch) -> None:
+    """R3: the alias resolves inside the repo, so it is counted; the note used to raise ValueError formatting it."""
+    monkeypatch.setenv("HOME", str(tmp_path / "no-home"))
+    monkeypatch.delenv("CODEX_HOME", raising=False)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / "shared.md").write_text("# Shared\n", encoding="utf-8")
+    (tmp_path / "alias.md").symlink_to(repo / "shared.md")
+    claude = f"# Claude\n@{tmp_path / 'alias.md'}\n@{tmp_path / 'alias.md'}\n"
+    (repo / AGENT_GUIDE).write_text(claude, encoding="utf-8")
+
+    print_injected_context(repo)
+    line = next(ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("context: Claude Code"))
+    assert line.endswith(f"; total 4 lines, {len(claude.encode()) + 9} bytes (shared.md imported twice, counted once)")
