@@ -111,13 +111,16 @@ def _ignored(root: Path, rel: str) -> bool:
 
 
 def _glob_matches(root: Path, commit: str, rel: str) -> bool:
-    """True if the glob ``rel`` matches a file at ``commit`` or on disk, project or git top."""
+    """True if the glob ``rel`` matches a file at ``commit`` or on disk (tracked, or untracked and not ignored),
+    project or git top. ``rel`` comes from packet text, so it is matched only with ``fnmatch.fnmatchcase``, which
+    takes any string (``**x``, a lone ``[``) without raising; a pattern it cannot match is unmatched."""
     top = git_root(root) or root
-    for where in (root, top):   # ls-tree names are relative to where it runs
-        names = git_stdout(["ls-tree", "-r", "--name-only", commit, "--", "."], where) or ""
-        if any(fnmatch.fnmatchcase(n, rel) for n in names.splitlines()):
+    for where in (root, top):   # git lists names relative to where it runs
+        names = (git_stdout(["ls-tree", "-r", "--name-only", commit, "--", "."], where) or "").splitlines()
+        names += (git_stdout(["ls-files", "-co", "--exclude-standard", "--", "."], where) or "").splitlines()
+        if any(fnmatch.fnmatchcase(n, rel) for n in names):
             return True
-    return any(next(where.glob(rel), None) is not None for where in (root, top))
+    return False
 
 
 def _missing_refs(root: Path, commit: str, texts: list[str]) -> tuple[list[str], int]:

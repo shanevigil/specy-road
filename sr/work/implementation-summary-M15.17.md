@@ -52,6 +52,20 @@ The existing empty-glob test now cites `*`, `?`, `[ab]`, a glob extension and a 
 - `_missing_refs`: now uses the same `is_glob`. A matching glob is still present (`test_a_glob_that_matches_a_committed_file_is_not_missing` passes).
 - Existing path-noise tests (`test_review_packet.py`, including `docs/x.md#anchor`): pass. `#` stripping is unchanged.
 
+## Fix round 3 (gpt-6.1-sol-low)
+
+Required change (A2): a packet pattern such as `planning/**draft.md` made `Path.glob` raise `ValueError` in `_glob_matches`. Patterns come from packet text, so matching must work on any input. `_glob_matches` now matches only with `fnmatch.fnmatchcase`, which accepts any string without raising. It checks git's file lists: `ls-tree -r` at the commit, plus `ls-files -co --exclude-standard` for files on disk, from the project root and from the git top. The module has no `Path.glob` left. A pattern that is invalid or matches nothing is skipped and adds to the count. One behaviour change: a glob that matches only gitignored files on disk is no longer present, so it adds to the count. Either way it is never warned about.
+
+## Probes (fix round 3)
+
+- Class: a pattern from packet text reaching a matcher that raises on some inputs.
+- `planning/**draft.md` (which `Path.glob` refuses): it now adds to the count. Tested; the test raises `ValueError` on the round-2 source.
+- A lone `[` (`planning/M9_[.md`): `fnmatch` reads it as a literal, it matches nothing and adds to the count. Tested.
+- A pattern with no wildcard (`shared/missing.md`): it is a path, not a glob, and is still warned about and listed. Tested.
+- Other pattern matchers in the module: there is only `fnmatch.fnmatchcase` in `_glob_matches`. `grep` finds no `glob(` or `match(`.
+- Other places a text token reaches the filesystem or argv (`_present`'s `Path.exists`, git `cat-file`/`check-ignore`/`ls-tree`): a token with a NUL byte is dropped by `_named_paths` without raising (probed by hand). Other tokens are plain strings that git rejects with a non-zero exit, which the code handles.
+- A matching glob is still present: `test_a_glob_that_matches_a_committed_file_is_not_missing` passes.
+
 ## Touch zones (final)
 
 These are the zones as listed. I edited `review_delegate.py`, `review_delegate_packet.py` (new), `review_run_status.py` (new), `review_record_rules.py`, `bundled_scripts/review_packet_uncommitted_refs.py` and `tests/`. I did not need to change `integrity.py`, `review_record_write.py` or `bundled_scripts/review_cli.py`. Note that `file_review` in `review_record_write.py` still keeps only the last 400 characters of a refusal in the run reason, so a delegated run's reason shows the quoted lines but may cut off the rule sentence.

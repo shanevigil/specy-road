@@ -82,7 +82,9 @@ def test_packet_does_not_warn_about_an_ignored_build_path(tmp_path: Path, capsys
     (repo / "build").mkdir()
     (repo / "build" / "out.js").write_text("x\n")
     # every glob form counts: *, ?, [...], a glob extension, and a top-level glob with no directory
-    globs = ["planning/M9_*.md", "planning/M9_?.md", "planning/M9_[ab].md", "planning/M9.m?", "NOTES?.md"]
+    # patterns are packet text: "**x" (which Path.glob refuses) and a lone "[" are matched, never raised on
+    globs = ["planning/M9_*.md", "planning/M9_?.md", "planning/M9_[ab].md", "planning/M9.m?", "NOTES?.md",
+             "planning/**draft.md", "planning/M9_[.md"]
     _cite(repo, "The bundle lands in `build/out.js` and the sheets match "
                 + ", ".join(f"`{g}`" for g in globs) + "; also `shared/missing.md`.")
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
@@ -91,7 +93,7 @@ def test_packet_does_not_warn_about_an_ignored_build_path(tmp_path: Path, capsys
     block = text.split("## Uncommitted references\n", 1)[1].split("\n## Changed paths\n", 1)[0]
     assert "- `shared/missing.md`" in block and "build/out.js" not in block and "planning/M9" not in block
     assert "NOTES" not in block
-    assert "warning: `shared/missing.md` is named in the packet but not at commit" in err   # still warned
+    assert "warning: `shared/missing.md` is named in the packet but not at commit" in err   # no wildcard: warned
     assert err.count(f"note: {1 + len(globs)} path(s) named in the packet but not at commit") == 1
 
 
