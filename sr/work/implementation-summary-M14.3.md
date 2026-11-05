@@ -78,7 +78,72 @@ uses git status:
   tests/test_worktree_prune.py` → 40 passed. `specy-road file-limits` OK; `ruff` clean. Full suite not
   run, as instructed.
 
-## Deletion-path audit (updated in fix round 2)
+## Fix round 3 (Sol R1–R4)
+
+The findings fall into three classes:
+
+- **R1: a subtree that removal deletes but the walk skipped.** `_walk_foreign` dropped every `.git`
+  directory from the walk. `shutil.rmtree` on a configured full clone deletes that clone's `.git`, so
+  another repository's worktree inside it was missed. Fix: the walk no longer skips any directory. The
+  exemption set now holds each configured repo and its own `<repo>/.git` (`exempt | {e / ".git"}`),
+  so only those two paths are exempt from being reported. Everything inside them is walked.
+- **R2: path data read through text-mode git.** Universal newlines turn `\r` into `\n`, and stripping
+  drops edge whitespace. Fix: a new `_git_path()` runs git as bytes, removes only the single trailing
+  `\n`, and decodes with `os.fsdecode`. All git-read paths in this module now go through it:
+  `_common_dir` and `_is_repo_top` (now local, replacing the text-mode ones imported from `nested_repos`)
+  and `--absolute-git-dir`. That covers `leaf_worktree`, `_check_nested` and `_foreign_refusal`.
+- **R3: unquoted paths in a printed command.** Both arguments now go through `shlex.quote`. The printed
+  command is the only shell text built from paths in the touch zones.
+- **R4:** removed the unreachable `or 'unknown'`.
+
+Tests in `tests/test_worktree_prune_foreign.py`:
+
+- New `test_a_foreign_worktree_inside_a_configured_clones_git_directory_refuses_and_survives` (R1).
+  `plan.foreign` is exactly the worktree at `lib/.git/foreign-worktree`, `remove(plan)` refuses, and
+  preview and `--yes` both exit 1, name it, and leave it, the clone and the leaf in place.
+- New `test_an_owning_repository_with_a_carriage_return_in_its_name_is_named_exactly` (R2). The owner is
+  `other\rrepo`. The refusal names that exact path, its quoted form appears in the suggested command, and
+  the CLI exits 1 both ways while every directory survives.
+- `test_foreign_worktrees_whose_names_git_quotes_refuse_and_survive` is extended (R3). The owner is now
+  `other repo`. `shlex.split` of the printed command yields exactly
+  `git -C <owner> worktree remove <sibling space>`, and running it exits 0 and removes that worktree.
+- `_other_repo()` takes an optional directory name.
+
+Red/green: with `worktree_prune.py` at `955713b9`, those three tests fail and the other 7 pass. With the
+fix, `pytest -n 4 tests/test_worktree_prune.py tests/test_worktree_prune_foreign.py` gives 42 passed.
+The nested-repo suites (`test_nested_repo_worktrees.py`, `test_nested_unpushed_report.py`) also pass:
+74 passed in total. `specy-road file-limits` is OK and `ruff` is clean.
+
+## Probes
+
+- R1 class, every subtree `remove()` deletes:
+  - leaf root: walked.
+  - configured linked worktree: its `.git` is a file and the directory is walked.
+  - configured full clone: now walked, including `.git` (regression test).
+  - leaf admin dir `.git/worktrees/<name>`: it lives outside the leaf root in the main checkout, and git
+    removes only that admin dir. No user repository lives there.
+- Configured full clone with an initialized submodule: `lib/.git/modules/sub` now refuses as a bare
+  clone and `lib/sub` as a checkout. Both are deleted with the clone, so the refusal is correct (probe
+  at `/tmp/m143probe`).
+- `<clone>/.git/worktrees/<n>` and other admin directories inside an exempt `.git`: no `.git` entry and
+  no `objects/` + `refs/` pair, so they do not refuse. The cases in the existing configured nested-repo
+  tests still pass.
+- R2 class, every git-read path in `worktree_prune.py`:
+  - `--git-common-dir`, `--show-toplevel` and `--absolute-git-dir` now go through `_git_path` as bytes.
+  - `_status` was already bytes.
+  - The remaining `git_text` reads are SHAs, ref names and commit subjects, not paths. Ref names cannot
+    hold control characters.
+  - `os.walk` returns `str` paths with no newline translation.
+- R2, owner with `\r`: the refusal names the real path (regression test).
+- R3 class, shell text built from paths: the only such text is the `git -C … worktree remove …` step,
+  now quoted. Other refusal text names paths as prose, not as commands. The CLI prints refusals and
+  builds no commands of its own.
+- R3, owner and worktree both containing spaces: the printed command splits to the exact two paths and
+  runs with exit 0 (regression test).
+- R4: no other `or 'unknown'` fallback on a value that is always truthy. `branch`'s `or "unknown"`
+  stays, because `git_text` returns `None` when `rev-parse` fails.
+
+## Deletion-path audit (updated in fix rounds 2 and 3)
 
 `remove()` deletes, in order: each configured nested repo (`git -C <copy> worktree remove --force` for a
 linked worktree, `shutil.rmtree` for a clone), then the leaf worktree (`git worktree remove --force`),
@@ -92,7 +157,7 @@ non-empty. Before any of this, the plan refuses on a running worker, an unreadab
 |---|---|---|
 | Any directory below the leaf root holding a `.git` file, directory or link (another repo's linked worktree, a checkout, an initialized submodule, a `--separate-git-dir` checkout), tracked or untracked, clean or not, ignored or not, any name | filesystem walk (`os.walk`, links not followed) | foreign refusal naming repository, branch and commits its upstream lacks; `remove()` guard |
 | A directory laid out as a bare repository (`HEAD`, `objects/`, `refs/`) | filesystem walk | foreign refusal ("bare clone"); `remove()` guard |
-| Contents of a configured nested repo (the repo itself is exempt) | filesystem walk | the same foreign refusal for any repository inside it |
+| Contents of a configured nested repo, its own `.git` directory included (the repo and that `.git` are exempt themselves) | filesystem walk | the same foreign refusal for any repository inside it |
 | A directory the walk cannot read (permission denied) | `os.walk` `onerror` | "cannot read <dir>: …" refusal; `remove()` guard |
 | Leaf worktree tracked files at `HEAD` | git refs | HEAD and the leaf branch (local, remote-tracking, and on the remote via `ls-remote`) must be merged into the remote's integration tip |
 | Leaf modified, staged (including renames) or untracked non-ignored files | `git status -z`, read as bytes | "uncommitted or untracked" refusal |
@@ -146,4 +211,11 @@ commits, hooks and config.
 - Test `test_an_initialized_submodule_refuses_and_survives` — R1, submodule at its recorded commit.
 - Test `test_an_ignored_foreign_checkout_with_a_carriage_return_in_its_name_refuses_and_survives` — R2.
 - Test `test_an_unreadable_directory_refuses_instead_of_being_skipped` — permission-denied refuses.
+- Round 3: `_git_path()`, local `_common_dir()` and `_is_repo_top()`. Paths that git prints are read as bytes (R2).
+- Round 3: `<exempt>/.git` added to the walk's exemption set, and the `.git` skip removed. A configured clone's metadata is walked (R1).
+- Round 3: `shlex.quote` on both paths in the suggested command (R3). Removed `or 'unknown'` (R4).
+- Round 3: `_other_repo(name=…)` parameter, so the owner name can hold a space or `\r`.
+- Test `test_a_foreign_worktree_inside_a_configured_clones_git_directory_refuses_and_survives`: R1.
+- Test `test_an_owning_repository_with_a_carriage_return_in_its_name_is_named_exactly`: R2.
+- Test `test_foreign_worktrees_whose_names_git_quotes_refuse_and_survive` extended to check that the printed command splits and runs: R3.
 - Mocks: none.
