@@ -14,7 +14,9 @@ Upgrade previews as the new version, validates in a dry run, and names files it 
 - `tests/test_upgrade.py`: `test_dry_run_writes_nothing_and_skips_validate` asserted the behaviour A2 replaces. It is now `test_dry_run_writes_nothing_and_validates_a_copy`, which asserts that validate ran, the checkout files and `git status --porcelain` are unchanged, and no other-worktrees section appears with one worktree.
 - `tests/test_upgrade_preview.py`: new tests for A1–A4 and A6.
 
-Touch zones: confirmed accurate. `specy_road/file_limits_engine.py` was not changed; upgrade.py uses its public helpers (`collect_tracked_files`, `build_overlay_match_sets`, `resolve_limits`, `line_count`). No file went over a cap: upgrade.py is 315 lines and `specy-road file-limits` passes.
+Touch zones: confirmed accurate. `specy_road/file_limits_engine.py` was not changed; upgrade.py uses its public helpers (`collect_tracked_files`, `build_overlay_match_sets`, `resolve_limits`, `line_count`). No file went over a cap. `specy-road file-limits` passes.
+
+**New module, outside the listed zones:** `specy_road/bundled_scripts/upgrade_preview.py` (136 lines), created in fix round 2. Round 2 took `upgrade.py` to 401 lines, over the 400 cap, so the preview-tree helpers moved there per the file-limits rule; `upgrade.py` is now 311 lines. Please add `specy_road/bundled_scripts/upgrade_preview.py` to this leaf's touch zones.
 
 ## Verification
 
@@ -29,11 +31,11 @@ Touch zones: confirmed accurate. `specy_road/file_limits_engine.py` was not chan
 - `_report_line_caps(before, after)`: names files newly pushed over their cap, and reports pre-existing overages as "already over" (A3).
 - Guard `new <= cap or (rel in before and old == new)`: skips files under their cap and files whose line count the run did not change, so an untouched overage is not reported (A3).
 - `_apply(project, checkout, prune)`: the real refresh wrapped in the line-cap snapshot (A3).
-- `_preview_files(checkout, project)`: `{path in the preview tree: regular source file}`. Sources are git's tracked and unignored files, `.specyrd/`, and `_block_previews`' managed-block files. Every link is followed to its content (fix round 1, F1/F2).
+- `preview_files(checkout, project)` (now in `upgrade_preview.py`): `{path in the preview tree: regular source file}`. Sources are git's tracked and unignored files, `.specyrd/`, and `_block_previews`' managed-block files. Every link is followed to its content (fix round 1, F1/F2).
 - Fallback to `rglob` when `git ls-files` fails: a project outside git still gets a copy (A2).
 - `os.walk(followlinks=True)` with a realpath `seen` set: materializes a link to a directory without looping on a link cycle (F1).
-- `_copy_checkout(files, dest)`: writes the materialized files with `copy2`, so the preview tree holds no links (F1).
-- `_fingerprint(checkout, files)` plus the before/after compare in `_dry_run`: the hard guard. It takes `git --no-optional-locks status --porcelain=v1 -z --ignored` and a sha256 of every preview input. If either changed, it prints `dry run modified <paths> …; this is a bug` and exits 2 (F1).
+- `copy_tree(files, dest)` (`upgrade_preview.py`): writes the materialized files with `copy2`, so the preview tree holds no links (F1).
+- `fingerprint(checkout, files)` and `changed_paths(before, after)` (`upgrade_preview.py`), plus the compare in `_dry_run`: the hard guard. It takes `git --no-optional-locks status --porcelain=v1 -z --ignored` and a sha256 of every preview input. If either changed, it prints `dry run modified <paths> …; this is a bug` and exits 2 (F1).
 - `git init` / `add` / `commit` of the copy with an inline identity, gpgsign off and `--no-verify`: validate's touch-zone and ignore checks read git, and without one commit it would report notices the real run does not.
 - `_dry_run(project, checkout, prune)`: the preview listing, then the copy, refresh, line caps and validate. Exits with validate's code (A2).
 - `contextlib.redirect_stdout/stderr` around the refresh on the copy: avoids printing every refresh line twice.
@@ -51,6 +53,17 @@ Touch zones: confirmed accurate. `specy_road/file_limits_engine.py` was not chan
 - Test `test_a_fresh_project_does_not_cap_the_root_agent_files`: 1000-line root AGENTS.md/CLAUDE.md are not collected and the scan passes; `planning/README.md` is still capped; the opt-in comment is present (A4).
 - Test `test_other_worktrees_are_named_as_not_upgraded`: a linked worktree on `feature/x`, at a path containing a space, is pinned by exact line. The printed `cd` is run in bash and lands in that worktree (A6, F3).
 - Assertion in `test_dry_run_writes_nothing_and_validates_a_copy`: no other-worktrees section with a single worktree (A6).
+
+- `_DECLINED` and the return value of `_refresh`: the checkout-relative paths the refresh refused, skipped or failed to write. They come from its own reported outcomes plus `copy_missing_docs`' refusals (round 2).
+- `declined=` keyword on `copy_missing_docs`: reports a doc refused for a link out of the repository (round 2).
+- `snapshot_declined(copy, declined)` / `restore_declined(copy, kept)` (`upgrade_preview.py`): put the declined paths back in the copy after the preview refresh. This keeps preview/real parity (round 2).
+- `PermissionError` branch in `copy_tree`: an unreadable source becomes an empty file with the same mode in the copy, so every reader fails alike (round 2).
+- `--ignore-errors` on the copy's `git add`: one unreadable file must not leave the copy with no commit (round 2).
+- `_block_previews` against an empty root: gets the managed-block file names without reading the checkout; reading it crashed the preview on an unreadable `AGENTS.md` (round 2).
+- `tests/test_upgrade_parity.py`: three dry-then-real parity tests under one injected validator (round 2):
+  - an external `AGENTS.md` link (Sol's regression);
+  - an `AGENTS.md` link inside the repo;
+  - an unreadable `AGENTS.md`.
 
 ## Fix round 1 (Sol F1–F5)
 
@@ -77,7 +90,7 @@ Paths the preview copies, then refreshes in the copy:
 | symlink to a file outside the checkout | a shared `schemas/` file elsewhere | Same: content copied, link not kept. The external file is only read. |
 | symlink to a directory (inside or outside) | `.cursor/skills -> ../.agents/skills`, an external schemas dir | Walked with `followlinks=True`; each file is materialized under the link's path in the temp tree, with a realpath set against cycles. No temp directory is a link. |
 | broken symlink | — | Skipped (neither file nor dir); the refresh in the copy sees it as absent. |
-| ignored managed-block file | `CLAUDE.md`, `AGENTS.md`, `.specyrd/AGENTS*.md`, `.gitignore`, `.cursorindexingignore` | Selected by `_block_previews`, whose writes go to its own scratch temp dir, so it is included regardless of ignore rules. Materialized like any other file. Covered by the ignored CLAUDE.md test. |
+| ignored managed-block file | `CLAUDE.md`, `AGENTS.md`, `.specyrd/AGENTS*.md`, `.gitignore`, `.cursorindexingignore` | Selected by `_block_previews`, which since round 2 runs against an empty root and writes only to scratch temp dirs, so it is included regardless of ignore rules. Materialized like any other file. Covered by the ignored CLAUDE.md test. |
 | `.specyrd/` (any, including ignored local files) | `.specyrd/manifest.json`, `.specyrd/AGENTS.local.md` | Walked and materialized. |
 | new files the refresh creates | `schemas/orchestration.schema.json`, `.agents/skills/*`, `docs/*` | Created under the temp project because every parent is a real temp directory. |
 | excluded | `.git/`, the project's `work/` | Never copied; the copy gets its own `git init` and one commit. |
@@ -94,3 +107,34 @@ Printed commands in `specy-road upgrade` output:
   - `run: specy-road digest` (digest): copy-runnable.
   - `specy-road edit-node <NODE_ID> --set touch_zones=<paths>` (validate notice): a template with placeholders, not meant to run verbatim.
 - **Not fully copy-runnable:** `rm <paths>` from `refresh_stubs._report_orphans`, printed by a non-`--prune` run with old stubs. It joins checkout-relative stub paths unquoted. Today these are toolkit-written names (`.cursor/commands/specyrd-*.md`, with the project prefix). They break only if the project root's path inside the checkout contains a space or a shell character. `specy_road/bundled_scripts/refresh_stubs.py` is outside this leaf's touch zones, so it is left unchanged and flagged here.
+
+## Fix round 2 (Sol F1, A2): preview/real parity
+
+The base was merged with `origin/WIP/improvements-0-3-1`; the fix is commit `8e1174e2`.
+
+The dry run now makes the same refuse/skip/write decision for each path as the real run:
+
+1. **The decision is made once, on the real checkout, by the real refresh's own predicates.** The listing phase runs the real refreshes with `dry_run=True` on the checkout. `_refresh` now returns every path whose reported outcome starts with `refused`, `skipped` or `failed`, plus the docs `copy_missing_docs` refuses. Those outcomes come from `managed_block.resolves_outside` / `_write`, `specyrd_skills.ensure_link`, `refresh_stubs._write_if_changed` and `apply_managed_block`'s read failure.
+2. **That set is passed into the preview.** Before the preview refresh, `snapshot_declined` records each declined path's bytes in the copy, or that it is absent. After the refresh, `restore_declined` puts exactly those paths back. Their end state in the copy is therefore what the real run leaves: not refreshed.
+3. **Materializing never changes whether a path is refreshed.** Paths the real run writes are left as the preview refresh wrote them. Paths it declines are undone. Materialization can only remove refusals, never add one, because the copy has no links. So these two cases cover every path.
+
+Red-green: with `upgrade.py` from `08c54ec5`, the external-link case returns dry `(0, no error)` against real `(1, error)`, Sol's finding. The unreadable case raises `PermissionError` in the dry run only. Both pass with the fix.
+
+Verification: `pytest -q tests/test_upgrade_parity.py tests/test_upgrade_preview.py tests/test_upgrade.py tests/test_skill_mirrors.py tests/test_init_project.py` → 31 passed. `specy-road file-limits` → OK. As instructed, the full suite was not rerun.
+
+## Fix round 2: preview/real parity
+
+| Path kind | Real run decision | Preview decision | Test |
+|---|---|---|---|
+| regular file (tracked or untracked) | written when the refresh changes it | written (same refresh code on a byte copy) | `test_upgrade.py::test_dry_run_writes_nothing_and_validates_a_copy`, `test_upgrade_preview.py::test_a_file_the_upgrade_pushes_over_its_cap_is_named` |
+| symlink in (resolves inside the checkout; for a managed block, inside its own directory) | written through the link | written (materialized file); not in the declined set | `test_upgrade_parity.py::test_agents_md_linked_inside_the_repo_is_refreshed_in_both`, `test_upgrade_preview.py::test_dry_run_never_writes_through_a_link_into_the_checkout` (schema via alias, written through) |
+| symlink out (managed block, skill or doc whose path resolves outside the repo or out of its own directory) | refused (`refused: a symlink leads outside the repository`) or skipped | refused: the path is in the declined set, so its pre-refresh copy is restored | `test_upgrade_parity.py::test_agents_md_linked_out_of_the_repo_is_refused_in_the_preview_too` (both exit 1 with the same error) |
+| ignored managed-block file (e.g. `CLAUDE.md` in `.gitignore`) | refreshed | refreshed: copied regardless of ignore rules via `_block_previews`' selection | `test_upgrade_preview.py::test_dry_run_validates_an_ignored_claude_md_with_its_text_and_the_refreshed_block` |
+| managed file not ours (exists, never recorded by the manifest) | skipped (`skipped (not ours)`) | skipped: in the declined set, restored | same mechanism as symlink out (shared `skipped` prefix). No dedicated test; the outcome string is the one `_write_if_changed` / `ensure_link` report |
+| unreadable managed file | `failed` (the block read raises, caught by `apply_managed_block`) | `failed`: the copy holds an empty file with the same mode 000, so the same read fails; it is also in the declined set | `test_upgrade_parity.py::test_an_unreadable_agents_md_fails_alike_in_both` (same refresh outcome line and same end result in both) |
+| refresh-profiles destination under a link | `ValueError`, upgrade exits 1 | the same `ValueError` is raised by the listing phase on the real checkout, before any copy is made | existing behaviour; not a new test |
+
+Known limits, flagged and not changed:
+
+- **Link aliasing inside the repo.** For example, `CLAUDE.md -> AGENTS.md` in the same directory. Both runs refresh both paths, so the decisions match. But in the real run the two blocks land in one file, while the copy holds two separate files. Keeping the link in the copy would break the round-1 rule that the preview tree holds no links.
+- **Unreadable files crash validate.** The validate reader `validate_stale_commands.file_unregistered_commands` raises `PermissionError` on an unreadable `AGENTS.md`, in both the real and the dry run. This is pre-existing and outside this leaf's zones.
