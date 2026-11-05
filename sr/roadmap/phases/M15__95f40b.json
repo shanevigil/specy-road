@@ -138,7 +138,8 @@
       "title": "Review notes: a part joined by a comma or 'and' is a second observation only when it names a defect",
       "touch_zones": [
         "specy_road/review_record_rules.py",
-        "tests/test_review_record_rules.py"
+        "tests/test_review_record_rules.py",
+        "tests/test_review_friction_m15_17.py"
       ],
       "type": "task"
     },
