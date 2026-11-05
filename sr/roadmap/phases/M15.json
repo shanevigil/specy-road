@@ -314,7 +314,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.11_working-roster-in-one-command-and-validated-profiles_d333b89b-eb44-4636-a350-284149c4a490.md",
       "sibling_order": 11,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors",
       "touch_zones": [
         "specy_road/bundled_scripts/models_cli.py",
