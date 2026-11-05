@@ -277,6 +277,7 @@ Do not pick these up.
 - `M14.2` on `feature/rm-doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch` since 2026-11-04
 - `M14.3` on `feature/rm-worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout` since 2026-11-04
 - `M14.6` on `feature/rm-reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round` since 2026-11-04
+- `M15.1` on `feature/rm-rc-install-docs-cover-extras-and-direct-wheel-url` since 2026-11-04
 - `M15.10` on `feature/rm-try-a-roster-before-it-lands` since 2026-11-04
 - `M15.12` on `feature/rm-shared-doc-zones-do-not-serialize-batches` since 2026-11-04
 - `M15.18` on `feature/rm-planned-test-changes-editable-and-removals-surfaced` since 2026-11-04
