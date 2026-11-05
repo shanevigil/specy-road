@@ -23,45 +23,13 @@ from specy_road.file_limits_baseline import (
 )
 from specy_road.file_limits_engine import run_file_limits_scan
 from specy_road.bundled_scripts.upgrade import run_upgrade
+from tests.file_limits_baseline_helpers import (
+    assert_only_inserted,
+    cfg_yaml,
+    write_layout,
+)
 from tests.helpers import BUNDLED_SCRIPTS, REPO, script_subprocess_env
 from tests.upgrade_repo_helpers import old_repo
-
-
-def _write_layout(root: Path, files: dict[str, str]) -> None:
-    for rel, body in files.items():
-        p = root / rel
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(body, encoding="utf-8")
-
-
-def _cfg_yaml(**extra: object) -> str:
-    base = {
-        "max_lines_per_file": 10,
-        "max_lines_per_function": 5,
-        "applies_to_globs": ["**/*.py"],
-    }
-    base.update(extra)
-    return yaml.safe_dump(base, sort_keys=False)
-
-
-def _policy_prefix() -> str:
-    return 'max_lines_per_file: 2\napplies_to_globs:\n  - "**/*.py"\n'
-
-
-def _assert_only_inserted(before: str, after: str) -> None:
-    prefix = 0
-    while prefix < min(len(before), len(after)) and before[prefix] == after[prefix]:
-        prefix += 1
-    suffix = 0
-    while (
-        suffix < len(before) - prefix
-        and suffix < len(after) - prefix
-        and before[len(before) - 1 - suffix] == after[len(after) - 1 - suffix]
-    ):
-        suffix += 1
-    assert before[:prefix] == after[:prefix]
-    assert before[len(before) - suffix :] == after[len(after) - suffix :]
-    assert len(after) > len(before)
 
 
 def test_round_up_to_step_pins_bucket_caps() -> None:
@@ -116,10 +84,10 @@ def test_write_baseline_inserts_inside_override_limits_before_roadmap_keys(tmp_p
         "roadmap_json_chunk_max_lines: 500\n"
     )
     cfg_path.write_text(before, encoding="utf-8")
-    _write_layout(tmp_path, {"wide.py": "x\n" * 11})
+    write_layout(tmp_path, {"wide.py": "x\n" * 11})
     assert write_baseline(tmp_path) == 0
     after = cfg_path.read_text(encoding="utf-8")
-    _assert_only_inserted(before, after)
+    assert_only_inserted(before, after)
     cfg = yaml.safe_load(after)
     assert cfg["roadmap_manifest_max_lines"] == 500
     assert run_file_limits_scan(tmp_path, cfg) is False
@@ -141,7 +109,7 @@ def test_write_baseline_inserts_after_in_sequence_comments_and_later_rows(tmp_pa
         "    max_lines_per_file: 2\n"
     )
     cfg_path.write_text(before, encoding="utf-8")
-    _write_layout(tmp_path, {"wide.py": "x\n" * 3, "keep.py": "y\n"})
+    write_layout(tmp_path, {"wide.py": "x\n" * 3, "keep.py": "y\n"})
     assert write_baseline(tmp_path) == 0
     after = cfg_path.read_text(encoding="utf-8")
     assert "# existing comment" in after
@@ -158,9 +126,9 @@ def test_write_baseline_inserts_after_in_sequence_comments_and_later_rows(tmp_pa
 def test_write_baseline_with_double_quote_in_filename(tmp_path: Path) -> None:
     (tmp_path / "constraints").mkdir()
     cfg_path = tmp_path / "constraints" / "file-limits.yaml"
-    cfg_path.write_text(_cfg_yaml(max_lines_per_file=2), encoding="utf-8")
+    cfg_path.write_text(cfg_yaml(max_lines_per_file=2), encoding="utf-8")
     quoted = 'a"b.py'
-    _write_layout(tmp_path, {quoted: "x\n" * 3})
+    write_layout(tmp_path, {quoted: "x\n" * 3})
     assert write_baseline(tmp_path) == 0
     cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
     globs = [
@@ -176,9 +144,9 @@ def test_write_baseline_with_double_quote_in_filename(tmp_path: Path) -> None:
 def test_write_baseline_literal_glob_does_not_widen_to_similar_names(tmp_path: Path) -> None:
     (tmp_path / "constraints").mkdir()
     cfg_path = tmp_path / "constraints" / "file-limits.yaml"
-    cfg_path.write_text(_cfg_yaml(max_lines_per_file=2), encoding="utf-8")
+    cfg_path.write_text(cfg_yaml(max_lines_per_file=2), encoding="utf-8")
     bracket_name = "a[1].py"
-    _write_layout(tmp_path, {bracket_name: "x\n" * 3})
+    write_layout(tmp_path, {bracket_name: "x\n" * 3})
     assert write_baseline(tmp_path) == 0
     text = cfg_path.read_text(encoding="utf-8")
     cfg = yaml.safe_load(text)
@@ -187,14 +155,14 @@ def test_write_baseline_literal_glob_does_not_widen_to_similar_names(tmp_path: P
     before = text
     assert write_baseline(tmp_path) == 0
     assert cfg_path.read_text(encoding="utf-8") == before
-    _write_layout(tmp_path, {"a1.py": "x\n" * 3})
+    write_layout(tmp_path, {"a1.py": "x\n" * 3})
     assert run_file_limits_scan(tmp_path, yaml.safe_load(cfg_path.read_text(encoding="utf-8"))) is True
 
 
 def test_write_baseline_dry_run_prints_without_writing(tmp_path: Path, capsys) -> None:
     (tmp_path / "constraints").mkdir()
-    (tmp_path / "constraints" / "file-limits.yaml").write_text(_cfg_yaml(), encoding="utf-8")
-    _write_layout(tmp_path, {"wide.py": "x\n" * 11})
+    (tmp_path / "constraints" / "file-limits.yaml").write_text(cfg_yaml(), encoding="utf-8")
+    write_layout(tmp_path, {"wide.py": "x\n" * 11})
     raw = (tmp_path / "constraints" / "file-limits.yaml").read_text(encoding="utf-8")
     assert write_baseline(tmp_path, dry_run=True) == 0
     assert (tmp_path / "constraints" / "file-limits.yaml").read_text(encoding="utf-8") == raw
@@ -203,8 +171,8 @@ def test_write_baseline_dry_run_prints_without_writing(tmp_path: Path, capsys) -
 
 def test_failing_cli_prints_hint_passing_does_not(tmp_path: Path) -> None:
     (tmp_path / "constraints").mkdir()
-    (tmp_path / "constraints" / "file-limits.yaml").write_text(_cfg_yaml(), encoding="utf-8")
-    _write_layout(tmp_path, {"wide.py": "x\n" * 11})
+    (tmp_path / "constraints" / "file-limits.yaml").write_text(cfg_yaml(), encoding="utf-8")
+    write_layout(tmp_path, {"wide.py": "x\n" * 11})
     fail = subprocess.run(
         [
             sys.executable,
@@ -221,7 +189,7 @@ def test_failing_cli_prints_hint_passing_does_not(tmp_path: Path) -> None:
     assert fail.returncode == 1
     hint = failure_hint("constraints/file-limits.yaml")
     assert hint in fail.stderr
-    _write_layout(tmp_path, {"wide.py": "x\n"})
+    write_layout(tmp_path, {"wide.py": "x\n"})
     ok = subprocess.run(
         [
             sys.executable,
@@ -243,8 +211,8 @@ def test_failing_cli_prints_hint_passing_does_not(tmp_path: Path) -> None:
 def test_plan_baseline_append_empty_when_nothing_fails(tmp_path: Path) -> None:
     (tmp_path / "constraints").mkdir()
     cfg_path = tmp_path / "constraints" / "file-limits.yaml"
-    cfg_path.write_text(_cfg_yaml(), encoding="utf-8")
-    _write_layout(tmp_path, {"ok.py": "x\n"})
+    cfg_path.write_text(cfg_yaml(), encoding="utf-8")
+    write_layout(tmp_path, {"ok.py": "x\n"})
     cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
     assert plan_baseline_append(cfg_path, cfg, tmp_path) == ""
     assert collect_failing_file_metrics(tmp_path, cfg) == []

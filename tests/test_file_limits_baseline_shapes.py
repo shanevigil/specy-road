@@ -9,10 +9,11 @@ import yaml
 
 from specy_road.file_limits_baseline import write_baseline
 from specy_road.file_limits_engine import run_file_limits_scan
-from tests.test_file_limits_baseline import (
-    _assert_only_inserted,
-    _policy_prefix,
-    _write_layout,
+from tests.file_limits_baseline_helpers import (
+    assert_only_inserted,
+    cfg_yaml,
+    policy_prefix,
+    write_layout,
 )
 
 
@@ -36,12 +37,12 @@ from tests.test_file_limits_baseline import (
 def test_write_baseline_preserves_existing_yaml_bytes(tmp_path: Path, override_suffix: str) -> None:
     (tmp_path / "constraints").mkdir()
     cfg_path = tmp_path / "constraints" / "file-limits.yaml"
-    before = _policy_prefix() + override_suffix
+    before = policy_prefix() + override_suffix
     cfg_path.write_text(before, encoding="utf-8")
-    _write_layout(tmp_path, {"wide.py": "x\n" * 3, "keep.py": "y\n", "tail.py": "z\n"})
+    write_layout(tmp_path, {"wide.py": "x\n" * 3, "keep.py": "y\n", "tail.py": "z\n"})
     assert write_baseline(tmp_path) == 0
     after = cfg_path.read_text(encoding="utf-8")
-    _assert_only_inserted(before, after)
+    assert_only_inserted(before, after)
     if "# existing comment" in override_suffix:
         assert "# existing comment" in after
     if "# head" in override_suffix:
@@ -55,14 +56,12 @@ def test_write_baseline_preserves_existing_yaml_bytes(tmp_path: Path, override_s
 
 
 def test_write_baseline_leading_space_filename_resolves_and_is_idempotent(tmp_path: Path) -> None:
-    from tests.test_file_limits_baseline import _cfg_yaml
-
     (tmp_path / "constraints").mkdir()
     cfg_path = tmp_path / "constraints" / "file-limits.yaml"
-    cfg_path.write_text(_cfg_yaml(max_lines_per_file=2, max_lines_per_function=2), encoding="utf-8")
+    cfg_path.write_text(cfg_yaml(max_lines_per_file=2, max_lines_per_function=2), encoding="utf-8")
     spaced = " a.py"
     body = "def f():\n x=1\n return x\n"
-    _write_layout(tmp_path, {spaced: body})
+    write_layout(tmp_path, {spaced: body})
     assert write_baseline(tmp_path) == 0
     after = cfg_path.read_text(encoding="utf-8")
     cfg = yaml.safe_load(after)
@@ -85,9 +84,9 @@ def test_write_baseline_populates_empty_override_limits_value(
 ) -> None:
     (tmp_path / "constraints").mkdir()
     cfg_path = tmp_path / "constraints" / "file-limits.yaml"
-    before = _policy_prefix() + override_suffix
+    before = policy_prefix() + override_suffix
     cfg_path.write_text(before, encoding="utf-8")
-    _write_layout(tmp_path, {"wide.py": "x\n" * 3})
+    write_layout(tmp_path, {"wide.py": "x\n" * 3})
     assert write_baseline(tmp_path) == 0
     after = cfg_path.read_text(encoding="utf-8")
     if "# keep comment" in override_suffix:
@@ -100,9 +99,9 @@ def test_write_baseline_populates_empty_override_limits_value(
 def test_write_baseline_inserts_override_limits_before_document_end(tmp_path: Path) -> None:
     (tmp_path / "constraints").mkdir()
     cfg_path = tmp_path / "constraints" / "file-limits.yaml"
-    before = _policy_prefix() + "...\n"
+    before = policy_prefix() + "...\n"
     cfg_path.write_text(before, encoding="utf-8")
-    _write_layout(tmp_path, {"wide.py": "x\n" * 3})
+    write_layout(tmp_path, {"wide.py": "x\n" * 3})
     assert write_baseline(tmp_path) == 0
     after = cfg_path.read_text(encoding="utf-8")
     prefix_end = before.index("...")
@@ -145,12 +144,12 @@ def test_write_baseline_appends_with_special_chars_in_quoted_globs(
             f"      - {quoted}\n"
             "    max_lines_per_file: 100\n"
         )
-    before = _policy_prefix() + override
+    before = policy_prefix() + override
     cfg_path.write_text(before, encoding="utf-8")
-    _write_layout(tmp_path, {"wide.py": "x\n" * 3, glob_literal: "y\n"})
+    write_layout(tmp_path, {"wide.py": "x\n" * 3, glob_literal: "y\n"})
     assert write_baseline(tmp_path) == 0
     after = cfg_path.read_text(encoding="utf-8")
-    _assert_only_inserted(before, after)
+    assert_only_inserted(before, after)
     assert quoted in after
     cfg = yaml.safe_load(after)
     assert cfg["override_limits"][0]["file_globs"] == [glob_literal]
