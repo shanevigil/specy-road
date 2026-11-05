@@ -23,3 +23,18 @@ Touch zones (final, unchanged): `docs/install-and-usage.md`, `docs/install-relea
 - `tests/test_docs_install_extras.py::test_install_docs_name_every_extra`: the pyproject-driven extras check (A4).
 - Helpers, branches or guards: none.
 - Mocks: none.
+
+## Fix round 1
+
+- **F1 (Sol, P3)**, class: a claim about how an installer chooses between indexes, stated without the index order it depends on. `docs/install-release-candidates.md` "Never an index" now says how each form goes wrong: `--index-url` makes TestPyPI the only index; pip `--extra-index-url` and uv `unsafe-best-match` take the highest version from either index; uv `first-index` takes each name from the first index that has it, and `--index`/`--extra-index-url` are searched before PyPI, so TestPyPI wins every name it has. The PyPI-has-no-RC clause is limited to the case where PyPI is listed first. The "squatted sdist runs build code" wording replaces "pip runs its `setup.py`", because uv builds sdists too. The never-an-index warning is unchanged.
+
+## Probes
+
+- uv 0.13.7, `--index-url <final> --index <rc>` (local HTTP Simple indexes), `probe-y==1.0.0rc1`: installed 1.0.0rc1 from `--index`, so an explicit index is searched before the default.
+- uv 0.13.7, `--index <final> --index <rc>`, `probe-y==1.0.0rc1`: failed, "found on <final> but not at the requested version". The qualified PyPI-first clause holds.
+- uv tool 0.13.7, `"probe-x[gui] @ http://127.0.0.1/<wheel>#sha256=<wrong>"`: the wheel was installed (it failed afterwards only because it has no entry points). The doc's "uv tool ignores the fragment" holds.
+- pip, same URL with the wrong fragment: refused with "Expected sha256 … Got …". The "pip and pipx check the fragment" claim holds.
+- "An exact pin needs no `--pre`" (pip and uv both accept a prerelease when `==` names it exactly) and "`uv venv` installs no pip" (it does unless `--seed` is given): these match the tools' documented behaviour; no change.
+- `docs/supply-chain-security.md` "Release candidates from TestPyPI" (`--index-url` + `--extra-index-url` and `unsafe-best-match` let any package come from either index): accurate; no change.
+- Runbook A.3 step 5, README and upgrading.md only link to the doc or describe the announcement and make no claims about how indexes are chosen; no change.
+- `pytest tests/test_docs_install_extras.py tests/test_docs_rc_install_recipe.py tests/test_doc_links.py`: 8 passed. `specy-road file-limits`: OK.
