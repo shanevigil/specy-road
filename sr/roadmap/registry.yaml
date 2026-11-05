@@ -153,6 +153,7 @@ entries:
       - specy_road/schemas/worker-record.schema.json
       - specy_road/steering_gate.py
       - docs/orchestration-steering-files.md
+      - specy_road/git_config_text.py
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
