@@ -387,7 +387,7 @@ def run_validation(
     report_roster_profiles(r)   # unmatched ids, and profile: values that do not resolve
     warn_touch_zones_match_nothing(nodes, r, git_root=git_root(r) or r)
     warn_untracked_zones(nodes, r)
-    warn_summary_rule(r)   # implementation_summary: commit against a .gitignore that ignores summaries (M15.22)
+    warn_summary_rule(r, nodes)   # implementation_summary: commit against a .gitignore that ignores summaries (M15.22)
     warn_authoring_gaps(nodes, r, gate, show_all=show_all, strict_authoring=strict_authoring)
     warn_acceptance_merged(nodes)
     warn_registry_touch_zone_overlap(

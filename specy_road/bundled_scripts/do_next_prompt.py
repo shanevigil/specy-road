@@ -272,7 +272,7 @@ def _finish_instruction_lines(
                 "an `## Added` inventory: every helper, branch or guard, mock and "
                 "test you added, one line each with its reason (`none` under a "
                 "heading is fine), "
-                + summary_handling(implementation_summary_rule(repo_root))
+                + summary_handling(implementation_summary_rule(repo_root, node_id))
             ),
             (
                 "5. Hand off for review: write "

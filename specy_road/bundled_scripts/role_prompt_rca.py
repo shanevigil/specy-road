@@ -139,8 +139,9 @@ _COMMIT_SUMMARY = ("and commit it by explicit path on this branch: it is what th
 def executor_preamble(node_id: str, model: str, zones: list[str], family_lock: str | None = None,
                       reviews: Path | None = None, prefix: str = "") -> list[str]:
     z = ", ".join(f"`{x}`" for x in zones) or "_(none declared — propose them in your summary)_"
-    # ``reviews`` is <main checkout's project root>/work/reviews/<id>; git-workflow.yaml is tracked there.
-    rule = implementation_summary_rule(reviews.parents[2])
+    # ``reviews`` is <main checkout's project root>/work/reviews/<id>: the hand-off destination only. The
+    # summary rule is the leaf's own, read in the checkout holding its branch (``leaf_root``), not main's.
+    rule = implementation_summary_rule(reviews.parents[2], node_id)
     lock = ([f"You may spawn sub-agents only of family `{family_lock}`; fanning out to another vendor "
              "defeats the reason you were chosen.", ""] if family_lock else [])
     return lock + [

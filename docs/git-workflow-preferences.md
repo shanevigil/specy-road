@@ -53,9 +53,18 @@ schema, so `validate` reports it; it is never read as "no footer". Likewise an
   reads it from the worktree and labels it as working-tree text.
 
 The prompts never tell a worker to force-add (`git add -f`) an ignored path.
-If `.gitignore` ignores the summary, the ignore rule wins over `commit`: the
-prompts use the `local` wording, and `specy-road validate` prints a notice
-naming the rule (`source:line:pattern`). Set `implementation_summary: local` to
+Git is asked about each leaf's own summary path
+(`work/implementation-summary-<ID>.md`), so a rule naming some ids and not
+others decides per leaf, and a negated rule (`!pattern`) un-ignores. If
+`.gitignore` ignores a leaf's summary, the ignore rule wins over `commit` for
+that leaf: its prompts use the `local` wording, and `specy-road validate` prints
+a notice naming each ignored leaf summary and its rule (`source:line:pattern`).
+
+A leaf's `implementation_summary` and `pr_body_footer` are read in the checkout
+that has its branch checked out, usually its linked worktree under
+`work/.worktrees/`. It doesn't matter whether the prompt is built from there or
+from the main checkout, so a setting committed on the leaf's branch applies to
+that leaf. A leaf whose branch is checked out nowhere uses the checkout that asks. Set `implementation_summary: local` to
 make the setting match, or drop the ignore rule to commit summaries. The
 notice goes to stdout, so `validate --strict` does not count it.
 

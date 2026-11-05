@@ -17,12 +17,20 @@ from specy_road.finish_land_local import land_on_integration
 from specy_road.finish_pr_body import write_pr_body
 from specy_road.git_workflow_config import validate_git_workflow_dict
 from specy_road.bundled_scripts.validate_roadmap import validate_git_workflow_contract
-from specy_road.workflow_prefs import implementation_summary_rule, pr_body_footer, root_land, summary_rule_notice
+from specy_road.workflow_prefs import (
+    implementation_summary_rule,
+    pr_body_footer,
+    root_land,
+    summary_ignore_rules,
+    summary_rule_notice,
+    warn_summary_rule,
+)
 from tests.decisions_repo_helpers import add_args, decisions_repo, run_decisions
+from tests.review_repo_helpers import git
 from tests.test_models_and_prompt import make_profile_repo
 
 _ACCESSORS = {"pr_body_footer": pr_body_footer, "implementation_summary": implementation_summary_rule,
-              "land": root_land}
+              "land": lambda root, _node_id: root_land(root)}
 GW = "version: 1\nintegration_branch: master\nremote: origin\n"
 
 
@@ -110,7 +118,7 @@ def test_every_schema_valid_preference_takes_effect(tmp_path: Path, key: str, va
     assert validate_git_workflow_dict({**BASE, key: value}) is None
     (tmp_path / "roadmap").mkdir()
     (tmp_path / "roadmap" / "git-workflow.yaml").write_text(yaml.safe_dump({**BASE, key: value}), encoding="utf-8")
-    assert _ACCESSORS[key](tmp_path) == expected
+    assert _ACCESSORS[key](tmp_path, "M1.1") == expected
 
 
 @pytest.mark.parametrize("key,value", [
@@ -132,14 +140,14 @@ def test_schema_refuses_what_the_workflow_would_not_honour(tmp_path: Path, capsy
 
 # --- A3: implementation_summary: commit | local ----------------------------------------------
 
-def _pickup_prompt(repo: Path, gw_extra: str = "") -> str:
+def _pickup_prompt(repo: Path, gw_extra: str = "", node_id: str = "M1.1") -> str:
     (repo / "roadmap").mkdir(exist_ok=True)
     (repo / "roadmap" / "git-workflow.yaml").write_text(
         GW + "require_implementation_review_before_finish: true\n" + gw_extra, encoding="utf-8")
-    brief = repo / "work" / "brief-M1.1.md"
+    brief = repo / "work" / f"brief-{node_id}.md"
     brief.parent.mkdir(parents=True, exist_ok=True)
     brief.write_text("# brief\n", encoding="utf-8")
-    node = {"id": "M1.1", "type": "task", "title": "Leaf", "status": "Not Started", "codename": "leaf",
+    node = {"id": node_id, "type": "task", "title": "Leaf", "status": "Not Started", "codename": "leaf",
             "node_key": "22222222-2222-4222-8222-222222222222"}
     return dnp.write_agent_prompt(node, [node], brief, repo_root=repo, work_dir=repo / "work").read_text()
 
@@ -150,7 +158,7 @@ def test_pickup_prompt_follows_implementation_summary(tmp_path: Path) -> None:
     assert "and commit it on the feature branch by explicit path" in commit
     local = _pickup_prompt(tmp_path, "implementation_summary: local\n")
     assert "leave it uncommitted" in local and "commit it on the feature branch" not in local
-    assert summary_rule_notice(tmp_path) is None
+    assert summary_rule_notice(tmp_path, ["M1.1"]) is None
     for text in (commit, local):
         assert "add -f" not in text and "--force" not in text
 
@@ -160,10 +168,56 @@ def test_ignored_summary_wins_over_commit_and_validate_says_so(tmp_path: Path) -
     (tmp_path / ".gitignore").write_text("work/implementation-summary-*.md\n", encoding="utf-8")
     text = _pickup_prompt(tmp_path, "implementation_summary: commit\n")
     assert "leave it uncommitted" in text and "add -f" not in text
-    notice = summary_rule_notice(tmp_path)
+    notice = summary_rule_notice(tmp_path, ["M1.1"])
     assert notice and ".gitignore:1:work/implementation-summary-*.md" in notice and "the ignore rule wins" in notice
     (tmp_path / ".gitignore").write_text("work/*\n!work/implementation-summary-*.md\n", encoding="utf-8")
-    assert summary_rule_notice(tmp_path) is None   # a negated rule un-ignores it
+    assert summary_rule_notice(tmp_path, ["M1.1"]) is None   # a negated rule un-ignores it
+
+
+@pytest.mark.parametrize("ignore,ignored", [
+    ("work/implementation-summary-M1.1.md\n", {"M1.1"}),   # one leaf's exact filename
+    ("work/implementation-summary-M1.*.md\n", {"M1.1", "M1.2"}),
+    ("work/implementation-summary-M2*.md\n", {"M2.10"}),
+    ("work/implementation-summary-*.md\n!work/implementation-summary-M1.2.md\n", {"M1.1", "M2.10"}),   # negation
+    ("work/*\n!work/implementation-summary-M1.1.md\n", {"M1.2", "M2.10"}),
+    ("work/brief-*.md\n", set()),
+])
+def test_each_leaf_asks_git_about_its_own_summary_path(tmp_path: Path, capsys, ignore: str, ignored: set[str]) -> None:
+    """R1: git is asked about the exact path of each leaf's summary, never a sample path, so a rule that
+    matches some ids and not others decides per leaf, in the pickup prompt and in validate's notice."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / ".gitignore").write_text(ignore, encoding="utf-8")
+    ids = ["M1.1", "M1.2", "M2.10"]
+    assert set(summary_ignore_rules(tmp_path, ids)) == ignored
+    for node_id in ids:
+        text = _pickup_prompt(tmp_path, node_id=node_id)
+        assert ("leave it uncommitted" in text) is (node_id in ignored), node_id
+        assert "add -f" not in text
+    nodes = [{"id": "M1"}, *({"id": i, "parent_id": "M1"} for i in ids)]
+    warn_summary_rule(tmp_path, nodes)
+    out = capsys.readouterr().out
+    assert ("notice:" in out) is bool(ignored)
+    for node_id in ids:
+        assert (f"work/implementation-summary-{node_id}.md (" in out) is (node_id in ignored), node_id
+
+
+def test_linked_leaf_worktree_setting_wins_over_main(tmp_path: Path) -> None:
+    """R2: a leaf's preferences are read in the checkout holding its branch, from main or the worktree."""
+    repo = make_profile_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    wt = tmp_path / "leaf-wt"
+    git(repo, "worktree", "add", "-q", str(wt), "feature/rm-thing")
+    gw = wt / "roadmap" / "git-workflow.yaml"
+    gw.write_text(gw.read_text(encoding="utf-8") + "implementation_summary: local\npr_body_footer: leaf footer\n",
+                  encoding="utf-8")
+    git(wt, "commit", "-qam", "leaf-only preferences")
+    assert implementation_summary_rule(repo, "M1.1") == implementation_summary_rule(wt, "M1.1") == "local"
+    assert pr_body_footer(repo, "M1.1") == pr_body_footer(wt, "M1.1") == "leaf footer"
+    for root in (repo, wt):
+        text, _, err = role_prompt.build_prompt(root, "M1.1", role="executor", model="opus")
+        assert err is None and "leave it uncommitted" in text and "commit it by explicit path" not in text, root
+    git(repo, "worktree", "remove", "--force", str(wt))   # branch checked out nowhere: the asking checkout decides
+    assert implementation_summary_rule(repo, "M1.1") == "commit" and pr_body_footer(repo, "M1.1") is None
 
 
 def test_executor_role_prompt_follows_implementation_summary(tmp_path: Path) -> None:

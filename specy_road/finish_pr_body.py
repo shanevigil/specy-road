@@ -109,7 +109,7 @@ def write_pr_body(
         codename=codename,
         branch=branch,
         integration_branch=integration_branch,
-        footer=pr_body_footer(work_dir.parent),
+        footer=pr_body_footer(work_dir.parent, node_id),
     )
     out.write_text(body, encoding="utf-8")
     return out
