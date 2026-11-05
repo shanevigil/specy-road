@@ -177,6 +177,7 @@ entries:
       - specy_road/schemas/review-record.schema.json
       - specy_road/review_files.py
       - specy_road/bundled_scripts/role_prompt_rca.py
+      - specy_road/bundled_scripts/roadmap_crud_ops.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -188,6 +189,7 @@ entries:
       - specy_road/worker_adapter_parsers.py
       - specy_road/model_names.py
       - tests/
+      - specy_road/worker_runner.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
