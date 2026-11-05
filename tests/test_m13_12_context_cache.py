@@ -98,3 +98,46 @@ def test_the_cli_flag_folds_one_report_only(tmp_path: Path, capsys) -> None:
     assert capsys.readouterr().err == FOLDED
     report_context_warnings(tmp_path, warn)
     assert capsys.readouterr().err == FULL
+
+
+OTHER = ["context: warning — CLAUDE.md is 300 lines; …"]
+
+
+def other(_root: Path) -> None:
+    for ln in OTHER:
+        print(ln, file=sys.stderr)
+
+
+def test_a_different_unfolded_report_in_between_makes_the_next_folding_run_print_in_full(
+        tmp_path: Path, capsys) -> None:
+    recorded(tmp_path, capsys)
+    report_context_warnings(tmp_path, other, cached=False)   # upgrade or --context: recorded too
+    capsys.readouterr()
+    report_context_warnings(tmp_path, warn, cached=True)
+    assert capsys.readouterr().err == FULL
+    report_context_warnings(tmp_path, warn, cached=True)
+    assert capsys.readouterr().err == FOLDED
+
+
+def test_a_change_then_a_fold(tmp_path: Path, capsys) -> None:
+    recorded(tmp_path, capsys)
+    report_context_warnings(tmp_path, other, cached=True)
+    assert capsys.readouterr().err == OTHER[0] + "\n"
+    report_context_warnings(tmp_path, other, cached=True)
+    assert capsys.readouterr().err == "context: 1 warnings unchanged (validate --context shows them)\n"
+
+
+def test_empty_then_non_empty_prints_in_full(tmp_path: Path, capsys) -> None:
+    recorded(tmp_path, capsys)
+    report_context_warnings(tmp_path, lambda _r: None, cached=False)   # empty: recorded as no file
+    assert capsys.readouterr().err == ""
+    assert not hash_path(tmp_path).exists()
+    report_context_warnings(tmp_path, warn, cached=True)
+    assert capsys.readouterr().err == FULL
+
+
+def test_fold_off_then_on_folds_a_report_the_unfolded_run_recorded(tmp_path: Path, capsys) -> None:
+    report_context_warnings(tmp_path, warn, cached=False)
+    assert capsys.readouterr().err == FULL
+    report_context_warnings(tmp_path, warn, cached=True)
+    assert capsys.readouterr().err == FOLDED

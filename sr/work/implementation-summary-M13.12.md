@@ -55,11 +55,7 @@ Quieter, accurate validate notices. Commits `36e8aabf` and `cc417326`, then a fi
   - nothing else changes.
 
   Two lines are repeats only when git reads the same pattern. The file is now read as bytes and decoded, because `read_text`'s newline translation turned a lone `\r` into a line break.
-- **A5, open, needs a human decision:** `validate_roadmap.py` still changes one import line (line 57). The diff must call three functions that `validate_roadmap.py` does not currently import (`report_context_warnings`, `notice_repeated_ignore_patterns`, `parse_validate_args`). Every module it imports is a `from x import name` of a fixed name list. The only one in this leaf's unrestricted zones is `validate_notices`, which brings in `notice_milestone_review_holds` alone. The other two modules in reach are themselves limited to call-line changes: `agents_md_block` (A5) and `validate_roadmap_checks` (A1). So the only ways to reach a new symbol with no import change are:
-  - `sys.modules[...]` or `fn.__globals__` lookups;
-  - hiding the new behaviour inside `notice_milestone_review_holds` under a misleading name.
-
-  I did neither. Options for the human: amend A5 to allow the one import line, or name a different route.
+- **A5 import line:** the planner amended A5 on WIP (`8e709a5e`): the existing `validate_notices` import line in `validate_roadmap.py` may gain names. That line is the only non-call change.
 
 ## Probes (fix round 2)
 
@@ -72,6 +68,23 @@ Quieter, accurate validate notices. Commits `36e8aabf` and `cc417326`, then a fi
   - `agent_ignores`: this leaf changed only the note text. Unchanged.
   - `context_notice_cache`: compares a hash as bytes and reads no gitignore. Not reached.
 - `git diff origin/WIP/improvements-0-3-1 -- specy_road/bundled_scripts/validate_roadmap.py`: three call lines plus the one import line (A5 open, above).
+
+## Fix round 3 (review `grok-4.7-low` on `1ab5f2e9`; merged `origin/WIP/improvements-0-3-1`)
+
+- **Class: a report that runs without being recorded.** The cache was written only when folding was on and the text was not empty. So after a different report from `upgrade` or `validate --context`, or after a run with no warnings, the next folding run compared against an older report and said "unchanged".
+- **Design change:** one function, `context_notice_cache._record(root, text)`, reads, compares and writes the cache. It replaces `_changed` and the separate unlink branch. Every `report_context_warnings` call records the current text, folded or not, so "unchanged" means equal to the report just before. Empty text is recorded as no hash file, so a clean repo, like the dogfood fixture, gets no cache written. Any read failure is a miss; a failed write or removal is ignored.
+- **A5:** `git diff origin/WIP/improvements-0-3-1 -- specy_road/bundled_scripts/validate_roadmap.py` shows the existing `validate_notices` import line gaining three names (allowed by the amended A5) and three call lines.
+
+## Probes (fix round 3)
+
+- A different unfolded report (`upgrade` / `--context`), then a folding run with the earlier text: prints in full, and the next run folds. Test: `test_a_different_unfolded_report_in_between_makes_the_next_folding_run_print_in_full`. It would fail on `1ab5f2e9`.
+- A change, then a fold: in full, then one line. Test: `test_a_change_then_a_fold`.
+- Empty, then non-empty: the empty run removes the hash, and the next run prints in full. Test: `test_empty_then_non_empty_prints_in_full`.
+- Fold off, then on: the unfolded run records, and the folding run folds. Test: `test_fold_off_then_on_folds_a_report_the_unfolded_run_recorded`.
+- Corrupt cache files are a miss. Existing tests still pass: invalid UTF-8, truncated, a directory as the file, a file as the cache dir, mode 000.
+- Other writers or readers of this cache: none. `_record` is the only code that touches `context-warnings.sha256`; `report_context_warnings` is its only caller, and `validate_at` is the only production caller of that.
+- Dogfood fixture after the full suite: `git status --ignored -- tests/fixtures` is clean (no context warnings there, so no hash file).
+- Full suite: 4488 passed.
 
 ## Verification
 
@@ -90,10 +103,12 @@ Quieter, accurate validate notices. Commits `36e8aabf` and `cc417326`, then a fi
 - `validate_notices._patterns`, `notice_repeated_ignore_patterns`: the repeated-pattern notice (A4).
 - `context_notice_cache.py` (`HASH_FILENAME`, `_hash_path`, `_changed`, `report_context_warnings`): fold unchanged context warnings (A5).
 - Guard in `report_context_warnings`: no warnings means no cache write and a stale hash is removed, so the fixture and clean repos stay clean (A5).
+- `context_notice_cache._record`: the single cache read/compare/write; every report records, and empty text means no file (fix round 3; replaced `_changed`).
+- Tests (fix round 3) in `tests/test_m13_12_context_cache.py`: an unfolded report in between, a change then a fold, empty then non-empty, fold off then on.
 - `context_notice_cache.fold_next_report` / `_fold_next` and `report_context_warnings(cached=None)`: the CLI turns folding on for one report only; `validate_at` (upgrade) never folds. This replaced the first round's `validate_at(context_cache=)` kwarg (A5, call-line-only).
 - `validate_notices.parse_validate_args`: adds `--context`, parses, and sets folding, keeping the option out of `validate_roadmap.py` (A5).
 - `validate_notices.__all__`: marks `report_context_warnings` as a re-export for the single `validate_roadmap.py` import line (A5).
-- Guard in `_changed`: bytes comparison (no decode) plus separate `OSError` suppression on read and write. Any unreadable hash is a miss (fix round).
+- Guard in `_record`: bytes comparison (no decode), and `OSError` suppressed on read and on write or remove. Any unreadable hash is a miss.
 - `validate_notices._trim_trailing_spaces`: git's trailing-space rule, so `_patterns` reads lines as git does (fix round 2, A4).
 - Tests `test_patterns_git_reads_differently_are_not_repeats`, `test_trailing_unescaped_spaces_and_a_crlf_are_what_git_drops`, `test_a_lone_carriage_return_does_not_split_a_line`: A4 pattern equality as git reads it (fix round 2).
 - Tests in `tests/test_m13_12_context_cache.py`: invalid UTF-8, truncated, directory as the hash file, file as the cache dir, mode 000; no flag never folds; the flag folds one report only.
