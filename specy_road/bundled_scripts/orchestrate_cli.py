@@ -12,6 +12,8 @@ rostered coordinator the line reads `coordinator: this session`; `--spread` assi
 executors round-robin among the capable entries by leaf order. Assigns
 only: dispatch is `specy-road prompt`. Ends with the human's active routing
 preferences from `roadmap/decisions.yaml`, which the plan does not apply itself.
+`--roster-from-worktree` plans with the working tree's roster as a dry run: a banner
+comes first and `--json` carries `roster_ref: worktree`.
 """
 
 from __future__ import annotations
@@ -23,17 +25,26 @@ from datetime import date
 
 from specy_road.decisions import format_preference
 from specy_road.orchestrate_plan import OrchestrationPlan, build_orchestration_plan
+from specy_road.orchestration_pinned import WORKTREE_REF
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+
+DRY_RUN_BANNER = "DRY RUN: roster from the working tree, nothing may launch from this plan"
 
 
 def render(plan: OrchestrationPlan) -> list[str]:
     pol = plan.policy
     unit = "distinct-family" if pol.get("reviewers_distinct_families") else "any-family"
-    lines = [f"policy: {pol.get('reviewers_required')} {unit} reviewer(s)"
-             + (f"; scope {plan.under}" if plan.under else ""),
-             # Routing reads the integration branch's roster, not necessarily the file you are looking at.
-             "roster: roadmap/orchestration.yaml "
-             + (f"at {plan.roster_ref}" if plan.roster_ref else "in the working tree (not a git checkout)")]
+    dry = plan.roster_ref == WORKTREE_REF
+    lines = [DRY_RUN_BANNER] if dry else []
+    lines += [f"policy: {pol.get('reviewers_required')} {unit} reviewer(s)"
+              + (f"; scope {plan.under}" if plan.under else ""),
+              # Routing reads the integration branch's roster, not necessarily the file you are looking at.
+              "roster: roadmap/orchestration.yaml "
+              + ("in the working tree (--roster-from-worktree)" if dry else
+                 f"at {plan.roster_ref}" if plan.roster_ref else "in the working tree (not a git checkout)")]
+    if plan.local_roster:
+        lines.append("local roster entries (roadmap/orchestration.local.yaml roster_add, this clone only): "
+                     + ", ".join(plan.local_roster))
     if plan.roster_drift:
         lines.append(f"! {plan.roster_drift}")
     if not plan.batches:
@@ -76,11 +87,14 @@ def preference_lines(plan: OrchestrationPlan) -> list[str]:
 def cmd_plan(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     today = date.fromisoformat(ns.today) if ns.today else None
-    plan, err = build_orchestration_plan(root, under=ns.parent, today=today, spread=ns.spread)
+    plan, err = build_orchestration_plan(root, under=ns.parent, today=today, spread=ns.spread,
+                                         roster_from_worktree=ns.roster_from_worktree)
     if err or plan is None:
         print(f"error: {err}", file=sys.stderr)
         return 1
     if ns.json:
+        if ns.roster_from_worktree:   # stdout stays JSON; roster_ref says worktree there
+            print(DRY_RUN_BANNER, file=sys.stderr)
         print(json.dumps(plan.to_dict(), indent=2))
     else:
         print("\n".join(render(plan)))
@@ -99,6 +113,9 @@ def build_parser() -> argparse.ArgumentParser:
                       help="Assign executors round-robin among the capable, available entries by leaf order, "
                            "instead of always the cheapest")
     plan.add_argument("--json", action="store_true")
+    plan.add_argument("--roster-from-worktree", action="store_true",
+                      help="Dry run: plan with the working tree's roadmap/orchestration.yaml (uncommitted); "
+                           "nothing may launch from this plan, and delegation never reads it")
     add_repo_root_arg(plan)
     plan.set_defaults(func=cmd_plan)
     return p

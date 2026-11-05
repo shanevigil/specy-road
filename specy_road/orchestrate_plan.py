@@ -18,7 +18,8 @@ Rules, in the order they apply:
   names a roster ``class`` tag; only executors carrying that tag qualify.
 * **Availability (§3.7).** A roster entry with ``available: false``, or with
   ``paused_until`` (or legacy ``unavailable_until``) still in force, is skipped;
-  ``roadmap/orchestration.local.yaml`` can set those fields without a push.
+  ``roadmap/orchestration.local.yaml`` can set those fields without a push,
+  and add whole entries for this clone under ``roster_add`` (labelled local).
   Substitutions already model who stands in.
 * **Cost (§3.7).** Among capable executors (profile executor score ≥ 3, or no
   profile), the roster ``class`` ranks first (``cheap``, then untagged or other
@@ -72,9 +73,9 @@ from specy_road.orchestrate_assign import (  # noqa: F401 — re-exported: calle
     unavailability_reason,
     unavailable_prompt_error,
 )
-from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry, roster_source
+from specy_road.orchestration_pinned import WORKTREE_REF, pinned_config, pinned_profile_for_entry, roster_source
+from specy_road.roster_local import local_roster_ids
 from specy_road.runtime_paths import project_prefix
-
 
 @dataclass
 class OrchestrationPlan:
@@ -88,6 +89,7 @@ class OrchestrationPlan:
     roster_drift: str | None = None    # the working-tree roster is absent there or differs
     preferences_not_applied: list[dict[str, Any]] = field(default_factory=list)   # active, for the coordinator
     preferences_error: str | None = None   # the ledger could not be read; the plan still stands
+    local_roster: list[str] = field(default_factory=list)   # ids this clone's roster_add contributed
 
     @property
     def ok(self) -> bool:
@@ -99,7 +101,7 @@ class OrchestrationPlan:
                 "batches": [[a.to_dict() for a in b] for b in self.batches],
                 "blocked": self.blocked, "active": self.active, "unauthored": self.unauthored,
                 "preferences_not_applied": self.preferences_not_applied,
-                "preferences_error": self.preferences_error}
+                "preferences_error": self.preferences_error, "local_roster": self.local_roster}
 
 
 def preference_notice(pref: dict[str, Any], cands: list[Candidate], today: date | None) -> dict[str, Any]:
@@ -114,17 +116,20 @@ def preference_notice(pref: dict[str, Any], cands: list[Candidate], today: date 
 
 
 def build_orchestration_plan(root: Path, *, under: str | None = None, today: date | None = None,
-                             spread: bool = False) -> tuple[OrchestrationPlan | None, str | None]:
-    """``spread``: executors round-robin over the capable entries by leaf order (batch, then position)."""
-    config, err = pinned_config(root)
+                             spread: bool = False, roster_from_worktree: bool = False) -> tuple[OrchestrationPlan | None, str | None]:
+    """``spread``: executors round-robin over the capable entries by leaf order (batch, then position).
+    ``roster_from_worktree``: a dry run on the working tree's roster (``roster_ref`` is ``worktree``)."""
+    config, err = pinned_config(root, worktree=roster_from_worktree)
     if err:
         return None, f"orchestration config: {err}"
     if under and under not in {n["id"] for n in load_roadmap(root)["nodes"]}:
         return None, f"unknown node id: {under}"
     nodes, _reg, sp = gather_session_plan(root, under)
     by_id = {n["id"]: n for n in nodes}
-    cands = [Candidate(e, pinned_profile_for_entry(root, e)) for e in config.get("roster") or []]
-    ref, drift = roster_source(root)
+    local = local_roster_ids(root)
+    cands = [Candidate(e, pinned_profile_for_entry(root, e, worktree=roster_from_worktree), e.get("id") in local)
+             for e in config.get("roster") or []]
+    ref, drift = (WORKTREE_REF, None) if roster_from_worktree else roster_source(root)
     prefix = project_prefix(root)
     order = [nid for batch in sp.parallel_batches for nid in batch if nid in by_id]
     batches = [[assign_leaf(by_id[nid], cands, config, today, drift, prefix,
@@ -134,4 +139,4 @@ def build_orchestration_plan(root: Path, *, under: str | None = None, today: dat
     return OrchestrationPlan(under, dict(config["policy"]), batches,
                              [b.node_id for b in sp.blocked], list(sp.active),
                              [u.node_id for u in sp.unauthored], ref, drift,
-                             [preference_notice(p, cands, today) for p in prefs], pref_err), None
+                             [preference_notice(p, cands, today) for p in prefs], pref_err, local), None

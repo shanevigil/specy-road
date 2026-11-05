@@ -61,7 +61,8 @@
         "specy_road/file_limits_engine.py",
         "tests/",
         "specy_road/templates/project/constraints/file-limits.yaml",
-        "specy_road/bundled_scripts/upgrade_preview.py"
+        "specy_road/bundled_scripts/upgrade_preview.py",
+        "specy_road/bundled_scripts/upgrade_plan.py"
       ],
       "type": "task"
     },

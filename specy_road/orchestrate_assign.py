@@ -101,6 +101,7 @@ def unavailable_prompt_error(model: str, entry: dict[str, Any]) -> str:
 class Candidate:
     entry: dict[str, Any]
     profile: Profile | None
+    local: bool = False   # added by this clone's roster_add (roster_local), not committed
 
     @property
     def id(self) -> str:
@@ -142,7 +143,8 @@ class Candidate:
 
     def describe(self, role: str) -> str:
         cost = f"${self.cost:g}/MTok" if self.cost is not None else "cost unknown"
-        return f"{self.id} ({self.family}; {role} score {self.score(role) or '?'}, {cost})"
+        return f"{self.id} ({self.family}; {role} score {self.score(role) or '?'}, {cost})" + (
+            " [local]" if self.local else "")
 
 
 @dataclass
