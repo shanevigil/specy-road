@@ -19,7 +19,7 @@ Branch `feature/rm-cursor-workers-no-force-by-default`, base `7f3cc488`, change 
 
 **A2 — real-CLI verification (recorded here, as required).**
 - Host: Ubuntu 24.04.5 LTS, `kernel.apparmor_restrict_unprivileged_userns = 1`; agent `2026.11.05-86047df`
-  (`/home/savigil/.local/bin/agent`); model `composer-2.5`.
+ (`agent` from `~/.local/bin`); model `composer-2.5`.
 - Fresh linked worktree: `git worktree add -b smoke/m16-69-sandbox /tmp/m1669-smoke HEAD`, then
   `agent create-chat` in it. Prompt file `/tmp/m1669-prompt.md`: (1) append `# m16.69 sandbox smoke` to
   `tests/test_harness_launch.py`; (2) `python -m pytest -q -p no:cacheprovider tests/test_harness_launch.py`;
@@ -83,6 +83,8 @@ the opt-in argv is pinned in tests/test_worker_resume_permissions.py rather than
 - `python -m pytest -n 4 -q -p no:cacheprovider`: 4990 passed and 1 failed before the last test update
   (`test_cursor_reviewer_runs_ask_mode_without_force` pinned the old executor `--force`, which A1 changes);
   that file then passed alone (39 passed). The full run is repeated by `specy-road ready`.
+- A first `specy-road ready` run failed only `test_machine_paths_pass_on_this_repo`: this summary named an
+  absolute home path; it now says `~/.local/bin`, and the suite is rerun by `ready`.
 - `ruff check specy_road tests scripts`, `validate_file_limits.py`, `check_clones.py`,
   `check_test_private_imports.py`, `check_machine_paths.py`, dogfood validate and export --check, and
   `specy-road validate` on sr/: all exit 0.
