@@ -15,6 +15,7 @@ from typing import Any
 from specy_road.model_profiles import Profile
 from specy_road.orchestration_config import active_substitutions
 from specy_road.review_strong import applicable_items, item_label
+from specy_road.review_tally import quality_review
 
 DEFAULT_SENSITIVITY = "public"
 ANY = "any"
@@ -277,12 +278,16 @@ def _pick_coordinator(cands: list[Candidate], a: Assignment, today: date | None)
 
 def assign_leaf(node: dict[str, Any], cands: list[Candidate], config: dict[str, Any],
                 today: date | None = None, drift: str | None = None, prefix: str = "",
-                spread_index: int | None = None) -> Assignment:
+                spread_index: int | None = None, flagged: set[str] | None = None) -> Assignment:
     """``prefix``: :func:`project_prefix`, so a strong-review zone written from either root meets the leaf's.
-    ``spread_index``: the leaf's position in the plan, for ``--spread``; ``None`` picks the cheapest executor."""
+    ``spread_index``: the leaf's position in the plan, for ``--spread``; ``None`` picks the cheapest executor.
+    ``flagged``: the areas ``policy.quality_routing`` routes a strong reviewer to (:mod:`specy_road.review_tally`)."""
     a = Assignment(node["id"], node_sensitivity(node), node_eligibility(node))
     a.strong_review = [{"item": item_label(i, item), "require_one_of": list(item["require_one_of"])}
                        for i, item in applicable_items(config["policy"], node.get("touch_zones"), prefix)]
+    items, notes = quality_review(config["policy"], node.get("touch_zones"), flagged or set(), prefix)
+    a.strong_review += items
+    a.notes += notes
     _pick_executor(cands, a, today, drift, spread_index)
     _pick_reviewers(cands, a, config, today)
     _pick_coordinator(cands, a, today)

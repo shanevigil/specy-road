@@ -33,7 +33,9 @@ Rules, in the order they apply:
 * **Strong review.** Each ``policy.strong_review`` item the leaf's touch zones
   meet (:mod:`specy_road.review_strong`) is listed with the reviewers that can
   satisfy it, and its best-ranked one is picked first, whatever its family;
-  an item none of them can satisfy makes the leaf unstaffable.
+  an item none of them can satisfy makes the leaf unstaffable. With
+  ``policy.quality_routing`` on, each flagged area (:mod:`specy_road.review_tally`)
+  the leaf's zones fall in adds one more item over the strong set.
 
 The human's routing preferences (``kind: preference`` in ``roadmap/decisions.yaml``)
 are never applied here: the plan lists every active one under
@@ -74,6 +76,7 @@ from specy_road.orchestrate_assign import (  # noqa: F401 — re-exported: calle
     unavailable_prompt_error,
 )
 from specy_road.orchestration_pinned import WORKTREE_REF, pinned_config, pinned_profile_for_entry, roster_source
+from specy_road.review_tally import flagged_areas
 from specy_road.roster_local import local_roster_ids
 from specy_road.runtime_paths import project_prefix
 from specy_road.zone_coverage import zone_coverage_warnings
@@ -133,9 +136,10 @@ def build_orchestration_plan(root: Path, *, under: str | None = None, today: dat
              for e in config.get("roster") or []]
     ref, drift = (WORKTREE_REF, None) if roster_from_worktree else roster_source(root)
     prefix = project_prefix(root)
+    flagged = flagged_areas(root, config["policy"])
     order = [nid for batch in sp.parallel_batches for nid in batch if nid in by_id]
     batches = [[assign_leaf(by_id[nid], cands, config, today, drift, prefix,
-                            order.index(nid) if spread else None) for nid in batch if nid in by_id]
+                            order.index(nid) if spread else None, flagged) for nid in batch if nid in by_id]
                for batch in sp.parallel_batches]
     assigned = [a.node_id for batch in batches for a in batch]
     coverage = zone_coverage_warnings(root, by_id, assigned)

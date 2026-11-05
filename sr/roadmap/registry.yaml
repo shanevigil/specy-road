@@ -23,6 +23,7 @@ entries:
       - specy_road/review_write_check.py
       - specy_road/reviewer_run_failure.py
       - specy_road/review_usage.py
+      - specy_road/worker_adapter_parsers.py
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
@@ -38,27 +39,6 @@ entries:
       - specy_road/templates/project/schemas/git-workflow.schema.json
       - specy_road/bundled_scripts/doctor_env_setup.py
       - specy_road/worker_ops_message.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: per-area-quality-scores-in-the-digest-from-review-history
-    node_id: M12.4.1
-    branch: feature/rm-per-area-quality-scores-in-the-digest-from-review-history
-    touch_zones:
-      - specy_road/digest.py
-      - specy_road/bundled_scripts/digest_cli.py
-      - specy_road/review_rca.py
-      - specy_road/orchestration_config.py
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/orchestrate_plan.py
-      - specy_road/review_gate.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - specy_road/review_tally.py
-      - specy_road/bundled_scripts/mark_implementation_reviewed.py
-      - docs/orchestration-quality.md
-      - specy_road/orchestrate_assign.py
-      - sr/roadmap-context.md
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -129,6 +109,7 @@ entries:
       - specy_road/bundled_scripts/role_prompt_rca.py
       - specy_road/agent_ignores.py
       - specy_road/bundled_scripts/validate_roadmap_checks.py
+      - specy_road/finish_land_local.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -189,6 +170,7 @@ entries:
       - specy_road/review_gate_ready.py
       - specy_road/bundled_scripts/review_packet.py
       - tests/
+      - specy_road/schemas/handoff.schema.json
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
@@ -198,6 +180,17 @@ entries:
     touch_zones:
       - specy_road/worker_turn_check.py
       - specy_road/worker_turn_stash.py
+      - tests/
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
+  - codename: cursor-usage-sums-segments-and-flags-undercounts
+    node_id: M15.27
+    branch: feature/rm-cursor-usage-sums-segments-and-flags-undercounts
+    touch_zones:
+      - specy_road/worker_adapter_cursor.py
+      - specy_road/worker_usage_plausibility.py
+      - specy_road/bundled_scripts/worker_cli_render.py
       - tests/
     started: '2026-11-05'
     owner: savigil
