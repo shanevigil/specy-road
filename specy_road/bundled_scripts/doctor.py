@@ -82,7 +82,7 @@ def _branch_reason(ctx: _Ctx, ref: str, branch: str, node_id: str | None, kind: 
     why = f"leaf {node_id} Complete" if node_id else "claim gone"
     leaf = f"; leaf {node_id} Complete" if row else ""
     how = merged_how(ctx.root, ref, ctx.target)
-    inputs = (evidence_kind(ctx.root, ref, ctx.target, ctx.remote), containment(how))
+    inputs = (evidence_kind(ctx.root, ref, ctx.target), containment(how))
     source, live_why = ctx.held.get(branch, ("none", ""))
     label, fix = classify(source, *inputs, kind)
     if label == "not merged":

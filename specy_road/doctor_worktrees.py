@@ -30,13 +30,12 @@ SAME_PATCH = "merged (same patch content)"
 TEMP_WORKTREES = ("specy-road-land-check-", "specy-road-pre-existing-", "specy-road-nested-land-",
                   "specy-road-red-green-")
 NO_EVIDENCE = "no local evidence of own commits — remove by hand if intended"
-#: Reflog subjects of entries that put a commit on the ref, that create it, and that rename it.
-#: A copy (``git branch -c``) creates a new ref whose reflog starts with the source's entries:
-#: those commits were made on the source, so the copy entry is a creation boundary.
+#: Reflog subjects of entries that put a commit on the ref, and of its creation events, by evidence kind.
+#: A copy (``git branch -c``) or a rename's target starts with entries git carried over from another
+#: ref: the newest creation event is a boundary, and nothing before it is this ref's evidence.
 _COMMIT_ENTRIES = ("commit", "merge ", "cherry-pick")
-_CREATED = ("branch: Created from", "Branch: copied")
-_RENAMED = "Branch: renamed"
-_ZERO = "0" * 40
+_CREATIONS = {"branch: Created from": "creation-only", "Branch: copied": "copy-only",
+              "Branch: renamed": "rename-only"}
 
 
 @dataclass
@@ -81,80 +80,47 @@ def _finish_merge_brought(root: Path, branch: str, tip: str, target: str) -> boo
     return False
 
 
-def _since_creation(root: Path, local: str) -> tuple[list[tuple[str, str]], bool]:
-    """``local``'s reflog entries (sha, subject), newest first, back to its newest creation or copy entry,
-    and whether that creation entry is there (an expired reflog has none)."""
+def _since_creation(root: Path, local: str) -> tuple[list[tuple[str, str]], str | None]:
+    """``local``'s reflog entries (sha, subject), newest first, back to its newest creation event, and
+    that event's evidence kind (``None`` when there is none: an expired reflog)."""
     out = git_text(["reflog", "show", "--format=%H%x09%gs", local], root) or ""
     entries = [(sha, gs) for sha, _, gs in (line.partition("\t") for line in out.splitlines())]
     for i, (_sha, gs) in enumerate(entries):
-        if gs.startswith(_CREATED):
-            return entries[: i + 1], True
-    return entries, False
+        for subject, kind in _CREATIONS.items():
+            if gs.startswith(subject):
+                return entries[: i + 1], kind
+    return entries, None
 
 
-def _raw_reflog(root: Path, ref: str) -> list[tuple[str, str, int, str]]:
-    """``ref``'s reflog lines (old sha, new sha, unix time, subject), oldest first; ``[]`` with none."""
-    path = Path(root, git_text(["rev-parse", "--git-path", f"logs/{ref}"], root) or "")
-    if not path.is_file():
-        return []
-    out = []
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-        head, _, subject = line.partition("\t")
-        parts = head.split()
-        if len(parts) >= 4 and parts[-2].isdigit():
-            out.append((parts[0], parts[1], int(parts[-2]), subject))
-    return out
-
-
-def _pushed_fresh(root: Path, ref: str, local: str, tip: str, remote: str) -> bool:
-    """The remote-tracking ``ref`` provably carries no commits of its own: its own reflog shows it
-    created at ``tip`` and never moved, and its local namesake was created at ``tip`` (not from
-    the remote) no later than that. A namesake created at the tip after the remote ref existed
-    proves nothing about the remote ref, so it never counts."""
-    rlog = _raw_reflog(root, ref)
-    born = [i for i, (old, *_rest) in enumerate(rlog) if old == _ZERO]
-    if not born or any(new != tip for _old, new, _t, _gs in rlog[born[-1]:]):
-        return False
-    made = [e for e in _raw_reflog(root, local) if e[3].startswith(_CREATED)]
-    if not made:
-        return False
-    branch = local.removeprefix("refs/heads/")
-    _old, new, when, subject = made[-1]
-    here = (f"{_CREATED[0]} {remote}/{branch}", f"{_CREATED[0]} refs/remotes/{remote}/{branch}")
-    return new == tip and when <= rlog[born[-1]][2] and subject not in here
-
-
-def evidence_kind(root: Path, ref: str, target: str, remote: str = "origin") -> str:
+def evidence_kind(root: Path, ref: str, target: str) -> str:
     """Own-commit evidence for exactly ``ref``: one of :data:`EVIDENCE` (A2).
 
-    A local ref reads its own reflog back to its newest creation or copy: a commit, merge or
-    cherry-pick entry its tip contains is ``commit``; only the creation (and renames) at the tip
-    is ``creation-only`` (``rename-only``), which beats any finish merge an earlier branch of the
-    same name left. A remote-tracking ref has no commit entries: a finish merge on ``target``
-    that brought its tip in is ``finish-merge``; failing that it is ``creation-only`` only when
-    :func:`_pushed_fresh` proves it, and ``none`` otherwise.
+    A local ref reads only its own reflog after its newest creation event (create, copy or rename
+    target): a commit, merge or cherry-pick entry there that its tip contains is ``commit``; only the
+    creation event at the tip is that event's kind (``creation-only``, ``copy-only``,
+    ``rename-only``), which beats any finish merge an earlier branch of the same name left.
+    A remote-tracking ref's evidence comes only from the remote-applicable source, a finish merge
+    on ``target`` that brought its tip in (``finish-merge``), never from a local namesake's reflog,
+    which can neither prove nor disprove anything about it; otherwise ``none``.
     """
     tip = git_text(["rev-parse", ref], root) or ""
     local = ref if ref.startswith("refs/heads/") else f"refs/heads/{ref.split('/', 3)[-1]}"
-    branch = local.removeprefix("refs/heads/")
     if not tip:
         return "none"
     if ref == local:
         seg, created = _since_creation(root, local)
         if any(gs.startswith(_COMMIT_ENTRIES) and merged_into(root, sha, tip) for sha, gs in seg):
             return "commit"
-        if created and all(sha == tip and gs.startswith((*_CREATED, _RENAMED)) for sha, gs in seg):
-            return "rename-only" if any(gs.startswith(_RENAMED) for _sha, gs in seg) else "creation-only"
-    if _finish_merge_brought(root, branch, tip, target):
+        if created and seg == [(tip, seg[0][1])]:   # the creation event alone, at the tip
+            return created
+    if _finish_merge_brought(root, local.removeprefix("refs/heads/"), tip, target):
         return "finish-merge"
-    if ref != local and _pushed_fresh(root, ref, local, tip, remote):
-        return "creation-only"
     return "none"
 
 
 #: Inputs of :data:`CLASSIFICATION`, in order.
 LIVE_SOURCES = ("claim", "worker", "session", "none")   # precedence of the live reason (A1)
-EVIDENCE = ("commit", "finish-merge", "creation-only", "rename-only", "none")
+EVIDENCE = ("commit", "finish-merge", "creation-only", "copy-only", "rename-only", "none")
 CONTAINMENT = ("yes", "no", "same-patch")   # merged_how: "merged", None, SAME_PATCH
 REF_KINDS = ("local", "remote")
 #: (live source, evidence, containment, ref kind) -> (label, fix offered). ``*`` matches anything;
@@ -164,9 +130,11 @@ CLASSIFICATION: tuple[tuple[tuple[str, str, str, str], tuple[str, bool]], ...] =
     (("worker", "*", "*", "*"), ("live", False)),
     (("session", "*", "*", "*"), ("live", False)),
     (("none", "creation-only", "*", "*"), ("no commits yet", False)),
+    (("none", "copy-only", "*", "*"), ("no commits yet", False)),   # F1: a copy's inherited entries
     (("none", "rename-only", "*", "*"), ("no commits yet", False)),
     (("none", "commit", "yes", "*"), ("merged", True)),
-    (("none", "finish-merge", "yes", "*"), ("merged", True)),
+    (("none", "finish-merge", "yes", "remote"), ("merged", True)),   # F2: a remote's only evidence source
+    (("none", "finish-merge", "yes", "local"), ("merged", True)),
     (("none", "none", "yes", "*"), ("merged, no evidence", False)),   # A3's deliberate change
     (("none", "*", "same-patch", "*"), ("same patch", True)),   # a tip outside target: commits by construction
     (("none", "*", "no", "*"), ("not merged", True)),   # unchanged: an unclaimed unmerged branch with commits

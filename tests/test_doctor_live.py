@@ -107,7 +107,8 @@ def test_f2_a_fresh_branch_renamed_before_its_first_commit_has_no_commits(doctor
 
 
 def test_f3_a_fresh_remote_branch_does_not_borrow_its_local_namesakes_commits(doctor_repo, capsys) -> None:
-    """Pushed fresh, then one unpushed local commit: the remote ref itself has none of its own."""
+    """Pushed fresh, then one unpushed local commit: the local reflog proves nothing about the remote
+    ref, which has no finish merge either, so it is merged without evidence and left."""
     repo, bare = doctor_repo
     git(repo, "branch", "feature/rm-pushed", "dev")
     git(repo, "push", "-q", "origin", "feature/rm-pushed")
@@ -118,7 +119,7 @@ def test_f3_a_fresh_remote_branch_does_not_borrow_its_local_namesakes_commits(do
 
     assert run_doctor(repo, "--fix", "--yes") == 0
     out = capsys.readouterr().out
-    assert "[kept] origin feature/rm-pushed: claim gone, no commits yet, so --fix leaves it" in out   # R2
+    assert f"[kept] origin feature/rm-pushed: merged; {NO_EVIDENCE}, so --fix leaves it" in out
     assert "deleted feature/rm-pushed on origin" not in out
     assert git(bare, "rev-parse", "feature/rm-pushed") == fresh
 
@@ -256,21 +257,28 @@ def test_r5_f2_a_local_namesake_at_the_remote_tip_keeps_the_remotes_finish_merge
     assert has_ref(repo, "refs/heads/feature/rm-gone")
 
 
-def test_r5_f2_a_namesake_created_after_the_remote_ref_does_not_prove_it_fresh(doctor_repo, capsys) -> None:
-    """A fast-forward-landed remote branch (no finish merge) and a local namesake recreated at its
-    tip later: the remote is merged without evidence, never "no commits yet"."""
+def test_r5_f2_a_local_namesake_never_disproves_a_fast_forwarded_remote(doctor_repo, capsys) -> None:
+    """A fast-forward-landed remote branch (no finish merge) and a local namesake recreated at its tip:
+    the namesake's creation-only reflog is not the remote's evidence, so the remote is merged without
+    evidence, never "no commits yet"."""
     repo, bare = doctor_repo
     tip = _fast_forwarded(repo)
     git(repo, "branch", "-q", "-D", "feature/rm-ff")
-    log = Path(git(repo, "rev-parse", "--git-path", "logs/refs/remotes/origin/feature/rm-ff"))
-    log = log if log.is_absolute() else repo / log
-    old, new, rest = log.read_text().split(" ", 2)
-    who, _, subject = rest.partition("\t")
-    name, when, tz = who.rsplit(" ", 2)
-    log.write_text(f"{old} {new} {name} {int(when) - 60} {tz}\t{subject}")   # pushed a minute earlier
     git(repo, "branch", "feature/rm-ff", tip)
 
     assert run_doctor(repo, "--fix", "--yes") == 0
     out = capsys.readouterr().out
     assert kept(out, f"origin feature/rm-ff: merged; {NO_EVIDENCE}")
+    assert "[kept] local feature/rm-ff: claim gone, no commits yet, so --fix leaves it" in out
     assert git(bare, "rev-parse", "feature/rm-ff") == tip
+
+
+def test_r6_a_renamed_branch_starts_at_its_rename(doctor_repo, capsys) -> None:
+    """The rename target's reflog carries the old name's entries; the rename is its creation event."""
+    repo, _bare = doctor_repo
+    git(repo, "branch", "-m", "feature/rm-done", "feature/rm-moved")
+
+    assert run_doctor(repo, "--fix", "--yes") == 0
+    out = capsys.readouterr().out
+    assert "[kept] local feature/rm-moved: claim gone, no commits yet, so --fix leaves it" in out
+    assert has_ref(repo, "refs/heads/feature/rm-moved")

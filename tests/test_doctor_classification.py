@@ -17,12 +17,14 @@ ROWS = [   # (row index, an input it matches first, expected verdict)
     (1, ("worker", "finish-merge", "yes", "remote"), ("live", False)),
     (2, ("session", "none", "same-patch", "local"), ("live", False)),
     (3, ("none", "creation-only", "no", "remote"), ("no commits yet", False)),
-    (4, ("none", "rename-only", "yes", "local"), ("no commits yet", False)),
-    (5, ("none", "commit", "yes", "local"), ("merged", True)),
-    (6, ("none", "finish-merge", "yes", "remote"), ("merged", True)),
-    (7, ("none", "none", "yes", "remote"), ("merged, no evidence", False)),
-    (8, ("none", "none", "same-patch", "local"), ("same patch", True)),
-    (9, ("none", "commit", "no", "local"), ("not merged", True)),
+    (4, ("none", "copy-only", "yes", "local"), ("no commits yet", False)),
+    (5, ("none", "rename-only", "yes", "local"), ("no commits yet", False)),
+    (6, ("none", "commit", "yes", "local"), ("merged", True)),
+    (7, ("none", "finish-merge", "yes", "remote"), ("merged", True)),
+    (8, ("none", "finish-merge", "yes", "local"), ("merged", True)),
+    (9, ("none", "none", "yes", "remote"), ("merged, no evidence", False)),
+    (10, ("none", "none", "same-patch", "local"), ("same patch", True)),
+    (11, ("none", "commit", "no", "local"), ("not merged", True)),
 ]
 
 
@@ -40,8 +42,8 @@ def test_the_rows_are_all_tested_and_cover_every_input() -> None:
         label, fix = classify(*key)
         if key[0] != "none":
             assert (label, fix) == ("live", False)   # liveness first, whatever else holds
-        if key[1] in ("creation-only", "rename-only") and key[0] == "none":
+        if key[1] in ("creation-only", "copy-only", "rename-only") and key[0] == "none":
             assert (label, fix) == ("no commits yet", False)   # never merged
         if fix:
-            assert key[0] == "none" and key[1] not in ("creation-only", "rename-only")
+            assert key[0] == "none" and key[1] not in ("creation-only", "copy-only", "rename-only")
             assert key[2] != "yes" or key[1] in ("commit", "finish-merge")   # contained: positive evidence only
