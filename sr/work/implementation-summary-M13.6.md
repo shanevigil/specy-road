@@ -53,3 +53,33 @@ Sol (gpt-6.1-sol) blocked A4 with R1. In the round-0 code, the fence recognizer 
 
 - `tests/test_docs_rc_install_recipe.py` `nested` control case (the R1 reproduction), so the gate cannot regress on templates with nested fences.
 - Close-fence guard in `_fenced_commands` (same character, length at least the opener's, no info string), as R1 requires.
+
+## Fix round 3
+
+Sol blocked `9c551ecc` on A4 (R2). A two-index install inside a blockquoted fence (`> ```bash`) passed the gate, because the fence recognizer never matched a delimiter after a `>` prefix. Round 1 fixed nested fences and this round found blockquotes; lists, HTML blocks and indented code would come next. So this round replaces the design instead of adding another Markdown construct. Fixed in `test(M13.6): docs gate scans every line…` (`git log --oneline -1 -- tests/test_docs_rc_install_recipe.py`), after merging `origin/WIP/improvements-0-3-1`.
+
+**Design change.** The gate no longer parses Markdown structure: there is no fence tracking at all. `tests/test_docs_rc_install_recipe.py` now works as follows:
+- It reads every line of `README.md` and `docs/**/*.md`, inside and outside fences.
+- `_strip_prefix` removes leading indentation, blockquote markers at any depth and nesting (`>`, `> >`), and list markers (`-`, `*`, `+`, `1.`, `1)`), repeating until none is left.
+- `_logical_lines` joins backslash continuations after that stripping, so a quoted or indented multi-line command is seen as one line.
+- `_two_index_testpypi` fails a line that contains `test.pypi.org` and at least two index flags (`--index-url`, `-i`, `--extra-index-url`, with a space or `=`). Order does not matter, so it also catches TestPyPI given as the `--extra-index-url` with PyPI as the `--index-url`.
+- Allow marker: a line passes if `<!-- unsafe-example -->` appears on the line itself (any physical line of a joined command) or on the line just above its first line. This is for docs that show the unsafe form on purpose as a warning.
+
+**Docs.** No doc currently shows the unsafe command. The warnings in `install-and-usage.md`, `release-runbook.md` and `supply-chain-security.md` describe it in prose without a TestPyPI URL, so they do not trip the check and need no marker. The gate passes on the current tree.
+
+**Controls.**
+- `test_the_detector_flags_the_two_index_form_wherever_it_sits` covers: the original case, `-i` in an indented fence, the nested `````markdown` fence (round 1), the reviewer's blockquote, a doubly quoted continuation, a list item (an indented fence under `1.` plus a `-` bullet with TestPyPI as the extra index), and inline prose.
+- `test_the_recipe_and_a_marked_warning_pass` checks that the safe recipe, an unmarked prose warning, and an unsafe example marked above or inline all pass. It also checks that a marker separated from the unsafe line by a blank line does not cover it.
+
+**Red-green.** `/tmp/m136_r3_probe.py` runs the public gate against a temporary README for two inputs: the reviewer's blockquote, and a list item holding a quoted fence with a continuation. The round-1 module at `9c551ecc` ACCEPTED both. The new module REJECTED both.
+
+**Checks.** `pytest -q tests/test_docs_rc_install_recipe.py tests/test_release_harness.py` passed (21 tests). `specy-road file-limits` reports OK. I did not run the full suite.
+
+### Added (round 3)
+
+- `ALLOW` / `<!-- unsafe-example -->`: the explicit opt-out for a deliberate warning, which the design change requires.
+- `_strip_prefix`: removes quote, list and indentation prefixes so that structure cannot hide a command.
+- `_logical_lines`: replaces `_fenced_commands`. It scans all lines, joins continuations and records whether the marker applies.
+- `_two_index_testpypi` (rewritten): order-independent check for a TestPyPI index plus a second index flag.
+- `_offenders`: shared by the controls and the docs gate, so both run the same code path.
+- `test_the_detector_flags_the_two_index_form_wherever_it_sits` and `test_the_recipe_and_a_marked_warning_pass`: replace the single round-1 control test and keep its original and nested-fence cases.
