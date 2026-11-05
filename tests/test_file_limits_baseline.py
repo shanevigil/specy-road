@@ -118,7 +118,9 @@ def test_append_keeps_existing_comments(tmp_path: Path) -> None:
         "override_limits: [ # head\n {name: keep, note: extra}]\n",
     ],
 )
-def test_write_baseline_preserves_existing_yaml_bytes(tmp_path: Path, override_suffix: str) -> None:
+def test_write_baseline_preserves_existing_yaml_bytes(
+    tmp_path: Path, override_suffix: str
+) -> None:
     (tmp_path / "constraints").mkdir()
     cfg_path = tmp_path / "constraints" / "file-limits.yaml"
     before = _policy_prefix() + override_suffix
@@ -137,6 +139,49 @@ def test_write_baseline_preserves_existing_yaml_bytes(tmp_path: Path, override_s
     assert run_file_limits_scan(tmp_path, yaml.safe_load(after)) is False
     assert write_baseline(tmp_path) == 0
     assert cfg_path.read_text(encoding="utf-8") == after
+
+
+@pytest.mark.parametrize(
+    "style,glob_literal",
+    [
+        ("flow", "a].py"),
+        ("flow", "a[1].py"),
+        ("flow", 'a"b.py'),
+        ("flow", "a:#.py"),
+        ("block", "a].py"),
+        ("block", "a[1].py"),
+        ("block", 'a"b.py'),
+        ("block", "a:#.py"),
+    ],
+)
+def test_write_baseline_appends_with_special_chars_in_quoted_globs(
+    tmp_path: Path, style: str, glob_literal: str
+) -> None:
+    (tmp_path / "constraints").mkdir()
+    cfg_path = tmp_path / "constraints" / "file-limits.yaml"
+    quoted = yaml.dump(glob_literal, default_style='"', width=2**16).strip()
+    if style == "flow":
+        override = (
+            f"override_limits: [{{name: keep, file_globs: [{quoted}], max_lines_per_file: 100}}]\n"
+        )
+    else:
+        override = (
+            "override_limits:\n"
+            "  - name: keep\n"
+            "    file_globs:\n"
+            f"      - {quoted}\n"
+            "    max_lines_per_file: 100\n"
+        )
+    before = _policy_prefix() + override
+    cfg_path.write_text(before, encoding="utf-8")
+    _write_layout(tmp_path, {"wide.py": "x\n" * 3, glob_literal: "y\n"})
+    assert write_baseline(tmp_path) == 0
+    after = cfg_path.read_text(encoding="utf-8")
+    _assert_only_inserted(before, after)
+    assert quoted in after
+    cfg = yaml.safe_load(after)
+    assert cfg["override_limits"][0]["file_globs"] == [glob_literal]
+    assert run_file_limits_scan(tmp_path, cfg) is False
 
 
 def test_write_baseline_inserts_inside_override_limits_before_roadmap_keys(tmp_path: Path) -> None:

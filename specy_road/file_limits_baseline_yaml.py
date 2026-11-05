@@ -30,24 +30,9 @@ def _override_limits_sequence(text: str) -> SequenceNode | None:
     return None
 
 
-def _sequence_is_flow(text: str, seq_node: SequenceNode) -> bool:
-    return text[seq_node.start_mark.index : seq_node.end_mark.index].lstrip().startswith("[")
-
-
-def _flow_list_close_index(text: str, seq_node: SequenceNode) -> int:
-    start = seq_node.start_mark.index
-    end = seq_node.end_mark.index
-    depth = 0
-    close = end - 1
-    for i in range(start, end):
-        if text[i] == "[":
-            depth += 1
-        elif text[i] == "]":
-            depth -= 1
-            if depth == 0:
-                close = i
-                break
-    return close
+def _flow_sequence_close_bracket_index(seq_node: SequenceNode) -> int:
+    """Index of the closing ``]`` for a flow-style sequence (composer end mark)."""
+    return seq_node.end_mark.index - 1
 
 
 def _flow_baseline_snippet(block_body: str) -> str:
@@ -131,6 +116,11 @@ def append_baseline_yaml_text(existing_text: str, block: str, *, cfg: dict | Non
     seq = _override_limits_sequence(existing_text)
     if seq is None:
         lines = existing_text.splitlines()
+        if _override_limits_header_index(lines) is not None:
+            raise ValueError(
+                "constraints/file-limits.yaml: override_limits is present but not a composable "
+                "sequence; rewrite override_limits in block style and retry"
+            )
         insert_at, need_header = _insert_index_for_new_override_rows(lines)
         new_lines = lines[:insert_at]
         if need_header:
@@ -138,12 +128,10 @@ def append_baseline_yaml_text(existing_text: str, block: str, *, cfg: dict | Non
         new_lines.extend(block_body.splitlines())
         new_lines.extend(lines[insert_at:])
         result = "\n".join(new_lines)
-    elif _sequence_is_flow(existing_text, seq):
-        close = _flow_list_close_index(existing_text, seq)
-        open_bracket = existing_text.index("[", seq.start_mark.index)
-        inner = existing_text[open_bracket + 1 : close].strip()
+    elif seq.flow_style is True:
+        close = _flow_sequence_close_bracket_index(seq)
         flow_snip = _flow_baseline_snippet(block_body)
-        insertion = flow_snip if not inner else f", {flow_snip}"
+        insertion = flow_snip if not seq.value else f", {flow_snip}"
         result = existing_text[:close] + insertion + existing_text[close:]
     else:
         idx = seq.end_mark.index
