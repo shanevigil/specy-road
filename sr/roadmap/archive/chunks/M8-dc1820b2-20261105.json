@@ -200,30 +200,6 @@
     },
     {
       "acceptance": [
-        "The verification guide from the research (versions and help, denial behaviour and exit codes, commit-when-asked from a nested subdirectory, create and resume by id from a sibling worktree, instruction sentinels versus the meter, Cursor -p with and without --force, Claude usage-limit events with the watchdog, forbidden-commit hook test, sibling-worktree concurrency) is run in a scratch repository and its results recorded with dates",
-        "Every unverified label in the harness facts fixture is replaced by a runtime result or an explicit still-unknown",
-        "harness-facts records, for each Claude model profile, the minimum Claude Code version that accepts its model id, and whether Claude Code enforces Write(path) deny rules; the profile and docs/orchestration-models.md state the minimum and say to write file-write deny rules as Edit(path) if Write(path) is not enforced"
-      ],
-      "codename": "runtime-verification-of-the-harness-facts-against-installed-binaries",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M8.7",
-      "node_key": "431d31bb-d8bd-4b7f-8259-66c9c756be94",
-      "notes": "Deferred past 0.3.1rc2: if rc2 feedback is to ship, 0.3.1 goes to PyPI and this lands in 0.3.2; otherwise it goes into rc3.",
-      "parent_id": "M8",
-      "planning_dir": "planning/M8.7_runtime-verification-of-the-harness-facts-against-installed-binaries_431d31bb-d8bd-4b7f-8259-66c9c756be94.md",
-      "sibling_order": 6,
-      "status": "Complete",
-      "title": "Runtime verification of the harness facts against installed binaries",
-      "touch_zones": [
-        "research/",
-        "specy_road/templates/project/model-profiles/",
-        "docs/"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
         "A Copilot CLI reviewer profile (model pinned, deny git push and gh pr, one-shot) and an Antigravity agy generic profile exist, each marked by the runtime checks that passed",
         "The Copilot reviewer profile's command passes -p, -s, --no-ask-user and --deny-tool for shell(git push), shell(git commit) and shell(gh), never --autopilot, --share-gist, --allow-all or --yolo, and is checked against a captured copilot --help of v1.0.105 or later.",
         "The agy profile's command sets --output-format json (or stream-json) and an explicit --print-timeout, and success is read from the envelope's status (SUCCESS), not the exit code, since permission denials and benign tool errors exit 0 from 1.3.4; the version comes from a captured agy --version (the two reports disagree: 1.4.3 vs 1.4.10)."
@@ -246,6 +222,30 @@
         "roadmap/",
         "docs/orchestration-models.md",
         "tests/test_models_and_prompt.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The verification guide from the research (versions and help, denial behaviour and exit codes, commit-when-asked from a nested subdirectory, create and resume by id from a sibling worktree, instruction sentinels versus the meter, Cursor -p with and without --force, Claude usage-limit events with the watchdog, forbidden-commit hook test, sibling-worktree concurrency) is run in a scratch repository and its results recorded with dates",
+        "Every unverified label in the harness facts fixture is replaced by a runtime result or an explicit still-unknown",
+        "harness-facts records, for each Claude model profile, the minimum Claude Code version that accepts its model id, and whether Claude Code enforces Write(path) deny rules; the profile and docs/orchestration-models.md state the minimum and say to write file-write deny rules as Edit(path) if Write(path) is not enforced"
+      ],
+      "codename": "runtime-verification-of-the-harness-facts-against-installed-binaries",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M8.7",
+      "node_key": "431d31bb-d8bd-4b7f-8259-66c9c756be94",
+      "notes": "Deferred past 0.3.1rc2: if rc2 feedback is to ship, 0.3.1 goes to PyPI and this lands in 0.3.2; otherwise it goes into rc3.",
+      "parent_id": "M8",
+      "planning_dir": "planning/M8.7_runtime-verification-of-the-harness-facts-against-installed-binaries_431d31bb-d8bd-4b7f-8259-66c9c756be94.md",
+      "sibling_order": 6,
+      "status": "Complete",
+      "title": "Runtime verification of the harness facts against installed binaries",
+      "touch_zones": [
+        "research/",
+        "specy_road/templates/project/model-profiles/",
+        "docs/"
       ],
       "type": "task"
     }
