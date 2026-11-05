@@ -17,13 +17,15 @@ Branch `feature/rm-working-roster-in-one-command-and-validated-profiles`. Implem
   stderr with `refresh-profiles --only <id>`. Tests round-trip the written entries through `validate_at` and write
   into the starter.
 - **A2 — local profile validation.** New `specy_road/roster_profile_check.py`:
-  - `profile_value_problem` returns `invalid profile: <value>, accepted form <form>` unless the value is a `.md`
-    file under `model-profiles/` in the working tree. The form is the concrete path when the value's last part
-    near-matches a local or bundled profile, else `model-profiles/<family-dir>/<profile-id>.md`.
+  - `profile_value_form_problem` names malformed `profile:` values (wrong shape, not under
+    `model-profiles/…/*.md`); `profile_value_problem` also requires the file in the working tree (for
+    `validate`). The accepted form is the concrete path when the value's last part near-matches a profile,
+    else `model-profiles/<family-dir>/<profile-id>.md`.
   - `report_roster_profiles` replaces validate's old roster-gap loop. In `validate_roadmap_checks.py` the import
     line and the call line changed (399 → 398 lines). The new problems are warnings.
-  - In `orchestration_pinned.pinned_profile_for_entry`, a `profile:` naming no file in the working tree or at the
-    ref now carries that message instead of "not committed on the integration branch".
+  - In `orchestration_pinned.pinned_profile_for_entry`, explicit `profile:` values run escape checks, then the
+    form check, before loading; committed `_pinned_at` still applies for well-formed paths. Malformed values get
+    `invalid profile: …` instead of "not committed on the integration branch".
   - In `orchestrate_assign._valid`, such an entry is reported as `<id>: invalid profile: …`.
   - `_pick_executor` adds no `no eligible executor … may_process` hint when the only reason nothing is capable is
     an entry dropped for an invalid profile.
@@ -80,15 +82,34 @@ M15.11 behaviour (`models roster`, profile check, `--spread`, coordinator line) 
 - `specy-road validate` for the dogfood fixture and `sr/`: exit 0.
 - `export --check` and `digest --check` on the dogfood fixture: OK.
 
+## Fix round (gpt-6.1-sol-low R1, R2)
+
+- **R1:** Split profile **form** from working-tree **existence** (`profile_value_form_problem` vs
+  `profile_value_problem`). `pinned_profile_for_entry` always runs escape + form checks on explicit `profile:`
+  before load (worktree dry-run and committed planning); committed `_pinned_at` unchanged for well-formed paths.
+- **R2:** `write_entries` keeps inline comments when turning `roster: [] # …` into a block header.
+
+## Fix round: probes
+
+- Explicit `profile:` on worktree dry-run plan (`roster_from_worktree=True`) with malformed missing path — reports
+  `invalid profile: …, accepted form …` and refuses assignment (new test).
+- Explicit `profile:` on committed plan with valid file contents at a malformed repo path — same diagnostic, no
+  assignment (new test).
+- Well-formed `profile:` committed on integration branch, working-tree file deleted — still loads from ref
+  (`test_review_round6_policy.py::test_the_committed_profile_is_used_when_the_tree_matches_or_lacks_it` passes).
+- Escaping `profile:` path (`../outside.md`) — still reported as path escape before form check
+  (`test_models_list_and_show_survive_an_escaping_profile_path` passes).
+- `validate` / `roster_profile_problems` — still use `profile_value_problem` (form + working-tree file).
+- `write_entries` on `roster: [] # keep me` — comment preserved (new test).
+
 ## Added
 
 - `specy_road/roster_generate.py`: `ROSTER_FAMILY` (profile family → roster family, from the profiles README);
   `RosterError`; `shipped_profiles`; `profile_id`; `find_profile` (refusal with the nearest ids); `harness_for`;
   `roster_entries`; `format_entries`; `missing_profile_files`; `_roster_span` (finds where the roster block ends);
   `write_entries` (text insert with a re-parse guard, so comments survive). Reason: A1.
-- `specy_road/roster_profile_check.py`: `GENERIC_FORM`; `accepted_form`; `profile_value_problem`;
-  `roster_profile_problems`; `report_roster_profiles` (the old validate loop moved here, plus the new warnings).
-  Reason: A2, keeping `validate_roadmap_checks.py` to a call-line change.
+- `specy_road/roster_profile_check.py`: `GENERIC_FORM`; `accepted_form`; `profile_value_form_problem`;
+  `profile_value_problem`; `roster_profile_problems`; `report_roster_profiles`. Reason: A2 and fix-round R1.
 - `specy_road/orchestrate_assign.py`: moved code plus `Assignment.coordinator_is_session`; `Candidate.local` and
   `[local]` in `describe` (M15.10 merge). New branches:
   - the `--spread` pick in `_pick_executor` (`spread_index`);
@@ -97,17 +118,14 @@ M15.11 behaviour (`models roster`, profile check, `--spread`, coordinator line) 
   - the no-coordinator-rostered branch in `_pick_coordinator`.
 
   Reason: A2 and A4, the 400-line cap on `orchestrate_plan.py`, and WIP merge with M15.10.
-- `specy_road/orchestration_pinned.py`: a guard in `pinned_profile_for_entry` for a `profile:` naming no file in
-  the working tree or at the ref, which returns the `invalid profile` message. Reason: A2, which replaces the
-  misleading "not committed" message.
+- `specy_road/orchestration_pinned.py`: escape + `profile_value_form_problem` on every explicit `profile:` before
+  load; committed `_pinned_at` for well-formed paths. Reason: A2 and fix-round R1.
 - `specy_road/orchestrate_plan.py`: the `spread` and `roster_from_worktree` parameters and the leaf-order index;
   re-exports from `orchestrate_assign`. Reason: A4 and M15.10 dry-run merge.
 - `specy_road/bundled_scripts/orchestrate_cli.py`: the `--spread` flag and the `this session` render. Reason: A4.
 - `specy_road/bundled_scripts/models_cli.py`: `cmd_roster` and the `roster` subparser. Reason: A1.
-- `tests/test_roster_generate.py`: printed entries; unknown id refused with the nearest ids; `--write` round-trips
-  through validate and is idempotent; write into the starter keeps its comments; validate warning with the accepted
-  form; `profile_value_problem` cases; plan reports the invalid profile with no `may_process`/"not committed" text;
-  hint kept when nothing was dropped; scan self-test; docs/starter scan. Reason: A1–A3.
+- `tests/test_roster_generate.py`: …; worktree and committed plan regressions for malformed `profile:`; empty-roster
+  inline comment on `--write`. Reason: A1–A3 and fix-round R1/R2.
 - `tests/test_orchestrate_spread.py`: `three_leaf_repo` helper; three leaves over two capable entries pinned for
   the default and `--spread` (deterministic); `--spread` on the CLI; `coordinator: this session` text and JSON;
   a rostered-but-unavailable coordinator still a problem. Reason: A4.
