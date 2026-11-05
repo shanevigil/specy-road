@@ -129,7 +129,7 @@
       "parent_id": "M13",
       "planning_dir": "planning/M13.5_refresh-profiles-installs-only-the-profiles-the-roster-names-and-suggests-the-alias-for-a-near-miss_c35736be-a985-4dec-a66d-00d52d2f0ab5.md",
       "sibling_order": 5,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "refresh-profiles installs only the profiles the roster names, and suggests the alias for a near miss",
       "touch_zones": [
         "specy_road/bundled_scripts/refresh_profiles.py",
