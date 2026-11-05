@@ -79,7 +79,7 @@ def _int_limit(val: object, default: int) -> int:
     return n if n > 0 else default
 
 
-def _optional_positive_int(val: object) -> int | None:
+def optional_positive_int(val: object) -> int | None:
     if val is None:
         return None
     try:
@@ -326,8 +326,8 @@ def run_file_limits_scan(  # noqa: C901 — baseline 2026-10-28; simplify, then 
     if isinstance(ha_rationale, str) and ha_rationale.strip():
         ha_note = f" — {ha_rationale.strip()}"
 
-    ha_file_n = _optional_positive_int(ha_file)
-    ha_func_n = _optional_positive_int(ha_func)
+    ha_file_n = optional_positive_int(ha_file)
+    ha_func_n = optional_positive_int(ha_func)
 
     failed = False
     hard_failed = False

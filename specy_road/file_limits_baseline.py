@@ -18,6 +18,7 @@ from specy_road.file_limits_engine import (
     collect_tracked_files,
     function_metrics,
     line_count,
+    optional_positive_int,
     resolve_limits,
     run_file_limits_scan,
 )
@@ -28,6 +29,38 @@ _FUNC_STEP = 20
 _BASELINE_NAME = re.compile(r"^baseline-(\d{4}-\d{2}-\d{2})-(\d+)$")
 _TOP_LEVEL_KEY = re.compile(r"^[A-Za-z_][\w.-]*\s*:")
 _TRAILING_POLICY_KEYS = ("roadmap_manifest_max_lines", "roadmap_json_chunk_max_lines", "hard_alerts")
+_FLOW_EMPTY_OVERRIDE = re.compile(r"^override_limits\s*:\s*\[\]\s*(#.*)?$")
+
+
+def literal_path_glob(rel_posix: str) -> str:
+    """Glob under the scan root that matches only this repo-relative path."""
+    out: list[str] = []
+    for ch in rel_posix:
+        if ch == "[":
+            out.append("[[]")
+        elif ch == "]":
+            out.append("[]]")
+        elif ch in "*?":
+            out.append(f"[{ch}]")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _yaml_quoted_scalar(value: str) -> str:
+    return yaml.dump(value, default_style='"', width=2**16).strip()
+
+
+def _expand_flow_empty_override_limits(lines: list[str]) -> list[str]:
+    out: list[str] = []
+    for line in lines:
+        m = _FLOW_EMPTY_OVERRIDE.match(line)
+        if m:
+            comment = m.group(1) or ""
+            out.append(f"override_limits:{comment}" if comment else "override_limits:")
+        else:
+            out.append(line)
+    return out
 
 
 def _is_top_level_line(line: str) -> bool:
@@ -74,7 +107,7 @@ def append_baseline_yaml_text(existing_text: str, block: str) -> str:
     if not block.strip():
         return existing_text
     block_lines = block.rstrip("\n").splitlines()
-    lines = existing_text.splitlines()
+    lines = _expand_flow_empty_override_limits(existing_text.splitlines())
     insert_at, need_header = _insert_index_for_new_override_rows(lines)
     new_lines = lines[:insert_at]
     if need_header:
@@ -132,8 +165,8 @@ def file_limits_failure_count(
 ) -> int:
     """Count of violation lines ``file-limits`` would print (not hard-alert warnings unless strict)."""
     hard = cfg.get("hard_alerts") if isinstance(cfg.get("hard_alerts"), dict) else {}
-    ha_file_n = _optional_positive_int(hard.get("max_lines_per_file"))
-    ha_func_n = _optional_positive_int(hard.get("max_lines_per_function"))
+    ha_file_n = optional_positive_int(hard.get("max_lines_per_file"))
+    ha_func_n = optional_positive_int(hard.get("max_lines_per_function"))
 
     count = 0
     overlay_sets = build_overlay_match_sets(root, cfg)
@@ -153,16 +186,6 @@ def file_limits_failure_count(
                 if ha_func_n is not None and flines > ha_func_n:
                     count += 1
     return count
-
-
-def _optional_positive_int(val: object) -> int | None:
-    if val is None:
-        return None
-    try:
-        n = int(val)
-    except (TypeError, ValueError):
-        return None
-    return n if n > 0 else None
 
 
 def bucket_failing_files(metrics: list[FailingFileMetrics]) -> dict[tuple[int, int], list[str]]:
@@ -207,7 +230,7 @@ def format_baseline_entries(
         lines.append(f"  - name: baseline-{today}-{idx}")
         lines.append("    file_globs:")
         for rel in paths:
-            lines.append(f'      - "{rel}"')
+            lines.append(f"      - {_yaml_quoted_scalar(literal_path_glob(rel))}")
         lines.append(f"    max_lines_per_file: {file_cap}")
         if func_cap > 0:
             lines.append(f"    max_lines_per_function: {func_cap}")

@@ -15,6 +15,7 @@ from specy_road.file_limits_baseline import (
     collect_failing_file_metrics,
     failure_hint,
     format_baseline_entries,
+    literal_path_glob,
     plan_baseline_append,
     round_up_to_step,
     write_baseline,
@@ -109,6 +110,60 @@ def test_write_baseline_inserts_inside_override_limits_before_roadmap_keys(tmp_p
     assert text.index("baseline-") < text.index("roadmap_manifest_max_lines")
     assert run_file_limits_scan(tmp_path, cfg) is False
 
+
+def test_write_baseline_with_override_limits_empty_flow_list(tmp_path: Path) -> None:
+    (tmp_path / "constraints").mkdir()
+    cfg_path = tmp_path / "constraints" / "file-limits.yaml"
+    cfg_path.write_text(
+        "max_lines_per_file: 2\napplies_to_globs:\n  - \"**/*.py\"\noverride_limits: []\n",
+        encoding="utf-8",
+    )
+    _write_layout(tmp_path, {"wide.py": "x\n" * 3})
+    assert write_baseline(tmp_path) == 0
+    text = cfg_path.read_text(encoding="utf-8")
+    cfg = yaml.safe_load(text)
+    assert isinstance(cfg["override_limits"], list)
+    assert any(str(e.get("name", "")).startswith("baseline-") for e in cfg["override_limits"])
+    assert run_file_limits_scan(tmp_path, cfg) is False
+
+
+def test_write_baseline_with_double_quote_in_filename(tmp_path: Path) -> None:
+    (tmp_path / "constraints").mkdir()
+    cfg_path = tmp_path / "constraints" / "file-limits.yaml"
+    cfg_path.write_text(_cfg_yaml(max_lines_per_file=2), encoding="utf-8")
+    quoted = 'a"b.py'
+    _write_layout(tmp_path, {quoted: "x\n" * 3})
+    assert write_baseline(tmp_path) == 0
+    cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+    globs = [
+        g
+        for entry in cfg["override_limits"]
+        if str(entry.get("name", "")).startswith("baseline-")
+        for g in entry.get("file_globs") or []
+    ]
+    assert quoted in globs or literal_path_glob(quoted) in globs
+    assert run_file_limits_scan(tmp_path, cfg) is False
+
+
+def test_write_baseline_literal_glob_does_not_widen_to_similar_names(tmp_path: Path) -> None:
+    (tmp_path / "constraints").mkdir()
+    cfg_path = tmp_path / "constraints" / "file-limits.yaml"
+    cfg_path.write_text(_cfg_yaml(max_lines_per_file=2), encoding="utf-8")
+    bracket_name = "a[1].py"
+    _write_layout(tmp_path, {bracket_name: "x\n" * 3})
+    assert write_baseline(tmp_path) == 0
+    text = cfg_path.read_text(encoding="utf-8")
+    cfg = yaml.safe_load(text)
+    assert literal_path_glob(bracket_name) in text
+    assert run_file_limits_scan(tmp_path, cfg) is False
+    before = text
+    assert write_baseline(tmp_path) == 0
+    assert cfg_path.read_text(encoding="utf-8") == before
+    _write_layout(tmp_path, {"a1.py": "x\n" * 3})
+    cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+    assert run_file_limits_scan(tmp_path, cfg) is True
+
+
 def test_write_baseline_buckets_pass_and_rerun_is_idempotent(tmp_path: Path) -> None:
     (tmp_path / "constraints").mkdir()
     cfg_path = tmp_path / "constraints" / "file-limits.yaml"
@@ -199,8 +254,9 @@ def test_upgrade_reports_file_limits_counts_without_failing(tmp_path: Path, caps
     code = run_upgrade(root)
     out = capsys.readouterr().out
     assert "== file-limits" in out
-    assert "failures before upgrade:" in out
-    assert "failures after upgrade:" in out
+    assert "failures:" in out
+    assert "failures before upgrade:" not in out
+    assert "failures after upgrade:" not in out
     assert "Measurement rules may have changed" in out
     assert "--write-baseline" in out
     assert code == 0

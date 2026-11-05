@@ -4,44 +4,47 @@ File-limits baseline writing, failure hint, and upgrade failure counts.
 
 ## Acceptance
 
-- **A1:** `specy-road file-limits --write-baseline` (and `--dry-run`) live in `validate_file_limits.py`; bucketing, YAML append, and idempotency are implemented in `specy_road/file_limits_baseline.py`. New rows are spliced into the existing `override_limits` list before later top-level keys (for example `roadmap_manifest_max_lines`); `write_baseline` refuses to write when the result would not `yaml.safe_load`. Tests pin rounding, buckets, comment preservation, toolkit-shaped YAML, dry-run, and rerun adding nothing.
+- **A1:** `specy-road file-limits --write-baseline` (and `--dry-run`) buckets failures, splices rows into `override_limits` (including after `override_limits: []`), serializes path scalars with YAML quoting, uses literal-path globs so bracket names cannot widen exemptions, validates loadable YAML before write, and is idempotent when nothing fails.
 - **A2:** A failing scan prints `failure_hint()` on stderr after violations; passing runs do not (`scan_with_optional_hint`).
-- **A3:** `run_upgrade` records failure counts before `_apply` and after the refresh/`validate`/`digest` steps, prints them under `== file-limits`, mentions measurement changes when the after count is non-zero, and does not change upgrade's exit code.
+- **A3:** `run_upgrade` prints a single `failures: N` after the refresh (no before/after pair while only the running engine is available), notes measurement changes when N is non-zero, and does not change upgrade's exit code.
 
 ## Fix round (grok-4.7-low)
 
-Replaced EOF append whenever `override_limits:` appeared with line-oriented insertion: scan from the `override_limits` header until the next top-level key (or EOF), insert baseline list items there; when the header is missing, open `override_limits` before known trailing policy keys. `write_baseline` validates the composed document with `yaml.safe_load` and exits 1 without writing on parse failure.
+Line-oriented insertion before later top-level keys; refuse write when composed YAML does not load.
+
+## Fix round (gpt-6.1-sol-low)
+
+Flow-empty `override_limits: []` expanded to a block list before insert; paths emitted via `yaml.dump` quoting and `literal_path_glob` for engine matching; upgrade uses single-count reporting; `optional_positive_int` shared from `file_limits_engine`.
 
 ## Probes
 
-- `append_baseline_yaml_text` on toolkit-shaped YAML (`override_limits` then `roadmap_*` keys): baseline rows land before `roadmap_manifest_max_lines` and `yaml.safe_load` succeeds — covered by `test_write_baseline_inserts_inside_override_limits_before_roadmap_keys`.
-- `append_baseline_yaml_text` when `override_limits` is absent and the file has only `applies_to_globs`: adds a new `override_limits` section that loads — covered by `test_append_keeps_existing_comments`.
-- `write_baseline` after a successful write on the same fixture: idempotent second run — covered by `test_write_baseline_buckets_pass_and_rerun_is_idempotent`.
-- `write_baseline` dry-run path: still does not touch the file — covered by `test_write_baseline_dry_run_prints_without_writing`.
-- `plan_baseline_append` / `write_baseline` when nothing fails: empty plan, exit 0 — covered by `test_plan_baseline_append_empty_when_nothing_fails`.
-- `scan_with_optional_hint` and CLI subprocess: hint on failure only — covered by `test_failing_cli_prints_hint_passing_does_not`.
-- `run_upgrade` file-limits section: unchanged by insertion fix — covered by `test_upgrade_reports_file_limits_counts_without_failing`.
+- `override_limits: []` then failing file: `write_baseline` exit 0, YAML loads, scan passes — `test_write_baseline_with_override_limits_empty_flow_list`.
+- Filename with `"`: write succeeds, YAML loads, scan passes — `test_write_baseline_with_double_quote_in_filename`.
+- `a[1].py` baselined, rerun idempotent, new `a1.py` still fails default cap — `test_write_baseline_literal_glob_does_not_widen_to_similar_names`.
+- `literal_path_glob` on paths with `*`, `?`, `[`, `]` — spot-checked via bracket regression and Python `Path.glob` during development.
+- `override_limits` block before `roadmap_*` keys — `test_write_baseline_inserts_inside_override_limits_before_roadmap_keys`.
+- Dry-run and idempotent rerun — existing tests unchanged and passing.
+- Upgrade output: `failures:` present, before/after lines absent — `test_upgrade_reports_file_limits_counts_without_failing`.
+- `file_limits_failure_count` hard-alert caps — uses `optional_positive_int` from engine (same as scanner).
+- Toolkit `constraints/file-limits.yaml` after changes — `specy-road file-limits` OK.
 
 ## Touch zones
 
-Confirmed accurate; `specy_road/file_limits_engine.py` unchanged. `specy-road file-limits` passes on the toolkit repo.
+Confirmed accurate. `optional_positive_int` is public in `file_limits_engine.py`.
 
 ## Verification
 
-- `python -m pytest -q -p no:cacheprovider tests/test_file_limits_baseline.py tests/test_validate_file_limits.py` — 14 passed (fix round).
+- `python -m pytest -q -p no:cacheprovider tests/test_file_limits_baseline.py tests/test_validate_file_limits.py` — 17 passed.
+- `ruff check specy_road tests scripts` — clean.
 - `specy-road file-limits` — OK.
 
 ## Added
 
 - `specy_road/file_limits_baseline.py`: baseline module (A1–A3 helpers).
-- `round_up_to_step`: bucket caps (50 / 20 steps) for A1.
-- `FailingFileMetrics` / `collect_failing_file_metrics`: failing paths and worst sizes for bucketing.
-- `file_limits_failure_count`: violation-line count for upgrade reporting (A3).
-- `bucket_failing_files` / `format_baseline_entries` / `plan_baseline_append` / `append_baseline_yaml_text`: build and splice YAML without re-dumping (A1).
-- `_insert_index_for_new_override_rows` / `_loads_file_limits_mapping`: insertion point scan and post-compose YAML validation (fix round).
-- `write_baseline`: CLI backend for `--write-baseline` and `--dry-run` (A1).
-- `failure_hint` / `scan_with_optional_hint`: stderr pointer on failure only (A2).
-- `_file_limits_cfg` / `_file_limits_failure_count` / `_report_file_limits_after_upgrade` in `upgrade.py`: end-of-upgrade counts and hint (A3); `_capped_lines` reuses `_file_limits_cfg`.
-- `--write-baseline` and `--dry-run` argparse flags in `validate_file_limits.py`.
-- Docs paragraph in `docs/file-limits.md` for baseline and upgrade behaviour.
-- `tests/test_file_limits_baseline.py`: behavioural tests for A1–A3 (no mocks); `test_write_baseline_inserts_inside_override_limits_before_roadmap_keys` for fix round.
+- `literal_path_glob` / `_yaml_quoted_scalar` / `_expand_flow_empty_override_limits`: safe globs and YAML scalars (gpt fix round).
+- `_insert_index_for_new_override_rows` / `_loads_file_limits_mapping`: splice point and post-compose validation (grok fix round).
+- `round_up_to_step`, `FailingFileMetrics`, `collect_failing_file_metrics`, `file_limits_failure_count`, `bucket_failing_files`, `format_baseline_entries`, `plan_baseline_append`, `append_baseline_yaml_text`, `write_baseline`, `failure_hint`, `scan_with_optional_hint`.
+- `optional_positive_int` in `file_limits_engine.py` (F5; was private duplicate in baseline).
+- `_report_file_limits_after_upgrade` single-count form in `upgrade.py` (F4).
+- `--write-baseline` / `--dry-run` in `validate_file_limits.py`; docs in `docs/file-limits.md`.
+- `tests/test_file_limits_baseline.py`: behavioural coverage including F1–F4 regressions.

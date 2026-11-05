@@ -181,16 +181,12 @@ def _file_limits_failure_count(project: Path) -> int | None:
     return file_limits_failure_count(source_scan_root(project), cfg)
 
 
-def _report_file_limits_after_upgrade(project: Path, before: int | None, after: int | None) -> None:
-    if after is None:
+def _report_file_limits_after_upgrade(project: Path, failure_count: int | None) -> None:
+    if failure_count is None:
         return
     _section("file-limits")
-    if before is not None:
-        print(f"failures before upgrade: {before}")
-        print(f"failures after upgrade: {after}")
-    else:
-        print(f"failures: {after}")
-    if after:
+    print(f"failures: {failure_count}")
+    if failure_count:
         rel = (project / "constraints" / "file-limits.yaml").relative_to(project).as_posix()
         print(
             "Measurement rules may have changed with this specy-road version; "
@@ -306,7 +302,6 @@ def run_upgrade(repo_root: Path | None, *, dry_run: bool = False, prune: bool = 
     print_install_report()
     if dry_run:
         return _dry_run(project, checkout, prune=prune)
-    limits_before = _file_limits_failure_count(project)
     _apply(project, checkout, prune=prune)
     valid, digest_ok = _check(project)
     _section("next")
@@ -319,7 +314,7 @@ def run_upgrade(repo_root: Path | None, *, dry_run: bool = False, prune: bool = 
     for step in steps:
         print(f"- {step}")
     _print_other_worktrees(checkout)
-    _report_file_limits_after_upgrade(project, limits_before, _file_limits_failure_count(project))
+    _report_file_limits_after_upgrade(project, _file_limits_failure_count(project))
     return 0 if valid else 1
 
 
