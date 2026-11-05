@@ -116,28 +116,6 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: planned-test-changes-editable-and-removals-surfaced
-    node_id: M15.18
-    branch: feature/rm-planned-test-changes-editable-and-removals-surfaced
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_edit_fields.py
-      - specy_road/bundled_scripts/roadmap_crud_argparse.py
-      - specy_road/integrity.py
-      - specy_road/integrity_removals.py
-      - specy_road/bundled_scripts/roadmap_edit_list_fields.py
-      - specy_road/bundled_scripts/review_packet.py
-      - specy_road/bundled_scripts/review_packet_observed.py
-      - docs/acceptance-evidence.md
-      - tests/
-      - specy_road/review_record_rules.py
-      - specy_road/schemas/review-record.schema.json
-      - specy_road/review_files.py
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/bundled_scripts/roadmap_crud_ops.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-05T06:46:23+00:00'
   - codename: cursor-cost-with-display-name-models
     node_id: M15.19
     branch: feature/rm-cursor-cost-with-display-name-models

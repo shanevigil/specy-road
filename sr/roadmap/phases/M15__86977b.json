@@ -47,7 +47,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.18_planned-test-changes-editable-and-removals-surfaced_52977306-d74f-402c-bd68-2f53de204394.md",
       "sibling_order": 18,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "planned_test_changes can be edited after pickup, and an unplanned test removal is a required reviewer check",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_edit_fields.py",
