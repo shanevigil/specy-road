@@ -8,6 +8,10 @@ subscription login is read. Flags are the ones in
 ``model-profiles/harness-captures/claude-code/help.txt``. A roster entry or a
 profile ``access.launch_mode: bare`` forces bare; with neither credential that
 is a refusal, and the key's value is never put in a message.
+
+Workers (M15.36) take the same check: bare is forced by the same entry or profile setting and refused with
+neither credential, before any worker state is written; otherwise a worker names its setting sources
+explicitly (:data:`WORKER_FULL_FLAGS`) instead of relying on ``claude -p``'s default mode.
 """
 
 from __future__ import annotations
@@ -36,9 +40,20 @@ EXPLICIT_NOTE = (
 )
 
 
+#: A worker's non-bare mode, stated rather than left to ``claude -p``'s default (which may become ``--bare``):
+#: every setting source an interactive session loads, so its hooks, project settings and login are the same.
+WORKER_FULL_FLAGS = ("--setting-sources", "user,project,local")
+WORKER_FIXES = "export ANTHROPIC_API_KEY, configure apiKeyHelper, or drop launch_mode: bare to use the subscription login"
+
+
 def reviewer_environment() -> dict[str, str]:
     """The environment a Claude Code reviewer process is given (role and avoid-list included)."""
     return harness_env(os.environ, "reviewer", harness="claude-code")
+
+
+def worker_environment() -> dict[str, str]:
+    """The environment a Claude Code executor (worker) process is given."""
+    return harness_env(os.environ, "executor", harness="claude-code")
 
 
 def user_settings_path(env: Mapping[str, str]) -> Path:
@@ -150,3 +165,14 @@ def claude_reviewer_auth_notices(rows: list[tuple[str, Mapping[str, Any], str | 
         seen.add(eid)
         out.append(f"{AUTH_REFUSAL_PREFIX} {eid} forces bare and has no ANTHROPIC_API_KEY or apiKeyHelper: {FIXES}")
     return out
+
+
+def claude_worker_refusal(entry: Mapping[str, Any], profile_mode: str | None) -> str | None:
+    """One line refusing a claude-code worker launch or resume that forces bare with no key or helper, or ``None``."""
+    if not forces_bare(entry, profile_mode):
+        return None
+    env = worker_environment()
+    if has_api_key(env) or has_api_key_helper(load_user_settings(env)):
+        return None
+    return (f"worker auth: {entry.get('id')} forces bare mode and no ANTHROPIC_API_KEY or apiKeyHelper is "
+            f"available, so nothing was launched: {WORKER_FIXES}")
