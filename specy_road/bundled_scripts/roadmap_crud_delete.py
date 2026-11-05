@@ -73,14 +73,18 @@ def planning_sheet_delete_plan(root: Path, planning_dir: object) -> Path | None:
 def remove_roadmap_node(root: Path, node_id: str, *, dry_run: bool = False) -> None:
     """Remove a never-started leaf and its planning sheet when nothing blocks it.
 
+    Eligibility blockers are checked against the on-disk graph with no self-heal
+    pass. The resulting graph is validated the same way for real removal and
+    ``--dry-run``: stage the chunk delete and planning-sheet unlink in an
+    :class:`~specy_road.bundled_scripts.roadmap_chunk_atomic.AtomicWritePlan`,
+    write, run ``validate_callback``, then commit (real) or always rollback
+    (dry-run). Any refusal leaves every path byte-identical.
+
     Raises ``ValueError`` if not found, not removable, or if the resulting graph
-    fails validation — in which case nothing is removed from disk. With
-    ``dry_run=True``, runs the same checks and prints what would be removed
-    without writing.
+    fails validation.
     """
     from specy_road.bundled_scripts.roadmap_chunk_router import validate_callback
     from specy_road.bundled_scripts.roadmap_crud_ops import node_index_in_chunk, unknown_node_msg
-    from specy_road.bundled_scripts.roadmap_crud_prepare import heal_before_mutation
 
     chunk = find_chunk_path(root, node_id)
     if not chunk:
@@ -96,29 +100,26 @@ def remove_roadmap_node(root: Path, node_id: str, *, dry_run: bool = False) -> N
         raise ValueError("\n".join(blockers))
     removed = nodes[idx]
     sheet = planning_sheet_delete_plan(root, removed.get("planning_dir"))
+    nodes_after = list(nodes)
+    del nodes_after[idx]
+    plan = AtomicWritePlan(root=root)
+    plan.stage_chunk(chunk, nodes_after)
+    if sheet is not None:
+        plan.stage_delete(sheet)
+    validate = validate_callback(root)
     if dry_run:
+        try:
+            plan.write()
+            validate()
+        finally:
+            plan.rollback()
         print(f"would remove node {node_id}")
         if sheet is not None:
             print(f"planning sheet: {sheet.relative_to(root).as_posix()}")
         else:
             print("planning sheet: (none)")
         return
-    heal_before_mutation(root)
-    chunk = find_chunk_path(root, node_id)
-    if not chunk:
-        raise ValueError(unknown_node_msg(node_id))
-    nodes = load_json_chunk(chunk)
-    idx = node_index_in_chunk(nodes, node_id)
-    if idx is None:
-        raise ValueError(f"node {node_id!r} not found")
-    removed = nodes[idx]
-    sheet = planning_sheet_delete_plan(root, removed.get("planning_dir"))
-    del nodes[idx]
-    plan = AtomicWritePlan(root=root)
-    plan.stage_chunk(chunk, nodes)
-    if sheet is not None:
-        plan.stage_delete(sheet)
-    plan.commit(validate_callback(root))
+    plan.commit(validate)
 
 
 def delete_roadmap_node_hard(root: Path, node_id: str) -> None:

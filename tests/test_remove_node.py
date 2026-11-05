@@ -13,9 +13,9 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, writ
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from tests.helpers import BUNDLED_SCRIPTS, script_subprocess_env
 from tests.test_roadmap_crud import (
-    _write_registry_claim,
     crud_fixture_repo,
     run_crud,
+    write_registry_claim,
 )
 
 
@@ -65,7 +65,7 @@ def test_remove_node_succeeds_and_validates(tmp_path: Path) -> None:
             ["child node M99.1 has parent_id 'M99'"],
         ),
         (
-            lambda repo: _write_registry_claim(
+            lambda repo: write_registry_claim(
                 repo, "M99.2", "two", "feature/rm-two", "Pat"
             ),
             ["registry claim codename 'two', branch 'feature/rm-two'"],
@@ -117,7 +117,7 @@ def test_remove_node_lists_each_blocker(
 
 def test_remove_node_lists_every_blocker_together(tmp_path: Path) -> None:
     crud_fixture_repo(tmp_path)
-    _write_registry_claim(tmp_path, "M99", "phase", "feature/rm-phase", "Pat")
+    write_registry_claim(tmp_path, "M99", "phase", "feature/rm-phase", "Pat")
     run_crud(
         tmp_path,
         "--repo-root",
@@ -174,14 +174,46 @@ def test_remove_node_dry_run_blocked_writes_nothing(tmp_path: Path) -> None:
     assert _tree_bytes(tmp_path) == before
 
 
-def test_refused_remove_node_does_not_self_heal(tmp_path: Path) -> None:
+@pytest.mark.parametrize("dry_run", [False, True], ids=["real", "dry-run"])
+def test_refused_removal_preserves_every_byte_when_post_graph_invalid(
+    tmp_path: Path, dry_run: bool
+) -> None:
+    """Real removal and dry-run both validate the post-delete graph; refusal changes nothing."""
     crud_fixture_repo(tmp_path)
     chunk = tmp_path / "roadmap" / "phases" / "T.json"
     nodes = load_json_chunk(chunk)
+    next(n for n in nodes if n["id"] == "M99.1")["type"] = "invalid"
+    write_json_chunk(chunk, nodes)
+    before = _tree_bytes(tmp_path)
+    argv = ["--repo-root", str(tmp_path), "remove-node", "M99.2"]
+    if dry_run:
+        argv.append("--dry-run")
+    r = run_crud(tmp_path, *argv)
+    assert r.returncode == 1
+    assert _tree_bytes(tmp_path) == before
+
+
+@pytest.mark.parametrize("dry_run", [False, True], ids=["real", "dry-run"])
+def test_refused_removal_leaves_healable_bytes_untouched(tmp_path: Path, dry_run: bool) -> None:
+    crud_fixture_repo(tmp_path)
+    chunk = tmp_path / "roadmap" / "phases" / "T.json"
+    nodes = load_json_chunk(chunk)
+    next(n for n in nodes if n["id"] == "M99")["parallel_tracks"] = 0
     leaf = next(n for n in nodes if n["id"] == "M99.2")
     del leaf["codename"]
     write_json_chunk(chunk, nodes)
-    before = chunk.read_bytes()
+    before = _tree_bytes(tmp_path)
+    argv = ["--repo-root", str(tmp_path), "remove-node", "M99.2"]
+    if dry_run:
+        argv.append("--dry-run")
+    r = run_crud(tmp_path, *argv)
+    assert r.returncode == 1
+    assert _tree_bytes(tmp_path) == before
+
+
+def test_refused_remove_node_on_blockers_preserves_tree(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    before = _tree_bytes(tmp_path)
     r = run_crud(
         tmp_path,
         "--repo-root",
@@ -191,12 +223,12 @@ def test_refused_remove_node_does_not_self_heal(tmp_path: Path) -> None:
     )
     assert r.returncode == 1
     assert "child node" in r.stderr
-    assert chunk.read_bytes() == before
+    assert _tree_bytes(tmp_path) == before
 
 
 def test_archive_hard_remove_refuses_registry_claim(tmp_path: Path) -> None:
     crud_fixture_repo(tmp_path)
-    _write_registry_claim(tmp_path, "M99.2", "two", "feature/rm-two", "Pat")
+    write_registry_claim(tmp_path, "M99.2", "two", "feature/rm-two", "Pat")
     r = run_crud(
         tmp_path,
         "--repo-root",
@@ -211,7 +243,7 @@ def test_archive_hard_remove_refuses_registry_claim(tmp_path: Path) -> None:
 
 def test_gui_delete_refuses_a_claimed_leaf(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     crud_fixture_repo(tmp_path)
-    _write_registry_claim(tmp_path, "M99.2", "two", "feature/rm-two", "Pat")
+    write_registry_claim(tmp_path, "M99.2", "two", "feature/rm-two", "Pat")
     monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(tmp_path))
     from specy_road.gui_app import create_app
 
