@@ -160,3 +160,19 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: steering-file-guard
+    node_id: M21.7
+    branch: feature/rm-steering-file-guard
+    touch_zones:
+      - specy_road/steering_paths.py
+      - specy_road/worker_turn_check.py
+      - specy_road/worker_reconcile.py
+      - specy_road/worker_adapter_claude.py
+      - specy_road/bundled_scripts/finish_task.py
+      - docs/orchestration-workers.md
+      - docs/orchestration-harness-launch.md
+      - docs/orchestration-review.md
+      - tests/
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending

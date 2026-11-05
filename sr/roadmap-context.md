@@ -231,6 +231,7 @@ Do not pick these up.
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.1` on `feature/rm-move-node-chosen-id` since 2026-11-05
 - `M21.6` on `feature/rm-inherited-dep-cycles` since 2026-11-05
+- `M21.7` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
 
