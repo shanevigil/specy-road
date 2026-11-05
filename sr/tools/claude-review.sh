@@ -8,5 +8,14 @@ effort=$1 prompt=$2
 . "$(dirname "$0")/env.sh"
 set -- --model claude-opus-5-5 --effort "$effort" --permission-mode acceptEdits \
   --allowedTools "Read,Grep,Glob,Write,Edit,Bash" --add-dir "$REVIEWS"
-if [ -f "$prompt" ]; then exec claude -p "$@" < "$prompt"; fi
-exec claude -p "$prompt" "$@" </dev/null
+# Since M8.3 the channel output must be one JSON object: append the notes self-check, keep the raw output in a side
+# file, and print only the answer's last top-level JSON object (as cursor-review.sh does).
+if [ -f "$prompt" ] && [ -f "$(dirname "$0")/review-addendum.md" ]; then
+  merged=$(mktemp "${TMPDIR:-/tmp}/review-prompt.XXXXXX") && cat "$prompt" "$(dirname "$0")/review-addendum.md" > "$merged" && prompt=$merged
+fi
+mkdir -p "$REVIEWS/.transcripts"
+side="$REVIEWS/.transcripts/claude-$(date +%Y%m%dT%H%M%S)-$$.log"
+if [ -f "$prompt" ]; then claude -p "$@" < "$prompt" > "$side" 2>&1; else claude -p "$prompt" "$@" </dev/null > "$side" 2>&1; fi
+rc=$?
+python3 "$(dirname "$0")/last-json.py" < "$side"
+exit $rc
