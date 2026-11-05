@@ -57,6 +57,7 @@ entries:
       - tests/
       - specy_road/worker_ops_message.py
       - specy_road/worker_runner_ready.py
+      - specy_road/worker_ops_launch.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
