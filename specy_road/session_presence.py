@@ -146,6 +146,17 @@ def own_live_sessions(repo_root: Path) -> list[Session]:
     return [s for s in list_sessions(repo_root) if s.user == me]
 
 
+def own_session_here(repo_root: Path, *, worktree: Path | None = None) -> Session | None:
+    """Among this user's live sessions, the one for this git top and branch, when unique."""
+    here = Path(git_text(["rev-parse", "--show-toplevel"], worktree or repo_root) or "").resolve()
+    branch = git_text(["branch", "--show-current"], here) or None
+    matches = [
+        s for s in own_live_sessions(repo_root)
+        if s.worktree and Path(s.worktree).resolve() == here and s.branch == branch
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
 def unreadable_records(repo_root: Path) -> list[Path]:
     """Records that exist but do not load. Whose they are and when they expire is unknown."""
     return [p for p in sorted(sessions_dir(repo_root).glob("*.yaml")) if load_session(p) is None]
