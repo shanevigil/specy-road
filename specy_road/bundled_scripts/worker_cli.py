@@ -270,7 +270,7 @@ def cmd_timeline(ns: argparse.Namespace) -> int:
 def cmd_usage(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     data = usage([(r, [e.to_dict() for e in events_since(root, r.worker_id)]) for r in _records_for(root, ns.target)])
-    return _emit(ns, data, usage_lines(data))
+    return _emit(ns, data, usage_lines(data, root))
 
 
 def cmd_hook(ns: argparse.Namespace) -> int:

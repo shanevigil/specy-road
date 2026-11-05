@@ -107,3 +107,15 @@ def test_no_delegated_review_keeps_the_single_total_line(tmp_path: Path) -> None
     lines = usage_lines(usage([(rec, [])]))
     assert lines[-1] == "  total, 0 turn(s): in ? (? cached), out ?, reasoning ?, $?"
     assert not any("reviewers" in line or "executors" in line for line in lines)
+
+
+def test_worker_usage_uses_its_repo_root_not_the_worktree(two_rounds, tmp_path_factory, capsys) -> None:
+    """A3: ``worker usage --repo-root`` finds the reviewers even when the worker's worktree names no project."""
+    repo, _c1, _c2 = two_rounds
+    elsewhere = tmp_path_factory.mktemp("not-a-project")
+    ws.create_record(repo, "M1.1", "claude-code", "opus", elsewhere)
+    capsys.readouterr()
+    with pytest.raises(SystemExit) as exc:
+        worker_cli.main(["worker", "usage", "M1.1", "--repo-root", str(repo)])
+    assert (exc.value.code or 0) == 0
+    assert "  reviewers, 2 run(s), 2 turn(s):" in capsys.readouterr().out
