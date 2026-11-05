@@ -21,7 +21,7 @@ from specy_road.review_files import (
     HUMAN, READY_PREFIX, load_ready, render_front_matter, review_path, reviews_dir, write_review,
 )
 from specy_road.toolkit_version import stamp_review_toolkit_version
-from specy_road.ready_run_checks import parse_run_argv, run_argv, run_check
+from specy_road.ready_run_checks import prepare_live_runs, run_argv, run_check
 from specy_road.review_policy_ref import policy_source
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
 from specy_road.review_target import ReviewTargetError, full_sha, resolve_target
@@ -178,8 +178,6 @@ def _live_run_rows(runs: list[str], argv_runs: list[list[str]]) -> tuple[list[di
     """Run ``--run`` and ``--run-argv`` verifiers; return new rows or a refusal message."""
     rows: list[dict[str, Any]] = []
     for cmd in runs:
-        if not cmd:
-            continue
         print(f"running: {cmd}", file=sys.stderr)
         v = run_check(cmd)
         if v["exit"] != 0:
@@ -207,17 +205,17 @@ def cmd_ready(ns: argparse.Namespace) -> int:
     ``--run`` commands run last, after every cheap refusal, so a wrong branch never costs a test run.
     """
     root = resolve_repo_root(ns)
-    runs = [c.strip() for c in getattr(ns, "run", None) or []]
+    raw_runs = getattr(ns, "run", None) or []
     run_argv_specs = getattr(ns, "run_argv", None) or []
     try:
         verify = [{"cmd": cmd, "exit": code} for cmd, code in (parse_check(s) for s in ns.verify)]
         red_green = [parse_check(s) for s in ns.red_green]
-        argv_runs = [parse_run_argv(s) for s in run_argv_specs]
         t = resolve_target(root, ns.node_id, "HEAD")
     except (ValueError, ReviewTargetError) as e:
         return _refuse(str(e))
-    if not all(runs) and not argv_runs:
-        return _refuse("--run or --run-argv needs a command")
+    runs, argv_runs, live_err = prepare_live_runs(raw_runs, run_argv_specs)
+    if live_err:
+        return _refuse(live_err)
     if failing := [f"`{v['cmd']}` exited {v['exit']}" for v in verify if v["exit"] != 0]:
         return _refuse(f"failing verifier: {'; '.join(failing)}. {_RED_GREEN_HINT}")
     branch = git_text(["branch", "--show-current"], root)

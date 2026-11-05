@@ -273,3 +273,41 @@ def test_ready_run_argv_help_accepted_example_runs(tmp_path: Path, monkeypatch, 
     r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
     assert r.ok, r.errors
     assert r.data["verify"][-1]["tail"].strip() == "ok"
+
+
+@pytest.mark.parametrize(
+    "extra_args,expect_code,err_needle,side_effect",
+    [
+        pytest.param(["--run", ""], 1, "blank or whitespace-only", None, id="blank_run_alone"),
+        pytest.param(["--run", "", "--run-argv", '["echo", "ok"]'], 1, "blank or whitespace-only", None,
+                     id="blank_run_with_valid_argv"),
+        pytest.param(["--run", "touch must-not-exist", "--run-argv", "[]"], 1, "non-empty JSON array",
+                     "must-not-exist", id="valid_run_invalid_argv_before_execute"),
+        pytest.param(["--run", "   "], 1, "blank or whitespace-only", None, id="whitespace_run_alone"),
+        pytest.param(["--run", "echo shell-ok", "--run-argv", '["echo", "argv-ok"]', "--verify", "ruff .=0"], 0, None,
+                     None, id="all_valid_mix"),
+    ],
+)
+def test_ready_validates_every_run_and_run_argv_before_executing(
+    tmp_path: Path, monkeypatch, capsys, extra_args: list[str], expect_code: int, err_needle: str | None,
+    side_effect: str | None,
+) -> None:
+    repo = make_review_repo(tmp_path)
+    monkeypatch.chdir(repo)
+    capsys.readouterr()
+    ready_path = reviews_dir(repo, "M1.1") / "READY-opus.md"
+    code = _cli("ready", "M1.1", "--model", "opus", *extra_args, "--repo-root", str(repo))
+    assert code == expect_code
+    err = capsys.readouterr().err
+    if err_needle:
+        assert err_needle in err
+        assert not ready_path.exists()
+        if side_effect:
+            assert not (repo / side_effect).exists()
+    else:
+        assert ready_path.exists()
+        r = load_ready(ready_path, "M1.1", "feature/rm-thing")
+        assert r.ok, r.errors
+        assert any(v.get("tail") == "shell-ok" for v in r.data["verify"])
+        assert any("argv-ok" in (v.get("tail") or "") for v in r.data["verify"])
+

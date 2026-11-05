@@ -66,3 +66,18 @@ def parse_run_argv(spec: str) -> list[str]:
     if not parsed[0]:
         raise ValueError(f"{spec!r}: the first element must be a non-empty string")
     return parsed
+
+
+def prepare_live_runs(raw_runs: list[str], run_argv_specs: list[str]) -> tuple[list[str], list[list[str]], str | None]:
+    """Validate every ``--run`` and ``--run-argv`` before any verifier executes; return a refusal message or None."""
+    for raw in raw_runs:
+        if not raw.strip():
+            return [], [], f"--run {raw!r} is blank or whitespace-only"
+    runs = [c.strip() for c in raw_runs]
+    argv_runs: list[list[str]] = []
+    for spec in run_argv_specs:
+        try:
+            argv_runs.append(parse_run_argv(spec))
+        except ValueError as e:
+            return runs, [], str(e)
+    return runs, argv_runs, None
