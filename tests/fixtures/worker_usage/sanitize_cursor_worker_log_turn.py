@@ -1,7 +1,8 @@
 """Build a sanitized Cursor stream-json turn fixture from a worker ``*.log`` file.
 
-Keeps each line's ``type``, ``subtype``, ``session_id`` placeholder, and any ``usage`` object
-with its real token numbers. Drops prompts, thinking text, tool arguments, paths and ids.
+Each line in the turn keeps ``type``, ``subtype``, ``session_id`` (placeholder), and any
+``usage`` object with real token numbers. ``assistant`` lines keep ``message.usage`` only.
+No prompts, paths, ids or other fields.
 
 Run from the repo root (maintainer-only; output is committed):
 
@@ -16,10 +17,10 @@ import json
 import sys
 from pathlib import Path
 
+from specy_road.worker_adapter_cursor import sum_cursor_turn_usage
 from specy_road.worker_adapter_parsers import usage_fields
 
 _SESSION = "<session>"
-_KEEP_TYPES = frozenset({"system", "tool_call", "usage", "result"})
 
 
 def _json_lines(path: Path) -> list[tuple[int, dict]]:
@@ -47,41 +48,46 @@ def _turns(lines: list[tuple[int, dict]]) -> list[tuple[int, int]]:
     return spans
 
 
-def _sanitize(d: dict) -> dict | None:
-    t = d.get("type")
-    if t not in _KEEP_TYPES:
-        return None
-    out: dict = {"type": t, "session_id": _SESSION}
+def _raw_usage(d: dict) -> dict | None:
+    if isinstance(d.get("usage"), dict):
+        return d["usage"]
+    msg = d.get("message")
+    if isinstance(msg, dict) and isinstance(msg.get("usage"), dict):
+        return msg["usage"]
+    return None
+
+
+def sanitize_line(d: dict) -> dict:
+    """One stream line reduced to type, subtype, session_id and usage when present."""
+    out: dict = {"type": d["type"], "session_id": _SESSION}
     if d.get("subtype") is not None:
         out["subtype"] = d["subtype"]
     if isinstance(d.get("usage"), dict):
         out["usage"] = dict(d["usage"])
+    msg = d.get("message")
+    if isinstance(msg, dict) and isinstance(msg.get("usage"), dict):
+        out["message"] = {"usage": dict(msg["usage"])}
     return out
 
 
-def _sample_tool_calls(lines: list[tuple[int, dict]], start: int, end: int, *, max_lines: int = 8) -> list[dict]:
-    tools = [(i, d) for i, d in lines if start <= i <= end and d.get("type") == "tool_call"]
-    if len(tools) <= max_lines:
-        picked = tools
-    else:
-        step = max(1, len(tools) // max_lines)
-        picked = tools[::step][:max_lines]
-    return [s for i, d in picked if (s := _sanitize(d))]
-
-
 def excerpt_turn(lines: list[tuple[int, dict]], start: int, end: int) -> list[dict]:
-    init = next(d for i, d in lines if i == start)
-    result = next(d for i, d in lines if i == end)
-    body = [_sanitize(init), *_sample_tool_calls(lines, start, end), _sanitize(result)]
-    return [ln for ln in body if ln]
+    """Every line between init and result, sanitized, in log order."""
+    return [sanitize_line(d) for i, d in lines if start <= i <= end]
+
+
+def usage_parts_from_excerpt(excerpt: list[dict]) -> list[dict]:
+    parts: list[dict] = []
+    for ln in excerpt:
+        raw = _raw_usage(ln)
+        if raw is not None:
+            parts.append(usage_fields(raw))
+    return parts
 
 
 def expected_output_tokens(excerpt: list[dict]) -> int:
-    result = next(ln for ln in excerpt if ln.get("type") == "result")
-    fields = usage_fields(result.get("usage"))
-    out = fields.get("output_tokens")
+    out = sum_cursor_turn_usage(usage_parts_from_excerpt(excerpt)).get("output_tokens")
     if out is None:
-        raise ValueError("result line has no output_tokens")
+        raise ValueError("turn has no output_tokens")
     return out
 
 
@@ -91,10 +97,12 @@ def build(path: Path) -> dict:
         raise SystemExit(f"no JSON lines in {path}")
     start, end = max(_turns(lines), key=lambda s: s[1] - s[0])
     excerpt = excerpt_turn(lines, start, end)
+    usage_lines = sum(1 for ln in excerpt if _raw_usage(ln) is not None)
     return {
-        "_provenance": "Sanitized excerpt of one agent turn from a Composer 2.5 worker log "
-        "(type, subtype, session_id, usage only). Source: a real composer-2.5 turn on this toolkit's own grind.",
+        "_provenance": "Sanitized full agent turn from a Composer 2.5 worker log (each line: type, subtype, "
+        "session_id, usage when present). Source: a real composer-2.5 turn on this toolkit's own grind.",
         "session_id": _SESSION,
+        "usage_bearing_lines": usage_lines,
         "expected_output_tokens": expected_output_tokens(excerpt),
         "lines": excerpt,
     }

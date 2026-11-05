@@ -2,19 +2,10 @@
 
 Split from :mod:`specy_road.worker_adapters` for the file limit; callers reach it through that module.
 
-Usage combining (one turn, several usage-bearing stream lines), as observed on Composer 2.5
-worker logs from this toolkit's grind: one ``result`` line per turn carries
-``usage`` with ``inputTokens``, ``outputTokens``, ``cacheReadTokens`` and ``cacheWriteTokens``;
-those logs had no mid-turn ``type: usage`` lines.
-
-When several usage-bearing lines appear in one turn:
-
-- ``type: usage`` without ``subtype: session``, ``assistant`` / ``message.usage``, and
-  ``result`` / ``usage`` without ``total: true`` — per-segment counts (summed).
-- ``type: usage`` with ``subtype: session``, or ``result`` / ``usage`` with ``total: true`` —
-  session running total: the **last** such line is the turn's usage; every token key comes from
-  that line (omitted keys stay null). Earlier segment lines are ignored once a session line exists.
-- Never infer running totals from monotonic token values.
+Composer 2.5 worker logs on this toolkit's grind carry usage on the terminal ``result`` line
+once per turn (``inputTokens``, ``outputTokens``, ``cacheReadTokens``, ``cacheWriteTokens``).
+If a turn ever emits more than one usage-bearing line (``usage``, ``assistant``/``message.usage``,
+or ``result``), token counts are summed in :func:`sum_cursor_turn_usage`.
 """
 
 from __future__ import annotations
@@ -22,20 +13,15 @@ from __future__ import annotations
 import shlex
 import subprocess
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from specy_road.worker_adapter_base import Adapter, Capabilities, Launch, Parsed, Unsupported, _model_flag
 from specy_road.worker_adapter_parsers import _json, _num, _snip, _text, usage_fields
 from specy_road.worker_sessions import session_id_problem
 from specy_road.worker_usage_delta import SESSION_TOKENS
 
-_TOKEN_KEYS = SESSION_TOKENS
-UsageKind = Literal["segment", "session"]
-UsageEntry = tuple[dict[str, Any], UsageKind]
-
 
 def _raw_usage(d: dict[str, Any]) -> Any:
-    """The harness usage object on a stream line, if any."""
     if d.get("usage") is not None:
         return d.get("usage")
     msg = d.get("message")
@@ -44,60 +30,19 @@ def _raw_usage(d: dict[str, Any]) -> Any:
     return None
 
 
-def _usage_kind(d: dict[str, Any]) -> UsageKind | None:
-    """How token counts on this line combine, from the stream line only."""
-    t = d.get("type")
-    if t == "usage":
-        return "session" if d.get("subtype") == "session" else "segment"
-    if t == "assistant" and _raw_usage(d) is not None:
-        return "segment"
-    if t == "result":
-        raw = _raw_usage(d)
-        if isinstance(raw, dict) and raw.get("total") is True:
-            return "session"
-        if raw is not None:
-            return "segment"
-    return None
-
-
-def _sum_segment_fields(segments: list[dict[str, Any]]) -> dict[str, Any]:
-    out: dict[str, Any] = {}
-    for k in _TOKEN_KEYS:
-        vals = [s[k] for s in segments if s.get(k) is not None]
-        out[k] = sum(vals) if vals else None
-    return out
-
-
-def combine_cursor_turn_usage(entries: list[UsageEntry]) -> dict[str, Any]:
-    """One turn's token counts from every usage-bearing line Cursor printed for it."""
-    if not entries:
+def sum_cursor_turn_usage(parts: list[dict[str, Any]]) -> dict[str, Any]:
+    """One turn's usage: a single line unchanged, several lines summed per token key."""
+    if not parts:
         return usage_fields(None)
-    sessions = [fields for fields, kind in entries if kind == "session"]
-    if sessions:
-        out = usage_fields(None)
-        out.update(sessions[-1])
-        su = {k: out[k] for k in _TOKEN_KEYS if out.get(k) is not None}
-        if su:
-            out["session_usage"] = su
-        return _merge_meta(out, entries)
-    segments = [fields for fields, kind in entries if kind == "segment"]
-    out = _sum_segment_fields(segments) if segments else usage_fields(None)
-    return _merge_meta(out, entries)
-
-
-def _merge_meta(out: dict[str, Any], entries: list[UsageEntry]) -> dict[str, Any]:
+    if len(parts) == 1:
+        return dict(parts[0])
+    out = usage_fields(None)
+    for k in SESSION_TOKENS:
+        vals = [p[k] for p in parts if p.get(k) is not None]
+        out[k] = sum(vals) if vals else None
     for k in ("cost_usd", "cost_is_estimate", "num_turns", "harness_version"):
-        out[k] = next((fields[k] for fields, _ in reversed(entries) if fields.get(k) is not None), out.get(k))
+        out[k] = next((p[k] for p in reversed(parts) if p.get(k) is not None), None)
     return out
-
-
-def merge_cursor_result_usage(entries: list[UsageEntry], result: dict[str, Any]) -> dict[str, Any]:
-    """Usage for a terminal ``result`` line: combined stream segments plus ``num_turns`` from the result."""
-    usage = combine_cursor_turn_usage(entries)
-    nt = _num(result.get("num_turns"), whole=True)
-    if nt is not None:
-        usage["num_turns"] = nt
-    return usage
 
 
 def create_chat(worktree: Path) -> str:
@@ -135,18 +80,15 @@ class Cursor(Adapter):
                               "new prompt: verify)")
 
     def __init__(self) -> None:
-        self._usage_entries: list[UsageEntry] = []
+        self._usage_parts: list[dict[str, Any]] = []
 
     def _track_usage(self, d: dict[str, Any]) -> None:
         if d.get("type") == "system" and d.get("subtype") == "init":
-            self._usage_entries = []
-            return
-        kind = _usage_kind(d)
-        if kind is None:
+            self._usage_parts = []
             return
         raw = _raw_usage(d)
         if raw is not None:
-            self._usage_entries.append((usage_fields(raw), kind))
+            self._usage_parts.append(usage_fields(raw))
 
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
@@ -194,11 +136,11 @@ class Cursor(Adapter):
             ok = not d.get("is_error")
             summary = f"{d.get('subtype')}: {_snip(text)}" if ok else _snip(text) or f"{d.get('subtype')}: error"
             detail = {"message": text} if text else None
-            if self._usage_entries:
-                usage = merge_cursor_result_usage(self._usage_entries, d)
-            else:
-                usage = usage_fields(d.get("usage"), num_turns=d.get("num_turns"))
-            self._usage_entries = []
+            usage = sum_cursor_turn_usage(self._usage_parts) if self._usage_parts else usage_fields(d.get("usage"))
+            nt = _num(d.get("num_turns"), whole=True)
+            if nt is not None:
+                usage["num_turns"] = nt
+            self._usage_parts = []
             return Parsed("turn_completed" if ok else "error", summary, sid, detail, usage)
         return None
 

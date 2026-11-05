@@ -2,36 +2,33 @@
 
 ## Summary
 
-Cursor stream-json usage is combined once on the terminal `result` for the worker's single usage event. Rules follow what Composer 2.5 worker logs on this toolkit's grind actually show, plus explicit stream markers when several usage-bearing lines appear in one turn. `worker usage` flags long turns whose reported output rate is implausibly low.
-
-### Combining rule (A2)
-
-Observed on real Composer 2.5 grind logs (longest turn excerpt committed as the fixture): **one** `result` / `success` line per agent turn carries `usage` (`inputTokens`, `outputTokens`, `cacheReadTokens`, `cacheWriteTokens`); no mid-turn `type: usage` lines in those logs.
-
-When multiple usage-bearing lines exist in one turn:
-
-| Stream signal | Kind | Turn usage |
-|---------------|------|------------|
-| `type: usage` (not `subtype: session`), `assistant` / `message.usage`, `result` / `usage` without `total: true` | per-segment | sum token keys |
-| `type: usage`, `subtype: session`, or `result` / `usage` with `total: true` | session total | **last** session line only; omitted keys stay null (no merge with segment sums) |
-
-Monotonic token values never imply a running total.
+Real Composer 2.5 worker logs on this toolkit's grind emit **one** usage-bearing line per agent turn: `type: result` with a `usage` object (`inputTokens`, `outputTokens`, `cacheReadTokens`, `cacheWriteTokens`). The Cursor adapter records that on the worker usage event as before. If a turn ever has more than one usage-bearing line (`type: usage`, `assistant`/`message.usage`, or `result`), token keys are **summed** in `sum_cursor_turn_usage`. Long turns with implausibly low reported output rates get `possible undercount` in text and JSON (A3).
 
 ## Changes
 
-- **`tests/fixtures/worker_usage/sanitize_cursor_worker_log_turn.py`** — builds sanitized turn fixtures from a worker log.
-- **`tests/fixtures/worker_usage/cursor_multi_segment_turn.json`** — sanitized excerpt of the longest Composer 2.5 turn (real `result.usage` numbers).
-- **`specy_road/worker_adapter_cursor.py`** — session lines replace the turn total entirely; docstring matches observed grind shape.
-- **`tests/test_cursor_usage_segments.py`** — fixture from real excerpt; edge-case combine/parse tests; worker path.
+- **`specy_road/worker_adapter_cursor.py`** — `_usage_parts` per turn; `sum_cursor_turn_usage` when len > 1; otherwise result usage + `num_turns`.
+- **`tests/fixtures/worker_usage/sanitize_cursor_worker_log_turn.py`** — full-turn sanitizer (every line: type, subtype, session_id, usage when present).
+- **`tests/fixtures/worker_usage/cursor_multi_segment_turn.json`** — sanitized real longest grind turn (2196 lines, **one** usage-bearing line, 44158 output tokens).
+- **`specy_road/worker_usage_plausibility.py`**, **`worker_cli_render.py`**, **`tests/test_cursor_usage_segments.py`** — A3 marking and tests.
+
+### Fixture observations (A1)
+
+| Line type | Carries usage in real grind logs? |
+|-----------|-----------------------------------|
+| `system` / `init` | no |
+| `thinking`, `assistant`, `tool_call`, `user`, … | no (fixture keeps type/subtype/session_id only) |
+| `result` / `success` | yes — once per turn |
+
+No per-segment vs running-total distinction appears in observed logs; combining is sum-if-multiple, else the single `result` line.
 
 ## Probes
 
-- Longest Composer 2.5 turns in local worker logs (w-0052, w-0053, w-0066) — each turn has a single `result.usage`; no mid-turn `type: usage` with usage objects.
-- `sanitize_cursor_worker_log_turn.py` on w-0066 — `expected_output_tokens` 44158 from real `outputTokens`.
-- `combine_cursor_turn_usage` with segment + session entries — output and `cached_input_tokens` taken only from session line (null stays null).
-- `Cursor.parse` assistant `message.usage` + `result` with `usage.total: true` — `output_tokens` 7, `cached_input_tokens` None (Grok probe).
-- Per-segment-only entries `(100,200,300)` — still sum to 600.
-- `reset_cursor_adapter_via_init` — no `_usage_segments` test mutation.
+- w-0066 longest turn — 2196 stream lines, **1** usage-bearing line on `result` (`outputTokens` 44158).
+- `excerpt_turn` on synthetic init + usage 11 + assistant/message.usage 13 + result 17 — four lines kept, `expected_output_tokens` 41.
+- `Cursor.parse` on the same synthetic stream — `output_tokens` 41.
+- Real fixture worker test — usage event `output_tokens` 44158.
+- `sum_cursor_turn_usage([])` — all null; single part unchanged; `num_turns` 4 preserved on lone `result`.
+- A3 threshold — 6092 s / 10136 flagged; 300 s / 17000 not.
 
 ## Verification
 
@@ -47,8 +44,9 @@ specy-road file-limits
 
 ## Added
 
-- `sanitize_cursor_worker_log_turn.py` — maintainer script to regenerate the sanitized fixture from a worker log.
-- `_usage_kind` / `combine_cursor_turn_usage` / `merge_cursor_result_usage` — stream-marked segment vs session combine.
-- `reset_cursor_adapter_via_init` — test isolation via `system`/`init` parse.
-- `tests/fixtures/worker_usage/cursor_multi_segment_turn.json` — real long-turn excerpt (44158 output tokens on `result`).
-- `tests/test_cursor_usage_segments.py` — fixture, edge cases, plausibility, worker integration.
+- `sum_cursor_turn_usage` — sums token keys when a turn has multiple usage-bearing lines.
+- `_usage_parts` / `_track_usage` — per-turn accumulator; cleared on `system`/`init` and after `result`.
+- `sanitize_cursor_worker_log_turn.py` — regenerates the committed fixture from a worker log.
+- `reset_cursor_adapter_via_init` — test isolation via public init parse.
+- `worker_usage_plausibility.possible_undercount` — duration vs output-rate heuristic.
+- `tests/test_cursor_usage_segments.py` — sanitizer regression, multi-line sum, real fixture, A3.
