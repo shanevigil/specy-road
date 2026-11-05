@@ -1,6 +1,8 @@
 # Implementation summary: M15.11
 
-Branch `feature/rm-working-roster-in-one-command-and-validated-profiles`, base `54a15dc9`.
+Branch `feature/rm-working-roster-in-one-command-and-validated-profiles`. Implementation commit
+`13001aa7`; registration base `54a15dc9`. Rework executor `composer-2.5` at prompt base
+`970625b8` made no code changes; verification re-run below.
 
 ## What changed, by acceptance item
 
@@ -64,6 +66,8 @@ left unchanged: `specy_road/cli_usage.py`, the top-level `specy-road -h` text. I
 text to list them.
 
 ## Verification
+
+Re-run by `composer-2.5` on implementation commit `13001aa7` (no code delta in this session).
 
 - `python -m pytest -q -n 4`: 4128 passed.
 - `specy-road file-limits`: OK.
