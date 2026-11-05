@@ -157,7 +157,7 @@ def test_cli_end_with_a_new_derived_id_ends_the_users_only_live_session(tmp_path
     monkeypatch.setenv("USER", "frank")
     assert _derived_end(repo, monkeypatch, 202) == 0
     out = capsys.readouterr().out
-    assert "session frank-s101: ended (no record for frank-s202" in out
+    assert out.startswith("ended your only live session frank-s101 here (this shell's id frank-s202 has no record)\n")
     assert [s.agent for s in sp.list_sessions(repo)] == ["gina-s303"]
     assert _derived_end(repo, monkeypatch, 202) == 0           # none left: the old answer
     assert "session frank-s202: no record" in capsys.readouterr().out
