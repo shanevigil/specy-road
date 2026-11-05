@@ -94,7 +94,7 @@ def test_prompt_cli_channel_prefers_the_roster_channels_cli(tmp_path: Path, caps
     repo = _repo(tmp_path)
     git(repo, "update-ref", "refs/heads/dev", "HEAD")   # the profile, like the roster, is read from the integration branch
     assert _run(__import__("specy_road.bundled_scripts.role_prompt", fromlist=["main"]),
-                "M1.1", "--model", "exec1", "--role", "executor", "--channel", "cli", "--repo-root", str(repo)) == 0
+                "M1.1", "--model", "exec1", "--role", "executor", "--channel", "cli", "--run", "--repo-root", str(repo)) == 0
     assert "running: printf roster-cli-%s " in capsys.readouterr().err
 
 

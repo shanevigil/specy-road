@@ -227,19 +227,27 @@ def test_codex_runs_exec_json_workspace_write_memories_off_in_a_profile_codex_ho
     assert wa.adapter_for("codex").human_resume(thread, repo) == ["env", f"CODEX_HOME={home}", "codex", "resume", thread]
 
 
-def test_cursor_creates_the_chat_first_passes_force_trust_and_never_w(
+def test_cursor_creates_the_chat_first_passes_trust_sandbox_and_never_w(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cursor, "create_chat", real_create_chat)
     spec = _harness(tmp_path, monkeypatch, "agent", chat="chat-7f3a")
     launch = wa.adapter_for("cursor").launch(_prompt(tmp_path), tmp_path, "composer-2.5", None)
     assert _calls(spec)[0]["argv"] == ["create-chat"]
     assert launch.session_id == "chat-7f3a" and launch.argv[:4] == ["agent", "-p", "--resume", "chat-7f3a"]
-    assert "--force" in launch.argv and "--trust" in launch.argv
+    assert "--force" not in launch.argv and "--trust" in launch.argv and "enabled" in launch.argv
     assert launch.argv[-1] == file_instruction(_prompt(tmp_path).resolve())   # M15.9 A1: the file, not its text
     assert not {"-w", "--worktree"} & set(launch.argv)
     for cli in ("agent -p -w --force {prompt}", "agent -p --worktree=x {prompt}"):
         with pytest.raises(wa.Unsupported, match="never pass -w"):
             wa.adapter_for("cursor").launch(_prompt(tmp_path), tmp_path, "m", cli)
+    # The launched event records the permission flags passed: the default sandbox, or the roster's --force opt-in.
+    repo = make_review_repo(tmp_path / "repo")
+    for force, flags in ((False, ["--trust", "--sandbox", "enabled"]), (True, ["--trust", "--force"])):
+        rec = ws.create_record(repo, "M1.1", "cursor", "composer-2.5", repo, branch="feature/rm-thing")
+        launch = wa.adapter_for("cursor").launch(_prompt(tmp_path), repo, "composer-2.5", None, force=force)
+        assert wr.run(repo, rec.worker_id, launch) == 0
+        [launched] = _events(repo, rec.worker_id, "launched")
+        assert launched.detail["permissions"] == flags
     _respec(spec, chat="", chat_exit=1)
     with pytest.raises(wa.Unsupported, match="create-chat"):
         wa.adapter_for("cursor").launch(_prompt(tmp_path), tmp_path, "m", None)

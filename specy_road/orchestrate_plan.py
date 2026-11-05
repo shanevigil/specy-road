@@ -80,6 +80,7 @@ from specy_road.review_tally import flagged_areas
 from specy_road.reviewer_auth import claude_reviewer_auth_notices
 from specy_road.roster_local import local_roster_ids
 from specy_road.runtime_paths import project_prefix
+from specy_road.worker_adapter_cursor import force_warnings
 
 @dataclass
 class OrchestrationPlan:
@@ -95,6 +96,7 @@ class OrchestrationPlan:
     preferences_error: str | None = None   # the ledger could not be read; the plan still stands
     local_roster: list[str] = field(default_factory=list)   # ids this clone's roster_add contributed
     reviewer_auth_notices: list[str] = field(default_factory=list)   # one per forced-bare entry, assigned or not
+    cursor_force_warnings: list[str] = field(default_factory=list)   # one per cursor entry passing --force, assigned or not
 
     @property
     def ok(self) -> bool:
@@ -107,7 +109,8 @@ class OrchestrationPlan:
                 "blocked": self.blocked, "active": self.active, "unauthored": self.unauthored,
                 "preferences_not_applied": self.preferences_not_applied,
                 "preferences_error": self.preferences_error, "local_roster": self.local_roster,
-                "reviewer_auth_notices": self.reviewer_auth_notices}
+                "reviewer_auth_notices": self.reviewer_auth_notices,
+                "cursor_force_warnings": self.cursor_force_warnings}
 
 
 def preference_notice(pref: dict[str, Any], cands: list[Candidate], today: date | None) -> dict[str, Any]:
@@ -149,4 +152,4 @@ def build_orchestration_plan(root: Path, *, under: str | None = None, today: dat
                              [b.node_id for b in sp.blocked], list(sp.active),
                              [u.node_id for u in sp.unauthored], ref, drift,
                              [preference_notice(p, cands, today) for p in prefs], pref_err, local,
-                             notices), None
+                             notices, force_warnings([c.entry for c in cands])), None

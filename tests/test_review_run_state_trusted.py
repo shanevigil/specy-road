@@ -39,7 +39,7 @@ def test_prompt_cli_never_writes_to_a_log_path_the_reviewer_put_in_its_run_file(
     step = verdict_step(repo, model="gem") if files else {"raw": "not a verdict"}
     set_steps(repo, spec, {**step, "plain": True,
                            "write": {"path": str(run_file), "text": json.dumps(_forged_run(repo, "gem"))}})
-    rc = run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli",
+    rc = run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli", "--run",
                   "--repo-root", str(repo))
     assert (repo / "src" / "a.py").read_bytes() == source                      # never written
     run = json.loads(run_file.read_text())

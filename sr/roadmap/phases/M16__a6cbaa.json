@@ -199,7 +199,7 @@
       "parent_id": "M16",
       "planning_dir": "planning/M16.69_cursor-workers-no-force-by-default_3d08dc0a-5e36-45e6-9c64-2afb0bf110c5.md",
       "sibling_order": 69,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Cursor workers launch sandboxed without --force unless the roster opts in",
       "touch_zones": [
         "specy_road/worker_adapter_cursor.py",
@@ -338,7 +338,8 @@
         "specy_road/cli_usage.py",
         "specy_road/gui_app_routes_nodes.py",
         "docs/roadmap-authoring.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/roadmap_crud_ops.py"
       ],
       "type": "task"
     },

@@ -10,6 +10,7 @@ or ``result``), token counts are summed in :func:`sum_cursor_turn_usage`.
 
 from __future__ import annotations
 
+import re
 import shlex
 import subprocess
 from pathlib import Path
@@ -68,25 +69,117 @@ def _prompt_args(prompt_path: Path) -> list[str]:
     return [file_instruction(Path(prompt_path).resolve())]
 
 
-def _no_worktree_flag(cli: str | None) -> None:
-    """A custom command must not pass ``-w``/``--worktree``: ``agent`` would make its own worktree under
-    ``~/.cursor/worktrees`` and work there, not in the one specy-road created (harness-facts)."""
+#: The default permission flags, on launch and resume: ``--trust`` accepts the new worktree as a workspace (``agent
+#: -p`` otherwise exits asking to trust it) and Cursor's sandbox confines the commands the agent runs.
+SANDBOX_FLAGS = ("--trust", "--sandbox", "enabled")
+#: A roster entry's ``cursor_force: true``: ``--force`` force-allows every command that is not explicitly denied.
+FORCE_FLAGS = ("--trust", "--force")
+#: The characters that end a shell word unquoted: ``--force; true`` passes ``--force`` to ``agent``.
+_SHELL_OPERATORS = "();<>|&`\n"
+#: What the shell reads as quoted: a single-quoted string, a double-quoted string, or one escaped character.
+_QUOTED = re.compile(r"""'[^']*'|"(?:\\.|[^"\\])*"|\\.""", re.S)
+_ESCAPED = re.compile(r"\\.", re.S)
+#: ``agent``'s short switches that take no value: one word may cluster them (``-pf`` is ``-p -f``), and anything after
+#: ``-H``, ``-e`` or ``-w`` in a word is that option's value, so ``-Hf`` passes no ``-f``.
+_SWITCHES = "-[vpfh]*"
+#: A word in a custom command that force-allows commands as ``--force`` does (``-f`` and ``--yolo`` are its aliases).
+_FORCE = re.compile(rf"--force|--yolo|{_SWITCHES}f.*")
+#: A word that is a whole permission flag, value included.
+_PERMISSION = re.compile(rf"--trust|--sandbox=.*|{_FORCE.pattern}")
+#: A word that asks ``agent`` for its own worktree.
+_WORKTREE = re.compile(rf"--worktree(=.*)?|{_SWITCHES}w.*")
+
+
+def permission_flags(force: bool) -> list[str]:
+    """The default command's permission flags: :data:`FORCE_FLAGS` when the roster opts in, else
+    :data:`SANDBOX_FLAGS`."""
+    return list(FORCE_FLAGS if force else SANDBOX_FLAGS)
+
+
+def _joined_lines(command: str) -> str:
+    """``command`` without its line continuations: the shell drops a backslash-newline before it splits words,
+    in double quotes too, and keeps it in single quotes."""
+    def unit(quoted: re.Match[str]) -> str:
+        if quoted[0].startswith("'"):
+            return quoted[0]
+        return _ESCAPED.sub(lambda e: "" if e[0] == "\\\n" else e[0], quoted[0])
+    return _QUOTED.sub(unit, command)
+
+
+def _shell_words(command: str) -> list[str]:
+    """``command``'s words and operators, the one reading of a custom command here, and its bounded rule: POSIX
+    quoting only. Quotes, backslashes and line continuations are taken as ``sh`` takes them, and an unquoted
+    :data:`_SHELL_OPERATORS` character ends a word and stands as its own item.
+
+    Every word of the line counts, in any of its commands, so this errs toward finding a flag: ``rm -f x; agent`` and a
+    ``# --force`` comment match. It runs and expands nothing, so a word the shell builds at run time is not seen:
+    ``$FLAGS``, ``--fo$(:)rce``, bash's ``$'--force'``, a wrapper script, a quoted ``sh -c '...'``. Where the text stops
+    parsing (an open quote, which the custom-command check refuses, or a trailing backslash, which ``sh`` passes on
+    as a literal), the words before that point still count."""
+    lexer = shlex.shlex(_joined_lines(command), posix=True, punctuation_chars=_SHELL_OPERATORS)
+    lexer.whitespace_split, lexer.whitespace, lexer.commenters = True, " \t", ""
+    words: list[str] = []
     try:
-        words = shlex.split(cli) if cli else []
+        words.extend(lexer)
     except ValueError:
-        return   # an unbalanced quote: the custom-command check refuses it with its own reason
-    if any(w in ("-w", "--worktree") or w.startswith("--worktree=") for w in words):
+        pass
+    return words
+
+
+def _words(argv: list[str]) -> list[str]:
+    """``argv``'s words, with a custom launch's ``sh -c <command>`` read by :func:`_shell_words`."""
+    return _shell_words(argv[2]) if len(argv) == 3 and argv[:2] == ["sh", "-c"] else argv
+
+
+def launch_permissions(argv: list[str]) -> list[str]:
+    """The permission flags a Cursor launch passes, in argv order and as written, for its ``launched`` event; a custom
+    command is read by the bounded rule of :func:`_shell_words`."""
+    words, out = _words(argv), []
+    for i, w in enumerate(words):
+        if _PERMISSION.fullmatch(w):
+            out.append(w)
+        elif w == "--sandbox":
+            out += [w, *(v for v in words[i + 1:i + 2] if v.strip(_SHELL_OPERATORS))]
+    return out
+
+
+def _forces(cli: Any) -> bool:
+    return isinstance(cli, str) and any(_FORCE.fullmatch(w) for w in _shell_words(cli))
+
+
+def force_warnings(roster: list[dict[str, Any]]) -> list[str]:
+    """One warning per ``cursor`` roster entry, assigned or not, that force-allows commands: ``cursor_force: true``
+    on the default command, or a ``channels.cli`` / ``cli_resume`` passing ``--force``, ``-f`` or ``--yolo`` (by the
+    bounded rule of :func:`_shell_words`)."""
+    out: list[str] = []
+    for entry in roster:
+        if entry.get("harness") != "cursor":
+            continue
+        channels = entry.get("channels") if isinstance(entry.get("channels"), dict) else {}
+        how = ["cursor_force: true"] if entry.get("cursor_force") is True else []
+        how += [f"channels.{k} passes --force/-f/--yolo" for k in ("cli", "cli_resume") if _forces(channels.get(k))]
+        if how:
+            out.append(f"! cursor --force: {entry.get('id')} ({'; '.join(how)}) runs every command not explicitly "
+                       "denied, without Cursor's sandbox; see docs/orchestration-workers.md (Permissions)")
+    return out
+
+
+def _no_worktree_flag(cli: str | None) -> None:
+    """A custom command must not pass ``-w``/``--worktree`` (by the bounded rule of :func:`_shell_words`): ``agent``
+    would make its own worktree under ``~/.cursor/worktrees`` and work there, not in the one specy-road created
+    (harness-facts)."""
+    if any(_WORKTREE.fullmatch(w) for w in _shell_words(cli or "")):
         raise Unsupported(f"channels.cli: cursor workers never pass -w/--worktree; specy-road creates the worktree: {cli}")
 
 
 class Cursor(Adapter):
     harness = "cursor"
     caps = Capabilities(resume=True, interrupt=False, steer=False, handoff=True, events=True,
-                        notes="agent create-chat, then agent -p --resume <chat> --force --trust stream-json, the "
-                              "prompt a file the agent is told to read (--force "
-                              "force-allows every command not denied; --trust skips a new worktree's trust prompt; print "
-                              "mode can write and run shell; never -w); resume = `agent -p --resume` (undocumented with a "
-                              "new prompt: verify)")
+                        notes="agent create-chat, then agent -p --resume <chat> --trust --sandbox enabled stream-json, "
+                              "the prompt a file the agent is told to read (--trust skips a new worktree's trust prompt; "
+                              "the sandbox confines shell commands; roster cursor_force: true passes --trust --force "
+                              "instead, which force-allows every command not denied; never -w); resume = `agent -p "
+                              "--resume` (undocumented with a new prompt: verify)")
 
     def __init__(self) -> None:
         self._usage_parts: list[dict[str, Any]] = []
@@ -101,25 +194,27 @@ class Cursor(Adapter):
 
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
-               effort: str | None = None, harness_bin: str | None = None) -> Launch:
+               effort: str | None = None, harness_bin: str | None = None, force: bool = False) -> Launch:
+        """``force``: the roster entry's ``cursor_force`` (:func:`permission_flags`); a custom command keeps its own."""
         _no_worktree_flag(cli)
         custom = self._custom(cli, prompt_path, effort=effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return custom
         program = self._program(harness_bin)
         chat = create_chat(worktree, program)   # the chat first: a turn that dies before its first event still has its id
-        return Launch([program, "-p", "--resume", chat, "--output-format", "stream-json", "--force", "--trust",   # new worktree: untrusted
+        return Launch([program, "-p", "--resume", chat, "--output-format", "stream-json", *permission_flags(force),
                        *_model_flag("--model", model), "--workspace", str(worktree), *self._add_dir(worktree, repo_root, node_id),
                        *_prompt_args(prompt_path)], session_id=chat)
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
-               effort: str | None = None, harness_bin: str | None = None) -> Launch:
+               effort: str | None = None, harness_bin: str | None = None, force: bool = False) -> Launch:
         _no_worktree_flag(cli)
         custom = self._custom(cli, prompt_path, session_id, effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return custom
-        return Launch([self._program(harness_bin), "-p", "--resume", session_id, "--output-format", "stream-json", "--force", "--trust",
+        return Launch([self._program(harness_bin), "-p", "--resume", session_id, "--output-format", "stream-json",
+                       *permission_flags(force),
                        *_model_flag("--model", model), "--workspace", str(worktree), *self._add_dir(worktree, repo_root, node_id),
                        *_prompt_args(prompt_path)],
                       session_id=session_id)

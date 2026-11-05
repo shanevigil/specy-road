@@ -27,8 +27,9 @@ latest worker was terminated or failed (:mod:`role_prompt_rework`).
 ``--context-feedback`` (executor only, opt-in pilot) appends :data:`CONTEXT_FEEDBACK_LINES`, which ask
 for a three-line missing / wrong / unused block at the end of the implementation summary.
 
-``--channel cli`` also runs the roster entry's ``channels.cli``, else the
-profile's ``access.cli``, with its placeholder replaced: ``"<prompt>"`` (the
+``--channel cli`` writes the prompt and prints the command it would run; it starts no process (not even the
+roster's ``preflight``) unless ``--run`` is given (M15.3). With ``--run`` it runs the roster entry's
+``channels.cli``, else (any role but a reviewer) the profile's ``access.cli``, with its placeholder replaced: ``"<prompt>"`` (the
 shipped profiles' form) by the prompt text as one argument, ``{prompt}`` by the
 prompt file's path, ``{effort}`` by the roster harness's flag for the profile's
 ``effort_by_role`` level for the role. The profile is read from the integration branch,
@@ -37,13 +38,20 @@ A reviewer on a ``claude-code`` roster entry without ``channels.cli`` runs bare 
 (:meth:`ClaudeCode.reviewer_launch`): a fresh session reading a branch it did not write runs none
 of that branch's hooks or MCP servers, and the reviewer prompt asks it to record ``--launch-mode``.
 A ``codex`` or ``cursor`` entry without ``channels.cli`` runs its adapter's read-only reviewer command
-the same way; any other reviewer command (a roster ``channels.cli``, an ``access.cli``) runs as written but
-captured, with the structured-output flags its program takes (Antigravity ``agy``:
+the same way, with the entry's model; an entry whose model resolves to no API id (``unknown``) is refused. Any
+other reviewer runs its roster ``channels.cli`` as written but captured, and is refused without one (never the
+profile's ``access.cli``) or when it passes ``--force``, ``--yolo`` or ``--dangerously-skip-permissions``, each
+word read as ``sh`` reads it (line continuations joined, shell operators split off, quotes removed, ``#`` ordinary;
+flags the shell expands at run time are out of scope). A reviewer runs in the leaf's own worktree, the one with
+the claimed branch checked out (``--worktree PATH`` overrides), and is refused when there is none. Its command
+gets the structured-output flags its program takes (Antigravity ``agy``:
 :func:`~specy_road.worker_adapter_base.reviewer_cli`). A reviewer prompt ends with the review output schema
-(:mod:`specy_road.review_record_write`); on ``--channel cli`` specy-road reads the final JSON object and files
+(:mod:`specy_road.review_record_write`); on ``--channel cli --run`` specy-road reads the final JSON object and files
 ``REVIEW-<model>.md`` from it, reports a run that wrote anything else as a review failure, and a missing or
-malformed object as a rerun request. A reviewer it does not read back (``paste``, ``subagent``) files with
-``review record``.
+malformed object as a rerun request. It also compares the model the harness reported with the roster entry's
+(:mod:`specy_road.review_model_check`): the record carries ``harness_model``, and ``model_mismatch`` when they
+differ, which the gate does not count. A reviewer it does not read back (``paste``, ``subagent``, ``cli`` without
+``--run``) files with ``review record``.
 """
 
 from __future__ import annotations
@@ -56,9 +64,8 @@ from pathlib import Path
 from specy_road.bundled_scripts.do_next_prompt import SUBAGENT_LINE
 from specy_road.bundled_scripts.generate_brief import index, render_brief, verify_cmd_lines
 from specy_road.bundled_scripts.review_packet import build_packet
-from specy_road.bundled_scripts.role_prompt_cli import (READ_BACK_HARNESSES, close_cli_review_run,
-                                                        preflight as run_preflight, resolve_cli, reviewer_launch_block,
-                                                        run_plain_cli, run_reviewer_channel)
+from specy_road.bundled_scripts.role_prompt_cli import (READ_BACK_HARNESSES, preflight as run_preflight, resolve_cli,
+                                                        reviewer_launch_block, reviewer_turn, run_plain_cli)
 from specy_road.bundled_scripts.role_prompt_rca import (
     DATA_LINE,
     coordinator_preamble,
@@ -285,6 +292,18 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
     return run_plain_cli(str(cli), prompt_path, root, effort, transcript)
 
 
+def show_cli(prof: Profile | None, prompt_path: Path, entry_cli: str | None, harness: str | None,
+             role: str | None) -> int:
+    """``prompt --channel cli`` without ``--run``, any role but a reviewer's: print the command, start nothing."""
+    level = prof.effort("reviewer" if role == "rca" else role) if prof and role else None
+    cli, _effort, err = resolve_cli(prof, entry_cli, harness, level)
+    if err:
+        print(f"error: {err}", file=sys.stderr)
+        return 1
+    print(f"would run: {cli} (prompt: {prompt_path}); add --run to launch it", file=sys.stderr)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(prog="specy-road prompt", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -292,9 +311,16 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--model", required=True, help="Roster id")
     p.add_argument("--role", required=True, choices=PROMPT_ROLES)
     p.add_argument("--channel", choices=CHANNELS, default="paste",
-                   help="cli runs the profile's access.cli (<prompt> = the prompt text, {prompt} = its file path, "
-                        "{effort} = the harness's flag for the role's effort); "
-                        "paste/subagent only write the file")
+                   help="cli writes the prompt and prints the command it would run (the roster's channels.cli, "
+                        "else a reviewer's read-only harness command or another role's access.cli; <prompt> = the "
+                        "prompt text, {prompt} = its file path, {effort} = the harness's flag for the role's effort) "
+                        "and launches nothing without --run; paste/subagent only write the file")
+    p.add_argument("--run", action="store_true",
+                   help="With --channel cli: launch that command (the only flag that starts a process); a "
+                        "reviewer runs in the leaf's worktree and specy-road files its record")
+    p.add_argument("--worktree", type=Path, metavar="PATH",
+                   help="Reviewer --channel cli: run in this checkout instead of the worktree that has the leaf's "
+                        "claimed branch checked out")
     p.add_argument("-o", "--output", type=Path)
     p.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
     p.add_argument("--context-feedback", action="store_true",
@@ -313,9 +339,11 @@ def main(argv: list[str] | None = None) -> None:
         p.error("--force applies only to --role rca")
     if ns.force != bool((ns.reason or "").strip()):
         p.error("--force needs a non-empty --reason, and --reason needs --force")
+    if ns.run and ns.channel != "cli":
+        p.error("--run applies only to --channel cli")
     root = resolve_repo_root(ns)
     lock = contextlib.ExitStack()
-    if ns.role == "reviewer" and ns.channel == "cli":   # bare-mode auth only: the roster preflight still runs after the RUN opens
+    if ns.role == "reviewer" and ns.channel == "cli" and ns.run:   # bare-mode auth only: the roster preflight still runs after the RUN opens
         config, _err = pinned_config(root)
         entry = next((e for e in config.get("roster") or [] if e.get("id") == ns.model), {})
         blocked = reviewer_launch_block(pinned_profile_for_entry(root, entry), entry, root)
@@ -331,11 +359,12 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def _run(ns: argparse.Namespace, root: Path) -> None:
-    """:func:`main` after its arguments: write the prompt and, with ``--channel cli``, run it."""
+    """:func:`main` after its arguments: write the prompt and, with ``--channel cli``, show its command, or with
+    ``--run`` as well, run it."""
     config, _ = pinned_config(root)
     entry = next((e for e in config.get("roster") or [] if e.get("id") == ns.model), {})
     entry_cli = (entry.get("channels") or {}).get("cli")
-    read_back = ns.channel == "cli"   # every --channel cli reviewer turn is read back and filed
+    read_back = ns.channel == "cli" and ns.run   # every launched reviewer turn is read back and filed
     text, prof, err = build_prompt(root, ns.node_id, role=ns.role, model=ns.model, ref=ns.ref,
                                    context_feedback=ns.context_feedback, read_back=read_back,
                                    force_reason=ns.reason if ns.force else None)
@@ -351,25 +380,12 @@ def _run(ns: argparse.Namespace, root: Path) -> None:
     if ns.channel != "cli":
         raise SystemExit(0)
     if ns.role != "reviewer":
+        if not ns.run:
+            raise SystemExit(show_cli(prof, out, entry_cli, entry.get("harness"), ns.role))
         raise SystemExit(run_cli_channel(prof, out, root, entry.get("preflight"), entry_cli,
                                          harness=entry.get("harness"), role=ns.role))
-    from specy_road.reviewer_run_failure import open_reviewer_cli_run
-    try:
-        reviewer_target = resolve_target(root, ns.node_id, ns.ref)
-    except ReviewTargetError as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1)
-    reviewer_run = open_reviewer_cli_run(root, reviewer_target, ns.model, entry.get("harness"))
-    transcript: list[str] = []
-    try:   # the run record is closed from the filing outcome, an interrupt's included: never from older records
-        filed = run_reviewer_channel(prof, out, root, entry, ns.model, reviews_dir(root, ns.node_id), ns.ref,
-                                     transcript, ns.sign_key)
-    except BaseException as e:
-        close_cli_review_run(root, reviewer_target, ns.model, reviewer_run,
-                             Outcome("rerun", f"interrupted: {e or type(e).__name__}", exit=None), transcript)
-        raise
-    close_cli_review_run(root, reviewer_target, ns.model, reviewer_run, filed, transcript)
-    raise SystemExit(filed.exit or (0 if filed.state == "recorded" else 1))
+    raise SystemExit(reviewer_turn(prof, out, root, entry, ns.model, ns.node_id, ns.ref, ns.worktree, ns.sign_key,
+                                   run=ns.run))
 
 
 if __name__ == "__main__":

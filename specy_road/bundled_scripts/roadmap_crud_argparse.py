@@ -28,6 +28,7 @@ from specy_road.bundled_scripts.roadmap_crud_ops import (
     repo_root,
     unknown_node_msg,
 )
+from specy_road.doc_links import link_toolkit_docs
 from specy_road.runtime_paths import add_repo_root_arg
 
 
@@ -315,7 +316,7 @@ def _p_apply(sub: argparse._SubParsersAction) -> None:
     sp = sub.add_parser(
         "apply",
         help="Run a YAML file of add-node / edit-node / add-dependency changes as one batch",
-        description=(
+        description=link_toolkit_docs(
             "Apply a change file in order, all or nothing: if any change is "
             "refused, every file the batch touched is restored. Each entry is "
             "op: plus the subcommand's long options (node: and dependency: for "
