@@ -47,7 +47,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.18_planned-test-changes-editable-and-removals-surfaced_52977306-d74f-402c-bd68-2f53de204394.md",
       "sibling_order": 18,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "planned_test_changes can be edited after pickup, and an unplanned test removal is a required reviewer check",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_edit_fields.py",
@@ -80,7 +80,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.19_cursor-cost-with-display-name-models_ff8e2df5-393e-4d32-8576-03103c4c052f.md",
       "sibling_order": 19,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Cursor worker cost is estimated when the harness reports a display name for the rostered model",
       "touch_zones": [
         "specy_road/worker_models.py",
@@ -199,7 +199,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.1_rc-install-docs-cover-extras-and-direct-wheel-url_f11ae6a1-4e8d-43f8-9aed-391000c71679.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command",
       "touch_zones": [
         "docs/install-and-usage.md",

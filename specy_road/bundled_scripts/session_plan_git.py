@@ -24,6 +24,7 @@ from specy_road.zone_coverage import zone_coverage_warnings
 from specy_road.git_workflow_config import resolve_integration_defaults, resolve_prefer_agentic
 from specy_road.nested_repos import unpushed_branches
 from specy_road.registry_yaml import read_registry, registry_path
+from specy_road.shared_zones import resolve_shared_zones
 
 
 def _nodes_by_id(nodes: list[dict]) -> dict[str, dict]:
@@ -59,7 +60,7 @@ def enrich_session_plan_with_git(
     finished_claimed = sorted(finished_active & set(plan.active))
 
     new_ready = [i for i in plan.ready if i not in finished_ready]
-    new_batches = _parallel_batches(plan.waves, new_ready)
+    new_batches = _parallel_batches(plan.waves, new_ready, plan.shared_zones)
     finished_unmerged = sorted(finished_ready)
 
     totals = dict(plan.totals)
@@ -106,6 +107,7 @@ def gather_session_plan(
     plan = compute_session_plan(
         nodes, reg, under=under, unauthored=skipped,
         prefer_agentic=resolve_prefer_agentic(repo_root, cli=prefer_agentic),
+        shared_zones=resolve_shared_zones(repo_root),
     )
     base, remote, _ = resolve_integration_defaults(
         repo_root, explicit_base=None, explicit_remote=None

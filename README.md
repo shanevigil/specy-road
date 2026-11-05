@@ -72,7 +72,7 @@ If those disagree, or `specy-road --version` is older than your project's
 
 Release candidates (`X.Y.ZrcN`) publish to **TestPyPI**: download the pinned
 wheel alone, check its sha256, and install its dependencies from PyPI only. See
-[docs/install-and-usage.md](docs/install-and-usage.md#install-a-release-candidate-testpypi).
+[docs/install-release-candidates.md](docs/install-release-candidates.md).
 
 The full install + everyday usage guide is at
 **[docs/install-and-usage.md](docs/install-and-usage.md)**. Building from

@@ -31,7 +31,7 @@ Since the split, specy-road writes its full rule set to `.specyrd/AGENTS.md` (re
 
 ## Preview a version you have not installed
 
-To see what a version would change in your repo without replacing the specy-road you use, install it into a scratch virtualenv and run that venv's `upgrade --dry-run`. Install it the same way as an RC ([install a release candidate](install-and-usage.md#install-a-release-candidate-testpypi)): the exact wheel with `--no-deps`, its sha256 checked, then its dependencies from PyPI only. Drop `--index-url` for a final release, which is on PyPI.
+To see what a version would change in your repo without replacing the specy-road you use, install it into a scratch virtualenv and run that venv's `upgrade --dry-run`. Install it the same way as an RC ([install a release candidate](install-release-candidates.md)): the exact wheel with `--no-deps`, its sha256 checked, then its dependencies from PyPI only. Drop `--index-url` for a final release, which is on PyPI.
 
 ```bash
 python3 -m venv /tmp/sr-preview

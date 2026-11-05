@@ -93,7 +93,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.4_parallel-pr-leaves-reconcile-bookkeeping-by-rule_b1a7472a-784c-4b57-a15e-75d664b9e942.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current",
       "touch_zones": [
         "specy_road/reconcile_branch.py",
@@ -109,7 +109,8 @@
         "specy_road/bundled_scripts/reconcile_branch_cli.py",
         "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
         "specy_road/bundled_scripts/abort_task_pickup.py",
-        "specy_road/bundled_scripts/abort_task_pickup_own_commit.py"
+        "specy_road/bundled_scripts/abort_task_pickup_own_commit.py",
+        "specy_road/bundled_scripts/do_next_task_self_heal.py"
       ],
       "type": "task"
     },
@@ -166,7 +167,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.6_rework-prompt-carries-the-accepted-rca_c80c3636-1dd9-4001-8520-f0c4e6402be4.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt_rework.py",
@@ -217,7 +218,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.8_promoted-leaf-is-never-stuck-on-an-empty-approach_4c08d324-6253-4875-ac9e-b0933d17f69c.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_promote.py",
@@ -230,7 +231,9 @@
         "tests/",
         "specy_road/bundled_scripts/do_next_task_leaf_guards.py",
         "specy_road/bundled_scripts/session_plan_render.py",
-        "specy_road/bundled_scripts/orchestrate_cli.py"
+        "specy_road/bundled_scripts/orchestrate_cli.py",
+        "specy_road/bundled_scripts/brief_dependency_context.py",
+        "specy_road/bundled_scripts/grind_session.py"
       ],
       "type": "task"
     },
@@ -282,7 +285,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.10_try-a-roster-before-it-lands_2cebdd4b-b1e0-4a40-9b9b-8768fc530b26.md",
       "sibling_order": 10,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff",
       "touch_zones": [
         "specy_road/orchestration_pinned.py",
@@ -311,7 +314,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.11_working-roster-in-one-command-and-validated-profiles_d333b89b-eb44-4636-a350-284149c4a490.md",
       "sibling_order": 11,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors",
       "touch_zones": [
         "specy_road/bundled_scripts/models_cli.py",
@@ -346,7 +349,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.12_shared-doc-zones-do-not-serialize-batches_e6e3dd29-22ab-4b59-9ca3-2ecd479879d8.md",
       "sibling_order": 12,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Shared documentation zones do not serialize grind-session batches",
       "touch_zones": [
         "specy_road/bundled_scripts/session_plan_render.py",

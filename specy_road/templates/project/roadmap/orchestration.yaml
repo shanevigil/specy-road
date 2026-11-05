@@ -8,19 +8,22 @@
 version: 1
 # A review counts toward the gate only when its model is listed here with the
 # reviewer role (or is the substitute in an active substitution below).
-# Add each model you review with, e.g.:
-#   - id: claude-opus-5.5
+# Add each model you review with; `specy-road models roster --executor <profile-id>
+# --reviewer <profile-id> --write` adds entries in this form from the shipped
+# profiles (`specy-road models list` shows the ids), e.g.:
+#   - id: claude-opus-5-5
 #     family: anthropic
-#     roles: [reviewer, executor]
+#     profile: model-profiles/anthropic-claude/claude-opus-5-5.md
 #     harness: claude-code               # what `worker delegate` launches it on
+#     roles: [executor, reviewer]
 #     public_key: ssh-ed25519 AAAA...   # for signed_reviews
 roster:
   - id: human
     family: human
     roles: [coordinator, reviewer]
-  # The model that implements leaves. Rename id and family to the model you run
-  # (`specy-road models list` shows the shipped profiles); add `reviewer` to its
-  # roles, or add a second entry, to let a model review.
+  # The model that implements leaves. Replace this placeholder with the model you
+  # run (`specy-road models roster --executor <profile-id>` prints its entry); add
+  # `reviewer` to its roles, or add a second entry, to let a model review.
   - id: my-executor
     family: my-vendor
     roles: [executor]
