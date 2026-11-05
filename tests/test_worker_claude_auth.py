@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -33,9 +35,15 @@ def _repo(tmp_path: Path, *, bare: bool) -> Path:
     return repo
 
 
-def _files(repo: Path) -> set[Path]:
+def _files(repo: Path) -> tuple[dict[Path, bytes], str]:
+    """Every file under ``work/.workers`` (records, events, mailbox) byte for byte, and every lease ref, local and remote."""
     d = ws.workers_dir(repo)
-    return set(d.rglob("*")) if d.exists() else set()
+    files = {p: p.read_bytes() for p in d.rglob("*") if p.is_file()} if d.exists() else {}
+    git = ["git", "-C", str(repo)]
+    refs = subprocess.run([*git, "for-each-ref", "refs/specy-road"], capture_output=True, text=True).stdout
+    for remote in subprocess.run([*git, "remote"], capture_output=True, text=True).stdout.split():
+        refs += subprocess.run([*git, "ls-remote", remote, "refs/specy-road/*"], capture_output=True, text=True).stdout
+    return files, refs
 
 
 def _launch_and_resume(repo: Path, monkeypatch: pytest.MonkeyPatch) -> list[Launch]:
@@ -94,3 +102,29 @@ def test_resume_follows_the_same_rule(tmp_path: Path, monkeypatch: pytest.Monkey
             send()
     assert len(launches) == 1 and _files(repo) == before
     assert ws.load_record(repo, rec.worker_id).state == "idle"
+    # Its wrapper died mid-turn: the refusal comes before the dead wrapper is reconciled, so nothing changes.
+    dead = subprocess.Popen([sys.executable, "-c", "pass"])
+    dead.wait()
+    ws.set_state(repo, rec, "running", pid=dead.pid)
+    before = _files(repo)
+    for send in (lambda: ops.message(repo, rec.worker_id, "go on"), lambda: ops.resume(repo, rec.worker_id)):
+        with pytest.raises(ws.WorkerError, match=r"^worker auth: opus forces bare mode"):
+            send()
+    assert _files(repo) == before and ws.load_record(repo, rec.worker_id).state == "running"
+    assert len(launches) == 1
+
+
+def test_a_refused_rework_leaves_the_completed_worker_as_it_was(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, account: None) -> None:
+    """``--rework`` terminates the completed worker only after every refusal: here the roster preflight fails."""
+    repo = _repo(tmp_path, bare=False)
+    monkeypatch.setattr(ops, "spawn", lambda root, rec, launch, **kw: None)
+    rec, _ = ops.delegate(repo, "M1.1", "opus")
+    ws.set_state(repo, rec, "completed", pid=None)
+    roster = repo / "roadmap" / "orchestration.yaml"
+    roster.write_text(roster.read_text().replace("    harness: claude-code\n", "    harness: claude-code\n    preflight: 'exit 3'\n"))
+    commit_profile(repo)
+    before = _files(repo)
+    with pytest.raises(ws.WorkerError, match=r"^preflight failed \(exit 3\)"):
+        ops.delegate(repo, "M1.1", "opus", rework=True)
+    assert _files(repo) == before and ws.load_record(repo, rec.worker_id).state == "completed"
