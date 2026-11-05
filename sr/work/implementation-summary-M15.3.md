@@ -67,6 +67,25 @@ a class, with one validation function per concern in `role_prompt_cli.py`:
   mismatch if any reported model differs, so a printed line can add a mismatch but never hide one.
   `run_and_file` uses `check_run`, and `file_review` and the gate are unchanged.
 
+## Second merge with WIP (4af3a7b5)
+
+The first READY attempt for the fix exposed a full-suite failure (`test_machine_paths_pass_on_this_repo`) in a
+research doc the first merge brought in; WIP had fixed it in `39d5b426`, so WIP was merged again. That merge
+conflicted with M15.2 (Claude reviewer on a subscription login) in `role_prompt.py` and `role_prompt_cli.py`;
+both sides are kept:
+- `reviewer_launch_block` (forced-bare auth refusal before the RUN record) runs only with `--run`: it refuses a
+  launch, and without `--run` nothing launches (it reads only the environment and starts nothing).
+- `_run_launch_mode` and `entry` on `run_default_reviewer` are kept beside `cwd`; `show_reviewer` passes the
+  launch mode a run would choose (`claude_launch_decision`) so the shown command matches.
+- File limit (`sr/constraints/file-limits.yaml`, 400 lines): the merge put `role_prompt.py` at 402. The reviewer
+  tail of `_run` moved to the new `role_prompt_cli.reviewer_turn` and `show_cli` moved from `role_prompt_cli.py` to
+  `role_prompt.py` beside `run_cli_channel`; no text was shortened (390 and 389 lines now).
+- Tests: WIP's three launching `prompt --channel cli` calls in `tests/test_reviewer_auth.py` pass `--run`; the two
+  tests that patched `role_prompt.run_reviewer_channel` patch `role_prompt_cli` where the call now is
+  (`test_review_delegate.py`, `test_review_record_write_closure.py`), assertions unchanged.
+- Verified: the M15.3 test files plus every test file either merge touched (34 files) pass, ruff, file-limits,
+  and the full suite.
+
 ## Probes
 
 - Unknown API id with a `channels.cli`, run and dry run: refused before launch, with no process and no run record (tested).
@@ -119,6 +138,7 @@ The zones as listed in the roadmap, including the planner's added `review_gate.p
 - `specy_road/review_model_check.py`: `result_model`, `reported_models`, `check_run`, `check`, `check_note`, `model_mismatch_problem`, `MISMATCH_REASON`, and `normalise` re-exported. A4's shared check, used by `prompt --run` and the gate.
 - `role_prompt_cli.BYPASS_FLAGS` and `bypass_problem` (replaces `bypass_flag`): A2, the one tokenizer rule for permission-bypass flags.
 - `role_prompt_cli.model_problem`: A2, the unknown-API-id check, shared by every reviewer launch path.
+- `role_prompt_cli.reviewer_turn`: file limit after the second merge; the reviewer tail of `role_prompt._run`, moved unchanged.
 - `role_prompt_cli.worktree_problem` and `_claimed_worktree`: A3, one check for any reviewer cwd (explicit or found), and the `git worktree list` lookup split out of `leaf_worktree`.
 - `role_prompt_cli.reviewer_command`: A2's roster-only command, with no `access.cli` fallback and refusing an unknown API id.
 - `role_prompt_cli.leaf_worktree`: A3, where a reviewer runs, or the refusal.
