@@ -105,7 +105,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
              "commands_rerun": list(c.review.data.get("commands_rerun") or [])}
             for c in gate.approvals + gate.blocks
         ],
-        "review_rounds": round_span(root, node_id),
+        "review_rounds": round_span(root, node_id), "findings_trend": loop.findings_trend(),
         "review_runs": (runs := run_states(root, node_id, gate.commit)),
         "policy": gate_policy_summary(gate, runs), "reviewer_eligibility": reviewer_eligibility(root, t.node, gate, branch),
         "policy_met": gate.passed,
@@ -132,7 +132,7 @@ def _render(st: dict[str, Any]) -> list[str]:
         lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']}){at}"
                      f"{' [signed]' if r['signed'] else ''}{mode}{extra}")
     lines += [f"  {line}" for line in run_lines(st.get("review_runs") or [])]
-    lines.append(f"  {st['review_rounds']['line']}")
+    lines += [f"  {x}" for x in [st["review_rounds"]["line"], *(st.get("findings_trend") or {}).get("lines", [])]]
     lines += [f"  policy: {st['policy']}"] + eligibility_lines(st)   # who can still approve, when not met
     if tm := st.get("trial_merge"):
         kind = "" if tm["blocking"] else " (bookkeeping only, which does not block)"
