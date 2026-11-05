@@ -182,3 +182,17 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: remove-node
+    node_id: M21.4
+    branch: feature/rm-remove-node
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_crud_delete.py
+      - specy_road/bundled_scripts/roadmap_crud_argparse.py
+      - specy_road/cli.py
+      - specy_road/cli_usage.py
+      - specy_road/gui_app_routes_nodes.py
+      - docs/roadmap-authoring.md
+      - tests/
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
