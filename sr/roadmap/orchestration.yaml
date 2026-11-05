@@ -42,6 +42,9 @@ roster:
     profile: model-profiles/spacexai-grok/grok-4.7.md
     harness: cursor
     harness_model: grok-4.7-low
+    # Same wrapper as cursor-grok-4.6-high: cursor-review.sh runs agent --model grok-4.7-low (explicit, Auto off).
+    # Set by the coordinator on the maintainer instruction to use light reviewers (2026-11-04); maintainer to confirm.
+    pinned: true
     billing_route: cursor_subscription
     # Low reasoning effort for faster reviews (maintainer, 2026-11-04).
     channels:
