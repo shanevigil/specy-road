@@ -24,39 +24,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves
-    node_id: M12.3
-    branch: feature/rm-scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves
-    touch_zones:
-      - specy_road/bundled_scripts/chore_cli.py
-      - specy_road/bundled_scripts/validate_stale_commands.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - docs/orchestration-chores.md
-      - specy_road/templates/project/
-      - tests/
-      - specy_road/bundled_scripts/chore_garden.py
-      - specy_road/agent_ignores.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: a-review-fix-round-budget-that-defers-new-input-class-findings-to-a-follow-up-leaf
-    node_id: M12.1
-    branch: feature/rm-a-review-fix-round-budget-that-defers-new-input-class-findings-to-a-follow-up-leaf
-    touch_zones:
-      - specy_road/review_rca.py
-      - specy_road/schemas/rca-record.schema.json
-      - specy_road/review_gate.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/decisions.py
-      - docs/orchestration-review.md
-      - docs/design-notes/review-loop-rca.md
-      - tests/
-      - specy_road/review_deferral.py
-      - specy_road/bundled_scripts/review_defer.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end
     node_id: M13.7
     branch: feature/rm-clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end
@@ -67,21 +34,8 @@ entries:
       - tests/
       - specy_road/bundled_scripts/refresh_stubs_report.py
       - specy_road/written_entry.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates
-    node_id: M13.3
-    branch: feature/rm-a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates
-    touch_zones:
-      - specy_road/agents_md_block.py
-      - specy_road/templates/specyrd/agents-md-block.md
-      - specy_road/templates/specyrd/claude-md-block.md
-      - suggested_prompts/bootstrap-agents-md.md
+      - specy_road/ignore_report.py
       - docs/install-and-usage.md
-      - tests/
-      - specy_road/agents_md_report.py
-      - specy_road/bundled_scripts/refresh_stubs.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -92,18 +46,7 @@ entries:
       - specy_road/worktree_prune.py
       - specy_road/bundled_scripts/worktree_cli.py
       - tests/
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip
-    node_id: M14.4.1
-    branch: feature/rm-per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip
-    touch_zones:
-      - specy_road/nested_repos.py
-      - specy_road/nested_repos_land.py
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - docs/git-workflow.md
-      - tests/
+      - specy_road/worktree_delete_set.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -125,28 +68,271 @@ entries:
       - specy_road/file_limits_engine.py
       - tests/
       - specy_road/templates/project/constraints/file-limits.yaml
+      - specy_road/bundled_scripts/upgrade_preview.py
+      - specy_road/bundled_scripts/upgrade_plan.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: upgrade-guide-moving-to-the-split-rules-files-previewing-an-uninstalled-version-telling-old-installs-apart
-    node_id: M13.10
-    branch: feature/rm-upgrade-guide-moving-to-the-split-rules-files-previewing-an-uninstalled-version-telling-old-installs-apart
+  - codename: a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts
+    node_id: M13.8
+    branch: feature/rm-a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts
     touch_zones:
-      - docs/upgrading.md
-      - docs/install-and-usage.md
-      - CHANGELOG.md
+      - specy_road/behaviour_changes.py
+      - specy_road/agent_text_report.py
+      - specy_road/version_pin.py
+      - specy_road/bundled_scripts/validate_roadmap.py
       - tests/
+      - docs/roadmap-authoring.md
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes
-    node_id: M14.11
-    branch: feature/rm-the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes
+  - codename: shared-doc-zones-do-not-serialize-batches
+    node_id: M15.12
+    branch: feature/rm-shared-doc-zones-do-not-serialize-batches
+    touch_zones:
+      - specy_road/bundled_scripts/session_plan_render.py
+      - specy_road/bundled_scripts/session_plan.py
+      - specy_road/shared_zones.py
+      - specy_road/bundled_scripts/validate_registry_overlap.py
+      - docs/grind-session.md
+      - tests/
+      - specy_road/templates/project/schemas/git-workflow.schema.json
+      - specy_road/bundled_scripts/session_plan_git.py
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: planned-test-changes-editable-and-removals-surfaced
+    node_id: M15.18
+    branch: feature/rm-planned-test-changes-editable-and-removals-surfaced
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_edit_fields.py
+      - specy_road/bundled_scripts/roadmap_crud_argparse.py
+      - specy_road/integrity.py
+      - specy_road/integrity_removals.py
+      - specy_road/bundled_scripts/roadmap_edit_list_fields.py
+      - specy_road/bundled_scripts/review_packet.py
+      - specy_road/bundled_scripts/review_packet_observed.py
+      - docs/acceptance-evidence.md
+      - tests/
+      - specy_road/review_record_rules.py
+      - specy_road/schemas/review-record.schema.json
+      - specy_road/review_files.py
+      - specy_road/bundled_scripts/role_prompt_rca.py
+      - specy_road/bundled_scripts/roadmap_crud_ops.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: cursor-cost-with-display-name-models
+    node_id: M15.19
+    branch: feature/rm-cursor-cost-with-display-name-models
+    touch_zones:
+      - specy_road/worker_models.py
+      - specy_road/worker_adapter_parsers.py
+      - specy_road/model_names.py
+      - tests/
+      - specy_road/worker_runner.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: linked-worktrees-resolve-root-and-symlinked-envs
+    node_id: M15.21
+    branch: feature/rm-linked-worktrees-resolve-root-and-symlinked-envs
+    touch_zones:
+      - specy_road/runtime_paths.py
+      - specy_road/worker_ops_launch.py
+      - specy_road/worktree_env.py
+      - docs/orchestration-worktrees.md
+      - tests/
+      - specy_road/templates/project/schemas/git-workflow.schema.json
+      - specy_road/bundled_scripts/doctor_env_setup.py
+      - specy_road/worker_ops_message.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: per-area-quality-scores-in-the-digest-from-review-history
+    node_id: M12.4.1
+    branch: feature/rm-per-area-quality-scores-in-the-digest-from-review-history
+    touch_zones:
+      - specy_road/digest.py
+      - specy_road/bundled_scripts/digest_cli.py
+      - specy_road/review_rca.py
+      - specy_road/orchestration_config.py
+      - docs/orchestration-review.md
+      - tests/
+      - specy_road/orchestrate_plan.py
+      - specy_road/review_gate.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - specy_road/review_tally.py
+      - specy_road/bundled_scripts/mark_implementation_reviewed.py
+      - docs/orchestration-quality.md
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round
+    node_id: M14.6
+    branch: feature/rm-reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round
+    touch_zones:
+      - specy_road/review_delegate.py
+      - specy_road/review_usage.py
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/bundled_scripts/worker_cli_render.py
+      - tests/
+      - specy_road/bundled_scripts/worker_cli.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: parallel-pr-leaves-reconcile-bookkeeping-by-rule
+    node_id: M15.4
+    branch: feature/rm-parallel-pr-leaves-reconcile-bookkeeping-by-rule
+    touch_zones:
+      - specy_road/reconcile_branch.py
+      - specy_road/finish_pr_merge.py
+      - specy_road/cli.py
+      - specy_road/cli_usage.py
+      - specy_road/bundled_scripts/do_next_task.py
+      - specy_road/bundled_scripts/do_next_task_register.py
+      - docs/git-workflow.md
+      - docs/git-workflow-parallel-prs.md
+      - specy_road/templates/specyrd/commands/specyrd-finish.md
+      - tests/
+      - specy_road/bundled_scripts/reconcile_branch_cli.py
+      - specy_road/bundled_scripts/do_next_task_pickup_helpers.py
+      - specy_road/bundled_scripts/abort_task_pickup.py
+      - specy_road/bundled_scripts/abort_task_pickup_own_commit.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: rework-prompt-carries-the-accepted-rca
+    node_id: M15.6
+    branch: feature/rm-rework-prompt-carries-the-accepted-rca
     touch_zones:
       - specy_road/bundled_scripts/role_prompt_rework.py
-      - specy_road/worker_ops_message.py
-      - specy_road/bundled_scripts/worker_cli.py
+      - specy_road/rework_rca.py
       - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked
+    node_id: M13.4
+    branch: feature/rm-a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked
+    touch_zones:
+      - specy_road/finish_ancestor_rollup.py
+      - specy_road/bundled_scripts/roadmap_query_cli.py
+      - specy_road/bundled_scripts/roadmap_crud_ops.py
+      - specy_road/bundled_scripts/validate_roadmap.py
+      - docs/orchestration-review.md
+      - tests/
+      - specy_road/bundled_scripts/validate_notices.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: working-roster-in-one-command-and-validated-profiles
+    node_id: M15.11
+    branch: feature/rm-working-roster-in-one-command-and-validated-profiles
+    touch_zones:
+      - specy_road/bundled_scripts/models_cli.py
+      - specy_road/roster_generate.py
+      - specy_road/orchestration_pinned.py
+      - specy_road/orchestrate_plan.py
+      - specy_road/orchestrate_assign.py
+      - specy_road/bundled_scripts/orchestrate_cli.py
+      - specy_road/roster_profile_check.py
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
+      - specy_road/templates/project/roadmap/orchestration.yaml
+      - docs/orchestration.md
+      - docs/orchestration-models.md
+      - docs/orchestration-workers.md
+      - docs/orchestration-roster.md
+      - docs/design-notes/model-aware-orchestration-proposal.md
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: promoted-leaf-is-never-stuck-on-an-empty-approach
+    node_id: M15.8
+    branch: feature/rm-promoted-leaf-is-never-stuck-on-an-empty-approach
+    touch_zones:
+      - specy_road/bundled_scripts/brainstorm_promote.py
+      - specy_road/bundled_scripts/planning_sheet_bootstrap.py
+      - specy_road/bundled_scripts/author_approach.py
+      - specy_road/planning_scaffold_check.py
+      - specy_road/cli.py
+      - specy_road/cli_usage.py
+      - docs/brainstorming.md
+      - tests/
+      - specy_road/bundled_scripts/do_next_task_leaf_guards.py
+      - specy_road/bundled_scripts/session_plan_render.py
+      - specy_road/bundled_scripts/orchestrate_cli.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend
+    node_id: M14.10
+    branch: feature/rm-escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend
+    touch_zones:
+      - specy_road/review_rca.py
+      - specy_road/review_trend.py
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/review_status_render.py
+      - specy_road/orchestration_config.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - docs/design-notes/review-loop-rca.md
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: worker-loop-friction-sync-until-and-ready-only-resume
+    node_id: M15.13
+    branch: feature/rm-worker-loop-friction-sync-until-and-ready-only-resume
+    touch_zones:
+      - specy_road/bundled_scripts/worker_cli.py
+      - specy_road/bundled_scripts/worker_cli_sync.py
+      - specy_road/bundled_scripts/worker_cli_render.py
+      - specy_road/worker_state.py
+      - specy_road/bundled_scripts/role_prompt_rework.py
+      - specy_road/on_complete_pickup.py
+      - docs/orchestration-workers.md
+      - docs/orchestration-worker-sync.md
+      - tests/
+      - specy_road/worker_ops_message.py
+      - specy_road/worker_runner_ready.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: zones-missing-what-acceptance-needs-flagged
+    node_id: M15.20
+    branch: feature/rm-zones-missing-what-acceptance-needs-flagged
+    touch_zones:
+      - specy_road/zone_coverage.py
+      - specy_road/orchestrate_plan.py
+      - specy_road/bundled_scripts/brief_call_sites.py
+      - tests/
+      - specy_road/bundled_scripts/session_plan_git.py
+      - specy_road/bundled_scripts/session_plan.py
+      - specy_road/bundled_scripts/session_plan_render.py
+      - specy_road/bundled_scripts/orchestrate_cli.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: project-preferences-local-decisions-footer-summary-landing
+    node_id: M15.22
+    branch: feature/rm-project-preferences-local-decisions-footer-summary-landing
+    touch_zones:
+      - specy_road/decisions.py
+      - specy_road/decisions_local.py
+      - specy_road/bundled_scripts/decisions_cli.py
+      - specy_road/finish_pr_body.py
+      - specy_road/git_workflow_config.py
+      - specy_road/workflow_prefs.py
+      - specy_road/bundled_scripts/do_next_prompt.py
+      - specy_road/finish_modes.py
+      - specy_road/templates/project/schemas/git-workflow.schema.json
+      - docs/git-workflow-preferences.md
+      - tests/
+      - specy_road/bundled_scripts/role_prompt_rca.py
+      - specy_road/agent_ignores.py
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending

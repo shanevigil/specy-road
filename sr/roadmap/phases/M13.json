@@ -60,7 +60,9 @@
         "specy_road/bundled_scripts/upgrade.py",
         "specy_road/file_limits_engine.py",
         "tests/",
-        "specy_road/templates/project/constraints/file-limits.yaml"
+        "specy_road/templates/project/constraints/file-limits.yaml",
+        "specy_road/bundled_scripts/upgrade_preview.py",
+        "specy_road/bundled_scripts/upgrade_plan.py"
       ],
       "type": "task"
     },
@@ -79,7 +81,7 @@
       "parent_id": "M13",
       "planning_dir": "planning/M13.3_a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates_6069463a-3a1a-4778-853a-a4dffb1a1ede.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates",
       "touch_zones": [
         "specy_road/agents_md_block.py",
@@ -115,7 +117,8 @@
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
         "specy_road/bundled_scripts/validate_roadmap.py",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/validate_notices.py"
       ],
       "type": "task"
     },
@@ -192,7 +195,9 @@
         "specy_road/bundled_scripts/session_cli.py",
         "tests/",
         "specy_road/bundled_scripts/refresh_stubs_report.py",
-        "specy_road/written_entry.py"
+        "specy_road/written_entry.py",
+        "specy_road/ignore_report.py",
+        "docs/install-and-usage.md"
       ],
       "type": "task"
     },
@@ -200,7 +205,8 @@
       "acceptance": [
         "specy_road/behaviour_changes.py holds a tracked catalogue of behaviour changes that invalidate common project instructions, each with the version it shipped in, a one-line 'now' statement, the command and flags it concerns, and an optional pattern for project text that contradicts it; it starts with the four cited cases (mark-implementation-reviewed --yes on your own work, finish-this-task --on-complete differing from the recorded mode needs --override-on-complete, pickup --local, finish-this-task --delete-branch); a test asserts every entry names a registered command and flag",
         "validate prints one notice per line of project text outside managed blocks (root AGENTS.md, CLAUDE.md, .specyrd/AGENTS.team.md) that matches a catalogue pattern, at minimum --yes with mark-implementation-reviewed and --on-complete merge|auto with finish-this-task, naming file:line, the instruction and the current behaviour; it reports only and never rewrites project text; a fixture with all four cited sentences pins the notices and a clean file prints none",
-        "To keep validate_roadmap.py under the 400-line cap, pinned_version and warn_if_pin_differs move to specy_road/version_pin.py (validate_roadmap re-exports them so existing imports and tests still work) and the new report is one call from validate. Out of scope: printing the catalogue during upgrade (M13.11), and checking prose that names no command"
+        "To keep validate_roadmap.py under the 400-line cap, pinned_version and warn_if_pin_differs move to specy_road/version_pin.py (validate_roadmap re-exports them so existing imports and tests still work) and the new report is one call from validate. Out of scope: printing the catalogue during upgrade (M13.11), and checking prose that names no command",
+        "The catalogue has an entry for pickup registering the claim on the integration branch before the feature branch exists, with a pattern for project text saying the first commit on the feature branch registers the work (as earlier init-era root AGENTS.md, docs/git-workflow.md and constitution/principles.md copies say); validate's notice names file:line for each match. This toolkit's own docs/roadmap-authoring.md ('Before starting implementation', steps 3 and 4) says the same today and is rewritten to the integration-branch order without adding net lines (the file is at 400); a test runs the pattern over the toolkit's docs/ and specy_road/templates/ and finds nothing (specy_road/templates/project/ has no such sentence today)"
       ],
       "codename": "a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts",
       "dependencies": [],
@@ -217,7 +223,8 @@
         "specy_road/agent_text_report.py",
         "specy_road/version_pin.py",
         "specy_road/bundled_scripts/validate_roadmap.py",
-        "tests/"
+        "tests/",
+        "docs/roadmap-authoring.md"
       ],
       "type": "task"
     },
@@ -226,7 +233,9 @@
         "validate gives an agents: notice when CLAUDE.md exists, root AGENTS.md has project text outside its managed block, and CLAUDE.md does not import @AGENTS.md, saying Claude Code never reads that text and naming the line to add; no notice when the import is present or AGENTS.md is only the block",
         "The load-order section of .specyrd/AGENTS.md states in one sentence that it is a default a project may replace, and that roadmap-context.md first is the one step to keep. validate gives a notice when the project's own AGENTS.md text defines a load order (a numbered list under a heading containing 'load order'), naming the entries in specy-road's load order that it omits (roadmap-context.md first)",
         "When CLAUDE.md imports both @AGENTS.md and @.specyrd/AGENTS.md and the root block is the full one, the notice says the floor bullets are read twice, gives the duplicated bytes, and names agents_block: minimal (M13.3) as the fix; it never suggests dropping the .specyrd import",
-        "Each notice is pinned by a fixture test and none rewrites project files. Out of scope: merging or reordering project load orders, and the paragraph-level duplicate report (M13.11)"
+        "Each notice is pinned by a fixture test and none rewrites project files. Out of scope: merging or reordering project load orders, and the paragraph-level duplicate report (M13.11)",
+        "upgrade runs validate, so the missing-import notice appears in upgrade's output too; a test runs upgrade on a fixture with project text outside the block and no @AGENTS.md import in CLAUDE.md and asserts the notice and the exact line to add, and a fixture where AGENTS.md is only the block prints none",
+        "The AGENTS.md migration notice and .specyrd/AGENTS.md's addenda paragraph say that repo-specific specy-road rules, including such text found outside the markers, belong in .specyrd/AGENTS.team.md; agents_md_block.py (392 lines) changes wording only, with no net lines; a test pins the sentence"
       ],
       "codename": "notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice",
       "dependencies": [
@@ -244,7 +253,9 @@
       "touch_zones": [
         "specy_road/agent_text_report.py",
         "specy_road/templates/specyrd/agents-rules.md",
-        "tests/"
+        "tests/",
+        "specy_road/agents_md_block.py",
+        "specy_road/bundled_scripts/upgrade.py"
       ],
       "type": "task"
     },
@@ -265,7 +276,7 @@
       "parent_id": "M13",
       "planning_dir": "planning/M13.10_upgrade-guide-moving-to-the-split-rules-files-previewing-an-uninstalled-version-telling-old-installs-apart_30507388-ed3e-439c-bbf9-0ae841070bab.md",
       "sibling_order": 10,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Upgrade guide: moving to the split rules files, previewing an uninstalled version, telling old installs apart",
       "touch_zones": [
         "docs/upgrading.md",
@@ -278,7 +289,7 @@
     {
       "acceptance": [
         "upgrade prints the M13.8 catalogue entries newer than the version stamped in the managed block it replaced (or the repo's pin when there is no block), one line each; none when the stamp is current; a test with an older stamp pins the list",
-        "When the repo's pin (manifest pin or a requirements file) is below the minimum upgrade just wrote into the managed block, upgrade says so plainly, naming the pin's file and both versions. A release-candidate trial is recorded as a 'pin_trial' key in .specyrd/manifest.json naming the trialled version (set by the project, documented in the upgrade guide; no CLI flag); while the running version equals pin_trial, validate prints the pin mismatch once as a trial note instead of a warning, and the key is ignored (warning returns) once the running version changes; the manifest schema accepts the key; a test covers the warning, the trial note and its expiry",
+        "When the repo's pin (manifest pin or a requirements file) is below the minimum upgrade just wrote into the managed block, upgrade says so plainly, naming the pin's file and both versions. A release-candidate trial is recorded as a 'pin_trial' key in .specyrd/manifest.json naming the trialled version (set by the project, documented in the upgrade guide; no CLI flag); while the running version equals pin_trial, validate prints the pin mismatch once as a trial note instead of a warning, and the key is ignored (warning returns) once the running version changes; a test covers the warning, the trial note and its expiry",
         "upgrade's closing hint names the kinds of new untracked files it actually created (schemas, model profiles, skills, .specyrd/ files) instead of always saying 'schema and skill files'; a test where only schemas are new pins it",
         "upgrade --report-duplicates lists paragraphs of project text outside the managed block that closely restate a paragraph of .specyrd/AGENTS.md (normalised word overlap above a stated threshold), naming file:line and the matching rules heading; report only. Out of scope: rewriting or deleting project text, and the heading-level notice M13.3 owns"
       ],
@@ -301,7 +312,8 @@
         "specy_road/upgrade_report.py",
         "specy_road/version_pin.py",
         "specy_road/agent_text_report.py",
-        "tests/"
+        "tests/",
+        "docs/upgrading.md"
       ],
       "type": "task"
     },
@@ -309,7 +321,9 @@
       "acceptance": [
         "validate's 'touch zones that match no tracked file' notice lists at most 10 entries, In Progress or claimed nodes first, and gives a count of the rest by status; Not Started unclaimed leaves are counted, not listed; validate --all prints the full list; a test with 85 such nodes pins a bounded line. validate_roadmap_checks.py changes only the call line, staying within its cap",
         "The managed .gitignore comment and the init template say '.specyrd/manifest.json stays tracked' only when the repo has a manifest (or reword it so it is true either way); a test covers a repo with no stub pack",
-        "For a tracked file matched by a newly added managed ignore rule (M13.7 lists them), the notice prints the git rm --cached command and says when to keep tracking instead. Out of scope: untracking anything automatically, and which ignore rules ship"
+        "For a tracked file matched by a newly added managed ignore rule (M13.7 lists them), the notice prints the git rm --cached command and says when to keep tracking instead. Out of scope: untracking anything automatically, and which ignore rules ship",
+        "When the managed .gitignore block repeats a pattern the file already lists above the markers, validate prints one notice naming the repeated patterns and saying they can be removed from above the markers (never edits the file); a test with two repeats pins the line and a file with none prints nothing",
+        "The context: warning lines (always-injected context per harness) print in full only when their content changed since the last validate in this checkout (a hash in .specyrd/cache/, new module specy_road/context_notice_cache.py), else one line 'context: N warnings unchanged (validate --context shows them)'; upgrade always prints them in full; validate_roadmap.py and agents_md_block.py change only call lines; tests for first run, unchanged run and changed run"
       ],
       "codename": "quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules",
       "dependencies": [
@@ -328,7 +342,12 @@
         "specy_road/bundled_scripts/validate_roadmap_checks.py",
         "specy_road/agent_ignores.py",
         "specy_road/templates/project/.gitignore",
-        "tests/"
+        "tests/",
+        "specy_road/context_notice_cache.py",
+        "specy_road/agents_md_block.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/ignore_report.py",
+        "specy_road/bundled_scripts/validate_notices.py"
       ],
       "type": "task"
     },
@@ -337,14 +356,18 @@
         "specy-road upgrade --prompt <VERSION> writes work/prompt-upgrade-<VERSION>.md (as pickup writes work/prompt-<ID>.md) and changes nothing else; it is filled in from this repo: the running install and every other specy-road/specyrd on PATH with versions (M13.1), where the pin lives, and whether VERSION is a pre-release (then the TestPyPI hash-checked --no-deps recipe, and leave the pin unchanged)",
         "It lists live sessions (session list) and other worktrees sharing the install as stop conditions; the baseline commands (validate, export --check, digest --check, file-limits) with their current exit results; the preview recipe from docs/upgrading.md; root AGENTS.md's line count against the project's own cap as a report only; the M13.8 behaviour changes since the stamped version; and the verify list plus an optional field-notes template",
         "It states the reconcile rules: never edit inside managed markers, never write .specyrd/AGENTS.team.md unless asked, what counts as duplicated (M13.3 headings, M13.11 paragraphs), and keep text when unsure",
-        "A test on a fixture repo (requirements-file pin, a second launcher on PATH, a second worktree) asserts each section names the real values, not placeholders; docs/upgrading.md documents the command. Out of scope: running the upgrade or editing any file besides the prompt"
+        "A test on a fixture repo (requirements-file pin, a second launcher on PATH, a second worktree) asserts each section names the real values, not placeholders; docs/upgrading.md documents the command. Out of scope: running the upgrade or editing any file besides the prompt",
+        "The generated prompt's reconcile section includes the steps the hand-written baseline had: back up root AGENTS.md (and CLAUDE.md) before upgrading, note that specy-road adds only a pointer block to .specyrd/AGENTS.md, compare the root file with .specyrd/AGENTS.md and remove the specy-road-specific text outside the markers so the root file is project-specific, never edit inside the markers, keep text when unsure, and move repo-specific specy-road rules to .specyrd/AGENTS.team.md; a test asserts each step",
+        "An optional field-notes section gives a feedback template (wins; findings each with severity, command, version, expected and observed, repro, workaround, suggestion) and says to write each round to a new numbered file (work/upgrade-feedback-<n>.md) when the previous one was delivered; a test asserts the template fields",
+        "For a pre-release VERSION the install step uses the safe direct-wheel form from M15.1's doc (exact wheel, sha256 checked, dependencies from PyPI only; the direct URL with extras for uv tool and pipx), never TestPyPI as an index; a test asserts no --index-url or --extra-index-url naming TestPyPI appears in an install command"
       ],
       "codename": "upgrade-prompt-writes-an-agent-upgrade-prompt-filled-in-from-this-repo",
       "dependencies": [
         "0df02f07-4621-455d-83a3-155de03dadb8",
         "f7af5b48-1dd5-41f8-a55b-781cd48a8c18",
         "30507388-ed3e-439c-bbf9-0ae841070bab",
-        "614bae1a-02e5-4266-be5c-f567e95c5a54"
+        "614bae1a-02e5-4266-be5c-f567e95c5a54",
+        "f11ae6a1-4e8d-43f8-9aed-391000c71679"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M13.13",
@@ -359,7 +382,8 @@
         "specy_road/bundled_scripts/upgrade.py",
         "specy_road/templates/specyrd/upgrade-prompt.md",
         "docs/upgrading.md",
-        "tests/"
+        "tests/",
+        "docs/install-release-candidates.md"
       ],
       "type": "task"
     }
