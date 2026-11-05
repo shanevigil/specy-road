@@ -95,6 +95,27 @@ each. The `harness_model` schema description now says it comes from init or resu
 the reported model that differs. Verified: 35 test files (M15.3's plus every test file the merges touched), 580
 passed; full suite 5028 passed; ruff; file-limits.
 
+## Fix round 2 (gpt-6.1-sol-low blocked 9f1cbe63)
+
+Merged `origin/WIP/improvements-0-3-1` first (clean; roadmap and planning files only, no code or tests).
+
+- **Finding (A2):** with roster `id: review-label`, `harness: cursor`, `harness_model: gpt-6.1-sol` and no profile,
+  preview and launch both passed `--model review-label`. Class: a path that turns a roster entry into a model flag
+  without the documented resolver. Fix: `role_prompt_cli.model_problem(prof, entry)` resolves only through
+  `orchestration_config.harness_model` (the entry's `harness_model`, else the profile's `api_id`, else the roster
+  `id`, as `docs/orchestration-models.md` documents) and refuses a model that resolves to none.
+  - `reviewer_command` (used by the preview, the refusal before the run record, and the launch) takes its model from
+    it, and so does `run_default_reviewer`, which builds the default `--model`. That function no longer computes the
+    model itself, so the two can no longer disagree.
+  - A `harness_model` now also rescues a profile whose `api_id` is `unknown`, where before that entry was refused.
+- **Tests:**
+  - A public CLI test with exactly that roster shape. The preview shows `--model gpt-6.1-sol`, and the launch argv
+    passes `--model gpt-6.1-sol` and never `review-label`. The filed record has the harness's own name (`GPT 6.1 Sol`)
+    as `harness_model`, which matches through the entry's `harness_model`, so there is no mismatch.
+  - A unit test of `model_problem`: `harness_model` over an unknown `api_id`; unknown with no `harness_model` refused;
+    no profile gives the roster id.
+  - Existing refusal tests keep their "resolves to no API model id" assertion; the message still says it.
+
 ## Probes
 
 - Unknown API id with a `channels.cli`, run and dry run: refused before launch, with no process and no run record (tested).
@@ -118,6 +139,24 @@ passed; full suite 5028 passed; ruff; file-limits.
 - A forged model line can only add a mismatch, which excludes the record. It cannot turn a mismatch into a match. A harness that reports nothing (Codex) is unreported, which counts anyway, so forging gains nothing.
 - Deep-nested JSON in the output: `result_model` catches `RecursionError`, and returns nothing (tested).
 - Other readers of the reported model: `worker_runner` uses `init_model` only for worker usage, outside this leaf; not changed.
+
+- Fix round 2: the preview of a reviewer with a `harness_model` and no profile shows `--model gpt-6.1-sol` (tested
+  through the public CLI).
+- Fix round 2: its launch argv passes `--model gpt-6.1-sol` and not the roster label (tested through the public CLI).
+- Fix round 2: `run_default_reviewer` called directly with no entry resolves the model the same way (`{"id": model}`);
+  the existing direct-call tests in `test_headless_limits_denials.py` pass.
+- Fix round 2: a custom `channels.cli` carries its own `--model`, which is the roster's command as written;
+  `model_problem` still refuses one whose entry resolves to no model (tested).
+- Fix round 2: `prompt` has no resume path, so there is no other launch to check (grep for `resume` and `--model` in
+  `role_prompt.py` and `role_prompt_cli.py`).
+- Fix round 2: the model check compares the reported model against the entry's `harness_model` as well (`same_model`):
+  `GPT 6.1 Sol` matches (tested).
+- Fix round 2, `review delegate` (`review_delegate.py:117-118`, outside the zones): it already resolves through
+  `harness_model`, but it passes `""` for a missing profile, which gives `None` (the harness default) instead of the
+  documented roster id, and it does not validate. Not changed: the file is outside this leaf's zones and A5 puts
+  delegate's launch path out of scope. It needs a follow-up leaf.
+- Fix round 2, other callers of `harness_model` outside the zones (`worker_ops_launch.py`, `entry_routing`): executor
+  and routing paths, not reviewer launches; not changed.
 
 ## Final touch zones
 
