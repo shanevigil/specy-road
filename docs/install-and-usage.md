@@ -143,7 +143,7 @@ The roadmap starts with task M1.1, whose acceptance criteria and planning sheet 
 
 ### Keeping a consumer repo current after an upgrade
 
-`pip install -U specy-road` (or `pipx upgrade specy-road`, `uv tool upgrade specy-road`) upgrades the CLI. What it copied into your repo
+`pip install -U specy-road` (or `pipx upgrade specy-road`, `uv tool upgrade specy-road`) upgrades the CLI ([upgrading.md](upgrading.md): moving your text to the split rules files, previewing a version first, telling installs apart). What it copied into your repo
 (schemas, model profiles, IDE skills, the managed blocks) does **not** follow
 along. One command brings it up to date and then checks the result:
 

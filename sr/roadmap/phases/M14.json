@@ -115,7 +115,7 @@
       "parent_id": "M14.4",
       "planning_dir": "planning/M14.4.1_per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip_a4c7eb62-3185-46b6-918f-02f74745b42a.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Per nested repository, land by push, locally or by hand, and base worktrees on the remote or local tip",
       "touch_zones": [
         "specy_road/nested_repos.py",
@@ -182,7 +182,8 @@
       "acceptance": [
         "The reviewer prompt (PROBE_RULES_LINES) asks for each probe as a commands_rerun entry starting 'probe:' (the input tried and what it returned); review record counts them into a probes field it fills, and on an approve with zero probes prints a warning naming the reviewer and the rule and records unprobed: true",
         "policy.require_probe (default false) makes an approve with zero probes ineligible, with the reason 'approve with no recorded probe' that handoff status already prints for ineligible records; a test pins both settings",
-        "Out of scope: judging probe quality, and a default strong_review for numeric or statistical zones (projects already name high-risk zones in policy.strong_review; specy-road cannot tell which zones are numeric). docs/orchestration-review.md shows a strong_review example for such zones"
+        "Out of scope: judging probe quality, and a default strong_review for numeric or statistical zones (projects already name high-risk zones in policy.strong_review; specy-road cannot tell which zones are numeric). docs/orchestration-review.md shows a strong_review example for such zones",
+        "The reviewer prompt (PROBE_RULES_LINES) also asks the reviewer to name, in notes, one thing the evidence it relied on would not catch (for example: counting processes does not show that a window rendered); a test pins the line. Out of scope: checking the answer"
       ],
       "codename": "an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it",
       "dependencies": [],
@@ -208,7 +209,8 @@
       "acceptance": [
         "review delegate keeps each round's RUN-<model>.json and .log under work/reviews/<ID>/history/ (round and commit in the name) instead of overwriting them; the current files stay where they are",
         "specy-road review usage <ID> prints tokens and cost per reviewer run (model, round, commit), parsed with the same harness usage parsers worker usage uses, '?' when not reported, and a total; --json gives the same data",
-        "worker usage's node total adds reviewer usage on a separate line (executors, reviewers, total); a test with two review rounds asserts both survive and are summed. Out of scope: usage for reviews run outside review delegate"
+        "worker usage's node total adds reviewer usage on a separate line (executors, reviewers, total); a test with two review rounds asserts both survive and are summed. Out of scope: usage for reviews run outside review delegate",
+        "review delegate also keeps each round's notes-<model>.md under work/reviews/<ID>/history/ with round and commit in the name, as it does for RUN files; the current notes file stays where it is; a two-round test asserts both notes survive"
       ],
       "codename": "reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round",
       "dependencies": [],
@@ -284,7 +286,8 @@
       "acceptance": [
         "specy-road review rca <ID> --model <id> builds the rca prompt (as prompt --role rca does), runs it on the model's harness with review delegate's retries and backoff, and keeps a RUN-rca-<model>.json/.log record; it refuses a model that is a party to the leaf (rca_parties) and names the eligible ones; registered from review_delegate's add_parser so review_cli gains no subcommand code",
         "When no rostered, available model outside the leaf's parties exists, review rca and handoff status say so and list the ways forward (an off-roster model with --harness, a human analysis recorded as an RCA with escalate_human, or the fix-round budget's deferral from M12.1) instead of repeating 'next, a root-cause analysis'; a run that fails records state skipped with the reason, and status shows it",
-        "A harness usage-limit failure (including Cursor's ActionRequiredError) in a reviewer or analyst run is classified as unavailable, not a capacity retry, and is recorded as available: false (with paused_until when the output gives a reset time) in the gitignored roadmap/orchestration.local.yaml overlay, which orchestrate plan already reads; a test with a fake harness output pins the classification and the overlay entry. Out of scope: changing the escalation rules (M14.10)"
+        "A harness usage-limit failure (including Cursor's ActionRequiredError) in a reviewer or analyst run is classified as unavailable, not a capacity retry, and is recorded as available: false (with paused_until when the output gives a reset time) in the gitignored roadmap/orchestration.local.yaml overlay, which orchestrate plan already reads; a test with a fake harness output pins the classification and the overlay entry. Out of scope: changing the escalation rules (M14.10)",
+        "orchestrate plan and validate warn, per leaf, when its review loop could escalate with no eligible analyst left (every rostered, available model is the leaf's executor or a required reviewer under the rca_parties rule), naming the leaf and the models; the check lives in new specy_road/rca_plan_check.py and orchestrate_plan.py changes only a call line; a test with a two-model roster asserts the warning and a three-model roster asserts none. Prompt size for rca launches is M15.9's"
       ],
       "codename": "review-rca-launches-the-root-cause-analyst-like-review-delegate-and-says-what-to-do-when-no-analyst-is-available",
       "dependencies": [
@@ -306,7 +309,9 @@
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/review_status_render.py",
         "docs/design-notes/review-loop-rca.md",
-        "tests/"
+        "tests/",
+        "specy_road/rca_plan_check.py",
+        "specy_road/orchestrate_plan.py"
       ],
       "type": "task"
     },

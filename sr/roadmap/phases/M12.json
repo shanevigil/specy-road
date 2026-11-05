@@ -41,7 +41,8 @@
         "docs/design-notes/review-loop-rca.md",
         "tests/",
         "specy_road/review_deferral.py",
-        "specy_road/bundled_scripts/review_defer.py"
+        "specy_road/bundled_scripts/review_defer.py",
+        "specy_road/review_next_step.py"
       ],
       "type": "task"
     },
@@ -115,7 +116,7 @@
     },
     {
       "acceptance": [
-        "roadmap-context.md gains a 'Quality by area' section: per touch-zone prefix (top-level directory under the project, configurable depth), leaves landed, mean review rounds per leaf, block rate, integrity findings and RCA escalations, over the last N completed leaves (default 50), computed only from review records and history already on disk",
+        "Each leaf's gate commit (mark-implementation-reviewed) carries a 'Review-tally:' trailer recording its review rounds, blocks, findings per category, integrity findings and RCA escalations, built in a new specy_road/review_tally.py and added through review_gate.commit_trailers with at most a one-line call (review_gate.py is at its line cap); roadmap-context.md gains a 'Quality by area' section: per touch-zone prefix (top-level directory under the project, configurable depth), leaves landed, mean review rounds per leaf, block rate, integrity findings and RCA escalations, over the last N completed leaves (default 50), computed only from those trailers in tracked git history, never from gitignored work/reviews/, so digest --check gives the same result on every machine and in CI; leaves landed before the trailer existed are counted as 'no tally' and excluded from rates",
         "Areas worse than a policy threshold are listed first with the numbers; digest --check stays deterministic (no timestamps or wall-clock inputs); empty history prints nothing",
         "orchestrate plan may route strong_review to a leaf whose touch zones fall in a flagged area when policy.quality_routing is on (default off); a test pins both settings"
       ],
@@ -138,7 +139,8 @@
         "tests/",
         "specy_road/orchestrate_plan.py",
         "specy_road/review_gate.py",
-        "specy_road/templates/project/schemas/orchestration.schema.json"
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "specy_road/review_tally.py"
       ],
       "type": "task"
     },
@@ -197,6 +199,73 @@
         "specy_road/orchestrate_plan.py",
         "specy_road/bundled_scripts/models_cli.py",
         "docs/orchestration-models.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road worktree cleanup <ID>, run from the main checkout after finish-this-task lands the leaf, first moves leaf-local hand-off files (work/reviews/<ID>/** in the leaf's worktree, including history/ copies and RUN-* logs) into the shared hand-off directory (reviews_root), never overwriting a different file (it keeps both, the moved one with a suffix); then terminates the leaf's worker if one is idle and removes the worktree; a test puts a review history file only in the leaf worktree's ignored work/reviews/<ID>/history/ and asserts it exists in the main checkout's hand-off dir after cleanup and the worktree is gone",
+        "cleanup refuses, removes nothing and prints one line per reason when the worktree has commits not on the integration branch, uncommitted changes or untracked files git does not ignore, or ignored files outside a known-regenerable list (__pycache__ and tool caches, node_modules, work/prompt-*.md, work/brief-*.md, work/.on-complete-*.yaml, .specyrd/cache/) once hand-off files are moved; reuses worktree_prune.plan_prune (including M14.3's foreign-worktree refusal) and worker terminate; a test per refusal",
+        "specy-road worktree sweep [--dry-run] lists every linked worktree (wherever it lives, e.g. under .claude/worktrees/ or a temp dir) whose branch or detached HEAD is contained in the integration branch, with no registry claim (so never a claimed or deferred leaf's), no live or resumable worker, no live session, and nothing unsaved by the cleanup rules; it removes each (moving hand-off files first) or with --dry-run only reports; output is one line per worktree: removed, would remove, or kept with the reason; it uses M14.2's live-leaf rules rather than a copy; a test with a claimed, a live-session, a dirty and a removable worktree pins the four lines",
+        "grind-session runs cleanup after each leaf it lands, and policy.worktree_sweep (off by default; between_leaves) makes it run sweep between leaves; the specyrd-orchestrate command tells the coordinator to run worktree cleanup <ID> after finish and worktree sweep --dry-run at the start of a session; docs/orchestration-chores.md documents both",
+        "Out of scope: deleting remote branches (never); local branch deletion only with --delete-local-branch, only for a branch the integration branch contains; cleaning the main checkout's work/ files (finish-this-task's cleanup already owns those)",
+        "worktree cleanup and sweep also end the session presence records tied to the removed worktree or its deleted branch (the leaf's worker, reviewer and session entries), so session list shows none for a landed leaf; a test with a leftover reviewer and session record asserts both are gone after cleanup",
+        "sweep removes a pickup-created worktree whose branch the integration branch contains (the reported case: it stayed after finish, and branch pruning skipped its branch as '(worktree)'), and after removal the branch is no longer skipped; a test covers it",
+        "docs/orchestration-chores.md warns that gh pr merge --delete-branch can remove a leaf's branch while its worktree still holds uncommitted or ignored hand-off files, and says to run worktree cleanup <ID> (which saves hand-off files first) before deleting the branch"
+      ],
+      "codename": "the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first",
+      "dependencies": [
+        "1c9269b9-323f-428a-9400-86738a763124",
+        "0562a77e-5ed0-48f3-9ab0-b119f9424629"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M12.5",
+      "node_key": "4fc59817-0936-4a70-a78b-6fd7e7044468",
+      "parent_id": "M12",
+      "planning_dir": "planning/M12.5_the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first_4fc59817-0936-4a70-a78b-6fd7e7044468.md",
+      "sibling_order": 5,
+      "status": "Not Started",
+      "title": "The orchestrator cleans up landed leaves and stale worktrees automatically, saving hand-off files first",
+      "touch_zones": [
+        "specy_road/worktree_cleanup.py",
+        "specy_road/bundled_scripts/worktree_cli.py",
+        "specy_road/worktree_prune.py",
+        "specy_road/bundled_scripts/grind_session_cleanup.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "specy_road/templates/specyrd/commands/specyrd-orchestrate.md",
+        "docs/orchestration-chores.md",
+        "tests/",
+        "specy_road/session_presence.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Every command specy_road/cli.py registers (its dispatch tables) yields its argparse parser without running the command, through a build_parser() (or equivalent) that specy_road/cli_parsers.py reaches by command name, including nested subcommands (review record, worker delegate, handoff status …); a parity test walks every registered command and subcommand and fails naming any that yields no parser; cli.py itself grows by at most two lines",
+        "The stale-command scan in validate, and M12.3's garden scan through the same function, reports each 'specy-road <cmd> [<sub>] --flag' mention in the files it already scans whose flag that command or subcommand does not accept, as file:line, the command, the unknown flag and the closest valid flag (difflib); valid flags, short options and flags after a bare -- are not reported; a fixture with one stale and one valid flag pins the output",
+        "Commands that take free-form passthrough arguments are exempt by declaration, not by guess: a parser that uses argparse.REMAINDER or a declared passthrough group (grind-session's implement-hook passthrough), and anything after a bare --, is not checked, and the exemption list is printed by the parity test; behaviour of every command is unchanged",
+        "Out of scope: whether a valid flag's behaviour changed (M13.8's behaviour-change catalogue), checking flag values, and prose mentions without a specy-road command"
+      ],
+      "codename": "every-command-exposes-its-parser-and-the-stale-command-scan-reports-flags-a-command-does-not-accept",
+      "dependencies": [
+        "14d90a55-fc3f-49f3-9c1b-c1cac57e09c9"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M12.6",
+      "node_key": "d3326b0f-f95d-4705-989f-d4c1e60babe4",
+      "parent_id": "M12",
+      "planning_dir": "planning/M12.6_every-command-exposes-its-parser-and-the-stale-command-scan-reports-flags-a-command-does-not-accept_d3326b0f-f95d-4705-989f-d4c1e60babe4.md",
+      "sibling_order": 6,
+      "status": "Not Started",
+      "title": "Every command exposes its parser, and the stale-command scan reports flags a command does not accept",
+      "touch_zones": [
+        "specy_road/cli_parsers.py",
+        "specy_road/bundled_scripts/",
+        "specy_road/bundled_scripts/validate_stale_flags.py",
+        "specy_road/bundled_scripts/validate_stale_commands.py",
+        "specy_road/bundled_scripts/chore_cli.py",
         "tests/"
       ],
       "type": "task"
