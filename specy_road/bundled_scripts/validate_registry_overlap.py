@@ -11,10 +11,11 @@ from typing import NamedTuple
 
 from specy_road.shared_zones import (
     DEFAULT_SHARED_ZONES,
+    in_zone_tree,
+    is_shared_zone,
     norm_zone,
-    paths_overlap,
     resolve_shared_zones,
-    shared_ignores,
+    zones_overlap,
 )
 
 AuthoringOverlapScope = NamedTuple(
@@ -58,11 +59,6 @@ def _is_broad_touch_zone(zone: str) -> bool:
     return zone.strip().endswith("/")
 
 
-def _in_broad_zone_tree(path: str, broad_zone: str) -> bool:
-    base, p = norm_zone(broad_zone), norm_zone(path)
-    return p == base or p.startswith(base + "/")
-
-
 def _clash_suppressed_by_broad_summary(
     x: str, y: str, summarized_broad: set[str]
 ) -> bool:
@@ -70,15 +66,9 @@ def _clash_suppressed_by_broad_summary(
     if norm_zone(x) == norm_zone(y) and not _is_broad_touch_zone(x):
         return False
     for zone in summarized_broad:
-        if _in_broad_zone_tree(x, zone) and _in_broad_zone_tree(y, zone):
+        if in_zone_tree(x, zone) and in_zone_tree(y, zone):
             return True
     return False
-
-
-def _counted_clash(x: str, y: str, shared: Iterable[str]) -> bool:
-    """A clash by the plan's normalized rule (``./a`` is ``a``) that is not only
-    through a shared zone (:mod:`specy_road.shared_zones`)."""
-    return paths_overlap(x, y) and not shared_ignores(x, y, shared)
 
 
 def _first_independent_pair_clash(
@@ -86,7 +76,7 @@ def _first_independent_pair_clash(
 ) -> tuple[str, str] | None:
     for x in za:
         for y in zb:
-            if not _counted_clash(x, y, shared):
+            if not zones_overlap(x, y, shared):
                 continue
             if _clash_suppressed_by_broad_summary(x, y, summarized_broad):
                 continue
@@ -99,17 +89,17 @@ def _first_touch_zone_clash(
 ) -> tuple[str, str] | None:
     for x in za:
         for y in zb:
-            if _counted_clash(x, y, shared):
+            if zones_overlap(x, y, shared):
                 return x, y
     return None
 
 
-def _claims_in_broad_zone_tree(entries: list[dict], zone: str) -> set[str]:
+def _claimsin_zone_tree(entries: list[dict], zone: str) -> set[str]:
     names: set[str] = set()
     for entry in entries:
         cn = entry.get("codename") or "?"
         for path in entry.get("touch_zones") or []:
-            if _in_broad_zone_tree(path, zone):
+            if in_zone_tree(path, zone):
                 names.add(cn)
                 break
     return names
@@ -122,10 +112,10 @@ def _broad_zone_summaries(
     for entry in entries:
         cn = entry.get("codename") or "?"
         for zone in entry.get("touch_zones") or []:
-            if _is_broad_touch_zone(zone) and not shared_ignores(zone, zone, shared):
-                exact.setdefault(norm_zone(zone) + "/", set()).add(cn)
+            if _is_broad_touch_zone(zone) and not is_shared_zone(zone, shared):
+                exact.setdefault(norm_zone(zone), set()).add(cn)
     return sorted(
-        (zone, sorted(_claims_in_broad_zone_tree(entries, zone)))
+        (zone, sorted(_claimsin_zone_tree(entries, zone)))
         for zone, owners in exact.items()
         if len(owners) >= 2
     )

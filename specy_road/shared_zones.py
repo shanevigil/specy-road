@@ -10,6 +10,8 @@ in ``roadmap/git-workflow.yaml`` (schema-checked); an empty list turns it off.
 
 from __future__ import annotations
 
+import posixpath
+import re
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -19,7 +21,27 @@ DEFAULT_SHARED_ZONES: tuple[str, ...] = ("planning/", "shared/")
 
 
 def norm_zone(zone: str) -> str:
-    return zone.strip().removeprefix("./").rstrip("/")
+    """POSIX-normalized zone: strip spaces and ``./``, collapse ``//`` and ``x/../``;
+    a trailing ``/`` (a directory zone) is kept. ``./`` alone normalizes to ``""``."""
+    raw = zone.strip()
+    path = posixpath.normpath(re.sub(r"/{2,}", "/", raw)) if raw else "."
+    path = "" if path == "." else path
+    return path + "/" if path and raw.endswith("/") else path
+
+
+def zone_key(zone: str) -> str:
+    """:func:`norm_zone` without the trailing ``/``: the path two zones compare by."""
+    return norm_zone(zone).rstrip("/")
+
+
+def in_zone_tree(path: str, zone: str) -> bool:
+    """``path`` is ``zone`` itself or under it."""
+    p, z = zone_key(path), zone_key(zone)
+    return p == z or p.startswith(z + "/")
+
+
+def is_shared_zone(zone: str, shared: Iterable[str]) -> bool:
+    return zone_key(zone) in {zone_key(z) for z in shared}
 
 
 def resolve_shared_zones(repo_root: Path) -> tuple[str, ...]:
@@ -32,27 +54,26 @@ def resolve_shared_zones(repo_root: Path) -> tuple[str, ...]:
     return DEFAULT_SHARED_ZONES if zones is None else tuple(zones)
 
 
-def paths_overlap(a: str, b: str) -> bool:
-    """The same path, or one a directory prefix of the other."""
-    x, y = norm_zone(a), norm_zone(b)
-    return x == y or x.startswith(y + "/") or y.startswith(x + "/")
+def zones_overlap(a: str, b: str, shared: Iterable[str]) -> bool:
+    """The one overlap rule ``grind-session --plan`` and ``validate`` share.
 
-
-def shared_ignores(a: str, b: str, shared: Iterable[str]) -> bool:
-    """True when ``a`` or ``b`` is itself a shared zone, so their overlap does not count."""
-    names = {norm_zone(z) for z in shared}
-    return norm_zone(a) in names or norm_zone(b) in names
+    Both zones are normalized (:func:`norm_zone`); they overlap when one is the
+    other or under it, unless either is itself a shared zone.
+    """
+    if not (in_zone_tree(a, b) or in_zone_tree(b, a)):
+        return False
+    return not (is_shared_zone(a, shared) or is_shared_zone(b, shared))
 
 
 def effective_overlap(
     a_zones: Iterable[str], b_zones: Iterable[str], shared: Iterable[str]
 ) -> tuple[str, str] | None:
-    """First ``(a zone, b zone)`` pair that overlaps once shared zones are ignored."""
+    """First ``(a zone, b zone)`` pair that :func:`zones_overlap`."""
     shared = tuple(shared)
     b_zones = list(b_zones)
     for a in a_zones:
         for b in b_zones:
-            if paths_overlap(a, b) and not shared_ignores(a, b, shared):
+            if zones_overlap(a, b, shared):
                 return a, b
     return None
 
@@ -64,12 +85,11 @@ def ignored_shared_zones(
     zone itself and another names it or a path under it."""
     out: list[str] = []
     for zone in shared:
-        base = norm_zone(zone)
         names_it = touches = 0
         for nid in leaf_ids:
-            mine = [norm_zone(z) for z in zones.get(nid, [])]
-            names_it += base in mine
-            touches += any(z == base or z.startswith(base + "/") for z in mine)
+            mine = zones.get(nid, [])
+            names_it += any(zone_key(z) == zone_key(zone) for z in mine)
+            touches += any(in_zone_tree(z, zone) for z in mine)
         if names_it and touches >= 2:
             out.append(zone)
     return out

@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from specy_road.bundled_scripts.session_plan import compute_session_plan
 from specy_road.bundled_scripts.session_plan_render import (
     render_session_plan_text,
@@ -151,3 +153,44 @@ def test_registry_broad_zone_spelled_two_ways_is_summarized_once(capsys) -> None
     err = capsys.readouterr().err
     assert err.count("possible overlap") == 1
     assert "shared zone 'src/' (claims: a, b)" in err
+
+
+# (zone of leaf a, zone of leaf b, overlap?) with the default shared zones planning/, shared/.
+_PAIRS = [
+    ("src/a.py", "./src/a.py", True),
+    ("src/a.py", "src/a.py", True),
+    ("src/", "src", True),
+    ("src/", "./src/", True),
+    ("src/", "src/a.py", True),
+    ("./src/", "src/a/b.py", True),
+    ("src/a/../b.py", "src/b.py", True),
+    ("src//b.py", "src/b.py", True),
+    (" src/b.py ", "src/b.py", True),
+    ("src/a.py", "src/b.py", False),
+    ("src-old/x.py", "src/", False),
+    ("planning/", "planning/x.md", False),
+    ("./planning/", "planning/x.md", False),
+    ("planning", "planning/x.md", False),
+    ("planning/", "planning/", False),
+    ("shared/", "./shared//", False),
+    ("planning/x.md", "./planning/x.md", True),
+    ("planning/x.md", "planning//x.md", True),
+    ("planning/a/../x.md", "planning/x.md", True),
+    ("planning/x.md", "planning/y.md", False),
+    ("shared/api/", "shared/api/x.md", True),
+    ("shared/api/", "shared/web/", False),
+]
+
+
+@pytest.mark.parametrize(("a", "b", "overlap"), _PAIRS)
+def test_plan_and_validate_apply_one_overlap_rule(a: str, b: str, overlap: bool, capsys) -> None:
+    plan = _plan([[a], [b]])
+    assert (plan.parallel_batches == [["M1.1"], ["M1.2"]]) is overlap
+    assert (plan.parallel_batches == [["M1.1", "M1.2"]]) is not overlap
+    entries = [{"node_id": "M1.1", "codename": "a", "touch_zones": [a]},
+               {"node_id": "M1.2", "codename": "b", "touch_zones": [b]}]
+    warn_registry_touch_zone_overlap(entries, no_overlap_warn=False, overlap_scope=None)
+    assert ("possible overlap" in capsys.readouterr().err) is overlap
+    scope = AuthoringOverlapScope("b", "M1.2", [b])
+    warn_registry_touch_zone_overlap(entries, no_overlap_warn=False, overlap_scope=scope)
+    assert ("possible overlap" in capsys.readouterr().err) is overlap
