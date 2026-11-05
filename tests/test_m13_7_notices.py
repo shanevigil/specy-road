@@ -8,7 +8,6 @@ is pinned in ``test_session_presence.py``.)
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -19,6 +18,7 @@ from specy_road.managed_block import MARKER_END, MARKER_START
 from specy_road.written_entry import Written
 from specy_road.bundled_scripts.refresh_stubs import main
 from specy_road.bundled_scripts.refresh_stubs_report import report
+from tests.m13_7_ignore_helpers import git, listed, repo_with_prompts, shown, write
 
 NOTE = "(.agents/skills → .claude/skills)"
 
@@ -102,24 +102,12 @@ def test_the_report_folds_two_names_for_one_file_into_its_real_path(tmp_path: Pa
     ]
 
 
-def _git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *args],
-                          check=True, capture_output=True, text=True).stdout
 
 
-def _repo_with_prompts(tmp_path: Path, untracked: int = 1) -> Path:
-    _git(tmp_path, "init", "-q")
-    (tmp_path / "work").mkdir()
-    (tmp_path / "work" / "prompt-a.md").write_text("a\n", encoding="utf-8")
-    _git(tmp_path, "add", "work/prompt-a.md")
-    _git(tmp_path, "commit", "-qm", "tracked prompt")
-    for i in range(untracked):
-        (tmp_path / "work" / f"prompt-u{i:02d}.md").write_text("u\n", encoding="utf-8")
-    return tmp_path
 
 
 def test_the_match_list_stops_at_the_limit_then_counts(tmp_path: Path, capsys) -> None:
-    repo = _repo_with_prompts(tmp_path, untracked=MATCH_LIMIT + 4)
+    repo = repo_with_prompts(tmp_path, untracked=MATCH_LIMIT + 4)
     apply_and_report(repo, "", [])
     out = capsys.readouterr().out.splitlines()
     assert len(out) == 1 + MATCH_LIMIT + 2
@@ -127,7 +115,7 @@ def test_the_match_list_stops_at_the_limit_then_counts(tmp_path: Path, capsys) -
 
 
 def test_rules_already_in_the_file_are_not_new(tmp_path: Path, capsys) -> None:
-    repo = _repo_with_prompts(tmp_path)
+    repo = repo_with_prompts(tmp_path)
     apply_and_report(repo, "", [])
     capsys.readouterr()
     apply_and_report(repo, "", [])
@@ -185,7 +173,7 @@ def test_diff_shows_stubs_under_a_parenthesised_dir(tmp_path: Path, capsys) -> N
 
 def test_a_git_dir_from_a_hook_does_not_point_the_scratch_repo_at_the_checkout(
         tmp_path: Path, capsys, monkeypatch) -> None:
-    repo = _repo_with_prompts(tmp_path)
+    repo = repo_with_prompts(tmp_path)
     config = (repo / ".git" / "config").read_bytes()
     monkeypatch.setenv("GIT_DIR", str(repo / ".git"))
     monkeypatch.setenv("GIT_WORK_TREE", str(repo))
@@ -197,15 +185,12 @@ def test_a_git_dir_from_a_hook_does_not_point_the_scratch_repo_at_the_checkout(
 
 # --- A2, real run: the report is git's observed change -------------------------------------------
 
-def _write(repo: Path, rel: str, data: str | bytes = "x\n") -> None:
-    (repo / rel).parent.mkdir(parents=True, exist_ok=True)
-    (repo / rel).write_bytes(data if isinstance(data, bytes) else data.encode())
 
 
 def _commit(repo: Path, rel: str) -> None:
-    _write(repo, rel)
-    _git(repo, "add", "--force", rel)
-    _git(repo, "commit", "-qm", rel)
+    write(repo, rel)
+    git(repo, "add", "--force", rel)
+    git(repo, "commit", "-qm", rel)
 
 
 def _block(before: str = "", after: str = "", eol: str = "\n") -> bytes:
@@ -213,54 +198,54 @@ def _block(before: str = "", after: str = "", eol: str = "\n") -> bytes:
 
 
 def _case_ignorecase(repo: Path) -> None:
-    _git(repo, "config", "core.ignorecase", "true")
-    _write(repo, "work/Prompt-case.md")
+    git(repo, "config", "core.ignorecase", "true")
+    write(repo, "work/Prompt-case.md")
 
 
 def _case_info_exclude(repo: Path) -> None:
-    _write(repo, ".git/info/exclude", "work/prompt-excluded.md\n")
-    _write(repo, "work/prompt-excluded.md")
-    _write(repo, "work/prompt-shown.md")
+    write(repo, ".git/info/exclude", "work/prompt-excluded.md\n")
+    write(repo, "work/prompt-excluded.md")
+    write(repo, "work/prompt-shown.md")
 
 
 def _case_self_ignored_nested(repo: Path) -> None:
-    _write(repo, "work/.gitignore", ".gitignore\n!prompt-keep.md\n")
-    _write(repo, "work/prompt-keep.md")
-    _write(repo, "work/prompt-hide.md")
+    write(repo, "work/.gitignore", ".gitignore\n!prompt-keep.md\n")
+    write(repo, "work/prompt-keep.md")
+    write(repo, "work/prompt-hide.md")
 
 
 def _case_tracked_already_ignored(repo: Path) -> None:
     _commit(repo, "work/prompt-tracked.md")
-    _write(repo, GITIGNORE, "work/*.md\n")                       # older rule; the new block lands after it
+    write(repo, GITIGNORE, "work/*.md\n")                       # older rule; the new block lands after it
 
 
 def _case_tracked_by_an_older_rule_only(repo: Path) -> None:
     _commit(repo, "work/old.md")
-    _write(repo, GITIGNORE, "work/old.md\n")
+    write(repo, GITIGNORE, "work/old.md\n")
 
 
 def _case_older_rule_after_the_block(repo: Path) -> None:
-    _write(repo, GITIGNORE, _block(after="work/*.md\n"))          # git lets the later, older rule decide
+    write(repo, GITIGNORE, _block(after="work/*.md\n"))          # git lets the later, older rule decide
 
 
 #: name -> (setup, prefix, expected now-hidden, expected still-tracked). Every repo also tracks work/prompt-a.md.
 CASES = {
-    "plain": (lambda r: _write(r, "work/prompt-u.md"), "", {"work/prompt-u.md"}, {"work/prompt-a.md"}),
-    "r1 pathspec-only match": (lambda r: _write(r, "work/prompt-dir/sub.md"), "", set(), {"work/prompt-a.md"}),
-    "r1 negation after block": (lambda r: (_write(r, GITIGNORE, _block(after="!work/prompt-keep.md\n")),
-                                           _write(r, "work/prompt-keep.md")), "", set(), {"work/prompt-a.md"}),
-    "r2 negation before block": (lambda r: (_write(r, GITIGNORE, _block(before="!work/prompt-keep.md\n")),
-                                            _write(r, "work/prompt-keep.md")), "",
+    "plain": (lambda r: write(r, "work/prompt-u.md"), "", {"work/prompt-u.md"}, {"work/prompt-a.md"}),
+    "r1 pathspec-only match": (lambda r: write(r, "work/prompt-dir/sub.md"), "", set(), {"work/prompt-a.md"}),
+    "r1 negation after block": (lambda r: (write(r, GITIGNORE, _block(after="!work/prompt-keep.md\n")),
+                                           write(r, "work/prompt-keep.md")), "", set(), {"work/prompt-a.md"}),
+    "r2 negation before block": (lambda r: (write(r, GITIGNORE, _block(before="!work/prompt-keep.md\n")),
+                                            write(r, "work/prompt-keep.md")), "",
                                  {"work/prompt-keep.md"}, {"work/prompt-a.md"}),
-    "r2 crlf": (lambda r: (_write(r, GITIGNORE, _block(before="!work/prompt-keep.md\r\n", eol="\r\n")),
-                           _write(r, "work/prompt-keep.md")), "", {"work/prompt-keep.md"}, {"work/prompt-a.md"}),
-    "r2 no trailing newline": (lambda r: (_write(r, GITIGNORE, "node_modules"), _write(r, "work/prompt-n.md")), "",
+    "r2 crlf": (lambda r: (write(r, GITIGNORE, _block(before="!work/prompt-keep.md\r\n", eol="\r\n")),
+                           write(r, "work/prompt-keep.md")), "", {"work/prompt-keep.md"}, {"work/prompt-a.md"}),
+    "r2 no trailing newline": (lambda r: (write(r, GITIGNORE, "node_modules"), write(r, "work/prompt-n.md")), "",
                                {"work/prompt-n.md"}, {"work/prompt-a.md"}),
-    "r2 odd names": (lambda r: [_write(r, p) for p in ("work/prompt-a b.md", "work/prompt-β.md", "work/prompt-#x.md",
+    "r2 odd names": (lambda r: [write(r, p) for p in ("work/prompt-a b.md", "work/prompt-β.md", "work/prompt-#x.md",
                                                        "work/prompt-!y.md", "work/reviews/#r.json", "#top.md")], "",
                      {"work/prompt-a b.md", "work/prompt-β.md", "work/prompt-#x.md", "work/prompt-!y.md",
                       "work/reviews/#r.json"}, {"work/prompt-a.md"}),
-    "r2 nested project": (lambda r: [_write(r, p) for p in ("sr/work/prompt-x.md", "sr/work/.sessions/s.json",
+    "r2 nested project": (lambda r: [write(r, p) for p in ("sr/work/prompt-x.md", "sr/work/.sessions/s.json",
                                                             "work/prompt-y.md")], "sr/",
                           {"sr/work/prompt-x.md", "sr/work/.sessions/s.json"}, set()),
     "r3 ignorecase": (_case_ignorecase, "", {"work/Prompt-case.md"}, {"work/prompt-a.md"}),
@@ -273,31 +258,26 @@ CASES = {
 }
 
 
-def _shown(repo: Path) -> set[str]:
-    out = _git(repo, "status", "--porcelain=v1", "-z", "--untracked-files=all")
-    return {e[3:] for e in out.split("\0") if e.startswith("?? ")}
 
 
 def _tracked_ignored(repo: Path) -> set[str]:
-    return {p for p in _git(repo, "ls-files", "-c", "-i", "--exclude-standard", "-z").split("\0") if p}
+    return {p for p in git(repo, "ls-files", "-c", "-i", "--exclude-standard", "-z").split("\0") if p}
 
 
-def _listed(out: str, note: str) -> set[str]:
-    return {ln[2:].rsplit(" (", 1)[0] for ln in out.splitlines() if ln.endswith(note)}
 
 
 @pytest.mark.parametrize("case", list(CASES))
 def test_the_real_run_reports_exactly_the_visibility_change_git_shows(tmp_path: Path, capsys, case: str) -> None:
     setup, prefix, hidden, tracked = CASES[case]
-    repo = _repo_with_prompts(tmp_path, untracked=0)
+    repo = repo_with_prompts(tmp_path, untracked=0)
     setup(repo)
-    shown, index = _shown(repo), _git(repo, "ls-files", "-s")
+    was_shown, index = shown(repo), git(repo, "ls-files", "-s")
     apply_and_report(repo, prefix, [])
     out = capsys.readouterr().out
-    assert _listed(out, HIDDEN_NOTE) == shown - _shown(repo) == hidden
-    assert _listed(out, TRACKED_NOTE) == tracked <= _tracked_ignored(repo)   # attributed to a new rule, not a diff
+    assert listed(out, HIDDEN_NOTE) == was_shown - shown(repo) == hidden
+    assert listed(out, TRACKED_NOTE) == tracked <= _tracked_ignored(repo)   # attributed to a new rule, not a diff
     assert out.startswith(REAL_HEADER) if hidden | tracked else out == ""
-    assert _git(repo, "ls-files", "-s") == index                    # nothing untracked
+    assert git(repo, "ls-files", "-s") == index                    # nothing untracked
 
 
 # --- A2, dry run: a labelled estimate ------------------------------------------------------------
@@ -305,26 +285,26 @@ def test_the_real_run_reports_exactly_the_visibility_change_git_shows(tmp_path: 
 @pytest.mark.parametrize("case", list(CASES))
 def test_the_dry_run_estimate_lists_what_the_real_run_reports(tmp_path: Path, capsys, case: str) -> None:
     setup, prefix, hidden, tracked = CASES[case]
-    repo = _repo_with_prompts(tmp_path, untracked=0)
+    repo = repo_with_prompts(tmp_path, untracked=0)
     setup(repo)
     apply_and_report(repo, prefix, [], dry_run=True)
     dry = capsys.readouterr().out
     apply_and_report(repo, prefix, [])
     real = capsys.readouterr().out
-    assert (_listed(dry, HIDDEN_NOTE), _listed(dry, TRACKED_NOTE)) == (hidden, tracked)
+    assert (listed(dry, HIDDEN_NOTE), listed(dry, TRACKED_NOTE)) == (hidden, tracked)
     assert dry.startswith(ESTIMATE_HEADER) if hidden | tracked else dry == ""
     assert dry.splitlines()[1:] == real.splitlines()[1:]
 
 
 def test_the_dry_run_is_labelled_an_estimate_and_gets_the_self_ignored_nested_case_right(
         tmp_path: Path, capsys) -> None:
-    repo = _repo_with_prompts(tmp_path, untracked=0)
+    repo = repo_with_prompts(tmp_path, untracked=0)
     _case_self_ignored_nested(repo)
     apply_and_report(repo, "", [], dry_run=True)
     dry = capsys.readouterr().out
     assert dry.splitlines()[0] == ESTIMATE_HEADER
-    assert _listed(dry, HIDDEN_NOTE) == {"work/prompt-hide.md"}
-    assert _listed(dry, TRACKED_NOTE) == {"work/prompt-a.md"}
+    assert listed(dry, HIDDEN_NOTE) == {"work/prompt-hide.md"}
+    assert listed(dry, TRACKED_NOTE) == {"work/prompt-a.md"}
     assert not (repo / GITIGNORE).exists()
     apply_and_report(repo, "", [])
     real = capsys.readouterr().out
@@ -348,7 +328,7 @@ def test_an_unreadable_nested_gitignore_skips_the_estimate(tmp_path: Path, capsy
     import os
     if os.geteuid() == 0:
         pytest.skip("root reads any file")
-    repo = _repo_with_prompts(tmp_path)
+    repo = repo_with_prompts(tmp_path)
     nested = repo / "work" / ".gitignore"
     nested.write_text("x\n", encoding="utf-8")
     nested.chmod(0)
