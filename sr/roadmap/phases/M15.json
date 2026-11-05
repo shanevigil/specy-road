@@ -119,7 +119,8 @@
         "policy.host_effects in roadmap/orchestration.yaml (forbid | allow, default forbid) and an optional policy.protected_services list (name plus host:port or URL) are schema-checked; with forbid, the executor and reviewer prompts carry one block (from specy_road/host_effects.py) saying not to launch GUI apps or packaged builds, not to focus or script windows, and not to call or change the listed services or any running dev server the worker did not start; a test asserts the block in both prompts and its absence under allow",
         "Under forbid, the tool-call guard (new tool_call_guard_host.py; tool_call_guard.py changes only its call line) denies open, xdg-open, osascript, electron and an app bundle's binary, and curl, wget or httpie requests to a protected service's host:port, each with a one-line reason naming policy.host_effects; tests per denied shape plus allowed shapes (curl to an unlisted host, open inside a quoted string argument)",
         "The specyrd agents-team.md starter gains one commented line showing a project's host-effects rule; docs/orchestration-host-effects.md documents the policy, the denied shapes, what the guard cannot see (a test suite that itself launches an app or calls a service), and that a human acceptance run should use services the worker cannot reach",
-        "worker message <W> --interrupt stops the running turn and resumes the session with the message, on harnesses whose adapter can resume (claude-code, cursor, codex); on others it refuses and says the message will queue; the worker record logs the interrupt; a test with a fake harness asserts the turn ends and the next turn's prompt is the message. Out of scope: network sandboxing, and blocking effects inside test code"
+        "worker message <W> --interrupt stops the running turn and resumes the session with the message, on harnesses whose adapter can resume (claude-code, cursor, codex); on others it refuses and says the message will queue; the worker record logs the interrupt; a test with a fake harness asserts the turn ends and the next turn's prompt is the message. Out of scope: network sandboxing, and blocking effects inside test code",
+        "policy.protected_services entries take name, address (host:port, a URL, or a database name or DSN without credentials) and kind (http, database or port), and a roster entry may list its own protected_services, added to the project's for that worker (both schema-checked); the executor prompt's host-effects block names every entry by name and address under 'Shared services you must not touch' and says not to start a server on its port, run seeds, migrations or deletes against it, or change its data to get past an error; a test asserts each listed name and address appear in the executor prompt. Out of scope: detecting such use after the turn (post_run_check and reconcile do not see it)"
       ],
       "codename": "host-effects-policy-and-interruptible-worker-messages",
       "dependencies": [
@@ -449,7 +450,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.15_upgrade-ships-the-templates-prompts-reference_035cb961-9771-46ae-a5e5-a378ea914e01.md",
       "sibling_order": 15,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "upgrade ships the work/ templates every prompt references, and the .specyrd README matches upgrade's steps",
       "touch_zones": [
         "specy_road/bundled_scripts/upgrade.py",
