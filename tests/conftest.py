@@ -40,6 +40,7 @@ def repo_root_env_never_leaks_in(monkeypatch: pytest.MonkeyPatch) -> None:
     # Set by worker_runner for the harness it launches; a suite run inside a worker would
     # otherwise see itself as a live worker in every guard and presence test.
     monkeypatch.delenv("SPECY_ROAD_WORKER_ID", raising=False)
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
 
 
 @pytest.fixture(autouse=True)

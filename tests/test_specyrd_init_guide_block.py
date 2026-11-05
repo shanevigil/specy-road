@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 
 from specy_road.agent_guide_block import render_guide_lines
+from specy_road.agents_md_block import render_rules
 from specy_road.managed_block import MARKER_START
 from specy_road.specyrd_init import InitResult, run_init
 
@@ -53,6 +54,13 @@ def test_specyrd_init_creates_claude_md_when_absent(tmp_path: Path) -> None:
     p = tmp_path / "CLAUDE.md"
     assert p.is_file()
     assert "AGENTS.md" in p.read_text(encoding="utf-8")
+    # No project here, so no AGENTS.md stub, but the files the block @-imports exist.
+    rules, team = tmp_path / ".specyrd/AGENTS.md", tmp_path / ".specyrd/AGENTS.team.md"
+    assert rules.read_text(encoding="utf-8") == render_rules() and team.is_file()
+    assert not (tmp_path / "AGENTS.md").exists()
+    team.write_text("# Ours\n", encoding="utf-8")
+    _init_claude(tmp_path)
+    assert team.read_text(encoding="utf-8") == "# Ours\n"   # the team addendum is never rewritten
 
 
 def test_force_never_replaces_a_hand_authored_claude_md(tmp_path: Path) -> None:
@@ -118,14 +126,14 @@ def test_a_dry_run_previews_the_managed_blocks_and_writes_nothing(
 
 
 def test_the_guide_block_is_prefixed_in_a_nested_layout(tmp_path: Path) -> None:
-    """CLAUDE.md sits at the git root; its pointers name the project root."""
+    """CLAUDE.md sits at the git root; its imports and pointers name the project root."""
     (tmp_path / "sr" / "roadmap").mkdir(parents=True)
     (tmp_path / "sr" / "roadmap" / "manifest.json").write_text("{}", encoding="utf-8")
 
     lines = render_guide_lines("sr/")
 
-    assert any("sr/roadmap/manifest.json" in ln for ln in lines)
-    assert any("sr/roadmap-context.md" in ln for ln in lines)
+    assert "@sr/.specyrd/AGENTS.md" in lines and "@sr/.specyrd/AGENTS.team.md" in lines
+    assert any("`sr/.specyrd/AGENTS.local.md`" in ln for ln in lines)
     assert not any("{{PROJECT_PREFIX}}" in ln for ln in lines)
     assert not any("{{SPECYRD_VERSION}}" in ln for ln in lines)
     assert not any("<!--" in ln for ln in lines)   # provenance stays in the template

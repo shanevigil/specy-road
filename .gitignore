@@ -58,7 +58,8 @@ sample-apps/
 # PR body re-inlines the brief and summary); review records (a commit would
 # move the branch past the reviewed commit); session, worker and worktree
 # state; brainstorm prompts; per-checkout orchestration availability overlay.
-# `.specyrd/manifest.json` stays tracked.
+# Also never committed: .specyrd/AGENTS.local.md, your personal addendum to
+# specy-road's agent rules. `.specyrd/manifest.json` stays tracked.
 sr/.specyrd/cache/
 sr/work/.on-complete-*.yaml
 sr/work/prompt-*.md
@@ -71,4 +72,5 @@ sr/work/.worktrees/
 sr/work/brainstorm-*-prompt.md
 sr/work/brainstorm-closed/*-prompt.md
 sr/roadmap/orchestration.local.yaml
+sr/.specyrd/AGENTS.local.md
 # >>> end specy-road managed block <<<

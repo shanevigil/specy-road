@@ -1,27 +1,25 @@
-"""Keep one specy-road section inside the project's ``AGENTS.md``.
+"""Keep specy-road's agent rules in a file it owns, and a short stub in the project's ``AGENTS.md``.
 
 ``init project`` used to write the whole of ``AGENTS.md`` and skip an existing
-one, so a team with its own file got no specy-road guidance at all, or lost the
-file to ``--force``. ``AGENTS.md`` is the consumer's for the same reason
-``CLAUDE.md`` is: they have their own rules in it, and the toolkit has one
-section that must stay current. So it gets the same treatment
-(:mod:`specy_road.managed_block`, HTML-comment markers): ``init project``
-inserts the block into an existing file or creates the file with the block,
-``refresh-stubs`` rewrites it, and ``validate`` warns when it is missing or
-differs from what the installed version writes, and when its load order
-names a file the project does not have.
+one; then it wrote the full rule set as a managed block inside it, which still
+took over much of a file the team owns and left no place for a team's own
+specy-road notes that ``upgrade`` would never touch. So (design note
+``docs/design-notes/agent-guidance-and-shared-checkouts.md``, 2026-11-04):
 
-The block opens with a precedence rule: the toolkit's rules on registry,
-branches, review, and the shared tree are a floor; a project's own rules may
-add to them, never relax them (design note
-``docs/design-notes/agent-guidance-and-shared-checkouts.md``).
+- ``.specyrd/AGENTS.md`` under the project root holds the full rule set.
+  specy-road owns it; ``refresh-stubs`` (so ``upgrade``) rewrites it whole.
+- ``AGENTS.md`` keeps a marked stub (:mod:`specy_road.managed_block`, HTML-comment
+  markers): a pointer to that file and the few rules that prevent damage if an
+  agent never opens it. Codex reads only ``AGENTS.md``, so the stub is all a Codex
+  session is sure to see. The ``CLAUDE.md`` block imports the rules file instead.
+- ``.specyrd/AGENTS.team.md`` (tracked) is created when missing and never
+  rewritten; ``.specyrd/AGENTS.local.md`` is personal and gitignored, and never
+  created. Both add to the rules and never relax their floor.
 
-Unlike the ``CLAUDE.md`` block, this one is harness-neutral and lives at the
-**project** root, next to ``roadmap/``: Cursor, Codex and Claude Code all read
-``AGENTS.md``, and the ``CLAUDE.md`` block points at it rather than copying it.
-
-``validate`` also meters what those files cost: the lines and bytes each harness
-injects into every session, against the limit its vendor documents.
+``validate`` warns when the stub or the rules file is missing or differs from what
+the installed version writes, and when the load order names a file the project
+does not have. It also meters what those files cost: the lines and bytes each
+harness injects into every session, against the limit its vendor documents.
 """
 
 from __future__ import annotations
@@ -41,6 +39,10 @@ from specy_road.harness_instruction_files import (
     CLAUDE_MEMORY_BYTES,
     CLAUDE_MEMORY_LINES,
     CODEX_CANDIDATES,
+    LOCAL_MD,
+    RULES_MD,
+    TEAM_MD,
+    claude_imports,
     claude_memory_file,
     claude_loads,
     claude_memory_loaded,
@@ -55,11 +57,15 @@ from specy_road.harness_instruction_files import (
     machine_local_paths,
 )
 from specy_road.managed_block import (
+    CREATED,
     HTML_COMMENT,
+    REFUSED,
     UNCHANGED,
+    UPDATED,
     _split,
     apply_managed_block,
     render_block,
+    resolves_outside,
 )
 from specy_road.runtime_paths import git_root
 
@@ -68,18 +74,32 @@ from specy_road.runtime_paths import git_root
 CODEX_PROJECT_DOC_MAX_BYTES = 32 * 1024
 #: "target under 200 lines per CLAUDE.md file": https://code.claude.com/docs/en/memory
 CLAUDE_MD_TARGET_LINES = 200
-_TEMPLATE = Path(__file__).resolve().parent / "templates" / "specyrd" / "agents-md-block.md"
+_TEMPLATES = Path(__file__).resolve().parent / "templates" / "specyrd"
+_TEMPLATE = _TEMPLATES / "agents-md-block.md"
+_RULES_TEMPLATE = _TEMPLATES / "agents-rules.md"
+_TEAM_TEMPLATE = _TEMPLATES / "agents-team.md"
 _H1 = "# Agents — load order\n"
+#: What :func:`apply_agents_files` writes, relative to the project root.
+AGENTS_FILES = (AGENTS_MD, RULES_MD, TEAM_MD)
+
+
+def _render(template: Path) -> str:
+    text = strip_provenance(template.read_text(encoding="utf-8"))
+    return link_toolkit_docs(text.replace("{{SPECYRD_VERSION}}", __version__)).rstrip("\n") + "\n"
 
 
 def render_agents_lines() -> list[str]:
-    text = strip_provenance(_TEMPLATE.read_text(encoding="utf-8"))
-    text = link_toolkit_docs(text.replace("{{SPECYRD_VERSION}}", __version__))
-    return text.rstrip("\n").splitlines()
+    """The ``AGENTS.md`` stub: the pointer to :data:`RULES_MD` and the core rules."""
+    return _render(_TEMPLATE).splitlines()
+
+
+def render_rules() -> str:
+    """The text of :data:`RULES_MD`, the full rule set."""
+    return _render(_RULES_TEMPLATE)
 
 
 def apply_agents_md_block(project_root: Path, *, dry_run: bool = False) -> str:
-    """Write the specy-road section into ``AGENTS.md``. Returns the outcome.
+    """Write the specy-road stub into ``AGENTS.md``. Returns the outcome.
 
     A file that does not exist yet gets the scaffold's H1 above the block, so a
     fresh ``init project`` still produces a readable file rather than a bare
@@ -92,30 +112,90 @@ def apply_agents_md_block(project_root: Path, *, dry_run: bool = False) -> str:
     return apply_managed_block(path, lines, style=HTML_COMMENT, dry_run=dry_run)
 
 
+def _write_file(project_root: Path, rel: str, text: str, *, replace: bool, dry_run: bool) -> str:
+    """Create ``rel``, or rewrite it when ``replace`` and it differs; never through a link out of the project."""
+    path = project_root / rel
+    if resolves_outside(project_root, path):
+        return REFUSED
+    if path.is_file() and (not replace or path.read_text(encoding="utf-8") == text):
+        return UNCHANGED
+    outcome = UPDATED if path.is_file() else CREATED
+    if not dry_run:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    return outcome
+
+
+def apply_agents_files(project_root: Path, *, dry_run: bool = False, stub: bool = True) -> dict[str, str]:
+    """The ``AGENTS.md`` stub, the rules file, and the team addendum when missing: ``{rel: outcome}``.
+
+    ``stub=False`` leaves ``AGENTS.md`` alone: what the ``CLAUDE.md`` imports need in a repo with no project yet.
+    """
+    outcomes = {AGENTS_MD: apply_agents_md_block(project_root, dry_run=dry_run)} if stub else {}
+    return outcomes | {
+        RULES_MD: _write_file(project_root, RULES_MD, render_rules(), replace=True, dry_run=dry_run),
+        TEAM_MD: _write_file(project_root, TEAM_MD, _TEAM_TEMPLATE.read_text(encoding="utf-8"),
+                             replace=False, dry_run=dry_run),
+    }
+
+
+def _read(path: Path) -> str | None:
+    """``path``'s text, or None when it is absent or unreadable."""
+    try:
+        return path.read_text(encoding="utf-8") if path.is_file() else None
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+def _agents_block(project_root: Path) -> str | None:
+    text = _read(project_root / AGENTS_MD)
+    return None if text is None else _split(text, HTML_COMMENT)[1]
+
+
 def agents_md_block_state(project_root: Path) -> str:
     """``"current"``, ``"stale"`` (block differs from this version), or ``"missing"``."""
-    path = project_root / AGENTS_MD
-    try:
-        text = path.read_text(encoding="utf-8") if path.is_file() else ""
-    except (OSError, UnicodeDecodeError):
-        return "missing"
-    _before, block, _after = _split(text, HTML_COMMENT)
+    block = _agents_block(project_root)
     if block is None:
         return "missing"
     return "current" if block + "\n" == render_block(render_agents_lines(), style=HTML_COMMENT) else "stale"
 
 
 def warn_if_agents_md_block_stale(project_root: Path) -> None:
-    """One non-fatal line when ``AGENTS.md`` lacks this version's section."""
-    state = agents_md_block_state(project_root)
-    if state == "current":
+    """One non-fatal line when ``AGENTS.md`` or :data:`RULES_MD` lacks this version's text."""
+    state, rules = agents_md_block_state(project_root), _read(project_root / RULES_MD)
+    if state == "missing":
+        what = f"{AGENTS_MD} has no specy-road section"
+    elif state == "stale":
+        what = f"{AGENTS_MD} has a specy-road section that differs from what specy-road {__version__} writes"
+    elif rules is None:
+        what = f"{RULES_MD} is missing"
+    elif rules != render_rules():
+        what = f"{RULES_MD} differs from what specy-road {__version__} writes"
+    else:
         return
-    what = ("has no specy-road section" if state == "missing"
-            else f"has a specy-road section that differs from what specy-road {__version__} writes")
     print(
-        f"agents: warning — {AGENTS_MD} {what}, so agents here miss the current coordination "
-        "rules. Run: specy-road refresh-stubs (it needs no stub pack and touches only managed blocks)",
+        f"agents: warning — {what}, so agents here miss the current coordination rules. "
+        "Run: specy-road refresh-stubs (it needs no stub pack and touches only managed blocks "
+        "and the files specy-road owns)",
         file=sys.stderr,
+    )
+
+
+def print_migration(project_root: Path, prefix: str = "") -> None:
+    """Say what a refresh moves out of a pre-stub ``AGENTS.md`` section; nothing when there is none.
+
+    A section with no rules file beside it is the full block older versions wrote.
+    """
+    block = _agents_block(project_root)
+    if block is None or (project_root / RULES_MD).exists():
+        return
+    stub = render_block(render_agents_lines(), style=HTML_COMMENT)
+    print(
+        f"migration: the specy-road section of {prefix}{AGENTS_MD} ({len(block.splitlines())} lines) becomes a "
+        f"{len(stub.splitlines())}-line stub that points at {prefix}{RULES_MD}, which now holds the full rules "
+        "and which upgrade rewrites; a CLAUDE.md section becomes an @ import of that file. Anything you added "
+        f"inside the old markers is replaced (see git diff): put team notes in {prefix}{TEAM_MD} (tracked) and "
+        f"your own in {prefix}{LOCAL_MD} (gitignored); upgrade never rewrites either."
     )
 
 
@@ -123,7 +203,7 @@ _LOAD_ORDER_ITEM = re.compile(r"^\d+\.\s+`([^`]+)`")
 
 
 def load_order_paths(lines: list[str]) -> list[str]:
-    """The files a block's ``### Load order`` names, in order.
+    """The files a rules file's ``### Load order`` names, in order.
 
     Placeholders (``planning/<id>_…``) and the digest are left out: one names no
     file, and ``digest --check`` already reports the other.
@@ -141,17 +221,14 @@ def load_order_paths(lines: list[str]) -> list[str]:
 
 
 def warn_missing_load_order_paths(project_root: Path) -> None:
-    """One non-fatal line naming the files the ``AGENTS.md`` load order sends agents to that do not exist."""
-    try:
-        _before, block, _after = _split((project_root / AGENTS_MD).read_text(encoding="utf-8"), HTML_COMMENT)
-    except (OSError, UnicodeDecodeError):
+    """One non-fatal line naming the files the :data:`RULES_MD` load order sends agents to that do not exist."""
+    text = _read(project_root / RULES_MD)
+    if text is None:
         return
-    if block is None:
-        return
-    missing = [rel for rel in load_order_paths(block.splitlines()) if not (project_root / rel).exists()]
+    missing = [rel for rel in load_order_paths(text.splitlines()) if not (project_root / rel).exists()]
     if missing:
         print(
-            f"agents: warning — the {AGENTS_MD} load order names {', '.join(missing)}, which "
+            f"agents: warning — the {RULES_MD} load order names {', '.join(missing)}, which "
             f"{'does' if len(missing) == 1 else 'do'} not exist here. Run: specy-road upgrade "
             "(it copies the docs specy-road ships); create the others.",
             file=sys.stderr,
@@ -159,11 +236,11 @@ def warn_missing_load_order_paths(project_root: Path) -> None:
 
 
 def apply_agents_and_report(project_root: Path, written: list[str], *, dry_run: bool = False,
-                            prefix: str = "") -> None:
+                            prefix: str = "", stub: bool = True) -> None:
     """``prefix`` is the project's path under the git root, so a nested layout reports ``sr/AGENTS.md``."""
-    outcome = apply_agents_md_block(project_root, dry_run=dry_run)
-    if outcome != UNCHANGED:
-        written.append(f"{prefix}{AGENTS_MD} ({outcome})")
+    for rel, outcome in apply_agents_files(project_root, dry_run=dry_run, stub=stub).items():
+        if outcome != UNCHANGED:
+            written.append(f"{prefix}{rel} ({outcome})")
 
 
 @dataclass(frozen=True)
@@ -205,6 +282,18 @@ def _roots(project_root: Path) -> tuple[Path, Path]:
     return root, git_root(root) or root
 
 
+def _claude_files(root: Path, top: Path) -> tuple[list[Path], list[Path]]:
+    """Claude Code's launch files in the git root and what they ``@``-import: ``(counted, imported from outside)``.
+
+    The personal :data:`LOCAL_MD` is never counted, imported or not; :func:`_print_machine_local` notes it.
+    """
+    own = [p for p in (*claude_paths(root), *claude_rules(root, top)) if inside(p, top) and claude_loads(p)]
+    imported = claude_imports(own)
+    personal = (root / LOCAL_MD).resolve()
+    counted = [p for p in imported if inside(p, top) and p.resolve() != personal and claude_loads(p)]
+    return own + counted, [p for p in imported if not inside(p, top) and claude_loads(p)]
+
+
 def injected_context(project_root: Path) -> dict[str, list[InjectedFile]]:
     """Per harness, the repository files a session started in ``project_root`` injects.
 
@@ -212,9 +301,8 @@ def injected_context(project_root: Path) -> dict[str, list[InjectedFile]]:
     Claude Code's list leaves out a file over its 4 MiB cap, which it never loads.
     """
     project_root, top = _roots(project_root)
-    claude = [p for p in (*claude_paths(project_root), *claude_rules(project_root, top)) if inside(p, top)]
     found = {"Codex": codex_paths(project_root, top),
-             "Claude Code": [p for p in claude if claude_loads(p)],
+             "Claude Code": _claude_files(project_root, top)[0],
              "Cursor": cursor_paths(project_root, top), "Copilot": copilot_paths(project_root, top)}
     return {harness: _measured(paths, top) for harness, paths in found.items()}
 
@@ -233,7 +321,7 @@ def _not_loaded(path: Path, top: Path) -> str:
 
 
 def _print_machine_local(root: Path, top: Path) -> None:
-    """Notes for files outside the git root: user-level files, auto memory, and files too large to load."""
+    """Notes for files not counted: user-level, imported from outside the repo, personal, auto memory, too large."""
     local = machine_local_paths(root, top)
     for path, note in zip(local, _measured(local, top)):
         print(f"context: note — {note.describe()}, user-level / machine-local; "
@@ -246,6 +334,12 @@ def _print_machine_local(root: Path, top: Path) -> None:
     for path in claude_skipped(root, top):
         if not inside(path, top):
             print(f"context: note — {_not_loaded(path, top)}; machine-local, not counted")
+    for path in _claude_files(root, top)[1]:
+        print(f"context: note — {_measure(path, _display(path, top)).describe()}, imported by a Claude Code "
+              "file; machine-local, not counted toward this repository's limit")
+    if (local := root / LOCAL_MD).is_file():
+        print(f"context: note — {_measure(local, _display(local, top)).describe()}, personal and gitignored; "
+              "machine-local, not counted toward this repository's limit")
 
 
 def print_injected_context(project_root: Path) -> None:

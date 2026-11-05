@@ -10,7 +10,7 @@ from pathlib import Path
 
 from specy_road import __version__
 from specy_road.agent_ignores import apply_and_report
-from specy_road.agents_md_block import apply_agents_md_block
+from specy_road.agents_md_block import apply_agents_files
 from specy_road.harness_instruction_files import AGENTS_MD
 from specy_road.managed_block import CREATED, UNCHANGED, UPDATED
 from specy_road.model_profiles import PROFILES_REL, load_profile
@@ -146,19 +146,20 @@ def _record_layout(top: Path, prefix: str, written: list[str], *, dry_run: bool)
 
 
 def _apply_agents_md(dst: Path, prefix: str, written: list[str], *, dry_run: bool) -> None:
-    """AGENTS.md is a managed block, not a template file: an existing file gets
-    the section inserted, with or without --force.
+    """AGENTS.md gets a managed stub, not a template file: an existing file gets
+    the section inserted, with or without --force. The rules it points at and
+    the team addendum go under ``.specyrd/`` (see ``agents_md_block``).
 
     A missing file gets its H1 before the block is applied, which makes the
     block itself report ``updated``; it is reported as created, as the dry run
     reports it.
     """
     new = not (dst / AGENTS_MD).exists()
-    outcome = apply_agents_md_block(dst, dry_run=dry_run)
-    if new and outcome == UPDATED:
-        outcome = CREATED
-    if outcome != UNCHANGED:
-        written.append(f"{prefix}{AGENTS_MD} ({outcome})")
+    for rel, outcome in apply_agents_files(dst, dry_run=dry_run).items():
+        if rel == AGENTS_MD and new and outcome == UPDATED:
+            outcome = CREATED
+        if outcome != UNCHANGED:
+            written.append(f"{prefix}{rel} ({outcome})")
 
 
 def _copy_templates(

@@ -43,6 +43,7 @@
     "vitest": "^4.1.11"
   },
   "overrides": {
-    "@humanfs/node": ">=0.16.8"
+    "@humanfs/node": ">=0.16.8",
+    "minimatch": "11.0.1"
   }
 }

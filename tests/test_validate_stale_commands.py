@@ -1,4 +1,4 @@
-"""`validate` warns when a project's own AGENTS.md or CLAUDE.md names a command that does not exist."""
+"""`validate` warns when a project's own AGENTS.md, CLAUDE.md or team addendum names a command that does not exist."""
 
 from __future__ import annotations
 
@@ -44,6 +44,8 @@ def test_validate_warns_for_each_unregistered_command_and_still_passes(tmp_path:
     (root / "AGENTS.md").write_text(f"{AGENTS_MD}\n{block}\nAfter the block: `specy-road pm-sync`.\n",
                                     encoding="utf-8")
     (tmp_path / "CLAUDE.md").write_text("Run `specy-road backfill-activity` weekly.\n", encoding="utf-8")
+    (root / ".specyrd").mkdir(exist_ok=True)
+    (root / ".specyrd" / "AGENTS.team.md").write_text("# Team\n\nRun `specy-road pm-sync` first.\n", encoding="utf-8")
     r = subprocess.run(
         [sys.executable, str(BUNDLED_SCRIPTS / "validate_roadmap.py"), "--repo-root", str(root)],
         cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True,
@@ -76,6 +78,7 @@ def test_validate_warns_for_each_unregistered_command_and_still_passes(tmp_path:
         warning("sr/AGENTS.md", at(agents, "pm-sync"), "specy-road pm-sync", "use `specy-road sync`."),
         warning("CLAUDE.md", at(claude, "backfill-activity"), "specy-road backfill-activity",
                 "it was removed and nothing replaces it."),
+        warning("sr/.specyrd/AGENTS.team.md", 3, "specy-road pm-sync", "use `specy-road sync`."),
     ]
 
 

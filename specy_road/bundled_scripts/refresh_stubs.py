@@ -34,8 +34,8 @@ import tempfile
 from pathlib import Path
 
 from specy_road import __version__
-from specy_road.agent_guide_block import AGENT_GUIDE, apply_agent_guide_block, apply_guide_and_report
-from specy_road.agents_md_block import AGENTS_MD, apply_agents_and_report, apply_agents_md_block
+from specy_road.agent_guide_block import AGENT_GUIDE, apply_agent_guide_block
+from specy_road.agents_md_block import AGENTS_FILES, apply_agents_and_report, apply_agents_files, print_migration
 from specy_road.agent_ignores import CURSOR_INDEXING_IGNORE, GITIGNORE, apply_agent_ignores, apply_and_report
 from specy_road.runtime_paths import (
     add_repo_root_arg,
@@ -220,15 +220,15 @@ def refresh_stubs(
                                 all_recorded, dry_run=dry_run, written=written)
         all_recorded.update(current)   # what this pack just wrote is the kit's for the packs after it
         orphans.extend(_orphans(recorded, current, repo_root))
-        # Refresh the block in a CLAUDE.md the consumer has; never create the
-        # file (`specyrd init` does that only for --ai claude-code).
-        if (repo_root / AGENT_GUIDE).is_file():
-            apply_guide_and_report(
-                repo_root, prefix, written, agent=agent, dry_run=dry_run
-            )
         if not dry_run:
             agents[agent] = current
 
+    # Refresh or insert the block in a CLAUDE.md the consumer has, whatever the packs;
+    # never create the file (only `specyrd init --ai claude-code` does).
+    if (repo_root / AGENT_GUIDE).is_file():
+        outcome = apply_agent_guide_block(repo_root, prefix, dry_run=dry_run)
+        if outcome != UNCHANGED:
+            written.append(f"{AGENT_GUIDE} ({outcome})")
     apply_and_report(repo_root, prefix, written, dry_run=dry_run)
     apply_agents_and_report(repo_root / prefix if prefix else repo_root, written, dry_run=dry_run, prefix=prefix)
 
@@ -309,14 +309,14 @@ def _report_orphans(orphans: list[str], *, dry_run: bool, pruned: bool) -> None:
 
 def _block_previews(repo_root: Path, prefix: str, tmp: Path) -> dict[str, str]:
     """Each managed-block file as a refresh would leave it, keyed by its report line; built under ``tmp``."""
-    rels = [AGENT_GUIDE, CURSOR_INDEXING_IGNORE, GITIGNORE, f"{prefix}{AGENTS_MD}"]
+    rels = [AGENT_GUIDE, CURSOR_INDEXING_IGNORE, GITIGNORE, *(f"{prefix}{r}" for r in AGENTS_FILES)]
     for rel in (r for r in rels if (repo_root / r).is_file()):
         (tmp / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(repo_root / rel, tmp / rel)
     (tmp / prefix).mkdir(parents=True, exist_ok=True)
     apply_agent_guide_block(tmp, prefix)
     apply_agent_ignores(tmp, prefix)
-    apply_agents_md_block(tmp / prefix)
+    apply_agents_files(tmp / prefix)
     return {f"{rel} ({o})": (tmp / rel).read_text(encoding="utf-8")
             for rel in rels if (tmp / rel).is_file() for o in (CREATED, UPDATED)}
 
@@ -375,10 +375,10 @@ def main(argv: list[str] | None = None) -> None:
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     root = _resolve_root(args.repo_root)
     dry_run = args.dry_run or args.diff
+    prefix = _prefix(root, project_root(args.repo_root))
+    print_migration(root / prefix, prefix)
     try:
-        written, orphans = refresh_stubs(
-            root, dry_run=dry_run, project=project_root(args.repo_root), prune=args.prune
-        )
+        written, orphans = refresh_stubs(root, dry_run=dry_run, project=project_root(args.repo_root), prune=args.prune)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
@@ -392,7 +392,7 @@ def main(argv: list[str] | None = None) -> None:
         print(f"stubs and managed blocks already match specy-road {__version__} ({root})")
         return
     if args.diff:
-        written = _print_diffs(root, written, _prefix(root, project_root(args.repo_root)))
+        written = _print_diffs(root, written, prefix)
     _report(written, orphans, dry_run=dry_run, pruned=args.prune)
 
 

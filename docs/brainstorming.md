@@ -78,7 +78,7 @@ audit. They are regenerated from the session plus the current graph, so they
 are gitignored.
 
 Run `start` **before** reading `roadmap-context.md`, the roadmap or
-`planning/`: the managed AGENTS.md block says so too, because whatever the
+`planning/`: the agent rules in `.specyrd/AGENTS.md` say so too, because whatever the
 agent reads before round 1 anchors it. On the integration branch `start`
 warns and suggests a `chore/brainstorm-<slug>` branch, since the session file
 is tracked. Each command ends with the next one in the order round →

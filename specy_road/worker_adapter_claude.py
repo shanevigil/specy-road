@@ -12,6 +12,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from specy_road.claude_config import claude_projects_dir
 from specy_road.worker_adapter_base import (REVIEWER_DISALLOWED, STDIN_INSTRUCTION, Adapter, Capabilities, Launch, Parsed,
                                          _bare, _model_flag)
 from specy_road.worker_adapter_parsers import _init_detail, _json, _snip, _text, limit_detail, usage_fields
@@ -145,9 +146,9 @@ class ClaudeCode(Adapter):
     @staticmethod
     def transcript_limit(session_id: str | None, *, home: Path | None = None) -> Parsed | None:
         """A usage limit the session transcript's last assistant message names (Claude writes an API error as
-        one), for a turn that exited non-zero with no result line: ``~/.claude/projects/<project>/<session-id>.jsonl``
+        one), for a turn that exited non-zero with no result line: ``<config dir>/projects/<project>/<session-id>.jsonl``
         (harness-facts), found by the id alone. The prompt is never read: a brief may mention limits."""
-        root = (home or Path.home()) / ".claude" / "projects"
+        root = claude_projects_dir(home)
         if not session_id or not re.fullmatch(r"[A-Za-z0-9-]+", session_id) or not root.is_dir():
             return None
         text = ""

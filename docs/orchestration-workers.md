@@ -162,13 +162,13 @@ agent status | grep -q "Logged in"` stops on both.
 # claude-worker.sh <session> <prompt file>: start the session, or resume it.
 sid=$1 prompt=$2
 set -- -p --output-format stream-json --verbose --dangerously-skip-permissions --model claude-opus-5-5
-if ls "$HOME"/.claude/projects/*/"$sid".jsonl >/dev/null 2>&1; then
+if ls "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/projects/*/"$sid".jsonl >/dev/null 2>&1; then
   exec claude "$@" --resume "$sid" < "$prompt"
 fi
 exec claude "$@" --session-id "$sid" < "$prompt"
 ```
 
-It looks for Claude Code's own transcript of the session (checked on Claude Code 2.1.312; re-check after upgrading), and `exec` keeps `claude` itself as the worker's harness process.
+It looks for Claude Code's own transcript of the session (checked on Claude Code 2.1.312; re-check after upgrading), in the account `CLAUDE_CONFIG_DIR` selects, and `exec` keeps `claude` itself as the worker's harness process.
 
 **Permissions in the harness's settings file.** The other way to keep a worker's permissions across resumes is to leave the command alone and put them where every `claude` run in the worktree reads them: `.claude/settings.json` (committed, shared) or `.claude/settings.local.json` (yours), with `permissions.allow` / `permissions.deny` rules and `permissions.defaultMode`. Claude Code reads them from the working directory on launch and on resume alike, so the default command and a custom one run under the same rules, and a linked worktree sees the committed file once its branch has it. Command-line flags still win over the file for that run.
 

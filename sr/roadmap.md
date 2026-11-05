@@ -188,5 +188,44 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.79` | Leaves that touch high-risk zones need a stronger reviewer | task | Agentic-led | Complete |
 | `M11.80` | Executors and reviewers run tests with a bounded worker count | task | Agentic-led | Complete |
 | `M11.82` | The integration branch passes ruff again and the land check runs it | task | Agentic-led | Complete |
+| `M12` | Harness engineering: cheaper gates, clearer refusals, less drift | phase | — | Not Started |
+| `M12.1` | A review fix-round budget that defers new-input-class findings to a follow-up leaf | task | Agentic-led | Not Started |
+| `M12.2` | Every refusal names its fix | task | Agentic-led | Complete |
+| `M12.3` | Scheduled gardening chores that find drift and open small chore leaves | task | Agentic-led | Not Started |
+| `M12.4` | Quality signals agents and PMs read first | milestone | — | Not Started |
+| `M12.4.1` | Per-area quality scores in the digest from review history | task | Agentic-led | Not Started |
+| `M12.4.2` | A tracked tech-debt ledger that planning can turn into leaves | task | Agentic-led | Not Started |
+| `M12.4.3` | Per-model review evidence: block rate and overturned approvals feed orchestrate plan | task | Agentic-led | Not Started |
+| `M12.5` | The orchestrator cleans up landed leaves and stale worktrees automatically, saving hand-off files first | task | Agentic-led | Not Started |
+| `M12.6` | Every command exposes its parser, and the stale-command scan reports flags a command does not accept | task | Agentic-led | Not Started |
+| `M13` | rc3 adopter feedback: upgrade and adoption friction | phase | — | Not Started |
+| `M13.1` | Say which install is running and flag managed blocks an older version wrote | task | Agentic-led | Complete |
+| `M13.2` | upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap | task | Agentic-led | Not Started |
+| `M13.3` | A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates | task | Agentic-led | Not Started |
+| `M13.4` | A milestone held for its full review says so in validate, list-nodes and why-blocked | task | Agentic-led | Not Started |
+| `M13.5` | refresh-profiles installs only the profiles the roster names, and suggests the alias for a near miss | task | Agentic-led | Complete |
+| `M13.6` | Safe release-candidate install recipe, pipx and uv tool upgrades, and checking which binary is on PATH | task | Agentic-led | Complete |
+| `M13.7` | Clearer notices: symlinked skill dirs, new ignore rules over tracked files, and session end | task | Agentic-led | Not Started |
+| `M13.8` | A behaviour-change catalogue, and validate reports project agent text it contradicts | task | Agentic-led | Not Started |
+| `M13.9` | Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice | task | Agentic-led | Not Started |
+| `M13.10` | Upgrade guide: moving to the split rules files, previewing an uninstalled version, telling old installs apart | task | Agentic-led | Not Started |
+| `M13.11` | upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs | task | Agentic-led | Not Started |
+| `M13.12` | Quieter, accurate validate notices: untracked touch zones, the managed .gitignore comment, and tracked files under new ignore rules | task | Agentic-led | Not Started |
+| `M13.13` | upgrade --prompt writes an agent upgrade prompt filled in from this repo | task | Agentic-led | Not Started |
+| `M14` | Nested repos and review-gate integrity | phase | — | Not Started |
+| `M14.1` | Approvals never carry across unreviewed changes in a sibling repository | task | Agentic-led | Not Started |
+| `M14.2` | doctor never offers to remove a live leaf's worktree or branch | task | Agentic-led | Not Started |
+| `M14.3` | worktree prune refuses to delete another repository's worktree or checkout | task | Agentic-led | Not Started |
+| `M14.4` | nested_repos that a project can adopt without pushing: local landing, local base, sibling diffs and checks | milestone | — | Not Started |
+| `M14.4.1` | Per nested repository, land by push, locally or by hand, and base worktrees on the remote or local tip | task | Agentic-led | Not Started |
+| `M14.4.2` | review-packet includes sibling repository diffs | task | Agentic-led | Not Started |
+| `M14.4.3` | worker reconcile and the post-run check see sibling repositories | task | Agentic-led | Not Started |
+| `M14.5` | An approve with no recorded probe is flagged, and policy can refuse to count it | task | Agentic-led | Not Started |
+| `M14.6` | Reviewer usage is visible: review usage, reviewers in the node total, RUN logs kept per round | task | Agentic-led | Not Started |
+| `M14.7` | session end finds this agent's session by worktree and branch when the derived id has no record | task | Agentic-led | Not Started |
+| `M14.8` | The implementation-zone check runs before a review is spent, and knows about sibling repositories | task | Agentic-led | Not Started |
+| `M14.9` | review rca launches the root-cause analyst like review delegate, and says what to do when no analyst is available | task | Agentic-led | Not Started |
+| `M14.10` | Escalation recognises a converging loop and handoff status shows the findings trend | task | Agentic-led | Not Started |
+| `M14.11` | The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

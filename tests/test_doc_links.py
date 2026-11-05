@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from specy_road.agents_md_block import render_agents_lines
+from specy_road.agents_md_block import render_agents_lines, render_rules
 from specy_road.doc_links import SHIPPED_DOCS, docs_ref, link_toolkit_docs
 from specy_road.specyrd_skills import render_skill
 
@@ -35,7 +35,7 @@ def test_a_shipped_doc_stays_local_and_the_rest_become_urls() -> None:
 
 
 def test_rendered_skill_and_block_carry_no_bare_toolkit_doc_path() -> None:
-    rendered = render_skill("specyrd-brainstorm.md") + "\n".join(render_agents_lines())
+    rendered = render_skill("specyrd-brainstorm.md") + render_rules() + "\n".join(render_agents_lines())
     bare = [m for m in re.findall(r"(?<![\w/.-])docs/([\w-]+\.md)", rendered) if m not in SHIPPED_DOCS]
     assert bare == []
     assert "/docs/brainstorming.md" in rendered

@@ -66,10 +66,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M7` Keeping current: recurring research `keeping-current-recurring-research` — phase — **In Progress**
   - `M7.1` A research register tracks deep-research topics with a refresh cadence `a-research-register-tracks-deep-research-topics-with-a-refresh-cadence` — task — **Complete**
   - `M7.2` Run the harness-capabilities research and fold its findings `run-the-harness-capabilities-research-and-fold-its-findings` — task — **Complete**
-- `M8` Harness compatibility `harness-compatibility` — phase — **In Progress**
+- `M8` Harness compatibility `harness-compatibility` — phase — **Not Started**
   - `M8.1` Harness facts fixture drives model-profiles and executor templates, with a classified diff on version bumps `harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps` — task — **Complete**
   - `M8.2` Worker adapters harden the launch and run a deterministic post-run check `worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` — task — **Complete**
-  - `M8.3` Reviewer runs are read-only and specy-road writes the review record from structured output `reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` — task — **Complete**
+  - `M8.3` Reviewer runs are read-only and specy-road writes the review record from structured output `reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` — task — **Not Started**
   - `M8.4` Ship skills once and meter every file each harness injects `ship-skills-once-and-meter-every-file-each-harness-injects` — task — **Complete**
   - `M8.5` Guard hooks per harness and avoid lists in every model profile `guard-hooks-per-harness-and-avoid-lists-in-every-model-profile` — task — **Complete**
   - `M8.7` Runtime verification of the harness facts against installed binaries `runtime-verification-of-the-harness-facts-against-installed-binaries` — task — **Complete**
@@ -188,6 +188,45 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.79` Leaves that touch high-risk zones need a stronger reviewer `risk-tiered-review` — task — **Complete**
   - `M11.80` Executors and reviewers run tests with a bounded worker count `test-worker-cap` — task — **Complete**
   - `M11.82` The integration branch passes ruff again and the land check runs it `wip-ruff-clean` — task — **Complete**
+- `M12` Harness engineering: cheaper gates, clearer refusals, less drift `harness-engineering-cheaper-gates-clearer-refusals-less-drift` — phase — **Not Started**
+  - `M12.1` A review fix-round budget that defers new-input-class findings to a follow-up leaf `a-review-fix-round-budget-that-defers-new-input-class-findings-to-a-follow-up-leaf` — task — **Not Started**
+  - `M12.2` Every refusal names its fix `every-refusal-names-its-fix` — task — **Complete**
+  - `M12.3` Scheduled gardening chores that find drift and open small chore leaves `scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves` — task — **Not Started**
+  - `M12.4` Quality signals agents and PMs read first `quality-signals-agents-and-pms-read-first` — milestone — **Not Started**
+    - `M12.4.1` Per-area quality scores in the digest from review history `per-area-quality-scores-in-the-digest-from-review-history` — task — **Not Started**
+    - `M12.4.2` A tracked tech-debt ledger that planning can turn into leaves `a-tracked-tech-debt-ledger-that-planning-can-turn-into-leaves` — task — **Not Started**
+    - `M12.4.3` Per-model review evidence: block rate and overturned approvals feed orchestrate plan `per-model-review-evidence-block-rate-and-overturned-approvals-feed-orchestrate-plan` — task — **Not Started**
+  - `M12.5` The orchestrator cleans up landed leaves and stale worktrees automatically, saving hand-off files first `the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` — task — **Not Started**
+  - `M12.6` Every command exposes its parser, and the stale-command scan reports flags a command does not accept `every-command-exposes-its-parser-and-the-stale-command-scan-reports-flags-a-command-does-not-accept` — task — **Not Started**
+- `M13` rc3 adopter feedback: upgrade and adoption friction `rc3-adopter-feedback-upgrade-and-adoption-friction` — phase — **Not Started**
+  - `M13.1` Say which install is running and flag managed blocks an older version wrote `say-which-install-is-running-and-flag-managed-blocks-an-older-version-wrote` — task — **Complete**
+  - `M13.2` upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap `upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap` — task — **Not Started**
+  - `M13.3` A pointer-only AGENTS.md block option, and upgrade names the project text the new rules file duplicates `a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates` — task — **Not Started**
+  - `M13.4` A milestone held for its full review says so in validate, list-nodes and why-blocked `a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked` — task — **Not Started**
+  - `M13.5` refresh-profiles installs only the profiles the roster names, and suggests the alias for a near miss `refresh-profiles-installs-only-the-profiles-the-roster-names-and-suggests-the-alias-for-a-near-miss` — task — **Complete**
+  - `M13.6` Safe release-candidate install recipe, pipx and uv tool upgrades, and checking which binary is on PATH `safe-release-candidate-install-recipe-pipx-and-uv-tool-upgrades-and-checking-which-binary-is-on-path` — task — **Complete**
+  - `M13.7` Clearer notices: symlinked skill dirs, new ignore rules over tracked files, and session end `clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end` — task — **Not Started**
+  - `M13.8` A behaviour-change catalogue, and validate reports project agent text it contradicts `a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts` — task — **Not Started**
+  - `M13.9` Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice `notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` — task — **Not Started**
+  - `M13.10` Upgrade guide: moving to the split rules files, previewing an uninstalled version, telling old installs apart `upgrade-guide-moving-to-the-split-rules-files-previewing-an-uninstalled-version-telling-old-installs-apart` — task — **Not Started**
+  - `M13.11` upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs `upgrade-says-what-changed-for-this-repo-behaviour-changes-a-pin-below-the-new-minimum-the-new-files-and-duplicated-paragraphs` — task — **Not Started**
+  - `M13.12` Quieter, accurate validate notices: untracked touch zones, the managed .gitignore comment, and tracked files under new ignore rules `quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules` — task — **Not Started**
+  - `M13.13` upgrade --prompt writes an agent upgrade prompt filled in from this repo `upgrade-prompt-writes-an-agent-upgrade-prompt-filled-in-from-this-repo` — task — **Not Started**
+- `M14` Nested repos and review-gate integrity `nested-repos-and-review-gate-integrity` — phase — **Not Started**
+  - `M14.1` Approvals never carry across unreviewed changes in a sibling repository `approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` — task — **Not Started**
+  - `M14.2` doctor never offers to remove a live leaf's worktree or branch `doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch` — task — **Not Started**
+  - `M14.3` worktree prune refuses to delete another repository's worktree or checkout `worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout` — task — **Not Started**
+  - `M14.4` nested_repos that a project can adopt without pushing: local landing, local base, sibling diffs and checks `nested-repos-that-a-project-can-adopt-without-pushing-local-landing-local-base-sibling-diffs-and-checks` — milestone — **Not Started**
+    - `M14.4.1` Per nested repository, land by push, locally or by hand, and base worktrees on the remote or local tip `per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip` — task — **Not Started**
+    - `M14.4.2` review-packet includes sibling repository diffs `review-packet-includes-sibling-repository-diffs` — task — **Not Started**
+    - `M14.4.3` worker reconcile and the post-run check see sibling repositories `worker-reconcile-and-the-post-run-check-see-sibling-repositories` — task — **Not Started**
+  - `M14.5` An approve with no recorded probe is flagged, and policy can refuse to count it `an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it` — task — **Not Started**
+  - `M14.6` Reviewer usage is visible: review usage, reviewers in the node total, RUN logs kept per round `reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round` — task — **Not Started**
+  - `M14.7` session end finds this agent's session by worktree and branch when the derived id has no record `session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record` — task — **Not Started**
+  - `M14.8` The implementation-zone check runs before a review is spent, and knows about sibling repositories `the-implementation-zone-check-runs-before-a-review-is-spent-and-knows-about-sibling-repositories` — task — **Not Started**
+  - `M14.9` review rca launches the root-cause analyst like review delegate, and says what to do when no analyst is available `review-rca-launches-the-root-cause-analyst-like-review-delegate-and-says-what-to-do-when-no-analyst-is-available` — task — **Not Started**
+  - `M14.10` Escalation recognises a converging loop and handoff status shows the findings trend `escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend` — task — **Not Started**
+  - `M14.11` The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes `the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes` — task — **Not Started**
 
 ## Dependencies that were removed
 
@@ -200,6 +239,22 @@ Someone deliberately dropped these. Check why before re-adding one.
 This work was completed and moved out of the graph. It is deliberately excluded from IDE indexing; reach it with `specy-road search <QUERY> --scope archived`.
 
 - 2026-11-02 `M11.21` (1 node) — `specy-road show-archive M11.21-439c8b26-20261102`
+
+## Claimed and in flight
+
+Do not pick these up.
+
+- `M12.1` on `feature/rm-a-review-fix-round-budget-that-defers-new-input-class-findings-to-a-follow-up-leaf` since 2026-11-04
+- `M12.3` on `feature/rm-scheduled-gardening-chores-that-find-drift-and-open-small-chore-leaves` since 2026-11-04
+- `M13.10` on `feature/rm-upgrade-guide-moving-to-the-split-rules-files-previewing-an-uninstalled-version-telling-old-installs-apart` since 2026-11-04
+- `M13.2` on `feature/rm-upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap` since 2026-11-04
+- `M13.3` on `feature/rm-a-pointer-only-agents-md-block-option-and-upgrade-names-the-project-text-the-new-rules-file-duplicates` since 2026-11-04
+- `M13.7` on `feature/rm-clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end` since 2026-11-04
+- `M14.11` on `feature/rm-the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes` since 2026-11-04
+- `M14.2` on `feature/rm-doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch` since 2026-11-04
+- `M14.3` on `feature/rm-worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout` since 2026-11-04
+- `M14.4.1` on `feature/rm-per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip` since 2026-11-04
+- `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
 ## Reaching the detail behind this
 

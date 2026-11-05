@@ -53,9 +53,9 @@ def _prompt(repo: Path, pass_name: str) -> str:
     return (repo / "work" / f"brainstorm-{SLUG}-{pass_name}-prompt.md").read_text(encoding="utf-8")
 
 
-def test_skill_and_managed_block_say_to_start_before_reading_the_digest() -> None:
+def test_skill_and_agent_rules_say_to_start_before_reading_the_digest() -> None:
     skill = (ROOT / "specy_road/templates/specyrd/commands/specyrd-brainstorm.md").read_text(encoding="utf-8")
-    block = (ROOT / "specy_road/templates/specyrd/agents-md-block.md").read_text(encoding="utf-8")
+    block = (ROOT / "specy_road/templates/specyrd/agents-rules.md").read_text(encoding="utf-8")
     load_order_0 = next(ln for ln in block.splitlines() if ln.startswith("0. `roadmap-context.md`"))
     assert "run `brainstorm start` before reading this or anything else" in load_order_0
     head = skill.split("```bash")[0]

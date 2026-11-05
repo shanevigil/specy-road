@@ -14,7 +14,7 @@ from pathlib import Path
 
 import yaml
 
-from tests.helpers import DOGFOOD
+from tests.helpers import DOGFOOD, REPO
 
 #: Git-root file changed on the nested-outside layout shape (outside ``sr/``).
 OUTSIDE_ROOT_FILE = "README.md"
@@ -213,6 +213,27 @@ def make_review_repo(tmp_path: Path, *, orchestration: str | None = None) -> Pat
     commit_file(root, "src/a.py", "print('a')\n", "impl")
     commit_file(root, "docs/x.md", "# x\n", "stray")
     return root
+
+
+def delegate_layout(tmp_path: Path, monkeypatch) -> tuple[Path, Path, Path]:
+    """Coordinator checkout on ``dev``; the leaf in a linked worktree; a bare origin."""
+    monkeypatch.setenv("PYTHONPATH", str(REPO))   # finish runs validate/export/digest as subprocesses
+    repo = make_review_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    commit_file(repo, "roadmap/git-workflow.yaml",
+                "version: 1\nintegration_branch: dev\nremote: origin\non_complete: merge\n", "merge mode")
+    commit_file(repo, ".gitignore", "work/reviews/\n.specyrd/cache/\n", "as init project scaffolds")
+    git(repo, "checkout", "-q", "feature/rm-thing")
+    git(repo, "merge", "-q", "--no-edit", "dev")
+    git(repo, "checkout", "-q", "dev")
+    bare = tmp_path / "remote.git"
+    git(tmp_path, "clone", "-q", "--bare", str(repo), str(bare))
+    git(repo, "remote", "add", "origin", str(bare))
+    git(repo, "fetch", "-q", "origin")
+    git(repo, "remote", "set-head", "origin", "dev")   # as clone does; fetch does it only from git 2.48
+    leaf = tmp_path / "leaf"
+    git(repo, "worktree", "add", "-q", str(leaf), "feature/rm-thing")
+    return repo, leaf, bare
 
 
 def review_text(commit: str, *, model: str = "human", verdict: str = "approve",
