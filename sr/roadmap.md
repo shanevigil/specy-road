@@ -8,8 +8,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 
 | ID | Title | Type | Gate | Status |
 |----|-------|------|------|--------|
-| `M14` | Nested repos and review-gate integrity | phase | — | Not Started |
-| `M14.1` | Approvals never carry across unreviewed changes in a sibling repository | task | Agentic-led | Not Started |
+| `M14` | Nested repos and review-gate integrity | phase | — | In Progress |
+| `M14.1` | Approvals never carry across unreviewed changes in a sibling repository | task | Agentic-led | Complete |
 | `M14.2` | doctor never offers to remove a live leaf's worktree or branch | task | Agentic-led | Complete |
 | `M14.3` | worktree prune refuses to delete another repository's worktree or checkout | task | Agentic-led | Complete |
 | `M14.4` | nested_repos that a project can adopt without pushing: local landing, local base, sibling diffs and checks | milestone | — | In Progress |
