@@ -112,7 +112,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M16.69` Cursor workers launch sandboxed without --force unless the roster opts in `cursor-workers-no-force-by-default` — task — **Not Started**
   - `M16.70` Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships `release-docs-0-3-1` — task — **Not Started**
 - `M21` rc4 stabilization: fixes filed after the themed-milestone rule `rc4-stabilization` — phase — **Not Started**
-  - `M21.1` move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree `move-node-chosen-id` — task — **Not Started**
+  - `M21.1` move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree `move-node-chosen-id` — task — **Complete**
   - `M21.2` CLI indent, outdent and group-nodes re-level siblings in one transaction validated once `outline-group-cli` — task — **Not Started**
   - `M21.3` Opt-in rewrite of prose id references after a move, and a standalone rename-refs `rewrite-id-refs` — task — **Not Started**
   - `M21.4` remove-node deletes an empty never-started node and names every blocker otherwise `remove-node` — task — **Not Started**
@@ -239,7 +239,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M21.1` on `feature/rm-move-node-chosen-id` since 2026-11-05
 - `M21.7` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
@@ -248,12 +247,11 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 28 | 16 | 5.75 | 83% | 15 | 3 |
-| `planning` **flagged** | 1 | 0 | 3.00 | 100% | 0 | 0 |
-| `specy_road` **flagged** | 47 | 23 | 4.88 | 79% | 23 | 6 |
-| `tests` **flagged** | 50 | 25 | 4.80 | 80% | 23 | 6 |
+| `docs` **flagged** | 29 | 18 | 6.18 | 91% | 15 | 3 |
+| `specy_road` **flagged** | 47 | 26 | 5.10 | 81% | 23 | 5 |
+| `tests` **flagged** | 50 | 29 | 5.10 | 81% | 23 | 5 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
-| `README.md` | 1 | 1 | — | — | 0 | 0 |
+| `README.md` | 2 | 2 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
 
