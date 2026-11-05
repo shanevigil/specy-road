@@ -89,10 +89,10 @@ def _render(template: Path) -> str:
     return link_toolkit_docs(text.replace("{{SPECYRD_VERSION}}", __version__)).rstrip("\n") + "\n"
 
 
-def render_agents_lines(project_root: Path | None = None) -> list[str]:
-    """The ``AGENTS.md`` stub: the pointer to :data:`RULES_MD` and the core rules, or only the pointer
-    when the project sets ``agents_block: minimal`` (:func:`agents_block_mode`)."""
-    if project_root is not None and agents_block_mode(project_root) == MINIMAL:
+def render_agents_lines(project_root: Path | None = None, mode: str | None = None) -> list[str]:
+    """The ``AGENTS.md`` stub: the pointer to :data:`RULES_MD` and the core rules, or only the pointer for
+    ``agents_block: minimal`` (``mode``, else :func:`agents_block_mode` of ``project_root``)."""
+    if (mode or (project_root and agents_block_mode(project_root))) == MINIMAL:
         return minimal_lines()
     return _render(_TEMPLATE).splitlines()
 
@@ -102,7 +102,7 @@ def render_rules() -> str:
     return _render(_RULES_TEMPLATE)
 
 
-def apply_agents_md_block(project_root: Path, *, dry_run: bool = False) -> str:
+def apply_agents_md_block(project_root: Path, *, dry_run: bool = False, mode: str | None = None) -> str:
     """Write the specy-road stub into ``AGENTS.md``. Returns the outcome.
 
     A file that does not exist yet gets the scaffold's H1 above the block, so a
@@ -110,7 +110,7 @@ def apply_agents_md_block(project_root: Path, *, dry_run: bool = False) -> str:
     marked section.
     """
     path = project_root / AGENTS_MD
-    lines = render_agents_lines(project_root)
+    lines = render_agents_lines(project_root, mode)
     if not path.is_file() and not path.is_symlink() and not dry_run:   # never write through a dangling link
         path.write_text(_H1, encoding="utf-8")
     return apply_managed_block(path, lines, style=HTML_COMMENT, dry_run=dry_run)
@@ -130,12 +130,13 @@ def _write_file(project_root: Path, rel: str, text: str, *, replace: bool, dry_r
     return outcome
 
 
-def apply_agents_files(project_root: Path, *, dry_run: bool = False, stub: bool = True) -> dict[str, str]:
+def apply_agents_files(project_root: Path, *, dry_run: bool = False, stub: bool = True, mode: str | None = None) -> dict[str, str]:
     """The ``AGENTS.md`` stub, the rules file, and the team addendum when missing: ``{rel: outcome}``.
 
     ``stub=False`` leaves ``AGENTS.md`` alone: what the ``CLAUDE.md`` imports need in a repo with no project yet.
+    ``mode`` overrides the ``agents_block`` setting, for a preview built outside the project.
     """
-    outcomes = {AGENTS_MD: apply_agents_md_block(project_root, dry_run=dry_run)} if stub else {}
+    outcomes = {AGENTS_MD: apply_agents_md_block(project_root, dry_run=dry_run, mode=mode)} if stub else {}
     return outcomes | {
         RULES_MD: _write_file(project_root, RULES_MD, render_rules(), replace=True, dry_run=dry_run),
         TEAM_MD: _write_file(project_root, TEAM_MD, _TEAM_TEMPLATE.read_text(encoding="utf-8"),

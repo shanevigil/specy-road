@@ -106,8 +106,14 @@ def test_upgrade_names_project_headings_the_new_rules_file_repeats(tmp_path: Pat
     ("<!--\n## Task loop\n-->\n<!-- ## Load order -->\n## Finding things <!-- ours -->\n",
      ["5 \"Finding things\""]),                                                    # R2: HTML comments, multi- and one-line
     ("# Ours\n<!-- dropped:\n## Task loop\n", []),                                # an unclosed comment runs to the end
+    ("<!--\na\n-->\n<!--\n## Task loop\n-->\n## Load order\n", ["7 \"Load order\""]),  # R1: adjacent multi-line comments
+    ("<!--\na\n--> x <!--\n## Task loop\n-->\n", []),                             # R1: --> then <!-- on one line
+    ("<!-- a --> <!-- b\n## Task loop\n--> <!-- c --> <!--\n## Load order\n-->\n", []),  # repeated on one line
+    ("<!-- a -->\n## Task loop\n<!-- b --> ## Load order\n", ["2 \"Task loop\""]),  # a heading after a closed comment
+    ("```\n<!--\n```\n## Task loop\n", ["4 \"Task loop\""]),                     # <!-- inside a fence is text
 ], ids=["indent-3", "tab-closing-run", "fenced", "fence-kinds", "indented-code", "unclosed-fence",
-        "indented-backticks", "fence-indent", "html-comments", "unclosed-comment"])
+        "indented-backticks", "fence-indent", "html-comments", "unclosed-comment", "adjacent-comments",
+        "close-then-open", "many-per-line", "closed-then-heading", "comment-in-fence"])
 def test_refresh_stubs_names_only_real_matching_headings(tmp_path: Path, capsys, own: str, matched: list[str]) -> None:
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     assert run_init_project(tmp_path) == 0

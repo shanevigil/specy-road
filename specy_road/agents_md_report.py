@@ -31,7 +31,6 @@ _MINIMAL_LINE = (
 _ATX = re.compile(r"^ {0,3}#{2,6}[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$")
 #: A code fence, indented up to three spaces: a run of 3+ backticks or tildes, then the info string.
 _FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
-_COMMENT = re.compile(r"<!--.*?-->")
 
 def agents_block_mode(project_root: Path) -> str:
     """``"minimal"`` when the git root's manifest says so, else ``"full"``."""
@@ -48,11 +47,30 @@ def minimal_lines() -> list[str]:
     return [_MINIMAL_LINE.format(v=__version__)]
 
 
+def _uncommented(line: str, comment: bool) -> tuple[str, bool]:
+    """``line`` without the text inside HTML comments, and whether a comment is still open at its end.
+
+    Walks the whole line, so ``--> text <!-- more`` re-enters a comment as often as the line does.
+    """
+    kept: list[str] = []
+    while line:
+        if comment:
+            _text, close, line = line.partition("-->")
+            comment = not close
+        else:
+            before, opener, line = line.partition("<!--")
+            kept.append(before)
+            comment = bool(opener)
+    return "".join(kept), comment
+
+
 def _headings(text: str) -> list[tuple[int, str]]:
     """``(line number, heading text)`` for each ``##``-or-deeper heading: a hint, so the input class is bounded.
 
     Recognised: ATX headings indented 0-3 spaces. Skipped: fenced code (a backtick or tilde fence indented
-    0-3 spaces, closed by the same character at least as long) and HTML comments, on one line or several.
+    0-3 spaces, closed by the same character at least as long) and HTML comments, on one line or several,
+    any number per line. Fences take precedence: inside a fence, comment markers are text. A line that
+    starts inside a comment, or with one, is no heading, whatever follows its ``-->``.
     Out of scope: setext headings, other HTML blocks, indented code, list or blockquote nesting and every
     other CommonMark construct.
     """
@@ -60,20 +78,17 @@ def _headings(text: str) -> list[tuple[int, str]]:
     fence = ""        # the open fence's run, e.g. "````"
     comment = False   # inside a ``<!--`` that has not closed yet
     for n, line in enumerate(text.splitlines(), 1):
-        if comment:
-            comment = "-->" not in line
-            continue
         if fence:
             m = _FENCE.match(line)
             if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence) and not m.group(2).strip():
                 fence = ""
             continue
-        if (m := _FENCE.match(line)) and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+        if not comment and (m := _FENCE.match(line)) and not (m.group(1)[0] == "`" and "`" in m.group(2)):
             fence = m.group(1)   # a backtick in a backtick fence's info string makes it a code span instead
             continue
-        line, opener, _rest = _COMMENT.sub("", line).partition("<!--")   # what precedes an unclosed comment still counts
-        comment = bool(opener)
-        if m := _ATX.match(line):
+        started_in_comment = comment
+        kept, comment = _uncommented(line, comment)
+        if not started_in_comment and _ATX.match(line) and (m := _ATX.match(kept)):   # ``<!-- x --> ## y`` is no heading
             found.append((n, m.group(1)))
     return found
 
