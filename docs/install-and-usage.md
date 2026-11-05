@@ -6,7 +6,7 @@
 **Not for:** toolkit-contributor topics — branching, PR workflow, npm build, audits ([`contributor-guide.md`](contributor-guide.md)) — or the detail behind each workflow ([`pm-workflow.md`](pm-workflow.md), [`dev-workflow.md`](dev-workflow.md)).
 
 **Must know without reading on:**
-- Python 3.11+ and git with a configured remote are required; there is no offline mode. `pip install specy-road` (extras: `[gui-next]`, `[review]`); pipx and uv tool work too. An RC is downloaded from TestPyPI as one exact wheel (`--no-deps`), sha256-checked, then installed with dependencies from PyPI only; never pair a TestPyPI `--index-url` with `--extra-index-url`.
+- Python 3.11+ and git with a configured remote are required; there is no offline mode. `pip install specy-road` (extras: `[gui]`, `[gui-next]`, `[review]`); pipx and uv tool work too. An RC is one exact wheel from TestPyPI, sha256-checked, with dependencies from PyPI only; TestPyPI is never an index ([`install-release-candidates.md`](install-release-candidates.md)).
 - New project: `specy-road init project`, set `integration_branch` / `remote` in `roadmap/git-workflow.yaml`, then `specy-road validate` and `specy-road export`.
 - After `pip install -U specy-road`: `specy-road upgrade --prune` (runs `refresh-schemas`, `refresh-profiles`, copies missing load-order docs, `refresh-stubs`, then `validate`; `--dry-run` first); never `init project --force` for that.
 - Add `--repo-root /path/to/consumer/repo` to every command run from outside the consumer repo.
@@ -50,7 +50,8 @@ uv tool install specy-road    # the same, with uv
 Optional extras (pipx and uv tool take the same quoted spec):
 
 ```bash
-pip install "specy-road[gui-next]"  # PM Gantt UI deps
+pip install "specy-road[gui]"       # PM Gantt UI deps
+pip install "specy-road[gui-next]"  # PM Gantt UI deps (same set as [gui])
 pip install "specy-road[review]"    # LLM review (`specy-road review-node`)
 ```
 
@@ -71,30 +72,7 @@ A repo virtualenv, `pip install --user`, pipx and uv tool can each put a `specy-
 
 ### Install a release candidate (TestPyPI)
 
-Prereleases (`X.Y.ZrcN`) publish to **TestPyPI**, not PyPI. Do not install one with TestPyPI as `--index-url` and PyPI as `--extra-index-url`: with both indexes the resolver may take any dependency from TestPyPI, where anyone can register a missing name ([supply-chain-security.md](supply-chain-security.md#release-candidates-from-testpypi)).
-Instead download only the exact pinned wheel from TestPyPI, check its sha256 against the value in the RC announcement, and install it with its dependencies from PyPI only:
-
-```bash
-pip download --no-deps --only-binary :all: -d rc/ \
-    --index-url https://test.pypi.org/simple/ "specy-road==0.3.1rc1"
-sha256sum rc/specy_road-0.3.1rc1-py3-none-any.whl   # must equal the announced sha256
-pip install --no-deps rc/specy_road-0.3.1rc1-py3-none-any.whl
-pip install rc/specy_road-0.3.1rc1-py3-none-any.whl  # adds its dependencies, from PyPI only
-```
-
-With uv (no pip needed in the virtualenv; `uv venv` and `uv sync` install none):
-
-```bash
-uvx pip download --no-deps --only-binary :all: -d rc/ \
-    --index-url https://test.pypi.org/simple/ "specy-road==0.3.1rc1"
-sha256sum rc/specy_road-0.3.1rc1-py3-none-any.whl   # must equal the announced sha256
-uv pip install rc/specy_road-0.3.1rc1-py3-none-any.whl   # dependencies from PyPI, uv's default index
-```
-
-For an isolated CLI, install the checked wheel with `pipx install --force rc/<wheel>` or `uv tool install --force rc/<wheel>`, and go back to a final release with `pipx install --force specy-road` or `uv tool install --force specy-road`.
-The dependency steps assume PyPI is your only configured index (no `PIP_EXTRA_INDEX_URL` or `UV_EXTRA_INDEX_URL`). An exact pin needs no `--pre`. Then confirm the result with `specy-road --version` ("Which install is running").
-
-RCs are for evaluation: pin a final release for day-to-day work. `specy-road validate` warns once when the running version is not the one your repo pins (`"pin": "<version>"` in `.specyrd/manifest.json`, else the first `specy-road==<version>` line in a `requirements*.txt` at the checkout root), so an accidental upgrade is not mistaken for a deliberate one. Expect an RC to warn too that IDE stubs and JSON schemas were written by an older version: once your team accepts the new version, update the pin and run `specy-road upgrade`.
+Release candidates (`X.Y.ZrcN`), with or without an extra, are installed from one sha256-checked wheel or its direct URL, never with TestPyPI as an index: see [install-release-candidates.md](install-release-candidates.md).
 
 ## Install from source (toolkit contributors)
 
