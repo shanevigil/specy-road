@@ -37,12 +37,10 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import hashlib
 import io
 import os
 import shlex
 import shutil
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -54,7 +52,15 @@ from specy_road.agents_md_block import load_order_paths, print_migration, render
 from specy_road.bundled_scripts.digest_cli import cmd_digest
 from specy_road.bundled_scripts.refresh_profiles import refresh_profiles, selection_notice
 from specy_road.bundled_scripts.refresh_schemas import SCHEMAS_DIRNAME, missing_schema_names, refresh_schemas
-from specy_road.bundled_scripts.refresh_stubs import _block_previews, _prefix, _report, _resolve_root, refresh_stubs
+from specy_road.bundled_scripts.refresh_stubs import _prefix, _report, _resolve_root, refresh_stubs
+from specy_road.bundled_scripts.upgrade_preview import (
+    changed_paths,
+    copy_tree,
+    fingerprint,
+    preview_files,
+    restore_declined,
+    snapshot_declined,
+)
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.digest import DEFAULT_OUTPUT
 from specy_road.file_limits_engine import build_overlay_match_sets, collect_tracked_files, line_count, resolve_limits
@@ -75,12 +81,13 @@ def _section(title: str) -> None:
     print(f"\n== {title}", flush=True)   # the steps warn on stderr; keep a piped log in order
 
 
-def copy_missing_docs(project: Path, *, dry_run: bool = False) -> list[str]:
+def copy_missing_docs(project: Path, *, dry_run: bool = False, declined: list[str] | None = None) -> list[str]:
     """Copy the ``docs/`` files this version's load order names and the project lacks.
 
     The load order sends every agent to them, and only ``init project`` copied
     them, so a repo scaffolded before a doc shipped has a load order pointing at
     nothing. An existing file (or link) is the project's and stays as it is.
+    A doc refused for a link out of the repository is appended to ``declined``.
     """
     src_root = project_template_root()
     copied: list[str] = []
@@ -90,6 +97,8 @@ def copy_missing_docs(project: Path, *, dry_run: bool = False) -> list[str]:
             continue
         if resolves_outside(project, dst):
             print(f"skipped {rel} (a symlink leads outside the repository)")
+            if declined is not None:
+                declined.append(rel)
             continue
         if not dry_run:
             dst.parent.mkdir(parents=True, exist_ok=True)
@@ -98,7 +107,12 @@ def copy_missing_docs(project: Path, *, dry_run: bool = False) -> list[str]:
     return copied
 
 
-def _refresh(project: Path, checkout: Path, *, dry_run: bool, prune: bool) -> None:
+# Outcome words with which the refreshes report a path they leave as it is (managed_block, specyrd_skills).
+_DECLINED = ("refused", "skipped", "failed")
+
+
+def _refresh(project: Path, checkout: Path, *, dry_run: bool, prune: bool) -> set[str]:
+    """Run the refreshes; return the checkout-relative paths they refused, skipped or failed to write."""
     verb = "would write" if dry_run else "wrote"
     _section("refresh-schemas")
     new = {f"{SCHEMAS_DIRNAME}/{name}" for name in missing_schema_names(project)}
@@ -117,7 +131,8 @@ def _refresh(project: Path, checkout: Path, *, dry_run: bool, prune: bool) -> No
         print(notice)
 
     _section("shipped docs")
-    docs = copy_missing_docs(project, dry_run=dry_run)
+    declined_docs: list[str] = []
+    docs = copy_missing_docs(project, dry_run=dry_run, declined=declined_docs)
     for rel in docs:
         print(f"{verb} {rel} (named in the .specyrd/AGENTS.md load order)")
     if not docs:
@@ -130,6 +145,9 @@ def _refresh(project: Path, checkout: Path, *, dry_run: bool, prune: bool) -> No
         _report(written, orphans, dry_run=dry_run, pruned=prune, footer=False)
     else:
         print("stubs and managed blocks already current")
+    prefix = _prefix(checkout, project)
+    return {f"{prefix}{rel}" for rel in declined_docs} | {
+        rel for rel, sep, outcome in (entry.partition(" (") for entry in written) if sep and outcome.startswith(_DECLINED)}
 
 
 def _check(project: Path) -> tuple[bool, bool]:
@@ -191,89 +209,24 @@ def _apply(project: Path, checkout: Path, *, prune: bool) -> None:
     _report_line_caps(before, _capped_lines(project))
 
 
-def _preview_files(checkout: Path, project: Path) -> dict[Path, Path]:
-    """``{path in the preview tree: the regular file whose bytes it gets}``.
-
-    The inputs are git's tracked and unignored files, every ``.specyrd/`` file,
-    and the managed-block files ``refresh-stubs`` previews (``_block_previews``'s
-    selection, ignored or not), without ``.git`` or the project's ``work/``. Every
-    link is followed to the file or directory it names, so the preview tree
-    holds only regular files and no write in it can reach the checkout.
-    """
-    work = project / "work"
-    listed = git_text(["ls-files", "-z", "--cached", "--others", "--exclude-standard"], checkout)
-    rels = {Path(r) for r in (listed or "").split("\0") if r}
-    if listed is None:
-        rels = {p.relative_to(checkout) for p in checkout.rglob("*") if p.is_file() or p.is_symlink()}
-    rels |= {p.relative_to(checkout) for d in {checkout, project} for p in (d / ".specyrd").rglob("*")}
-    with tempfile.TemporaryDirectory() as scratch:   # _block_previews writes its previews here only
-        blocks = _block_previews(checkout, _prefix(checkout, project), Path(scratch))
-    rels |= {Path(entry.partition(" (")[0]) for entry in blocks}
-    files: dict[Path, Path] = {}
-    for rel in rels:
-        src = checkout / rel
-        if ".git" in rel.parts or src.is_relative_to(work):
-            continue
-        if src.is_file():
-            files[rel] = src
-        elif src.is_dir():   # a link to a directory: git lists it as one entry
-            seen: set[str] = set()
-            for dirpath, dirs, names in os.walk(src, followlinks=True):
-                seen.add(os.path.realpath(dirpath))
-                dirs[:] = [d for d in dirs if os.path.realpath(os.path.join(dirpath, d)) not in seen]
-                for name in names:
-                    full = Path(dirpath) / name
-                    if full.is_file():
-                        files[rel / full.relative_to(src)] = full
-    return files
-
-
-def _copy_checkout(files: dict[Path, Path], dest: Path) -> None:
-    """Write ``files`` into ``dest`` as regular files, then commit them once in a fresh git repo."""
-    for rel, src in files.items():
-        (dest / rel).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dest / rel)   # follows links: the copy is the content, never the link
-    # validate reads git (tracked files for touch zones, ignore rules): one commit of the copy.
-    for cmd in (["init", "-q"], ["add", "-A"],
-                ["-c", "user.name=specy-road", "-c", "user.email=upgrade@specy-road.invalid",
-                 "-c", "commit.gpgsign=false", "commit", "-q", "--no-verify", "-m", "upgrade preview"]):
-        subprocess.run(["git", "-C", str(dest), *cmd], check=False, capture_output=True)
-
-
-def _fingerprint(checkout: Path, files: dict[Path, Path]) -> dict[str, str]:
-    """What the dry run must leave as it was: git's status (ignored files too) and each preview input's hash.
-
-    ``--no-optional-locks`` keeps ``git status`` from rewriting the index, so this writes nothing.
-    """
-    status = git_text(["--no-optional-locks", "status", "--porcelain=v1", "-z", "--ignored"], checkout) or ""
-    out = {f"status {entry}": "" for entry in status.split("\0") if entry}
-    for rel, src in files.items():
-        try:
-            out[rel.as_posix()] = hashlib.sha256(src.read_bytes()).hexdigest()
-        except OSError:
-            out[rel.as_posix()] = "unreadable"
-    return out
-
-
 def _dry_run(project: Path, checkout: Path, *, prune: bool) -> int:
     """List what the refreshes would write, then validate a temporary copy with them applied."""
-    _refresh(project, checkout, dry_run=True, prune=prune)
+    declined = _refresh(project, checkout, dry_run=True, prune=prune)
     _section("applying the refreshes to a temporary copy, then validating it")
-    files = _preview_files(checkout, project)
-    before_run = _fingerprint(checkout, files)
+    files = preview_files(checkout, project)
+    before_run = fingerprint(checkout, files)
     with tempfile.TemporaryDirectory(prefix="specy-road-upgrade-") as tmp:
         copy = Path(tmp).resolve()
-        _copy_checkout(files, copy)
+        copy_tree(files, copy)
         copy_project = copy / project.relative_to(checkout)
+        kept = snapshot_declined(copy, declined)
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             before = _capped_lines(copy_project)
             _refresh(copy_project, copy, dry_run=False, prune=prune)
+        restore_declined(copy, kept)
         _report_line_caps(before, _capped_lines(copy_project))
         valid, _digest_ok = _check(copy_project)
-    after_run = _fingerprint(checkout, files)
-    changed = sorted({k.removeprefix("status ")[3:] if k.startswith("status ") else k
-                      for k in before_run.keys() ^ after_run.keys()}
-                     | {k for k in before_run.keys() & after_run.keys() if before_run[k] != after_run[k]})
+    changed = changed_paths(before_run, fingerprint(checkout, files))
     if changed:
         print(f"error: dry run modified {', '.join(changed)} in {checkout}; this is a bug in specy-road upgrade,"
               " please report it", file=sys.stderr)
