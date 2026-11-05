@@ -242,6 +242,7 @@ Do not pick these up.
 - `M21.1` on `feature/rm-move-node-chosen-id` since 2026-11-05
 - `M21.10` on `feature/rm-doctor-without-a-remote` since 2026-11-05
 - `M21.11` on `feature/rm-help-names-installed-commands` since 2026-11-05
+- `M21.12` on `feature/rm-joined-observations-need-a-defect` since 2026-11-05
 - `M21.7` on `feature/rm-steering-file-guard` since 2026-11-05
 - `M21.9` on `feature/rm-init-passes-own-checks` since 2026-11-05
 
