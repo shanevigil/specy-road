@@ -93,11 +93,37 @@ def test_a_line_matching_two_entries_prints_one_notice_with_both_behaviours(tmp_
             assert f"since {entry.since}: {entry.now}" in out[0]
 
 
-@pytest.mark.parametrize("line", [
-    "The first commit registers the service worker.",
-    "Register the plugin in the first commit of the app.",
-    "`specy-road finish-this-task` never deletes uncommitted work.",
-])
+NEAR_MISSES = {
+    "mark-implementation-reviewed --yes": [
+        "Answer --yes to the installer prompt once the review is marked done.",
+        "Mark the implementation reviewed in the tracker, then run apt-get install --yes.",
+    ],
+    "finish-this-task --on-complete": [
+        "Finish this task with git merge; the on-complete hook runs auto formatting.",
+        "Set --on-complete merge in the CI plugin config before you finish the task.",
+    ],
+    "do-next-available-task --local": [
+        "The pickup truck always pushes the trailer up the hill.",
+        "Our deploy script always pushes the tag; claim your slot in the calendar.",
+    ],
+    "finish-this-task --delete-branch": [
+        "`specy-road finish-this-task` never deletes uncommitted work.",
+        "Git never deletes a branch you have checked out when you finish the task.",
+    ],
+    "do-next-available-task --base": [
+        "The first commit registers the service worker.",
+        "Register the plugin in the first commit of the app; the work starts there.",
+        "The first commit registers the claim form with the insurer.",
+    ],
+}
+
+
+def test_the_near_miss_corpus_covers_every_entry() -> None:
+    assert set(NEAR_MISSES) == {f"{e.command} {e.flags[0]}" for e in CATALOGUE}
+    assert all(len(lines) >= 2 for lines in NEAR_MISSES.values())
+
+
+@pytest.mark.parametrize("line", [line for lines in NEAR_MISSES.values() for line in lines])
 def test_unrelated_prose_prints_no_notice(tmp_path: Path, capsys, line: str) -> None:
     assert _notices(tmp_path, capsys, line) == []
 

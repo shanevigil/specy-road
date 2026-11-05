@@ -6,8 +6,9 @@ project text that still states the old behaviour. ``validate`` reports such
 lines (:mod:`specy_road.agent_text_report`); it never rewrites them.
 
 A pattern that could match ordinary prose requires the command's name on the
-same line; the commandless first-commit pattern instead requires the claim's
-context (feature branch, registry, claim, in-progress or "the work").
+same line (pickup only beside "claim"); the commandless first-commit pattern
+instead requires a specy-road claim term: feature branch, ``registry.yaml`` or
+"register as in-progress".
 """
 
 from __future__ import annotations
@@ -54,7 +55,9 @@ CATALOGUE: tuple[BehaviourChange, ...] = (
         command="do-next-available-task",
         flags=("--local",),
         now="`--local` registers the claim in this checkout only and pushes nothing",
-        contradicts=_line_with(r"\b(?:do-next-available-task|pickup)\b", r"\balways\s+push"),
+        contradicts=_line_with(
+            r"\bdo-next-available-task\b|\bpickup\b.*\bclaim|\bclaim\b.*\bpickup\b", r"\balways\s+push"
+        ),
     ),
     BehaviourChange(
         since="0.3.1rc2",
@@ -74,7 +77,7 @@ CATALOGUE: tuple[BehaviourChange, ...] = (
         contradicts=_line_with(
             r"\bfirst\s+commit\b",
             r"\bregister(?:s|ed|ing)?\b",
-            r"\bfeature[-\s]branch|\bregistry\b|\bclaim\b|\bin-progress\b|\bthe\s+work\b",
+            r"\bfeature[-\s]branch|\bregistry\.yaml\b|\bregister\s+as\s+in-progress\b",
         ),
     ),
 )
