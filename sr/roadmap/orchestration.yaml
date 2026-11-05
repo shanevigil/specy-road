@@ -41,6 +41,7 @@ roster:
     roles: [reviewer]
     profile: model-profiles/spacexai-grok/grok-4.7.md
     harness: cursor
+    harness_model: grok-4.7-low
     billing_route: cursor_subscription
     # Low reasoning effort for faster reviews (maintainer, 2026-11-04).
     channels:
