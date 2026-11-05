@@ -290,13 +290,19 @@ def _pin_loop_mode(repo_root: Path, args) -> str | None:
     return None
 
 
-def _emit_plan(emitter: EventEmitter, plan: SessionPlan, fields: list[str] | None = None) -> None:
+def _emit_plan(
+    emitter: EventEmitter,
+    plan: SessionPlan,
+    repo_root: Path,
+    nodes: list[dict],
+    fields: list[str] | None = None,
+) -> None:
     if emitter.as_json and fields:   # exactly the selected keys, no event/ts envelope
         print(json.dumps(session_plan_to_dict(plan, fields)), flush=True)
     elif emitter.as_json:
         emitter.emit("plan", **session_plan_to_dict(plan))
     else:
-        emitter.emit("plan", text=render_session_plan_text(plan).rstrip())
+        emitter.emit("plan", text=render_session_plan_text(plan, repo_root=repo_root, nodes=nodes).rstrip())
 
 
 def _run_loop(
@@ -349,7 +355,7 @@ def run_session(args) -> int:
             repo_root, args.under, allow_unauthored=args.allow_unauthored,
             prefer_agentic=args.prefer_agentic,
         )
-        _emit_plan(emitter, plan, args.fields)
+        _emit_plan(emitter, plan, repo_root, _nodes, args.fields)
         return EXIT_OK
     mode_error = _pin_loop_mode(repo_root, args)
     if mode_error is not None:

@@ -14,11 +14,19 @@ from tests.unauthored_repo_helpers import FILLED, unauthored_repo
 
 from specy_road.bundled_scripts.brief_dependency_context import unwritten_sheet_line, without_placeholder_intent
 from specy_road.bundled_scripts.generate_brief import index, load_nodes, render_brief
-from specy_road.bundled_scripts.planning_sheet_bootstrap import PROMOTE_PLACEHOLDER, render_feature_sheet_template
+from specy_road.bundled_scripts.planning_sheet_bootstrap import (
+    LEGACY_PROMOTE_PLACEHOLDER,
+    PROMOTE_PLACEHOLDER,
+    render_feature_sheet_template,
+)
 
 PROMOTED = (
     "## Intent\n\nUsers wait.\n\nPromoted from brainstorm idea `i-1` (feature). "
     f"{PROMOTE_PLACEHOLDER}\n\n## Approach\n\nCache the export.\n"
+)
+LEGACY_PROMOTED = (
+    "## Intent\n\nUsers wait.\n\nPromoted from brainstorm idea `i-1` (feature). "
+    f"{LEGACY_PROMOTE_PLACEHOLDER}\n\n## Approach\n\nCache the export.\n"
 )
 SCAFFOLD_INTENT = "What **this** slice delivers"
 
@@ -48,6 +56,14 @@ def test_placeholder_intents_become_one_line_each(tmp_path: Path) -> None:
     assert "Constraints, major steps, and how you will verify done." in brief   # ancestor's other sections stay
 
 
+def test_legacy_promote_intent_in_dependency_brief_is_one_line(tmp_path: Path) -> None:
+    brief = _brief(tmp_path, {"M1": "scaffold", "M1.1": FILLED, "M2": FILLED, "M3": LEGACY_PROMOTED})
+
+    assert LEGACY_PROMOTE_PLACEHOLDER not in brief
+    assert "Users wait." not in brief
+    assert brief.count("_`M3` (Leaf 4): its planning sheet is not written yet._") == 1
+
+
 def test_written_intents_are_inlined_as_before(tmp_path: Path) -> None:
     authored = FILLED.replace("one row per node", "one row per edge")
     brief = _brief(tmp_path, {"M1": authored, "M1.1": FILLED, "M2": FILLED, "M3": FILLED})
@@ -67,3 +83,10 @@ def test_without_placeholder_intent_swaps_only_the_intent_body() -> None:
     assert out.split("## Approach", 1)[1] == sheet.rstrip("\n").split("## Approach", 1)[1]
     written = FILLED.format(nid="M1")
     assert without_placeholder_intent(written, node) == written
+    legacy = (
+        "## Intent\n\nUsers wait.\n\nPromoted from brainstorm idea `i-1` (feature). "
+        f"{LEGACY_PROMOTE_PLACEHOLDER}\n\n## Approach\n\nDone.\n"
+    )
+    assert without_placeholder_intent(legacy, node).startswith(
+        f"## Intent\n\n{unwritten_sheet_line(node)}\n\n## Approach\n"
+    )

@@ -24,17 +24,6 @@ entries:
     started: '2026-11-03'
     owner: savigil
     implementation_review: pending
-  - codename: worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout
-    node_id: M14.3
-    branch: feature/rm-worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout
-    touch_zones:
-      - specy_road/worktree_prune.py
-      - specy_road/bundled_scripts/worktree_cli.py
-      - tests/
-      - specy_road/worktree_delete_set.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts
     node_id: M13.8
     branch: feature/rm-a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts
@@ -82,19 +71,6 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
-  - codename: reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round
-    node_id: M14.6
-    branch: feature/rm-reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round
-    touch_zones:
-      - specy_road/review_delegate.py
-      - specy_road/review_usage.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/bundled_scripts/worker_cli_render.py
-      - tests/
-      - specy_road/bundled_scripts/worker_cli.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
   - codename: working-roster-in-one-command-and-validated-profiles
     node_id: M15.11
     branch: feature/rm-working-roster-in-one-command-and-validated-profiles
@@ -114,26 +90,6 @@ entries:
       - docs/orchestration-roster.md
       - docs/design-notes/model-aware-orchestration-proposal.md
       - tests/
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: promoted-leaf-is-never-stuck-on-an-empty-approach
-    node_id: M15.8
-    branch: feature/rm-promoted-leaf-is-never-stuck-on-an-empty-approach
-    touch_zones:
-      - specy_road/bundled_scripts/brainstorm_promote.py
-      - specy_road/bundled_scripts/planning_sheet_bootstrap.py
-      - specy_road/bundled_scripts/author_approach.py
-      - specy_road/planning_scaffold_check.py
-      - specy_road/cli.py
-      - specy_road/cli_usage.py
-      - docs/brainstorming.md
-      - tests/
-      - specy_road/bundled_scripts/do_next_task_leaf_guards.py
-      - specy_road/bundled_scripts/session_plan_render.py
-      - specy_road/bundled_scripts/orchestrate_cli.py
-      - specy_road/bundled_scripts/brief_dependency_context.py
-      - specy_road/bundled_scripts/grind_session.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
@@ -204,16 +160,6 @@ entries:
       - specy_road/agent_ignores.py
       - specy_road/bundled_scripts/validate_roadmap_checks.py
     started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record
-    node_id: M14.7
-    branch: feature/rm-session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record
-    touch_zones:
-      - specy_road/bundled_scripts/session_cli.py
-      - specy_road/session_presence.py
-      - tests/
-    started: '2026-11-05'
     owner: savigil
     implementation_review: pending
   - codename: file-limits-baseline-and-upgrade-report

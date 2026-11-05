@@ -48,9 +48,10 @@ def test_promote_skeleton_is_a_placeholder(tmp_path: Path) -> None:
     root, nodes = unauthored_repo(tmp_path, {"M1": "scaffold"})
     _promote(root, nodes[0])
     reason = placeholder_sheet(root, nodes[0])
-    assert reason is not None and "brainstorm promote's placeholder under ## Intent" in reason
+    assert reason is not None and "brainstorm promote's placeholder under ## Approach" in reason
     assert scaffold_sheet(root, {**nodes[0], "acceptance": ["works"]}) == (
-        f"{nodes[0]['planning_dir']} still has brainstorm promote's placeholder under ## Intent"
+        f"{nodes[0]['planning_dir']} still has brainstorm promote's placeholder under ## Approach; "
+        "`specy-road author-approach M1` prints the prompt to write it"
     )
 
 
@@ -61,7 +62,8 @@ def test_a_leftover_scaffold_approach_is_a_placeholder(tmp_path: Path) -> None:
     reason = placeholder_sheet(root, nodes[0])
     assert reason is not None and "## Approach" in reason
     assert scaffold_sheet(root, nodes[0]) == (
-        f"{nodes[0]['planning_dir']} still has scaffold-planning's placeholder under ## Approach"
+        f"{nodes[0]['planning_dir']} still has scaffold-planning's placeholder under ## Approach; "
+        "`specy-road author-approach M1` prints the prompt to write it"
     )
 
 

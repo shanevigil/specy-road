@@ -215,14 +215,14 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M14` Nested repos and review-gate integrity `nested-repos-and-review-gate-integrity` — phase — **Not Started**
   - `M14.1` Approvals never carry across unreviewed changes in a sibling repository `approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` — task — **Not Started**
   - `M14.2` doctor never offers to remove a live leaf's worktree or branch `doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch` — task — **Complete**
-  - `M14.3` worktree prune refuses to delete another repository's worktree or checkout `worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout` — task — **Not Started**
+  - `M14.3` worktree prune refuses to delete another repository's worktree or checkout `worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout` — task — **Complete**
   - `M14.4` nested_repos that a project can adopt without pushing: local landing, local base, sibling diffs and checks `nested-repos-that-a-project-can-adopt-without-pushing-local-landing-local-base-sibling-diffs-and-checks` — milestone — **Not Started**
     - `M14.4.1` Per nested repository, land by push, locally or by hand, and base worktrees on the remote or local tip `per-nested-repository-land-by-push-locally-or-by-hand-and-base-worktrees-on-the-remote-or-local-tip` — task — **Complete**
     - `M14.4.2` review-packet includes sibling repository diffs `review-packet-includes-sibling-repository-diffs` — task — **Not Started**
     - `M14.4.3` worker reconcile and the post-run check see sibling repositories `worker-reconcile-and-the-post-run-check-see-sibling-repositories` — task — **Not Started**
   - `M14.5` An approve with no recorded probe is flagged, and policy can refuse to count it `an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it` — task — **Not Started**
-  - `M14.6` Reviewer usage is visible: review usage, reviewers in the node total, RUN logs kept per round `reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round` — task — **Not Started**
-  - `M14.7` session end finds this agent's session by worktree and branch when the derived id has no record `session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record` — task — **Not Started**
+  - `M14.6` Reviewer usage is visible: review usage, reviewers in the node total, RUN logs kept per round `reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round` — task — **Complete**
+  - `M14.7` session end finds this agent's session by worktree and branch when the derived id has no record `session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record` — task — **Complete**
   - `M14.8` The implementation-zone check runs before a review is spent, and knows about sibling repositories `the-implementation-zone-check-runs-before-a-review-is-spent-and-knows-about-sibling-repositories` — task — **Not Started**
   - `M14.9` review rca launches the root-cause analyst like review delegate, and says what to do when no analyst is available `review-rca-launches-the-root-cause-analyst-like-review-delegate-and-says-what-to-do-when-no-analyst-is-available` — task — **Not Started**
   - `M14.10` Escalation recognises a converging loop and handoff status shows the findings trend `escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend` — task — **Not Started**
@@ -235,7 +235,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.5` Host effects policy: workers and reviewers do not take over the screen or change shared services, the guard denies such commands, and a message can interrupt a turn `host-effects-policy-and-interruptible-worker-messages` — task — **Not Started**
   - `M15.6` The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes `rework-prompt-carries-the-accepted-rca` — task — **Complete**
   - `M15.7` file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count `file-limits-baseline-and-upgrade-report` — task — **Not Started**
-  - `M15.8` A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it `promoted-leaf-is-never-stuck-on-an-empty-approach` — task — **Not Started**
+  - `M15.8` A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it `promoted-leaf-is-never-stuck-on-an-empty-approach` — task — **Complete**
   - `M15.9` Harness launches survive large prompts and a harness binary off PATH, for every role `harness-launches-survive-large-prompts-and-binaries-off-path` — task — **Not Started**
   - `M15.10` Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff `try-a-roster-before-it-lands` — task — **Complete**
   - `M15.11` A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors `working-roster-in-one-command-and-validated-profiles` — task — **Not Started**
@@ -270,9 +270,6 @@ Do not pick these up.
 - `M12.4.1` on `feature/rm-per-area-quality-scores-in-the-digest-from-review-history` since 2026-11-04
 - `M13.8` on `feature/rm-a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts` since 2026-11-04
 - `M14.10` on `feature/rm-escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend` since 2026-11-04
-- `M14.3` on `feature/rm-worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout` since 2026-11-04
-- `M14.6` on `feature/rm-reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round` since 2026-11-04
-- `M14.7` on `feature/rm-session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record` since 2026-11-05
 - `M15.11` on `feature/rm-working-roster-in-one-command-and-validated-profiles` since 2026-11-04
 - `M15.13` on `feature/rm-worker-loop-friction-sync-until-and-ready-only-resume` since 2026-11-04
 - `M15.15` on `feature/rm-upgrade-ships-the-templates-prompts-reference` since 2026-11-05
@@ -280,7 +277,6 @@ Do not pick these up.
 - `M15.21` on `feature/rm-linked-worktrees-resolve-root-and-symlinked-envs` since 2026-11-04
 - `M15.22` on `feature/rm-project-preferences-local-decisions-footer-summary-landing` since 2026-11-04
 - `M15.7` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
-- `M15.8` on `feature/rm-promoted-leaf-is-never-stuck-on-an-empty-approach` since 2026-11-04
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
 ## Reaching the detail behind this
