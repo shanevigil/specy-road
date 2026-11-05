@@ -39,18 +39,38 @@ def _finish(cmd: str, returncode: int, stdout: str) -> dict[str, Any]:
     return out
 
 
+def _launch_exit_code(err: OSError) -> int:
+    return 127 if isinstance(err, FileNotFoundError) else 126
+
+
+def _subprocess_output(*, shell: bool, cmd: str | None = None, argv: list[str] | None = None) -> tuple[int, str]:
+    try:
+        r = subprocess.run(cmd if shell else argv, shell=shell, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT, text=True, errors="replace", check=False)
+        return r.returncode, r.stdout or ""
+    except OSError as e:
+        return _launch_exit_code(e), str(e)
+
+
 def run_check(cmd: str) -> dict[str, Any]:
-    """Run ``cmd`` in a shell from the current directory, as the executor would."""
-    r = subprocess.run(cmd, shell=True, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                       text=True, errors="replace", check=False)
-    return _finish(cmd, r.returncode, r.stdout or "")
+    """Run ``cmd`` in a shell from the current directory, as the executor would.
+
+    Returns ``{cmd, exit, tail}``; on exit 0, may add ``warning`` when the tail matches :data:`FAILURE_MARKERS`.
+    Process launch failures become exit 126 or 127 with the ``OSError`` text in ``tail``.
+    """
+    code, out = _subprocess_output(shell=True, cmd=cmd)
+    return _finish(cmd, code, out)
 
 
 def run_argv(argv: list[str]) -> dict[str, Any]:
-    """Run ``argv`` without a shell; ``cmd`` in the result is ``shlex.join(argv)``."""
-    r = subprocess.run(argv, shell=False, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                       text=True, errors="replace", check=False)
-    return _finish(shlex.join(argv), r.returncode, r.stdout or "")
+    """Run ``argv`` without a shell; ``cmd`` in the result is ``shlex.join(argv)``.
+
+    Returns ``{cmd, exit, tail}``; on exit 0, may add ``warning`` when the tail matches :data:`FAILURE_MARKERS`.
+    Process launch failures become exit 126 or 127 with the ``OSError`` text in ``tail``.
+    """
+    cmd = shlex.join(argv)
+    code, out = _subprocess_output(shell=False, argv=argv)
+    return _finish(cmd, code, out)
 
 
 def parse_run_argv(spec: str) -> list[str]:

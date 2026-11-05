@@ -14,13 +14,14 @@ import argparse
 
 from specy_road.bundled_scripts import review_cli, review_packet, role_prompt
 from specy_road.cli import registered_agent_command_names
-from specy_road.ready_run_checks import parse_run_argv
+from specy_road.ready_run_checks import parse_run_argv, run_argv, run_check
 from specy_road.review_files import load_ready, reviews_dir
 from specy_road.review_gate_ready import add_ready_parser
 
 # Examples named in ``--run-argv`` help (must stay in sync with ``add_ready_parser``).
 RUN_ARGV_HELP_REFUSED = ("not-json", "[]", "{}", "[1]", '[""]')
 RUN_ARGV_HELP_ACCEPTED = ('["echo", "ok"]', '["echo", ""]')
+RUN_ARGV_PARSE_REFUSED = (*RUN_ARGV_HELP_REFUSED, '["", "tail"]')
 
 
 def _run_argv_help() -> str:
@@ -221,16 +222,13 @@ def test_run_argv_help_examples_match_parse_run_argv() -> None:
     assert "first element is non-empty" in help_text
     for spec in RUN_ARGV_HELP_REFUSED:
         assert spec in help_text
-        with pytest.raises(ValueError):
-            parse_run_argv(spec)
     for spec in RUN_ARGV_HELP_ACCEPTED:
         assert spec in help_text
-        assert parse_run_argv(spec) == json.loads(spec)
 
 
 @pytest.mark.parametrize(
     "spec",
-    ["not-json", "[]", "{}", "[1]", '[""]', '["", "tail"]'],
+    RUN_ARGV_PARSE_REFUSED,
     ids=["invalid_json", "empty_array", "non_array", "non_string", "empty_program", "empty_program_with_tail"],
 )
 def test_parse_run_argv_refuses_invalid_shapes(spec: str) -> None:
@@ -310,4 +308,51 @@ def test_ready_validates_every_run_and_run_argv_before_executing(
         assert r.ok, r.errors
         assert any(v.get("tail") == "shell-ok" for v in r.data["verify"])
         assert any("argv-ok" in (v.get("tail") or "") for v in r.data["verify"])
+
+
+@pytest.mark.parametrize(
+    "case,expect_exit",
+    [
+        ("missing", 127),
+        ("not_executable", 126),
+        ("directory", 126),
+        ("bad_interpreter", 127),
+    ],
+)
+def test_run_argv_launch_os_errors(tmp_path: Path, case: str, expect_exit: int) -> None:
+    if case == "missing":
+        argv = ["/definitely/missing/program"]
+    elif case == "not_executable":
+        path = tmp_path / "noexec"
+        path.write_text("not a program\n", encoding="utf-8")
+        path.chmod(0o644)
+        argv = [str(path)]
+    elif case == "directory":
+        argv = [str(tmp_path)]
+    else:
+        script = tmp_path / "bad.sh"
+        script.write_text("#!/no/such/interpreter\n", encoding="utf-8")
+        script.chmod(0o755)
+        argv = [str(script)]
+    row = run_argv(argv)
+    assert row["exit"] == expect_exit
+    assert row["tail"] and row["tail"] != "(no output)"
+    assert "warning" not in row
+
+
+def test_run_check_missing_command_exits_127_without_oserror() -> None:
+    row = run_check("/definitely/missing/program")
+    assert row["exit"] == 127
+    assert "warning" not in row
+
+
+def test_ready_run_argv_missing_executable_refuses_without_writing_ready(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    capsys.readouterr()
+    spec = json.dumps(["/definitely/missing/program"])
+    ready_path = reviews_dir(repo, "M1.1") / "READY-opus.md"
+    assert _cli("ready", "M1.1", "--model", "opus", "--run-argv", spec, "--repo-root", str(repo)) == 1
+    err = capsys.readouterr().err
+    assert "failing verifier" in err and "127" in err
+    assert not ready_path.exists()
 
