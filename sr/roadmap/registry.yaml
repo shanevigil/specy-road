@@ -145,3 +145,17 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: move-node-chosen-id
+    node_id: M21.1
+    branch: feature/rm-move-node-chosen-id
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_move_node.py
+      - specy_road/bundled_scripts/roadmap_outline_ops.py
+      - specy_road/bundled_scripts/roadmap_outline_renumber.py
+      - specy_road/gui_app_routes_nodes.py
+      - specy_road/gui_app_models.py
+      - docs/roadmap-authoring.md
+      - tests/
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
