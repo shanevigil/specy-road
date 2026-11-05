@@ -247,3 +247,29 @@ Each probe ran dry, then real, on the same repo, through the public `run_upgrade
 - A concurrent edit of `AGENTS.md` between planning and writing: `conflicts(plan)` names it, and the real run writes nothing.
 - A dry run that writes into the checkout (existing guard test): still exits 2 and names the path.
 - Other importers of the removed module: none (grep). It remains named only in the roadmap zones listed above.
+
+## Fix round 4 (sol-low F1/F2, composer-2.5)
+
+Review at `25631350` blocked on hard links in the mirror and on `len(seen) == 2` in the parity parametrized test.
+
+- **F1 (hard link):** `Mirror._copy_file` tracked `(st_dev, st_ino)` and used `os.link` to the first sandbox path for each inode instead of always `copy2`, so two hard-linked names stay one file in every mirror (dry-run copy included). Layout `agents-md-and-claude-md-hard-linked` and `test_sol_low_f1_hard_linked_agents_and_claude_see_the_same_bytes_in_both` run `run_upgrade` dry then real under a validator that requires equal bytes; both exit 0 and the checkout is untouched by dry-run.
+- **F2 (test integrity):** the parametrized parity test records validated trees in separate `dry_trees` and `real_trees` lists (one monkeypatch per run) and asserts `dry_trees[-1] == real_trees[-1]` without pinning how many times `validate_at` runs.
+
+Verification: `pytest -q -n 4 -p no:cacheprovider tests/test_agents_md_report.py tests/test_skill_mirrors.py tests/test_upgrade.py tests/test_upgrade_parity.py tests/test_upgrade_plan_parity.py tests/test_upgrade_preview.py tests/test_init_project.py tests/test_refresh_stubs.py` → 85 passed. `specy-road file-limits --repo-root sr` → OK.
+
+## Probes (fix round 4)
+
+- `os.link(AGENTS.md, CLAUDE.md)` with byte-equality validator (sol-low F1): dry and real both exit 0; checkout unchanged by dry-run. Fixed (was dry 1 / real 0).
+- Parametrized parity layouts including new hard-link layout: dry and real trees equal under recording validator; no `len(seen) == 2` assertion. Pass.
+- Symlink alias layout and Sol F1/F2 injected validators: unchanged; still pass.
+- `Mirror.build()` on a tiny tree with hard-linked files: second name is same inode as first in sandbox (`os.stat` ino match). Pass.
+
+## Added
+
+Fix round 4 only (`none` entries omitted where nothing new was added outside the items below):
+
+- `Mirror._hardlinks` and `build()` clearing it: maps checkout inode to the first copied sandbox path so later paths with the same inode are linked, not copied (sol-low F1).
+- Branch in `_copy_file` using `os.lstat` + `os.link` for duplicate inodes (sol-low F1).
+- `_hardlink_alias` layout and `agents-md-and-claude-md-hard-linked` in `LAYOUTS`: regression for hard-linked managed files (sol-low F1).
+- `test_sol_low_f1_hard_linked_agents_and_claude_see_the_same_bytes_in_both`: public `run_upgrade` dry-then-real under byte-equality validator (sol-low F1).
+- Parity test uses separate `dry_trees` / `real_trees` and compares last observations per run (sol-low F2).
