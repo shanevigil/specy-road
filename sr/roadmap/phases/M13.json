@@ -333,7 +333,7 @@
       "parent_id": "M13",
       "planning_dir": "planning/M13.12_quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules_538b8591-af5b-4a0c-8b37-d3d988eb9a5f.md",
       "sibling_order": 12,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Quieter, accurate validate notices: untracked touch zones, the managed .gitignore comment, and tracked files under new ignore rules",
       "touch_zones": [
         "specy_road/bundled_scripts/touch_zone_tracked.py",

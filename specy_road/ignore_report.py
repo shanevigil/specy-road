@@ -33,6 +33,7 @@ it describes go ahead unchanged.
 from __future__ import annotations
 
 import os
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -48,7 +49,10 @@ HIDDEN_NOTE = "untracked; now hidden from git status"
 REAL_HEADER = ".gitignore: new rules match files already in the tree (nothing was untracked):"
 ESTIMATE_HEADER = ("estimated (dry run): .gitignore's new rules would match files already in the tree "
                    "(nothing is untracked); the real run reports exactly what changed:")
-UNTRACK_HINT = "  to stop tracking one of the files above: git rm --cached <path>"
+UNTRACK_LABEL = "  to stop tracking them, run from the git root (specy-road never runs it):"
+#: What to do about a tracked file a new rule matches: printed after the command, which is never run for you.
+UNTRACK_HINT = ("  keep tracking a file meant to be shared (the rule only hides new files); "
+                "untrack one that is session scratch")
 #: Variables that would point a git call in a scratch repository back at the checkout (set inside git hooks).
 _REPO_ENV = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY")
 
@@ -222,7 +226,8 @@ def estimate(git_root: Path, prefix: str, seed: str, apply: Callable[..., object
 
 
 def print_matches(matches: list[Match] | str, *, estimated: bool) -> None:
-    """The note: a skip line, or at most :data:`MATCH_LIMIT` paths then a count, and the untrack hint."""
+    """The note: a skip line, or at most :data:`MATCH_LIMIT` paths then a count, and for tracked
+    paths the ``git rm --cached`` command (printed, never run) with when to keep tracking instead."""
     if isinstance(matches, str):
         print(f"ignore check skipped: {matches}")
         return
@@ -233,5 +238,25 @@ def print_matches(matches: list[Match] | str, *, estimated: bool) -> None:
         print(f"  {path} ({rule}): {note}")
     if len(matches) > MATCH_LIMIT:
         print(f"  … and {len(matches) - MATCH_LIMIT} more")
-    if any(note == TRACKED_NOTE for _, _, note in matches):
+    tracked = [path for path, _, note in matches if note == TRACKED_NOTE]
+    if tracked:
+        for line in untrack_lines(tracked, [path for path, _, note in matches[:MATCH_LIMIT] if note == TRACKED_NOTE]):
+            print(line)
         print(UNTRACK_HINT)
+
+
+def command_line(argv: list[str]) -> str:
+    """A line to copy and paste: ``argv`` shell-quoted, indented, and nothing else on it."""
+    return "    " + shlex.join(argv)
+
+
+def untrack_lines(tracked: list[str], listed: list[str]) -> list[str]:
+    """The ``git rm --cached`` command for the ``listed`` tracked paths, each command on a line of its own.
+
+    When ``tracked`` has more than were listed, a note line and the command that lists them follow.
+    """
+    lines = [UNTRACK_LABEL, command_line(["git", "rm", "--cached", "--", *listed])]
+    if rest := len(tracked) - len(listed):
+        lines += [f"  {rest} more tracked file(s) match a new rule; this lists every tracked file git ignores:",
+                  command_line(["git", "ls-files", "-ci", "--exclude-standard"])]
+    return lines
