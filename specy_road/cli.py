@@ -12,6 +12,7 @@ from pathlib import Path
 
 from specy_road.cli_init_argparse import build_specy_road_init_parser
 from specy_road.cli_usage import USAGE_TEXT
+from specy_road.doc_links import link_toolkit_docs
 from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, project_root, resolve_repo_root
 from specy_road.version_skew import warn_if_running_version_older
 
@@ -212,13 +213,15 @@ def _args_repo_root_first(args: list[str]) -> list[str]:
     return pair + rest_
 
 
-def _run(script: str, args: list[str]) -> None:
+def _run(script: str, args: list[str], prog: str = "specy-road") -> None:
     """Run a bundled entrypoint in its own process.
 
-    ``-m`` on the installed package, so the child resolves imports the same way
-    the parent did. This used to exec the file by path with a hand-built
-    PYTHONPATH prefix, which was the only thing making the scripts'
-    bare-module-name imports resolve.
+    The module runs by name on the installed package, so the child resolves
+    imports the same way the parent did. This used to exec the file by path with
+    a hand-built PYTHONPATH prefix, which was the only thing making the scripts'
+    bare-module-name imports resolve. ``sys.argv[0]`` is set to ``prog`` (what
+    ``-m`` would set to the module file) so argparse help reads ``usage:
+    specy-road <cmd>`` rather than the module's file name.
     """
     module = f"specy_road.bundled_scripts.{script.removesuffix('.py')}"
     if not (bundled_scripts_dir() / script).is_file():
@@ -227,7 +230,11 @@ def _run(script: str, args: list[str]) -> None:
             file=sys.stderr,
         )
         raise SystemExit(2)
-    proc = subprocess.run([sys.executable, "-m", module, *args])
+    boot = (
+        "import runpy, sys; sys.argv[0] = sys.argv[1]; del sys.argv[1]; "
+        f"runpy.run_module({module!r}, run_name='__main__')"
+    )
+    proc = subprocess.run([sys.executable, "-c", boot, prog, *args])
     if proc.returncode != 0:
         # Avoid chaining from CalledProcessError: bundled scripts already print
         # stderr messages; surfacing subprocess.check_call adds a noisy traceback.
@@ -361,7 +368,7 @@ def _maybe_warn_running_version_older(cmd: str, rest: list[str]) -> None:
 def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ("-h", "--help"):
-        print(USAGE_TEXT)
+        print(link_toolkit_docs(USAGE_TEXT))
         raise SystemExit(0)
     if argv[0] in ("--version", "-V", "version"):
         from specy_road.toolkit_version import running_toolkit_version
@@ -371,7 +378,7 @@ def main(argv: list[str] | None = None) -> None:
     cmd, *rest = argv
     _maybe_warn_running_version_older(cmd, rest)
     if cmd in _SCRIPTS:
-        _run(_SCRIPTS[cmd], rest)
+        _run(_SCRIPTS[cmd], rest, prog=f"specy-road {cmd}")
     elif cmd in _CRUD_COMMANDS:
         _run("roadmap_crud.py", _args_repo_root_first([cmd, *rest]))
     elif cmd in _ARCHIVE_COMMANDS:

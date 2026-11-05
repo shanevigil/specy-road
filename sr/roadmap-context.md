@@ -11,7 +11,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M15` rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction `rc3-multi-harness-adoption-friction` — phase — **Not Started**
   - `M15.1` RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command `rc-install-docs-cover-extras-and-direct-wheel-url` — task — **Complete**
   - `M15.2` A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch `claude-code-reviewer-works-on-a-subscription-login` — task — **Complete**
-  - `M15.3` prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged `prompt-channel-cli-launches-nothing-without-run` — task — **Not Started**
+  - `M15.3` prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged `prompt-channel-cli-launches-nothing-without-run` — task — **Complete**
   - `M15.4` Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current `parallel-pr-leaves-reconcile-bookkeeping-by-rule` — task — **Complete**
   - `M15.6` The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes `rework-prompt-carries-the-accepted-rca` — task — **Complete**
   - `M15.8` A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it `promoted-leaf-is-never-stuck-on-an-empty-approach` — task — **Complete**
@@ -34,7 +34,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.33` A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed `refused-review-record-leaves-a-trace` — task — **Complete**
   - `M15.34` The executor prompt states the test rules that the reviewer's excess checklist enforces `executor-prompt-states-the-test-rules` — task — **Complete**
   - `M15.35` The review packet never lists .git or a path under it as an uncommitted reference `packet-never-lists-dot-git-as-uncommitted` — task — **Complete**
-  - `M15.36` Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode `worker-launch-never-depends-on-claude-default-mode` — task — **Not Started**
+  - `M15.36` Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode `worker-launch-never-depends-on-claude-default-mode` — task — **Complete**
   - `M15.37` Review notes: a part joined by a comma or 'and' is a second observation only when it names a defect `comma-or-and-part-counts-only-when-it-names-a-defect` — task — **Complete**
   - `M15.38` add-node caps a title-derived codename at 64 characters so the planning file name fits `derived-codename-capped-so-planning-names-fit` — task — **Complete**
   - `M15.39` A roadmap write that fails part-way restores every file it changed `failed-roadmap-write-restores-every-file` — task — **Complete**
@@ -112,7 +112,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M16.69` Cursor workers launch sandboxed without --force unless the roster opts in `cursor-workers-no-force-by-default` — task — **Not Started**
   - `M16.70` Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships `release-docs-0-3-1` — task — **Not Started**
 - `M21` rc4 stabilization: fixes filed after the themed-milestone rule `rc4-stabilization` — phase — **Not Started**
-  - `M21.1` move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree `move-node-chosen-id` — task — **Not Started**
+  - `M21.1` move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree `move-node-chosen-id` — task — **Complete**
   - `M21.2` CLI indent, outdent and group-nodes re-level siblings in one transaction validated once `outline-group-cli` — task — **Not Started**
   - `M21.3` Opt-in rewrite of prose id references after a move, and a standalone rename-refs `rewrite-id-refs` — task — **Not Started**
   - `M21.4` remove-node deletes an empty never-started node and names every blocker otherwise `remove-node` — task — **Not Started**
@@ -122,7 +122,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.8` The queued-message worker test waits for the idle state, not just the second completion event `queue-message-test-waits-for-idle` — task — **Complete**
   - `M21.9` A freshly initialized project passes its own checks `init-passes-own-checks` — task — **Not Started**
   - `M21.10` doctor works in a repo with no remote `doctor-without-a-remote` — task — **Not Started**
-  - `M21.11` Help text names installed commands `help-names-installed-commands` — task — **Not Started**
+  - `M21.11` Help text names installed commands `help-names-installed-commands` — task — **Complete**
   - `M21.12` A review record is refused for joined observations only when one of them names a defect `joined-observations-need-a-defect` — task — **Not Started**
 - `M17` 0.3.2: PM GUI shows orchestration and worktree state `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface `pm-gui-orchestration-plan` — gate — **Not Started**
@@ -146,6 +146,14 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M18.17` Under delta review, one approval per round still checks the whole leaf against the merge base on a fixed checklist `one-full-leaf-checklist-review-per-round` — task — **Not Started**
   - `M18.18` Plan review after planning, and a staleness check before pickup `plan-review-and-pickup-staleness` — task — **Not Started**
   - `M18.19` orchestrate plan and review delegate apply reviewer preferences from the decisions ledger and say when they do `plan-applies-preferences` — task — **Not Started**
+  - `M18.20` Unattended grind loop: several workers at once, zone-overlap scheduling, per-model caps, review hand-off and landing when the gate is met `unattended-grind-loop` — task — **Not Started**
+  - `M18.21` Automatic fix rounds in the unattended loop, capped by the fix-round budget, then parked for a human `auto-fix-rounds` — task — **Not Started**
+  - `M18.22` doctor reports a stalled orchestration: a silent loop, failed or stalled workers, idle leaves, a stuck review queue, undelegated ready leaves and a dirty checkout `orchestration-supervision` — task — **Not Started**
+  - `M18.23` Executor account pools: weighted accounts per roster entry, session-account affinity, and failover on a usage limit `executor-account-pools` — task — **Not Started**
+  - `M18.24` review run: the required reviewers in order for one leaf, a concurrency cap across leaves, and one retry on a refused record `review-run-queue` — task — **Not Started**
+  - `M18.25` A channels.cli reviewer writes its final answer to a file specy-road names, and its transcript is kept beside the run record `reviewer-answer-file` — task — **Not Started**
+  - `M18.26` Amending a claimed leaf's touch zones or one acceptance line records the reason, commits on the leaf branch and re-arms its review `claimed-leaf-amendments` — task — **Not Started**
+  - `M18.27` Append-only zone paths such as CHANGELOG.md do not serialize leaves, and finish merges their added lines `append-only-zone-paths` — task — **Not Started**
 - `M19` Adopter-project features: upgrade, agent-file layering, planning hygiene, project tooling (after 0.3.1) `adopter-features` — phase — **Not Started**
   - `M19.1` Configurable code-analysis tools `analysis-tools` — task — **Not Started**
   - `M19.2` Research reminders leave validate `research-due-in-doctor` — task — **Not Started**
@@ -231,18 +239,16 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
-- `M15.36` on `feature/rm-worker-launch-never-depends-on-claude-default-mode` since 2026-11-05
 - `M16.69` on `feature/rm-cursor-workers-no-force-by-default` since 2026-11-05
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M21.1` on `feature/rm-move-node-chosen-id` since 2026-11-05
 - `M21.10` on `feature/rm-doctor-without-a-remote` since 2026-11-05
-- `M21.11` on `feature/rm-help-names-installed-commands` since 2026-11-05
 - `M21.12` on `feature/rm-joined-observations-need-a-defect` since 2026-11-05
+- `M21.2` on `feature/rm-outline-group-cli` since 2026-11-05
+- `M21.4` on `feature/rm-remove-node` since 2026-11-05
 - `M21.7` on `feature/rm-steering-file-guard` since 2026-11-05
 - `M21.9` on `feature/rm-init-passes-own-checks` since 2026-11-05
 
@@ -252,14 +258,13 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 28 | 16 | 5.75 | 83% | 15 | 3 |
+| `docs` **flagged** | 26 | 12 | 5.57 | 86% | 23 | 3 |
 | `planning` **flagged** | 1 | 0 | 3.00 | 100% | 0 | 0 |
-| `specy_road` **flagged** | 47 | 23 | 4.88 | 79% | 23 | 6 |
-| `tests` **flagged** | 50 | 25 | 4.80 | 80% | 23 | 6 |
-| `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
+| `specy_road` **flagged** | 48 | 20 | 4.64 | 79% | 32 | 6 |
+| `tests` **flagged** | 50 | 21 | 4.59 | 79% | 32 | 6 |
+| `CHANGELOG.md` | 2 | 0 | 4.00 | 50% | 4 | 0 |
 | `README.md` | 1 | 1 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
-| `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

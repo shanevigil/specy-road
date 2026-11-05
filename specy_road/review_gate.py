@@ -56,6 +56,7 @@ from specy_road.review_gate_ready import (  # noqa: F401 — public names re-exp
 from specy_road.review_signing import (  # noqa: F401 — SigningError re-exported
     SigningError, notes_problem, verify)
 from specy_road.review_deferral import apply_deferrals
+from specy_road.review_model_check import model_mismatch_problem
 from specy_road.review_bookkeeping import CARRY_NOTE, count_at_later_commit, only_planning_or_review_bookkeeping_since
 from specy_road.review_files import (HUMAN, PACKET_NAME, ReviewFile, executor_blocked_gate_problems, latest_ready,
                                      list_review_history, list_reviews, review_semantic_errors, reviews_dir,
@@ -204,7 +205,8 @@ def _eligibility(repo_root: Path, config: dict[str, Any], node: dict[str, Any], 
         return None, (f"{node_id} is {node_sensitivity(node)!r} and {model!r} may process only "
                       f"{entry_may_process(entry)} (roster may_process)")
     why = (rerun_problem(config["policy"], review.data) or notes_problem(review.data, review.body)
-           or _signature_problem(config, model, review) or routing_problem(repo_root, config, review.data))
+           or _signature_problem(config, model, review) or routing_problem(repo_root, config, review.data)
+           or model_mismatch_problem(review.data))
     family = family_of(config, model)
     why = why or (None if family else f"no family for {model!r}: add it to the roster")
     if why := fresh_session_problem(config["policy"], review.data, why):   # exactly FRESH_SESSION when alone

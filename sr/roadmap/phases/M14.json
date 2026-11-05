@@ -114,6 +114,145 @@
         "specy_road/bundled_scripts/validate_roadmap.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "With `grind.auto_fix: true` (git-workflow.schema.json, default false) the M18.20 loop sends one fix round for each blocking review at a claim's branch tip: `worker message --fix-round` to the leaf's resumable worker, else `worker delegate --rework`; at most one round per blocked commit, and none while a review of that leaf or its worker is running",
+        "The cap is `policy.max_fix_rounds`, counted as `handoff status` counts it; `grind.auto_fix: true` with max_fix_rounds unset is a validate error naming both keys; when the budget is spent the loop sends no round, appends `<ID>  # parked after <n> fix rounds at <sha>` to work/grind-hold.txt and emits a `parked` event carrying fix_round_budget's `next` and `next_why`",
+        "A round counts as done only when the branch tip moved past the blocked commit and READY names the new tip; a worker that ends without moving the tip gets no second automatic round for that commit, and the loop emits `fix_round_no_change`",
+        "When handoff status's next step for the leaf is a root-cause analysis, the loop sends no fix round and emits `escalated` with the printed command; it launches no analyst (M18.10)",
+        "Tests with a stub harness: a block triggers one round; a second tick at the same commit sends none; a running review defers the round; a spent budget parks the leaf with the hold line; an unchanged tip gives fix_round_no_change; an escalated leaf gives escalated. Out of scope: the fix-round prompt text (M14.11, M18.15)",
+        "Estimated net line change (informational, not a gate): package about +120, tests about +150"
+      ],
+      "codename": "auto-fix-rounds",
+      "dependencies": [
+        "93090bae-7125-4985-b4b4-eb442dd27cf0"
+      ],
+      "id": "M18.21",
+      "node_key": "277d950f-03e1-439c-a269-4bc97c9223db",
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.21_auto-fix-rounds_277d950f-03e1-439c-a269-4bc97c9223db.md",
+      "sibling_order": 20,
+      "status": "Not Started",
+      "title": "Automatic fix rounds in the unattended loop, capped by the fix-round budget, then parked for a human",
+      "touch_zones": [
+        "specy_road/orchestration/grind/",
+        "specy_road/git_workflow_config.py",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "docs/grind-session.md",
+        "docs/orchestration-review.md",
+        "tests/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A version-2 roster entry's `run:` block for claude-code or codex may list `accounts:` (each {id, dir, weight >= 0}); the adapter sets the harness's account directory variable (CLAUDE_CONFIG_DIR for claude-code, CODEX_HOME for codex) to `dir`; `accounts` on another harness, a duplicate id or a dir that does not exist is a validate error naming the entry; the roster holds directories only, never credentials",
+        "`worker delegate` picks, among accounts with weight > 0 that are not paused, the one with the lowest (launches + 1) / weight, records `account` in the worker record (worker-record.schema.json) and counts launches in work/.workers/account-counts.json; weight 0 drains an account (no new sessions)",
+        "`worker message` and `worker resume` use the account recorded on the worker (the one holding its native session); when that account is drained, paused or no longer listed, they start a fresh session with the same worker id on a picked account and print one line saying so",
+        "A worker turn that fails with a usage-limit error (the classification M18.10 adds) records that account as paused_until (the reset time from the output, else one hour later) in the gitignored orchestration.local.yaml overlay, and `worker resume` of that worker re-sends the turn once on another account; while every account of an entry is paused the entry is unavailable to orchestrate assign",
+        "Tests with stub harness outputs: weights 60/40 over ten delegates give 6 and 4; a resume stays on its account; a drained account starts a fresh session elsewhere; a usage-limit failure pauses the account and the re-send uses the other; all accounts paused makes the entry unavailable; docs show a two-account entry",
+        "Estimated net line change (informational, not a gate): package about +220, tests about +200"
+      ],
+      "codename": "executor-account-pools",
+      "dependencies": [
+        "a6cbaac4-954f-42dc-811b-81b9edb6922c",
+        "51f22f17-0d11-4dc4-8709-d39d406991c5",
+        "67af8a9a-a8ef-4724-9702-be691a497a55",
+        "11bf6abc-dac4-45f7-bb5e-1116efcc4ce2"
+      ],
+      "id": "M18.23",
+      "node_key": "02e391e9-790d-4dd9-aca2-f90476452e77",
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.23_executor-account-pools_02e391e9-790d-4dd9-aca2-f90476452e77.md",
+      "sibling_order": 22,
+      "status": "Not Started",
+      "title": "Executor account pools: weighted accounts per roster entry, session-account affinity, and failover on a usage limit",
+      "touch_zones": [
+        "specy_road/orchestration/roster/",
+        "specy_road/orchestration/workers/",
+        "specy_road/availability_overlay.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "specy_road/schemas/worker-record.schema.json",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "docs/orchestration-roster.md",
+        "docs/orchestration-workers.md",
+        "tests/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A reviewer `channels.cli` (or M16.63 `run:` command) may name `{answer}`: specy-road passes a fresh path outside the checked tree (answer_scratch, as for native codex `-o`) and files that file's content as the final answer under review_answer's strict rule; the command's stdout and stderr then go to RUN-<model>.log only and are never parsed as the answer; without `{answer}` today's rule holds",
+        "With `{answer}`, an empty or missing answer file is a rerun request that says so and quotes the transcript's last 20 lines, so a provider usage-limit or capacity message is visible; the native codex, cursor and claude-code reviewer commands are unchanged",
+        "validate warns, naming the entry and the replacement, for a reviewer command that passes the prompt as text (`<prompt>`) rather than `{prompt}` (Linux caps one argument at 128 KiB) and for a codex reviewer command run with `workspace-write` (its Linux sandbox writes mount points that the post-run write check refuses)",
+        "docs/orchestration-reviewer-output.md documents `{answer}` with one wrapper example per CLI (codex with `-o {answer}`; cursor and claude writing their last JSON object to `{answer}` and printing the rest)",
+        "Tests: a wrapper that narrates and writes a valid answer file files the record; an empty answer file is a rerun with the transcript tail; a `<prompt>` reviewer entry and a workspace-write codex entry each get one warning",
+        "Estimated net line change (informational, not a gate): package about +100, tests about +120"
+      ],
+      "codename": "reviewer-answer-file",
+      "dependencies": [
+        "67af8a9a-a8ef-4724-9702-be691a497a55",
+        "a6cbaac4-954f-42dc-811b-81b9edb6922c",
+        "e716461f-1e04-4374-a33b-18028d5c4db3"
+      ],
+      "id": "M18.25",
+      "node_key": "7b515ad9-51a7-4179-902c-67a59765dc97",
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.25_reviewer-answer-file_7b515ad9-51a7-4179-902c-67a59765dc97.md",
+      "sibling_order": 24,
+      "status": "Not Started",
+      "title": "A channels.cli reviewer writes its final answer to a file specy-road names, and its transcript is kept beside the run record",
+      "touch_zones": [
+        "specy_road/orchestration/",
+        "specy_road/review_answer.py",
+        "specy_road/review_delegate.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "docs/orchestration-reviewer-output.md",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "`grind.append_only` (git-workflow.schema.json: a list of repo-relative file paths, default empty; the project template and sr/roadmap/git-workflow.yaml list CHANGELOG.md) names files that leaves only add lines to; one rule in shared_zones.py makes a zone equal to an append-only path overlap nothing, and grind-session --plan's parallel batches, validate's registry overlap warning and the M18.20 scheduler use it; a directory zone that contains the path still overlaps as today",
+        "When finish-this-task's merge conflicts only in append-only paths (besides the generated files it already resolves) and in each one both sides only added lines relative to the merge base, finish keeps the integration side's added lines followed by the branch's and completes the merge; when either side deleted or changed a base line, it refuses as today, naming the file",
+        "validate notices an append-only entry that is a directory or matches no tracked file, naming it",
+        "Tests: two leaves zoning CHANGELOG.md fall in one parallel batch; both add entries under the same heading and land in turn with both entries kept; a branch that edits an existing CHANGELOG.md line is refused; a directory entry gets the notice",
+        "Estimated net line change (informational, not a gate): package about +90, tests about +120"
+      ],
+      "codename": "append-only-zone-paths",
+      "dependencies": [
+        "6434cf7b-842b-4532-96e3-1821655a5fb5",
+        "275b701c-4eb9-4214-ae77-7ab34a7d197a",
+        "d9fbe9b7-3b23-4095-9bf5-a8da923d2075"
+      ],
+      "id": "M18.27",
+      "node_key": "7123b582-bd70-43fd-aab0-039057fec588",
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.27_append-only-zone-paths_7123b582-bd70-43fd-aab0-039057fec588.md",
+      "sibling_order": 26,
+      "status": "Not Started",
+      "title": "Append-only zone paths such as CHANGELOG.md do not serialize leaves, and finish merges their added lines",
+      "touch_zones": [
+        "specy_road/shared_zones.py",
+        "specy_road/orchestration/grind/",
+        "specy_road/bundled_scripts/validate_registry_overlap.py",
+        "specy_road/git_workflow_config.py",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "specy_road/templates/project/roadmap/git-workflow.yaml",
+        "specy_road/finish_land_integration.py",
+        "sr/roadmap/git-workflow.yaml",
+        "docs/grind-session.md",
+        "docs/git-workflow.md",
+        "tests/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }

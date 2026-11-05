@@ -11,7 +11,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15` | rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction | phase | — | Not Started |
 | `M15.1` | RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command | task | Agentic-led | Complete |
 | `M15.2` | A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch | task | Agentic-led | Complete |
-| `M15.3` | prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged | task | Agentic-led | Not Started |
+| `M15.3` | prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged | task | Agentic-led | Complete |
 | `M15.4` | Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current | task | Agentic-led | Complete |
 | `M15.6` | The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes | task | Agentic-led | Complete |
 | `M15.8` | A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it | task | Agentic-led | Complete |
@@ -34,7 +34,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.33` | A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed | task | Agentic-led | Complete |
 | `M15.34` | The executor prompt states the test rules that the reviewer's excess checklist enforces | task | Agentic-led | Complete |
 | `M15.35` | The review packet never lists .git or a path under it as an uncommitted reference | task | Agentic-led | Complete |
-| `M15.36` | Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode | task | Agentic-led | Not Started |
+| `M15.36` | Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode | task | Agentic-led | Complete |
 | `M15.37` | Review notes: a part joined by a comma or 'and' is a second observation only when it names a defect | task | Agentic-led | Complete |
 | `M15.38` | add-node caps a title-derived codename at 64 characters so the planning file name fits | task | Agentic-led | Complete |
 | `M15.39` | A roadmap write that fails part-way restores every file it changed | task | Agentic-led | Complete |
@@ -133,6 +133,14 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M18.17` | Under delta review, one approval per round still checks the whole leaf against the merge base on a fixed checklist | task | Agentic-led | Not Started |
 | `M18.18` | Plan review after planning, and a staleness check before pickup | task | Agentic-led | Not Started |
 | `M18.19` | orchestrate plan and review delegate apply reviewer preferences from the decisions ledger and say when they do | task | Agentic-led | Not Started |
+| `M18.20` | Unattended grind loop: several workers at once, zone-overlap scheduling, per-model caps, review hand-off and landing when the gate is met | task | — | Not Started |
+| `M18.21` | Automatic fix rounds in the unattended loop, capped by the fix-round budget, then parked for a human | task | — | Not Started |
+| `M18.22` | doctor reports a stalled orchestration: a silent loop, failed or stalled workers, idle leaves, a stuck review queue, undelegated ready leaves and a dirty checkout | task | — | Not Started |
+| `M18.23` | Executor account pools: weighted accounts per roster entry, session-account affinity, and failover on a usage limit | task | — | Not Started |
+| `M18.24` | review run: the required reviewers in order for one leaf, a concurrency cap across leaves, and one retry on a refused record | task | — | Not Started |
+| `M18.25` | A channels.cli reviewer writes its final answer to a file specy-road names, and its transcript is kept beside the run record | task | — | Not Started |
+| `M18.26` | Amending a claimed leaf's touch zones or one acceptance line records the reason, commits on the leaf branch and re-arms its review | task | — | Not Started |
+| `M18.27` | Append-only zone paths such as CHANGELOG.md do not serialize leaves, and finish merges their added lines | task | — | Not Started |
 | `M19` | Adopter-project features: upgrade, agent-file layering, planning hygiene, project tooling (after 0.3.1) | phase | — | Not Started |
 | `M19.1` | Configurable code-analysis tools | task | — | Not Started |
 | `M19.2` | Research reminders leave validate | task | — | Not Started |
@@ -156,7 +164,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M20.1` | Posture advisor: plan the M20 leaves from the research | task | Human-led | Not Started |
 | `M20.2` | Probe each reviewer harness for instruction-file leakage into fresh sessions | task | Agentic-led | Not Started |
 | `M21` | rc4 stabilization: fixes filed after the themed-milestone rule | phase | — | Not Started |
-| `M21.1` | move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree | task | Agentic-led | Not Started |
+| `M21.1` | move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree | task | Agentic-led | Complete |
 | `M21.2` | CLI indent, outdent and group-nodes re-level siblings in one transaction validated once | task | Agentic-led | Not Started |
 | `M21.3` | Opt-in rewrite of prose id references after a move, and a standalone rename-refs | task | Agentic-led | Not Started |
 | `M21.4` | remove-node deletes an empty never-started node and names every blocker otherwise | task | Agentic-led | Not Started |
@@ -166,7 +174,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.8` | The queued-message worker test waits for the idle state, not just the second completion event | task | — | Complete |
 | `M21.9` | A freshly initialized project passes its own checks | task | — | Not Started |
 | `M21.10` | doctor works in a repo with no remote | task | — | Not Started |
-| `M21.11` | Help text names installed commands | task | — | Not Started |
+| `M21.11` | Help text names installed commands | task | — | Complete |
 | `M21.12` | A review record is refused for joined observations only when one of them names a defect | task | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

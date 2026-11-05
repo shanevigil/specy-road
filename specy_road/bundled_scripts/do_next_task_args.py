@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from specy_road.doc_links import link_toolkit_docs
 from specy_road.git_workflow_config import ON_COMPLETE_MODES
 from specy_road.runtime_paths import add_repo_root_arg
 
@@ -179,7 +180,7 @@ def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
         choices=sorted(ON_COMPLETE_MODES),
         default=None,
         metavar="MODE",
-        help=(
+        help=link_toolkit_docs(
             "Completion workflow for this task: pr, merge, or auto. "
             "Sets session for finish-this-task; skips TTY prompt when set. "
             "See roadmap/git-workflow.yaml on_complete and docs/git-workflow.md."

@@ -32,7 +32,7 @@ sid = sys.argv[-1]
 for ln in step.get("preamble", []):   # raw lines before the stream (a forged marker, stray text)
     print(ln, flush=True)
 if not step.get("plain"):   # a plain-text harness prints no event stream at all
-    print(json.dumps({"type": "system", "subtype": "init", "session_id": sid, "model": "fake"}), flush=True)
+    print(json.dumps({"type": "system", "subtype": "init", "session_id": sid, "model": step.get("model", "fake")}), flush=True)
 for ln in step.get("lines", []):   # raw lines inside the stream, before the final message
     print(ln, flush=True)
 if step.get("write"):
@@ -107,8 +107,9 @@ def launches(calls: list[list[str]], flag: str) -> list[list[str]]:
 
 
 def verdict_step(repo: Path, verdict: str = "approve", model: str = "opus") -> dict:
-    """A step whose final JSON specy-road files as a valid REVIEW-opus.md for the commit under review."""
-    return {"answer": review_output(git(repo, "rev-parse", "HEAD"), model=model, verdict=verdict,
+    """A step whose final JSON specy-road files as a valid REVIEW-opus.md for the commit under review; its harness
+    reports ``model``, the rostered model (M15.3)."""
+    return {"model": model, "answer": review_output(git(repo, "rev-parse", "HEAD"), model=model, verdict=verdict,
                                     a1="pass" if verdict == "approve" else "fail")}
 
 
