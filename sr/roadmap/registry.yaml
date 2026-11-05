@@ -149,7 +149,8 @@ entries:
       - sr/planning/M21.12_joined-observations-need-a-defect_50155a9c-8f7d-47e7-9fe3-ff77461243ac.md
     started: '2026-11-05'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-05T23:42:47+00:00'
   - codename: remove-node
     node_id: M21.4
     branch: feature/rm-remove-node
