@@ -273,3 +273,25 @@ Fix round 4 only (`none` entries omitted where nothing new was added outside the
 - `_hardlink_alias` layout and `agents-md-and-claude-md-hard-linked` in `LAYOUTS`: regression for hard-linked managed files (sol-low F1).
 - `test_sol_low_f1_hard_linked_agents_and_claude_see_the_same_bytes_in_both`: public `run_upgrade` dry-then-real under byte-equality validator (sol-low F1).
 - Parity test uses separate `dry_trees` / `real_trees` and compares last observations per run (sol-low F2).
+
+## Fix round 5 (sol-low F1 test integrity, composer-2.5)
+
+Review at `fb1677d5` blocked on `owned_seen == [False, False]` in `test_sol_f2_a_refused_canonical_skill_is_unowned_in_both_manifests` (class: **injected-validator observation list length** pinned to exactly two calls).
+
+- **F1:** Replaced the exact two-element list with `assert owned_seen and not any(owned_seen)`, keeping the dry/real exit and error parity and the outside-file byte assertion.
+
+Merged `origin/WIP/improvements-0-3-1` before the fix (merge commit on branch).
+
+Verification: same targeted pytest as round 4 → 85 passed. `specy-road file-limits` → OK.
+
+## Probes (fix round 5)
+
+- Grep `tests/test_upgrade*.py` for `len(...) == N` and `owned_seen == [` call-count pins: only the F2 line above; fixed.
+- Parametrized parity test still uses `dry_trees[-1] == real_trees[-1]` without length pin: pass (re-run targeted suite).
+- Sol F2 test after change: dry/real `(1, [error…])`, all ownership observations false, outside skill bytes unchanged: pass.
+
+## Added
+
+Fix round 5:
+
+- none (assertion-only change in existing test; no new helpers, guards, mocks or tests)
