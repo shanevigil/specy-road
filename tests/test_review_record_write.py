@@ -81,15 +81,15 @@ def test_the_tripwire_compares_git_status_entries_and_hand_off_files_by_content(
     (repo / "untracked.txt").write_text("before\n")
     (reviews / "PACKET.md").write_text("packet\n")
     before = snapshot(repo, reviews, "opus")
-    assert written(before, snapshot(repo, reviews, "opus")) == []
+    assert written(before, snapshot(repo, reviews, "opus", before)) == []
     for name in ("RUN-opus.log", "RUN-opus.json", "notes-opus.md", ".review-run.lock"):
         (reviews / name).write_text("specy-road's\n")
-    assert written(before, snapshot(repo, reviews, "opus")) == []
+    assert written(before, snapshot(repo, reviews, "opus", before)) == []
     (repo / "src" / "a.py").write_text("dirty, then changed by the reviewer\n")
     (repo / "untracked.txt").write_text("after\n")
     (reviews / "PACKET.md").unlink()
     (reviews / "RUN-sol.log").write_text("not this run's\n")
-    assert written(before, snapshot(repo, reviews, "opus")) == [
+    assert written(before, snapshot(repo, reviews, "opus", before)) == [
         "src/a.py", "untracked.txt", "work/reviews/M1.1/PACKET.md", "work/reviews/M1.1/RUN-sol.log"]
 
 

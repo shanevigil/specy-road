@@ -31,6 +31,11 @@ if step.get("write"):
     w = step["write"]
     os.makedirs(os.path.dirname(w["path"]), exist_ok=True)       # a new directory too
     open(w["path"], "w").write(w["text"])
+if step.get("symlink"):   # a path replaced by a symlink (a tracked file's typechange, or a new link)
+    ln = step["symlink"]
+    if os.path.lexists(ln["path"]):
+        os.unlink(ln["path"])
+    os.symlink(ln["target"], ln["path"])
 if step.get("say"):   # an assistant message before the result
     print(json.dumps({"type": "assistant", "session_id": sid,
                       "message": {"content": [{"type": "text", "text": step["say"]}]}}), flush=True)

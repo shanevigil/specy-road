@@ -293,7 +293,7 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
             reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
             filed = None if before is None else file_review(
                 repo_root, node_id, model, reviews, answer=final_answer(h.adapter, run_text(log), answer),
-                before=before, after=snapshot(cwd, reviews, model), ref=ref,
+                before=before, after=snapshot(cwd, reviews, model, before), ref=ref,
                 launch_mode=h.launch_mode, sign_key=sign_key)
             _close(repo_root, t, model, run, path, reason, filed)
         except BaseException as e:   # an interrupt or a launch refusal still closes the record

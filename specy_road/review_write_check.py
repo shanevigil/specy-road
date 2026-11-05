@@ -16,13 +16,17 @@ before and after the run, and :func:`written` reports a review failure when:
 Out of scope, by design: identical-byte rewrites, writes undone before the run ends, metadata-only changes (mode,
 times, links), git-ignored files outside the hand-off directory, and Git internals (``HEAD``, refs, reflogs, the
 index, hooks, config). A reviewer that commits is stopped by the launch's bans, not detected here.
+
+Paths are compared as text and no symlink is followed: an entry is excluded only when its path, as ``git status``
+prints it, lies under the hand-off directory, whose place is fixed before the run (:func:`snapshot`).
 """
 
 from __future__ import annotations
 
 import hashlib
+import os
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from specy_road.git_subprocess import git_stdout, git_text
 from specy_road.review_files import HISTORY_DIRNAME, REVIEW_PREFIX
@@ -40,15 +44,20 @@ def _own_records(reviews: Path, model: str) -> list[Path]:
 
 
 def _hash(path: Path) -> str:
+    """SHA-256 of a file's bytes; of a symlink's target text, never what it points at (no link is followed)."""
     try:
+        if path.is_symlink():
+            return "symlink " + hashlib.sha256(os.readlink(path).encode()).hexdigest()
         return hashlib.sha256(path.read_bytes()).hexdigest()
     except OSError:   # a directory (a new untracked repository), or removed meanwhile
         return "unreadable"
 
 
-def _status(top: Path, reviews: Path) -> dict[str, str]:
-    """Each path ``git status`` lists at ``top``, as its status code and content hash; the hand-off directory is
-    left to :func:`_handoff` (its run files change during every run)."""
+def _status(top: Path, handoff: PurePosixPath | None) -> dict[str, str]:
+    """Each path ``git status`` lists at ``top``, as its status code and :func:`_hash`. An entry is left to
+    :func:`_handoff` only when its path, **as git prints it**, is under ``handoff`` (the hand-off directory relative
+    to ``top``, or ``None`` when it lies outside the checkout): the decision is lexical, so a tracked file swapped for
+    a symlink into the hand-off directory (``T``) is still the reviewer's write."""
     out = (git_stdout(["status", "--porcelain", "-z", "--untracked-files=all"], top) or "").split("\0")
     state: dict[str, str] = {}
     entries = iter(out)
@@ -58,26 +67,37 @@ def _status(top: Path, reviews: Path) -> dict[str, str]:
         code, rel = e[:2], e[3:]
         if "R" in code or "C" in code:   # a rename or copy: the next field is its source path
             next(entries, None)
-        path = top / rel
-        if path.resolve() != reviews and reviews not in path.resolve().parents:
-            state[rel] = f"{code} {_hash(path)}"
+        parts = PurePosixPath(rel.rstrip("/")).parts
+        if handoff is None or parts[:len(handoff.parts)] != handoff.parts:
+            state[rel] = f"{code} {_hash(top / rel)}"
     return state
 
 
 def _handoff(reviews: Path, model: str, top: Path) -> dict[str, str]:
-    """Each file under the hand-off directory by content hash, but the notes and specy-road's run files."""
+    """Each file under the hand-off directory by :func:`_hash`, but the notes and specy-road's run files directly in
+    it. Nothing is followed: a symlinked directory is one entry (its target text), not a walk into its target; the
+    hand-off directory itself replaced by a symlink is an entry too."""
     skip = {f"notes-{model}.md", f"RUN-{model}.json", f"RUN-{model}.log", LOCK_NAME}
-    files = sorted(p for p in reviews.rglob("*") if p.is_file() and not (p.parent == reviews and p.name in skip)) \
-        if reviews.is_dir() else []
-    return {(str(p.relative_to(top)) if top in p.parents else str(p)): _hash(p) for p in files}
+    def shown(p: Path) -> str:
+        return str(p.relative_to(top)) if p.is_relative_to(top) else str(p)
+    if reviews.is_symlink():
+        return {shown(reviews): _hash(reviews)}
+    files: list[Path] = []
+    for d, dirs, names in os.walk(reviews):   # followlinks=False: a symlinked directory is listed, not walked
+        base = Path(d)
+        files += [base / n for n in names if not (base == reviews and n in skip)]
+        files += [base / n for n in dirs if (base / n).is_symlink()]
+    return {shown(p): _hash(p) for p in sorted(files)}
 
 
 @dataclass
 class Snapshot:
-    """What the tripwire compares; ``records`` keeps this model's own record bytes, ``top`` the checkout."""
+    """What the tripwire compares; ``records`` keeps this model's own record bytes, ``top`` the checkout and
+    ``reviews`` the hand-off directory, both fixed by the snapshot before the run (:func:`snapshot`)."""
     state: dict[str, str]
     records: dict[Path, bytes] = field(default_factory=dict)
     top: Path = Path()
+    reviews: Path = Path()
 
     def restore(self, reviews: Path, model: str) -> None:
         """Put this model's record files back as they were: a record the run filed itself never counts."""
@@ -88,12 +108,21 @@ class Snapshot:
             p.write_bytes(data)
 
 
-def snapshot(cwd: Path, reviews: Path, model: str) -> Snapshot:
-    """The leaf worktree's ``git status`` at ``cwd`` and the hand-off directory ``reviews`` (module docstring)."""
-    top = Path(git_text(["rev-parse", "--show-toplevel"], cwd) or cwd).resolve()
-    reviews = reviews.resolve()
-    state = {**_status(top, reviews), **_handoff(reviews, model, top)}
-    return Snapshot(state, {p: p.read_bytes() for p in _own_records(reviews, model)}, top)
+def snapshot(cwd: Path, reviews: Path, model: str, like: Snapshot | None = None) -> Snapshot:
+    """The leaf worktree's ``git status`` at ``cwd`` and the hand-off directory ``reviews`` (module docstring).
+
+    Where the checkout and the hand-off directory are is decided once, before the run, by the first snapshot (the
+    checkout git reports, and the hand-off directory's real path, which specy-road created); the snapshot after
+    the run passes it as ``like`` and reuses both, so nothing the reviewer could have changed is resolved or
+    followed. Each entry's path is then compared as text."""
+    if like is not None:
+        top, real = like.top, like.reviews
+    else:
+        top = Path(git_text(["rev-parse", "--show-toplevel"], cwd) or os.path.abspath(cwd))
+        real = reviews.resolve()   # before the run: specy-road's own directory
+    handoff = PurePosixPath(real.relative_to(top).as_posix()) if real.is_relative_to(top) else None
+    state = {**_status(top, handoff), **_handoff(real, model, top)}
+    return Snapshot(state, {p: p.read_bytes() for p in _own_records(real, model)}, top, real)
 
 
 def written(before: Snapshot, after: Snapshot) -> list[str]:

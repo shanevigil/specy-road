@@ -91,6 +91,8 @@ After the run a small tripwire (`specy_road/review_write_check.py`) reports a
    than the reviewer's notes (`notes-<model>.md`) and the run files specy-road
    itself writes (`RUN-<model>.json`, `RUN-<model>.log`, `.review-run.lock`).
 
+Paths are compared as text and no symlink is followed: an entry is left to rule 2 only when the path `git status` prints lies under the hand-off directory, whose place the snapshot before the run fixes (the snapshot after reuses it). A tracked file replaced by a symlink (`T`), a new symlink anywhere in the worktree, or the hand-off directory replaced by a symlink is a review failure; a symlink is hashed by its target text.
+
 It is a tripwire, **not a security boundary**. Out of scope by design:
 identical-byte rewrites, writes undone before the run ends, metadata-only
 changes (mode, times, links), git-ignored files outside the hand-off

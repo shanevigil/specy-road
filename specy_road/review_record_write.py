@@ -283,7 +283,7 @@ def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Pat
     before = snapshot(root, reviews, model)
     rc = run_logged(launch, adapter, root, path, transcript)
     outcome = file_review(root, reviews.name, model, reviews, answer=final_answer(adapter, run_text(path), output),
-                          before=before, after=snapshot(root, reviews, model), ref=ref,
+                          before=before, after=snapshot(root, reviews, model, before), ref=ref,
                           launch_mode=launch.launch_mode, sign_key=sign_key)
     print(f"{outcome.state}: {outcome.path or outcome.reason}", file=sys.stderr)
     # The outcome line goes last, for the run record's reviewer-failure event; but a rerun request after a harness

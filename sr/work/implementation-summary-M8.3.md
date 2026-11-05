@@ -734,6 +734,39 @@ WIP merged first, no conflicts.
 - Sol (`26d95ca0`) R1-R4: unchanged from fix round 1. R1 was withdrawn by the rescope; R2 and R3 are fixed by the `TURNS` table; R4 is fixed and `export --check` passes.
 - Targeted `pytest -q -n 4 -p no:cacheprovider` over 19 files (the 17 core reviewer files plus `test_review_strict_schema_removals.py` and `test_planned_test_changes.py`): 472 passed. `ruff`: clean. `file-limits`: OK.
 
+## Fix round 3 (Sol-low block at `d36faf66`: F1, A2 tripwire)
+
+WIP merged first, no conflicts.
+
+- **Class:** a decision in the tripwire made on a **resolved** path, that is, one that follows a symlink the reviewer could have created. `_status` resolved each `git status` entry before checking whether it lay in the hand-off directory. So `T src/a.py`, a tracked file replaced by a symlink into `work/reviews/<ID>/notes-<model>.md`, was excluded as if it were the notes. The same class reached three other places: `snapshot` re-resolved the checkout and the hand-off directory after the run; `_handoff` walked with `rglob`/`is_file`, which follow symlinks; and `_hash` read through symlinks.
+- **Design:** nothing reviewer-controllable is resolved or followed.
+  - The first snapshot fixes where the checkout and the hand-off directory are: git's toplevel, plus the hand-off directory's real path, which specy-road created before the run. The snapshot after the run takes `like=before` and reuses both.
+  - A `git status` entry is excluded only when its path **as git prints it** starts with the hand-off directory's checkout-relative parts (`PurePosixPath.parts` prefix). Every other entry (`M`, `A`, `D`, `T`, `R`, `C`, `??`) is compared.
+  - `_handoff` walks with `os.walk` (no following). A symlinked directory there is one entry. The hand-off directory itself replaced by a symlink is one entry.
+  - `_hash` hashes a symlink's target text, never its target.
+  - Only `notes-<model>.md`, `RUN-<model>.json`, `RUN-<model>.log` and the lock, directly in the hand-off directory, are excluded there.
+- **Callers:** `review delegate` and `run_and_file` (`prompt --channel cli`) pass `before` to the after-snapshot.
+- **Docs:** the `review_write_check` docstring and `docs/orchestration-reviewer-output.md` state the lexical rule. `docs/orchestration-review.md`: the WIP merge had brought it back to 406 lines, so the tripwire paragraph is folded into the launch paragraph (397).
+- **Tests:** `tests/test_review_tripwire_symlinks.py` (new; public `review delegate` and `prompt --channel cli`):
+  - `src/a.py` typechanged to a symlink (git reports `T src/a.py`), and a new untracked symlink, each pointing at the notes path (absolute and relative) or at a file outside the repository: a review failure naming exactly that path, and no record (6 cases);
+  - the same typechange through `prompt --channel cli`;
+  - a symlink to `src/` created inside the hand-off directory: one entry, not followed;
+  - the hand-off directory replaced by a symlink to `src/`: the exclusion does not move onto `src/`, and `src/a.py`, the directory and its lost `PACKET.md` are reported.
+  - The fake harness gained a `symlink` step.
+
+## Probes (fix round 3)
+
+- `grep resolve|realpath|is_relative_to` in `review_write_check.py`: one `resolve()` remains, on the hand-off directory in the **first** snapshot only (before the reviewer starts; specy-road's own directory). `is_relative_to` is used only between fixed paths (that real path and git's toplevel) and for display. No per-entry resolution remains.
+- `_status` exclusion: lexical prefix of git's printed path. Covered by a typechange into the notes (absolute and relative link text), a link out of the repo, and a new untracked link: all reported.
+- Rename/copy entries (`R`, `C`): the new path is compared and the source field is skipped. The new path is under the hand-off directory only if git prints it there.
+- `_handoff` walk: `os.walk(followlinks=False)`. A symlinked subdirectory is listed as an entry, never walked; tested.
+- Hand-off directory swapped for a symlink during the run: reported. The exclusion keeps the place fixed before the run; tested.
+- `_hash`: symlinks are hashed by `readlink` text, so a link's target content never stands in for the link.
+- Checkout toplevel: taken once from `git rev-parse --show-toplevel` before the run and reused. Before, it was resolved again after the run.
+- `Snapshot.restore` (puts back this model's record): it uses the caller's hand-off path, unchanged, and is reached only after a reported failure.
+- Sol (`26d95ca0`) R1-R4: unchanged. R1 was withdrawn by the rescope; R2 and R3 are fixed by `TURNS`; R4 is fixed and `export --check` passes.
+- Targeted `pytest -q -n 4 -p no:cacheprovider` over 20 files (the 19 from fix round 2 plus `test_review_tripwire_symlinks.py`): 481 passed. `ruff`: clean. `file-limits`: OK.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
