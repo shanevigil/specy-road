@@ -85,8 +85,10 @@ included, unless `--run` is given. A reviewer's command comes from its roster
 entry only: a `claude-code`, `codex` or `cursor` entry without `channels.cli`
 runs the read-only command above with the entry's model, and any other entry
 its `channels.cli`. The model is resolved one way for the shown command and the
-launch alike (`orchestration_config.harness_model`): the entry's
-`harness_model`, else the profile's `api_id`, else the roster `id`. Refused before launch, with the reason: an entry without
+launch alike (`review_model_check.resolve_effective_model`, which applies
+`orchestration_config.harness_model`): the entry's `harness_model`, else the
+profile's `api_id`, else the roster `id`; an empty or `unknown` result from any
+step is refused. Refused before launch, with the reason: an entry without
 either (the profile's `access.cli` is an example and is never run for a
 reviewer), a model that resolves to none (a profile `api_id` of `unknown` and
 no `harness_model`: the harness would run its own default under the rostered id;
@@ -103,7 +105,8 @@ command the tokenizer cannot split (an unbalanced quote) is refused.
 
 The reviewer runs in the leaf's own worktree, the one `git worktree list`
 shows with the claimed branch checked out, never in a checkout on the
-integration branch; `--worktree PATH` names another. Either must be the top
+integration branch; `--worktree PATH` names another. Without `--run` the
+command is always shown, with a note when no worktree qualifies. Either must be the top
 of a git checkout, must not have the integration branch checked out, and must
 have `HEAD` at the claimed branch's tip; otherwise `prompt` refuses. With no
 worktree at all, it refuses and names `--worktree PATH` and the `git worktree
@@ -112,9 +115,12 @@ add` that creates one.
 After the run, `specy_road/review_model_check.py` compares the model the
 harness reported (its first `system/init` event's `model`, as worker usage
 reads it, and each `result` event's `model`, or the one key of its
-`modelUsage`) with the roster entry's id, `harness_model` and profile names, after
-normalising case, separators and display names (`Claude Opus 5.5` is
-`claude-opus-5-5`). Any reported model that differs is a mismatch, so a line
+`modelUsage`) with the entry's one effective model
+(`review_model_check.resolve_effective_model`: `harness_model`, else the
+profile's `api_id`, else the roster `id`; empty or `unknown` resolves to none),
+after normalising case, separators and display names (`Claude Opus 5.5` is
+`claude-opus-5-5`), and with nothing else: not the roster label, and not the
+profile's other names when `harness_model` selects a different model. Any reported model that differs is a mismatch, so a line
 the model printed can add one but never hide one. The filed record carries
 `harness_model`; on a real mismatch it also carries `model_mismatch: true`, and the gate does not count
 it (`harness ran a different model`), which `handoff status` lists under who

@@ -27,11 +27,11 @@ from specy_road.bundled_scripts.role_prompt_stream import stream_and_capture
 from specy_road.git_subprocess import git_ok, git_text
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.model_profiles import Profile
-from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_role_env import CLAUDE_REVIEWER_AVOID_ENV
 from specy_road.review_record_write import (Outcome, answer_scratch, close_review_run, replace_file, run_and_file,
                                             write_schema)
 from specy_road.review_files import reviews_dir
+from specy_road.review_model_check import resolve_effective_model
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
 from specy_road.reviewer_auth import claude_launch_decision, launch_note
 from specy_road.reviewer_run_failure import _now, harness_error_line, save_run, turn_capacity_error
@@ -105,16 +105,16 @@ def bypass_problem(cli: str) -> str:
 
 
 def model_problem(prof: Profile | None, entry: dict[str, Any]) -> tuple[str | None, str]:
-    """``(model id, error)``: the model a reviewer's harness is told for roster ``entry``, resolved only by
-    :func:`~specy_road.orchestration_config.harness_model` (the entry's ``harness_model``, else the profile's
-    ``api_id``, else the roster id), or why there is none (an ``unknown`` or empty ``api_id`` and no
-    ``harness_model``: the harness would run some default model under this roster id). Every reviewer path that
-    shows or launches a command takes its model from here: :func:`reviewer_command` and :func:`run_default_reviewer`."""
-    model = harness_model(entry, prof.api_id if prof is not None else None)
-    if not (model or "").strip():
-        return None, (f"{entry.get('id')!r} resolves to no API model id (no roster harness_model, and its profile's "
-                      "api_id is unknown), so the harness would run some other model under this roster id; set the "
-                      "roster entry's harness_model or the profile's api_id")
+    """``(model id, error)``: the effective model a reviewer's harness is told for roster ``entry``
+    (:func:`~specy_road.review_model_check.resolve_effective_model`), or why there is none (empty or ``unknown``,
+    whether from ``harness_model``, the profile's ``api_id`` or the ``id``: the harness would run some default model
+    under this roster id). Every reviewer path that shows or launches a command takes its model from here:
+    :func:`reviewer_command` and :func:`run_default_reviewer`."""
+    model = resolve_effective_model(entry, prof)
+    if model is None:
+        return None, (f"{entry.get('id')!r} resolves to no API model id (its harness_model, else its profile's "
+                      "api_id, else its id is empty or unknown), so the harness would run some other model under this "
+                      "roster id; set the roster entry's harness_model or the profile's api_id")
     return model, ""
 
 
@@ -179,7 +179,7 @@ def _claimed_worktree(root: Path, branch: str | None) -> Path | None:
 
 
 def show_reviewer(prof: Profile | None, prompt_path: Path, entry: dict[str, Any], model: str, reviews: Path,
-                  cwd: Path) -> int:
+                  cwd: Path | None) -> int:
     """``prompt --role reviewer --channel cli`` without ``--run``: print the command (less the output-schema flags
     a run adds) and where it would run; start nothing, file nothing."""
     api_id, cli, err = reviewer_command(prof, entry, model)
@@ -194,7 +194,7 @@ def show_reviewer(prof: Profile | None, prompt_path: Path, entry: dict[str, Any]
                                                             harness_bin=entry.get("harness_bin"),
                                                             **({"mode": mode} if mode else {}))
         cli = _shown(launch.argv) + (f" < {prompt_path}" if launch.stdin is not None else "")
-    print(f"would run in {cwd}: {cli} (prompt: {prompt_path}); add --run to launch it and file its record",
+    print(f"would run in {cwd or 'the leaf worktree (none found)'}: {cli} (prompt: {prompt_path}); add --run to launch it and file its record",
           file=sys.stderr)
     return 0
 
@@ -324,13 +324,16 @@ def reviewer_turn(prof: Profile | None, out: Path, root: Path, entry: dict[str, 
     except ReviewTargetError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
-    cwd, err = leaf_worktree(root, reviewer_target, worktree)
-    err = err or reviewer_command(prof, entry, model)[2]   # refused before any run record or process
+    cwd, where = leaf_worktree(root, reviewer_target, worktree)
+    if not run:   # the preview always shows the command; the worktree is enforced only for a launch
+        rc = show_reviewer(prof, out, entry, model, reviews_dir(root, node_id), cwd)
+        if rc == 0 and where:
+            print(f"note: --run would refuse: {where}", file=sys.stderr)
+        return rc
+    err = where or reviewer_command(prof, entry, model)[2]   # refused before any run record or process
     if err:
         print(f"error: {err}", file=sys.stderr)
         return 1
-    if not run:
-        return show_reviewer(prof, out, entry, model, reviews_dir(root, node_id), cwd)
     reviewer_run = open_reviewer_cli_run(root, reviewer_target, model, entry.get("harness"))
     transcript: list[str] = []
     try:   # the run record is closed from the filing outcome, an interrupt's included: never from older records

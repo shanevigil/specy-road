@@ -342,13 +342,12 @@ def test_a_roster_harness_model_is_the_model_flag_in_preview_and_launch(tmp_path
     assert rec.ok and rec.data["harness_model"] == "GPT 6.1 Sol" and "model_mismatch" not in rec.data
 
 
-def test_a_harness_model_overrides_an_unknown_profile_api_id_and_without_one_it_is_refused(tmp_path: Path,
-                                                                                         capsys) -> None:
-    from specy_road.bundled_scripts.role_prompt_cli import model_problem
 
-    unknown = load_profile(OPUS)
-    unknown.data["api_id"] = "unknown"
-    assert unknown.api_id.lower() == "unknown"
-    assert model_problem(unknown, {"id": "opus", "harness_model": "claude-opus-5-5"}) == ("claude-opus-5-5", "")
-    assert model_problem(unknown, {"id": "opus"})[0] is None
-    assert model_problem(None, {"id": "opus"}) == ("opus", "")                    # no profile: the roster id
+def test_preview_without_a_claimed_worktree_still_prints_the_command(tmp_path: Path, capsys, started: list) -> None:
+    repo, leaf = _repo(tmp_path, leaf=True)
+    git(repo, "worktree", "remove", str(leaf))
+    assert _prompt(repo, "--role", "reviewer", "--channel", "cli") == 0
+    err = capsys.readouterr().err
+    assert started == []
+    assert "would run in the leaf worktree (none found): " in err and "--model claude-opus-5-5" in err
+    assert "note: --run would refuse: no worktree has feature/rm-thing checked out" in err

@@ -49,9 +49,8 @@ from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.generate_brief import index, load_nodes
 from specy_road.review_answer import (FILLED_BY_SPECY_ROAD, Rerun, drop_nulls, events, final_answer,
                                       output_schema, stream_lines)
-from specy_road.model_names import roster_match
 from specy_road.review_files import render_front_matter, review_path
-from specy_road.review_model_check import Check, check_note, check_run
+from specy_road.review_model_check import Check, check_note, check_run, rostered
 from specy_road.integrity_removals import target_unplanned_removals
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
 from specy_road.review_write_check import (  # re-exported: the post-run write check lives there (file limit)
@@ -383,8 +382,8 @@ def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Pat
     span: list[Any] = [0, 0, None]
     rc = run_logged(launch, adapter, cwd, path, transcript, span)
     text = run_text(path, *span)
-    entry, prof = roster_match(root, model)
-    reported, state = check_run(text, entry or {"id": model}, prof)
+    entry, prof = rostered(root, model)
+    reported, state = check_run(text, entry, prof)
     if note := check_note(state, reported, model):
         print(note, file=sys.stderr)
     outcome = file_review(root, reviews.name, model, reviews, answer=final_answer(adapter, text, output),

@@ -12,9 +12,11 @@ reports no model is a warning only.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any, Literal
 
 from specy_road.model_names import normalise, same_model  # noqa: F401 — normalise re-exported
+from specy_road.orchestration_config import harness_model
 from specy_road.worker_adapter_parsers import init_model
 
 MISMATCH_REASON = "harness ran a different model"
@@ -62,12 +64,43 @@ def check_run(lines: list[str] | str, entry: dict[str, Any], profile: Any = None
     return (models[0], "match") if models else (None, "unreported")
 
 
+def rostered(root: Path, model: str) -> tuple[dict[str, Any], Any]:
+    """``(entry, profile)`` for the roster entry whose ``id`` is exactly ``model`` (from the integration branch, like
+    the roster ``prompt`` launched from), and its pinned profile; ``({"id": model}, None)`` when there is none. An
+    exact id, never another entry whose ``harness_model`` or profile alias happens to equal it."""
+    from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry  # noqa: PLC0415
+
+    config, err = pinned_config(root)
+    entry = None if err else next((e for e in config.get("roster") or [] if e.get("id") == model), None)
+    if entry is None:
+        return {"id": model}, None
+    prof = pinned_profile_for_entry(root, entry)
+    return entry, prof if prof is not None and prof.ok else None
+
+
+def resolve_effective_model(entry: dict[str, Any], profile: Any = None) -> str | None:
+    """The one model a roster ``entry`` stands for, or ``None`` when it has none. It applies
+    :func:`~specy_road.orchestration_config.harness_model`: the entry's ``harness_model``, else the profile's
+    ``api_id``, else the roster ``id``. The result is rejected when empty or the ``unknown`` sentinel, whichever step
+    produced it (an explicit ``harness_model: unknown``, a profile ``api_id`` of ``unknown``, or an ``id`` of
+    ``unknown`` with no profile). ``prompt`` shows and launches with this model, and :func:`check` compares against it."""
+    model = harness_model(entry, profile.api_id if profile is not None else None)
+    return None if (model or "").strip().lower() in ("", "unknown") else str(model)
+
+
 def check(reported: str | None, entry: dict[str, Any], profile: Any = None) -> Check:
-    """``reported`` against the roster ``entry`` (its ``id`` and ``harness_model``) and its ``profile``'s ids and
-    names (:func:`~specy_road.model_names.same_model`)."""
+    """``reported`` against the entry's effective model (:func:`resolve_effective_model`) and nothing else, after
+    :func:`~specy_road.model_names.normalise` (case, separators, Cursor's ``cursor-`` prefix). The profile's other
+    names (``display_name``, ``aliases``, file name) count only when the effective model is that profile's model, so a
+    ``harness_model`` that selects another model is never matched by the profile's identities. An entry with no
+    effective model has nothing a harness could match: ``mismatch``."""
     if not reported:
         return "unreported"
-    return "match" if same_model(reported, entry.get("id"), entry.get("harness_model"), profile) else "mismatch"
+    effective = resolve_effective_model(entry, profile)
+    if effective is None:
+        return "mismatch"
+    own = profile if profile is not None and same_model(effective, None, None, profile) else None
+    return "match" if same_model(reported, effective, None, own) else "mismatch"
 
 
 def check_note(state: Check, reported: str | None, model: str) -> str:
