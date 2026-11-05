@@ -347,7 +347,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.12_shared-doc-zones-do-not-serialize-batches_e6e3dd29-22ab-4b59-9ca3-2ecd479879d8.md",
       "sibling_order": 12,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Shared documentation zones do not serialize grind-session batches",
       "touch_zones": [
         "specy_road/bundled_scripts/session_plan_render.py",
