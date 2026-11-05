@@ -36,16 +36,7 @@ from specy_road.bundled_scripts.doctor import _complete_leaves
 from specy_road.bundled_scripts.grind_session_cleanup import delete_local_branch, merged_into
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
-from specy_road.doctor_worktrees import (
-    TEMP_WORKTREES,
-    _live,
-    _worktrees,
-    classify,
-    containment,
-    evidence_kind,
-    live_holders,
-    merged_how,
-)
+from specy_road.doctor_worktrees import TEMP_WORKTREES, _live, _worktrees, live_holders
 from specy_road.git_subprocess import git_text
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.review_files import REVIEWS_REL, reviews_root
@@ -179,40 +170,44 @@ def cleanup_after_land(root: Path, node_id: str) -> tuple[bool, list[str]]:
     return execute(plan_cleanup(main, wt, branch, node_id))
 
 
-def _gate(ctx: SimpleNamespace, wt: dict[str, str]) -> str | None:
-    """Why sweep keeps ``wt`` without looking inside it, else ``None``."""
+def sweep_decision(ctx: SimpleNamespace, wt: dict[str, str]) -> tuple[str | None, CleanupPlan | None]:
+    """Sweep's one keep/remove decision for ``wt``, on git facts: ``(why it is kept, None)`` or ``(None, plan)``.
+
+    In order: not removable at all (locked, this command's own worktree, directory missing, a running check's
+    temporary worktree); held by M14.2's live rules (a registry claim, a non-terminal worker, a live session);
+    its tip (the branch's, or a detached ``HEAD``) not an ancestor of the integration branch
+    (``git merge-base --is-ancestor``; a same-patch or squashed branch is not, and is kept); then every
+    :func:`plan_cleanup` refusal (unmerged on the remote, dirty, stashed, foreign repository, unsaved ignored
+    files). A branch with no commits of its own that the integration branch contains is landed: once nothing
+    holds it, it goes.
+    """
     path = Path(wt["worktree"])
     if "locked" in wt:
-        return "locked"
+        return "locked", None
     if path.resolve() == ctx.here:
-        return "the worktree this command runs in"
+        return "the worktree this command runs in", None
     if "prunable" in wt or not path.is_dir():
-        return "directory missing (`git worktree prune` drops its record)"
+        return "directory missing (`git worktree prune` drops its record)", None
     if path.parent.name.startswith(TEMP_WORKTREES):
-        return "a temporary worktree a running specy-road check may be using"
+        return "a temporary worktree a running specy-road check may be using", None
     branch = wt.get("branch", "").removeprefix("refs/heads/")
     source, why = _live(ctx, wt, branch)
     if source != "none":
-        return why
-    if branch:
-        ref = f"refs/heads/{branch}"
-        label, _fix = classify("none", evidence_kind(ctx.root, ref, ctx.target),
-                               containment(merged_how(ctx.root, ref, ctx.target)), "local")
-        return None if label == "merged" else f"branch {branch}: {label} ({ctx.target})"
-    head = wt.get("HEAD", "")
-    return None if head and merged_into(ctx.root, head, ctx.target) else \
-        f"detached at {head[:12]}, which {ctx.target} does not contain"
+        return why, None
+    tip = f"refs/heads/{branch}" if branch else wt.get("HEAD", "")
+    if not tip or not merged_into(ctx.root, tip, ctx.target):
+        what = f"branch {branch}" if branch else f"detached HEAD {tip[:12]}"
+        return f"{what} is not an ancestor of {ctx.target}", None
+    plan = plan_cleanup(ctx.root, path, branch)
+    return ("; ".join(plan.refusals), None) if plan.refusals else (None, plan)
 
 
 def _sweep_one(ctx: SimpleNamespace, wt: dict[str, str], dry_run: bool, delete_branch: bool) -> str:
     path = Path(wt["worktree"])
-    why = _gate(ctx, wt)
-    if why:
+    why, plan = sweep_decision(ctx, wt)
+    if plan is None:
         return f"kept {path}: {why}"
-    branch = wt.get("branch", "").removeprefix("refs/heads/")
-    plan = plan_cleanup(ctx.root, path, branch)
-    if plan.refusals:
-        return f"kept {path}: {'; '.join(plan.refusals)}"
+    branch = plan.prune.branch
     if dry_run:
         return f"would remove {path}" + (f"; would delete branch {branch}" if delete_branch and branch else "")
     removed, lines = execute(plan)

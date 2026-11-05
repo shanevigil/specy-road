@@ -257,3 +257,38 @@ def test_sweep_keeps_a_worktree_holding_another_repository_in_its_hand_off_tree(
         assert "work/reviews/M1/foreign/ holds a repository" in line
     assert wt.is_dir() and not (root / HISTORY).exists()
     _foreign_intact(d, owner, kind)
+
+
+def test_sweep_decides_on_ancestry_not_on_doctors_label(tmp_path: Path) -> None:
+    """A3: landed is ``merge-base --is-ancestor``. A branch with no commits of its own that the integration
+    branch contains goes once nothing holds it; dirty, unmerged and same-patch ones stay, each saying why."""
+    root, wt = _leaf(tmp_path)
+    _land(root, wt)
+    empty = _side(root, tmp_path / "wt-empty", "feature/rm-empty")            # "no commits yet", contained
+    detached = tmp_path / "wt-detached"
+    git(root, "worktree", "add", "-q", "--detach", str(detached), "main")
+    dirty = _side(root, tmp_path / "wt-dirty-empty", "feature/rm-dirty-empty")
+    (dirty / ".gitignore").write_text("changed\n")                             # a tracked file, modified
+    unmerged = _side(root, tmp_path / "wt-unmerged", "feature/rm-unmerged")
+    commit_file(unmerged, "src/u.py", "u = 1\n", "not landed")
+    same = _side(root, tmp_path / "wt-same", "feature/rm-same")
+    commit_file(same, "src/s.py", "s = 1\n", "landed as a copy")
+    commit_file(root, "src/main-only.py", "m = 1\n", "main moves on")       # a new parent: a real copy
+    git(root, "cherry-pick", git(same, "rev-parse", "HEAD"))                 # same patch, not an ancestor
+    git(root, "push", "-q", "origin", "main")
+    expect_kept = {
+        dirty: "uncommitted or untracked: .gitignore",
+        unmerged: "branch feature/rm-unmerged is not an ancestor of origin/main",
+        same: "branch feature/rm-same is not an ancestor of origin/main",
+    }
+    dry = run_specy_road(root, "worktree", "sweep", "--dry-run").stdout.splitlines()
+    assert f"would remove {empty}" in dry and f"would remove {detached}" in dry and f"would remove {wt}" in dry
+    for path, why in expect_kept.items():
+        assert f"kept {path}: {why}" in dry, dry
+    out = run_specy_road(root, "worktree", "sweep")
+    assert out.returncode == 0, out.stderr
+    lines = out.stdout.splitlines()
+    assert f"removed {empty}" in lines and f"removed {detached}" in lines
+    assert not empty.exists() and not detached.exists()
+    for path, why in expect_kept.items():
+        assert f"kept {path}: {why}" in lines and path.is_dir()

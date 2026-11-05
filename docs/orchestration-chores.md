@@ -150,10 +150,11 @@ tied to the worktree or its branch, so `session list` shows none for the leaf.
 
 `worktree sweep` looks at every linked worktree, wherever it lives
 (`work/.worktrees/`, `.claude/worktrees/`, a temp directory). It removes one
-only when the integration branch contains its branch (with commits of its
-own) or detached `HEAD`, no registry claim, non-terminal worker or live
-session holds it (`doctor`'s live rules), and the cleanup checks pass, saving
-hand-off files first. Each worktree gets one line: `removed`, `would remove`
+only when its branch tip or detached `HEAD` is an ancestor of the
+integration branch (`git merge-base --is-ancestor`; a branch with no commits
+of its own counts, a squashed or same-patch one does not), no registry claim,
+non-terminal worker or live session holds it (`doctor`'s live rules), and the
+cleanup checks pass, saving hand-off files first. Each worktree gets one line: `removed`, `would remove`
 or `kept <path>: <reason>`. It ends orphaned workers first. Once a worktree is
 gone, its branch is no longer checked out anywhere, so branch pruning no
 longer skips it as `(worktree)`.
