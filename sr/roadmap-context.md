@@ -260,7 +260,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.32` An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure `archived-summary-exempt-from-file-limits` — task — **Not Started**
   - `M15.33` A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed `refused-review-record-leaves-a-trace` — task — **Not Started**
   - `M15.34` The executor prompt states the test rules that the reviewer's excess checklist enforces `executor-prompt-states-the-test-rules` — task — **Not Started**
-  - `M15.35` The review packet never lists .git or a path under it as an uncommitted reference `packet-never-lists-dot-git-as-uncommitted` — task — **Not Started**
+  - `M15.35` The review packet never lists .git or a path under it as an uncommitted reference `packet-never-lists-dot-git-as-uncommitted` — task — **Complete**
   - `M15.36` Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode `worker-launch-never-depends-on-claude-default-mode` — task — **Not Started**
   - `M15.37` Review notes: a part joined by a comma or 'and' is a second observation only when it names a defect `comma-or-and-part-counts-only-when-it-names-a-defect` — task — **Not Started**
   - `M15.38` add-node caps a title-derived codename at 64 characters so the planning file name fits `derived-codename-capped-so-planning-names-fit` — task — **Not Started**
@@ -349,6 +349,7 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-05 `M16.18` stopped depending on `M16.47 One check_assignment decides eligibility for every launch and for the gate`
 - 2026-11-05 `M16.12` stopped depending on `M16.7 Commands run in the CLI's process: no python -m re-launch, no cwd globals`
 - 2026-11-05 `M16.12` stopped depending on `M16.10 One LLM client module replaces the provider code inside review_node`
 - 2026-11-05 `M16.15` stopped depending on `M16.1 Parity harness: a review-gate decision table covering every review policy`
@@ -373,8 +374,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M16.32` stopped depending on `M16.30 AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer`
 - 2026-11-05 `M16.4` stopped depending on `M16.2 Baseline metrics, a coverage floor in CI, and the M16 working rules written down`
 - 2026-11-05 `M16.4` stopped depending on `M16.0 Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs`
-- 2026-11-05 `M16.6` stopped depending on `M16.3 Delete dead and unwired code from a decided list, and add vulture as an advisory CI step`
-- _…and 32 earlier — `specy-road history --json`_
+- _…and 33 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -396,7 +396,6 @@ Do not pick these up.
 - `M15.32` on `feature/rm-archived-summary-exempt-from-file-limits` since 2026-11-05
 - `M15.33` on `feature/rm-refused-review-record-leaves-a-trace` since 2026-11-05
 - `M15.34` on `feature/rm-executor-prompt-states-the-test-rules` since 2026-11-05
-- `M15.35` on `feature/rm-packet-never-lists-dot-git-as-uncommitted` since 2026-11-05
 - `M15.37` on `feature/rm-comma-or-and-part-counts-only-when-it-names-a-defect` since 2026-11-05
 - `M15.38` on `feature/rm-derived-codename-capped-so-planning-names-fit` since 2026-11-05
 - `M15.40` on `feature/rm-finish-merge-failure-reports-and-undoes-bookkeeping` since 2026-11-05
@@ -408,9 +407,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 33 | 27 | 8.17 | 100% | 13 | 1 |
-| `specy_road` **flagged** | 47 | 36 | 6.91 | 100% | 21 | 3 |
-| `tests` **flagged** | 49 | 38 | 6.91 | 100% | 21 | 3 |
+| `docs` **flagged** | 32 | 26 | 8.17 | 100% | 13 | 1 |
+| `specy_road` **flagged** | 47 | 35 | 6.50 | 100% | 21 | 3 |
+| `tests` **flagged** | 49 | 37 | 6.50 | 100% | 21 | 3 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
 | `research` | 1 | 1 | — | — | 0 | 0 |

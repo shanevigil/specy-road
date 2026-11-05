@@ -84,7 +84,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.35_packet-never-lists-dot-git-as-uncommitted_57bf9ac4-77f6-4b66-8ddb-fd478d67e060.md",
       "sibling_order": 35,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The review packet never lists .git or a path under it as an uncommitted reference",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet_uncommitted_refs.py",

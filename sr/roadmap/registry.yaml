@@ -152,15 +152,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: packet-never-lists-dot-git-as-uncommitted
-    node_id: M15.35
-    branch: feature/rm-packet-never-lists-dot-git-as-uncommitted
-    touch_zones:
-      - specy_road/bundled_scripts/review_packet_uncommitted_refs.py
-      - tests/
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
   - codename: comma-or-and-part-counts-only-when-it-names-a-defect
     node_id: M15.37
     branch: feature/rm-comma-or-and-part-counts-only-when-it-names-a-defect
