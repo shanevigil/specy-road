@@ -140,6 +140,37 @@ def test_delegate_rework_proceeds_when_the_leaf_worker_is_completed(tmp_path: Pa
     ws.set_state(repo, rec, "completed", pid=None)
     ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "s1"))
     file_review(repo, "sol", git(repo, "rev-parse", "HEAD"), "block", ["fix it"])
-    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--rework", "--repo-root", str(repo)) == 0
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--rework", "--json",
+                          "--repo-root", str(repo)) == 0
     captured = capsys.readouterr()
+    out = json.loads(captured.out)
+    assert out["created"] is True and out["worker_id"] == "w-0002" and out["model"] == "opus"
+    assert ws.load_record(repo, "w-0001").state == "terminated"
     assert "w-0001 on M1.1 (completed)" in captured.err
+    launched = wait_for_worker(repo, "w-0002")
+    assert launched.state == "idle" and launched.model == "opus"
+    assert ws.events_since(repo, "w-0002")[-1].type == "completion"
+
+
+@pytest.mark.parametrize(
+    ("extra_first", "extra_second"),
+    (
+        (("--ready-only",), ()),
+        ((), ("--ready-only",)),
+        (("--offline",), ()),
+        ((), ("--offline",)),
+        (("--ready-only",), ("--offline",)),
+        (("--offline",), ("--ready-only",)),
+    ),
+)
+def test_resume_op_id_refuses_when_offline_or_ready_only_toggles(tmp_path: Path, capsys, extra_first, extra_second) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
+    rec = wait_for_worker(repo, "w-0001")
+    capsys.readouterr()
+    base = ("worker", "resume", rec.worker_id, "--op-id", "resume-op", "--repo-root", str(repo))
+    assert run_worker_cli(*base, *extra_first) == 0
+    wait_for_worker(repo, rec.worker_id)
+    capsys.readouterr()
+    assert run_worker_cli(*base, *extra_second) != 0
+    assert "ran with different arguments" in capsys.readouterr().err

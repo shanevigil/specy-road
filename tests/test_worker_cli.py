@@ -17,6 +17,8 @@ from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import review_cli, worker_cli, worker_cli_render as wcr
 
+# The fake harness and its repo live in worker_repo_helpers; the old private name
+# stays for the modules that import it from here.
 from tests.worker_cli_helpers import run_worker_cli, wait_for_worker
 from tests.worker_repo_helpers import FAKE, make_worker_repo as _repo, worker_roster  # noqa: F401
 

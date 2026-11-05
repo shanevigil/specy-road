@@ -36,6 +36,7 @@ from specy_road.worker_state import (
     WorkerRecord,
     append_event,
     create_record,
+    list_records,
     set_state,
     status_entries,
     workers_lock,
@@ -188,8 +189,28 @@ def _nested_dirty(leaf_root: Path, repo_root: Path) -> list[str]:
     return out
 
 
+def _rework_clear_completed(repo_root: Path, node_id: str) -> None:
+    """``--rework`` replaces a finished worker: terminate its ``completed`` record so a new launch can proceed."""
+    existing = next((r for r in list_records(repo_root, active_only=True) if r.node_id == node_id), None)
+    if existing is None or existing.state != "completed":
+        return
+    from specy_road.worker_lease import release_lease  # noqa: PLC0415 — after the lock, like terminate()
+    from specy_road.worker_ops_lifecycle import _terminate_locked  # noqa: PLC0415 — launch must not import at module level
+
+    wid = existing.worker_id
+    _terminate_locked(repo_root, existing)
+    release_lease(repo_root, wid)
+
+
+def _existing_after_rework(repo_root: Path, node_id: str, *, foreign: list[str] | None = None,
+                           rework: bool = False) -> WorkerRecord | None:
+    if rework:
+        _rework_clear_completed(repo_root, node_id)
+    return _slot_or_existing(repo_root, node_id, foreign=foreign)
+
+
 def delegate(repo_root: Path, node_id: str, model: str | None, *, harness: str | None = None,
-             worktree: Path | None = None, offline: bool = False) -> tuple[WorkerRecord, bool]:
+             worktree: Path | None = None, offline: bool = False, rework: bool = False) -> tuple[WorkerRecord, bool]:
     """``(record, created)``: an active worker on the leaf is returned, not duplicated.
 
     The existing-worker check, the cap and the launch happen under the workers lock, so two concurrent delegates
@@ -204,11 +225,11 @@ def delegate(repo_root: Path, node_id: str, model: str | None, *, harness: str |
         raise WorkerError(f"--model is required for {node_id}")
     entry, harness = _entry_and_harness(repo_root, model, harness, roster_free=chore is not None)
     with workers_lock(repo_root):   # before any network read: a retry is answered while the remote is down
-        if existing := _slot_or_existing(repo_root, node_id):
+        if existing := _existing_after_rework(repo_root, node_id, rework=rework):
             return existing, False
     foreign = foreign_leases(repo_root, offline=offline)   # other checkouts' workers: a network read, so outside the lock
     with workers_lock(repo_root):
-        if existing := _slot_or_existing(repo_root, node_id, foreign=foreign):
+        if existing := _existing_after_rework(repo_root, node_id, foreign=foreign, rework=rework):
             return existing, False
     t = chore_target(repo_root, chore) if chore else _target(repo_root, node_id)
     if not entry.get("roster_free"):
@@ -219,7 +240,7 @@ def delegate(repo_root: Path, node_id: str, model: str | None, *, harness: str |
     if err:
         raise WorkerError(err)
     with workers_lock(repo_root):
-        existing = _slot_or_existing(repo_root, node_id, foreign=foreign)   # re-checked: another delegate may have landed
+        existing = _existing_after_rework(repo_root, node_id, foreign=foreign, rework=rework)
         if existing:
             return existing, False
         return _launch_locked(repo_root, node_id, model, harness, entry, t, text,

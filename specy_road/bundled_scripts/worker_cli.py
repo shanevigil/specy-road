@@ -87,7 +87,8 @@ def cmd_delegate(ns: argparse.Namespace) -> int:
         if ns.rework:   # before delegate, which would return an active worker rather than replace it
             rework_check(root, ns.node_id)
         rec, created = ops.delegate(root, ns.node_id, ns.model, harness=ns.harness,
-                                    worktree=Path(ns.worktree) if ns.worktree else None, offline=ns.offline)
+                                    worktree=Path(ns.worktree) if ns.worktree else None, offline=ns.offline,
+                                    rework=ns.rework)
         state.update(worker_id=rec.worker_id, created=created, state=rec.state, worktree=rec.worktree,
                      harness=rec.harness, model=rec.model, pid=rec.pid)
         return dict(state)
@@ -162,12 +163,21 @@ def cmd_message(ns: argparse.Namespace) -> int:
                            **({"no_queue": True} if ns.no_queue else {}), **({"fix_round": True} if ns.fix_round else {})})
 
 
+def _resume_op_inputs(ns: argparse.Namespace) -> dict[str, Any] | None:
+    inputs: dict[str, Any] = {}
+    if getattr(ns, "ready_only", False):
+        inputs["ready_only"] = True
+    if ns.offline:
+        inputs["offline"] = True
+    return inputs or None
+
+
 def cmd_resume(ns: argparse.Namespace) -> int:
     return _mutate(ns, "resume",
                    lambda root: _row(ops.resume(root, ns.worker_id, offline=ns.offline,
                                               ready_only=getattr(ns, "ready_only", False))),
                    lambda o: [f"{o['worker_id']}: resumed (pid {o['pid']})"],
-                   inputs={"ready_only": True} if getattr(ns, "ready_only", False) else None)
+                   inputs=_resume_op_inputs(ns))
 
 
 def cmd_interrupt(ns: argparse.Namespace) -> int:

@@ -11,6 +11,7 @@ Worker loop friction: sync `--until`, collapsed tool-use output, rework after a 
 - `specy_road/bundled_scripts/role_prompt_rework.py` — `rework_check` allows `completed`
 - `specy_road/on_complete_pickup.py` — grind-session hint once per checkout
 - `specy_road/worker_ops_message.py` — `resume(..., ready_only=…)`
+- `specy_road/worker_ops_launch.py` — `delegate(..., rework=…)` terminates `completed` before launch (fix round)
 - `specy_road/worker_runner_ready.py` — `READY_ONLY_PROMPT`
 - `docs/orchestration-workers.md` — links and table rows
 - `docs/orchestration-worker-sync.md` — **new** sync wait/until/verbose doc
@@ -47,6 +48,21 @@ No zone additions or removals beyond the new sync module and doc.
 - **Other CLI commands with `--timeout`:** only `worker sync` parser defines `--timeout` with `--wait`; no parallel exit-code pattern in touch zones.
 - **READY-only prompt assertion surface:** `worker_ops_message._send` writes `work/prompt-{id}-{kind}-{n}.md` before spawn; CLI test reads that path — checked `resume` and `run_worker_cli` path, no `_`-prefixed test imports or patches.
 - **Parametrized `--until` values:** `completion`, `error`, `intervention`, comma lists — condition met, timeout empty, timeout with output-only delta.
+
+## Fix round (gpt-6.1-sol-low)
+
+- **R1 — `--rework` with `completed` worker:** `delegate(..., rework=True)` terminates the finished record under the workers lock, then launches a new worker (`w-0002`, `created`, turn completes).
+- **R2 — resume `--op-id` inputs:** `_resume_op_inputs` binds `ready_only` and `offline`; parametrized CLI tests refuse toggling either flag under the same op id.
+- **R3:** Restored the two-line `worker_repo_helpers` / `_repo` alias comment in `tests/test_worker_cli.py`.
+
+## Probes (gpt-6.1-sol-low)
+
+- **Rework vs other active states:** only `completed` is cleared before launch; `idle`/`running` still blocked by `rework_check` — checked `role_prompt_rework.rework_check` and `_rework_clear_completed`.
+- **Terminate under lock:** `_rework_clear_completed` calls `_terminate_locked` inside existing `workers_lock` sections; `release_lease` after, matching `terminate()` — checked `worker_ops_lifecycle`.
+- **`rework` on failed/terminated leaf:** failed/terminated are not `active`; delegate creates a new worker without terminate path — matches existing takeover test.
+- **Resume op-id default inputs:** `_with_op` default keys omit `ready_only`; resume always passes explicit `_resume_op_inputs` — checked `message`/`delegate` patterns for parity.
+- **Other `_mutate` commands:** `handoff`, `terminate`, etc. use `inputs=None` or explicit dicts; only resume gained `ready_only` in this leaf — grep `cmd_*` + `inputs=` in `worker_cli.py`.
+- **Comment-only R3:** no behaviour change in `test_worker_cli.py` beyond restored comment.
 
 ## Added
 
