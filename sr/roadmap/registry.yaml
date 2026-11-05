@@ -240,3 +240,57 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
+  - codename: a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked
+    node_id: M13.4
+    branch: feature/rm-a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked
+    touch_zones:
+      - specy_road/finish_ancestor_rollup.py
+      - specy_road/bundled_scripts/roadmap_query_cli.py
+      - specy_road/bundled_scripts/roadmap_crud_ops.py
+      - specy_road/bundled_scripts/validate_roadmap.py
+      - docs/orchestration-review.md
+      - tests/
+      - specy_road/bundled_scripts/validate_notices.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: working-roster-in-one-command-and-validated-profiles
+    node_id: M15.11
+    branch: feature/rm-working-roster-in-one-command-and-validated-profiles
+    touch_zones:
+      - specy_road/bundled_scripts/models_cli.py
+      - specy_road/roster_generate.py
+      - specy_road/orchestration_pinned.py
+      - specy_road/orchestrate_plan.py
+      - specy_road/orchestrate_assign.py
+      - specy_road/bundled_scripts/orchestrate_cli.py
+      - specy_road/roster_profile_check.py
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
+      - specy_road/templates/project/roadmap/orchestration.yaml
+      - docs/orchestration.md
+      - docs/orchestration-models.md
+      - docs/orchestration-workers.md
+      - docs/orchestration-roster.md
+      - docs/design-notes/model-aware-orchestration-proposal.md
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
+  - codename: promoted-leaf-is-never-stuck-on-an-empty-approach
+    node_id: M15.8
+    branch: feature/rm-promoted-leaf-is-never-stuck-on-an-empty-approach
+    touch_zones:
+      - specy_road/bundled_scripts/brainstorm_promote.py
+      - specy_road/bundled_scripts/planning_sheet_bootstrap.py
+      - specy_road/bundled_scripts/author_approach.py
+      - specy_road/planning_scaffold_check.py
+      - specy_road/cli.py
+      - specy_road/cli_usage.py
+      - docs/brainstorming.md
+      - tests/
+      - specy_road/bundled_scripts/do_next_task_leaf_guards.py
+      - specy_road/bundled_scripts/session_plan_render.py
+      - specy_road/bundled_scripts/orchestrate_cli.py
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending

@@ -269,6 +269,7 @@ Do not pick these up.
 
 - `M12.4.1` on `feature/rm-per-area-quality-scores-in-the-digest-from-review-history` since 2026-11-04
 - `M13.2` on `feature/rm-upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap` since 2026-11-04
+- `M13.4` on `feature/rm-a-milestone-held-for-its-full-review-says-so-in-validate-list-nodes-and-why-blocked` since 2026-11-04
 - `M13.7` on `feature/rm-clearer-notices-symlinked-skill-dirs-new-ignore-rules-over-tracked-files-and-session-end` since 2026-11-04
 - `M13.8` on `feature/rm-a-behaviour-change-catalogue-and-validate-reports-project-agent-text-it-contradicts` since 2026-11-04
 - `M14.2` on `feature/rm-doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch` since 2026-11-04
@@ -276,11 +277,14 @@ Do not pick these up.
 - `M14.6` on `feature/rm-reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round` since 2026-11-04
 - `M15.1` on `feature/rm-rc-install-docs-cover-extras-and-direct-wheel-url` since 2026-11-04
 - `M15.10` on `feature/rm-try-a-roster-before-it-lands` since 2026-11-04
+- `M15.11` on `feature/rm-working-roster-in-one-command-and-validated-profiles` since 2026-11-04
 - `M15.12` on `feature/rm-shared-doc-zones-do-not-serialize-batches` since 2026-11-04
 - `M15.18` on `feature/rm-planned-test-changes-editable-and-removals-surfaced` since 2026-11-04
 - `M15.19` on `feature/rm-cursor-cost-with-display-name-models` since 2026-11-04
 - `M15.21` on `feature/rm-linked-worktrees-resolve-root-and-symlinked-envs` since 2026-11-04
 - `M15.4` on `feature/rm-parallel-pr-leaves-reconcile-bookkeeping-by-rule` since 2026-11-04
+- `M15.6` on `feature/rm-rework-prompt-carries-the-accepted-rca` since 2026-11-04
+- `M15.8` on `feature/rm-promoted-leaf-is-never-stuck-on-an-empty-approach` since 2026-11-04
 - `M8.3` on `feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` since 2026-11-03
 
 ## Reaching the detail behind this
