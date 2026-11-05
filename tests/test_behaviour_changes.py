@@ -176,8 +176,8 @@ def test_explicitly_stale_instructions_are_reported_despite_guidance_vocabulary(
 def test_adjacent_directive_lines_each_get_a_notice(tmp_path: Path, capsys) -> None:
     text = "\n".join(
         [
-            "Run specy-road finish-this-task --on-complete merge",
-            "Run specy-road finish-this-task --on-complete auto",
+            "Always run specy-road finish-this-task --on-complete merge",
+            "Always run specy-road finish-this-task --on-complete auto",
         ]
     )
     out = _notices(tmp_path, capsys, text)
@@ -187,22 +187,28 @@ def test_adjacent_directive_lines_each_get_a_notice(tmp_path: Path, capsys) -> N
     ]
 
 
-def test_bare_command_name_in_prose_is_anchored(tmp_path: Path, capsys) -> None:
-    out = _notices(tmp_path, capsys, "Run mark-implementation-reviewed --yes after the tests pass.")
+def test_mandated_stale_instruction_with_bare_command_name_prints_a_notice(tmp_path: Path, capsys) -> None:
+    out = _notices(
+        tmp_path,
+        capsys,
+        "You must run mark-implementation-reviewed --yes after the tests pass.",
+    )
     assert len(out) == 1 and out[0].startswith("agents: notice — AGENTS.md:1:")
 
 
-@pytest.mark.parametrize(
-    "line",
-    [
-        "Pass --yes to `specy-road mark-implementation-reviewed` after the checks.",
-        "`specy-road finish-this-task --on-complete auto` lands the work.",
-        "The first commit on the feature branch registers the work in registry.yaml.",
-    ],
-)
-def test_a2_a4_minimum_stale_pairings_print_a_notice(tmp_path: Path, capsys, line: str) -> None:
-    out = _notices(tmp_path, capsys, line)
-    assert len(out) == 1 and out[0].startswith("agents: notice — AGENTS.md:1:")
+BARE_VALID_USAGE = [
+    "specy-road finish-this-task --on-complete merge",
+    "specy-road mark-implementation-reviewed --yes",
+    "Pass --yes to `specy-road mark-implementation-reviewed` after the checks.",
+    "`specy-road finish-this-task --on-complete auto` lands the work.",
+    "Run mark-implementation-reviewed --yes after the tests pass.",
+    "The first commit on the feature branch registers the work in registry.yaml.",
+]
+
+
+@pytest.mark.parametrize("line", BARE_VALID_USAGE)
+def test_bare_valid_command_examples_print_no_notice(tmp_path: Path, capsys, line: str) -> None:
+    assert _notices(tmp_path, capsys, line) == []
 
 
 def test_the_historical_first_commit_sentence_is_still_reported(tmp_path: Path, capsys) -> None:

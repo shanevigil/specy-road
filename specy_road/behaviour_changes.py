@@ -6,11 +6,15 @@ text that still states the old behaviour. ``validate`` reports such text
 (:mod:`specy_road.agent_text_report`); it never rewrites it.
 
 Matching is per sentence (read whole across wrapped lines) or per physical line when
-each line is its own directive. Entries 1–4 require the sentence to name ``command``
-(``specy-road <command>``, backticks, or a bare ``<command>`` token). Entry 5
-(pickup ``--base``) also matches init-era prose that names no command. A sentence
-that matches ``current`` states today's behaviour (not merely vocabulary from a
-stale instruction) and is never reported.
+each line is its own directive. A line is reported only when it **instructs** the
+stale behaviour: the sentence must match the entry's stale pattern, name ``command``
+(``specy-road <command>``, backticks, or a bare ``<command>`` token when anchored), and
+include a **mandate cue** (``must``, ``always``, ``approve``, ``when tests pass``,
+``never pass/run/delete/push``, non-TTY/unattended agent wording, or prescriptive
+first-commit registration steps). Bare examples that show a flag in use without
+mandating it are valid usage and are never reported. Entry 5 (pickup ``--base``) may
+match without naming ``command``. A sentence matching ``current`` states today's
+behaviour and is never reported.
 """
 
 from __future__ import annotations
@@ -23,6 +27,21 @@ def _all_of(*parts: str) -> re.Pattern[str]:
     """Text that matches every regex in ``parts``, in any order."""
     return re.compile("".join(f"(?=.*(?:{part}))" for part in parts), re.IGNORECASE | re.DOTALL)
 
+
+# Same sentence as the stale claim; see module docstring.
+_MANDATE_CUE = (
+    r"\b(?:must|always|shall|every\s+time)\b|"
+    r"\bapprov\w*\b|"
+    r"\bwhen\s+(?:the\s+)?tests\s+pass\b|"
+    r"\bnever\s+(?:pass|run|use|delete\w*|push)\b|"
+    r"\b(?:does\s+not|doesn't|won't|will\s+not)\s+delete\b|"
+    r"\bnon-TTY\b|\bagent\s+contexts\b|\bunattended\s+runs?\b|"
+    r"\*\*First\s+commit\*\*|"
+    r"\bno\s+implementation\s+before\b|"
+    r"register\s+as\s+in-progress|"
+    r"\bWith\b.{0,120}\bfirst\s+commit\b|"
+    r"\bafter branching from the integration branch\b"
+)
 
 @dataclass(frozen=True)
 class BehaviourChange:
@@ -62,7 +81,7 @@ CATALOGUE: tuple[BehaviourChange, ...] = (
         flags=("--yes",),
         now="`--yes` never creates a review: it approves only when independent review records already "
         "satisfy the policy, and an agent never approves its own work",
-        contradicts=re.compile(r"--yes\b", re.IGNORECASE),
+        contradicts=_all_of(r"--yes\b", _MANDATE_CUE),
         current=re.compile(
             r"(?:`--yes`\s+never|\bnever\b[^.!?]{0,100}--yes\b|--yes\b[^.!?]{0,100}\bnever\b|"
             r"only\s+when\s+(?:the\s+)?(?:review\s+records?|recorded\s+reviews?|reviews?\s+are\s+already)|"
@@ -86,11 +105,10 @@ CATALOGUE: tuple[BehaviourChange, ...] = (
         flags=("--on-complete", "--override-on-complete"),
         now="an `--on-complete` mode other than pr that differs from the recorded one is refused unless "
         "`--override-on-complete` is passed, a person's choice that agents do not make",
-        contradicts=re.compile(r"--on-complete[ =]+[`'\"]?(?:merge|auto)\b", re.IGNORECASE),
+        contradicts=_all_of(r"--on-complete[ =]+[`'\"]?(?:merge|auto)\b", _MANDATE_CUE),
         current=re.compile(
             r"(?:--override-on-complete|refused\s+when\s+(?:it\s+)?differs\s+from\s+the\s+recorded|"
             r"differs\s+from\s+the\s+recorded\s+mode|merge\|pr|pr\|merge|on_complete=|opens\s+a\s+PR\b|"
-            r"^specy-road finish-this-task --on-complete merge$|"
             r"finish-this-task --on-complete merge[^.]{0,160}\bagain\b|"
             r"With `--on-complete merge`, finish)",
             re.IGNORECASE,
@@ -101,7 +119,7 @@ CATALOGUE: tuple[BehaviourChange, ...] = (
         command="do-next-available-task",
         flags=("--local",),
         now="`--local` registers the claim in this checkout only and pushes nothing",
-        contradicts=re.compile(r"\balways\s+push", re.IGNORECASE),
+        contradicts=_all_of(r"\balways\s+push", _MANDATE_CUE),
         current=re.compile(r"--local\b|\bunless\b", re.IGNORECASE),
     ),
     BehaviourChange(
@@ -109,8 +127,9 @@ CATALOGUE: tuple[BehaviourChange, ...] = (
         command="finish-this-task",
         flags=("--delete-branch",),
         now="`--delete-branch` (merge mode) deletes the feature branch locally and on the remote once the merge lands",
-        contradicts=re.compile(
-            r"\b(?:does\s+not|doesn't|never|won't|will\s+not)\s+delete\w*\b.*\bbranch", re.IGNORECASE
+        contradicts=_all_of(
+            r"\b(?:does\s+not|doesn't|never|won't|will\s+not)\s+delete\w*\b.*\bbranch",
+            _MANDATE_CUE,
         ),
         current=re.compile(r"--delete-branch\b|\bunless\b", re.IGNORECASE),
     ),
@@ -124,6 +143,7 @@ CATALOGUE: tuple[BehaviourChange, ...] = (
             r"\bfirst\s+commit\b",
             r"\bregister(?:s|ed|ing)?\b",
             r"\bfeature[-\s]branch|\bregistry\.yaml\b|\bregister\s+as\s+in-progress\b",
+            _MANDATE_CUE,
         ),
         current=re.compile(
             r"(?:--base\b|integration\s+branch.{0,160}before.{0,60}feature\s+branch|"
