@@ -86,17 +86,24 @@ def exclude_pattern(rel: str) -> str:
     return "/" + stripped + "\\ " * (len(body) - len(stripped))
 
 
-def info_exclude_lines(text: str) -> list[str]:
-    """Each ``info/exclude`` record, split on LF only (git's line delimiter).
+def exclude_pattern_bytes(rel: str) -> bytes:
+    """UTF-8 bytes for one new ``info/exclude`` record (paths come from validated YAML config)."""
+    return exclude_pattern(rel).encode("utf-8")
 
-    ``str.splitlines()`` also splits on vertical tab and other Unicode line breaks, which are legal in
-    path names and must stay part of one pattern."""
-    if not text:
+
+def info_exclude_records(data: bytes) -> list[bytes]:
+    """Each ``info/exclude`` record, split on LF only (git's line delimiter), without decoding."""
+    if not data:
         return []
-    parts = text.split("\n")
-    if parts and parts[-1] == "":
+    parts = data.split(b"\n")
+    if parts and parts[-1] == b"":
         parts.pop()
     return parts
+
+
+def info_exclude_lines(text: str) -> list[str]:
+    """Each UTF-8 ``info/exclude`` record; for tests and display only — production reads use :func:`info_exclude_records`."""
+    return [line.decode("utf-8") for line in info_exclude_records(text.encode("utf-8"))]
 
 
 def exclude_links(leaf_top: Path, targets: list[Path]) -> None:
@@ -105,21 +112,21 @@ def exclude_links(leaf_top: Path, targets: list[Path]) -> None:
     Git reads ``info/exclude`` from the **common** git dir, so the line holds in every worktree of the
     repository, the main checkout included (where it matches the real directory, already ignored). A
     directory-only pattern such as ``node_modules/`` never matches a symlink, which git sees as a file.
-    Existing lines are never rewritten; new patterns are appended only."""
+    Existing bytes are never rewritten; new patterns are appended only."""
     exclude = git_path(["rev-parse", "--path-format=absolute", "--git-path", "info/exclude"], leaf_top)
     if exclude is None:
         raise EnvSetupError(f"env_setup: cannot find the git exclude file for {leaf_top}")
-    have = info_exclude_lines(exclude.read_text(encoding="utf-8")) if exclude.is_file() else []
-    lines = [exclude_pattern(t.relative_to(leaf_top).as_posix()) for t in targets]
+    existing = exclude.read_bytes() if exclude.is_file() else b""
+    have = set(info_exclude_records(existing))
+    lines = [exclude_pattern_bytes(t.relative_to(leaf_top).as_posix()) for t in targets]
     new = [ln for ln in dict.fromkeys(lines) if ln not in have]
     if new:
         exclude.parent.mkdir(parents=True, exist_ok=True)
-        existing = exclude.read_text(encoding="utf-8") if exclude.is_file() else ""
-        with exclude.open("a", encoding="utf-8") as fh:
-            if existing and not existing.endswith("\n"):
-                fh.write("\n")
+        with exclude.open("ab") as fh:
+            if existing and not existing.endswith(b"\n"):
+                fh.write(b"\n")
             for ln in new:
-                fh.write(f"{ln}\n")
+                fh.write(ln + b"\n")
 
 
 def run_setup_cmd(cmd: str, cwd: Path) -> tuple[int, str]:
@@ -157,7 +164,7 @@ def main_project_root(repo_root: Path) -> Path:
 def link_into(conf: dict[str, Any], repo_root: Path, leaf_root: Path, keep: str) -> list[str]:
     """Symlink each ``env_setup.link`` path from the main checkout's project root ``repo_root`` into
     ``leaf_root`` and exclude the links (:func:`exclude_links`); one line per link. ``keep`` ends each error."""
-    leaf_top, done, links = git_top(leaf_root), [], []
+    leaf_top, done, planned = git_top(leaf_root), [], []
     for rel in link_paths(conf):
         try:
             source = bounded_path(repo_root, rel, git_top(repo_root), f"from {rel!r}", "the main checkout", "link")
@@ -168,12 +175,13 @@ def link_into(conf: dict[str, Any], repo_root: Path, leaf_root: Path, keep: str)
             raise EnvSetupError(f"env_setup: cannot link {rel}: {source} does not exist." + keep)
         if target.is_symlink() or target.exists():
             raise EnvSetupError(f"env_setup: cannot link {rel}: {target} already exists in the worktree." + keep)
+        planned.append((rel, source, target))
+    if planned:
+        exclude_links(leaf_top, [target for _, _, target in planned])
+    for rel, source, target in planned:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.symlink_to(source, target_is_directory=source.is_dir())
-        links.append(target)
         done.append(f"linked {rel}")
-    if links:
-        exclude_links(leaf_top, links)
     return done
 
 

@@ -172,6 +172,7 @@ R1 class: a filesystem path read from git output as text, then split on newlines
 - `exclude_links` reading `info/exclude` with `splitlines`: file content is patterns, not git path output; link names with newlines refused at setup; fixed in fix round 3 for vertical tab (see below).
 - Public `project_root()` from linked worktree `lane` with `SPECY_ROAD_REPO_ROOT` naming `main\ncheckout`: returns `lane`, silent (test `test_a_checkout_path_with_a_newline_resolves_the_enclosing_worktree`).
 - `exclude_links` append when `info/exclude` lacks trailing LF: new pattern is its own record; status clean (fix round 4, test `test_exclude_append_starts_a_new_line_when_the_file_has_no_trailing_lf`).
+- `info/exclude` with non-UTF-8 bytes: read/append without decode; setup clean (fix round 5).
 
 ## Fix round 3: `info/exclude` line records
 
@@ -201,6 +202,32 @@ Design: before writing new patterns, emit one LF when the existing file body is 
 - Vertical-tab pattern after second-lane setup: fix round 3; still clean with this append guard.
 - No other code appends to `info/exclude` in this leaf; only `exclude_links`.
 
+## Fix round 5: git-owned file bytes
+
+Class: decoding git-owned file bodies as strict UTF-8 before compare or append (`UnicodeDecodeError` after symlinks were already created).
+
+Design: `info/exclude_records` splits LF on bytes; `exclude_links` uses `read_bytes` / `open("ab")` and compares byte records; new patterns are UTF-8 from config via `exclude_pattern_bytes`. `link_into` validates every link, writes excludes, then creates symlinks so exclude failure leaves no links.
+
+## Fix round: bytes invariant
+
+Leaf reads/writes audited (git-owned vs project config):
+
+- `worktree_env.exclude_links`: was `read_text`/`open("a", encoding=utf-8)`; now `read_bytes`/`open("ab")` (this fix).
+- `worktree_env.info_exclude_lines`: str helper for UTF-8 tests only; production dedup uses `info_exclude_records`.
+- `runtime_paths.git_path`: already reads git stdout as bytes, one trailing newline stripped, `os.fsdecode` (fix round 2); unchanged.
+- `runtime_paths.git_text` callers in this leaf (`git_root`, `project_prefix`): git output text paths; pre-existing; outside bytes-only scope for path argv.
+- `runtime_paths` `.specyrd/manifest.json` via `read_text`: project JSON, not git-owned; unchanged.
+- `worker_ops_launch._brief_into`: copies project `work/brief-*.md` with UTF-8; not git internal; unchanged.
+- `worker_ops_launch.status_entries`: `git status -z` via subprocess bytes path in git_subprocess; unchanged.
+- `doctor_env_setup`: reads `roadmap/git-workflow.yaml` with `errors=replace`; project config, not `.git/`; unchanged.
+
+## Probes (fix round 5)
+
+- `info/exclude` with comment byte `0xff`, then `setup_worktree_env`: succeeds, prefix bytes unchanged, status clean (test `test_setup_with_non_utf8_bytes_in_info_exclude`).
+- Injected `exclude_links` failure before symlinks: no `node_modules`/`.venv` links (test `test_setup_leaves_no_symlink_when_exclude_append_fails`).
+- Missing trailing LF on exclude template: fix round 4; still passes with byte append.
+- Vertical tab in pattern name, second lane setup: fix round 3; still clean.
+
 ## Verification
 
 - Full suite `pytest -n 4`: 4035 passed (after the rework).
@@ -224,8 +251,11 @@ Design: before writing new patterns, emit one LF when the existing file body is 
 - `worktree_env.link_target`: the link's place in the leaf, parent resolved and bounded, final component not
   followed; refuses `..`, the worktree top and newlines (rework R1, R2).
 - `worktree_env.exclude_pattern`: escapes gitignore pattern syntax (`\ * ? [ ] ! #`, trailing spaces) in an exclude line (rework R2, fix round 1).
-- `worktree_env.info_exclude_lines`: LF-only records from `info/exclude` (fix round 3; avoids `splitlines()` breaking on vertical tab).
-- `worktree_env.exclude_links`: appends anchored exclude lines to the common `info/exclude` (A2); append-only, no rewrite (fix round 3).
+- `worktree_env.info_exclude_records`: LF-only byte records from `info/exclude` (fix round 5; no UTF-8 decode on read).
+- `worktree_env.exclude_pattern_bytes`: UTF-8 encoding of one new exclude line (fix round 5).
+- `worktree_env.info_exclude_lines`: LF-only str records for UTF-8 tests/display (fix round 3; not used for git file compare after fix round 5).
+- `worktree_env.exclude_links`: appends anchored exclude lines to the common `info/exclude` (A2); append-only bytes (fix rounds 3–5).
+- `link_into` order: validate all links, `exclude_links`, then symlinks (fix round 5; no half-applied setup).
 - `worktree_env.link_into`: makes the symlinks, with bound/missing/exists guards (A2). It was split out of
   `setup_worktree_env` for C901.
 - `bounded_path(verb=...)`: so a link refusal says "cannot link", not "cannot copy".
@@ -257,3 +287,5 @@ Design: before writing new patterns, emit one LF when the existing file body is 
   - `test_a_checkout_path_with_a_newline_resolves_the_enclosing_worktree`: fix round 2, newline in a checkout path.
   - `test_a_second_setup_does_not_corrupt_exclude_lines_with_vertical_tab`: fix round 3, shared exclude append (sol-low R1).
   - `test_exclude_append_starts_a_new_line_when_the_file_has_no_trailing_lf`: fix round 4, missing record terminator (grok R1).
+  - `test_setup_with_non_utf8_bytes_in_info_exclude`: fix round 5, non-UTF-8 exclude comment (sol-low R1).
+  - `test_setup_leaves_no_symlink_when_exclude_append_fails`: fix round 5, exclude before symlink order.

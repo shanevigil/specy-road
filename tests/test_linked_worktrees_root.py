@@ -20,7 +20,8 @@ from specy_road.review_files import load_ready, reviews_dir
 from specy_road.runtime_paths import REPO_ROOT_ENV, project_root
 from specy_road.worker_state import active_for_node
 from specy_road.git_workflow_config import load_git_workflow_config
-from specy_road.worktree_env import EnvSetupError, info_exclude_lines, link_into, linked_status_paths, setup_worktree_env
+from specy_road import worktree_env
+from specy_road.worktree_env import EnvSetupError, info_exclude_lines, info_exclude_records, link_into, linked_status_paths, setup_worktree_env
 
 # --- A1: the enclosing worktree wins ------------------------------------------------------------
 
@@ -329,3 +330,29 @@ def test_exclude_append_starts_a_new_line_when_the_file_has_no_trailing_lf(tmp_p
     assert setup_worktree_env(root, lane) == ["linked node_modules", "linked .venv"]
     assert git(lane, "status", "--porcelain", "--untracked-files=all") == ""
     assert info_exclude_lines(exclude.read_text(encoding="utf-8"))[-2:] == ["/node_modules", "/.venv"]
+
+
+def test_setup_with_non_utf8_bytes_in_info_exclude(tmp_path: Path) -> None:
+    root, lane = _linked_project(tmp_path)
+    exclude = Path(git(lane, "rev-parse", "--path-format=absolute", "--git-path", "info/exclude"))
+    prefix = exclude.read_bytes()
+    legacy = b"# legacy\xff\n"
+    exclude.write_bytes(prefix + legacy)
+    assert setup_worktree_env(root, lane) == ["linked node_modules", "linked .venv"]
+    assert git(lane, "status", "--porcelain", "--untracked-files=all") == ""
+    body = exclude.read_bytes()
+    assert body.startswith(prefix + legacy)
+    assert info_exclude_records(body)[-2:] == [b"/node_modules", b"/.venv"]
+
+
+def test_setup_leaves_no_symlink_when_exclude_append_fails(tmp_path: Path, monkeypatch) -> None:
+    root, lane = _linked_project(tmp_path)
+
+    def boom(*_args, **_kwargs) -> None:
+        raise EnvSetupError("exclude write failed")
+
+    monkeypatch.setattr(worktree_env, "exclude_links", boom)
+    with pytest.raises(EnvSetupError, match="exclude write failed"):
+        setup_worktree_env(root, lane)
+    assert not (lane / "node_modules").exists()
+    assert not (lane / ".venv").exists()
