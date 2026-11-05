@@ -136,7 +136,8 @@
       ],
       "codename": "review-packet-includes-sibling-repository-diffs",
       "dependencies": [
-        "5eeb46d2-6aef-4582-8f8b-41c2dc19b53b"
+        "5eeb46d2-6aef-4582-8f8b-41c2dc19b53b",
+        "fba72c3a-24a5-4c6b-b174-0e581d8b8450"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M14.4.2",

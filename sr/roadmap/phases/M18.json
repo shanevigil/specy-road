@@ -13,6 +13,33 @@
       "title": "Orchestration and review-loop features (after 0.3.1)",
       "touch_zones": [],
       "type": "phase"
+    },
+    {
+      "acceptance": [
+        "The reviewer prompt gains a section 'Code quality: structure' with exactly four checklist rows: small single-purpose functions; clear module boundaries; explicit dependencies (no hidden module globals, clock or git calls where a parameter would do); intent-explaining docstrings and comments kept",
+        "On a fix round the prompt adds a section 'Fix-round degradation' listing exactly four signals to check in the delta: an added special-case branch, a duplicated rule, a stripped comment or docstring, a new noqa or lint waiver; it tells the reviewer that a required_change must fix the class (one rule or table) rather than patch the instance",
+        "The reviewer prompt asks the reviewer to cite the complexity delta that M16.22 puts in the packet, and to block on growth only when the review policy says so; no new record-refusal rule is added and the record schema is unchanged",
+        "Tests pin the text of both prompt sections (first round without the degradation section, fix round with it) and one packet row showing a complexity delta the prompt cites"
+      ],
+      "codename": "review-code-quality",
+      "dependencies": [
+        "7b52d543-e78c-4e74-bcd1-24d5a8b3034b",
+        "5fa51e45-9e09-4119-826d-43c6d304f243"
+      ],
+      "id": "M18.1",
+      "node_key": "b1238b21-d99c-4534-8400-aa7bd5967a6b",
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.1_review-code-quality_b1238b21-d99c-4534-8400-aa7bd5967a6b.md",
+      "sibling_order": 1,
+      "status": "Not Started",
+      "title": "Reviewers check that code is well-formed and that fixes do not degrade it",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "docs/orchestration-reviewer-output.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }

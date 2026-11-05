@@ -275,7 +275,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.5` | One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready | task | Agentic-led | Not Started |
 | `M16.6` | The 29 package-imported library modules move out of bundled_scripts | task | Agentic-led | Not Started |
 | `M16.7` | Commands run in the CLI's process: no python -m re-launch, no cwd globals | task | Agentic-led | Not Started |
-| `M16.8` | A 100-character line-width rule with a shrink-only baseline, and the consumer file-limit default decided | task | Agentic-led | Not Started |
+| `M16.8` | Ruff quality rule families and the 100-character width with shrink-only baselines, and the consumer file-limit default decided | task | Agentic-led | Not Started |
 | `M16.9` | Fold the cap-driven splits in pickup and finish into their parents | task | Agentic-led | Not Started |
 | `M16.10` | One LLM client module replaces the provider code inside review_node | task | Agentic-led | Not Started |
 | `M16.11` | doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases | task | Agentic-led | Not Started |
@@ -337,7 +337,9 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M17` | 0.3.2: PM GUI shows orchestration and worktree state | phase | Human-led | Not Started |
 | `M17.1` | 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface | gate | Human-led | Not Started |
 | `M18` | Orchestration and review-loop features (after 0.3.1) | phase | — | Not Started |
+| `M18.1` | Reviewers check that code is well-formed and that fixes do not degrade it | task | — | Not Started |
 | `M19` | Adopter-project features: upgrade, agent-file layering, planning hygiene, project tooling (after 0.3.1) | phase | — | Not Started |
 | `M19.1` | Configurable code-analysis tools | task | — | Not Started |
+| `M19.2` | Research reminders leave validate | task | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

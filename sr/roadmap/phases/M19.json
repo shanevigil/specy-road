@@ -40,6 +40,34 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road validate prints nothing about the research register: the cadence check (warn_research_register and its helpers) no longer runs from validate_roadmap.py",
+        "specy-road doctor prints one line per register entry that is past its cadence, has never run, has a missing or out-of-tree prompt, or has an unreadable cadence_days or last_run, with the same wording as today's validate warning, and nothing when every entry is current",
+        "The research README template, this repo's research/README.md and docs/roadmap-authoring.md and docs/install-and-usage.md say doctor reports due research, not validate",
+        "Tests: validate's output contains no research line for an overdue entry; doctor prints exactly one line per overdue entry and none for a current one"
+      ],
+      "codename": "research-due-in-doctor",
+      "dependencies": [
+        "b5ca5d95-58a9-472c-9f90-0004d0fbd46f"
+      ],
+      "id": "M19.2",
+      "node_key": "7e53ed16-b377-4ba9-8183-af8e23dbe27b",
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.2_research-due-in-doctor_7e53ed16-b377-4ba9-8183-af8e23dbe27b.md",
+      "sibling_order": 2,
+      "status": "Not Started",
+      "title": "Research reminders leave validate",
+      "touch_zones": [
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/templates/project/research/README.md",
+        "docs/roadmap-authoring.md",
+        "docs/install-and-usage.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
