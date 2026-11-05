@@ -75,8 +75,13 @@ def register_and_commit(
     commit_message: str,
     impl_review_gate: bool,
     owner: str | None = None,
+    generated=None,
 ) -> None:
     """Append a registry entry and commit the registry file.
+
+    ``generated``, when given, is called after the row is written and returns
+    the regenerated files to commit with it (see
+    :mod:`specy_road.bundled_scripts.do_next_task_register`).
 
     F-009: touch_zones are optional; the brief / agent prompt instructs the
     coding agent to discover them via codebase scan when missing. ``owner``
@@ -98,8 +103,9 @@ def register_and_commit(
         entry["implementation_review"] = "pending"
     reg.setdefault("entries", []).append(entry)
     write_registry(registry_path, reg)
-    git_runner("add", str(registry_path))
-    git_runner("commit", "-m", commit_message, "--", str(registry_path))   # only the registry, whatever else is staged
+    paths = [str(registry_path), *(generated() if generated else [])]
+    git_runner("add", *paths)
+    git_runner("commit", "-m", commit_message, "--", *paths)   # only these paths, whatever else is staged
 
 
 def refuse_linked_worktree(repo_root: Path, *, local: bool, worktree: bool) -> None:

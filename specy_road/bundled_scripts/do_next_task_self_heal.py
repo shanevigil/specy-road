@@ -26,6 +26,8 @@ def attempt_self_cleanup(
     and raises on failure. Returns True on success, False if cleanup itself
     failed.
     """
+    from specy_road.bundled_scripts.do_next_task_register import regenerated_tracked_paths
+
     try:
         if not registry_path.is_file():
             return True
@@ -35,13 +37,14 @@ def attempt_self_cleanup(
         if len(reg["entries"]) == len(before):
             return True
         write_registry(registry_path, reg)
-        git_runner("add", str(registry_path))
+        paths = [str(registry_path), *regenerated_tracked_paths(repo_root)]
+        git_runner("add", *paths)
         git_runner(
             "commit",
             "-m",
             f"chore(rm-{codename}): self-heal stale claim for {node_id} (F-014)",
             "--",
-            str(registry_path),
+            *paths,
         )
         try:
             git_runner("push", remote, base)
