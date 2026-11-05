@@ -102,6 +102,25 @@ M15.11 behaviour (`models roster`, profile check, `--spread`, coordinator line) 
 - `validate` / `roster_profile_problems` — still use `profile_value_problem` (form + working-tree file).
 - `write_entries` on `roster: [] # keep me` — comment preserved (new test).
 
+## Fix round 2 (gpt-6.1-sol-low at `3c03c902`)
+
+- **R1:** Well-formed explicit `profile:` absent from the relevant source (working tree for dry-run; neither
+  working tree nor integration ref for committed planning) now uses `profile_value_problem` — the same
+  `invalid profile: …, accepted form …` as `validate`. Committed profiles still load via `_pinned_at` when the
+  blob exists and only the working-tree copy is gone.
+- **R2:** `if ref is None: return profile_for_entry(...)` before `sha = full_sha(...)`; removed the unreachable
+  `sha is None` branch.
+
+## Probes
+
+- Well-formed missing path (`model-profiles/openai-gpt/no-such.md`) on worktree plan — `invalid profile` diagnostic,
+  not `cannot read` (new test).
+- Same path on committed plan — `invalid profile` diagnostic, not `not committed` (new test).
+- Well-formed path on ref, working-tree file deleted — still loads (`test_the_committed_profile_is_used_when_the_tree_matches_or_lacks_it` passes).
+- Malformed path with file at wrong location — still `invalid profile` form check (existing test).
+- Escaping path — still `profile_rel_problem` first (existing test).
+- `ref is None` outside git — still falls through to `profile_for_entry` before `full_sha` (no `sha is None` guard).
+
 ## Added
 
 - `specy_road/roster_generate.py`: `ROSTER_FAMILY` (profile family → roster family, from the profiles README);
@@ -118,8 +137,8 @@ M15.11 behaviour (`models roster`, profile check, `--spread`, coordinator line) 
   - the no-coordinator-rostered branch in `_pick_coordinator`.
 
   Reason: A2 and A4, the 400-line cap on `orchestrate_plan.py`, and WIP merge with M15.10.
-- `specy_road/orchestration_pinned.py`: escape + `profile_value_form_problem` on every explicit `profile:` before
-  load; committed `_pinned_at` for well-formed paths. Reason: A2 and fix-round R1.
+- `specy_road/orchestration_pinned.py`: escape + form checks; `profile_value_problem` when a well-formed explicit
+  path is absent from the relevant source; `_pinned_at` when the ref has the blob. Reason: A2 and fix rounds.
 - `specy_road/orchestrate_plan.py`: the `spread` and `roster_from_worktree` parameters and the leaf-order index;
   re-exports from `orchestrate_assign`. Reason: A4 and M15.10 dry-run merge.
 - `specy_road/bundled_scripts/orchestrate_cli.py`: the `--spread` flag and the `this session` render. Reason: A4.
