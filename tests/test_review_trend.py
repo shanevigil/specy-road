@@ -9,13 +9,26 @@ from types import SimpleNamespace
 import pytest
 
 from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
-from tests.test_review_rca import ROSTER, _run, _status
+from tests.test_review_rca import ROSTER
 
+from specy_road.bundled_scripts import review_cli
 from specy_road.orchestration_config import DEFAULT_POLICY
 from specy_road.review_rca import Round, escalation
 from specy_road.review_trend import converging
 
 POLICY = {**DEFAULT_POLICY}   # escalate_same_acceptance_blocks 3, escalate_review_rounds 5
+
+
+def run_cli(*args: str) -> int:
+    with pytest.raises(SystemExit) as e:
+        review_cli.main(list(args))
+    return e.value.code
+
+
+def node_status(repo: Path, capsys) -> tuple[int, dict]:
+    capsys.readouterr()
+    code = run_cli("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    return code, json.loads(capsys.readouterr().out)["nodes"][0]
 
 
 def _rec(n: int, fails: tuple[str, ...] = ()) -> SimpleNamespace:
@@ -76,7 +89,7 @@ def _record(repo: Path, n: int, findings: int, a1: str) -> None:
     notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="opus", verdict="block", a1=a1,
                                  findings={"correctness": [f"f{i}" for i in range(findings)], "regression": [],
                                            "boundary": [], "test_integrity": []}))
-    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "block",
+    assert run_cli("review", "record", "M1.1", "--model", "opus", "--verdict", "block",
                 "--file", str(notes), "--repo-root", str(repo)) == 0
 
 
@@ -89,13 +102,13 @@ def _replay(tmp_path: Path, policy: str = "") -> Path:
 
 def test_status_prints_the_trend_and_defers_a_converging_loop(tmp_path: Path, capsys) -> None:
     repo = _replay(tmp_path)
-    code, st = _status(repo, capsys)
+    code, st = node_status(repo, capsys)
     assert (st["state"], st["escalation"]) == ("blocked", None)
     tr = st["findings_trend"]
     assert [r["findings"] for r in tr["rounds"]] == [13, 2, 2, 1, 0]
     assert [r["failing_acceptance"] for r in tr["rounds"]] == [["A1"], [], [], [], []]
     assert tr["converging"] and tr["escalation_deferred"]
-    _run("handoff", "status", "M1.1", "--repo-root", str(repo))
+    run_cli("handoff", "status", "M1.1", "--repo-root", str(repo))
     out = capsys.readouterr().out
     assert "findings by round: 13, 2, 2, 1, 0; acceptance all pass since round 2" in out
     assert "converging; escalation deferred" in out
@@ -103,9 +116,9 @@ def test_status_prints_the_trend_and_defers_a_converging_loop(tmp_path: Path, ca
 
 def test_status_with_policy_true_escalates_the_same_replay(tmp_path: Path, capsys) -> None:
     repo = _replay(tmp_path, "policy: {escalate_when_converging: true}\n")
-    code, st = _status(repo, capsys)
+    code, st = node_status(repo, capsys)
     assert (code, st["state"], st["escalation"]["rule"]) == (1, "escalated", "same_family")
     assert not st["findings_trend"]["escalation_deferred"]
-    _run("handoff", "status", "M1.1", "--repo-root", str(repo))
+    run_cli("handoff", "status", "M1.1", "--repo-root", str(repo))
     out = capsys.readouterr().out
     assert "findings by round: 13, 2, 2, 1, 0" in out and "escalation deferred" not in out
