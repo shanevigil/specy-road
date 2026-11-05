@@ -21,6 +21,24 @@ Dots count as separators rather than being removed. That keeps the existing `com
 
 **Final touch zones:** `specy_road/model_names.py`, `specy_road/worker_models.py`, `specy_road/worker_adapter_parsers.py`, `specy_road/worker_runner.py`, `tests/`.
 
+## Fix round 1: cost sources
+
+I merged `origin/WIP/improvements-0-3-1` first (`aebacb19`). It changed none of the cost-path files: `worker_adapter_*.py`, `worker_models.py`, `worker_runner.py`, `worker_usage_delta.py`, `model_names.py`. R1 itself landed in `bf6c83d4`. This round adds the audit below and one test for its last uncovered row.
+
+A mismatch needs both `requested_model` (the `--model` on the `launched` event) and `observed_model` (the `model` on a `system/init` line, `init_model`). Only Claude Code and Cursor print that line.
+
+| Adapter | Source of `cost_usd` | What a real model mismatch does to the cost | Test |
+|---|---|---|---|
+| claude-code | Harness-reported: `total_cost_usd`, parsed with `estimate=True`; the turn's share is taken from `session_cost_usd` | Kept beside the note: no `ROSTER_PRICED` marker | `test_real_mismatch_keeps_a_cost_the_harness_reported` |
+| claude-code | Roster estimate: the result has no `total_cost_usd`, so `Adapter.parse_events` → `apply_roster_price_estimate` | Dropped: `cost_usd`/`cost_is_estimate` null, `$?`. A naming-only difference (`Claude Opus 5.5`) keeps the estimate | `test_claude_turn_without_a_harness_cost_is_roster_priced_unless_a_real_mismatch[claude-fable-5-1]` / `[Claude Opus 5.5]` |
+| claude-code | None: no cost and no priced roster profile | Stays null, `$?` | Implied by the case above; `apply_roster_price_estimate` returns usage unchanged when no profile matches (existing `test_cursor_usage_cost.py` unpriced case) |
+| cursor | Never harness-reported: the result line has token counts only | — | — |
+| cursor | Roster estimate | Dropped, `$?`. A naming-only difference (`Grok 4.6 High`) keeps it | `test_real_mismatch_keeps_the_note_and_leaves_cost_unknown`, `test_display_name_is_the_rostered_slug_and_the_turn_is_priced` |
+| cursor | None: unpriced profile | Stays null | Existing `tests/test_cursor_usage_cost.py` (`unpriced` entry) |
+| codex | Never harness-reported: `turn.completed` has tokens only | — | — |
+| codex | Roster estimate, also copied to `session_cost_usd` | No mismatch is possible: Codex prints no `system/init` `model` (its `started` comes from `thread.started`), so `observed_model` is null. The cost is always kept | Existing `tests/test_cursor_usage_cost.py` Codex estimate tests |
+| generic | None: every line is an `output` event and there is never a `usage` event | — | — |
+
 ## Rework (R1, review by cursor-grok-4.6-high)
 
 The previous guard keyed on `cost_is_estimate`. Claude Code parses `total_cost_usd` with `estimate=True`, so a real Claude mismatch lost a cost the harness had reported. The fix changes the signal: `apply_roster_price_estimate` marks its own fill, and `usage_event` reads that marker, not `cost_is_estimate`. `worker_adapter_claude.py` is unchanged.
@@ -38,7 +56,7 @@ The previous guard keyed on `cost_is_estimate`. Claude Code parses `total_cost_u
 
 ## Verification
 
-- `pytest -n 4` on 15 worker test files (the reviewer's two command sets): 169 passed.
+- `pytest -n 4` on 15 worker test files (the reviewer's two command sets): 171 passed after fix round 1.
 - `specy-road file-limits`: OK. `worker_adapter_parsers.py` is at 386 lines and `worker_runner.py` at 396.
 - Red/green (R1): the new Claude test fails with the previous commit's `worker_models.py` and `worker_adapter_parsers.py`, and passes with the fix.
 - Red/green: I ran the new run-level tests against the base code in a throwaway worktree. The display-name test fails there (no estimate). The real-mismatch test passes there too, because the base never priced that unaliased entry at all.
@@ -55,6 +73,8 @@ Out of scope: reasoning-token counts the harness does not report.
 - Guard in `usage_event`: drops the cost only when `ROSTER_PRICED` is set, never a cost the harness reported (A2 without losing real costs; R1).
 - `worker_adapter_parsers.ROSTER_PRICED` marker, set by `apply_roster_price_estimate` and popped by `usage_event`: the only signal that a cost came from the roster (R1).
 - `tests/test_cursor_display_name_cost.py::test_real_mismatch_keeps_a_cost_the_harness_reported`: a Claude turn told `claude-sonnet-5-5` whose init reports `claude-opus-5-5` and whose result has `total_cost_usd: 0.01`; it keeps that cost beside the mismatch note (R1).
+- `tests/test_cursor_display_name_cost.py::test_claude_turn_without_a_harness_cost_is_roster_priced_unless_a_real_mismatch` (2 cases): a Claude result with no `total_cost_usd` is roster-priced; a real mismatch drops that estimate, a naming-only difference keeps it (fix round 1, the cost-source audit's uncovered row).
+- `tests/test_cursor_display_name_cost.py::CLAUDE_ROSTER`: a one-entry claude-code roster for that test.
 - `tests/test_cursor_display_name_cost.py::_run_turn`: a shared fake-harness turn runner, so the cursor and claude-code run tests use one path.
 - `tests/test_cursor_display_name_cost.py::test_display_name_is_the_rostered_slug_and_the_turn_is_priced`: cursor init (`Grok 4.6 High`) plus the recorded result line; no note, and the cost is estimated (A1).
 - `tests/test_cursor_display_name_cost.py::test_real_mismatch_keeps_the_note_and_leaves_cost_unknown`: init `Composer 2.5`; the note is printed, the cost is `$?` and the detail cost is null (A2).
