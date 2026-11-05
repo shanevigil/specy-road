@@ -317,7 +317,7 @@
     },
     {
       "acceptance": [
-        "validate's 'touch zones that match no tracked file' notice lists at most 10 entries, In Progress or claimed nodes first, and gives a count of the rest by status; Not Started unclaimed leaves are counted, not listed; validate --all prints the full list; a test with 85 such nodes pins a bounded line. validate_roadmap_checks.py changes only the call line, staying within its cap",
+        "validate's 'touch zones that match no tracked file' notice lists at most 10 entries, In Progress or claimed nodes first, and gives a count of the rest by status; Not Started unclaimed leaves are counted, not listed; validate --all prints the full list; a test with 85 such nodes pins a bounded line. validate_roadmap_checks.py changes only the call line, staying within its cap; the existing 'from ... validate_notices import' line in validate_roadmap.py may gain names (planner 2026-11-05: no other import or signature change)",
         "The managed .gitignore comment and the init template say '.specyrd/manifest.json stays tracked' only when the repo has a manifest (or reword it so it is true either way); a test covers a repo with no stub pack",
         "For a tracked file matched by a newly added managed ignore rule (M13.7 lists them), the notice prints the git rm --cached command and says when to keep tracking instead. Out of scope: untracking anything automatically, and which ignore rules ship",
         "When the managed .gitignore block repeats a pattern the file already lists above the markers, validate prints one notice naming the repeated patterns and saying they can be removed from above the markers (never edits the file); a test with two repeats pins the line and a file with none prints nothing",
