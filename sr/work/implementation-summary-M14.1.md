@@ -1,6 +1,6 @@
 # Implementation summary: M14.1 — Approvals never carry across unreviewed changes in a sibling repository
 
-Implementation commit: `2c9aa33f`.
+Implementation commits: `2c9aa33f`, plus a test-helper follow-up.
 
 ## What changed
 
@@ -46,12 +46,15 @@ Implementation commit: `2c9aa33f`.
 ### Schema
 - An optional `sibling_heads` object in `handoff.schema.json` (`$defs.siblingHeads`) and `review-record.schema.json` (A3).
 
+### Test helpers
+- `tests/test_sibling_repo_approvals.py` `notes_file()`: writes reviewer notes at HEAD for `review record --file`. The test file imports no underscore-prefixed names; it reuses the public `run_review_cli` and `handoff_status_node` from `tests/review_delegate_helpers.py`.
+
 ### Mocks
 - `test_validate_warns_once_naming_the_siblings` wraps `validate_roadmap.warn_unconfigured_sibling_repos` with monkeypatch to count calls; the real function runs (A4, "once").
 
 ### Tests (`tests/test_sibling_repo_approvals.py`)
 - `test_lists_siblings_with_head_and_dirty_and_skips_tracked_configured_and_deep`: covers A1's definition, including the exclusions.
-- `test_reported_case_sibling_code_and_root_summary_only_does_not_carry`: the reported case, plus the status reason (A2).
+- `test_reported_case_sibling_code_and_root_summary_only_does_not_carry`: the reported case, plus the status reason and exit 1 (A2).
 - `test_without_siblings_the_summary_only_carry_is_unchanged`: no regression without siblings (A2).
 - `test_recorded_sibling_heads_must_still_hold_at_the_same_root_commit`: `review record` writes `sibling_heads`; a dirty or moved sibling makes the approval stale (A3).
 - `test_a_record_without_sibling_heads_counts_only_at_the_same_root_commit`: covers A3's legacy-record rule.

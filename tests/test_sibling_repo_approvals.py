@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
-from tests.test_review_cli import ONE_AI, _notes, _run, _status
+from tests.review_delegate_helpers import handoff_status_node, run_review_cli
+from tests.test_review_cli import ONE_AI
 
 from specy_road.bundled_scripts import validate_roadmap
 from specy_road.review_bookkeeping import policy_line
@@ -39,6 +40,13 @@ def _approve(repo: Path, model: str = "human", **extra) -> str:
     return commit
 
 
+def notes_file(repo: Path, model: str = "opus") -> Path:
+    """Reviewer notes for ``model`` at ``HEAD``, outside the repository, for ``review record --file``."""
+    p = repo.parent / f"notes-{model}.md"
+    p.write_text(review_text(git(repo, "rev-parse", "HEAD"), model=model))
+    return p
+
+
 def _gate(repo: Path):
     return evaluate_gate(repo, NODE, git(repo, "rev-parse", "HEAD"))
 
@@ -68,8 +76,9 @@ def test_reported_case_sibling_code_and_root_summary_only_does_not_carry(tmp_pat
     commit_file(repo, "work/implementation-summary-M1.1.md", "# Summary\n\nReworked.\n", "summary only")
     g = _gate(repo)
     assert not g.passed and not g.bookkeeping_carry and len(g.stale) == 1
-    st = _status(repo, capsys)
+    st = handoff_status_node(repo, capsys)
     assert not st["policy_met"]
+    assert run_review_cli("handoff", "status", "M1.1", "--repo-root", str(repo)) == 1
     assert "still count" not in st["policy"]
     assert (f"human's approve at {approved[:12]} is stale: sibling repositories app are present and "
             "nested_repos does not configure them") in st["policy"]
@@ -86,8 +95,8 @@ def test_without_siblings_the_summary_only_carry_is_unchanged(tmp_path: Path) ->
 def test_recorded_sibling_heads_must_still_hold_at_the_same_root_commit(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     sib = _sibling(repo)
-    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
-                "--file", str(_notes(repo)), "--repo-root", str(repo)) == 0
+    assert run_review_cli("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+                "--file", str(notes_file(repo)), "--repo-root", str(repo)) == 0
     rec = load_review(review_path(repo, "M1.1", "opus"))
     assert rec.ok, rec.errors
     assert rec.data["sibling_heads"] == {"app": git(sib, "rev-parse", "HEAD")}
@@ -113,7 +122,7 @@ def test_a_record_without_sibling_heads_counts_only_at_the_same_root_commit(tmp_
 def test_ready_writes_sibling_heads(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     sib = _sibling(repo)
-    assert _run("ready", "M1.1", "--model", "opus", "--verify", "true=0", "--repo-root", str(repo)) == 0
+    assert run_review_cli("ready", "M1.1", "--model", "opus", "--verify", "true=0", "--repo-root", str(repo)) == 0
     r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
     assert r.ok, r.errors
     assert r.data["sibling_heads"] == {"app": git(sib, "rev-parse", "HEAD")}
@@ -121,7 +130,7 @@ def test_ready_writes_sibling_heads(tmp_path: Path) -> None:
 
 def test_ready_without_siblings_writes_no_sibling_heads(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
-    assert _run("ready", "M1.1", "--model", "opus", "--verify", "true=0", "--repo-root", str(repo)) == 0
+    assert run_review_cli("ready", "M1.1", "--model", "opus", "--verify", "true=0", "--repo-root", str(repo)) == 0
     assert "sibling_heads" not in load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1").data
 
 
@@ -144,16 +153,16 @@ def test_policy_line_lists_each_approval_and_marks_a_carried_one(tmp_path: Path,
     line = (f"2/1 approvals (gpt@{new[:12]}, opus@{old[:12]} carried from an older commit), 0 block(s): met; "
             "approvals still count")
     assert policy_line(g).startswith(line)
-    assert _status(repo, capsys)["policy"].startswith(line)
-    assert _run("handoff", "status", "M1.1", "--repo-root", str(repo)) == 0
+    assert handoff_status_node(repo, capsys)["policy"].startswith(line)
+    assert run_review_cli("handoff", "status", "M1.1", "--repo-root", str(repo)) == 0
     assert f"  policy: {line}" in capsys.readouterr().out
 
 
 def test_review_record_prints_the_same_policy_line(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     capsys.readouterr()
-    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
-                "--file", str(_notes(repo)), "--repo-root", str(repo)) == 0
+    assert run_review_cli("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+                "--file", str(notes_file(repo)), "--repo-root", str(repo)) == 0
     head = git(repo, "rev-parse", "HEAD")
     assert f"policy: 1/1 approvals (opus@{head[:12]}), 0 block(s): met" in capsys.readouterr().out
 
