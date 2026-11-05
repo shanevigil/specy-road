@@ -58,7 +58,9 @@
         "tests/test_init_project_reports.py",
         "tests/test_model_profile_aliases.py",
         "docs/install-and-usage.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/upgrade_repo_helpers.py",
+        "tests/test_refresh_profiles_roster.py"
       ],
       "type": "task"
     },

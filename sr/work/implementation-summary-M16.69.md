@@ -186,6 +186,16 @@ runs each spelling through `sh -c printf` and asserts `Cursor.launch`, `Cursor.r
 - Comment and `$FLAGS` limits from round 1: unchanged, documented.
 - New tests against the 8fb5f1ff adapter: 10 of 57 in the file fail there; all pass on this one.
 
+## Merge with M15.36 (coordinator request)
+
+`specy_road/worker_ops_message.py` conflicted only on its import list, and the merged body keeps both behaviours:
+`_launch_checks` and `_selected_cli` run before any state is written (M15.36), and `adapter.resume` still gets
+`**launch_options(entry, rec.harness)` (this leaf). `_check_eligible` and `_preflight` left the import because
+`_launch_checks` now calls them. No other file needed a hand edit.
+
+- Resume through the merged `message` path: `test_cursor_default_command_is_sandboxed_unless_the_roster_opts_into_force` still gives the sandboxed flags by default and `--trust --force` under `cursor_force`.
+- M15.36's refusals: `tests/test_worker_claude_auth.py` passes on the merged tree.
+
 ## Added
 
 - `SANDBOX_FLAGS`, `FORCE_FLAGS`, `permission_flags(force)` (worker_adapter_cursor.py): the one place the default and the opt-in flags are stated (A1).

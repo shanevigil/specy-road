@@ -34,7 +34,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.33` A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed `refused-review-record-leaves-a-trace` — task — **Complete**
   - `M15.34` The executor prompt states the test rules that the reviewer's excess checklist enforces `executor-prompt-states-the-test-rules` — task — **Complete**
   - `M15.35` The review packet never lists .git or a path under it as an uncommitted reference `packet-never-lists-dot-git-as-uncommitted` — task — **Complete**
-  - `M15.36` Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode `worker-launch-never-depends-on-claude-default-mode` — task — **Not Started**
+  - `M15.36` Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode `worker-launch-never-depends-on-claude-default-mode` — task — **Complete**
   - `M15.37` Review notes: a part joined by a comma or 'and' is a second observation only when it names a defect `comma-or-and-part-counts-only-when-it-names-a-defect` — task — **Complete**
   - `M15.38` add-node caps a title-derived codename at 64 characters so the planning file name fits `derived-codename-capped-so-planning-names-fit` — task — **Complete**
   - `M15.39` A roadmap write that fails part-way restores every file it changed `failed-roadmap-write-restores-every-file` — task — **Complete**
@@ -232,7 +232,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
-- `M15.36` on `feature/rm-worker-launch-never-depends-on-claude-default-mode` since 2026-11-05
 - `M16.69` on `feature/rm-cursor-workers-no-force-by-default` since 2026-11-05
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
@@ -252,11 +251,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 28 | 16 | 5.75 | 83% | 15 | 3 |
+| `docs` **flagged** | 27 | 15 | 5.75 | 83% | 15 | 3 |
 | `planning` **flagged** | 1 | 0 | 3.00 | 100% | 0 | 0 |
-| `specy_road` **flagged** | 47 | 23 | 4.88 | 79% | 23 | 6 |
-| `tests` **flagged** | 50 | 25 | 4.80 | 80% | 23 | 6 |
-| `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
+| `specy_road` **flagged** | 48 | 23 | 4.80 | 80% | 24 | 6 |
+| `tests` **flagged** | 50 | 24 | 4.73 | 81% | 24 | 6 |
 | `README.md` | 1 | 1 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
