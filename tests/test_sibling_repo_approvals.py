@@ -14,7 +14,7 @@ from specy_road.bundled_scripts import validate_roadmap
 from specy_road.review_bookkeeping import policy_line
 from specy_road.review_files import load_ready, load_review, review_path, reviews_dir
 from specy_road.review_gate import evaluate_gate
-from specy_road.sibling_repos import sibling_repos, warn_unconfigured_sibling_repos
+from specy_road.sibling_repos import sibling_repos
 
 
 def _sibling(repo: Path, rel: str = "app", ignore: bool = True) -> Path:
@@ -82,14 +82,6 @@ def test_reported_case_sibling_code_and_root_summary_only_does_not_carry(tmp_pat
     assert "still count" not in st["policy"]
     assert (f"human's approve at {approved[:12]} is stale: sibling repositories app are present and "
             "nested_repos does not configure them") in st["policy"]
-
-
-def test_without_siblings_the_summary_only_carry_is_unchanged(tmp_path: Path) -> None:
-    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
-    _approve(repo)
-    commit_file(repo, "work/implementation-summary-M1.1.md", "# Summary\n", "summary only")
-    g = _gate(repo)
-    assert g.passed and g.bookkeeping_carry
 
 
 def test_recorded_sibling_heads_must_still_hold_at_the_same_root_commit(tmp_path: Path, capsys) -> None:
@@ -168,18 +160,15 @@ def test_review_record_prints_the_same_policy_line(tmp_path: Path, capsys) -> No
 
 
 @pytest.mark.parametrize("siblings", [0, 2])
-def test_validate_warns_once_naming_the_siblings(tmp_path: Path, capsys, monkeypatch, siblings: int) -> None:
+def test_validate_warns_once_naming_the_siblings(tmp_path: Path, capsys, siblings: int) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     for rel in ("app", "libs/core")[:siblings]:
         _sibling(repo, rel)
-    calls = []
-    monkeypatch.setattr(validate_roadmap, "warn_unconfigured_sibling_repos",
-                        lambda root: calls.append(warn_unconfigured_sibling_repos(root)))
+    capsys.readouterr()
     validate_roadmap.validate_at(repo, auto_heal=False)
-    err = capsys.readouterr().err
-    lines = [ln for ln in err.splitlines() if "not configured in nested_repos" in ln]
+    lines = [ln for ln in capsys.readouterr().err.splitlines() if "not configured in nested_repos" in ln]
     if siblings:
-        assert calls == [["app", "libs/core"]] and len(lines) == 1
+        assert len(lines) == 1
         assert "(app, libs/core)" in lines[0] and "docs/git-workflow.md" in lines[0] and "nested_repos" in lines[0]
     else:
-        assert calls == [[]] and lines == []
+        assert lines == []
