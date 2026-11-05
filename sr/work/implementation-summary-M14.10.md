@@ -17,8 +17,8 @@ All edits are inside the listed zones. `specy_road/review_status_render.py` was 
 
 ## Verification
 
-- `python -m pytest -q -n 4 tests/test_review_trend.py tests/test_review_rca.py tests/test_review_cli.py`: passes.
-- Full suite `python -m pytest -q -n 4`: 4124 passed.
+- `python -m pytest -q -n 4 tests/test_review_trend.py tests/test_review_rca.py tests/test_review_cli.py`: 47 passed.
+- Full suite `python -m pytest -q -n 4`: 4124 passed (before the test-helper change, which touched only `tests/test_review_trend.py`).
 - `specy-road file-limits`: OK (`review_cli.py` 400, `review_rca.py` 384).
 - `ruff check` on the changed Python: clean.
 
@@ -40,6 +40,7 @@ All edits are inside the listed zones. `specy_road/review_status_render.py` was 
   - policy true restores `same_family`/`review_rounds` (A3);
   - `same_acceptance` still fires while counts fall (A2);
   - the default and the schema carry the key (A3).
+- `tests/test_review_trend.py` `run_cli` and `node_status`: public helpers defined in the test file. They run `review_cli.main` and read `handoff status --json`, so the test imports no underscore-prefixed name from another test module.
 - `tests/test_review_trend.py`, CLI tests that replay 13, 2, 2, 1, 0 through `review record` and `handoff status`:
   - the text and `--json` trend, and the `converging; escalation deferred` line (A1/A2);
   - the same replay with policy true escalates and prints no deferral (A3).
