@@ -224,3 +224,53 @@ def test_r4_a_claim_beats_a_session_and_a_session_alone_still_protects(doctor_re
     assert kept(out, "wt-empty: branch feature/rm-empty live: session lone-session, so --fix leaves it")
     assert "[kept] local feature/rm-empty: live: session lone-session, so --fix leaves it" in out
     assert empty.is_dir() and (repo.parent / "wt-thing").is_dir()
+
+
+def test_r5_f1_a_copy_of_a_merged_branch_has_no_commits_of_its_own(doctor_repo, capsys) -> None:
+    """``git branch -c`` copies the source's reflog: its commit entries were made on the source."""
+    repo, _bare = doctor_repo
+    git(repo, "branch", "-c", "feature/rm-done", "feature/rm-copied")
+
+    assert run_doctor(repo, "--fix", "--yes") == 0
+    out = capsys.readouterr().out
+    assert "[kept] local feature/rm-copied: claim gone, no commits yet, so --fix leaves it" in out
+    assert "deleted local branch feature/rm-copied" not in out
+    assert has_ref(repo, "refs/heads/feature/rm-copied")
+    assert "[ok] deleted local branch feature/rm-done" in out   # the source keeps its evidence
+
+
+def test_r5_f2_a_local_namesake_at_the_remote_tip_keeps_the_remotes_finish_merge(doctor_repo, capsys) -> None:
+    """Only the local branch is new: origin's feature/rm-gone still landed by a finish merge."""
+    repo, bare = doctor_repo
+    git(repo, "branch", "feature/rm-gone", git(repo, "rev-parse", "origin/feature/rm-gone"))
+
+    assert run_doctor(repo) == 0
+    out = capsys.readouterr().out
+    assert "origin    feature/rm-gone  — merged\n" in out
+    assert "local     feature/rm-gone  — claim gone, no commits yet, so --fix leaves it" in out
+
+    assert run_doctor(repo, "--fix", "--yes") == 0
+    out = capsys.readouterr().out
+    assert "[ok] deleted feature/rm-gone on origin" in out
+    assert not has_ref(bare, "refs/heads/feature/rm-gone")
+    assert has_ref(repo, "refs/heads/feature/rm-gone")
+
+
+def test_r5_f2_a_namesake_created_after_the_remote_ref_does_not_prove_it_fresh(doctor_repo, capsys) -> None:
+    """A fast-forward-landed remote branch (no finish merge) and a local namesake recreated at its
+    tip later: the remote is merged without evidence, never "no commits yet"."""
+    repo, bare = doctor_repo
+    tip = _fast_forwarded(repo)
+    git(repo, "branch", "-q", "-D", "feature/rm-ff")
+    log = Path(git(repo, "rev-parse", "--git-path", "logs/refs/remotes/origin/feature/rm-ff"))
+    log = log if log.is_absolute() else repo / log
+    old, new, rest = log.read_text().split(" ", 2)
+    who, _, subject = rest.partition("\t")
+    name, when, tz = who.rsplit(" ", 2)
+    log.write_text(f"{old} {new} {name} {int(when) - 60} {tz}\t{subject}")   # pushed a minute earlier
+    git(repo, "branch", "feature/rm-ff", tip)
+
+    assert run_doctor(repo, "--fix", "--yes") == 0
+    out = capsys.readouterr().out
+    assert kept(out, f"origin feature/rm-ff: merged; {NO_EVIDENCE}")
+    assert git(bare, "rev-parse", "feature/rm-ff") == tip
