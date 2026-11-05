@@ -94,7 +94,7 @@
     },
     {
       "acceptance": [
-        "orchestrate plan and grind-session --plan warn once per leaf when an acceptance line names a repository path (or a path's parent directory) that no touch zone covers, listing those paths; paths that do not exist and are not under any zone are listed as 'new file outside zones'; a test with one covered and one uncovered path pins the warning; what counts as a path is one stated, best-effort rule (planner 2026-11-05): a backtick-quoted span containing '/' or a known file suffix is always a path candidate; a bare token is a candidate only when it starts with a tracked top-level directory name or ends in a known suffix (.py .md .json .yaml .yml .toml .ts .tsx .sh .txt .cfg .ini); a candidate that is a tracked file or directory (with or without a trailing '/') is existing, otherwise it is new; all other prose (and/or, read/write, M12/M13, URLs) is ignored, and the warning says it is a best-effort hint whose misses are accepted",
+        "orchestrate plan and grind-session --plan warn once per leaf when an acceptance line names a repository path (or a path's parent directory) that no touch zone covers, listing those paths; paths that do not exist and are not under any zone are listed as 'new file outside zones'; a test with one covered and one uncovered path pins the warning; what counts as a path is one stated, best-effort rule (planner 2026-11-05, clarified): a backtick-quoted span containing '/' or ending in a known file suffix is always a path candidate; a bare token (surrounding punctuation stripped) is a candidate only when it contains '/' and its first segment is a tracked top-level directory, or it ends in a known suffix (.py .md .json .yaml .yml .toml .ts .tsx .sh .txt .cfg .ini); a bare word with neither (e.g. docs, tests) is prose, not a path; a candidate that is a tracked file or directory (with or without a trailing '/') is existing, otherwise it is new and is listed by name as 'new file outside zones: <path>'; all other prose (and/or, read/write, M12/M13, URLs) is ignored, and the warning says it is a best-effort hint whose misses are accepted",
         "The brief lists at most 20 importers per zone marked '(outside zones)' and then a count of the rest; a test with a zone of 200 importers pins the bound. Out of scope: changing zones automatically"
       ],
       "codename": "zones-missing-what-acceptance-needs-flagged",
@@ -134,7 +134,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.21_linked-worktrees-resolve-root-and-symlinked-envs_b502d0b5-af11-4b1e-802c-5283e4f7a506.md",
       "sibling_order": 21,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments",
       "touch_zones": [
         "specy_road/runtime_paths.py",
@@ -277,7 +277,7 @@
       "acceptance": [
         "The post-run check reads git stash list with each entry's hash and subject; new specy_road/worker_turn_stash.py parses the branch from a subject of the form 'On <branch>: <message>' or 'WIP on <branch>: <message>' for every entry added or removed during the turn; worker_turn_check.py changes only GitState's stash field and its one stash comparison",
         "An entry on the turn's own worker's branch is a stash_rule_violation finding that quotes the subject and says the executor prompt forbids stashing, and flags that worker (post_run_findings); an entry on another worker's branch (any worker record with that branch) appends a post_run_check event with a stash_rule_violation finding to that worker's record and flags it, while this turn records an unflagged stash_other note naming that worker; each stash hash is attributed to its owner at most once, so a second observer adds no second event; an entry whose subject names no branch, or a branch no worker has, keeps today's stash finding on this worker with the subject quoted",
-        "Tests: worker A stashes and pops during worker B's turn, so A is flagged and B is not; A's own turn stashing flags A; an entry with no matching worker keeps today's finding. Out of scope: preventing the stash (the tool-call guard already denies git stash where installed) and stashes inside nested repositories"
+        "Tests: worker A stashes during worker B's turn and the entry is still present when B's turn ends (A pops later), so A is flagged and B is not; A's own turn stashing flags A; an entry with no matching worker keeps today's finding; a stash pushed and popped entirely inside another worker's turn is not visible to turn-boundary snapshots and is not detected (documented limit, pinned by one test; planner 2026-11-05). Out of scope: preventing the stash (the tool-call guard already denies git stash where installed) and stashes inside nested repositories"
       ],
       "codename": "stash-changes-attributed-to-the-owning-branch",
       "dependencies": [],

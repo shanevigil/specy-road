@@ -32,9 +32,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 from pathlib import Path
 
-from specy_road.git_subprocess import git_text
+from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_text
 
 #: Overrides discovery for both the CLI and the GUI.
 REPO_ROOT_ENV = "SPECY_ROAD_REPO_ROOT"
@@ -151,11 +152,56 @@ def discover_project_root(start: Path | None = None) -> Path | None:
     return None
 
 
+def git_path(args: list[str], start: Path) -> Path | None:
+    """The one path ``git <args>`` prints in ``start``, or ``None`` on failure.
+
+    Read as bytes, with only git's single trailing newline removed, then decoded with :func:`os.fsdecode`: a
+    path may hold a newline, trailing spaces or bytes that are not UTF-8, which a stripped or line-split text
+    read would corrupt. So each query asks for exactly one value. Spawns git itself because
+    :func:`specy_road.git_subprocess.run` decodes to text.
+    """
+    try:
+        r = subprocess.run(["git", *args], cwd=start, capture_output=True, timeout=DEFAULT_TIMEOUT, check=False)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    out = r.stdout.removesuffix(b"\n")
+    return Path(os.fsdecode(out)) if r.returncode == 0 and out else None
+
+
+def _worktree_and_common_dir(start: Path) -> tuple[Path, Path] | None:
+    """``(worktree top, common git dir)`` of the checkout holding ``start``, or ``None`` outside one
+    (one :func:`git_path` query per value)."""
+    top = git_path(["rev-parse", "--path-format=absolute", "--show-toplevel"], start)
+    common = git_path(["rev-parse", "--path-format=absolute", "--git-common-dir"], start) if top else None
+    return (top.resolve(), common.resolve()) if top and common else None
+
+
+def enclosing_worktree_root(named: Path) -> Path:
+    """``named`` (from ``SPECY_ROAD_REPO_ROOT``), moved into the worktree the working directory is in.
+
+    The docs say to export the variable, so a worker running in a linked worktree of the same repository
+    (same common git dir) would otherwise resolve the main checkout and be refused as off its branch. The
+    same project-relative path in the enclosing worktree wins, silently, even when this worktree's branch
+    lacks it (the command then fails on that path here, not on the main checkout); a working directory in another repository,
+    or outside git, keeps ``named``.
+    """
+    here = _worktree_and_common_dir(Path.cwd())
+    there = _worktree_and_common_dir(named) if named.is_dir() else None
+    if here is None or there is None or here[0] == there[0] or here[1] != there[1]:
+        return named
+    try:
+        candidate = here[0] / named.relative_to(there[0])
+    except ValueError:
+        return named
+    return candidate   # even when missing here: never back to the checkout the variable names
+
+
 def project_root(explicit: Path | str | None = None) -> Path:
     """Resolve the specy-road project root.
 
     Order, most explicit first: the ``--repo-root`` a caller passed, then
-    ``SPECY_ROAD_REPO_ROOT``, then the root recorded in
+    ``SPECY_ROAD_REPO_ROOT`` (in the enclosing worktree when the working
+    directory is in another worktree of that repository), then the root recorded in
     ``.specyrd/manifest.json``, then discovery upward from the working
     directory, then the git root, then the working directory.
     """
@@ -163,7 +209,7 @@ def project_root(explicit: Path | str | None = None) -> Path:
         return Path(explicit).resolve()
     env = os.environ.get(REPO_ROOT_ENV)
     if env and env.strip():
-        return Path(env.strip()).resolve()
+        return enclosing_worktree_root(Path(env.strip()).resolve())
     top = git_root()
     if top is not None:
         recorded = recorded_project_root(top)
