@@ -20,6 +20,12 @@ _BARE_DIR = re.compile(r"(?<![\w./-])([A-Za-z0-9_.-]+/)(?![\w./-])")
 _KNOWN_SUFFIXES = (
     ".py", ".md", ".json", ".yaml", ".yml", ".toml", ".ts", ".tsx", ".sh", ".txt", ".cfg", ".ini",
 )
+_BARE_SUFFIX = re.compile(
+    r"(?<![\w./-])([A-Za-z0-9_.-]+(?:"
+    + "|".join(re.escape(s) for s in _KNOWN_SUFFIXES)
+    + r"))(?![\w./-])",
+    re.IGNORECASE,
+)
 
 
 def _acceptance(node: dict) -> list[str]:
@@ -33,7 +39,7 @@ def _zones(node: dict) -> list[str]:
 
 def _normalize(token: str) -> tuple[str, bool] | None:
     raw = token.strip()
-    t = raw.strip(".,;:)\"'")
+    t = raw.strip(".,;:)\"'(")
     if not t or t.startswith(("http://", "https://", "-", "/")) or ".." in t.split("/"):
         return None
     had_slash = t.endswith("/")
@@ -90,6 +96,8 @@ def _tokens(line: str) -> list[tuple[str, bool, bool]]:
         add(raw, False)
     for raw in _BARE_DIR.findall(scrub):
         add(raw, False)
+    for raw in _BARE_SUFFIX.findall(scrub):
+        add(raw, False)
     return out
 
 
@@ -125,9 +133,10 @@ def uncovered_acceptance_paths(
     * **Backtick candidate:** the quoted span contains ``/`` or ends in a known suffix
       (``.py``, ``.md``, ``.json``, ``.yaml``, ``.yml``, ``.toml``, ``.ts``, ``.tsx``,
       ``.sh``, ``.txt``, ``.cfg``, ``.ini``). Always treated as a path candidate.
-    * **Bare candidate:** a bare token starts with a tracked top-level directory name
-      at ``ref`` or ends in one of those suffixes (includes bare ``docs/`` when ``docs``
-      is tracked).
+    * **Bare candidate:** a bare token whose first path segment is a tracked top-level
+      directory name at ``ref``, or that ends in one of those suffixes (``_BARE_SUFFIX``
+      extraction; punctuation ``,.;:)(`` stripped first). Includes bare ``docs/`` and
+      bare ``NOTES.txt``.
     * **Ignored:** other prose (``input/output``, ``read/write``, ``M12/M13``, URLs, …).
 
     For each candidate not covered by a touch zone: if it is an existing tracked file

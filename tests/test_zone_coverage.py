@@ -26,48 +26,57 @@ def _labels(acceptance: str, *, zones: list[str], tracked: set[str] = set(_TRACK
     return uncovered_acceptance_paths(Path("/tmp"), node, tracked=tracked)
 
 
+# One row per A1 path-rule clause (roadmap acceptance line 1, planner rule 2026-11-05).
 @pytest.mark.parametrize(
     ("acceptance", "zones", "tracked", "want"),
     [
-        pytest.param("Add `brand/newdir`", ["src/"], _TRACKED, {NEW_OUTSIDE}, id="backtick-slash-nonexistent-is-new"),
-        pytest.param("See docs/ next", ["src/"], _TRACKED, {"docs"}, id="bare-tracked-dir-slash-listed"),
-        pytest.param("Compare input/output for the CLI", ["src/"], _TRACKED, set(), id="prose-slash-ignored"),
-        pytest.param("Use read/write mode", ["src/"], _TRACKED, set(), id="prose-read-write-ignored"),
-        pytest.param("Coordinate M12/M13 handoff", ["src/"], _TRACKED, set(), id="prose-milestone-ids-ignored"),
-        pytest.param(
-            "See https://example.com/foo/bar for details",
-            ["src/"],
-            _TRACKED,
-            set(),
-            id="url-ignored",
-        ),
-        pytest.param("Ship `NOTES.txt`", ["src/"], _TRACKED, {NEW_OUTSIDE}, id="backtick-suffix-nonexistent-is-new"),
-        pytest.param("Ship NOTES.txt today", ["src/"], _TRACKED, set(), id="bare-suffix-without-top-level-ignored"),
-        pytest.param("Refresh `docs/` tree", ["src/"], _TRACKED, {"docs"}, id="backtick-tracked-dir-listed"),
-        pytest.param("Edit docs/existing.md", ["src/"], _TRACKED | {"docs/existing.md"}, {"docs/existing.md"}, id="bare-file-under-tracked-top"),
-        pytest.param("Add `docs/newdir`", ["src/"], _TRACKED, {NEW_OUTSIDE}, id="backtick-new-under-tracked-parent-is-new"),
-        pytest.param(
-            "Touch docs/api/schema.json",
-            ["docs/"],
-            _TRACKED,
-            set(),
-            id="existing-file-in-zone-silent",
-        ),
-        pytest.param("Update `src/a.py`", ["src/"], _TRACKED, set(), id="backtick-file-in-zone-silent"),
-        pytest.param(
-            "Change `docs/outside.md` and `src/in_zone.py`",
-            ["src/"],
-            _TRACKED | {"src/in_zone.py"},
-            {"docs/outside.md"},
-            id="one-covered-one-uncovered-file",
-        ),
-        pytest.param("Extend docs/contracts", ["src/"], _TRACKED, {"docs/contracts"}, id="bare-nested-tracked-dir-listed"),
+        # Backtick span with / → always candidate; nonexistent → new file outside zones
+        pytest.param("Add `brand/newdir`", ["src/"], _TRACKED, {NEW_OUTSIDE}, id="a1-backtick-slash-new"),
+        pytest.param("Add `docs/newdir`", ["src/"], _TRACKED, {NEW_OUTSIDE}, id="a1-backtick-slash-new-under-tracked-tree"),
         pytest.param(
             "Update `input/output`",
             ["src/"],
             _TRACKED,
             {NEW_OUTSIDE},
-            id="backtick-slash-always-candidate-even-prose-like",
+            id="a1-backtick-slash-even-prose-shaped",
+        ),
+        # Backtick span with known suffix → candidate; nonexistent → new
+        pytest.param("Ship `NOTES.txt`", ["src/"], _TRACKED, {NEW_OUTSIDE}, id="a1-backtick-suffix-new"),
+        # Bare token: tracked top-level directory name (docs/)
+        pytest.param("See docs/ next", ["src/"], _TRACKED, {"docs"}, id="a1-bare-top-level-dir-slash-existing"),
+        pytest.param("Extend docs/contracts", ["src/"], _TRACKED, {"docs/contracts"}, id="a1-bare-under-top-level-existing"),
+        pytest.param("Edit docs/existing.md", ["src/"], _TRACKED | {"docs/existing.md"}, {"docs/existing.md"}, id="a1-bare-path-under-top-level-existing"),
+        # Bare token: ends in known suffix
+        pytest.param("Ship NOTES.txt today", ["src/"], _TRACKED, {NEW_OUTSIDE}, id="a1-bare-suffix-new"),
+        pytest.param("Ship (NOTES.txt) today", ["src/"], _TRACKED, {NEW_OUTSIDE}, id="a1-bare-suffix-strips-parens"),
+        # Existing path in zone → no warning
+        pytest.param("Update `src/a.py`", ["src/"], _TRACKED, set(), id="a1-in-zone-silent"),
+        pytest.param(
+            "Touch docs/api/schema.json",
+            ["docs/"],
+            _TRACKED,
+            set(),
+            id="a1-bare-file-in-zone-silent",
+        ),
+        # One covered + one uncovered path (pin from A1)
+        pytest.param(
+            "Change `docs/outside.md` and `src/in_zone.py`",
+            ["src/"],
+            _TRACKED | {"src/in_zone.py"},
+            {"docs/outside.md"},
+            id="a1-one-covered-one-uncovered",
+        ),
+        pytest.param("Refresh `docs/` tree", ["src/"], _TRACKED, {"docs"}, id="a1-backtick-dir-existing"),
+        # Ignored prose (not candidates)
+        pytest.param("Compare input/output for the CLI", ["src/"], _TRACKED, set(), id="a1-ignore-prose-slash"),
+        pytest.param("Use read/write mode", ["src/"], _TRACKED, set(), id="a1-ignore-read-write"),
+        pytest.param("Coordinate M12/M13 handoff", ["src/"], _TRACKED, set(), id="a1-ignore-milestone-ids"),
+        pytest.param(
+            "See https://example.com/foo/bar for details",
+            ["src/"],
+            _TRACKED,
+            set(),
+            id="a1-ignore-url",
         ),
     ],
 )
@@ -102,7 +111,8 @@ def _leaf_repo(tmp_path: Path) -> Path:
     return repo
 
 
-def test_orchestrate_and_grind_emit_one_warning_per_leaf(tmp_path: Path, capsys) -> None:
+def test_orchestrate_and_grind_warn_once_per_leaf(tmp_path: Path, capsys) -> None:
+    """A1: orchestrate plan and grind-session --plan warn once per leaf."""
     repo = _leaf_repo(tmp_path)
     plan, err = op.build_orchestration_plan(repo, today=date(2026, 11, 1))
     assert err is None and plan is not None
