@@ -27,6 +27,7 @@ from specy_road.bundled_scripts.role_prompt_stream import stream_and_capture
 from specy_road.git_subprocess import git_ok, git_text
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.model_profiles import Profile
+from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_role_env import CLAUDE_REVIEWER_AVOID_ENV
 from specy_road.review_record_write import (Outcome, answer_scratch, close_review_run, replace_file, run_and_file,
                                             write_schema)
@@ -103,15 +104,18 @@ def bypass_problem(cli: str) -> str:
     return ""
 
 
-def model_problem(prof: Profile | None, model: str) -> tuple[str | None, str]:
-    """``(api id, error)``: the roster ``model``'s API id (its profile's ``api_id``, else the roster id), or why it has
-    none (``unknown`` or empty: the harness would run some default model under this roster id). Every reviewer
-    launch path checks it, a custom ``channels.cli`` too."""
-    api_id = prof.api_id if prof is not None else model
-    if (api_id or "").strip().lower() in ("", "unknown"):
-        return None, (f"{model!r} resolves to no API model id (its profile's api_id is unknown), so the harness "
-                      "would run some other model under this roster id; set the profile's api_id")
-    return api_id, ""
+def model_problem(prof: Profile | None, entry: dict[str, Any]) -> tuple[str | None, str]:
+    """``(model id, error)``: the model a reviewer's harness is told for roster ``entry``, resolved only by
+    :func:`~specy_road.orchestration_config.harness_model` (the entry's ``harness_model``, else the profile's
+    ``api_id``, else the roster id), or why there is none (an ``unknown`` or empty ``api_id`` and no
+    ``harness_model``: the harness would run some default model under this roster id). Every reviewer path that
+    shows or launches a command takes its model from here: :func:`reviewer_command` and :func:`run_default_reviewer`."""
+    model = harness_model(entry, prof.api_id if prof is not None else None)
+    if not (model or "").strip():
+        return None, (f"{entry.get('id')!r} resolves to no API model id (no roster harness_model, and its profile's "
+                      "api_id is unknown), so the harness would run some other model under this roster id; set the "
+                      "roster entry's harness_model or the profile's api_id")
+    return model, ""
 
 
 def reviewer_command(prof: Profile | None, entry: dict[str, Any], model: str) -> tuple[str | None, str | None, str]:
@@ -121,7 +125,7 @@ def reviewer_command(prof: Profile | None, entry: dict[str, Any], model: str) ->
     :func:`bypass_problem` on a ``channels.cli``. The profile's ``access.cli`` is never used: it is an example,
     often with ``--force`` and no ``--model``."""
     harness, entry_cli = entry.get("harness"), (entry.get("channels") or {}).get("cli")
-    api_id, err = model_problem(prof, model)
+    api_id, err = model_problem(prof, entry)
     if not err and not entry_cli and harness not in READ_BACK_HARNESSES:
         err = (f"a {harness or 'generic'} reviewer needs a roster channels.cli; the profile's access.cli is never "
                "run for a reviewer")
@@ -254,8 +258,9 @@ def run_default_reviewer(prof: Profile | None, prompt_path: Path, root: Path, mo
     harness runs in ``cwd`` (default ``root``). Codex writes its answer (``-o``) to an :func:`answer_scratch` file
     outside the checked tree. ``entry`` is the roster row, when the caller has it, so a row that forces bare is
     refused here too."""
-    api_id = prof.api_id if prof is not None else model
-    api_id = None if (api_id or "").strip().lower() in ("", "unknown") else api_id   # unknown: the harness default
+    api_id, err = model_problem(prof, entry or {"id": model})   # the same resolution as the preview and the refusal
+    if err:
+        return _refused(f"{err}. Nothing was launched", transcript)
     adapter = ADAPTERS[harness]
     session = (str(uuid.uuid4()), False) if harness == "claude-code" else None   # stream-json, to read the result
     mode: str | None = None

@@ -306,3 +306,49 @@ def test_an_unreported_model_is_a_warning_and_the_record_counts(tmp_path: Path, 
     rec = rf.load_review(rf.review_path(repo, "M1.1", "opus"), ["A1", "A2"])
     assert rec.ok and "harness_model" not in rec.data and "model_mismatch" not in rec.data
     assert [a.model for a in evaluate_gate(leaf, NODE, head).approvals] == ["opus"]
+
+
+# --- A2: the model flag comes from orchestration_config.harness_model ---------------------------------------------
+
+LABEL_ROSTER = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+                "  - {id: review-label, family: openai, roles: [reviewer], harness: cursor, harness_model: gpt-6.1-sol}\n")
+
+
+def _label_repo(tmp_path: Path) -> Path:
+    """A claimed leaf whose reviewer is rostered under a label id, with no profile and a ``harness_model``."""
+    from tests.review_repo_helpers import make_review_repo
+
+    repo = make_review_repo(tmp_path, orchestration=LABEL_ROSTER)
+    d = rf.reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True)
+    (d / rf.PACKET_NAME).write_text("# Review packet: `M1.1`\n")
+    return repo
+
+
+def test_a_roster_harness_model_is_the_model_flag_in_preview_and_launch(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo = _label_repo(tmp_path)
+    args = ("M1.1", "--model", "review-label", "--role", "reviewer", "--channel", "cli", "--repo-root", str(repo))
+    assert run_main(role_prompt, *args) == 0                                                    # preview
+    err = capsys.readouterr().err
+    assert "--model gpt-6.1-sol" in err and "--model review-label" not in err
+    answer = review_output(git(repo, "rev-parse", "HEAD"), model="review-label")
+    calls = fake_reviewer_run(monkeypatch, [   # Cursor's stream: the answer is the result's text; its own model name
+        json.dumps({"type": "system", "subtype": "init", "session_id": "s", "model": "GPT 6.1 Sol"}),
+        json.dumps({"type": "result", "subtype": "success", "result": json.dumps(answer), "session_id": "s"})])
+    assert run_main(role_prompt, *args, "--run") == 0                                           # launch
+    argv = next(c["cmd"] for c in calls if list(c["cmd"][:2]) == ["agent", "-p"])
+    assert argv[argv.index("--model") + 1] == "gpt-6.1-sol" and "review-label" not in argv
+    rec = rf.load_review(rf.review_path(repo, "M1.1", "review-label"), ["A1", "A2"])
+    assert rec.ok and rec.data["harness_model"] == "GPT 6.1 Sol" and "model_mismatch" not in rec.data
+
+
+def test_a_harness_model_overrides_an_unknown_profile_api_id_and_without_one_it_is_refused(tmp_path: Path,
+                                                                                         capsys) -> None:
+    from specy_road.bundled_scripts.role_prompt_cli import model_problem
+
+    unknown = load_profile(OPUS)
+    unknown.data["api_id"] = "unknown"
+    assert unknown.api_id.lower() == "unknown"
+    assert model_problem(unknown, {"id": "opus", "harness_model": "claude-opus-5-5"}) == ("claude-opus-5-5", "")
+    assert model_problem(unknown, {"id": "opus"})[0] is None
+    assert model_problem(None, {"id": "opus"}) == ("opus", "")                    # no profile: the roster id

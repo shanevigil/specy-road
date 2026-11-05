@@ -84,10 +84,13 @@ would run, for every role; it starts no process, the roster's `preflight`
 included, unless `--run` is given. A reviewer's command comes from its roster
 entry only: a `claude-code`, `codex` or `cursor` entry without `channels.cli`
 runs the read-only command above with the entry's model, and any other entry
-its `channels.cli`. Refused before launch, with the reason: an entry without
+its `channels.cli`. The model is resolved one way for the shown command and the
+launch alike (`orchestration_config.harness_model`): the entry's
+`harness_model`, else the profile's `api_id`, else the roster `id`. Refused before launch, with the reason: an entry without
 either (the profile's `access.cli` is an example and is never run for a
-reviewer), a model whose profile `api_id` is `unknown` (the harness would run
-its own default under the rostered id; checked for a `channels.cli` too), and a
+reviewer), a model that resolves to none (a profile `api_id` of `unknown` and
+no `harness_model`: the harness would run its own default under the rostered id;
+checked for a `channels.cli` too), and a
 `channels.cli` passing `--force`, `--yolo` or `--dangerously-skip-permissions`.
 The flag check is one rule: the command is split as `sh` splits words
 (`shlex` in POSIX mode with `punctuation_chars`, so `;`, `&`, `|`, `(`, `)`,
