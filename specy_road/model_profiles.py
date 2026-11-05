@@ -364,8 +364,7 @@ def _profile_hint(repo_root: Path, model_id: str, profiles: list[Profile]) -> st
                 "list the id in its `aliases` or give the entry `profile:`")
     if not profiles:
         return f"no profiles under {PROFILES_REL}/; add one or give the entry `profile:`"
-    return (f"no profile under {PROFILES_REL}/ has a close name; add one or give the entry `profile:`; "
-            "to use one with another name, list the id in its `aliases` or give the entry `profile:`")
+    return f"no profile under {PROFILES_REL}/ has a close name; add one or give the entry `profile:`"
 
 
 def roster_profile_gaps(repo_root: Path) -> list[tuple[bool, str]]:
