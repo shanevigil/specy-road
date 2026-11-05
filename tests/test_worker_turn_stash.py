@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 
 import pytest
@@ -100,6 +101,29 @@ def test_already_attributed_hash_skips_second_observer_and_owner_pop(tmp_path: P
     assert len([e for e in ws.events_since(repo, rec_a.worker_id, 0) if e.type == "post_run_check"]) == 1
     assert stash_findings(repo, rec_a, entry, ()) == []
     assert len([e for e in ws.events_since(repo, rec_a.worker_id, 0) if e.type == "post_run_check"]) == 1
+
+
+def test_concurrent_observers_attribute_one_stash_hash_at_most_once(tmp_path: Path) -> None:
+    repo, rec_a, rec_b = _two_workers(tmp_path)
+    rec_c = ws.create_record(repo, "M1.3", "claude-code", "opus", repo, branch="dev")
+    entry = (("a" * 40, "On feature/rm-thing: concurrent"),)
+    barrier = threading.Barrier(2)
+    results: list[list[dict]] = []
+
+    def observe(rec: ws.WorkerRecord) -> None:
+        barrier.wait()
+        results.append(stash_findings(repo, rec, (), entry))
+
+    threads = [threading.Thread(target=observe, args=(rec_b,)), threading.Thread(target=observe, args=(rec_c,))]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(results) == 2
+    assert sum(1 for r in results if r and r[0].get("kind") == "stash_other") <= 1
+    owner_checks = [e for e in ws.events_since(repo, rec_a.worker_id, 0) if e.type == "post_run_check"]
+    assert len(owner_checks) == 1
+    assert owner_checks[0].detail["attributed_stash_hashes"] == ["a" * 40]
 
 
 def test_another_workers_stash_pop_during_observer_turn_flags_owner_not_observer(tmp_path: Path) -> None:

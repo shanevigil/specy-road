@@ -11,10 +11,12 @@ import re
 from pathlib import Path
 from typing import Any
 
+from specy_road.worker_lock import workers_dir, workers_lock
 from specy_road.worker_state import WorkerRecord, add_flag, append_event, events_since, list_records, load_record
 
 _FLAG_POST_RUN = "post_run_findings"
 _NOTE_KIND = "stash_other"
+_ATTRIBUTED = "stash-attributed-hashes"
 
 StashEntry = tuple[str, str]  # (commit hash, subject from ``git stash list --format=%gs``)
 
@@ -43,6 +45,10 @@ def post_run_check_flags_worker(findings: list[dict[str, Any]]) -> bool:
     return bool(findings) and any(f.get("kind") != _NOTE_KIND for f in findings)
 
 
+def _attribution_log(repo_root: Path) -> Path:
+    return workers_dir(repo_root) / _ATTRIBUTED
+
+
 def _attributed_hashes(repo_root: Path, worker_id: str) -> set[str]:
     out: set[str] = set()
     for ev in events_since(repo_root, worker_id):
@@ -55,7 +61,20 @@ def _attributed_hashes(repo_root: Path, worker_id: str) -> set[str]:
         for h in detail.get("attributed_stash_hashes") or ():
             if isinstance(h, str):
                 out.add(h)
+    path = _attribution_log(repo_root)
+    if path.is_file():
+        prefix = f"{worker_id}\t"
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith(prefix):
+                out.add(line[len(prefix):])
     return out
+
+
+def _reserve_stash_hash(repo_root: Path, worker_id: str, stash_hash: str) -> None:
+    path = _attribution_log(repo_root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as f:
+        f.write(f"{worker_id}\t{stash_hash}\n")
 
 
 def _owner(repo_root: Path, branch: str) -> WorkerRecord | None:
@@ -93,15 +112,17 @@ def _decide_stash_hash_change(repo_root: Path, rec: WorkerRecord, stash_hash: st
     owner = _owner(repo_root, branch)
     if owner is None:
         return [{"kind": "stash", "summary": _legacy_stash_summary(subject), "subject": subject}]
-    if stash_hash in _attributed_hashes(repo_root, owner.worker_id):
-        return []
-    if owner.worker_id == rec.worker_id:
-        return [{"kind": "stash_rule_violation", "summary": _rule_summary(subject),
-                 "stash_hash": stash_hash, "subject": subject}]
-    _attribute_owner(repo_root, load_record(repo_root, owner.worker_id), stash_hash, subject)
-    return [{"kind": _NOTE_KIND, "summary": f"stash change on {owner.worker_id}'s branch ({branch!r}): "
-                                           f"{subject!r}",
-             "worker_id": owner.worker_id, "branch": branch, "stash_hash": stash_hash}]
+    with workers_lock(repo_root):
+        if stash_hash in _attributed_hashes(repo_root, owner.worker_id):
+            return []
+        if owner.worker_id == rec.worker_id:
+            _reserve_stash_hash(repo_root, owner.worker_id, stash_hash)
+            return [{"kind": "stash_rule_violation", "summary": _rule_summary(subject),
+                     "stash_hash": stash_hash, "subject": subject}]
+        _attribute_owner(repo_root, load_record(repo_root, owner.worker_id), stash_hash, subject)
+        return [{"kind": _NOTE_KIND, "summary": f"stash change on {owner.worker_id}'s branch ({branch!r}): "
+                                                f"{subject!r}",
+                 "worker_id": owner.worker_id, "branch": branch, "stash_hash": stash_hash}]
 
 
 def stash_findings(repo_root: Path, rec: WorkerRecord, before: tuple[StashEntry, ...] | None,
