@@ -134,7 +134,8 @@
       "touch_zones": [
         "specy_road/bundled_scripts/refresh_profiles.py",
         "specy_road/model_profiles.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/upgrade.py"
       ],
       "type": "task"
     },

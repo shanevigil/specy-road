@@ -81,6 +81,7 @@ entries:
       - specy_road/bundled_scripts/refresh_profiles.py
       - specy_road/model_profiles.py
       - tests/
+      - specy_road/bundled_scripts/upgrade.py
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
