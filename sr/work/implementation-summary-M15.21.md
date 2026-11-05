@@ -70,6 +70,43 @@ New `docs/orchestration-worktrees.md`. It covers root resolution, where `env_set
 - Red-green: the four new regression tests fail (4 failed) with `worktree_env.py` and `runtime_paths.py` at
   063ec92a, and pass with the fix.
 
+## Fix round 1: link invariants
+
+The record blocks 063ec92a. R1 to R5 were fixed in a48cbf2b and 2762aa1b, before this round's message
+arrived. This round merged `origin/WIP/improvements-0-3-1` (6ad03fcd, clean), widened the escape set, and
+pinned the listed inputs with tests (a0355639).
+
+Invariants, each held by one function every caller goes through:
+- Write containment (R1): `link_target` resolves the destination's parent and refuses it outside the leaf
+  worktree; the final component is not followed, so an existing or dangling link there is refused by the
+  `exists`/`is_symlink` check. Test: `test_link_refuses_a_parent_that_is_a_symlink_out_of_the_worktree`
+  (`assets` -> external directory: refused, external directory stays empty).
+- Exemption scope (R3): `linked_status_paths` exempts a path only when it is a symlink whose resolved target
+  equals the declared source's resolved path. Test, through `worker delegate`:
+  `test_delegate_refuses_an_ordinary_file_with_a_declared_link_name` (refused, no worker record, file kept);
+  `test_delegate_ignores_a_declared_link_made_by_hand` (a real link is still exempt).
+- Literal ignore lines (R2): `exclude_pattern` escapes `\ * ? [ ] ! #` and trailing spaces; each line starts
+  with `/`, so none can begin with `!` or `#`. Test: `test_link_excludes_a_name_with_pattern_characters_literally`
+  (`env[1]`, `a*b?`, `!bang`, `#hash`, `c]d`, `e\\f`: status clean; `env1` and `aXbY` still untracked).
+  `]`, `!` and `#` were already literal in that position; they are escaped so the rule doesn't depend on position.
+- Root resolution (R4): `enclosing_worktree_root` returns the enclosing worktree's path even when it is missing
+  there, so it never redirects to the main checkout. Test:
+  `test_a_project_missing_from_the_enclosing_worktree_is_not_redirected_to_the_main_checkout`.
+
+Other inputs checked:
+- A link whose source is missing: refused, "does not exist" (`test_link_refuses_a_missing_source_and_a_path_past_the_git_root`).
+- A source that is itself a symlink: inside the git root, linked to the resolved target, and the delegate
+  exemption accepts it; pointing past the git root, refused and nothing linked
+  (`test_a_source_that_is_a_symlink_links_its_resolved_target`).
+- An absolute path in `link:`: the schema (`^(?!/)`) rejects the config, so setup does nothing; with the schema
+  bypassed (`link_into` directly), `link_target` refuses it and nothing is written
+  (`test_an_absolute_link_path_is_refused_by_the_schema_and_by_the_link_guard`).
+- `..` in `link:`: `node_modules/..` (the worktree top) and `../escape` (past the git root) are refused and the
+  worktree is unchanged (`test_link_refuses_dot_dot_out_of_place`).
+- A nested project prefix (`sr/`): `link: [node_modules, ../.venv]` writes `/sr/node_modules` and `/.venv`, and
+  the delegate exemption names them the way `git status` does
+  (`test_link_in_a_nested_project_excludes_git_root_relative_lines`).
+
 ## Probes
 
 - Link target with `assets` symlinked out of the worktree: refused, nothing written outside (test).
@@ -111,7 +148,7 @@ New `docs/orchestration-worktrees.md`. It covers root resolution, where `env_set
   that are symlinks resolving to their main-checkout source (rework R3).
 - `worktree_env.link_target`: the link's place in the leaf, parent resolved and bounded, final component not
   followed; refuses `..`, the worktree top and newlines (rework R1, R2).
-- `worktree_env.exclude_pattern`: escapes gitignore pattern syntax in an exclude line (rework R2).
+- `worktree_env.exclude_pattern`: escapes gitignore pattern syntax (`\\ * ? [ ] ! #`, trailing spaces) in an exclude line (rework R2, fix round 1).
 - `worktree_env.exclude_links`: appends anchored exclude lines to the common `info/exclude` (A2).
 - `worktree_env.link_into`: makes the symlinks, with bound/missing/exists guards (A2). It was split out of
   `setup_worktree_env` for C901.
@@ -135,4 +172,9 @@ New `docs/orchestration-worktrees.md`. It covers root resolution, where `env_set
   - `test_delegate_refuses_an_ordinary_file_with_a_declared_link_name`: rework R3, through delegate.
   - `test_a_project_missing_from_the_enclosing_worktree_is_not_redirected_to_the_main_checkout`: rework R4.
   - `test_link_refuses_a_parent_that_is_a_symlink_out_of_the_worktree`: rework R1, no external write.
-  - `test_link_excludes_a_name_with_pattern_characters_literally`: rework R2, clean status and exact-name match.
+  - `test_link_excludes_a_name_with_pattern_characters_literally`: rework R2, clean status and exact-name match
+    (fix round 1 adds `!`, `#`, `]` and `\\`).
+  - `test_link_refuses_dot_dot_out_of_place`: fix round 1, `..` entries.
+  - `test_an_absolute_link_path_is_refused_by_the_schema_and_by_the_link_guard`: fix round 1, absolute entries.
+  - `test_a_source_that_is_a_symlink_links_its_resolved_target`: fix round 1, symlinked sources.
+  - `test_link_in_a_nested_project_excludes_git_root_relative_lines`: fix round 1, nested prefix.
