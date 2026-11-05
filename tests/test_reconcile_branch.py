@@ -106,7 +106,7 @@ def test_reconcile_resolves_bookkeeping_and_pushes(tmp_path: Path, capsys) -> No
 
     assert reconcile_branch(wt, ib="dev", remote="origin") == 0, capsys.readouterr().err
 
-    assert git(wt, "rev-parse", "HEAD^2") == git(wt, "rev-parse", "origin/dev")
+    assert git(wt, "rev-parse", "HEAD^2") == git(root, "rev-parse", "dev")
     assert git(wt, "rev-parse", "HEAD") == git(wt, "rev-parse", "origin/feature/rm-two")   # pushed
     for rel in ("roadmap/registry.yaml", "roadmap.md", "roadmap-context.md"):
         assert "<<<<<<<" not in (wt / rel).read_text(encoding="utf-8"), rel
@@ -179,6 +179,25 @@ def test_reconcile_refuses_when_fetch_fails_and_leaves_head(tmp_path: Path, caps
     assert git(wt, "rev-parse", "HEAD") == head
     assert git(wt, "rev-parse", "origin/dev") == stale_dev
     assert git(wt, "rev-parse", "origin/feature/rm-two") == remote_feature
+
+
+def test_reconcile_merges_the_fetch_head_tip_when_tracking_ref_is_stale(tmp_path: Path, capsys) -> None:
+    """R1 (sol-low): merge FETCH_HEAD from ``git fetch origin ib``, not a stale origin/ib."""
+    root, wt = _two_pr_leaves(tmp_path, shared_code=False)
+    remote_dev_before = git(wt, "rev-parse", "origin/dev")
+    commit_file(root, "src/new_remote.py", "z = 1\n", "dev: advance after first PR")
+    git(root, "push", "-q", "origin", "dev")
+    remote_dev_tip = git(root, "rev-parse", "dev")
+    assert remote_dev_tip != remote_dev_before
+    git(wt, "config", "remote.origin.fetch", "+refs/heads/feature/rm-two:refs/remotes/origin/feature/rm-two")
+    git(wt, "update-ref", "refs/remotes/origin/dev", remote_dev_before)
+
+    assert reconcile_branch(wt, ib="dev", remote="origin") == 0, capsys.readouterr().err
+
+    assert git(wt, "rev-parse", "HEAD^2") == remote_dev_tip
+    assert git(wt, "rev-parse", "HEAD^2") != remote_dev_before
+    assert (wt / "src" / "new_remote.py").is_file()
+    assert (wt / "src" / "new_remote.py").read_text(encoding="utf-8") == "z = 1\n"
 
 
 def _reject_feature_two_push(bare: Path) -> Path:

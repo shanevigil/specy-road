@@ -18,7 +18,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from specy_road.finish_implementation_check import base_ref
 from specy_road.finish_land_deterministic import codename_from_branch
 from specy_road.finish_pr_merge import merge_integration_resolving_bookkeeping
 from specy_road.git_subprocess import git_code, git_ok, git_text
@@ -37,6 +36,11 @@ def _holds_claim(repo: Path, codename: str) -> bool:
     """Whether ``HEAD``'s registry still has this leaf's row (the leaf has not finished)."""
     doc = read_registry_at_ref(repo, "HEAD", 4.0) or {}
     return any(isinstance(e, dict) and e.get("codename") == codename for e in doc.get("entries") or [])
+
+
+def _integration_sha_after_fetch(repo: Path) -> str | None:
+    """The commit ``git fetch <remote> <ib>`` just wrote to ``FETCH_HEAD``, if readable."""
+    return git_text(["rev-parse", "--verify", "FETCH_HEAD"], repo) or None
 
 
 def _push(repo: Path, branch: str) -> int:
@@ -68,18 +72,18 @@ def reconcile_branch(repo: Path, *, ib: str, remote: str, codename: str | None =
     if not fetched:
         detail = fetch_detail or "git fetch failed"
         return _err(f"could not fetch {remote}/{ib}: {detail}")
-    ref = base_ref(repo, remote, ib)
+    ref = _integration_sha_after_fetch(repo)
     if ref is None:
-        return _err(f"neither {remote}/{ib} nor {ib} exists here.")
+        return _err(f"could not read the integration tip after fetching {remote}/{ib}")
     pre = git_text(["rev-parse", "HEAD"], repo)
     problem = merge_integration_resolving_bookkeeping(
         repo, ref=ref, ib=ib, branch=branch, drop_row=not _holds_claim(repo, own))
     if problem is not None:
-        return _err(f"could not merge {ref} into {branch}: {problem}. The merge was aborted and "
+        return _err(f"could not merge {remote}/{ib} into {branch}: {problem}. The merge was aborted and "
                     f"{branch} is unchanged; resolve code conflicts by hand (`git merge {ref}`).")
     if git_text(["rev-parse", "HEAD"], repo) == pre:
-        print(f"[ok] {branch} already contains {ref}; nothing to merge")
+        print(f"[ok] {branch} already contains {remote}/{ib}; nothing to merge")
         return _push(repo, branch)
-    print(f"[ok] merged {ref} into {branch}: roadmap/registry.yaml resolved by rule, "
+    print(f"[ok] merged {remote}/{ib} into {branch}: roadmap/registry.yaml resolved by rule, "
           "roadmap.md and roadmap-context.md regenerated")
     return _push(repo, branch)
