@@ -170,7 +170,8 @@ entries:
       - tests/test_review_friction_m15_17.py
     started: '2026-11-05'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-05T19:37:08+00:00'
   - codename: derived-codename-capped-so-planning-names-fit
     node_id: M15.38
     branch: feature/rm-derived-codename-capped-so-planning-names-fit
