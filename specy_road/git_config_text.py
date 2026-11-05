@@ -1,13 +1,17 @@
 """git config files read as git reads them, without running git (M21.7).
 
 The post-run check reads a worker's git config before any post-turn git command may run (a changed
-``core.fsmonitor`` would run under it), so it parses the files itself. The rule is git-config(1)'s syntax:
-``[section]``, ``[section "subsection"]`` (backslash escapes, case kept) and the deprecated ``[section.sub]``
+``core.fsmonitor`` would run under it), so it parses the files itself. The rule is git-config(1)'s syntax: an optional
+UTF-8 byte-order mark first, ``[section]``, ``[section "subsection"]`` (backslash escapes, case kept) and the deprecated ``[section.sub]``
 (folded); key names folded to lower case; a key with no ``=`` is ``true``; in a value, surrounding whitespace is
 dropped and inner whitespace kept, ``"`` toggles quoting, ``#`` and ``;`` start a comment outside quotes, ``\\``
 escapes ``"``, ``\\``, ``n``, ``t`` and ``b`` and joins a line it ends. ``include.path`` and every
 ``includeIf.<condition>.path`` are followed, conditions not evaluated, to git's depth of 10; a relative path is
 relative to the including file, ``~`` is expanded. A malformed line is skipped, where git would refuse the file.
+
+What depends on the parse is bounded: a config file's change is always reported by its bytes' digest, and the
+hooks directories watched are the defaults plus every ``core.hooksPath`` value read (steering_paths.git_snapshot),
+so a value read wrongly or a condition not evaluated can only add a watched directory, never drop the default one.
 
 Split from :mod:`specy_road.steering_paths` for the file limit.
 """
@@ -73,6 +77,7 @@ def _value(text: str, i: int) -> tuple[str, int]:
 
 def parse_config(text: str) -> list[tuple[str, str]]:
     """``(key, value)`` per variable, in file order; ``key`` is ``section[.subsection].name``."""
+    text = text.removeprefix("\ufeff")   # git skips a UTF-8 byte-order mark
     out: list[tuple[str, str]] = []
     section, i, n = "", 0, len(text)
     while i < n:

@@ -214,9 +214,10 @@ def _hooks_dir(snap: Snapshot, scope: Scope, d: Path) -> None:
 
 def git_snapshot(scope: Scope) -> Snapshot:
     """Git steering, from the filesystem only (:mod:`specy_road.git_config_text`): every config file git reads
-    (the common ``config``, ``config.worktree`` and what they include), and the hooks directories: each
-    ``core.hooksPath`` value any of them sets (relative to the checkout), else ``<common>/hooks`` and
-    ``<worktree-gitdir>/hooks``."""
+    (the common ``config``, ``config.worktree`` and what they include), and the hooks directories:
+    ``<common>/hooks``, ``<worktree-gitdir>/hooks`` and each ``core.hooksPath`` value any of them sets (relative
+    to the checkout). The defaults are always watched: which ``hooksPath`` git uses can depend on an
+    ``includeIf`` condition this snapshot does not evaluate, so it watches every candidate instead of choosing."""
     snap: Snapshot = {}
     for top in scope.tops:
         dirs = _gitdirs(top)
@@ -230,7 +231,7 @@ def git_snapshot(scope: Scope) -> Snapshot:
                 snap.setdefault(str(real), Entry(scope.display(real), "git_config", _sha(data),
                                                  tuple(sorted(watched_values(pairs).items()))))
                 hooks += [(top / os.path.expanduser(v)).resolve() for k, v in pairs if k == "core.hookspath" and v]
-        for d in dict.fromkeys(hooks or [common / "hooks", gitdir / "hooks"]):
+        for d in dict.fromkeys([common / "hooks", gitdir / "hooks", *hooks]):
             _hooks_dir(snap, scope, d)
     return snap
 

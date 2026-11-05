@@ -111,29 +111,39 @@ def test_each_steering_class_is_exactly_one_steering_file_finding(tmp_path: Path
     assert FLAG_STEERING in ws.load_record(p["repo"], rec.worker_id).to_dict()["flags"]   # worker status --json
 
 
-HOOKS_PATH_SPELLINGS = {   # name: (the hooks directory's name, core.hooksPath as written, {d} its absolute path)
-    "trailing_comment": ("hooks", "{d} # managed by ops"),
-    "quoted_hash_then_comment": ("hooks #x;y", '"{d}" ; note'),
-    "escaped_quote_and_continuation": ('ho"oks', '"{d_escaped}"'),
+HOOKS_CONFIGS = {   # name: (hooks directory name, text added to the common config, a BOM first); {d} that directory
+    "trailing_comment": ("hooks", "[core]\n\thooksPath = {d} # managed by ops\n", False),
+    "quoted_hash_then_comment": ("hooks #x;y", '[core]\n\thooksPath = "{d}" ; note\n', False),
+    "escaped_quote_and_continuation": ('ho"oks', '[core]\n\thooksPath = "{d_escaped}"\n', False),
+    "bom_prefixed_config": ("hooks", "[core]\n\thooksPath = {d}\n", True),   # the first section, after the BOM
+    # {d} is set only under a condition that does not hold: git keeps the default hooks directory
+    "nonmatching_conditional_include": ("hooks", '[includeIf "gitdir:/nowhere/"]\n\tpath = {other}\n', False),
 }
 
 
-@pytest.mark.parametrize("name", sorted(HOOKS_PATH_SPELLINGS))
-def test_a_hook_in_the_configured_hooks_path_is_found_however_git_config_spells_it(tmp_path: Path, name: str) -> None:
-    dirname, spelling = HOOKS_PATH_SPELLINGS[name]
+@pytest.mark.parametrize("name", sorted(HOOKS_CONFIGS))
+def test_a_hook_in_the_hooks_directory_git_uses_is_found_however_the_config_reads(tmp_path: Path, name: str) -> None:
+    dirname, text, bom = HOOKS_CONFIGS[name]
     p = _layout(tmp_path)
     d = tmp_path / dirname
     d.mkdir()
+    other = tmp_path / "other.gitconfig"
+    other.write_text(f"[core]\n\thooksPath = {d}\n")
     escaped = str(d).replace('"', '\\"')
-    value = spelling.format(d=d, d_escaped=escaped[:len(escaped) // 2] + "\\\n" + escaped[len(escaped) // 2:])
+    added = text.format(d=d, other=other, d_escaped=escaped[:len(escaped) // 2] + "\\\n" + escaped[len(escaped) // 2:])
     config = p["repo"] / ".git" / "config"
-    config.write_text(config.read_text() + f"[core]\n\thooksPath = {value}\n")
-    assert git(p["repo"], "config", "--file", str(config), "--get", "core.hooksPath") == str(d)   # git's reading
-    assert dict(parse_config(config.read_text()))["core.hookspath"] == str(d)                   # is the check's
+    config.write_text("\ufeff" + added + config.read_text() if bom else config.read_text() + added)   # BOM, then the section
+    # git's own reading, conditions evaluated, names the directory the turn writes a hook into
+    used = subprocess.run(["git", "config", "--get", "core.hooksPath"], cwd=p["leaf"], capture_output=True, text=True)
+    hooks = Path(used.stdout.strip()) if used.returncode == 0 else p["repo"] / ".git" / "hooks"
+    assert (hooks == d) is (name != "nonmatching_conditional_include")
+    if hooks == d:   # and the check's parse of the file agrees with git's
+        assert [v for k, v in parse_config(config.read_text()) if k == "core.hookspath"] == [str(d)]
     rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
-    found = _turn(p["repo"], rec, lambda: _write(d / "pre-commit", "#!/bin/sh\n"))
+    found = _turn(p["repo"], rec, lambda: _write(hooks / "pre-commit", "#!/bin/sh\n"))
     [steer] = [f for f in found if f["kind"] == "steering_file"]
-    assert steer["class"] == "git_hook" and steer["path"] == str(d / "pre-commit") and steer["before"] == "absent"
+    assert steer["class"] == "git_hook" and steer["path"] == str(hooks.resolve() / "pre-commit") and steer["before"] == "absent"
+    assert "git_probes_skipped" in {f["kind"] for f in found}
 
 
 def test_a_changed_fsmonitor_is_reported_before_any_git_command_could_run_it(tmp_path: Path) -> None:
