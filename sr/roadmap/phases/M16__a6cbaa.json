@@ -153,8 +153,8 @@
     },
     {
       "acceptance": [
-        "When finish-this-task's merge into the integration branch conflicts in roadmap chunk files (roadmap/phases/*.json), roadmap/manifest.json or roadmap.md, and the feature branch made no roadmap edit of its own (its diff against the merge base in those files equals what it inherited from earlier merges of the integration branch), finish resolves them to the integration branch's version, as it already does for registry.yaml and roadmap-context.md, and then re-runs export/digest so the generated files match",
-        "When the branch did change roadmap content itself, finish refuses with one error line naming each such file and the next command, and leaves no bookkeeping commit (M15.40's undo); it never silently drops the branch's own roadmap edit",
+        "When finish-this-task's merge into the integration branch conflicts in roadmap chunk files (roadmap/phases/*.json), roadmap/manifest.json or roadmap.md, and the feature branch made no roadmap edit of its own (its diff against the merge base in those files equals what it inherited from earlier merges of the integration branch), finish resolves them to the integration branch's version, as it already does for registry.yaml and roadmap-context.md, and then re-runs export/digest so the generated files match; plan review 2026-11-05 (Sol, adopted): classify roadmap edits before this run's bookkeeping commit and exclude finish-generated status changes from authored edits; after restoring the integration branch's conflicted graph paths, reapply completion for the finishing node by node_key, recompute ancestor completion, then regenerate export/digest; test the landed status and the released claim",
+        "When the branch did change roadmap content itself, finish refuses with one error line naming each such file and the next command, and leaves no bookkeeping commit (M15.40's undo); it never silently drops the branch's own roadmap edit; plan review 2026-11-05 (Sol, adopted): provenance rule - walk the feature branch's first-parent history from its branch point; ordinary commits changing graph paths are authored edits; an integration merge is inherited-only for a path only if its resulting blob or deletion matches its integration parent, other merge results are authored; refuse only when a graph conflict requires discarding an authored edit; test inherited merges, authored merge resolutions and non-conflicting authored graph edits. Milestone-rollup landing is out of scope",
         "Tests: a leaf branch that only merged the integration branch earlier lands cleanly after the integration branch moved or archived nodes in the same chunk; a branch with its own roadmap edit in the chunk is refused with the file named. Out of scope: merging two real roadmap edits"
       ],
       "codename": "finish-resolves-inherited-roadmap-conflicts",
@@ -176,8 +176,8 @@
     },
     {
       "acceptance": [
-        "The cursor adapter's default worker launch and resume (worker_adapter_cursor.py) no longer pass --force: they pass --trust plus Cursor's sandbox (--sandbox enabled), the narrower command docs/orchestration-workers.md already documents; --force is used only when the roster entry opts in explicitly (one named, documented field, e.g. run/permission opt-in), never by default",
-        "Before the change lands, the executor verifies with the real agent CLI in a fresh linked worktree that a typical leaf turn works under the new default: edit a file, run the targeted pytest, and git commit on the leaf branch; the results (pass, or the exact refusal) are recorded in the implementation summary. If git commit or tests cannot run inside Cursor's sandbox, the leaf documents that as a known limitation (as for Codex) and the opt-in path, rather than restoring --force by default",
+        "The cursor adapter's default worker launch and resume (worker_adapter_cursor.py) no longer pass --force: they pass --trust plus Cursor's sandbox (--sandbox enabled), the narrower command docs/orchestration-workers.md already documents; --force is used only when the roster entry opts in explicitly (one named, documented field, e.g. run/permission opt-in), never by default; plan review 2026-11-05 (Sol, adopted): for built-in Cursor executor commands the roster field cursor_force is boolean, defaults false, and applies on launch and resume; false emits --trust --sandbox enabled without --force, true emits --trust --force without --sandbox enabled; custom channels.cli commands keep their explicit argv and are outside this guarantee; plan and doctor warn once per cursor_force=true Cursor entry (including unassigned ones); launch events record the effective permission flags",
+        "Before the change lands, the executor verifies with the real agent CLI in a fresh linked worktree that a typical leaf turn works under the new default: edit a file, run the targeted pytest, and git commit on the leaf branch; the results (pass, or the exact refusal) are recorded in the implementation summary. If git commit or tests cannot run inside Cursor's sandbox, the leaf documents that as a known limitation (as for Codex) and the opt-in path, rather than restoring --force by default; plan review 2026-11-05 (Sol, adopted): record the agent version, exact smoke-test commands and each edit/pytest/commit outcome in the implementation summary; if sandboxed tests or commits are refused, opt the toolkit's Composer/Grok executor entries into cursor_force and record the temporary exception in sr/roadmap/decisions.yaml",
         "When a roster entry opts into --force, orchestrate plan and doctor print one warning naming the entry and the risk (every command not explicitly denied is allowed; see docs/research agent-safety-posture-2026-11-05 and CR1), and the launch argv shown in logs makes the opt-in visible",
         "Tests pin the default argv (no --force, has --trust and --sandbox enabled) for launch and resume, the opt-in argv, and the warning. docs/orchestration-workers.md and the CHANGELOG [Unreleased] section describe the new default and the opt-in. Out of scope: Claude Code and Codex launch flags (M15.36, M20)"
       ],
@@ -197,7 +197,15 @@
         "specy_road/bundled_scripts/orchestrate_cli.py",
         "docs/orchestration-workers.md",
         "CHANGELOG.md",
-        "tests/"
+        "tests/",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/worker_ops_message.py",
+        "specy_road/worker_adapter_base.py",
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/worker_runner.py",
+        "sr/roadmap/orchestration.yaml",
+        "sr/roadmap/decisions.yaml"
       ],
       "type": "task"
     }

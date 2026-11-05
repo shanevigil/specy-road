@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.review_bookkeeping import policy_line
 from specy_road.review_files import list_reviews, reviews_dir
 from specy_road.review_write_check import replace_file
 from specy_road.worker_adapter_parsers import UNREADABLE, loads_untrusted
@@ -145,5 +146,5 @@ def open_reviewer_cli_run(repo_root: Path, t: ReviewTarget, model: str, harness:
 def gate_policy_summary(gate: Any, runs: list[dict[str, Any]]) -> str:
     """``handoff status`` policy line, with a reviewer failure beside ``not met`` when one applies."""
     note = reviewer_failure_gate_note(runs)
-    base = gate.summary()
+    base = policy_line(gate)
     return f"{base} — {note}" if not gate.passed and note else base
