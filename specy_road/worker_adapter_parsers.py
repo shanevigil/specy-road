@@ -158,14 +158,25 @@ def _snip(s: str, n: int = 200) -> str:
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
+#: What :func:`loads_untrusted` returns for text it cannot read.
+UNREADABLE: Any = object()
+
+
+def loads_untrusted(text: str) -> Any:
+    """``text`` parsed as JSON, or :data:`UNREADABLE`; never raises. Harness and reviewer output is untrusted input:
+    besides malformed JSON (``ValueError``, a huge integer included), nesting deep enough to exhaust the decoder's
+    recursion (``RecursionError``) or anything else the decoder raises is an unreadable line, not a crash."""
+    try:
+        return json.loads(text)
+    except Exception:   # total by design: ValueError, RecursionError, MemoryError, …
+        return UNREADABLE
+
+
 def _json(line: str) -> dict[str, Any] | None:
     line = line.strip()
     if not line.startswith("{"):
         return None
-    try:
-        d = json.loads(line)
-    except ValueError:
-        return None
+    d = loads_untrusted(line)
     return d if isinstance(d, dict) else None
 
 

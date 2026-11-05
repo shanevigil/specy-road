@@ -13,7 +13,8 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.claude_config import claude_projects_dir
-from specy_road.worker_adapter_base import STDIN_INSTRUCTION, Adapter, Capabilities, Launch, Parsed, _bare, _model_flag
+from specy_road.worker_adapter_base import (REVIEWER_DISALLOWED, REVIEWER_NO_WRITES, REVIEWER_TOOLS, STDIN_INSTRUCTION,
+                                         Adapter, Capabilities, Launch, Parsed, _bare, _model_flag)
 from specy_road.worker_adapter_parsers import _init_detail, _json, _snip, _text, limit_detail, usage_fields
 
 #: The executor's tools, listed rather than left to the mode: since 2.1.302 ``claude -p`` silently denies a tool
@@ -56,15 +57,22 @@ class ClaudeCode(Adapter):
                       stdin=_text(prompt_path), session_id=session_id, launch_mode=launch_mode)
 
     def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,
-                        session: tuple[str, bool] | None = None) -> Launch:
+                        session: tuple[str, bool] | None = None, *, schema: Path | None = None,
+                        output: Path | None = None) -> Launch:
         """A fresh-session reviewer's turn: ``--bare``, so the branch under review runs none of its hooks and
         connects none of its MCP servers, and ``--add-dir`` for the hand-off directory. The instruction goes
         right after ``-p``: ``--add-dir`` takes several values and would swallow it. ``session`` is
-        ``(id, resume)`` for ``review delegate``: the session flag, and stream-json so the id can be read back."""
+        ``(id, resume)`` for ``review delegate``: the session flag, and stream-json so the id can be read back.
+        Read-only (A2): no file-writing tool is allowed or approved (``Write``, ``Edit`` and ``NotebookEdit`` are
+        denied, and no permission mode approves edits); bare mode fires no hook, so ``--disallowedTools`` denies
+        commits, pushes and ``gh`` too (A4). ``--add-dir`` lets it read the hand-off directory. ``schema`` (the review output schema file) goes inline as ``--json-schema``. ``output`` is unused:
+        the result event carries the final answer."""
         tracked = [*self.session_flag(*session), "--output-format", "stream-json", "--verbose"] if session else []
+        structured = ["--json-schema", json.dumps(json.loads(schema.read_text(encoding="utf-8")))] if schema else []
         return Launch(["claude", "-p", STDIN_INSTRUCTION, "--bare", *tracked, *_model_flag("--model", model),
-                       *self.effort_flag(effort), "--permission-mode", "acceptEdits",
-                       "--allowedTools", "Read,Edit,Bash", "--add-dir", str(reviews)],
+                       *self.effort_flag(effort), "--allowedTools", REVIEWER_TOOLS,
+                       "--disallowedTools", *REVIEWER_NO_WRITES, *REVIEWER_DISALLOWED, *structured,
+                       "--add-dir", str(reviews)],
                       stdin=_text(prompt_path), session_id=session[0] if session else None, launch_mode="bare")
 
     def parse(self, line: str) -> Parsed | None:

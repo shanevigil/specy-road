@@ -1,32 +1,5 @@
 version: 1
 entries:
-  - codename: reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
-    node_id: M8.3
-    branch: feature/rm-reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/review_files.py
-      - specy_road/review_record_write.py
-      - specy_road/templates/specyrd/
-      - docs/pm-llm-review.md
-      - tests/
-      - specy_road/worker_adapters.py
-      - specy_road/worker_adapter_base.py
-      - specy_road/worker_adapter_claude.py
-      - specy_road/worker_adapter_codex.py
-      - specy_road/worker_adapter_cursor.py
-      - docs/orchestration-reviewer-output.md
-      - docs/orchestration-review.md
-      - specy_road/bundled_scripts/role_prompt_cli.py
-      - specy_road/review_answer.py
-      - specy_road/review_delegate.py
-      - specy_road/review_write_check.py
-      - specy_road/reviewer_run_failure.py
-      - specy_road/review_usage.py
-      - specy_road/worker_adapter_parsers.py
-    started: '2026-11-03'
-    owner: savigil
-    implementation_review: pending
   - codename: worker-loop-friction-sync-until-and-ready-only-resume
     node_id: M15.13
     branch: feature/rm-worker-loop-friction-sync-until-and-ready-only-resume

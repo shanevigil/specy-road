@@ -11,7 +11,8 @@ import re
 from dataclasses import replace
 from pathlib import Path
 
-from specy_road.worker_adapter_base import CODEX_POLICY, Adapter, Capabilities, Launch, Parsed, _model_flag
+from specy_road.worker_adapter_base import (CODEX_POLICY, CODEX_REVIEW_POLICY, Adapter, Capabilities, Launch,
+                                         Parsed, _model_flag)
 from specy_road.worker_adapter_parsers import _json, _snip, _text, limit_detail, usage_fields
 from specy_road.worker_usage_delta import SESSION_TOKENS
 
@@ -19,7 +20,6 @@ from specy_road.worker_usage_delta import SESSION_TOKENS
 #: switches (harness-facts: ``--disable memories`` is ``features.memories=false``; v2's key names are undocumented).
 CODEX_MEMORY_OFF = ("-c", "features.memories=false", "-c", "memories.use_memories=false",
                     "-c", "memories.generate_memories=false")
-
 
 def codex_homes() -> Path:
     """Where the per-profile ``CODEX_HOME`` directories live, one per model id the harness is told."""
@@ -72,6 +72,20 @@ class Codex(Adapter):
         return Launch(["codex", "exec", "resume", "--json", *_model_flag("-m", model), *self.effort_flag(effort),
                        *CODEX_POLICY, *CODEX_MEMORY_OFF, session_id, "-"],
                       stdin=_text(prompt_path), session_id=session_id, env={"CODEX_HOME": str(home)})
+
+    def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,
+                        session: tuple[str, bool] | None = None, *, schema: Path | None = None,
+                        output: Path | None = None) -> Launch:
+        """A reviewer's turn in the read-only sandbox: it writes nothing, so it needs no writable root, and the
+        verdict comes back as the final message, shaped by ``--output-schema`` and written to ``-o``. Both flags
+        are documented for ``codex exec`` only, so a resume (``session`` is ``(id, True)``) leaves them out and
+        its last ``agent_message`` is parsed instead; a fresh turn cannot choose its thread id."""
+        if session and session[1]:
+            return Launch(["codex", "exec", "resume", "--json", *self.effort_flag(effort), *CODEX_REVIEW_POLICY,
+                           session[0], "-"], stdin=_text(prompt_path), session_id=session[0])
+        return Launch(["codex", "exec", "--json", *_model_flag("-m", model), *self.effort_flag(effort),
+                       *CODEX_REVIEW_POLICY, *(["--output-schema", str(schema)] if schema else []),
+                       *(["-o", str(output)] if output else []), "-"], stdin=_text(prompt_path))
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)
