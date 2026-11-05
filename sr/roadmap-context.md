@@ -120,6 +120,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.6` validate and add-dependency catch cycles made through inherited group dependencies `inherited-dep-cycles` — task — **Not Started**
   - `M21.7` Executors cannot change the files that steer harnesses and specy-road unnoticed `steering-file-guard` — task — **Not Started**
   - `M21.8` The queued-message worker test waits for the idle state, not just the second completion event `queue-message-test-waits-for-idle` — task — **Not Started**
+  - `M21.9` A freshly initialized project passes its own checks `init-passes-own-checks` — task — **Not Started**
+  - `M21.10` doctor works in a repo with no remote `doctor-without-a-remote` — task — **Not Started**
+  - `M21.11` Help text names installed commands `help-names-installed-commands` — task — **Not Started**
 - `M17` 0.3.2: PM GUI shows orchestration and worktree state `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface `pm-gui-orchestration-plan` — gate — **Not Started**
 - `M18` Orchestration and review-loop features (after 0.3.1) `orch-review-loop` — phase — **Not Started**

@@ -31,6 +31,85 @@
         "tests/test_worker_queue_message.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road init project (not --dry-run) also writes roadmap.md and roadmap-context.md from the scaffold graph by reusing generated_files.regenerate_generated_files, and lists both in its written paths; --dry-run lists them as would-write and writes nothing",
+        "The starter roster placeholder (id my-executor, no harness and no channels.cli) produces no 'matches no model profile' notice; a real unmatched roster id still gets the notice, and its 'closest profile' hint is shown only when the closest name passes a similarity cutoff, so an unrelated profile is never suggested",
+        "New test: init project into a tmp git repo, make the first commit, then run validate, validate --strict, export --check and digest --check in-process; all exit 0 and stderr has no notice or warning naming a scaffold file or the placeholder roster entry. The vision.md touch-zone notice is untracked-only (verified: it clears after the first commit), so the zone check is not changed",
+        "docs/install-and-usage.md new-project line states that init writes both generated files and that the first commit precedes validate; CHANGELOG [Unreleased] Fixed entry",
+        "Estimated net line change (informational, not a gate): package about +25, tests about +60, docs about +5"
+      ],
+      "codename": "init-passes-own-checks",
+      "dependencies": [],
+      "id": "M21.9",
+      "node_key": "3b906ab5-caac-4289-a629-606ea454e3b0",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.9_init-passes-own-checks_3b906ab5-caac-4289-a629-606ea454e3b0.md",
+      "sibling_order": 8,
+      "status": "Not Started",
+      "title": "A freshly initialized project passes its own checks",
+      "touch_zones": [
+        "specy_road/init_project.py",
+        "specy_road/model_profiles.py",
+        "tests/test_init_project_first_run.py",
+        "tests/test_init_project_reports.py",
+        "tests/test_model_profile_aliases.py",
+        "docs/install-and-usage.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the resolved remote (--remote, git-workflow.yaml, else origin) is not configured in the repo (git remote get-url fails), doctor skips git fetch and the remote-backed branch and registry sections, prints one informational line naming the missing remote and that those checks were skipped, still runs the install, checkout, stash and orphaned-claim reports, and exits 0 unless one of those fails",
+        "A configured remote whose fetch fails (bad URL, network) still exits 1 with the existing 'git fetch --prune <remote> failed' error; branches prune is unchanged",
+        "Table-driven test in tests/test_doctor.py over three cases: no remote (exit 0, the informational line, no fetch error), remote present (unchanged listing, exit 0), fetch failing for another reason (exit 1, existing error)",
+        "CHANGELOG [Unreleased] Fixed entry",
+        "Estimated net line change (informational, not a gate): package about +15, tests about +25"
+      ],
+      "codename": "doctor-without-a-remote",
+      "dependencies": [],
+      "id": "M21.10",
+      "node_key": "95346d66-4499-45c1-8a19-2de0cbdbef8a",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.10_doctor-without-a-remote_95346d66-4499-45c1-8a19-2de0cbdbef8a.md",
+      "sibling_order": 9,
+      "status": "Not Started",
+      "title": "doctor works in a repo with no remote",
+      "touch_zones": [
+        "specy_road/bundled_scripts/doctor.py",
+        "tests/test_doctor.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road --help points add-node and scaffold-planning at 'specy-road <cmd> -h', never python specy_road/bundled_scripts/... paths; the gui line names the canonical 'specy-road init gui --install-gui' (the only form the init parser accepts) with pip install 'specy-road[gui-next]' as the alternative; no command or flag is removed",
+        "Subcommand help 'usage:' lines read 'specy-road <cmd>' instead of the module file name (roadmap_crud.py, validate_roadmap.py, ...), set once in cli._run for every bundled entrypoint rather than per script",
+        "Help text no longer cites a bare docs/<name>.md that pip installs lack: each is rewritten to the published URL with doc_links.link_toolkit_docs (top-level usage, apply, do-next-available-task --on-complete) or dropped",
+        "New tests/test_cli_help_text.py runs specy-road --help and '<cmd> -h' for every name in cli._known_commands() and fails on 'bundled_scripts/', on a usage line or 'python ...' naming a .py file, and on a bare docs/<name>.md outside doc_links.SHIPPED_DOCS; CHANGELOG [Unreleased] Fixed entry",
+        "Estimated net line change (informational, not a gate): package about +15, tests about +40"
+      ],
+      "codename": "help-names-installed-commands",
+      "dependencies": [],
+      "id": "M21.11",
+      "node_key": "5bdbdc68-29a1-4d02-b8b3-f6c05849cc3a",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.11_help-names-installed-commands_5bdbdc68-29a1-4d02-b8b3-f6c05849cc3a.md",
+      "sibling_order": 10,
+      "status": "Not Started",
+      "title": "Help text names installed commands",
+      "touch_zones": [
+        "specy_road/cli.py",
+        "specy_road/cli_usage.py",
+        "specy_road/bundled_scripts/roadmap_crud_argparse.py",
+        "specy_road/bundled_scripts/do_next_task_args.py",
+        "tests/test_cli_help_text.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
