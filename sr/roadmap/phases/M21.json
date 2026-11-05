@@ -131,7 +131,6 @@
       "title": "A review record is refused for joined observations only when one of them names a defect",
       "touch_zones": [
         "specy_road/review_record_rules.py",
-        "specy_road/bundled_scripts/role_prompt.py",
         "tests/test_review_record_rules.py",
         "tests/test_review_friction_m15_17.py",
         "docs/orchestration-review.md",
