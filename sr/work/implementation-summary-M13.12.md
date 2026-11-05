@@ -45,6 +45,34 @@ Quieter, accurate validate notices. Commits `36e8aabf` and `cc417326`, then a fi
 - `touch_zone_tracked` reads no files, only `git ls-files`, which already returns `None` on failure. Registry claims: entries that are not dicts are skipped.
 - `git diff origin/WIP/improvements-0-3-1 -- specy_road/bundled_scripts/validate_roadmap.py`: one import line plus three call lines.
 
+## Fix round 2 (review `gpt-6.1-sol-low` on `ed3d42c9`)
+
+- **A4, class: gitignore lines compared differently from how git reads them.** `_patterns` used `str.strip()` and `splitlines()`. That made ` x` and `x` look equal, and it split lines on characters git does not split on. Design change: `_patterns` now follows git's `add_patterns_from_buffer`:
+  - split on `\n` only;
+  - drop one trailing `\r`;
+  - skip a line starting with `#`;
+  - trim trailing unescaped spaces (`_trim_trailing_spaces`, a port of git's `trim_trailing_spaces`);
+  - nothing else changes.
+
+  Two lines are repeats only when git reads the same pattern. The file is now read as bytes and decoded, because `read_text`'s newline translation turned a lone `\r` into a line break.
+- **A5, open, needs a human decision:** `validate_roadmap.py` still changes one import line (line 57). The diff must call three functions that `validate_roadmap.py` does not currently import (`report_context_warnings`, `notice_repeated_ignore_patterns`, `parse_validate_args`). Every module it imports is a `from x import name` of a fixed name list. The only one in this leaf's unrestricted zones is `validate_notices`, which brings in `notice_milestone_review_holds` alone. The other two modules in reach are themselves limited to call-line changes: `agents_md_block` (A5) and `validate_roadmap_checks` (A1). So the only ways to reach a new symbol with no import change are:
+  - `sys.modules[...]` or `fn.__globals__` lookups;
+  - hiding the new behaviour inside `notice_milestone_review_holds` under a misleading name.
+
+  I did neither. Options for the human: amend A5 to allow the one import line, or name a different route.
+
+## Probes (fix round 2)
+
+- `_patterns` against git itself: a scratch repo with lines ` lead`, `trail   `, `esc\ `, `\!bang` and `cr\r`. `git check-ignore -v --no-index` printed ` lead`, `trail`, `esc\ `, `\!bang` and `cr`; `_patterns` returned the same five strings.
+- Leading space, escaped trailing space, `\!` vs `!`, and `\#` vs a `#` comment: no notice. Test: `test_patterns_git_reads_differently_are_not_repeats`.
+- Trailing unescaped spaces plus CRLF: still counted as a repeat, as git reads it. Test: `test_trailing_unescaped_spaces_and_a_crlf_are_what_git_drops`.
+- A lone `\r` mid-line: one pattern, no false repeat. Test: `test_a_lone_carriage_return_does_not_split_a_line`. It would fail with the earlier `read_text`.
+- Other places in the change where gitignore text is compared:
+  - `ignore_report._added_lines` (M13.7): existing code; this leaf changed only the printing. Unchanged.
+  - `agent_ignores`: this leaf changed only the note text. Unchanged.
+  - `context_notice_cache`: compares a hash as bytes and reads no gitignore. Not reached.
+- `git diff origin/WIP/improvements-0-3-1 -- specy_road/bundled_scripts/validate_roadmap.py`: three call lines plus the one import line (A5 open, above).
+
 ## Verification
 
 - `python -m pytest -q -n 4`: 4409 passed, 1 failed before the `test_validate_strict.py` update. All 7 tests in that file pass after it. After the fix round and the merge: 4459 passed.
@@ -66,6 +94,8 @@ Quieter, accurate validate notices. Commits `36e8aabf` and `cc417326`, then a fi
 - `validate_notices.parse_validate_args`: adds `--context`, parses, and sets folding, keeping the option out of `validate_roadmap.py` (A5).
 - `validate_notices.__all__`: marks `report_context_warnings` as a re-export for the single `validate_roadmap.py` import line (A5).
 - Guard in `_changed`: bytes comparison (no decode) plus separate `OSError` suppression on read and write. Any unreadable hash is a miss (fix round).
+- `validate_notices._trim_trailing_spaces`: git's trailing-space rule, so `_patterns` reads lines as git does (fix round 2, A4).
+- Tests `test_patterns_git_reads_differently_are_not_repeats`, `test_trailing_unescaped_spaces_and_a_crlf_are_what_git_drops`, `test_a_lone_carriage_return_does_not_split_a_line`: A4 pattern equality as git reads it (fix round 2).
 - Tests in `tests/test_m13_12_context_cache.py`: invalid UTF-8, truncated, directory as the hash file, file as the cache dir, mode 000; no flag never folds; the flag folds one report only.
 - Tests in `tests/test_m13_12_quieter_notices.py`: 85-node bounded line pinned exactly; the 10 cap with per-status counts; `show_all` lists 85; `.gitignore` comment in a repo with no stub pack, plus the template; the tracked-match command and hint; two repeats pin the notice and the file is unchanged; no repeats prints nothing; context first, unchanged and changed runs; uncached (upgrade / `--context`) always full; no warnings prints nothing.
 - Mocks: none (the context tests use a small fake `warn` callable that prints to stderr).

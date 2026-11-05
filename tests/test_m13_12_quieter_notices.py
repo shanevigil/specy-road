@@ -166,3 +166,28 @@ def test_no_context_warnings_print_nothing(tmp_path: Path, capsys) -> None:
     for _ in range(2):
         report_context_warnings(tmp_path, _warner([]), cached=True)
         assert capsys.readouterr().err == ""
+
+
+def test_patterns_git_reads_differently_are_not_repeats(tmp_path: Path, capsys) -> None:
+    """A leading space, an escaped trailing space, ``\\!`` and ``\\#`` are part of the pattern to git."""
+    _gitignore(tmp_path, " .specyrd/cache/\nwork/reviews/\\ \n\\!work/prompt-*.md\n\\#work/.sessions/\n")
+    (tmp_path / GITIGNORE).write_text(
+        (tmp_path / GITIGNORE).read_text(encoding="utf-8").replace(
+            MARKER_END, "!work/prompt-*.md\n#work/.sessions/\n" + MARKER_END), encoding="utf-8")
+    notice_repeated_ignore_patterns(tmp_path)
+    assert capsys.readouterr().out == ""
+
+
+def test_trailing_unescaped_spaces_and_a_crlf_are_what_git_drops(tmp_path: Path, capsys) -> None:
+    _gitignore(tmp_path, "work/reviews/   \r\n")
+    notice_repeated_ignore_patterns(tmp_path)
+    assert "block repeats: work/reviews/. They can be removed" in capsys.readouterr().out
+
+
+def test_a_lone_carriage_return_does_not_split_a_line(tmp_path: Path, capsys) -> None:
+    """Git splits only on ``\\n``: ``x\\rwork/reviews/`` is one pattern, not a repeat of ``work/reviews/``."""
+    apply_agent_ignores(tmp_path)
+    path = tmp_path / GITIGNORE
+    path.write_bytes(b"x\rwork/reviews/\n" + path.read_bytes())
+    notice_repeated_ignore_patterns(tmp_path)
+    assert capsys.readouterr().out == ""

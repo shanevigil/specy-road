@@ -40,9 +40,32 @@ def parse_validate_args(parser: argparse.ArgumentParser) -> argparse.Namespace:
     return args
 
 
+def _trim_trailing_spaces(line: str) -> str:
+    """``line`` without its trailing unescaped spaces, as git's ``trim_trailing_spaces`` reads it.
+
+    A backslash escapes the character after it, so ``"a\\ "`` keeps its space.
+    """
+    end, i = None, 0
+    while i < len(line):
+        if line[i] == " ":
+            end = i if end is None else end
+        else:
+            end = None
+            i += line[i] == "\\"   # skip the escaped character
+        i += 1
+    return line if end is None else line[:end]
+
+
 def _patterns(text: str) -> list[str]:
-    """The ignore patterns in ``text``: stripped lines, blanks and comments left out."""
-    return [ln.strip() for ln in text.splitlines() if ln.strip() and not ln.strip().startswith("#")]
+    """The ignore patterns in ``text``, each exactly as git reads it.
+
+    Like git: lines split on ``\\n`` only, one trailing ``\\r`` dropped, a line
+    starting with ``#`` is a comment, trailing unescaped spaces are trimmed, and
+    nothing else changes (a leading space, ``\\#``, ``!`` and ``\\!`` all stay
+    as written), so two lines compare equal only when git reads the same pattern.
+    """
+    lines = (ln[:-1] if ln.endswith("\r") else ln for ln in text.split("\n"))
+    return [p for ln in lines if not ln.startswith("#") and (p := _trim_trailing_spaces(ln))]
 
 
 def notice_repeated_ignore_patterns(root: Path) -> None:
@@ -51,7 +74,7 @@ def notice_repeated_ignore_patterns(root: Path) -> None:
     Report only: the lines above the block belong to the project, so validate never edits them.
     """
     try:
-        text = ((git_root(root) or root) / ".gitignore").read_text(encoding="utf-8", errors="replace")
+        text = ((git_root(root) or root) / ".gitignore").read_bytes().decode("utf-8", errors="replace")
     except OSError:
         return
     start = text.find(MARKER_START)
