@@ -28,6 +28,8 @@ __all__ = [
 
 _VERSION = re.compile(r"^(\d+(?:\.\d+)*)(?:(a|b|rc)(\d+))?$", re.IGNORECASE)
 _AGENTS_WRITTEN = re.compile(r"Written by specy-road (\S+)")
+#: The block check's version: digits first, no trailing ``;``/``.`` (CLAUDE.md's line ends ``X;``).
+_BLOCK_WRITTEN = re.compile(r"Written by specy-road (\d[\w.+-]*\w)")
 _MINIMUM_LINE = re.compile(r"\(minimum (\S+)\)")
 _PRE = {"a": 0, "b": 1, "rc": 2}
 
@@ -82,7 +84,7 @@ def warn_if_blocks_written_by_other_version(project: Path) -> None:
     checkout = git_root(project) or project.resolve()
     for path, label in ((project / AGENTS_MD, AGENTS_MD), (checkout / AGENT_GUIDE, AGENT_GUIDE)):
         _before, block, _after = _split(_read_text(path), HTML_COMMENT)
-        m = _AGENTS_WRITTEN.search(block or "")
+        m = _BLOCK_WRITTEN.search(block or "")
         if m and m.group(1) != __version__:
             print(
                 f"specy-road: warning — {label} block written by specy-road {m.group(1)}, "
@@ -130,8 +132,7 @@ def launchers_on_path(path_env: str | None = None) -> list[Launcher]:
     seen: set[Path] = set()
     raw = os.environ.get("PATH", "") if path_env is None else path_env
     for entry in raw.split(os.pathsep):
-        if not entry:
-            continue
+        entry = entry or os.getcwd()   # an empty PATH component is the current directory
         for name in ("specy-road", "specyrd"):
             cand = Path(entry) / name
             if cand in seen or not cand.is_file() or not os.access(cand, os.X_OK):
