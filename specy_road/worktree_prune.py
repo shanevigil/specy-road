@@ -72,17 +72,23 @@ def leaf_worktree(root: Path, node_id: str) -> tuple[Path, Path, str]:
 
 def _status(d: Path, skip: tuple[str, ...] = ()) -> tuple[list[str], list[str]] | None:
     """``(changed or untracked, ignored)`` paths in ``d``, leaving out those under ``skip``; ``None`` if unreadable."""
-    # raw: the status column can start with a space. --untracked-files=all names each file inside an
-    # untracked or ignored directory, so the list says exactly what removal deletes.
-    out = git_stdout(["status", "--porcelain", "--ignored", "--untracked-files=all"], d)
+    # -z: paths come unquoted (a space or a non-ASCII byte would otherwise arrive in "..." with escapes,
+    # naming no file on disk), each record ending in NUL; a rename or copy record carries its source path
+    # as the next field. --untracked-files=all names each file inside an untracked or ignored directory,
+    # so the list says exactly what removal deletes. A name that is not valid text fails the read: None.
+    out = git_stdout(["status", "--porcelain=v1", "-z", "--ignored", "--untracked-files=all"], d)
     if out is None:
         return None
     changed, ignored = [], []
-    for line in out.splitlines():
-        path = line[3:]
-        if skip and f"{path.rstrip('/')}/".startswith(skip):
+    fields = iter(out.split("\0"))
+    for rec in fields:
+        if not rec:
             continue
-        (ignored if line.startswith("!! ") else changed).append(path)
+        paths = [rec[3:], next(fields, "")] if rec[0] in "RC" or rec[1] in "RC" else [rec[3:]]
+        for path in filter(None, paths):
+            if skip and f"{path.rstrip('/')}/".startswith(skip):
+                continue
+            (ignored if rec.startswith("!! ") else changed).append(path)
     return changed, ignored
 
 
@@ -140,6 +146,7 @@ def _check_nested(plan: PrunePlan, main: Path, prefix: str) -> None:
             continue
         changed, ignored = state
         plan.ignored += [f"{prefix}{nr.path}/{p}" for p in ignored]
+        plan.foreign += _foreign_dirs(d, changed + ignored)   # inside it; the configured repository itself is exempt
         if changed:
             plan.refusals.append(f"{label}: uncommitted or untracked: {', '.join(changed)}")
         stashes, lost = _stashes(d, plan.branch, linked), _lost_tips(src, d, linked)
@@ -251,7 +258,8 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         plan.ignored = ignored + plan.ignored
         if changed:
             plan.refusals.append(f"uncommitted or untracked: {', '.join(changed)}")
-        plan.foreign = _foreign_dirs(wt, changed + ignored)
+        configured = {d for _src, d, _linked in plan.nested}
+        plan.foreign = sorted(set(plan.foreign + _foreign_dirs(wt, changed + ignored)) - configured)
         plan.refusals += [_foreign_refusal(wt, d) for d in plan.foreign]
     stashes = _stashes(wt, branch, linked=True)
     if stashes is None:
