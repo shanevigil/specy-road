@@ -174,7 +174,9 @@ def _finished_node_key(repo: Path, codename: str | None, bookkeeping: str) -> st
     """The ``node_key`` of the node ``bookkeeping`` completed, or ``None`` when it cannot be found.
 
     The node id is ``codename``'s row in the registry the bookkeeping commit
-    removed; the key comes from the graph file the commit wrote that node to.
+    removed; the key comes from the graph at that commit. Every graph file is
+    searched, not only the ones the commit changed: a leaf that was already
+    Complete is not rewritten, yet its ancestors may still have rolled up.
     The key, not the id, names the node again: the integration branch may have
     moved or renumbered it.
     """
@@ -183,7 +185,7 @@ def _finished_node_key(repo: Path, codename: str | None, bookkeeping: str) -> st
     node_id = next((e.get("node_id") for e in rows if e.get("codename") == codename), None)
     if not isinstance(node_id, str):
         return None
-    for path in _changed_graph_paths(repo, bookkeeping):
+    for path in _graph_paths_at(repo, bookkeeping):
         ok, text = git_ok(["show", f"{bookkeeping}:{path}"], repo)
         node = next((n for n in _nodes_in(text) if n.get("id") == node_id), None) if ok else None
         if node is not None and isinstance(node.get("node_key"), str):
@@ -191,12 +193,10 @@ def _finished_node_key(repo: Path, codename: str | None, bookkeeping: str) -> st
     return None
 
 
-def _changed_graph_paths(repo: Path, commit: str) -> list[str]:
-    """Git-root-relative roadmap graph paths ``commit`` changed against its first parent."""
+def _graph_paths_at(repo: Path, commit: str) -> list[str]:
+    """Git-root-relative roadmap graph paths in ``commit``'s tree."""
     prefix = project_prefix(repo)
-    ok, out = git_ok(
-        ["diff-tree", "-r", "--name-only", "--no-commit-id", f"{commit}^", commit], repo
-    )
+    ok, out = git_ok(["ls-tree", "-r", "--name-only", commit, "--", f":(top){prefix}roadmap"], repo)
     names = [line.strip() for line in out.splitlines()] if ok else []
     return [n for n in names if n.startswith(prefix) and is_roadmap_graph_path(n[len(prefix):])]
 
@@ -215,20 +215,23 @@ def _complete_again(repo: Path, node_key: str) -> list[str]:
     """Set the node keyed ``node_key`` Complete in the resolved graph; recompute its ancestors.
 
     The bookkeeping commit's own graph edit, applied to the integration
-    branch's version after resolution took that version. A node the
-    integration branch no longer has in its graph (archived, say) is left as
-    it is. Project-relative chunk paths that changed.
+    branch's version after resolution took that version. The leaf is
+    rewritten only when it is not Complete already, but its ancestors are
+    recomputed either way: a conflict confined to an ancestor's chunk restores
+    that ancestor's old status while the leaf's chunk merged cleanly. A node
+    the integration branch no longer has in its graph (archived, say) is left
+    as it is. Project-relative chunk paths that changed.
     """
     for chunk in sorted(set(build_node_chunk_map(repo).values())):
         nodes = load_json_chunk(chunk)
         node = next((n for n in nodes if n.get("node_key") == node_key), None)
         if node is None:
             continue
-        if node.get("status") == "Complete":
-            return []
-        node["status"] = "Complete"
-        write_json_chunk(chunk, nodes)
-        changed = [chunk.relative_to(repo.resolve()).as_posix()]
+        changed: list[str] = []
+        if node.get("status") != "Complete":
+            node["status"] = "Complete"
+            write_json_chunk(chunk, nodes)
+            changed.append(chunk.relative_to(repo.resolve()).as_posix())
         ancestors = complete_rolled_up_ancestors(repo, node["id"])
         return changed + [rel for rel in ancestors if rel not in changed]
     return []
