@@ -331,6 +331,11 @@ def file_unregistered_commands(path: Path) -> list[tuple[int, str]]:
     return _occurrences(agent_file_lines_outside_block(text))
 
 
+def line_unregistered_commands(lines: list[tuple[int, str]]) -> list[tuple[int, str]]:
+    """``(line, mention)`` per unregistered command in numbered ``lines``: the scanner, for a caller's own line source."""
+    return _occurrences(lines)
+
+
 def stale_command_advice(mention: str) -> str:
     """What to do about ``mention``: its replacement, that nothing replaces it, or where to look."""
     replacement = REPLACED_COMMANDS.get(mention)

@@ -77,9 +77,9 @@ findings, because it is a report. It edits nothing tracked.
 
 | Class | What it reports |
 | --- | --- |
-| `stale-command` | A `specy-road` or `specyrd` command this version does not register, named in `docs/**/*.md`, `AGENTS.md`, `CLAUDE.md` (project and git roots), `.specyrd/AGENTS.md` or `.specyrd/AGENTS.team.md`. It is the scanner `validate` runs on the agent files, over more files; it checks command names, not flags. |
+| `stale-command` | A `specy-road` or `specyrd` command this version does not register, named in `docs/**/*.md`, `AGENTS.md`, `CLAUDE.md` (project and git roots), `.specyrd/AGENTS.md` or `.specyrd/AGENTS.team.md`. It is the scanner `validate` runs on the agent files, over more files and over whole files, managed blocks included (`validate` skips those); it checks command names, not flags. |
 | `advisory-rule` | A provenance comment (`<!-- prevents: … \| enforced: advisory … \| ref: … -->`) in a managed agent file, or in the templates they are rendered from when those are in this checkout (rendering strips the comments): one line per rule nothing checks. |
-| `ratchet-grew` | A `policy.ratchet_paths` baseline with lines added since the newest tag (`git describe --tags --abbrev=0`), reported as `<path>: +N line(s) since <tag>`. With no tag the scan reports nothing and says so once on stderr. |
+| `ratchet-grew` | A `policy.ratchet_paths` baseline with lines added since the newest tag (`git describe --tags --abbrev=0`), reported as `<path>: +N line(s) since <tag>`. With no tag, or no integration branch to read the policy from, the scan reports nothing and says why once on stderr. |
 
 `--open-chores --under <PARENT>` adds at most one leaf under `PARENT` per class
 with findings, through the same write as `add-node`: title from the class (for

@@ -28,7 +28,7 @@ from specy_road.agent_guide_block import PROVENANCE
 from specy_road.bundled_scripts.chore_cli import chores_dir
 from specy_road.bundled_scripts.validate_stale_commands import (
     agent_files,
-    file_unregistered_commands,
+    line_unregistered_commands,
     stale_command_advice,
 )
 from specy_road.git_subprocess import git_text
@@ -36,6 +36,7 @@ from specy_road.harness_instruction_files import RULES_MD
 from specy_road.integrity import _ratchet_findings, integration_ratchet_paths
 from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 from specy_road.orchestration_config import effective_config
+from specy_road.review_policy_ref import policy_source
 from specy_road.runtime_paths import git_root
 from specy_road.worker_state import WorkerError, _write_atomic
 
@@ -74,6 +75,16 @@ def _roots(root: Path) -> tuple[Path, Path]:
     return root, git_root(root) or root
 
 
+def _numbered_lines(path: Path) -> list[tuple[int, str]]:
+    """Every line of ``path``, managed blocks included, numbered as git numbers them (``\\n`` only, not
+    ``str.splitlines``' extra breaks); none when it is missing or not UTF-8."""
+    try:
+        text = path.read_bytes().decode("utf-8")
+    except (OSError, UnicodeDecodeError):
+        return []
+    return [(n, line.removesuffix("\r")) for n, line in enumerate(text.split("\n"), 1)]
+
+
 def stale_command_findings(root: Path) -> list[Finding]:
     root, checkout = _roots(root)
     docs = [p for base in (root, checkout) for p in sorted((base / "docs").rglob("*.md"))]
@@ -81,7 +92,7 @@ def stale_command_findings(root: Path) -> list[Finding]:
         Finding("stale-command", path.relative_to(checkout).as_posix(), lineno,
                 f"`{mention}` is not a command in specy-road {__version__}; {stale_command_advice(mention)}")
         for path in dict.fromkeys([*docs, *agent_files(root), root / RULES_MD])   # validate's set, plus the rules
-        for lineno, mention in file_unregistered_commands(path)))
+        for lineno, mention in line_unregistered_commands(_numbered_lines(path))))
 
 
 def advisory_rule_findings(root: Path) -> list[Finding]:
@@ -89,11 +100,7 @@ def advisory_rule_findings(root: Path) -> list[Finding]:
     templates = [t for t in (_TEMPLATES / n for n in _RULE_TEMPLATES) if t.is_relative_to(checkout)]
     out: list[Finding] = []
     for path in dict.fromkeys([*agent_files(root), root / RULES_MD, *templates]):
-        try:
-            lines = path.read_text(encoding="utf-8").splitlines()
-        except (OSError, UnicodeDecodeError):
-            continue
-        for lineno, line in enumerate(lines, 1):
+        for lineno, line in _numbered_lines(path):
             line = line.strip()
             if PROVENANCE.fullmatch(line) and "| enforced: advisory" in line:
                 prevents = line.removeprefix("<!-- ").split(" | ")[0]
@@ -103,6 +110,9 @@ def advisory_rule_findings(root: Path) -> list[Finding]:
 
 def ratchet_findings(root: Path) -> tuple[list[Finding], list[str]]:
     """Findings, and the one note saying why the scan was skipped when there is no tag."""
+    _ref, err = policy_source(root)
+    if err:   # integration_ratchet_paths reads nothing then; say so rather than report a clean scan
+        return [], [f"ratchet-grew: skipped; policy.ratchet_paths is unreadable on the integration branch: {err}"]
     paths = integration_ratchet_paths(root)
     if not paths:
         return [], []

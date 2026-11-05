@@ -336,3 +336,45 @@ def test_open_chores_refuses_a_parent_in_a_locked_milestone(tmp_path: Path, caps
     assert "error: --under M1.1: roadmap node 'M1.1' is inside milestone subtree 'M1.1'" in err
     assert "Pass another --under parent, or run after the milestone closes." in err
     assert _roadmap_bytes(repo) == before
+
+
+def _garden_json(repo: Path, capsys) -> dict:
+    capsys.readouterr()
+    assert run_chore_cli("chore", "garden", "--json", "--repo-root", str(repo)) == 0
+    return json.loads(capsys.readouterr().out)
+
+
+def test_garden_reports_mentions_inside_managed_blocks_and_validate_still_skips_them(tmp_path: Path, capsys) -> None:
+    """R4: garden reads whole files (managed blocks too) at their original line numbers; validate is unchanged."""
+    from specy_road.bundled_scripts.validate_stale_commands import warn_unregistered_commands  # noqa: PLC0415
+    from specy_road.managed_block import HTML_COMMENT, render_block  # noqa: PLC0415
+
+    repo = garden_repo(tmp_path)
+    block = render_block(["Run `specy-road managed-probe`."], style=HTML_COMMENT)
+    for rel in ("AGENTS.md", "CLAUDE.md", "docs/guide.md"):
+        commit_file(repo, rel, f"# {rel}\n\nIntro.\n{block}", f"block in {rel}")   # the mention is line 5
+    found = {(f["path"], f["line"]) for f in _garden_json(repo, capsys)["findings"]
+             if "managed-probe" in f["detail"]}
+    assert found == {("AGENTS.md", 5), ("CLAUDE.md", 5), ("docs/guide.md", 5)}
+    warn_unregistered_commands(repo)
+    assert "managed-probe" not in capsys.readouterr().err
+
+
+def test_garden_line_numbers_count_only_newlines(tmp_path: Path, capsys) -> None:
+    """Coverage audit: a U+2028, form feed or lone CR inside a line does not shift later line numbers."""
+    repo = garden_repo(tmp_path)
+    commit_file(repo, "docs/guide.md", "a b\x0cc\rd\r\nRun `specy-road grind` now.\n", "odd breaks")
+    commit_file(repo, ".specyrd/AGENTS.md", "x y\n" + _RULES, "odd breaks")
+    lines = {(f["cls"], f["path"], f["line"]) for f in _garden_json(repo, capsys)["findings"]}
+    assert ("stale-command", "docs/guide.md", 2) in lines
+    assert ("advisory-rule", ".specyrd/AGENTS.md", 5) in lines
+
+
+def test_garden_says_why_when_the_ratchet_policy_is_unreadable(tmp_path: Path, capsys) -> None:
+    """Coverage audit: no integration branch to read policy.ratchet_paths from is a note, not a clean scan."""
+    repo = garden_repo(tmp_path)
+    git(repo, "branch", "-m", "dev", "elsewhere")                         # git-workflow.yaml still names dev
+    report = _garden_json(repo, capsys)
+    assert not [f for f in report["findings"] if f["cls"] == "ratchet-grew"]
+    assert len(report["notes"]) == 1
+    assert report["notes"][0].startswith("ratchet-grew: skipped; policy.ratchet_paths is unreadable on the integration branch")
