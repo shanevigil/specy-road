@@ -82,15 +82,15 @@ scaffolded into your repo by `init project`, is the canonical guide to filling t
 models by role, lists independent reviewer pairs and pairs that share blind spots, names cheap
 first-pass executors, gives the roster `family` value for each model, lists the points where the
 research disagrees, and has one profile per model (limits, prices, headless CLI syntax, failure
-modes, prompting rules). A roster `id` is your own label (`claude-opus-5.5` below); the vendor's API
-id (`claude-opus-5-5`) lives in the profile that `profile` points at.
+modes, prompting rules). A roster `id` is your own label; naming it after the shipped profile
+(`claude-opus-5-5` below, not `claude-opus-5.5`) finds the profile without `profile:`.
 
 For independent review by two model families:
 
 ```yaml
 roster:
   - {id: human, family: human, roles: [coordinator, reviewer]}
-  - {id: claude-opus-5.5, family: anthropic, roles: [reviewer]}
+  - {id: claude-opus-5-5, family: anthropic, roles: [reviewer]}
   - {id: gpt-6.1-sol, family: openai, roles: [reviewer]}
   - {id: composer-2.5, family: cursor, roles: [executor]}
 policy:
@@ -125,7 +125,7 @@ a feature branch is ignored by the gate, flagged in the review packet, and, like
 ## Choosing and prompting models
 
 Profiles, `models`, `prompt` and `orchestrate plan`: [orchestration-models.md](orchestration-models.md);
-`specy-road worker` (a leaf on another harness): [orchestration-workers.md](orchestration-workers.md).
+`specy-road worker` (a leaf on another harness): [orchestration-workers.md](orchestration-workers.md); a roster in one command (`models roster`), a model coordinator and `orchestrate plan --spread`: [orchestration-roster.md](orchestration-roster.md).
 
 **One readiness rule.** `do-next-available-task`, `grind-session --plan` and `orchestrate plan` agree on
 which leaves are ready: the same dependency, claim and status check, minus leaves already Complete on an
@@ -255,7 +255,7 @@ commit, and exits 1 when it does not resolve. An empty diff is explained in the 
 ```yaml
 ---
 node_id: M1.2
-model: claude-opus-5.5
+model: claude-opus-5-5
 date: 2026-10-26
 verdict: block                       # approve | block
 commit: 3f9c2e1                      # must be the packet's "Commit under review"
@@ -278,7 +278,7 @@ Free-form notes.
 File it with:
 
 ```bash
-specy-road review record M1.2 --model claude-opus-5.5 --verdict block --file notes.md
+specy-road review record M1.2 --model claude-opus-5-5 --verdict block --file notes.md
 ```
 
 `review record` rejects a record that:

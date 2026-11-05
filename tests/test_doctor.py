@@ -109,7 +109,7 @@ LISTED_LOCAL = {
     "feature/rm-settled": "merged; leaf M1.4 Complete; registry row remains",
 }
 KEPT = ("feature/rm-thing", "feature/rm-roll")
-KEPT_WORKTREES = ("wt-wip", "wt-locked")
+KEPT_WORKTREES = ("wt-wip", "wt-locked", "wt-thing")
 
 
 def test_dry_run_lists_every_kind_and_changes_nothing(doctor_repo, capsys) -> None:
@@ -130,7 +130,7 @@ def test_dry_run_lists_every_kind_and_changes_nothing(doctor_repo, capsys) -> No
                and line.endswith(doctor.SAME_PATCH) for line in out.splitlines())
     assert "wt-missing  — directory missing" in out
     assert "wt-settled  — branch feature/rm-settled is merged" in out
-    assert "wt-thing  — branch feature/rm-thing is merged" in out
+    assert "wt-thing  — branch feature/rm-thing live: claimed by M1.1, so --fix leaves it" in out   # A1
     assert "wt-locked" not in out
     assert "wt-wip  — detached at" in out and "uncommitted changes, so --fix leaves it" in out
     assert "ghost  — node M1.3: feature/rm-ghost is in neither this clone nor origin" in out
@@ -162,7 +162,7 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
             assert not _has(repo, f"refs/heads/{branch}")
         assert f"[ok] deleted {branch} on origin" in out
         assert not _has(bare, f"refs/heads/{branch}")
-    for name in ("wt-done", "wt-detached", "wt-squash", "wt-missing", "wt-settled", "wt-thing"):
+    for name in ("wt-done", "wt-detached", "wt-squash", "wt-missing", "wt-settled"):
         assert any(line.startswith("[ok] removed worktree ") and line.endswith(name)
                    for line in out.splitlines())
         assert name not in git(repo, "worktree", "list")
@@ -181,7 +181,9 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
 
     assert _exit(["--repo-root", str(repo)]) == 0
     listed = [line for line in capsys.readouterr().out.splitlines() if line.startswith("  ")]
-    assert len(listed) == 1 and "wt-wip  — detached at" in listed[0]   # only what --fix leaves
+    assert len(listed) == 2   # only what --fix leaves
+    assert any("wt-wip  — detached at" in line for line in listed)
+    assert any("wt-thing  — branch feature/rm-thing live: claimed by M1.1" in line for line in listed)
 
 
 def test_detached_worktrees_are_listed_and_fix_removes_only_clean_ones(doctor_repo, capsys) -> None:

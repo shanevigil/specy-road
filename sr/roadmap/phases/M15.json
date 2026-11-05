@@ -93,7 +93,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.4_parallel-pr-leaves-reconcile-bookkeeping-by-rule_b1a7472a-784c-4b57-a15e-75d664b9e942.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current",
       "touch_zones": [
         "specy_road/reconcile_branch.py",
@@ -109,7 +109,8 @@
         "specy_road/bundled_scripts/reconcile_branch_cli.py",
         "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
         "specy_road/bundled_scripts/abort_task_pickup.py",
-        "specy_road/bundled_scripts/abort_task_pickup_own_commit.py"
+        "specy_road/bundled_scripts/abort_task_pickup_own_commit.py",
+        "specy_road/bundled_scripts/do_next_task_self_heal.py"
       ],
       "type": "task"
     },
@@ -118,7 +119,8 @@
         "policy.host_effects in roadmap/orchestration.yaml (forbid | allow, default forbid) and an optional policy.protected_services list (name plus host:port or URL) are schema-checked; with forbid, the executor and reviewer prompts carry one block (from specy_road/host_effects.py) saying not to launch GUI apps or packaged builds, not to focus or script windows, and not to call or change the listed services or any running dev server the worker did not start; a test asserts the block in both prompts and its absence under allow",
         "Under forbid, the tool-call guard (new tool_call_guard_host.py; tool_call_guard.py changes only its call line) denies open, xdg-open, osascript, electron and an app bundle's binary, and curl, wget or httpie requests to a protected service's host:port, each with a one-line reason naming policy.host_effects; tests per denied shape plus allowed shapes (curl to an unlisted host, open inside a quoted string argument)",
         "The specyrd agents-team.md starter gains one commented line showing a project's host-effects rule; docs/orchestration-host-effects.md documents the policy, the denied shapes, what the guard cannot see (a test suite that itself launches an app or calls a service), and that a human acceptance run should use services the worker cannot reach",
-        "worker message <W> --interrupt stops the running turn and resumes the session with the message, on harnesses whose adapter can resume (claude-code, cursor, codex); on others it refuses and says the message will queue; the worker record logs the interrupt; a test with a fake harness asserts the turn ends and the next turn's prompt is the message. Out of scope: network sandboxing, and blocking effects inside test code"
+        "worker message <W> --interrupt stops the running turn and resumes the session with the message, on harnesses whose adapter can resume (claude-code, cursor, codex); on others it refuses and says the message will queue; the worker record logs the interrupt; a test with a fake harness asserts the turn ends and the next turn's prompt is the message. Out of scope: network sandboxing, and blocking effects inside test code",
+        "policy.protected_services entries take name, address (host:port, a URL, or a database name or DSN without credentials) and kind (http, database or port), and a roster entry may list its own protected_services, added to the project's for that worker (both schema-checked); the executor prompt's host-effects block names every entry by name and address under 'Shared services you must not touch' and says not to start a server on its port, run seeds, migrations or deletes against it, or change its data to get past an error; a test asserts each listed name and address appear in the executor prompt. Out of scope: detecting such use after the turn (post_run_check and reconcile do not see it)"
       ],
       "codename": "host-effects-policy-and-interruptible-worker-messages",
       "dependencies": [
@@ -166,7 +168,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.6_rework-prompt-carries-the-accepted-rca_c80c3636-1dd9-4001-8520-f0c4e6402be4.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt_rework.py",
@@ -217,7 +219,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.8_promoted-leaf-is-never-stuck-on-an-empty-approach_4c08d324-6253-4875-ac9e-b0933d17f69c.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_promote.py",
@@ -230,7 +232,9 @@
         "tests/",
         "specy_road/bundled_scripts/do_next_task_leaf_guards.py",
         "specy_road/bundled_scripts/session_plan_render.py",
-        "specy_road/bundled_scripts/orchestrate_cli.py"
+        "specy_road/bundled_scripts/orchestrate_cli.py",
+        "specy_road/bundled_scripts/brief_dependency_context.py",
+        "specy_road/bundled_scripts/grind_session.py"
       ],
       "type": "task"
     },
@@ -282,7 +286,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.10_try-a-roster-before-it-lands_2cebdd4b-b1e0-4a40-9b9b-8768fc530b26.md",
       "sibling_order": 10,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff",
       "touch_zones": [
         "specy_road/orchestration_pinned.py",
@@ -311,7 +315,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.11_working-roster-in-one-command-and-validated-profiles_d333b89b-eb44-4636-a350-284149c4a490.md",
       "sibling_order": 11,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors",
       "touch_zones": [
         "specy_road/bundled_scripts/models_cli.py",
@@ -346,7 +350,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.12_shared-doc-zones-do-not-serialize-batches_e6e3dd29-22ab-4b59-9ca3-2ecd479879d8.md",
       "sibling_order": 12,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Shared documentation zones do not serialize grind-session batches",
       "touch_zones": [
         "specy_road/bundled_scripts/session_plan_render.py",
@@ -446,7 +450,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.15_upgrade-ships-the-templates-prompts-reference_035cb961-9771-46ae-a5e5-a378ea914e01.md",
       "sibling_order": 15,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "upgrade ships the work/ templates every prompt references, and the .specyrd README matches upgrade's steps",
       "touch_zones": [
         "specy_road/bundled_scripts/upgrade.py",

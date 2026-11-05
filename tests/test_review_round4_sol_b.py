@@ -73,7 +73,9 @@ def test_a_plan_without_a_coordinator_says_so(tmp_path: Path) -> None:
     config, _err = effective_config(repo)
     node = next(n for n in load_roadmap(repo)["nodes"] if n["id"] == "M1.1")
     a = assign_leaf(node, [Candidate(e, None) for e in config["roster"]], config)
-    assert not a.ok and any("no eligible coordinator" in p for p in a.problems)
+    # M15.11 A4: with no coordinator rostered the session running the plan coordinates, and says so
+    assert a.ok and a.coordinator is None and a.coordinator_is_session
+    assert any(n.startswith("coordinator: this session") for n in a.notes)
 
 
 # --- F14, F15 -------------------------------------------------------------------

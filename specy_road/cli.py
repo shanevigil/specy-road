@@ -30,6 +30,7 @@ _SCRIPTS = {
     "file-limits": "validate_file_limits.py",
     "do-next-available-task": "do_next_task.py",
     "abort-task-pickup": "abort_task_pickup.py",
+    "reconcile-branch": "reconcile_branch_cli.py",
     "registry-prune": "registry_prune.py",
     "mark-implementation-reviewed": "mark_implementation_reviewed.py",
     "review-packet": "review_packet.py",
@@ -49,6 +50,7 @@ _SCRIPTS = {
     "upgrade": "upgrade.py",
     "review-node": "review_node.py",
     "scaffold-planning": "scaffold_planning.py",
+    "author-approach": "author_approach.py",
     "move-node": "roadmap_move_node.py",
     "doctor": "doctor.py",
 }
