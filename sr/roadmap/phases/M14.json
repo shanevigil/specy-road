@@ -38,7 +38,8 @@
         "specy_road/schemas/review-record.schema.json",
         "specy_road/schemas/handoff.schema.json",
         "specy_road/bundled_scripts/validate_roadmap.py",
-        "tests/"
+        "tests/",
+        "specy_road/reviewer_run_failure.py"
       ],
       "type": "task"
     },
@@ -148,7 +149,8 @@
         "specy_road/bundled_scripts/review_packet.py",
         "specy_road/bundled_scripts/review_packet_nested.py",
         "specy_road/bundled_scripts/review_packet_args.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/review_packet_uncommitted_refs.py"
       ],
       "type": "task"
     },
@@ -201,7 +203,8 @@
         "specy_road/schemas/review-record.schema.json",
         "specy_road/templates/project/schemas/orchestration.schema.json",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/review_gate.py"
       ],
       "type": "task"
     },
@@ -311,7 +314,8 @@
         "docs/design-notes/review-loop-rca.md",
         "tests/",
         "specy_road/rca_plan_check.py",
-        "specy_road/orchestrate_plan.py"
+        "specy_road/orchestrate_plan.py",
+        "specy_road/bundled_scripts/validate_roadmap.py"
       ],
       "type": "task"
     },
