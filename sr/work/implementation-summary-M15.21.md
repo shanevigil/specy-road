@@ -17,7 +17,8 @@ Not changed (outside the zones, so a follow-up):
 ## A1: the enclosing worktree wins
 
 - `runtime_paths.project_root`: when `SPECY_ROAD_REPO_ROOT` is set, `enclosing_worktree_root` asks git
-  (`rev-parse --path-format=absolute --show-toplevel --git-common-dir`) for the worktree top and common dir of
+  (`rev-parse --path-format=absolute --show-toplevel`, then a separate `--git-common-dir` query, each read as
+  bytes by `git_path`, fix round 2) for the worktree top and common dir of
   both the working directory and the named path. If they are different worktrees with the same common dir, it
   returns the same project-relative path in the working directory's worktree, even when that directory is
   missing there (rework R4: the command then fails on that path; it is never sent back to the main checkout).
@@ -107,7 +108,33 @@ Other inputs checked:
   the delegate exemption names them the way `git status` does
   (`test_link_in_a_nested_project_excludes_git_root_relative_lines`).
 
-## Probes
+## Fix round 2: path parsing
+
+Class: a filesystem path read from git output as text, then split on newlines or stripped. A checkout named
+`main\ncheckout` turned the two-line `--show-toplevel --git-common-dir` answer into three lines, so
+`_worktree_and_common_dir` returned `None` and `project_root()` fell back to the named main checkout.
+
+Design: `runtime_paths.git_path` asks git for one value per call. It reads stdout as bytes, removes only git's
+single trailing newline, and decodes with `os.fsdecode`. It spawns git itself, because
+`git_subprocess.run` decodes as text and `git_subprocess.py` is outside the touch zones. That module's
+docstring list of callers that spawn git themselves does not name this one yet: a follow-up outside the zones.
+
+Every git call this leaf added or touched:
+- `runtime_paths._worktree_and_common_dir` (`--show-toplevel` + `--git-common-dir` in one call, `splitlines`):
+  the reported bug; now two `git_path` queries.
+- `worktree_env.exclude_links` (`--git-path info/exclude` via `git_text`, which strips): not split, but a path
+  ending in whitespace would lose it; now `git_path`.
+- `worker_ops_launch._launch_locked` / `linked_status_paths` (`status_entries`): already `-z`, NUL-separated;
+  unchanged.
+- `worker_ops_launch.worker_env`, `worker_ops_message._send`, `doctor_env_setup`: no git calls added.
+- `worktree_env.git_top`: walks the filesystem for `.git`, no git output; unchanged.
+
+Test: `test_a_checkout_path_with_a_newline_resolves_the_enclosing_worktree`, Sol's exact input (main checkout
+`main\ncheckout`, cwd in its linked worktree `lane`, the variable naming main): `project_root()` returns `lane`
+and prints nothing. The same test runs `setup_worktree_env` with `link: [node_modules]` there, so the exclude
+file under `main\ncheckout/.git` is found and the lane's status is clean. Red-green: with `runtime_paths.py` and
+`worktree_env.py` at 0ed4797c the test fails (`project_root()` returns `main\ncheckout`).
+
 
 - Link target with `assets` symlinked out of the worktree: refused, nothing written outside (test).
 - Copy targets: already bounded by a full `resolve()` (`bounded_path`), so a symlinked parent or final component
@@ -127,6 +154,13 @@ Other inputs checked:
   common dir): the cases A1 says keep today's behaviour; unchanged.
 - Other mock call counts in `tests/test_linked_worktrees_root.py`: the `[launch] = launches` unpack; replaced.
 
+- Fix round 2, other git path reads not touched by this leaf: `runtime_paths.git_root` and `project_prefix` use
+  `git_text` (strip only, no split), so a newline inside a path survives; they predate this leaf and stay unchanged.
+- Fix round 2, `main_project_root` / `reviews_root` with a `main\ncheckout` checkout: resolves (the newline test's
+  setup step passes).
+- Fix round 2, `exclude_links` reads exclude file lines with `splitlines`: those are patterns, not git output, and a
+  link name with a newline is refused, so no line holds one.
+
 ## Verification
 
 - Full suite `pytest -n 4`: 4035 passed (after the rework).
@@ -137,7 +171,8 @@ Other inputs checked:
 
 ## Added
 
-- `runtime_paths._worktree_and_common_dir`: one git call for a checkout's worktree top and common git dir (A1).
+- `runtime_paths.git_path`: one path from git, read as bytes and decoded with `os.fsdecode` (fix round 2).
+- `runtime_paths._worktree_and_common_dir`: a checkout's worktree top and common git dir, two `git_path` queries (A1, fix round 2).
 - `runtime_paths.enclosing_worktree_root`: the A1 rule (same common dir, different worktree → the enclosing one).
 - Branch in `project_root`: the env-var value goes through `enclosing_worktree_root`.
 - `worker_ops_launch.worker_env`: adds `SPECY_ROAD_REPO_ROOT=<worker project root>` to a `Launch.env` (A1, delegate).
@@ -178,3 +213,4 @@ Other inputs checked:
   - `test_an_absolute_link_path_is_refused_by_the_schema_and_by_the_link_guard`: fix round 1, absolute entries.
   - `test_a_source_that_is_a_symlink_links_its_resolved_target`: fix round 1, symlinked sources.
   - `test_link_in_a_nested_project_excludes_git_root_relative_lines`: fix round 1, nested prefix.
+  - `test_a_checkout_path_with_a_newline_resolves_the_enclosing_worktree`: fix round 2, newline in a checkout path.
