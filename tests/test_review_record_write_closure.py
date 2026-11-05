@@ -1,6 +1,7 @@
 """M8.3 A2/A3 regressions from Sol's block at 27d39730, through the public CLIs and ``delegate``.
 
-F1: the run lock ``.review-run.lock`` is not a runtime file: a reviewer that overwrites it in place fails the review.
+F1 (the run lock overwritten in place) was withdrawn by the 2026-11-04 rescope: the lock is one of specy-road's run
+files the tripwire leaves out (tests/test_review_record_write.py).
 F2: ``prompt --channel cli`` closes its run from the filing outcome, so a review failure or rerun request stays
 incomplete even when an older record of the same commit is on file.
 F3: a terminal Codex ``agent_message`` with no text replaces an earlier answer of the turn: a rerun request.
@@ -16,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_delegate_helpers import delegate_repo, delegate_roster, set_steps, verdict_step, wrote_only
+from tests.review_delegate_helpers import delegate_repo, delegate_roster, set_steps, verdict_step
 from tests.review_repo_helpers import git, make_review_repo, review_output
 from tests.test_models_and_prompt import run_main
 
@@ -24,21 +25,6 @@ from specy_road import review_files as rf
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.review_delegate import delegate, load_run
 from specy_road.reviewer_run_failure import run_path, save_run
-
-
-def test_an_in_place_overwrite_of_the_run_lock_is_a_review_failure_and_files_no_verdict(tmp_path: Path,
-                                                                                        capsys) -> None:
-    repo, spec = delegate_repo(tmp_path)
-    lock = rf.reviews_dir(repo, "M1.1") / ".review-run.lock"
-    set_steps(repo, spec, {**verdict_step(repo), "write": {"path": str(lock), "text": "taken\n"}})
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(["review", "delegate", "M1.1", "--model", "opus", "--backoff", "0", "--json",
-                         "--repo-root", str(repo)])
-    run = json.loads(capsys.readouterr().out)
-    assert lock.read_text() == "taken\n"                                     # written in place, no new entry
-    assert e.value.code == 1 and run["outcome"] == "review_failure"
-    assert wrote_only(run["reason"], "work/reviews/M1.1/.review-run.lock")
-    assert not rf.review_path(repo, "M1.1", "opus").exists()
 
 
 @pytest.mark.parametrize("state", ["rerun", "review_failure"])
@@ -151,5 +137,5 @@ def test_a_retried_codex_turn_never_files_the_failed_fresh_turns_answer_file(tmp
     fresh, resumed = [json.loads(line) for line in calls.read_text().splitlines()]
     assert "-o" in fresh and resumed[:2] == ["exec", "resume"]               # the -o answer was written, then retried
     assert [a["capacity"] for a in run["attempts"]] == [True, False]
-    assert run["outcome"] == "rerun" and "no JSON object" in run["reason"]
+    assert run["outcome"] == "rerun" and "not one complete JSON object" in run["reason"]
     assert not rf.review_path(repo, "M1.1", "sol").exists()

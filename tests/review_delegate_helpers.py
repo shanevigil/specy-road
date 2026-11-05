@@ -30,25 +30,7 @@ if not step.get("plain"):   # a plain-text harness prints no event stream at all
 if step.get("write"):
     w = step["write"]
     os.makedirs(os.path.dirname(w["path"]), exist_ok=True)       # a new directory too
-    kept = os.stat(w["path"]) if w.get("keep_mtime") else None   # an overwrite that puts the times back
     open(w["path"], "w").write(w["text"])
-    if kept:
-        os.utime(w["path"], ns=(kept.st_atime_ns, kept.st_mtime_ns))
-if step.get("transient"):   # a file created, written and deleted again: only its directory keeps a trace
-    with open(step["transient"], "w") as f:
-        f.write("scratch")
-    os.unlink(step["transient"])
-if step.get("relink"):  # the file swapped for a hard link to an identical copy outside: same mode, size, mtime, bytes
-    import shutil
-    r = step["relink"]
-    shutil.copy2(r["path"], r["alias"])
-    os.unlink(r["path"])
-    os.link(r["alias"], r["path"])
-if step.get("chmod"):   # a permission change alone: content, size and mtime stay as they were
-    os.chmod(step["chmod"], os.stat(step["chmod"]).st_mode ^ 0o100)
-if step.get("git"):   # a git command in the checkout the harness was started in (an index-only write)
-    import subprocess
-    subprocess.run(["git", *step["git"]], check=True, capture_output=True)
 if step.get("say"):   # an assistant message before the result
     print(json.dumps({"type": "assistant", "session_id": sid,
                       "message": {"content": [{"type": "text", "text": step["say"]}]}}), flush=True)
@@ -60,6 +42,8 @@ elif step.get("error"):
                       "result": step["error"], "session_id": sid}), flush=True)
 else:
     print(json.dumps({"type": "result", "subtype": "success", "result": answer, "session_id": sid}), flush=True)
+if step.get("after"):   # a line printed after the final message (a truncated event)
+    print(step["after"], flush=True)
 sys.exit(step.get("exit", 0))
 '''
 
@@ -133,8 +117,8 @@ def fake_reviewer_run(monkeypatch, answer: list[str] | None = None) -> list[dict
 
     def logged(launch, adapter, cwd, log, transcript=None) -> int:
         calls.append({"cmd": launch.argv, "input": launch.stdin, "cwd": cwd})
-        with log.open() as raw:   # through the OwnFile, as the real turn writes
-            log.write(raw, "[review prompt] now claude\n" + "\n".join(answer or []) + "\n")
+        with log.open("a", encoding="utf-8") as raw:   # as the real turn appends
+            raw.write("[review prompt] now claude\n" + "\n".join(answer or []) + "\n")
         if transcript is not None:
             transcript.extend(answer or [])
         return 0
@@ -146,12 +130,6 @@ def wrote_paths(reason: str) -> list[str]:
     """The paths a ``review_failure`` reason names (``review failure: the reviewer run wrote a, b; …``)."""
     head = "review failure: the reviewer run wrote "
     return reason[reason.index(head) + len(head):].split(";", 1)[0].split(", ")
-
-
-def wrote_only(reason: str, path: str) -> bool:
-    """``path`` is named, and every other named path is one of its directories (whose entries the write changed)."""
-    named = wrote_paths(reason)
-    return path in named and all(p == path or Path(p) in Path(path).parents for p in named)
 
 
 def strict_problems(node: object, at: str = "") -> list[str]:

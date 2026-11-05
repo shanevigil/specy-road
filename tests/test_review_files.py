@@ -257,13 +257,13 @@ def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, cap
     assert argv[argv.index("--model") + 1] == "claude-opus-5-5" and argv[argv.index("--effort") + 1] == level
     # Nothing re-enables the repository's settings, hooks or MCP servers that --bare turns off.
     assert not {"--settings", "--setting-sources", "--mcp-config", "--plugin-dir"} & set(argv)
-    # M8.3 A4: bare fires no hook, so the deny list sits beside the allowed tools; the whole argv is pinned.
+    # M8.3 A2/A4: no file-writing tool; bare fires no hook, so the deny list sits beside the allowed tools; argv pinned.
     schema = json.loads(argv[argv.index("--json-schema") + 1])
     assert schema["title"] == "specy-road reviewer output" and "notes" in schema["required"]
     assert argv == ["claude", "-p", STDIN_INSTRUCTION, "--bare", "--session-id", argv[5], "--output-format",
                     "stream-json", "--verbose", "--model", "claude-opus-5-5", "--effort", level,
-                    "--permission-mode", "acceptEdits", "--allowedTools", "Read,Edit,Bash",
-                    "--disallowedTools", "Bash(git commit *)", "Bash(git push *)", "Bash(gh *)",
+                    "--allowedTools", "Read,Glob,Grep,Bash", "--disallowedTools", "Write", "Edit", "NotebookEdit",
+                    "Bash(git commit *)", "Bash(git push *)", "Bash(gh *)",
                     "--json-schema", argv[argv.index("--json-schema") + 1],
                     "--add-dir", str(rf.reviews_dir(repo, "M1.1"))]
     prompt = repo / "work" / "prompt-M1.1-reviewer-opus.md"

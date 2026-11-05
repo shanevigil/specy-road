@@ -1,31 +1,47 @@
-# Reviewer output and the read-only check
+# Reviewer output, prevention and the tripwire
 
 How a launched reviewer answers and what specy-road checks before it files the record (M8.3). The rest of the review gate is in [orchestration-review.md](orchestration-review.md).
 
 The reviewer prompt ends with the review output schema: the review-record
 schema without the fields `review record` fills (`family`, `independence`,
 `notes_sha256`, `signature`, `launch_mode`), plus `notes`, the Markdown notes.
-The reviewer ends its reply with one JSON object matching it. Each default
+The reviewer's final message is exactly one JSON object matching it. Each default
 reviewer command passes the harness's structured-output flag where there is one:
 
 | Harness | Reviewer command | Where the JSON comes from |
 |---|---|---|
-| Claude Code | `--bare`, `--disallowedTools` as above, `--json-schema '<schema>'` | the last `result` event's `structured_output`, else its text |
+| Claude Code | `--bare`, `--allowedTools Read,Glob,Grep,Bash`, `--disallowedTools` (below), `--json-schema '<schema>'` | the `result` event's `structured_output`, else its text |
 | Codex | `codex exec --json -c sandbox_mode=read-only -c approval_policy=never --output-schema <file> -o <answer file> -` (the answer file is in a private temporary directory, outside the checkout and the hand-off directory) | at `turn.completed`, the `-o` file; a resume (which documents neither flag) the turn's last `agent_message` |
 | Cursor | `agent -p --output-format stream-json --mode ask --trust` (no `--force`) | the last `result` event's text |
 | Antigravity (`agy`, a `generic` entry) | its `channels.cli` or `access.cli`, with `--json-schema <schema file>`, `--output-format json`, `--sandbox` and `--print-timeout 30m` added after `agy` where absent; `--dangerously-skip-permissions` is refused | the envelope's `structured_output` |
 | anything else (`channels.cli`, `generic`, or a plain-text wrapper on any harness) | as written | the whole output, as one final message (a JSON envelope's `structured_output`) |
 
-One extractor reads every harness's answer: the adapter maps its stream to
-ordered messages, each terminal or not, and only the **last** message counts.
-It must be terminal (a stream cut off before its `result` or `turn.completed`
-is a rerun request), and its body must be a JSON object: `null` (a `null` text,
-an error result, a `turn.failed`), empty text, or text that does not end with
-one JSON object is a rerun request, and an earlier answer is never used instead.
-A text answer is the JSON object the message ends with: it starts a line (prose
-or a ```` ```json ```` fence may come before it), nothing but a closing fence
-follows it (a later object or array, a trailer, or prose after it is a rerun
-request), and no `{` or `[` before it is left open.
+One reader takes every harness's answer, strictly (A3). Each harness has one
+row in `TURNS` (`specy_road/review_answer.py`) declaring its turn boundary and
+terminal message:
+
+| Harness | Final turn | Must close with | Terminal message |
+|---|---|---|---|
+| Claude Code | the whole process output, from its first event | — | the `result` event: its `structured_output`, else its `result` text; `null` when `is_error` |
+| Codex | from the last `turn.started` (none: the first event) | `turn.completed` | the last completed `agent_message`; the `-o` file instead when Codex wrote one |
+| Cursor | the whole process output, from its first event | — | the `result` event's text; `null` when `is_error` |
+| Antigravity `agy` and any other `generic` / `channels.cli` command | the whole output | — | the whole output: one JSON object, or an `--output-format json` envelope whose `structured_output` is the answer |
+
+An output with none of a harness's event types is read by the `generic` row.
+Only the final turn's **last** terminal message counts, and it must be **one
+complete JSON object** that passes the schema: its whole text (whitespace
+aside) parses as one object, or the harness's structured output is one. Each
+of these is a rerun request, never a verdict, and an earlier answer is never
+used instead:
+
+- no terminal message in the final turn, or a Codex turn with no
+  `turn.completed` (cut off, `turn.failed`, or a later `turn.started`);
+- a final message that is `null` (an error result), empty, not JSON, prose
+  around JSON, a code fence, two objects, an array, or schema-invalid;
+- **any** non-blank line inside the final turn that is not one JSON object (a
+  truncated event, stray text), even after a valid answer.
+
+Nested or partial objects are never salvaged.
 
 The schema file is `work/reviews/<NODE_ID>/review-output.schema.json`, in the
 form OpenAI's strict structured output takes, which Codex sends it in: every
@@ -38,26 +54,8 @@ against the prompt's schema, so `null` and left out mean the same. After the
 run (`prompt --channel cli` or `review delegate`, default or custom command)
 specy-road decides the outcome:
 
-- **review failure** — the run wrote anything; there is no exemption list,
-  and the reviewer's notes travel in the JSON object, not a file. The files
-  specy-road itself writes in the checked tree during the run,
-  `RUN-<model>.log` (the harness's output, appended during each turn) and,
-  under `review delegate`, `RUN-<model>.json` (rewritten between turns), exist
-  before the first snapshot and are written in place, so no directory entry
-  moves; each is compared by identity and mode like any file, and by content
-  against what specy-road wrote (specy-road hashes what it held when the run
-  began and every byte it wrote since, and a rewrite first checks that nothing
-  else changed it). Everything else specy-road writes for the run is outside
-  the tree or outside the run: Codex's answer file in a private temporary
-  directory; the lock, prompt and schema before the first snapshot; the notes,
-  the record and the run's last record update after the last. Compared: any file of the checkout it ran in, git-ignored and
-  `work/` files included, any file of the leaf's hand-off directory, the Git
-  metadata a reviewer of this leaf could change (below), `HEAD` or the reviewed
-  branch moving, or the Git index's entries (`git add`,
-  `git update-index --assume-unchanged`; compared by `git ls-files --stage -v`,
-  so the stat refresh a read-only `git status` writes is not a write). Files, and directories (a file created and deleted again still moves its directory's mtime and ctime), are compared by identity (device, inode, link count), permission mode,
-  change time (ctime, which a process cannot put back), content (SHA-256), size and mtime, so a rewrite with its mtime put back counts.
-  A `REVIEW-<model>.md` it filed itself is put back as it was. Nothing is filed.
+- **review failure** — the tripwire below saw a write. A `REVIEW-<model>.md`
+  the run filed itself is put back as it was. Nothing is filed.
 - **rerun request** — the extractor above found no answer, it does not match
   the schema, or `review record` refuses it (another commit, an approve with a
   failing item, or no `--sign-key` under `policy.signed_reviews`). Nothing is
@@ -72,42 +70,40 @@ specy-road decides the outcome:
   `prompt --role reviewer --channel cli --sign-key <key>`); specy-road files the
   record with `review record --sign-key`, and the gate verifies the signature.
 
-The check walks every file, so run reviewers where nothing else writes: a
-coordinator or executor editing the same checkout during the run, or another
-leaf's reviewer filing there, counts as this run's write.
+## Prevention and the tripwire (A2)
 
-Git metadata is shared by every checkout of the repository, so the check reads
-only what a reviewer of this leaf could change:
+A reviewer cannot forge a record because specy-road files it from the run's
+final JSON; it cannot write the repository or `work/reviews/<ID>/` because
+each default reviewer launch is read-only: Codex `sandbox_mode=read-only`;
+Cursor `--mode ask` without `--force`; Claude Code with `--allowedTools
+Read,Glob,Grep,Bash` and `--disallowedTools Write Edit NotebookEdit
+"Bash(git commit *)" "Bash(git push *)" "Bash(gh *)"`. Tests pin each argv.
+Prevention is the boundary.
 
-- the checkout's own Git directory (`git rev-parse --git-dir`): `HEAD` and
-  `logs/HEAD`, and the index by its entries (above);
-- the reviewed branch (the branch checked out where the reviewer runs, and the
-  local branch `review delegate` reviews when that checkout is detached): its
-  loose ref `refs/heads/<branch>`, its reflog `logs/refs/heads/<branch>` and its
-  line in `packed-refs`;
-- the shared `hooks/` directory, files and directories, since every checkout runs
-  that code;
-- a linked worktree's `.git` pointer file.
+After the run a small tripwire (`specy_road/review_write_check.py`) reports a
+**review failure** when:
 
-Everything else in the Git directories is left out: the common directory's own
-metadata (an `index.lock` another session takes there), `config`, `objects`,
-`FETCH_HEAD`, `ORIG_HEAD`, other branches' refs and reflogs, and other
-worktrees' directories. An IDE polling the repository or another worktree
-committing on its own branch during the run does not fail the review; a reviewer
-commit on the reviewed branch does (its ref and reflog move).
+1. the leaf worktree's `git status --porcelain -z --untracked-files=all`
+   lists a path it did not list before the run, or lists one with another
+   status code or other content (SHA-256): a changed tracked file or a new
+   untracked file; or
+2. `work/reviews/<ID>/` gains, loses or changes (by SHA-256) any file other
+   than the reviewer's notes (`notes-<model>.md`) and the run files specy-road
+   itself writes (`RUN-<model>.json`, `RUN-<model>.log`, `.review-run.lock`).
 
-The contents of a nested checkout (a
-linked worktree under `work/.worktrees`, a nested repository) are another
-checkout's and are skipped, but its `.git` marker is recorded, so a
-reviewer-created `.git` file or `git init` anywhere is a write. The reviewer runs with `GIT_OPTIONAL_LOCKS=0`, so a read-only `git status` takes no `index.lock`. The hand-off directory itself is compared like any directory: specy-road creates no entry there during the run, so any file created, renamed or deleted there is a write. Two reviewer runs of one leaf share its
-hand-off directory, so they take turns: a second run while one holds
-`.review-run.lock` is refused at once, before it writes its prompt, run record,
-schema or answer file. The reviewer's process gets
-`PYTHONDONTWRITEBYTECODE=1` and `PYTEST_ADDOPTS=-p no:cacheprovider`, so
-re-running Python tests writes nothing; a command that still writes (a build,
-`.specyrd/cache`) fails the review. A prompt specy-road does not read back
-(`paste`, `subagent`) asks for the same object and still has the reviewer file
-it with `review record`.
+It is a tripwire, **not a security boundary**. Out of scope by design:
+identical-byte rewrites, writes undone before the run ends, metadata-only
+changes (mode, times, links), git-ignored files outside the hand-off
+directory, and Git internals (`HEAD`, refs, reflogs, the index, hooks,
+config). Other sessions writing the same checkout during the run count as the
+run's writes, so run reviewers where nothing else writes. Two reviewer runs of
+one leaf share its hand-off directory, so they take turns: a second run while
+one holds `.review-run.lock` is refused at once, before it writes its prompt,
+run record, schema or answer file. The reviewer's process gets
+`PYTHONDONTWRITEBYTECODE=1`, `PYTEST_ADDOPTS=-p no:cacheprovider` and
+`GIT_OPTIONAL_LOCKS=0`, so re-running tests and `git status` write nothing. A
+prompt specy-road does not read back (`paste`, `subagent`) asks for the same
+object and still has the reviewer file it with `review record`.
 
 The run record (`RUN-<model>.json`) of a launched reviewer is closed from the
 run's filing outcome, by one function for `review delegate`, `prompt --channel

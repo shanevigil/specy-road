@@ -569,14 +569,112 @@ The text rule's own cases (fence, prose before, CRLF, trailer, later object or a
 - `tests/test_review_answer.py` is under `tests/`.
 - Unchanged and outside the zones: `specy_road/reviewer_run_failure.py`. Its `close_reviewer_cli_run` and `fail_reviewer_cli_run` are now unused.
 
+## Rescope round (maintainer decision 2026-11-04, WIP `25e8e930`)
+
+About 15 Sol rounds each found another way past "detect ANY write" (A2) and another salvage path (A3). A post-run snapshot cannot prove that no write happened. The maintainer rescoped both:
+
+- A2 is now **prevention plus a bounded tripwire**.
+- A3 is now **strict final-answer parsing**.
+
+A1 (specy-road files the record) and the read-only launches cover the real risks: a forged record, and a commit or push. A1, A4 and A5 are unchanged.
+
+### WIP merge and generated files (Sol F4)
+
+- `origin/WIP/improvements-0-3-1` was merged (`09f1ee11`) with no conflicts.
+- `specy-road export` and `digest` were run from `sr/`. `sr/roadmap.md` now shows M8 and M8.3 as Not Started, matching the graph (`90cb2766`). `roadmap-context.md` was unchanged.
+
+### REMOVED
+
+Line counts are taken at `HEAD` before this round. Diff total: 917 deleted, 418 added.
+
+- **`specy_road/review_write_check.py`: 240 → 102 lines.** Removed:
+  - `OwnFile` (34);
+  - `_walk_git` (27) and `_walk` (29);
+  - `_record` (7), `_dir_record` (4) and `_content` (10);
+  - `_git_marker` (9), `branches` (7), `_file` (6) and `_IDENTITY` (2);
+  - the old `snapshot` (18) and `written` (12), replaced by smaller ones.
+
+  With them go: inode, device, link-count, mode, size, mtime and ctime records; directory records; the `.git` / `hooks` / refs / reflogs / `packed-refs` / index scoping; nested-checkout markers; and the in-place content tracking of specy-road's own files.
+- **`review_record_write` / `review_delegate`:** removed:
+  - the `own` parameter of `file_review` and `written`;
+  - the `ref` parameter of `snapshot`;
+  - `OwnFile` in `run_logged`, `run_and_file` and `_turn`;
+  - `_Harness.record`, the in-place `record.rewrite` between turns, and both log `touch()` calls before the snapshot.
+
+  The log is now a plain append.
+- **Adapter message mapping:** `Adapter.messages` in the base class (5), Claude Code (11), Codex (18) and Cursor (9). Also `Message` (8), `native_events` (3), and `CLAUDE_EVENTS`, `CODEX_EVENTS` and `CURSOR_EVENTS` (8 with comments). The `TURNS` table below replaces them.
+- **`review_answer.py` salvage:** `text_object` (16), `_open` (7), `_FENCE_END` and `_LINE_OBJECT`. The prose-before-object, closing-fence and "ends with an object" rules are gone. The old `final_answer` (27) is replaced by `final_answer` plus `_answer`, driven by the table.
+- **Tests:**
+  - `tests/test_review_record_write_git.py` was deleted (277 lines). It covered: index-only writes, stale stat cache, hooks, linked-worktree Git metadata, chmod, nested `.git`, hard-link swaps, identical rewrites, create-and-delete, transient notes, and other sessions' Git activity. All of these are now out of scope.
+  - In `tests/test_review_record_write.py`, the snapshot unit tests (mtime put back, commit refs, detached-checkout branch) and the `text_object` assertions were removed.
+  - `test_an_in_place_overwrite_of_the_run_lock_is_a_review_failure_and_files_no_verdict` was removed: the lock is now an allowed run file.
+  - In `tests/review_delegate_helpers.py`: the fake's `keep_mtime`, `transient`, `relink`, `chmod` and `git` steps (18 lines) and `wrote_only` (6) were removed.
+
+### Per-adapter table (A3): `review_answer.TURNS`
+
+| Row | Final turn starts at | Must contain | Terminal message (its body) |
+|---|---|---|---|
+| `claude-code` | its first event (one process is one turn) | — | the `result` event: `structured_output` if a dict, else `result`; `None` when `is_error` |
+| `codex` | the last `turn.started` (none: the first event) | `turn.completed` | the last `item.completed` / `agent_message` text; the `-o` file instead when non-blank |
+| `cursor` | its first event | — | the `result` event's `result` text; `None` when `is_error` |
+| `generic` (Antigravity `agy`, any `channels.cli`) | the whole output | — | the whole output, one object; an envelope's `structured_output` |
+
+An output with none of a row's event types is read by the `generic` row (a plain-text wrapper). Inside the final turn:
+
+- Every non-blank line must be one JSON object, or it is a rerun request (Sol F2).
+- The last terminal message is the only answer. Its text, stripped of surrounding whitespace, must parse as **one** JSON object, and that object must pass the schema.
+- Each of these is a rerun request: missing, `null`, empty, not JSON, prose, a code fence, two objects, an array, or schema-invalid.
+- Nothing is salvaged, and an earlier answer is never used.
+- A Codex turn without `turn.completed` is a rerun request: cut off, `turn.failed`, or a later `turn.started` (Sol F3).
+
+The prompt's last section and `RESUME_PROMPT` now ask for exactly one JSON object, with nothing before or after it.
+
+Tests: `tests/test_review_answer.py` has 59 cases over the four rows, and a check that every row has cases. The cases are: valid; missing; null; error; empty; non-JSON; prose; fenced; two objects; nested; schema-invalid; multiple; **F2** (valid result then a truncated `{"type":"result","result":` line); stray text after; **F3** (completed turn then `turn.started`); an unparseable line in the final turn vs an earlier one; and plain wrappers. There is also an end-to-end F2 test through `review delegate --json` in `tests/test_review_record_write.py`.
+
+### Prevention (A2)
+
+- **Claude Code:** `--allowedTools Read,Glob,Grep,Bash --disallowedTools Write Edit NotebookEdit "Bash(git commit *)" "Bash(git push *)" "Bash(gh *)"`. `--permission-mode acceptEdits` is dropped, so nothing approves edits. The new constants are `REVIEWER_TOOLS` and `REVIEWER_NO_WRITES`.
+- **Codex:** `sandbox_mode=read-only`.
+- **Cursor:** `--mode ask --trust`, with no `--force`.
+
+Each argv is pinned: Claude in `test_claude_code_reviewer_without_channels_cli_runs_bare`; Cursor and Codex in `test_cursor_reviewer_runs_ask_mode_without_force` and `test_codex_reviewer_runs_read_only_with_the_output_schema`.
+
+### Tripwire's exact rules (`review_write_check.py`)
+
+A run is a **review failure** (and nothing is filed) when `written(before, after)` is non-empty. That happens when:
+
+1. The leaf worktree's `git status --porcelain -z --untracked-files=all` lists a path it did not list before the run, or lists one with another two-letter status code or another SHA-256 of its content. This covers a changed tracked file and a new untracked file, and also a file that was already dirty and changed again. For a rename or copy entry, its source field is skipped. Paths under the hand-off directory are left to rule 2.
+2. The hand-off directory `work/reviews/<ID>/`, walked recursively, gains, loses or changes (by SHA-256) any file except four: `notes-<model>.md`, `RUN-<model>.json`, `RUN-<model>.log` and `.review-run.lock`.
+
+A `REVIEW-<model>.md` that the run filed itself is still put back (`Snapshot.restore`).
+
+Out of scope, stated in the module docstring and in `docs/orchestration-reviewer-output.md`: identical-byte rewrites, writes undone before the run ends, metadata-only changes, git-ignored files outside the hand-off directory, and Git internals (`HEAD`, refs, reflogs, index, hooks, config). The tripwire is not a security boundary; prevention is. A reviewer commit is therefore stopped by the launch bans, not detected.
+
+Tests in `tests/test_review_record_write.py`:
+
+- six writes that fail: tracked, new untracked, untracked in `work/`, hand-off new file, schema, packet;
+- the three allowed files that stay recorded: notes, `RUN-opus.json`, lock;
+- the self-filed record put back;
+- a direct `snapshot`/`written` test of the exact rules, including dirty-before-then-changed, a removed hand-off file, and another model's run file.
+
+### Verification
+
+- `pytest -q -n 4 -p no:cacheprovider` over the 17 core files (`tests/test_review_answer.py tests/test_review_record_write.py tests/test_review_record_write_closure.py tests/test_review_delegate.py tests/test_run_record_no_false_failure.py tests/test_review_signing.py tests/test_review_files.py tests/test_headless_limits_denials.py tests/test_worker_adapters.py tests/test_roster_harness_model.py tests/test_chore_mode.py tests/test_orchestration_guard_hooks.py tests/test_worker_turn_check.py tests/test_claude_config_dir.py tests/test_review_record_rules.py tests/test_dynamic_routing_reviewers.py tests/test_models_and_prompt.py`): 453 passed.
+- All 83 test files that import a changed module (`review_answer`, `review_record_write`, `review_write_check`, `review_delegate`, `worker_adapter*`, `role_prompt*`, `review_files` or the delegate helpers): 1231 passed. The full suite was not run.
+- `specy-road file-limits`: OK. `docs/orchestration-review.md` was trimmed to 400 lines; the WIP merge had taken it to 408.
+
+### Touch zones
+
+All changed files are inside M8.3's zones: `review_answer`, `review_write_check`, `review_record_write`, `review_delegate`, `worker_adapter_base/claude/codex/cursor`, `worker_adapters`, both docs, and `tests/`.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
   - Whether Codex strict structured output accepts this schema is unverified.
   - Whether `agy --output-format json` prints one line or many is unverified. Both work: the envelope is the output's final object, starting a line.
-- **Strict check in a shared checkout.** Any write by another session in the checkout during a review now fails it. That covers a coordinator, an executor, another leaf's reviewer, or `specy-road` commands writing `.specyrd/cache`. Reviewers should run where nothing else writes (`review delegate --worktree <quiet checkout>`). The report lists the paths, so a foreign write is visible.
-- **Walking a large checkout is slow.** The main toolkit checkout has 76k files and took about 26s cold with nested checkouts included; this walk skips them.
-- **What the check doesn't see:** writes outside the checkout and the hand-off directory, for example `/tmp`, `~`, or another worktree.
+- **Shared checkout.** Another session that changes `git status` or the hand-off directory during a review still fails it (rescope tripwire). Run reviewers where nothing else writes.
+- **Strict parsing vs. live models.** A reviewer that wraps its final JSON in prose or a fence now gets a rerun request. The prompt says so explicitly, but no live Cursor run (no structured-output flag) has been tried.
+- **What the tripwire doesn't see:** writes outside the worktree's `git status` and the hand-off directory (`/tmp`, `~`, another worktree, ignored files), plus everything listed as out of scope above.
 - **A `channels.cli` that opens an interactive harness** now has its output captured under `prompt --channel cli`, so it gets no terminal. Use `paste` for an interactive reviewer.
 
 ## Added

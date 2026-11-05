@@ -5,16 +5,14 @@ reply with one JSON object shaped by :func:`output_schema`, the review-record sc
 ``review record`` fills, plus ``notes``. Claude Code validates it with ``--json-schema``, Codex with
 ``--output-schema`` (and writes it to ``-o``, in a private temporary directory: :func:`answer_scratch`),
 Antigravity's ``agy`` with ``--json-schema`` (:func:`~specy_road.worker_adapter_base.reviewer_cli`). One extractor,
-:func:`~specy_road.review_answer.final_answer`, reads every harness's answer from the last message of the turn.
-:func:`file_review` then decides the run's outcome:
+:func:`~specy_road.review_answer.final_answer`, reads every harness's answer from the final turn's last terminal
+message, by the harness's row of :data:`~specy_road.review_answer.TURNS`. :func:`file_review` then decides the run's
+outcome:
 
-* ``review_failure`` — the run wrote anything (:mod:`specy_road.review_write_check`, which has no exemption list):
-  any file or directory of the checkout it ran in, git-ignored and ``work/`` files included, compared by identity,
-  mode, size, times and content; any of the leaf's hand-off directory; the Git metadata a reviewer of this leaf
-  could change (:func:`~specy_road.review_write_check._walk_git`); ``HEAD`` or the reviewed branch moving; the Git
-  index's entries; or the transcript and run record specy-road writes during the run other than as specy-road
-  wrote them (:class:`~specy_road.review_write_check.OwnFile`). A ``REVIEW-<model>.md`` it filed itself is put
-  back as it was, so the gate never counts it. Nothing is filed;
+* ``review_failure`` — the tripwire (:mod:`specy_road.review_write_check`; prevention is the read-only launch)
+  saw a write: the leaf worktree's ``git status`` gained or changed an entry, or the hand-off directory gained or
+  changed a file other than the notes and specy-road's run files. A ``REVIEW-<model>.md`` the run filed itself is
+  put back as it was, so the gate never counts it. Nothing is filed;
 * ``rerun`` — :func:`~specy_road.review_answer.final_answer` found no answer, or ``review record`` refuses it (a
   wrong commit, an approve with a failing item, no ``sign_key`` under ``policy.signed_reviews``): a rerun request,
   never a verdict;
@@ -23,9 +21,8 @@ Antigravity's ``agy`` with ``--json-schema`` (:func:`~specy_road.worker_adapter_
 
 :func:`close_review_run` is the one way a launched reviewer's run record is closed, from that :class:`Outcome`.
 
-The walk skips nested checkouts (a linked worktree under ``work/.worktrees``, a nested repository): they are other
-checkouts. Other sessions writing in the same checkout during the run count as the run's writes, so run reviewers
-where nothing else writes; :func:`review_run_lock` keeps two reviewer runs of one leaf, whose hand-off directory is
+Other sessions writing in the same checkout during the run count as the run's writes, so run reviewers where
+nothing else writes; :func:`review_run_lock` keeps two reviewer runs of one leaf, whose hand-off directory is
 shared, from failing each other. The reviewer's process gets :func:`reviewer_env`, so re-running Python tests
 writes no bytecode or pytest cache.
 """
@@ -51,13 +48,12 @@ from typing import Any, Literal
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.generate_brief import index, load_nodes
 from specy_road.review_answer import (FILLED_BY_SPECY_ROAD, Rerun, drop_nulls, final_answer,  # noqa: F401 — re-exported
-                                      output_schema, text_object)
+                                      output_schema)
 from specy_road.review_files import render_front_matter, review_path
 from specy_road.review_target import ReviewTarget
 from specy_road.review_write_check import (  # re-exported: the post-run write check lives there (file limit)
     LOCK_NAME,
     OUTPUT_SCHEMA_NAME,
-    OwnFile,
     Snapshot,
     snapshot,
     written,
@@ -105,7 +101,8 @@ def answer_scratch(model: str) -> Iterator[Path]:
 def schema_lines() -> list[str]:
     """The prompt's last section: the object to end the reply with."""
     return ["## Your final message: one JSON object", "",
-            "End your reply with exactly one JSON object matching this schema, and nothing after it. `commit` is the "
+            "Your final message must be exactly one JSON object matching this schema: no prose, no code fence, "
+            "nothing before or after it (anything else is a rerun request). `commit` is the "
             "packet's **Commit under review**, quoted; `notes` holds your Markdown notes. A field the schema does not "
             "require may be left out or `null`.", "",
             "```json", json.dumps(output_schema(), indent=2), "```", ""]
@@ -198,12 +195,11 @@ def _review_record(root: Path, node_id: str, model: str, verdict: str, notes: Pa
 
 
 def file_review(root: Path, node_id: str, model: str, reviews: Path, *, answer: dict[str, Any] | Rerun,
-                before: Snapshot, after: Snapshot, own: tuple[OwnFile, ...] = (), ref: str | None = None,
+                before: Snapshot, after: Snapshot, ref: str | None = None,
                 launch_mode: str | None = None, sign_key: Path | None = None) -> Outcome:
     """The run's outcome (module docstring); ``answer`` is :func:`final_answer`'s, ``before`` and ``after`` the
-    :func:`snapshot` either side of the run, ``own`` the files specy-road wrote in the tree during it;
-    ``sign_key``: ``review record --sign-key``, for ``policy.signed_reviews``."""
-    wrote = written(before, after, own)
+    :func:`snapshot` either side of the run; ``sign_key``: ``review record --sign-key``, for ``policy.signed_reviews``."""
+    wrote = written(before, after)
     if wrote:
         before.restore(reviews, model)
         return Outcome("review_failure", f"review failure: the reviewer run wrote {', '.join(wrote)}; a reviewer "
@@ -219,13 +215,14 @@ def file_review(root: Path, node_id: str, model: str, reviews: Path, *, answer: 
     return Outcome("recorded", "", review_path(root, node_id, model))
 
 
-def run_logged(launch: Any, adapter: Any, cwd: Path, log: OwnFile, transcript: list[str] | None = None) -> int:
+def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path, transcript: list[str] | None = None) -> int:
     """Run one reviewer turn with :func:`reviewer_env` (over the launch's own ``env``, e.g. M11.62's Claude avoid-list), its raw output appended to ``log`` under a :data:`RUN_MARK`
     line (and to ``transcript``, which ``prompt --channel cli``'s run record keeps: M11.72) and each event's
     summary echoed to stderr as it arrives; for ``prompt --channel cli``, whose terminal would otherwise show raw
     JSON lines."""
-    with log.open() as raw:
-        log.write(raw, f"[review prompt] {datetime.now(timezone.utc).replace(microsecond=0).isoformat()} {launch.argv[0]}\n")
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.open("a", encoding="utf-8", newline="") as raw:
+        raw.write(f"[review prompt] {datetime.now(timezone.utc).replace(microsecond=0).isoformat()} {launch.argv[0]}\n")
         try:
             proc = subprocess.Popen(launch.argv, cwd=cwd, text=True, encoding="utf-8", errors="replace",
                                     env=reviewer_env({**os.environ, **(launch.env or {})}),
@@ -241,10 +238,10 @@ def run_logged(launch: Any, adapter: Any, cwd: Path, log: OwnFile, transcript: l
                 proc.stdin.write(launch.stdin)
                 proc.stdin.close()
             except OSError as e:   # the harness quit before reading its prompt
-                log.write(raw, f"[harness closed stdin early: {e}]\n")
+                raw.write(f"[harness closed stdin early: {e}]\n")
         assert proc.stdout is not None
         for line in proc.stdout:
-            log.write(raw, line)
+            raw.write(line)
             if transcript is not None:
                 transcript.append(line.rstrip("\n"))
             for ev in adapter.parse_events(line, launch):
@@ -261,12 +258,10 @@ def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Pat
     returned :class:`Outcome`. The node id is the hand-off directory's name; ``transcript`` gets the output and,
     last, the outcome line (but a rerun request after a failed harness), which the reviewer-failure event names."""
     path = reviews / f"RUN-{model}.log"
-    path.touch()   # created now, so the turn's appends change no entry of the hand-off directory
-    before = snapshot(root, reviews, model, ref)
-    log = OwnFile(path)
-    rc = run_logged(launch, adapter, root, log, transcript)
+    before = snapshot(root, reviews, model)
+    rc = run_logged(launch, adapter, root, path, transcript)
     outcome = file_review(root, reviews.name, model, reviews, answer=final_answer(adapter, run_text(path), output),
-                          before=before, after=snapshot(root, reviews, model, ref), own=(log,), ref=ref,
+                          before=before, after=snapshot(root, reviews, model), ref=ref,
                           launch_mode=launch.launch_mode, sign_key=sign_key)
     print(f"{outcome.state}: {outcome.path or outcome.reason}", file=sys.stderr)
     # The outcome line goes last, for the run record's reviewer-failure event; but a rerun request after a harness

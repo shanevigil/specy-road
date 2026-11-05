@@ -45,7 +45,7 @@ from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.orchestration_role_env import harness_env
 from specy_road.review_files import reviews_dir
-from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, OwnFile, ReviewRunBusy, answer_scratch,
+from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, ReviewRunBusy, answer_scratch,
                                             close_review_run, file_review, final_answer, review_run_lock, reviewer_env,
                                             run_text, snapshot, write_schema)
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
@@ -63,9 +63,9 @@ DEFAULT_BACKOFF = 30.0
 #: A chore reviewer's resume (chore_cli): it writes its own verdict file, so there is no JSON object to repeat.
 CHORE_RESUME_PROMPT = ("Continue the review from where you stopped. If you already filed your verdict, say so and "
                        "stop.\n")
-RESUME_PROMPT = ("Continue the review from where you stopped. End your reply with the one JSON object the review "
-                 "prompt's last section describes, repeated in full if you already gave it: specy-road files the "
-                 "record from it.\n")
+RESUME_PROMPT = ("Continue the review from where you stopped. Your final message must be exactly the one JSON object "
+                 "the review prompt's last section describes, repeated in full if you already gave it, with nothing "
+                 "before or after it: specy-road files the record from it.\n")
 
 
 class DelegateError(Exception):
@@ -120,7 +120,7 @@ class _Harness:
         self.launch_mode = "bare" if self.default and isinstance(self.adapter, ClaudeCode) else self.mode
         self.can_resume = self.adapter.caps.resume
         self.output: Path | None = None   # answer_scratch's file: where a fresh Codex turn writes its answer (-o)
-        self.record: OwnFile | None = None   # the run record, rewritten in place between turns (not for a chore)
+        self.log = Path()   # the run's transcript, RUN-<model>.log
 
     def launch(self, prompt: Path, session: str | None) -> Launch:
         """A fresh turn, or a resume of ``session`` (an id the harness reported)."""
@@ -144,8 +144,8 @@ def _turn(h: _Harness, launch: Launch) -> dict[str, Any]:
     out: dict[str, Any] = {"exit": None, "session_id": None, "errors": [], "tail": []}
     # the role and the harness's avoid-list for installed guard hooks (M8.5, M11.62), no caches (M8.3)
     env = reviewer_env(harness_env(os.environ, "reviewer", harness=h.harness))
-    with h.log.open() as raw:
-        h.log.write(raw, f"[review delegate] {_now()} {launch.argv[0]}\n")
+    with h.log.open("a", encoding="utf-8", newline="") as raw:
+        raw.write(f"[review delegate] {_now()} {launch.argv[0]}\n")
         try:
             proc = subprocess.Popen(launch.argv, cwd=h.cwd, env=env, text=True, encoding="utf-8",
                                     errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -158,10 +158,10 @@ def _turn(h: _Harness, launch: Launch) -> dict[str, Any]:
                 proc.stdin.write(launch.stdin)
                 proc.stdin.close()
             except OSError as e:   # the harness quit before reading its prompt
-                h.log.write(raw, f"[review delegate] harness closed stdin early: {e}\n")
+                raw.write(f"[review delegate] harness closed stdin early: {e}\n")
         assert proc.stdout is not None
         for line in proc.stdout:
-            h.log.write(raw, line)
+            raw.write(line)
             out["tail"] = [*out["tail"][-19:], line.strip()]
             for ev in h.adapter.parse_events(line, launch):
                 out["session_id"] = ev.session_id or out["session_id"]
@@ -214,8 +214,7 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
         cap = turn_capacity_error(turn["errors"], turn["tail"]) if failed else None
         said = cap or next(iter(turn["errors"]), "")
         run["attempts"].append({"at": _now(), "exit": turn["exit"], "capacity": bool(cap), "error": said[:300] or None})
-        # a filed review's record is rewritten in place: the write check compares specy-road's own files by content
-        h.record.rewrite(json.dumps(run, indent=2) + "\n") if h.record else save_run(path, run)
+        save_run(path, run)
         if not cap:
             return f"harness exited {turn['exit']}: {said[:200] or 'no error text'}" if failed else ""
         reason = f"capacity error after {n + 1} attempt(s): {cap[:200]}"
@@ -285,18 +284,16 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
                "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
                "log": str(path.with_suffix(".log"))}
         save_run(path, run)
-        log = path.with_suffix(".log")
-        log.touch()   # before the snapshot: the run's appends and record rewrites then change no directory entry
+        h.log = log = path.with_suffix(".log")
         try:
             # M8.3's read-only check and filing are for roadmap reviews; a chore reviewer files its own verdict file.
             if chore is None:
                 write_schema(repo_root, reviews)   # before the snapshot: the reviewer must not change it
-            before = snapshot(cwd, reviews, model, t.ref) if chore is None else None
-            h.log, h.record = OwnFile(log), OwnFile(path) if chore is None else None
+            before = snapshot(cwd, reviews, model) if chore is None else None
             reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
             filed = None if before is None else file_review(
                 repo_root, node_id, model, reviews, answer=final_answer(h.adapter, run_text(log), answer),
-                before=before, after=snapshot(cwd, reviews, model, t.ref), own=(h.log, h.record), ref=ref,
+                before=before, after=snapshot(cwd, reviews, model), ref=ref,
                 launch_mode=h.launch_mode, sign_key=sign_key)
             _close(repo_root, t, model, run, path, reason, filed)
         except BaseException as e:   # an interrupt or a launch refusal still closes the record

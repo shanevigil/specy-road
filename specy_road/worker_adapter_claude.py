@@ -13,16 +13,13 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.claude_config import claude_projects_dir
-from specy_road.worker_adapter_base import (REVIEWER_DISALLOWED, STDIN_INSTRUCTION, Adapter, Capabilities, Launch, Message,
-                                         Parsed, _bare, _model_flag, native_events)
+from specy_road.worker_adapter_base import (REVIEWER_DISALLOWED, REVIEWER_NO_WRITES, REVIEWER_TOOLS, STDIN_INSTRUCTION,
+                                         Adapter, Capabilities, Launch, Parsed, _bare, _model_flag)
 from specy_road.worker_adapter_parsers import _init_detail, _json, _snip, _text, limit_detail, usage_fields
 
 #: The executor's tools, listed rather than left to the mode: since 2.1.302 ``claude -p`` silently denies a tool
 #: nothing approved, and ``acceptEdits`` approves no shell command beyond the read-only and filesystem sets.
 EXECUTOR_TOOLS = "Read,Edit,Write,Glob,Grep,Bash"
-#: ``claude -p --output-format stream-json``'s event types (``json`` prints the ``result`` alone): none means a
-#: plain-text wrapper.
-CLAUDE_EVENTS = frozenset({"system", "assistant", "user", "result"})
 #: An executor's permissions, the same on launch and resume: the mode, the allow-list, and no prompts (anything
 #: still unresolved is denied and Claude is told not to retry; the denial shows in the stream, see ``parse_events``).
 #: ``--allowedTools`` takes several values, so a single-value flag follows it before the instruction.
@@ -66,28 +63,17 @@ class ClaudeCode(Adapter):
         connects none of its MCP servers, and ``--add-dir`` for the hand-off directory. The instruction goes
         right after ``-p``: ``--add-dir`` takes several values and would swallow it. ``session`` is
         ``(id, resume)`` for ``review delegate``: the session flag, and stream-json so the id can be read back.
-        Bare mode fires no hook, so ``--disallowedTools`` denies commits, pushes and ``gh`` beside the allowed
-        tools; ``schema`` (the review output schema file) goes inline as ``--json-schema``. ``output`` is unused:
+        Read-only (A2): no file-writing tool is allowed or approved (``Write``, ``Edit`` and ``NotebookEdit`` are
+        denied, and no permission mode approves edits); bare mode fires no hook, so ``--disallowedTools`` denies
+        commits, pushes and ``gh`` too (A4). ``--add-dir`` lets it read the hand-off directory. ``schema`` (the review output schema file) goes inline as ``--json-schema``. ``output`` is unused:
         the result event carries the final answer."""
         tracked = [*self.session_flag(*session), "--output-format", "stream-json", "--verbose"] if session else []
         structured = ["--json-schema", json.dumps(json.loads(schema.read_text(encoding="utf-8")))] if schema else []
         return Launch(["claude", "-p", STDIN_INSTRUCTION, "--bare", *tracked, *_model_flag("--model", model),
-                       *self.effort_flag(effort), "--permission-mode", "acceptEdits",
-                       "--allowedTools", "Read,Edit,Bash", "--disallowedTools", *REVIEWER_DISALLOWED, *structured,
+                       *self.effort_flag(effort), "--allowedTools", REVIEWER_TOOLS,
+                       "--disallowedTools", *REVIEWER_NO_WRITES, *REVIEWER_DISALLOWED, *structured,
                        "--add-dir", str(reviews)],
                       stdin=_text(prompt_path), session_id=session[0] if session else None, launch_mode="bare")
-
-    def messages(self, lines: list[str], output: Path | None = None) -> list[Message] | None:
-        """Each ``assistant`` event an intermediate message (never the answer), each ``result`` event a terminal
-        one: its ``structured_output`` (set when ``--json-schema`` validated the answer), else its ``result`` text;
-        ``None`` for an error result."""
-        events = native_events(lines, CLAUDE_EVENTS)
-        if not events:
-            return None
-        return [Message(None, False) if d["type"] != "result" else
-                Message(None if d.get("is_error") else d["structured_output"]
-                        if isinstance(d.get("structured_output"), dict) else d.get("result"), True)
-                for d in events if d["type"] in ("assistant", "result")]
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)

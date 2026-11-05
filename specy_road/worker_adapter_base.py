@@ -39,21 +39,6 @@ class Capabilities:
 
 
 @dataclass(frozen=True)
-class Message:
-    """One message of a reviewer's turn, as :meth:`Adapter.messages` maps the harness's stream: ``body`` is the
-    harness-validated structured output (a dict), the message text, or ``None`` when the event carries no answer
-    (a ``null`` text, an error result); ``terminal`` when the harness marks it the turn's final answer.
-    :func:`specy_road.review_answer.final_answer` reads only the last one."""
-    body: Any
-    terminal: bool
-
-
-def native_events(lines: list[str], types: frozenset[str]) -> list[dict[str, Any]]:
-    """The output lines that are this harness's JSON events (a ``type`` in ``types``), in order."""
-    return [d for d in map(_json, lines) if d is not None and d.get("type") in types]
-
-
-@dataclass(frozen=True)
 class Launch:
     argv: list[str]
     stdin: str | None = None        # prompt text piped in, when the CLI reads it that way
@@ -88,6 +73,9 @@ CODEX_POLICY = ("-c", "sandbox_mode=workspace-write", "-c", "approval_policy=nev
 CODEX_REVIEW_POLICY = ("-c", "sandbox_mode=read-only", "-c", "approval_policy=never")
 #: Claude Code's reviewer runs --bare, so no hook fires to stop these; the deny list does.
 REVIEWER_DISALLOWED = ("Bash(git commit *)", "Bash(git push *)", "Bash(gh *)")
+#: A reviewer writes nothing (M8.3 A2): its read and shell tools only, and the file-writing tools denied outright.
+REVIEWER_TOOLS = "Read,Glob,Grep,Bash"
+REVIEWER_NO_WRITES = ("Write", "Edit", "NotebookEdit")
 # Antigravity's `agy` runs as a `generic` harness (docs/design-notes/harness-compatibility-triage.md); a reviewer turn
 # needs these, each added when the command lacks it (https://antigravity.google/docs/cli/headless): one JSON envelope
 # whose structured_output is the answer, the terminal sandbox, and more than the 5m default to answer in.
@@ -191,12 +179,6 @@ class Adapter:
         output schema file and ``output`` where a harness that can writes its final message. A ``generic`` entry
         has none: it runs its ``channels.cli`` and its final message is parsed as plain JSON."""
         raise Unsupported(f"{self.harness}: no default reviewer command; set the roster's channels.cli")
-
-    def messages(self, lines: list[str], output: Path | None = None) -> list[Message] | None:
-        """A reviewer turn's messages in order, mapped from this harness's event stream (``lines``, the turn's
-        output; ``output``, the file a harness writes its final message to). ``None`` when the output holds none of
-        its events: a ``generic`` harness or a plain-text wrapper, whose whole output is the one final message."""
-        return None
 
     def parse(self, line: str) -> Parsed | None:
         raw = line.strip()

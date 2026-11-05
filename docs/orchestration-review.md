@@ -286,22 +286,16 @@ faster.
 roster entry with `harness: claude-code` and no `channels.cli`, therefore runs
 
 ```text
-claude -p "<instruction>" --bare --session-id <uuid> --output-format stream-json --verbose \
-  --model <api_id> [--effort <level>] --permission-mode acceptEdits --allowedTools Read,Edit,Bash \
-  --disallowedTools "Bash(git commit *)" "Bash(git push *)" "Bash(gh *)" \
-  --json-schema '<review output schema>' --add-dir <work/reviews/NODE_ID> < <prompt file>
+claude -p "<instruction>" --bare --session-id <uuid> --output-format stream-json --verbose --model <api_id> \
+  [--effort <level>] --allowedTools Read,Glob,Grep,Bash --disallowedTools Write Edit NotebookEdit \
+  "Bash(git commit *)" "Bash(git push *)" "Bash(gh *)" --json-schema '<schema>' --add-dir <work/reviews/NODE_ID> < <prompt>
 ```
 
-`--add-dir` lets the reviewer write its notes into the hand-off directory, which
-is in the main checkout even when the reviewer runs in a worktree. Bare mode
-never reads OAuth credentials or the keychain, so it needs `ANTHROPIC_API_KEY`
-(or an `apiKeyHelper`) instead of a subscription login; the command prints a
-note saying so. Bare mode also fires no hook, so no hook can stop a commit or
-push: `--disallowedTools` denies them, and `gh`, beside the allowed tools. A
-`codex` or `cursor` entry without `channels.cli` runs its adapter's read-only
-reviewer command instead (see [orchestration-reviewer-output.md](orchestration-reviewer-output.md)). A `channels.cli` is run as written, and
-other harnesses use their profile's `access.cli` as before, but a reviewer's
-command is captured and filed like the default ones (same page).
+`--add-dir` lets the reviewer read the hand-off directory (in the main checkout); it writes nothing. Bare mode
+never reads OAuth credentials or the keychain, so it needs `ANTHROPIC_API_KEY` (or an `apiKeyHelper`) instead of a
+subscription login (the command says so). Bare mode fires no hook, so `--disallowedTools` denies commits, pushes
+and `gh`. A `codex` or `cursor` entry without `channels.cli` runs its adapter's read-only reviewer command; a
+`channels.cli` or another harness's `access.cli` runs as written, captured and filed like the default ones.
 
 The reviewer prompt asks the reviewer to say how it was started:
 `specy-road review record … --launch-mode full|bare|explicit` stores
@@ -317,13 +311,11 @@ The field is optional and self-attested, like `fresh_session`; the gate does
 not read it. `handoff status` prints it on each review line (`launch mode
 bare`) and in `--json` as each review's `launch_mode`.
 
-## Reviewer output and the read-only check
+## Reviewer output, prevention and the tripwire
 
-A launched reviewer ends its reply with one JSON object and specy-road files the
-record from it. A run that writes anything (its notes go in the JSON) is a review failure, and
-missing or malformed output is a rerun request, never a verdict. The schema, each
-harness's flags, the outcomes and what the write check compares are in
-[orchestration-reviewer-output.md](orchestration-reviewer-output.md).
+A launched reviewer's final message is one JSON object, which specy-road files. Each default reviewer launch is
+read-only; a post-run tripwire (not a security boundary) reports a review failure when `git status` or the hand-off
+directory changes; malformed output is a rerun request. Rules, scope and the turn table: [orchestration-reviewer-output.md](orchestration-reviewer-output.md).
 
 ## Delegating a reviewer
 

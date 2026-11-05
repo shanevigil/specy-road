@@ -24,10 +24,10 @@ denied, so that default is the widest — read the table in ``docs/orchestration
 on a new repo.
 
 A reviewer gets its own command (:meth:`Adapter.reviewer_launch`), read-only on every harness that has one:
-Claude Code ``--bare`` with ``--disallowedTools`` for commits, pushes and ``gh``; Codex ``sandbox_mode=read-only``;
-Cursor ``--mode ask --trust`` without ``--force``. Its final message is the review as JSON: each adapter maps its
-stream to ordered messages (:meth:`Adapter.messages`), :func:`specy_road.review_answer.final_answer` reads the last,
-and :mod:`specy_road.review_record_write` files it as the record. A reviewer's
+Claude Code ``--bare`` with ``--disallowedTools`` for ``Write``, ``Edit``, ``NotebookEdit``, commits, pushes and
+``gh``; Codex ``sandbox_mode=read-only``;
+Cursor ``--mode ask --trust`` without ``--force``. Its final message is the review as JSON: :func:`specy_road.review_answer.final_answer` reads it by the
+harness's row of :data:`~specy_road.review_answer.TURNS`, and :mod:`specy_road.review_record_write` files it as the record. A reviewer's
 custom command goes through :func:`reviewer_cli`, which gives Antigravity's ``agy`` (a ``generic`` harness) its
 ``--json-schema`` and read-only flags.
 """
@@ -40,12 +40,13 @@ from specy_road.worker_adapter_base import (  # re-exported
     EFFORT_FLAGS,
     AGY_REVIEW_FLAGS,
     REVIEWER_DISALLOWED,
+    REVIEWER_NO_WRITES,
+    REVIEWER_TOOLS,
     REVIEWS_DIR,
     STDIN_INSTRUCTION,
     Adapter,
     Capabilities,
     Launch,
-    Message,
     Parsed,
     Unsupported,
     _bare,

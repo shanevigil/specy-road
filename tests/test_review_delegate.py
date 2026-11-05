@@ -138,7 +138,7 @@ def test_a_clean_exit_without_a_record_is_incomplete(tmp_path: Path) -> None:
     set_steps(repo, spec, {})
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
     assert run["state"] == "incomplete" and run["outcome"] == "rerun"
-    assert run["reason"] == "rerun requested: the reviewer's output ends with no JSON object"
+    assert run["reason"] == "rerun requested: the final message is not one complete JSON object"
     assert len(run["attempts"]) == 1                                  # not a capacity error: no retry
     assert not (reviews_dir(repo, "M1.1") / "REVIEW-opus.md").exists()
 

@@ -11,7 +11,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from tests.review_delegate_helpers import (FAKE_AGY, FAKE_CODEX, delegate_repo, fake_reviewer_run, set_steps,
-                                          strict_problems, verdict_step, wrote_only)
+                                          strict_problems, verdict_step, wrote_paths)
 from tests.review_repo_helpers import commit_file, git, make_review_repo, review_output
 from tests.test_models_and_prompt import run_main
 
@@ -19,7 +19,7 @@ from specy_road import review_files as rf
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.model_profiles import load_profile
 from specy_road.review_delegate import DelegateError, delegate
-from specy_road.review_record_write import OwnFile, output_schema, review_run_lock, reviewer_env, snapshot, written
+from specy_road.review_record_write import output_schema, review_run_lock, reviewer_env, snapshot, written
 from specy_road.worker_adapters import Codex, Cursor, Unsupported, reviewer_cli
 
 M87_NOTE = Path(__file__).resolve().parents[1] / "docs" / "design-notes" / "M8.7-runtime-verification-harness-facts.md"
@@ -29,41 +29,32 @@ def _record(repo: Path) -> Path:
     return rf.review_path(repo, "M1.1", "opus")
 
 
-# --- A2: a run that writes anything at all ------------------------------------------------------------------
+# --- A2: the tripwire (git status of the leaf worktree; the hand-off directory by content hash) ----------------------
 
-@pytest.mark.parametrize("rel,named", [
-    ("src/a.py", None),                                         # a tracked file
-    ("work/unrelated-output.txt", None),                        # an untracked file in the project's work/
-    ("work/reviews/M1.1/scratch.md", None),                     # an ignored file, in the hand-off directory itself
-    ("work/reviews/M1.1/review-output.schema.json", None),      # the schema specy-road wrote before the run
-    ("work/reviews/M1.1/RUN-opus.json", None),                  # the run record specy-road rewrites in place
-    ("work/reviews/M1.1/RUN-opus.log", None),                   # the transcript specy-road appends to, rewritten
-    ("work/reviews/M1.1/notes-opus.md", None),                  # its notes: they travel in the JSON object
-    ("work/reviews/M1.1/.review-run.lock", None),               # the run lock
+@pytest.mark.parametrize("rel", [
+    "src/a.py",                                         # a changed tracked file
+    "new.txt",                                          # a new untracked file
+    "work/unrelated-output.txt",                        # a new untracked file in the project's work/
+    "work/reviews/M1.1/scratch.md",                     # a new file in the (git-ignored) hand-off directory
+    "work/reviews/M1.1/review-output.schema.json",      # the schema specy-road wrote before the run, changed
+    "work/reviews/M1.1/PACKET.md",                      # the packet, changed
 ])
-def test_a_run_that_writes_anything_is_a_review_failure_and_files_nothing(tmp_path: Path, rel: str,
-                                                                                       named: str | None) -> None:
+def test_a_write_the_tripwire_sees_is_a_review_failure_and_files_nothing(tmp_path: Path, rel: str) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, {**verdict_step(repo), "write": {"path": str(repo / rel), "text": "x = 2\n"}})
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
     assert run["state"] == "incomplete" and run["outcome"] == "review_failure"
-    assert wrote_only(run["reason"], named or rel)
+    assert wrote_paths(run["reason"]) == [rel]
     assert not _record(repo).exists()                                 # the verdict in its output is not filed
 
 
-def test_a_same_length_rewrite_with_its_mtime_put_back_is_a_review_failure(tmp_path: Path) -> None:
+@pytest.mark.parametrize("name", ["notes-opus.md", "RUN-opus.json", ".review-run.lock"])
+def test_the_notes_and_specy_roads_own_run_files_are_not_the_reviewers_writes(tmp_path: Path, name: str) -> None:
     repo, spec = delegate_repo(tmp_path)
-    target = repo / "src" / "a.py"
-    text = target.read_text()
-    forged = text[::-1] if text[::-1] != text else text.upper()
-    assert len(forged) == len(text) and forged != text
-    set_steps(repo, spec, {**verdict_step(repo), "write": {"path": str(target), "text": forged, "keep_mtime": True}})
-    before = target.stat()
+    path = rf.reviews_dir(repo, "M1.1") / name
+    set_steps(repo, spec, {**verdict_step(repo), "write": {"path": str(path), "text": "{}\n"}})
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
-    after = target.stat()
-    assert (after.st_size, after.st_mtime_ns) == (before.st_size, before.st_mtime_ns)   # only the bytes differ
-    assert run["outcome"] == "review_failure" and wrote_only(run["reason"], 'src/a.py')
-    assert not _record(repo).exists()
+    assert run["outcome"] == "recorded", run["reason"]
 
 
 def test_a_run_that_files_its_own_record_is_a_review_failure_and_the_record_is_put_back(tmp_path: Path) -> None:
@@ -80,40 +71,26 @@ def test_a_run_that_files_its_own_record_is_a_review_failure_and_the_record_is_p
     assert _record(repo).read_bytes() == filed                        # the earlier block, not the self-filed approve
 
 
-def test_a_commit_and_an_ignored_cache_count_as_writes_and_other_checkouts_do_not(tmp_path: Path) -> None:
+def test_the_tripwire_compares_git_status_entries_and_hand_off_files_by_content(tmp_path: Path) -> None:
+    """The exact rules: a status entry new, or with another code or content; a hand-off file added, removed or
+    changed, but the notes and run files. A file already dirty before the run counts when it changes again."""
     repo = make_review_repo(tmp_path)
-    reviews = rf.reviews_dir(repo, "M1.1")
-    nested = repo / "work" / ".worktrees" / "other"
-    nested.mkdir(parents=True)
-    (nested / ".git").write_text("gitdir: elsewhere\n")                   # a linked worktree: another checkout
-    reviews.mkdir(parents=True, exist_ok=True)                              # set up before the run, as specy-road does
-    (reviews / "RUN-opus.log").touch()
-    before = snapshot(repo, reviews, "opus")
-    (nested / "edit.py").write_text("theirs\n")
-    assert written(before, snapshot(repo, reviews, "opus")) == []
-    log = OwnFile(reviews / "RUN-opus.log")                                 # the run's own log, appended in place
-    with log.open() as f:
-        log.write(f, "the run's own log\n")
-    assert written(before, snapshot(repo, reviews, "opus"), (log,)) == []
-    git(repo, "commit", "-q", "--allow-empty", "-m", "reviewer commit")
-    (repo / "work" / "reviews" / "M1.1" / "RUN-sol.log").write_text("not this run's\n")
-    wrote = written(before, snapshot(repo, reviews, "opus"), (log,))
-    assert {"git refs", "work/reviews/M1.1/RUN-sol.log", "work/reviews/M1.1"} <= set(wrote)   # and its new entry
-    meta = set(wrote) - {"git refs", "work/reviews/M1.1/RUN-sol.log", "work/reviews/M1.1"}   # branch reflog and ref
-    branch = git(repo, "symbolic-ref", "HEAD")
-    assert f".git/logs/{branch}" in meta and meta <= {".git/logs/HEAD", f".git/logs/{branch}", f".git/{branch}"}
-
-
-def test_the_reviewed_branch_is_checked_when_the_reviewer_runs_on_a_detached_checkout(tmp_path: Path) -> None:
-    repo = make_review_repo(tmp_path)
-    branch = git(repo, "symbolic-ref", "--short", "HEAD")
-    wt = tmp_path / "quiet-wt"
-    git(repo, "worktree", "add", "-q", "--detach", str(wt))
     reviews = rf.reviews_dir(repo, "M1.1")
     reviews.mkdir(parents=True, exist_ok=True)
-    before = snapshot(wt, reviews, "opus", branch)
-    git(wt, "update-ref", f"refs/heads/{branch}", "HEAD~1")                # moved without touching the checkout
-    assert "git refs" in written(before, snapshot(wt, reviews, "opus", branch))
+    (repo / "src" / "a.py").write_text("dirty before the run\n")
+    (repo / "untracked.txt").write_text("before\n")
+    (reviews / "PACKET.md").write_text("packet\n")
+    before = snapshot(repo, reviews, "opus")
+    assert written(before, snapshot(repo, reviews, "opus")) == []
+    for name in ("RUN-opus.log", "RUN-opus.json", "notes-opus.md", ".review-run.lock"):
+        (reviews / name).write_text("specy-road's\n")
+    assert written(before, snapshot(repo, reviews, "opus")) == []
+    (repo / "src" / "a.py").write_text("dirty, then changed by the reviewer\n")
+    (repo / "untracked.txt").write_text("after\n")
+    (reviews / "PACKET.md").unlink()
+    (reviews / "RUN-sol.log").write_text("not this run's\n")
+    assert written(before, snapshot(repo, reviews, "opus")) == [
+        "src/a.py", "untracked.txt", "work/reviews/M1.1/PACKET.md", "work/reviews/M1.1/RUN-sol.log"]
 
 
 def test_the_reviewer_process_writes_no_bytecode_or_pytest_cache() -> None:
@@ -123,18 +100,20 @@ def test_the_reviewer_process_writes_no_bytecode_or_pytest_cache() -> None:
     assert reviewer_env(env) == env
 
 
-# --- A3: missing or malformed output is a rerun request ---------------------------------------------------------
+# --- A3: missing or malformed output is a rerun request (end to end; the per-row table is test_review_answer) --------
+
+NOT_ONE = "is not one complete JSON object"
+CUT = "is not one JSON object (a cut-off or stray line)"
+
 
 @pytest.mark.parametrize("raw,why", [
-    ('{"verdict": "approve", "commit": ', "ends with no JSON object"),
+    ('{"verdict": "approve", "commit": ', NOT_ONE),
     ('{"verdict": "approve"}', "does not match the review output schema"),
-    ("[\nVERDICT", "ends with no JSON object"),           # a valid verdict after an unclosed array
-    ("[\nVERDICT\n]", "ends with no JSON object"),        # a valid verdict inside an array
-    ("VERDICT\n[", "ends with no JSON object"),           # a valid verdict, then an array cut off or malformed
-    ("VERDICT\n[1,", "ends with no JSON object"),
-    ("VERDICT\n[broken", "ends with no JSON object"),
-    ("VERDICT\n[1,,2]", "ends with no JSON object"),
-    ("VERDICT [", "ends with no JSON object"),
+    ("Verdict:\nVERDICT", NOT_ONE),                       # prose before the object
+    ("```json\nVERDICT\n```", NOT_ONE),                  # a fenced object
+    ("VERDICT\n{}", NOT_ONE),                             # two objects
+    ("[\nVERDICT\n]", NOT_ONE),                          # inside an array
+    ('{"wrapper": "draft", "review":\nVERDICT', NOT_ONE),  # nested in an unterminated outer object
 ])
 def test_malformed_output_is_a_rerun_request_never_a_verdict(tmp_path: Path, raw: str, why: str) -> None:
     repo, spec = delegate_repo(tmp_path)
@@ -168,30 +147,19 @@ def test_an_answer_with_null_optional_fields_files_the_same_record_as_one_withou
     assert delegate(repo, "M1.1", "opus", sleep=lambda s: None)["outcome"] == "rerun"
 
 
-def test_a_valid_object_followed_by_truncated_json_is_a_rerun_request_and_files_nothing(tmp_path: Path) -> None:
+def test_a_valid_result_then_a_truncated_result_line_is_a_rerun_through_the_cli(tmp_path: Path, capsys) -> None:
+    """Sol F2: a schema-valid result event, then ``{"type":"result","result":`` before exit 0. The truncated line
+    is inside the final turn, so the earlier result never stands in."""
     repo, spec = delegate_repo(tmp_path)
-    valid = json.dumps(verdict_step(repo)["answer"])
-    set_steps(repo, spec, {"raw": valid + '\n{"verdict": "approve", "commit": '})
-    run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
-    assert run["state"] == "incomplete" and run["outcome"] == "rerun"
-    assert run["reason"] == "rerun requested: the reviewer's output ends with no JSON object"
-    assert not _record(repo).exists()
-    set_steps(repo, spec, {"raw": valid})                                     # the same object alone is filed
-    assert delegate(repo, "M1.1", "opus", sleep=lambda s: None)["outcome"] == "recorded"
-
-
-def test_a_verdict_nested_in_an_unterminated_outer_object_is_a_rerun_request(tmp_path: Path, capsys) -> None:
-    repo, spec = delegate_repo(tmp_path)
-    valid = verdict_step(repo)["answer"]
-    assert Draft202012Validator(output_schema()).is_valid(valid)             # the nested verdict is schema-valid
-    set_steps(repo, spec, {"raw": '{"wrapper": "draft", "review":\n' + json.dumps(valid)})
+    set_steps(repo, spec, {**verdict_step(repo), "after": '{"type":"result","result":'})
     with pytest.raises(SystemExit) as e:
         review_cli.main(["review", "delegate", "M1.1", "--model", "opus", "--backoff", "0", "--json",
                          "--repo-root", str(repo)])
     run = json.loads(capsys.readouterr().out)
     assert e.value.code == 1 and run["state"] == "incomplete" and run["outcome"] == "rerun"
-    assert run["reason"] == "rerun requested: the reviewer's output ends with no JSON object"
-    assert not _record(repo).exists()
+    assert CUT in run["reason"] and not _record(repo).exists()
+    set_steps(repo, spec, verdict_step(repo))                                 # the same result alone is filed
+    assert delegate(repo, "M1.1", "opus", sleep=lambda s: None)["outcome"] == "recorded"
 
 
 # --- A1: the prompt asks for the object; the schema is the record's -----------------------------------------------
@@ -278,7 +246,7 @@ def test_prompt_channel_cli_runs_a_cursor_reviewer_read_only_and_files_its_answe
     (rf.reviews_dir(repo, "M1.1") / "PACKET.md").write_text("# Review packet\n")
     answer = review_output(git(repo, "rev-parse", "HEAD"), model="comp")
     calls = fake_reviewer_run(monkeypatch, [json.dumps({"type": "result", "subtype": "success",
-                                                        "result": "Verdict:\n" + json.dumps(answer)})])
+                                                        "result": json.dumps(answer)})])
     assert run_main(role_prompt, "M1.1", "--model", "comp", "--role", "reviewer", "--channel", "cli",
                     "--repo-root", str(repo)) == 0
     call = next(c for c in calls if list(c["cmd"][:2]) == ["agent", "-p"])   # the reviewer launch, by its argv
@@ -304,7 +272,7 @@ def test_prompt_channel_cli_captures_a_custom_reviewer_command_and_checks_its_wr
     err = capsys.readouterr().err
     assert (rc, rf.review_path(repo, "M1.1", "gem").exists()) == ((1, False) if writes else (0, True))
     failure = next((line for line in err.splitlines() if line.startswith("review_failure: ")), "")
-    assert bool(failure) is writes and (not writes or wrote_only(failure, "work/out.txt"))
+    assert bool(failure) is writes and (not writes or wrote_paths(failure) == ["work/out.txt"])
     prompt = (repo / "work" / "prompt-M1.1-reviewer-gem.md").read_text()
     assert "**specy-road files your record.**" in prompt
 
