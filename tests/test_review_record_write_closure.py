@@ -36,7 +36,7 @@ def test_prompt_cli_keeps_a_failed_filing_incomplete_beside_an_older_record_of_t
     set_steps(repo, spec, verdict_step(repo), second)
     assert delegate(repo, "M1.1", "opus", sleep=lambda _s: None)["outcome"] == "recorded"   # the older record
     older = rf.review_path(repo, "M1.1", "opus").read_bytes()
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
                     "--repo-root", str(repo)) == 1
     run = load_run(repo, "M1.1", "opus")
     assert run["source"] == "prompt-cli" and run["state"] == "incomplete" and run["outcome"] == state
@@ -65,7 +65,7 @@ def test_prompt_cli_that_sends_nothing_stays_incomplete_beside_an_older_record_o
             raise KeyboardInterrupt
         monkeypatch.setattr(role_prompt, "run_reviewer_channel", interrupted)
     with pytest.raises((SystemExit, KeyboardInterrupt)) as e:
-        role_prompt.main(["M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+        role_prompt.main(["M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
                           "--repo-root", str(repo)])
     assert how == "interrupt" or e.value.code == 1
     run = load_run(repo, "M1.1", "opus")

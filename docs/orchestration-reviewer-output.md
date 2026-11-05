@@ -3,8 +3,8 @@
 How a launched reviewer answers and what specy-road checks before it files the record (M8.3). The rest of the review gate is in [orchestration-review.md](orchestration-review.md).
 
 The reviewer prompt ends with the review output schema: the review-record
-schema without the fields `review record` fills (`family`, `independence`,
-`notes_sha256`, `signature`, `launch_mode`), plus `notes`, the Markdown notes.
+schema without the fields specy-road fills (`family`, `independence`,
+`notes_sha256`, `signature`, `launch_mode`, `harness_model`, `model_mismatch`), plus `notes`, the Markdown notes.
 The reviewer's final message is exactly one JSON object matching it. Each default
 reviewer command passes the harness's structured-output flag where there is one:
 
@@ -13,7 +13,7 @@ reviewer command passes the harness's structured-output flag where there is one:
 | Claude Code | `--bare`, `--allowedTools Read,Glob,Grep,Bash`, `--disallowedTools` (below), `--json-schema '<schema>'` | the `result` event's `structured_output`, else its text |
 | Codex | `codex exec --json -c sandbox_mode=read-only -c approval_policy=never --output-schema <file> -o <answer file> -` (the answer file is in a private temporary directory, outside the checkout and the hand-off directory) | at `turn.completed`, the `-o` file; a resume (which documents neither flag) the turn's last `agent_message` |
 | Cursor | `agent -p --output-format stream-json --mode ask --trust` (no `--force`) | the last `result` event's text |
-| Antigravity (`agy`, a `generic` entry) | its `channels.cli` or `access.cli`, with `--json-schema <schema file>`, `--output-format json`, `--sandbox` and `--print-timeout 30m` added after `agy` where absent; `--dangerously-skip-permissions` is refused | the envelope's `structured_output` |
+| Antigravity (`agy`, a `generic` entry) | its roster `channels.cli` (never the profile's `access.cli`), with `--json-schema <schema file>`, `--output-format json`, `--sandbox` and `--print-timeout 30m` added after `agy` where absent; `--dangerously-skip-permissions` is refused | the envelope's `structured_output` |
 | anything else (`channels.cli`, `generic`, or a plain-text wrapper on any harness) | as written | the whole output, as one final message (a JSON envelope's `structured_output`) |
 
 One reader takes every harness's answer, strictly (A3). Each harness has one
@@ -51,7 +51,7 @@ prompt's schema leaves optional is required there and may be `null`, and
 record schema's free-key map and `propertyNames`). The other harnesses read the
 same file. specy-road drops those `null` fields before it checks the answer
 against the prompt's schema, so `null` and left out mean the same. After the
-run (`prompt --channel cli` or `review delegate`, default or custom command)
+run (`prompt --channel cli --run` or `review delegate`, default or custom command)
 specy-road decides the outcome:
 
 - **review failure** — the tripwire below saw a write. A `REVIEW-<model>.md`
@@ -72,8 +72,37 @@ specy-road decides the outcome:
   `REVIEW-<model>.md` from them, with the launch mode, family and `history/`
   copy an interactive filing gets. Under `policy.signed_reviews`, pass the
   reviewer's key to the launch (`review delegate --sign-key <key>`,
-  `prompt --role reviewer --channel cli --sign-key <key>`); specy-road files the
+  `prompt --role reviewer --channel cli --run --sign-key <key>`); specy-road files the
   record with `review record --sign-key`, and the gate verifies the signature.
+
+## `prompt --channel cli`: launch, command, worktree, model (M15.3)
+
+`specy-road prompt --channel cli` writes the prompt and prints the command it
+would run, for every role; it starts no process, the roster's `preflight`
+included, unless `--run` is given. A reviewer's command comes from its roster
+entry only: a `claude-code`, `codex` or `cursor` entry without `channels.cli`
+runs the read-only command above with the entry's model, and any other entry
+its `channels.cli`. Refused before launch, with the reason: an entry without
+either (the profile's `access.cli` is an example and is never run for a
+reviewer), a model whose profile `api_id` is `unknown` (the harness would run
+its own default under the rostered id), and a `channels.cli` passing `--force`,
+`--yolo` or `--dangerously-skip-permissions`.
+
+The reviewer runs in the leaf's own worktree, the one `git worktree list`
+shows with the claimed branch checked out, never in a checkout on the
+integration branch; `--worktree PATH` names another. With none, `prompt`
+refuses and names `--worktree PATH` and the `git worktree add` that creates
+one.
+
+After the run, `specy_road/review_model_check.py` compares the model the
+harness reported (its first `system/init` event's `model`, as worker usage
+reads it) with the roster entry's id, `harness_model` and profile names, after
+normalising case, separators and display names (`Claude Opus 5.5` is
+`claude-opus-5-5`). The filed record carries `harness_model`; on a real
+mismatch it also carries `model_mismatch: true`, and the gate does not count
+it (`harness ran a different model`), which `handoff status` lists under who
+can still approve. A harness that reports no model (Codex, plain-text
+commands) is a warning only.
 
 ## Prevention and the tripwire (A2)
 

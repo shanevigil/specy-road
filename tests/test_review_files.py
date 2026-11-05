@@ -247,7 +247,7 @@ def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, cap
     answer = review_output(git(repo, "rev-parse", "HEAD"), model="opus")
     calls = fake_reviewer_run(monkeypatch, [json.dumps({"type": "result", "subtype": "success", "result": "done",
                                                 "structured_output": answer})])
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
                     "--repo-root", str(repo)) == 0
     call = next(c for c in calls if list(c["cmd"][:2]) == ["claude", "-p"])   # the reviewer launch, by its argv
     argv = call["cmd"]
@@ -283,7 +283,7 @@ def test_claude_code_reviewer_with_channels_cli_runs_it_as_written(tmp_path: Pat
 
     repo = _claude_code_reviewer_repo(tmp_path, '    channels: {cli: "cat {prompt} | head -1"}\n')
     calls = fake_reviewer_run(monkeypatch)
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
                     "--repo-root", str(repo)) == 1   # M8.3: captured, and `cat | head` prints no verdict
     call = next(c for c in calls if list(c["cmd"][:2]) == ["sh", "-c"])     # the reviewer launch, by its argv
     assert call["cmd"][2].startswith("cat ") and "--bare" not in call["cmd"][2]

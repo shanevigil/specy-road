@@ -168,7 +168,8 @@ def test_the_output_schema_is_the_record_schema_less_what_specy_road_fills() -> 
     record = json.loads((Path(rf.__file__).parent / "schemas" / "review-record.schema.json").read_text())
     schema = output_schema()
     assert set(schema["properties"]) == set(record["properties"]) - {
-        "family", "independence", "notes_sha256", "signature", "launch_mode"} | {"notes"}
+        "family", "independence", "notes_sha256", "signature", "launch_mode", "harness_model",
+        "model_mismatch"} | {"notes"}
     assert schema["required"] == [*record["required"], "notes"] and schema["additionalProperties"] is False
 
 
@@ -247,7 +248,7 @@ def test_prompt_channel_cli_runs_a_cursor_reviewer_read_only_and_files_its_answe
     answer = review_output(git(repo, "rev-parse", "HEAD"), model="comp")
     calls = fake_reviewer_run(monkeypatch, [json.dumps({"type": "result", "subtype": "success",
                                                         "result": json.dumps(answer)})])
-    assert run_main(role_prompt, "M1.1", "--model", "comp", "--role", "reviewer", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "comp", "--role", "reviewer", "--channel", "cli", "--run",
                     "--repo-root", str(repo)) == 0
     call = next(c for c in calls if list(c["cmd"][:2]) == ["agent", "-p"])   # the reviewer launch, by its argv
     assert call["cmd"][:7] == ["agent", "-p", "--output-format", "stream-json", "--mode", "ask", "--trust"]
@@ -267,7 +268,7 @@ def test_prompt_channel_cli_captures_a_custom_reviewer_command_and_checks_its_wr
     repo, spec = delegate_repo(tmp_path, GENERIC)
     step = {**verdict_step(repo, model="gem"), "plain": True}
     set_steps(repo, spec, {**step, "write": {"path": str(repo / "work" / "out.txt"), "text": "x"}} if writes else step)
-    rc = run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli",
+    rc = run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli", "--run",
                   "--repo-root", str(repo))
     err = capsys.readouterr().err
     assert (rc, rf.review_path(repo, "M1.1", "gem").exists()) == ((1, False) if writes else (0, True))
@@ -290,7 +291,7 @@ def test_a_plain_text_wrapper_on_a_codex_or_cursor_entry_is_filed_from_its_final
     text`): no event stream, so the final message's JSON object is the answer."""
     repo, spec = delegate_repo(tmp_path, GENERIC.replace("harness: generic", f"harness: {harness}"))
     set_steps(repo, spec, {**verdict_step(repo, model="gem"), "plain": True})
-    assert run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli", "--run",
                     "--repo-root", str(repo)) == 0
     assert rf.load_review(rf.review_path(repo, "M1.1", "gem"), ["A1", "A2"]).ok
     run = json.loads((rf.reviews_dir(repo, "M1.1") / "RUN-gem.json").read_text())

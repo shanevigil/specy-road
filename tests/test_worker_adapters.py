@@ -369,13 +369,13 @@ def test_prompt_cli_channel_substitutes_the_roles_effort_or_notes_its_absence(tm
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
     prof_path.write_text(prof_path.read_text().replace(shipped_anthropic_opus_cli_yaml_line(), "  cli: echo {effort} {prompt}"))
     commit_profile(repo)
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli", "--run",
                 "--repo-root", str(repo)) == 0
     out, err = capfd.readouterr()
     assert out.splitlines()[-1].startswith("--effort low ") and "takes no effort" not in err
     prof_path.write_text(prof_path.read_text().replace("  cli: echo {effort} {prompt}", "  cli: echo {prompt}"))
     commit_profile(repo)
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli", "--run",
                 "--repo-root", str(repo)) == 0
     out, err = capfd.readouterr()
     assert "--effort" not in out.splitlines()[-1] and err.count("takes no effort") == 1 and "effort low" in err

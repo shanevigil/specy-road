@@ -49,7 +49,9 @@ from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.generate_brief import index, load_nodes
 from specy_road.review_answer import (FILLED_BY_SPECY_ROAD, Rerun, drop_nulls, events, final_answer,
                                       output_schema, stream_lines)
+from specy_road.model_names import roster_match
 from specy_road.review_files import render_front_matter, review_path
+from specy_road.review_model_check import Check, check, check_note, reported_model
 from specy_road.integrity_removals import target_unplanned_removals
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
 from specy_road.review_write_check import (  # re-exported: the post-run write check lives there (file limit)
@@ -253,9 +255,12 @@ def _review_record(root: Path, node_id: str, model: str, verdict: str, notes: Pa
 
 def file_review(root: Path, node_id: str, model: str, reviews: Path, *, answer: dict[str, Any] | Rerun,
                 before: Snapshot, after: Snapshot, ref: str | None = None,
-                launch_mode: str | None = None, sign_key: Path | None = None) -> Outcome:
+                launch_mode: str | None = None, sign_key: Path | None = None,
+                model_check: tuple[str | None, Check] | None = None) -> Outcome:
     """The run's outcome (module docstring); ``answer`` is :func:`final_answer`'s, ``before`` and ``after`` the
-    :func:`snapshot` either side of the run; ``sign_key``: ``review record --sign-key``, for ``policy.signed_reviews``."""
+    :func:`snapshot` either side of the run; ``sign_key``: ``review record --sign-key``, for ``policy.signed_reviews``;
+    ``model_check``: the harness's reported model and :func:`~specy_road.review_model_check.check`'s result, filed as
+    ``harness_model`` and, on a mismatch, ``model_mismatch`` (M15.3)."""
     wrote = written(before, after)
     if wrote:
         before.restore(reviews, model)
@@ -264,6 +269,10 @@ def file_review(root: Path, node_id: str, model: str, reviews: Path, *, answer: 
     if isinstance(answer, Rerun):
         return Outcome("rerun", answer.reason)
     record = {k: v for k, v in answer.items() if k != "notes"}
+    if model_check and model_check[0]:
+        record["harness_model"] = model_check[0]
+    if model_check and model_check[1] == "mismatch":
+        record["model_mismatch"] = True
     notes = reviews / f"notes-{model}.md"
     replace_file(notes, render_front_matter(record, "\n" + answer["notes"].strip() + "\n"))   # never through a link
     rc, said = _review_record(root, node_id, model, record["verdict"], notes, ref, launch_mode, sign_key)
@@ -361,19 +370,27 @@ def attempt_text(log: Path, attempt: dict[str, Any]) -> str:
 
 def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Path, ref: str | None = None,
                  transcript: list[str] | None = None, sign_key: Path | None = None,
-                 output: Path | None = None) -> Outcome:
-    """``prompt --channel cli``'s reviewer turn: run ``launch``, then :func:`file_review` it (signed with
+                 output: Path | None = None, cwd: Path | None = None) -> Outcome:
+    """``prompt --channel cli --run``'s reviewer turn: run ``launch`` in ``cwd`` (the leaf's worktree; default
+    ``root``), compare the model its harness reports with the roster entry's (:mod:`specy_road.review_model_check`),
+    then :func:`file_review` it (signed with
     ``sign_key``; ``output``: the :func:`answer_scratch` file the launch writes its answer to). The caller holds
     :func:`review_run_lock` from before it writes any of the run's files, and closes the run record from the
     returned :class:`Outcome`. The node id is the hand-off directory's name; ``transcript`` gets the output and,
     last, the outcome line (but a rerun request after a failed harness), which the reviewer-failure event names."""
-    path = reviews / f"RUN-{model}.log"
-    before = snapshot(root, reviews, model)
+    path, cwd = reviews / f"RUN-{model}.log", cwd or root
+    before = snapshot(cwd, reviews, model)
     span: list[Any] = [0, 0, None]
-    rc = run_logged(launch, adapter, root, path, transcript, span)
-    outcome = file_review(root, reviews.name, model, reviews, answer=final_answer(adapter, run_text(path, *span), output),
-                          before=before, after=snapshot(root, reviews, model, before), ref=ref,
-                          launch_mode=launch.launch_mode, sign_key=sign_key)
+    rc = run_logged(launch, adapter, cwd, path, transcript, span)
+    text = run_text(path, *span)
+    reported = reported_model(text)
+    entry, prof = roster_match(root, model)
+    state = check(reported, entry or {"id": model}, prof)
+    if note := check_note(state, reported, model):
+        print(note, file=sys.stderr)
+    outcome = file_review(root, reviews.name, model, reviews, answer=final_answer(adapter, text, output),
+                          before=before, after=snapshot(cwd, reviews, model, before), ref=ref,
+                          launch_mode=launch.launch_mode, sign_key=sign_key, model_check=(reported, state))
     print(f"{outcome.state}: {outcome.path or outcome.reason}", file=sys.stderr)
     # The outcome line goes last, for the run record's reviewer-failure event; but a rerun request after a harness
     # failure is that failure's consequence, and the event reads a capacity error from the last plain line only.

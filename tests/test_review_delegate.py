@@ -97,7 +97,7 @@ def test_one_leafs_reviewer_runs_take_turns(tmp_path: Path) -> None:
     with review_run_lock(reviews):   # as the active run holds it
         with pytest.raises(DelegateError, match="in progress"):
             delegate(repo, "M1.1", "opus", sleep=lambda s: None)
-        assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+        assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
                         "--repo-root", str(repo)) == 1
     assert sorted(p for p in (repo / "work").rglob("*") if p.is_file()) == files
     assert {p: (p.stat().st_mtime_ns, p.read_bytes()) for p in files} == kept
@@ -237,7 +237,7 @@ def test_prompt_cli_channel_records_usage_limit_and_shows_it_on_the_gate_line(tm
     repo = make_review_repo(tmp_path, orchestration=delegate_roster(cli.replace("{prompt}", script.as_posix() + " {prompt}")))
     (reviews_dir(repo, "M1.1")).mkdir(parents=True, exist_ok=True)
     (reviews_dir(repo, "M1.1") / "PACKET.md").write_text("# Review packet\n\n**Commit under review:** HEAD\n")
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
                     "--repo-root", str(repo)) == 1
     run = load_run(repo, "M1.1", "opus")
     assert run["source"] == "prompt-cli" and run["state"] == "incomplete"
@@ -274,7 +274,7 @@ def test_prompt_cli_exception_closes_the_run_incomplete(tmp_path: Path, monkeypa
 
     monkeypatch.setattr(role_prompt, "run_reviewer_channel", boom)
     with pytest.raises(RuntimeError, match="harness exploded"):
-        role_prompt.main(["M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+        role_prompt.main(["M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
                           "--repo-root", str(repo)])
     run = load_run(repo, "M1.1", "opus")
     assert run["state"] == "incomplete" and run["ended_at"]
