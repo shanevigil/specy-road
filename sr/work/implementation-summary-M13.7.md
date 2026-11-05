@@ -291,3 +291,50 @@ New cases in the same test: "r3 info/exclude" and "r4 self-ignored nested .gitig
 - Removed: `_scratch`, `_tracked_matches`, `_newly_hidden` and the old `_new_rule_matches`.
 - Tests: listed above.
 - Mocks: none new.
+
+## Fix round 5: R1 class audit
+
+This round reworks Sol's (gpt-6.1-sol) block on 625acb89, R1, after the previous worker (w-0006) stopped on a usage limit. Round 4 (`a5a25fe1`) had already fixed the named instance. Sol's reproduction now lists only `work/prompt-hide.md` in both the dry and the real run, and `git status` still shows `work/prompt-keep.md`. The regression is in place: case "r4 self-ignored nested .gitignore" and `test_the_dry_run_is_labelled_an_estimate_and_gets_the_self_ignored_nested_case_right`. The code change in this round is commit `e6218bfd`.
+
+**Class:** an ignore input that git reads, or refuses to read, differently from how the dry-run scratch repository reproduces it. The class only reaches `ignore_report.estimate`. The real run is observed by git in the checkout itself, so nothing there is reproduced.
+
+**Second instance found and fixed (design change):** a `.gitignore` that is a symlink, whether nested, at the top level or dangling. Git (2.43 here) does not read a symlinked `.gitignore`, but `estimate` copied the link target's bytes into a regular file.
+- For a nested link to `!prompt-keep.md`, the dry run left out `prompt-keep.md`, which the real run hides.
+- For a top-level link, the dry run listed a file the real run does not hide.
+
+`_copy_ignore` now keeps a symlink a symlink in the scratch repository. The link points at a scratch copy of its target under the scratch `.git/`, and a dangling link stays dangling. So the same git decides whether to read it, and the update in the scratch repository can never write through a link to a checkout file.
+
+## Probes
+
+Each probe ran `apply_and_report` dry and real on a fresh repository and compared three things: the dry listing, the real listing, and the change in `git status --porcelain -uall`. The probe script was `/tmp/m137_probe.py`; it is not committed.
+
+- Sol's R1 layout (`work/.gitignore` = `.gitignore`, `!prompt-keep.md`): dry, real and status agree on `prompt-hide.md` only. Already fixed in round 4.
+- Self-ignored nested `.gitignore` three levels deep (`work/a/b/`): agree, nothing listed (no shipped rule reaches it).
+- Self-ignored `.gitignore` under a shipped directory rule (`work/reviews/`): agree; the directory rule hides both files despite the negation, as git does.
+- Nested `.gitignore` ignored by its parent's `.gitignore` (`sub/.gitignore`): agree.
+- Nested `.gitignore` ignored by a top-level `**/.gitignore`: agree.
+- Nested `.gitignore` ignored through `info/exclude`: agree.
+- Nested `.gitignore` ignored through `core.excludesFile`: agree.
+- Nested `.gitignore` under an already ignored directory: agree, nothing listed (no candidates there).
+- A self-ignored nested `.gitignore` whose only candidate is tracked: agree, nothing listed.
+- Self-ignored nested `.gitignore` in a directory with a space and `é`: agree.
+- Self-ignored nested `.gitignore` under project prefix `sr/`: agree, `sr/work/prompt-hide.md` only.
+- Nested `.gitignore` that is a symlink: **differed** (the dry run missed `prompt-keep.md`). Fixed; test case "nested symlink".
+- Top-level `.gitignore` that is a symlink: **differed** (the dry run listed `prompt-hide.md`, the real run nothing). Fixed; test case "top-level symlink".
+- Dangling top-level and nested `.gitignore` symlinks: agree after the fix. The top-level one is pinned as test case "dangling top-level symlink".
+- Advisory skip handling is unchanged: `test_a_failed_git_capture_skips_the_note_and_the_writes_still_happen` and `test_an_unreadable_nested_gitignore_skips_the_estimate` pass.
+
+**Red-green:** the 3 new cases fail with `ignore_report.py` at 53f9e35c and pass at e6218bfd.
+
+**Verification:**
+- Targeted run, 37 files (Sol's selection): 726 passed.
+- `specy-road file-limits`: OK.
+- `ruff check`: clean.
+
+### Added (fix round 5)
+
+- `ignore_report._copy_ignore`: copies one ignore file into the scratch repository and keeps a symlink a symlink, because git does not read a symlinked `.gitignore`.
+- Branch in `_copy_ignore` for a dangling link: it stays dangling, as in the checkout.
+- `is_symlink()` alternative in `estimate`'s copy filter: without it a dangling link was skipped, and the scratch update created a regular `.gitignore`.
+- `tests/test_m13_7_notices.py::test_the_dry_run_estimate_treats_a_symlinked_gitignore_as_git_does` (3 cases: nested, top-level and dangling top-level symlink). Each case checks that dry, real and the git-status change agree and that the dry run writes no file.
+- Mocks: none.
