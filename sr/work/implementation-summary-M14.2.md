@@ -163,3 +163,50 @@ Ref kind is an input but no row depends on it. It shapes the evidence instead: a
 - `python -m pytest -q -n 4 tests/test_doctor.py tests/test_doctor_live.py tests/test_doctor_classification.py tests/test_gate_config_agree.py tests/test_nested_unpushed_report.py tests/test_worktree_env_setup.py tests/test_doctor_version_skew.py`: 87 passed
 - `specy-road file-limits`: OK (`doctor.py` 311 lines, `doctor_worktrees.py` 283)
 - `ruff check` on the changed files: clean
+
+## Fix round 3 (Sol F1, F2)
+
+The fix is commit `9c82212a`. The classification table is unchanged; only the evidence input (`evidence_kind`) changed.
+
+- **F1. Class: reflog entries a ref inherited from another ref.** `git branch -c` (and `-C`) copies the source's reflog into the new ref and adds `Branch: copied …`. The earlier commit entries were made on the source. `_CREATED` now holds both `branch: Created from` and `Branch: copied`, so `_since_creation` stops at the newest copy as well as at the newest creation. A copy with no commits since then is `creation-only`, which reads as "no commits yet" with no fix. Its worktree reads the same way, because worktrees use the same local evidence. A commit after the copy still counts as `commit`.
+  - Not boundaries: a rename (`Branch: renamed`) moves the same branch's own reflog, so its commits really are its own. A force-move (`branch: Reset to`, `reset: moving to`) keeps entries that were committed on this exact ref. Those entries still count only when the tip contains them.
+- **F2. Class: a remote ref's freshness inferred from a different ref (its local namesake).**
+  - A remote-tracking ref now checks the finish-merge evidence (`Merge branch '<b>'` brought the tip in) before anything about freshness.
+  - Freshness (`_pushed_fresh`) now needs the remote-tracking ref's own raw reflog: its newest creation line (old sha all zeros) is at the tip, and the ref has not moved since. The local namesake must also have been created at that tip, not from the remote, and no later than the remote ref was created. A namesake created at the tip *after* the remote ref existed proves nothing, so the evidence becomes `none` (merged, no local evidence, no fix).
+  - With no reflog file (expired, or the reftable backend), freshness is never proven.
+- **Remaining trade-off:** reflog timestamps have one-second resolution. Suppose a namesake is recreated at the tip of a remote ref that was fast-forward-landed with no finish merge, all within the same second as that remote ref's creation. That remote then reads "no commits yet" instead of "merged; no local evidence…". Both outcomes offer no fix, so the safe direction holds. A finish-merged remote (F2's case) is decided before timestamps are compared.
+
+### Probes
+
+- F1 regression (`git branch -c feature/rm-done feature/rm-copied`, `doctor --fix --yes`): copy kept as "no commits yet"; source still deleted. The test fails on `96db4639` and passes now.
+- Copy, then a commit on the copy: evidence `commit`, so a commit made after the copy counts.
+- Force copy (`git branch -C`) over an existing branch: `creation-only`.
+- Worktree on a fresh copy: "has no commits yet, so --fix leaves it".
+- Pushed fresh copy (the remote ref): `creation-only` via `_pushed_fresh`; reported "no commits yet".
+- F2 regression (`git branch feature/rm-gone <raw remote tip SHA>`): remote is "merged" and `--fix` deletes it on origin; local is "no commits yet" and kept. The test fails on `96db4639` and passes now.
+- A fast-forward-landed remote (no finish merge) whose namesake was recreated at its tip after the remote ref was created (remote reflog dated a minute earlier): "merged; no local evidence…", kept. The test fails on `96db4639` and passes now.
+- Local namesake created from `origin/feature/rm-gone`: local `creation-only`, remote `finish-merge`.
+- Remote-tracking ref with its reflog file deleted: `finish-merge` where a finish merge exists; never `creation-only`.
+- `test_f3_…` (fresh remote pushed and the namesake ahead): still "no commits yet" (R2 holds).
+- Rename, `branch -f` and `reset`: reviewed, and left as non-boundaries (reasons above).
+
+### Added in fix round 3
+
+- `doctor_worktrees._raw_reflog`: reads a ref's reflog file with its old sha and timestamp, which `git reflog --format` does not expose (F2).
+- `doctor_worktrees._pushed_fresh`: remote freshness from the remote-tracking ref's own reflog, replacing the namesake-SHA equality (F2).
+- `_ZERO`, and `Branch: copied` added to `_CREATED`: creation boundary for copies (F1).
+- Reordered `evidence_kind`: finish-merge before remote freshness (F2).
+- Tests in `tests/test_doctor_live.py`: `test_r5_f1_a_copy_of_a_merged_branch_has_no_commits_of_its_own`, `test_r5_f2_a_local_namesake_at_the_remote_tip_keeps_the_remotes_finish_merge`, `test_r5_f2_a_namesake_created_after_the_remote_ref_does_not_prove_it_fresh` (the last one rewrites the remote ref's reflog timestamp to stand for an earlier push).
+- Mocks: none.
+
+### Verification (round 3)
+
+- `python -m pytest -q -n 4 tests/test_doctor.py tests/test_doctor_live.py tests/test_doctor_classification.py tests/test_gate_config_agree.py tests/test_nested_unpushed_report.py tests/test_worktree_env_setup.py tests/test_doctor_version_skew.py`: 90 passed
+- full `python -m pytest -q -n 4`: 4048 passed
+- `specy-road file-limits`: OK (`doctor_worktrees.py` 316 lines, `doctor.py` 311)
+- `ruff check` on the changed files: clean
+- Red/green: with `doctor_worktrees.py` from `96db4639`, all three `test_r5_*` fail.
+
+## Added
+
+The per-round inventories above (`## Added`, then `### Added in fix round 1`, `2` and `3`) list every addition. Round 3: `_raw_reflog`, `_pushed_fresh`, `_ZERO`, `Branch: copied` in `_CREATED`, finish-merge before remote freshness in `evidence_kind`, and the three `test_r5_*` tests. Mocks: none.
