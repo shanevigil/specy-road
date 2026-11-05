@@ -48,9 +48,44 @@ default arguments.
 
 ## Verification
 
-- `python -m pytest -n 4 -q`: 4033 passed.
+- `python -m pytest -n 4 -q`: 4033 passed before fix round 1. Fix round 1 ran targeted tests only, as instructed (70 passed).
 - `specy-road file-limits`: OK.
 - `ruff check` on the changed files: clean.
+
+## Fix round 1: roster layers
+
+`roster_diff` (`models list` → `uncommitted roster changes`) compares only the roster as written in two files:
+the pinned ref's `roadmap/orchestration.yaml` and the working tree's. It reads them through
+`load_orchestration_config` and applies no overlay to either side. This clone's own layers are not part of
+that diff; each one is shown elsewhere:
+
+- **Pinned ref.** The `roster` rows of `models list` (text and JSON), the `roster: ... at <ref>` line, and
+  delegation all read it. Tests: `test_models_list_names_the_ref_and_the_uncommitted_diff` (rows stay pinned,
+  `roster_ref`) and `test_delegation_still_reads_the_integration_branch_roster`.
+- **Worktree file.** Shown as the `uncommitted roster changes` diff against the ref, and planned only by
+  `orchestrate plan --roster-from-worktree` (banner, `roster_ref: worktree`). Tests:
+  `test_models_list_names_the_ref_and_the_uncommitted_diff` (added/removed/changed) and
+  `test_worktree_dry_run_plans_the_uncommitted_roster_with_a_banner`.
+- **Availability overlay** (`orchestration.local.yaml` `roster:`). Applied after the file is read, so the
+  `models list` rows and the plans show its effect. It is never in the diff, and it can no longer hide a file
+  change there. Tests: `test_models_list_diff_is_not_masked_by_the_local_availability_overlay[true|false]`
+  (`false` is the same value the working tree set, which used to cancel the change out); the overlay-only
+  check in `test_models_list_names_the_ref_and_the_uncommitted_diff` (diff is `null`); the existing
+  `tests/test_roster_availability.py`.
+- **`roster_add` local entries.** Merged by `pinned_config` after the pinned (or dry-run) roster, labelled
+  `[local]`, and listed under `local roster entries` / `local_roster` in `orchestrate plan`. They are never in
+  the diff. Tests: `test_roster_add_is_planned_labelled_local_and_used_for_delegation`, `..._never_overrides_a_committed_id`,
+  `..._cli_needs_allow_local_cli`, `..._entries_are_schema_checked`, and the `roster_add`-only check in
+  `test_models_list_names_the_ref_and_the_uncommitted_diff` (diff is `null`).
+- **Defaults** (`DEFAULT_CONFIG` when a side has no file). `_file_roster` uses the default roster for that
+  side, as `effective_config` does, so deleting the file shows every committed id as `removed`. The drift
+  message for a missing or deleted roster comes from `roster_report`. Tests:
+  `tests/test_roster_source.py::test_plan_and_validate_name_the_roster_source_and_remedy` (deleted / absent
+  states) and `test_no_roster_anywhere_points_at_the_docs_not_the_may_process_hint`. The diff for a deleted
+  file was checked by probe only (below).
+
+I did not add a separate report of the overlay's own effect: the `models list` rows already show the entry
+after the overlay, and adding one would go beyond A2.
 
 ## Probes
 
@@ -58,7 +93,8 @@ R1's class: a working-tree vs ref comparison made after a clone-local layer (the
 `roster_add` merge) had been applied to both sides.
 
 - `roster_diff` with an uncommitted `available: false` and a local overlay `available: true`: before, `(None, None)`; now `changed: {opus: [available]}` in text and JSON (new test, red before the fix, green after).
-- `roster_diff` with only a local overlay and no file edit: `(None, None)`. The overlay alone is not reported as an uncommitted change.
+- `roster_diff` with only a local overlay and no file edit: `(None, None)`. The overlay alone is not reported as an uncommitted change. This is now a test assertion.
+- `roster_diff` with an uncommitted `available: false` and an overlay that also sets `available: false` (the same value): before, `(None, None)`; now `changed: {opus: [available]}`. Both test cases fail on `d4cf4e1e`'s `orchestration_pinned.py` and pass now.
 - `roster_diff` with the working-tree file deleted: every committed id is `removed`, the same as before (the missing-file default roster is kept).
 - `roster_diff` with a working-tree YAML error: returns `working tree: YAML error ...`, as before.
 - `roster_add` entries: `roster_diff` never merges them (it does not call `pinned_config` or `merge_local_roster`), so a local entry cannot hide or fake a diff.
@@ -89,5 +125,6 @@ R1's class: a working-tree vs ref comparison made after a clone-local layer (the
 - Test `test_roster_add_never_overrides_a_committed_id`: id clash refused (A3).
 - Test `test_roster_add_cli_needs_allow_local_cli`: `channels.cli` and profile `access.cli` are refused, then allowed with `allow_local_cli: true` (A3).
 - Test `test_roster_add_entries_are_schema_checked`: a malformed local entry is reported (A3).
-- Test `test_models_list_diff_is_not_masked_by_the_local_availability_overlay`: an `available` edit masked by a local overlay is still reported in text and JSON (R1).
+- Test `test_models_list_diff_is_not_masked_by_the_local_availability_overlay`, parametrized on the overlay value `true` and `false` (the second is the same value the working tree set): an `available` edit masked by a local overlay is still reported in text and JSON (R1, fix round 1).
+- Assertion in `test_models_list_names_the_ref_and_the_uncommitted_diff`: an overlay plus a `roster_add` entry, with no file edit, gives `uncommitted_roster_changes: null` (fix round 1 layer audit).
 - Mocks: none.
