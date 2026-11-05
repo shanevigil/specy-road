@@ -10,20 +10,28 @@ import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-_FENCE = re.compile(r"^\s*(```|~~~)")
+_FENCE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
 _TESTPYPI_INDEX = re.compile(r"(?:--index-url|-i)(?:\s+|=)\S*test\.pypi\.org")
 
 
 def _fenced_commands(text: str) -> list[str]:
-    """Logical lines inside code fences, with backslash continuations joined."""
+    """Logical lines inside code fences, with backslash continuations joined.
+
+    A fence keeps its full opening run: it closes only on a run of the same character at
+    least as long with nothing after it, so a ```bash inside a ````markdown template is
+    read as literal content of the outer fence.
+    """
     commands: list[str] = []
     fence: str | None = None
     pending = ""
     for line in text.splitlines():
         match = _FENCE.match(line)
-        if match and (fence is None or match.group(1) == fence):
-            fence = match.group(1) if fence is None else None
-            pending = ""
+        if match and fence is None:
+            fence, pending = match.group(1), ""
+            continue
+        run = match.group(1) if match else ""
+        if fence is not None and run[:1] == fence[0] and len(run) >= len(fence) and not match.group(2).strip():
+            fence, pending = None, ""
             continue
         if fence is None:
             continue
@@ -49,6 +57,9 @@ def test_the_detector_flags_the_two_index_form_and_passes_the_recipe() -> None:
     prose = "Never pair `--index-url https://test.pypi.org/simple/` with `--extra-index-url`.\n"
     assert [c for c in _fenced_commands(old) if _two_index_testpypi(c)]
     assert [c for c in _fenced_commands(short) if _two_index_testpypi(c)]
+    nested = "````markdown\nSmoke install:\n\n```bash\npip install --index-url https://test.pypi.org/simple/ \\\n" \
+             "    --extra-index-url https://pypi.org/simple/ \"specy-road==0.3.1rc1\"\n```\n````\n"
+    assert [c for c in _fenced_commands(nested) if _two_index_testpypi(c)]
     assert not [c for c in _fenced_commands(recipe + prose) if _two_index_testpypi(c)]
 
 
