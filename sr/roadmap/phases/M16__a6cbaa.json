@@ -424,7 +424,8 @@
         "docs/orchestration-workers.md",
         "docs/orchestration-harness-launch.md",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/schemas/worker-record.schema.json"
       ],
       "type": "task"
     },

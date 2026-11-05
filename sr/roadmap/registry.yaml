@@ -162,6 +162,7 @@ entries:
       - docs/orchestration-harness-launch.md
       - docs/orchestration-review.md
       - tests/
+      - specy_road/schemas/worker-record.schema.json
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
