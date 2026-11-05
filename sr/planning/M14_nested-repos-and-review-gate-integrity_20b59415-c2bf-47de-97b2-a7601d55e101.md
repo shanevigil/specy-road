@@ -20,6 +20,10 @@ Make the review gate and the worktree tools trustworthy in projects that keep co
 - [ ] M14.5 — approve without a probe flagged; optional policy.
 - [ ] M14.6 — review usage; RUN logs per round.
 - [ ] M14.7 — session end resolves by worktree and branch.
+- [ ] M14.8 — implementation-zone check at ready and review delegate; sibling-aware; validate warning.
+- [ ] M14.9 — `review rca` launcher; no-analyst outcome; usage limits recorded as unavailable.
+- [ ] M14.10 — convergence-aware escalation and findings trend.
+- [ ] M14.11 — rework/fix-round prompt audits the failure class and lists probes.
 - Out of scope: a default strong_review for numeric zones (see M14.5), and configuring nested_repos automatically.
 
 ## References
