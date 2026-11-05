@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -99,6 +100,51 @@ def test_recorded_sibling_heads_must_still_hold_at_the_same_root_commit(tmp_path
     g = _gate(repo)
     assert not g.passed and len(g.stale) == 1
     assert "sibling repositories changed since the review (app)" in policy_line(g)
+
+
+def _change_siblings(repo: Path, change: str) -> None:
+    sib = repo / "app"
+    if change == "added":
+        _sibling(repo, "libs/new", ignore=False)
+    elif change == "removed":
+        shutil.rmtree(sib)
+    elif change == "moved":
+        commit_file(sib, "code.py", "x = 'moved'\n", "sibling moves")
+    elif change == "renamed":
+        sib.rename(repo / "app2")
+
+
+@pytest.mark.parametrize("root", ["same", "summary-only"])
+@pytest.mark.parametrize("change", ["unchanged", "added", "removed", "moved", "renamed"])
+def test_an_approval_counts_only_while_the_recorded_sibling_map_holds(tmp_path: Path, change: str, root: str) -> None:
+    """The full sibling map (which siblings, each HEAD) must equal the recorded one on every count and carry path;
+    with siblings still present the summary-only carry never applies (A2), so only unchanged at the same commit counts."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _sibling(repo)
+    assert run_review_cli("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+                          "--file", str(notes_file(repo)), "--repo-root", str(repo)) == 0
+    approved = git(repo, "rev-parse", "HEAD")
+    assert _gate(repo).passed
+    _change_siblings(repo, change)
+    if root == "summary-only":
+        commit_file(repo, "work/implementation-summary-M1.1.md", "# Summary\n", "summary only")
+    g = _gate(repo)
+    counts = change == "unchanged" and root == "same"
+    assert g.passed is counts and len(g.stale) == (0 if counts else 1) and not g.bookkeeping_carry
+    if change != "unchanged":
+        assert f"opus's approve at {approved[:12]} is stale: sibling repositories changed since the review" \
+            in policy_line(g)
+
+
+def test_a_record_without_sibling_heads_carries_when_no_sibling_remains(tmp_path: Path) -> None:
+    """The legacy rule: no recorded map is not checked, and with no siblings left the summary-only carry applies."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _sibling(repo)
+    _approve(repo)
+    shutil.rmtree(repo / "app")
+    commit_file(repo, "work/implementation-summary-M1.1.md", "# Summary\n", "summary only")
+    g = _gate(repo)
+    assert g.passed and g.bookkeeping_carry
 
 
 def test_a_record_without_sibling_heads_counts_only_at_the_same_root_commit(tmp_path: Path) -> None:

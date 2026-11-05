@@ -77,14 +77,17 @@ def _refuse(result: Any, review: ReviewFile, why: str) -> bool:
 def count_at_later_commit(result: Any, repo_root: Path, node: dict[str, Any], review: ReviewFile) -> bool:
     """False when ``review`` is stale at ``result.commit`` (appended to ``result.stale``).
 
-    While a sibling repository exists (:mod:`specy_road.sibling_repos`) the bookkeeping carry never applies, and
-    a record's ``sibling_heads`` must still be the siblings' HEADs, clean; each refusal's reason is listed in
-    ``result.carry_refused`` for :func:`policy_line`.
+    A record's ``sibling_heads`` is checked first, on every path: the current sibling map (which siblings, and
+    each one's HEAD, all clean) must equal it exactly, whether or not the root commit moved; a record without
+    the field is not checked. While a sibling repository exists (:mod:`specy_road.sibling_repos`) the
+    bookkeeping carry never applies. Each refusal's reason is listed in ``result.carry_refused`` for
+    :func:`policy_line`.
     """
     siblings = _siblings(result, repo_root)
+    if why := heads_problem(review.data.get("sibling_heads"), siblings):
+        return _refuse(result, review, why)
     if same_commit(repo_root, review.data["commit"], result.commit):
-        why = heads_problem(review.data.get("sibling_heads"), siblings)
-        return _refuse(result, review, why) if why else True
+        return True
     if only_planning_or_review_bookkeeping_since(repo_root, node, review.data["commit"], result.commit):
         if not siblings:
             result.bookkeeping_carry = True

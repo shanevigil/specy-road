@@ -20,7 +20,7 @@ Implementation commits: `2c9aa33f`, plus a test-helper follow-up.
 
 ## Verification
 
-- `pytest tests/test_sibling_repo_approvals.py tests/test_sheet_edits_keep_approvals.py`: 17 passed (fix round 1).
+- `pytest tests/test_sibling_repo_approvals.py tests/test_sheet_edits_keep_approvals.py`: 28 passed (fix round 2); with the gate, review CLI, ready and delta-review tests, 87 passed.
 - `pytest -n 4`: 4453 passed.
 - `specy-road validate|export --check|digest --check --repo-root tests/fixtures/specy_road_dogfood`, `specy-road file-limits`, and `ruff check` on the changed files: all OK.
 
@@ -30,9 +30,25 @@ Implementation commits: `2c9aa33f`, plus a test-helper follow-up.
 - Deleted `test_without_siblings_the_summary_only_carry_is_unchanged`. Without siblings, the carry is still covered by `tests/test_sheet_edits_keep_approvals.py::test_summary_only_delta_keeps_approval` (same input, same `passed and bookkeeping_carry` assertions), and that test still passes on this branch.
 - `test_validate_warns_once_naming_the_siblings` no longer monkeypatches `warn_unconfigured_sibling_repos` or asserts on a call list. It runs validate and asserts only on the warning it prints.
 
+## Fix round 2 (gpt-6.1-sol-low block on ddf61043, F1)
+
+- Merged `origin/WIP/improvements-0-3-1` first. It merged cleanly and touched no zoned file.
+- Class: **a recorded sibling map was compared on only one path.** `count_at_later_commit` checked `sibling_heads` only at the same root commit. A record whose sibling was removed (so no sibling remained) then reached the bookkeeping carry on a summary-only root commit and still counted.
+- Fix (design, no new branch): `heads_problem(recorded, current)` now runs first, before the same-commit, carry and stale paths. An approval counts or carries only while the current sibling map (which siblings, each HEAD, all clean) equals the recorded one exactly. Records without `sibling_heads` are not checked (the legacy rule): they count at the same root commit, and they carry only when no sibling exists (A2 unchanged).
+- Red-green: with the pre-fix `review_bookkeeping.py`, `[removed-summary-only]` passed the gate (the hole). `[added|moved|renamed-summary-only]` were already stale under A2 and failed only on the reason text.
+
 ## Probes
 
+- Every path in `count_at_later_commit` (same commit, bookkeeping carry, plain stale): the map check now runs before all three. Covered by the 5×2 parametrized test (unchanged, added, removed, head moved, renamed × same root commit, summary-only root commit); only unchanged at the same commit counts.
+- A sibling removed so that none remain, plus a summary-only root commit (the reported hole): stale.
+- A record without `sibling_heads`, its sibling removed, plus a summary-only root commit: carries (legacy rule kept; new test).
+- A record without `sibling_heads` at the same commit while siblings exist: counts (existing test).
+- A sibling renamed: the key differs, so the map differs: stale.
+- A sibling with no commit: neither `sibling_heads()` nor the current map lists it. If it holds files, `git status` makes it dirty, so `heads_problem` refuses; an empty one has nothing to review. Accepted, not changed.
+- A dirty sibling at a later root commit: refused by the same check (previously only at the same commit).
+- Other consumers of recorded heads: `review_gate.prior_approvals` and `delta_basis` (outside the zones) do not read `sibling_heads`. A delta approval still has to pass `count_at_later_commit` for its own record at the gate, so the map check applies to it too.
 - Class "test duplicates existing coverage": checked each remaining test in `tests/test_sibling_repo_approvals.py` against the existing tests. `sibling_heads` appears in no other test. No existing test asserts the `policy: 1/1 approvals (<model>@...)` text or that READY omits a field. Only the deleted test was a duplicate.
+
 - Class "test patches internals": grepped `tests/test_sibling_repo_approvals.py` for `monkeypatch`, `mock` and `patch`. The validate test had the only one, now removed. Every other test drives real git repositories through the CLI (`run_review_cli`, `handoff_status_node`) or public functions (`evaluate_gate`, `sibling_repos`, `policy_line`, `validate_at`).
 - The zero-sibling validate row stays: no other test checks that validate prints no sibling warning when there are none.
 
@@ -51,7 +67,7 @@ Implementation commits: `2c9aa33f`, plus a test-helper follow-up.
 - `review_bookkeeping.policy_line()`: the `policy:` line with model@commit and the carried markers (A5).
 
 ### Branches and guards
-- `count_at_later_commit`: at the same commit, a stale verdict when recorded sibling heads moved or a sibling is dirty (A3).
+- `count_at_later_commit`: on every path (same commit or later), a stale verdict when the recorded sibling map differs from the current one or a sibling is dirty (A3, fix round 2).
 - `count_at_later_commit`: a bookkeeping-only range with siblings present is refused instead of carried (A2).
 - `sibling_repos` skips `.git`, `work`, `node_modules`, symlinks and configured nested repos, does not descend into a found repository, and returns none outside a git checkout (A1).
 
@@ -69,6 +85,9 @@ Implementation commits: `2c9aa33f`, plus a test-helper follow-up.
 - `test_reported_case_sibling_code_and_root_summary_only_does_not_carry`: the reported case, plus the status reason and exit 1 (A2).
 - `test_recorded_sibling_heads_must_still_hold_at_the_same_root_commit`: `review record` writes `sibling_heads`; a dirty or moved sibling makes the approval stale (A3).
 - `test_a_record_without_sibling_heads_counts_only_at_the_same_root_commit`: covers A3's legacy-record rule.
+- `test_an_approval_counts_only_while_the_recorded_sibling_map_holds[change×root]`: unchanged, added, removed, moved or renamed × same or summary-only root commit (F1).
+- `test_a_record_without_sibling_heads_carries_when_no_sibling_remains`: the legacy rule holds after the F1 reordering.
+- `_change_siblings()` (test helper): applies one sibling-map change for the parametrized test.
 - `test_ready_writes_sibling_heads`: READY carries `sibling_heads` (A3).
 - `test_ready_without_siblings_writes_no_sibling_heads`: READY is unchanged without siblings (A3).
 - `test_policy_line_lists_each_approval_and_marks_a_carried_one`: pins a same-commit and a carried approval in the policy line and in status text and JSON (A5).
