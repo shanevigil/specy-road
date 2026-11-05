@@ -54,7 +54,7 @@
       "parent_id": "M13",
       "planning_dir": "planning/M13.2_upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap_1726dab4-730d-414d-a79d-fef0b03b8983.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "upgrade previews as the new version, validates in a dry run and names files it pushed over the line cap",
       "touch_zones": [
         "specy_road/bundled_scripts/upgrade.py",
