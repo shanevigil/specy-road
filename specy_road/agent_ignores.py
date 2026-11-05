@@ -93,7 +93,7 @@ _GITIGNORE_NOTE = (
     "state; the `chore garden` run record; brainstorm prompts; per-checkout\n"
     "orchestration availability overlay.\n"
     "Also never committed: .specyrd/AGENTS.local.md, your personal addendum to\n"
-    "specy-road's agent rules. `.specyrd/manifest.json` stays tracked."
+    "specy-road's agent rules. `.specyrd/manifest.json`, when present, stays tracked."
 )
 
 

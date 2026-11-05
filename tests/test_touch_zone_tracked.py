@@ -67,7 +67,7 @@ def test_missing_paths_and_unmatched_globs_on_open_nodes_share_one_notice(tmp_pa
         _node(["pkg/nope_*.py", "pkg/worker_ops_*.py"], status="In Progress", nid="M1.2"),
     ]
 
-    warn_untracked_zones(nodes, tmp_path)
+    warn_untracked_zones(nodes, tmp_path, claims=[{"node_id": "M1.1"}])   # claimed: named, not counted
 
     out, err = capsys.readouterr()
     assert err == ""   # stdout: --strict counts stderr lines, and new-file zones are expected
@@ -154,6 +154,8 @@ def test_validate_reports_a_not_started_node_s_missing_path_and_unmatched_glob(c
     assert r.returncode == 0, r.stderr
 
     v = _validate(crud_git_repo)
+    assert f"roadmap: notice — {UNTRACKED}: 1 node(s) (by status: Not Started 1);" in v.stdout   # counted only
+    v = _validate(crud_git_repo, "--all")
 
     assert v.returncode == 0, v.stderr
     assert "OK: roadmap and registry validate." in v.stdout
