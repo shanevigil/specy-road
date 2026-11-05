@@ -39,6 +39,7 @@ from specy_road.review_files import (
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
 from specy_road.toolkit_version import stamp_review_toolkit_version
 from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states, gate_policy_summary
+from specy_road.review_usage import add_parser as add_usage_parser
 from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
 from specy_road.review_ready_merge import add_ready_parser
 from specy_road.review_pre_existing import cmd_check_pre_existing
@@ -375,6 +376,7 @@ def build_parser() -> argparse.ArgumentParser:
         add_repo_root_arg(sp)
         sp.set_defaults(func=fn)
     add_delegate_parser(rsub)
+    add_usage_parser(rsub)
     add_ready_parser(sub)
     return p
 
