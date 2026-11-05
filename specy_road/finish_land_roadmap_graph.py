@@ -7,18 +7,22 @@ merges of the integration branch -- plus finish's own bookkeeping commit -- has
 nothing of its own to lose: each conflicted file takes the integration
 branch's version, and the bookkeeping commit's one graph edit, the finished
 leaf set to Complete (and the ancestors that rolled up with it), is applied
-again on top. A branch that did edit a conflicted graph file itself is refused
-with the files named; its edit is never silently dropped. Merging two real
-roadmap edits is out of scope.
+again on top, found by ``node_key`` because the integration branch may have
+moved or renumbered it. Provenance comes from the branch's first-parent
+history (:func:`branch_roadmap_edits`). A branch that authored an edit to a
+conflicted graph file is refused with the files named; its edit is never
+silently dropped. Merging two real roadmap edits, and the milestone-rollup
+landing, are out of scope.
 """
 
 from __future__ import annotations
 
+import json
 from collections.abc import Collection, Sequence
 from pathlib import Path
 
 from specy_road.bundled_scripts.roadmap_chunk_utils import (
-    find_chunk_path,
+    build_node_chunk_map,
     load_json_chunk,
     write_json_chunk,
 )
@@ -29,6 +33,9 @@ from specy_road.runtime_paths import project_prefix
 
 #: Subject of finish-this-task's bookkeeping commit, by codename.
 BOOKKEEPING_SUBJECT = "chore(rm-{codename}): complete, deregister"
+
+#: git's empty tree: what a root commit is compared against.
+_EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 #: Reading one blob out of a ref; short, because a hung git must not hang a merge.
 _REF_READ_TIMEOUT = 4.0
@@ -63,42 +70,71 @@ def split_conflicts(
     return graph, stray
 
 
-def branch_roadmap_edits(
-    repo: Path, paths: Sequence[str], *, codename: str | None, revs: Sequence[str]
-) -> tuple[list[str], str | None]:
-    """Which of ``paths`` the branch edited itself, and finish's bookkeeping commit.
+def _blob(repo: Path, rev: str, path: str) -> str | None:
+    """The blob id of git-root-relative ``path`` at ``rev``; ``None`` when it is absent there."""
+    ok, out = git_ok(["rev-parse", "-q", "--verify", f"{rev}:{path}"], repo)
+    return out if ok else None
 
-    ``revs`` names the branch's own commits (``HEAD..MERGE_HEAD`` for a merge).
-    A non-merge commit touching a path is an edit of the branch's own, except
-    finish's bookkeeping commit for ``codename``; a merge is one only where its
-    result differs from every parent (a hand-made resolution), so what an
-    earlier merge of the integration branch brought in does not count. Git's
-    default history simplification skips an edit a later merge replaced with
-    the integration branch's content: the tip no longer carries it. When git
-    cannot answer, every path counts as edited, so nothing is dropped.
-    Paths are git-root-relative. Returns ``(edited paths, bookkeeping sha or None)``.
-    """
-    subject = BOOKKEEPING_SUBJECT.format(codename=codename) if codename else None
+
+def _changed(repo: Path, old: str, new: str, paths: Sequence[str]) -> set[str]:
+    """Which of ``paths`` differ between ``old`` and ``new``; all of them when git cannot say."""
     ok, out = git_ok(
-        ["log", "-c", "--name-only", "--format=%x01%H %s", *revs, "--",
+        ["diff-tree", "-r", "--name-only", "--no-commit-id", old, new, "--",
          *(f":(top){p}" for p in paths)],
         repo,
     )
+    return {line.strip() for line in out.splitlines()} & set(paths) if ok else set(paths)
+
+
+def _authored_in(
+    repo: Path, sha: str, parents: Sequence[str], paths: Sequence[str], integration: str
+) -> set[str]:
+    """Which of ``paths`` commit ``sha`` on the branch's first-parent line authored.
+
+    An ordinary commit authors every path it changes. A merge authors a path
+    it changes against its first parent unless the result -- blob or deletion
+    -- matches an integration parent's (one ``integration`` contains): that
+    content was inherited. Any other merge result is a hand-made resolution.
+    """
+    changed = _changed(repo, parents[0] if parents else _EMPTY_TREE, sha, paths)
+    inherited_from = [
+        p for p in parents[1:]
+        if git_code(["merge-base", "--is-ancestor", p, integration], repo)[0] == 0
+    ]
+    return {
+        path for path in changed
+        if not any(_blob(repo, sha, path) == _blob(repo, p, path) for p in inherited_from)
+    }
+
+
+def branch_roadmap_edits(
+    repo: Path, paths: Sequence[str], *, codename: str | None,
+    tip: str = "MERGE_HEAD", integration: str = "HEAD",
+) -> tuple[list[str], str | None]:
+    """Which of ``paths`` the branch authored, and this run's bookkeeping commit.
+
+    Walks the branch's first-parent history from where it left ``integration``
+    (:func:`_authored_in` classifies each commit). The tip, when it is
+    finish's bookkeeping commit for ``codename``, is set aside first: its
+    status edits are finish's, not the branch's, and are applied again after
+    resolution. When git cannot list the history, every path counts as
+    authored, so nothing is dropped. Paths are git-root-relative. Returns
+    ``(authored paths, bookkeeping sha or None)``.
+    """
+    ok, out = git_ok(
+        ["log", "--first-parent", "--format=%H %P%x01%s", f"{integration}..{tip}"], repo
+    )
     if not ok:
         return list(paths), None
-    wanted = set(paths)
-    edited: set[str] = set()
+    commits = [line.partition("\x01") for line in out.splitlines() if line.strip()]
     bookkeeping: str | None = None
-    skipping = False
-    for line in out.splitlines():
-        if line.startswith("\x01"):
-            sha, _, commit_subject = line[1:].partition(" ")
-            skipping = subject is not None and commit_subject == subject
-            if skipping and bookkeeping is None:
-                bookkeeping = sha
-        elif line.strip() in wanted and not skipping:
-            edited.add(line.strip())
-    return [p for p in paths if p in edited], bookkeeping
+    if codename and commits and commits[0][2] == BOOKKEEPING_SUBJECT.format(codename=codename):
+        bookkeeping = commits.pop(0)[0].split()[0]
+    authored: set[str] = set()
+    for shas, _, _subject in commits:
+        sha, *parents = shas.split()
+        authored |= _authored_in(repo, sha, parents, paths, integration)
+    return [p for p in paths if p in authored], bookkeeping
 
 
 def own_roadmap_edit_refusal(paths: Sequence[str], branch: str, integration_branch: str) -> str:
@@ -134,36 +170,68 @@ def take_integration_graph(repo: Path, paths: Sequence[str]) -> list[str]:
     return staged
 
 
-def _finished_node_id(repo: Path, codename: str | None, bookkeeping: str) -> str | None:
-    """The node finish completed: ``codename``'s row in the registry ``bookkeeping`` removed."""
-    doc = read_registry_at_ref(repo, f"{bookkeeping}^", _REF_READ_TIMEOUT)
-    for entry in (doc or {}).get("entries") or []:
-        if isinstance(entry, dict) and entry.get("codename") == codename:
-            node_id = entry.get("node_id")
-            return node_id if isinstance(node_id, str) else None
+def _finished_node_key(repo: Path, codename: str | None, bookkeeping: str) -> str | None:
+    """The ``node_key`` of the node ``bookkeeping`` completed, or ``None`` when it cannot be found.
+
+    The node id is ``codename``'s row in the registry the bookkeeping commit
+    removed; the key comes from the graph file the commit wrote that node to.
+    The key, not the id, names the node again: the integration branch may have
+    moved or renumbered it.
+    """
+    doc = read_registry_at_ref(repo, f"{bookkeeping}^", _REF_READ_TIMEOUT) or {}
+    rows = [e for e in doc.get("entries") or [] if isinstance(e, dict)]
+    node_id = next((e.get("node_id") for e in rows if e.get("codename") == codename), None)
+    if not isinstance(node_id, str):
+        return None
+    for path in _changed_graph_paths(repo, bookkeeping):
+        ok, text = git_ok(["show", f"{bookkeeping}:{path}"], repo)
+        node = next((n for n in _nodes_in(text) if n.get("id") == node_id), None) if ok else None
+        if node is not None and isinstance(node.get("node_key"), str):
+            return node["node_key"]
     return None
 
 
-def _complete_again(repo: Path, node_id: str) -> list[str]:
-    """Set ``node_id`` Complete in the resolved graph, then its rolled-up ancestors.
+def _changed_graph_paths(repo: Path, commit: str) -> list[str]:
+    """Git-root-relative roadmap graph paths ``commit`` changed against its first parent."""
+    prefix = project_prefix(repo)
+    ok, out = git_ok(
+        ["diff-tree", "-r", "--name-only", "--no-commit-id", f"{commit}^", commit], repo
+    )
+    names = [line.strip() for line in out.splitlines()] if ok else []
+    return [n for n in names if n.startswith(prefix) and is_roadmap_graph_path(n[len(prefix):])]
+
+
+def _nodes_in(text: str) -> list[dict]:
+    """The node objects in a chunk's JSON text; ``[]`` when it is not a chunk."""
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return []
+    nodes = data.get("nodes") if isinstance(data, dict) else data
+    return [n for n in nodes if isinstance(n, dict)] if isinstance(nodes, list) else []
+
+
+def _complete_again(repo: Path, node_key: str) -> list[str]:
+    """Set the node keyed ``node_key`` Complete in the resolved graph; recompute its ancestors.
 
     The bookkeeping commit's own graph edit, applied to the integration
     branch's version after resolution took that version. A node the
     integration branch no longer has in its graph (archived, say) is left as
     it is. Project-relative chunk paths that changed.
     """
-    chunk = find_chunk_path(repo, node_id)
-    if chunk is None or chunk.suffix.lower() != ".json":
-        return []
-    nodes = load_json_chunk(chunk)
-    node = next((n for n in nodes if n.get("id") == node_id), None)
-    if node is None or node.get("status") == "Complete":
-        return []
-    node["status"] = "Complete"
-    write_json_chunk(chunk, nodes)
-    changed = [chunk.relative_to(repo.resolve()).as_posix()]
-    changed += [rel for rel in complete_rolled_up_ancestors(repo, node_id) if rel not in changed]
-    return changed
+    for chunk in sorted(set(build_node_chunk_map(repo).values())):
+        nodes = load_json_chunk(chunk)
+        node = next((n for n in nodes if n.get("node_key") == node_key), None)
+        if node is None:
+            continue
+        if node.get("status") == "Complete":
+            return []
+        node["status"] = "Complete"
+        write_json_chunk(chunk, nodes)
+        changed = [chunk.relative_to(repo.resolve()).as_posix()]
+        ancestors = complete_rolled_up_ancestors(repo, node["id"])
+        return changed + [rel for rel in ancestors if rel not in changed]
+    return []
 
 
 def resolve_graph(
@@ -179,7 +247,7 @@ def resolve_graph(
     if not paths:
         return []
     staged = take_integration_graph(repo, paths)
-    node_id = _finished_node_id(repo, codename, bookkeeping) if bookkeeping else None
-    if node_id is not None:
-        staged.extend(p for p in _complete_again(repo, node_id) if p not in staged)
+    node_key = _finished_node_key(repo, codename, bookkeeping) if bookkeeping else None
+    if node_key is not None:
+        staged.extend(p for p in _complete_again(repo, node_key) if p not in staged)
     return staged

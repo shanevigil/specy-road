@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from specy_road.finish_land_deterministic import (
@@ -278,25 +279,47 @@ def _chunk_commit(repo: Path, message: str, **fields) -> None:
     commit_file(repo, "roadmap/phases/M1.json", chunk.read_text(encoding="utf-8"), message)
 
 
-@pytest.mark.parametrize("own_edit", [False, True], ids=["inherited-only", "own-edit"])
+def _merge_dev_resolving_by_hand(repo: Path) -> None:
+    """Merge ``dev`` into the branch and change the chunk in the merge commit itself."""
+    git(repo, "merge", "-q", "--no-commit", "dev")
+    chunk = repo / "roadmap" / "phases" / "M1.json"
+    nodes = load_json_chunk(chunk)
+    nodes[0]["title"] = "Thing, retitled in the merge"
+    write_json_chunk(chunk, nodes)
+    git(repo, "add", "roadmap/phases/M1.json")
+    git(repo, "commit", "-q", "--no-edit")
+
+
+@pytest.mark.parametrize(
+    "branch_edit", [None, "commit", "merge", "manifest"],
+    ids=["inherited-only", "own-commit", "own-merge-resolution", "own-edit-not-conflicting"],
+)
 def test_a_roadmap_chunk_conflict_lands_only_when_the_branch_inherited_it(
-    tmp_path: Path, monkeypatch, own_edit: bool
+    tmp_path: Path, monkeypatch, branch_edit: str | None
 ) -> None:
     """The integration branch moves the finishing node after the branch merged it in.
 
     finish's bookkeeping flips the node's status on the line next to the moved
     field, so the landing merge conflicts in the chunk. With nothing but
-    inherited content and that flip, the chunk lands as the integration
-    branch's version with the node Complete; with an edit of the branch's own
-    there, finish refuses, names the chunk and leaves the branch as it was.
+    inherited content and that flip in the chunk -- an authored edit to another
+    graph file does not count -- the chunk lands as the integration branch's
+    version with the node Complete and the claim released. With an edit of the
+    branch's own in the chunk, by commit or in a merge's resolution, finish
+    refuses, names the chunk and leaves the branch as it was.
     """
     repo, bare = merge_mode_finish_repo(tmp_path, monkeypatch)
     git(repo, "checkout", "-q", "dev")
     _chunk_commit(repo, "integration edits the goal", goal="Do the thing well.")
     git(repo, "checkout", "-q", "feature/rm-thing")
-    git(repo, "merge", "-q", "--no-edit", "dev")   # the branch inherits that edit
-    if own_edit:
+    if branch_edit == "merge":
+        _merge_dev_resolving_by_hand(repo)
+    else:
+        git(repo, "merge", "-q", "--no-edit", "dev")   # the branch inherits that edit
+    if branch_edit == "commit":
         _chunk_commit(repo, "the branch retitles its node", title="Thing, retitled")
+    manifest = json.dumps({"version": 1, "includes": ["phases/M1.json"]}, indent=2) + "\n"
+    if branch_edit == "manifest":
+        commit_file(repo, "roadmap/manifest.json", manifest, "the branch reformats the manifest")
     git(repo, "checkout", "-q", "dev")
     _chunk_commit(repo, "integration moves the node", sibling_order=2)
     git(repo, "push", "-q", "origin", "dev")
@@ -306,7 +329,7 @@ def test_a_roadmap_chunk_conflict_lands_only_when_the_branch_inherited_it(
 
     result = _finish_cli(repo)
 
-    if own_edit:
+    if branch_edit in ("commit", "merge"):
         assert result.returncode == 1, result.stdout
         errors = [ln for ln in result.stderr.splitlines() if ln.startswith("error:")]
         assert len(errors) == 1 and "roadmap/phases/M1.json" in errors[0], result.stderr
@@ -320,6 +343,10 @@ def test_a_roadmap_chunk_conflict_lands_only_when_the_branch_inherited_it(
     assert (landed["status"], landed["sibling_order"], landed["goal"]) == (
         "Complete", 2, "Do the thing well.",
     )
+    registry = yaml.safe_load(git(bare, "show", "dev:roadmap/registry.yaml"))
+    assert not any(e.get("codename") == "thing" for e in registry.get("entries") or [])
+    if branch_edit == "manifest":   # the branch's own edit outside the conflict lands as it was
+        assert git(bare, "show", "dev:roadmap/manifest.json") + "\n" == manifest
     git(repo, "checkout", "-q", "dev")
     git(repo, "reset", "-q", "--hard", "origin/dev")
     for command in ("export", "digest"):

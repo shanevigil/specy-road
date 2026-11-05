@@ -294,12 +294,11 @@ def _graph_note(feature_branch: str, integration_branch: str, graph: Sequence[st
 
 
 def resolvable_conflict(
-    repo: Path, git_output: str, *, codename: str | None, revs: Sequence[str],
+    repo: Path, git_output: str, *, codename: str | None,
     branch: str, integration_branch: str,
 ) -> tuple[list[str], str | None, str | None]:
     """Classify a conflicted merge or pick: ``(graph paths, bookkeeping sha, problem)``.
 
-    ``revs`` names the branch's own commits (:func:`branch_roadmap_edits`).
     ``problem`` is ``None`` when every conflict is one this module resolves;
     otherwise it is the failure detail -- git's own output for a conflict
     outside the bookkeeping, or the refusal naming the graph files the branch
@@ -311,7 +310,7 @@ def resolvable_conflict(
         # Either not a content conflict at all, or a real one in the
         # source. Both are the caller's existing hard failure.
         return [], None, git_output
-    own, bookkeeping = branch_roadmap_edits(repo, graph, codename=codename, revs=revs)
+    own, bookkeeping = branch_roadmap_edits(repo, graph, codename=codename)
     if own:
         return [], None, own_roadmap_edit_refusal(own, branch, integration_branch)
     return graph, bookkeeping, None
@@ -343,7 +342,7 @@ def merge_feature_deterministically(
     code, out = git_code(["merge", "--no-commit", "--no-ff", feature_branch], repo)
     if code != 0:
         graph, bookkeeping, problem = resolvable_conflict(
-            repo, out, codename=codename, revs=["HEAD..MERGE_HEAD"],
+            repo, out, codename=codename,
             branch=feature_branch, integration_branch=integration_branch,
         )
         if problem is not None:
