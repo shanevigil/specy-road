@@ -20,34 +20,10 @@ from specy_road.bundled_scripts.upgrade import copy_missing_docs, run_upgrade
 from specy_road.init_project import run_init_project
 from specy_road.managed_block import HTML_COMMENT, render_block
 from specy_road.specyrd_init import run_init
-
-OLD_STUB = ".cursor/commands/specyrd-validate.md"
-SHIPPED_DOC = "docs/supply-chain-security.md"
-
-
-def _old_repo(root: Path) -> Path:
-    """A scaffold as 0.2.x left it: command stubs, no AGENTS block, older schemas, no profiles."""
-    subprocess.run(["git", "init", "-q", str(root)], check=True)
-    assert run_init_project(root) == 0
-    (root / "AGENTS.md").write_text("# Agents\n\nOur own rules.\n", encoding="utf-8")
-    shutil.rmtree(root / "model-profiles")
-    (root / SHIPPED_DOC).unlink()
-    (root / "schemas" / "orchestration.schema.json").unlink()
-    roadmap_schema = root / "schemas" / "roadmap.schema.json"
-    schema = json.loads(roadmap_schema.read_text(encoding="utf-8"))
-    schema["$defs"]["node"]["properties"]["type"]["enum"] = ["vision", "phase", "milestone", "task"]
-    roadmap_schema.write_text(json.dumps(schema, indent=2) + "\n", encoding="utf-8")
-    (root / OLD_STUB).parent.mkdir(parents=True)
-    (root / OLD_STUB).write_text("old stub\n", encoding="utf-8")
-    (root / ".specyrd" / "manifest.json").write_text(json.dumps({
-        "specyrd_version": "0.2.3", "role": "dev", "project_root": ".",
-        "agents": {"cursor": [OLD_STUB, ".specyrd/README.md"]},
-    }), encoding="utf-8")
-    return root
-
+from tests.upgrade_repo_helpers import OLD_STUB, SHIPPED_DOC, old_repo
 
 def test_one_run_clears_every_upgrade_warning(tmp_path: Path, capsys) -> None:
-    root = _old_repo(tmp_path)
+    root = old_repo(tmp_path)
     roadmap_before = (root / "roadmap" / "manifest.json").read_text(encoding="utf-8")
 
     assert run_upgrade(root, prune=True) == 0
@@ -70,7 +46,7 @@ def test_one_run_clears_every_upgrade_warning(tmp_path: Path, capsys) -> None:
 def test_no_roster_upgrade_writes_only_the_readme_and_names_profiles_all_on_every_run(tmp_path: Path, capsys) -> None:
     """M13.5 A1: with no roster, upgrade adds only model-profiles/README.md and, on the first run and a
     repeat, names `--profiles all` instead of claiming every shipped profile is present."""
-    root = _old_repo(tmp_path)
+    root = old_repo(tmp_path)
     (root / "roadmap" / "orchestration.yaml").unlink()
     hint = "`specy-road refresh-profiles --profiles all` adds every one"
     for _run in range(2):
@@ -81,7 +57,7 @@ def test_no_roster_upgrade_writes_only_the_readme_and_names_profiles_all_on_ever
 
 
 def test_a_missing_digest_is_a_next_step_not_a_failure(tmp_path: Path, capsys) -> None:
-    root = _old_repo(tmp_path)
+    root = old_repo(tmp_path)
 
     assert run_upgrade(root) == 0
 
@@ -89,8 +65,9 @@ def test_a_missing_digest_is_a_next_step_not_a_failure(tmp_path: Path, capsys) -
     assert "Run specy-road digest" in out and "Not specy-road sync" in out
 
 
-def test_dry_run_writes_nothing_and_skips_validate(tmp_path: Path, capsys) -> None:
-    root = _old_repo(tmp_path)
+def test_dry_run_writes_nothing_and_validates_a_copy(tmp_path: Path, capsys) -> None:
+    root = old_repo(tmp_path)
+    status = subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True).stdout
 
     assert run_upgrade(root, dry_run=True, prune=True) == 0
 
@@ -98,10 +75,12 @@ def test_dry_run_writes_nothing_and_skips_validate(tmp_path: Path, capsys) -> No
     assert "would remove .cursor/commands/specyrd-validate.md" in out
     assert "migration: 1 command stubs (*/commands/) become 1 skills under .agents/skills/" in out
     assert f"would write {SHIPPED_DOC}" in out
-    assert "== validate" not in out
+    assert "== validate" in out and "OK: roadmap and registry validate." in out
+    assert "== other worktrees" not in out
     assert (root / OLD_STUB).is_file()
     assert not (root / SHIPPED_DOC).exists()
     assert not (root / "schemas" / "orchestration.schema.json").exists()
+    assert subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True).stdout == status
 
 
 def test_a_doc_the_project_has_is_kept(tmp_path: Path) -> None:
