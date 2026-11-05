@@ -226,7 +226,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M14.7` session end finds this agent's session by worktree and branch when the derived id has no record `session-end-finds-this-agent-s-session-by-worktree-and-branch-when-the-derived-id-has-no-record` — task — **Complete**
   - `M14.8` The implementation-zone check runs before a review is spent, and knows about sibling repositories `the-implementation-zone-check-runs-before-a-review-is-spent-and-knows-about-sibling-repositories` — task — **Not Started**
   - `M14.9` review rca launches the root-cause analyst like review delegate, and says what to do when no analyst is available `review-rca-launches-the-root-cause-analyst-like-review-delegate-and-says-what-to-do-when-no-analyst-is-available` — task — **Not Started**
-  - `M14.10` Escalation recognises a converging loop and handoff status shows the findings trend `escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend` — task — **Not Started**
+  - `M14.10` Escalation recognises a converging loop and handoff status shows the findings trend `escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend` — task — **Complete**
   - `M14.11` The rework and fix-round prompt asks the executor to audit the whole failure class and list its probes `the-rework-and-fix-round-prompt-asks-the-executor-to-audit-the-whole-failure-class-and-list-its-probes` — task — **Complete**
 - `M15` rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction `rc3-multi-harness-adoption-friction` — phase — **Not Started**
   - `M15.1` RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command `rc-install-docs-cover-extras-and-direct-wheel-url` — task — **Complete**
@@ -249,7 +249,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.18` planned_test_changes can be edited after pickup, and an unplanned test removal is a required reviewer check `planned-test-changes-editable-and-removals-surfaced` — task — **Complete**
   - `M15.19` Cursor worker cost is estimated when the harness reports a display name for the rostered model `cursor-cost-with-display-name-models` — task — **Complete**
   - `M15.20` Touch zones that miss what acceptance needs are flagged at plan time, and the brief's zone section stays short `zones-missing-what-acceptance-needs-flagged` — task — **Not Started**
-  - `M15.21` Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments `linked-worktrees-resolve-root-and-symlinked-envs` — task — **Not Started**
+  - `M15.21` Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments `linked-worktrees-resolve-root-and-symlinked-envs` — task — **Complete**
   - `M15.22` Project preferences the workflow respects: local decisions, a PR body footer, the summary commit rule, and local landing for the root repository `project-preferences-local-decisions-footer-summary-landing` — task — **Not Started**
   - `M15.23` A project declares its merge-blocking CI commands per touch zone; ready always runs them and the review packet shows their result at the reviewed commit `ci-gates-run-by-ready-and-shown-in-the-packet` — task — **Not Started**
   - `M15.24` ready does not record false evidence: a passing run whose output shows a failed command is flagged, and --run-argv runs a command without a shell `ready-flags-failure-tails-and-takes-argv` — task — **Not Started**
@@ -278,10 +278,11 @@ Do not pick these up.
 
 - `M12.5` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M13.12` on `feature/rm-quieter-accurate-validate-notices-untracked-touch-zones-the-managed-gitignore-comment-and-tracked-files-under-new-ignore-rules` since 2026-11-05
-- `M14.10` on `feature/rm-escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend` since 2026-11-04
+- `M13.9` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
+- `M14.1` on `feature/rm-approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` since 2026-11-05
+- `M14.5` on `feature/rm-an-approve-with-no-recorded-probe-is-flagged-and-policy-can-refuse-to-count-it` since 2026-11-05
 - `M15.13` on `feature/rm-worker-loop-friction-sync-until-and-ready-only-resume` since 2026-11-04
 - `M15.20` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
-- `M15.21` on `feature/rm-linked-worktrees-resolve-root-and-symlinked-envs` since 2026-11-04
 - `M15.22` on `feature/rm-project-preferences-local-decisions-footer-summary-landing` since 2026-11-04
 - `M15.24` on `feature/rm-ready-flags-failure-tails-and-takes-argv` since 2026-11-05
 - `M15.25` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
@@ -295,17 +296,17 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
+| `docs` **flagged** | 34 | 32 | 4.00 | 100% | 0 | 0 |
+| `specy_road` **flagged** | 47 | 45 | 4.00 | 100% | 0 | 0 |
+| `tests` **flagged** | 49 | 47 | 4.00 | 100% | 0 | 0 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
-| `docs` | 34 | 34 | — | — | 0 | 0 |
 | `gui` | 1 | 1 | — | — | 0 | 0 |
 | `research` | 1 | 1 | — | — | 0 | 0 |
 | `roadmap` | 2 | 2 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 | `schemas` | 1 | 1 | — | — | 0 | 0 |
-| `specy_road` | 47 | 47 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
-| `tests` | 49 | 49 | — | — | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

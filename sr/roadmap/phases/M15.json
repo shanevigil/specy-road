@@ -397,7 +397,8 @@
         "docs/orchestration-worker-sync.md",
         "tests/",
         "specy_road/worker_ops_message.py",
-        "specy_road/worker_runner_ready.py"
+        "specy_road/worker_runner_ready.py",
+        "specy_road/worker_ops_launch.py"
       ],
       "type": "task"
     },

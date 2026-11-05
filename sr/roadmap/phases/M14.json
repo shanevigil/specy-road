@@ -337,7 +337,7 @@
       "parent_id": "M14",
       "planning_dir": "planning/M14.10_escalation-recognises-a-converging-loop-and-handoff-status-shows-the-findings-trend_998f2688-6fde-470f-9d8b-3448f396c9ec.md",
       "sibling_order": 10,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Escalation recognises a converging loop and handoff status shows the findings trend",
       "touch_zones": [
         "specy_road/review_rca.py",
