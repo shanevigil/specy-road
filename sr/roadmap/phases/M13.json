@@ -88,7 +88,8 @@
         "suggested_prompts/bootstrap-agents-md.md",
         "docs/install-and-usage.md",
         "tests/",
-        "specy_road/agents_md_report.py"
+        "specy_road/agents_md_report.py",
+        "specy_road/bundled_scripts/refresh_stubs.py"
       ],
       "type": "task"
     },
