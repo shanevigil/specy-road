@@ -58,9 +58,11 @@ class ClaudeCode(Adapter):
 
     def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,
                         session: tuple[str, bool] | None = None, *, schema: Path | None = None,
-                        output: Path | None = None) -> Launch:
-        """A fresh-session reviewer's turn: ``--bare``, so the branch under review runs none of its hooks and
-        connects none of its MCP servers, and ``--add-dir`` for the hand-off directory. The instruction goes
+                        output: Path | None = None, mode: str = "bare") -> Launch:
+        """A fresh-session reviewer's turn. ``mode="bare"`` (the default) passes ``--bare``. ``mode="explicit"``
+        passes ``--setting-sources user`` and ``--strict-mcp-config`` (help.txt) and never ``--bare`` or
+        ``--mcp-config``. Either way the branch under review runs none of its hooks and connects none of its
+        MCP servers, and ``--add-dir`` names the hand-off directory. The instruction goes
         right after ``-p``: ``--add-dir`` takes several values and would swallow it. ``session`` is
         ``(id, resume)`` for ``review delegate``: the session flag, and stream-json so the id can be read back.
         Read-only (A2): no file-writing tool is allowed or approved (``Write``, ``Edit`` and ``NotebookEdit`` are
@@ -69,11 +71,14 @@ class ClaudeCode(Adapter):
         the result event carries the final answer."""
         tracked = [*self.session_flag(*session), "--output-format", "stream-json", "--verbose"] if session else []
         structured = ["--json-schema", json.dumps(json.loads(schema.read_text(encoding="utf-8")))] if schema else []
-        return Launch(["claude", "-p", STDIN_INSTRUCTION, "--bare", *tracked, *_model_flag("--model", model),
+        # explicit reads the subscription login from user settings and still loads no project settings or MCP
+        auth = (["--setting-sources", "user", "--strict-mcp-config"] if mode == "explicit" else ["--bare"])
+        return Launch(["claude", "-p", STDIN_INSTRUCTION, *auth, *tracked, *_model_flag("--model", model),
                        *self.effort_flag(effort), "--allowedTools", REVIEWER_TOOLS,
                        "--disallowedTools", *REVIEWER_NO_WRITES, *REVIEWER_DISALLOWED, *structured,
                        "--add-dir", str(reviews)],
-                      stdin=_text(prompt_path), session_id=session[0] if session else None, launch_mode="bare")
+                      stdin=_text(prompt_path), session_id=session[0] if session else None,
+                      launch_mode="explicit" if mode == "explicit" else "bare")
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)
@@ -106,7 +111,8 @@ class ClaudeCode(Adapter):
     def parse_events(self, line: str, launch: Launch) -> list[Parsed]:
         out = [*super().parse_events(line, launch), *self._turn_signals(_json(line))]
         inferred = (out[0].detail or {}).get("inferred_mode") if out and out[0].type == "started" else None
-        if inferred and inferred != launch.launch_mode:
+        # explicit is a reviewer mode (M15.2), not a profile launch_mode the tool list can infer
+        if inferred and launch.launch_mode in ("bare", "full") and inferred != launch.launch_mode:
             out.append(Parsed("error", f"claude started in {inferred} mode but the profile's launch_mode is "
                                        f"{launch.launch_mode}", out[0].session_id,
                               {"inferred_mode": inferred, "launch_mode": launch.launch_mode}))

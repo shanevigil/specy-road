@@ -77,6 +77,7 @@ from specy_road.orchestrate_assign import (  # noqa: F401 — re-exported: calle
 )
 from specy_road.orchestration_pinned import WORKTREE_REF, pinned_config, pinned_profile_for_entry, roster_source
 from specy_road.review_tally import flagged_areas
+from specy_road.reviewer_auth import claude_reviewer_auth_notices
 from specy_road.roster_local import local_roster_ids
 from specy_road.runtime_paths import project_prefix
 
@@ -118,6 +119,21 @@ def preference_notice(pref: dict[str, Any], cands: list[Candidate], today: date 
     return {**pref, "roster_notes": notes}
 
 
+def stamp_reviewer_auth_notices(batches: list[list[Assignment]], notices: list[str]) -> None:
+    """Put each notice on the first assignment that staffs that entry, so the plan text shows it once."""
+    pending = list(notices)
+    for batch in batches:
+        for assignment in batch:
+            stay: list[str] = []
+            for note in pending:
+                ident = note.split()[2] if len(note.split()) > 2 else ""
+                if ident in assignment.reviewers:
+                    assignment.notes.append(note)
+                else:
+                    stay.append(note)
+            pending = stay
+
+
 def build_orchestration_plan(root: Path, *, under: str | None = None, today: date | None = None,
                              spread: bool = False, roster_from_worktree: bool = False) -> tuple[OrchestrationPlan | None, str | None]:
     """``spread``: executors round-robin over the capable entries by leaf order (batch, then position).
@@ -139,6 +155,9 @@ def build_orchestration_plan(root: Path, *, under: str | None = None, today: dat
     batches = [[assign_leaf(by_id[nid], cands, config, today, drift, prefix,
                             order.index(nid) if spread else None, flagged) for nid in batch if nid in by_id]
                for batch in sp.parallel_batches]
+    notices = claude_reviewer_auth_notices([
+        (str(c.entry.get("id")), c.entry, c.profile.launch_mode() if c.profile is not None else None) for c in cands])
+    stamp_reviewer_auth_notices(batches, notices)
     prefs, pref_err = plan_preferences(root, today)
     return OrchestrationPlan(under, dict(config["policy"]), batches,
                              [b.node_id for b in sp.blocked], list(sp.active),

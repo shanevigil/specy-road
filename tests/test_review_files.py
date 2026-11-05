@@ -244,6 +244,9 @@ def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, cap
     from tests.test_models_and_prompt import run_main
 
     repo = _claude_code_reviewer_repo(tmp_path)
+    secret = "sk-ant-m15-2-do-not-print"
+    monkeypatch.setenv("ANTHROPIC_API_KEY", secret)   # bare only with a key; isolate from the developer environment
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "empty-claude-config"))
     answer = review_output(git(repo, "rev-parse", "HEAD"), model="opus")
     calls = fake_reviewer_run(monkeypatch, [json.dumps({"type": "result", "subtype": "success", "result": "done",
                                                 "structured_output": answer})])
@@ -269,8 +272,15 @@ def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, cap
     prompt = repo / "work" / "prompt-M1.1-reviewer-opus.md"
     assert call["input"] == prompt.read_text() and call["cwd"] == repo
     assert "**specy-road files your record.**" in call["input"]
-    err = capsys.readouterr().err
+    captured = capsys.readouterr()
+    err = captured.err
     assert "--bare" in err and "ANTHROPIC_API_KEY" in err and "recorded: " in err
+    assert secret not in err and secret not in captured.out
+    assert secret not in " ".join(call["cmd"]) and secret not in (call.get("input") or "")
+    run = json.loads((rf.reviews_dir(repo, "M1.1") / "RUN-opus.json").read_text())
+    assert run["launch_mode"] == "bare" and secret not in json.dumps(run)
+    log = (rf.reviews_dir(repo, "M1.1") / "RUN-opus.log").read_text()
+    assert secret not in log
     # M8.3 A1: specy-road filed the record from the structured output, launch mode included.
     rec = rf.load_review(rf.review_path(repo, "M1.1", "opus"), ["A1", "A2"])
     assert rec.ok and rec.data["launch_mode"] == "bare" and rec.data["family"] == "anthropic"
