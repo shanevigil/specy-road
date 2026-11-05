@@ -21,7 +21,8 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git
-from tests.test_worker_cli import _repo, wait_for_worker
+from tests.test_worker_cli import wait_for_worker
+from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import worker_adapters as wa
 from specy_road import worker_ops as ops
@@ -47,7 +48,7 @@ def _launch(tmp_path: Path, script: Path, repo: Path, name: str, **spec):
 # --- B3 ---------------------------------------------------------------------------
 
 def test_a_ready_written_just_before_the_turn_does_not_complete_it_and_a_rewritten_one_does(tmp_path: Path) -> None:
-    repo, script = _repo(tmp_path)
+    repo, script = make_worker_repo(tmp_path)
     d = reviews_root(repo) / "M1.1"
     d.mkdir(parents=True)
     head = git(repo, "rev-parse", "HEAD")
@@ -66,7 +67,7 @@ def test_a_ready_written_just_before_the_turn_does_not_complete_it_and_a_rewritt
 
 
 def test_the_checkpoint_is_by_content_not_mtime(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     d = reviews_root(repo) / "M1.1"
     d.mkdir(parents=True)
     head = git(repo, "rev-parse", "HEAD")
@@ -83,7 +84,7 @@ def test_the_checkpoint_is_by_content_not_mtime(tmp_path: Path) -> None:
 
 @pytest.mark.skipif(not hasattr(signal, "SIGKILL"), reason="POSIX signals")
 def test_a_dead_wrapper_with_a_live_harness_keeps_the_leaf_and_terminate_kills_the_group(tmp_path: Path) -> None:
-    repo, script = _repo(tmp_path)
+    repo, script = make_worker_repo(tmp_path)
     slow = tmp_path / "slow.json"
     slow.write_text(json.dumps({"lines": [{"type": "system", "subtype": "init", "session_id": "slow"}], "sleep": 30}))
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
@@ -117,7 +118,7 @@ def test_a_dead_wrapper_with_a_live_harness_keeps_the_leaf_and_terminate_kills_t
 
 
 def test_once_the_whole_group_is_gone_the_record_is_failed(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.mutate(repo, rec, lambda r: (setattr(r, "state", "running"), setattr(r, "pid", 999999),
                                     setattr(r, "pgid", 999999), setattr(r, "harness_pid", 999998)))
@@ -128,7 +129,7 @@ def test_once_the_whole_group_is_gone_the_record_is_failed(tmp_path: Path) -> No
 # --- B10 ----------------------------------------------------------------------------
 
 def test_a_huge_stdin_prompt_travels_in_a_0600_file_not_argv(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     probe = tmp_path / "probe.py"
     probe.write_text("import json, sys\nn = len(sys.stdin.read())\n"
                      "print(json.dumps({'type': 'system', 'subtype': 'init', 'session_id': str(n)}), flush=True)\n")
@@ -154,7 +155,7 @@ def test_a_huge_stdin_prompt_travels_in_a_0600_file_not_argv(tmp_path: Path) -> 
 
 
 def test_a_prompt_in_argv_is_refused_above_the_limit_with_a_failed_record(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "cursor", "composer", repo)
     with pytest.raises(ws.WorkerError, match=r"KiB of arguments \(limit 100 KiB\)"):
         wr.spawn(repo, rec, wa.Launch(["agent", "-p", "y" * (wp.ARGV_LIMIT + 1)]))
@@ -197,7 +198,7 @@ def test_a_pid_our_user_cannot_signal_is_not_our_wrapper(monkeypatch) -> None:
 # --- B12 ----------------------------------------------------------------------------
 
 def test_completion_resume_and_reclaim_check_the_branch_actually_checked_out(tmp_path: Path) -> None:
-    repo, script = _repo(tmp_path)
+    repo, script = make_worker_repo(tmp_path)
     d = reviews_root(repo) / "M1.1"
     d.mkdir(parents=True)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
@@ -223,7 +224,7 @@ def test_completion_resume_and_reclaim_check_the_branch_actually_checked_out(tmp
 
 
 def test_reconcile_flags_a_tree_off_the_workers_branch(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
     ws.set_state(repo, rec, "idle")
     git(repo, "checkout", "-q", "dev")
@@ -234,7 +235,7 @@ def test_reconcile_flags_a_tree_off_the_workers_branch(tmp_path: Path) -> None:
 # --- F9 ---------------------------------------------------------------------------
 
 def test_parsed_output_is_worker_suggestion_and_lifecycle_stays_system(tmp_path: Path) -> None:
-    repo, script = _repo(tmp_path)
+    repo, script = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     lines = [{"type": "system", "subtype": "init", "session_id": "n"},
              {"type": "assistant", "message": {"content": [{"type": "text", "text": "hello"}]}},

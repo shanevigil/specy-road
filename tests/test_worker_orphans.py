@@ -16,7 +16,8 @@ import yaml
 
 from tests.review_repo_helpers import NODE, commit_file, git
 from tests.test_branch_cleanup import BR, _exit, _merge_mode_repo
-from tests.test_worker_cli import _repo, run_worker_cli, wait_for_worker
+from tests.test_worker_cli import run_worker_cli, wait_for_worker
+from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import worker_lease as lease
 from specy_road import worker_ops as ops
@@ -98,7 +99,7 @@ def _stale_origin(repo: Path, rev: str = "dev") -> None:
 # --- A1: what holds a slot: starting, running, idle, paused_by_limit; a finished record never does ----------
 
 def test_a_completed_worker_on_a_landed_leaf_frees_its_slot(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     mine = _worker(repo, "M1.1", "idle", session="sid-1")
     _claim(repo, "M1.2", OTHER)
     done = _worker(repo, "M1.2", "completed", branch=OTHER)
@@ -114,7 +115,7 @@ def test_a_completed_worker_on_a_landed_leaf_frees_its_slot(tmp_path: Path) -> N
 def test_each_ref_cause_alone_orphans_the_worker(tmp_path: Path, cause: str) -> None:
     """Review round 3: claim gone (``registry-prune --remove``, an abandoned leaf) frees the worker whatever the
     leaf's status, and Complete frees it whatever the registry, each once every integration ref agrees."""
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     mine = _worker(repo, "M1.1", "idle", session="sid-1")
     if cause.startswith("Complete"):
         _claim(repo, "M1.2", OTHER)
@@ -132,7 +133,7 @@ def test_each_ref_cause_alone_orphans_the_worker(tmp_path: Path, cause: str) -> 
 
 def test_a_completed_worker_on_an_unfinished_leaf_does_not_hold_its_slot(tmp_path: Path) -> None:
     """M15.26: a completed record keeps the leaf (it is not orphaned) but never takes a max_workers slot."""
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     mine = _worker(repo, "M1.1", "idle", session="sid-1")
     _claim(repo, "M1.2", OTHER)
     held = _worker(repo, "M1.2", "completed", branch=OTHER)   # a review block may still send it a fix round
@@ -144,7 +145,7 @@ def test_a_completed_worker_on_an_unfinished_leaf_does_not_hold_its_slot(tmp_pat
 
 
 def test_a_running_worker_on_a_landed_leaf_still_holds_its_slot(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     _land(repo, "M1.2")
     running = _worker(repo, "M1.2", "running", branch=OTHER)   # still at work: not this rule's to free
     assert orphans(repo) == {} and holding_slots(repo, [running]) == [running]
@@ -153,7 +154,7 @@ def test_a_running_worker_on_a_landed_leaf_still_holds_its_slot(tmp_path: Path) 
 def test_a_gone_worktree_alone_orphans_the_worker(tmp_path: Path) -> None:
     """Review round 3: a worktree that is no longer a directory is local state, not a ref snapshot, so it is a
     cause on its own, even on a claimed, open leaf."""
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     wt = tmp_path / "lane"
     shutil.copytree(repo, wt)
     rec = _worker(repo, "M1.1", "idle", branch=BR, worktree=wt)
@@ -168,7 +169,7 @@ def test_a_reopened_leaf_keeps_its_worker_against_a_stale_complete_integration_r
     """origin/dev last fetched while the leaf was Complete; dev has since reopened it, claimed. The refs
     disagree, so the worker is not orphaned and survives terminate --orphaned. A completed record still
     takes no max_workers slot."""
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     mine = _worker(repo, "M1.1", "idle", session="sid-1")
     _claim(repo, "M1.2", OTHER)
     held = _worker(repo, "M1.2", "completed", branch=OTHER)
@@ -191,7 +192,7 @@ def test_a_reopened_leaf_keeps_its_worker_against_a_stale_complete_integration_r
 
 
 def test_a_landing_not_yet_on_the_remote_tracking_ref_keeps_the_worker_until_it_is(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     _claim(repo, "M1.2", OTHER)
     _stale_origin(repo)   # origin/dev: still claimed, not in its graph
     rec = _worker(repo, "M1.2", "completed", branch=OTHER)
@@ -205,7 +206,7 @@ def test_an_older_lanes_registry_snapshot_neither_frees_nor_keeps_a_worker(tmp_p
     """Two linked worktrees whose registries differ judge a shared worker the same way: by the integration
     branch. One that predates a live claim must not free or end its worker; one that still holds a claim
     since landed must not keep it."""
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     mine = _worker(repo, "M1.1", "idle", session="sid-1")
     old = tmp_path / "old-lane"
     git(repo, "worktree", "add", "-q", "--detach", str(old), BR)   # its registry has no M1.2 claim
@@ -229,7 +230,7 @@ def test_an_older_lanes_registry_snapshot_neither_frees_nor_keeps_a_worker(tmp_p
 
 
 def test_an_unreadable_integration_registry_keeps_the_worker(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     _status_on_dev(repo, "M1.2", "In Progress")   # open, and no claim visible once the registry cannot be read
     rec = _worker(repo, "M1.2", "completed", branch=OTHER)
     _on_dev(repo, "roadmap/registry.yaml", lambda _text: "entries: [\n", "break the registry")
@@ -237,7 +238,7 @@ def test_an_unreadable_integration_registry_keeps_the_worker(tmp_path: Path) -> 
 
 
 def test_no_integration_branch_keeps_the_worker(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     _land(repo, "M1.2")
     rec = _worker(repo, "M1.2", "completed", branch=OTHER)
     git(repo, "branch", "-q", "-m", "dev", "elsewhere")   # neither dev nor origin/dev: nothing authoritative to read
@@ -247,7 +248,7 @@ def test_no_integration_branch_keeps_the_worker(tmp_path: Path) -> None:
 # --- A2: the refusal names running and held workers apart ---------------------------------------------------------
 
 def test_the_refusal_lists_running_and_held_workers_separately(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     recs = [_worker(repo, "M1.1", s) for s in ("running", "starting", "idle", "completed", "failed")]
     counted = holding_slots(repo, recs)
     assert [r.state for r in counted] == ["running", "starting", "idle"]
@@ -265,7 +266,7 @@ def test_finished_records_leave_a_slot_and_two_running_workers_refuse(tmp_path: 
     two running workers refuse. A pid-less running record would be swept to failed before the cap, so the
     sweep is held off: this test is the cap, not the dead-wrapper rule."""
     monkeypatch.setattr("specy_road.worker_ops_slots.wrapper_gone", lambda *_a, **_k: False)
-    repo, _ = _repo(tmp_path, max_workers=2)
+    repo, _ = make_worker_repo(tmp_path, max_workers=2)
     for n, state in enumerate(["completed"] * 10 + ["failed"] * 9):
         _worker(repo, f"M9.{n}", state)
     running = _worker(repo, "M8.1", "running")
@@ -287,7 +288,7 @@ def test_finished_records_leave_a_slot_and_two_running_workers_refuse(tmp_path: 
 
 def _three(tmp_path: Path) -> tuple[Path, ws.WorkerRecord, ws.WorkerRecord, ws.WorkerRecord]:
     """Two orphans (a landed leaf; a claimed, open leaf whose worktree is gone) and one that owns its open leaf."""
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     _land(repo, "M1.2")
     landed = _worker(repo, "M1.2", "completed", branch=OTHER)
     wt = tmp_path / "lane"
@@ -332,12 +333,12 @@ def test_terminate_orphaned_ends_every_orphan_in_one_step(tmp_path: Path, capsys
 
 @pytest.mark.parametrize("argv", [[], ["w-0001", "--orphaned"], ["--orphaned", "--op-id", "x"]])
 def test_terminate_takes_one_worker_or_orphaned(tmp_path: Path, argv: list[str]) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     assert run_worker_cli("worker", "terminate", *argv, "--repo-root", str(repo)) == 2   # argparse's usage error
 
 
 def test_terminate_one_worker_still_works(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = _worker(repo, "M1.1", "completed", branch=BR)
     assert run_worker_cli("worker", "terminate", rec.worker_id, "--repo-root", str(repo)) == 0
     assert f"{rec.worker_id}: terminated" in capsys.readouterr().out
@@ -363,6 +364,6 @@ def test_finish_terminates_the_finished_leafs_idle_and_completed_workers(tmp_pat
 
 
 def test_end_finished_workers_with_none_ends_nothing(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     assert end_finished_workers(repo, "M1.1") == []
     assert not ws.workers_dir(repo).exists()   # no lock taken: a checkout with no workers gets no work/.workers/

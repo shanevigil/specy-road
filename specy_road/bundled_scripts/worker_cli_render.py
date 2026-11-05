@@ -9,6 +9,7 @@ from typing import Any
 from specy_road.worker_adapter_parsers import usage_text
 from specy_road.worker_process import wrapper_alive
 from specy_road.worker_state import events_since
+from specy_road.worker_usage_plausibility import possible_undercount
 
 
 def _row(rec) -> dict[str, Any]:
@@ -186,17 +187,27 @@ def _sum_usage(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
+def _usage_total(rows: list[dict[str, Any]], *, turns: int) -> dict[str, Any]:
+    """Sum usage rows into one total; propagate ``possible_undercount`` when any row carries it."""
+    total = {"turns": turns, **_sum_usage(rows)}
+    if any(r.get("possible_undercount") for r in rows):
+        total["possible_undercount"] = True
+    return total
+
+
 def usage(attempts: list[tuple[Any, list[dict[str, Any]]]]) -> dict[str, Any]:
     """``{"node_id", "attempts": [...], "total"}`` from ``(record, events)`` per worker, from its ``usage`` events."""
+
     rows = []
     for rec, events in attempts:
         turns = [e["detail"] for e in events if e["type"] == "usage" and e.get("detail")]
         versions = [t["harness_version"] for t in turns if t.get("harness_version")]
+        flag = possible_undercount(events)
         rows.append({"attempt": rec.attempt, "worker_id": rec.worker_id, "model": rec.model, "harness": rec.harness,
                      "harness_version": versions[-1] if versions else None, "worktree": rec.worktree,
-                     "turns": len(turns), **_sum_usage(turns)})
-    return {"node_id": attempts[0][0].node_id, "attempts": rows,
-            "total": {"turns": sum(r["turns"] for r in rows), **_sum_usage(rows)}}
+                     "turns": len(turns), "possible_undercount": flag, **_sum_usage(turns)})
+    total = _usage_total(rows, turns=sum(r["turns"] for r in rows))
+    return {"node_id": attempts[0][0].node_id, "attempts": rows, "total": total}
 
 
 def _project_root_of(worktree: str | None) -> Path | None:
@@ -224,7 +235,7 @@ def _combined_node_total(data: dict[str, Any], repo_root: Path | None) -> tuple[
     exec_total, rev = data["total"], reviewer_total(data, repo_root)
     if rev is None:
         return exec_total, None
-    combined = {"turns": exec_total["turns"] + rev["turns"], **_sum_usage([exec_total, rev])}
+    combined = _usage_total([exec_total, rev], turns=exec_total["turns"] + rev["turns"])
     return combined, rev
 
 
@@ -236,17 +247,22 @@ def usage_json_payload(data: dict[str, Any], repo_root: Path | None = None) -> d
     return {**data, "executors": data["total"], "reviewers": rev, "total": combined}
 
 
+def _usage_line(u: dict[str, Any]) -> str:
+    line = usage_text(u)
+    return f"{line} possible undercount" if u.get("possible_undercount") else line
+
+
 def usage_lines(data: dict[str, Any], repo_root: Path | None = None) -> list[str]:
     """Per attempt and the node's total; with delegated reviews, executors, reviewers and total on their own lines."""
     lines = [f"{data['node_id']} usage ({len(data['attempts'])} attempt(s); ? = not reported)"]
     for a in data["attempts"]:
         version = f" {a['harness_version']}" if a["harness_version"] else ""
-        lines.append(f"  attempt {a['attempt']} {a['worker_id']} {a['harness']}{version}/{a['model']}, {a['turns']} turn(s): {usage_text(a)}")
+        lines.append(f"  attempt {a['attempt']} {a['worker_id']} {a['harness']}{version}/{a['model']}, {a['turns']} turn(s): {_usage_line(a)}")
     combined, rev = _combined_node_total(data, repo_root)
     if rev is not None:
-        lines.append(f"  executors, {data['total']['turns']} turn(s): {usage_text(data['total'])}")
+        lines.append(f"  executors, {data['total']['turns']} turn(s): {_usage_line(data['total'])}")
         lines.append(f"  reviewers, {rev['runs']} run(s), {rev['turns']} turn(s): {usage_text(rev)}")
-    lines.append(f"  total, {combined['turns']} turn(s): {usage_text(combined)}")
+    lines.append(f"  total, {combined['turns']} turn(s): {_usage_line(combined)}")
     return lines
 
 

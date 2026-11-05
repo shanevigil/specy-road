@@ -19,7 +19,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.test_worker_cli import run_worker_cli, _repo, wait_for_worker
+from tests.test_worker_cli import run_worker_cli, wait_for_worker
+from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import worker_adapters as wa
 from specy_road import worker_ops as ops
@@ -30,7 +31,7 @@ from specy_road.review_files import reviews_root
 
 
 def test_a_flag_set_while_the_wrapper_streams_survives(tmp_path: Path) -> None:
-    repo, _script = _repo(tmp_path)
+    repo, _script = make_worker_repo(tmp_path)
     spec = tmp_path / "slow.json"
     spec.write_text(json.dumps({"lines": [{"type": "system", "subtype": "init", "session_id": "slow"},
                                           {"type": "assistant", "message": {"content": [{"type": "text", "text": "a"}]}},
@@ -49,7 +50,7 @@ def test_a_flag_set_while_the_wrapper_streams_survives(tmp_path: Path) -> None:
 
 
 def test_concurrent_delegates_on_one_leaf_launch_once(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path, max_workers=4)
+    repo, _ = make_worker_repo(tmp_path, max_workers=4)
     results: list = []
 
     def go() -> None:
@@ -70,7 +71,7 @@ def test_concurrent_delegates_on_one_leaf_launch_once(tmp_path: Path) -> None:
 
 
 def test_terminate_reaches_the_harness_and_its_children(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     marker = tmp_path / "ticks"
     child = tmp_path / "child.py"
     child.write_text(f"import time\nwhile True:\n    open({str(marker)!r}, 'a').write('x')\n    time.sleep(0.1)\n")
@@ -95,7 +96,7 @@ def test_terminate_reaches_the_harness_and_its_children(tmp_path: Path) -> None:
 
 
 def test_terminate_refuses_a_handed_off_worker(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.set_lease(repo, rec, "human")
     with pytest.raises(ws.WorkerError, match="reclaim"):
@@ -103,7 +104,7 @@ def test_terminate_refuses_a_handed_off_worker(tmp_path: Path) -> None:
 
 
 def test_an_op_id_names_one_operation(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     assert ws.begin_op(repo, "X1", "reconcile", "w-0001") is None
     ws.complete_op(repo, "X1", {"ok": True})
     assert ws.begin_op(repo, "X1", "reconcile", "w-0001")["result"] == {"ok": True}
@@ -114,7 +115,7 @@ def test_an_op_id_names_one_operation(tmp_path: Path) -> None:
 
 
 def test_an_older_attempts_ready_does_not_complete_a_new_worker(tmp_path: Path) -> None:
-    repo, script = _repo(tmp_path)
+    repo, script = make_worker_repo(tmp_path)
     d = reviews_root(repo) / "M1.1"
     d.mkdir(parents=True)
     from tests.review_repo_helpers import git
@@ -141,7 +142,7 @@ def test_an_older_attempts_ready_does_not_complete_a_new_worker(tmp_path: Path) 
 
 
 def test_the_harness_does_not_inherit_the_wrappers_pythonpath(tmp_path: Path, monkeypatch) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     probe = tmp_path / "probe.py"
     probe.write_text("import json, os\nprint(json.dumps({'type': 'system', 'subtype': 'init', 'session_id': os.environ.get('PYTHONPATH', '(unset)')}), flush=True)\n")
     monkeypatch.setenv("PYTHONPATH", "/adopter/own/path")
@@ -157,7 +158,7 @@ def test_the_harness_does_not_inherit_the_wrappers_pythonpath(tmp_path: Path, mo
 
 
 def test_a_bad_output_line_does_not_kill_the_wrapper(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "codex", "sol", repo)
     spec = tmp_path / "e.json"
     bad = tmp_path / "bad.py"
