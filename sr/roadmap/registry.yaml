@@ -58,7 +58,8 @@ entries:
       - tests/
     started: '2026-11-04'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-05T06:16:22+00:00'
   - codename: upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap
     node_id: M13.2
     branch: feature/rm-upgrade-previews-as-the-new-version-validates-in-a-dry-run-and-names-files-it-pushed-over-the-line-cap
