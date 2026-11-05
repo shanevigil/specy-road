@@ -22,7 +22,8 @@ named project-relative in the worker's tree, as `zone_matches` compares them, an
 command: on a change it records the finding and a `git_probes_skipped` finding and runs none of the git probes, so
 `git status` never runs under a `core.fsmonitor` or hook the turn changed. Otherwise the git probes run, then the
 rest is compared. Each change is one `steering_file` finding (`path`, `class`, `before`, `after`: a sha256,
-`link:<target>`, `absent`, or for `git_config` the digest followed by `;key=value` per changed watched key), which
+`link:<target>` (followed by `@<sha256>` when the link resolves to a regular file, so a write through an
+unchanged link changes it; a link to a directory is not walked), `absent`, or for `git_config` the digest followed by `;key=value` per changed watched key), which
 replaces any `porcelain` or `committed_outside_zones` mention of the same path. A path two classes reach (a harness
 file that is also a new escaping symlink, a hooks directory inside `.claude/hooks`) is one finding, of the class
 listed first in the table. It sets the sticky `steering_changed`

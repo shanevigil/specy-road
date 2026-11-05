@@ -83,19 +83,24 @@ def _sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _value(path: Path) -> str:
-    """A path's content as compared: ``link:<target>``, the file's sha256, or ``absent``."""
-    try:
-        if path.is_symlink():
-            return f"link:{os.readlink(path)}"
-        return _sha(path.read_bytes()) if path.is_file() else ABSENT
-    except OSError:
-        return ABSENT
-
-
 def _resolved(path: Path) -> Path:
     """``path`` resolved without raising: a link loop or a missing part (an executor can make either) stays as named."""
     return Path(os.path.realpath(path))
+
+
+def _value(path: Path) -> str:
+    """A path's content as every class compares it: a file's sha256; ``link:<text>`` plus ``@<sha256>`` of what a
+    link resolves to when that is a regular file (a write through an unchanged link changes it; a link to a
+    directory is not walked); ``dir``; ``other`` (a fifo, a socket); or ``absent``."""
+    try:
+        if path.is_symlink():
+            target = _resolved(path)
+            return f"link:{os.readlink(path)}" + (f"@{_sha(target.read_bytes())}" if target.is_file() else "")
+        if path.is_file():
+            return _sha(path.read_bytes())
+        return "dir" if path.is_dir() else "other" if path.exists() else ABSENT
+    except OSError:
+        return ABSENT
 
 
 def _real(path: Path) -> Path:
@@ -281,12 +286,7 @@ def _env_bin(snap: Snapshot, scope: Scope) -> None:
         except OSError:
             continue
         for k in kids:
-            if k.is_symlink():
-                target = _resolved(k)
-                value = f"link:{os.readlink(k)}" + (f"@{_value(target)}" if target.is_file() else "")
-            else:
-                value = _value(k) if k.is_file() else "dir" if k.is_dir() else "other"
-            _add(snap, scope, k, "env_bin", value, scope.display(top / scope.prefix / rel / "bin" / k.name))
+            _add(snap, scope, k, "env_bin", name=scope.display(top / scope.prefix / rel / "bin" / k.name))
 
 
 def _blobs(snap: Snapshot, scope: Scope) -> None:
@@ -334,11 +334,15 @@ def finding(path: str, cls: str, before: str, after: str) -> dict[str, Any]:
 
 
 def _links(top: Path, dirty: dict[str, str] | None) -> dict[str, str]:
-    """``{path: link text}`` for the symlinks among a checkout's porcelain entries."""
-    if dirty is None:
-        entries = status_entries(top)
-        dirty = {p: _value(top / p) for _xy, p in entries or ()}
-    return {p: v.removeprefix("link:") for p, v in dirty.items() if v.startswith("link:")}
+    """``{path: link text}`` for the symlinks among a checkout's porcelain entries (``dirty``, or read here)."""
+    paths = dirty if dirty is not None else [p for _xy, p in status_entries(top) or ()]
+    out = {}
+    for p in paths:
+        try:
+            out[p] = os.readlink(top / p)
+        except OSError:   # not a link (or gone)
+            continue
+    return out
 
 
 class SteeringWatch:

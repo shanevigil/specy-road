@@ -120,7 +120,10 @@ HOOKS_CONFIGS = {   # name: (hooks directory name, text added to the common conf
     "bom_prefixed_config": ("hooks", "[core]\n\thooksPath = {d}\n", True),   # the first section, after the BOM
     # {d} is set only under a condition that does not hold: git keeps the default hooks directory
     "nonmatching_conditional_include": ("hooks", '[includeIf "gitdir:/nowhere/"]\n\tpath = {other}\n', False),
+    # the default hooks directory already holds pre-commit as a link to a file; the turn writes through the link
+    "unchanged_symlink_written_through": ("hooks", "", False),
 }
+DEFAULT_HOOKS = {"nonmatching_conditional_include", "unchanged_symlink_written_through"}
 
 
 @pytest.mark.parametrize("name", sorted(HOOKS_CONFIGS))
@@ -140,13 +143,22 @@ def test_a_hook_in_the_hooks_directory_git_uses_is_found_however_the_config_read
     # git's own reading, conditions evaluated, names the directory the turn writes a hook into
     used = subprocess.run(["git", "config", "--get", "core.hooksPath"], cwd=p["leaf"], capture_output=True, text=True)
     hooks = Path(used.stdout.strip()) if used.returncode == 0 else p["repo"] / ".git" / "hooks"
-    assert (hooks == d) is (name != "nonmatching_conditional_include")
+    assert (hooks == d) is (name not in DEFAULT_HOOKS)
     if hooks == d:   # and the check's parse of the file agrees with git's
         assert [v for k, v in parse_config(config.read_bytes().decode()) if k == "core.hookspath"] == [str(d)]
+    real = tmp_path / "real-pre-commit"
+    if name == "unchanged_symlink_written_through":
+        real.write_text("#!/bin/sh\n")
+        (hooks / "pre-commit").symlink_to(real)
     rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
-    found = _turn(p["repo"], rec, lambda: _write(hooks / "pre-commit", "#!/bin/sh\n"))
+    found = _turn(p["repo"], rec, lambda: _write(hooks / "pre-commit", "#!/bin/sh\nevil\n"))   # through a link if one
     [steer] = [f for f in found if f["kind"] == "steering_file"]
-    assert steer["class"] == "git_hook" and steer["path"] == str(hooks.resolve() / "pre-commit") and steer["before"] == "absent"
+    assert steer["class"] == "git_hook" and steer["path"] == str(hooks.resolve() / "pre-commit")
+    if name == "unchanged_symlink_written_through":   # the link text is unchanged; what it resolves to is not
+        assert steer["before"].startswith(f"link:{real}@") and steer["after"].startswith(f"link:{real}@")
+        assert steer["before"] != steer["after"] and (hooks / "pre-commit").is_symlink()
+    else:
+        assert steer["before"] == "absent"
     assert "git_probes_skipped" in {f["kind"] for f in found}
 
 
