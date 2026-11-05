@@ -1,0 +1,45 @@
+{
+  "nodes": [
+    {
+      "codename": "adopter-features",
+      "dependencies": [
+        "2dce21fe-f676-42e5-a9a2-cd58a333d5fa"
+      ],
+      "id": "M19",
+      "node_key": "8e41dcbb-83cd-4a42-84a0-35ab72e78f94",
+      "planning_dir": "planning/M19_adopter-features_8e41dcbb-83cd-4a42-84a0-35ab72e78f94.md",
+      "sibling_order": 18,
+      "status": "Not Started",
+      "title": "Adopter-project features: upgrade, agent-file layering, planning hygiene, project tooling (after 0.3.1)",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "acceptance": [
+        "A project chooses its analysis set in checks: either specy-road's built-in set (the ruff rule families and shrink-only baselines from M16.8) or its own entries naming tools such as mypy, radon, pylint or eslint; validate names the active set and warns about a declared tool that is not installed",
+        "Declared tools run through the existing checks: machinery (when:, zones:, per-commit merge-blocking results from M16.52) with no tool-specific code path beyond a small table of known tools",
+        "An agent-facing command or shipped prompt detects which known analysis tools are already installed in the project's environment and prints a proposed checks: block that gives parity with the built-in set at the same points (baseline, ready, land); it never installs anything and never writes the config itself",
+        "Tests cover the built-in set alone, a declared custom tool, a declared tool that is missing, and the proposal for a repo with mypy and radon installed and for one with none"
+      ],
+      "codename": "analysis-tools",
+      "dependencies": [
+        "449eeb3e-1874-4b25-841c-2b1fed8e2363",
+        "74ac34a2-084a-4dd3-84ec-ac37b20dd983"
+      ],
+      "id": "M19.1",
+      "node_key": "7d55076e-5ed9-44fb-9c7d-84cab47c3409",
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.1_analysis-tools_7d55076e-5ed9-44fb-9c7d-84cab47c3409.md",
+      "sibling_order": 1,
+      "status": "Not Started",
+      "title": "Configurable code-analysis tools",
+      "touch_zones": [
+        "specy_road/checks_config.py",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    }
+  ]
+}

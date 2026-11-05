@@ -1,0 +1,18 @@
+{
+  "nodes": [
+    {
+      "codename": "orch-review-loop",
+      "dependencies": [
+        "2dce21fe-f676-42e5-a9a2-cd58a333d5fa"
+      ],
+      "id": "M18",
+      "node_key": "8c72e749-2cc5-4d00-a78f-472d7ff68f33",
+      "planning_dir": "planning/M18_orch-review-loop_8c72e749-2cc5-4d00-a78f-472d7ff68f33.md",
+      "sibling_order": 17,
+      "status": "Not Started",
+      "title": "Orchestration and review-loop features (after 0.3.1)",
+      "touch_zones": [],
+      "type": "phase"
+    }
+  ]
+}

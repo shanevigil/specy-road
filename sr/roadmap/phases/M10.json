@@ -8,7 +8,7 @@
       "notes": "Promoted 2026-10-30 from brainstorm agentic-performance (13 accepted of 70). Research triage: docs/design-notes/agent-performance-research-triage.md. Acceptance and touch zones still to author per leaf; M10.13 defaults to logs untracked.",
       "planning_dir": "planning/M10_agent-loop-performance_deb4dfb7-d5f2-4cdb-8dd6-36dcf3212bd9.md",
       "sibling_order": 9,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Agent loop performance and observability",
       "touch_zones": [],
       "type": "phase"
