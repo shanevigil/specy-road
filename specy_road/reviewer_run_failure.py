@@ -11,6 +11,7 @@ from typing import Any
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.review_files import list_reviews, reviews_dir
 from specy_road.review_write_check import replace_file
+from specy_road.worker_adapter_parsers import UNREADABLE, loads_untrusted
 from specy_road.review_target import ReviewTarget, same_commit
 
 RUN_PREFIX = "RUN-"
@@ -32,8 +33,8 @@ def run_path(repo_root: Path, node_id: str, model: str) -> Path:
 
 def _read_json(path: Path) -> dict[str, Any] | None:
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+        data = loads_untrusted(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):   # unreadable file, or bytes that are not UTF-8
         return None
     return data if isinstance(data, dict) else None
 
@@ -56,9 +57,7 @@ def _last_plain_line(lines: list[str]) -> list[str]:
         text = line.strip()
         if not text:
             continue
-        try:
-            json.loads(text)
-        except ValueError:
+        if loads_untrusted(text) is UNREADABLE:   # never raises: deep nesting is unreadable, not a crash
             return [text]
     return []
 

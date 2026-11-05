@@ -32,6 +32,7 @@ from jsonschema import Draft202012Validator
 
 from specy_road.runtime_paths import specy_road_package_dir
 from specy_road.worker_adapter_base import Adapter
+from specy_road.worker_adapter_parsers import loads_untrusted
 
 #: Record fields ``review record`` writes itself; a reviewer's output never carries them.
 FILLED_BY_SPECY_ROAD = ("family", "independence", "notes_sha256", "signature", "launch_mode")
@@ -139,17 +140,38 @@ def stream_lines(text: str) -> list[str]:
 
 
 def _object(line: str) -> dict[str, Any] | None:
-    try:
-        d = json.loads(line)
-    except ValueError:
-        return None
+    d = loads_untrusted(line)
     return d if isinstance(d, dict) else None
+
+
+UNREADABLE_ANSWER = RERUN + "the final JSON does not match the review output schema: it cannot be read ({})"
 
 
 def final_answer(adapter: Adapter, text: str, output: Path | None = None) -> dict[str, Any] | Rerun:
     """The run's answer from this turn's whole output ``text`` (and ``output``, the file a harness writes its
     final message to): the schema-valid object of the final turn's last terminal message, or a :class:`Rerun`
-    (module docstring)."""
+    (module docstring).
+
+    The one boundary for reviewer output, and **total**: the output is untrusted input, so any exception reading,
+    parsing or validating it (``ValueError``, ``RecursionError`` from deep nesting, ``TypeError``, ``KeyError``,
+    ``UnicodeError``, …) is the schema-invalid rerun request, never an exception out of ``review delegate`` or
+    ``prompt --channel cli``. An interrupt still propagates."""
+    try:
+        return _final_answer(adapter, text, output)
+    except Exception as e:   # noqa: BLE001 — total by design (docstring)
+        return Rerun(UNREADABLE_ANSWER.format(type(e).__name__))
+
+
+def events(adapter: Adapter, line: str, launch: Any) -> list[Any]:
+    """``adapter.parse_events`` for one line of reviewer output, total like :func:`final_answer`: a line it cannot
+    read is no event (it is still in the log, and :func:`final_answer` judges it)."""
+    try:
+        return adapter.parse_events(line, launch)
+    except Exception:   # noqa: BLE001 — untrusted output (final_answer)
+        return []
+
+
+def _final_answer(adapter: Adapter, text: str, output: Path | None) -> dict[str, Any] | Rerun:
     row = TURNS.get(adapter.harness, TURNS["generic"])
     lines = stream_lines(text)
     parsed = [_object(line) if line.strip() else None for line in lines]
@@ -193,4 +215,5 @@ def _answer(body: Any, *, envelope: bool) -> dict[str, Any] | Rerun:
               for e in Draft202012Validator(output_schema()).iter_errors(data)]
     if errors:
         return Rerun(RERUN + "the final JSON does not match the review output schema: " + "; ".join(sorted(errors)[:5]))
+    json.dumps(data, ensure_ascii=False).encode("utf-8")   # a lone surrogate cannot be filed: UnicodeEncodeError
     return data

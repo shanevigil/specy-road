@@ -849,6 +849,44 @@ Touch zones: `specy_road/reviewer_run_failure.py` (`save_run`) and `specy_road/r
 - Sol (`26d95ca0`) R1-R4: unchanged. R1 is withdrawn by the rescope; R2 and R3 are fixed by `TURNS`; R4 is fixed.
 - Verification: 69 importer test files, `pytest -q -n 4 -p no:cacheprovider`: 1052 passed. `ruff check specy_road tests scripts`: clean. `file-limits`: OK. `export --check`: OK.
 
+## Fix round 5 (Sol-low block at `dcdbf3b4`: F1, JSON decoder recursion)
+
+WIP merged first (`--no-edit`), no conflicts.
+
+- **Class:** reviewer and harness output is untrusted input, but reading it was not **total**. Any exception from decoding or validating it escaped: `RecursionError` from about 1,100 nested arrays, and `ValueError` variants, `TypeError`, `UnicodeError` and the like. The named instance is `review_answer._object`, which caught only `ValueError`. The same class reached:
+  - every adapter's live `parse_events`, through `worker_adapter_parsers._json`, in `review delegate`'s `_turn` and in `run_logged` (`prompt --channel cli`);
+  - `review usage`'s log reader;
+  - `reviewer_run_failure._last_plain_line`, through `turn_capacity_error` and `harness_error_line`;
+  - `_read_json`;
+  - schema validation;
+  - and, through a lone surrogate, the later UTF-8 write of the notes.
+- **Design:** one total reader, and one total boundary.
+  - `worker_adapter_parsers.loads_untrusted(text)` returns the parsed value or `UNREADABLE` and never raises. `_json` (every adapter's event parse), `review_answer._object`, `reviewer_run_failure._read_json` and `_last_plain_line` all use it, so a too-deep line is unreadable, not a crash.
+  - `review_answer.final_answer` is now the single boundary for the reviewer's answer. It wraps the table-driven reader (`_final_answer`) and the schema check: **any** `Exception` becomes the schema-invalid rerun request (`the final JSON does not match the review output schema: it cannot be read (<ExceptionType>)`). An interrupt still propagates.
+  - A schema-valid answer must also encode as UTF-8; a lone surrogate is a rerun, never a failed notes write.
+  - `review_answer.events(adapter, line, launch)` is the total form of `parse_events`, used by `review_delegate._turn`, `review_record_write.run_logged` and `review_usage._log_turns`.
+  - All four adapters and `review_record_write` (`run_and_file`, `file_review`'s answer) go through these.
+- **Tests:** `tests/test_review_total_parsing.py` (new, 44 cases).
+  - Over all four adapters: deep arrays and deep objects (depth 100,000) as the final message, nesting deep inside an otherwise valid answer, a 50,000-digit number as the message and as a field, an escaped lone surrogate, a non-object (array, string) top level, and a wrong-typed field. Each gives a rerun request, never an exception.
+  - Over all four adapters, a deeply nested **event line** itself: `events`, `parse_events`, `turn_capacity_error`, `harness_error_line` and `final_answer` all return.
+  - A valid answer still passes on every adapter.
+  - End to end, `review delegate --json` with a deep-array answer, a deep field inside the answer, and a lone surrogate: exit 1, `state: incomplete`, `outcome: rerun`, no traceback on stdout or stderr, and no `REVIEW-opus.md`.
+- **Touch zones:** `specy_road/worker_adapter_parsers.py` was added (`loads_untrusted`, `_json`).
+
+## Probes (fix round 5)
+
+- Deep nesting (depth 5,000) through each adapter's `parse_events` before the fix: `RecursionError` on claude-code, codex and cursor. After: returns.
+- `turn_capacity_error` and `harness_error_line` with a deep line before the fix: `RecursionError`. After: return.
+- `final_answer` over all four adapters with deep arrays, deep objects, a huge integer, a lone surrogate, a non-object and a wrong-typed field: every case is a `Rerun`.
+- Every `json.loads` in the reviewer path (`grep` over `review_answer`, `review_record_write`, `review_delegate`, `review_usage`, `reviewer_run_failure`, `role_prompt_cli`, `worker_adapter_parsers`): each now goes through `loads_untrusted`, or reads specy-road's own files (none left raw).
+- Every `parse_events` call over reviewer output (`grep`): all three (`_turn`, `run_logged`, `_log_turns`) go through `review_answer.events`.
+- Schema validation of a hostile but parseable object: `jsonschema` errors are collected, and any validator exception is caught by the boundary.
+- Huge number: Python's integer-string limit raises `ValueError` inside the decoder. It is unreadable and becomes a rerun.
+- Lone surrogate: it decodes, so the encodability check rejects it before `file_review` writes the notes. That would otherwise be a `UnicodeEncodeError` out of `replace_file`.
+- `KeyboardInterrupt` / `SystemExit`: still propagate (`except Exception` only). `delegate`'s `BaseException` handler closes the run as before.
+- A name clash: `review_usage._log_turns` has a parameter named `events`, so the helper is imported there as `safe_events`. Caught by `test_review_usage`.
+- Verification: 70 importer test files, `pytest -q -n 4 -p no:cacheprovider`: 1096 passed. `ruff check specy_road tests scripts`: clean. `file-limits`: OK. `export --check`: OK.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).

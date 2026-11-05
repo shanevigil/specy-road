@@ -46,6 +46,7 @@ from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.orchestration_role_env import harness_env
 from specy_road.review_files import reviews_dir
+from specy_road.review_answer import events
 from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, ReviewRunBusy, answer_scratch, append_log,
                                             close_review_run, file_review, final_answer, review_run_lock, reviewer_env,
                                             run_text, snapshot, write_schema)
@@ -166,7 +167,7 @@ def _turn(h: _Harness, launch: Launch) -> dict[str, Any]:
         for line in proc.stdout:
             raw.write(line)
             out["tail"] = [*out["tail"][-19:], line.strip()]
-            for ev in h.adapter.parse_events(line, launch):
+            for ev in events(h.adapter, line, launch):   # total: untrusted output (review_answer)
                 out["session_id"] = ev.session_id or out["session_id"]
                 if ev.type == "error":
                     out["errors"].append(str((ev.detail or {}).get("message") or ev.summary))

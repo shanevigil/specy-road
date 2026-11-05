@@ -23,6 +23,7 @@ from typing import Any
 
 from specy_road.bundled_scripts.worker_cli_render import _sum_usage
 from specy_road.review_files import HISTORY_DIRNAME, reviews_dir
+from specy_road.review_answer import events as safe_events
 from specy_road.reviewer_run_failure import _read_json
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worker_adapter_base import Launch
@@ -100,7 +101,7 @@ def _log_turns(harness: str, log: Path, events: list[WorkerEvent]) -> list[dict[
         return []
     adapter, launch, turns = adapter_for(harness), Launch(argv=[]), []
     for line in log.read_text(encoding="utf-8", errors="replace").split("\n"):   # JSON Lines: U+2028 is no break
-        for p in adapter.parse_events(line, launch):
+        for p in safe_events(adapter, line, launch):   # total: untrusted output (review_answer)
             if p.usage is None:
                 continue
             detail = turn_usage({**dict.fromkeys(USAGE_FIELDS), **p.usage}, events)

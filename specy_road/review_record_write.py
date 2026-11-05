@@ -47,7 +47,7 @@ from typing import Any, Literal
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.generate_brief import index, load_nodes
-from specy_road.review_answer import (FILLED_BY_SPECY_ROAD, Rerun, drop_nulls, final_answer,  # noqa: F401 — re-exported
+from specy_road.review_answer import (FILLED_BY_SPECY_ROAD, Rerun, drop_nulls, events, final_answer,  # noqa: F401
                                       output_schema, stream_lines)
 from specy_road.review_files import render_front_matter, review_path
 from specy_road.integrity_removals import target_unplanned_removals
@@ -266,7 +266,7 @@ def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path, transcript: list
             raw.write(line)
             if transcript is not None:
                 transcript.append(line.rstrip("\n"))
-            for ev in adapter.parse_events(line, launch):
+            for ev in events(adapter, line, launch):   # total: untrusted output (review_answer)
                 print(f"{ev.type}: {ev.summary}", file=sys.stderr)
         return proc.wait()
 
