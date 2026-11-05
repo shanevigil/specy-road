@@ -196,6 +196,19 @@ def end_session(repo_root: Path, agent: str) -> bool:
     return False
 
 
+def end_sessions_for(repo_root: Path, worktree: Path, branch: str | None) -> list[Session]:
+    """End every record, live or expired, made in ``worktree`` (or below it) or on ``branch``: what a removed
+    worktree and its branch leave behind (the leaf's worker, reviewer and session entries)."""
+    wt = worktree.resolve()
+    gone = []
+    for s in list_sessions(repo_root, live_only=False):
+        inside = bool(s.worktree) and Path(str(s.worktree)).resolve().is_relative_to(wt)
+        if s.path and (inside or (branch and s.branch == branch)):
+            s.path.unlink(missing_ok=True)
+            gone.append(s)
+    return gone
+
+
 def overlaps(session: Session, paths: list[str]) -> list[tuple[str, str]]:
     """``(session_path, path)`` pairs where one contains the other."""
     out = []

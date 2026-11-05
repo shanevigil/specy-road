@@ -149,3 +149,32 @@ def run_session_cleanup(
         warnings=warnings,
         hint=None if wanted else _hint(ordered, remote, push=bool(args.push)),
     )
+
+
+def after_landing(args, repo_root: Path, emitter: EventEmitter, node_id: str | None) -> None:
+    """``worktree cleanup <ID>`` for the leaf just landed, then ``worktree sweep`` when
+    ``policy.worktree_sweep`` is ``between_leaves``. Never changes the session's exit code.
+
+    Skipped in milestone-subtree mode: finish lands on the rollup branch, which the integration branch
+    does not contain yet, so the cleanup would only refuse.
+    """
+    if not node_id or getattr(args, "milestone_subtree", None):
+        return
+    # Lazy: worktree_cleanup reaches this module through worktree_prune.
+    from specy_road.orchestration_config import effective_config  # noqa: PLC0415
+    from specy_road.worktree_cleanup import cleanup_after_land, sweep  # noqa: PLC0415
+    from specy_road.worktree_prune import PruneError  # noqa: PLC0415
+
+    try:
+        removed, lines = cleanup_after_land(repo_root, node_id)
+        emitter.emit("worktree_cleanup", node_id=node_id, removed=removed, lines=lines)
+    except PruneError:   # pickup ran in this checkout: no leaf worktree to retire
+        pass
+    except Exception as e:   # noqa: BLE001 — a tidy-up failure must not fail a session that did the work
+        emitter.emit("worktree_cleanup", node_id=node_id, removed=False, lines=[f"error: {e}"])
+    if effective_config(repo_root)[0]["policy"].get("worktree_sweep") != "between_leaves":
+        return
+    try:
+        emitter.emit("worktree_sweep", lines=sweep(repo_root, dry_run=False))
+    except Exception as e:   # noqa: BLE001 — as above
+        emitter.emit("worktree_sweep", lines=[f"error: {e}"])

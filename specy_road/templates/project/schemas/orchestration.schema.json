@@ -135,6 +135,10 @@
           "type": "boolean",
           "description": "When true, every Python test function the leaf adds or changes must fail at the merge base (with the head's changed test files overlaid) and pass at head, or pass on both when the node's planned_test_changes on the integration branch lists it as `preserve: <path>::<name>`; `specy-road review red-green` records the outcomes in work/reviews/<NODE_ID>/RED-GREEN.md and the review gate reads them for the commit under review. Default false."
         },
+        "worktree_sweep": {
+          "enum": ["off", "between_leaves"],
+          "description": "between_leaves: grind-session runs `specy-road worktree sweep` after each leaf it lands, removing every linked worktree the integration branch contains that nothing holds (hand-off files saved first). It runs `worktree cleanup <ID>` for the landed leaf either way. Default off."
+        },
         "garden_cadence_days": {
           "type": "integer",
           "minimum": 1,

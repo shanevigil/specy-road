@@ -32,7 +32,7 @@ from specy_road.bundled_scripts.grind_session_args import (
     parse_grind_session_args,
     pickup_args as _pickup_args,
 )
-from specy_road.bundled_scripts.grind_session_cleanup import run_session_cleanup
+from specy_road.bundled_scripts.grind_session_cleanup import after_landing, run_session_cleanup
 from specy_road.bundled_scripts.grind_session_implement import run_implement_hook
 from specy_road.bundled_scripts.grind_session_limits import (
     resolve_implement_limits,
@@ -335,6 +335,7 @@ def _run_loop(
         if terminal is not None:
             return terminal, True
         finished_branches.append(branch or "")
+        after_landing(args, repo_root, emitter, node_id)
         if args.until and node_id == args.until:
             emitter.emit("stopped", reason="until_reached", node_id=node_id)
             return EXIT_OK, False

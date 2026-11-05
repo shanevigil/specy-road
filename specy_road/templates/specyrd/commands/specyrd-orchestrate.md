@@ -5,6 +5,7 @@ description: "Use when coordinating roadmap leaves across workers on other harne
 ```bash
 cd "$(git rev-parse --show-toplevel)"
 specy-road session start --note "coordinating <PARENT or leaf ids>"
+specy-road worktree sweep --dry-run   # landed worktrees left from earlier sessions; drop --dry-run to remove them
 ```
 
 You are the **coordinator**. You do not implement, and you do not review. Workers do the implementing in their own sessions; you stay in this conversation.
@@ -31,7 +32,7 @@ Then, per batch:
 4. **Watch** with `worker sync`. When a `completion` event reports a READY file, run `specy-road handoff status <ID>`. **Stop the leaf** (`worker terminate <W>`) if the READY file lists a path outside the touch zones, and decide with a human whether to widen the zones or revert.
 5. **Steer** only through `specy-road worker message <W> --text "…"` (it resumes the native session with your follow-up). Never message a worker whose lease is `human`: a person is in that session; wait for `worker reclaim`. `worker interrupt` is declared unsupported by the CLI adapters — `terminate` loses the turn, say so before using it.
 6. **Review.** `specy-road review-packet <ID>`, then, after re-reading the active preferences, one fresh reviewer session per reviewer the plan named (or the one a preference names instead): `specy-road prompt <ID> --model <reviewer id> --role reviewer`. Reviewers read only the packet and file verdicts with `specy-road review record`. Never use this session as a reviewer, and never review a fix you wrote. A `block` goes back to the worker as a `worker message` with the required changes; a substantive fix restarts every review.
-7. **Close the gate** once `handoff status` shows the policy met: `specy-road mark-implementation-reviewed --yes` on the leaf's branch (it only commits an approval the recorded reviews already earned). Then `specy-road finish-this-task`, and `worker terminate <W>` if the worker is still idle on that leaf.
+7. **Close the gate** once `handoff status` shows the policy met: `specy-road mark-implementation-reviewed --yes` on the leaf's branch (it only commits an approval the recorded reviews already earned). Then `specy-road finish-this-task`, then `specy-road worktree cleanup <ID>` from the main checkout: it saves the leaf worktree's hand-off files, terminates the idle worker and removes the worktree, or says why it will not.
 8. Repeat for the next batch. `specy-road session end` when done.
 
 When a human wants to take over a worker: `specy-road worker handoff <W>` prints the native resume command for them; they run it, and `specy-road worker reclaim <W>` afterwards. Until then that worker is theirs.

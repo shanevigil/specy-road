@@ -122,3 +122,57 @@ specy-road chore garden --open-chores --under <PARENT>
 ```
 
 Each run, report or not, resets the cadence clock.
+
+## Cleanup
+
+```bash
+specy-road worktree cleanup <ID>            # after finish-this-task lands <ID>, from the main checkout
+specy-road worktree sweep --dry-run         # every landed worktree nothing holds: what would go
+specy-road worktree sweep                   # remove them; --delete-local-branch also drops their local branches
+```
+
+`worktree cleanup <ID>` first moves the hand-off files in the leaf worktree's
+own `work/reviews/<ID>/` (review `history/` copies, `RUN-*` logs) into the main
+checkout's shared hand-off directory. It never overwrites a different file: a
+same-named file with other bytes is kept beside it as
+`<name>.from-worktree<n>`. Then it runs `worktree prune`'s checks (branch merged
+into the remote's integration tip, nothing uncommitted, untracked or stashed,
+no running worker, no other repository's worktree inside) and also refuses on
+ignored files that are not regenerable: anything but `__pycache__/` and the
+tool caches, `node_modules/`, `work/prompt-*.md`, `work/brief-*.md`,
+`work/.on-complete-*.yaml` and `.specyrd/cache/`. A refusal removes nothing and
+prints one line per reason. Otherwise it terminates the leaf's idle worker,
+removes the worktree and ends the session records (worker, reviewer, session)
+tied to the worktree or its branch, so `session list` shows none for the leaf.
+
+`worktree sweep` looks at every linked worktree, wherever it lives
+(`work/.worktrees/`, `.claude/worktrees/`, a temp directory). It removes one
+only when the integration branch contains its branch (with commits of its
+own) or detached `HEAD`, no registry claim, non-terminal worker or live
+session holds it (`doctor`'s live rules), and the cleanup checks pass, saving
+hand-off files first. Each worktree gets one line: `removed`, `would remove`
+or `kept <path>: <reason>`. It ends orphaned workers first. Once a worktree is
+gone, its branch is no longer checked out anywhere, so branch pruning no
+longer skips it as `(worktree)`.
+
+Remote branches are never deleted. A local branch is deleted only with
+`--delete-local-branch`, and only when the integration branch contains it. The
+main checkout's own `work/` files are `finish-this-task`'s to clean.
+
+**Before `gh pr merge --delete-branch`:** deleting a leaf's branch does not
+look inside its worktree, which may still hold uncommitted or ignored hand-off
+files (`work/reviews/<ID>/history/`). Run `specy-road worktree cleanup <ID>`
+first; it saves those files before anything is removed.
+
+### In grind-session
+
+`grind-session` runs `worktree cleanup <ID>` after each leaf it lands (a
+`worktree_cleanup` event; never fatal). With
+
+```yaml
+# roadmap/orchestration.yaml
+policy:
+  worktree_sweep: between_leaves   # default: off
+```
+
+it also runs `worktree sweep` between leaves (a `worktree_sweep` event).

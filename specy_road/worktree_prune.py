@@ -208,7 +208,12 @@ def _remote_heads(main: Path, remote: str, branches: list[str]) -> tuple[dict[st
 
 def plan_prune(root: Path, node_id: str) -> PrunePlan:
     """What removing ``node_id``'s worktree would delete, and every reason it must not; :class:`PruneError` if absent."""
-    main, wt, branch = leaf_worktree(root, node_id)
+    return plan_worktree(*leaf_worktree(root, node_id))
+
+
+def plan_worktree(main: Path, wt: Path, branch: str) -> PrunePlan:
+    """:func:`plan_prune`'s checks for any linked worktree ``wt`` of ``main`` (the main checkout's project root);
+    ``branch`` is ``""`` for a detached one, whose ``HEAD`` alone is then judged."""
     plan, prefix = PrunePlan(main, wt, branch), project_prefix(main)
     plan.refusals += [f"worker {r.worker_id} is running in it; wait for it or "
                       f"{cmd('specy-road', 'worker', 'terminate', r.worker_id)}" for r in list_records(main)
@@ -220,7 +225,7 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
     base, remote, _warns = resolve_integration_defaults(main, explicit_base=None, explicit_remote=None)
     # The remote's own tips, not remote-tracking refs as they last stood: a peer may have pushed to the
     # leaf branch since they were merged, and the fetch refspec may not cover it.
-    tips, why = _remote_heads(main, remote, [base, branch])
+    tips, why = _remote_heads(main, remote, [b for b in (base, branch) if b])
     if why:
         plan.refusals.append(f"{why}; merged cannot be judged without it")
     elif base not in tips:
@@ -232,7 +237,7 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         heads = [("the worktree's HEAD", git_out(["rev-parse", "HEAD"], wt) or "HEAD")]
         heads += [(label, ref) for label, ref in ((branch, f"refs/heads/{branch}"),
                                                   (f"{remote}/{branch}", f"refs/remotes/{remote}/{branch}"))
-                  if git_out(["rev-parse", "--verify", "--quiet", ref], main)]
+                  if branch and git_out(["rev-parse", "--verify", "--quiet", ref], main)]
         if branch in tips:
             heads.append((f"{branch} on {remote}", tips[branch]))
         plan.refusals += [f"{label} is not merged into {target}" for label, ref in heads

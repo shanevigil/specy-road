@@ -39,6 +39,7 @@ DEFAULT_POLICY: dict[str, Any] = {
     "milestone_full_review": True,
     "delta_review": True,
     "reviewer_resumed_delta": False,
+    "worktree_sweep": "off",
 }
 DEFAULT_CONFIG: dict[str, Any] = {
     "version": 1,
