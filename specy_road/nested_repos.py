@@ -6,8 +6,9 @@ them, so ``worker delegate`` and ``do-next-available-task --worktree`` give
 each one a worktree of its own at the same path inside the leaf's worktree: on
 the leaf's branch when the leaf's touch zones cover the repository, detached at
 its integration tip otherwise (read-only in practice). ``worker reconcile``
-diffs them, ``finish-this-task`` in merge mode merges and pushes each leaf
-branch before the main repository moves, and ``review-packet`` adds their
+diffs them, ``finish-this-task`` in merge mode lands each leaf branch before
+the main repository moves (by push, locally or by hand, per entry's ``land``:
+:mod:`specy_road.nested_repos_land`), and ``review-packet`` adds their
 diffs. ``doctor`` and ``grind-session --plan`` list their branches whose
 commits no remote has (:func:`unpushed_branches`): finish pushes nothing else.
 
@@ -18,9 +19,7 @@ repository's files.
 
 from __future__ import annotations
 
-import re
-import shutil
-import tempfile
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -40,6 +39,9 @@ class NestedRepo:
     path: str                 # project-relative, no trailing slash
     integration_branch: str   # the main repository's unless the entry names its own
     remote: str
+    land: str = "push"        # push | local | manual: how finish lands the leaf's branch
+    base: str = "remote"      # remote | local: which integration tip worktrees start from
+    refuse_behind: bool = False   # base local: refuse a local branch its remote-tracking one is ahead of
 
 
 def nested_repos(repo_root: Path) -> list[NestedRepo]:
@@ -51,7 +53,8 @@ def nested_repos(repo_root: Path) -> list[NestedRepo]:
     for item in data.get("nested_repos") or []:
         spec = {"path": item} if isinstance(item, str) else item
         out.append(NestedRepo(nested_repo_path(item), spec.get("integration_branch", data["integration_branch"]),
-                              spec.get("remote", data["remote"])))
+                              spec.get("remote", data["remote"]), spec.get("land", "push"),
+                              spec.get("base", "remote"), bool(spec.get("refuse_behind_remote", False))))
     return out
 
 
@@ -117,18 +120,37 @@ def existing_worktree_problem(src: Path, dest: Path, branch: str | None, tip: st
     return None
 
 
+def nested_base_ref(repo: Path, nr: NestedRepo) -> str | None:
+    """The integration ref ``nr`` starts from: the local branch only for ``base: local``, else :func:`base_ref`."""
+    if nr.base != "local":
+        return base_ref(repo, nr.remote, nr.integration_branch)
+    ref = f"refs/heads/{nr.integration_branch}"
+    return ref if git_text(["rev-parse", "--verify", "--quiet", ref], repo) else None
+
+
 def _source_and_tip(repo_root: Path, nr: NestedRepo) -> tuple[Path, str]:
     """The configured repository and the ref of its integration tip, or :class:`NestedRepoError`.
 
     No ref for the configured branch (misspelt, or never fetched) is refused:
     any other commit, ``HEAD`` included, would give the worker code from a
-    branch nobody named.
+    branch nobody named. With ``base: local`` the tip is the local branch, so
+    local-only commits reach the worktree; one its remote-tracking branch is
+    ahead of is refused only when the entry sets ``refuse_behind_remote``.
     """
     src = repo_root / nr.path
     if not is_repo_top(src):
         raise NestedRepoError(f"nested repo {nr.path!r} (roadmap/git-workflow.yaml): {src} is not "
                               "the top of a git repository")
-    tip = base_ref(src, nr.remote, nr.integration_branch)
+    tip = nested_base_ref(src, nr)
+    if nr.base == "local" and not tip:
+        raise NestedRepoError(f"nested repo {nr.path!r}: base: local but {src} has no local {nr.integration_branch}; "
+                              "create it, or fix integration_branch/base for it in roadmap/git-workflow.yaml")
+    remote_ref = f"refs/remotes/{nr.remote}/{nr.integration_branch}"
+    behind = git_text(["rev-list", "--count", f"{tip}..{remote_ref}"], src) if tip and nr.refuse_behind else None
+    if behind and behind != "0":
+        raise NestedRepoError(f"nested repo {nr.path!r}: local {nr.integration_branch} is {behind} commit(s) behind "
+                              f"{nr.remote}/{nr.integration_branch} in {src} (refuse_behind_remote); merge or "
+                              "rebase it there, then re-run")
     if not tip:
         raise NestedRepoError(f"nested repo {nr.path!r}: neither {nr.remote}/{nr.integration_branch} nor a local "
                               f"{nr.integration_branch} exists in {src}; fetch it, or fix integration_branch/remote "
@@ -156,8 +178,8 @@ def add_nested_worktrees(repo_root: Path, leaf_root: Path, branch: str, zones) -
         if dest.exists():
             problem = existing_worktree_problem(src, dest, branch if covered else None, tip)
             if problem:
-                raise NestedRepoError(f"nested repo {nr.path!r}: {problem}; remove it (`git -C {src} worktree "
-                                      "remove <path>`, or delete the directory), then re-run")
+                raise NestedRepoError(f"nested repo {nr.path!r}: {problem}; remove it (`git -C {shlex.quote(str(src))} "
+                                      f"worktree remove {shlex.quote(str(dest))}`, or delete the directory), then re-run")
             continue
         if covered:
             how = f"on {branch}"
@@ -225,7 +247,7 @@ def nested_worktree_dirs(repo_root: Path, leaf_root: Path) -> list[tuple[str, Pa
 
 
 def _merge_base(repo: Path, nr: NestedRepo, tip: str) -> str | None:
-    base = base_ref(repo, nr.remote, nr.integration_branch)
+    base = nested_base_ref(repo, nr)
     return git_text(["merge-base", base, tip], repo) if base else None
 
 
@@ -281,114 +303,11 @@ def nested_zone_paths(repo_root: Path, zones) -> list[str]:
     return out
 
 
-def _land_one(repo: Path, nr: NestedRepo, feature_branch: str) -> str | None:
-    """Merge ``feature_branch`` onto ``remote/integration_branch`` in a temporary worktree and push; why not, or ``None``.
-
-    No checkout of the repository is touched: the merge is made detached and
-    pushed straight to the remote. A branch already on the remote's tip (a
-    re-run after the main repository failed) is skipped.
-    """
-    ib, rm = nr.integration_branch, nr.remote
-    code, out = git_code(["fetch", rm], repo)
-    if code != 0:
-        return f"git fetch {rm} failed: {out}"
-    tip = git_text(["rev-parse", "--verify", "--quiet", f"refs/remotes/{rm}/{ib}"], repo)
-    if not tip:
-        return f"no {rm}/{ib} to merge into"
-    if git_ok(["merge-base", "--is-ancestor", feature_branch, tip], repo)[0]:
-        return None
-    holder = Path(tempfile.mkdtemp(prefix="specy-road-nested-land-"))
-    tree = holder / "tree"
-    try:
-        code, out = git_code(["worktree", "add", "--detach", str(tree), tip], repo)
-        if code != 0:
-            return f"could not create a worktree of {tip[:12]}: {out}"
-        code, out = git_code(["merge", "--no-ff", "--no-edit", feature_branch], tree)
-        if code != 0:
-            git_code(["merge", "--abort"], tree)
-            return f"merging {feature_branch} into {rm}/{ib} failed: {out}"
-        code, out = git_code(["push", rm, f"HEAD:refs/heads/{ib}"], tree)
-        if code != 0:
-            return f"git push {rm} {ib} failed: {out}"
-        print(f"[ok] nested repo {nr.path}: merged {feature_branch} into {ib} and pushed to {rm}")
-        return None
-    finally:
-        git_code(["worktree", "remove", "--force", str(tree)], repo)
-        shutil.rmtree(holder, ignore_errors=True)
-
-
-def land_nested_branches(repo_root: Path, feature_branch: str) -> tuple[bool, str]:
-    """Merge and push ``feature_branch`` in every nested repository that has it, before the main repository.
-
-    ``(True, "")`` when each landed or had nothing to land (a repository
-    without the branch); the first failure stops here, so the main repository
-    has not moved. A configured path that is not a repository is a failure,
-    not nothing to land: whether it held the leaf's work cannot be told.
-    Repositories already landed stay landed: a re-run skips them.
-    """
-    for nr in nested_repos(repo_root):
-        repo = repo_root / nr.path
-        if not is_repo_top(repo):
-            err = (f"{repo} is not the top of a git repository (roadmap/git-workflow.yaml names it), so its "
-                   "leaf branch cannot be landed; restore it or drop it from nested_repos")
-        elif not _has_branch(repo, feature_branch):
-            continue
-        else:
-            err = _land_one(repo, nr, feature_branch)
-        if err:
-            return False, (f"nested repo {nr.path!r}: {err}. The main repository was not merged; "
-                           "fix it there, then re-run (nested repos already landed are skipped)")
-    return True, ""
-
-
-def _unpushed(repo: Path, branch: str, upstream: str, track: str, has_remote: bool) -> tuple[str, int]:
-    """``(state, commits)`` for one local branch; ``commits`` 0 when every one is on a remote."""
-    if not has_remote:
-        return "no remote", int(git_text(["rev-list", "--count", f"refs/heads/{branch}"], repo) or 0)
-    if not upstream or track == "gone":
-        count = git_text(["rev-list", "--count", f"refs/heads/{branch}", "--not", "--remotes"], repo)
-        return "no upstream", int(count or 0)
-    ahead = re.search(r"ahead (\d+)", track)
-    return "ahead", int(ahead.group(1)) if ahead else 0
-
-
-def unpushed_branches(repo_root: Path) -> list[dict]:
-    """Each local branch of a configured nested repository holding commits its remotes lack.
-
-    ``{"repo", "branch", "commits", "state", "upstream"}``: ``state`` is
-    ``ahead`` (``commits`` past ``upstream``), ``no upstream`` (``commits`` on
-    no remote branch; also when the upstream was deleted) or ``no remote`` (the
-    repository has none, so every commit counts). A branch with nothing to push
-    is left out, and so is a configured path that is not a repository: delegate
-    and finish report that one.
-    """
-    fmt = "%(refname:short)%09%(upstream:short)%09%(upstream:track,nobracket)"
-    out = []
-    for nr in nested_repos(repo_root):
-        repo = repo_root / nr.path
-        if not is_repo_top(repo):
-            continue
-        has_remote = bool(git_text(["remote"], repo))
-        for line in (git_text(["for-each-ref", f"--format={fmt}", "refs/heads"], repo) or "").splitlines():
-            branch, upstream, track = (line.split("\t") + ["", ""])[:3]   # git_text strips trailing tabs
-            state, commits = _unpushed(repo, branch, upstream, track, has_remote)
-            if commits:
-                out.append({"repo": nr.path, "branch": branch, "commits": commits, "state": state,
-                            "upstream": upstream if state == "ahead" else None})
-    return out
-
-
-def describe_unpushed(u: dict) -> str:
-    """One line for a :func:`unpushed_branches` entry, naming the repository, branch and commit count."""
-    where = {"ahead": f"ahead of {u['upstream']}", "no upstream": "on no remote branch (no upstream)",
-             "no remote": "in a repository with no remote"}[u["state"]]
-    return f"{u['repo']}: {u['branch']} has {u['commits']} commit(s) {where}"
-
-
-def report_unpushed(repo_root: Path) -> None:
-    """``doctor``'s advisory listing of :func:`unpushed_branches`; nothing when there are none."""
-    found = unpushed_branches(repo_root)
-    if found:
-        print("Nested repos with commits no remote has (finish pushes only the leaf branch it lands):")
-        for u in found:
-            print(f"  {describe_unpushed(u)}")
+# Landing lives in its own module (room under the line cap); re-exported here for existing callers.
+# Imported last: nested_repos_land imports this module's names.
+from specy_road.nested_repos_land import (  # noqa: E402, F401
+    describe_unpushed,
+    land_nested_branches,
+    report_unpushed,
+    unpushed_branches,
+)

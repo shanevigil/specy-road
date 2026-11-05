@@ -1,0 +1,479 @@
+{
+  "nodes": [
+    {
+      "codename": "rc3-multi-harness-adoption-friction",
+      "dependencies": [],
+      "id": "M15",
+      "node_key": "94bbba0e-94c4-4159-8636-0ea9c815ff0a",
+      "planning_dir": "planning/M15_rc3-multi-harness-adoption-friction_94bbba0e-94c4-4159-8636-0ea9c815ff0a.md",
+      "sibling_order": 14,
+      "status": "Not Started",
+      "title": "rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "acceptance": [
+        "specy_road/reviewer_auth.py decides a claude-code reviewer's launch mode once, for both review delegate and prompt --channel cli: bare only when the reviewer's environment has ANTHROPIC_API_KEY or the user settings bare mode reads define apiKeyHelper; otherwise explicit mode (--setting-sources user and --strict-mcp-config with no --mcp-config, so no repository hooks, project settings or MCP servers load) which reads the subscription login; the RUN record and the filed REVIEW carry the mode used (bare or explicit)",
+        "Explicit mode keeps M8.3's reviewer restrictions (the --disallowedTools list, the structured-output schema, the hand-off --add-dir); a test asserts the argv for each mode, that explicit argv never contains --bare, and that bare is never chosen without a key or apiKeyHelper. The key's value is never printed or logged",
+        "When a roster entry or flag forces bare and no key is available, review delegate and prompt --channel cli refuse before launching (no RUN record is opened, exit 1) and name the fixes: export ANTHROPIC_API_KEY, configure apiKeyHelper, or let specy-road choose explicit mode; orchestrate plan prints one 'reviewer auth:' notice per such claude-code reviewer entry instead of staffing it silently",
+        "The note about bare mode and subscription logins is printed by review delegate as well as prompt, and docs say next to billing_route that a claude_subscription reviewer runs in explicit mode and when channels.cli is still needed. Out of scope: a network authentication probe, and other harnesses' login checks"
+      ],
+      "codename": "claude-code-reviewer-works-on-a-subscription-login",
+      "dependencies": [
+        "2278f4ad-6118-44da-bca8-39d904afee8d"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.2",
+      "node_key": "4dafa22a-727f-4d5e-b954-f956227c150a",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.2_claude-code-reviewer-works-on-a-subscription-login_4dafa22a-727f-4d5e-b954-f956227c150a.md",
+      "sibling_order": 2,
+      "status": "Not Started",
+      "title": "A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch",
+      "touch_zones": [
+        "specy_road/reviewer_auth.py",
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/review_delegate.py",
+        "specy_road/bundled_scripts/role_prompt_cli.py",
+        "specy_road/orchestrate_plan.py",
+        "docs/orchestration-reviewer-output.md",
+        "docs/orchestration-models.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road prompt --channel cli writes the prompt and prints the command it would run, and starts no process unless --run is given, for every role (executor, reviewer, rca); --help for --channel and --run says which one launches; a test asserts no subprocess starts without --run; CHANGELOG.md names the behaviour change",
+        "A reviewer --run builds its command from the roster entry: a claude-code, codex or cursor entry without channels.cli uses its adapter's read-only reviewer command (M8.3) with the entry's model; it never falls back to the profile's access.cli example; a model that resolves to no API id (unknown) and a custom reviewer command containing --force, --yolo or --dangerously-skip-permissions are refused before launch with the reason",
+        "A reviewer --run runs in the leaf's own worktree (the worktree that has the claimed branch checked out), never in a checkout on the integration branch; with no such worktree it refuses and names `--worktree PATH` or the pickup/worktree command that creates one; a test runs it from the main checkout and asserts the launch cwd",
+        "specy_road/review_model_check.py compares the model the harness reported (the init or result event's model, as worker usage already parses it) with the roster entry's model after normalising case, separators and display names; a filed record carries harness_model, and on a real mismatch it carries model_mismatch and review_eligible.py excludes it from the gate with reason 'harness ran a different model'; an unreported model is a warning only; tests cover match, display-name match, mismatch and unreported",
+        "Out of scope: the paste and subagent channels, review delegate's launch path (it already uses the roster entry and worktree) beyond sharing review_model_check"
+      ],
+      "codename": "prompt-channel-cli-launches-nothing-without-run",
+      "dependencies": [
+        "2278f4ad-6118-44da-bca8-39d904afee8d"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.3",
+      "node_key": "7e865197-c8d6-4ce4-a2d1-dc2b974a17d0",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.3_prompt-channel-cli-launches-nothing-without-run_7e865197-c8d6-4ce4-a2d1-dc2b974a17d0.md",
+      "sibling_order": 3,
+      "status": "Not Started",
+      "title": "prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/role_prompt_cli.py",
+        "specy_road/review_record_write.py",
+        "specy_road/review_model_check.py",
+        "specy_road/review_eligible.py",
+        "specy_road/templates/specyrd/commands/specyrd-prompt.md",
+        "docs/orchestration-reviewer-output.md",
+        "CHANGELOG.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road reconcile-branch [<ID>], run in a leaf's worktree on its feature branch, fetches the integration branch, merges it with finish_pr_merge.merge_integration_resolving_bookkeeping (registry.yaml by rule, roadmap.md and roadmap-context.md regenerated with export and digest), commits the merge and pushes the branch when it has an upstream; any conflict outside those three paths aborts the merge, names the paths and exits 1 with the branch unchanged",
+        "A test makes two leaves under on_complete: pr, merges the first into the integration branch, then runs reconcile-branch on the second and asserts: no conflict markers, validate, export --check and digest --check pass on the result, and code files are untouched; a second test with a code conflict asserts the refusal and an unchanged HEAD",
+        "Pickup's register commit on the integration branch includes the regenerated roadmap-context.md (and roadmap.md when the claim changes it), so digest --check passes on the integration branch and on the new feature branch right after pickup; the commit still changes nothing else (abort-task-pickup's check of its own registration commit accepts those two generated files); do_next_task.py stays within 400 lines by moving the register step to do_next_task_register.py",
+        "docs/git-workflow-parallel-prs.md (linked from one line in docs/git-workflow.md, which is near its 400-line cap) and the finish command stub say when to run reconcile-branch (a PR-mode branch whose PR shows bookkeeping conflicts after another leaf merged), and that forge merges do not run custom git merge drivers, which is why the fix is a command, not .gitattributes. Out of scope: a .gitattributes merge driver, and resolving code conflicts"
+      ],
+      "codename": "parallel-pr-leaves-reconcile-bookkeeping-by-rule",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.4",
+      "node_key": "b1a7472a-784c-4b57-a15e-75d664b9e942",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.4_parallel-pr-leaves-reconcile-bookkeeping-by-rule_b1a7472a-784c-4b57-a15e-75d664b9e942.md",
+      "sibling_order": 4,
+      "status": "Not Started",
+      "title": "Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current",
+      "touch_zones": [
+        "specy_road/reconcile_branch.py",
+        "specy_road/finish_pr_merge.py",
+        "specy_road/cli.py",
+        "specy_road/cli_usage.py",
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/bundled_scripts/do_next_task_register.py",
+        "docs/git-workflow.md",
+        "docs/git-workflow-parallel-prs.md",
+        "specy_road/templates/specyrd/commands/specyrd-finish.md",
+        "tests/",
+        "specy_road/bundled_scripts/reconcile_branch_cli.py",
+        "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
+        "specy_road/bundled_scripts/abort_task_pickup.py",
+        "specy_road/bundled_scripts/abort_task_pickup_own_commit.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "policy.host_effects in roadmap/orchestration.yaml (forbid | allow, default forbid) and an optional policy.protected_services list (name plus host:port or URL) are schema-checked; with forbid, the executor and reviewer prompts carry one block (from specy_road/host_effects.py) saying not to launch GUI apps or packaged builds, not to focus or script windows, and not to call or change the listed services or any running dev server the worker did not start; a test asserts the block in both prompts and its absence under allow",
+        "Under forbid, the tool-call guard (new tool_call_guard_host.py; tool_call_guard.py changes only its call line) denies open, xdg-open, osascript, electron and an app bundle's binary, and curl, wget or httpie requests to a protected service's host:port, each with a one-line reason naming policy.host_effects; tests per denied shape plus allowed shapes (curl to an unlisted host, open inside a quoted string argument)",
+        "The specyrd agents-team.md starter gains one commented line showing a project's host-effects rule; docs/orchestration-host-effects.md documents the policy, the denied shapes, what the guard cannot see (a test suite that itself launches an app or calls a service), and that a human acceptance run should use services the worker cannot reach",
+        "worker message <W> --interrupt stops the running turn and resumes the session with the message, on harnesses whose adapter can resume (claude-code, cursor, codex); on others it refuses and says the message will queue; the worker record logs the interrupt; a test with a fake harness asserts the turn ends and the next turn's prompt is the message. Out of scope: network sandboxing, and blocking effects inside test code"
+      ],
+      "codename": "host-effects-policy-and-interruptible-worker-messages",
+      "dependencies": [
+        "2278f4ad-6118-44da-bca8-39d904afee8d",
+        "e008e1d8-42d1-4ee0-a067-1f24f880c5cf"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.5",
+      "node_key": "da5688ff-f280-411e-9922-82b5c9c1c1d6",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.5_host-effects-policy-and-interruptible-worker-messages_da5688ff-f280-411e-9922-82b5c9c1c1d6.md",
+      "sibling_order": 5,
+      "status": "Not Started",
+      "title": "Host effects policy: workers and reviewers do not take over the screen or change shared services, the guard denies such commands, and a message can interrupt a turn",
+      "touch_zones": [
+        "specy_road/host_effects.py",
+        "specy_road/tool_call_guard.py",
+        "specy_road/tool_call_guard_host.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/templates/specyrd/agents-team.md",
+        "specy_road/worker_ops_message.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/bundled_scripts/worker_cli_message.py",
+        "docs/orchestration-host-effects.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the leaf has an accepted RCA record (RCA-<n>.md accepted under M12.1's next-step rules) newer than its oldest carried blocking review, the ## Rework section starts with that RCA's design and required changes (from specy_road/rework_rca.py), labelled as the governing design, and says that a review's suggested fix contradicting it is overruled; reviews follow it, each marked as filed before or after the RCA",
+        "worker delegate --rework's stderr note names the RCA it carries; when an accepted RCA exists that the prompt would not carry (unreadable, or no design section), --rework refuses and names the file instead of sending a prompt without it",
+        "A test reproduces the reported case: a blocking review proposing design X, then an accepted RCA choosing design Y; the prompt contains Y before X and the overruling sentence, and a leaf with no RCA gets today's prompt byte for byte. Out of scope: deciding which RCA is accepted (M12.1) and the class audit (M14.11)"
+      ],
+      "codename": "rework-prompt-carries-the-accepted-rca",
+      "dependencies": [
+        "62e2e3ed-1a48-44d8-b140-1911b0e7fed9",
+        "e008e1d8-42d1-4ee0-a067-1f24f880c5cf"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.6",
+      "node_key": "c80c3636-1dd9-4001-8520-f0c4e6402be4",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.6_rework-prompt-carries-the-accepted-rca_c80c3636-1dd9-4001-8520-f0c4e6402be4.md",
+      "sibling_order": 6,
+      "status": "Not Started",
+      "title": "The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt_rework.py",
+        "specy_road/rework_rca.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road file-limits --write-baseline adds override_limits entries (one per bucket, named baseline-<date>-<n>) to the project's file-limits.yaml so every file failing today passes at its current worst size, bucketing files by their worst file length and worst function length rounded up (to 50 lines for files, 20 for functions); files not failing get no entry, so new files keep the default caps; --dry-run prints the entries; existing entries and comments in the YAML are kept; tests pin the buckets and that a rerun adds nothing",
+        "A failing file-limits run ends with one line naming override_limits in the config file and --write-baseline; a passing run prints no such line",
+        "upgrade's final step runs file-limits and prints the failure count before and after the version change when it can tell them apart (the stamped version's measurement is not available, so it prints the count and, when it is not zero, says that measurement rules may have changed and points at --write-baseline); it never fails upgrade on file-limits. Out of scope: files that upgrade's own writes push over the cap (M13.2), and the CHANGELOG line (release notes are human-owned)"
+      ],
+      "codename": "file-limits-baseline-and-upgrade-report",
+      "dependencies": [
+        "1726dab4-730d-414d-a79d-fef0b03b8983"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.7",
+      "node_key": "10f2bb3c-b2d0-497a-9f18-c94eda09f011",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.7_file-limits-baseline-and-upgrade-report_10f2bb3c-b2d0-497a-9f18-c94eda09f011.md",
+      "sibling_order": 7,
+      "status": "Not Started",
+      "title": "file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count",
+      "touch_zones": [
+        "specy_road/file_limits_engine.py",
+        "specy_road/file_limits_baseline.py",
+        "specy_road/bundled_scripts/validate_file_limits.py",
+        "specy_road/bundled_scripts/upgrade.py",
+        "docs/file-limits.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "No promote output (sheet, stdout, docs/brainstorming.md, which is at 391 lines: reword, add no net lines) says Approach is filled in at pickup; the promote placeholder under ## Approach (planning_sheet_bootstrap.PROMOTE_PLACEHOLDER; brainstorm_promote.py is at its 400-line cap and must not grow) says pickup skips the leaf until it is written and names specy-road author-approach <ID>; a test asserts the placeholder text and that pickup's skip reason names the same command",
+        "specy-road author-approach <ID> [<ID>...] prints, for each leaf whose ## Approach is still a placeholder, the node's title, acceptance, touch zones and ancestor Intent, plus a prompt to write ## Approach (constraints, steps, how to verify) and commit only the sheet; with -o it writes work/prompt-approach-<ID>.md; a leaf with an authored Approach is reported and skipped; it changes no file except with -o",
+        "Pickup's guard is unchanged (M3.1: scaffold sheets are still skipped unless --allow-scaffold-planning); orchestrate plan and grind-session --plan list such leaves under one 'needs Approach' line naming author-approach. Out of scope: generating an Approach automatically"
+      ],
+      "codename": "promoted-leaf-is-never-stuck-on-an-empty-approach",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.8",
+      "node_key": "4c08d324-6253-4875-ac9e-b0933d17f69c",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.8_promoted-leaf-is-never-stuck-on-an-empty-approach_4c08d324-6253-4875-ac9e-b0933d17f69c.md",
+      "sibling_order": 8,
+      "status": "Not Started",
+      "title": "A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it",
+      "touch_zones": [
+        "specy_road/bundled_scripts/brainstorm_promote.py",
+        "specy_road/bundled_scripts/planning_sheet_bootstrap.py",
+        "specy_road/bundled_scripts/author_approach.py",
+        "specy_road/planning_scaffold_check.py",
+        "specy_road/cli.py",
+        "specy_road/cli_usage.py",
+        "docs/brainstorming.md",
+        "tests/",
+        "specy_road/bundled_scripts/do_next_task_leaf_guards.py",
+        "specy_road/bundled_scripts/session_plan_render.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "No adapter puts the prompt text on the command line: cursor's executor, resume and reviewer launches (M8.3's --mode ask included) pass a short instruction naming the prompt file, or stdin, as claude-code's STDIN_INSTRUCTION does; a test for every adapter and every role (executor, reviewer, rca) builds a launch from a 200 KiB prompt and asserts no argv element exceeds 32 KiB",
+        "A launch whose argv would still exceed the OS single-argument limit (a custom channels.cli with \"<prompt>\") is refused before exec with the size and the {prompt} placeholder fix, never as Errno 7 from the harness",
+        "specy_road/harness_binary.py resolves the harness binary (claude, agent, codex) before launch: a roster entry's optional harness_bin, else PATH, else the harness's documented install dirs (~/.local/bin for the Cursor agent CLI); not found means a refusal naming the dirs searched and harness_bin, not exit 127; the resolved path is what runs and is recorded. Out of scope: the cursor reviewer's --force (M8.3 already removes it)"
+      ],
+      "codename": "harness-launches-survive-large-prompts-and-binaries-off-path",
+      "dependencies": [
+        "2278f4ad-6118-44da-bca8-39d904afee8d"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.9",
+      "node_key": "5e31fbd5-36c8-4fd8-bc36-15cd9cc478f9",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.9_harness-launches-survive-large-prompts-and-binaries-off-path_5e31fbd5-36c8-4fd8-bc36-15cd9cc478f9.md",
+      "sibling_order": 9,
+      "status": "Not Started",
+      "title": "Harness launches survive large prompts and a harness binary off PATH, for every role",
+      "touch_zones": [
+        "specy_road/worker_adapter_cursor.py",
+        "specy_road/worker_adapter_codex.py",
+        "specy_road/worker_adapter_base.py",
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/harness_binary.py",
+        "docs/orchestration-harness-launch.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "orchestrate plan --roster-from-worktree plans with the working tree's roadmap/orchestration.yaml, prints 'DRY RUN: roster from the working tree, nothing may launch from this plan' first, and its --json carries roster_ref: worktree; worker delegate, review delegate and grind-session never accept it; a test asserts the banner and that delegate still reads the integration-branch roster",
+        "models list says which roster it read (the ref) and, when the working tree's roster differs, prints the added, removed and changed entry ids (and changed fields) as 'uncommitted roster changes'",
+        "The gitignored roadmap/orchestration.local.yaml may add roster entries under roster_add for this clone (availability overlays stay as they are); planning and delegation on this clone use them, labelled local in orchestrate plan; an added entry never overrides a committed id, and its access.cli or channels.cli is refused unless the clone sets allow_local_cli: true in the same file; tests cover add, id clash and the cli refusal. Out of scope: sharing local entries between clones"
+      ],
+      "codename": "try-a-roster-before-it-lands",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.10",
+      "node_key": "2cebdd4b-b1e0-4a40-9b9b-8768fc530b26",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.10_try-a-roster-before-it-lands_2cebdd4b-b1e0-4a40-9b9b-8768fc530b26.md",
+      "sibling_order": 10,
+      "status": "Not Started",
+      "title": "Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff",
+      "touch_zones": [
+        "specy_road/orchestration_pinned.py",
+        "specy_road/roster_local.py",
+        "specy_road/orchestrate_plan.py",
+        "specy_road/bundled_scripts/orchestrate_cli.py",
+        "specy_road/bundled_scripts/models_cli.py",
+        "docs/orchestration-models.md",
+        "docs/orchestration-roster.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road models roster --executor <profile-id> --reviewer <profile-id> [...] prints (or with --write adds to roadmap/orchestration.yaml) roster entries with id, family, profile, harness and roles filled from the shipped profiles, in the exact profile: form validate accepts; an unknown profile id is refused with the nearest ids; a test round-trips its output through validate",
+        "validate resolves every roster profile: value against model-profiles/ locally (new roster_profile_check.py; validate_roadmap_checks.py, at 399 lines, changes only a call line) and prints the accepted form for a malformed one (e.g. a family/id string); orchestrate plan then reports an entry dropped for an invalid profile as 'invalid profile: <value>, accepted form <form>' and suppresses the 'no eligible executor ... may_process' hint that only follows from that drop; tests for both",
+        "Roster ids in the starter orchestration.yaml and in docs/orchestration*.md match the shipped profile ids (claude-opus-5-5, not claude-opus-5.5); a test fails when a docs or starter roster example names an id with no shipped profile or alias",
+        "orchestrate plan prints 'coordinator: this session' when no coordinator is rostered and documents how to roster a model coordinator; orchestrate plan --spread assigns executors round-robin among the capable, available entries instead of always the cheapest, deterministically by leaf order; a test pins the assignment for three leaves and two capable entries. orchestrate_plan.py stays within 400 lines by moving assignment to orchestrate_assign.py. Out of scope: cost-weighted or load-aware assignment"
+      ],
+      "codename": "working-roster-in-one-command-and-validated-profiles",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.11",
+      "node_key": "d333b89b-eb44-4636-a350-284149c4a490",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.11_working-roster-in-one-command-and-validated-profiles_d333b89b-eb44-4636-a350-284149c4a490.md",
+      "sibling_order": 11,
+      "status": "Not Started",
+      "title": "A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors",
+      "touch_zones": [
+        "specy_road/bundled_scripts/models_cli.py",
+        "specy_road/roster_generate.py",
+        "specy_road/orchestration_pinned.py",
+        "specy_road/orchestrate_plan.py",
+        "specy_road/orchestrate_assign.py",
+        "specy_road/bundled_scripts/orchestrate_cli.py",
+        "specy_road/roster_profile_check.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py",
+        "specy_road/templates/project/roadmap/orchestration.yaml",
+        "docs/orchestration.md",
+        "docs/orchestration-models.md",
+        "docs/orchestration-workers.md",
+        "docs/orchestration-roster.md",
+        "docs/design-notes/model-aware-orchestration-proposal.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Overlap between ready leaves ignores a configured set of shared zones (default: planning/ and shared/ as directory zones; a project changes it with grind.shared_zones in roadmap/git-workflow.yaml or the orchestration policy, schema-checked) when the leaves' other zones are disjoint; two leaves both naming the same file under a shared zone still overlap",
+        "A test with 30 ready leaves that each list planning/ and shared/ plus disjoint code zones yields parallel batches limited only by the batch size, and one with two leaves naming the same planning sheet keeps them apart; the registry overlap warning in validate applies the same rule",
+        "grind-session --plan output names the shared zones it ignored once. docs/grind-session.md stays within its 500-line override. Out of scope: merging edits to the same file"
+      ],
+      "codename": "shared-doc-zones-do-not-serialize-batches",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.12",
+      "node_key": "e6e3dd29-22ab-4b59-9ca3-2ecd479879d8",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.12_shared-doc-zones-do-not-serialize-batches_e6e3dd29-22ab-4b59-9ca3-2ecd479879d8.md",
+      "sibling_order": 12,
+      "status": "Not Started",
+      "title": "Shared documentation zones do not serialize grind-session batches",
+      "touch_zones": [
+        "specy_road/bundled_scripts/session_plan_render.py",
+        "specy_road/bundled_scripts/session_plan.py",
+        "specy_road/shared_zones.py",
+        "specy_road/bundled_scripts/validate_registry_overlap.py",
+        "docs/grind-session.md",
+        "tests/",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "specy_road/bundled_scripts/session_plan_git.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "worker sync --wait --until completion|error|intervention (comma list; default any, as today) returns only on those event types, keeping --timeout (worker_state.wait_for_event gains a type filter; worker_state.py is at 389 lines, so a helper goes in worker_cli_sync.py); a test with output events then a completion event asserts it returns on the completion. worker_cli.py stays within 400 lines by moving sync to worker_cli_sync.py",
+        "Sync output collapses consecutive output events with no text beyond '(tool use)' into one line '#5-#10 output: 6 tool uses' per worker; --verbose shows each; a test pins the collapsed line",
+        "worker delegate --rework treats a completed (finished, not running) worker as ended and proceeds, naming it in its note; only a running or resumable-in-progress worker refuses",
+        "When a completion event says the READY file is missing for the new HEAD, the event line offers `worker resume <W> --ready-only`, which resumes the session with a short prompt to write READY for that commit and nothing else; a test asserts the prompt text",
+        "Pickup's five-line grind-session hint prints once per checkout (a marker under .specyrd/cache/) instead of on every pickup. Out of scope: changing what events workers emit"
+      ],
+      "codename": "worker-loop-friction-sync-until-and-ready-only-resume",
+      "dependencies": [
+        "e008e1d8-42d1-4ee0-a067-1f24f880c5cf"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.13",
+      "node_key": "c740f23d-72c3-41de-88c6-0ee0a7663ce4",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.13_worker-loop-friction-sync-until-and-ready-only-resume_c740f23d-72c3-41de-88c6-0ee0a7663ce4.md",
+      "sibling_order": 13,
+      "status": "Not Started",
+      "title": "Worker loop friction: sync waits for the events that matter, tool-use noise collapses, rework after a completed worker, a READY-only resume, a quieter pickup",
+      "touch_zones": [
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/bundled_scripts/worker_cli_sync.py",
+        "specy_road/bundled_scripts/worker_cli_render.py",
+        "specy_road/worker_state.py",
+        "specy_road/bundled_scripts/role_prompt_rework.py",
+        "specy_road/on_complete_pickup.py",
+        "docs/orchestration-workers.md",
+        "docs/orchestration-worker-sync.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "chore start <slug> --worktree creates the branch (chore/<slug>) and the worktree when they do not exist, from the integration branch's tip, and runs env_setup there as pickup --worktree does (worktree_env.setup_worktree_env); a test asserts branch, worktree and the env_setup marker",
+        "chore zones <slug> --add <path> (repeatable) widens a chore's touch zones and records who and when; worker reconcile then accepts files under the added zone; a test covers reconcile before and after",
+        "review-packet, prompt --role reviewer and review record accept a chore slug wherever they accept a node id (resolved through review_target, the chore's base..head), and chore close records 'reviewed' with the verdict when a review exists for the chore's head; tests for each command",
+        "The managed .gitignore block lists work/chores/ (records stay local unless a project opts in by deleting the line); upgrade adds it to existing repos through the managed block. Out of scope: chore records in the digest"
+      ],
+      "codename": "chores-at-parity-with-leaves",
+      "dependencies": [
+        "14d90a55-fc3f-49f3-9c1b-c1cac57e09c9",
+        "2278f4ad-6118-44da-bca8-39d904afee8d"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.14",
+      "node_key": "4f41204d-a102-4077-92d2-5e311c246e41",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.14_chores-at-parity-with-leaves_4f41204d-a102-4077-92d2-5e311c246e41.md",
+      "sibling_order": 14,
+      "status": "Not Started",
+      "title": "Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored",
+      "touch_zones": [
+        "specy_road/bundled_scripts/chore_cli.py",
+        "specy_road/chore_ops.py",
+        "specy_road/review_target.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/agent_ignores.py",
+        "specy_road/templates/project/.gitignore",
+        "docs/orchestration-chores.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "upgrade's shipped-docs step also adds, when missing and never overwriting, every work/*.template.md that a role prompt, the executor prompt or a command stub references (at least review-record.template.md, implementation-summary.template.md, handoff-ready.template.md); the set is computed from the templates directory and checked by a test that greps the prompt builders for referenced template names",
+        "The .specyrd README's 'Updating after pip install -U' paragraph lists upgrade's steps as --help lists them (refresh-schemas, refresh-profiles, shipped docs and templates, refresh-stubs, validate and digest --check); a test compares the README's step names with upgrade.py's docstring list",
+        "upgrade --dry-run lists the templates it would add. Out of scope: updating templates a repo already has"
+      ],
+      "codename": "upgrade-ships-the-templates-prompts-reference",
+      "dependencies": [
+        "1726dab4-730d-414d-a79d-fef0b03b8983",
+        "bf5ffc69-0d63-4e1c-9159-7ba00872b009"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.15",
+      "node_key": "035cb961-9771-46ae-a5e5-a378ea914e01",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.15_upgrade-ships-the-templates-prompts-reference_035cb961-9771-46ae-a5e5-a378ea914e01.md",
+      "sibling_order": 15,
+      "status": "Not Started",
+      "title": "upgrade ships the work/ templates every prompt references, and the .specyrd README matches upgrade's steps",
+      "touch_zones": [
+        "specy_road/bundled_scripts/upgrade.py",
+        "specy_road/upgrade_templates.py",
+        "specy_road/templates/specyrd/dot-specyrd/README.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "An acceptance item starting 'observed(<role>[, <tier>]):' (schema description and docs) can only be satisfied by a recorded observation on the planning sheet ('A#: observed by <name> as <role> on <tier>, <date>: <result>'), as human: items need a decision; finish-this-task refuses while one lacks it; reviewers mark it n/a with reason 'observed', and an executor's READY or summary cannot satisfy it",
+        "review-packet (through review_packet_observed.py; review_packet.py is at its 400-line cap) flags executor text (summary or READY) that claims a role, stage, server or walkthrough observation for an observed( item, quoting the line and saying it is executor-supplied; a test with the reported shape (timings measured inside pytest presented as a role-observed table) asserts the flag",
+        "The reviewer prompt separates coordinator-supplied probes (a 'Coordinator probes' section: run them and report; a failure is a finding, not an acceptance failure unless an acceptance item covers it) from acceptance items; a test asserts the section heading and wording. Out of scope: verifying who made an observation"
+      ],
+      "codename": "role-observed-acceptance-needs-that-role",
+      "dependencies": [
+        "2278f4ad-6118-44da-bca8-39d904afee8d"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.16",
+      "node_key": "fc76ea81-b466-431d-a899-b078e86c7503",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.16_role-observed-acceptance-needs-that-role_fc76ea81-b466-431d-a899-b078e86c7503.md",
+      "sibling_order": 16,
+      "status": "Not Started",
+      "title": "Role-observed acceptance needs evidence from that role, and coordinator probes are not acceptance",
+      "touch_zones": [
+        "specy_road/finish_task_gates.py",
+        "specy_road/observed_acceptance.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/bundled_scripts/review_packet_observed.py",
+        "specy_road/review_record_rules.py",
+        "specy_road/templates/project/schemas/roadmap.schema.json",
+        "docs/acceptance-evidence.md",
+        "tests/"
+      ],
+      "type": "task"
+    }
+  ]
+}
