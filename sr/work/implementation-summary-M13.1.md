@@ -37,3 +37,10 @@
 - **R1** — `launchers_on_path()` treats an empty PATH component as the current directory (`os.getcwd()`), in PATH order, with the same resolution and running flag. Removed guard: the skip of empty components.
 - Tests added in `tests/test_version_skew_install.py`: `test_empty_path_component_is_the_current_directory` (foreign `./specy-road` ahead of the running install via a leading empty component: both records and the shadow warning), `test_generated_claude_md_block_at_running_version_is_silent` and `test_generated_claude_md_block_from_older_version_names_clean_version` (real `apply_agent_guide_block` output; the older one is generated with `agent_guide_block.__version__` monkeypatched to `0.0.1`).
 - Merged `origin/WIP/improvements-0-3-1` first. Targeted tests: 73 passed; `specy-road file-limits` OK.
+
+## Fix round 2
+
+- **R1** — `_is_running_install()` now tests only the fully resolved launcher against `Path(sys.prefix).resolve()` (plus the resolved `sys.argv[0]`, unchanged). The raw PATH candidate is no longer compared; that lexical check was what accepted `<prefix>/../foreign`. Removed: the raw-path and unresolved-prefix comparisons.
+- Sibling forms checked: (a) a symlink *inside* the prefix pointing at another install's launcher was also marked running by the raw-path check — a real defect, fixed by the same change and covered; (b) a symlinked `sys.prefix` and trailing slashes on the prefix or PATH entry were already handled (resolved comparison / `Path` normalisation) — not defects, pinned by a test because the comparison changed; (c) relative PATH entries were already handled through the resolved target.
+- Tests added: `test_parent_components_and_links_out_of_prefix_are_not_running` (PATH `<prefix>/../foreign`, then a link in the prefix to the foreign launcher, then the running install: running False, False, True and the shadow warning; fails on cfec3904), `test_symlinked_prefix_and_trailing_slash_still_running` (pin: no false shadow warning).
+- Merged `origin/WIP/improvements-0-3-1` first. Targeted tests: 47 passed; `specy-road file-limits` OK.
