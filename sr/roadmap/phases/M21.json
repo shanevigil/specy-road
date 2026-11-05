@@ -25,7 +25,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.8_queue-message-test-waits-for-idle_9a94e9ff-94d7-4166-bb4a-fbe6ba5d6daf.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The queued-message worker test waits for the idle state, not just the second completion event",
       "touch_zones": [
         "tests/test_worker_queue_message.py",
