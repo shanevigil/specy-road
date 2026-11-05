@@ -6,7 +6,7 @@ Upgrade previews as the new version, validates in a dry run, and names files it 
 
 - `specy_road/bundled_scripts/upgrade.py`
   - **A1:** The first line is `specy-road <v> upgrade: <project>`, or under `--dry-run` it is `previewing what specy-road <v> would write: <project>`. It then calls M13.1's `print_install_report()`, which prints the version, `sys.prefix` and every launcher on PATH (reused, not duplicated).
-  - **A2:** `--dry-run` still lists the "would write" lines. It then copies the checkout into a `TemporaryDirectory`: git's tracked and unignored files, plus every `.specyrd/` file, without `.git` or the project's `work/`. It `git init`s the copy and commits it once, applies `_refresh(dry_run=False)` there with its output silenced, runs `validate` and `digest --check` on the copy, and exits with validate's code. The checkout is never written.
+  - **A2:** `--dry-run` lists the same write plan the real run writes (see "Fix round 3: one plan"). It writes that plan into a temporary mirror of the checkout, commits the mirror once in its own git repo, runs `validate` and `digest --check` there, and exits with validate's code. The checkout is never written.
   - **A3:** `_apply()` records `{path: (lines, cap)}` for every file the project's `constraints/file-limits.yaml` caps, before and after the refreshes. It reads the config the way `file-limits` does: scan root, overlays, gitignore. For each file whose line count changed and is now over its cap, it prints either `this upgrade pushed it over its cap: old -> new lines (cap N)` or `already over its cap before this upgrade (...)`, so a file already over is not blamed. The dry run reports the same on the copy.
   - **A5:** The docstring (which is also `--help`) names `pip install -U`, `pipx upgrade specy-road` and `uv tool upgrade specy-road`. The old line "a new version's digest often differs" now points at validate's notices and `specy-road digest`. The `--dry-run` help text describes the copy validation.
   - **A6:** After writing, it parses `git worktree list --porcelain` the way `doctor._worktrees` does. For each worktree other than this one it prints one line: the path, the branch, "not upgraded; it still has the old managed files while sharing this install", and `Run there: cd <path> && specy-road upgrade`. With a single worktree it prints nothing.
@@ -16,7 +16,7 @@ Upgrade previews as the new version, validates in a dry run, and names files it 
 
 Touch zones: confirmed accurate. `specy_road/file_limits_engine.py` was not changed; upgrade.py uses its public helpers (`collect_tracked_files`, `build_overlay_match_sets`, `resolve_limits`, `line_count`). No file went over a cap. `specy-road file-limits` passes.
 
-**New module, outside the listed zones:** `specy_road/bundled_scripts/upgrade_preview.py` (136 lines), created in fix round 2. Round 2 took `upgrade.py` to 401 lines, over the 400 cap, so the preview-tree helpers moved there per the file-limits rule; `upgrade.py` is now 311 lines. Please add `specy_road/bundled_scripts/upgrade_preview.py` to this leaf's touch zones.
+**Modules, outside the listed zones:** fix round 3 deletes `specy_road/bundled_scripts/upgrade_preview.py` and adds `specy_road/bundled_scripts/upgrade_plan.py` (266 lines) and `tests/test_upgrade_plan_parity.py` (188 lines). Please swap `upgrade_preview.py` for `upgrade_plan.py` in this leaf's touch zones (`sr/roadmap/phases/M13.json`, `sr/roadmap/registry.yaml`), and add the test file if `tests/test_upgrade*.py` does not already cover it. `upgrade.py` is 319 lines.
 
 ## Verification
 
@@ -26,6 +26,9 @@ Touch zones: confirmed accurate. `specy_road/file_limits_engine.py` was not chan
 - Red-green: with HEAD's `upgrade.py` restored, 5 of the 6 tests in `tests/test_upgrade_preview.py` fail (exit 1). The template test passes there because it checks the template, not upgrade.py.
 
 ## Added
+
+Round 3 removed these entries' code: `preview_files`, `copy_tree`, `fingerprint`, `changed_paths`, `snapshot_declined`, `restore_declined`, the `rglob` fallback, the `os.walk(followlinks=True)` materializing and the `contextlib` redirect in `_dry_run`. They are kept below as history. What replaces them is under "Fix round 3: one plan".
+
 
 - `_capped_lines(project)`: `{path: (lines, cap)}` from the project's file-limits config. The before/after snapshot for A3.
 - `_report_line_caps(before, after)`: names files newly pushed over their cap, and reports pre-existing overages as "already over" (A3).
@@ -138,3 +141,109 @@ Known limits, flagged and not changed:
 
 - **Link aliasing inside the repo.** For example, `CLAUDE.md -> AGENTS.md` in the same directory. Both runs refresh both paths, so the decisions match. But in the real run the two blocks land in one file, while the copy holds two separate files. Keeping the link in the copy would break the round-1 rule that the preview tree holds no links.
 - **Unreadable files crash validate.** The validate reader `validate_stale_commands.file_unregistered_commands` raises `PermissionError` on an unreadable `AGENTS.md`, in both the real and the dry run. This is pre-existing and outside this leaf's zones.
+
+## Fix round 3: one plan (Sol F1, F2; A2)
+
+The base was merged with `origin/WIP/improvements-0-3-1` (`b850d49b`). The fix is commit `22edc79a`.
+
+**Failure class.** In every round, the preview made a decision the real run makes differently. Round 1 was link isolation, round 2 refusals, and round 3 aliases (F1) and manifest ownership (F2). The cause was that the preview tree had a different shape from the checkout: links were materialized into files. The refresh code therefore saw different inputs, and the preview patched the outcomes afterwards. Round 3 removes that class: the decisions are made once, and both modes write the same result.
+
+**Design** (`specy_road/bundled_scripts/upgrade_plan.py`):
+
+1. `Mirror(checkout, dest, skip=project/work)` copies the checkout under `dest/repo`, without `.git` or `work/`, and **keeps every link**:
+   - A relative link keeps its text when it resolves to the mirrored location of its real target. A link that does not (an absolute link, or one that climbs out of the checkout) is re-pointed at that mirrored location.
+   - A target outside the checkout is mirrored under `dest/outside/<its real path>`. That location is outside the mirror's repository too, so `resolves_outside` and `ensure_link`'s `os.readlink` comparison decide exactly as on the checkout.
+   - Unreadable files stay unreadable (same mode), and directory modes are copied. The mirror is `git init`ed so `git_root` works as on the checkout.
+2. `make_plan(checkout, project, refresh)` runs the **real** refreshes (`upgrade._refresh`, which calls `refresh_schemas`, `refresh_profiles`, `copy_missing_docs` and `refresh_stubs`, all with `dry_run=False`) once on the mirror. It diffs the mirror before and after that run; links are not followed in the diff.
+   - The refresh prints its own report; `preview` changes only the verb ("would write" / "wrote").
+   - Mirror paths in the output, and in an `OSError`'s filename, are shown as the checkout's.
+3. `apply_plan(plan, locate)` writes the plan:
+   - The real run uses the identity `locate`, after `conflicts(plan)` checks that no target changed since the plan was made. On a conflict it writes nothing and exits 1.
+   - The dry run uses `Mirror.to_sandbox` of a second, fresh mirror, then validates it.
+   - Order: removals deepest first, then directories shallowest first, then links and file writes.
+4. The dry-run guard is `Plan.changed_since()`: the state now of every path the mirror read, plus any new path in the checkout. Any difference exits 2, as before.
+
+**Plan fields** (`Entry`):
+
+- `path`: how the refresh names it (checkout-relative, or absolute outside the checkout).
+- `target`: the real path it lands on, links followed.
+- `action`: `write` / `link` / `mkdir` / `remove`, or `refuse` / `skip` / `fail` for a path the refresh leaves as it is.
+- `data`: the final bytes of a `write`.
+- `link`: the final text of a `link`.
+- `mode`: the final file mode.
+- `before`: the target's state when the plan was made. This is the conflict precondition.
+
+`Plan` also holds `checkout`, `skip` and `states` (every mirrored path's state, for the dry-run guard).
+
+**Former preview-only decisions, removed:**
+
+- Materializing every link into a regular file (`preview_files`, `os.walk(followlinks=True)`, `copy_tree`). This caused F1: two files where the real run has one.
+- Choosing what to copy: git tracked/unignored files, plus `.specyrd/`, plus `_block_previews`' block-file names, plus an `rglob` fallback. The mirror now takes everything but `.git` and `work/`, so ignored files are present as on the checkout.
+- `snapshot_declined` / `restore_declined`: restoring declined bytes after a refresh that had decided differently. This caused F2: the manifest kept a refused skill.
+- The `_DECLINED` set passed from a checkout `dry_run=True` listing into the preview. The listing *is* now the plan run.
+- Creating an empty file in place of an unreadable one, in the copy only. The mirror does the same for both modes.
+- `fingerprint` / `changed_paths` (sha256 of the preview inputs plus `git status`). Replaced by `Plan.changed_since` over the mirror's own record.
+- The dry run's separate `_refresh(dry_run=False)` on the copy, silenced with `redirect_stdout`.
+
+**Behaviour changes for the real run**, from the same design:
+
+- A refresh that raises (`refresh-profiles` under a link, a read-only `docs/`) now raises in the mirror, before anything is written to the checkout. Before, `refresh-schemas` had already written.
+- A target that changes between planning and writing is not overwritten.
+
+**Parity tests** (`tests/test_upgrade_plan_parity.py`). Each layout runs dry, then real, on the same checkout under one injected validator that records the whole tree it is given: every file and link, read through the link, with relative link texts, `.specyrd/manifest.json` included, and `.git`/`work/` excluded. The test asserts:
+
+- the dry run left the checkout byte-identical;
+- both exits are 0;
+- the dry copy's tree equals the real checkout's tree;
+- the tree changed, so the comparison is not vacuous.
+
+Layouts:
+
+- `claude-md-aliases-agents-md`: `CLAUDE.md -> AGENTS.md`.
+- `canonical-skill-linked-outside`: a manifest-recorded `.agents/skills/specyrd-validate/SKILL.md` linked to a file outside the repo.
+- `agents-md-linked-outside`.
+- `ignored-claude-md`: `CLAUDE.md` in `.gitignore`.
+- `stale-managed-block`: `AGENTS.md` with an old `specy-road` block.
+- `nested-project-root`: `init project` into `sr/`.
+
+Sol's injected-validator probes are kept as reported:
+
+- `test_sol_f1_an_alias_fails_the_claude_import_check_in_both`: dry and real both exit 1 with `error: CLAUDE.md has no current import`.
+- `test_sol_f2_a_refused_canonical_skill_is_unowned_in_both_manifests`: dry and real both exit 1, and the skill is unowned in both manifests. The outside file is unchanged.
+
+Both also assert that the dry run left the checkout unchanged.
+
+Red-green: with `upgrade.py` and `upgrade_preview.py` from `2f316a45`, 5 of the 8 new tests fail: both Sol tests, and the alias, external-skill and external-AGENTS layouts. The ignored-CLAUDE, stale-block and nested layouts already agreed there; they guard against regressions. All 8 pass with the fix.
+
+Verification: `pytest -q -n 4 tests/test_upgrade.py tests/test_upgrade_preview.py tests/test_upgrade_parity.py tests/test_upgrade_plan_parity.py tests/test_skill_mirrors.py tests/test_init_project.py tests/test_refresh_stubs.py` → 63 passed. `specy-road file-limits` → OK. `ruff check` on the changed files → clean. As instructed, the full suite was not run.
+
+**Cost and limits:**
+
+- The real run now mirrors the checkout too. On this checkout (2,181 paths, 31 MB without `.git`/`work/`) the mirror takes 0.7 s. A large ignored tree (a `.venv`, `node_modules`) is copied as well, because an ignored file can be an input to a refresh decision.
+- A directory link to something large outside the checkout is copied as it was in rounds 1–2. A link to an ancestor of the checkout does not copy the checkout twice.
+
+## Probes
+
+Each probe ran dry, then real, on the same repo, through the public `run_upgrade`, under one recording validator (scratch script, not committed). It compared exits, the checkout after the dry run, and the two validated trees.
+
+- `CLAUDE.md -> AGENTS.md` (F1): both exit 1 under Sol's validator, and the trees are equal under the recording one. Fixed (was dry 0 / real 1).
+- Recorded canonical skill linked outside (F2): both exit 1, the skill is unowned in both manifests, and the outside file is untouched. Fixed (was dry owned / real unowned).
+- `AGENTS.md` linked outside: equal trees, exit 0 with the recording validator; round 2's block validator still gives 1/1.
+- `AGENTS.md` linked inside the repo (round 2 test): passes. The link is kept in the mirror, and the block is refreshed through it in both runs.
+- Unreadable `AGENTS.md` (round 2 test): passes, with the same `(failed)` line and the same end result.
+- Ignored `CLAUDE.md`: equal trees; the copy carries the developer text and the import.
+- Stale managed block: equal trees.
+- Nested project root `sr/`: equal trees.
+- Old stubs with `--prune`: equal trees. Pruned files and the directories they emptied are removed alike.
+- `.claude/skills -> ../.agents/skills` directory link with `--prune`: equal trees. The `readlink`/`resolve` checks in `ensure_link` see the same link.
+- Schema linked through an external alias of the checkout (round 1 test): equal trees, written through in both, and the dry run leaves the checkout untouched.
+- `docs/` linked to a directory outside: equal trees, refused in both, and the outside directory stays empty.
+- `model-profiles/` linked outside: the same `ValueError` in both. The real run now writes nothing before raising.
+- Read-only `docs/`: the same `PermissionError` in both, naming the checkout's path (not the mirror's). The real run writes nothing.
+- A link into the project's `work/` (excluded from the mirror): the target is mirrored on demand, and the trees are equal.
+- A link cycle `a <-> b`: the mirror builds and the trees are equal.
+- A directory link to an ancestor of the checkout: the mirror builds without copying the checkout twice, and the trees are equal.
+- A checkout with no `.git`: the dry run leaves it untouched, and the trees are equal.
+- A concurrent edit of `AGENTS.md` between planning and writing: `conflicts(plan)` names it, and the real run writes nothing.
+- A dry run that writes into the checkout (existing guard test): still exits 2 and names the path.
+- Other importers of the removed module: none (grep). It remains named only in the roadmap zones listed above.
