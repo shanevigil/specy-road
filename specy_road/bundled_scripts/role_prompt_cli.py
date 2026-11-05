@@ -28,6 +28,7 @@ from specy_road.review_record_write import (Outcome, answer_scratch, close_revie
 from specy_road.review_target import ReviewTarget
 from specy_road.reviewer_auth import claude_launch_decision, launch_note
 from specy_road.reviewer_run_failure import _now, harness_error_line, save_run, turn_capacity_error
+from specy_road.worker_adapter_base import checked, oversized_arg
 from specy_road.worker_adapter_parsers import effort_note
 from specy_road.worker_adapters import ADAPTERS, Launch, Unsupported, placeholder_problem, reviewer_cli, substitute_prompt
 
@@ -103,7 +104,7 @@ def run_reviewer_channel(prof: Profile | None, prompt_path: Path, root: Path, en
     level = prof.effort("reviewer") if prof else None
     if harness in READ_BACK_HARNESSES and not entry_cli:
         return run_default_reviewer(prof, prompt_path, root, model, reviews, level, harness, ref, transcript, sign_key,
-                                    entry)
+                                    entry, harness_bin=entry.get("harness_bin"))
     cli, effort, err = resolve_cli(prof, entry_cli, harness, level)
     if err:
         print(f"error: {err}", file=sys.stderr)
@@ -116,12 +117,13 @@ def run_reviewer_channel(prof: Profile | None, prompt_path: Path, root: Path, en
 def run_default_reviewer(prof: Profile | None, prompt_path: Path, root: Path, model: str | None, reviews: Path,
                          level: str | None, harness: str = "claude-code", ref: str | None = None,
                          transcript: list[str] | None = None, sign_key: Path | None = None,
-                         entry: dict[str, Any] | None = None) -> Outcome:
+                         entry: dict[str, Any] | None = None, *, harness_bin: str | None = None) -> Outcome:
     """The harness's own read-only reviewer command (Claude Code bare or explicit, with ``--add-dir`` for the
     hand-off directory), its final JSON filed as the record (:func:`~specy_road.review_record_write.file_review`,
-    signed with ``sign_key``). ``transcript`` collects the output for the run record (M11.72). The caller holds the
-    leaf's run lock. Codex writes its answer (``-o``) to an :func:`answer_scratch` file outside the checked tree.
-    ``entry`` is the roster row, when the caller has it, so a row that forces bare is refused here too."""
+    signed with ``sign_key``). ``harness_bin`` is the roster entry's, which the adapter resolves (harness_binary).
+    ``transcript`` collects the output for the run record (M11.72). The caller holds the leaf's run lock. Codex
+    writes its answer (``-o``) to an :func:`answer_scratch` file outside the checked tree. ``entry`` is the roster
+    row, when the caller has it, so a row that forces bare is refused here too."""
     api_id = prof.api_id if prof is not None else model
     api_id = None if (api_id or "").strip().lower() in ("", "unknown") else api_id   # unknown: the harness default
     adapter = ADAPTERS[harness]
@@ -134,9 +136,13 @@ def run_default_reviewer(prof: Profile | None, prompt_path: Path, root: Path, mo
             return Outcome("rerun", problem, exit=1)
         _run_launch_mode.set(mode)
     with answer_scratch(str(model)) as out:
-        extra = {"mode": mode} if mode is not None else {}
-        launch = adapter.reviewer_launch(prompt_path, api_id, reviews, level, session=session,
-                                         schema=write_schema(root, reviews, ref), output=out, **extra)
+        try:
+            extra = {"mode": mode} if mode is not None else {}
+            launch = adapter.reviewer_launch(prompt_path, api_id, reviews, level, session=session,
+                                             schema=write_schema(root, reviews, ref), output=out,
+                                             harness_bin=harness_bin, **extra)
+        except Unsupported as e:   # HarnessNotFound: the dirs searched, before anything runs
+            return _refused(str(e), transcript)
         if harness == "claude-code":
             launch = replace(launch, env={**(launch.env or {}), **CLAUDE_REVIEWER_AVOID_ENV})   # as `review delegate`'s
             print(launch_note(mode or "bare"), file=sys.stderr)
@@ -152,17 +158,22 @@ def run_custom_reviewer(prof: Profile | None, cli: str, prompt_path: Path, root:
     structured-output flags (:func:`reviewer_cli`), captured and filed like the default commands."""
     try:
         cli = reviewer_cli(cli, write_schema(root, reviews, ref))
+        launch = checked(Launch(["sh", "-c", substitute_prompt(cli, prompt_path, effort=effort)],   # A2: before exec
+                                launch_mode=prof.launch_mode() if prof is not None else "full"))
     except Unsupported as e:
-        print(f"error: {e}", file=sys.stderr)
-        if transcript is not None:
-            transcript.append(f"error: {e}")
-        return Outcome("rerun", f"rerun requested: {e}", exit=1)
+        return _refused(str(e), transcript)
     # The template, not the expansion: "<prompt>" would echo the whole brief.
     print(f"running: {cli} (prompt: {prompt_path})", file=sys.stderr)
-    launch = Launch(["sh", "-c", substitute_prompt(cli, prompt_path, effort=effort)],
-                    launch_mode=prof.launch_mode() if prof is not None else "full")
     return run_and_file(launch, ADAPTERS.get(harness or "generic", ADAPTERS["generic"]), root, model, reviews, ref,
                         transcript, sign_key)
+
+
+def _refused(why: str, transcript: list[str] | None) -> Outcome:
+    """A reviewer launch refused before anything ran: the reason printed and transcribed, and a rerun request."""
+    print(f"error: {why}", file=sys.stderr)
+    if transcript is not None:
+        transcript.append(f"error: {why}")
+    return Outcome("rerun", f"rerun requested: {why}", exit=1)
 
 
 def close_cli_review_run(root: Path, t: ReviewTarget, model: str, opened: tuple[Path, dict[str, Any]], filed: Outcome,
@@ -198,6 +209,12 @@ def run_plain_cli(cli: str, prompt_path: Path, root: Path, effort: list[str],
     print(f"running: {cli} (prompt: {prompt_path})", file=sys.stderr)
     try:
         cmd = substitute_prompt(cli, prompt_path, effort=effort)
+        why = oversized_arg(["sh", "-c", cmd])   # A2: refused before exec, never Errno 7 from the shell
+        if why:
+            print(f"error: {why}", file=sys.stderr)
+            if transcript is not None:
+                transcript.append(f"error: {why}")
+            return 1
         if transcript is None:
             return subprocess.run(cmd, shell=True, cwd=root, check=False).returncode
         return stream_and_capture(cmd, cwd=root, transcript=transcript, shell=True)

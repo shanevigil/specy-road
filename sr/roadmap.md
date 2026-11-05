@@ -237,7 +237,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.6` | The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes | task | Agentic-led | Complete |
 | `M15.7` | file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count | task | Agentic-led | Not Started |
 | `M15.8` | A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it | task | Agentic-led | Complete |
-| `M15.9` | Harness launches survive large prompts and a harness binary off PATH, for every role | task | Agentic-led | Not Started |
+| `M15.9` | Harness launches survive large prompts and a harness binary off PATH, for every role | task | Agentic-led | Complete |
 | `M15.10` | Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff | task | Agentic-led | Complete |
 | `M15.11` | A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors | task | Agentic-led | Complete |
 | `M15.12` | Shared documentation zones do not serialize grind-session batches | task | Agentic-led | Complete |
@@ -245,7 +245,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.14` | Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored | task | Agentic-led | Not Started |
 | `M15.15` | upgrade ships the work/ templates every prompt references, and the .specyrd README matches upgrade's steps | task | Agentic-led | Complete |
 | `M15.16` | Role-observed acceptance needs evidence from that role, and coordinator probes are not acceptance | task | Agentic-led | Not Started |
-| `M15.17` | Review friction: delegate builds a missing packet, the packet skips ignored evidence and numbers suppressions correctly, refusals quote the line, and superseded failed runs say so | task | Agentic-led | Not Started |
+| `M15.17` | Review friction: delegate builds a missing packet, the packet skips ignored evidence and numbers suppressions correctly, refusals quote the line, and superseded failed runs say so | task | Agentic-led | Complete |
 | `M15.18` | planned_test_changes can be edited after pickup, and an unplanned test removal is a required reviewer check | task | Agentic-led | Complete |
 | `M15.19` | Cursor worker cost is estimated when the harness reports a display name for the rostered model | task | Agentic-led | Complete |
 | `M15.20` | Touch zones that miss what acceptance needs are flagged at plan time, and the brief's zone section stays short | task | Agentic-led | Not Started |
@@ -259,6 +259,11 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.28` | --rework carries blocks at the branch tip as required changes, lists older blocks as possibly resolved, and takes a coordinator note placed above the reviews | task | Agentic-led | Not Started |
 | `M15.29` | A review that stops before filing leaves a trace: every reviewer channel opens a RUN record, and review list shows started but not filed | task | Agentic-led | Not Started |
 | `M15.30` | Under delta review, one approval per round still checks the whole leaf against the merge base on a fixed checklist | task | Agentic-led | Not Started |
+| `M15.31` | A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported | task | Agentic-led | Not Started |
+| `M15.32` | An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure | task | Agentic-led | Not Started |
+| `M15.33` | A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed | task | Agentic-led | Not Started |
+| `M15.34` | The executor prompt states the test rules that the reviewer's excess checklist enforces | task | Agentic-led | Not Started |
+| `M15.35` | The review packet never lists .git or a path under it as an uncommitted reference | task | Agentic-led | Not Started |
 | `M16` | lean core: harden and optimize code and docs, all delivered functionality kept | phase | — | Not Started |
 | `M16.0` | Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs | task | Agentic-led | Not Started |
 | `M16.1` | Parity harness: a review-gate decision table covering every review policy | task | Agentic-led | Not Started |

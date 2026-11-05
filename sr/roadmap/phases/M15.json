@@ -244,40 +244,6 @@
     },
     {
       "acceptance": [
-        "No adapter puts the prompt text on the command line: cursor's executor, resume and reviewer launches (M8.3's --mode ask included) pass a short instruction naming the prompt file, or stdin, as claude-code's STDIN_INSTRUCTION does; a test for every adapter and every role (executor, reviewer, rca) builds a launch from a 200 KiB prompt and asserts no argv element exceeds 32 KiB",
-        "A launch whose argv would still exceed the OS single-argument limit (a custom channels.cli with \"<prompt>\") is refused before exec with the size and the {prompt} placeholder fix, never as Errno 7 from the harness",
-        "specy_road/harness_binary.py resolves the harness binary (claude, agent, codex) before launch: a roster entry's optional harness_bin, else PATH, else the harness's documented install dirs (~/.local/bin for the Cursor agent CLI); not found means a refusal naming the dirs searched and harness_bin, not exit 127; the resolved path is what runs and is recorded. Out of scope: the cursor reviewer's --force (M8.3 already removes it)"
-      ],
-      "codename": "harness-launches-survive-large-prompts-and-binaries-off-path",
-      "dependencies": [
-        "2278f4ad-6118-44da-bca8-39d904afee8d"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M15.9",
-      "node_key": "5e31fbd5-36c8-4fd8-bc36-15cd9cc478f9",
-      "parent_id": "M15",
-      "planning_dir": "planning/M15.9_harness-launches-survive-large-prompts-and-binaries-off-path_5e31fbd5-36c8-4fd8-bc36-15cd9cc478f9.md",
-      "sibling_order": 9,
-      "status": "Not Started",
-      "title": "Harness launches survive large prompts and a harness binary off PATH, for every role",
-      "touch_zones": [
-        "specy_road/worker_adapter_cursor.py",
-        "specy_road/worker_adapter_codex.py",
-        "specy_road/worker_adapter_base.py",
-        "specy_road/worker_adapter_claude.py",
-        "specy_road/harness_binary.py",
-        "docs/orchestration-harness-launch.md",
-        "tests/",
-        "specy_road/templates/project/schemas/orchestration.schema.json",
-        "specy_road/worker_adapter_parsers.py",
-        "specy_road/worker_ops_launch.py",
-        "specy_road/review_delegate.py",
-        "specy_road/bundled_scripts/role_prompt_cli.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
         "orchestrate plan --roster-from-worktree plans with the working tree's roadmap/orchestration.yaml, prints 'DRY RUN: roster from the working tree, nothing may launch from this plan' first, and its --json carries roster_ref: worktree; worker delegate, review delegate and grind-session never accept it; a test asserts the banner and that delegate still reads the integration-branch roster",
         "models list says which roster it read (the ref) and, when the working tree's roster differs, prints the added, removed and changed entry ids (and changed fields) as 'uncommitted roster changes'",
         "The gitignored roadmap/orchestration.local.yaml may add roster entries under roster_add for this clone (availability overlays stay as they are); planning and delegation on this clone use them, labelled local in orchestrate plan; an added entry never overrides a committed id, and its access.cli or channels.cli is refused unless the clone sets allow_local_cli: true in the same file; tests cover add, id clash and the cli refusal. Out of scope: sharing local entries between clones"
@@ -493,6 +459,33 @@
         "docs/acceptance-evidence.md",
         "tests/",
         "specy_road/bundled_scripts/role_prompt_rca.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "review delegate tells the harness the model as worker delegate and docs/orchestration-models.md say: the entry's harness_model, else the profile's id, else the roster id when the entry has no profile (review_delegate._Harness no longer calls harness_model(entry, '') for a missing profile); a test with a claude-code entry with no profile and no harness_model asserts the roster id is the launch's model argument",
+        "When the model still resolves to none (a profile whose api_id is unknown and no harness_model) and the entry does not declare routing: dynamic, review delegate refuses before launch (no RUN record is opened, exit 1) with '<id>: no model would be passed to <harness>, so it would run its own default model; set harness_model on the roster entry, or routing: dynamic to accept the harness's choice'; tests for the refusal and for a routing: dynamic entry that launches",
+        "review delegate reads the model the harness reported (review_model_check.reported_model over the last attempt's text, M15.3) and passes check()'s result to file_review as prompt --channel cli --run does, so a delegated record carries harness_model and, on a mismatch, model_mismatch, which the gate excludes; RUN-<model>.json gains requested_model (the id passed, or null) and reported_model (or null); a fake-harness test reporting another model asserts model_mismatch on the record and that review list reports 'harness ran a different model'",
+        "entry_routing returns dynamic for an entry on any harness whose resolved model is none (today only cursor), and routing_problem's message for such an entry says no model was passed and names harness_model before pinned: true; a test with a claude-code entry whose profile api_id is unknown. Out of scope: worker delegate (executor) launches, the paste and subagent channels, and a harness that reports no model (M15.3's warning stays)"
+      ],
+      "codename": "delegated-reviewer-always-runs-a-named-model",
+      "dependencies": [
+        "7e865197-c8d6-4ce4-a2d1-dc2b974a17d0"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M15.31",
+      "node_key": "311116ea-4199-49bf-8858-11c48b99828c",
+      "parent_id": "M15",
+      "planning_dir": "planning/M15.31_delegated-reviewer-always-runs-a-named-model_311116ea-4199-49bf-8858-11c48b99828c.md",
+      "sibling_order": 31,
+      "status": "Not Started",
+      "title": "A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported",
+      "touch_zones": [
+        "specy_road/review_delegate.py",
+        "specy_road/orchestration_config.py",
+        "docs/orchestration-models.md",
+        "tests/"
       ],
       "type": "task"
     }

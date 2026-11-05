@@ -20,6 +20,7 @@ from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.model_profiles import load_profile
 from specy_road.review_delegate import DelegateError, delegate
 from specy_road.review_record_write import output_schema, review_run_lock, reviewer_env, snapshot, written
+from specy_road.worker_adapter_base import file_instruction
 from specy_road.worker_adapters import Codex, Cursor, Unsupported, reviewer_cli
 
 M87_NOTE = Path(__file__).resolve().parents[1] / "docs" / "design-notes" / "M8.7-runtime-verification-harness-facts.md"
@@ -187,11 +188,12 @@ def test_cursor_reviewer_runs_ask_mode_without_force(tmp_path: Path) -> None:
     prompt = tmp_path / "p.md"
     prompt.write_text("review it")
     fresh = Cursor().reviewer_launch(prompt, "gpt-6.1-sol", tmp_path, schema=tmp_path / "s.json")
+    told = file_instruction(prompt.resolve())   # M15.9 A1: the prompt file is named, its text never on argv
     assert fresh.argv == ["agent", "-p", "--output-format", "stream-json", "--mode", "ask", "--trust",
-                          "--model", "gpt-6.1-sol", "review it"] and fresh.session_id is None
+                          "--model", "gpt-6.1-sol", told] and fresh.session_id is None
     resumed = Cursor().reviewer_launch(prompt, None, tmp_path, session=("s1", True))
     assert resumed.argv == ["agent", "-p", "--resume", "s1", "--output-format", "stream-json", "--mode", "ask",
-                            "--trust", "review it"] and resumed.session_id == "s1"
+                            "--trust", told] and resumed.session_id == "s1"
     assert "Review-only runs omit `--force`" in M87_NOTE.read_text(encoding="utf-8")   # the note the code matches
     assert "--force" in Cursor().launch(prompt, tmp_path, None, None).argv              # executors keep it
 
@@ -251,7 +253,9 @@ def test_prompt_channel_cli_runs_a_cursor_reviewer_read_only_and_files_its_answe
                     "--repo-root", str(repo)) == 0
     call = next(c for c in calls if list(c["cmd"][:2]) == ["agent", "-p"])   # the reviewer launch, by its argv
     assert call["cmd"][:7] == ["agent", "-p", "--output-format", "stream-json", "--mode", "ask", "--trust"]
-    assert "--force" not in call["cmd"] and "**specy-road files your record.**" in call["cmd"][-1]
+    prompt = repo / "work" / "prompt-M1.1-reviewer-comp.md"   # M15.9 A1: named on argv, its text in the file
+    assert "--force" not in call["cmd"] and call["cmd"][-1] == file_instruction(prompt.resolve())
+    assert "**specy-road files your record.**" in prompt.read_text(encoding="utf-8")
     assert rf.load_review(rf.review_path(repo, "M1.1", "comp"), ["A1", "A2"]).ok
 
 

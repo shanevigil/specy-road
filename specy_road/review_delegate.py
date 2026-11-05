@@ -44,15 +44,18 @@ from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text
 from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
+from specy_road.review_delegate_packet import ensure_packet
 from specy_road.review_files import reviews_dir
 from specy_road.review_answer import stream_lines
 from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, ReviewRunBusy, answer_scratch, attempt_text,
                                             close_review_run, delegate_turn, file_review, final_answer, review_run_lock,
                                             snapshot, write_schema)
+from specy_road.review_run_status import superseded_by
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.review_usage import add_parser as add_usage_parser, archive_round
 from specy_road.reviewer_auth import claude_default_reviewer
-from specy_road.reviewer_run_failure import capacity_error, gate_policy_summary, valid_record  # noqa: F401 — re-exported
+from specy_road.reviewer_run_failure import capacity_error, valid_record  # noqa: F401 — re-exported
+from specy_road.reviewer_run_failure import gate_policy_summary as _gate_policy_summary
 from specy_road.reviewer_run_failure import (_now, _read_json, close_run, run_path as _run_path, save_run,
                                              turn_capacity_error)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -122,6 +125,7 @@ class _Harness:
         self.default = self.harness != "generic" and not self.cli and (not chore or isinstance(self.adapter, ClaudeCode))
         self.auth_error: str | None = None
         self.note: str | None = None
+        self.harness_bin = entry.get("harness_bin")   # resolved by the adapter whenever a default command is built
         if self.default and isinstance(self.adapter, ClaudeCode):
             profile_mode = prof.launch_mode() if prof is not None else None
             self.launch_mode, self.auth_error, self.note = claude_default_reviewer(entry, profile_mode)
@@ -141,8 +145,9 @@ class _Harness:
             extra = {"mode": self.launch_mode} if isinstance(self.adapter, ClaudeCode) else {}
             return self.adapter.reviewer_launch(prompt, self.api_id, reviews, self.effort,
                                                 session=(sid, session is not None) if sid else None,
-                                                **structured, **extra)
-        kw = {"node_id": self.node_id, "repo_root": self.repo_root, "launch_mode": self.mode, "effort": self.effort}
+                                                **structured, **extra, harness_bin=self.harness_bin)
+        kw = {"node_id": self.node_id, "repo_root": self.repo_root, "launch_mode": self.mode, "effort": self.effort,
+              "harness_bin": self.harness_bin}   # a custom command without {session} resumes with the default
         # A custom command gets its program's structured-output flags (Antigravity `agy`: --json-schema).
         cli = (reviewer_cli(self.cli, reviews_dir(self.repo_root, self.node_id) / OUTPUT_SCHEMA_NAME)
                if self.cli and not self.chore else self.cli)
@@ -260,6 +265,8 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
         raise DelegateError(str(e)) from None
     with lock, answer_scratch(model) as answer:
         h.output = None if chore else answer
+        if chore is None and not resume:   # M15.17: a missing or other-commit packet is built, not refused
+            ensure_packet(repo_root, t, ref)
         text, session = _start(repo_root, t, model, ref, h, resume)
         _preflight(entry, cwd)   # M8.3: after the lock, before the RUN record is saved
         if h.note:   # bare mode and the subscription login, same sentence prompt prints
@@ -296,7 +303,8 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
 
 
 def run_states(repo_root: Path, node_id: str, commit: str | None) -> list[dict[str, Any]]:
-    """Each ``RUN-*.json`` for the node; ``current`` when it is for ``commit`` (the commit under review)."""
+    """Each ``RUN-*.json`` for the node; ``current`` when it is for ``commit`` (the commit under review);
+    ``superseded`` names a valid record filed later at the run's commit when the run did not complete."""
     d = reviews_dir(repo_root, node_id)
     out = []
     for p in sorted(d.glob(f"{RUN_PREFIX}*.json")) if d.is_dir() else []:
@@ -304,8 +312,14 @@ def run_states(repo_root: Path, node_id: str, commit: str | None) -> list[dict[s
         current = bool(commit and r.get("commit") and same_commit(repo_root, r["commit"], commit))
         out.append({"file": p.name, "model": r.get("model"), "state": r.get("state"), "commit": r.get("commit"),
                     "session_id": r.get("session_id"), "reason": r.get("reason"), "events": r.get("events") or [],
-                    "current": current})
+                    "current": current, "superseded": superseded_by(repo_root, node_id, r)})
     return out
+
+
+def gate_policy_summary(gate: Any, runs: list[dict[str, Any]]) -> str:
+    """``handoff status`` policy line (:func:`specy_road.reviewer_run_failure.gate_policy_summary`); a superseded run
+    is no reviewer failure."""
+    return _gate_policy_summary(gate, [r for r in runs if not r.get("superseded")])
 
 
 def run_lines(runs: list[dict[str, Any]]) -> list[str]:
@@ -314,16 +328,18 @@ def run_lines(runs: list[dict[str, Any]]) -> list[str]:
     for r in runs:
         when = "" if r["current"] else " (not the commit under review)"
         why = f": {r['reason']}" if r["state"] == "incomplete" and r.get("reason") else ""
+        later = f" — superseded: {r['superseded']} was filed later at this commit" if r.get("superseded") else ""
         lines.append(f"{r['file']}: {r['state']} run by {r['model']} at {str(r['commit'] or '?')[:12]}{when}"
-                     f", session {r['session_id'] or '-'}{why}")
+                     f", session {r['session_id'] or '-'}{why}{later}")
     return lines
 
 
 def run_problems(node_id: str, runs: list[dict[str, Any]]) -> list[str]:
-    """An incomplete run at the commit under review is a problem: its reviewer has no verdict there."""
+    """An incomplete run at the commit under review is a problem: its reviewer has no verdict there, unless a
+    record filed later supersedes it."""
     return [f"{r['file']}: {r['model']}'s delegated review of this commit is incomplete ({r.get('reason') or '?'}); "
             f"`specy-road review delegate {node_id} --model {r['model']}` (add --resume to continue its session)"
-            for r in runs if r["current"] and r["state"] == "incomplete"]
+            for r in runs if r["current"] and r["state"] == "incomplete" and not r.get("superseded")]
 
 
 def cmd_review_delegate(ns: argparse.Namespace) -> int:

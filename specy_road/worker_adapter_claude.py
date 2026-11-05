@@ -35,37 +35,38 @@ class ClaudeCode(Adapter):
 
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
-               effort: str | None = None) -> Launch:
+               effort: str | None = None, harness_bin: str | None = None) -> Launch:
         sid = str(uuid.uuid4())
         custom = self._custom(cli, prompt_path, effort=effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return replace(custom, launch_mode=launch_mode)   # left as written; only the check uses the mode
-        return Launch(["claude", "-p", *_bare(launch_mode), "--output-format", "stream-json", "--verbose",
+        return Launch([self._program(harness_bin), "-p", *_bare(launch_mode), "--output-format", "stream-json", "--verbose",
                        "--session-id", sid, *_model_flag("--model", model), *self.effort_flag(effort),
                        *self._add_dir(worktree, repo_root, node_id), *EXECUTOR_PERMISSIONS, STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=sid, launch_mode=launch_mode)
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
-               effort: str | None = None) -> Launch:
+               effort: str | None = None, harness_bin: str | None = None) -> Launch:
         custom = self._custom(cli, prompt_path, session_id, effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return replace(custom, launch_mode=launch_mode)
         # A resumed session does not keep the launch's --model: pass it again, as the launch did.
-        return Launch(["claude", "-p", *_bare(launch_mode), "--resume", session_id, "--output-format", "stream-json",
+        return Launch([self._program(harness_bin), "-p", *_bare(launch_mode), "--resume", session_id, "--output-format", "stream-json",
                        "--verbose", *_model_flag("--model", model), *self.effort_flag(effort),
                        *self._add_dir(worktree, repo_root, node_id), *EXECUTOR_PERMISSIONS, STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=session_id, launch_mode=launch_mode)
 
     def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,
                         session: tuple[str, bool] | None = None, *, schema: Path | None = None,
-                        output: Path | None = None, mode: str = "bare") -> Launch:
+                        output: Path | None = None, mode: str = "bare",
+                        harness_bin: str | None = None) -> Launch:
         """A fresh-session reviewer's turn. ``mode="bare"`` (the default) passes ``--bare``. ``mode="explicit"``
         passes ``--setting-sources user`` and ``--strict-mcp-config`` (help.txt) and never ``--bare`` or
         ``--mcp-config``. Bare mode with only an ``apiKeyHelper`` also passes ``--settings`` and that file's path
-        (:func:`~specy_road.reviewer_auth.bare_settings_argv`), never the helper command. Either way the branch
-        under review runs none of its hooks and connects none of its
-        MCP servers, and ``--add-dir`` names the hand-off directory. The instruction goes
+        (:func:`~specy_road.reviewer_auth.bare_settings_argv`), never the helper command. ``harness_bin`` is the
+        roster entry's binary (:meth:`Adapter._program`). Either way the branch under review runs none of its
+        hooks and connects none of its MCP servers, and ``--add-dir`` names the hand-off directory. The instruction goes
         right after ``-p``: ``--add-dir`` takes several values and would swallow it. ``session`` is
         ``(id, resume)`` for ``review delegate``: the session flag, and stream-json so the id can be read back.
         Read-only (A2): no file-writing tool is allowed or approved (``Write``, ``Edit`` and ``NotebookEdit`` are
@@ -78,7 +79,8 @@ class ClaudeCode(Adapter):
         # bare with only an apiKeyHelper passes the settings file's path, never the helper command.
         auth = (["--setting-sources", "user", "--strict-mcp-config"] if mode == "explicit"
                 else ["--bare", *bare_settings_argv()])
-        return Launch(["claude", "-p", STDIN_INSTRUCTION, *auth, *tracked, *_model_flag("--model", model),
+        return Launch([self._program(harness_bin), "-p", STDIN_INSTRUCTION, *auth, *tracked,
+                       *_model_flag("--model", model),
                        *self.effort_flag(effort), "--allowedTools", REVIEWER_TOOLS,
                        "--disallowedTools", *REVIEWER_NO_WRITES, *REVIEWER_DISALLOWED, *structured,
                        "--add-dir", str(reviews)],
