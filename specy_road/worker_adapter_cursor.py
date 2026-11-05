@@ -8,10 +8,66 @@ from __future__ import annotations
 import shlex
 import subprocess
 from pathlib import Path
+from typing import Any
 
 from specy_road.worker_adapter_base import Adapter, Capabilities, Launch, Parsed, Unsupported, _model_flag
 from specy_road.worker_adapter_parsers import _json, _snip, _text, usage_fields
 from specy_road.worker_sessions import session_id_problem
+from specy_road.worker_usage_delta import SESSION_TOKENS
+
+_TOKEN_KEYS = SESSION_TOKENS
+
+
+def _raw_usage(d: dict[str, Any] | None) -> Any:
+    """The harness usage object on a stream line, if any."""
+    if not d:
+        return None
+    if d.get("usage") is not None:
+        return d.get("usage")
+    msg = d.get("message")
+    if isinstance(msg, dict) and msg.get("usage") is not None:
+        return msg.get("usage")
+    return None
+
+
+def _sum_segments(segments: list[dict[str, Any]]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for k in _TOKEN_KEYS:
+        vals = [s[k] for s in segments if s.get(k) is not None]
+        out[k] = sum(vals) if vals else None
+    for k in ("cost_usd", "cost_is_estimate", "num_turns", "harness_version"):
+        out[k] = next((s[k] for s in reversed(segments) if s.get(k) is not None), None)
+    return out
+
+
+def _dominates(last: dict[str, Any], prior: dict[str, Any]) -> bool:
+    """True when ``last``'s output count looks like a running total over summed prior segments."""
+    lo, po = last.get("output_tokens"), prior.get("output_tokens")
+    return lo is not None and po is not None and lo >= po and po > 0
+
+
+def combine_cursor_turn_usage(segments: list[dict[str, Any]]) -> dict[str, Any]:
+    """One turn's token counts from every usage-bearing line Cursor printed for it."""
+    if not segments:
+        return usage_fields(None)
+    if len(segments) == 1:
+        return segments[0]
+    outs = [s["output_tokens"] for s in segments if s.get("output_tokens") is not None]
+    if len(outs) == len(segments) and all(outs[i] <= outs[i + 1] for i in range(len(outs) - 1)):
+        last = dict(segments[-1])
+        su = {k: last[k] for k in _TOKEN_KEYS if last.get(k) is not None}
+        if su:
+            last["session_usage"] = su
+        return last
+    prior = _sum_segments(segments[:-1])
+    last = segments[-1]
+    if _dominates(last, prior):
+        total = dict(last)
+        su = {k: last[k] for k in _TOKEN_KEYS if last.get(k) is not None}
+        if su:
+            total["session_usage"] = su
+        return total
+    return _sum_segments(segments)
 
 
 def create_chat(worktree: Path) -> str:
@@ -48,6 +104,16 @@ class Cursor(Adapter):
                               "mode can write and run shell; never -w); resume = `agent -p --resume` (undocumented with a "
                               "new prompt: verify)")
 
+    def __init__(self) -> None:
+        self._usage_segments: list[dict[str, Any]] = []
+
+    def _track_usage(self, d: dict[str, Any] | None) -> None:
+        if d and d.get("type") == "system" and d.get("subtype") == "init":
+            self._usage_segments = []
+        raw = _raw_usage(d)
+        if raw is not None:
+            self._usage_segments.append(usage_fields(raw))
+
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
                effort: str | None = None) -> Launch:
@@ -76,6 +142,7 @@ class Cursor(Adapter):
         d = _json(line)
         if not d:
             return None
+        self._track_usage(d)
         sid = d.get("session_id")
         t = d.get("type")
         if t == "system" and d.get("subtype") == "init":
@@ -86,14 +153,17 @@ class Cursor(Adapter):
             return Parsed("output", _snip(text) or "(assistant)", sid)
         if t == "tool_call":
             return Parsed("output", f"tool call {d.get('subtype', '')}".strip(), sid)
+        if t == "usage":
+            return Parsed("output", "usage", sid)
         if t == "result":
             text = str(d.get("result") or "")
             ok = not d.get("is_error")
             summary = f"{d.get('subtype')}: {_snip(text)}" if ok else _snip(text) or f"{d.get('subtype')}: error"
             detail = {"message": text} if text else None
-            # Token counts only on the line; cost comes from the roster profile when rates are known.
-            return Parsed("turn_completed" if ok else "error", summary, sid, detail,
-                          usage_fields(d.get("usage"), num_turns=d.get("num_turns")))
+            usage = combine_cursor_turn_usage(self._usage_segments) if self._usage_segments else usage_fields(d.get("usage"),
+                                                                                                            num_turns=d.get("num_turns"))
+            self._usage_segments = []
+            return Parsed("turn_completed" if ok else "error", summary, sid, detail, usage)
         return None
 
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:

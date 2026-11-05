@@ -1,0 +1,64 @@
+{
+  "_provenance": "Long Composer turn from w-0063.log (M15.27 executor, 2026-11-05): init and tool_call lines kept as type, subtype and session_id only. Mid-turn usage events sanitized from the adopter stream (per-segment outputTokens on type usage lines before the terminal result). Result.usage matches the adopter undercount shape (10136 outputTokens for the last segment only).",
+  "session_id": "<session>",
+  "expected_output_tokens": 32236,
+  "segment_output_tokens": [7200, 8400, 6500, 10136],
+  "lines": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "session_id": "<session>"
+    },
+    {
+      "type": "usage",
+      "session_id": "<session>",
+      "usage": {
+        "inputTokens": 12000,
+        "outputTokens": 7200,
+        "cacheReadTokens": 450000,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "type": "tool_call",
+      "subtype": "started",
+      "session_id": "<session>"
+    },
+    {
+      "type": "tool_call",
+      "subtype": "completed",
+      "session_id": "<session>"
+    },
+    {
+      "type": "usage",
+      "session_id": "<session>",
+      "usage": {
+        "inputTokens": 8000,
+        "outputTokens": 8400,
+        "cacheReadTokens": 520000,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "type": "usage",
+      "session_id": "<session>",
+      "usage": {
+        "inputTokens": 6000,
+        "outputTokens": 6500,
+        "cacheReadTokens": 610000,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "type": "result",
+      "subtype": "success",
+      "session_id": "<session>",
+      "usage": {
+        "inputTokens": 4500,
+        "outputTokens": 10136,
+        "cacheReadTokens": 680000,
+        "cacheWriteTokens": 0
+      }
+    }
+  ]
+}
