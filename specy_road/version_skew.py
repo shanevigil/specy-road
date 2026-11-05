@@ -120,10 +120,11 @@ class Launcher:
     running: bool   # belongs to this interpreter's install
 
 
-def _is_running_install(path: Path, resolved: Path) -> bool:
-    prefixes = {Path(sys.prefix), Path(sys.prefix).resolve()}
+def _is_running_install(resolved: Path) -> bool:
+    # Fully resolved on both sides: a raw PATH entry can hold ``..``, be relative,
+    # or go through a symlinked prefix, and ``is_relative_to`` is only lexical.
     argv0 = Path(sys.argv[0]).resolve() if sys.argv and sys.argv[0] else None
-    return resolved == argv0 or any(p.is_relative_to(pre) for p in (path, resolved) for pre in prefixes)
+    return resolved == argv0 or resolved.is_relative_to(Path(sys.prefix).resolve())
 
 
 def launchers_on_path(path_env: str | None = None) -> list[Launcher]:
@@ -139,7 +140,7 @@ def launchers_on_path(path_env: str | None = None) -> list[Launcher]:
                 continue
             seen.add(cand)
             resolved = cand.resolve()
-            found.append(Launcher(name, cand, resolved, _is_running_install(cand, resolved)))
+            found.append(Launcher(name, cand, resolved, _is_running_install(resolved)))
     return found
 
 

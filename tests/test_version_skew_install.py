@@ -52,6 +52,44 @@ def test_launchers_in_path_order_and_shadow_warning(tmp_path: Path, monkeypatch,
     assert "which -a specy-road" in err
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX launchers and symlinks")
+def test_parent_components_and_links_out_of_prefix_are_not_running(tmp_path: Path, monkeypatch, capsys) -> None:
+    prefix = tmp_path / "running-env"
+    running = _launcher(prefix / "bin" / "specy-road")
+    foreign = _launcher(tmp_path / "foreign" / "specy-road")
+    (prefix / "links").mkdir()
+    (prefix / "links" / "specy-road").symlink_to(foreign)   # inside the prefix, but runs another install
+    monkeypatch.setattr(sys, "prefix", str(prefix))
+    monkeypatch.setattr(sys, "argv", ["pytest"])
+    dotted = f"{prefix}{os.sep}..{os.sep}foreign"   # lexically below the prefix, really beside it
+    path_env = os.pathsep.join([dotted, str(prefix / "links"), str(running.parent)])
+
+    found = launchers_on_path(path_env)
+
+    assert [(ln.path, ln.resolved, ln.running) for ln in found] == [
+        (Path(dotted) / "specy-road", foreign.resolve(), False),
+        (prefix / "links" / "specy-road", foreign.resolve(), False),
+        (running, running.resolve(), True),
+    ]
+    print_install_report(path_env)
+    err = capsys.readouterr().err
+    assert "first specy-road on PATH" in err and str(foreign.resolve()) in err
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX symlinks")
+def test_symlinked_prefix_and_trailing_slash_still_running(tmp_path: Path, monkeypatch, capsys) -> None:
+    real = tmp_path / "real-env"
+    running = _launcher(real / "bin" / "specy-road")
+    (tmp_path / "link-env").symlink_to(real)
+    monkeypatch.setattr(sys, "prefix", str(tmp_path / "link-env") + os.sep)
+    monkeypatch.setattr(sys, "argv", ["pytest"])
+    path_env = os.pathsep.join([str(tmp_path / "link-env" / "bin") + os.sep, str(running.parent)])
+
+    assert [ln.running for ln in launchers_on_path(path_env)] == [True, True]
+    print_install_report(path_env)
+    assert "warning" not in capsys.readouterr().err
+
+
 @pytest.mark.skipif(os.name == "nt", reason="POSIX launchers")
 def test_no_shadow_warning_when_running_install_is_first(tmp_path: Path, monkeypatch, capsys) -> None:
     prefix = tmp_path / "running-env"
