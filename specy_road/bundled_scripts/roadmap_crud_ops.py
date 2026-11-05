@@ -32,6 +32,7 @@ from specy_road.bundled_scripts.roadmap_crud_chunk_report import (
     repo_rel,
 )
 from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_PATTERN, ID_PATTERN, apply_set, merge_set_pairs
+from specy_road.bundled_scripts.roadmap_edit_list_fields import planned_test_change_items
 from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
 from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
 from specy_road.bundled_scripts.roadmap_gui_lib import registry_by_node_id
@@ -210,6 +211,7 @@ def cmd_add(args: object) -> None:
         "touch_zones": list(args.touch_zone or []),
         "dependencies": list(args.dependency or []),
         "acceptance": [a.strip() for a in getattr(args, "acceptance", None) or [] if a.strip()] or None,
+        "planned_test_changes": planned_test_change_items(getattr(args, "planned_test_change", None) or []) or None,
         "parallel_tracks": args.parallel_tracks,
         "sensitivity": getattr(args, "sensitivity", None), "executor_eligibility": getattr(args, "executor_eligibility", None),
         # Unset sorts as 0 and jumped the pickup queue; append instead.
