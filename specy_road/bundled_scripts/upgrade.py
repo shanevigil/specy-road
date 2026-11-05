@@ -25,9 +25,11 @@ blamed on it), and lists the other git worktrees, which still carry the old
 managed files while sharing this install.
 
 Each step keeps its own narrow contract; the roadmap, planning sheets and
-anything outside a managed block are never touched. ``--dry-run`` lists what
-the refreshes would write, then applies them to a temporary copy of the
-project and runs ``validate`` there; the checkout is never written. The exit
+anything outside a managed block are never touched. The refreshes run once, on
+a temporary mirror of the checkout that keeps its links; what they wrote there
+is the plan, which is then written into the checkout. ``--dry-run`` lists the
+same plan, writes it into a temporary copy instead and runs ``validate`` there;
+the checkout is never written. The exit
 code is ``validate``'s: a missing or drifted digest is reported, not failed.
 Read validate's notices for what the new version reports (held milestones
 among them), then run ``specy-road digest``.
@@ -36,9 +38,8 @@ among them), then run ``specy-road digest``.
 from __future__ import annotations
 
 import argparse
-import contextlib
-import io
 import os
+import subprocess
 import shlex
 import shutil
 import sys
@@ -53,14 +54,7 @@ from specy_road.bundled_scripts.digest_cli import cmd_digest
 from specy_road.bundled_scripts.refresh_profiles import refresh_profiles, selection_notice
 from specy_road.bundled_scripts.refresh_schemas import SCHEMAS_DIRNAME, missing_schema_names, refresh_schemas
 from specy_road.bundled_scripts.refresh_stubs import _prefix, _report, _resolve_root, refresh_stubs
-from specy_road.bundled_scripts.upgrade_preview import (
-    changed_paths,
-    copy_tree,
-    fingerprint,
-    preview_files,
-    restore_declined,
-    snapshot_declined,
-)
+from specy_road.bundled_scripts.upgrade_plan import Mirror, apply_plan, conflicts, make_plan
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.digest import DEFAULT_OUTPUT
 from specy_road.file_limits_engine import build_overlay_match_sets, collect_tracked_files, line_count, resolve_limits
@@ -108,22 +102,25 @@ def copy_missing_docs(project: Path, *, dry_run: bool = False, declined: list[st
 
 
 # Outcome words with which the refreshes report a path they leave as it is (managed_block, specyrd_skills).
-_DECLINED = ("refused", "skipped", "failed")
+_DECLINED = {"refused": "refuse", "skipped": "skip", "failed": "fail"}
 
 
-def _refresh(project: Path, checkout: Path, *, dry_run: bool, prune: bool) -> set[str]:
-    """Run the refreshes; return the checkout-relative paths they refused, skipped or failed to write."""
-    verb = "would write" if dry_run else "wrote"
+def _refresh(project: Path, checkout: Path, *, preview: bool, prune: bool) -> dict[str, str]:
+    """Run the refreshes for real on ``checkout`` (the plan's mirror); ``preview`` changes only the wording.
+
+    Returns ``{checkout-relative path: refuse | skip | fail}`` for each path they left as it was.
+    """
+    verb = "would write" if preview else "wrote"
     _section("refresh-schemas")
     new = {f"{SCHEMAS_DIRNAME}/{name}" for name in missing_schema_names(project)}
-    schemas = refresh_schemas(project, dry_run=dry_run)
+    schemas = refresh_schemas(project)
     for rel in schemas:
         print(f"{verb} {rel}" + (" (new in this version)" if rel in new else ""))
     if not schemas:
         print("schemas/ already current")
 
     _section("refresh-profiles")
-    profiles, kept = refresh_profiles(project, dry_run=dry_run)
+    profiles, kept = refresh_profiles(project)
     for rel in profiles:
         print(f"{verb} {rel}")
     notice = selection_notice(profiles, kept, roster=True)
@@ -132,7 +129,7 @@ def _refresh(project: Path, checkout: Path, *, dry_run: bool, prune: bool) -> se
 
     _section("shipped docs")
     declined_docs: list[str] = []
-    docs = copy_missing_docs(project, dry_run=dry_run, declined=declined_docs)
+    docs = copy_missing_docs(project, declined=declined_docs)
     for rel in docs:
         print(f"{verb} {rel} (named in the .specyrd/AGENTS.md load order)")
     if not docs:
@@ -140,14 +137,18 @@ def _refresh(project: Path, checkout: Path, *, dry_run: bool, prune: bool) -> se
 
     _section("refresh-stubs")
     print_migration(project, _prefix(checkout, project))
-    written, orphans = refresh_stubs(checkout, dry_run=dry_run, project=project, prune=prune)
+    written, orphans = refresh_stubs(checkout, project=project, prune=prune)
     if written or orphans:
-        _report(written, orphans, dry_run=dry_run, pruned=prune, footer=False)
+        _report(written, orphans, dry_run=preview, pruned=prune, footer=False)
     else:
         print("stubs and managed blocks already current")
     prefix = _prefix(checkout, project)
-    return {f"{prefix}{rel}" for rel in declined_docs} | {
-        rel for rel, sep, outcome in (entry.partition(" (") for entry in written) if sep and outcome.startswith(_DECLINED)}
+    declined = {f"{prefix}{rel}": "refuse" for rel in declined_docs}
+    for rel, sep, outcome in (entry.partition(" (") for entry in written):
+        action = next((a for word, a in _DECLINED.items() if outcome.startswith(word)), None)
+        if sep and action:
+            declined[rel] = action
+    return declined
 
 
 def _check(project: Path) -> tuple[bool, bool]:
@@ -202,31 +203,38 @@ def _report_line_caps(before: dict[str, tuple[int, int]], after: dict[str, tuple
             print(line)
 
 
+def _plan(project: Path, checkout: Path, *, preview: bool, prune: bool):
+    return make_plan(checkout, project, lambda p, c: _refresh(p, c, preview=preview, prune=prune))
+
+
 def _apply(project: Path, checkout: Path, *, prune: bool) -> None:
-    """Run the refreshes for real, then check their writes against the line caps."""
+    """Make the plan, write it into the checkout, then check its writes against the line caps."""
     before = _capped_lines(project)
-    _refresh(project, checkout, dry_run=False, prune=prune)
+    plan = _plan(project, checkout, preview=False, prune=prune)
+    stale = conflicts(plan)
+    if stale:
+        raise ValueError(f"{', '.join(stale)} changed while the upgrade ran; nothing was written, run it again")
+    apply_plan(plan)
     _report_line_caps(before, _capped_lines(project))
 
 
 def _dry_run(project: Path, checkout: Path, *, prune: bool) -> int:
-    """List what the refreshes would write, then validate a temporary copy with them applied."""
-    declined = _refresh(project, checkout, dry_run=True, prune=prune)
+    """Make the same plan, write it into a temporary copy of the checkout, and validate the copy."""
+    plan = _plan(project, checkout, preview=True, prune=prune)
     _section("applying the refreshes to a temporary copy, then validating it")
-    files = preview_files(checkout, project)
-    before_run = fingerprint(checkout, files)
     with tempfile.TemporaryDirectory(prefix="specy-road-upgrade-") as tmp:
-        copy = Path(tmp).resolve()
-        copy_tree(files, copy)
-        copy_project = copy / project.relative_to(checkout)
-        kept = snapshot_declined(copy, declined)
-        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            before = _capped_lines(copy_project)
-            _refresh(copy_project, copy, dry_run=False, prune=prune)
-        restore_declined(copy, kept)
+        copy = Mirror(checkout, Path(tmp), project / "work").build()
+        # validate reads git (tracked files for touch zones, ignore rules): one commit of the copy.
+        for cmd in (["add", "-A", "--ignore-errors"],
+                    ["-c", "user.name=specy-road", "-c", "user.email=upgrade@specy-road.invalid",
+                     "-c", "commit.gpgsign=false", "commit", "-q", "--no-verify", "-m", "upgrade preview"]):
+            subprocess.run(["git", "-C", str(copy.repo), *cmd], check=False, capture_output=True)
+        copy_project = copy.to_sandbox(project.resolve())
+        before = _capped_lines(copy_project)
+        apply_plan(plan, copy.to_sandbox)
         _report_line_caps(before, _capped_lines(copy_project))
         valid, _digest_ok = _check(copy_project)
-    changed = changed_paths(before_run, fingerprint(checkout, files))
+    changed = plan.changed_since()
     if changed:
         print(f"error: dry run modified {', '.join(changed)} in {checkout}; this is a bug in specy-road upgrade,"
               " please report it", file=sys.stderr)

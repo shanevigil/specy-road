@@ -1,0 +1,188 @@
+"""M13.2 fix round 3: `upgrade` and `upgrade --dry-run` apply one write plan.
+
+Each layout is upgraded twice on the same checkout: dry, then real, under one
+injected validator that records the tree it validates (every file and link,
+read through the link, ``.specyrd/manifest.json`` included). The dry run's copy
+and the real checkout must be byte-identical, the exits equal, and the
+checkout untouched by the dry run. Sol's two round-3 probes are kept as they
+were reported: each must fail the dry run as it fails the real one.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from collections.abc import Callable
+from pathlib import Path
+
+import pytest
+
+from specy_road.bundled_scripts import upgrade
+from specy_road.bundled_scripts.upgrade import run_upgrade
+from specy_road.init_project import run_init_project
+from specy_road.managed_block import HTML_COMMENT, render_block
+from tests.upgrade_repo_helpers import old_repo
+
+SKILL = ".agents/skills/specyrd-validate/SKILL.md"
+
+
+def _top(at: Path) -> Path:
+    """The checkout (or copy) holding project ``at``: the nearest directory with a ``.git``."""
+    return next(p for p in (at, *at.parents) if (p / ".git").exists())
+
+
+def _tree(top: Path) -> dict[str, tuple]:
+    """``{path: (kind, bytes)}`` for every file and link under ``top`` but ``.git`` and ``work/``.
+
+    A link's kind carries its text when it is relative; an absolute one points into
+    the copy in a dry run, so only its content is compared.
+    """
+    out: dict[str, tuple] = {}
+    for dirpath, dirs, names in os.walk(top):
+        dirs[:] = [d for d in dirs if d not in (".git", "work")]
+        for name in dirs + names:
+            path = Path(dirpath) / name
+            if name == ".git" or (path.is_dir() and not path.is_symlink()):
+                continue
+            text = os.readlink(path) if path.is_symlink() else None
+            kind = ("file",) if text is None else ("link", "absolute" if os.path.isabs(text) else text)
+            try:
+                data = path.read_bytes() if path.is_file() else b"<not a file>"
+            except OSError:
+                data = b"<unreadable>"
+            out[path.relative_to(top).as_posix()] = (*kind, data)
+    return out
+
+
+def _alias(tmp: Path) -> Path:
+    root = old_repo(tmp)
+    (root / "CLAUDE.md").symlink_to("AGENTS.md")
+    return root
+
+
+def _skill_outside(tmp: Path) -> Path:
+    root = old_repo(tmp / "repo")
+    (tmp / "outside.md").write_text("old skill\n", encoding="utf-8")
+    (root / SKILL).parent.mkdir(parents=True)
+    (root / SKILL).symlink_to(tmp / "outside.md")
+    manifest = root / ".specyrd" / "manifest.json"
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data["agents"]["cursor"].append(SKILL)
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    return root
+
+
+def _agents_outside(tmp: Path) -> Path:
+    root = old_repo(tmp / "repo")
+    (tmp / "AGENTS.md").write_text("# Theirs\n\nShared rules, no block.\n", encoding="utf-8")
+    (root / "AGENTS.md").unlink()
+    (root / "AGENTS.md").symlink_to(tmp / "AGENTS.md")
+    return root
+
+
+def _ignored_claude(tmp: Path) -> Path:
+    root = old_repo(tmp)
+    (root / "CLAUDE.md").write_text("# Claude\n\nOur own Claude notes.\n", encoding="utf-8")
+    with (root / ".gitignore").open("a", encoding="utf-8") as f:
+        f.write("CLAUDE.md\n")
+    return root
+
+
+def _stale_block(tmp: Path) -> Path:
+    root = old_repo(tmp)
+    stale = render_block(["- an old rule"], style=HTML_COMMENT)
+    (root / "AGENTS.md").write_text(f"# Ours\n\n{stale}\nOur text.\n", encoding="utf-8")
+    return root
+
+
+def _nested(tmp: Path) -> Path:
+    subprocess.run(["git", "init", "-q", str(tmp)], check=True)
+    assert run_init_project(tmp / "sr") == 0
+    (tmp / "sr" / "schemas" / "orchestration.schema.json").unlink()
+    (tmp / "sr" / "AGENTS.md").write_text("# Ours\n\nOur rules.\n", encoding="utf-8")
+    return tmp / "sr"
+
+
+LAYOUTS: dict[str, Callable[[Path], Path]] = {
+    "claude-md-aliases-agents-md": _alias,
+    "canonical-skill-linked-outside": _skill_outside,
+    "agents-md-linked-outside": _agents_outside,
+    "ignored-claude-md": _ignored_claude,
+    "stale-managed-block": _stale_block,
+    "nested-project-root": _nested,
+}
+
+
+@pytest.mark.parametrize("layout", sorted(LAYOUTS))
+def test_dry_run_copy_and_real_checkout_end_byte_identical(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch, layout: str
+) -> None:
+    project = LAYOUTS[layout](tmp_path)
+    checkout = _top(project)
+    seen: list[dict[str, tuple]] = []
+    monkeypatch.setattr(upgrade, "validate_at", lambda at: seen.append(_tree(_top(at))))
+    untouched = _tree(checkout)
+
+    dry = run_upgrade(project, dry_run=True)
+    assert "dry run modified" not in capsys.readouterr().err
+    assert _tree(checkout) == untouched
+    real = run_upgrade(project)
+
+    assert dry == real == 0
+    assert len(seen) == 2
+    assert seen[0] == seen[1]
+    assert seen[1] != untouched   # the upgrade wrote something, so the comparison is not vacuous
+
+
+def _exits(root: Path, validate: Callable[[Path], None], capsys, monkeypatch: pytest.MonkeyPatch) -> list[tuple]:
+    monkeypatch.setattr(upgrade, "validate_at", validate)
+    capsys.readouterr()
+    outcomes = []
+    for dry_run in (True, False):
+        before = _tree(root)
+        code = run_upgrade(root, dry_run=dry_run)
+        err = capsys.readouterr().err
+        assert "dry run modified" not in err
+        if dry_run:
+            assert _tree(root) == before
+        outcomes.append((code, [line for line in err.splitlines() if line.startswith("error:")]))
+    return outcomes
+
+
+def test_sol_f1_an_alias_fails_the_claude_import_check_in_both(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CLAUDE.md -> AGENTS.md: the AGENTS.md refresh overwrites the shared block, so the CLAUDE import is gone."""
+    root = _alias(tmp_path)
+
+    def validate(at: Path) -> None:
+        if "@.specyrd/AGENTS.md" not in (at / "CLAUDE.md").read_text(encoding="utf-8").splitlines():
+            print("error: CLAUDE.md has no current import", file=sys.stderr)
+            raise SystemExit(1)
+
+    dry, real = _exits(root, validate, capsys, monkeypatch)
+
+    assert dry == real == (1, ["error: CLAUDE.md has no current import"])
+
+
+def test_sol_f2_a_refused_canonical_skill_is_unowned_in_both_manifests(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A recorded canonical skill linked outside is refused, so the refreshed manifest drops it."""
+    root = _skill_outside(tmp_path)
+    owned_seen: list[bool] = []
+
+    def validate(at: Path) -> None:
+        data = json.loads((at / ".specyrd" / "manifest.json").read_text(encoding="utf-8"))
+        owned_seen.append(SKILL in {p for paths in data["agents"].values() for p in paths})
+        if not owned_seen[-1]:
+            print("error: required skill was refused", file=sys.stderr)
+            raise SystemExit(1)
+
+    dry, real = _exits(root, validate, capsys, monkeypatch)
+
+    assert dry == real == (1, ["error: required skill was refused"])
+    assert owned_seen == [False, False]
+    assert (tmp_path / "outside.md").read_text(encoding="utf-8") == "old skill\n"
