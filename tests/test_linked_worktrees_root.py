@@ -6,6 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import yaml
 
 from tests.pickup_repo_helpers import make_pickup_project
 from tests.review_repo_helpers import git, make_review_repo
@@ -292,4 +293,29 @@ def test_a_checkout_path_with_a_newline_resolves_the_enclosing_worktree(tmp_path
     assert project_root() == lane.resolve()
     assert capsys.readouterr() == ("", "")
     assert setup_worktree_env(main, lane) == ["linked node_modules"]   # the exclude file sits under main\ncheckout
+    assert git(lane, "status", "--porcelain", "--untracked-files=all") == ""
+
+
+def test_a_second_setup_does_not_corrupt_exclude_lines_with_vertical_tab(tmp_path: Path) -> None:
+    main = tmp_path / "main"
+    (main / "roadmap").mkdir(parents=True)
+    odd = "env\vodd"
+    (main / "roadmap" / "git-workflow.yaml").write_text(
+        yaml.safe_dump({"version": 1, "integration_branch": "main", "remote": "origin",
+                        "env_setup": {"link": [odd]}}), encoding="utf-8")
+    git(main, "init", "-q", "-b", "main")
+    git(main, "-c", "user.email=t@e.com", "-c", "user.name=T", "add", "-A")
+    git(main, "-c", "user.email=t@e.com", "-c", "user.name=T", "commit", "-qm", "init")
+    (main / odd).mkdir()
+    lane = tmp_path / "lane"
+    git(main, "worktree", "add", "-q", "-b", "lane", str(lane))
+    assert setup_worktree_env(main, lane) == [f"linked {odd}"]
+    assert git(lane, "status", "--porcelain", "--untracked-files=all") == ""
+    (main / "second").mkdir()
+    (main / "roadmap" / "git-workflow.yaml").write_text(
+        yaml.safe_dump({"version": 1, "integration_branch": "main", "remote": "origin",
+                        "env_setup": {"link": ["second"]}}), encoding="utf-8")
+    lane2 = tmp_path / "lane2"
+    git(main, "worktree", "add", "-q", "-b", "lane2", str(lane2))
+    assert setup_worktree_env(main, lane2) == ["linked second"]
     assert git(lane, "status", "--porcelain", "--untracked-files=all") == ""

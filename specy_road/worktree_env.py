@@ -86,23 +86,37 @@ def exclude_pattern(rel: str) -> str:
     return "/" + stripped + "\\ " * (len(body) - len(stripped))
 
 
+def info_exclude_lines(text: str) -> list[str]:
+    """Each ``info/exclude`` record, split on LF only (git's line delimiter).
+
+    ``str.splitlines()`` also splits on vertical tab and other Unicode line breaks, which are legal in
+    path names and must stay part of one pattern."""
+    if not text:
+        return []
+    parts = text.split("\n")
+    if parts and parts[-1] == "":
+        parts.pop()
+    return parts
+
+
 def exclude_links(leaf_top: Path, targets: list[Path]) -> None:
     """Add an anchored ``/<path>`` line per symlink to the exclude file git reads in ``leaf_top``.
 
     Git reads ``info/exclude`` from the **common** git dir, so the line holds in every worktree of the
     repository, the main checkout included (where it matches the real directory, already ignored). A
     directory-only pattern such as ``node_modules/`` never matches a symlink, which git sees as a file.
-    """
+    Existing lines are never rewritten; new patterns are appended only."""
     exclude = git_path(["rev-parse", "--path-format=absolute", "--git-path", "info/exclude"], leaf_top)
     if exclude is None:
         raise EnvSetupError(f"env_setup: cannot find the git exclude file for {leaf_top}")
-    have = exclude.read_text(encoding="utf-8").splitlines() if exclude.is_file() else []
+    have = info_exclude_lines(exclude.read_text(encoding="utf-8")) if exclude.is_file() else []
     lines = [exclude_pattern(t.relative_to(leaf_top).as_posix()) for t in targets]
     new = [ln for ln in dict.fromkeys(lines) if ln not in have]
     if new:
         exclude.parent.mkdir(parents=True, exist_ok=True)
-        text = "\n".join(have) + ("\n" if have else "")
-        exclude.write_text(text + "".join(f"{ln}\n" for ln in new), encoding="utf-8")
+        with exclude.open("a", encoding="utf-8") as fh:
+            for ln in new:
+                fh.write(f"{ln}\n")
 
 
 def run_setup_cmd(cmd: str, cwd: Path) -> tuple[int, str]:

@@ -169,8 +169,23 @@ R1 class: a filesystem path read from git output as text, then split on newlines
 - `worktree_env.exclude_links` (`--git-path info/exclude` via `git_text`): trailing whitespace on the path would be lost; now `git_path`; exclude file found under `main\ncheckout/.git` in the newline test.
 - `worker_ops_launch` clean-tree (`status_entries`, `-z`): NUL-separated paths; safe; unchanged.
 - `runtime_paths.git_root` / `project_prefix` (`git_text`, strip only): embedded newline in path survives; pre-leaf; unchanged.
-- `exclude_links` reading `info/exclude` with `splitlines`: file content is patterns, not git path output; link names with newlines refused at setup; unchanged behaviour.
+- `exclude_links` reading `info/exclude` with `splitlines`: file content is patterns, not git path output; link names with newlines refused at setup; fixed in fix round 3 for vertical tab (see below).
 - Public `project_root()` from linked worktree `lane` with `SPECY_ROAD_REPO_ROOT` naming `main\ncheckout`: returns `lane`, silent (test `test_a_checkout_path_with_a_newline_resolves_the_enclosing_worktree`).
+
+## Fix round 3: `info/exclude` line records
+
+Class: treating `info/exclude` body as Unicode line-oriented text via `str.splitlines()`, which splits on vertical tab and other breaks that are legal inside one gitignore pattern.
+
+Design: `info_exclude_lines` splits on LF only; `exclude_links` appends new patterns without rewriting existing file bytes.
+
+## Fix round: probes
+
+- `str.splitlines()` on `/env\x0bodd`: two records (`/env`, `odd`); reproduced sol-low R1; fixed with LF-only split and append-only writes.
+- Second `setup_worktree_env` on another worktree after `link: [env\vodd]` on the first: first lane stays clean (test `test_a_second_setup_does_not_corrupt_exclude_lines_with_vertical_tab`; probe `probe-gpt-6.1-sol-low.py`).
+- `exclude_links` duplicate guard still uses exact line equality on LF-split records; unchanged behaviour for normal names.
+- Git path reads (`git_path`, two queries): newline in checkout dirname; fix round 2; unchanged this round.
+- Link names with `\n`/`\r`: still refused at `link_target`; no exclude line can hold them; unchanged.
+- Tests asserting exclude content via `splitlines()` (`test_link_in_a_nested_project_excludes_git_root_relative_lines`): patterns are normal path segments without vertical tab; still valid.
 
 ## Verification
 
@@ -195,7 +210,8 @@ R1 class: a filesystem path read from git output as text, then split on newlines
 - `worktree_env.link_target`: the link's place in the leaf, parent resolved and bounded, final component not
   followed; refuses `..`, the worktree top and newlines (rework R1, R2).
 - `worktree_env.exclude_pattern`: escapes gitignore pattern syntax (`\ * ? [ ] ! #`, trailing spaces) in an exclude line (rework R2, fix round 1).
-- `worktree_env.exclude_links`: appends anchored exclude lines to the common `info/exclude` (A2).
+- `worktree_env.info_exclude_lines`: LF-only records from `info/exclude` (fix round 3; avoids `splitlines()` breaking on vertical tab).
+- `worktree_env.exclude_links`: appends anchored exclude lines to the common `info/exclude` (A2); append-only, no rewrite (fix round 3).
 - `worktree_env.link_into`: makes the symlinks, with bound/missing/exists guards (A2). It was split out of
   `setup_worktree_env` for C901.
 - `bounded_path(verb=...)`: so a link refusal says "cannot link", not "cannot copy".
@@ -225,3 +241,4 @@ R1 class: a filesystem path read from git output as text, then split on newlines
   - `test_a_source_that_is_a_symlink_links_its_resolved_target`: fix round 1, symlinked sources.
   - `test_link_in_a_nested_project_excludes_git_root_relative_lines`: fix round 1, nested prefix.
   - `test_a_checkout_path_with_a_newline_resolves_the_enclosing_worktree`: fix round 2, newline in a checkout path.
+  - `test_a_second_setup_does_not_corrupt_exclude_lines_with_vertical_tab`: fix round 3, shared exclude append (sol-low R1).
