@@ -13,6 +13,7 @@ from typing import Any
 
 from specy_road import worker_ops as ops
 from specy_road.bundled_scripts.role_prompt_rework import rework_check
+from specy_road.bundled_scripts.worker_cli_args import FixRound
 from specy_road.bundled_scripts.worker_cli_render import (_line, _row, _sync_event_lines, sync_worker_header,
                                                        timeline, timeline_lines, usage, usage_lines)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -178,8 +179,6 @@ def cmd_message(ns: argparse.Namespace) -> int:
         if old is None:
             raise WorkerError(f"cannot read --file {ns.file}: {e}") from None
         return _replay(ns, ns.op_id, old)
-    if text is None and not ns.fix_round:
-        raise WorkerError("worker message needs --file or --text (optional with --fix-round)")
     return _mutate(ns, "message", lambda root: _row(ops.message(root, ns.worker_id, text, offline=ns.offline,
                                                                  no_queue=ns.no_queue, fix_round=ns.fix_round)),
                    lambda o: ([f"{o['worker_id']}: message queued for the next turn"]
@@ -339,9 +338,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_sync)
 
     sp = ws.add_parser("message", help="Send a follow-up prompt (resumes the native session)"); _w(sp)
-    g = sp.add_mutually_exclusive_group()
+    g = sp.add_mutually_exclusive_group(required=True)
     g.add_argument("--file", metavar="PATH"); g.add_argument("--text", metavar="TEXT")
-    sp.add_argument("--fix-round", action="store_true", help="Send the blocking findings and the class-audit block, then any text")
+    sp.add_argument("--fix-round", action=FixRound, group=g, help="Send the blocking findings and the class-audit block, then any text")
     sp.add_argument("--no-queue", action="store_true",
                     help="Refuse while a turn is still running instead of queueing for the next turn")
     _offline_arg(sp); sp.set_defaults(func=cmd_message)

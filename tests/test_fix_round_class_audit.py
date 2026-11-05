@@ -7,7 +7,8 @@ from pathlib import Path
 from tests.review_repo_helpers import git
 from tests.test_models_and_prompt import make_profile_repo
 from tests.test_rework_findings_in_prompt import executor_prompt, file_review, stopped_worker
-from tests.test_worker_cli import _repo, run_worker_cli, wait_for_worker
+from tests.test_worker_cli import run_worker_cli, wait_for_worker
+from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road.bundled_scripts.role_prompt_rework import CLASS_AUDIT_LINES
 
@@ -44,7 +45,7 @@ def _sent(repo: Path) -> str:
 
 
 def test_fix_round_sends_findings_audit_and_text(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
     wait_for_worker(repo, "w-0001")
     tip = git(repo, "rev-parse", "HEAD")
@@ -60,7 +61,7 @@ def test_fix_round_sends_findings_audit_and_text(tmp_path: Path) -> None:
 
 
 def test_fix_round_without_text_and_its_refusal(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
     wait_for_worker(repo, "w-0001")
     assert run_worker_cli("worker", "message", "w-0001", "--fix-round", "--repo-root", str(repo)) == 1
@@ -72,12 +73,16 @@ def test_fix_round_without_text_and_its_refusal(tmp_path: Path, capsys) -> None:
 
 
 def test_plain_message_is_sent_unchanged(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
     wait_for_worker(repo, "w-0001")
     file_review(repo, "sol", git(repo, "rev-parse", "HEAD"), "block", ["Cover the empty roster"])
-    assert run_worker_cli("worker", "message", "w-0001", "--repo-root", str(repo)) == 1
-    assert "needs --file or --text" in capsys.readouterr().err
+    for extra in ([], ["--no-queue"], ["--offline"]):   # argparse's own refusal, as before --fix-round existed
+        assert run_worker_cli("worker", "message", "w-0001", *extra, "--repo-root", str(repo)) == 2
+        err = capsys.readouterr().err
+        assert err.startswith("usage: specy-road worker message") and "(--file PATH | --text TEXT)" in err
+        assert err.endswith("specy-road worker message: error: one of the arguments --file --text is required\n")
+    assert not list((repo / "work").glob("prompt-w-0001-message-*.md"))
     assert run_worker_cli("worker", "message", "w-0001", "--text", "also update docs", "--repo-root", str(repo)) == 0
     wait_for_worker(repo, "w-0001")
     assert _sent(repo) == "also update docs"
