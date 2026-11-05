@@ -14,6 +14,7 @@ so a plain re-run of finish starts over.
 from __future__ import annotations
 
 import os
+import subprocess
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -32,7 +33,8 @@ def one_line(text: str) -> str:
 class BookkeepingSnapshot:
     """The branch tip before the bookkeeping commit, and each path's content.
 
-    An entry is ``("link", target)`` for a symlink, else ``("file", bytes)``.
+    An entry is ``("link", target)`` for a symlink, ``("file", bytes)`` for a
+    file, and ``("absent", b"")`` for a cleanup path that did not exist.
     """
 
     branch: str
@@ -69,6 +71,8 @@ def snapshot_bookkeeping(
             entries[rel] = ("link", os.readlink(path))
         elif path.is_file():
             entries[rel] = ("file", path.read_bytes())
+        elif not os.path.lexists(path):
+            entries[rel] = ("absent", b"")
     return BookkeepingSnapshot(branch=branch, pre_sha=sha, entries=entries)
 
 
@@ -87,11 +91,24 @@ def _restore(root: Path, rel: str, entry: tuple[str, str | bytes]) -> None:
     path = root / rel
     path.parent.mkdir(parents=True, exist_ok=True)
     kind, value = entry
+    if os.path.lexists(path) and (kind == "absent" or path.is_symlink() != (kind == "link")):
+        path.unlink()   # the wrong kind of entry (or one that was not there) goes first
     if kind == "link":
         if not os.path.lexists(path):
             os.symlink(value, path)
-    else:
+    elif kind == "file":
         path.write_bytes(value)
+
+
+def _differs_from(root: Path, sha: str, rel: str, entry: tuple[str, str | bytes]) -> bool:
+    """Whether ``entry`` is not what ``sha`` holds at ``rel`` (a link compares by its target)."""
+    kind, value = entry
+    if kind == "absent":
+        return False
+    data = value.encode() if isinstance(value, str) else value
+    have = subprocess.run(["git", "hash-object", "--stdin"], cwd=root, input=data,
+                          capture_output=True, check=False).stdout.decode().strip()
+    return have != git_ok(["rev-parse", f"{sha}:./{rel}"], root)[1]
 
 
 def _save_copy(node: str, rel: str, entry: tuple[str, str | bytes]) -> str:
@@ -99,6 +116,8 @@ def _save_copy(node: str, rel: str, entry: tuple[str, str | bytes]) -> str:
     kind, value = entry
     if kind == "link":
         return f"a symlink to {value}"
+    if kind == "absent":
+        return "absent before finish"
     try:
         dst = Path(tempfile.mkdtemp(prefix=f"specy-road-undo-{node}-")) / Path(rel).name
         dst.write_bytes(value)
@@ -108,10 +127,13 @@ def _save_copy(node: str, rel: str, entry: tuple[str, str | bytes]) -> str:
 
 
 def undo_bookkeeping(repo: Path, snap: BookkeepingSnapshot) -> UndoOutcome:
-    """Reset ``snap.branch`` to ``pre_sha`` and rewrite the paths ``pre_sha`` does not track.
+    """Reset ``snap.branch`` to ``pre_sha``, then put every captured path back as it was before finish.
 
-    Untracked paths are rewritten even when the checkout or reset failed, so
-    their bytes are never lost; tracked ones come back with the reset.
+    After a successful reset each path gets exactly its captured state, tracked
+    or not (a locally modified tracked document gets its modified bytes, not
+    the committed ones). When the checkout or reset failed, writing a tracked
+    path would block the reset the report names, so only untracked paths are
+    written and a tracked one whose bytes differ from ``pre_sha`` is saved.
     """
     root = repo.resolve()
     out = UndoOutcome(snap=snap)
@@ -124,13 +146,16 @@ def undo_bookkeeping(repo: Path, snap: BookkeepingSnapshot) -> UndoOutcome:
         code, msg = git_code(["reset", "--keep", snap.pre_sha], root)
         if code != 0:
             out.git_error = f"git reset --keep {snap.pre_sha} failed: {msg}"
+    node = snap.branch.rsplit("/", 1)[-1]
     for rel, entry in snap.entries.items():
-        if git_ok(["cat-file", "-e", f"{snap.pre_sha}:./{rel}"], root)[0]:
+        if out.git_error is not None and git_ok(["cat-file", "-e", f"{snap.pre_sha}:./{rel}"], root)[0]:
+            if _differs_from(root, snap.pre_sha, rel, entry):
+                out.unrestored[rel] = f"tracked, so it waits for the reset; {_save_copy(node, rel, entry)}"
             continue
         try:
             _restore(root, rel, entry)
         except OSError as e:
-            out.unrestored[rel] = f"{e}; {_save_copy(snap.branch.rsplit('/', 1)[-1], rel, entry)}"
+            out.unrestored[rel] = f"{e}; {_save_copy(node, rel, entry)}"
     if out.git_error is None and not out.unrestored:
         print(f"[ok] undid the bookkeeping commit: {snap.branch} is back at {snap.pre_sha[:12]}, "
               "its registry claim and work files restored")
@@ -150,7 +175,9 @@ def undo_report(out: UndoOutcome, again: str) -> tuple[str | None, str]:
                 f"registry claim restored) but could not restore {one_line(lost)}",
                 f"put each file named above back at its path, then run `{again}` again on this branch.")
     first = f"git reset --keep {sha}" if out.checked_out else f"git checkout {snap.branch} && git reset --keep {sha}"
-    restored = "its untracked work files are back" if not out.unrestored else f"not restored: {one_line(lost)}"
+    restored = (f"not restored: {one_line(lost)}" if out.unrestored else
+                "its untracked work files are back; tracked ones come back with the reset")
+    then = ", put each saved file named above back at its path," if out.unrestored else ","
     return (f"error: could not undo the bookkeeping commit: {one_line(out.git_error)} "
             f"(the commit is still on {snap.branch}; {restored})",
-            f"run `{first}`, then `{again}` on this branch.")
+            f"run `{first}`{then} then `{again}` on this branch.")

@@ -23,6 +23,8 @@ These are as listed. The new module `specy_road/finish_bookkeeping_undo.py` was 
 
 - `tests/test_branch_cleanup.py::test_a_retried_landing_deletes_the_branch` and `tests/test_prerelease_s2.py::test_rerunning_finish_retries_a_failed_merge_landing` test the retry of a branch already left on its bookkeeping commit. A2 means a current finish no longer leaves that state. Each test now patches `finish_task.merge_undo_snapshot` to return `None`, which simulates an earlier finish, so the retry path (A3) is still covered with every original assertion unchanged.
 
+**Round 4:** the undo restores exactly the pre-finish working-tree state of every captured path, tracked or not. The snapshot also records `("absent", b"")` for a cleanup path that did not exist. After a successful reset, `undo_bookkeeping` sets every entry to its captured state (bytes, link, or absent), so a locally modified tracked brief, prompt or summary gets its modified bytes back, not HEAD's. When the checkout or reset fails, writing a tracked path would block the `git reset --keep` the report names. So only untracked paths are written, and a tracked path whose captured bytes differ from `pre_sha` (`_differs_from`, via `git hash-object`) is saved to a temp copy. The report then names the copy and says to put it back after the reset.
+
 ## Probes
 
 Class 1, multi-line text on an outcome `error:` line:
@@ -53,6 +55,14 @@ Class 4 (round 3), output printed after the outcome line on a successful landing
 - Options that print before the landing (`--push`, `--no-cleanup-work`, `--land-check-cmd`): covered by the parametrized test. `--allow-*` and `--override-on-complete` print only in gates before the bookkeeping commit. No change needed.
 - `finish_milestone_rollout`'s own `delete_landed_branch` call: the milestone rollup path is out of scope (A5). Left as is.
 
+Class 5 (round 4), a captured path whose pre-finish state differs from what the reset produces:
+- Tracked brief, prompt and summary edited locally, then a rejected push (successful reset): the edited bytes are restored, unstaged. Fixed; public CLI test `test_locally_modified_tracked_documents_come_back_as_they_were`.
+- The same with a failed reset: the edited tracked brief is saved and named, and the report says to put it back after the reset. Fixed; tested.
+- A path absent before finish but present after the reset (for example a tracked file the user had deleted locally): it is removed again (`absent` entry). Fixed.
+- A path whose kind changed (link vs file): the wrong kind is unlinked before writing. Fixed.
+- Untracked work files, symlink targets and worker logs: unchanged behaviour, now on the same "captured state" rule. Existing tests pass.
+- The session sidecar: it is in `cleanup_paths`, so the same rule applies. Covered.
+
 ## Added
 
 - `specy_road/finish_bookkeeping_undo.py` `BookkeepingSnapshot`: holds the pre-bookkeeping sha and the bytes of the files to restore.
@@ -80,3 +90,9 @@ Class 4 (round 3), output printed after the outcome line on a successful landing
 - Round 3: `finish_modes.report_landed`, the one success reporter that runs post-landing steps first and prints the outcome last, used by all three success exits.
 - Round 3: the `sys.stdout.flush()` before `delete_landed_branch`'s stderr `[warn]`, which keeps the order under a shared pipe.
 - Round 3 tests: `test_a_landed_finish_prints_its_outcome_last` (parametrized over the options above) and `test_a_retried_landing_prints_its_outcome_last`. The latter uses a `_NO_UNDO` subprocess wrapper that patches `finish_task.merge_undo_snapshot` to `None`, to reproduce a branch an older finish left committed. Red-green: against the round-2 `finish_modes.py`, 4 of the 5 new cases fail; only the no-options case passed before too.
+- Round 4: `("absent", b"")` snapshot entries, so a path that did not exist before finish ends absent.
+- Round 4: `_restore` unlinks a wrong-kind or should-be-absent entry before writing.
+- Round 4: `_differs_from` (`git hash-object` against `pre_sha:./path`) decides which tracked paths to save when the reset failed.
+- Round 4: `undo_bookkeeping` writes every entry after a successful reset, not only untracked ones.
+- Round 4: the reset-failure report tells the user to put the saved files back after the reset.
+- Round 4 tests: `test_locally_modified_tracked_documents_come_back_as_they_were` (public CLI, rejected push) and `test_reset_failure_saves_modified_tracked_documents`. Red-green: both fail against the round-3 `finish_bookkeeping_undo.py`.

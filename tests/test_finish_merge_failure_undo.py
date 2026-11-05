@@ -242,3 +242,53 @@ def test_a_retried_landing_prints_its_outcome_last(tmp_path: Path, monkeypatch) 
     assert again.returncode == 0, again.stdout
     assert f"[ok] deleted local branch {BRANCH}" in again.stdout
     assert _last_line(again) == f"[ok] {BRANCH} is already merged into dev on origin", again.stdout
+
+
+def test_locally_modified_tracked_documents_come_back_as_they_were(tmp_path: Path, monkeypatch) -> None:
+    """Review round 3: after a rejected push, tracked work documents carry their pre-finish bytes, not HEAD's."""
+    repo, bare = _repo(tmp_path, monkeypatch)
+    docs = ("work/brief-M1.1.md", "work/prompt-M1.1.md", "work/implementation-summary-M1.1.md")
+    for rel in docs[:2]:
+        commit_file(repo, rel, f"committed {rel}\n", f"track {rel}")
+    local = {rel: f"local edit of {rel} — not committed\n".encode() for rel in docs}
+    for rel, data in local.items():
+        (repo / rel).write_bytes(data)
+    hook = bare / "hooks" / "pre-receive"
+    hook.write_text("#!/bin/sh\nexit 1\n")
+    hook.chmod(0o755)
+    pre = git(repo, "rev-parse", "HEAD")
+    result = _run(repo, ["-m", "specy_road.cli", "finish-this-task"])
+    assert result.returncode == 1, result.stdout
+    assert "[ok] undid the bookkeeping commit" in result.stdout, result.stdout
+    assert git(repo, "rev-parse", BRANCH) == pre
+    for rel, data in local.items():
+        assert (repo / rel).read_bytes() == data, rel
+    assert sorted(git(repo, "diff", "--name-only").splitlines()) == sorted(docs)   # modified, as before
+    assert git(repo, "diff", "--cached", "--name-only") == ""
+    assert not (repo / "work" / "done" / "implementation-summary-M1.1.md").exists()
+
+
+def test_reset_failure_saves_modified_tracked_documents(tmp_path: Path, capsys) -> None:
+    """The same class when the reset fails: a modified tracked document is saved and named, never lost."""
+    repo = tmp_path / "t"
+    repo.mkdir()
+    git(repo, "init", "-q", "-b", "feature/rm-x")
+    git(repo, "config", "user.email", "t@e.com")
+    git(repo, "config", "user.name", "T")
+    commit_file(repo, "f.txt", "1\n", "base")
+    commit_file(repo, "work/brief-X.md", "committed\n", "brief")
+    (repo / "work" / "brief-X.md").write_bytes(BRIEF)   # modified, not committed
+    snap = snapshot_bookkeeping(repo, branch="feature/rm-x", node_id="X", sess_path=None)
+    assert snap is not None and snap.entries["work/prompt-X.md"] == ("absent", b"")
+    git(repo, "rm", "-qf", "work/brief-X.md")
+    commit_file(repo, "f.txt", "2\n", "chore(rm-x): complete, deregister")
+    (repo / "f.txt").write_text("3\n")   # git reset --keep refuses
+    outcome = undo_bookkeeping(repo, snap)
+    assert outcome.git_error and list(outcome.unrestored) == ["work/brief-X.md"]
+    saved = Path(outcome.unrestored["work/brief-X.md"].rsplit("saved at ", 1)[1])
+    assert saved.read_bytes() == BRIEF
+    with pytest.raises(SystemExit):
+        merge_landing_failed("dev", "push failed", undo=outcome)
+    err = capsys.readouterr().err
+    assert f"saved at {saved}" in err
+    assert f"run `git reset --keep {snap.pre_sha}`, put each saved file named above back at its path," in err
