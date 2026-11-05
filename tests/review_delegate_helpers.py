@@ -1,7 +1,9 @@
 """Shared fixtures for reviewer runs (M11.7, M8.3): a claimed leaf whose roster runs a fake reviewer harness.
 
 The fake answers as a launched reviewer does since M8.3: a final JSON object specy-road files as the record.
-:func:`fake_reviewer_run` replaces the process launch of ``prompt --channel cli`` instead.
+:func:`fake_reviewer_run` replaces the process launch of ``prompt --channel cli`` instead. M14.6's names
+(:func:`make_delegate_repo`, :func:`set_delegate_steps`, :func:`files_record_step`, the CLI runners) are kept on
+the same fake.
 """
 
 from __future__ import annotations
@@ -10,10 +12,12 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 from tests.review_repo_helpers import git, make_review_repo, review_output
 
 from specy_road import review_record_write
-from specy_road.bundled_scripts import role_prompt, role_prompt_cli, role_prompt_stream
+from specy_road.bundled_scripts import review_cli, role_prompt, role_prompt_cli, role_prompt_stream
 from specy_road.review_files import reviews_dir
 
 # Each call takes the next step of the spec; the call's argv is appended to `calls`.
@@ -46,7 +50,9 @@ elif step.get("error"):
     print(json.dumps({"type": "result", "subtype": "error_during_execution", "is_error": True,
                       "result": step["error"], "session_id": sid}), flush=True)
 else:
-    print(json.dumps({"type": "result", "subtype": "success", "result": answer, "session_id": sid}), flush=True)
+    # a step's "result" fields (usage, cost, turns) ride on the result line, as Claude's stream-json carries them
+    print(json.dumps({"type": "result", "subtype": "success", "result": answer, "session_id": sid,
+                      **step.get("result", {})}), flush=True)
 if step.get("after"):   # a line printed after the final message (a truncated event)
     print(step["after"], flush=True)
 sys.exit(step.get("exit", 0))
@@ -180,3 +186,37 @@ envelope = {{"conversation_id": "c-1", "status": "SUCCESS", "response": json.dum
             "structured_output": spec["answer"], "num_turns": 1}}
 print(json.dumps(envelope, indent=2), flush=True)   # one envelope, pretty-printed over many lines
 '''
+
+
+# --- M14.6's names for the same fake (review usage, per-round history) -------------------------------------------
+
+roster = delegate_roster
+read_delegate_calls = fake_calls
+set_delegate_steps = set_steps
+
+
+def make_delegate_repo(tmp_path: Path) -> tuple[Path, Path]:
+    return delegate_repo(tmp_path)
+
+
+def files_record_step(repo: Path, verdict: str = "approve") -> dict:
+    """A step whose final JSON specy-road files as a valid REVIEW-opus.md for the commit under review (since M8.3
+    the reviewer never writes the record itself: that is a review failure)."""
+    return verdict_step(repo, verdict)
+
+
+def run_review_cli(*args: str) -> int:
+    with pytest.raises(SystemExit) as e:
+        review_cli.main(list(args))
+    return e.value.code
+
+
+def run_review_delegate(repo: Path, *extra: str) -> int:
+    return run_review_cli("review", "delegate", "M1.1", "--model", "opus", "--backoff", "0", *extra,
+                          "--repo-root", str(repo))
+
+
+def handoff_status_node(repo: Path, capsys) -> dict:
+    capsys.readouterr()
+    run_review_cli("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    return json.loads(capsys.readouterr().out)["nodes"][0]

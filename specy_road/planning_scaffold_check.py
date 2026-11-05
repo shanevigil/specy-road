@@ -3,7 +3,8 @@
 Pickup, ``grind-session --plan`` and ``orchestrate plan`` skip a leaf when
 :func:`pickup_unauthored_leaves` lists it (placeholder sheet with no
 ``acceptance``, or scaffold/promote placeholder under ``## Intent`` /
-``## Approach`` even when ``acceptance`` is set). ``finish-this-task`` refuses
+``## Approach`` even when ``acceptance`` is set); both plans add one
+:func:`needs_approach_line` for the Approach ones. ``finish-this-task`` refuses
 the scaffold case too (``--allow-scaffold-planning`` opts out on finish and
 pickup). ``validate`` still lists only the no-``acceptance`` placeholders and
 notes ``Complete`` leaves that already shipped on a scaffold sheet.
@@ -17,11 +18,12 @@ from pathlib import Path
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
 from specy_road.bundled_scripts.planning_sheet_bootstrap import (
-    PROMOTE_PLACEHOLDER,
-    _scaffold_bodies,
     _section_bodies,
+    approach_is_placeholder,
     open_pickable_leaves,
+    placeholder_reason,
     placeholder_sheet,
+    sheet_placeholder,
 )
 from specy_road.milestone_subtree import structural_leaf_ids
 
@@ -37,10 +39,8 @@ def scaffold_sheet(root: Path, node: dict) -> str | None:
         bodies = _section_bodies(resolve_planning_path(root, rel).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    if PROMOTE_PLACEHOLDER in bodies.get("Intent", ""):
-        return f"{rel} still has brainstorm promote's placeholder under ## Intent"
-    left = [title for title, body in _scaffold_bodies().items() if body in bodies.get(title, "")]
-    return f"{rel} still has scaffold-planning's placeholder under ## {left[0]}" if left else None
+    found = sheet_placeholder(bodies)
+    return placeholder_reason(rel, node.get("id", ""), found) if found else None
 
 
 def pickup_unauthored_leaves(root: Path, nodes: list[dict]) -> dict[str, str]:
@@ -53,6 +53,32 @@ def pickup_unauthored_leaves(root: Path, nodes: list[dict]) -> dict[str, str]:
         if reason is not None:
             out[n["id"]] = reason
     return out
+
+
+def needs_approach_line(root: Path, nodes: list[dict], leaf_ids: list[str]) -> str | None:
+    """One line naming leaves whose ``## Approach`` is still a placeholder and the
+    ``author-approach`` call for them all.
+
+    Detects Approach placeholders on the sheet, not via the first skip reason from
+    :func:`sheet_placeholder` (a fully scaffolded sheet reports ``## Intent`` first).
+    """
+    by_id = {n["id"]: n for n in nodes if isinstance(n.get("id"), str)}
+    ids: list[str] = []
+    for nid in leaf_ids:
+        n = by_id.get(nid)
+        if n is None:
+            continue
+        try:
+            rel = normalize_planning_dir(n.get("planning_dir") or "")
+            bodies = _section_bodies(resolve_planning_path(root, rel).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if approach_is_placeholder(bodies):
+            ids.append(nid)
+    if not ids:
+        return None
+    return (f"needs Approach (pickup skips them until ## Approach is written): {', '.join(ids)}; "
+            f"`specy-road author-approach {' '.join(ids)}` prints the prompt to write each")
 
 
 def scaffold_planning_or_exit(root: Path, node: dict, *, allow: bool) -> None:

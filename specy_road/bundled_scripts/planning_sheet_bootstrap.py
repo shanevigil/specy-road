@@ -194,9 +194,24 @@ def remove_planning_sheet_if_present(repo_root: Path, planning_dir: object) -> N
         p.unlink()
 
 
-#: The line ``brainstorm promote`` appends to the ``## Intent`` it seeds. While
-#: it is still there, nobody has scoped the slice.
-PROMOTE_PLACEHOLDER = "Rewrite this section once the slice is properly scoped."
+#: The line ``brainstorm promote`` writes under ``## Approach`` (``<ID>`` becomes
+#: the node id). While it is still there, nobody has written how the slice is
+#: built, and pickup skips the leaf (M3.1).
+PROMOTE_PLACEHOLDER = (
+    "Not written yet: pickup skips this leaf until this section is written. "
+    "`specy-road author-approach <ID>` prints the prompt to write it."
+)
+
+#: The part of :data:`PROMOTE_PLACEHOLDER` that does not depend on the node id.
+_PROMOTE_MARK = PROMOTE_PLACEHOLDER.split("`", 1)[0].strip()
+
+#: The line promote appended to ``## Intent`` before M15.8; older sheets still carry it.
+LEGACY_PROMOTE_PLACEHOLDER = "Rewrite this section once the slice is properly scoped."
+
+
+def promote_placeholder(node_id: str) -> str:
+    """:data:`PROMOTE_PLACEHOLDER` naming ``node_id``."""
+    return PROMOTE_PLACEHOLDER.replace("<ID>", node_id)
 
 #: Scaffold sections whose template body means nobody wrote one. Authored
 #: sheets keep generic lines under Tasks and References too, so those say
@@ -228,13 +243,39 @@ def _scaffold_bodies() -> dict[str, str]:
     return {t: bodies[t] for t in _PLACEHOLDER_SECTIONS if bodies.get(t)}
 
 
+def approach_is_placeholder(bodies: dict[str, str]) -> bool:
+    """Whether ``## Approach`` still holds promote's or scaffold-planning's placeholder."""
+    body, scaffold = bodies.get("Approach", ""), _scaffold_bodies().get("Approach")
+    return _PROMOTE_MARK in body or bool(scaffold and scaffold in body)
+
+
+def sheet_placeholder(bodies: dict[str, str]) -> tuple[str, str] | None:
+    """``(writer, section)`` of the first toolkit placeholder in a sheet's bodies, or ``None``."""
+    intent = bodies.get("Intent", "")
+    if LEGACY_PROMOTE_PLACEHOLDER in intent or _PROMOTE_MARK in intent:
+        return "brainstorm promote's", "Intent"
+    if _PROMOTE_MARK in bodies.get("Approach", ""):
+        return "brainstorm promote's", "Approach"
+    for title, scaffold in _scaffold_bodies().items():
+        if scaffold in bodies.get(title, ""):
+            return "scaffold-planning's", title
+    return None
+
+
+def placeholder_reason(rel: str, node_id: str, found: tuple[str, str], tail: str = "") -> str:
+    """``<rel> still has <writer> placeholder under ## <section>``; an Approach names ``author-approach``."""
+    writer, title = found
+    hint = f"; `specy-road author-approach {node_id}` prints the prompt to write it" if title == "Approach" else ""
+    return f"{rel} still has {writer} placeholder under ## {title}{tail}{hint}"
+
+
 def placeholder_sheet(root: Path, node: dict) -> str | None:
     """Why ``node`` is unauthored, or ``None`` when an agent has something to build from.
 
     Unauthored: no ``acceptance`` on the node, and its planning sheet still
     carries text the toolkit wrote itself — brainstorm promote's line under
-    ``## Intent``, or scaffold-planning's body under ``## Intent`` or
-    ``## Approach``. Pickup skips such a leaf and ``validate`` lists it.
+    ``## Approach`` (``## Intent`` on sheets promoted before M15.8), or
+    scaffold-planning's body under ``## Intent`` or ``## Approach``. Pickup skips such a leaf and ``validate`` lists it.
     """
     if acceptance_ids(node):
         return None
@@ -246,13 +287,8 @@ def placeholder_sheet(root: Path, node: dict) -> str | None:
         bodies = _section_bodies(resolve_planning_path(root, rel).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    tail = "and the node has no acceptance criteria"
-    if PROMOTE_PLACEHOLDER in bodies.get("Intent", ""):
-        return f"{rel} still has brainstorm promote's placeholder under ## Intent {tail}"
-    for title, scaffold in _scaffold_bodies().items():
-        if scaffold in bodies.get(title, ""):
-            return f"{rel} still has scaffold-planning's placeholder under ## {title} {tail}"
-    return None
+    found = sheet_placeholder(bodies)
+    return placeholder_reason(rel, node.get("id", ""), found, " and the node has no acceptance criteria") if found else None
 
 
 def open_pickable_leaves(nodes: list[dict]) -> list[dict]:

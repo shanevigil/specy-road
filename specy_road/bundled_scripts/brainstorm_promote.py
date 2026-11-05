@@ -30,7 +30,7 @@ from specy_road.bundled_scripts.brainstorm_session import (
 from specy_road.bundled_scripts.planning_artifacts import (
     normalize_planning_dir, planning_artifact_paths,
 )
-from specy_road.bundled_scripts.planning_sheet_bootstrap import PROMOTE_PLACEHOLDER
+from specy_road.bundled_scripts.planning_sheet_bootstrap import promote_placeholder
 from specy_road.bundled_scripts.roadmap_chunk_atomic import TreeSnapshot
 from specy_road.bundled_scripts.roadmap_crud_ops import (
     append_node_to_chunk, run_validate_raise,
@@ -108,7 +108,7 @@ def _intent_body(idea: Idea) -> str:
     parts = [idea.rationale.strip() or idea.title.strip()]
     if idea.effort.strip():
         parts.append(f"Initial sizing at brainstorm time: {idea.effort.strip()}.")
-    parts.append(f"Promoted from brainstorm idea `{idea.id}` ({idea.kind}). {PROMOTE_PLACEHOLDER}")
+    parts.append(f"Promoted from brainstorm idea `{idea.id}` ({idea.kind}).")
     return "\n\n".join(parts)
 
 
@@ -132,17 +132,17 @@ def _prepend_to_section(text: str, heading: str, block: str) -> str:
 
 def seed_planning_sheet(root: Path, node: dict, idea: Idea,
                         siblings: list[Idea] | None = None, also: list[Idea] | None = None) -> Path | None:
-    """Seed ``## Intent`` from the rationale, ``## Approach`` with the critics and
-    verdict as constraints, and ``## References`` with overlaps, sources, and the
-    ``also`` ideas a plan node carries besides ``idea``."""
+    """Seed ``## Intent`` from the rationale, ``## Approach`` with the critics and verdict
+    as constraints over the placeholder pickup skips on (written before pickup, not at it),
+    and ``## References`` with overlaps, sources, and the ``also`` ideas besides ``idea``."""
     sheet = _sheet_path(root, node)
     if sheet is None:
         return None
     text = sheet.read_text(encoding="utf-8")
     text = _replace_section(text, "Intent", _intent_body(idea))
     constraints = constraint_lines(idea)
-    if constraints:
-        text = _prepend_to_section(text, "Approach", "\n".join(constraints) + "\n\n")
+    approach = [*constraints, ""] if constraints else []
+    text = _replace_section(text, "Approach", "\n".join([*approach, promote_placeholder(node["id"])]))
     refs = reference_lines(idea, siblings or [])
     refs += [f"- Also promoted into this node: brainstorm idea {i.id} {i.title}" for i in also or []]
     if refs:

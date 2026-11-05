@@ -19,7 +19,8 @@ and the final ``state``, ``complete`` or ``incomplete``. A provider capacity or
 rate-limit error is retried with doubling backoff, at most ``--retries`` times.
 ``handoff status`` and ``review list`` read these files, so a run that left an
 older commit's record in place is reported as incomplete for the current
-commit, never as that record's verdict. Raw output goes to ``RUN-<model>.log``.
+commit, never as that record's verdict. Raw output goes to ``RUN-<model>.log``. Before a run starts, the
+previous round's record, log and notes are kept under ``history/`` (:func:`specy_road.review_usage.archive_round`).
 """
 
 from __future__ import annotations
@@ -49,6 +50,7 @@ from specy_road.review_record_write import (OUTPUT_SCHEMA_NAME, Outcome, ReviewR
                                             close_review_run, file_review, final_answer, review_run_lock, reviewer_env,
                                             run_text, snapshot, write_schema)
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
+from specy_road.review_usage import add_parser as add_usage_parser, archive_round
 from specy_road.reviewer_run_failure import capacity_error, gate_policy_summary, valid_record  # noqa: F401 — re-exported
 from specy_road.reviewer_run_failure import (_now, _read_json, close_run, run_path as _run_path, save_run,
                                              turn_capacity_error)
@@ -279,6 +281,7 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
         _preflight(entry, cwd)
         prompts = (_prompt_file(repo_root, node_id, model, text),
                    _prompt_file(repo_root, node_id, model, CHORE_RESUME_PROMPT if chore else RESUME_PROMPT, "-resume"))
+        archive_round(repo_root, node_id, model)   # M14.6: the previous round's RUN json, log and notes, kept in history/
         run = {"node_id": node_id, "model": model, "harness": h.harness, "ref": t.ref, "commit": t.commit,
                "state": "running", "session_id": session, "resumed": resume, "source": "review-delegate",
                "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
@@ -373,7 +376,7 @@ def _seconds(text: str) -> float:
 
 
 def add_parser(rsub: Any) -> None:
-    """``review delegate`` under ``review_cli``'s ``review`` subcommands."""
+    """``review delegate``, and ``review usage`` over its runs, under ``review_cli``'s ``review`` subcommands."""
     sp = rsub.add_parser("delegate", help="Run a rostered reviewer on its harness and wait for its record")
     sp.add_argument("node_id")
     sp.add_argument("--model", required=True, help="Roster id (reviewer role, or an active substitute)")
@@ -390,3 +393,4 @@ def add_parser(rsub: Any) -> None:
     sp.add_argument("--json", action="store_true")
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_review_delegate)
+    add_usage_parser(rsub)   # registered here so review_cli.py stays under its file-limits cap

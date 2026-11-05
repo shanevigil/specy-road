@@ -767,6 +767,28 @@ WIP merged first, no conflicts.
 - Sol (`26d95ca0`) R1-R4: unchanged. R1 was withdrawn by the rescope; R2 and R3 are fixed by `TURNS`; R4 is fixed and `export --check` passes.
 - Targeted `pytest -q -n 4 -p no:cacheprovider` over 20 files (the 19 from fix round 2 plus `test_review_tripwire_symlinks.py`): 481 passed. `ruff`: clean. `file-limits`: OK.
 
+## Merge with WIP (M14.6: `review usage`, per-round RUN history)
+
+Conflicts in `specy_road/review_delegate.py`, `tests/review_delegate_helpers.py` (add/add), `tests/test_review_delegate.py` and `tests/test_run_record_no_false_failure.py`. Both sides were kept.
+
+- **`review_delegate.delegate`:**
+  - M8.3's structure is kept: the lock, the scratch answer file, the schema, the tripwire snapshots, `final_answer`, `file_review` and the single `close_review_run` close.
+  - M14.6's `archive_round(repo_root, node_id, model)` runs at the same point as on WIP: after `_start` and the prompt files, before the new run record is saved. That is inside the lock and **before the tripwire's first snapshot**, so archiving the previous round's RUN json, log and notes into `history/` is never seen as the reviewer's write.
+  - M14.6's `review usage` registration (`add_usage_parser`) and its docstring line came through the auto-merge.
+- **`tests/review_delegate_helpers.py`:**
+  - M8.3's fake and helpers are kept: structured final JSON, `plain`, `after`, `symlink` and `launches`.
+  - The fake's result line now also carries a step's `result` fields (usage, cost, turns), as Claude's stream-json does. M14.6's `FAKE_USAGE` patched this in by string replacement.
+  - M14.6's names are kept on the same fake: `roster`, `read_delegate_calls`, `set_delegate_steps`, `make_delegate_repo`, `run_review_cli`, `run_review_delegate` and `handoff_status_node`.
+  - `files_record_step` now returns a step whose final JSON specy-road files, because under M8.3 a reviewer that writes `REVIEW-<model>.md` is a review failure.
+- **`tests/test_review_delegate.py`, `tests/test_run_record_no_false_failure.py`:** WIP's change there was only the same helper extraction this branch had already made, so this branch's side is kept.
+- **`tests/test_review_usage.py` (M14.6, ported):**
+  - Each round's notes now travel in the final JSON, and specy-road writes `notes-opus.md`. The fake no longer writes notes or the record.
+  - Notes are compared by the text below the front matter (`_notes`).
+  - Each notes line ends `not a defect because …`, so `review record` accepts the approve.
+  - Every M14.6 assertion is kept: per-round history, `review usage` totals, reviewers in `worker usage`, no relabeled notes, prompt-cli runs excluded.
+
+Verification: 68 test files that import the reviewer, delegate, usage, run-record or adapter modules, `pytest -q -n 4 -p no:cacheprovider`: 1005 passed. `ruff check specy_road tests scripts`: clean. `file-limits`: OK. `export --check`: OK.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).
