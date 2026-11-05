@@ -1,7 +1,7 @@
 """``specy-road doctor``'s checks of the checkout, printed before the listing.
 
 - the review gate and the orchestration policy agree (:mod:`specy_road.review_gate_agreement`): an error.
-- ``env_setup`` (:mod:`specy_road.worktree_env`), when configured: its copy sources exist in the main checkout
+- ``env_setup`` (:mod:`specy_road.worktree_env`), when configured: its copy and link sources exist in the main checkout
   and its command succeeds there; either failing is an error.
 - each linked worktree's ``.venv`` runs the same Python (major.minor) as the main checkout's: a warning, since
   a pin file such as ``.python-version`` is usually ignored and so missing from a new worktree.
@@ -17,7 +17,9 @@ from pathlib import Path
 from specy_road.git_subprocess import git_text
 from specy_road.review_gate_agreement import report_gate_mismatch
 from specy_road.runtime_paths import project_prefix
-from specy_road.worktree_env import EnvSetupError, copy_pairs, copy_source, env_setup_config, run_setup_cmd
+from specy_road.worktree_env import (
+    EnvSetupError, bounded_path, copy_pairs, copy_source, env_setup_config, git_top, link_paths, run_setup_cmd,
+)
 
 
 def _worktree_tops(root: Path) -> list[Path]:
@@ -42,13 +44,8 @@ def _minor(version: str) -> str:
     return ".".join(version.split(".")[:2])
 
 
-def report_env_setup(main: Path) -> bool:
-    """Say what ``env_setup`` does and run it in the main checkout's project root ``main``; whether it failed."""
-    conf = env_setup_config(main)
-    if not conf:
-        return False
-    copies = ", ".join(src if src == dest else f"{src} -> {dest}" for src, dest in copy_pairs(conf))
-    print(f"env_setup: copy {copies or 'nothing'}; cmd {conf.get('cmd') or 'none'}")
+def _missing_sources(main: Path, conf: dict) -> list[str]:
+    """Each copy or link source that is missing from the main checkout or climbs past its git root."""
     missing = []
     for src, _dest in copy_pairs(conf):
         try:
@@ -56,6 +53,24 @@ def report_env_setup(main: Path) -> bool:
                 missing.append(f"env_setup copies {src}, which is not a file in the main checkout ({main / src})")
         except EnvSetupError as e:   # climbs past the git root: the pickup would refuse it
             missing.append(str(e))
+    for rel in link_paths(conf):
+        try:
+            if not bounded_path(main, rel, git_top(main), f"from {rel!r}", "the main checkout", "link").exists():
+                missing.append(f"env_setup links {rel}, which does not exist in the main checkout ({main / rel})")
+        except EnvSetupError as e:
+            missing.append(str(e))
+    return missing
+
+
+def report_env_setup(main: Path) -> bool:
+    """Say what ``env_setup`` does and run it in the main checkout's project root ``main``; whether it failed."""
+    conf = env_setup_config(main)
+    if not conf:
+        return False
+    copies = ", ".join(src if src == dest else f"{src} -> {dest}" for src, dest in copy_pairs(conf))
+    links = f"; link {', '.join(link_paths(conf))}" if link_paths(conf) else ""
+    print(f"env_setup: copy {copies or 'nothing'}{links}; cmd {conf.get('cmd') or 'none'}")
+    missing = _missing_sources(main, conf)
     for problem in missing:
         print(f"error: {problem}", file=sys.stderr)
     if not conf.get("cmd"):

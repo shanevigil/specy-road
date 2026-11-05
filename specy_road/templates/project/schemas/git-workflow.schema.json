@@ -135,7 +135,7 @@
       "type": "object",
       "additionalProperties": false,
       "minProperties": 1,
-      "description": "What a new leaf worktree gets when do-next-available-task --worktree or worker delegate creates it: copy names files (usually ignored, so git does not bring them) copied from the main checkout's project root, then cmd runs at the worktree's project root. A failure stops the pickup or launch with the command's output. doctor runs cmd in the main checkout. See docs/git-workflow.md.",
+      "description": "What a new leaf worktree gets when do-next-available-task --worktree or worker delegate creates it: copy names files (usually ignored, so git does not bring them) copied from the main checkout's project root, link names paths symlinked from it, then cmd runs at the worktree's project root. A failure stops the pickup or launch with the command's output. doctor runs cmd in the main checkout. See docs/git-workflow.md.",
       "properties": {
         "cmd": {
           "type": "string",
@@ -159,6 +159,11 @@
               }
             ]
           }
+        },
+        "link": {
+          "type": "array",
+          "description": "Paths symlinked from the main checkout into the new worktree at the same project-relative path, before cmd runs (e.g. node_modules, .venv). Each is added to .git/info/exclude so a directory-only ignore pattern (node_modules/) does not leave the symlink untracked. See docs/orchestration-worktrees.md.",
+          "items": { "$ref": "#/$defs/envSetupPath" }
         }
       }
     },
