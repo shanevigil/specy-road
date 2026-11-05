@@ -69,6 +69,11 @@ text to list them.
 
 Re-run by `composer-2.5` on implementation commit `13001aa7` (no code delta in this session).
 
+Merged `origin/WIP/improvements-0-3-1` (M15.10 roster dry-run, `models list` diff, `roster_add`) into this
+branch: `orchestrate_assign.Candidate.local`, `build_orchestration_plan(..., roster_from_worktree=)`,
+`pinned_config(worktree=)`, combined `docs/orchestration-roster.md`, both import sets in `models_cli.py`.
+M15.11 behaviour (`models roster`, profile check, `--spread`, coordinator line) unchanged.
+
 - `python -m pytest -q -n 4`: 4128 passed.
 - `specy-road file-limits`: OK.
 - `ruff check specy_road tests/test_roster_generate.py tests/test_orchestrate_spread.py`: clean.
@@ -84,18 +89,19 @@ Re-run by `composer-2.5` on implementation commit `13001aa7` (no code delta in t
 - `specy_road/roster_profile_check.py`: `GENERIC_FORM`; `accepted_form`; `profile_value_problem`;
   `roster_profile_problems`; `report_roster_profiles` (the old validate loop moved here, plus the new warnings).
   Reason: A2, keeping `validate_roadmap_checks.py` to a call-line change.
-- `specy_road/orchestrate_assign.py`: moved code plus `Assignment.coordinator_is_session`. New branches:
+- `specy_road/orchestrate_assign.py`: moved code plus `Assignment.coordinator_is_session`; `Candidate.local` and
+  `[local]` in `describe` (M15.10 merge). New branches:
   - the `--spread` pick in `_pick_executor` (`spread_index`);
   - the invalid-profile drop guard that suppresses the `may_process` hint;
   - the verbatim `invalid profile:` message in `_valid`;
   - the no-coordinator-rostered branch in `_pick_coordinator`.
 
-  Reason: A2 and A4, and the 400-line cap on `orchestrate_plan.py`.
+  Reason: A2 and A4, the 400-line cap on `orchestrate_plan.py`, and WIP merge with M15.10.
 - `specy_road/orchestration_pinned.py`: a guard in `pinned_profile_for_entry` for a `profile:` naming no file in
   the working tree or at the ref, which returns the `invalid profile` message. Reason: A2, which replaces the
   misleading "not committed" message.
-- `specy_road/orchestrate_plan.py`: the `spread` parameter and the leaf-order index; re-exports from
-  `orchestrate_assign`. Reason: A4.
+- `specy_road/orchestrate_plan.py`: the `spread` and `roster_from_worktree` parameters and the leaf-order index;
+  re-exports from `orchestrate_assign`. Reason: A4 and M15.10 dry-run merge.
 - `specy_road/bundled_scripts/orchestrate_cli.py`: the `--spread` flag and the `this session` render. Reason: A4.
 - `specy_road/bundled_scripts/models_cli.py`: `cmd_roster` and the `roster` subparser. Reason: A1.
 - `tests/test_roster_generate.py`: printed entries; unknown id refused with the nearest ids; `--write` round-trips
