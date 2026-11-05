@@ -89,7 +89,7 @@ def test_delegate_sets_the_variable_to_the_workers_worktree(tmp_path: Path, monk
     monkeypatch.setenv(REPO_ROOT_ENV, str(repo))   # exported for the coordinator
     launches = _capture_spawn(monkeypatch)
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0
-    [launch] = launches
+    launch = launches[-1]   # the launch delegate handed to spawn
     assert launch.env[REPO_ROOT_ENV] == str((repo / "work" / ".worktrees" / "thing").resolve())
 
 
