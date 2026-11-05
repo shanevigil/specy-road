@@ -169,7 +169,7 @@ def test_the_output_schema_is_the_record_schema_less_what_specy_road_fills() -> 
     record = json.loads((Path(rf.__file__).parent / "schemas" / "review-record.schema.json").read_text())
     schema = output_schema()
     assert set(schema["properties"]) == set(record["properties"]) - {
-        "family", "independence", "notes_sha256", "signature", "launch_mode"} | {"notes"}
+        "family", "independence", "notes_sha256", "signature", "launch_mode", "sibling_heads"} | {"notes"}
     assert schema["required"] == [*record["required"], "notes"] and schema["additionalProperties"] is False
 
 

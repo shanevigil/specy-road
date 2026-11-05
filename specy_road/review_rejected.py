@@ -16,8 +16,10 @@ from specy_road.orchestration_config import substitute_for
 from specy_road.review_files import archive_review, render_front_matter, review_path, reviews_dir, write_review
 from specy_road.review_gate import evaluate_gate, rerun_problem
 from specy_road.review_record_rules import check_record
+from specy_road.reviewer_run_failure import gate_policy_summary
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
 from specy_road.review_target import ReviewTargetError, milestone_open_problem, resolve_target, same_commit
+from specy_road.sibling_repos import sibling_heads_field
 from specy_road.toolkit_version import stamp_review_toolkit_version
 
 REJECTED_PREFIX = "REJECTED-"
@@ -190,10 +192,10 @@ def _review_record_validate(ns: Any, root: Path, t: Any, gate: Any, entry: dict,
     return rec
 
 
-def _review_record_signed_data(ns: Any, rec: dict, gate: Any, entry: dict, trace: ReviewRecordTrace,
+def _review_record_signed_data(ns: Any, root: Path, rec: dict, gate: Any, entry: dict, trace: ReviewRecordTrace,
                                fail: Any) -> dict | int:
     # The body's hash rides in the front matter, so a signature covers the notes too.
-    data = {**rec["data"], "commit": gate.commit, NOTES_KEY: notes_digest(rec["body"])}
+    data = {**rec["data"], "commit": gate.commit, NOTES_KEY: notes_digest(rec["body"]), **sibling_heads_field(root)}
     if ns.launch_mode:   # before signing: the signature covers it
         data["launch_mode"] = ns.launch_mode
     data = stamp_review_toolkit_version(data)
@@ -231,7 +233,7 @@ def _review_record_finish(root: Path, ns: Any, t: Any, gate: Any, entry: dict, r
         if any(o.family == entry["family"] and o.model != ns.model for o in after.approvals + after.blocks):
             print(f"note: another counted review is also from family {entry['family']!r}; "
                   "it is less independent and counts once toward the distinct-family policy.")
-    print(f"policy: {after.summary()}")
+    print(f"policy: {gate_policy_summary(after, [])}")
     return 0
 
 
@@ -245,7 +247,7 @@ def run_review_record(ns: Any, root: Path, fail: Any, relabel: Any) -> int:
     rec = _review_record_validate(ns, root, t, gate, entry, trace, fail)
     if isinstance(rec, int):
         return rec
-    data = _review_record_signed_data(ns, rec, gate, entry, trace, fail)
+    data = _review_record_signed_data(ns, root, rec, gate, entry, trace, fail)
     if isinstance(data, int):
         return data
     return _review_record_finish(root, ns, t, gate, entry, rec, data, trace, relabel)
