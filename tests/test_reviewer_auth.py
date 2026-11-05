@@ -225,25 +225,6 @@ def test_prompt_explicit_mode_is_recorded_and_a_helper_selects_bare_without_prin
     assert HELPER not in log and "running:" in captured.err
 
 
-def test_a_forced_bare_auth_refusal_leaves_the_reviews_dir_unchanged(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
-    """Forced-bare auth writes nothing. A failed roster preflight is not this case: it still files a RUN."""
-    from specy_road.bundled_scripts import review_cli, role_prompt
-
-    _isolate(monkeypatch, tmp_path)
-    repo = claude_code_reviewer_repo(tmp_path)
-    _force_bare(repo)
-    planted = reviews_dir(repo, "M1.1") / "RUN-opus.json"
-    planted.write_text('{"planted": true}\n')
-    before = _reviews(repo)
-    assert run_main(review_cli, "review", "delegate", "M1.1", "--model", "opus", "--retries", "0",
-                    "--repo-root", str(repo)) == 1
-    assert "reviewer auth:" in capsys.readouterr().err and _reviews(repo) == before
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
-                    "--repo-root", str(repo)) == 1
-    assert "reviewer auth:" in capsys.readouterr().err and _reviews(repo) == before
-
-
 def test_plan_prints_one_reviewer_auth_notice(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
                                              capsys: pytest.CaptureFixture[str]) -> None:
     from specy_road.bundled_scripts import orchestrate_cli

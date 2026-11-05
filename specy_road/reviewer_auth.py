@@ -22,8 +22,7 @@ from specy_road.claude_config import claude_config_dir
 from specy_road.orchestration_role_env import harness_env
 
 API_KEY_ENV = "ANTHROPIC_API_KEY"
-#: Refusal and plan notices start with this. ``prompt --channel cli`` opens its RUN record before the
-#: channel returns (role_prompt); a reason with this prefix is the signal to remove that record.
+#: The refusal and the plan notices start with this.
 AUTH_REFUSAL_PREFIX = "reviewer auth:"
 FIXES = "export ANTHROPIC_API_KEY, configure apiKeyHelper, or let specy-road choose explicit mode"
 BARE_NOTE = (

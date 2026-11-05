@@ -363,7 +363,7 @@ def _run(ns: argparse.Namespace, root: Path) -> None:
     transcript: list[str] = []
     try:   # the run record is closed from the filing outcome, an interrupt's included: never from older records
         filed = run_reviewer_channel(prof, out, root, entry, ns.model, reviews_dir(root, ns.node_id), ns.ref,
-                                     transcript, ns.sign_key, prechecked=True)
+                                     transcript, ns.sign_key)
     except BaseException as e:
         close_cli_review_run(root, reviewer_target, ns.model, reviewer_run,
                              Outcome("rerun", f"interrupted: {e or type(e).__name__}", exit=None), transcript)

@@ -50,7 +50,6 @@ Left unchanged, outside the zones:
 - `delegate` note — after the prompt is built, prints the same bare or explicit note `prompt` prints.
 - `prompt` auth refusal — `reviewer_launch_block` in `main`, before the lock and before `open_reviewer_cli_run`.
 - `prompt` preflight — `preflight` inside `run_reviewer_channel`, after the RUN record is open, so a failure is closed as an incomplete `prompt-cli` run.
-- `run_reviewer_channel` auth — a direct caller hits the same block before `write_schema` or a launch. `prompt` passes `prechecked` so that check does not run again after the record exists.
 - `run_default_reviewer` refusal — the same decision again, so a direct caller does not launch either, and sets the mode the RUN record will carry.
 - `claude_reviewer_auth_notices` skip — returns nothing when a key or helper exists, and skips entries that are not a forced claude-code reviewer without `channels.cli`.
 
@@ -66,9 +65,8 @@ Left unchanged, outside the zones:
 - `test_notices_are_one_per_forced_claude_reviewer` — one notice per forced claude-code reviewer, none for codex, `channels.cli`, an unforced entry, or an executor, and none once a key or helper exists.
 - `test_delegate_explicit_without_a_key_records_the_mode_and_prints_the_note` — `review delegate` records `explicit`, launches without `--bare`, and prints the subscription-login note.
 - `test_delegate_bare_with_a_key_prints_the_note_and_hides_the_key` — a key selects bare, the note is printed, and the key is absent from stderr, the run, the argv record and the log.
-- `test_forced_bare_without_a_key_refuses_before_a_run_record` — `review delegate` and `prompt --channel cli` exit 1, name the fixes, launch nothing, and leave a planted RUN record and the rest of the reviews directory byte for byte.
+- `test_forced_bare_without_a_key_refuses_before_a_run_record` — `review delegate` and `prompt --channel cli` exit 1, name the fixes, launch nothing, and leave a planted RUN record and the rest of the reviews directory byte for byte. This is the only test of that refusal.
 - `test_prompt_explicit_mode_is_recorded_and_a_helper_selects_bare_without_printing_it` — the prompt path records `explicit` without a key. With only an `apiKeyHelper`, `reviewer_launch` and the launched argv pass `--settings` and that file's path, and the helper command is absent from the argv, the displayed `running:` line, and the log.
-- `test_a_forced_bare_auth_refusal_leaves_the_reviews_dir_unchanged` — forced bare with no key refuses `review delegate` and `prompt --channel cli` without changing a planted RUN record or any other file in the reviews directory. A roster preflight is not this case.
 - `test_plan_prints_one_reviewer_auth_notice` — `orchestrate plan` prints one `reviewer auth:` line naming the entry and the fixes, and prints none once a key is set.
 - `test_claude_code_reviewer_without_channels_cli_runs_bare` (extended) — sets a key and an empty config dir so the pinned bare argv stays deterministic, and asserts the key is absent from the output and the run.
 
@@ -86,7 +84,7 @@ R2 class: a forced-bare authentication refusal ran after a reviews-directory fil
 
 - `open_reviewer_cli_run` has one caller, `role_prompt._run`. Result: `reviewer_launch_block` runs in `main` before the lock and before that call. An auth refusal returns without creating or replacing a file. The test plants a RUN record and compares the directory.
 - `close_cli_review_run` used to unlink a RUN opened before the auth check. Result: removed. Auth never opens the record, so nothing is deleted.
-- A direct `run_reviewer_channel` caller. Result: the same auth block runs first, before `write_schema` or a launch. `prompt` passes `prechecked` so the check does not run again after the record exists.
+- `run_reviewer_channel`. Result: it does not repeat the auth block. Its only caller is `role_prompt._run`, after `main` has already refused, and after the RUN record is open. A second check there would be the branch no caller takes.
 - `review delegate` auth. Result: `DelegateError` before the lock and before `save_run`.
 - Prompt building writes `PACKET-<model>.md` only for a delta review. Result: that write is after the auth block has allowed the launch. A non-delta auth refusal does not reach it.
 
@@ -98,4 +96,19 @@ R3 class: an existing refusal that already filed an incomplete `prompt-cli` RUN 
 - `review delegate` roster preflight. Result: `_preflight` is after the lock and before `save_run`, its M8.3 place. It raises before a RUN json is saved. The incomplete-record behaviour the closure test pins is the prompt path.
 - `review delegate` `reviewer_cli`. Result: only the call inside `launch`, after `save_run`. The earlier check before the lock was removed.
 - `run_cli_channel` for a non-reviewer. Result: unchanged. It never opened a reviewer RUN; its preflight still returns before the process starts.
-- Forced-bare auth on both entry points. Result: still before the lock and before any RUN. The retargeted test compares the reviews directory for that refusal only.
+- Forced-bare auth on both entry points. Result: still before the lock and before any RUN. `test_forced_bare_without_a_key_refuses_before_a_run_record` compares the reviews directory for that refusal.
+
+R4 class: a comment still describes a mechanism the code no longer has. `AUTH_REFUSAL_PREFIX` was documented as the signal to delete a RUN record.
+
+- The prefix comment in `reviewer_auth.py`. Result: it now says the refusal and the plan notices start with it.
+- Other comments and the close path. Result: `close_cli_review_run` no longer mentions the prefix, and nothing else in `specy_road/` says the prefix removes a record. `auth_problem` and `claude_reviewer_auth_notices` still start their text with it.
+
+R5 class: a branch the only caller never takes. `run_reviewer_channel`'s `prechecked` parameter defaulted to false, and its only caller passed true.
+
+- Call sites of `run_reviewer_channel` under `specy_road/` and `tests/`. Result: one call, `role_prompt._run`, and it passed `prechecked=True`. The parameter and the `if not prechecked` branch are gone. `main` still runs `reviewer_launch_block` before the lock.
+- `run_default_reviewer`'s own auth refusal. Result: kept. `tests/test_headless_limits_denials.py` calls that function directly, so the check is not the skipped branch.
+
+R6 class: a test whose setup and assertions are a subset of another test.
+
+- `test_a_forced_bare_auth_refusal_leaves_the_reviews_dir_unchanged` against `test_forced_bare_without_a_key_refuses_before_a_run_record`. Result: same `_isolate`, `_force_bare`, planted `RUN-opus.json`, and the same two commands. Its exit and directory assertions are already in the other test. The duplicate is deleted.
+- The other new tests in `tests/test_reviewer_auth.py`. Result: each one covers an input the others do not (mode choice, argv, notices, explicit launch, helper-only `--settings`, the plan notice). None of those is a subset of the forced-bare refusal test.

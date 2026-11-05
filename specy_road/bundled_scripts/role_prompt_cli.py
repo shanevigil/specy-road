@@ -89,17 +89,13 @@ def reviewer_launch_block(prof: Profile | None, entry: dict[str, Any], _root: Pa
 
 def run_reviewer_channel(prof: Profile | None, prompt_path: Path, root: Path, entry: dict[str, Any], model: str,
                          reviews: Path, ref: str | None, transcript: list[str],
-                         sign_key: Path | None = None, *, prechecked: bool = False) -> Outcome:
+                         sign_key: Path | None = None) -> Outcome:
     """``prompt --role reviewer --channel cli``: the roster ``entry``'s reviewer, run and filed; every way out is an
     :class:`Outcome`, a rerun request (``exit`` 1, or the preflight's) when nothing could be sent.
 
-    ``prechecked``: the caller already ran :func:`reviewer_launch_block` before opening a record. The roster
-    ``preflight`` still runs here, after that record exists."""
+    Forced-bare authentication is :func:`reviewer_launch_block`, which ``prompt`` runs before it opens the RUN
+    record. The roster ``preflight`` stays here, after that record exists."""
     _run_launch_mode.set(None)
-    if not prechecked:
-        blocked = reviewer_launch_block(prof, entry, root)
-        if blocked is not None:
-            return blocked
     rc = preflight(entry.get("preflight"), root)
     if rc:
         return Outcome("rerun", f"rerun requested: preflight failed (exit {rc}); nothing was sent", exit=rc)
