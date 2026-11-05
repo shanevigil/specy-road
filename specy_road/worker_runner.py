@@ -27,6 +27,7 @@ from pathlib import Path
 from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
 from specy_road.orchestration_role_env import harness_env
 from specy_road.runtime_paths import project_prefix
+from specy_road.worker_adapter_cursor import launch_permissions
 from specy_road.worker_adapter_parsers import USAGE_FIELDS, init_model
 from specy_road.worker_adapters import ClaudeCode, Launch, adapter_for
 from specy_road.worker_exit import exit_event
@@ -248,7 +249,9 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
         watch.proc = proc
         append_event(repo_root, rec, "launched", source="system", summary=f"started {launch.argv[0]} (pid {proc.pid})",
                      detail={"argv0": launch.argv[0], "harness": rec.harness, "resumed": resumed,
-                             "model": launch_model(launch.argv)})   # the model the harness is told, if any
+                             "model": launch_model(launch.argv),   # the model the harness is told, if any
+                             # Cursor: the permission flags passed, so a roster's --force opt-in shows in the log.
+                             **({"permissions": launch_permissions(launch.argv)} if rec.harness == "cursor" else {})})
         if launch.stdin is not None and proc.stdin:
             try:
                 proc.stdin.write(launch.stdin)

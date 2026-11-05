@@ -72,10 +72,11 @@ def test_unmatched_roster_id_names_its_near_miss_and_the_roster_line(
             f"add `profile: {rel}` to that entry") in err
 
 
-def test_unrelated_roster_id_keeps_todays_text(tmp_path: Path) -> None:
+def test_unrelated_roster_id_names_no_profile(tmp_path: Path) -> None:
     repo = make_profile_repo(tmp_path)
     (repo / "roadmap" / "orchestration.yaml").write_text(
         ROSTER + "  - {id: totally-unrelated-9, family: x, harness: cursor, roles: [executor]}\n")
     [(_, msg)] = [g for g in mp.roster_profile_gaps(repo) if "totally-unrelated-9" in g[1]]
-    assert msg.endswith("list the id in its `aliases` or give the entry `profile:`")
+    assert msg.endswith("add one or give the entry `profile:`")
+    assert "closest profile" not in msg
     assert "differs from bundled api_id" not in msg

@@ -12,16 +12,21 @@ from __future__ import annotations
 import json
 import re
 import shlex
+import subprocess
 from pathlib import Path
 
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
+from tests.test_models_and_prompt import run_main
+from tests.test_orchestrate_plan import plan_repo
 
 from specy_road import worker_adapters as wa
+from specy_road.bundled_scripts import doctor, orchestrate_cli
 from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
 from specy_road.orchestration_config import validate_orchestration_dict
+from specy_road.worker_adapter_cursor import force_warnings, launch_permissions
 from specy_road.worker_adapter_parsers import output_mode_note, placeholder_problem, resume_form_note
 
 DOC = Path(__file__).resolve().parents[1] / "docs" / "orchestration-workers.md"
@@ -32,16 +37,16 @@ CURSOR_CLI = 'agent -p --output-format stream-json --trust --sandbox enabled "<p
 CURSOR_RESUME = 'agent -p --resume {session} --output-format stream-json --trust --sandbox enabled "<prompt>"'
 
 
-def _roster(harness: str, cli: str, cli_resume: str | None = None) -> str:
-    channels = {"cli": cli, **({"cli_resume": cli_resume} if cli_resume else {})}
+def _roster(harness: str, cli: str | None, cli_resume: str | None = None, extra: str = "") -> str:
+    channels = {"cli": cli, **({"cli_resume": cli_resume} if cli_resume else {})} if cli else {}
     return ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
-            f"  - {{id: opus, family: anthropic, roles: [executor, reviewer], harness: {harness},\n"
+            f"  - {{id: opus, family: anthropic, roles: [executor, reviewer], harness: {harness},{extra}\n"
             f"     channels: {json.dumps(channels)}}}\n"
             "policy: {max_workers: 2}\n")
 
 
-def _repo(tmp_path: Path, harness: str, cli: str, cli_resume: str | None = None) -> Path:
-    repo = make_review_repo(tmp_path, orchestration=_roster(harness, cli, cli_resume))
+def _repo(tmp_path: Path, harness: str, cli: str | None, cli_resume: str | None = None, extra: str = "") -> Path:
+    repo = make_review_repo(tmp_path, orchestration=_roster(harness, cli, cli_resume, extra))
     (repo / ".gitignore").write_text("work/\n")
     git(repo, "add", ".gitignore")
     git(repo, "commit", "-qm", "ignore work")
@@ -76,6 +81,106 @@ def test_cursor_cli_resume_keeps_the_launch_flags(tmp_path: Path, monkeypatch) -
     launch, resumed = _launch_then_resume(_repo(tmp_path, "cursor", CURSOR_CLI, CURSOR_RESUME), monkeypatch)
     assert launch.argv[2].startswith("agent -p --output-format stream-json --trust --sandbox enabled ")
     assert resumed.argv[2].startswith("agent -p --resume sess-1 --output-format stream-json --trust --sandbox enabled ")
+
+
+@pytest.mark.parametrize(("extra", "flags"), [
+    ("", ["--trust", "--sandbox", "enabled"]),
+    (" cursor_force: false,", ["--trust", "--sandbox", "enabled"]),
+    (" cursor_force: true,", ["--trust", "--force"]),
+])
+def test_cursor_default_command_is_sandboxed_unless_the_roster_opts_into_force(
+        tmp_path: Path, monkeypatch, extra: str, flags: list[str]) -> None:
+    launch, resumed = _launch_then_resume(_repo(tmp_path, "cursor", None, extra=extra), monkeypatch)
+    for argv in (launch.argv, resumed.argv):
+        assert argv[0] == "agent" and launch_permissions(argv) == flags
+
+
+def test_plan_and_doctor_warn_once_per_cursor_entry_that_force_allows(tmp_path: Path, capsys) -> None:
+    roster = """version: 1
+roster:
+  - {id: human, family: human, roles: [coordinator, reviewer]}
+  - {id: opus, family: anthropic, roles: [executor, reviewer], harness: claude-code, cursor_force: true}
+  - {id: forced, family: cursor, roles: [executor], harness: cursor, cursor_force: true, available: false}
+  - {id: sandboxed, family: cursor, roles: [executor], harness: cursor, cursor_force: false}
+  - id: yolo
+    family: xai
+    roles: [reviewer]
+    harness: cursor
+    channels: {cli: "agent -p --trust --yolo {prompt}", cli_resume: "agent -p --resume {session} --force {prompt}"}
+policy: {reviewers_required: 1}
+"""
+    repo = plan_repo(tmp_path, roster=roster)
+    assert run_main(orchestrate_cli, "orchestrate", "plan", "--repo-root", str(repo)) == 0
+    said = [ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("! cursor --force:")]
+    assert [ln.split()[3] for ln in said] == ["forced", "yolo"]
+    assert "(cursor_force: true)" in said[0] and "channels.cli passes" in said[1] and "channels.cli_resume" in said[1]
+    assert all("every command not explicitly denied" in ln for ln in said)
+    with pytest.raises(SystemExit):
+        doctor.main(["--repo-root", str(repo)])
+    assert [ln for ln in capsys.readouterr().err.splitlines() if ln.startswith("! cursor --force:")] == said
+
+
+@pytest.mark.parametrize(("cli", "passed", "forces"), [
+    ("agent -p {prompt} --force; true", ["--force"], True),      # an operator ends the word
+    ("agent -p {prompt} --yolo&& true", ["--yolo"], True),
+    ("agent -p {prompt} --force|cat", ["--force"], True),
+    ("agent -p {prompt} --force>log", ["--force"], True),
+    ("(agent -p {prompt} --force)", ["--force"], True),
+    ("`agent -p {prompt} --force`", ["--force"], True),
+    ("$(agent -p {prompt} --force)", ["--force"], True),
+    ("agent -p {prompt} -f", ["-f"], True),                      # the short alias, alone and clustered
+    ("agent -pf {prompt}", ["-pf"], True),
+    ("agent -p {prompt} --for\\ce", ["--force"], True),           # read as the shell reads it
+    ("agent -p {prompt} --trust --sandbox=disabled --force; true", ["--trust", "--sandbox=disabled", "--force"], True),
+    ("agent -p {prompt} --sandbox disabled; true", ["--sandbox", "disabled"], False),
+    ("agent -p {prompt} --sandbox; true", ["--sandbox"], False),  # an operator is not the flag's value
+    ("agent -p {prompt} --sandbox\ntrue", ["--sandbox"], False),  # nor is the next line
+    ("agent -p {prompt} '--force;'", [], False),                 # a quoted operator is part of the word
+    ("agent -p {prompt} --force\\;", [], False),
+    ("agent -p {prompt} 'try --force; then stop'", [], False),
+    ("agent -Hf -p {prompt}", [], False),                        # the value of -H, not a switch
+    ("agent -p {prompt} --force=true", [], False),               # `agent` refuses this as an unknown option
+])
+def test_a_custom_cursor_command_is_read_as_the_shell_splits_it(tmp_path: Path, cli: str, passed: list[str],
+                                                                forces: bool) -> None:
+    launch = wa.adapter_for("cursor").launch(tmp_path / "prompt.md", tmp_path, None, cli)
+    assert launch_permissions(launch.argv) == passed
+    for channel in ("cli", "cli_resume"):
+        assert len(force_warnings([{"id": "custom", "harness": "cursor", "channels": {channel: cli}}])) == forces
+
+
+@pytest.mark.parametrize("spelling", [
+    "--for\\\nce", "--yo\\\nlo", "--force\\\n", "\\\n--force", '"--for\\\nce"',   # a continuation joins the word
+    "--for\\\n\\\nce", "--fo''rce", '--fo""r\\ce',
+    "--force \\", "--force\\",                               # a trailing backslash is a literal
+    "'--for\\\nce'",                                        # single quotes keep it
+    "--force\\\\\n",                                       # an escaped backslash, then a real newline
+    '"--force\\\\\n"',
+])
+def test_launch_and_resume_record_the_flags_the_shell_passes(tmp_path: Path, spelling: str) -> None:
+    printed = subprocess.run(["sh", "-c", f"printf '%s\\0' {spelling}"], capture_output=True, text=True, check=True)
+    shell_passes = [w for w in printed.stdout.split("\0") if w in ("--force", "--yolo")]
+    cli = f"agent -p {{prompt}} --resume {{session}} {spelling}"
+    cursor, prompt = wa.adapter_for("cursor"), tmp_path / "prompt.md"
+    assert launch_permissions(cursor.launch(prompt, tmp_path, None, cli).argv) == shell_passes
+    assert launch_permissions(cursor.resume("sess-1", prompt, tmp_path, "m", cli).argv) == shell_passes
+    warned = force_warnings([{"id": "custom", "harness": "cursor", "channels": {"cli": cli}}])
+    assert len(warned) == len(shell_passes)
+
+
+@pytest.mark.parametrize("cli", ["agent -p {prompt} -w; true", "agent -p {prompt} --worktree|cat",
+                                 "agent -p {prompt} --worktree=mine&& true", "agent -pw {prompt}",
+                                 "agent -p {prompt} -wmine", "agent -p {prompt} --work\\\ntree"])
+def test_a_custom_cursor_command_never_asks_for_its_own_worktree(tmp_path: Path, cli: str) -> None:
+    with pytest.raises(wa.Unsupported, match="never pass -w"):
+        wa.adapter_for("cursor").launch(tmp_path / "prompt.md", tmp_path, None, cli)
+
+
+def test_an_unbalanced_custom_cursor_command_is_refused_and_its_earlier_words_still_warn(tmp_path: Path) -> None:
+    cli = "agent -p {prompt} --force 'unbalanced"
+    with pytest.raises(wa.Unsupported):
+        wa.adapter_for("cursor").launch(tmp_path / "prompt.md", tmp_path, None, cli)
+    assert force_warnings([{"id": "custom", "harness": "cursor", "channels": {"cli": cli}}]) != []
 
 
 def _documented(lang: str, needle: str) -> str:

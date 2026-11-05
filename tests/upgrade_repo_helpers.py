@@ -20,6 +20,8 @@ def old_repo(root: Path) -> Path:
     (root / "AGENTS.md").write_text("# Agents\n\nOur own rules.\n", encoding="utf-8")
     shutil.rmtree(root / "model-profiles")
     (root / SHIPPED_DOC).unlink()
+    (root / "roadmap-context.md").unlink()
+    (root / "roadmap.md").unlink()
     (root / "schemas" / "orchestration.schema.json").unlink()
     roadmap_schema = root / "schemas" / "roadmap.schema.json"
     schema = json.loads(roadmap_schema.read_text(encoding="utf-8"))

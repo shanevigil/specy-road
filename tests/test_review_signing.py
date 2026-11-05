@@ -225,6 +225,6 @@ def test_a_launched_reviewers_verdict_is_filed_signed_with_the_callers_key(tmp_p
                          "--repo-root", str(repo)])
     assert e.value.code == 0 and evaluate_gate(repo, NODE, head).passed      # the signature verifies
     review_path(repo, "M1.1", "opus").unlink()
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
                     "--sign-key", str(key), "--repo-root", str(repo)) == 0
     assert evaluate_gate(repo, NODE, head).passed

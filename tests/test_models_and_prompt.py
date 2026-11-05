@@ -296,7 +296,7 @@ def test_prompt_cli_channel_runs_profile_cli(tmp_path: Path, capsys, monkeypatch
     assert text != prof_path.read_text()
     prof_path.write_text(text)
     commit_profile(repo)
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli", "--run",
                 "--repo-root", str(repo)) == 0
     captured = capsys.readouterr()
     assert "running: cat " in captured.err
@@ -307,7 +307,7 @@ def test_prompt_cli_channel_refuses_without_placeholder(tmp_path: Path, capsys) 
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
     prof_path.write_text(prof_path.read_text().replace(shipped_anthropic_opus_cli_yaml_line(), "  cli: echo hi"))
     commit_profile(repo)
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli", "--run",
                 "--repo-root", str(repo)) == 1
     assert "no {prompt} (the prompt file path) or <prompt>" in capsys.readouterr().err
 
@@ -319,7 +319,7 @@ def test_prompt_cli_channel_accepts_the_profiles_prompt_form(tmp_path: Path, cap
     prof_path.write_text(prof_path.read_text().replace(shipped_anthropic_opus_cli_yaml_line(),
                                                        '  cli: printf %s "<prompt>" | wc -c'))
     commit_profile(repo)
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli", "--run",
                 "--repo-root", str(repo)) == 0
     out, err = capfd.readouterr()
     sent = (repo / "work" / "prompt-M1.1-executor-opus.md").read_bytes()

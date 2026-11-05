@@ -11,7 +11,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15` | rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction | phase | — | Not Started |
 | `M15.1` | RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command | task | Agentic-led | Complete |
 | `M15.2` | A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch | task | Agentic-led | Complete |
-| `M15.3` | prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged | task | Agentic-led | Not Started |
+| `M15.3` | prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged | task | Agentic-led | Complete |
 | `M15.4` | Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current | task | Agentic-led | Complete |
 | `M15.6` | The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes | task | Agentic-led | Complete |
 | `M15.8` | A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it | task | Agentic-led | Complete |
@@ -109,7 +109,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.66` | Gate: ready to tag 0.3.1 | gate | Human-led | Not Started |
 | `M16.67` | move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit | task | Agentic-led | Complete |
 | `M16.68` | finish resolves roadmap chunk conflicts the branch only inherited | task | Agentic-led | Complete |
-| `M16.69` | Cursor workers launch sandboxed without --force unless the roster opts in | task | Agentic-led | Not Started |
+| `M16.69` | Cursor workers launch sandboxed without --force unless the roster opts in | task | Agentic-led | Complete |
 | `M16.70` | Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships | task | — | Not Started |
 | `M17` | 0.3.2: PM GUI shows orchestration and worktree state | phase | Human-led | Not Started |
 | `M17.1` | 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface | gate | Human-led | Not Started |
@@ -172,9 +172,9 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.6` | validate and add-dependency catch cycles made through inherited group dependencies | task | Agentic-led | Complete |
 | `M21.7` | Executors cannot change the files that steer harnesses and specy-road unnoticed | task | Agentic-led | Not Started |
 | `M21.8` | The queued-message worker test waits for the idle state, not just the second completion event | task | — | Complete |
-| `M21.9` | A freshly initialized project passes its own checks | task | — | Not Started |
+| `M21.9` | A freshly initialized project passes its own checks | task | — | Complete |
 | `M21.10` | doctor works in a repo with no remote | task | — | Not Started |
 | `M21.11` | Help text names installed commands | task | — | Complete |
-| `M21.12` | A review record is refused for joined observations only when one of them names a defect | task | — | Not Started |
+| `M21.12` | A review record is refused for joined observations only when one of them names a defect | task | — | Complete |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

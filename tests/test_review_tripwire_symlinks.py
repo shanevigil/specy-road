@@ -53,7 +53,7 @@ def test_prompt_channel_cli_reports_a_typechange_into_the_hand_off_directory(tmp
     notes = rf.reviews_dir(repo, "M1.1") / "notes-gem.md"
     set_steps(repo, spec, {**verdict_step(repo, model="gem"), "plain": True,
                            "symlink": {"path": str(repo / "src" / "a.py"), "target": str(notes)}})
-    assert run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli", "--run",
                     "--repo-root", str(repo)) == 1
     failure = next(line for line in capsys.readouterr().err.splitlines() if line.startswith("review_failure: "))
     assert wrote_paths(failure) == ["src/a.py"] and not rf.review_path(repo, "M1.1", "gem").exists()

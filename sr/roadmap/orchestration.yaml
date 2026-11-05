@@ -107,10 +107,14 @@ roster:
     harness_model: grok-4.7-high
     billing_route: cursor_subscription
     # Overflow executor while the Claude account is at its usage limit (maintainer, 2026-11-05).
+    # Temporary --force opt-in (decision D8, M16.69): Cursor's sandbox does not start on this host (AppArmor).
+    cursor_force: true
   - id: composer-2.5
     family: cursor
     roles: [executor]
     harness: cursor
+    # Temporary --force opt-in (decision D8, M16.69): Cursor's sandbox does not start on this host (AppArmor).
+    cursor_force: true
   - id: gpt-5.6-sol-high
     family: openai
     roles: [reviewer]

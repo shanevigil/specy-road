@@ -59,10 +59,10 @@ def test_default_commands_follow_the_documented_cli_flags(tmp_path: Path) -> Non
         assert "--ask-for-approval" not in argv and "--sandbox" not in argv
     assert "-C" not in xr.argv
     u = wa.adapter_for("cursor").launch(p, tmp_path, "composer-2.5", None)
-    assert u.argv[:2] == ["agent", "-p"] and "--force" in u.argv and "--workspace" in u.argv
+    assert u.argv[:2] == ["agent", "-p"] and "--workspace" in u.argv
     # a new worktree is an untrusted workspace: without --trust (or --force) `agent -p` exits 1
     ur = wa.adapter_for("cursor").resume("c1", p, tmp_path, "m", None)
-    assert "--trust" in u.argv and "--trust" in ur.argv
+    assert "--trust" in u.argv and "--trust" in ur.argv and "--force" not in u.argv + ur.argv   # sandboxed by default
     assert wa.adapter_for("claude-code").human_resume("sid", tmp_path) == ["claude", "--resume", "sid"]
     assert wa.adapter_for("codex").human_resume("t1", tmp_path) == ["codex", "resume", "t1"]
     assert wa.adapter_for("cursor").human_resume("c1", tmp_path) == ["agent", "--resume", "c1"]
@@ -369,13 +369,13 @@ def test_prompt_cli_channel_substitutes_the_roles_effort_or_notes_its_absence(tm
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
     prof_path.write_text(prof_path.read_text().replace(shipped_anthropic_opus_cli_yaml_line(), "  cli: echo {effort} {prompt}"))
     commit_profile(repo)
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli", "--run",
                 "--repo-root", str(repo)) == 0
     out, err = capfd.readouterr()
     assert out.splitlines()[-1].startswith("--effort low ") and "takes no effort" not in err
     prof_path.write_text(prof_path.read_text().replace("  cli: echo {effort} {prompt}", "  cli: echo {prompt}"))
     commit_profile(repo)
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli", "--run",
                 "--repo-root", str(repo)) == 0
     out, err = capfd.readouterr()
     assert "--effort" not in out.splitlines()[-1] and err.count("takes no effort") == 1 and "effort low" in err
