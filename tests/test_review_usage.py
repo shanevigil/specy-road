@@ -9,7 +9,6 @@ import pytest
 
 from tests.review_delegate_helpers import (
     CAPACITY,
-    FAKE,
     files_record_step,
     make_delegate_repo,
     run_review_delegate,
@@ -26,28 +25,28 @@ from specy_road.review_usage import archive_round, review_usage
 from specy_road.reviewer_run_failure import run_path, save_run
 from specy_road.worker_adapter_parsers import USAGE_FIELDS
 
-# The fake harness's result line also carries the step's usage, as Claude's stream-json result does.
-# It writes the step's notes during the run, as a reviewer does.
-FAKE_USAGE = FAKE.replace('"result": "filed", "session_id": sid}', '"result": "filed", "session_id": sid, **step.get("result", {})}')
-FAKE_USAGE = FAKE_USAGE.replace('if step.get("say"):', 'if step.get("notes"):\n    open(step["notes"]["path"], "w").write(step["notes"]["text"])\nif step.get("say"):')
-assert FAKE_USAGE.count("step.get") == FAKE.count("step.get") + 2
-
-
 def _round(repo: Path, notes: str, **result) -> dict:
-    notes_step = {"path": str(reviews_dir(repo, "M1.1") / "notes-opus.md"), "text": notes}
-    return {**files_record_step(repo), "notes": notes_step, "say": "reviewing", "result": result}
+    """One round: the fake's result line carries ``result`` (usage, cost, turns), as Claude's stream-json does, and
+    its final JSON carries ``notes``, which specy-road writes to ``notes-opus.md`` below the front matter (M8.3:
+    the reviewer writes no file)."""
+    step = files_record_step(repo)
+    return {"answer": {**step["answer"], "notes": notes}, "say": "reviewing", "result": result}
+
+
+def _notes(path: Path) -> str:
+    """The reviewer's notes in a ``notes-<model>.md`` specy-road wrote: the text after its front matter."""
+    return path.read_text().split("\n---\n", 1)[1].lstrip("\n")
 
 
 @pytest.fixture()
 def two_rounds(tmp_path: Path) -> tuple[Path, str, str]:
     repo, spec = make_delegate_repo(tmp_path)
-    (tmp_path / "fake.py").write_text(FAKE_USAGE)
     c1 = git(repo, "rev-parse", "HEAD")
-    set_delegate_steps(repo, spec, _round(repo, "round one notes\n", usage={"input_tokens": 100, "output_tokens": 10},
+    set_delegate_steps(repo, spec, _round(repo, "round one notes: not a defect because the diff is covered\n", usage={"input_tokens": 100, "output_tokens": 10},
                               total_cost_usd=0.5, num_turns=3))
     assert run_review_delegate(repo) == 0
     c2 = commit_file(repo, "src/a.py", "print('fixed')\n", "fix")
-    set_delegate_steps(repo, spec, _round(repo, "round two notes\n", usage={"input_tokens": 200, "output_tokens": 20},
+    set_delegate_steps(repo, spec, _round(repo, "round two notes: not a defect because the diff is covered\n", usage={"input_tokens": 200, "output_tokens": 20},
                               total_cost_usd=0.25, num_turns=2))
     assert run_review_delegate(repo) == 0
     return repo, c1, c2
@@ -61,11 +60,11 @@ def test_each_round_keeps_its_run_json_log_and_notes_in_history(two_rounds) -> N
     kept = json.loads((hist / f"RUN-opus-{c1[:12]}-1.json").read_text())
     assert kept["commit"] == c1 and kept["model"] == "opus"
     assert '"input_tokens": 100' in (hist / f"RUN-opus-{c1[:12]}-1.log").read_text()
-    assert (hist / "notes" / f"notes-opus-{c1[:12]}-1.md").read_text() == "round one notes\n"
+    assert _notes(hist / "notes" / f"notes-opus-{c1[:12]}-1.md") == "round one notes: not a defect because the diff is covered\n"
     assert json.loads((d / "RUN-opus.json").read_text())["commit"] == c2
     current_log = (d / "RUN-opus.log").read_text()
     assert '"input_tokens": 200' in current_log and '"input_tokens": 100' not in current_log
-    assert (d / "notes-opus.md").read_text() == "round two notes\n"
+    assert _notes(d / "notes-opus.md") == "round two notes: not a defect because the diff is covered\n"
     assert not list(hist.glob("notes-*.md"))   # never beside the filed records history/*.md holds
 
 
@@ -114,8 +113,7 @@ def test_worker_usage_adds_reviewers_to_the_node_total(two_rounds, capsys) -> No
 def test_notes_are_not_relabeled_when_a_later_run_writes_no_notes(tmp_path: Path) -> None:
     """A4/RC2: a capacity failure at a new commit must not archive the previous commit's notes under that run."""
     repo, spec = make_delegate_repo(tmp_path)
-    (tmp_path / "fake.py").write_text(FAKE_USAGE)
-    c1_notes = "Only commit-one notes\n"
+    c1_notes = "Only commit-one notes: not a defect because the diff is covered\n"
     set_delegate_steps(repo, spec, _round(repo, c1_notes, usage={"input_tokens": 100, "output_tokens": 10}, total_cost_usd=0.5))
     assert run_review_delegate(repo) == 0
     c1 = git(repo, "rev-parse", "HEAD")
@@ -124,13 +122,13 @@ def test_notes_are_not_relabeled_when_a_later_run_writes_no_notes(tmp_path: Path
     set_delegate_steps(repo, spec, {"error": CAPACITY, "exit": 1})
     assert run_review_delegate(repo, "--retries", "0") == 1
     notes_hist = reviews_dir(repo, "M1.1") / "history" / "notes"
-    assert (notes_hist / f"notes-opus-{c1[:12]}-1.md").read_text() == c1_notes
+    assert _notes(notes_hist / f"notes-opus-{c1[:12]}-1.md") == c1_notes
     assert not list(notes_hist.glob(f"notes-opus-{c2[:12]}-*.md"))
-    set_delegate_steps(repo, spec, _round(repo, "Commit-two retry notes\n", usage={"input_tokens": 50, "output_tokens": 5},
+    set_delegate_steps(repo, spec, _round(repo, "Commit-two retry notes: not a defect because the diff is covered\n", usage={"input_tokens": 50, "output_tokens": 5},
                               total_cost_usd=0.25))
     assert run_review_delegate(repo) == 0
-    assert (reviews_dir(repo, "M1.1") / "notes-opus.md").read_text() == "Commit-two retry notes\n"
-    assert not any(p.read_text() == c1_notes for p in notes_hist.glob(f"notes-opus-{c2[:12]}-*.md"))
+    assert _notes(reviews_dir(repo, "M1.1") / "notes-opus.md") == "Commit-two retry notes: not a defect because the diff is covered\n"
+    assert not any(_notes(p) == c1_notes for p in notes_hist.glob(f"notes-opus-{c2[:12]}-*.md"))
 
 
 _PROMPT_CLI_USAGE_LOG = json.dumps({"type": "result", "subtype": "success", "result": "ok", "is_error": False,
@@ -181,10 +179,9 @@ def test_archive_round_skips_the_current_run_when_it_is_not_review_delegate(tmp_
 def test_delegate_after_prompt_cli_does_not_append_to_the_old_log(tmp_path: Path) -> None:
     """A3: a ``prompt-cli`` log must not carry into the next ``review delegate`` run's usage."""
     repo, spec = make_delegate_repo(tmp_path)
-    (tmp_path / "fake.py").write_text(FAKE_USAGE)
     path = run_path(repo, "M1.1", "opus")
     _write_prompt_cli_run(path, git(repo, "rev-parse", "HEAD"))
-    set_delegate_steps(repo, spec, _round(repo, "delegate notes\n", usage={"input_tokens": 10, "output_tokens": 1},
+    set_delegate_steps(repo, spec, _round(repo, "delegate notes: not a defect because the diff is covered\n", usage={"input_tokens": 10, "output_tokens": 1},
                                           total_cost_usd=0.1))
     assert run_review_delegate(repo) == 0
     data = review_usage(repo, "M1.1")

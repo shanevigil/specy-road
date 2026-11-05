@@ -55,12 +55,17 @@ def _footer(root: Path, **over) -> None:
     print_pickup_footer(**kwargs)
 
 
-def test_the_footer_carries_the_hint(tmp_path, capsys):
+def test_the_footer_carries_the_hint_once_per_checkout(tmp_path, capsys):
     _footer(tmp_path)
+    first = capsys.readouterr().out
+    assert "finish-this-task" in first
+    assert "grind-session" in first
 
-    out = capsys.readouterr().out
-    assert "finish-this-task" in out
-    assert "grind-session" in out
+    _footer(tmp_path)
+    second = capsys.readouterr().out
+    assert "finish-this-task" in second
+    assert "grind-session" not in second
+    assert (tmp_path / ".specyrd" / "cache" / "pickup-orchestration-hint").is_file()
 
 
 def test_the_footer_drops_the_hint_inside_a_loop(monkeypatch, tmp_path, capsys):

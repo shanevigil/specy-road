@@ -14,14 +14,14 @@ from specy_road.runtime_paths import project_prefix
 from specy_road.finish_land_integration import (
     integration_worktree,
     integration_worktree_problem,
-    land_merge_feature_into_integration,
-    print_merge_push_notice,
     tracking_ref_snapshot,
 )
+from specy_road.finish_land_local import land_on_integration
 from specy_road.finish_on_complete_override import OVERRIDE_FLAG, needs_override
 from specy_road.git_subprocess import git_ok
 from specy_road.on_complete_session import remove_on_complete_session
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
+from specy_road.workflow_prefs import LAND_LOCAL, root_land
 
 
 def print_finish_tail(
@@ -162,6 +162,7 @@ def delete_branch_preflight(on_mode: str, *, delete_branch: bool, rollup: bool =
 
 def delete_landed_branch(
     repo: Path, *, branch: str, ib: str, remote: str, contained_in: str | None = None,
+    local_only: bool = False,
 ) -> None:
     """Delete ``branch`` here and on ``remote`` now that it has landed.
 
@@ -169,12 +170,13 @@ def delete_landed_branch(
     the leaf merged there instead of into ``ib``). The checkout still moves to
     ``ib``, because a checked-out branch cannot be deleted; when another
     worktree holds ``ib``, this checkout detaches at it. Failures are reported,
-    never fatal: the work has already landed.
+    never fatal: the work has already landed. ``local_only`` (root ``land:
+    local``, which pushes nothing) leaves the remote copy alone.
     """
     holder = integration_worktree(repo, ib)
     # A failed checkout needs no check of its own: git branch -d then refuses and says why.
     git_ok(["checkout", "--detach", ib] if holder else ["checkout", ib], repo)
-    pushed, _ = git_ok(["rev-parse", "--verify", "--quiet", f"refs/remotes/{remote}/{branch}"], repo)
+    pushed = not local_only and git_ok(["rev-parse", "--verify", "--quiet", f"refs/remotes/{remote}/{branch}"], repo)[0]
     local_ok, remote_ok, failure = delete_merged_branch(
         repo, branch, contained_in or ib, remote, push=pushed,
     )
@@ -244,29 +246,29 @@ def retry_merge_landing(
     ``remote/ib``, including when an earlier run already got it there.
     """
     refuse_unless_finish_tip(repo, branch)
-    tracking_before = tracking_ref_snapshot(repo, remote=remote, integration_branch=ib)
-    git_ok(["fetch", "-q", remote, ib], repo)
-    if git_ok(["merge-base", "--is-ancestor", branch, f"refs/remotes/{remote}/{ib}"], repo)[0]:
+    local = root_land(repo) == LAND_LOCAL   # land: local fetches nothing and checks the local branch
+    tracking_before = None if local else tracking_ref_snapshot(repo, remote=remote, integration_branch=ib)
+    if not local:
+        git_ok(["fetch", "-q", remote, ib], repo)
+    target, where = (f"refs/heads/{ib}", f"local {ib}") if local else (f"refs/remotes/{remote}/{ib}", f"{ib} on {remote}")
+    if git_ok(["merge-base", "--is-ancestor", branch, target], repo)[0]:
         done = "" if delete_branch else "; nothing to do"
-        print(f"\n[ok] {branch} is already merged into {ib} on {remote}{done}")
+        print(f"\n[ok] {branch} is already merged into {where}{done}")
         if delete_branch:
-            delete_landed_branch(repo, branch=branch, ib=ib, remote=remote)
+            delete_landed_branch(repo, branch=branch, ib=ib, remote=remote, local_only=local)
         raise SystemExit(0)
-    print_merge_push_notice(
-        repo, remote=remote, integration_branch=ib, feature_branch=branch,
-    )
-    ok, err_msg = land_merge_feature_into_integration(
-        repo, remote=remote, integration_branch=ib, feature_branch=branch,
-        land_check_cmd=land_check_cmd, tracking_before=tracking_before,
+    ok, err_msg, done_msg = land_on_integration(
+        repo, remote=remote, ib=ib, branch=branch, land_check_cmd=land_check_cmd,
+        tracking_before=tracking_before,
     )
     if not ok:
         merge_landing_failed(
             ib, err_msg, delete_branch=delete_branch, land_check_cmd=land_check_cmd,
             repo=repo,
         )
-    print(f"\n[ok] merged {branch} into {ib} and pushed to {remote}")
+    print(f"\n[ok] {done_msg}")
     if delete_branch:
-        delete_landed_branch(repo, branch=branch, ib=ib, remote=remote)
+        delete_landed_branch(repo, branch=branch, ib=ib, remote=remote, local_only=local)
     raise SystemExit(0)
 
 
@@ -301,23 +303,15 @@ def apply_on_complete_mode(
         remove_on_complete_session(sess_path)
         return
 
-    tracking_before = tracking_ref_snapshot(repo, remote=gw_remote, integration_branch=ib)
-    print_merge_push_notice(
-        repo, remote=gw_remote, integration_branch=ib, feature_branch=branch,
-    )
-    ok, err_msg = land_merge_feature_into_integration(
-        repo,
-        remote=gw_remote,
-        integration_branch=ib,
-        feature_branch=branch,
-        land_check_cmd=args.land_check_cmd,
-        tracking_before=tracking_before,
+    ok, err_msg, done_msg = land_on_integration(
+        repo, remote=gw_remote, ib=ib, branch=branch, land_check_cmd=args.land_check_cmd,
     )
     if ok:
-        print(f"\n[ok] merged {branch} into {ib} and pushed to {gw_remote}")
+        print(f"\n[ok] {done_msg}")
         remove_on_complete_session(sess_path)
         if args.delete_branch:
-            delete_landed_branch(repo, branch=branch, ib=ib, remote=gw_remote)
+            delete_landed_branch(repo, branch=branch, ib=ib, remote=gw_remote,
+                                 local_only=root_land(repo) == LAND_LOCAL)
         return
 
     if on_mode == "merge":
