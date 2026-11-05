@@ -271,3 +271,61 @@ def test_diff_shows_stubs_under_a_parenthesised_dir(tmp_path: Path, capsys) -> N
     for name in ("specyrd-validate.md", "specyrd-brief.md"):
         assert f"+++ b/docs/team (commands)/{name}" in out
         assert f"would write docs/team (commands)/{name}" not in out   # diffed, not left as a bare line
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_an_unreadable_nested_gitignore_skips_the_note_but_not_the_writes(
+        tmp_path: Path, capsys, dry_run: bool) -> None:
+    import os
+    if os.geteuid() == 0:
+        pytest.skip("root reads any file")
+    repo = _repo_with_prompts(tmp_path)
+    nested = repo / "work" / ".gitignore"
+    nested.write_text("x\n", encoding="utf-8")
+    nested.chmod(0)
+    written: list[str] = []
+    try:
+        apply_and_report(repo, "", written, dry_run=dry_run)
+    finally:
+        nested.chmod(0o644)
+    out = capsys.readouterr().out.splitlines()
+    assert sorted(written) == [".cursorindexingignore (created)", ".gitignore (created)"]
+    assert len(out) == 1 and out[0].startswith("ignore check skipped: ") and "Permission denied" in out[0]
+    assert (repo / GITIGNORE).is_file() is not dry_run and (repo / ".cursorindexingignore").is_file() is not dry_run
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_ignorecase_from_the_checkout_is_honoured(tmp_path: Path, capsys, dry_run: bool) -> None:
+    repo = _repo_with_prompts(tmp_path, untracked=0)
+    _git(repo, "config", "core.ignorecase", "true")
+    (repo / "work" / "Prompt-case.md").write_text("c\n", encoding="utf-8")
+    apply_and_report(repo, "", [], dry_run=dry_run)
+    assert "  work/Prompt-case.md (work/prompt-*.md): untracked; now hidden from git status" in (
+        capsys.readouterr().out.splitlines())
+    assert ("Prompt-case" in _status(repo)) is dry_run          # the real update does hide it
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_a_tracked_file_an_older_rule_already_ignores_is_still_listed(tmp_path: Path, capsys, dry_run: bool) -> None:
+    repo = _repo_with_prompts(tmp_path, untracked=0)
+    (repo / "work" / "prompt-tracked.md").write_text("t\n", encoding="utf-8")
+    _git(repo, "add", "work/prompt-tracked.md")
+    _git(repo, "commit", "-qm", "tracked")
+    (repo / GITIGNORE).write_text("work/*.md\n", encoding="utf-8")
+    index = _git(repo, "ls-files", "-s")
+    apply_and_report(repo, "", [], dry_run=dry_run)
+    assert "  work/prompt-tracked.md (work/prompt-*.md): still tracked; git keeps tracking it" in (
+        capsys.readouterr().out.splitlines())
+    assert _git(repo, "ls-files", "-s") == index
+
+
+def test_a_git_dir_from_a_hook_does_not_point_the_scratch_repo_at_the_checkout(
+        tmp_path: Path, capsys, monkeypatch) -> None:
+    repo = _repo_with_prompts(tmp_path)
+    config = (repo / ".git" / "config").read_bytes()
+    monkeypatch.setenv("GIT_DIR", str(repo / ".git"))
+    monkeypatch.setenv("GIT_WORK_TREE", str(repo))
+    apply_and_report(repo, "", [], dry_run=True)
+    assert "  work/prompt-u00.md (work/prompt-*.md): untracked; now hidden from git status" in (
+        capsys.readouterr().out.splitlines())
+    assert (repo / ".git" / "config").read_bytes() == config

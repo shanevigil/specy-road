@@ -22,13 +22,12 @@ pointer-breaking problem — so it is steered by ``CLAUDE.md`` guidance instead.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 
-from specy_road.git_subprocess import git_stdout
-from specy_road.git_subprocess import run as git_run
 from specy_road.harness_instruction_files import LOCAL_MD
 from specy_road.managed_block import CREATED, UNCHANGED, UPDATED, apply_managed_block
 from specy_road.written_entry import Written
@@ -179,13 +178,27 @@ def apply_and_report(
     stays next to the thing being reported. Under ``dry_run`` the outcomes are
     computed and reported without writing, so a dry run previews these blocks
     instead of omitting them.
+
+    The note on files the new ``.gitignore`` rules match is advisory: it is
+    worked out first, only when ``.gitignore`` will change, and any failure
+    while working it out prints one ``ignore check skipped: <reason>`` line in
+    place of the note. It never stops or alters the writes below.
     """
-    matches = _new_rule_matches(git_root, prefix, gitignore_seed)   # judged in a sandbox: dry and real agree
+    note: list[tuple[str, str, str]] | str = []
+    if apply_agent_ignores(git_root, prefix, dry_run=True, gitignore_seed=gitignore_seed)[GITIGNORE] in (
+            CREATED, UPDATED):
+        try:
+            note = _new_rule_matches(git_root, prefix, gitignore_seed)
+        except (OSError, ValueError, subprocess.SubprocessError, IgnoreCheckSkipped) as e:
+            note = str(e) or type(e).__name__
     outcomes = apply_agent_ignores(
         git_root, prefix, dry_run=dry_run, gitignore_seed=gitignore_seed
     )
     if outcomes[GITIGNORE] in (CREATED, UPDATED):
-        print_new_rule_matches(matches)
+        if isinstance(note, str):
+            print(f"ignore check skipped: {note}")
+        else:
+            print_new_rule_matches(note)
     for name, outcome in sorted(outcomes.items()):
         if outcome != UNCHANGED:
             written.append(Written(name, outcome))
@@ -195,62 +208,122 @@ def apply_and_report(
 MATCH_LIMIT = 20
 TRACKED_NOTE = "still tracked; git keeps tracking it"
 HIDDEN_NOTE = "untracked; now hidden from git status"
+#: Variables that would point a git call in the scratch repository back at the checkout (set inside git hooks).
+_REPO_ENV = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY")
+
+
+class IgnoreCheckSkipped(Exception):
+    """A git call the new-rule note depends on failed; the note is skipped, never guessed."""
 
 
 def _new_rule_matches(git_root: Path, prefix: str, seed: str = "") -> list[tuple[str, str, str]]:
-    """``(path, rule, note)`` for files already in the tree that the updated ``.gitignore`` newly ignores.
+    """``(path, rule, note)`` for files already in the tree that the new ``.gitignore`` rules reach.
 
-    Git judges it, on the file the update would actually write: a throwaway
-    ``git init`` directory gets a byte copy of the current ``.gitignore`` (and
-    of every nested ``.gitignore``), is asked ``check-ignore --no-index`` about
-    each path, then is updated by :func:`apply_agent_ignores` itself (same
-    seed, same block position, same preserved text) and asked again. A path
-    ignored only afterwards is listed, with the rule git names; a negation
-    before or after the block keeps whatever precedence it really has.
-    Tracked files stay tracked (an ignore rule never untracks); untracked ones
-    git shows today are the ones newly hidden. The real file is never touched,
-    so a dry run lists the same paths. Nothing outside a git checkout.
+    Git judges both lists in throwaway ``git init`` directories that carry the
+    checkout's ignore inputs: ``core.ignorecase``, ``core.excludesFile`` and
+    ``info/exclude`` (see :func:`_ignore_config`).
+
+    * **Tracked:** every tracked path that a rule the update adds (a block line
+      no line of the current file already is) matches by git's pattern rules,
+      whatever older rule also matches it. Ignoring never untracks.
+    * **Now hidden:** every untracked path git shows today that the
+      ``.gitignore`` the update would write (same seed, block position and
+      preserved text, applied by :func:`apply_agent_ignores` to a byte copy,
+      with every nested ``.gitignore``) ignores and the current one does not.
+
+    The real file is never touched, so a dry run lists the same paths. Raises
+    :class:`IgnoreCheckSkipped` (or ``OSError``) when inspection fails; returns
+    nothing outside a git checkout.
     """
     if not (git_root / ".git").exists():
         return []
     tracked = _ls_files(git_root, [])
     untracked = _ls_files(git_root, ["--others", "--exclude-standard"])
-    if not (tracked or untracked):
-        return []
-    nested = _ls_files(git_root, ["--cached", "--others", "--exclude-standard", "--", ":(glob)**/.gitignore"])
+    config, exclude = _ignore_config(git_root)
     with tempfile.TemporaryDirectory() as tmp:
-        sandbox = Path(tmp)
-        if not git_run(["init", "-q", str(sandbox)], sandbox).ok:
-            return []
-        for rel in (r for r in dict.fromkeys([GITIGNORE, *nested]) if (git_root / r).is_file()):
-            (sandbox / rel).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(git_root / rel, sandbox / rel)
-        before_text = (sandbox / GITIGNORE).read_bytes() if (sandbox / GITIGNORE).is_file() else None
-        before = _ignored(sandbox, tracked + untracked)
-        apply_agent_ignores(sandbox, prefix, gitignore_seed=seed)
-        if not (sandbox / GITIGNORE).is_file() or (sandbox / GITIGNORE).read_bytes() == before_text:
-            return []
-        after = _ignored(sandbox, tracked + untracked)
-    return [(f, after[f], note) for paths, note in ((tracked, TRACKED_NOTE), (untracked, HIDDEN_NOTE))
-            for f in paths if f in after and f not in before]
+        matched = _tracked_matches(Path(tmp) / "tracked", git_root, prefix, config, tracked)
+        hidden = _newly_hidden(Path(tmp) / "hidden", git_root, prefix, seed, config, exclude, untracked)
+    return ([(f, rule, TRACKED_NOTE) for f, rule in matched.items()]
+            + [(f, rule, HIDDEN_NOTE) for f, rule in hidden.items()])
+
+
+def _git(args: list[str], cwd: Path, *, stdin: str | None = None, ok: tuple[int, ...] = (0,)) -> str:
+    """Raw stdout of ``git <args>``; :class:`IgnoreCheckSkipped` on any other exit."""
+    env = {k: v for k, v in os.environ.items() if k not in _REPO_ENV}
+    r = subprocess.run(["git", *args], cwd=cwd, input=stdin, capture_output=True, text=True,
+                       check=False, timeout=60, env=env)
+    if r.returncode not in ok:
+        reason = (r.stderr.strip().splitlines() or [f"exit {r.returncode}"])[-1]
+        command = next(a for i, a in enumerate(args) if not a.startswith("-") and (i == 0 or args[i - 1] != "-c"))
+        raise IgnoreCheckSkipped(f"git {command}: {reason}")
+    return r.stdout
 
 
 def _ls_files(git_root: Path, args: list[str]) -> list[str]:
-    out = git_stdout(["ls-files", "-z", *args], git_root)
-    return [f for f in (out or "").split("\0") if f]
+    return [f for f in _git(["ls-files", "-z", *args], git_root).split("\0") if f]
 
 
-def _ignored(sandbox: Path, paths: list[str]) -> dict[str, str]:
-    """``{path: rule}`` for each path the ignore files in ``sandbox`` ignore, as git decides it."""
-    try:
-        r = subprocess.run(
-            ["git", "check-ignore", "--no-index", "-v", "-z", "--stdin"],
-            cwd=sandbox, input="\0".join(paths) + "\0", capture_output=True, text=True, check=False, timeout=60,
-        )
-    except (OSError, subprocess.SubprocessError):
+def _ignore_config(git_root: Path) -> tuple[list[str], Path | None]:
+    """The checkout's ignore settings as ``-c`` flags, and its ``info/exclude`` file.
+
+    ``core.ignorecase`` is always passed (``git init`` on a case-insensitive
+    disk would otherwise pick its own). ``core.excludesFile`` is passed when
+    the checkout sets one; unset, the scratch repository falls back to the same
+    per-user default file, as it runs as the same user.
+    """
+    ignorecase = _git(["config", "--bool", "--get", "core.ignorecase"], git_root, ok=(0, 1)).strip() or "false"
+    config = ["-c", f"core.ignorecase={ignorecase}"]
+    excludes = _git(["config", "--path", "--get", "core.excludesFile"], git_root, ok=(0, 1)).strip()
+    if excludes:
+        config += ["-c", f"core.excludesFile={git_root / excludes}"]   # an absolute path stays absolute
+    exclude = git_root / _git(["rev-parse", "--git-path", "info/exclude"], git_root).strip()
+    return config, exclude if exclude.is_file() else None
+
+
+def _scratch(sandbox: Path, git_root: Path, rels: list[str], exclude: Path | None) -> None:
+    """``git init`` ``sandbox`` with byte copies of ``rels`` (from ``git_root``) and of ``info/exclude``."""
+    sandbox.mkdir()
+    _git(["init", "-q", str(sandbox)], sandbox)
+    for rel in (r for r in dict.fromkeys(rels) if (git_root / r).is_file()):
+        (sandbox / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(git_root / rel, sandbox / rel)
+    if exclude is not None:
+        shutil.copyfile(exclude, sandbox / ".git" / "info" / "exclude")
+
+
+def _tracked_matches(sandbox: Path, git_root: Path, prefix: str, config: list[str],
+                     tracked: list[str]) -> dict[str, str]:
+    """``{path: rule}`` for tracked paths a rule new to ``.gitignore`` matches, by git's pattern rules alone."""
+    path = git_root / GITIGNORE
+    have = {ln.strip() for ln in path.read_text(encoding="utf-8").splitlines()} if path.is_file() else set()
+    rules = [r for r in _prefixed(GITIGNORE_LINES, prefix) if r not in have]
+    if not rules or not tracked:
         return {}
-    fields = r.stdout.split("\0")
-    return {path: rule for _source, _line, rule, path in zip(*[iter(fields)] * 4) if not rule.startswith("!")}
+    _scratch(sandbox, git_root, [], None)
+    (sandbox / GITIGNORE).write_text("\n".join(rules) + "\n", encoding="utf-8")
+    return _ignored(sandbox, tracked, config, source=GITIGNORE)
+
+
+def _newly_hidden(sandbox: Path, git_root: Path, prefix: str, seed: str, config: list[str],
+                  exclude: Path | None, untracked: list[str]) -> dict[str, str]:
+    """``{path: rule}`` for untracked paths the updated ``.gitignore`` ignores and the current one does not."""
+    if not untracked:
+        return {}
+    nested = _ls_files(git_root, ["--cached", "--others", "--exclude-standard", "--", ":(glob)**/.gitignore"])
+    _scratch(sandbox, git_root, [GITIGNORE, *nested], exclude)
+    before = _ignored(sandbox, untracked, config)
+    apply_agent_ignores(sandbox, prefix, gitignore_seed=seed)
+    after = _ignored(sandbox, untracked, config)
+    return {f: rule for f, rule in after.items() if f not in before}
+
+
+def _ignored(sandbox: Path, paths: list[str], config: list[str], *, source: str | None = None) -> dict[str, str]:
+    """``{path: rule}`` for each path git ignores in ``sandbox`` (only rules from ``source``, when given)."""
+    out = _git([*config, "check-ignore", "--no-index", "-v", "-z", "--stdin"], sandbox,
+               stdin="\0".join(paths) + "\0", ok=(0, 1))
+    fields = out.split("\0")
+    return {path: rule for src, _line, rule, path in zip(*[iter(fields)] * 4)
+            if not rule.startswith("!") and (source is None or src == source)}
 
 
 def print_new_rule_matches(matches: list[tuple[str, str, str]]) -> None:
