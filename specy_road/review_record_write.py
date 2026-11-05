@@ -50,7 +50,8 @@ from specy_road.bundled_scripts.generate_brief import index, load_nodes
 from specy_road.review_answer import (FILLED_BY_SPECY_ROAD, Rerun, drop_nulls, final_answer,  # noqa: F401 — re-exported
                                       output_schema)
 from specy_road.review_files import render_front_matter, review_path
-from specy_road.review_target import ReviewTarget
+from specy_road.integrity_removals import target_unplanned_removals
+from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
 from specy_road.review_write_check import (  # re-exported: the post-run write check lives there (file limit)
     LOCK_NAME,
     OUTPUT_SCHEMA_NAME,
@@ -64,28 +65,49 @@ from specy_road.reviewer_run_failure import close_run, harness_error_line, recor
 RUN_MARK = re.compile(r"^\[review (delegate|prompt)\] ")
 
 
-def strict_schema(ids: list[str]) -> dict[str, Any]:
+def strict_schema(ids: list[str], removals: list[str] | tuple[str, ...] = ()) -> dict[str, Any]:
     """:func:`output_schema` in OpenAI strict structured-output form, which Codex's ``--output-schema`` is sent in:
     every object lists all its properties as required and allows no others, so an optional field becomes required
-    and may be ``null`` (:func:`drop_nulls` removes it again), and ``acceptance`` names exactly the leaf's ``ids``
-    (strict mode has no free-key map or ``propertyNames``). Anything it admits, less its nulls, is
-    :func:`output_schema`-valid but for the checks it cannot carry, which the validator still makes."""
+    and may be ``null`` (:func:`drop_nulls` removes it again). ``acceptance`` names exactly the keys ``review record``
+    checks (strict mode has no free-key map or ``propertyNames``): the leaf's ``ids``, each taking the record
+    schema's ``additionalProperties`` values, and each unplanned test removal of ``removals`` (M15.18), taking its
+    ``patternProperties`` value (``pass`` only) or ``null``, which a blocking reviewer answers and
+    :func:`drop_nulls` removes. Both come from :func:`output_schema`'s ``acceptance``, so the two cannot diverge.
+    Anything it admits, less its nulls, is :func:`output_schema`-valid but for the checks it cannot carry, which the
+    validator still makes."""
     base = output_schema()
     props = {k: v if k in base["required"] else {"anyOf": [v, {"type": "null"}]} for k, v in base["properties"].items()}
     acc = base["properties"]["acceptance"]
+    (removal,) = acc["patternProperties"].values()
+    keys = {a: acc["additionalProperties"] for a in ids}
+    keys |= {r: {"anyOf": [{"type": "string", "enum": [removal["const"]], "description": removal["description"]},
+                           {"type": "null"}]} for r in removals}
     props["acceptance"] = {"type": "object", "description": acc["description"], "additionalProperties": False,
-                           "required": list(ids), "properties": {a: acc["additionalProperties"] for a in ids}}
+                           "required": list(keys), "properties": keys}
     return {**base, "required": list(props), "properties": props}
 
 
-def write_schema(root: Path, reviews: Path) -> Path:
+def acceptance_keys(root: Path, node_id: str, ref: str | None) -> tuple[list[str], list[str]]:
+    """The acceptance keys ``review record`` checks for ``node_id`` at ``ref``, from the same resolved target: its
+    acceptance ids, and its unplanned test removals (:func:`~specy_road.integrity_removals.target_unplanned_removals`, which the
+    packet lists and ``review record`` requires on an approve). A target that does not resolve has none; ``review
+    record`` then refuses the filing itself."""
+    try:
+        t = resolve_target(root, node_id, ref)
+    except ReviewTargetError:
+        return acceptance_ids(index(load_nodes(root))[node_id]), []
+    return acceptance_ids(t.node), target_unplanned_removals(root, t)
+
+
+def write_schema(root: Path, reviews: Path, ref: str | None = None) -> Path:
     """``review-output.schema.json`` in the hand-off directory, for the harness flags that read a file: the
-    :func:`strict_schema` of the leaf the directory is named for, which Codex needs and the others accept. Callers
-    write it under :func:`review_run_lock`, before the run's first snapshot, so the reviewer may not change it."""
+    :func:`strict_schema` of the leaf the directory is named for, at ``ref`` (the reviewed ref ``review record`` is
+    given), with :func:`acceptance_keys`. Codex needs it and the others accept it. Callers write it under
+    :func:`review_run_lock`, before the run's first snapshot, so the reviewer may not change it."""
     path = reviews / OUTPUT_SCHEMA_NAME
     reviews.mkdir(parents=True, exist_ok=True)
-    ids = acceptance_ids(index(load_nodes(root))[reviews.name])
-    path.write_text(json.dumps(strict_schema(ids), indent=2) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(strict_schema(*acceptance_keys(root, reviews.name, ref)), indent=2) + "\n",
+                    encoding="utf-8")
     return path
 
 

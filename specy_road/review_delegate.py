@@ -288,7 +288,7 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
         try:
             # M8.3's read-only check and filing are for roadmap reviews; a chore reviewer files its own verdict file.
             if chore is None:
-                write_schema(repo_root, reviews)   # before the snapshot: the reviewer must not change it
+                write_schema(repo_root, reviews, ref)   # before the snapshot: the reviewer must not change it
             before = snapshot(cwd, reviews, model) if chore is None else None
             reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
             filed = None if before is None else file_review(

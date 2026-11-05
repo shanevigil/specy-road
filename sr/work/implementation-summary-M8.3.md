@@ -705,6 +705,35 @@ WIP merged first (`ed936c6b`), no conflicts.
 - `specy-road export --check` (from `sr/`): OK. `specy-road file-limits`: OK. `ruff check` on the changed tests: clean.
 - Targeted `pytest -q -n 4 -p no:cacheprovider` over the 17 core reviewer files: 453 passed.
 
+## Fix round 2 (Sol-low block at `0022a371`: F1, A1 with M15.18)
+
+WIP merged first, no conflicts.
+
+- **Class:** the strict harness schema's closed acceptance key set diverging from the keys `review record` requires. `strict_schema` allowed only the leaf's A# ids (`additionalProperties: false`). M15.18's required `removed-test: …` entries (and `removed-test-file`, `new-skip`, `assert-loss`) were therefore rejected, so no strict-schema reviewer could approve such a leaf. M8.3 itself is one.
+- **Design:**
+  - The new `review_record_write.acceptance_keys(root, node_id, ref)` resolves the **same target** `review record` resolves (`resolve_target(root, node_id, ref)`). It returns that target's `acceptance_ids(t.node)` and `integrity_removals.target_unplanned_removals(root, t)`, the source both the packet and the record check use.
+  - `write_schema(root, reviews, ref)` builds `strict_schema(ids, removals)` from it. `review delegate` and both `prompt --channel cli` reviewer paths now pass the reviewed `ref`, the same one they hand to `review record`.
+  - `strict_schema` derives every key's value from `output_schema()`'s own `acceptance`. Ids take its `additionalProperties`. Removals take its `patternProperties` value: `pass` only, as a strict-mode `enum: ["pass"]`, or `null`. So the open (prompt) schema and the strict (harness) schema come from one definition and cannot diverge.
+  - `null` lets a blocking reviewer leave a removal unanswered: the record schema allows only `pass` there, and an unjustified removal is a block with a `required_changes` entry. `drop_nulls` now also removes `null` acceptance entries before validation and filing.
+- **Test:** `tests/test_review_strict_schema_removals.py` (new). A leaf branch deletes `test_old` without planning it, and `review delegate` runs a fake `codex`.
+  - **Approve with `"removed-test: tests/test_leaf.py::test_old": "pass"`:** the `--output-schema` file Codex received passes `strict_problems`, requires `A1`, `A2` and the removal key, accepts the answer, and rejects `fail` for the removal. `review record` files the approve with the entry.
+  - **Block with the entry `null`:** fits the schema too, and is filed with the entry dropped.
+  - **Approve without the entry:** a rerun request naming the removal; nothing is filed.
+  - **No removals:** the keys are the ids alone.
+
+## Probes (fix round 2)
+
+- Where the closed key set reaches: Codex `--output-schema` reads `write_schema`'s file; Claude Code inlines the same file as `--json-schema`; `agy` gets it via `reviewer_cli`. All three now carry the removal keys (one file, one function).
+- Ids source: the strict schema used `index(load_nodes(root))` (the checkout), while `review record` uses `acceptance_ids(t.node)` of the resolved target. Both now use the target, with a checkout fallback only when the target does not resolve, in which case `review record` refuses anyway.
+- Removals source: the same `target_unplanned_removals(root, t)` that `review_record_rules.unplanned_removal_problem` calls, with the same `ref`. Before, `write_schema` had no ref.
+- Pass-only constraint: `strict_schema` reuses the record schema's `patternProperties` value (`const: pass`). The test asserts that `fail` is rejected by the harness schema.
+- Milestone targets: `acceptance_keys` goes through `resolve_target`, so it gets `target_unplanned_removals` for milestones too (their leaves' plans). Not exercised by a new test.
+- Prompt schema (`schema_lines` / `output_schema`): it already allows removal keys through `propertyNames` and `patternProperties`, so no change was needed.
+- Chore reviewers: they write no schema (unchanged).
+- Other closed sets in `strict_schema`: the top-level properties come from `output_schema()` (the record schema less the fields specy-road fills, plus `notes`), the same set `final_answer` validates against. No other `additionalProperties: false` maps were found.
+- Sol (`26d95ca0`) R1-R4: unchanged from fix round 1. R1 was withdrawn by the rescope; R2 and R3 are fixed by the `TURNS` table; R4 is fixed and `export --check` passes.
+- Targeted `pytest -q -n 4 -p no:cacheprovider` over 19 files (the 17 core reviewer files plus `test_review_strict_schema_removals.py` and `test_planned_test_changes.py`): 472 passed. `ruff`: clean. `file-limits`: OK.
+
 ## Not verified / open
 
 - **No live harness runs.** The Claude and Codex flags come from the tracked captures, Cursor's from the fixture, and Antigravity's from the vendor page above (not installed; M8.6 records its runtime checks as not run).

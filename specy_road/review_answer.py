@@ -53,8 +53,12 @@ def output_schema() -> dict[str, Any]:
 
 
 def drop_nulls(data: dict[str, Any]) -> dict[str, Any]:
-    """``data`` without the optional fields Codex's strict schema let the reviewer answer ``null``."""
-    return {k: v for k, v in data.items() if v is not None or k in output_schema()["required"]}
+    """``data`` without the optional fields, and the unplanned-removal acceptance entries, that Codex's strict schema
+    let the reviewer answer ``null``."""
+    out = {k: v for k, v in data.items() if v is not None or k in output_schema()["required"]}
+    if isinstance(out.get("acceptance"), dict):
+        out["acceptance"] = {k: v for k, v in out["acceptance"].items() if v is not None}
+    return out
 
 
 @dataclass(frozen=True)
