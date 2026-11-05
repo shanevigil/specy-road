@@ -117,6 +117,7 @@
         "c44976af-41a0-4627-8789-16dcf49dd12b",
         "d0994708-469d-46e8-ac14-3cc7105bbf6e",
         "e08a12a0-17fd-4251-b596-5a46e1e9335d",
+        "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf",
         "f0e9d130-9b74-479d-a401-ccee402e63a4",
         "f533afb6-f6fb-4394-9beb-d8a5c49ed95d",
         "f8ad690d-5f67-4493-bd07-62324d09cdb2"
@@ -386,6 +387,37 @@
         "specy_road/bundled_scripts/roadmap_layout.py",
         "specy_road/bundled_scripts/roadmap_crud_dependency_ops.py",
         "docs/roadmap-authoring.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A new specy_road/steering_paths.py holds one documented list of steering paths, resolved per worker in the worktree and the main checkout. It covers: harness config and hooks (.claude/settings*.json, .claude/hooks/**, .codex/**, .cursor/*.json, .cursor/hooks/**); git hooks directories (common git dir, the worktree's gitdir, any core.hooksPath target) and the config values core.hooksPath, core.fsmonitor, core.sshCommand, include.path and includeIf.*.path; roadmap/orchestration.yaml, roadmap/orchestration.local.yaml and roadmap/git-workflow.yaml, in the tree and as blobs at the integration branch tip; registry entries other than the leaf's own; work/reviews/ files other than the leaf's own READY; root shell startup files (.bashrc, .bash_profile, .profile, .zshrc, .zshenv, .envrc); the bin/ entries of each env_setup link target; and any symlink made during the turn whose target leaves the worktree. docs/orchestration-workers.md lists them.",
+        "TurnWatch records each steering path's state (digest, link target or absent) before the harness starts. close_turn reports each change as a steering_file finding (path, class, before and after), separate from the zone and porcelain findings, and sets a sticky worker flag steering_changed. It shows in worker status --json and handoff status, a later clean turn does not clear it, and worker reconcile <id> clears it after listing the changes again.",
+        "finish-this-task refuses, before its bookkeeping commit, a leaf whose branch diff against the merge base changes an in-tree steering path (harness config and hooks, the three roadmap policy files, root shell startup files). The exception is a path that a touch zone names exactly (a directory or glob zone does not count). The message names each path and the next step: add that exact path to touch_zones with specy-road edit-node and get it reviewed, or revert it. Registry bookkeeping is exempt.",
+        "Claude Code executor launch and resume add --disallowedTools Edit/Write path rules for .claude/**, .codex/**, .cursor/**, .git/** and the three roadmap policy files, except paths the leaf's zones list exactly. Shell writes stay detection-only, as documented. docs/orchestration-harness-launch.md records Cursor's built-in write block (.cursor/*.json, .vscode/**, .git/hooks/**) and what Codex workspace-write already protects, without duplicating them; custom channels.cli commands get detection only. docs/orchestration-review.md 'What the gate cannot stop' says what this closes and what is left to M20 (OS isolation, signing).",
+        "Tests: a fake executor turn edits one steering path per class and yields one steering_file finding each: .claude/settings.json, .cursor/hooks.json, a hook in the common git dir, core.fsmonitor set in config, .envrc, a file under a linked .venv/bin, roadmap/orchestration.yaml committed on the integration branch from another checkout, a forged work/reviews REVIEW file. A turn that writes only READY, its own registry entry and in-zone code is clean. A leaf whose zones list .claude/settings.json exactly lands; the same diff without that zone is refused with the path named. The Claude argv carries the denies. specy-road file-limits passes. Out of scope: OS isolation, signing, the M20 posture model and doctor probes."
+      ],
+      "codename": "steering-file-guard",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.76",
+      "node_key": "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf",
+      "parent_id": "M16",
+      "planning_dir": "planning/M16.76_steering-file-guard_ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf.md",
+      "sibling_order": 77,
+      "status": "Not Started",
+      "title": "Executors cannot change the files that steer harnesses and specy-road unnoticed",
+      "touch_zones": [
+        "specy_road/steering_paths.py",
+        "specy_road/worker_turn_check.py",
+        "specy_road/worker_reconcile.py",
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "docs/orchestration-workers.md",
+        "docs/orchestration-harness-launch.md",
+        "docs/orchestration-review.md",
         "tests/"
       ],
       "type": "task"

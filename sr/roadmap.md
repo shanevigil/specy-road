@@ -116,6 +116,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.73` | remove-node deletes an empty never-started node and names every blocker otherwise | task | Agentic-led | Not Started |
 | `M16.74` | apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once | task | Agentic-led | Not Started |
 | `M16.75` | validate and add-dependency catch cycles made through inherited group dependencies | task | Agentic-led | Not Started |
+| `M16.76` | Executors cannot change the files that steer harnesses and specy-road unnoticed | task | Agentic-led | Not Started |
 | `M17` | 0.3.2: PM GUI shows orchestration and worktree state | phase | Human-led | Not Started |
 | `M17.1` | 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface | gate | Human-led | Not Started |
 | `M18` | Orchestration and review-loop features (after 0.3.1) | phase | — | Not Started |
