@@ -16,44 +16,42 @@ from dataclasses import asdict
 from typing import TYPE_CHECKING
 
 from specy_road.nested_repos import describe_unpushed
+from specy_road.shared_zones import DEFAULT_SHARED_ZONES, effective_overlap, ignored_shared_zones
 
 if TYPE_CHECKING:  # annotations only: session_plan re-exports session_plan_to_dict from here
     from specy_road.bundled_scripts.session_plan import SessionPlan
 
 
-def _norm_zone(zone: str) -> str:
-    return zone.strip().removeprefix("./").rstrip("/")
-
-
 def zone_clash(
-    nid: str, others: list[str], zones: dict[str, list[str]]
+    nid: str, others: list[str], zones: dict[str, list[str]],
+    shared: tuple[str, ...] = DEFAULT_SHARED_ZONES,
 ) -> tuple[str, str, str] | None:
     """First leaf in ``others`` sharing a touch zone with ``nid``, as
     ``(other, nid's zone, other's zone)``: the same path, or one a directory
-    prefix of the other (the rule the registry overlap warning uses)."""
+    prefix of the other (the rule the registry overlap warning uses), except
+    where one of the two is a shared zone (:mod:`specy_road.shared_zones`)."""
     for other in others:
-        for mine in zones.get(nid, []):
-            for theirs in zones.get(other, []):
-                a, b = _norm_zone(mine), _norm_zone(theirs)
-                if a == b or a.startswith(b + "/") or b.startswith(a + "/"):
-                    return other, mine, theirs
+        clash = effective_overlap(zones.get(nid, []), zones.get(other, []), shared)
+        if clash:
+            return other, *clash
     return None
 
 
 def split_on_zone_overlap(
-    batch: list[str], zones: dict[str, list[str]]
+    batch: list[str], zones: dict[str, list[str]],
+    shared: tuple[str, ...] = DEFAULT_SHARED_ZONES,
 ) -> list[list[str]]:
     """Split one wave's dispatchable leaves so no two in a set share a touch zone.
 
     In pickup order, a leaf that overlaps one already in the set moves to the
     next set, which is split the same way: two leaves editing one file in
-    parallel collide when the second lands.
+    parallel collide when the second lands. ``shared`` zones do not count.
     """
     out: list[list[str]] = []
     while batch:
         layer: list[str] = []
         for nid in batch:
-            if not zone_clash(nid, layer, zones):
+            if not zone_clash(nid, layer, zones, shared):
                 layer.append(nid)
         out.append(layer)
         batch = [nid for nid in batch if nid not in layer]
@@ -72,11 +70,18 @@ def zone_overlaps(plan: SessionPlan) -> list[dict]:
     out: list[dict] = []
     for prev, batch in zip(batches, batches[1:]):
         for nid in batch:
-            clash = zone_clash(nid, prev, zones)
+            clash = zone_clash(nid, prev, zones, plan.shared_zones)
             if clash:
                 other, mine, theirs = clash
                 out.append({"node_id": nid, "waits_for": other, "zones": [mine, theirs]})
     return out
+
+
+def shared_zones_ignored(plan: SessionPlan) -> list[str]:
+    """Shared zones that two batched leaves meet in and the split ignored."""
+    zones = {nid: z for w in plan.waves for nid, z in w.touch_zones.items()}
+    batched = [nid for batch in plan.parallel_batches for nid in batch]
+    return ignored_shared_zones(zones, batched, plan.shared_zones)
 
 
 def _fmt(ids) -> str:
@@ -139,10 +144,17 @@ def _render_dispatch(plan: SessionPlan) -> list[str]:
 
 
 def _render_zone_overlaps(plan: SessionPlan) -> list[str]:
+    ignored = shared_zones_ignored(plan)
+    lines = [
+        "_Shared zones ignored for overlap (leaves meet only there): "
+        f"{_fmt(f'`{z}`' for z in ignored)}; two leaves naming the same file "
+        "under one are still held apart._",
+        "",
+    ] if ignored else []
     held = zone_overlaps(plan)
     if not held:
-        return []
-    lines = [
+        return lines
+    lines += [
         "**Held for the next batch (shares a touch zone with a leaf in the "
         "batch before it; dispatch once that leaf lands):**"
     ]
@@ -263,8 +275,8 @@ def _render_nested_unpushed(plan: SessionPlan) -> list[str]:
 #: Every top-level key of :func:`session_plan_to_dict`; ``--plan --json --fields`` picks from these.
 PLAN_FIELDS = (
     "under", "ready", "blocked", "active", "closed", "gated", "gates_open", "needs_codename",
-    "waves", "parallel_batches", "zone_overlaps", "finished_unmerged", "finished_claimed",
-    "unauthored", "totals", "ready_execution", "prefer_agentic", "nested_unpushed",
+    "waves", "parallel_batches", "zone_overlaps", "shared_zones_ignored", "finished_unmerged",
+    "finished_claimed", "unauthored", "totals", "ready_execution", "prefer_agentic", "nested_unpushed",
 )
 
 
@@ -287,6 +299,7 @@ def _plan_dict(plan: SessionPlan) -> dict:
         "waves": [{"index": w.index, "node_ids": list(w.node_ids)} for w in plan.waves],
         "parallel_batches": [list(b) for b in plan.parallel_batches],
         "zone_overlaps": zone_overlaps(plan),
+        "shared_zones_ignored": shared_zones_ignored(plan),
         "finished_unmerged": list(plan.finished_unmerged),
         "finished_claimed": list(plan.finished_claimed),
         "unauthored": [asdict(u) for u in plan.unauthored],
