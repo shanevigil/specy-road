@@ -486,7 +486,9 @@
         "specy_road/review_delegate.py",
         "specy_road/orchestration_config.py",
         "docs/orchestration-models.md",
-        "tests/"
+        "tests/",
+        "specy_road/orchestration_routing.py",
+        "specy_road/review_delegate_harness.py"
       ],
       "type": "task"
     }
