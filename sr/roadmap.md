@@ -40,7 +40,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.26` | A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim | task | Agentic-led | Complete |
 | `M15.27` | worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length | task | Agentic-led | Complete |
 | `M15.31` | A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported | task | Agentic-led | Not Started |
-| `M15.32` | An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure | task | Agentic-led | Not Started |
+| `M15.32` | An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure | task | Agentic-led | Complete |
 | `M15.33` | A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed | task | Agentic-led | Not Started |
 | `M15.34` | The executor prompt states the test rules that the reviewer's excess checklist enforces | task | Agentic-led | Complete |
 | `M15.35` | The review packet never lists .git or a path under it as an uncommitted reference | task | Agentic-led | Complete |

@@ -40,7 +40,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.26` A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim `claims-with-no-worker-are-reported-and-never-hold-slots` — task — **Complete**
   - `M15.27` worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length `cursor-usage-sums-segments-and-flags-undercounts` — task — **Complete**
   - `M15.31` A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported `delegated-reviewer-always-runs-a-named-model` — task — **Not Started**
-  - `M15.32` An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure `archived-summary-exempt-from-file-limits` — task — **Not Started**
+  - `M15.32` An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure `archived-summary-exempt-from-file-limits` — task — **Complete**
   - `M15.33` A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed `refused-review-record-leaves-a-trace` — task — **Not Started**
   - `M15.34` The executor prompt states the test rules that the reviewer's excess checklist enforces `executor-prompt-states-the-test-rules` — task — **Complete**
   - `M15.35` The review packet never lists .git or a path under it as an uncommitted reference `packet-never-lists-dot-git-as-uncommitted` — task — **Complete**
@@ -218,7 +218,6 @@ Do not pick these up.
 - `M14.1` on `feature/rm-approvals-never-carry-across-unreviewed-changes-in-a-sibling-repository` since 2026-11-05
 - `M15.2` on `feature/rm-claude-code-reviewer-works-on-a-subscription-login` since 2026-11-05
 - `M15.3` on `feature/rm-prompt-channel-cli-launches-nothing-without-run` since 2026-11-05
-- `M15.32` on `feature/rm-archived-summary-exempt-from-file-limits` since 2026-11-05
 - `M15.33` on `feature/rm-refused-review-record-leaves-a-trace` since 2026-11-05
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
@@ -232,9 +231,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 29 | 20 | 6.56 | 100% | 15 | 2 |
-| `specy_road` **flagged** | 47 | 29 | 5.17 | 83% | 23 | 4 |
-| `tests` **flagged** | 50 | 32 | 5.17 | 83% | 23 | 4 |
+| `docs` **flagged** | 29 | 19 | 6.10 | 90% | 15 | 2 |
+| `specy_road` **flagged** | 47 | 28 | 5.00 | 79% | 23 | 4 |
+| `tests` **flagged** | 50 | 31 | 5.00 | 79% | 23 | 4 |
 | `CHANGELOG.md` | 1 | 1 | — | — | 0 | 0 |
 | `README.md` | 2 | 2 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
