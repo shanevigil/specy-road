@@ -2,8 +2,8 @@
 
 ``review delegate`` keeps each round: before a run replaces ``RUN-<model>.json``, :func:`archive_round` copies
 it into ``history/`` as ``RUN-<model>-<commit12>-<n>.json`` and moves its ``.log`` beside it (the log is
-appended per attempt, so the current one then holds only the current round), and copies ``notes-<model>.md``
-to ``history/notes/notes-<model>-<commit12>-<n>.md``. Notes go one level down because ``history/*.md`` is
+appended per attempt, so the current one then holds only the current round), and moves ``notes-<model>.md``
+to ``history/notes/notes-<model>-<commit12>-<n>.md`` when that run left notes behind. Notes go one level down because ``history/*.md`` is
 read as filed review records, and a reviewer drafts its record in its notes.
 
 Usage is read from each run's log with the harness adapter's own parser, the one ``worker`` events use, and
@@ -68,7 +68,7 @@ def archive_round(repo_root: Path, node_id: str, model: str) -> Path | None:
     notes = d / f"notes-{model}.md"
     if notes.is_file():
         (hist / NOTES_DIRNAME).mkdir(exist_ok=True)
-        shutil.copy2(notes, hist / NOTES_DIRNAME / f"notes-{model}-{commit}-{n}.md")
+        notes.replace(hist / NOTES_DIRNAME / f"notes-{model}-{commit}-{n}.md")
     return hist / f"{stem}.json"
 
 

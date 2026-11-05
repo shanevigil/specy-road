@@ -188,18 +188,34 @@ def reviewer_total(data: dict[str, Any], repo_root: Path | None = None) -> dict[
     return t if t and t["runs"] else None
 
 
+def _combined_node_total(data: dict[str, Any], repo_root: Path | None) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Executor subtotal, optional reviewer subtotal, and the node total line should show."""
+    exec_total, rev = data["total"], reviewer_total(data, repo_root)
+    if rev is None:
+        return exec_total, None
+    combined = {"turns": exec_total["turns"] + rev["turns"], **_sum_usage([exec_total, rev])}
+    return combined, rev
+
+
+def usage_json_payload(data: dict[str, Any], repo_root: Path | None = None) -> dict[str, Any]:
+    """Same node totals as :func:`usage_lines`; per-attempt rows stay executor-only for the GUI."""
+    combined, rev = _combined_node_total(data, repo_root)
+    if rev is None:
+        return data
+    return {**data, "executors": data["total"], "reviewers": rev, "total": combined}
+
+
 def usage_lines(data: dict[str, Any], repo_root: Path | None = None) -> list[str]:
     """Per attempt and the node's total; with delegated reviews, executors, reviewers and total on their own lines."""
     lines = [f"{data['node_id']} usage ({len(data['attempts'])} attempt(s); ? = not reported)"]
     for a in data["attempts"]:
         version = f" {a['harness_version']}" if a["harness_version"] else ""
         lines.append(f"  attempt {a['attempt']} {a['worker_id']} {a['harness']}{version}/{a['model']}, {a['turns']} turn(s): {usage_text(a)}")
-    t, rev = data["total"], reviewer_total(data, repo_root)
+    combined, rev = _combined_node_total(data, repo_root)
     if rev is not None:
-        lines.append(f"  executors, {t['turns']} turn(s): {usage_text(t)}")
+        lines.append(f"  executors, {data['total']['turns']} turn(s): {usage_text(data['total'])}")
         lines.append(f"  reviewers, {rev['runs']} run(s), {rev['turns']} turn(s): {usage_text(rev)}")
-        t = {"turns": t["turns"] + rev["turns"], **_sum_usage([t, rev])}
-    lines.append(f"  total, {t['turns']} turn(s): {usage_text(t)}")
+    lines.append(f"  total, {combined['turns']} turn(s): {usage_text(combined)}")
     return lines
 
 

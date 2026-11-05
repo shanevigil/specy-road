@@ -15,7 +15,8 @@ from specy_road import worker_ops as ops
 from specy_road.bundled_scripts.role_prompt_rework import rework_check
 from specy_road.bundled_scripts.worker_cli_args import FixRound
 from specy_road.bundled_scripts.worker_cli_render import (_line, _row, _sync_event_lines, sync_worker_header,
-                                                       timeline, timeline_lines, usage, usage_lines)
+                                                       timeline, timeline_lines, usage, usage_json_payload,
+                                                       usage_lines)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload
 from specy_road.worker_adapters import ADAPTERS, Unsupported
@@ -271,7 +272,8 @@ def cmd_timeline(ns: argparse.Namespace) -> int:
 def cmd_usage(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     data = usage([(r, [e.to_dict() for e in events_since(root, r.worker_id)]) for r in _records_for(root, ns.target)])
-    return _emit(ns, data, usage_lines(data, root))
+    payload = usage_json_payload(data, root) if ns.json else data
+    return _emit(ns, payload, usage_lines(data, root))
 
 
 def cmd_hook(ns: argparse.Namespace) -> int:

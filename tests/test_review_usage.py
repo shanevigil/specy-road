@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import commit_file, git
-from tests.test_review_delegate import FAKE, _delegate, _files_record, _repo, _run, _steps
+from tests.test_review_delegate import CAPACITY, FAKE, _delegate, _files_record, _repo, _run, _steps
 
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import worker_cli
@@ -91,6 +91,36 @@ def test_worker_usage_adds_reviewers_to_the_node_total(two_rounds, capsys) -> No
     assert "  executors, 1 turn(s): in 1000 (? cached), out 100, reasoning ?, $1.0000" in out
     assert "  reviewers, 2 run(s), 2 turn(s): in 300 (? cached), out 30, reasoning ?, $0.7500 est." in out
     assert "  total, 3 turn(s): in 1300 (? cached), out 130, reasoning ?, $1.7500 est." in out
+    capsys.readouterr()
+    with pytest.raises(SystemExit) as exc:
+        worker_cli.main(["worker", "usage", "M1.1", "--json", "--repo-root", str(repo)])
+    assert (exc.value.code or 0) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["executors"]["input_tokens"] == 1000 and payload["reviewers"]["input_tokens"] == 300
+    t = payload["total"]
+    assert (t["turns"], t["input_tokens"], t["output_tokens"], t["cost_usd"]) == (3, 1300, 130, 1.75)
+
+
+def test_notes_are_not_relabeled_when_a_later_run_writes_no_notes(tmp_path: Path) -> None:
+    """A4/RC2: a capacity failure at a new commit must not archive the previous commit's notes under that run."""
+    repo, spec = _repo(tmp_path)
+    (tmp_path / "fake.py").write_text(FAKE_USAGE)
+    c1_notes = "Only commit-one notes\n"
+    _steps(repo, spec, _round(repo, c1_notes, usage={"input_tokens": 100, "output_tokens": 10}, total_cost_usd=0.5))
+    assert _delegate(repo) == 0
+    c1 = git(repo, "rev-parse", "HEAD")
+    commit_file(repo, "src/a.py", "print('fixed')\n", "fix")
+    c2 = git(repo, "rev-parse", "HEAD")
+    _steps(repo, spec, {"error": CAPACITY, "exit": 1})
+    assert _delegate(repo, "--retries", "0") == 1
+    notes_hist = reviews_dir(repo, "M1.1") / "history" / "notes"
+    assert (notes_hist / f"notes-opus-{c1[:12]}-1.md").read_text() == c1_notes
+    assert not list(notes_hist.glob(f"notes-opus-{c2[:12]}-*.md"))
+    _steps(repo, spec, _round(repo, "Commit-two retry notes\n", usage={"input_tokens": 50, "output_tokens": 5},
+                              total_cost_usd=0.25))
+    assert _delegate(repo) == 0
+    assert (reviews_dir(repo, "M1.1") / "notes-opus.md").read_text() == "Commit-two retry notes\n"
+    assert not any(p.read_text() == c1_notes for p in notes_hist.glob(f"notes-opus-{c2[:12]}-*.md"))
 
 
 def test_a_removed_worktree_still_finds_its_projects_reviews(two_rounds) -> None:
