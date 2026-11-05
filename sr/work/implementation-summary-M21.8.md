@@ -2,7 +2,8 @@
 
 ## Touch zones (confirmed)
 
-- `tests/test_worker_queue_message.py` — only file changed; no other Python modules import this test module.
+- `tests/test_worker_queue_message.py` — test poll fix; no other Python modules import this test module.
+- `sr/planning/M21.8_queue-message-test-waits-for-idle_9a94e9ff-94d7-4166-bb4a-fbe6ba5d6daf.md` — fix round: A3 requires verification on this sheet’s checklist, not only in this summary.
 
 ## What changed
 
@@ -30,7 +31,14 @@ kill "$LOAD_PID" 2>/dev/null
 exit $FAIL
 ```
 
-Result: runs 1–20 all passed (`1 passed` each); exit 0.
+Result: runs 1–20 all passed (`1 passed` each); exit 0. The same evidence is copied to the planning sheet checklist (fix round after review block on A3).
+
+## Probes
+
+- Planning sheet checklist vs acceptance A3 — all three items were unchecked while summary held A3 only; updated sheet with checked boxes and 20-run record — fixed.
+- Other M21.8 planning artifacts — only this sheet; no duplicate checklist elsewhere.
+- `test_two_cli_messages_during_a_live_turn_are_appended_and_delivered` — still polls on completion count only; acceptance A1 names only `test_message_while_running_queues_and_delivers`; left unchanged.
+- Post-merge `tests/test_worker_queue_message.py` poll fix — still present after `origin/WIP/improvements-0-3-1` merge — unchanged.
 
 ## Added
 
