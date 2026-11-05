@@ -331,6 +331,8 @@ order:
   skipped through that date; `roadmap/orchestration.local.yaml` can set the first
   two for this working tree only ([orchestration.md](orchestration.md#roadmaporchestrationyaml),
   "Local availability overlay"). A substitution says who stands in meanwhile.
+  The same file can add entries for this clone under `roster_add`, labelled
+  `[local]` ([orchestration-roster.md](orchestration-roster.md#local-roster-entries-roster_add)).
 - **Cost.** Among capable executors (profile executor score 3 or more, or no
   profile) the cheapest list price wins. Reviewers rank by reviewer score,
   then cost; the coordinator by coordinator score.
@@ -338,6 +340,10 @@ order:
   reviewer, and with `reviewers_distinct_families` one reviewer per family.
   An executor with `subagent_family_lock` is told in its prompt which family
   it may spawn.
+
+`--roster-from-worktree` plans with the working tree's roster as a dry run that
+nothing may launch from, and `models list` names the ref it read and any
+uncommitted roster changes ([orchestration-roster.md](orchestration-roster.md)).
 
 Exit 1 when any ready leaf cannot be staffed, with the reason under `!`, so a
 coordinator script stops before dispatching. A roster entry whose profile is

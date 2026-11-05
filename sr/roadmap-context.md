@@ -237,7 +237,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.7` file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count `file-limits-baseline-and-upgrade-report` — task — **Not Started**
   - `M15.8` A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it `promoted-leaf-is-never-stuck-on-an-empty-approach` — task — **Not Started**
   - `M15.9` Harness launches survive large prompts and a harness binary off PATH, for every role `harness-launches-survive-large-prompts-and-binaries-off-path` — task — **Not Started**
-  - `M15.10` Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff `try-a-roster-before-it-lands` — task — **Not Started**
+  - `M15.10` Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff `try-a-roster-before-it-lands` — task — **Complete**
   - `M15.11` A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors `working-roster-in-one-command-and-validated-profiles` — task — **Not Started**
   - `M15.12` Shared documentation zones do not serialize grind-session batches `shared-doc-zones-do-not-serialize-batches` — task — **Not Started**
   - `M15.13` Worker loop friction: sync waits for the events that matter, tool-use noise collapses, rework after a completed worker, a READY-only resume, a quieter pickup `worker-loop-friction-sync-until-and-ready-only-resume` — task — **Not Started**
@@ -276,7 +276,6 @@ Do not pick these up.
 - `M14.2` on `feature/rm-doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch` since 2026-11-04
 - `M14.3` on `feature/rm-worktree-prune-refuses-to-delete-another-repository-s-worktree-or-checkout` since 2026-11-04
 - `M14.6` on `feature/rm-reviewer-usage-is-visible-review-usage-reviewers-in-the-node-total-run-logs-kept-per-round` since 2026-11-04
-- `M15.10` on `feature/rm-try-a-roster-before-it-lands` since 2026-11-04
 - `M15.11` on `feature/rm-working-roster-in-one-command-and-validated-profiles` since 2026-11-04
 - `M15.12` on `feature/rm-shared-doc-zones-do-not-serialize-batches` since 2026-11-04
 - `M15.13` on `feature/rm-worker-loop-friction-sync-until-and-ready-only-resume` since 2026-11-04
