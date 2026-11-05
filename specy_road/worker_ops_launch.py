@@ -142,6 +142,12 @@ def _cli_for(repo_root: Path, entry: dict[str, Any], harness: str) -> tuple[str 
     return cli, api_id, prof.launch_mode(), effort
 
 
+def launch_options(entry: dict[str, Any], harness: str) -> dict[str, Any]:
+    """The roster entry's harness-specific launch keywords: ``cursor_force`` (default false) as the Cursor
+    adapter's ``force``, on launch and resume alike; none for any other harness."""
+    return {"force": entry.get("cursor_force") is True} if harness == "cursor" else {}
+
+
 def _report_cli(entry: dict[str, Any], harness: str, cli: str | None) -> None:
     """Before a launch, on stderr: a custom command a resumed turn cannot run again (it would fall back to the
     harness's default command and its permissions), and one whose output is text only."""
@@ -297,7 +303,8 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     _report_cli(entry, harness, cli)
     reviews_dir(repo_root, node_id).mkdir(parents=True, exist_ok=True)   # a harness may refuse an --add-dir that is missing
     launch = worker_env(adapter_for(harness).launch(prompt, wt, api_id, cli, node_id=node_id, repo_root=repo_root,
-                                                    launch_mode=mode, effort=effort, harness_bin=entry.get("harness_bin")), wt / prefix)
+                                                    launch_mode=mode, effort=effort, harness_bin=entry.get("harness_bin"),
+                                                    **launch_options(entry, harness)), wt / prefix)
     rec = create_record(repo_root, node_id, harness, model, wt, branch=branch,
                         contract_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
                         billing_route=entry.get("billing_route"))

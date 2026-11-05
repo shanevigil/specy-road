@@ -88,6 +88,18 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- Cursor workers launch and resume with `--trust --sandbox enabled` instead of
+  `--force --trust`: `--force` force-allowed every command not explicitly
+  denied. A roster entry opts back in with `cursor_force: true` (boolean,
+  default `false`, `cursor` entries only), which passes `--trust --force` on
+  launch and resume. `orchestrate plan` and `doctor` warn once per entry that
+  sets it, and per `cursor` entry whose `channels.cli` or `cli_resume` passes
+  `--force` or `--yolo`; a custom command keeps its own flags. A Cursor
+  worker's `launched` event records the permission flags passed
+  (`detail.permissions`). Where Cursor's sandbox cannot start (Ubuntu 24.04's
+  AppArmor user-namespace restriction), the worker exits 1 at launch: fix the
+  host or set `cursor_force` (docs/orchestration-workers.md, Cursor
+  permissions).
 - specy-road's agent rules move out of your `AGENTS.md` into
   `.specyrd/AGENTS.md` under the project root, a file specy-road owns and
   `upgrade` rewrites whole. The managed block in `AGENTS.md` becomes a 17-line

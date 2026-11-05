@@ -16,7 +16,9 @@ from specy_road.review_files import reviews_dir
 from specy_road.worker_adapters import Unsupported, adapter_for
 from specy_road.worker_lease import acquire_lease
 from specy_road.runtime_paths import project_prefix
-from specy_road.worker_ops_launch import _check_eligible, _cli_for, _entry_and_harness, _preflight, _target, worker_env
+from specy_road.worker_ops_launch import (
+    _check_eligible, _cli_for, _entry_and_harness, _preflight, _target, launch_options, worker_env,
+)
 from specy_road.worker_ops_slots import _slot_or_existing, _wrapper_gone
 from specy_road.worker_process import process_alive, require_branch
 from specy_road.worker_runner import spawn
@@ -84,7 +86,8 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: boo
     reviews_dir(repo_root, rec.node_id).mkdir(parents=True, exist_ok=True)   # as delegate: before the argv names it
     launch = worker_env(adapter.resume(sid, prompt, Path(rec.worktree), api_id, cli, node_id=rec.node_id,
                                        repo_root=repo_root, launch_mode=mode, effort=effort,
-                                       harness_bin=entry.get("harness_bin")),   # as delegate: the adapter resolves it
+                                       harness_bin=entry.get("harness_bin"),   # as delegate: the adapter resolves it
+                                       **launch_options(entry, rec.harness)),
                         Path(rec.worktree) / project_prefix(repo_root))   # as delegate set it
     acquire_lease(repo_root, rec, new=rec.state == "failed", offline=offline)   # a failed worker's was released
     append_event(repo_root, rec, "message", source="orchestrator", authority="orchestrator",

@@ -17,11 +17,15 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
+from tests.test_models_and_prompt import run_main
+from tests.test_orchestrate_plan import plan_repo
 
 from specy_road import worker_adapters as wa
+from specy_road.bundled_scripts import doctor, orchestrate_cli
 from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
 from specy_road.orchestration_config import validate_orchestration_dict
+from specy_road.worker_adapter_cursor import launch_permissions
 from specy_road.worker_adapter_parsers import output_mode_note, placeholder_problem, resume_form_note
 
 DOC = Path(__file__).resolve().parents[1] / "docs" / "orchestration-workers.md"
@@ -32,16 +36,16 @@ CURSOR_CLI = 'agent -p --output-format stream-json --trust --sandbox enabled "<p
 CURSOR_RESUME = 'agent -p --resume {session} --output-format stream-json --trust --sandbox enabled "<prompt>"'
 
 
-def _roster(harness: str, cli: str, cli_resume: str | None = None) -> str:
-    channels = {"cli": cli, **({"cli_resume": cli_resume} if cli_resume else {})}
+def _roster(harness: str, cli: str | None, cli_resume: str | None = None, extra: str = "") -> str:
+    channels = {"cli": cli, **({"cli_resume": cli_resume} if cli_resume else {})} if cli else {}
     return ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
-            f"  - {{id: opus, family: anthropic, roles: [executor, reviewer], harness: {harness},\n"
+            f"  - {{id: opus, family: anthropic, roles: [executor, reviewer], harness: {harness},{extra}\n"
             f"     channels: {json.dumps(channels)}}}\n"
             "policy: {max_workers: 2}\n")
 
 
-def _repo(tmp_path: Path, harness: str, cli: str, cli_resume: str | None = None) -> Path:
-    repo = make_review_repo(tmp_path, orchestration=_roster(harness, cli, cli_resume))
+def _repo(tmp_path: Path, harness: str, cli: str | None, cli_resume: str | None = None, extra: str = "") -> Path:
+    repo = make_review_repo(tmp_path, orchestration=_roster(harness, cli, cli_resume, extra))
     (repo / ".gitignore").write_text("work/\n")
     git(repo, "add", ".gitignore")
     git(repo, "commit", "-qm", "ignore work")
@@ -76,6 +80,43 @@ def test_cursor_cli_resume_keeps_the_launch_flags(tmp_path: Path, monkeypatch) -
     launch, resumed = _launch_then_resume(_repo(tmp_path, "cursor", CURSOR_CLI, CURSOR_RESUME), monkeypatch)
     assert launch.argv[2].startswith("agent -p --output-format stream-json --trust --sandbox enabled ")
     assert resumed.argv[2].startswith("agent -p --resume sess-1 --output-format stream-json --trust --sandbox enabled ")
+
+
+@pytest.mark.parametrize(("extra", "flags"), [
+    ("", ["--trust", "--sandbox", "enabled"]),
+    (" cursor_force: false,", ["--trust", "--sandbox", "enabled"]),
+    (" cursor_force: true,", ["--trust", "--force"]),
+])
+def test_cursor_default_command_is_sandboxed_unless_the_roster_opts_into_force(
+        tmp_path: Path, monkeypatch, extra: str, flags: list[str]) -> None:
+    launch, resumed = _launch_then_resume(_repo(tmp_path, "cursor", None, extra=extra), monkeypatch)
+    for argv in (launch.argv, resumed.argv):
+        assert argv[0] == "agent" and launch_permissions(argv) == flags
+
+
+def test_plan_and_doctor_warn_once_per_cursor_entry_that_force_allows(tmp_path: Path, capsys) -> None:
+    roster = """version: 1
+roster:
+  - {id: human, family: human, roles: [coordinator, reviewer]}
+  - {id: opus, family: anthropic, roles: [executor, reviewer], harness: claude-code, cursor_force: true}
+  - {id: forced, family: cursor, roles: [executor], harness: cursor, cursor_force: true, available: false}
+  - {id: sandboxed, family: cursor, roles: [executor], harness: cursor, cursor_force: false}
+  - id: yolo
+    family: xai
+    roles: [reviewer]
+    harness: cursor
+    channels: {cli: "agent -p --trust --yolo {prompt}", cli_resume: "agent -p --resume {session} --force {prompt}"}
+policy: {reviewers_required: 1}
+"""
+    repo = plan_repo(tmp_path, roster=roster)
+    assert run_main(orchestrate_cli, "orchestrate", "plan", "--repo-root", str(repo)) == 0
+    said = [ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("! cursor --force:")]
+    assert [ln.split()[3] for ln in said] == ["forced", "yolo"]
+    assert "(cursor_force: true)" in said[0] and "channels.cli passes" in said[1] and "channels.cli_resume" in said[1]
+    assert all("every command not explicitly denied" in ln for ln in said)
+    with pytest.raises(SystemExit):
+        doctor.main(["--repo-root", str(repo)])
+    assert [ln for ln in capsys.readouterr().err.splitlines() if ln.startswith("! cursor --force:")] == said
 
 
 def _documented(lang: str, needle: str) -> str:

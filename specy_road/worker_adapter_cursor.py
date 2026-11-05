@@ -68,6 +68,68 @@ def _prompt_args(prompt_path: Path) -> list[str]:
     return [file_instruction(Path(prompt_path).resolve())]
 
 
+#: The default permission flags, on launch and resume: ``--trust`` accepts the new worktree as a workspace (``agent
+#: -p`` otherwise exits asking to trust it) and Cursor's sandbox confines the commands the agent runs.
+SANDBOX_FLAGS = ("--trust", "--sandbox", "enabled")
+#: A roster entry's ``cursor_force: true``: ``--force`` force-allows every command that is not explicitly denied.
+FORCE_FLAGS = ("--trust", "--force")
+#: Words in a custom command that force-allow commands as ``--force`` does (``--yolo`` is its alias).
+FORCE_WORDS = ("--force", "--yolo")
+
+
+def permission_flags(force: bool) -> list[str]:
+    """The default command's permission flags: :data:`FORCE_FLAGS` when the roster opts in, else
+    :data:`SANDBOX_FLAGS`."""
+    return list(FORCE_FLAGS if force else SANDBOX_FLAGS)
+
+
+def _words(argv: list[str]) -> list[str]:
+    """``argv``'s words, with a custom launch's ``sh -c <command>`` split as the shell would read it."""
+    if len(argv) == 3 and argv[:2] == ["sh", "-c"]:
+        try:
+            return shlex.split(argv[2])
+        except ValueError:
+            return []
+    return argv
+
+
+def launch_permissions(argv: list[str]) -> list[str]:
+    """The permission flags a Cursor launch actually passes, in argv order, for its ``launched`` event."""
+    words, out = _words(argv), []
+    for i, w in enumerate(words):
+        if w in ("--trust", *FORCE_WORDS):
+            out.append(w)
+        elif w == "--sandbox":
+            out += words[i:i + 2]
+        elif w.startswith("--sandbox="):
+            out.append(w)
+    return out
+
+
+def _forces(cli: Any) -> bool:
+    try:
+        words = shlex.split(cli) if isinstance(cli, str) else []
+    except ValueError:
+        return False
+    return any(w in FORCE_WORDS for w in words)
+
+
+def force_warnings(roster: list[dict[str, Any]]) -> list[str]:
+    """One warning per ``cursor`` roster entry, assigned or not, that force-allows commands: ``cursor_force: true``
+    on the default command, or a ``channels.cli`` / ``cli_resume`` passing ``--force`` or ``--yolo``."""
+    out: list[str] = []
+    for entry in roster:
+        if entry.get("harness") != "cursor":
+            continue
+        channels = entry.get("channels") if isinstance(entry.get("channels"), dict) else {}
+        how = ["cursor_force: true"] if entry.get("cursor_force") is True else []
+        how += [f"channels.{k} passes --force/--yolo" for k in ("cli", "cli_resume") if _forces(channels.get(k))]
+        if how:
+            out.append(f"! cursor --force: {entry.get('id')} ({'; '.join(how)}) runs every command not explicitly "
+                       "denied, without Cursor's sandbox; see docs/orchestration-workers.md (Permissions)")
+    return out
+
+
 def _no_worktree_flag(cli: str | None) -> None:
     """A custom command must not pass ``-w``/``--worktree``: ``agent`` would make its own worktree under
     ``~/.cursor/worktrees`` and work there, not in the one specy-road created (harness-facts)."""
@@ -82,11 +144,11 @@ def _no_worktree_flag(cli: str | None) -> None:
 class Cursor(Adapter):
     harness = "cursor"
     caps = Capabilities(resume=True, interrupt=False, steer=False, handoff=True, events=True,
-                        notes="agent create-chat, then agent -p --resume <chat> --force --trust stream-json, the "
-                              "prompt a file the agent is told to read (--force "
-                              "force-allows every command not denied; --trust skips a new worktree's trust prompt; print "
-                              "mode can write and run shell; never -w); resume = `agent -p --resume` (undocumented with a "
-                              "new prompt: verify)")
+                        notes="agent create-chat, then agent -p --resume <chat> --trust --sandbox enabled stream-json, "
+                              "the prompt a file the agent is told to read (--trust skips a new worktree's trust prompt; "
+                              "the sandbox confines shell commands; roster cursor_force: true passes --trust --force "
+                              "instead, which force-allows every command not denied; never -w); resume = `agent -p "
+                              "--resume` (undocumented with a new prompt: verify)")
 
     def __init__(self) -> None:
         self._usage_parts: list[dict[str, Any]] = []
@@ -101,25 +163,27 @@ class Cursor(Adapter):
 
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
-               effort: str | None = None, harness_bin: str | None = None) -> Launch:
+               effort: str | None = None, harness_bin: str | None = None, force: bool = False) -> Launch:
+        """``force``: the roster entry's ``cursor_force`` (:func:`permission_flags`); a custom command keeps its own."""
         _no_worktree_flag(cli)
         custom = self._custom(cli, prompt_path, effort=effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return custom
         program = self._program(harness_bin)
         chat = create_chat(worktree, program)   # the chat first: a turn that dies before its first event still has its id
-        return Launch([program, "-p", "--resume", chat, "--output-format", "stream-json", "--force", "--trust",   # new worktree: untrusted
+        return Launch([program, "-p", "--resume", chat, "--output-format", "stream-json", *permission_flags(force),
                        *_model_flag("--model", model), "--workspace", str(worktree), *self._add_dir(worktree, repo_root, node_id),
                        *_prompt_args(prompt_path)], session_id=chat)
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
-               effort: str | None = None, harness_bin: str | None = None) -> Launch:
+               effort: str | None = None, harness_bin: str | None = None, force: bool = False) -> Launch:
         _no_worktree_flag(cli)
         custom = self._custom(cli, prompt_path, session_id, effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return custom
-        return Launch([self._program(harness_bin), "-p", "--resume", session_id, "--output-format", "stream-json", "--force", "--trust",
+        return Launch([self._program(harness_bin), "-p", "--resume", session_id, "--output-format", "stream-json",
+                       *permission_flags(force),
                        *_model_flag("--model", model), "--workspace", str(worktree), *self._add_dir(worktree, repo_root, node_id),
                        *_prompt_args(prompt_path)],
                       session_id=session_id)
