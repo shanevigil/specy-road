@@ -17,7 +17,7 @@
     {
       "acceptance": [
         "The maintainer has read sr/docs/research/agent-safety-posture-2026-11-05.md and the Codex agent-safety report, and the deep-research v2 prompt has run with its output filed under sr/docs/research/",
-        "M20 gains its planned leaves (each with 3 to 5 bounded acceptance lines, touch zones read from the M16 end-state code, and a sheet); the first slice is decided starting from the Claude report's candidates: posture as data, doctor posture gaps, and the harness-settings compiler",
+        "M20 gains its planned leaves (each with 3 to 5 bounded acceptance lines, touch zones read from the M16 end-state code, and a sheet); the first slice is decided starting from the Claude report's candidates: posture as data, doctor posture gaps, and the harness-settings compiler; the plan covers operation risk labelling (maintainer 2026-11-05): configurable risk levels with defaults (low/medium/high/critical by reversibility and blast radius) whose definitions double as reviewer checklists; deterministic rule-table labels first (zones, paths, diff content, command patterns), an optional model labeller second; labels at planning, at code review (diff riskier than plan is a finding) and in the GUI; labels only escalate scrutiny (extra reviewer, security lens, human confirmation) and never relax a guard or policy",
         "This sheet records each candidate from both reports as planned (with its new id), merged, or dropped with a reason",
         "This leaf is Human-led and not dispatchable; it changes no product code"
       ],

@@ -31,7 +31,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M15.27` | worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length | task | Agentic-led | Complete |
 | `M15.31` | A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported | task | Agentic-led | Not Started |
 | `M15.32` | An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure | task | Agentic-led | Complete |
-| `M15.33` | A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed | task | Agentic-led | Not Started |
+| `M15.33` | A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed | task | Agentic-led | Complete |
 | `M15.34` | The executor prompt states the test rules that the reviewer's excess checklist enforces | task | Agentic-led | Complete |
 | `M15.35` | The review packet never lists .git or a path under it as an uncommitted reference | task | Agentic-led | Complete |
 | `M15.36` | Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode | task | Agentic-led | Not Started |
@@ -108,8 +108,9 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.65` | End-to-end pass on the toolkit and a feedback-and-fix round before 0.3.1 | task | Human-led | Not Started |
 | `M16.66` | Gate: ready to tag 0.3.1 | gate | Human-led | Not Started |
 | `M16.67` | move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit | task | Agentic-led | Complete |
-| `M16.68` | finish resolves roadmap chunk conflicts the branch only inherited | task | Agentic-led | Not Started |
+| `M16.68` | finish resolves roadmap chunk conflicts the branch only inherited | task | Agentic-led | Complete |
 | `M16.69` | Cursor workers launch sandboxed without --force unless the roster opts in | task | Agentic-led | Not Started |
+| `M16.70` | Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships | task | — | Not Started |
 | `M17` | 0.3.2: PM GUI shows orchestration and worktree state | phase | Human-led | Not Started |
 | `M17.1` | 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface | gate | Human-led | Not Started |
 | `M18` | Orchestration and review-loop features (after 0.3.1) | phase | — | Not Started |
@@ -131,6 +132,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M18.16` | A review that stops before filing leaves a trace: every reviewer channel opens a RUN record, and review list shows started but not filed | task | Agentic-led | Not Started |
 | `M18.17` | Under delta review, one approval per round still checks the whole leaf against the merge base on a fixed checklist | task | Agentic-led | Not Started |
 | `M18.18` | Plan review after planning, and a staleness check before pickup | task | Agentic-led | Not Started |
+| `M18.19` | orchestrate plan and review delegate apply reviewer preferences from the decisions ledger and say when they do | task | Agentic-led | Not Started |
 | `M19` | Adopter-project features: upgrade, agent-file layering, planning hygiene, project tooling (after 0.3.1) | phase | — | Not Started |
 | `M19.1` | Configurable code-analysis tools | task | — | Not Started |
 | `M19.2` | Research reminders leave validate | task | — | Not Started |
@@ -145,8 +147,26 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M19.11` | Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored | task | Agentic-led | Not Started |
 | `M19.12` | List shipped nodes with no result after N days | milestone | Agentic-led | Not Started |
 | `M19.13` | Store a pointer and a human verdict for outcomes, never the metric itself | milestone | Agentic-led | Not Started |
+| `M19.14` | Human decisions get recorded and shown: agent rule, digest, review status and decisions add --help | task | Agentic-led | Not Started |
+| `M19.15` | Decision ids take a project prefix (default DEC-) and warn when a new id already appears in governance files | task | Agentic-led | Not Started |
+| `M19.16` | validate notices sheet acceptance that drifted from the node, and gate dependencies the gate never names | task | Agentic-led | Not Started |
+| `M19.17` | validate notices governance files that require a field validate strips, and names the replacement | task | Agentic-led | Not Started |
+| `M19.18` | A ratified scope boundary in the decisions ledger, with validate and digest notices for phases beyond it | task | Agentic-led | Not Started |
 | `M20` | Agent safety and governance posture (after 0.3.1) | phase | — | Not Started |
 | `M20.1` | Posture advisor: plan the M20 leaves from the research | task | Human-led | Not Started |
 | `M20.2` | Probe each reviewer harness for instruction-file leakage into fresh sessions | task | Agentic-led | Not Started |
+| `M21` | rc4 stabilization: fixes filed after the themed-milestone rule | phase | — | Not Started |
+| `M21.1` | move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree | task | Agentic-led | Not Started |
+| `M21.2` | CLI indent, outdent and group-nodes re-level siblings in one transaction validated once | task | Agentic-led | Not Started |
+| `M21.3` | Opt-in rewrite of prose id references after a move, and a standalone rename-refs | task | Agentic-led | Not Started |
+| `M21.4` | remove-node deletes an empty never-started node and names every blocker otherwise | task | Agentic-led | Not Started |
+| `M21.5` | apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once | task | Agentic-led | Not Started |
+| `M21.6` | validate and add-dependency catch cycles made through inherited group dependencies | task | Agentic-led | Complete |
+| `M21.7` | Executors cannot change the files that steer harnesses and specy-road unnoticed | task | Agentic-led | Not Started |
+| `M21.8` | The queued-message worker test waits for the idle state, not just the second completion event | task | — | Complete |
+| `M21.9` | A freshly initialized project passes its own checks | task | — | Not Started |
+| `M21.10` | doctor works in a repo with no remote | task | — | Not Started |
+| `M21.11` | Help text names installed commands | task | — | Not Started |
+| `M21.12` | A review record is refused for joined observations only when one of them names a defect | task | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

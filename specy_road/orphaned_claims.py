@@ -51,7 +51,7 @@ def orphaned_claims(repo_root: Path) -> list[dict[str, str]]:
             "node_id": node_id,
             "codename": str(entry.get("codename") or ""),
             "branch": branch,
-            "age": _age(when, now) if when else "unknown",
+            "age": relative_age(when, now) if when else "unknown",
             "since": when.isoformat() if when else "",
         })
     return out
@@ -107,7 +107,8 @@ def _parse_when(value: object) -> datetime | None:
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 
-def _age(when: datetime, now: datetime) -> str:
+def relative_age(when: datetime, now: datetime) -> str:
+    """Format elapsed time as ``Nd``, ``Nh``, ``Nm``, or ``under 1m`` (shared with refusal markers)."""
     seconds = max(0, int((now - when).total_seconds()))
     days, rest = divmod(seconds, 86400)
     hours, rest = divmod(rest, 3600)
