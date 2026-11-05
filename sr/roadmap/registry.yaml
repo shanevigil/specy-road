@@ -112,3 +112,13 @@ entries:
     started: '2026-11-04'
     owner: savigil
     implementation_review: pending
+  - codename: doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch
+    node_id: M14.2
+    branch: feature/rm-doctor-never-offers-to-remove-a-live-leaf-s-worktree-or-branch
+    touch_zones:
+      - specy_road/bundled_scripts/doctor.py
+      - specy_road/doctor_worktrees.py
+      - tests/
+    started: '2026-11-04'
+    owner: savigil
+    implementation_review: pending
