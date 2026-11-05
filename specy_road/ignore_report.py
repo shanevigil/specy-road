@@ -10,9 +10,10 @@ excludes file) is therefore accounted for by git, not reproduced here.
 
 **Dry run: an estimate, labelled as one.** Nothing may be written, so
 :func:`estimate` copies the current top-level ``.gitignore``, the ``.gitignore``
-in every ancestor directory of every candidate path (ignored ones included),
-and ``info/exclude`` into a throwaway ``git init`` directory, applies the update
-there and asks git before and after, with the checkout's ``core.ignorecase``
+in every ancestor directory of every candidate path (ignored ones included;
+a symlinked one stays a symlink, which git does not read), and ``info/exclude``
+into a throwaway ``git init`` directory, applies the update there and asks git
+before and after, with the checkout's ``core.ignorecase``
 and ``core.excludesFile``. Known limits: it reproduces only those inputs, so
 it can differ from the real run when git reads anything else (another config
 setting, an ignore file this list misses) or when files change between the dry
@@ -130,6 +131,23 @@ def _ancestor_ignores(paths: list[str]) -> list[str]:
     return list(found)
 
 
+def _copy_ignore(src: Path, dst: Path, link_store: Path) -> None:
+    """Copy ``src`` to ``dst``; a symlink stays a symlink, to a scratch copy of its target.
+
+    Git does not read a ``.gitignore`` that is a symlink, so the scratch copy
+    must be one too for git to judge it the same way; its target is copied
+    inside the scratch repository so the update never writes through to the
+    checkout's file.
+    """
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if src.is_symlink():
+        if src.exists():                 # a dangling link stays dangling: the update writes through it
+            shutil.copyfile(src, link_store)
+        dst.symlink_to(link_store)
+    else:
+        shutil.copyfile(src, dst)
+
+
 def estimate(git_root: Path, prefix: str, seed: str, apply: Callable[..., object]) -> list[Match]:
     """The dry-run preview of :func:`observed`, judged in a scratch repository (see the module docstring)."""
     tracked = _paths(_git(["ls-files", "-c", "-z"], git_root))
@@ -138,9 +156,8 @@ def estimate(git_root: Path, prefix: str, seed: str, apply: Callable[..., object
     with tempfile.TemporaryDirectory() as tmp:
         scratch = Path(tmp)
         _git(["init", "-q", str(scratch)], scratch)
-        for rel in (r for r in _ancestor_ignores(tracked + shown) if (git_root / r).is_file()):
-            (scratch / rel).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(git_root / rel, scratch / rel)
+        for n, rel in enumerate(r for r in _ancestor_ignores(tracked + shown) if (git_root / r).is_file() or (git_root / r).is_symlink()):
+            _copy_ignore(git_root / rel, scratch / rel, scratch / ".git" / f"ignore-link-{n}")
         if exclude is not None:
             shutil.copyfile(exclude, scratch / ".git" / "info" / "exclude")
         before = _ignored(scratch, tracked + shown, config)
