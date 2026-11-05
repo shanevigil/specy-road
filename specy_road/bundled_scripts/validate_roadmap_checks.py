@@ -15,6 +15,7 @@ from specy_road.model_profiles import roster_profile_gaps
 from specy_road.review_gate import review_required
 from specy_road.review_gate_agreement import gate_config_mismatch
 from specy_road.runtime_paths import default_user_repo_root, git_root
+from specy_road.workflow_prefs import warn_summary_rule
 
 from specy_road.bundled_scripts.brief_acceptance import warn_acceptance_merged, warn_acceptance_missing, warn_unauthored
 from specy_road.bundled_scripts.planning_sheet_bootstrap import unauthored_leaves
@@ -388,12 +389,10 @@ def run_validation(
         print(f"{'warning' if launchable else 'notice'}: {msg}", file=sys.stderr if launchable else sys.stdout)
     warn_touch_zones_match_nothing(nodes, r, git_root=git_root(r) or r)
     warn_untracked_zones(nodes, r)
+    warn_summary_rule(r)   # implementation_summary: commit against a .gitignore that ignores summaries (M15.22)
     warn_authoring_gaps(nodes, r, gate, show_all=show_all, strict_authoring=strict_authoring)
     warn_acceptance_merged(nodes)
-    warn_registry_touch_zone_overlap(
-        registry.get("entries") or [],
-        no_overlap_warn=no_overlap_warn,
-        overlap_scope=overlap_scope,
-    )
+    warn_registry_touch_zone_overlap(registry.get("entries") or [], no_overlap_warn=no_overlap_warn,
+                                     overlap_scope=overlap_scope)
 
     print("OK: roadmap and registry validate.")

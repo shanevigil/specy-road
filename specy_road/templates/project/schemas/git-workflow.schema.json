@@ -54,6 +54,19 @@
       "enum": ["auto", "merge", "pr"],
       "description": "How finish-this-task lands work: pr = open a PR/MR (default); merge = merge feature branch into integration locally and push; auto = try merge+push first, then suggest PR/MR on failure."
     },
+    "land": {
+      "enum": ["push", "local"],
+      "description": "How finish-this-task in merge (and auto) mode lands the root repository, as nested_repos' land does for nested ones: push (default) merges onto <remote>/<integration_branch> and pushes; local merges into the local integration_branch (bookkeeping resolved and land_check_cmd run as for push), fetching and pushing nothing, and says so. See docs/git-workflow-preferences.md."
+    },
+    "pr_body_footer": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Text finish-this-task appends to the PR/MR body it writes (work/pr-body-<NODE_ID>.md), such as an attribution line. Omitted: the body is unchanged."
+    },
+    "implementation_summary": {
+      "enum": ["commit", "local"],
+      "description": "Whether executor prompts say to commit work/implementation-summary-<NODE_ID>.md on the feature branch (commit, the default) or to leave it uncommitted for the review packet to read from the worktree (local). Prompts never tell workers to force-add an ignored path: when .gitignore ignores the summary, the prompts follow the ignore rule and validate says so."
+    },
     "track_worker_logs": {
       "enum": ["off", "events", "full", false],
       "description": "Whether worker logs are tracked in git (default off when omitted). off (or YAML false) keeps them in gitignored work/.workers/ only; events also mirrors each worker's event log to work/worker-logs/<NODE_ID>/<worker id>.events.jsonl in the worker's checkout, which finish-this-task commits with the leaf; full mirrors the raw output log (<worker id>.log) too. Logs get long: full can add megabytes per leaf."
