@@ -95,10 +95,12 @@ SUMMARY = "work/implementation-summary-M1.1.md"
 
 
 @pytest.mark.parametrize(
-    ("inject", "named", "summary"),
+    ("inject", "named", "setup"),
     [
         ("validate", "`specy-road validate --repo-root", None),
         ("digest", "`specy-road digest --repo-root", None),
+        # roadmap.md is a committed link to payload.md: export writes the target, then digest is refused.
+        ("digest", "`specy-road digest --repo-root", "link"),
         ("registry", "registry.yaml", None),
         # A tracked summary is moved over an existing work/done/ copy with other bytes.
         ("commit", COMMIT_REFUSED, "tracked"),
@@ -107,15 +109,20 @@ SUMMARY = "work/implementation-summary-M1.1.md"
     ],
 )
 def test_failure_before_the_commit_restores_the_tree(
-    tmp_path: Path, monkeypatch, inject: str, named: str, summary: str | None,
+    tmp_path: Path, monkeypatch, inject: str, named: str, setup: str | None,
 ) -> None:
     """A3/A4: each refusal restores worktree bytes, index and HEAD, and reports cleanly."""
     repo = _repo(tmp_path, monkeypatch)
-    if summary == "tracked":
+    if setup == "link":
+        (repo / "payload.md").write_text("# roadmap index, before finish\n")
+        (repo / "roadmap.md").symlink_to("payload.md")
+        git(repo, "add", "payload.md", "roadmap.md")
+        git(repo, "commit", "-qm", "roadmap.md links to payload.md")
+    elif setup == "tracked":
         commit_file(repo, SUMMARY, "# summary M1.1\n", "summary")
         (repo / "work" / "done").mkdir()
         (repo / "work" / "done" / "implementation-summary-M1.1.md").write_text("# an older archive\n")
-    elif summary == "untracked":
+    elif setup == "untracked":
         (repo / SUMMARY).write_text("# summary M1.1, never committed\n")
     if inject == "commit":
         hook = Path(git(repo, "rev-parse", "--git-path", "hooks/pre-commit"))
@@ -139,6 +146,8 @@ def test_failure_before_the_commit_restores_the_tree(
     assert "could not restore" not in result.stderr, out
     assert "Traceback" not in result.stderr, out
     assert "[ok] bookkeeping committed" not in out
-    if summary is not None:   # cleanup wrote the destination before the commit was refused
-        assert {"tracked": "[ok] archived", "untracked": "kept a copy at"}[summary] in out, out
+    if setup in ("tracked", "untracked"):   # cleanup wrote the destination before the commit was refused
+        assert {"tracked": "[ok] archived", "untracked": "kept a copy at"}[setup] in out, out
+    if setup == "link":   # the injected digest saw export's Complete through the link, so payload.md was written
+        assert (repo / "roadmap.md").is_symlink()
     assert _state(repo) == before

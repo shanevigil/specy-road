@@ -33,6 +33,10 @@ Deviation from the planning sheet's Approach (the plan-review decisions win): th
 
 Class: paths that cleanup *writes as a destination* before the commit. The snapshot covered the paths it removes, but not the paths it moves or copies into. I audited every writer between the snapshot and the commit (see Probes). The two summary destinations were the only ones missing, and both are now in `pre_commit_paths`. The directories that cleanup creates for them with `mkdir` (`work/done/`, `work/reviews/<NODE>/`) can stay behind empty after a restore. They hold no bytes and no index entries, so they are out of A2's scope. M15.40's post-commit undo (`snapshot_bookkeeping`) is unchanged, as the brief marks it out of scope.
 
+## Fix round 2 (review gpt-6.1-sol-low, R1: symlink targets)
+
+Class: a snapshotted path whose bytes really land elsewhere because the writer follows a symlink, either at the path itself or in a parent directory. The snapshot recorded only the link, so a restore "succeeded" while the target kept export's bytes. Rather than patching `roadmap.md`, one rule in `pre_commit_paths` covers every listed path: if `realpath(root/rel)` differs from the lexically normalised `root/rel` and lies inside the repo root, the real path is snapshotted too (bytes or absence, plus its index entry). A link resolving outside the root adds nothing. Writers refuse a link out of the project (M21.17), so finish never writes there. That is the documented limit of the rule, stated in the `pre_commit_paths` docstring.
+
 ## Probes
 
 - `_maybe_write_pr_body` writes `work/pr-body-<NODE>.md`: in the snapshot (unchanged).
@@ -47,9 +51,17 @@ Class: paths that cleanup *writes as a destination* before the commit. The snaps
 - `merge_undo_snapshot` and `warn_if_pr_body_tracked`: these only read, so there is nothing to snapshot.
 - A linked worktree, where `reviews_dir` is outside the worktree: I ran `pre_commit_paths` and `snapshot_pre_commit` on this worktree. They returned `../../../../work/reviews/M21.28/implementation-summary-M21.28.md` with state `absent`, no index entry, and no `ls-files` error.
 
+- Fix round 2, `roadmap.md` as a committed link to an in-repo `payload.md`, with digest refused after export wrote through the link: `payload.md` bytes, the index and HEAD are as before. The new public-entry row fails without the fix and passes with it.
+- Fix round 2, a `roadmap/registry.yaml` symlink to `notes/reg.yaml`: `pre_commit_paths` adds `notes/reg.yaml` (scratch repo probe).
+- Fix round 2, a `work/` directory symlink to `real_work/`: every work path (PR body, brief, prompt, summary, `work/done/` and reviews destinations) adds its `real_work/…` real path (same probe).
+- Fix round 2, `roadmap-context.md` linking outside the repo (`/etc/hostname`): nothing is added and nothing outside the repo is snapshotted or restored (same probe).
+- Fix round 2, a chunk symlink: `build_node_chunk_map` already returns resolved chunk paths, so the real target is what gets snapshotted. A chunk resolving outside `roadmap/` is skipped by both `build_node_chunk_map` and `find_chunk_path`, so finish never writes it (same probe).
+- Fix round 2, cleanup removals through a link: `cleanup_paths` already adds `removal_target`, and the new rule only de-duplicates it.
+
 ## Verification
 
 - `pytest tests/test_finish_config_preflight.py`: 6 passed. With the package changes reverted, all rows failed. With only fix round 1 reverted, the 2 summary rows failed.
+- Fix round 2: `pytest tests/test_finish_config_preflight.py`: 7 passed. With fix round 2 reverted, the link row failed.
 - Fix round 1: `pytest -n 4` over the preflight, `test_finish_*`, nested-repo finish and land, gate-agreement and file-limits tests: 199 passed.
 - `pytest -n 4` (full suite): 5460 passed.
 - `ruff check specy_road tests scripts`: clean.
@@ -64,7 +76,9 @@ Class: paths that cleanup *writes as a destination* before the commit. The snaps
 - `PreCommitSnapshot`, `pre_commit_paths`, `snapshot_pre_commit`, `restore_pre_commit`: the snapshot and restore of worktree bytes and index entries (A2, A3).
 - `_cleanup_and_log_paths`: factored out of `snapshot_bookkeeping` so both snapshots share one path list (reuse, A2).
 - Test `test_rc4_configuration_is_refused_before_any_write`: the rc4 configuration gives exit 1, names the fix, leaves the registry entry and the tree unchanged, and prints no traceback (A4).
-- Test `test_failure_before_the_commit_restores_the_tree`, parametrized over 5 rows (A4):
+- Fix round 2: the symlink-target rule in `pre_commit_paths` (no new function or branch elsewhere). The real path of every listed path that differs from it and lies inside the repo is snapshotted too (R1).
+- Fix round 2: the test row `digest` with setup `link`. `roadmap.md` is a committed link to `payload.md`, export writes through it, digest is refused, and the target bytes, index and HEAD are unchanged (R1). The third parameter is renamed from `summary` to `setup`.
+- Test `test_failure_before_the_commit_restores_the_tree`, parametrized over 6 rows (A4):
   - a later validate refusal
   - a digest refusal after export rewrote `roadmap.md`
   - an `OSError` on the registry write

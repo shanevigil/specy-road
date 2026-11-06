@@ -240,6 +240,12 @@ def pre_commit_paths(repo: Path, node_id: str, sess_path: Path | None) -> list[s
     moved there) and the reviews directory (an untracked one is copied there).
     The reviews directory is the main checkout's, so from a linked worktree its
     path is relative with ``../`` and outside this worktree's index.
+
+    Writers follow symlinks, so one rule covers where their bytes really land:
+    each path whose real path (a symlink at the path or in a parent directory)
+    differs from it, and lies inside ``repo``, adds that real path too. A link
+    resolving outside ``repo`` adds nothing: the writers refuse a link out of
+    the project, and finish never writes there.
     """
     root = repo.resolve()
     chunks = sorted({p.relative_to(root).as_posix() for p in build_node_chunk_map(root).values()})
@@ -247,6 +253,9 @@ def pre_commit_paths(repo: Path, node_id: str, sess_path: Path | None) -> list[s
     rels = [*chunks, REGISTRY_REL.as_posix(), *GENERATED_COMMITTED, f"work/pr-body-{node_id}.md",
             *_cleanup_and_log_paths(root, node_id, sess_path),
             archived_implementation_summary_rel(node_id), Path(os.path.relpath(kept, root)).as_posix()]
+    real = [Path(os.path.realpath(root / rel)) for rel in rels]
+    rels += [p.relative_to(root).as_posix() for rel, p in zip(rels, real)
+             if p != Path(os.path.normpath(root / rel)) and p.is_relative_to(root)]
     return list(dict.fromkeys(rels))
 
 
