@@ -109,18 +109,20 @@ def test_an_unparseable_answer_gets_one_repair_turn_then_files(tmp_path: Path, c
         assert f"```\n{run['refusal']}\n```" in repair
 
 
-@pytest.mark.parametrize("case", ["files", "writes", "writes-unparseable", "capacity", "exit"])
+@pytest.mark.parametrize("case", ["files", "writes", "writes-unparseable", "capacity", "exit", "refused-exit"])
 def test_no_repair_turn_without_a_refusal_or_a_clean_parse_failure(tmp_path: Path, case: str) -> None:
     repo, spec = delegate_repo(tmp_path)
     write = {"write": {"path": str(repo / "src" / "x.py"), "text": "x\n"}}
     step = {"files": verdict_step(repo), "writes": {**verdict_step(repo), **write},
             "writes-unparseable": {"raw": "not a verdict", **write}, "capacity": {"error": CAPACITY, "exit": 1},
-            "exit": {"raw": "not a verdict", "exit": 2}}[case]
+            "exit": {"raw": "not a verdict", "exit": 2}, "refused-exit": refused_step(repo, exit=2)}[case]
     set_steps(repo, spec, step, verdict_step(repo))
     run = _delegate(repo, retries=0)
     assert _turns(spec, run) == [False] and "refusal" not in run
     assert run["outcome"] == {"files": "recorded", "writes": "review_failure", "writes-unparseable": "review_failure",
-                              "capacity": "rerun", "exit": "rerun"}[case]
+                              "capacity": "rerun", "exit": "rerun", "refused-exit": "rerun"}[case]
+    assert len(fake_prompts(spec)) == 1   # one launch: the non-zero exit gets no repair turn, refused or not
+    assert case != "refused-exit" or REFUSAL in run["reason"]   # review record did refuse it
 
 
 def test_a_repair_turn_that_writes_a_tracked_file_is_a_review_failure(tmp_path: Path) -> None:

@@ -40,7 +40,9 @@ body. Keep section bodies focused; link to PRs for detail.
   final message and asks for the whole JSON object alone. `RUN-<model>.json`
   records `refusal_kind` (`parse` or `record`), `--resume` sends the repair
   prompt for the stored kind, and a second failure of either kind leaves the run
-  incomplete, naming both.
+  incomplete, naming both. A refused answer, like an unparseable one, gets the
+  repair turn only after a clean exit: a non-zero exit or a capacity failure
+  gets none.
 - **Security:** `specy-road session end` ends only your own session. The
   caller is always `SPECY_ROAD_AGENT_ID` or the derived id; a positional id or
   `--agent` only picks the target. Another agent's live record is kept and the

@@ -79,8 +79,8 @@ specy-road decides the outcome:
   never found by searching the log: the `[review delegate]` / `[review prompt]`
   lines are for people and are not parsed, so a harness that prints one moves
   nothing. A span whose bytes changed during the run reads as no output.
-  When `review record` refuses the answer, `review delegate` (not a chore
-  reviewer) gives the reviewer one repair turn: the session's resume, or one
+  When `review record` refuses the answer of a last attempt that exited 0
+  with no capacity error, `review delegate` (not a chore reviewer) gives the reviewer one repair turn: the session's resume, or one
   fresh launch with the full prompt on a harness that cannot resume, with
   `review record`'s whole output and the notes rules, through every capacity
   retry. It is checked like the first turn (write check, model check). The
@@ -91,14 +91,14 @@ specy-road decides the outcome:
   An answer that does not parse (an empty or missing final message, no JSON
   object, a fenced object or text after it, an unfinished or too deeply nested
   object, a stray or cut-off event line, a null result, or a schema-invalid
-  object) gets the same one repair turn when the last attempt exited 0 with no
-  capacity error: the reason is given as specy-road's reading of the final
+  object) gets the same one repair turn under the same condition: the reason is given as specy-road's reading of the final
   message, with a request for the whole object and nothing else, without the
   notes rules. `refusal_kind` records `parse` or `record` (missing is
   `record`), and `--resume` sends the repair prompt of the stored kind. A
   second failure of either kind leaves the run incomplete, naming both; there
-  is never a third turn. A capacity failure, a non-zero exit, an unreadable run
-  log, a write (still a review failure) and a chore reviewer get no repair turn.
+  is never a third turn. Neither kind gets a repair turn after a capacity
+  failure or a non-zero exit, and an unreadable run log, a write (still a
+  review failure) and a chore reviewer get none.
 - **recorded** — specy-road writes the notes to `notes-<model>.md` and `review record` files
   `REVIEW-<model>.md` from them, with the launch mode, family and `history/`
   copy an interactive filing gets. Under `policy.signed_reviews`, pass the
