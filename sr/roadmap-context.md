@@ -265,6 +265,7 @@ Do not pick these up.
 - `M21.16` on `feature/rm-upgrade-scratch-git-and-regen` since 2026-11-05
 - `M21.24` on `feature/rm-claude-reviewer-schema-and-error` since 2026-11-05
 - `M21.25` on `feature/rm-reviewer-answer-after-prose` since 2026-11-05
+- `M21.26` on `feature/rm-gate-excludes-ready-authors` since 2026-11-05
 - `M21.27` on `feature/rm-filings-take-the-review-lock` since 2026-11-05
 - `M21.28` on `feature/rm-finish-validates-before-bookkeeping` since 2026-11-05
 - `M21.29` on `feature/rm-terminate-ends-escaped-descendants` since 2026-11-05
