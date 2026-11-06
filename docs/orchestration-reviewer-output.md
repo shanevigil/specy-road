@@ -38,7 +38,7 @@ message, text before the final object is ignored and nothing may follow it
 (whitespace aside); the text is read as a run of complete JSON values (a brace
 inside a JSON string is text, an object inside another value is never the
 answer), and a message cut off inside a token (`{"x": tru`) is an unfinished
-object; the `generic` row's whole output must still parse as one
+object, while a brace no JSON can continue (`Use {1`) is prose; the `generic` row's whole output must still parse as one
 object or envelope. Each of these is a rerun request, never a verdict, and an
 earlier answer is never used instead:
 

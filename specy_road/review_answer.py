@@ -200,11 +200,22 @@ def _final_answer(adapter: Adapter, text: str, output: Path | None) -> dict[str,
 
 #: Where a JSON value with an interior starts: an object, an array or a string (a ``{`` inside a string is text).
 _OPENER = re.compile(r'[{\["]')
-#: The text from a failed decode's error position when the decode failed only because the text ends: a proper
-#: prefix of one JSON token (a literal, a number or its exponent, an unterminated string, a ``\u`` escape), or
-#: nothing at all.
-_CUT_TOKEN = re.compile(r"""t(ru?)?|f(a(ls?)?)?|n(ul?)?|-?\d*(\.\d*)?([eE][+-]?\d*)?|u[0-9a-fA-F]{0,3}
-                            |"([^"\\\x00-\x1f]|\\["\\/bfnrt]|\\u[0-9a-fA-F]{4})*(\\(u[0-9a-fA-F]{0,3})?)?""", re.X)
+#: The completions of one cut-off JSON token: none (cut between tokens), the rest of a literal, a digit (a number
+#: cut after ``-``, ``.``, ``e`` or its sign), a closing quote (a string), and the rest of an escape (a lone
+#: backslash, or ``u`` and up to three hex digits) with its closing quote. No completion closes a container.
+_FILLS = ("", "e", "ue", "rue", "se", "lse", "alse", "l", "ll", "ull", "0", '"', 'n"', '0"', '00"', '000"', '0000"')
+
+
+def _cut_short(texts: list[str], start: int) -> bool:
+    """Whether the value opened at ``start`` failed to decode only because the text ends: the text plus one of
+    :data:`_FILLS` (``texts``, in that order) makes the decoder run out of text instead of failing inside it."""
+    for filled in texts:
+        try:
+            json.JSONDecoder().raw_decode(filled, start)
+        except json.JSONDecodeError as e:
+            if e.pos >= len(filled):
+                return True
+    return False
 
 
 def _last_object(text: str) -> dict[str, Any] | Rerun:
@@ -212,18 +223,19 @@ def _last_object(text: str) -> dict[str, Any] | Rerun:
 
     The text is scanned left to right for complete JSON values (objects, arrays and strings), each value's interior
     skipped, so a nested object, or braces inside a string, are never the answer. A ``{`` or ``[`` whose decode
-    fails only because the text ends (:data:`_CUT_TOKEN` matches the rest of the text from the decoder's error) is
-    refused; any other opener that starts no value is prose. Bounded rule: the error tail is judged as one token,
-    so ``{1`` at the very end is refused as unfinished although no completion is valid JSON (still a refusal).
-    Nesting too deep for the decoder is refused, as :func:`loads_untrusted` refuses it."""
+    fails only because the text ends is refused; any other opener that starts no value is prose. The decoder itself
+    judges a cut: the text plus the completion of one cut-off token (:data:`_FILLS`) must leave it out of text
+    rather than failing inside it, so ``{1`` or ``{"x": 1.e`` at the end is prose, never a cut. Nesting too deep for the decoder is refused, as
+    :func:`loads_untrusted` refuses it."""
     decoder, i, last, end = json.JSONDecoder(), 0, None, 0
+    filled = [text + f for f in _FILLS]
     while (m := _OPENER.search(text, i)) is not None:
         try:
             value, i = decoder.raw_decode(text, m.start())
         except RecursionError:
             return Rerun(RERUN + "the final message nests JSON too deeply to read")
-        except json.JSONDecodeError as e:
-            if m.group() != '"' and _CUT_TOKEN.fullmatch(text, e.pos):
+        except json.JSONDecodeError:
+            if m.group() != '"' and _cut_short(filled, m.start()):
                 return Rerun(RERUN + "the final message ends inside an unfinished JSON object")
             i = m.start() + 1
             continue

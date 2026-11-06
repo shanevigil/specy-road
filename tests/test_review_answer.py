@@ -172,6 +172,9 @@ TEXT_SHAPES = [
       for tail in ("tru", "nul", "fals", "-", "1.", "1e+", '"ab', '"\\', '"\\u12')
       for after, prefix in (("", ""), (", after a valid object", VT + "\n"))],
     ("a bad escape is not a cut", VT + '\n{"x": "\\uZZ', NOT_LAST),
+    ("no JSON completes the prefix: prose", "Use {1", NO_OBJECT),
+    *[(f"no JSON completes {tail!r} after a valid object", VT + "\n" + tail, NOT_LAST)
+      for tail in ("Use {1", '{"x": 1.e', '{"x": tru ', '[1 2')],
     ("a JSON string holding braces", json.dumps("{}"), NO_OBJECT),
     ("quoted braces in prose, then the object", 'Checked "{x}" and "[y".\n' + VT, V),
     ("valid object then a schema-invalid last object", VT + "\n" + json.dumps(BAD), SCHEMA),
