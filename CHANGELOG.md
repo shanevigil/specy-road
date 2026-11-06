@@ -31,6 +31,19 @@ body. Keep section bodies focused; link to PRs for detail.
   locally and then fails the push with git's raw error: `/api/publish/status`
   reports `blocked_reason: "no_remote"` and `POST /api/publish` returns `400`
   saying how to add one.
+- `specy-road upgrade --dry-run` no longer commits into the caller's
+  repository when `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`,
+  `GIT_COMMON_DIR` or `GIT_OBJECT_DIRECTORY` is set (inside a git hook, for
+  example): every git call in its temporary copy, and the copy's `validate`,
+  runs without them, and a copy whose own `.git` was not created fails without
+  validating.
+- `specy-road upgrade` now regenerates what `digest --check` would fail on:
+  when `validate` passes it writes `roadmap-context.md` when missing or drifted
+  (a finished leaf's "Quality by area" section, for example) and `roadmap.md`
+  when it is tracked and drifted, prints a `wrote` line for each (`would write`
+  with `--dry-run`), and refuses a path that is a symlink out of the project.
+  An untracked `roadmap.md` is left alone; an invalid graph regenerates nothing
+  and keeps the `specy-road digest` next step.
 - Security: no writer follows a symlink out of the directory it owns.
   `init project` treats a dangling `roadmap.md` or `roadmap-context.md` link
   as present (skipped without `--force`), and with `--force` lists a link out

@@ -156,7 +156,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.16_upgrade-scratch-git-and-regen_8177b36c-9fac-49f6-9017-a21798bb3630.md",
       "sibling_order": 14,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "upgrade --dry-run never touches the real repo under GIT_DIR, and a real upgrade regenerates drifted generated files",
       "touch_zones": [
         "specy_road/bundled_scripts/upgrade.py",
