@@ -176,20 +176,3 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
-  - codename: upgrade-scratch-git-env-sterile
-    node_id: M21.40
-    branch: feature/rm-upgrade-scratch-git-env-sterile
-    touch_zones:
-      - specy_road/ignore_report.py
-      - specy_road/git_subprocess.py
-      - specy_road/bundled_scripts/upgrade.py
-      - specy_road/bundled_scripts/upgrade_plan.py
-      - specy_road/bundled_scripts/upgrade_generated.py
-      - tests/test_upgrade_preview.py
-      - tests/test_git_subprocess.py
-      - CHANGELOG.md
-      - docs/install-and-usage.md
-    started: '2026-11-06'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-06T19:27:02+00:00'
