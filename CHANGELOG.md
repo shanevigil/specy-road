@@ -13,6 +13,12 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- **Security:** `review record` files only under the caller's own model (CR1). A worker
+  (`SPECY_ROAD_WORKER_ID`) files only as its model, and a harness (`CLAUDECODE`, `CODEX_THREAD_ID`,
+  `CURSOR_AGENT`) only for a roster entry on that harness; anything else exits 1 before any write. An
+  unidentified caller must attest with `--human-filed "<who and why>"`, and the gate counts that record only
+  when signed or under the new `policy.count_human_filed_reviews` (default false). `review delegate` and
+  `prompt --channel cli --run` are unchanged. See docs/orchestration-review.md (Who may file a review record).
 - `specy-road review delegate` no longer loses a review to one refused
   answer: when `review record` refuses it, the reviewer gets one repair turn
   carrying `review record`'s whole output and the notes rules, checked for

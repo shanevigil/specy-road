@@ -143,7 +143,8 @@ READ_BACK_LINES = [
 ]
 PASTED_LINES = [
     "End your reply with the JSON object described at the end of this prompt as well; nothing reads this "
-    "session back, so you still file the record yourself with `review record` as above.",
+    "session back, so you still file the record yourself with `review record` as above. A human filing the "
+    "verdict from a terminal with no harness marker adds `--human-filed \"<who and why>\"` to that command.",
     "",
 ]
 

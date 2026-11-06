@@ -111,7 +111,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.31_review-record-files-only-as-the-caller_5e6b33e5-b2a5-4d7b-86ab-336efd7d2960.md",
       "sibling_order": 29,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review record files only under the caller's own model: a filing from another harness or worker is refused, and a hand-filed record needs an attestation and counts only when signed or the policy allows it",
       "touch_zones": [
         "specy_road/review_caller.py",

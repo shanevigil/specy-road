@@ -185,6 +185,9 @@ def _review_record_signed_data(ns: Any, root: Path, rec: dict, gate: Any, entry:
     data = {**rec["data"], "commit": gate.commit, NOTES_KEY: notes_digest(rec["body"]), **sibling_heads_field(root)}
     if ns.launch_mode:   # before signing: the signature covers it
         data["launch_mode"] = ns.launch_mode
+    data.pop("human_filed", None)   # only the --human-filed flag sets it (review_caller)
+    if human := getattr(ns, "human_filed", None):   # file_review's Namespace has none
+        data["human_filed"] = human.strip()
     data = stamp_review_toolkit_version(data)
     policy = gate.config["policy"]
     if ns.sign_key:

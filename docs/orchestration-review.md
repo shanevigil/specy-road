@@ -204,6 +204,32 @@ commits an approval only when the recorded reviews already satisfy the policy,
 and without a TTY and without `--yes` the command refuses, as in 0.2.x. A
 coordinator that can satisfy the gate alone is no gate.
 
+## Who may file a review record
+
+`specy-road review record --model <M>` files only under the caller's own model. Before it takes the review lock or
+writes anything, it identifies the caller from the environment, never from anything the caller types:
+
+- **A worker.** `SPECY_ROAD_WORKER_ID` set (specy-road sets it for the harness it launches) must name a readable
+  worker record; one that cannot be read, decoded, parsed or validated exits 1 with no traceback. The record's model must be `M`; it wins over any harness marker the worker inherited.
+- **A harness.** Exactly one of these markers, confirmed against the harness versions of the 2026-11-05 replay:
+  Claude Code `CLAUDECODE=1` (2.1.318), Codex `CODEX_THREAD_ID` set (codex-cli 0.166.0), Cursor `CURSOR_AGENT=1`
+  (agent 2026.11.05). `M`'s roster entry must run on that `harness`; an entry with no `harness`, or `generic`,
+  matches none. A refusal reads "`<M>` is a `<harness>` roster entry and this command runs under `<caller>`; file a
+  review only under your own model id (AGENTS.md, Review roles); nothing was written".
+- **Unidentified** (no marker, or two or more): a human filing from a plain terminal, for example pasted notes, adds
+  `--human-filed "<who and why>"`: one non-blank line (no line break of any kind; anything else on the line, a tab
+  included, is kept), stored stripped as `human_filed` and covered by a signature. The gate
+  counts such a record only when its signature verifies against the roster `public_key`, or when
+  `policy.count_human_filed_reviews: true` (default false) on the integration branch; otherwise it is listed as
+  "filed by hand (human_filed) and unsigned; policy.count_human_filed_reviews is off". An identified matching caller
+  that passes the flag gets a note, and nothing is stored.
+
+`review delegate` and `prompt --channel cli --run` file through the run itself and are not checked, whatever harness
+the coordinator runs in. The paste-channel reviewer prompt keeps the plain `review record` line and says a human
+filing from a terminal adds `--human-filed`. Like READY, the check is cooperative: a caller that sets a marker or
+writes a worker record can pass it, and two models on one harness are not told apart; `signed_reviews` is the strong
+check.
+
 ## Signed reviews
 
 A review record is a file, so without more, any agent that can write under

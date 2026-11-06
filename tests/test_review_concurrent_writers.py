@@ -127,7 +127,8 @@ def test_two_filings_started_together_both_file(tmp_path: Path) -> None:
         notes[model] = repo.parent / f"notes-{model}.md"
         notes[model].write_text(review_text(git(repo, "rev-parse", "HEAD"), model=model))
     procs = [subprocess.Popen([sys.executable, "-c", "from specy_road.cli import main; main()", "review", "record", "M1.1", "--model", m,
-                               "--verdict", "approve", "--file", str(notes[m]), "--repo-root", str(repo)],
+                               "--verdict", "approve", "--file", str(notes[m]), "--repo-root", str(repo),
+                              "--human-filed", "test: concurrent filing"],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
              for m in notes]
     outs = [p.communicate(timeout=120) for p in procs]
