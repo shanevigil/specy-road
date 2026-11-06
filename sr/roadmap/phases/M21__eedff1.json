@@ -125,7 +125,9 @@
         "tests/test_review_record_caller.py",
         "docs/orchestration-review.md",
         "CHANGELOG.md",
-        "specy_road/bundled_scripts/role_prompt_rca.py"
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "tests/conftest.py",
+        "specy_road/review_answer.py"
       ],
       "type": "task"
     },

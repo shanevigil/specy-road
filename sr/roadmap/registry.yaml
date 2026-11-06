@@ -120,6 +120,8 @@ entries:
       - docs/orchestration-review.md
       - CHANGELOG.md
       - specy_road/bundled_scripts/role_prompt_rca.py
+      - tests/conftest.py
+      - specy_road/review_answer.py
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
