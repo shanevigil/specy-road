@@ -23,7 +23,11 @@ body. Keep section bodies focused; link to PRs for detail.
   bytes and index entries of every path finish could have touched, never from
   HEAD, so your own staged and unstaged edits survive. It names the failing
   command or path, reports any path it could not restore, and exits 1 with
-  `nothing was committed; fix it and run finish-this-task again`.
+  `nothing was committed; fix it and run finish-this-task again`. Before
+  any of that, finish refuses with nothing changed when a path it writes
+  into (a roadmap chunk, the registry, `roadmap.md`, `roadmap-context.md`,
+  the PR-body file, or a summary's archive or reviews copy) is a symlink, a
+  directory, a FIFO, a socket or a device, naming the path and what it is.
 - **Security:** the review gate no longer counts a record from a model that
   filed a READY on the leaf (the executor or a fix author), whatever the
   record's `authored_fix`, verdict or signature; it is listed as ineligible

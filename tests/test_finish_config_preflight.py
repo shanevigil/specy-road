@@ -1,4 +1,5 @@
-"""M21.28: finish refuses an invalid configuration before it writes, and a later failure leaves the tree as it was.
+"""M21.28: finish refuses an invalid configuration or an irregular write destination before it writes,
+and a later failure leaves the tree as it was.
 
 Each row runs finish-this-task through its public entry in a sandbox and
 compares worktree bytes, index blobs and HEAD before and after.
@@ -7,6 +8,7 @@ compares worktree bytes, index blobs and HEAD before and after.
 from __future__ import annotations
 
 import os
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -53,6 +55,15 @@ def _repo(tmp_path: Path, monkeypatch) -> Path:
     return repo
 
 
+def _entry(path: Path) -> object:
+    """A path's bytes, link target or file type, never reading through a link, FIFO or directory."""
+    if not os.path.lexists(path):
+        return None
+    if path.is_symlink():
+        return ("link", os.readlink(path))
+    return path.read_bytes() if path.is_file() else ("mode", stat.S_IFMT(path.lstat().st_mode))
+
+
 def _state(repo: Path) -> tuple[dict[str, bytes], str, str]:
     """Worktree bytes of every tracked or untracked path, plus ignored ones under ``work/``; the index; HEAD.
 
@@ -62,7 +73,7 @@ def _state(repo: Path) -> tuple[dict[str, bytes], str, str]:
     """
     names = git(repo, "ls-files", "-co", "--exclude-standard").splitlines()
     names += git(repo, "ls-files", "-oi", "--exclude-standard", "--", "work").splitlines()
-    files = {n: (repo / n).read_bytes() if (repo / n).exists() else None for n in sorted(set(names))}
+    files = {n: _entry(repo / n) for n in sorted(set(names))}
     return files, git(repo, "ls-files", "-s"), git(repo, "rev-parse", "HEAD")
 
 
@@ -74,18 +85,56 @@ def _run(repo: Path, argv: list[str], **env_over: str) -> subprocess.CompletedPr
     )
 
 
-def test_rc4_configuration_is_refused_before_any_write(tmp_path: Path, monkeypatch) -> None:
-    """A1: reviewers required, gate off -> exit 1 naming the fix, nothing changed."""
-    repo = _repo(tmp_path, monkeypatch)
+def _invalid_configuration(repo: Path, tmp_path: Path) -> None:
     commit_file(repo, "roadmap/orchestration.yaml", ORCHESTRATION, "orchestration")
-    before = _state(repo)
+
+
+def _directory(repo: Path, tmp_path: Path) -> None:
+    (repo / "work" / "done" / "implementation-summary-M1.1.md").mkdir(parents=True)
+
+
+def _link_in_repo(repo: Path, tmp_path: Path) -> None:
+    (repo / "payload.md").write_text("# roadmap index, before finish\n")
+    (repo / "roadmap.md").symlink_to("payload.md")
+    git(repo, "add", "payload.md", "roadmap.md")
+    git(repo, "commit", "-qm", "roadmap.md links to payload.md")
+
+
+def _link_out_of_repo(repo: Path, tmp_path: Path) -> None:
+    (tmp_path / "outside.md").write_text("# not the project's\n")
+    (repo / "roadmap-context.md").symlink_to(tmp_path / "outside.md")
+
+
+def _fifo(repo: Path, tmp_path: Path) -> None:
+    os.mkfifo(repo / "work" / "pr-body-M1.1.md")
+
+
+@pytest.mark.parametrize(
+    ("arrange", "named"),
+    [
+        # A1: reviewers required while the gate is off; validate's own error names the fix.
+        (_invalid_configuration, GATE_FIX),
+        # The rule: every write destination is absent or a regular file, reached through no symlink.
+        (_directory, "work/done/implementation-summary-M1.1.md is a directory"),
+        (_link_in_repo, "roadmap.md is a symlink (to payload.md)"),
+        (_link_out_of_repo, "roadmap-context.md is a symlink (to "),
+        (_fifo, "work/pr-body-M1.1.md is a FIFO"),
+    ],
+    ids=["invalid-configuration", "directory", "symlink-in-repo", "symlink-out-of-repo", "fifo"],
+)
+def test_refused_before_any_write(tmp_path: Path, monkeypatch, arrange, named: str) -> None:
+    """Exit 1 naming the path and what it is, nothing changed: worktree, index, HEAD (and a link's target)."""
+    repo = _repo(tmp_path, monkeypatch)
+    arrange(repo, tmp_path)
+    before, outside = _state(repo), _entry(tmp_path / "outside.md")
     result = _run(repo, ["-m", "specy_road.cli", "finish-this-task"])
     assert result.returncode == 1, result.stdout + result.stderr
-    assert GATE_FIX in result.stderr
+    assert named in result.stderr, result.stderr
     assert "finish-this-task: nothing was changed" in result.stderr
     assert "Traceback" not in result.stderr
     assert "status -> Complete" not in result.stdout
     assert _state(repo) == before
+    assert _entry(tmp_path / "outside.md") == outside
     reg = yaml.safe_load((repo / "roadmap" / "registry.yaml").read_text())
     assert any(e.get("codename") == "thing" for e in reg["entries"])
 
@@ -99,8 +148,6 @@ SUMMARY = "work/implementation-summary-M1.1.md"
     [
         ("validate", "`specy-road validate --repo-root", None),
         ("digest", "`specy-road digest --repo-root", None),
-        # roadmap.md is a committed link to payload.md: export writes the target, then digest is refused.
-        ("digest", "`specy-road digest --repo-root", "link"),
         ("registry", "registry.yaml", None),
         # A tracked summary is moved over an existing work/done/ copy with other bytes.
         ("commit", COMMIT_REFUSED, "tracked"),
@@ -113,12 +160,7 @@ def test_failure_before_the_commit_restores_the_tree(
 ) -> None:
     """A3/A4: each refusal restores worktree bytes, index and HEAD, and reports cleanly."""
     repo = _repo(tmp_path, monkeypatch)
-    if setup == "link":
-        (repo / "payload.md").write_text("# roadmap index, before finish\n")
-        (repo / "roadmap.md").symlink_to("payload.md")
-        git(repo, "add", "payload.md", "roadmap.md")
-        git(repo, "commit", "-qm", "roadmap.md links to payload.md")
-    elif setup == "tracked":
+    if setup == "tracked":
         commit_file(repo, SUMMARY, "# summary M1.1\n", "summary")
         (repo / "work" / "done").mkdir()
         (repo / "work" / "done" / "implementation-summary-M1.1.md").write_text("# an older archive\n")
@@ -148,6 +190,4 @@ def test_failure_before_the_commit_restores_the_tree(
     assert "[ok] bookkeeping committed" not in out
     if setup in ("tracked", "untracked"):   # cleanup wrote the destination before the commit was refused
         assert {"tracked": "[ok] archived", "untracked": "kept a copy at"}[setup] in out, out
-    if setup == "link":   # the injected digest saw export's Complete through the link, so payload.md was written
-        assert (repo / "roadmap.md").is_symlink()
     assert _state(repo) == before

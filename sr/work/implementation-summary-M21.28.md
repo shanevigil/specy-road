@@ -33,9 +33,22 @@ Deviation from the planning sheet's Approach (the plan-review decisions win): th
 
 Class: paths that cleanup *writes as a destination* before the commit. The snapshot covered the paths it removes, but not the paths it moves or copies into. I audited every writer between the snapshot and the commit (see Probes). The two summary destinations were the only ones missing, and both are now in `pre_commit_paths`. The directories that cleanup creates for them with `mkdir` (`work/done/`, `work/reviews/<NODE>/`) can stay behind empty after a restore. They hold no bytes and no index entries, so they are out of A2's scope. M15.40's post-commit undo (`snapshot_bookkeeping`) is unchanged, as the brief marks it out of scope.
 
-## Fix round 2 (review gpt-6.1-sol-low, R1: symlink targets)
+## Fix round 2 (review gpt-6.1-sol-low, R1: symlink targets), superseded in round 3
 
-Class: a snapshotted path whose bytes really land elsewhere because the writer follows a symlink, either at the path itself or in a parent directory. The snapshot recorded only the link, so a restore "succeeded" while the target kept export's bytes. Rather than patching `roadmap.md`, one rule in `pre_commit_paths` covers every listed path: if `realpath(root/rel)` differs from the lexically normalised `root/rel` and lies inside the repo root, the real path is snapshotted too (bytes or absence, plus its index entry). A link resolving outside the root adds nothing. Writers refuse a link out of the project (M21.17), so finish never writes there. That is the documented limit of the rule, stated in the `pre_commit_paths` docstring.
+Round 2 added a rule that snapshotted the in-repo real path behind each symlinked path. Round 3 removes that rule, and its `link` test row, in favour of the precondition below.
+
+## Fix round 3 (coordinator: one rule for the class)
+
+Class: a write destination that is not a regular file. Round 1 found a missing summary destination, round 2 a symlink target, and pre-existing directories were next. Instead of covering each destination's shape in the snapshot, finish now refuses them all before the first write, under one rule (`refuse_irregular_destinations_or_exit` in `finish_bookkeeping_undo.py`, docstrings on it and on `irregular_destination`):
+
+- Every path in `write_destinations` must be absent or a regular file, reached through no symlink. That covers every manifest chunk (leaf and rolled-up ancestors), the registry, `roadmap.md`, `roadmap-context.md`, the PR-body file, the `work/done/` archive of a tracked summary, and the reviews-directory copy of an untracked summary.
+- Each component under its base is checked with `lstat`. A symlink anywhere refuses, whether it points inside or outside the repo. The last component also refuses when it is a directory, FIFO, socket or device (one `_IRREGULAR` table). An absent component ends the walk.
+- On a refusal, finish prints `error: finish-this-task writes there, but <path> is <kind>; make it a regular file or remove it` and `finish-this-task: nothing was changed`, then exits 1. This runs first in `bookkeeping_guard`, before `validate`, so a FIFO is never read.
+- With that precondition, the snapshot and restore only ever see a regular file or an absence at each destination. `pre_commit_paths` now builds on `write_destinations` (one list of destinations, no duplicate), plus the cleanup and worker-log paths.
+- Limits:
+  - The cleanup *sources* (brief, prompt, summary, sidecar) are removed or moved, not written into, so they are outside the rule. M15.40's existing symlinked-brief handling, and its test, stay as they were.
+  - The reviews root itself, which is the base for the reviews copy, is not checked component by component.
+  - The rule checks every destination whatever the `on_complete` mode, so it can refuse a stray FIFO at `work/pr-body-<NODE>.md` even in merge mode.
 
 ## Probes
 
@@ -58,10 +71,15 @@ Class: a snapshotted path whose bytes really land elsewhere because the writer f
 - Fix round 2, a chunk symlink: `build_node_chunk_map` already returns resolved chunk paths, so the real target is what gets snapshotted. A chunk resolving outside `roadmap/` is skipped by both `build_node_chunk_map` and `find_chunk_path`, so finish never writes it (same probe).
 - Fix round 2, cleanup removals through a link: `cleanup_paths` already adds `removal_target`, and the new rule only de-duplicates it.
 
+- Fix round 3: a directory at `work/done/implementation-summary-M1.1.md`, `roadmap.md` linked to an in-repo `payload.md`, `roadmap-context.md` linked outside the repo, a FIFO at `work/pr-body-M1.1.md`. Each is refused before any write, naming the path and its kind, with worktree, index, HEAD and the outside target unchanged. Each of the four rows fails without the fix and passes with it.
+- Fix round 3: the round-2 probes (symlinked registry, symlinked `work/` directory, link out of the repo) now meet the precondition. A symlink at the path or at any directory under the base refuses, so nothing is written behind a link and the round-2 real-path rule is gone.
+- Fix round 3: existing tests with symlinks (`test_finish_merge_failure_undo` symlinked brief, `test_finish_work_cleanup`, `test_writers_refuse_links_out`) either use cleanup sources, which are outside the rule, or call the helpers directly. All still pass.
+
 ## Verification
 
 - `pytest tests/test_finish_config_preflight.py`: 6 passed. With the package changes reverted, all rows failed. With only fix round 1 reverted, the 2 summary rows failed.
 - Fix round 2: `pytest tests/test_finish_config_preflight.py`: 7 passed. With fix round 2 reverted, the link row failed.
+- Fix round 3: `pytest tests/test_finish_config_preflight.py`: 10 passed. With round 3 reverted, the 4 rule rows failed. The full suite (`pytest -n 4`, 5,529 passed) ran before the last consolidation, which rebuilt `pre_commit_paths` on `write_destinations` and fixed the 400-line cap. After it, the targeted finish, nested-repo, gate and writer-link tests passed (230), as did ruff and file-limits.
 - Fix round 1: `pytest -n 4` over the preflight, `test_finish_*`, nested-repo finish and land, gate-agreement and file-limits tests: 199 passed.
 - `pytest -n 4` (full suite): 5460 passed.
 - `ruff check specy_road tests scripts`: clean.
@@ -76,8 +94,12 @@ Class: a snapshotted path whose bytes really land elsewhere because the writer f
 - `PreCommitSnapshot`, `pre_commit_paths`, `snapshot_pre_commit`, `restore_pre_commit`: the snapshot and restore of worktree bytes and index entries (A2, A3).
 - `_cleanup_and_log_paths`: factored out of `snapshot_bookkeeping` so both snapshots share one path list (reuse, A2).
 - Test `test_rc4_configuration_is_refused_before_any_write`: the rc4 configuration gives exit 1, names the fix, leaves the registry entry and the tree unchanged, and prints no traceback (A4).
-- Fix round 2: the symlink-target rule in `pre_commit_paths` (no new function or branch elsewhere). The real path of every listed path that differs from it and lies inside the repo is snapshotted too (R1).
-- Fix round 2: the test row `digest` with setup `link`. `roadmap.md` is a committed link to `payload.md`, export writes through it, digest is refused, and the target bytes, index and HEAD are unchanged (R1). The third parameter is renamed from `summary` to `setup`.
+- Fix round 2 (removed in round 3): the symlink-target rule and its `link` test row.
+- Fix round 3: `write_destinations`, the one list of where finish writes, moves or copies into. `pre_commit_paths` reuses it.
+- Fix round 3: `irregular_destination` and the `_IRREGULAR` table, one rule that walks the components and names a symlink, directory, FIFO, socket or device.
+- Fix round 3: `refuse_irregular_destinations_or_exit`, which prints the refusal with nothing changed. It runs first in `bookkeeping_guard`.
+- Fix round 3: test `test_refused_before_any_write`, one public-entry table. It replaces the separate rc4 test, which is now its `invalid-configuration` row, and adds the `directory`, `symlink-in-repo`, `symlink-out-of-repo` and `fifo` rows. Each asserts exit 1, the path and kind named, `nothing was changed`, and worktree, index, HEAD and the outside target unchanged.
+- Fix round 3: test helper `_entry`, which describes a path without reading through a link, FIFO or directory, so `_state` never blocks on a FIFO.
 - Test `test_failure_before_the_commit_restores_the_tree`, parametrized over 6 rows (A4):
   - a later validate refusal
   - a digest refusal after export rewrote `roadmap.md`

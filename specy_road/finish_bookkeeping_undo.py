@@ -10,9 +10,11 @@ or adds and a reset would delete again (this leaf's worker logs);
 paths ``pre_sha`` does not track), and :func:`undo_report` says what happened,
 so a plain re-run of finish starts over.
 
-Before its first write (M21.28), finish runs :func:`bookkeeping_guard`: it
-runs ``validate`` and refuses an invalid configuration with nothing changed,
-then :func:`snapshot_pre_commit` records the worktree
+Before its first write (M21.28), finish runs :func:`bookkeeping_guard`. It
+refuses a write destination that is not a regular file or absent
+(:func:`refuse_irregular_destinations_or_exit`), runs ``validate`` and refuses
+an invalid configuration with nothing changed, then :func:`snapshot_pre_commit`
+records the worktree
 state and index entries of every path finish may write up to its bookkeeping
 commit (:func:`pre_commit_paths`), and :func:`restore_pre_commit` puts them
 back, never from HEAD, so a user's staged and unstaged edits survive.
@@ -21,6 +23,7 @@ back, never from HEAD, so a user's staged and unstaged edits survive.
 from __future__ import annotations
 
 import os
+import stat
 import subprocess
 import sys
 import tempfile
@@ -29,13 +32,13 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import build_node_chunk_map
+from specy_road.bundled_scripts.roadmap_chunk_utils import manifest_includes
 from specy_road.finish_work_artifacts import archived_implementation_summary_rel, cleanup_paths
 from specy_road.generated_files import GENERATED_COMMITTED
 from specy_road.git_subprocess import git_code, git_ok
 from specy_road.git_workflow_config import WORKER_LOGS_REL
 from specy_road.registry_yaml import REGISTRY_REL
-from specy_road.review_files import reviews_dir
+from specy_road.review_files import reviews_root
 
 
 def one_line(text: str) -> str:
@@ -234,29 +237,13 @@ class PreCommitSnapshot:
 def pre_commit_paths(repo: Path, node_id: str, sess_path: Path | None) -> list[str]:
     """Every path finish may create, overwrite, move or remove before its bookkeeping commit.
 
-    Every roadmap chunk (the leaf's and any rolled-up ancestor's), the registry,
-    the generated files, the PR-body snapshot, the cleanup and worker-log paths,
-    and both places cleanup writes a summary to: ``work/done/`` (a tracked one is
-    moved there) and the reviews directory (an untracked one is copied there).
-    The reviews directory is the main checkout's, so from a linked worktree its
+    Its :func:`write_destinations`, then the cleanup and worker-log paths. The
+    reviews-directory copy is the main checkout's, so from a linked worktree its
     path is relative with ``../`` and outside this worktree's index.
-
-    Writers follow symlinks, so one rule covers where their bytes really land:
-    each path whose real path (a symlink at the path or in a parent directory)
-    differs from it, and lies inside ``repo``, adds that real path too. A link
-    resolving outside ``repo`` adds nothing: the writers refuse a link out of
-    the project, and finish never writes there.
     """
     root = repo.resolve()
-    chunks = sorted({p.relative_to(root).as_posix() for p in build_node_chunk_map(root).values()})
-    kept = reviews_dir(root, node_id) / Path(f"work/implementation-summary-{node_id}.md").name
-    rels = [*chunks, REGISTRY_REL.as_posix(), *GENERATED_COMMITTED, f"work/pr-body-{node_id}.md",
-            *_cleanup_and_log_paths(root, node_id, sess_path),
-            archived_implementation_summary_rel(node_id), Path(os.path.relpath(kept, root)).as_posix()]
-    real = [Path(os.path.realpath(root / rel)) for rel in rels]
-    rels += [p.relative_to(root).as_posix() for rel, p in zip(rels, real)
-             if p != Path(os.path.normpath(root / rel)) and p.is_relative_to(root)]
-    return list(dict.fromkeys(rels))
+    dests = [Path(os.path.relpath(base / rel, root)).as_posix() for base, rel in write_destinations(root, node_id)]
+    return list(dict.fromkeys([*dests, *_cleanup_and_log_paths(root, node_id, sess_path)]))
 
 
 def snapshot_pre_commit(repo: Path, rels: list[str]) -> PreCommitSnapshot:
@@ -304,6 +291,62 @@ def restore_pre_commit(repo: Path, snap: PreCommitSnapshot) -> dict[str, str]:
     return failed
 
 
+#: What a non-regular destination is, by ``lstat`` mode; the first match names it.
+_IRREGULAR = ((stat.S_ISLNK, "a symlink"), (stat.S_ISDIR, "a directory"), (stat.S_ISFIFO, "a FIFO"),
+              (stat.S_ISSOCK, "a socket"), (stat.S_ISCHR, "a device"), (stat.S_ISBLK, "a device"))
+
+
+def write_destinations(repo: Path, node_id: str) -> list[tuple[Path, str]]:
+    """``(base, relative path)`` for every path finish writes, moves or copies into before its commit.
+
+    Under the repo root: every manifest chunk (leaf and rolled-up ancestors), the registry, ``roadmap.md``,
+    ``roadmap-context.md``, the PR-body file and a tracked summary's ``work/done/`` archive. Under the
+    reviews root (the main checkout's from a linked worktree): an untracked summary's copy.
+    """
+    root = repo.resolve()
+    chunks = [Path("roadmap", inc).as_posix() for inc in manifest_includes(root) if isinstance(inc, str)]
+    rels = [*chunks, REGISTRY_REL.as_posix(), *GENERATED_COMMITTED, f"work/pr-body-{node_id}.md",
+            archived_implementation_summary_rel(node_id)]
+    return [*((root, rel) for rel in rels if not os.path.normpath(rel).startswith("..")),
+            (reviews_root(root), f"{node_id}/{Path(archived_implementation_summary_rel(node_id)).name}")]
+
+
+def irregular_destination(base: Path, rel: str) -> str | None:
+    """``"<path> is <kind>"`` when ``rel`` under ``base`` is reached through a symlink or is not a regular file.
+
+    One rule for every component: a symlink (to anywhere) refuses; the last
+    component must also be absent or a regular file, so a directory, FIFO,
+    socket or device refuses too. An absent component ends the walk: finish creates it.
+    """
+    parts = Path(os.path.normpath(rel)).parts
+    for i in range(1, len(parts) + 1):
+        path = base.joinpath(*parts[:i])
+        try:
+            mode = os.lstat(path).st_mode
+        except FileNotFoundError:
+            return None
+        kind = next((name for test, name in _IRREGULAR if test(mode)), None)
+        if kind == "a symlink" or (i == len(parts) and kind is not None):
+            return f"{path} is {kind}" + (f" (to {os.readlink(path)})" if kind == "a symlink" else "")
+    return None
+
+
+def refuse_irregular_destinations_or_exit(repo: Path, node_id: str) -> None:
+    """Exit 1 before anything is written when a :func:`write_destinations` path is not absent or a regular file.
+
+    With that precondition the snapshot only ever holds a regular file or an
+    absence for each destination, and no write can land behind a link.
+    """
+    found = [why for base, rel in write_destinations(repo, node_id) if (why := irregular_destination(base, rel))]
+    if not found:
+        return
+    for why in found:
+        print(f"error: finish-this-task writes there, but {why}; make it a regular file or remove it",
+              file=sys.stderr)
+    print("finish-this-task: nothing was changed", file=sys.stderr)
+    raise SystemExit(1)
+
+
 def preflight_validate_or_exit(repo: Path) -> None:
     """Run ``specy-road validate`` (output captured); on a refusal print it and exit 1 with nothing changed."""
     cmd = [sys.executable, "-m", "specy_road.cli", "validate", "--repo-root", str(repo)]
@@ -332,13 +375,14 @@ def _failed_step(e: BaseException) -> str:
 
 @contextmanager
 def bookkeeping_guard(repo: Path, node_id: str, sess_path: Path | None) -> Iterator[None]:
-    """Validate, snapshot :func:`pre_commit_paths`, and restore them when the body fails before the commit.
+    """Refuse irregular destinations, validate, snapshot :func:`pre_commit_paths`, and restore them on failure.
 
     An ``OSError`` or ``subprocess.SubprocessError`` (a refused validate, export
     or digest, a write, cleanup, ``git add`` or ``git commit``) while HEAD is
     still the snapshot's puts every path back and exits 1. Once HEAD moved the
     bookkeeping commit exists, so the error propagates as before.
     """
+    refuse_irregular_destinations_or_exit(repo, node_id)
     preflight_validate_or_exit(repo)
     snap = snapshot_pre_commit(repo, pre_commit_paths(repo, node_id, sess_path))
     try:
