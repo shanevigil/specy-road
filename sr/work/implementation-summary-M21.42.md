@@ -1,6 +1,7 @@
 # Implementation summary: M21.42 — parse failures get the repair turn
 
-Branch `feature/rm-parse-failure-gets-repair-turn`, base `721a0c55`, change commit `f845683c`.
+Branch `feature/rm-parse-failure-gets-repair-turn`, base `721a0c55`, change commit `f845683c`; merged
+`origin/WIP/improvements-0-3-1` (`8c28b00b`); fix round 1 commit `00e9c51d`.
 
 ## What changed
 
@@ -13,10 +14,12 @@ Branch `feature/rm-parse-failure-gets-repair-turn`, base `721a0c55`, change comm
     `review record`'s output", puts it in the same backtick fence, and asks for the whole JSON object with no code
     fence, no prose and nothing before or after it. It has no notes rules.
 - `specy_road/review_delegate.py`
-  - Repair condition: a refusal, or `filed.parse` when the last attempt has `exit == 0` and is not a capacity error,
-    and only when the run holds no `refusal` yet. These get no repair turn: chore runs (filed is `None`), capacity
-    failures, non-zero exits, unreadable logs and review failures.
-  - `_repair` stores `run["refusal"]` and `run["refusal_kind"]` (`record` or `parse`). Repair attempts are still
+  - Repair condition (one rule since fix round 1): `_answer_failure(filed)` names the answer-level failure,
+    `(refusal, "record")` or `(parse reason, "parse")`, else `None`. The repair turn launches only when there is
+    one, the run holds no `refusal` yet, and the last attempt has `exit == 0` and is not a capacity error, for
+    both kinds. These get no repair turn: chore runs (filed is `None`), capacity failures, non-zero exits
+    (refused or unparseable), unreadable logs and review failures.
+  - `_repair` stores the `(reason, kind)` it is given as `run["refusal"]` and `run["refusal_kind"]`. Repair attempts are still
     marked `repair: true` through `"refusal" in run`. A second failure of either kind names both reasons
     (unchanged join).
   - `_start` returns `(reason, kind)` for an incomplete run with a stored string refusal. A missing `refusal_kind`
@@ -63,9 +66,34 @@ repair launch whose prompt carries the parse reason, plus `refusal_kind == "pars
    rather than `[-1]` (same assertion, same attempt). It asserts the repair flag, `refusal_kind` and the reason in
    the prompt.
 
+## Fix round 1 (gpt-6.1-sol-low block at bc53f0b1)
+
+Finding: a schema-valid answer that `review record` refused, from a harness that exited non-zero, still got a
+repair launch, because the clean-attempt gate applied only to parse failures. The class is "repair eligibility
+decided per failure kind". Fix: one rule, `_answer_failure`, decides the failure for both kinds, and a single
+clean-attempt gate decides the launch (`review_delegate._delegate_locked`). The resume join branch uses the same
+helper. The docstring, the docs repair bullet and the CHANGELOG now say the clean-exit condition applies to both
+kinds. This narrows M21.35: a refusal after a non-zero exit or a capacity failure no longer gets a repair turn,
+which is what A1 requires. New row `refused-exit` in `test_no_repair_turn_without_a_refusal_or_a_clean_parse_failure`:
+one launch, a `rerun` outcome, and a reason naming the refusal. It fails on `bc53f0b1`'s `review_delegate.py` and
+passes now.
+
+## Probes
+
+- A refused answer with a non-zero exit (new `refused-exit` row): one launch, no repair turn. Pass; it failed before the fix.
+- An unparseable answer with a non-zero exit (`exit` row): one launch. Pass, unchanged.
+- Capacity retries exhausted (`capacity` row, retries=0): one launch. Pass. A refused answer cannot come with a capacity error's result line in the fake; the gate reads the same `capacity` flag for both kinds.
+- A refusal or parse failure inside the repair turn itself: `_repair` launches nothing after it, whatever the exit. Checked by reading the code; the `test_a_second_failure_*` rows pass.
+- `--resume` with a stored refusal: `_repair` writes the stored reason only after a clean attempt now. A legacy record that stored one after a non-zero exit is still resumed with the repair pair, because the user asked for `--resume`. Unchanged; the resume rows pass.
+- `prompt --channel cli` (`run_and_file`): it has no repair path, so nothing reaches it. Checked with grep.
+- Chore runs: `filed` is `None`, so `_answer_failure` returns `None`. `tests/test_chore_mode.py` passes.
+- A last attempt with exit 0 that printed error events: this counts as clean under A1's literal "exited 0 with no capacity reason", so it is repaired. Documented here, not changed.
+- Complexity: `_delegate_locked` still has one `if`/`elif`, as at the merge base. `ruff check specy_road tests scripts` is clean and `file-limits` is OK.
+
 ## Verification
 
-- `python -m pytest -n 4 -q tests/`: 5837 passed.
+- `python -m pytest -n 4 -q tests/`: 5837 passed (at bc53f0b1). Fix round 1: the targeted review-delegate tests
+  (139) pass, and `ruff check specy_road tests scripts` is clean.
 - `ruff check` on the changed Python files: clean. `specy-road file-limits`: OK.
 - Red-green: with `f845683c`'s test files and the base package files, `tests/test_review_delegate_repair.py` gives
   14 failed and 13 passed.
@@ -75,7 +103,10 @@ repair launch whose prompt carries the parse reason, plus `refusal_kind == "pars
 - `Outcome.parse` field: carries the answer-level rerun reason so `review delegate` can tell a parse failure from a
   refusal (the planning sheet's Approach).
 - `repair_prompt` `parse` branch: the parse-kind wording A2 requires, without the notes rules.
-- `review_delegate` `clean` guard (last attempt exit 0, not capacity): A1's "exited 0 with no capacity reason".
+- `_answer_failure` helper in `review_delegate` (fix round 1): the one rule naming the answer-level failure and its
+  kind for the repair launch and the resume join.
+- `review_delegate` clean-attempt gate (last attempt exit 0, not capacity), applied to both kinds since fix round 1:
+  A1's "exited 0 with no capacity reason".
 - `review_delegate` `"refusal" in run` guard on the resume-join branch: a parse rerun on a run that is not being
   repaired (non-zero exit) must not reach the join.
 - `_start` legacy-kind default (`record` when `refusal_kind` is missing): A2, for records written before this leaf.
@@ -91,7 +122,8 @@ repair launch whose prompt carries the parse reason, plus `refusal_kind == "pars
   no-json, unfinished and schema-invalid rows. The schema-invalid row checks that the reason is fenced (A3).
 - `test_no_repair_turn_unless_review_record_refused` → renamed
   `test_no_repair_turn_without_a_refusal_or_a_clean_parse_failure`. `no-json` moved to the repair table, and new
-  rows cover `writes-unparseable` (review_failure, one launch), `capacity` and `exit` (no repair turn) (A3).
+  rows cover `writes-unparseable` (review_failure, one launch), `capacity` and `exit` (no repair turn) (A3), and
+  `refused-exit` (fix round 1: a refused answer with a non-zero exit gets one launch).
 - `test_a_non_resumable_harness_gets_one_fresh_launch_with_the_full_prompt_and_the_refusal`: parametrized over
   `record` / `parse` (A3's non-resumable row).
 - `test_resume_sends_the_repair_pair_for_the_stored_kind` (new, parametrized): resume with a stored parse reason,
