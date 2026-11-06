@@ -6,6 +6,7 @@ every byte (and the existence of every path) outside and in the checkout unchang
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import shutil
@@ -17,6 +18,7 @@ from typing import Callable
 import pytest
 
 from specy_road import safe_write
+from specy_road.archive_deep import deepen_archive
 from specy_road.archive_index import load_archive_index, write_archive_index
 from specy_road.archive_ops import archive_node
 from specy_road.archive_restore import restore_archive
@@ -129,6 +131,8 @@ def test_schema_refresh_and_upgrade_refuse_a_linked_schema(tmp_path: Path, capsy
     rel, target = SCHEMA_LAYOUTS[layout]
     _relink(repo / rel, target(outside))
     (outside / "schemas-copy").mkdir()   # the outside dir must not gain a schema either
+    if rel == SCHEMA:   # a stale schema sorted before the linked one is not written either
+        (repo / "schemas" / "decisions.schema.json").write_text("{}\n", encoding="utf-8")
 
     _refused(lambda: SCHEMA_RUNNERS[runner](repo), capsys, repo / rel, repo, outside)
     assert not (outside / "made.json").exists()
@@ -200,6 +204,24 @@ def test_digest_refuses_a_linked_relative_output(tmp_path: Path, capsys, layout:
     _refused(lambda: digest_cli.main(["--repo-root", str(repo), "-o", "out/ctx.md"]), capsys, path, repo, outside)
 
 
+@pytest.mark.parametrize("output", ["checkout", "checkout-sibling-link"])
+def test_digest_checks_an_absolute_output_against_the_checkout(tmp_path: Path, capsys, output: str) -> None:
+    """Nested project at ``sr/``: an absolute ``-o`` outside the project but in the checkout, or the checkout itself."""
+    checkout, outside = tmp_path / "repo", _outside(tmp_path)
+    subprocess.run(["git", "init", "-q", str(checkout)], check=True)
+    assert run_init_project(checkout / "sr", profiles="none") == 0
+    (checkout / "other").symlink_to(outside / "docs")
+    dest = checkout if output == "checkout" else checkout / "other" / "ctx.md"
+    before = _tree(checkout, outside)
+
+    code = digest_cli.cmd_digest(argparse.Namespace(output=str(dest), check=False, repo_root=checkout / "sr"))
+
+    err = capsys.readouterr().err
+    named = f"error: {checkout} is a directory" if output == "checkout" else f"error: {checkout / 'other'} is a symlink"
+    assert code == 1 and named in err and "Traceback" not in err
+    assert _tree(checkout, outside) == before
+
+
 @pytest.mark.parametrize("tracked", [(), ("roadmap.md",)])
 def test_pickup_regenerates_only_tracked_files_and_refuses_a_link(tmp_path: Path, tracked: tuple[str, ...]) -> None:
     repo, outside = _inited(tmp_path)
@@ -251,11 +273,14 @@ def test_upgrade_prune_refuses_an_orphan_under_a_linked_directory(tmp_path: Path
     assert (outside / "old" / Path(OLD_STUB).name).is_file()
 
 
-def _archived(tmp_path: Path) -> tuple[Path, Path, dict]:
+def _archived(tmp_path: Path, deep: bool = False) -> tuple[Path, Path, dict]:
     repo = tmp_path / "repo"
     shutil.copytree(DOGFOOD, repo)
     outside = _outside(tmp_path)
-    return repo, outside, archive_node(repo, "M0.1")
+    rec = archive_node(repo, "M0.1")
+    if deep:
+        deepen_archive(repo, rec["archive_id"])
+    return repo, outside, rec
 
 
 def _set_record(repo: Path, **fields: object) -> None:
@@ -297,13 +322,28 @@ def _second_move_unsafe(repo: Path, outside: Path, rec: dict) -> Path:
     return repo / "planning" / "linked.md"
 
 
+def _unpack_linked(repo: Path, outside: Path, rec: dict) -> Path:
+    """A deep record unpacks its chunk into ``roadmap/archive/chunks/``: here a link out."""
+    chunks = repo / "roadmap" / "archive" / "chunks"
+    if chunks.exists():
+        shutil.move(chunks, outside / "chunks")
+    else:
+        (outside / "chunks").mkdir()
+    chunks.symlink_to(outside / "chunks")
+    return chunks
+
+
 RESTORE_LAYOUTS = {"chunk-out": _chunk_out, "phases-linked": _phases_linked, "origin-linked": _origin_linked,
-                   "stored-linked": _stored_linked, "second-move-unsafe": _second_move_unsafe}
+                   "stored-linked": _stored_linked, "second-move-unsafe": _second_move_unsafe,
+                   "unpack-linked": _unpack_linked}
+RESTORE_ROWS = [*((layout, False) for layout in RESTORE_LAYOUTS if layout != "unpack-linked"),
+                *((layout, True) for layout in ("phases-linked", "origin-linked", "unpack-linked"))]
 
 
-@pytest.mark.parametrize("layout", list(RESTORE_LAYOUTS))
-def test_archive_restore_refuses_before_the_first_change(tmp_path: Path, layout: str) -> None:
-    repo, outside, rec = _archived(tmp_path)
+@pytest.mark.parametrize(("layout", "deep"), RESTORE_ROWS)
+def test_archive_restore_refuses_before_the_first_change(tmp_path: Path, layout: str, deep: bool) -> None:
+    """A deep record is checked whole, its unpacking included, before ``undeepen_archive`` changes anything."""
+    repo, outside, rec = _archived(tmp_path, deep)
     path = RESTORE_LAYOUTS[layout](repo, outside, rec)
     before = _tree(repo, outside)
 
@@ -312,3 +352,16 @@ def test_archive_restore_refuses_before_the_first_change(tmp_path: Path, layout:
     assert str(path) in str(e.value) or str(os.path.normpath(path)) in str(e.value)
     assert _tree(repo, outside) == before
     assert json.loads((repo / "roadmap" / "archive" / "index.json").read_text(encoding="utf-8"))["records"]
+
+
+def test_restoring_the_last_record_keeps_an_unrelated_linked_directory(tmp_path: Path) -> None:
+    """The empty-archive cleanup never lists or removes a symlinked directory: the archive directory stays."""
+    repo, outside, rec = _archived(tmp_path)
+    (outside / "empty").mkdir()
+    link = repo / "roadmap" / "archive" / "linked"
+    link.symlink_to(outside / "empty")
+
+    restore_archive(repo, rec["archive_id"])
+
+    assert link.is_symlink() and (outside / "empty").is_dir()
+    assert load_archive_index(repo)["records"] == []

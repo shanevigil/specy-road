@@ -110,18 +110,21 @@ def warn_if_schemas_stale(repo_root: Path) -> None:
 def refresh_schemas(repo_root: Path, *, dry_run: bool = False) -> list[str]:
     """Copy bundled schemas over the consumer's. Returns repo-relative paths written.
 
-    Each destination is checked by the safe-write rule before it is read, dry run
-    included: a symlink at it or at ``schemas/`` raises ``SafeWriteError``.
+    Every destination is checked by the safe-write rule before any is read or
+    written, dry run included: a symlink at one or at ``schemas/`` raises
+    ``SafeWriteError`` with nothing written.
     """
     src_dir = bundled_schemas_dir()
     if not src_dir.is_dir():
         raise ValueError(f"missing bundled schemas at {src_dir}")
     dst_dir = repo_root / SCHEMAS_DIRNAME
+    sources = sorted(src_dir.glob("*.json"))
+    for src in sources:
+        safe_write.check(repo_root, dst_dir / src.name)
     written: list[str] = []
-    for src in sorted(src_dir.glob("*.json")):
+    for src in sources:
         dst = dst_dir / src.name
         rel = f"{SCHEMAS_DIRNAME}/{src.name}"
-        safe_write.check(repo_root, dst)
         if dst.is_file() and _load_comparable(dst) == _load_comparable(src):
             if src.read_text(encoding="utf-8") == dst.read_text(encoding="utf-8"):
                 continue

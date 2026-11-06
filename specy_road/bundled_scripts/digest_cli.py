@@ -21,7 +21,7 @@ from pathlib import Path
 from specy_road import safe_write
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.generated_files import gitignore_resolution_hint
-from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, git_root, resolve_repo_root
 from specy_road.cli_entry import run_forwarded_cli
 
 
@@ -65,16 +65,17 @@ def cmd_digest(ns: argparse.Namespace) -> int:
         print(f"OK: {ns.output} matches the roadmap.")
         return 0
 
-    inside = os.path.normpath(out).startswith(os.path.join(os.path.normpath(root), ""))
-    if inside or not Path(ns.output).is_absolute():
-        try:   # the default, a relative -o, or an absolute one in the checkout: the safe-write rule
-            safe_write.write(root, out, body)
+    checkout = git_root(root) or root   # both resolved; containment is lexical and includes the checkout itself
+    dest = Path(os.path.normpath(out))
+    if Path(ns.output).is_absolute() and not dest.is_relative_to(checkout):
+        out.parent.mkdir(parents=True, exist_ok=True)   # an explicit absolute -o out of the checkout: the person's own
+        out.write_text(body, encoding="utf-8")
+    else:
+        try:   # the default, a relative -o, or an absolute one at or under the checkout: the safe-write rule
+            safe_write.write(checkout, dest, body)
         except safe_write.SafeWriteError as e:
             print(f"error: {e}", file=sys.stderr)
             return 1
-    else:   # an explicit absolute -o out of the checkout is the person's own choice
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(body, encoding="utf-8")
     print(f"Wrote {out} ({len(body.encode('utf-8'))} bytes)")
     return 0
 
@@ -97,7 +98,9 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_OUTPUT,
         metavar="FILE",
         help=f"Where to write it, repo-relative (default: {DEFAULT_OUTPUT}). "
-        "Use - for stdout.",
+        "Use - for stdout. A relative path, or an absolute one at or under the checkout (compared "
+        "lexically with the resolved checkout), refuses any symlink on the way; an absolute path outside the checkout "
+        "is written as given.",
     )
     p.add_argument(
         "--check",
