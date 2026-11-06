@@ -87,7 +87,9 @@
         "CHANGELOG.md",
         "specy_road/bundled_scripts/do_next_task.py",
         "tests/test_do_next_task_pickup.py",
-        "tests/test_enforced_rules_pointers.py"
+        "tests/test_enforced_rules_pointers.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/review_policy_ref.py"
       ],
       "type": "task"
     },
