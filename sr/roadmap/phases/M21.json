@@ -144,10 +144,10 @@
     {
       "acceptance": [
         "Every scratch git call of upgrade (Mirror.build's git init, _dry_run's add and commit) runs with GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE, GIT_COMMON_DIR and GIT_OBJECT_DIRECTORY removed, through one helper in ignore_report.py that ignore_report's own _git also uses; a dry run whose scratch .git was not created exits non-zero without validating",
-        "tests/test_upgrade_preview.py: with GIT_DIR and GIT_WORK_TREE (and separately GIT_INDEX_FILE) pointing at a second repository, run_upgrade(dry_run=True) leaves that repository's HEAD, commit count, index bytes and working files unchanged",
+        "tests/test_upgrade_preview.py has one row per _REPO_ENV name (GIT_DIR with GIT_WORK_TREE, GIT_INDEX_FILE, GIT_COMMON_DIR, GIT_OBJECT_DIRECTORY) pointing at a second repository: run_upgrade(dry_run=True) leaves that repository's HEAD, commit count, object count, index bytes and working files unchanged",
         "A real upgrade whose validate passes writes roadmap-context.md when it is missing or drifted and roadmap.md when it is tracked and drifted, refusing a path that resolves outside the project, prints one wrote line each, and digest --check then reports OK; an untracked roadmap.md is not written, an invalid graph regenerates nothing and keeps the next-step line; --dry-run prints would-write lines and writes nothing in the checkout",
-        "tests/test_upgrade.py covers missing digest, drifted digest after a finished leaf (Quality by area), untracked roadmap.md and invalid graph; upgrade's docstring and docs/install-and-usage.md's upgrade paragraph describe it; CHANGELOG [Unreleased] Fixed. Out of scope: mirror ignore notices (M22.11), missing_work_template_rels (M21.22)",
-        "Estimated net line change (informational, not a gate): package about +45, tests about +90, docs about +4"
+        "tests/test_upgrade.py is one table over: missing digest, drifted digest after a finished leaf (Quality by area), tracked drifted roadmap.md, untracked roadmap.md, invalid graph, roadmap-context.md as a dangling link out of the project and as a link to an existing outside file, and --dry-run on a drifted digest; each row asserts the rendered bytes or the preserved checkout and outside bytes, and the wrote, would-write or refusal line (no wrote line for a refused path); upgrade's docstring and docs/install-and-usage.md's upgrade paragraph describe it; CHANGELOG [Unreleased] Fixed. Out of scope: mirror ignore notices (M22.11), missing_work_template_rels (M21.22)",
+        "Estimated net line change (informational, not a gate): package about +45, tests about +115, docs about +4"
       ],
       "codename": "upgrade-scratch-git-and-regen",
       "dependencies": [],
@@ -171,11 +171,11 @@
     },
     {
       "acceptance": [
-        "One guard beside resolves_outside in managed_block.py (refused_link(root, path, any_link=False)) is used by generated_files.regenerate_generated_files (both names checked before either is written; a refused name is not written, a stderr line names it), init_project._write_generated (a dangling link counts as present via lexists; with --force a refused name is reported skipped with the reason), and review_rejected.write_rejected and review_delegate_packet.ensure_packet (root the reviews dir, any_link=True)",
-        "tests/test_writers_refuse_links_out.py is one table over the writers (init, init --force, regenerate_generated_files, write_rejected, ensure_packet) and the layouts regular file, dangling link out of the root, link to an existing file outside the root, link inside the root: a regular file is written; a link out is left in place and its target is neither created nor changed (bytes compared); a link inside is followed by init and regenerate_generated_files and refused by the two hand-off writers with the target's bytes unchanged",
-        "A refused packet makes review delegate exit non-zero naming the path with no harness started and no RUN-<model>.json; a refused REJECTED marker leaves the review record command's own error and exit code unchanged; existing init, review-rejected and review-packet tests pass unchanged",
+        "One guard beside resolves_outside in managed_block.py (refused_link(root, path, any_link=False)) is used by generated_files.regenerate_generated_files (both names checked before either is written; a refused name is not written, a stderr line names it, and the refused names are returned), finish_land_deterministic._regenerate_generated_files (both names checked before either write; a refused name raises DeterministicResolveError naming the path, so land aborts as for an unloadable graph), init_project._write_generated (a dangling link counts as present via lexists), and review_rejected.write_rejected and review_delegate_packet.ensure_packet (root the reviews dir, any_link=True)",
+        "tests/test_writers_refuse_links_out.py is one table over the writers (init, init --force, regenerate_generated_files, finish's _regenerate_generated_files, write_rejected, ensure_packet) and the layouts regular file, dangling link out of the root, link to an existing file outside the root, link inside the root: init without --force skips both generated outputs when either path already exists (dangling links included) and leaves every target untouched; init --force, regenerate_generated_files and finish write a regular file and an in-root link's target and refuse a link out (init --force lists it skipped with the reason, finish raises); the two hand-off writers write a regular file and refuse every link; a refused link stays in place and its target is neither created nor changed (bytes compared)",
+        "A refused packet makes review delegate exit non-zero naming the path with no harness started and no RUN-<model>.json; a refused REJECTED marker leaves the review record command's own error and exit code unchanged; existing init, finish, review-rejected and review-packet tests pass unchanged",
         "CHANGELOG [Unreleased] Fixed (security). Out of scope: write_review, write_marker, the tripwire, upgrade's own regeneration (M21.16)",
-        "Estimated net line change (informational, not a gate): package about +30, tests about +110"
+        "Estimated net line change (informational, not a gate): package about +35, tests about +125"
       ],
       "codename": "writers-refuse-links-out",
       "dependencies": [],
@@ -193,17 +193,18 @@
         "specy_road/review_rejected.py",
         "specy_road/review_delegate_packet.py",
         "tests/test_writers_refuse_links_out.py",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/finish_land_deterministic.py"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "One predicate in review_deferral.py decides that a deferral is in effect: the marker is shape-valid; the RCA it names exists, is valid, is defer_findings with trigger.round equal to the marker's round, and its deferred_findings equal the marker's items; the decision it names is closed, of kind decision, on this node, with why_now naming that RCA file as recommending defer_findings and an answer starting `Deferred by` that names `from <RCA file>:` and each deferred finding (as review defer's _record writes it); and qualify_deferral still accepts the items",
-        "apply_deferrals, review_next_step.facts (DEFER_APPLIED) and rework_rca.governing_rca use only that predicate; a marker that exists but is not in effect keeps every block counted, gives DEFER_UNAPPLIED with its problem lines, and is never the governing rework design",
-        "Tests: the forging helpers in tests/test_review_defer.py (_forge_closed_deferral) and tests/test_review_deferral_agreement.py (LEDGER) write the entry as review defer writes it, and the agreement table still passes; new negative cases each leave the block in GateResult.blocks and facts not DEFER_APPLIED: an unrelated closed decision on the node, a closed decision on another node, an open decision, a missing RCA file, an RCA with another round or other deferred_findings, and a marker altered after a genuine review defer; the genuine review defer path still removes the block",
+        "One predicate in review_deferral.py decides that a deferral is in effect: the marker is shape-valid; the RCA it names exists, is valid, is defer_findings with trigger.round equal to the marker's round, and its deferred_findings match the marker's items one to one with equal reviewer, finding, category, acceptance_id and input_class and commits that name the same commit (review_target.same_commit; the marker stores the full sha); the decision it names is closed, of kind decision, on this node, with why_now starting `<RCA file> recommends defer_findings` and an answer starting `Deferred by`, naming `from <RCA file>:` and, for each marker item, its reviewer, full commit, finding, category, acceptance_id and input class as review defer's _record writes them; and qualify_deferral still accepts the items",
+        "review defer's _record writes each item's reviewer, full commit, category and acceptance_id into the answer beside its finding and input class (answer text only, no decisions-schema change); apply_deferrals, review_next_step.facts (DEFER_APPLIED) and rework_rca.governing_rca use only the predicate; a marker that exists but is not in effect keeps every block counted, gives DEFER_UNAPPLIED with its problem lines, and is never the governing rework design",
+        "Tests: _forge_closed_deferral (tests/test_review_defer.py, now also writing RCA-<round>.md with the same items) and LEDGER (tests/test_review_deferral_agreement.py) write the entry in _record's shape; the agreement table passes, and tests/test_review_defer_rounds.py's second forge (correctness item on A1) still clears the block while its first (on A2) keeps opus blocked; new negative cases each leave the block in GateResult.blocks and facts not DEFER_APPLIED: an unrelated closed decision on the node, a closed decision on another node, an open decision, a missing RCA, an RCA with another round or other deferred_findings, a marker altered after a genuine review defer, and an RCA plus marker rewritten after a genuine review defer to another reviewer or commit with identical finding text; the genuine review defer path (RCA commit given as a 12-character prefix) still removes the block",
         "docs/orchestration-review.md's deferral paragraph and docs/design-notes/review-loop-rca.md state the binding; CHANGELOG [Unreleased] Fixed (security). review defer stays human-only; out of scope: reading the ledger from the integration ref, a decisions-schema change, qualify_deferral's rule",
-        "Estimated net line change (informational, not a gate): package about +40, tests about +120, docs about +4"
+        "Estimated net line change (informational, not a gate): package about +45, tests about +140, docs about +4"
       ],
       "codename": "deferral-bound-to-its-decision",
       "dependencies": [],
@@ -223,17 +224,18 @@
         "tests/test_review_defer_rounds.py",
         "docs/orchestration-review.md",
         "docs/design-notes/review-loop-rca.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/review_defer.py"
       ],
       "type": "task"
     },
     {
       "acceptance": [
         "_scratch_root rebases symlinks in the copied graph trees onto the scratch copy before yielding (the _rebase_graph_symlinks rule), so apply --dry-run and remove-node --dry-run share it; rehearsal_root reuses it; tests/test_remove_node.py passes unchanged",
-        "archive_ops refuses, before anything moves, a planning sheet whose resolved path is outside the root it archives in (resolves_outside), naming the sheet",
-        "tests/test_roadmap_apply.py via the CLI: apply --dry-run with an archive entry whose planning sheet is an absolute symlink into the live repo, and with one linked outside the repo, and a rehearsal refused by a later entry after an archive entry, each leave every live file present with identical bytes; with an in-repo absolute chunk-directory link (the remove-node in-repo-abs-dir-link layout) apply --dry-run of an edit-node title change exits 0 with live bytes unchanged and the real apply exits 0 and writes through the link",
+        "apply_archive refuses, before anything is written or moved, any planning-sheet source and any archive output (the archive chunk, the archive index, each stored-sheet destination) whose resolved path is outside the root it archives in (resolves_outside), raising ValueError naming the path",
+        "tests/test_roadmap_apply.py via the CLI: apply --dry-run with an archive entry whose planning sheet is an absolute symlink into the live repo exits 0 with every live file present and byte-identical; with that sheet linked outside the repo, and with roadmap/archive linked to an outside directory, it exits non-zero naming the path with the outside bytes and directory entries unchanged; a rehearsal refused by a later entry after an archive entry leaves every live file byte-identical; with an in-repo absolute chunk-directory link (the remove-node in-repo-abs-dir-link layout) apply --dry-run of an edit-node title change exits 0 with live bytes unchanged and the real apply exits 0 and writes through the link",
         "CHANGELOG [Unreleased] Fixed. Out of scope: batch entry semantics, a dry-run rollback snapshot",
-        "Estimated net line change (informational, not a gate): package about +15, tests about +90"
+        "Estimated net line change (informational, not a gate): package about +20, tests about +100"
       ],
       "codename": "apply-dry-run-rebases-links",
       "dependencies": [],
@@ -255,13 +257,16 @@
     },
     {
       "acceptance": [
-        "publish_roadmap regenerates both generated files from the project root (regenerate_generated_files) after its existing checks and before staging, so they are staged with the edits; a graph that does not load or validate is refused with HTTP 400 naming the error before anything is staged; tests/test_pm_publish.py: after a title edit, publish to a bare remote returns 200 with today's response keys and the pushed commit passes export --check and digest --check",
-        "With no remote configured (git remote lists none, or the branch's push remote does not exist) classify_publish_status reports blocked with blocked_reason no_remote and a detail telling how to add one, and POST /api/publish returns 400 with that message; HEAD and the index are unchanged (tested); no raw git error reaches the response",
-        "Response and status keys and types are unchanged and existing publish tests pass; GUI edit routes do not regenerate (the sheet says why); docs/pm-gui.md says Publish regenerates both files and needs a remote; CHANGELOG [Unreleased] Fixed. Out of scope: the frontend, a remote without upstream, push rejection",
-        "Estimated net line change (informational, not a gate): package about +30, tests about +80, docs about +2"
+        "publish_roadmap, after its existing checks and before staging, refuses when no remote is configured, then loads and validates the graph and regenerates both generated files (regenerate_generated_files); a graph that does not load or validate (the loader's SystemExit and validation errors become ValueError) and a generated output regenerate_generated_files refuses (M21.17) each raise ValueError naming the error or path, HTTP 400, with HEAD, the index and the roadmap.md and roadmap-context.md bytes unchanged; after a title edit, publish to a bare remote returns 200 with today's response keys and the pushed commit passes export --check and digest --check",
+        "With no remote configured (git remote lists none, or the branch's push remote does not exist) classify_publish_status reports blocked with blocked_reason no_remote and a detail telling how to add one, and POST /api/publish returns 400 with that message; HEAD, the index and both generated files' bytes are unchanged; no raw git error reaches the response",
+        "tests/test_pm_publish.py tables: invalid-graph rows (a chunk that is not JSON, a missing included chunk, a parseable graph with an unknown dependency) and refused-output rows (roadmap-context.md as a dangling link out and as a link to an existing outside file), each asserting 400 naming the cause, HEAD and index unchanged and outside bytes preserved; the no-remote publish test now expects ValueError/400 with HEAD and index unchanged, and status and publish tests that expect publish eligibility get a local bare remote; their other assertions are unchanged",
+        "Response and status keys and types are unchanged; GUI edit routes do not regenerate (the sheet says why); docs/pm-gui.md says Publish regenerates both files and needs a remote; CHANGELOG [Unreleased] Fixed. Out of scope: the frontend, a remote without upstream, push rejection",
+        "Estimated net line change (informational, not a gate): package about +35, tests about +110, docs about +2"
       ],
       "codename": "gui-publish-regenerates-and-needs-a-remote",
-      "dependencies": [],
+      "dependencies": [
+        "9a8c1f33-60ef-461f-8980-e2c3f7558e2d"
+      ],
       "id": "M21.20",
       "node_key": "4e3b3bad-ced1-4ae6-ae94-cabefd11ec19",
       "parent_id": "M21",
@@ -279,11 +284,11 @@
     },
     {
       "acceptance": [
-        "A non-chore review delegate refuses, before any preflight, harness process or RUN-<model>.json, every reviewer reviewer_command refuses (bypass flags such as `agent --force {prompt}`, --yolo, a line-continued --force; a generic entry with only a profile access.cli), with reviewer_command's reason; the generic profile-cli fallback is gone for non-chore reviewers; a chore reviewer's launch is unchanged (tested)",
-        "One refusal table in the tests runs over both entry points (prompt --channel cli --run, review delegate, and review delegate --resume) with the same reason text and no process started; a clean custom command still launches",
+        "A non-chore review delegate refuses, before any preflight or harness process, every reviewer reviewer_command refuses (bypass flags such as `agent --force {prompt}`, --yolo, a line-continued --force; a generic entry with only a profile access.cli), with reviewer_command's reason; the generic profile-cli fallback is gone for non-chore reviewers; a chore reviewer's launch is unchanged (tested)",
+        "One refusal table in the tests runs over prompt --channel cli --run, review delegate, and review delegate --resume (each resume row first seeds a resumable run) with the same reason text and no process started; a fresh refusal creates no RUN-<model>.json or log file, a resume refusal leaves the seeded RUN and log bytes unchanged; a clean custom command still launches",
         "reported_models splits a str log on \\n only (review_answer.stream_lines); a result line carrying U+2028 inside a string and a model other than the roster's gives check_run mismatch, and the filed record has model_mismatch and does not count (tested)",
         "CHANGELOG [Unreleased] Fixed. Out of scope: Codex reviewer isolation (M22.9), the tripwire, docs (M21.23)",
-        "Estimated net line change (informational, not a gate): package about +10, tests about +60"
+        "Estimated net line change (informational, not a gate): package about +10, tests about +65"
       ],
       "codename": "review-delegate-validates-reviewer-command",
       "dependencies": [],
@@ -317,6 +322,7 @@
       "node_key": "2f2d9e86-82cc-4f64-8926-2e57a9749d38",
       "parent_id": "M21",
       "planned_test_changes": [
+        "removed-test-file: tests/test_roadmap_outline_registry.py",
         "removed-test: tests/test_roadmap_outline_registry.py::test_sync_registry_node_ids_updates_entries"
       ],
       "planning_dir": "planning/M21.22_rc4-small-code-fixes_2f2d9e86-82cc-4f64-8926-2e57a9749d38.md",
@@ -340,8 +346,8 @@
     {
       "acceptance": [
         "docs/install-and-usage.md (refresh-profiles paragraph) and docs/orchestration-models.md (the older-scaffold sentence and the plain refresh-profiles sentence) say the default copies the missing profiles a roster entry names, --profiles all copies every missing shipped profile, --only adds one; init's all default is unchanged",
-        "docs/orchestration-workers.md's Cursor sandbox paragraph names no roster id (composer-2.5, grok-4.7-exec) and no decision id; suggested_prompts/bootstrap-agents-md.md gives the exact start and end markers managed_block.py writes (each found by an exact grep of managed_block.py's strings); docs/orchestration-review.md's delegate step 2 says a claude-code reviewer without channels.cli runs bare or explicit as orchestration-reviewer-output.md describes",
-        "CHANGELOG [Unreleased] Changed records the toolkit file cap 400 to 1000 lines, the 750-line hard alert (warning; --strict-hard-alerts fails) and the dropped per-file overrides; a Fixed bullet lists the doc corrections; docs/whats-new.md and the rc4 CHANGELOG section are not edited (release branch); file-limits and any doc-text tests pass",
+        "docs/orchestration-workers.md's Cursor sandbox paragraph names no roster id (composer-2.5, grok-4.7-exec) and no decision id; suggested_prompts/bootstrap-agents-md.md gives the exact Markdown start and end markers, equal to the rendered managed_block.HTML_COMMENT.start and .end (they are f-strings around _LABEL, so compare the rendered values, not a grep of the source); docs/orchestration-review.md's delegate step 2 says a claude-code reviewer without channels.cli runs bare or explicit as orchestration-reviewer-output.md describes",
+        "CHANGELOG [Unreleased] Changed records the toolkit file cap 400 to 1000 lines, the 750-line hard alert (warning; --strict-hard-alerts fails) and that the per-file overrides that existed only to sit above 400 were dropped (the set_gate_status_fixture function override and the 1100-line proposal override stay); a Fixed bullet lists the doc corrections; docs/whats-new.md and the rc4 CHANGELOG section are not edited (release branch); file-limits and any doc-text tests pass",
         "Estimated net line change (informational, not a gate): docs about +6, CHANGELOG about +8"
       ],
       "codename": "rc4-docs-corrections",
