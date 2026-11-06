@@ -175,7 +175,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.26` | The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model | task | — | Not Started |
 | `M21.27` | review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer | task | — | Not Started |
 | `M21.28` | finish-this-task refuses an invalid configuration before any bookkeeping write and never leaves a half-mutated tree | task | — | Not Started |
-| `M21.29` | worker terminate also ends processes the harness started in their own session | task | — | Not Started |
+| `M21.29` | worker terminate also ends processes the harness started in their own session | task | — | Complete |
 | `M22` | rc5 fixes: defects found while preparing rc5 | phase | — | Not Started |
 | `M22.1` | group-nodes accepts a new parent id held by one of the nodes it groups | task | — | Not Started |
 | `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Not Started |

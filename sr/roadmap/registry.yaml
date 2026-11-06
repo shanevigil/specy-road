@@ -177,15 +177,3 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: terminate-ends-escaped-descendants
-    node_id: M21.29
-    branch: feature/rm-terminate-ends-escaped-descendants
-    touch_zones:
-      - specy_road/worker_process.py
-      - tests/test_worker_terminate_descendants.py
-      - CHANGELOG.md
-      - docs/orchestration-workers.md
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-06T05:12:28+00:00'

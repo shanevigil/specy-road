@@ -114,7 +114,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.26` The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model `gate-excludes-ready-authors` — task — **Not Started**
   - `M21.27` review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer `filings-take-the-review-lock` — task — **Not Started**
   - `M21.28` finish-this-task refuses an invalid configuration before any bookkeeping write and never leaves a half-mutated tree `finish-validates-before-bookkeeping` — task — **Not Started**
-  - `M21.29` worker terminate also ends processes the harness started in their own session `terminate-ends-escaped-descendants` — task — **Not Started**
+  - `M21.29` worker terminate also ends processes the harness started in their own session `terminate-ends-escaped-descendants` — task — **Complete**
 - `M22` rc5 fixes: defects found while preparing rc5 `rc5-fixes` — phase — **Not Started**
   - `M22.1` group-nodes accepts a new parent id held by one of the nodes it groups `group-into-member-id` — task — **Not Started**
   - `M22.2` A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet `move-rewrites-sheet-zones` — task — **Not Started**
@@ -269,7 +269,6 @@ Do not pick these up.
 - `M21.24` on `feature/rm-claude-reviewer-schema-and-error` since 2026-11-05
 - `M21.27` on `feature/rm-filings-take-the-review-lock` since 2026-11-05
 - `M21.28` on `feature/rm-finish-validates-before-bookkeeping` since 2026-11-05
-- `M21.29` on `feature/rm-terminate-ends-escaped-descendants` since 2026-11-05
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
