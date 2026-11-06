@@ -121,7 +121,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.33` The brainstorm skill makes `specy-road brainstorm start` the first tool call, alone in its turn, in every harness's shipped copy `brainstorm-start-is-the-first-call-alone` — task — **Complete**
   - `M21.34` Context regression CR2 asks for a README section the todo app supports, and passes a README-only commit on the agent's own worktree branch `cr2-case-fits-the-todo-app` — task — **Complete**
   - `M21.35` review delegate gives a refused reviewer answer one repair turn with the refusal text, and the reviewer prompt ends with the notes rules `refused-review-gets-one-repair-turn` — task — **Not Started**
-  - `M21.36` brainstorm verify matches a quote across citation markers, typographic quotes and apostrophes, dashes, non-breaking spaces and soft hyphens `verify-normalizes-real-page-text` — task — **Not Started**
+  - `M21.36` brainstorm verify matches a quote across citation markers, typographic quotes and apostrophes, dashes, non-breaking spaces and soft hyphens `verify-normalizes-real-page-text` — task — **Complete**
 - `M22` rc5 fixes: defects found while preparing rc5 `rc5-fixes` — phase — **Not Started**
   - `M22.1` group-nodes accepts a new parent id held by one of the nodes it groups `group-into-member-id` — task — **Not Started**
   - `M22.2` A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet `move-rewrites-sheet-zones` — task — **Not Started**
@@ -273,7 +273,6 @@ Do not pick these up.
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.30` on `feature/rm-review-policy-pinned-at-claim` since 2026-11-05
 - `M21.35` on `feature/rm-refused-review-gets-one-repair-turn` since 2026-11-06
-- `M21.36` on `feature/rm-verify-normalizes-real-page-text` since 2026-11-06
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
