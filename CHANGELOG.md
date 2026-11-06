@@ -13,6 +13,16 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `specy-road review delegate` no longer loses a review to one refused
+  answer: when `review record` refuses it, the reviewer gets one repair turn
+  carrying `review record`'s whole output and the notes rules, checked for
+  writes and model like the first. A second refusal leaves the run incomplete,
+  naming both; `RUN-<model>.json` keeps the first as `refusal`, and `--resume`
+  of that incomplete run sends the repair prompt instead of the continue
+  prompt. The reviewer prompt now ends, right before the JSON schema, with the
+  approve-notes rules in operational form (one observation per line, each
+  with `not a defect because <reason>` or a `required_changes` entry); the
+  rule itself is unchanged.
 - `finish-this-task` runs `validate` before its first bookkeeping write, so an
   invalid configuration (for example `policy.reviewers_required: 1` with
   `require_implementation_review_before_finish: false`) is refused with

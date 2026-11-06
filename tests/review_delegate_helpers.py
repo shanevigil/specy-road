@@ -20,13 +20,18 @@ from specy_road import review_record_write
 from specy_road.bundled_scripts import review_cli, role_prompt, role_prompt_cli, role_prompt_stream
 from specy_road.review_files import reviews_dir
 
-# Each call takes the next step of the spec; the call's argv is appended to `calls`.
+# Each call takes the next step of the spec (one answer per turn); the call's argv is appended to `calls`, and the
+# text of the prompt file it was given (argv[2], when it is a file) to `prompts`.
 FAKE = '''
 import json, os, sys
 spec = json.loads(open(sys.argv[1]).read())
 calls = json.loads(open(spec["calls"]).read()) if os.path.exists(spec["calls"]) else []
 calls.append(sys.argv[2:])
 open(spec["calls"], "w").write(json.dumps(calls))
+if spec.get("prompts"):   # the prompt this launch received, read as it launched
+    prompts = json.loads(open(spec["prompts"]).read()) if os.path.exists(spec["prompts"]) else []
+    prompts.append(open(sys.argv[2]).read() if len(sys.argv) > 2 and os.path.isfile(sys.argv[2]) else None)
+    open(spec["prompts"], "w").write(json.dumps(prompts))
 step = spec["steps"][min(len(calls), len(spec["steps"])) - 1]
 sid = sys.argv[-1]
 for ln in step.get("preamble", []):   # raw lines before the stream (a forged marker, stray text)
@@ -92,11 +97,17 @@ def delegate_repo(tmp_path: Path, roster: str | None = None) -> tuple[Path, Path
 
 
 def set_steps(repo: Path, spec: Path, *steps: dict) -> None:
-    spec.write_text(json.dumps({"calls": str(spec.with_name("calls.json")), "steps": list(steps)}))
+    spec.write_text(json.dumps({"calls": str(spec.with_name("calls.json")), "prompts": str(spec.with_name("prompts.json")),
+                                "steps": list(steps)}))
 
 
 def fake_calls(spec: Path) -> list[list[str]]:
     return json.loads(spec.with_name("calls.json").read_text())
+
+
+def fake_prompts(spec: Path) -> list[str | None]:
+    """The prompt text each launch received, in launch order (M21.35)."""
+    return json.loads(spec.with_name("prompts.json").read_text())
 
 
 def launches(calls: list[list[str]], flag: str) -> list[list[str]]:
