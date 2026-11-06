@@ -13,6 +13,14 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `specy-road review delegate` and `prompt --channel cli` read a reviewer's
+  answer when narration precedes it: for a text final message (Cursor's or
+  Claude Code's `result` text, Codex's `agent_message` or `-o` file) the answer
+  is the last top-level JSON object, which must end the message and still pass
+  the review output schema. Text after it, an unfinished object, excessive
+  nesting or no object is a rerun request naming the cause; an earlier valid
+  object is never used instead. The `generic` / `agy` envelope path is
+  unchanged.
 - `review record` and the human approval of `mark-implementation-reviewed` take
   the leaf's review lock: they wait up to 10 seconds for another filing and
   refuse, writing nothing, while a `review delegate` or `prompt --channel cli

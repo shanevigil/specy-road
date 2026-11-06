@@ -110,7 +110,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.22` Small rc4 code fixes: adapter docstring, dead outline writers, pickup hint ignored, land: local wording, unused upgrade helper `rc4-small-code-fixes` — task — **Complete**
   - `M21.23` rc4 doc corrections on WIP: refresh-profiles default, no private roster ids, exact managed-block markers, reviewer mode, file-cap CHANGELOG entry `rc4-docs-corrections` — task — **Complete**
   - `M21.24` review delegate runs a Claude Code reviewer: the inline --json-schema carries no $schema, and a failed run names the harness's error `claude-reviewer-schema-and-error` — task — **Complete**
-  - `M21.25` review delegate reads a reviewer's answer when narration precedes its final JSON object `reviewer-answer-after-prose` — task — **Not Started**
+  - `M21.25` review delegate reads a reviewer's answer when narration precedes its final JSON object `reviewer-answer-after-prose` — task — **Complete**
   - `M21.26` The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model `gate-excludes-ready-authors` — task — **Complete**
   - `M21.27` review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer `filings-take-the-review-lock` — task — **Complete**
   - `M21.28` finish-this-task refuses an invalid configuration before any bookkeeping write and never leaves a half-mutated tree `finish-validates-before-bookkeeping` — task — **Not Started**
@@ -267,7 +267,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M21.25` on `feature/rm-reviewer-answer-after-prose` since 2026-11-05
 - `M21.28` on `feature/rm-finish-validates-before-bookkeeping` since 2026-11-05
 - `M21.33` on `feature/rm-brainstorm-start-is-the-first-call-alone` since 2026-11-05
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
@@ -278,11 +277,11 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 30 | 0 | 3.70 | 60% | 34 | 4 |
+| `docs` **flagged** | 30 | 0 | 3.60 | 60% | 34 | 4 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 47 | 0 | 3.57 | 62% | 50 | 7 |
-| `tests` **flagged** | 49 | 0 | 3.51 | 61% | 50 | 7 |
-| `CHANGELOG.md` | 18 | 0 | 1.67 | 22% | 16 | 0 |
+| `specy_road` **flagged** | 47 | 0 | 3.51 | 62% | 50 | 7 |
+| `tests` **flagged** | 49 | 0 | 3.45 | 61% | 50 | 7 |
+| `CHANGELOG.md` | 19 | 0 | 1.74 | 26% | 16 | 0 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `suggested_prompts` | 1 | 0 | 1.00 | 0% | 0 | 0 |
 
