@@ -6,6 +6,7 @@ parsed batch. Also :func:`id_map_lines`, the ``--dry-run`` id map.
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 import yaml
@@ -16,18 +17,22 @@ APPLY_OPS = (
     "add-node", "edit-node", "add-dependency",
     "move-node", "group-nodes", "indent", "outdent", "remove-node", "archive",
 )
-# Restructure ops take only these fields; each command's parser then refuses
-# the ones it does not take (``to_parent`` on ``indent``, say).
+# Restructure ops take only these fields, of the options their command has.
 RESTRUCTURE_FIELDS = (
     "node", "nodes", "to_parent", "into_new", "title", "type", "id",
     "fill_gaps", "rewrite_refs",
 )
 # Node field names read naturally in a change file; the CLI flags are singular.
 _OPTION_ALIASES = {"dependencies": "dependency", "touch_zones": "touch-zone"}
+# Fields that fill a command's positionals, in order (default: ``node``).
+_POSITIONALS = {"add-node": (), "add-dependency": ("node", "dependency"), "group-nodes": ("nodes",)}
 
 
-def _option_argv(key: str, value: object) -> list[str]:
-    flag = "--" + _OPTION_ALIASES.get(key, key).replace("_", "-")
+def _flag(key: str) -> str:
+    return "--" + _OPTION_ALIASES.get(key, key).replace("_", "-")
+
+
+def _option_argv(flag: str, value: object) -> list[str]:
     if isinstance(value, bool):
         return [flag] if value else []
     if value is None:
@@ -38,37 +43,44 @@ def _option_argv(key: str, value: object) -> list[str]:
     return [part for item in items for part in (flag, str(item))]
 
 
-def _restructure_argv(op: str, rest: dict) -> list[str]:
-    """Positionals and options for a move, group, removal or archive entry."""
-    unknown = sorted(set(rest) - set(RESTRUCTURE_FIELDS))
-    if unknown:
-        raise ValueError(
-            f"{op} does not take {', '.join(unknown)} "
-            f"(fields: {', '.join(RESTRUCTURE_FIELDS)})"
-        )
-    if op == "group-nodes":
-        ids = rest.pop("nodes", None)
-        if not isinstance(ids, list) or not ids:
-            raise ValueError("group-nodes needs nodes: a list of sibling ids")
-        argv = [str(x) for x in ids]
+def _command(op: str) -> tuple[argparse.ArgumentParser, list[str], set[str]]:
+    """The parser ``op`` goes through, the argv prefix naming its subcommand, and its flags.
+
+    ``move-node`` has a parser of its own with no subcommand; ``indent``,
+    ``outdent`` and ``group-nodes`` share ``roadmap_outline_group``'s, and
+    ``archive`` is ``archive_cli``'s. The rest are ``roadmap_crud``'s. The flags
+    are the long options of the command itself, ``--help`` excepted.
+    """
+    if op == "move-node":
+        from specy_road.bundled_scripts.roadmap_move_node import build_parser
+    elif op in ("indent", "outdent", "group-nodes"):
+        from specy_road.bundled_scripts.roadmap_outline_group import build_parser
+    elif op == "archive":
+        from specy_road.bundled_scripts.archive_cli import build_parser
     else:
-        if rest.get("node") in (None, ""):
-            raise ValueError(f"{op} needs node:")
-        argv = [str(rest.pop("node"))]
-    for k, v in rest.items():
-        argv += _option_argv(k, v)
-    return argv
+        from specy_road.bundled_scripts.roadmap_crud_argparse import build_parser
+    parser = build_parser()
+    prefix = [] if op == "move-node" else [op]
+    cmd = parser
+    if prefix:
+        subs = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
+        cmd = subs.choices[op]
+    flags = {s for s in cmd._option_string_actions if s.startswith("--")} - {"--help"}
+    return parser, prefix, flags
 
 
-def _crud_argv(op: str, rest: dict) -> list[str]:
-    """Positionals and options for an ``add-node``, ``edit-node`` or ``add-dependency`` entry."""
+def _positional_argv(op: str, rest: dict) -> list[str]:
     argv: list[str] = []
-    if op != "add-node":
-        positional = ["node"] + (["dependency"] if op == "add-dependency" else [])
-        for key in positional:
-            if rest.get(key) in (None, ""):
-                raise ValueError(f"{op} needs {key}:")
-            argv.append(str(rest.pop(key)))
+    for key in _POSITIONALS.get(op, ("node",)):
+        value = rest.pop(key, None)
+        if key == "nodes":
+            if not isinstance(value, list) or not value:
+                raise ValueError("group-nodes needs nodes: a list of sibling ids")
+            argv += [str(x) for x in value]
+        elif value in (None, ""):
+            raise ValueError(f"{op} needs {key}:")
+        else:
+            argv.append(str(value))
     if op == "edit-node":
         sets = rest.pop("set", None)
         if not isinstance(sets, dict) or not sets:
@@ -76,42 +88,36 @@ def _crud_argv(op: str, rest: dict) -> list[str]:
         for k, v in sets.items():
             for item in v if isinstance(v, list) else [v]:
                 argv += ["--set", f"{k}={'' if item is None else item}"]
-    for k, v in rest.items():
-        argv += _option_argv(k, v)
     return argv
 
 
-def _entry_argv(entry: object) -> list[str]:
-    """The command line one change-file entry stands for, subcommand first."""
+def _parse_entry(entry: object) -> object:
+    """One change-file entry as its command's parsed arguments.
+
+    One rule for every field after the positionals: its name must be a long
+    option of the entry's own command (and, for the restructure ops, one of
+    ``RESTRUCTURE_FIELDS``). It is checked by name before its value is turned
+    into argv, so a ``false``, ``null`` or ``[]`` value, which adds no argv,
+    cannot slip an unknown field past the parser. The parser then checks values.
+    """
     if not isinstance(entry, dict) or entry.get("op") not in APPLY_OPS:
         raise ValueError(f"each change needs op: one of {', '.join(APPLY_OPS)}")
     op = entry["op"]
+    parser, argv, flags = _command(op)
     rest = {k: v for k, v in entry.items() if k != "op"}
-    if APPLY_OPS.index(op) >= APPLY_OPS.index("move-node"):
-        return [op, *_restructure_argv(op, rest)]
-    return [op, *_crud_argv(op, rest)]
-
-
-def _parse_entry(argv: list[str]) -> object:
-    """``argv`` through the parser of the command it names.
-
-    ``move-node`` has a parser of its own with no subcommand; ``indent``,
-    ``outdent`` and ``group-nodes`` share ``roadmap_outline_group``'s, and
-    ``archive`` is ``archive_cli``'s. The rest are ``roadmap_crud``'s.
-    """
-    op = argv[0]
-    if op == "move-node":
-        from specy_road.bundled_scripts.roadmap_move_node import build_parser
-
-        ns = build_parser().parse_args(argv[1:])
-    else:
-        if op in ("indent", "outdent", "group-nodes"):
-            from specy_road.bundled_scripts.roadmap_outline_group import build_parser
-        elif op == "archive":
-            from specy_road.bundled_scripts.archive_cli import build_parser
-        else:
-            from specy_road.bundled_scripts.roadmap_crud_argparse import build_parser
-        ns = build_parser().parse_args(argv)
+    argv = argv + _positional_argv(op, rest)
+    restructure = APPLY_OPS.index(op) >= APPLY_OPS.index("move-node")
+    fields = sorted(k for k in {f[2:].replace("-", "_") for f in flags} | set(_OPTION_ALIASES)
+                    if _flag(k) in flags and (not restructure or k in RESTRUCTURE_FIELDS))
+    for key, value in rest.items():
+        if key not in fields:
+            taken = ", ".join(fields) or "none"
+            raise ValueError(f"not a valid {op}: no field {key!r} (its options: {taken})")
+        argv += _option_argv(_flag(key), value)
+    try:
+        ns = parser.parse_args(argv)
+    except SystemExit:
+        raise ValueError(f"not a valid {op} (usage above)") from None
     ns.apply_op = op
     return ns
 
@@ -119,7 +125,7 @@ def _parse_entry(argv: list[str]) -> object:
 def parse_change_file(path: Path) -> list[object]:
     """Parse every entry before anything runs, so a malformed one changes nothing.
 
-    Each entry goes through its own command's parser: an option the command
+    Each entry goes through its own command's parser: a field the command
     does not take, a bad ``type``, a missing ``title`` are refused here.
     """
     try:
@@ -132,12 +138,9 @@ def parse_change_file(path: Path) -> list[object]:
     out: list[object] = []
     for i, entry in enumerate(entries, 1):
         try:
-            argv = _entry_argv(entry)
-            out.append(_parse_entry(argv))
+            out.append(_parse_entry(entry))
         except ValueError as e:
             raise ValueError(f"change {i}: {e}") from None
-        except SystemExit:
-            raise ValueError(f"change {i}: not a valid {argv[0]} (usage above)") from None
     return out
 
 

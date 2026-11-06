@@ -160,12 +160,19 @@ def test_a_dependency_cycle_is_refused_as_a_whole(repo: Path) -> None:
         ("- op: edit-node\n  node: M99.1\n", "change 2: edit-node needs set:"),
         ("- op: add-node\n  id: M99.3\n  type: task\n  title: T\n  parent_id: M99\n  colour: red\n",
          "change 2: not a valid add-node"),
+        # A value that adds no argv (false, null, []) is still a field to check.
+        *[(f"- op: add-node\n  id: M99.3\n  type: task\n  title: T\n  parent_id: M99\n  colour: {v}\n",
+           "change 2: not a valid add-node: no field 'colour'") for v in ("false", "null", "[]")],
+        ("- op: edit-node\n  node: M99.1\n  set: {title: X}\n  colour: false\n",
+         "change 2: not a valid edit-node: no field 'colour'"),
         # move-node's parser takes --index, but a change file does not.
         ("- op: move-node\n  node: M99.1\n  to_parent: M99\n  index: 0\n",
-         "change 2: move-node does not take index"),
-        ("- op: indent\n  node: M99.2\n  to_parent: M99\n", "change 2: not a valid indent"),
+         "change 2: not a valid move-node: no field 'index'"),
+        # to_parent is a restructure field, but not one indent takes.
+        ("- op: indent\n  node: M99.2\n  to_parent: false\n",
+         "change 2: not a valid indent: no field 'to_parent'"),
         ("- op: group-nodes\n  into_new: M99.5\n  title: G\n", "change 2: group-nodes needs nodes:"),
-        ("- op: archive\n  node: M99.1\n  deep: true\n", "change 2: archive does not take deep"),
+        ("- op: archive\n  node: M99.1\n  deep: false\n", "change 2: not a valid archive: no field 'deep'"),
     ],
 )
 def test_a_malformed_entry_is_refused_before_anything_runs(
