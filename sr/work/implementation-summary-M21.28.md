@@ -50,6 +50,14 @@ Class: a write destination that is not a regular file. Round 1 found a missing s
   - The reviews root itself, which is the base for the reviews copy, is not checked component by component.
   - The rule checks every destination whatever the `on_complete` mode, so it can refuse a stray FIFO at `work/pr-body-<NODE>.md` even in merge mode.
 
+## Fix round 4 (review gpt-6.1-sol-low, R1 and R2)
+
+**R1 class: index entries that finish's staging reaches but the snapshot did not list.** `git add <dir>` stages every entry under a directory, including ones deleted on disk, so a snapshot built from the files on disk can never bound it. I removed the class rather than adding paths. `snapshot_pre_commit` now records the whole index file (`git rev-parse --git-path index`, which is per worktree and honours `GIT_INDEX_FILE`), and `restore_pre_commit` writes those exact bytes back (written beside the index and renamed into place). The per-path `ls-files`/`update-index` records, and the `../` index branch, are gone. Restoring the pre-run index, never HEAD, still keeps a user's staged edits. This is the only index writer between the snapshot and the commit, since the finish lock is held.
+
+**R2 class: destination inspection failing, or a non-directory on the way.** `irregular_destination` is now one rule. Walking from the base with `lstat`, each component must be absent (the walk ends, because finish creates it) or the expected kind: a directory on the way, a regular file at the end. The `_KINDS` table names what it actually is. A symlink, a regular file where a directory belongs, a directory/FIFO/socket/device at the end, or an `lstat` error (named) all refuse. Anything else that can fail before the guarded body, namely computing the snapshot paths and reading the files and index, now refuses through the same exit path, `_nothing_changed`, which the destination refusal and the preflight validate also use: `error: …` then `finish-this-task: nothing was changed`, exit 1.
+
+**Limit:** errors other than `OSError`, `subprocess.SubprocessError` and (at snapshot time only) `RuntimeError` are outside A3's bound. `RuntimeError` is caught at snapshot time because Python < 3.13 raises it for a symlink loop. The snapshot walks the same `removal_target` as cleanup, so a looping brief is refused before any write instead of failing mid-cleanup.
+
 ## Probes
 
 - `_maybe_write_pr_body` writes `work/pr-body-<NODE>.md`: in the snapshot (unchanged).
@@ -75,10 +83,19 @@ Class: a write destination that is not a regular file. Round 1 found a missing s
 - Fix round 3: the round-2 probes (symlinked registry, symlinked `work/` directory, link out of the repo) now meet the precondition. A symlink at the path or at any directory under the base refuses, so nothing is written behind a link and the round-2 real-path rule is gone.
 - Fix round 3: existing tests with symlinks (`test_finish_merge_failure_undo` symlinked brief, `test_finish_work_cleanup`, `test_writers_refuse_links_out`) either use cleanup sources, which are outside the rule, or call the helpers directly. All still pass.
 
+- Fix round 4, R1: tracked worker logs (`track_worker_logs: full`), with `a.log` deleted on disk and `b.log` present, so the log directory is staged, then the commit is refused. The index (still holding `a.log`), worktree and HEAD are as before. The public-entry row fails without the fix and passes with it.
+- Fix round 4, R1: the other index writers before the commit are `git add` of the chunk, registry, generated files, cleanup removals and summary moves, plus anything a pre-commit hook stages. The whole-index restore covers all of them. The existing commit-refusal rows (staged and unstaged brief, tracked and untracked summary) still pass.
+- Fix round 4, R1: the index location. From a nested project root (`sr/`), `git rev-parse --git-path index` returns `../.git/index`, relative to the root and resolved by `root / …`. From a linked worktree it returns the absolute per-worktree index. With `GIT_INDEX_FILE` set, it returns that path.
+- Fix round 4, R2: `work/done` as a regular file. Finish is refused before any write with `work/done is a regular file, not a directory`, and worktree, index and HEAD are unchanged. The public-entry row fails without the fix (it previously raised `NotADirectoryError` with a traceback) and passes with it.
+- Fix round 4, R2: an unreadable directory on the way (`chmod 000 work/done`) gives `… cannot be inspected (Permission denied), not a regular file`, with no traceback.
+- Fix round 4, R2: a brief that is a symlink loop (a cleanup source, outside the destination rule), through finish's public entry: exit 1, `could not record the tree before writing: RuntimeError: Symlink loop …`, `nothing was changed`, no traceback, and status and HEAD unchanged.
+- Fix round 4, R2: the other pre-guard steps. `write_destinations` reads the manifest, which `_resolve_main_context` already loaded, and `reviews_root` does not raise. Both run inside or before the new clean-exit path.
+
 ## Verification
 
 - `pytest tests/test_finish_config_preflight.py`: 6 passed. With the package changes reverted, all rows failed. With only fix round 1 reverted, the 2 summary rows failed.
 - Fix round 2: `pytest tests/test_finish_config_preflight.py`: 7 passed. With fix round 2 reverted, the link row failed.
+- Fix round 4: `pytest tests/test_finish_config_preflight.py`: 12 passed. With round 4 reverted, the `file-as-parent` and `commit-worker-log-deleted-on-disk` rows failed. Full suite `pytest -n 4`: 5,691 passed. ruff and file-limits pass (`finish_bookkeeping_undo.py` at 400 lines).
 - Fix round 3: `pytest tests/test_finish_config_preflight.py`: 10 passed. With round 3 reverted, the 4 rule rows failed. The full suite (`pytest -n 4`, 5,529 passed) ran before the last consolidation, which rebuilt `pre_commit_paths` on `write_destinations` and fixed the 400-line cap. After it, the targeted finish, nested-repo, gate and writer-link tests passed (230), as did ruff and file-limits.
 - Fix round 1: `pytest -n 4` over the preflight, `test_finish_*`, nested-repo finish and land, gate-agreement and file-limits tests: 199 passed.
 - `pytest -n 4` (full suite): 5460 passed.
@@ -110,3 +127,9 @@ Class: a write destination that is not a regular file. Round 1 found a missing s
 - Test helper `_state` (fix round 1): also compares ignored files under `work/`, so the `work/reviews/` copy is checked. Each summary row also asserts that cleanup actually wrote its destination before the refusal.
 - Branch in `snapshot_pre_commit` and `restore_pre_commit` (fix round 1): index records only for paths inside the worktree, because the main checkout's reviews directory has no index entry here.
 - Mocks: the injection script patches the public `subprocess.check_call` (raising `CalledProcessError(3, argv)` for one named specy-road command) and `finish_task.write_registry` (raising `OSError`). The commit row uses a real pre-commit hook.
+- Fix round 4: the whole-index snapshot (`PreCommitSnapshot.index_path` and `index_bytes`) and its restore, which replace the per-path index records, the `ls-files` call and the `../` branch (R1).
+- Fix round 4: `irregular_destination` rewritten as one expected-kind rule, using the `_KINDS` table (which replaces `_IRREGULAR`) and an `OSError` branch that names the error (R2).
+- Fix round 4: `_nothing_changed`, the one exit path for every refusal before a write (destinations, preflight validate, snapshot). It consolidates three copies of the print-and-exit (R2).
+- Fix round 4: the snapshot in `bookkeeping_guard` is wrapped so that its `OSError`, `SubprocessError` or symlink-loop `RuntimeError` refuses cleanly (R2).
+- Fix round 4: test row `file-as-parent` in `test_refused_before_any_write` (R2).
+- Fix round 4: test row `commit-worker-log-deleted-on-disk` in `test_failure_before_the_commit_restores_the_tree`. The table's string `setup` branches became arrange functions (`_tracked_summary`, `_untracked_summary`, `_worker_log_deleted_on_disk`) with a `wrote` column, so the new row adds no branch (R1).

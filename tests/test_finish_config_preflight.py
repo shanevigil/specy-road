@@ -109,6 +109,10 @@ def _fifo(repo: Path, tmp_path: Path) -> None:
     os.mkfifo(repo / "work" / "pr-body-M1.1.md")
 
 
+def _file_where_a_directory_belongs(repo: Path, tmp_path: Path) -> None:
+    (repo / "work" / "done").write_text("not a directory\n")
+
+
 @pytest.mark.parametrize(
     ("arrange", "named"),
     [
@@ -119,8 +123,9 @@ def _fifo(repo: Path, tmp_path: Path) -> None:
         (_link_in_repo, "roadmap.md is a symlink (to payload.md)"),
         (_link_out_of_repo, "roadmap-context.md is a symlink (to "),
         (_fifo, "work/pr-body-M1.1.md is a FIFO"),
+        (_file_where_a_directory_belongs, "work/done is a regular file, not a directory"),
     ],
-    ids=["invalid-configuration", "directory", "symlink-in-repo", "symlink-out-of-repo", "fifo"],
+    ids=["invalid-configuration", "directory", "symlink-in-repo", "symlink-out-of-repo", "fifo", "file-as-parent"],
 )
 def test_refused_before_any_write(tmp_path: Path, monkeypatch, arrange, named: str) -> None:
     """Exit 1 naming the path and what it is, nothing changed: worktree, index, HEAD (and a link's target)."""
@@ -143,29 +148,50 @@ COMMIT_REFUSED = "`git commit -m chore(rm-thing): complete, deregister` exited 1
 SUMMARY = "work/implementation-summary-M1.1.md"
 
 
+def _tracked_summary(repo: Path) -> None:
+    """A tracked summary is moved over an existing work/done/ copy with other bytes."""
+    commit_file(repo, SUMMARY, "# summary M1.1\n", "summary")
+    (repo / "work" / "done").mkdir()
+    (repo / "work" / "done" / "implementation-summary-M1.1.md").write_text("# an older archive\n")
+
+
+def _untracked_summary(repo: Path) -> None:
+    """An untracked summary is copied into work/reviews/M1.1/, absent before."""
+    (repo / SUMMARY).write_text("# summary M1.1, never committed\n")
+
+
+def _worker_log_deleted_on_disk(repo: Path) -> None:
+    """Logs are tracked; one is deleted on disk but still in the index, and ``git add`` stages their directory."""
+    workflow = (repo / "roadmap" / "git-workflow.yaml").read_text()
+    commit_file(repo, "roadmap/git-workflow.yaml", workflow + "track_worker_logs: full\n", "track logs")
+    commit_file(repo, "work/worker-logs/M1.1/a.log", "a\n", "log a")
+    commit_file(repo, "work/worker-logs/M1.1/b.log", "b\n", "log b")
+    (repo / "work" / "worker-logs" / "M1.1" / "a.log").unlink()
+
+
 @pytest.mark.parametrize(
-    ("inject", "named", "setup"),
+    ("inject", "named", "arrange", "wrote"),
     [
-        ("validate", "`specy-road validate --repo-root", None),
-        ("digest", "`specy-road digest --repo-root", None),
-        ("registry", "registry.yaml", None),
-        # A tracked summary is moved over an existing work/done/ copy with other bytes.
-        ("commit", COMMIT_REFUSED, "tracked"),
-        # An untracked summary is copied into work/reviews/M1.1/, absent before.
-        ("commit", COMMIT_REFUSED, "untracked"),
+        ("validate", "`specy-road validate --repo-root", None, None),
+        ("digest", "`specy-road digest --repo-root", None, None),
+        ("registry", "registry.yaml", None, None),
+        ("commit", COMMIT_REFUSED, _tracked_summary, "[ok] archived"),
+        ("commit", COMMIT_REFUSED, _untracked_summary, "kept a copy at"),
+        ("commit", COMMIT_REFUSED, _worker_log_deleted_on_disk, None),
     ],
+    ids=["validate", "digest", "registry", "commit-tracked-summary", "commit-untracked-summary",
+         "commit-worker-log-deleted-on-disk"],
 )
 def test_failure_before_the_commit_restores_the_tree(
-    tmp_path: Path, monkeypatch, inject: str, named: str, setup: str | None,
+    tmp_path: Path, monkeypatch, inject: str, named: str, arrange, wrote: str | None,
 ) -> None:
-    """A3/A4: each refusal restores worktree bytes, index and HEAD, and reports cleanly."""
+    """A3/A4: each refusal restores worktree bytes, the index file and HEAD, and reports cleanly.
+
+    ``wrote`` is what finish printed when it wrote that row's destination before the refusal.
+    """
     repo = _repo(tmp_path, monkeypatch)
-    if setup == "tracked":
-        commit_file(repo, SUMMARY, "# summary M1.1\n", "summary")
-        (repo / "work" / "done").mkdir()
-        (repo / "work" / "done" / "implementation-summary-M1.1.md").write_text("# an older archive\n")
-    elif setup == "untracked":
-        (repo / SUMMARY).write_text("# summary M1.1, never committed\n")
+    if arrange is not None:
+        arrange(repo)
     if inject == "commit":
         hook = Path(git(repo, "rev-parse", "--git-path", "hooks/pre-commit"))
         hook = hook if hook.is_absolute() else repo / hook
@@ -188,6 +214,5 @@ def test_failure_before_the_commit_restores_the_tree(
     assert "could not restore" not in result.stderr, out
     assert "Traceback" not in result.stderr, out
     assert "[ok] bookkeeping committed" not in out
-    if setup in ("tracked", "untracked"):   # cleanup wrote the destination before the commit was refused
-        assert {"tracked": "[ok] archived", "untracked": "kept a copy at"}[setup] in out, out
+    assert wrote is None or wrote in out, out
     assert _state(repo) == before
