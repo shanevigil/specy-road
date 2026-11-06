@@ -1,0 +1,52 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "finish-this-task runs validate before its first bookkeeping write (status -> Complete); on failure it prints validate's own error lines and 'finish-this-task: nothing was changed', exits 1 with no Python traceback, and git status --porcelain, the index and HEAD are as before",
+        "A validate, export or digest failure (or any exception) after the bookkeeping writes and before the bookkeeping commit restores the chunk, rolled-up ancestor and registry files it wrote, prints the failing command and 'nothing was committed; fix it and run finish-this-task again', and exits 1 with no traceback",
+        "tests/test_finish_config_preflight.py: require_implementation_review_before_finish false with policy.reviewers_required 1 (the rc4 configuration) -> exit 1, message names the fix, no 'Traceback' in stderr, porcelain and registry entry unchanged; an export failure injected after the status write -> files restored, exit 1, no traceback; existing finish tests pass unchanged",
+        "CHANGELOG [Unreleased] Fixed. Out of scope: the gate-agreement rule, the merge-landing undo after the commit (M15.40), landing modules (M22.10)",
+        "Estimated net line change (informational, not a gate): package about +25, tests about +90"
+      ],
+      "codename": "finish-validates-before-bookkeeping",
+      "dependencies": [],
+      "id": "M21.28",
+      "node_key": "eedff108-5960-4cf3-9c3d-f5666291763f",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.28_finish-validates-before-bookkeeping_eedff108-5960-4cf3-9c3d-f5666291763f.md",
+      "sibling_order": 26,
+      "status": "Not Started",
+      "title": "finish-this-task refuses an invalid configuration before any bookkeeping write and never leaves a half-mutated tree",
+      "touch_zones": [
+        "specy_road/bundled_scripts/finish_task.py",
+        "tests/test_finish_config_preflight.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "kill_group, after verifying the group and before its first signal, reads ps once and records every transitive descendant (by parent pid) of the group's members that is outside the group, with its start time",
+        "After the group is gone, each recorded descendant still alive with the same start time gets SIGTERM, then SIGKILL after the grace; a pid whose start time differs is never signalled; a survivor raises WorkerError naming its pid, so terminate does not report terminated",
+        "tests/test_worker_terminate_descendants.py (POSIX): a fake harness whose child calls os.setsid() and sleeps; worker terminate leaves neither the group nor that grandchild alive; a grandchild ignoring SIGTERM is SIGKILLed; a reused pid (start time changed) is not signalled; existing terminate and orphan tests pass unchanged",
+        "CHANGELOG [Unreleased] Fixed. Out of scope: processes already re-parented to init before terminate ran, killing by cwd, Windows, worker interrupt",
+        "Estimated net line change (informational, not a gate): package about +35, tests about +90"
+      ],
+      "codename": "terminate-ends-escaped-descendants",
+      "dependencies": [],
+      "id": "M21.29",
+      "node_key": "b5ff0d94-fd70-4f7e-92de-5e67baf71f1d",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.29_terminate-ends-escaped-descendants_b5ff0d94-fd70-4f7e-92de-5e67baf71f1d.md",
+      "sibling_order": 27,
+      "status": "Not Started",
+      "title": "worker terminate also ends processes the harness started in their own session",
+      "touch_zones": [
+        "specy_road/worker_process.py",
+        "tests/test_worker_terminate_descendants.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    }
+  ]
+}
