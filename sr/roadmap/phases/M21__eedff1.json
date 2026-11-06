@@ -363,9 +363,7 @@
         "Estimated net line change (informational, not a gate): package about +35, tests about +185, docs about +3"
       ],
       "codename": "ops-writers-refuse-links",
-      "dependencies": [
-        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313"
-      ],
+      "dependencies": [],
       "id": "M21.39",
       "node_key": "f6a94a57-91ff-449b-997e-af12dedd41ee",
       "parent_id": "M21",
