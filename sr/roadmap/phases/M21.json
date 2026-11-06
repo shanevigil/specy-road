@@ -477,7 +477,10 @@
         "tests/test_review_concurrent_writers.py",
         "docs/orchestration.md",
         "CHANGELOG.md",
-        "specy_road/bundled_scripts/mark_implementation_reviewed.py"
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "specy_road/review_lock.py",
+        "tests/test_review_file_case.py",
+        "tests/test_review_rejected_m15_33.py"
       ],
       "type": "task"
     }
