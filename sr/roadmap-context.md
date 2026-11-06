@@ -113,7 +113,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M16.70` Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships `release-docs-0-3-1` — task — **Not Started**
 - `M21` rc4 stabilization: fixes filed after the themed-milestone rule `rc4-stabilization` — phase — **Not Started**
   - `M21.1` move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree `move-node-chosen-id` — task — **Complete**
-  - `M21.2` CLI indent, outdent and group-nodes re-level siblings in one transaction validated once `outline-group-cli` — task — **Not Started**
+  - `M21.2` CLI indent, outdent and group-nodes re-level siblings in one transaction validated once `outline-group-cli` — task — **Complete**
   - `M21.3` Opt-in rewrite of prose id references after a move, and a standalone rename-refs `rewrite-id-refs` — task — **Not Started**
   - `M21.4` remove-node deletes an empty never-started node and names every blocker otherwise `remove-node` — task — **Not Started**
   - `M21.5` apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once `apply-restructure-ops` — task — **Not Started**
@@ -245,7 +245,7 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M21.2` on `feature/rm-outline-group-cli` since 2026-11-05
+- `M21.3` on `feature/rm-rewrite-id-refs` since 2026-11-05
 - `M21.4` on `feature/rm-remove-node` since 2026-11-05
 - `M21.7` on `feature/rm-steering-file-guard` since 2026-11-05
 
@@ -255,10 +255,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 26 | 9 | 4.88 | 76% | 25 | 3 |
+| `docs` **flagged** | 27 | 9 | 4.78 | 78% | 25 | 3 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 49 | 17 | 4.28 | 72% | 34 | 6 |
-| `tests` **flagged** | 50 | 17 | 4.24 | 73% | 34 | 6 |
+| `specy_road` **flagged** | 49 | 16 | 4.24 | 73% | 34 | 6 |
+| `tests` **flagged** | 50 | 16 | 4.21 | 74% | 34 | 6 |
 | `CHANGELOG.md` | 6 | 0 | 2.50 | 33% | 6 | 0 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
