@@ -168,6 +168,12 @@ TEXT_SHAPES = [
     ("excessive nesting", DEEP_TEXT, DEEP),
     ("object plus trailing prose", VT + "\nLet me know if you need more.", NOT_LAST),
     ("prose plus a truncated object", NARRATION + VT[:-20], UNFINISHED),
+    *[(f"cut inside a token ({tail!r}){after}", prefix + '{"x": ' + tail, UNFINISHED)
+      for tail in ("tru", "nul", "fals", "-", "1.", "1e+", '"ab', '"\\', '"\\u12')
+      for after, prefix in (("", ""), (", after a valid object", VT + "\n"))],
+    ("a bad escape is not a cut", VT + '\n{"x": "\\uZZ', NOT_LAST),
+    ("a JSON string holding braces", json.dumps("{}"), NO_OBJECT),
+    ("quoted braces in prose, then the object", 'Checked "{x}" and "[y".\n' + VT, V),
     ("valid object then a schema-invalid last object", VT + "\n" + json.dumps(BAD), SCHEMA),
 ]
 

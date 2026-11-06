@@ -35,7 +35,10 @@ complete JSON object** that passes the schema: the harness's structured output,
 or for a text message (Cursor's or Claude Code's `result` text, Codex's
 `agent_message` or `-o` file) its last top-level JSON object. For a text
 message, text before the final object is ignored and nothing may follow it
-(whitespace aside); the `generic` row's whole output must still parse as one
+(whitespace aside); the text is read as a run of complete JSON values (a brace
+inside a JSON string is text, an object inside another value is never the
+answer), and a message cut off inside a token (`{"x": tru`) is an unfinished
+object; the `generic` row's whole output must still parse as one
 object or envelope. Each of these is a rerun request, never a verdict, and an
 earlier answer is never used instead:
 

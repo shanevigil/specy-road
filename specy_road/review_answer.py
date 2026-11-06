@@ -198,14 +198,24 @@ def _final_answer(adapter: Adapter, text: str, output: Path | None) -> dict[str,
     return _answer(saved if saved.strip() else body, envelope=False)
 
 
-_OPENER = re.compile(r"[{\[]")
+#: Where a JSON value with an interior starts: an object, an array or a string (a ``{`` inside a string is text).
+_OPENER = re.compile(r'[{\["]')
+#: The text from a failed decode's error position when the decode failed only because the text ends: a proper
+#: prefix of one JSON token (a literal, a number or its exponent, an unterminated string, a ``\u`` escape), or
+#: nothing at all.
+_CUT_TOKEN = re.compile(r"""t(ru?)?|f(a(ls?)?)?|n(ul?)?|-?\d*(\.\d*)?([eE][+-]?\d*)?|u[0-9a-fA-F]{0,3}
+                            |"([^"\\\x00-\x1f]|\\["\\/bfnrt]|\\u[0-9a-fA-F]{4})*(\\(u[0-9a-fA-F]{0,3})?)?""", re.X)
 
 
 def _last_object(text: str) -> dict[str, Any] | Rerun:
-    """A text message's answer: the last top-level JSON object, followed only by whitespace. The text is scanned left
-    to right for complete JSON values, each value's interior skipped (a nested object is never the answer); a ``{``
-    or ``[`` that starts no value is prose, one whose decode fails only because the text ends is refused. Nesting
-    too deep for the decoder is refused, as :func:`loads_untrusted` refuses it."""
+    """A text message's answer: the last top-level JSON object, followed only by whitespace.
+
+    The text is scanned left to right for complete JSON values (objects, arrays and strings), each value's interior
+    skipped, so a nested object, or braces inside a string, are never the answer. A ``{`` or ``[`` whose decode
+    fails only because the text ends (:data:`_CUT_TOKEN` matches the rest of the text from the decoder's error) is
+    refused; any other opener that starts no value is prose. Bounded rule: the error tail is judged as one token,
+    so ``{1`` at the very end is refused as unfinished although no completion is valid JSON (still a refusal).
+    Nesting too deep for the decoder is refused, as :func:`loads_untrusted` refuses it."""
     decoder, i, last, end = json.JSONDecoder(), 0, None, 0
     while (m := _OPENER.search(text, i)) is not None:
         try:
@@ -213,7 +223,7 @@ def _last_object(text: str) -> dict[str, Any] | Rerun:
         except RecursionError:
             return Rerun(RERUN + "the final message nests JSON too deeply to read")
         except json.JSONDecodeError as e:
-            if e.pos >= len(text) or e.msg.startswith("Unterminated string"):
+            if m.group() != '"' and _CUT_TOKEN.fullmatch(text, e.pos):
                 return Rerun(RERUN + "the final message ends inside an unfinished JSON object")
             i = m.start() + 1
             continue
