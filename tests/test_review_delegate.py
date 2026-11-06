@@ -16,14 +16,18 @@ import pytest
 from tests.helpers import script_subprocess_env
 from tests.review_delegate_helpers import (CAPACITY, delegate_repo, delegate_roster, fake_calls, launches,
                                            set_steps, verdict_step)
-from tests.review_repo_helpers import commit_file, git, make_review_repo
-from tests.test_models_and_prompt import run_main
+from tests.review_delegate_helpers import FAKE
+from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_output
+from tests.test_models_and_prompt import OPUS, commit_profile, make_profile_repo, run_main
 
 from specy_road.bundled_scripts import review_cli, role_prompt, role_prompt_cli
 from specy_road.review_delegate import DelegateError, capacity_error, delegate, load_run
+from specy_road.review_gate import evaluate_gate
+from specy_road.review_model_check import MISMATCH_REASON
 from specy_road.review_record_write import review_run_lock
 from specy_road.reviewer_run_failure import save_run, run_path, turn_capacity_error
 from specy_road.review_files import reviews_dir
+from specy_road import review_files as rf
 from specy_road.worker_adapters import ClaudeCode
 
 def _run(*args: str) -> int:
@@ -290,3 +294,86 @@ def test_review_cli_module_main_prints_usage() -> None:
                           capture_output=True, text=True, env=script_subprocess_env())
     assert done.returncode == 0
     assert "usage:" in done.stdout.lower()
+
+
+# --- M15.31: delegated reviewer model id, refusal, and harness-reported model check -----------------------------
+
+NO_PROFILE_ROSTER = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+                     "  - {id: label-reviewer, family: anthropic, roles: [reviewer], harness: claude-code}\n")
+
+
+def test_delegate_passes_the_roster_id_when_the_entry_has_no_profile(tmp_path: Path, monkeypatch) -> None:
+    import os
+
+    repo = make_review_repo(tmp_path, orchestration=NO_PROFILE_ROSTER)
+    reviews_dir(repo, "M1.1").mkdir(parents=True, exist_ok=True)
+    (reviews_dir(repo, "M1.1") / "PACKET.md").write_text("# Review packet\n\n**Commit under review:** HEAD\n")
+    bin_dir, calls = tmp_path / "bin", tmp_path / "calls.jsonl"
+    bin_dir.mkdir()
+    fake_claude = """#!{python}
+import json, sys
+open({calls!r}, "a").write(json.dumps(sys.argv[1:]) + "\\n")
+print(json.dumps({{"type": "system", "subtype": "init", "session_id": "s-1", "model": "label-reviewer"}}), flush=True)
+ans = {answer!r}
+print(json.dumps({{"type": "result", "subtype": "success", "result": ans, "session_id": "s-1"}}), flush=True)
+"""
+    answer = json.dumps(review_output(git(repo, "rev-parse", "HEAD"), model="label-reviewer"))
+    (bin_dir / "claude").write_text(fake_claude.format(python=sys.executable, calls=str(calls), answer=answer))
+    (bin_dir / "claude").chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    assert delegate(repo, "M1.1", "label-reviewer", retries=0, backoff=0)["state"] == "complete"
+    argv = json.loads(calls.read_text().splitlines()[0])
+    assert argv[argv.index("--model") + 1] == "label-reviewer"
+
+
+def _unknown_api_delegate_repo(tmp_path: Path, extra: str = "") -> tuple[Path, Path]:
+    script, spec = tmp_path / "fake.py", tmp_path / "spec.json"
+    script.write_text(FAKE)
+    fake = f"{sys.executable} {script} {spec} {{prompt}} {{session_flag}}"
+    repo = make_profile_repo(tmp_path)
+    roster = repo / "roadmap" / "orchestration.yaml"
+    roster.write_text(roster.read_text().replace(
+        "    roles: [coordinator, executor, reviewer]",
+        f"    roles: [coordinator, executor, reviewer]\n    harness: claude-code\n    channels: {{cli: '{fake}'}}\n"
+        f"{extra}"))
+    prof = repo / "model-profiles" / "anthropic-claude" / OPUS.name
+    prof.write_text(prof.read_text().replace("api_id: claude-opus-5-5", "api_id: unknown"))
+    commit_profile(repo)
+    reviews_dir(repo, "M1.1").mkdir(parents=True, exist_ok=True)
+    (reviews_dir(repo, "M1.1") / "PACKET.md").write_text("# Review packet\n\n**Commit under review:** HEAD\n")
+    return repo, spec
+
+
+def test_delegate_refuses_when_no_model_would_be_passed_and_opens_no_run_record(tmp_path: Path, capsys) -> None:
+    repo, spec = _unknown_api_delegate_repo(tmp_path)
+    assert _delegate(repo) == 1
+    err = capsys.readouterr().err
+    assert "opus: no model would be passed to claude-code" in err and "routing: dynamic" in err
+    assert load_run(repo, "M1.1", "opus") is None and not spec.with_name("calls.json").exists()
+
+
+def test_delegate_launches_when_routing_dynamic_accepts_the_harness_default(tmp_path: Path) -> None:
+    repo, spec = _unknown_api_delegate_repo(tmp_path, extra="    routing: dynamic\n")
+    set_steps(repo, spec, verdict_step(repo))
+    run = delegate(repo, "M1.1", "opus", retries=0, backoff=0)
+    assert run["state"] == "complete" and run["requested_model"] is None
+
+
+def test_delegate_records_model_mismatch_and_the_gate_excludes_the_approval(tmp_path: Path, capsys) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    step = verdict_step(repo, model="opus")
+    step["model"] = "gpt-5.6-sol"
+    set_steps(repo, spec, step)
+    assert _delegate(repo) == 0
+    assert MISMATCH_REASON in capsys.readouterr().err
+    run = load_run(repo, "M1.1", "opus")
+    assert run["requested_model"] == "opus" and run["reported_model"] == "gpt-5.6-sol"
+    rec = rf.load_review(rf.review_path(repo, "M1.1", "opus"), ["A1", "A2"])
+    assert rec.ok and rec.data["harness_model"] == "gpt-5.6-sol" and rec.data["model_mismatch"] is True
+    head = git(repo, "rev-parse", "HEAD")
+    gate = evaluate_gate(repo, NODE, head)
+    assert not gate.passed
+    assert any(MISMATCH_REASON in why for _r, why in gate.ineligible)
+    capsys.readouterr()
+    _run("review", "list", "M1.1", "--repo-root", str(repo))
+    assert MISMATCH_REASON in capsys.readouterr().out
