@@ -156,6 +156,7 @@ def move_node_outline(
     new_id: str | None = None,
     fill_gaps: bool = False,
     renumber_outline: bool = False,
+    rewrite_refs: bool = False,
 ) -> dict[str, str]:
     """
     Reparent ``node_key`` under ``new_parent_id`` (None = root) at sibling index ``new_index``.
@@ -168,7 +169,8 @@ def move_node_outline(
     persist all three and validate afterwards, so a rejected move left the
     roadmap unloadable — the same defect ``edit-node`` was fixed for in
     ``v0.1.4``. See ``bundled_scripts/roadmap_move_node.py``. Returns the
-    ``old -> new`` id map.
+    ``old -> new`` id map. ``rewrite_refs`` also rewrites the map's ids in
+    every node's planning sheet, title and acceptance (``rename-refs``).
     """
     from specy_road.bundled_scripts.roadmap_move_node import move_node
 
@@ -180,6 +182,7 @@ def move_node_outline(
         renumber_outline=renumber_outline,
         new_id=new_id,
         fill_gaps=fill_gaps,
+        rewrite_refs=rewrite_refs,
     )
 
 
@@ -204,7 +207,11 @@ def _load_with_node(repo_root: Path, node_id: str) -> tuple[list[dict], dict[str
 
 
 def apply_indent(
-    repo_root: Path, node_id: str, *, renumber_outline: bool = False
+    repo_root: Path,
+    node_id: str,
+    *,
+    renumber_outline: bool = False,
+    rewrite_refs: bool = False,
 ) -> dict[str, str] | None:
     """Nest under the sibling above (same parent). Returns the id map, None if no-op."""
     nodes, by_id = _load_with_node(repo_root, node_id)
@@ -221,12 +228,21 @@ def apply_indent(
     ]
     sibs.sort(key=lambda x: sibling_sort_key(x, by_id))
     return move_node_outline(
-        repo_root, nk, new_parent, len(sibs), renumber_outline=renumber_outline
+        repo_root,
+        nk,
+        new_parent,
+        len(sibs),
+        renumber_outline=renumber_outline,
+        rewrite_refs=rewrite_refs,
     )
 
 
 def apply_outdent(
-    repo_root: Path, node_id: str, *, renumber_outline: bool = False
+    repo_root: Path,
+    node_id: str,
+    *,
+    renumber_outline: bool = False,
+    rewrite_refs: bool = False,
 ) -> dict[str, str] | None:
     """Become sibling after former parent. Returns the id map, None if no-op."""
     nodes, by_id = _load_with_node(repo_root, node_id)
@@ -246,6 +262,7 @@ def apply_outdent(
         new_parent_id,
         pi + 1,
         renumber_outline=renumber_outline,
+        rewrite_refs=rewrite_refs,
     )
 
 

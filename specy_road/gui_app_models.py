@@ -32,6 +32,8 @@ class MoveOutlineBody(BaseModel):
     new_id: str | None = None
     fill_gaps: bool = False
     renumber_outline: bool = False
+    # Opt-in, as `--rewrite-refs`: also rewrite the moved ids in prose.
+    rewrite_refs: bool = False
 
 
 class GroupOutlineBody(BaseModel):
@@ -41,12 +43,14 @@ class GroupOutlineBody(BaseModel):
     title: str
     node_ids: list[str]
     type: str = "milestone"
+    rewrite_refs: bool = False
 
 
 class OutlineShiftBody(BaseModel):
     """Optional body for indent / outdent; an omitted body means the defaults."""
 
     renumber_outline: bool = False
+    rewrite_refs: bool = False
 
 
 class AddNodeBody(BaseModel):

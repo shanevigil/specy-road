@@ -298,7 +298,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.3_rewrite-id-refs_e08a12a0-17fd-4251-b596-5a46e1e9335d.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Opt-in rewrite of prose id references after a move, and a standalone rename-refs",
       "touch_zones": [
         "specy_road/bundled_scripts/planning_rename.py",

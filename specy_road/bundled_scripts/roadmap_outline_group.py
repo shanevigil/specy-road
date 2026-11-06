@@ -38,6 +38,10 @@ from specy_road.bundled_scripts.roadmap_crud_prepare import (
 )
 from specy_road.bundled_scripts.roadmap_gui_tree import indent_parent_id
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.bundled_scripts.planning_rename import (
+    add_rewrite_refs_arg,
+    print_rewrite_refs_note,
+)
 from specy_road.bundled_scripts.roadmap_move_node import (
     NodeMove,
     move_nodes,
@@ -115,6 +119,7 @@ def group_nodes(
     node_ids: Sequence[str],
     *,
     node_type: str = "milestone",
+    rewrite_refs: bool = False,
 ) -> dict[str, str]:
     """Create ``into_new`` and move the sibling ``node_ids`` under it, in one transaction.
 
@@ -122,7 +127,8 @@ def group_nodes(
     and sheet derived as ``add-node`` derives them; its children become
     ``into_new.1..N`` in argument order, each keeping its descendants' suffixes.
     Returns the ``old -> new`` id map; every refusal, a locked milestone
-    included, is a ``ValueError``.
+    included, is a ``ValueError``. ``rewrite_refs`` also rewrites the map's
+    ids in every node's planning sheet, title and acceptance.
     """
     nodes = list(load_roadmap(root)["nodes"])
     by_id = {n["id"]: n for n in nodes}
@@ -148,7 +154,12 @@ def group_nodes(
         NodeMove(by_id[nid]["node_key"], into_new, i, new_id=f"{into_new}.{i + 1}")
         for i, nid in enumerate(node_ids)
     ]
-    return move_nodes(root, moves, new_parent=NewParent(root, node, index, sheet))
+    return move_nodes(
+        root,
+        moves,
+        new_parent=NewParent(root, node, index, sheet),
+        rewrite_refs=rewrite_refs,
+    )
 
 
 def _shift_target(root: Path, node_id: str) -> dict[str, dict]:
@@ -164,8 +175,9 @@ def _shift_target(root: Path, node_id: str) -> dict[str, dict]:
 def _run_shift(
     root: Path,
     node_id: str,
-    shift: Callable[[Path, str], dict[str, str] | None],
+    shift: Callable[..., dict[str, str] | None],
     noop: str,
+    rewrite_refs: bool,
 ) -> None:
     """Run ``apply_indent`` / ``apply_outdent``; a no-op exits 1 printing ``noop``.
 
@@ -174,7 +186,7 @@ def _run_shift(
     depth cap would be passed).
     """
     try:
-        old_to_new = shift(root, node_id)
+        old_to_new = shift(root, node_id, rewrite_refs=rewrite_refs)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from None
@@ -182,7 +194,8 @@ def _run_shift(
         print(f"error: {noop}", file=sys.stderr)
         raise SystemExit(1)
     print(f"[ok] {node_id} is now {old_to_new[node_id]}")
-    print_id_map(old_to_new)
+    if print_id_map(old_to_new):
+        print_rewrite_refs_note(rewrite_refs)
 
 
 def cmd_indent(args: argparse.Namespace) -> None:
@@ -192,31 +205,38 @@ def cmd_indent(args: argparse.Namespace) -> None:
     if above is not None:
         # The sibling above becomes the parent: its subtree gains a node.
         _refuse_if_milestone_locked(root, above)
-    _run_shift(root, node_id, apply_indent, "no previous sibling")
+    _run_shift(root, node_id, apply_indent, "no previous sibling", args.rewrite_refs)
 
 
 def cmd_outdent(args: argparse.Namespace) -> None:
     root = repo_root(args)
     _shift_target(root, args.node_id)
-    _run_shift(root, args.node_id, apply_outdent, "already at root")
+    _run_shift(root, args.node_id, apply_outdent, "already at root", args.rewrite_refs)
 
 
 def cmd_group(args: argparse.Namespace) -> None:
     root = repo_root(args)
     try:
         old_to_new = group_nodes(
-            root, args.into_new, args.title, args.node_ids, node_type=args.type
+            root,
+            args.into_new,
+            args.title,
+            args.node_ids,
+            node_type=args.type,
+            rewrite_refs=args.rewrite_refs,
         )
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from None
     print(f"[ok] grouped {len(args.node_ids)} node(s) under new {args.into_new}")
-    print_id_map(old_to_new)
+    if print_id_map(old_to_new):
+        print_rewrite_refs_note(args.rewrite_refs)
 
 
 def _add_shift_parser(sub, command: str, description: str, func) -> None:
     p = sub.add_parser(command, help=description, description=description)
     p.add_argument("node_id", metavar="NODE_ID", help="The node to shift (e.g. M1.2).")
+    add_rewrite_refs_arg(p)
     add_repo_root_arg(p)
     p.set_defaults(func=func)
 
@@ -245,6 +265,7 @@ def _add_group_parser(sub) -> None:
         choices=["vision", "phase", "milestone", "task"],
         help="The new parent's type (default: milestone).",
     )
+    add_rewrite_refs_arg(p)
     add_repo_root_arg(p)
     p.set_defaults(func=cmd_group)
 
