@@ -9,19 +9,36 @@ or adds and a reset would delete again (this leaf's worker logs);
 :func:`undo_bookkeeping` puts both back (``git reset --keep``, then rewrites the
 paths ``pre_sha`` does not track), and :func:`undo_report` says what happened,
 so a plain re-run of finish starts over.
+
+Before its first write (M21.28), finish runs :func:`bookkeeping_guard`. It
+refuses a write destination that is not a regular file or absent
+(:func:`refuse_irregular_destinations_or_exit`), runs ``validate`` and refuses
+an invalid configuration with nothing changed, then :func:`snapshot_pre_commit`
+records the worktree state of every path finish may write up to its
+bookkeeping commit (:func:`pre_commit_paths`) and the whole index file, and
+:func:`restore_pre_commit` puts both back, never from HEAD, so a user's staged
+and unstaged edits survive.
 """
 
 from __future__ import annotations
 
 import os
+import stat
 import subprocess
+import sys
 import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from specy_road.finish_work_artifacts import cleanup_paths
+from specy_road.bundled_scripts.roadmap_chunk_utils import manifest_includes
+from specy_road.finish_work_artifacts import archived_implementation_summary_rel, cleanup_paths
+from specy_road.generated_files import GENERATED_COMMITTED
 from specy_road.git_subprocess import git_code, git_ok
 from specy_road.git_workflow_config import WORKER_LOGS_REL
+from specy_road.registry_yaml import REGISTRY_REL
+from specy_road.review_files import reviews_root
 
 
 def one_line(text: str) -> str:
@@ -60,16 +77,22 @@ def snapshot_bookkeeping(
     if not ok or not sha:
         return None
     root = repo.resolve()
-    rels = cleanup_paths(root, node_id, sess_path)
-    logs = root / WORKER_LOGS_REL / node_id
-    if logs.is_dir():
-        rels.extend(p.relative_to(root).as_posix() for p in sorted(logs.rglob("*")))
+    rels = _cleanup_and_log_paths(root, node_id, sess_path)
     entries: dict[str, tuple[str, str | bytes]] = {}
     for rel in rels:
         state = _path_state(root / rel)
         if state is not None:
             entries[rel] = state
     return BookkeepingSnapshot(branch=branch, pre_sha=sha, entries=entries)
+
+
+def _cleanup_and_log_paths(root: Path, node_id: str, sess_path: Path | None) -> list[str]:
+    """What cleanup deletes or moves, plus this leaf's worker logs (staged, and deleted again by a reset)."""
+    rels = cleanup_paths(root, node_id, sess_path)
+    logs = root / WORKER_LOGS_REL / node_id
+    if logs.is_dir():
+        rels.extend(p.relative_to(root).as_posix() for p in sorted(logs.rglob("*")))
+    return rels
 
 
 def merge_undo_snapshot(repo: Path, branch: str, ctx: dict) -> BookkeepingSnapshot | None:
@@ -199,3 +222,179 @@ def undo_report(out: UndoOutcome, again: str) -> tuple[str | None, str]:
     return (f"error: could not undo the bookkeeping commit: {one_line(out.git_error)} "
             f"(the commit is still on {snap.branch}; {restored})",
             f"run `{first}`{then} then `{again}` on this branch.")
+
+
+@dataclass
+class PreCommitSnapshot:
+    """Each path's worktree state (as :func:`_path_state`), and the index file's bytes (``None``: absent).
+
+    The whole index, not per-path entries: ``git add <dir>`` reaches every entry
+    under a directory, including ones absent from disk, so no path list bounds it.
+    """
+
+    head: str     # HEAD when the snapshot was taken; once it moves, the commit happened
+    index_path: Path
+    index_bytes: bytes | None
+    files: dict[str, tuple[str, str | bytes]] = field(default_factory=dict)
+
+
+def pre_commit_paths(repo: Path, node_id: str, sess_path: Path | None) -> list[str]:
+    """Every path finish may create, overwrite, move or remove before its bookkeeping commit.
+
+    Its :func:`write_destinations`, then the cleanup and worker-log paths. The
+    reviews-directory copy is the main checkout's, so from a linked worktree its
+    path is relative with ``../`` and outside this worktree's index.
+    """
+    root = repo.resolve()
+    dests = [Path(os.path.relpath(base / rel, root)).as_posix() for base, rel in write_destinations(root, node_id)]
+    return list(dict.fromkeys([*dests, *_cleanup_and_log_paths(root, node_id, sess_path)]))
+
+
+def snapshot_pre_commit(repo: Path, rels: list[str]) -> PreCommitSnapshot:
+    """Record ``rels``' worktree bytes (or absence; a directory is skipped) and the index file's bytes."""
+    root = repo.resolve()
+    index_path = root / git_ok(["rev-parse", "--git-path", "index"], root)[1]
+    snap = PreCommitSnapshot(head=git_ok(["rev-parse", "HEAD"], root)[1], index_path=index_path,
+                             index_bytes=index_path.read_bytes() if index_path.is_file() else None)
+    for rel in rels:
+        state = _path_state(root / rel)
+        if state is not None:
+            snap.files[rel] = state
+    return snap
+
+
+def restore_pre_commit(repo: Path, snap: PreCommitSnapshot) -> dict[str, str]:
+    """Put the index file and every snapshotted path's bytes back; return ``{path: why}`` for each that failed."""
+    root = repo.resolve()
+    failed: dict[str, str] = {}
+    try:
+        if snap.index_bytes is None:
+            snap.index_path.unlink(missing_ok=True)
+        else:   # written beside it and renamed, so git never reads half an index
+            tmp = snap.index_path.with_name(snap.index_path.name + ".specy-road-restore")
+            tmp.write_bytes(snap.index_bytes)
+            os.replace(tmp, snap.index_path)
+    except OSError as e:
+        failed["the index"] = str(e)
+    for rel, entry in snap.files.items():
+        try:
+            _restore(root, rel, entry)
+        except OSError as e:
+            failed[rel] = str(e)
+    return failed
+
+
+#: What a path is, by ``lstat`` mode; the first match names it.
+_KINDS = ((stat.S_ISLNK, "a symlink"), (stat.S_ISDIR, "a directory"), (stat.S_ISREG, "a regular file"),
+          (stat.S_ISFIFO, "a FIFO"), (stat.S_ISSOCK, "a socket"), (stat.S_ISCHR, "a device"), (stat.S_ISBLK, "a device"))
+
+
+def write_destinations(repo: Path, node_id: str) -> list[tuple[Path, str]]:
+    """``(base, relative path)`` for every path finish writes, moves or copies into before its commit.
+
+    Under the repo root: every manifest chunk (leaf and rolled-up ancestors), the registry, ``roadmap.md``,
+    ``roadmap-context.md``, the PR-body file and a tracked summary's ``work/done/`` archive. Under the
+    reviews root (the main checkout's from a linked worktree): an untracked summary's copy.
+    """
+    root = repo.resolve()
+    chunks = [Path("roadmap", inc).as_posix() for inc in manifest_includes(root) if isinstance(inc, str)]
+    rels = [*chunks, REGISTRY_REL.as_posix(), *GENERATED_COMMITTED, f"work/pr-body-{node_id}.md",
+            archived_implementation_summary_rel(node_id)]
+    return [*((root, rel) for rel in rels if not os.path.normpath(rel).startswith("..")),
+            (reviews_root(root), f"{node_id}/{Path(archived_implementation_summary_rel(node_id)).name}")]
+
+
+def irregular_destination(base: Path, rel: str) -> str | None:
+    """``"<path> is <kind>, not <expected>"`` when ``rel`` under ``base`` cannot be written as a plain file.
+
+    One rule for every component, walked from ``base`` with ``lstat`` (never
+    following a link): each must be absent, which ends the walk since finish
+    creates it, or the expected kind, a directory on the way and a regular file
+    at the end. Anything else refuses: a symlink (to anywhere), a regular file
+    where a directory belongs, a directory, FIFO, socket or device at the end,
+    and a component ``lstat`` cannot read (its error is named).
+    """
+    parts = Path(os.path.normpath(rel)).parts
+    for i in range(1, len(parts) + 1):
+        path, expected = base.joinpath(*parts[:i]), "a regular file" if i == len(parts) else "a directory"
+        try:
+            mode = os.lstat(path).st_mode
+        except FileNotFoundError:
+            return None
+        except OSError as e:
+            return f"{path} cannot be inspected ({e.strerror or e}), not {expected}"
+        kind = next((name for test, name in _KINDS if test(mode)), "an unknown file type")
+        if kind != expected:
+            link = f" (to {os.readlink(path)})" if kind == "a symlink" else ""
+            return f"{path} is {kind}{link}, not {expected}"
+    return None
+
+
+def refuse_irregular_destinations_or_exit(repo: Path, node_id: str) -> None:
+    """Exit 1 before anything is written when a :func:`write_destinations` path is not absent or a regular file.
+
+    With that precondition the snapshot only ever holds a regular file or an
+    absence for each destination, and no write can land behind a link.
+    """
+    found = [why for base, rel in write_destinations(repo, node_id) if (why := irregular_destination(base, rel))]
+    if found:
+        _nothing_changed([f"error: finish-this-task writes there, but {why}; fix or remove it" for why in found])
+
+
+def _nothing_changed(errors: list[str]) -> None:
+    """Print ``errors`` and the nothing-changed line on stderr, then exit 1: every refusal before a write."""
+    for line in [*errors, "finish-this-task: nothing was changed"]:
+        print(line, file=sys.stderr)
+    raise SystemExit(1)
+
+
+def preflight_validate_or_exit(repo: Path) -> None:
+    """Run ``specy-road validate`` (output captured); on a refusal print it and exit 1 with nothing changed."""
+    cmd = [sys.executable, "-m", "specy_road.cli", "validate", "--repo-root", str(repo)]
+    try:
+        r = subprocess.run(cmd, cwd=repo, capture_output=True, text=True, check=False)
+    except (OSError, subprocess.SubprocessError) as e:
+        _nothing_changed([f"error: could not run specy-road validate: {e}"])
+    if r.returncode != 0:
+        sys.stdout.write(r.stdout)
+        _nothing_changed([r.stderr.rstrip("\n")] if r.stderr.strip() else [])
+
+
+def _failed_step(e: BaseException) -> str:
+    """The failing command as the dev would type it, or the error with its path."""
+    if not isinstance(e, subprocess.CalledProcessError):
+        return f"{type(e).__name__}: {e}"
+    argv = [str(a) for a in e.cmd] if isinstance(e.cmd, (list, tuple)) else [str(e.cmd)]
+    if argv[1:3] == ["-m", "specy_road.cli"]:
+        argv = ["specy-road", *argv[3:]]
+    return f"`{' '.join(argv)}` exited {e.returncode}"
+
+
+@contextmanager
+def bookkeeping_guard(repo: Path, node_id: str, sess_path: Path | None) -> Iterator[None]:
+    """Refuse irregular destinations, validate, snapshot :func:`pre_commit_paths`, and restore them on failure.
+
+    An ``OSError`` or ``subprocess.SubprocessError`` (a refused validate, export
+    or digest, a write, cleanup, ``git add`` or ``git commit``) while HEAD is
+    still the snapshot's puts every path back and exits 1. Once HEAD moved the
+    bookkeeping commit exists, so the error propagates as before.
+    """
+    refuse_irregular_destinations_or_exit(repo, node_id)
+    preflight_validate_or_exit(repo)
+    try:
+        snap = snapshot_pre_commit(repo, pre_commit_paths(repo, node_id, sess_path))
+    except (OSError, subprocess.SubprocessError, RuntimeError) as e:   # RuntimeError: a symlink loop (Python < 3.13)
+        _nothing_changed([f"error: finish-this-task could not record the tree before writing: {_failed_step(e)}"])
+    try:
+        yield
+    except (OSError, subprocess.SubprocessError) as e:
+        if git_ok(["rev-parse", "HEAD"], repo.resolve())[1] != snap.head:
+            raise
+        print(f"error: finish-this-task: {_failed_step(e)}", file=sys.stderr)
+        failed = restore_pre_commit(repo, snap)
+        for rel, why in failed.items():
+            print(f"error: could not restore {rel}: {why}", file=sys.stderr)
+        if not failed:
+            print("[ok] put back every file finish had changed", file=sys.stderr)
+        print("nothing was committed; fix it and run finish-this-task again", file=sys.stderr)
+        raise SystemExit(1) from None

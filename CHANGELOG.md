@@ -13,6 +13,21 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `finish-this-task` runs `validate` before its first bookkeeping write, so an
+  invalid configuration (for example `policy.reviewers_required: 1` with
+  `require_implementation_review_before_finish: false`) is refused with
+  validate's own error and `finish-this-task: nothing was changed`, instead of
+  leaving the chunk and registry modified behind a Python traceback. A later
+  failure before the bookkeeping commit (a refused validate, export or digest,
+  an `OSError` on a write, a refused `git add` or `git commit`) puts back the
+  bytes and index entries of every path finish could have touched, never from
+  HEAD, so your own staged and unstaged edits survive. It names the failing
+  command or path, reports any path it could not restore, and exits 1 with
+  `nothing was committed; fix it and run finish-this-task again`. Before
+  any of that, finish refuses with nothing changed when a path it writes
+  into (a roadmap chunk, the registry, `roadmap.md`, `roadmap-context.md`,
+  the PR-body file, or a summary's archive or reviews copy) is a symlink, a
+  directory, a FIFO, a socket or a device, naming the path and what it is.
 - `specy-road review delegate` and `prompt --channel cli` read a reviewer's
   answer when narration precedes it: for a text final message (Cursor's or
   Claude Code's `result` text, Codex's `agent_message` or `-o` file) the answer
