@@ -271,6 +271,7 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
+- `M21.31` on `feature/rm-review-record-files-only-as-the-caller` since 2026-11-06
 - `M21.35` on `feature/rm-refused-review-gets-one-repair-turn` since 2026-11-06
 - `M21.36` on `feature/rm-verify-normalizes-real-page-text` since 2026-11-06
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
