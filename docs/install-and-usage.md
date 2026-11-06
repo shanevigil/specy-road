@@ -142,8 +142,9 @@ write` in a dry run), and refuses a path that is a symlink out of the project;
 after a refusal, or when `validate` fails, it says to run `specy-road digest`
 instead (not `specy-road sync`, which also fast-forwards your integration
 branch from the remote). `--dry-run` runs its git calls in the temporary copy
-with `GIT_DIR` and the related variables removed, so it is safe inside a git
-hook. It exits non-zero only when `validate` fails. Each refresh is also a command of its own; all three are
+with every `GIT_` variable dropped, no global or system git config, no hooks
+and a timeout, so it is safe inside a git hook. It exits 1 when `validate`
+fails and 2 when a git call it depends on fails. Each refresh is also a command of its own; all three are
 idempotent, take `--dry-run`, and never touch the roadmap, planning sheets, or
 anything outside a managed block.
 

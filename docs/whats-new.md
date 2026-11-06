@@ -247,6 +247,11 @@ says when one is due.
 
 ### Known limitations in this release candidate
 
+- **Symlinks out of the repository.** Several writers still follow a symlink out of the repository,
+  including `refresh-schemas`, `upgrade` and the review commands. Only the
+  generated files and a few review files are protected so far. Don't run
+  specy-road on a checkout where an untrusted agent or process could plant
+  symlinks. A full fix is planned before 0.3.1 final.
 - The review gate is cooperative attestation unless you require signed
   reviews: someone who can run commands in the clone that finishes (for
   example retarget `origin/HEAD`) can change what the gate reads. Nothing

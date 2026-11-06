@@ -20,7 +20,10 @@ from specy_road.git_subprocess import git_text, run
 from specy_road.nested_repos import (
     NestedRepoError, add_nested_worktrees, align_nested_checkouts, in_nested, nested_prefixes, nested_worktree_dirs,
 )
-from specy_road.orchestrate_plan import ANY, is_available, may_handle, node_eligibility, node_sensitivity, unavailability_reason
+from specy_road.orchestrate_plan import (
+    ANY, guidance_bypass_refusal, guidance_bypass_warning, is_available, may_handle, node_eligibility, node_sensitivity,
+    unavailability_reason,
+)
 from specy_road.orchestration_config import harness_model, roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_files import reviews_dir, reviews_root
@@ -194,19 +197,38 @@ def _auth_preflight(repo_root: Path, entry: dict[str, Any], harness: str, *, res
         raise WorkerError(problem)
 
 
+def _guidance_check(repo_root: Path, entry: dict[str, Any], prof) -> str | None:
+    """:func:`guidance_bypass_refusal` as a :class:`WorkerError`, else the opted-in warning the launch prints, if any."""
+    config, err = pinned_config(repo_root)
+    if err:
+        raise WorkerError(f"orchestration config: {err}")
+    if why := guidance_bypass_refusal(config, entry, prof, repo_root):
+        raise WorkerError(why)
+    return guidance_bypass_warning(config, entry, prof, repo_root)
+
+
+def _warn(line: str | None) -> None:
+    """Print a launch's warning on stderr, when it has one."""
+    if line:
+        print(line, file=sys.stderr)
+
+
 def _launch_checks(repo_root: Path, entry: dict[str, Any], harness: str, node: dict[str, Any], model: str, *,
                    resuming: bool = False) -> None:
     """Every refusal a launch or resume makes from the roster entry, the leaf, the profile and the environment
     (M15.36): eligibility, a broken profile, the Claude Code auth check, then the roster ``preflight``. ``delegate``
     and ``worker message``/``resume`` (``resuming``) run it before they reconcile a dead wrapper, apply ``--rework``,
-    queue a message, or write a record, event, lease, prompt or log, so a refusal leaves worker state as it was."""
+    queue a message, or write a record, event, lease, prompt or log, so a refusal leaves worker state as it was.
+    A model recorded as bypassing the guidance is refused first (M21.44), chores included; an opted-in one warns."""
+    prof = pinned_profile_for_entry(repo_root, entry)
+    warning = _guidance_check(repo_root, entry, prof)
     if not entry.get("roster_free"):
         _check_eligible(entry, node, model)
-    prof = pinned_profile_for_entry(repo_root, entry)
     if prof is not None and not prof.ok:
         raise WorkerError(f"profile for {entry.get('id')!r}: " + "; ".join(prof.errors))
     _auth_preflight(repo_root, entry, harness, resuming=resuming)
     _preflight(entry, repo_root)
+    _warn(warning)   # once per launch, after every refusal
 
 
 def _brief_into(wt: Path, repo_root: Path, node_id: str, t) -> None:

@@ -58,7 +58,10 @@ the review policy pin and `session end` change behaviour.
   `add-dependency` refuse a cycle made through an inherited group dependency.
 - **`upgrade` is isolated and finishes the job.** It never reaches the
   caller's repository from its scratch copy and regenerates a drifted digest.
-- **Writers refuse symlinks out of the repo.**
+- **The generated files and a few review files refuse symlinks out of the
+  repo.** Other writers do not yet: see *Known issue* below.
+- **composer-2.5 is kept out of executor and reviewer roles under
+  `signed_reviews`,** after it was seen bypassing specy-road's guidance.
 - **Review deferrals are bound to the decision that recorded them.**
 - **`apply --dry-run` never touches live files.**
 - **GUI Publish regenerates the generated files and refuses without a remote.**
@@ -311,6 +314,17 @@ Workers, rosters and installs
 
 ### Changed
 
+- **Security:** a model observed to bypass specy-road's guidance is excluded from the executor and reviewer roles
+  while `policy.signed_reviews` is on. A profile may record `guidance_bypass_observed: {date, harness,
+  evidence}` (any other shape makes it invalid; `models show` prints it); the shipped **composer-2.5** profile does,
+  alias `composer-2.5-fast` included, from the 2026-11-05/06 replay (CR1, CR3, CR5, 2 of 5 delegated reviews): a
+  finding about that model, not the Cursor harness. An entry launching a model flagged on the integration branch or
+  in the bundled profiles is skipped by `orchestrate plan`, refused by `worker delegate`, `review delegate` and
+  `prompt` (chores, resume and `message` included, before any preflight or harness), shown as excluded and never
+  offered by `handoff status`, and its records do not count at the gate. The roster key
+  `allow_guidance_bypass_model: true` (committed roster only; a `roster_add` entry is refused) lets it back in at the
+  developer's own risk, with a warning on every executor or reviewer launch; `validate` and `doctor` warn for each
+  flagged entry. The coordinator role, and everything with `signed_reviews` off, are unchanged.
 - The `specyrd-brainstorm` skill (description and first paragraph, in every
   harness's rendered copy) and `suggested_prompts/brainstorm-roadmap.md` Phase 1
   say to make `specy-road brainstorm start` the next tool call after reading the
@@ -449,6 +463,21 @@ Workers, rosters and installs
 
 ### Fixed
 
+- **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
+  copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
+  longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.
+  Upgrade's git calls time out after 60 s. A failed `git init`, `add` or `commit` in a temporary copy, the plan's
+  included (so a real run too), prints `error: git <command> failed in the temporary copy (<reason>)` and exits 2
+  without writing or validating, and so does a failed
+  `ls-files` on `roadmap.md` (in a real run it names the checkout), before a generated file is written.
+  `GIT_CEILING_DIRECTORIES` no longer hides a tracked `roadmap.md`.
+- `specy-road digest`, `digest --check` and `digest -o -` with no roadmap manifest print the one line
+  `no roadmap manifest: expected <root>/roadmap/manifest.json` on stderr and exit 1, writing nothing, the same as
+  `export --check`, instead of a traceback.
+- The notes rules in the reviewer and repair-turn prompts name every clause break `review record` checks: `'. '`,
+  `'! '`, `'? '`, `'; '` and all eight conjunctions (and, but, while, whereas, although, though, yet, plus). The
+  check itself is unchanged. The `rework_rca` docstring now names `review_deferral.rca_deferral`, and two brainstorm
+  verify tests patch `socket.getaddrinfo` instead of a private helper.
 - **Security:** `review record` files only under the caller's own model (CR1). A worker
   (`SPECY_ROAD_WORKER_ID`) files only as its model, and a harness (`CLAUDECODE`, `CODEX_THREAD_ID`,
   `CURSOR_AGENT`) only for a roster entry on that harness; anything else exits 1 before any write. An
@@ -465,6 +494,16 @@ Workers, rosters and installs
   approve-notes rules in operational form (one observation per line, each
   with `not a defect because <reason>` or a `required_changes` entry); the
   rule itself is unchanged.
+- `specy-road review delegate` also gives one repair turn to an answer that
+  does not parse (a fenced object, text after it, no object, an unfinished or
+  schema-invalid object, a missing final message), when the last attempt
+  exited 0 with no capacity error. The turn carries specy-road's reading of the
+  final message and asks for the whole JSON object alone. `RUN-<model>.json`
+  records `refusal_kind` (`parse` or `record`), `--resume` sends the repair
+  prompt for the stored kind, and a second failure of either kind leaves the run
+  incomplete, naming both. A refused answer, like an unparseable one, gets the
+  repair turn only after a clean exit: a non-zero exit or a capacity failure
+  gets none.
 - **Security:** `specy-road session end` ends only your own session. The
   caller is always `SPECY_ROAD_AGENT_ID` or the derived id; a positional id or
   `--agent` only picks the target. Another agent's live record is kept and the
@@ -580,7 +619,9 @@ Workers, rosters and installs
   SIGKILL). A survivor, or a `ps` listing that fails, makes terminate fail
   naming it instead of reporting terminated. A process already re-parented to
   init before terminate ran is still out of reach.
-- Security: no writer follows a symlink out of the directory it owns.
+- Security: `roadmap.md`, `roadmap-context.md` and some review files are no
+  longer written through a symlink out of the directory that owns them. Other
+  writers still can be: see *Known issue* under Deferred past 0.3.1rc4.
   `init project` treats a dangling `roadmap.md` or `roadmap-context.md` link
   as present (skipped without `--force`), and with `--force` lists a link out
   of the project as skipped with the reason instead of writing its target.
@@ -809,6 +850,11 @@ Workers, rosters and installs
 
 ### Deferred past 0.3.1rc4
 
+- **Known issue:** several writers still follow a symlink out of the repository,
+  including `refresh-schemas`, `upgrade` and the review commands. Only the
+  generated files and a few review files are protected so far. Don't run
+  specy-road on a checkout where an untrusted agent or process could plant
+  symlinks. A full fix is planned before 0.3.1 final.
 - The steering guard (executors cannot change the files that steer harnesses
   and specy-road unnoticed) moves to rc5; its branch is not in this release.
 

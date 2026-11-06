@@ -156,9 +156,14 @@ _SAME_WORDS = [
 ]
 
 
+def _example_com_is_public(host, port, **kw):
+    """``socket.getaddrinfo`` offline: a public address for example.com, a private one for any other host."""
+    return [(None, None, None, None, ("93.184.216.34" if host == "example.com" else "10.0.0.1", 443))]
+
+
 @pytest.mark.parametrize(("variant", "plain"), _SAME_WORDS)
 def test_check_source_matches_page_text_variants_both_ways(monkeypatch, variant: str, plain: str) -> None:
-    monkeypatch.setattr(bv, "_is_off_host", lambda host: host != "example.com")
+    monkeypatch.setattr(bv.socket, "getaddrinfo", _example_com_is_public)
     for page, quote in ((variant, plain), (plain, variant)):
         source = {"url": "https://example.com/p", "quote": quote}
         assert bv.check_source(source, lambda url, page=page: (200, page)) == "matched"
@@ -167,7 +172,7 @@ def test_check_source_matches_page_text_variants_both_ways(monkeypatch, variant:
 @pytest.mark.parametrize(("page", "quote"), [("children\u2019s records", "children's files"),
                                              ("restudying[43] while", "[43]")])
 def test_check_source_still_needs_the_same_words(monkeypatch, page: str, quote: str) -> None:
-    monkeypatch.setattr(bv, "_is_off_host", lambda host: host != "example.com")
+    monkeypatch.setattr(bv.socket, "getaddrinfo", _example_com_is_public)
     source = {"url": "https://example.com/p", "quote": quote}
     assert bv.check_source(source, lambda url: (200, page)) == "not-found"
 
