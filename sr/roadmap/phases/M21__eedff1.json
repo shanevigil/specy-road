@@ -250,7 +250,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.36_verify-normalizes-real-page-text_e08489cb-8a8e-497f-8a0e-79c5eb67f39d.md",
       "sibling_order": 34,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "brainstorm verify matches a quote across citation markers, typographic quotes and apostrophes, dashes, non-breaking spaces and soft hyphens",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_verify.py",
