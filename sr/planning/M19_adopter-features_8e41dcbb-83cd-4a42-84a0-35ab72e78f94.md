@@ -1,6 +1,6 @@
 ## Intent
 
-Theme: **features for adopter projects** — upgrade, how the agent files layer (AGENTS.md, CLAUDE.md and the managed section), planning hygiene, and project tooling such as file limits and code-analysis checks. Fixes are not filed here. The phase starts after the 0.3.1 tag: it depends on gate M16.8.9, so nothing here is picked up before then.
+Theme: **features for adopter projects** — upgrade, how the agent files layer (AGENTS.md, CLAUDE.md and the managed section), planning hygiene, and project tooling such as file limits and code-analysis checks. Fixes are not filed here. The phase starts after the 0.3.1 tag: it depends on gate M16.8.10 (0.3.1 tagged), so nothing here is picked up before then.
 
 ## Approach
 

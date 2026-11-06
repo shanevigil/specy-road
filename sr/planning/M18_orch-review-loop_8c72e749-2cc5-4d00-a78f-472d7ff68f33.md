@@ -1,6 +1,6 @@
 ## Intent
 
-Theme: **orchestration and the review loop.** New behaviour for workers, reviewers and the coordinator — worker reconcile and post-run checks, review packets and review evidence, delegation, host effects, cleanup and scheduling. Fixes are not filed here. The phase starts after the 0.3.1 tag: it depends on gate M16.8.9, so nothing here is picked up before then.
+Theme: **orchestration and the review loop.** New behaviour for workers, reviewers and the coordinator — worker reconcile and post-run checks, review packets and review evidence, delegation, host effects, cleanup and scheduling. Fixes are not filed here. The phase starts after the 0.3.1 tag: it depends on gate M16.8.10 (0.3.1 tagged), so nothing here is picked up before then.
 
 ## Approach
 

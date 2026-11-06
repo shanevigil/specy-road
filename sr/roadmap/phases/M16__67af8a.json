@@ -271,6 +271,25 @@
       "title": "rc5 close, alias window, end-to-end pass and the 0.3.1 tag",
       "touch_zones": [],
       "type": "milestone"
+    },
+    {
+      "acceptance": [
+        "human: the maintainer has cut and pushed the 0.3.1 tag"
+      ],
+      "codename": "v0-3-1-tagged",
+      "dependencies": [
+        "2dce21fe-f676-42e5-a9a2-cd58a333d5fa"
+      ],
+      "execution_milestone": "Human-led",
+      "id": "M16.8.10",
+      "node_key": "1d9b9c91-dec8-4f55-bd57-c8eb6368612f",
+      "parent_id": "M16.8",
+      "planning_dir": "planning/M16.8.10_v0-3-1-tagged_1d9b9c91-dec8-4f55-bd57-c8eb6368612f.md",
+      "sibling_order": 6,
+      "status": "Not Started",
+      "title": "Gate: 0.3.1 tagged",
+      "touch_zones": [],
+      "type": "gate"
     }
   ]
 }
