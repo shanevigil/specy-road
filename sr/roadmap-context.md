@@ -120,6 +120,8 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.32` session end ends only your own session: another agent's live record needs --force from a terminal, and the guard's refusal names the rule `session-end-only-your-own` — task — **Not Started**
   - `M21.33` The brainstorm skill makes `specy-road brainstorm start` the first tool call, alone in its turn, in every harness's shipped copy `brainstorm-start-is-the-first-call-alone` — task — **Complete**
   - `M21.34` Context regression CR2 asks for a README section the todo app supports, and passes a README-only commit on the agent's own worktree branch `cr2-case-fits-the-todo-app` — task — **Complete**
+  - `M21.35` review delegate gives a refused reviewer answer one repair turn with the refusal text, and the reviewer prompt ends with the notes rules `refused-review-gets-one-repair-turn` — task — **Not Started**
+  - `M21.36` brainstorm verify matches a quote across citation markers, typographic quotes and apostrophes, dashes, non-breaking spaces and soft hyphens `verify-normalizes-real-page-text` — task — **Not Started**
 - `M22` rc5 fixes: defects found while preparing rc5 `rc5-fixes` — phase — **Not Started**
   - `M22.1` group-nodes accepts a new parent id held by one of the nodes it groups `group-into-member-id` — task — **Not Started**
   - `M22.2` A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet `move-rewrites-sheet-zones` — task — **Not Started**
@@ -136,6 +138,8 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.13` Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone `worker-cost-and-stale-presence` — task — **Not Started**
   - `M22.14` Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch `deps-ids-briefs-and-landed-branch` — task — **Not Started**
   - `M22.15` The agentic sandbox runbook states rc4's real results: checks after init, the second claim, tamper outcomes, where staleness shows `sandbox-runbook-rc4-drift` — task — **Not Started**
+  - `M22.16` Reviewer run lows: a whole refusal summary, no parse reason after a capacity failure, and the reviewer's process group ended when its run ends `reviewer-run-summary-and-process-tree` — task — **Not Started**
+  - `M22.17` brainstorm verify records blocked, not not-found, when a site answers its requests with 404 for pages that exist `verify-tells-a-blocking-404` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Not Started**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**

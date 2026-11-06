@@ -412,6 +412,61 @@
         "docs/agentic-sandbox-runbook.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "D15c: a refused record's one-line summary is 'rerun requested: review record refused the output: <the first offending line, whole> (N more; full text in work/reviews/<ID>/REJECTED-<model>.md)'; it never starts or ends mid-word, and anything shortened ends at a word boundary with '…'",
+        "D17: when the last attempt ended with a capacity error, the final answer is not parsed and the run's reason is the capacity reason alone (no 'line N of the final turn is not one JSON object')",
+        "D18: the reviewer process (run_logged, used by review delegate and prompt --channel cli --run) starts in a session of its own; when it exits, or the run is interrupted, specy-road sends that process group SIGTERM, then SIGKILL after a grace period, reusing worker_process's group-ending helper; a group already gone is not an error",
+        "Tests (tests/test_review_run_lows_rc5.py): refusal summary shapes (long first line, many lines); fake harness printing four resource_exhausted errors -> reason has no 'not one JSON object'; fake reviewer that leaves a background child in its group and exits -> child gone after the run, interrupt also ends it. docs/orchestration-reviewer-output.md and CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +35, tests about +110, docs about +4"
+      ],
+      "codename": "reviewer-run-summary-and-process-tree",
+      "dependencies": [
+        "ef56f4ea-a868-4a22-b5a4-f6bccf890779"
+      ],
+      "id": "M22.16",
+      "node_key": "e129232c-a131-477e-bb91-12699f010034",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.16_reviewer-run-summary-and-process-tree_e129232c-a131-477e-bb91-12699f010034.md",
+      "sibling_order": 15,
+      "status": "Not Started",
+      "title": "Reviewer run lows: a whole refusal summary, no parse reason after a capacity failure, and the reviewer's process group ended when its run ends",
+      "touch_zones": [
+        "specy_road/review_record_write.py",
+        "specy_road/review_delegate.py",
+        "specy_road/worker_process.py",
+        "tests/test_review_run_lows_rc5.py",
+        "docs/orchestration-reviewer-output.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "On a 404 or 410 for a page, verify fetches that host's root URL once per run (same allow-list, redirect and size rules, cached per host); a root that is not 200 or fails to fetch makes the source `blocked` (the host refuses verify's requests), a root of 200 keeps `not-found`",
+        "Other statuses map as today (401, 403, 429 blocked; other non-200 not-found); a 200 page makes no extra request",
+        "Tests with a fake fetcher: page 404 and root 404 -> blocked; page 404 and root 200 -> not-found; page 404 and root transport error -> blocked; two 404 sources on one host -> one root fetch. docs/brainstorming.md (blocked includes a host that answers verify with 404 at its root) and CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +15, tests about +35, docs about +1"
+      ],
+      "codename": "verify-tells-a-blocking-404",
+      "dependencies": [
+        "e08489cb-8a8e-497f-8a0e-79c5eb67f39d"
+      ],
+      "id": "M22.17",
+      "node_key": "f7c47911-9faa-4536-941b-a208aee3a459",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.17_verify-tells-a-blocking-404_f7c47911-9faa-4536-941b-a208aee3a459.md",
+      "sibling_order": 16,
+      "status": "Not Started",
+      "title": "brainstorm verify records blocked, not not-found, when a site answers its requests with 404 for pages that exist",
+      "touch_zones": [
+        "specy_road/bundled_scripts/brainstorm_verify.py",
+        "tests/test_brainstorm_verify.py",
+        "docs/brainstorming.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }

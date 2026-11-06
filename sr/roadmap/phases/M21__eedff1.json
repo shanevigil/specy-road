@@ -204,6 +204,59 @@
         "tests/test_context_regressions.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "Prompt: the reviewer prompt's last section (schema_lines, after the packet, immediately before the JSON schema) states the approve-notes rules operationally: one observation per line; every notes line of two words or more other than a heading, a bare acceptance result, a `>` quote, fenced code or a table separator, and on an approve every findings entry, either matches a required_changes entry (verdict block) or carries on that same line 'not a defect because <reason>'; a comma or ';' list is several observations, split into lines; evidence goes in commands_rerun. PROBE_RULES_LINES rule 4 points to that section instead of repeating it. The rule itself (clause_problem, _second_observation, note_problem) is unchanged and tests/test_review_record_rules.py passes unmodified",
+        "Repair turn: when review record refuses the filed answer, review delegate runs exactly one repair turn: it resumes the reported session when the harness can resume, otherwise one fresh launch with the full prompt. The repair prompt carries the whole refusal text as review record printed it (every offending line, never truncated), the notes rules section, and 'send the whole corrected JSON object'. The second answer is filed against a snapshot taken after the first filing. A parse or schema rerun request, a review failure (a write) and a chore reviewer get no repair turn",
+        "Run record: RUN-<model>.json lists both turns' attempts, the repair turn's marked `repair: true`, and keeps the first refusal text as `refusal`; a second refusal leaves the run incomplete, exit 1, with a reason naming both refusals. `review delegate --resume` on a run whose record holds a `refusal` for the same commit sends the repair prompt with that text instead of RESUME_PROMPT; without one, --resume is unchanged",
+        "Tests (tests/test_review_delegate_repair.py, fake reviewer harness): first answer refused and second valid -> REVIEW filed, one repair turn, the second prompt contains each offending line and 'not a defect because'; refused twice -> incomplete, both reasons; first answer files -> no repair turn; non-resumable harness -> one fresh launch with the refusal text; --resume after a stored refusal sends it. docs/orchestration-reviewer-output.md (rerun request bullet) and CHANGELOG [Unreleased] Fixed. Out of scope: loosening the rule (maintainer decision); prompt --channel cli --run (M18.16); the coordinator's own sr/tools addendum",
+        "Estimated net line change (informational, not a gate): package about +60, tests about +150, docs about +6"
+      ],
+      "codename": "refused-review-gets-one-repair-turn",
+      "dependencies": [],
+      "id": "M21.35",
+      "node_key": "ef56f4ea-a868-4a22-b5a4-f6bccf890779",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.35_refused-review-gets-one-repair-turn_ef56f4ea-a868-4a22-b5a4-f6bccf890779.md",
+      "sibling_order": 33,
+      "status": "Not Started",
+      "title": "review delegate gives a refused reviewer answer one repair turn with the refusal text, and the reviewer prompt ends with the notes rules",
+      "touch_zones": [
+        "specy_road/review_delegate.py",
+        "specy_road/review_record_write.py",
+        "specy_road/review_record_rules.py",
+        "tests/review_delegate_helpers.py",
+        "tests/test_review_delegate_repair.py",
+        "docs/orchestration-reviewer-output.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "`_norm` treats page text and quote alike: it removes bracketed citation markers ([43], [44][45][46], [a], [note 1], [citation needed]) after tags are stripped, folds U+2018/U+2019/U+201A/U+2032 to ' and U+201C/U+201D/U+201E/U+2033 to \", folds U+2010 to U+2015 and U+2212 to -, turns U+00A0, U+202F and U+2009 into a space, and drops U+00AD and zero-width characters, before whitespace is collapsed",
+        "Table test in tests/test_brainstorm_verify.py through check_source with a fake fetcher, each row matched in both directions (page shape vs ASCII quote, and ASCII page vs typographic quote): Wikipedia `restudying<sup>[43]</sup> while` and `[44][45][46]` markers, curly apostrophe (children’s, it’s), curly double quotes, en and em dash, NBSP, soft hyphen inside a word",
+        "A quote whose words differ from the page, or a quote that is only a citation marker, stays not-found; existing verify tests pass; repo sources (quote_in_file) are unchanged",
+        "docs/brainstorming.md's verify paragraph names what the comparison ignores (case, whitespace, tags, citation markers, quote, dash and space variants); CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +15, tests about +40, docs about +1"
+      ],
+      "codename": "verify-normalizes-real-page-text",
+      "dependencies": [],
+      "id": "M21.36",
+      "node_key": "e08489cb-8a8e-497f-8a0e-79c5eb67f39d",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.36_verify-normalizes-real-page-text_e08489cb-8a8e-497f-8a0e-79c5eb67f39d.md",
+      "sibling_order": 34,
+      "status": "Not Started",
+      "title": "brainstorm verify matches a quote across citation markers, typographic quotes and apostrophes, dashes, non-breaking spaces and soft hyphens",
+      "touch_zones": [
+        "specy_road/bundled_scripts/brainstorm_verify.py",
+        "tests/test_brainstorm_verify.py",
+        "docs/brainstorming.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
