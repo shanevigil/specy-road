@@ -41,10 +41,21 @@ def _claim(repo: Path, message: str | None = None) -> None:
     git(repo, "rebase", "-q", "dev")
 
 
-def _on_dev(repo: Path, rel: str, content: str | bytes, *, merge: bool = False) -> None:
+def _write(path: Path, content: str | bytes | None) -> None:
+    """``content`` at ``path``; ``None`` puts a directory there instead (a file that cannot be read as one)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if content is None:
+        path.unlink(missing_ok=True)
+        path.mkdir()
+        (path / "x").write_text("x")
+    else:
+        path.write_bytes(content if isinstance(content, bytes) else content.encode("utf-8"))
+
+
+def _on_dev(repo: Path, rel: str, content: str | bytes | None, *, merge: bool = False) -> None:
     git(repo, "checkout", "-q", "dev")
-    (repo / rel).write_bytes(content if isinstance(content, bytes) else content.encode("utf-8"))
-    git(repo, "add", rel)
+    _write(repo / rel, content)
+    git(repo, "add", "-A", "--", rel)
     git(repo, "commit", "-qm", f"chore: edit {rel}")
     git(repo, "checkout", "-q", "feature/rm-thing")
     if merge:
@@ -105,13 +116,6 @@ GATE_CASES = [
     ("public_key changed", KEYED, (ORCH, KEYED.replace("AAAAone", "AAAAtwo")), "roster opus.public_key"),
     ("quoted dates hash equal", TWO_FAMILIES,
      (ORCH, TWO_FAMILIES.replace("2026-01-01", "'2026-01-01'").replace("2026-12-31", "'2026-12-31'")), None),
-    ("policy file no longer parses", TWO_FAMILIES, (ORCH, "roster: [\n"), "cannot be checked"),
-    ("impossible unquoted date", TWO_FAMILIES, (ORCH, TWO_FAMILIES.replace("2026-12-31", "2026-99-99")),
-     "cannot be checked"),
-    ("policy is not utf-8", TWO_FAMILIES, (ORCH, TWO_FAMILIES.encode("utf-8") + b"# \xff\xfe\n"), "cannot be checked"),
-    ("policy is not a mapping", TWO_FAMILIES, (ORCH, "version: 1\npolicy: 1\n"), "policy is not a mapping"),
-    ("roster is not a list of mappings", TWO_FAMILIES, (ORCH, "version: 1\nroster: [1]\n"),
-     "roster is not a list of mappings"),
     ("one line per change", TWO_FAMILIES, (ORCH, CR1_ROSTER.replace("reviewers_required: 2", "reviewers_required: 1")),
      '-> ["executor","reviewer"]\n      policy.reviewers_required 2 -> 1\n'),
 ]
@@ -176,15 +180,10 @@ _INVALID = "an invalid acceptance never counts"
 # (case, policy changed after the claim, how the filed acceptance is changed or None for a second policy edit,
 #  expected problem text). An invalid file is a problem whether or not the policy changed.
 ACCEPTANCE_CASES = [
-    ("malformed yaml", True, lambda d: "node_id: [\n", _INVALID),
-    ("malformed yaml, policy unchanged", False, lambda d: "node_id: [\n", _INVALID),
     ("schema-invalid", True, lambda d: {**d, "extra": 1}, _INVALID),
     ("schema-invalid, policy unchanged", False, lambda d: {**d, "extra": 1}, _INVALID),
     ("another node", True, lambda d: {**d, "node_id": "M9.9"}, _INVALID),
     ("another node, policy unchanged", False, lambda d: {**d, "node_id": "M9.9"}, _INVALID),
-    ("impossible unquoted date", True, lambda d: yaml.safe_dump({**d, "at": "X"}).replace("at: X", "at: 2026-99-99"),
-     _INVALID),
-    ("not utf-8", True, lambda d: yaml.safe_dump(d).encode("utf-8") + b"# \xff\xfe\n", _INVALID),
     ("pinned digest mismatch", True, lambda d: _bad_digest(d, "pinned_sha256"), _CHANGED),
     ("accepted digest mismatch", True, lambda d: _bad_digest(d, "accepted_sha256"), _CHANGED),
     ("second edit after acceptance", True, None, _CHANGED),
@@ -212,6 +211,52 @@ def test_an_acceptance_counts_only_for_its_node_and_digests(tmp_path: Path, monk
     assert not gate.passed and problem in gate.policy_pin
     before = _tree(repo)
     assert _exit(finish_task.main, ["--repo-root", str(repo)]) == 1
+    assert _tree(repo) == before
+
+
+_DEEP = "[" * 5000 + "]" * 5000
+# The module's one rule for unreadable input, as a table: (failure kind, as the committed policy, as the acceptance
+# file). ``None`` puts a directory where the file should be. Every cell: a gate problem, and every command refuses
+# with a clean non-zero exit, never a traceback.
+UNREADABLE_KINDS = [
+    ("impossible unquoted date", TWO_FAMILIES.replace("2026-12-31", "2026-99-99"), "at: 2026-99-99\n"),
+    ("non-UTF-8 bytes", TWO_FAMILIES.encode("utf-8") + b"# \xff\xfe\n", b"node_id: M1.1\n\xff\xfe\n"),
+    ("YAML syntax error", "roster: [\n", "node_id: [\n"),
+    ("wrong top-level type", "- a\n- b\n", "- a\n- b\n"),
+    ("wrong shape inside", "version: 1\nroster: [1]\npolicy: 1\n", "node_id: [1]\n"),
+    ("mixed-type keys", "version: 1\npolicy: {1: a, b: c}\n", "{1: a, node_id: M1.1}\n"),
+    ("deeply nested input", f"version: 1\nsubstitutions: {_DEEP}\n", _DEEP + "\n"),
+    ("unreadable file", None, None),
+]
+UNREADABLE_CASES = [(kind, where, content) for kind, policy, acceptance in UNREADABLE_KINDS
+                    for where, content in (("committed policy", policy), ("acceptance file", acceptance))]
+
+
+@pytest.mark.parametrize(("kind", "where", "content"), UNREADABLE_CASES,
+                         ids=[f"{k} in {w}" for k, w, _ in UNREADABLE_CASES])
+def test_unreadable_input_is_a_problem_and_every_command_refuses_cleanly(tmp_path: Path, monkeypatch, capsys,
+                                                                       kind, where, content) -> None:
+    repo = _repo(tmp_path)
+    if where == "committed policy":
+        _on_dev(repo, ORCH, content)
+    else:
+        _write(reviews_dir(repo, "M1.1") / ACCEPTANCE_NAME, content)
+    _approve(repo)
+    gate = _gate(repo)
+    expected = "review policy pin of M1.1 cannot be checked" if where == "committed policy" else _INVALID
+    assert not gate.passed and expected in gate.policy_pin
+    before = _tree(repo)
+    assert _exit(mark_implementation_reviewed.main, ["--yes", "--repo-root", str(repo)]) == 1
+    assert _exit(finish_task.main, ["--repo-root", str(repo)]) == 1
+    if where == "committed policy":
+        assert _accept(repo, monkeypatch, tty=True) == 1
+        assert not (reviews_dir(repo, "M1.1") / ACCEPTANCE_NAME).exists()
+        git(repo, "checkout", "-q", "dev")   # a claim on the unreadable policy is refused too
+        with pytest.raises(SystemExit) as e:
+            pinned_message(repo, SUBJECT)
+        assert e.value.code == 1
+        git(repo, "checkout", "-q", "feature/rm-thing")
+    assert "Traceback" not in "".join(capsys.readouterr())
     assert _tree(repo) == before
 
 

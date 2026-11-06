@@ -11,17 +11,30 @@ What is hashed: ``roster``, ``substitutions`` and ``policy`` of ``roadmap/orches
 null, no toolkit defaults, no local availability overlay). A registration commit without the trailer (a claim made
 before this change) is judged as before. Pin and acceptance are honour-system, like READY files (maintainer
 decision 2026-11-05); M22.5's steering guard is the broader protection.
+
+Unreadable input — one rule (:func:`_unreadable_as`). There are two input boundaries: the committed policy (every
+git read, decode, YAML load, shape check, digest and change line, in :func:`policy_digest` and the gate's pin check)
+and ``POLICY-ACCEPTED.yaml`` (:func:`read_acceptance`: file read, decode, YAML load, schema). Inside either, any
+failure — ``OSError``, ``UnicodeDecodeError``, ``yaml.YAMLError``, ``ValueError`` (including YAML constructor errors
+such as an impossible unquoted date), ``TypeError``/``AttributeError`` from a wrong shape, ``RecursionError`` from
+deep nesting — becomes :class:`PolicyUnreadable` (the acceptance: the invalid-acceptance result). So the gate reports
+a problem, and pickup, finish, ``mark-implementation-reviewed`` and ``review accept-policy`` refuse with a message,
+never a traceback, and an unreadable input is never read as absent or empty. Limit: other exception types (for
+example ``MemoryError``) are not caught, and the toolkit's other readers of the same files (``effective_config``)
+keep their own rules.
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import datetime
 import getpass
 import hashlib
 import json
 import re
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -47,18 +60,24 @@ _SCHEMA = Path(__file__).resolve().parent / "schemas" / "policy-acceptance.schem
 
 
 class PolicyUnreadable(ValueError):
-    """A policy file is present but does not parse, or a pin trailer is present but does not parse."""
+    """A policy input (committed policy, pin trailer, acceptance file) is present but cannot be read."""
 
 
-def load_yaml(raw: bytes | str) -> Any:
-    """The one parse rule for every YAML input here (committed policy, ``POLICY-ACCEPTED.yaml``): UTF-8, then
-    ``yaml.safe_load``. Any error in either step — ``yaml.YAMLError``; ``ValueError``, which covers
-    ``UnicodeDecodeError`` and an impossible unquoted date; ``RecursionError`` on deep nesting — raises
-    :class:`PolicyUnreadable`, so an unreadable input is a problem, never a crash and never empty."""
+#: Every failure a read, decode, parse or shape step can raise on bad input (module docstring).
+UNREADABLE = (OSError, ValueError, TypeError, AttributeError, RecursionError, yaml.YAMLError)
+
+
+@contextlib.contextmanager
+def _unreadable_as(what: str) -> Iterator[None]:
+    """The module's one rule: inside a boundary, any :data:`UNREADABLE` failure becomes :class:`PolicyUnreadable`
+    naming ``what``; a :class:`PolicyUnreadable` raised inside passes through unchanged."""
     try:
-        return yaml.safe_load(raw.decode("utf-8") if isinstance(raw, bytes) else raw)
-    except (yaml.YAMLError, ValueError, RecursionError) as e:
-        raise PolicyUnreadable(f"does not parse: {(str(e).splitlines() or [type(e).__name__])[0]}") from e
+        yield
+    except PolicyUnreadable:
+        raise
+    except UNREADABLE as e:
+        first = (str(e).splitlines() or [""])[0][:200]
+        raise PolicyUnreadable(f"{what} cannot be read ({type(e).__name__}: {first})") from e
 
 
 def _git_read(root: Path, args: list[str]) -> str | None:
@@ -74,10 +93,8 @@ def _yaml_at(root: Path, ref: str, rel: str) -> dict[str, Any]:
     text = _git_read(root, ["show", f"{ref}:./{rel}"])
     if text is None:
         return {}   # not committed there: every key is null
-    try:
-        data = load_yaml(text)
-    except PolicyUnreadable as e:
-        raise PolicyUnreadable(f"{rel} at {ref} {e}") from e
+    with _unreadable_as(f"{rel} at {ref}"):
+        data = yaml.safe_load(text)
     if data is not None and not isinstance(data, dict):
         raise PolicyUnreadable(f"{rel} at {ref} is not a mapping")
     return data or {}
@@ -103,8 +120,9 @@ def _encode(value: Any) -> str:
 
 def policy_digest(root: Path, ref: str) -> tuple[str, dict[str, Any]]:
     """``(sha256 hex, parts)`` of the review policy committed at ``ref``; raises :class:`PolicyUnreadable`."""
-    parts = policy_parts(root, ref)
-    return hashlib.sha256(_encode(parts).encode("utf-8")).hexdigest(), parts
+    with _unreadable_as(f"the review policy at {ref}"):   # sort_keys on mixed-type keys, deep nesting
+        parts = policy_parts(root, ref)
+        return hashlib.sha256(_encode(parts).encode("utf-8")).hexdigest(), parts
 
 
 def pinned_message(root: Path, message: str) -> str:
@@ -176,32 +194,34 @@ def acceptance_path(root: Path, node_id: str) -> Path:
 
 
 def read_acceptance(root: Path, node_id: str) -> tuple[dict[str, Any] | None, str | None]:
-    """``(acceptance, None)``, ``(None, None)`` when there is none, or ``(None, why)`` when it is invalid."""
+    """``(acceptance, None)``, ``(None, None)`` when there is none, or ``(None, why)`` when it is present but
+    unreadable or invalid (the module's one rule; a directory in its place counts as present)."""
     path = acceptance_path(root, node_id)
-    if not path.is_file():
+    if not path.exists():
         return None, None
     try:
-        data = load_yaml(path.read_bytes())
-    except (OSError, PolicyUnreadable) as e:
-        return None, f"{ACCEPTANCE_NAME} {e}"
-    errors = sorted(Draft202012Validator(json.loads(_SCHEMA.read_text(encoding="utf-8"))).iter_errors(data),
-                    key=str)
-    if errors:
-        return None, f"{ACCEPTANCE_NAME} is invalid: {errors[0].message}"
-    if data["node_id"] != node_id:
-        return None, f"{ACCEPTANCE_NAME} is for {data['node_id']}, not {node_id}"
+        with _unreadable_as(ACCEPTANCE_NAME):
+            data = yaml.safe_load(path.read_bytes().decode("utf-8"))
+            schema = json.loads(_SCHEMA.read_text(encoding="utf-8"))
+            if errors := sorted(Draft202012Validator(schema).iter_errors(data), key=str):
+                raise PolicyUnreadable(f"{ACCEPTANCE_NAME} is invalid: {errors[0].message}")
+            if data["node_id"] != node_id:
+                raise PolicyUnreadable(f"{ACCEPTANCE_NAME} is for {data['node_id']}, not {node_id}")
+    except PolicyUnreadable as e:
+        return None, str(e)
     return data, None
 
 
 def _pin_state(root: Path, node: dict[str, Any], commit: str) -> tuple[str, str, str, str, list[str]] | None:
     """``(ref, pinned sha256, pinned commit, current sha256, change lines)`` when the policy changed since the claim,
-    else ``None``. Every read of committed policy happens here, so :class:`PolicyUnreadable` has one boundary."""
+    else ``None``. The gate's committed-policy boundary: every read here is under the module's one rule."""
     ref, _err = policy_source(root)   # an unreadable source is the gate's config error already
-    pin = pin_of(root, node["codename"], commit) if ref and node.get("codename") else None
-    if pin is None:
-        return None
-    current, _ = policy_digest(root, ref)
-    return None if current == pin[0] else (ref, pin[0], pin[1], current, change_lines(root, pin[1], ref))
+    with _unreadable_as("the review policy pin"):
+        pin = pin_of(root, node["codename"], commit) if ref and node.get("codename") else None
+        if pin is None:
+            return None
+        current, _ = policy_digest(root, ref)
+        return None if current == pin[0] else (ref, pin[0], pin[1], current, change_lines(root, pin[1], ref))
 
 
 def pin_problem(root: Path, node: dict[str, Any], commit: str) -> str | None:

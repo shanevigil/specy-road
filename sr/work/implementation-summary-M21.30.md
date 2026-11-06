@@ -124,6 +124,48 @@
 - `pin_of` git reads: undecodable log or commit body now raises instead of reading as "no registration commit"/"no trailer".
 - Other parse sites in the leaf: none (`_SCHEMA` is the bundled schema; `git_text` remains only for `git config user.*` in `_user`, where a failure falls back to the login name).
 
+## Fix round 4 (coordinator: one rule for unreadable input) — BLOCKED on one cell outside the zones
+
+- **Rule (module docstring, `_unreadable_as`, `UNREADABLE`).** Two input boundaries: the committed policy (git read,
+  decode, YAML load, shape check, digest, change lines — `_yaml_at`, `policy_digest`, `_pin_state`) and
+  `POLICY-ACCEPTED.yaml` (`read_acceptance`: file read, decode, YAML load, schema, node id). Inside either, any of
+  `OSError`, `ValueError` (incl. `UnicodeDecodeError` and YAML constructor errors such as `2026-99-99`), `TypeError`,
+  `AttributeError`, `RecursionError`, `yaml.YAMLError` becomes `PolicyUnreadable` (acceptance: the
+  invalid-acceptance result); a `PolicyUnreadable` raised inside passes through. Replaces round 3's `load_yaml`
+  (removed) and the separate except clauses; `_git_read` stays (a git output failure is never read as absent). The
+  acceptance check now uses `exists()`, so a directory in its place is unreadable, not absent. Limit: other
+  exception types (e.g. `MemoryError`) are not caught; the toolkit's other readers keep their own rules (below).
+- **Tests.** One table, `UNREADABLE_KINDS` × {committed policy, acceptance file} (16 cells): impossible unquoted
+  date, non-UTF-8 bytes, YAML syntax error, wrong top-level type, wrong shape inside, mixed-type keys, deeply nested
+  input, unreadable file (a directory in its place). Each cell: gate not passed with the pin problem;
+  `mark-implementation-reviewed --yes` and `finish-this-task` exit 1; for the policy cells `review accept-policy`
+  exits 1 writing nothing and a claim (`pinned_message`) exits 1; no traceback; tree unchanged. The per-case rows
+  from rounds 2–3 (parse error, impossible date, non-UTF-8, policy/roster shape; malformed/date/non-UTF-8
+  acceptance) are removed — covered by the table. Schema-invalid, other-node, digest-mismatch and second-edit rows stay.
+
+### Blocker: `deeply nested input in committed policy` (1 of 16 cells fails)
+
+The pin boundary converts it (`policy_digest` → `PolicyUnreadable: ... RecursionError ...`, probed). But the gate
+reads the same committed file earlier through code outside this leaf's zones, which lets `RecursionError` escape:
+
+- `specy_road/orchestration_config.py` `parse_orchestration_text` (via `effective_config`, called first in
+  `evaluate_gate`) — traceback from the gate, mark-implementation-reviewed and finish.
+- `specy_road/review_policy_ref.py` `committed_yaml` (catches `yaml.YAMLError, ValueError` only) — same for a deeply
+  nested committed `git-workflow.yaml`, via `policy_source` / `review_required`.
+
+Needed: widen those two except clauses to the same rule (add `RecursionError`, or reuse `UNREADABLE`), i.e. add both
+paths to the zones; or the coordinator drops/defers that cell. I did not edit either file and did not write a READY.
+
+## Probes (fix round 4)
+
+- All 8 kinds × acceptance file: gate problem, finish/mark exit 1, no traceback (table, pass).
+- 7 of 8 kinds × committed policy: gate problem, finish/mark/accept-policy/claim exit 1, no traceback (table, pass).
+- Deep nesting × committed policy, pin boundary alone: `PolicyUnreadable` (probe script).
+- Deep nesting × committed policy, `effective_config`: uncaught `RecursionError` (probe; outside zones).
+- Deep nesting × committed `git-workflow.yaml`, `committed_yaml`: uncaught `RecursionError` (probe; outside zones).
+- Mixed-type keys (`policy: {1: a, b: c}`): `json.dumps(sort_keys=True)` `TypeError` inside the digest → `PolicyUnreadable` (table, pass).
+- Other parse sites in the leaf: `_SCHEMA` (bundled, read inside the acceptance boundary); `git_text` only in `_user`.
+
 ## Final touch zones
 
 As listed in the brief plus `tests/test_enforced_rules_pointers.py`. No other path changed.
@@ -141,7 +183,8 @@ As listed in the brief plus `tests/test_enforced_rules_pointers.py`. No other pa
 ## Added
 
 - `specy_road/review_policy_pin.py`: `policy_parts`/`policy_digest` — the A1 digest, one helper for any ref.
-- `load_yaml` and `_git_read` (fix round 3) — one parse rule and one git-read rule, so no unreadable input crashes or reads as absent.
+- `_unreadable_as` + `UNREADABLE` (fix round 4) — the module's one rule for unreadable input at both boundaries.
+- `_git_read` (fix round 3; round 3's `load_yaml` removed in round 4) — one parse rule and one git-read rule, so no unreadable input crashes or reads as absent.
 - `_yaml_at` + `PolicyUnreadable` — strict read (committed_yaml returns `{}` on a parse error, which must never hash as empty).
 - `pinned_message` — the pickup call site's trailer; exits 1 on an unparsable policy before any registry write.
 - `pinned_message` no-HEAD guard — a repo with no commit has nothing to pin (keeps existing pickup tests exact).
@@ -163,7 +206,7 @@ As listed in the brief plus `tests/test_enforced_rules_pointers.py`. No other pa
 - `tests/test_do_next_task_pickup.py`: existing CI-skip-free pickup test parametrized over no commit / pinned /
   unparsable policy (exact trailer through `_finalize_pickup`; exit 1 with the registry and `git log` unchanged —
   fix round 1, R2; helper `_git_log` reads the real log).
-- Gate rows (fix round 3): impossible unquoted date, non-UTF-8 committed policy; acceptance rows: impossible date, non-UTF-8 bytes. `_on_dev` now commits bytes or text itself.
+- `UNREADABLE_KINDS` table test (fix round 4) replaces the round 2–3 per-case unreadable rows; `_write` puts bytes, text or a directory at a path, used by `_on_dev` and the acceptance cells.
 - Gate table rows (fix round 2): policy not a mapping, roster not a list of mappings, one line per change.
 - Pickup test pinned case runs real git and reads the claim commit back (fix round 2, R3).
 - Acceptance table rows (fix round 1, R1): malformed, schema-invalid and other-node files with the policy unchanged.
