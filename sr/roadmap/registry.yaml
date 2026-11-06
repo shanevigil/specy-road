@@ -130,3 +130,16 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
+  - codename: parse-failure-gets-repair-turn
+    node_id: M21.42
+    branch: feature/rm-parse-failure-gets-repair-turn
+    touch_zones:
+      - specy_road/review_delegate.py
+      - specy_road/review_record_write.py
+      - tests/test_review_delegate_repair.py
+      - tests/review_delegate_helpers.py
+      - docs/orchestration-reviewer-output.md
+      - CHANGELOG.md
+    started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending
