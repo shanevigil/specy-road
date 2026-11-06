@@ -210,14 +210,15 @@ coordinator that can satisfy the gate alone is no gate.
 writes anything, it identifies the caller from the environment, never from anything the caller types:
 
 - **A worker.** `SPECY_ROAD_WORKER_ID` set (specy-road sets it for the harness it launches) must name a readable
-  worker record, else exit 1. The record's model must be `M`; it wins over any harness marker the worker inherited.
+  worker record; one that cannot be read, decoded, parsed or validated exits 1 with no traceback. The record's model must be `M`; it wins over any harness marker the worker inherited.
 - **A harness.** Exactly one of these markers, confirmed against the harness versions of the 2026-11-05 replay:
   Claude Code `CLAUDECODE=1` (2.1.318), Codex `CODEX_THREAD_ID` set (codex-cli 0.166.0), Cursor `CURSOR_AGENT=1`
   (agent 2026.11.05). `M`'s roster entry must run on that `harness`; an entry with no `harness`, or `generic`,
   matches none. A refusal reads "`<M>` is a `<harness>` roster entry and this command runs under `<caller>`; file a
   review only under your own model id (AGENTS.md, Review roles); nothing was written".
 - **Unidentified** (no marker, or two or more): a human filing from a plain terminal, for example pasted notes, adds
-  `--human-filed "<who and why>"`, one non-empty line stored as `human_filed` and covered by a signature. The gate
+  `--human-filed "<who and why>"`: one non-blank, printable line (no line break of any kind, no control
+  character, no undecodable byte), stored as `human_filed` and covered by a signature. The gate
   counts such a record only when its signature verifies against the roster `public_key`, or when
   `policy.count_human_filed_reviews: true` (default false) on the integration branch; otherwise it is listed as
   "filed by hand (human_filed) and unsigned; policy.count_human_filed_reviews is off". An identified matching caller

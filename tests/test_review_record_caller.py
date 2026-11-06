@@ -7,16 +7,18 @@ attests with ``--human-filed``, and the gate counts that record only signed or u
 
 from __future__ import annotations
 
+import json
+import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 import yaml
 
-from tests.review_delegate_helpers import (delegate_repo, handoff_status_node, run_review_cli, run_review_delegate,
-                                           set_steps, verdict_step)
-from tests.review_repo_helpers import git, make_review_repo, review_text
+from tests.review_delegate_helpers import delegate_repo, handoff_status_node, run_review_cli
+from tests.review_repo_helpers import git, make_review_repo, review_output, review_text
 
 from specy_road.bundled_scripts import role_prompt
 from specy_road.review_caller import HARNESS_MARKERS
@@ -85,15 +87,16 @@ def test_a_caller_that_is_not_the_model_is_refused_and_writes_nothing(
     assert _tree(repo) == before
 
 
-@pytest.mark.parametrize("worker_id, body", [("../w-1", None), ("w-0042", None), ("w-0042", "{not: [yaml"),
-                                             ("w-0042", "- a list\n")])
+@pytest.mark.parametrize("worker_id, body", [("../w-1", None), ("w-0042", None), ("w-0042", b"{not: [yaml"),
+                                             ("w-0042", b"- a list\n"), ("w-0042", b"\xff\xfe not utf-8\n"),
+                                             ("w-0042", b"? [a, b]\n: c\n")])
 def test_a_worker_id_that_does_not_resolve_is_refused_without_a_traceback(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys, worker_id, body) -> None:
     repo = make_review_repo(tmp_path, orchestration=_roster())
     _env(monkeypatch, CLAUDE)
     if body is not None:
         record_path(repo, worker_id).parent.mkdir(parents=True, exist_ok=True)
-        record_path(repo, worker_id).write_text(body)
+        record_path(repo, worker_id).write_bytes(body)
     monkeypatch.setenv("SPECY_ROAD_WORKER_ID", worker_id)
     before = _tree(repo)
     assert _record(repo, OPUS) == 1
@@ -102,14 +105,15 @@ def test_a_worker_id_that_does_not_resolve_is_refused_without_a_traceback(
     assert _tree(repo) == before
 
 
-@pytest.mark.parametrize("attest", ["", "   ", "me\nbecause"])
+@pytest.mark.parametrize("attest", ["", "   ", "me\nbecause", "me\n", "me\rbecause", "me\u2028because",
+                                    "me\x00because", os.fsdecode(b"me \xff")])
 def test_an_attestation_must_be_one_non_empty_line(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys,
                                                    attest: str) -> None:
     repo = make_review_repo(tmp_path, orchestration=_roster())
     _env(monkeypatch, {})
     before = _tree(repo)
     assert _record(repo, OPUS, "--human-filed", attest) == 1
-    assert "--human-filed takes one non-empty line" in capsys.readouterr().err
+    assert "--human-filed takes one printable, non-empty line" in capsys.readouterr().err
     assert _tree(repo) == before
 
 
@@ -156,13 +160,34 @@ def test_a_signed_hand_filed_record_counts(tmp_path: Path, monkeypatch: pytest.M
     assert handoff_status_node(repo, capsys)["policy_met"]
 
 
-def test_review_delegate_from_a_cursor_coordinator_files_and_counts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
-                                                                    capsys) -> None:
-    repo, spec = delegate_repo(tmp_path)   # the reviewer, opus, is a claude-code entry
-    _env(monkeypatch, CURSOR)
-    set_steps(repo, spec, verdict_step(repo))
-    assert run_review_delegate(repo) == 0
-    assert "human_filed" not in _filed(repo, "opus")
+# A codex harness: writes the verdict to its -o file, says it as its last message and ends the turn cleanly.
+FAKE_CODEX = """#!{python}
+import json, os, sys
+argv = sys.argv[1:]
+sys.stdin.read()
+open(argv[argv.index("-o") + 1], "w").write(os.environ["FAKE_CODEX_ANSWER"])
+print(json.dumps({{"type": "thread.started", "thread_id": "00000000-0000-4000-8000-000000000000"}}))
+print(json.dumps({{"type": "item.completed",
+                  "item": {{"type": "agent_message", "text": os.environ["FAKE_CODEX_ANSWER"]}}}}))
+print(json.dumps({{"type": "turn.completed", "usage": {{}}}}), flush=True)
+"""
+
+
+def test_review_delegate_from_a_cursor_coordinator_files_the_codex_reviewer_and_counts(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=_roster())
+    reviews_dir(repo, "M1.1").mkdir(parents=True)
+    (reviews_dir(repo, "M1.1") / "PACKET.md").write_text("# Review packet\n")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "codex").write_text(FAKE_CODEX.format(python=sys.executable))
+    (bin_dir / "codex").chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+    monkeypatch.setenv("FAKE_CODEX_ANSWER", json.dumps(review_output(git(repo, "rev-parse", "HEAD"), model=SOL)))
+    _env(monkeypatch, CURSOR)   # the coordinator runs under Cursor; the reviewer is a codex entry
+    assert run_review_cli("review", "delegate", "M1.1", "--model", SOL, "--backoff", "0",
+                          "--repo-root", str(repo)) == 0
+    assert "human_filed" not in _filed(repo, SOL)
     assert handoff_status_node(repo, capsys)["policy_met"]
 
 

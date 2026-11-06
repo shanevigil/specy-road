@@ -4,7 +4,8 @@ A review record files only under the caller's own model. The caller is identifie
 anything it types (:func:`caller`):
 
 * ``SPECY_ROAD_WORKER_ID`` set: the worker record it names (:func:`~specy_road.worker_state.load_record`) gives the
-  model, ahead of any harness marker the worker inherited. An id that does not resolve is an error;
+  model, ahead of any harness marker the worker inherited. An id whose record cannot be read, decoded, parsed or
+  validated, for whatever reason, is an error (:class:`CallerError`), never a traceback;
 * else exactly one marker of :data:`HARNESS_MARKERS`: that harness;
 * else (no marker, or two or more): unidentified.
 
@@ -26,7 +27,7 @@ from typing import Any
 
 from specy_road.orchestration_config import effective_config, roster_entry
 from specy_road.review_policy_ref import policy_source
-from specy_road.worker_state import WorkerError, load_record
+from specy_road.worker_state import load_record
 
 #: ``(harness, environment variable, value)``: the marker each harness exports to the commands it runs, confirmed
 #: against the §9 replay versions (2026-11-05): Claude Code 2.1.318, codex-cli 0.166.0, Cursor agent
@@ -49,19 +50,21 @@ def caller(repo_root: Path, env: Mapping[str, str] | None = None) -> tuple[str, 
     if wid is not None:
         try:
             return "worker", load_record(repo_root, wid).model
-        except WorkerError as e:
+        except Exception as e:   # any record that cannot be read, decoded, parsed or validated: fail closed
             raise CallerError(f"SPECY_ROAD_WORKER_ID is {wid!r}, which names no readable worker record ({e})") from None
     found = [h for h, var, want in HARNESS_MARKERS if (env.get(var) == want if want else env.get(var))]
     return ("harness", found[0]) if len(found) == 1 else None
 
 
 def _attestation_problem(text: str | None) -> str | None:
+    """One rule for ``--human-filed``: non-blank, a single line by :meth:`str.splitlines` (so no ``\\n``, ``\\r``,
+    U+2028 or other break), and printable (no control character, and no lone surrogate from undecodable argv)."""
     if text is None:
         return ("this command runs under no identified harness (no SPECY_ROAD_WORKER_ID, and not exactly one of "
                 + ", ".join(var for _, var, _ in HARNESS_MARKERS)
                 + "); a human filing by hand passes --human-filed '<who and why>'")
-    if not text.strip() or "\n" in text or "\r" in text:
-        return "--human-filed takes one non-empty line saying who files this record and why"
+    if not text.strip() or text.splitlines() != [text] or not text.isprintable():
+        return "--human-filed takes one printable, non-empty line saying who files this record and why"
     return None
 
 
