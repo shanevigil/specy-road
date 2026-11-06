@@ -13,6 +13,9 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `specy-road digest`, `digest --check` and `digest -o -` with no roadmap manifest print the one line
+  `no roadmap manifest: expected <root>/roadmap/manifest.json` on stderr and exit 1, writing nothing, the same as
+  `export --check`, instead of a traceback.
 - The notes rules in the reviewer and repair-turn prompts name every clause break `review record` checks: `'. '`,
   `'! '`, `'? '`, `'; '` and all eight conjunctions (and, but, while, whereas, although, though, yet, plus). The
   check itself is unchanged. The `rework_rca` docstring now names `review_deferral.rca_deferral`, and two brainstorm

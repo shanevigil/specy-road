@@ -141,16 +141,6 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
-  - codename: digest-check-no-manifest-clean-error
-    node_id: M21.43
-    branch: feature/rm-digest-check-no-manifest-clean-error
-    touch_zones:
-      - specy_road/bundled_scripts/digest_cli.py
-      - tests/test_digest.py
-      - CHANGELOG.md
-    started: '2026-11-06'
-    owner: savigil
-    implementation_review: pending
   - codename: guidance-bypass-model-excluded-under-signed-reviews
     node_id: M21.44
     branch: feature/rm-guidance-bypass-model-excluded-under-signed-reviews
@@ -183,6 +173,25 @@ entries:
       - CHANGELOG.md
       - specy_road/bundled_scripts/models_cli.py
       - specy_road/roster_local.py
+      - model-profiles/README.md
+      - model-profiles/cursor-composer/composer-2.5.md
+      - schemas/orchestration.schema.json
+    started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending
+  - codename: upgrade-scratch-git-env-sterile
+    node_id: M21.40
+    branch: feature/rm-upgrade-scratch-git-env-sterile
+    touch_zones:
+      - specy_road/ignore_report.py
+      - specy_road/git_subprocess.py
+      - specy_road/bundled_scripts/upgrade.py
+      - specy_road/bundled_scripts/upgrade_plan.py
+      - specy_road/bundled_scripts/upgrade_generated.py
+      - tests/test_upgrade_preview.py
+      - tests/test_git_subprocess.py
+      - CHANGELOG.md
+      - docs/install-and-usage.md
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending

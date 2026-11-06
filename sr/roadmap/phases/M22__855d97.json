@@ -154,10 +154,10 @@
     },
     {
       "acceptance": [
-        "human: when the maintainer's Cursor quota allows (the date is recorded in this sheet; if rc5 is ready first the maintainer records a deferral here instead), CR1, CR3 and CR5 (3 runs each, the §9 replay's case files and scoring) and 5 review delegate runs are made with each of grok-4.7, gpt-6.1-sol and claude-opus-5-5 through the Cursor harness, on a wheel with M21.44 landed and policy.signed_reviews off for the runs",
-        "This sheet's Results table records, per model, CR1, CR3 and CR5 fail/success counts and the delegated reviews filed out of 5, with the run date and the Cursor agent version",
-        "Each model's profile (template and sr/model-profiles) gets M21.44's `guidance_bypass_observed` {date, harness: cursor, evidence naming the cases and counts} when the maintainer confirms a bypass (proposed rule: any CR1 or CR3 failure, or CR5 failing 2 of 3 runs or more), and stays without it otherwise; CHANGELOG [Unreleased] names any model flagged",
-        "The sheet records whether the behaviour is model- or harness-driven, comparing the Cursor results with the same models' native-harness results from the same re-tests (claude-opus-5-5 on Claude Code, gpt-6.1-sol on Codex); a harness-driven finding is filed by the planner as its own follow-up leaf (a harness-level flag), not done here",
+        "human: exactly one of two completion paths, recorded in this sheet with its date: (a) deferral: the maintainer records that rc5 was ready first, with no results and no profile change; or (b) runs: when the maintainer's Cursor quota allows, CR1, CR3 and CR5 (3 runs each, the §9 replay's case files and scoring) and 5 review delegate runs are made with each of grok-4.7, gpt-6.1-sol and claude-opus-5-5 through the Cursor harness, on a wheel with M21.44 landed and policy.signed_reviews off for the runs",
+        "On path (b), this sheet's Results table records, per model, CR1, CR3 and CR5 fail/success counts and the delegated reviews filed out of 5, with the run date, the Cursor agent version, the model slug the run reported, and the wheel's version and sha256",
+        "On path (b), each model's profile (template and sr/model-profiles) gets M21.44's `guidance_bypass_observed` {date, harness: cursor, evidence naming the cases and counts} when the maintainer confirms a bypass (proposed rule: any CR1 or CR3 failure, or CR5 failing 2 of 3 runs or more), and stays without it otherwise; CHANGELOG [Unreleased] names any model flagged",
+        "On path (b), the sheet records whether the behaviour is model- or harness-driven, comparing the Cursor results with the same models' native-harness results from the same re-tests (claude-opus-5-5 on Claude Code, gpt-6.1-sol on Codex); a model with no comparable native result is recorded as inconclusive; a harness-driven finding is filed by the planner as its own follow-up leaf (a harness-level flag), not done here",
         "Estimated net line change (informational, not a gate): profiles about +3 lines each when flagged; package 0"
       ],
       "codename": "guidance-bypass-retest-cursor-grok-sol-opus",
@@ -179,7 +179,39 @@
         "sr/model-profiles/spacexai-grok/grok-4.7.md",
         "sr/model-profiles/openai-gpt/gpt-6.1-sol.md",
         "sr/model-profiles/anthropic-claude/claude-opus-5-5.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "sr/planning/M22.23_guidance-bypass-retest-cursor-grok-sol-opus_dfb21e02-6eaa-4de1-9b48-25de90e7c191.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The usage parser (worker_adapter_base parse_events) reads the launch model through worker_models.launch_model instead of model_from_argv alone, so a shell -c launch is priced by command_model's existing rules (one simple command, redirections allowed, a literal -m / --model / --model= value): a Codex worker whose channels.cli is `codex exec --json -m <id> … - < {prompt}` gets a roster-priced cost marked est. instead of $?; a list or pipeline, or a non-literal model word, stays $?; model_from_argv is unchanged",
+        "list_sessions with live_only leaves out a session whose recorded worktree is not a directory or whose recorded branch has no refs/heads/<branch>; session list --all still shows it with 'stale: worktree gone' or 'stale: branch gone' (worktree gone when both); a record with no worktree or no branch keeps today's expiry rule; a worktree or branch value that is not a string, or a git error on the ref check, keeps the session live and raises nothing",
+        "worker terminate ends only the live presence session in the worker's worktree whose agent is the worker's derived id, `<user>-s<pgid>` from the record's pgid read before terminate clears it (the runner drops SPECY_ROAD_AGENT_ID and starts the wrapper in its own session); another agent's session in the same worktree and sessions in other worktrees stay live; no new worker-record field",
+        "Tests: tests/test_worker_usage_shell_cli.py (the rc4 Codex channels.cli string priced; a pipeline and a non-literal -m stay $?; an unsplittable string still $?); tests/test_session_presence.py (worktree removed, branch deleted, both gone, --all reasons, a non-string worktree value stays live, terminate ends the worker's own session and leaves a peer in the same worktree and another worktree's session); docs/orchestration-workers.md cost and presence lines; CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +30, tests about +100, docs about +3"
+      ],
+      "codename": "worker-cost-and-stale-presence",
+      "dependencies": [
+        "218a29f0-6309-4fa6-b767-1c8a74e17046"
+      ],
+      "id": "M22.13",
+      "node_key": "99ad0839-6c85-4631-b67b-80ef2d3b3c57",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.13_worker-cost-and-stale-presence_99ad0839-6c85-4631-b67b-80ef2d3b3c57.md",
+      "sibling_order": 12,
+      "status": "Not Started",
+      "title": "Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone",
+      "touch_zones": [
+        "specy_road/session_presence.py",
+        "specy_road/worker_ops_lifecycle.py",
+        "tests/test_worker_usage_shell_cli.py",
+        "tests/test_session_presence.py",
+        "docs/orchestration-workers.md",
+        "CHANGELOG.md",
+        "specy_road/worker_adapter_base.py",
+        "specy_road/bundled_scripts/session_cli.py"
       ],
       "type": "task"
     }

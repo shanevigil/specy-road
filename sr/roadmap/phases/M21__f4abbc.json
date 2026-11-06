@@ -79,7 +79,10 @@
         "docs/orchestration-models.md",
         "CHANGELOG.md",
         "specy_road/bundled_scripts/models_cli.py",
-        "specy_road/roster_local.py"
+        "specy_road/roster_local.py",
+        "model-profiles/README.md",
+        "model-profiles/cursor-composer/composer-2.5.md",
+        "schemas/orchestration.schema.json"
       ],
       "type": "task"
     }

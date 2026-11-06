@@ -395,9 +395,7 @@
         "Estimated net line change (informational, not a gate): package about +35, tests about +130, docs about +3"
       ],
       "codename": "upgrade-scratch-git-env-sterile",
-      "dependencies": [
-        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313"
-      ],
+      "dependencies": [],
       "id": "M21.40",
       "node_key": "74c3d924-fc2e-4170-a786-caed84beca86",
       "parent_id": "M21",
@@ -457,7 +455,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.43_digest-check-no-manifest-clean-error_dc4d8f5d-b3cc-4224-b456-4991ab6b3909.md",
       "sibling_order": 41,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "digest refuses cleanly when the roadmap manifest is missing, like export --check",
       "touch_zones": [
         "specy_road/bundled_scripts/digest_cli.py",
