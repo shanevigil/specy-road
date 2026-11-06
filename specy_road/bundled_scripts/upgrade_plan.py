@@ -21,13 +21,13 @@ import io
 import os
 import shutil
 import stat
-import subprocess
 import sys
 import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from specy_road import git_subprocess
 from specy_road.ignore_report import scratch_git_env
 
 State = tuple | None   # ("file", size, mtime_ns, mode) | ("link", text) | ("dir",) | ("other",) | None (absent)
@@ -98,7 +98,10 @@ class Mirror:
 
     def __init__(self, checkout: Path, dest: Path, skip: Path) -> None:
         self.checkout, self.skip = checkout.resolve(), skip.resolve()
-        self.repo, self.outside = dest.resolve() / "repo", dest.resolve() / "outside"
+        self.dest = dest.resolve()
+        self.repo, self.outside, self.hooks = self.dest / "repo", self.dest / "outside", self.dest / "no-hooks"
+        self.init: git_subprocess.GitResult | None = None   # the scratch ``git init``, set by build()
+        self.unreadable: list[str] = []   # repo-relative files copied empty: git add could not read them
         self.states: dict[str, State] = {}
         self._links: list[tuple[Path, Path]] = []
         self._hardlinks: dict[tuple[int, int], Path] = {}   # (dev, ino) -> first sandbox path for this inode
@@ -130,7 +133,11 @@ class Mirror:
             if os.path.realpath(dst) != str(mapped):
                 dst.unlink()
                 os.symlink(mapped, dst)
-        subprocess.run(["git", "init", "-q", str(self.repo)], check=False, capture_output=True, env=scratch_git_env())
+        template = self.dest / "no-template"
+        template.mkdir()
+        self.hooks.mkdir()
+        self.init = git_subprocess.run(["-c", f"core.hooksPath={self.hooks}", "init", "-q", f"--template={template}"],
+                                       self.repo, env=scratch_git_env(self.dest))
         return self
 
     def _copy_dir(self, src: Path, dst: Path) -> None:
@@ -171,6 +178,8 @@ class Mirror:
         except PermissionError:   # unreadable: unreadable in the sandbox too, so every reader fails alike
             dst.touch()
             dst.chmod(src.stat().st_mode & 0o777)
+            if dst.is_relative_to(self.repo):
+                self.unreadable.append(dst.relative_to(self.repo).as_posix())
 
     def _ensure(self, real: Path, mapped: Path) -> None:
         """Give a link target the mirror lacks (outside the checkout, or under ``skip``) its content."""
