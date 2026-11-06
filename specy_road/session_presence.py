@@ -146,8 +146,8 @@ def git_worktree_top(cwd: Path) -> Path:
 
 
 def own_live_sessions(repo_root: Path) -> list[Session]:
-    """Live records this user started in this checkout: what ``session end`` falls back on
-    when a harness ran ``start`` and ``end`` in different POSIX sessions."""
+    """Live records this user started in this checkout: what ``session touch`` falls back on
+    when a harness ran ``start`` and ``touch`` in different POSIX sessions."""
     me = current_user()
     return [s for s in list_sessions(repo_root) if s.user == me]
 

@@ -150,7 +150,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.32_session-end-only-your-own_218a29f0-6309-4fa6-b767-1c8a74e17046.md",
       "sibling_order": 30,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "session end ends only your own session: another agent's live record needs --force from a terminal, and the guard's refusal names the rule",
       "touch_zones": [
         "specy_road/bundled_scripts/session_cli.py",
@@ -228,7 +228,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.35_refused-review-gets-one-repair-turn_ef56f4ea-a868-4a22-b5a4-f6bccf890779.md",
       "sibling_order": 33,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review delegate gives a refused reviewer answer one repair turn with the refusal text, and the reviewer prompt ends with the notes rules",
       "touch_zones": [
         "specy_road/review_delegate.py",

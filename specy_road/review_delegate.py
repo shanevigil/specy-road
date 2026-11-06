@@ -22,6 +22,11 @@ rate-limit error is retried with doubling backoff, at most ``--retries`` times.
 older commit's record in place is reported as incomplete for the current
 commit, never as that record's verdict. Raw output goes to ``RUN-<model>.log``. Before a run starts, the
 previous round's record, log and notes are kept under ``history/`` (:func:`specy_road.review_usage.archive_round`).
+
+An answer ``review record`` refuses gets one repair turn (M21.35, :func:`_repair`): the refusal text, whole, and the
+notes rules (:func:`~specy_road.review_record_write.repair_prompt`), checked like the first turn. The record keeps
+the first refusal as ``refusal`` and marks the repair turn's attempts ``repair: true``; ``--resume`` of an
+incomplete run that kept one sends that repair prompt instead of the continue prompt.
 """
 
 from __future__ import annotations
@@ -49,8 +54,8 @@ from specy_road.review_files import reviews_dir
 from specy_road.review_answer import stream_lines
 from specy_road.review_model_check import check_note, check_run, rostered
 from specy_road.review_record_write import (Outcome, ReviewRunBusy, answer_scratch, attempt_text,
-                                            close_review_run, delegate_turn, file_review, final_answer, review_run_lock,
-                                            snapshot, write_schema)
+                                            close_review_run, delegate_turn, file_review, final_answer, repair_prompt,
+                                            review_run_lock, snapshot, write_schema)
 from specy_road.review_run_status import superseded_by
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.review_usage import add_parser as add_usage_parser, archive_round
@@ -116,16 +121,22 @@ def _model_check(repo_root: Path, model: str, log: Path, attempt: dict[str, Any]
     return reported, (reported, state)
 
 
+def _reviewer_prompt(repo_root: Path, t: ReviewTarget, model: str, ref: str | None) -> str:
+    text, _prof, err = build_prompt(repo_root, t.node["id"], role="reviewer", model=model, ref=ref)
+    if err:
+        raise DelegateError(err)
+    return text
+
+
 def _start(repo_root: Path, t: ReviewTarget, model: str, ref: str | None, h: _Harness,
-           resume: bool) -> tuple[str, str | None]:
-    """``(prompt text, session to resume)``; refuses a resume the record cannot support."""
+           resume: bool) -> tuple[str, str | None, str | None]:
+    """``(prompt text, session to resume, stored refusal)``; refuses a resume the record cannot support. A resume
+    of an incomplete run that kept a refusal (M21.35) is the repair turn's: the stored refusal is returned and the
+    prompt text is the full prompt."""
     if not resume and t.node.get("chore"):
-        return chore_prompt(t.node["chore"], "reviewer", model, repo_root, commit=t.commit), None
+        return chore_prompt(t.node["chore"], "reviewer", model, repo_root, commit=t.commit), None, None
     if not resume:
-        text, _prof, err = build_prompt(repo_root, t.node["id"], role="reviewer", model=model, ref=ref)
-        if err:
-            raise DelegateError(err)
-        return text, None
+        return _reviewer_prompt(repo_root, t, model, ref), None, None
     if not h.can_resume:
         raise Unsupported(f"unsupported by {h.harness}: resume")
     prev = load_run(repo_root, t.node["id"], model) or {}
@@ -135,7 +146,11 @@ def _start(repo_root: Path, t: ReviewTarget, model: str, ref: str | None, h: _Ha
     if not same_commit(repo_root, prev.get("commit"), t.commit):
         raise DelegateError(f"the recorded session reviewed {str(prev.get('commit'))[:12]}, not the commit under "
                             f"review {str(t.commit)[:12]}; delegate without --resume for a fresh review")
-    return RESUME_PROMPT, check_session_id(h.harness, prev["session_id"])
+    session = check_session_id(h.harness, prev["session_id"])
+    refusal = prev.get("refusal")
+    if prev.get("state") == "incomplete" and isinstance(refusal, str):
+        return _reviewer_prompt(repo_root, t, model, ref), session, refusal
+    return RESUME_PROMPT, session, None
 
 
 def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path, Path], session: str | None,
@@ -143,7 +158,9 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
     """Turns until one ends without a capacity error or the retries are spent; returns why it failed, if it did.
 
     A retry resumes the session the harness reported, with the continue prompt; with none reported
-    (the provider refused before the session started) it launches afresh with the full prompt.
+    (the provider refused before the session started) it launches afresh with the full prompt. An attempt launched
+    while the run holds a ``refusal`` is a repair turn's (M21.35: :func:`_repair`, or a ``--resume`` that sends the
+    stored one) and is marked ``repair: true``, capacity retries included.
     """
     reason = ""
     for n in range(retries + 1):
@@ -163,7 +180,7 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
             said = lines[-1][:200] if lines else "no error text"
         run["attempts"].append({"at": _now(), "exit": turn["exit"], "capacity": bool(cap), "error": said[:300] or None,
                                 "log_start": turn["log_start"], "log_end": turn["log_end"],   # the span run_text reads
-                                "log_sha256": turn["log_sha256"]})
+                                "log_sha256": turn["log_sha256"], **({"repair": True} if "refusal" in run else {})})
         if path.is_symlink():   # replaced below, never followed; the tripwire still reports it (review_write_check)
             h.replaced.append(path)
         save_run(path, run)
@@ -180,6 +197,44 @@ def _prompt_file(repo_root: Path, node_id: str, model: str, text: str, suffix: s
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text, encoding="utf-8")
     return p
+
+
+def _repair_prompts(repo_root: Path, node_id: str, model: str, text: str, refusal: str) -> tuple[Path, Path]:
+    """The repair turn's pair for :func:`_attempts`: the full prompt plus the repair section (a fresh launch), and
+    the repair section alone (a resumed one), so every launch of the phase carries the refusal."""
+    section = repair_prompt(refusal)
+    return (_prompt_file(repo_root, node_id, model, text.rstrip("\n") + "\n\n" + section, "-repair-full"),
+            _prompt_file(repo_root, node_id, model, section, "-repair"))
+
+
+def _file(repo_root: Path, node_id: str, model: str, reviews: Path, h: _Harness, run: dict[str, Any],
+          before: Any, cwd: Path, ref: str | None, sign_key: Path | None, answer: Path) -> Outcome:
+    """File the last attempt's answer, its model checked from that attempt's own log span, against ``before``."""
+    attempt = run["attempts"][-1] if run["attempts"] else {}
+    reported, model_check = _model_check(repo_root, model, h.log, attempt)
+    run["reported_model"] = reported
+    return file_review(repo_root, node_id, model, reviews, answer=final_answer(
+        h.adapter, attempt_text(h.log, attempt), answer),
+        before=before, after=snapshot(cwd, reviews, model, before).with_symlinks(h.replaced), ref=ref,
+        launch_mode=h.launch_mode, sign_key=sign_key, model_check=model_check)
+
+
+def _repair(repo_root: Path, node_id: str, model: str, reviews: Path, h: _Harness, run: dict[str, Any], path: Path,
+            cwd: Path, text: str, first: Outcome, retries: int, backoff: float, sleep: Callable[[float], None],
+            ref: str | None, sign_key: Path | None, answer: Path) -> tuple[str, Outcome]:
+    """The one repair turn after ``review record`` refused ``first`` (M21.35): the session's resume when the harness
+    can, else a fresh launch with the full prompt ``text``, both carrying the refusal through every capacity retry;
+    checked for writes against a snapshot taken right before it. Returns ``(capacity reason, outcome)``; an outcome
+    other than ``recorded`` (a second refusal too) names the first refusal before its own reason."""
+    run["refusal"] = first.refusal
+    prompts = _repair_prompts(repo_root, node_id, model, text, first.refusal)
+    session = check_session_id(h.harness, run["session_id"]) if h.can_resume and run["session_id"] else None
+    before = snapshot(cwd, reviews, model)
+    reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)   # marked repair: run["refusal"]
+    filed = _file(repo_root, node_id, model, reviews, h, run, before, cwd, ref, sign_key, answer)
+    if filed.state != "recorded":   # the first refusal stays in the reason, whatever ended the repair turn
+        filed = replace(filed, reason=f"{first.reason}; after the repair turn, {filed.reason}")
+    return reason, filed
 
 
 def _close(repo_root: Path, t: ReviewTarget, model: str, run: dict[str, Any], path: Path, reason: str,
@@ -204,38 +259,39 @@ def _delegate_locked(repo_root: Path, t: ReviewTarget, node_id: str, model: str,
     h.output = None if chore else answer
     if not chore and not resume:   # M15.17: a missing or other-commit packet is built, not refused
         ensure_packet(repo_root, t, ref)
-    text, session = _start(repo_root, t, model, ref, h, resume)
+    text, session, refusal = _start(repo_root, t, model, ref, h, resume)
     _preflight(entry, cwd)   # M8.3: after the lock, before the RUN record is saved
     if h.note:   # bare mode and the subscription login, same sentence prompt prints
         print(h.note, file=sys.stderr)
     if h.api_id is None and entry.get("routing") != "dynamic":
         raise DelegateError(_no_model_refusal(model, h.harness))
-    prompts = (_prompt_file(repo_root, node_id, model, text),
-               _prompt_file(repo_root, node_id, model, CHORE_RESUME_PROMPT if chore else RESUME_PROMPT, "-resume"))
+    prompts = (_repair_prompts(repo_root, node_id, model, text, refusal) if refusal is not None else
+               (_prompt_file(repo_root, node_id, model, text),
+                _prompt_file(repo_root, node_id, model, CHORE_RESUME_PROMPT if chore else RESUME_PROMPT, "-resume")))
     archive_round(repo_root, node_id, model)   # M14.6: the previous round's RUN json, log and notes, kept in history/
     run = {"node_id": node_id, "model": model, "harness": h.harness, "ref": t.ref, "commit": t.commit,
            "state": "running", "session_id": session, "resumed": resume, "source": "review-delegate",
            "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
            "launch_mode": h.launch_mode, "requested_model": h.api_id, "reported_model": None,
            "log": str(path.with_suffix(".log"))}
+    if refusal is not None:   # this resume is the repair turn: it gets no second one
+        run["refusal"] = refusal
     save_run(path, run)
-    h.log = log = path.with_suffix(".log")
+    h.log = path.with_suffix(".log")
     try:
         # M8.3's read-only check and filing are for roadmap reviews; a chore reviewer files its own verdict file.
         if not chore:
             write_schema(repo_root, reviews, ref)   # before the snapshot: the reviewer must not change it
         before = snapshot(cwd, reviews, model) if not chore else None
         reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
-        model_check = None
-        if before is not None:
-            attempt = run["attempts"][-1] if run["attempts"] else {}
-            reported, model_check = _model_check(repo_root, model, log, attempt)
-            run["reported_model"] = reported
-        filed = None if before is None else file_review(
-            repo_root, node_id, model, reviews, answer=final_answer(
-                h.adapter, attempt_text(log, run["attempts"][-1] if run["attempts"] else {}), answer),
-            before=before, after=snapshot(cwd, reviews, model, before).with_symlinks(h.replaced), ref=ref,
-            launch_mode=h.launch_mode, sign_key=sign_key, model_check=model_check)
+        filed = None if before is None else _file(repo_root, node_id, model, reviews, h, run, before, cwd, ref,
+                                                  sign_key, answer)
+        if filed is not None and filed.refusal and "refusal" not in run:   # M21.35: one repair turn
+            reason, filed = _repair(repo_root, node_id, model, reviews, h, run, path, cwd, text, filed, retries,
+                                    backoff, sleep, ref, sign_key, answer)
+        elif filed is not None and filed.refusal:   # the resumed repair turn was refused again
+            filed = replace(filed, reason=f"rerun requested: review record refused the output: {run['refusal'][-400:]}"
+                                          f"; after the repair turn, {filed.reason}")
         _close(repo_root, t, model, run, path, reason, filed)
     except BaseException as e:   # an interrupt or a launch refusal still closes the record
         close_review_run(repo_root, t, model, run, Outcome("rerun", f"interrupted: {e or type(e).__name__}", exit=None))
