@@ -8,7 +8,7 @@ The current state of this project's roadmap, generated from the merged graph, th
 
 Status is the computed rollup: a non-leaf is Complete only when every leaf descendant is.
 
-- `M15` rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction `rc3-multi-harness-adoption-friction` — phase — **Not Started**
+- `M15` rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction `rc3-multi-harness-adoption-friction` — phase — **In Progress**
   - `M15.1` RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command `rc-install-docs-cover-extras-and-direct-wheel-url` — task — **Complete**
   - `M15.2` A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch `claude-code-reviewer-works-on-a-subscription-login` — task — **Complete**
   - `M15.3` prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged `prompt-channel-cli-launches-nothing-without-run` — task — **Complete**
@@ -29,7 +29,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M15.24` ready does not record false evidence: a passing run whose output shows a failed command is flagged, and --run-argv runs a command without a shell `ready-flags-failure-tails-and-takes-argv` — task — **Complete**
   - `M15.26` A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim `claims-with-no-worker-are-reported-and-never-hold-slots` — task — **Complete**
   - `M15.27` worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length `cursor-usage-sums-segments-and-flags-undercounts` — task — **Complete**
-  - `M15.31` A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported `delegated-reviewer-always-runs-a-named-model` — task — **Not Started**
+  - `M15.31` A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported `delegated-reviewer-always-runs-a-named-model` — task — **Complete**
   - `M15.32` An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure `archived-summary-exempt-from-file-limits` — task — **Complete**
   - `M15.33` A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed `refused-review-record-leaves-a-trace` — task — **Complete**
   - `M15.34` The executor prompt states the test rules that the reviewer's excess checklist enforces `executor-prompt-states-the-test-rules` — task — **Complete**
@@ -239,7 +239,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M15.31` on `feature/rm-delegated-reviewer-always-runs-a-named-model` since 2026-11-05
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -255,10 +254,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 27 | 9 | 4.78 | 78% | 25 | 3 |
+| `docs` **flagged** | 26 | 9 | 4.88 | 76% | 25 | 3 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 49 | 16 | 4.24 | 73% | 34 | 6 |
-| `tests` **flagged** | 50 | 16 | 4.21 | 74% | 34 | 6 |
+| `specy_road` **flagged** | 49 | 17 | 4.28 | 72% | 34 | 6 |
+| `tests` **flagged** | 50 | 17 | 4.24 | 73% | 34 | 6 |
 | `CHANGELOG.md` | 6 | 0 | 2.50 | 33% | 6 | 0 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |

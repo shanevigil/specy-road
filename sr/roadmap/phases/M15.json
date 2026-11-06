@@ -480,7 +480,7 @@
       "parent_id": "M15",
       "planning_dir": "planning/M15.31_delegated-reviewer-always-runs-a-named-model_311116ea-4199-49bf-8858-11c48b99828c.md",
       "sibling_order": 20,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported",
       "touch_zones": [
         "specy_road/review_delegate.py",
