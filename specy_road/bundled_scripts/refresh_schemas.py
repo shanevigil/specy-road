@@ -119,8 +119,7 @@ def refresh_schemas(repo_root: Path, *, dry_run: bool = False) -> list[str]:
         raise ValueError(f"missing bundled schemas at {src_dir}")
     dst_dir = repo_root / SCHEMAS_DIRNAME
     sources = sorted(src_dir.glob("*.json"))
-    for src in sources:
-        safe_write.check(repo_root, dst_dir / src.name)
+    safe_write.check_all(repo_root, (dst_dir / src.name for src in sources))
     written: list[str] = []
     for src in sources:
         dst = dst_dir / src.name

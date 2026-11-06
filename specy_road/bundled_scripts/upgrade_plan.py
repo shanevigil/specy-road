@@ -57,7 +57,7 @@ class Entry:
 
     ``path`` is how the refresh names it (checkout-relative, or absolute outside
     the checkout); ``target`` is the real path it lands on, links followed;
-    ``action`` is ``write`` / ``link`` / ``mkdir`` / ``remove``, or ``refuse`` /
+    ``action`` is ``write`` / ``link`` / ``mkdir`` / ``remove``, or ``refuse`` / ``error`` /
     ``skip`` / ``fail`` for a path the refresh leaves as it is; ``data`` is the
     final bytes of a ``write``, ``link`` the final text of a ``link``; ``before``
     is the target's state when the plan was made.
@@ -113,6 +113,10 @@ class Mirror:
         if path.is_relative_to(self.repo):
             return self.checkout / path.relative_to(self.repo)
         return Path("/") / path.relative_to(self.outside)
+
+    def real_text(self, text: str) -> str:
+        """``text`` with the mirror's paths given as the checkout's (``outside/x`` is ``/x``)."""
+        return text.replace(str(self.repo), str(self.checkout)).replace(str(self.outside), "")
 
     def build(self) -> Mirror:
         self._hardlinks.clear()
@@ -218,10 +222,18 @@ def _diff(mirror: Mirror, before: dict[Path, State], after: dict[Path, State], s
     return entries
 
 
+def _named_in_checkout(e: OSError, real: Callable[[str], str]) -> OSError:
+    """``e`` naming the checkout's paths, not the mirror's: a ``SafeWriteError``'s are in its message, another's in its filename."""
+    if isinstance(e, safe_write.SafeWriteError):
+        return safe_write.SafeWriteError(real(str(e)))
+    e.filename = e.filename and real(str(e.filename))
+    return e
+
+
 def make_plan(checkout: Path, project: Path, refresh: Callable[[Path, Path], dict[str, str]]) -> Plan:
     """Run ``refresh(project, checkout)`` once, on a mirror; the plan is what it wrote and what it declined.
 
-    ``refresh`` returns ``{checkout-relative path: refuse | skip | fail}``.
+    ``refresh`` returns ``{checkout-relative path: refuse | error | skip | fail}``.
     Its output is printed with the mirror's paths given as the checkout's.
     """
     checkout = checkout.resolve()
@@ -229,18 +241,15 @@ def make_plan(checkout: Path, project: Path, refresh: Callable[[Path, Path], dic
         mirror = Mirror(checkout, Path(tmp), project / "work").build()
         before = mirror.snapshot()
         out, err = io.StringIO(), io.StringIO()
+        real = mirror.real_text
         try:
             with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
                 declined = refresh(mirror.to_sandbox(project.resolve()), mirror.repo)
-        except safe_write.SafeWriteError as e:   # name the checkout's paths, not the mirror's
-            raise safe_write.SafeWriteError(str(e).replace(str(mirror.repo), str(checkout))
-                                            .replace(str(mirror.outside), "")) from None
-        except OSError as e:   # name the checkout's path, not the mirror's
-            e.filename = e.filename and str(e.filename).replace(str(mirror.repo), str(checkout))
-            raise
+        except OSError as e:
+            raise _named_in_checkout(e, real)
         finally:
             for buf, stream in ((out, sys.stdout), (err, sys.stderr)):
-                stream.write(buf.getvalue().replace(str(mirror.repo), str(checkout)))
+                stream.write(real(buf.getvalue()))
                 stream.flush()
         entries = _diff(mirror, before, mirror.snapshot(), mirror.states)
         for rel, action in sorted(declined.items()):
@@ -262,21 +271,17 @@ def _replaces(e: Entry) -> bool:
                                  or (e.action == "mkdir" and kind != "dir"))
 
 
-def refused_changes(plan: Plan) -> list[str]:
-    """The safe-write refusal for each change whose real target is not under the checkout by real directories.
+def check_changes(plan: Plan) -> None:
+    """Raise ``SafeWriteError`` naming each change whose real target is not under the checkout by real directories.
 
     A refresh that wrote through a link out of the checkout made its change at
     the link's target, which this names; so a refresher that bypasses the rule
     still never reaches outside. Declined entries are not changes: their
     refresher already refused and reported them.
     """
-    found: list[str] = []
-    for e in plan.changes():
-        try:
-            safe_write.check(plan.checkout, e.target, None)
-        except safe_write.SafeWriteError as err:
-            found.append(str(err))
-    return found
+    found = [why for e in plan.changes() if (why := safe_write.refused(plan.checkout, e.target, None))]
+    if found:
+        raise safe_write.SafeWriteError(f"{'; '.join(found)}; nothing was written")
 
 
 def apply_plan(plan: Plan, locate: Callable[[Path], Path] = lambda p: p) -> None:
@@ -286,9 +291,7 @@ def apply_plan(plan: Plan, locate: Callable[[Path], Path] = lambda p: p) -> None
     refusal raises ``SafeWriteError`` naming each path, and nothing is applied
     (neither to the checkout nor to ``locate``'s copy).
     """
-    refused = refused_changes(plan)
-    if refused:
-        raise safe_write.SafeWriteError(f"{'; '.join(refused)}; nothing was written")
+    check_changes(plan)
     changes = plan.changes()
     for e in sorted((e for e in changes if _replaces(e)), key=lambda e: -len(e.target.parts)):
         where = locate(e.target)

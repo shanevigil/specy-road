@@ -140,7 +140,8 @@ def test_dry_run_copy_and_real_checkout_end_byte_identical(
     monkeypatch.setattr(upgrade, "validate_at", lambda at: real_trees.append(_tree(_top(at))))
     real = run_upgrade(project)
 
-    assert dry == real == 0
+    # M21.37: a canonical skill refused for a link exits 1, real and dry alike; the rest of the plan applies.
+    assert dry == real == (1 if layout == "canonical-skill-linked-outside" else 0)
     assert dry_trees and real_trees
     assert dry_trees[-1] == real_trees[-1]
     assert real_trees[-1] != untouched   # the upgrade wrote something, so the comparison is not vacuous
@@ -196,7 +197,7 @@ def test_sol_f1_an_alias_fails_the_claude_import_check_in_both(
 def test_sol_f2_a_refused_canonical_skill_is_unowned_in_both_manifests(
     tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A recorded canonical skill linked outside is refused, so the refreshed manifest drops it."""
+    """A recorded canonical skill linked outside is refused (an error, M21.37), so the refreshed manifest drops it."""
     root = _skill_outside(tmp_path)
     owned_seen: list[bool] = []
 
@@ -209,6 +210,7 @@ def test_sol_f2_a_refused_canonical_skill_is_unowned_in_both_manifests(
 
     dry, real = _exits(root, validate, capsys, monkeypatch)
 
-    assert dry == real == (1, ["error: required skill was refused"])
+    refusal = f"error: {root / SKILL} is a symlink (to {tmp_path / 'outside.md'}), not a regular file"
+    assert dry == real == (1, [refusal, "error: required skill was refused"])
     assert owned_seen and not any(owned_seen)
     assert (tmp_path / "outside.md").read_text(encoding="utf-8") == "old skill\n"

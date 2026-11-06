@@ -90,11 +90,16 @@ def refused_link(root: Path, path: Path, *, any_link: bool = True) -> str | None
     The :mod:`specy_road.safe_write` rule: any symlink on the path is refused,
     in the repository or out of it, whatever ``any_link`` says (kept for callers).
     """
-    try:
-        safe_write.check(root, path)
-    except safe_write.SafeWriteError as e:
-        return str(e)
-    return None
+    return safe_write.refused(root, path)
+
+
+def rule_refusal(outcome: str) -> str | None:
+    """The reason in a ``refused: <why>`` outcome of the :mod:`specy_road.safe_write` rule, else ``None``.
+
+    :data:`REFUSED` (a ``resolves_outside`` writer's link out: ``AGENTS.md``,
+    ``CLAUDE.md``) is not one: it stays a report line.
+    """
+    return outcome.removeprefix("refused: ") if outcome.startswith("refused: ") and outcome != REFUSED else None
 
 
 def render_block(
@@ -147,12 +152,10 @@ def apply_managed_block(
     real.
     """
     block = render_block(lines, note=note, style=style)
-    if strict and (why := refused_link(path.parent, path)):
-        return f"refused: {why}"
     try:
-        existing = path.read_text(encoding="utf-8") if path.is_file() else None
-    except (OSError, UnicodeDecodeError):
-        return FAILED
+        existing = _read(path, strict)
+    except (OSError, UnicodeDecodeError) as e:
+        return f"refused: {e}" if isinstance(e, safe_write.SafeWriteError) else FAILED
 
     if existing is None:
         return _write(path, block, CREATED, dry_run, strict)
@@ -168,19 +171,29 @@ def apply_managed_block(
     return _write(path, f"{before}{block}{tail}", UPDATED, dry_run, strict)
 
 
+def _read(path: Path, strict: bool) -> str | None:
+    """``path``'s text, ``None`` when absent; with ``strict`` the safe-write rule is checked before it is read."""
+    safe_write.check_all(path.parent, [path] if strict else [])
+    return path.read_text(encoding="utf-8") if path.is_file() else None
+
+
+def _plain_write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+def _strict_write(path: Path, text: str) -> None:
+    safe_write.write(path.parent, path, text)
+
+
 def _write(path: Path, text: str, outcome: str, dry_run: bool = False, strict: bool = False) -> str:
     if not strict and resolves_outside(path.parent, path):   # a managed file sits directly in the root its caller named
         return REFUSED
     if dry_run:
         return outcome
-    try:
-        if strict:
-            safe_write.write(path.parent, path, text)
-        else:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(text, encoding="utf-8")
-    except safe_write.SafeWriteError as e:
-        return f"refused: {e}"
+    write = _strict_write if strict else _plain_write
+    try:   # strict: ``_read`` checked the rule already, so a refusal here is a race and reads as failed
+        write(path, text)
     except OSError:
         return FAILED
     return outcome

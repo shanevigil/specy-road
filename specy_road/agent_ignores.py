@@ -130,8 +130,7 @@ def _seed(path: Path, text: str, dry_run: bool) -> bool:
 
 def check_ignore_files(git_root: Path) -> None:
     """Raise ``SafeWriteError`` when the safe-write rule refuses either ignore file, so a command can stop first."""
-    for name in (GITIGNORE, CURSOR_INDEXING_IGNORE):
-        safe_write.check(git_root, git_root / name)
+    safe_write.check_all(git_root, (git_root / name for name in (GITIGNORE, CURSOR_INDEXING_IGNORE)))
 
 
 def apply_agent_ignores(

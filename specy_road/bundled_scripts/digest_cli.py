@@ -37,6 +37,22 @@ def _print_gitignore_hint(root: Path, name: str) -> None:
         print(f"  {hint}", file=sys.stderr)
 
 
+def _write_output(root: Path, output: str, out: Path, body: str) -> None:
+    """Write the digest to ``out``: by the safe-write rule from the checkout, unless ``output`` is absolute and outside it.
+
+    The default, a relative ``-o``, or an absolute one at or under the checkout
+    (compared lexically with the resolved checkout, which includes the checkout
+    itself) go through the rule as given, so a ``..`` above the checkout is
+    refused. An explicit absolute path outside the checkout is the person's own.
+    """
+    checkout = git_root(root) or root   # both resolved
+    if Path(output).is_absolute() and not Path(os.path.normpath(out)).is_relative_to(checkout):
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(body, encoding="utf-8")
+        return
+    safe_write.write(checkout, out, body)
+
+
 def cmd_digest(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     body = render_digest(root)
@@ -65,17 +81,8 @@ def cmd_digest(ns: argparse.Namespace) -> int:
         print(f"OK: {ns.output} matches the roadmap.")
         return 0
 
-    checkout = git_root(root) or root   # both resolved; containment is lexical and includes the checkout itself
-    dest = Path(os.path.normpath(out))
-    if Path(ns.output).is_absolute() and not dest.is_relative_to(checkout):
-        out.parent.mkdir(parents=True, exist_ok=True)   # an explicit absolute -o out of the checkout: the person's own
-        out.write_text(body, encoding="utf-8")
-    else:
-        try:   # the default, a relative -o, or an absolute one at or under the checkout: the safe-write rule
-            safe_write.write(checkout, out, body)   # as given: a ".." above the checkout is refused
-        except safe_write.SafeWriteError as e:
-            print(f"error: {e}", file=sys.stderr)
-            return 1
+    with safe_write.exit_on_refusal():
+        _write_output(root, ns.output, out, body)
     print(f"Wrote {out} ({len(body.encode('utf-8'))} bytes)")
     return 0
 

@@ -17,6 +17,7 @@ from specy_road.agents_md_block import apply_agents_and_report
 from specy_road.specyrd_skills import (  # noqa: F401 — re-exported for refresh_stubs
     SKILLS_REL,
     _package_templates_dir,
+    check_install_paths,
     _read_template,
     install_stubs as _append_command_stub_installs,
     managed_paths,
@@ -193,11 +194,16 @@ def _save_manifest(repo_root: Path, data: dict[str, Any]) -> None:
     safe_write.write(repo_root, repo_root / ".specyrd" / "manifest.json", json.dumps(data, indent=2) + "\n")
 
 
-def _refuse_unsafe_paths(repo_root: Path) -> None:
-    """Exit 1 naming ``.specyrd/manifest.json`` or an ignore file the safe-write rule refuses, before anything is written."""
+def _refuse_unsafe_paths(repo_root: Path, rel_dest: Path, files_to_install: tuple[str, ...], agent: str) -> None:
+    """Exit 1 naming the first path the safe-write rule refuses, before anything is written.
+
+    ``.specyrd/manifest.json``, both ignore files, and every stub, canonical
+    skill file and skill link (the skills-link rule, :func:`check_install_paths`).
+    """
     try:
         safe_write.check(repo_root, repo_root / ".specyrd" / "manifest.json")
         check_ignore_files(repo_root)
+        check_install_paths(repo_root, rel_dest, files_to_install, agent=agent)
     except safe_write.SafeWriteError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
@@ -302,13 +308,13 @@ def run_init(
         rel_dest = AGENT_REL_DEST[agent]
         assert rel_dest is not None
     repo_root = resolve_repo_root(target)
-    _refuse_unsafe_paths(repo_root)
     if agent == "generic":
         rel_dest = _validate_generic_commands_dir(repo_root, rel_dest)
+    files_to_install = ROLE_COMMAND_FILES[role] if role in ("pm", "dev") else COMMAND_FILES
+    _refuse_unsafe_paths(repo_root, rel_dest, files_to_install, agent)
     written: list[str] = []
     skipped: list[str] = []
     manifest = _load_manifest(repo_root)
-    files_to_install = ROLE_COMMAND_FILES[role] if role in ("pm", "dev") else COMMAND_FILES
     already_owned = {p for paths in (manifest.get("agents") or {}).values() for p in paths}
 
     _append_command_stub_installs(

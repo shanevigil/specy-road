@@ -194,9 +194,8 @@ def _copy_templates(
             continue
         copies.append((path, out))
         written.append(f"{prefix}{rel.as_posix()}")
-    if not dry_run:
-        for path, out in copies:
-            safe_write.copy(dst, path, out)
+    for path, out in () if dry_run else copies:
+        safe_write.copy(dst, path, out)
     return written, skipped
 
 
@@ -245,8 +244,8 @@ def _scaffold(
     check_ignore_files(root)
     if top is not None:
         safe_write.check(top, top / _MANIFEST)
-    for name in GENERATED_COMMITTED if force else ():   # without force a present one is skipped, not written
-        safe_write.check(dst, dst / name)
+    # without force a present generated file is skipped, not written
+    safe_write.check_all(dst, (dst / name for name in GENERATED_COMMITTED if force))
     written, skipped = _copy_templates(src, dst, prefix, selection, dry_run=dry_run, force=force)
     _apply_agents_md(dst, prefix, written, dry_run=dry_run)
     seed = "" if prefix else (src / _GITIGNORE).read_text(encoding="utf-8")

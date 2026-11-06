@@ -116,10 +116,8 @@ def _deep_view(root: Path, archive_id: str, record: dict[str, Any]) -> tuple[dic
 def _check(root: Path, files: list, directories: tuple = ()) -> None:
     """The safe-write rule for each path, lexically from ``root``; a refusal is the archive commands' ``ValueError``."""
     try:
-        for rel in files:
-            safe_write.check(root, root / rel)
-        for rel in directories:
-            safe_write.check(root, root / rel, safe_write.DIRECTORY)
+        safe_write.check_all(root, (root / rel for rel in files))
+        safe_write.check_all(root, (root / rel for rel in directories), safe_write.DIRECTORY)
     except safe_write.SafeWriteError as e:
         raise ValueError(f"restore refused, nothing was changed: {e}") from e
 
@@ -203,14 +201,10 @@ def _prune_empty_archive(root: Path, doc: dict[str, Any]) -> None:
         return
     base = root / _ARCHIVE   # a real directory: the preflight checked it
     index = base / INDEX_FILENAME
-    dirs: list[Path] = []
-    for dirpath, subdirs, names in os.walk(base):
-        for path in (Path(dirpath, name) for name in subdirs + names):
-            if path.is_symlink() or not path.is_dir():
-                if path != index:
-                    return
-            else:
-                dirs.append(path)
+    entries = [Path(dirpath, name) for dirpath, subdirs, names in os.walk(base) for name in subdirs + names]
+    dirs = [p for p in entries if p.is_dir() and not p.is_symlink()]
+    if set(entries) - set(dirs) - {index}:   # a file or a symlink of any kind keeps the archive
+        return
     safe_write.remove(root, index)
     for d in sorted(dirs, key=lambda p: -len(p.parts)) + [base]:
         os.rmdir(d)

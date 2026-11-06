@@ -6,7 +6,6 @@ every byte (and the existence of every path) outside and in the checkout unchang
 
 from __future__ import annotations
 
-import argparse
 import json
 import os
 import shutil
@@ -218,11 +217,12 @@ def test_digest_checks_an_absolute_output_against_the_checkout(tmp_path: Path, c
     dest = checkout if output == "checkout" else checkout / "other" / "ctx.md"
     before = _tree(checkout, outside)
 
-    code = digest_cli.cmd_digest(argparse.Namespace(output=str(dest), check=False, repo_root=checkout / "sr"))
+    with pytest.raises(SystemExit) as e:
+        digest_cli.main(["--repo-root", str(checkout / "sr"), "-o", str(dest)])
 
     err = capsys.readouterr().err
     named = f"error: {checkout} is a directory" if output == "checkout" else f"error: {checkout / 'other'} is a symlink"
-    assert code == 1 and named in err and "Traceback" not in err
+    assert e.value.code == 1 and named in err and "Traceback" not in err
     assert _tree(checkout, outside) == before
 
 

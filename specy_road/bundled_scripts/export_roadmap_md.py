@@ -187,11 +187,8 @@ def _write_export(
             raise SystemExit(1)
         print("OK: roadmap.md matches merged roadmap graph.")
         return
-    try:
+    with safe_write.exit_on_refusal():
         safe_write.write(root, out_index, index)
-    except safe_write.SafeWriteError as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
     print(f"Wrote {out_index}")
 
 

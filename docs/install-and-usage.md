@@ -151,9 +151,18 @@ symlink (to <target>), not <kind>` and writes nothing (`--dry-run` included).
 `init project`, `refresh-schemas`, `refresh-stubs`, `specyrd init`, `export` and
 `digest` refuse the same way and exit 1: any symlink on the path they write,
 pointing out of the project or inside it, dangling or not, is refused rather than
-followed (`refresh-stubs` still reports a stub linked out of the repository as
-`refused` and goes on, as `upgrade` does) (`AGENTS.md` and `CLAUDE.md` still may link to each other, and the skill
-links under `.claude/skills/` are made on purpose). An explicit absolute
+followed. One exception: an agent skills directory itself (`.agents/skills` or
+`.claude/skills`) may be a symlink to a real directory inside the repository, and
+the stubs are written into that directory. A skills link that is chained (its
+target is a link or under one), dangling or leaving the repository is refused,
+as is any other link on a stub's path; the skill links made under
+`.claude/skills/` are made on purpose. A stub, skill file, skill link or ignore
+file refused this way prints `error:` and makes `refresh-stubs`, `upgrade` and
+`upgrade --dry-run` exit 1; that path is left as it is and everything else is
+still written. These stay report lines (`refused`, `skipped`) and do not change
+the exit code: `AGENTS.md` or `CLAUDE.md` linked out of the repository (the two
+may still link to each other), a shipped doc, a work template, and a model
+profile. An explicit absolute
 `digest -o` outside the checkout is written as given. Each refresh is also a command of its own; all three are
 idempotent, take `--dry-run`, and never touch the roadmap, planning sheets, or
 anything outside a managed block.

@@ -19,15 +19,19 @@ body. Keep section bodies focused; link to PRs for detail.
   regular one, so any symlink on the path is refused, dangling, out of the
   project or **inside it**. `init project`, `refresh-schemas`, `specyrd init`
   (`.specyrd/manifest.json`), `export`, `digest` (default and relative `-o`),
-  pickup's regeneration, `refresh-stubs` (a stub linked inside the project; one
-  linked out stays a `refused` report line), `--prune` (an orphan under a linked
-  directory), `.gitignore` and `.cursorindexingignore` (a `refused:` outcome),
+  pickup's regeneration, `refresh-stubs` and `specyrd init` (stubs, skill
+  files and skill links; an agent skills directory may itself be a symlink to a
+  real directory in the repository, any other link is refused), `--prune` (an
+  orphan under a linked directory), `.gitignore` and `.cursorindexingignore`,
   and `restore-archive` (every path checked before its first change) refuse it,
   naming `<path> is a symlink (to <target>), not <kind>`; the commands exit 1. `upgrade` checks every change before its first one, so a schema linked out
   of the checkout no longer overwrites the outside file; it exits 1 on a
-  refusal even when `validate` passes. Behaviour change: an in-repo symlink at
-  `roadmap.md` or `roadmap-context.md` was written through and is now refused.
-  `AGENTS.md`/`CLAUDE.md` aliases and the `.claude/skills/` links are unchanged.
+  refusal (a generated file, stub, skill file or skill link) even when `validate`
+  passes, in a real run and in `--dry-run`. Behaviour changes: an in-repo symlink at
+  `roadmap.md` or `roadmap-context.md` was written through and is now refused; a
+  stub or skill file linked out of the repository was a `refused` report line with
+  exit 0 and is now `error:` with exit 1. `AGENTS.md`/`CLAUDE.md` aliases and the
+  `.claude/skills/` links are unchanged.
 - The notes rules in the reviewer and repair-turn prompts name every clause break `review record` checks: `'. '`,
   `'! '`, `'? '`, `'; '` and all eight conjunctions (and, but, while, whereas, although, though, yet, plus). The
   check itself is unchanged. The `rework_rca` docstring now names `review_deferral.rca_deferral`, and two brainstorm

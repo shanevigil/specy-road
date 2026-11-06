@@ -27,10 +27,12 @@ close the remaining race; it is not done here.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import secrets
 import shutil
 import stat
+import sys
 from pathlib import Path
 
 FILE = "a regular file"
@@ -129,6 +131,31 @@ def check(root: Path, path: Path | str, expected: str | None = FILE) -> Path:
     any final kind (ancestors only). Returns the path spelled from the resolved root.
     """
     return _walk(root, path, expected)[0]
+
+
+def check_all(root: Path, paths, expected: str | None = FILE) -> None:
+    """:func:`check` each of ``paths``; the first refusal raises, so a caller can stop before its first write."""
+    for path in paths:
+        check(root, path, expected)
+
+
+@contextlib.contextmanager
+def exit_on_refusal():
+    """The command-line boundary: a :class:`SafeWriteError` inside prints ``error: <message>`` on stderr, exit 1."""
+    try:
+        yield
+    except SafeWriteError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
+
+
+def refused(root: Path, path: Path | str, expected: str | None = FILE) -> str | None:
+    """:func:`check`'s refusal as one line, or ``None`` when the rule allows ``path``."""
+    try:
+        check(root, path, expected)
+    except SafeWriteError as e:
+        return str(e)
+    return None
 
 
 def mkdirs(root: Path, d: Path | str) -> Path:

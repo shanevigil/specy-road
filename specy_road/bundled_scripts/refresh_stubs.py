@@ -22,6 +22,14 @@ and quietly deleting a file we no longer claim to manage is the mistake this
 command exists to undo. ``--prune`` deletes exactly the orphans listed, which are
 paths the manifest recorded as the kit's: in practice, the pre-0.3.0
 ``*/commands/`` stubs that every upgrading repo otherwise removes by hand.
+
+Every write follows the safe-write rule from the repository root, with one
+exception: an agent skills directory (``.agents/skills``, ``.claude/skills``)
+may be a symlink to a real directory in the repository
+(``specyrd_skills.skill_path``). A stub, skill file, skill link or ignore file
+refused for a link prints ``error: <why>`` and the command exits 1; the rest
+is still written. ``AGENTS.md`` or ``CLAUDE.md`` linked out of the repository
+stays a ``refused`` report line.
 """
 
 from __future__ import annotations
@@ -50,8 +58,10 @@ from specy_road.bundled_scripts.refresh_stubs_report import (  # noqa: F401 — 
     report as _report,
 )
 from specy_road.written_entry import Written
-from specy_road.managed_block import CREATED, REFUSED, UNCHANGED, UPDATED, resolves_outside
-from specy_road.specyrd_skills import SKIPPED, ensure_link, is_link_path, mirrored_copies, render_skill, skill_rel
+from specy_road.managed_block import CREATED, UNCHANGED, UPDATED, rule_refusal
+from specy_road.specyrd_skills import (
+    SKIPPED, ensure_link, is_link_path, mirrored_copies, render_skill, skill_path, skill_rel,
+)
 from specy_road.specyrd_init import (
     AGENT_REL_DEST,
     COMMAND_FILES,
@@ -103,11 +113,13 @@ def _write_if_changed(
     """Rewrite one managed path. Returns whether the path is the pack's after this call.
 
     A path the manifest never owned that already exists on disk is the
-    consumer's: it is left alone and reported, not adopted.
+    consumer's: it is left alone and reported, not adopted. Every path follows
+    the skills-link rule (:func:`~specy_road.specyrd_skills.skill_path`); a
+    refused one is reported ``refused: <why>`` and is not the pack's.
     """
     if is_link_path(rel):
         outcome = ensure_link(repo_root, agent, f"{Path(rel).name}.md", dry_run=dry_run, repair=owned, owned=owned)
-        if outcome == SKIPPED:
+        if outcome == SKIPPED or rule_refusal(outcome):
             written.append(Written(rel, outcome))
             return False
         if outcome != UNCHANGED:
@@ -116,12 +128,8 @@ def _write_if_changed(
     content = _content_for(rel)
     if content is None:
         return True
-    dest = repo_root / rel
-    if resolves_outside(repo_root, dest):   # a link out stays a report line; an in-repo skills-dir link is kept
-        written.append(Written(rel, REFUSED))
-        return False
-    try:   # the safe-write rule from the stub's own directory: a link at the stub itself is refused
-        safe_write.check(dest.parent, dest)
+    try:
+        dest = skill_path(repo_root, rel)
     except safe_write.SafeWriteError as e:
         written.append(Written(rel, f"refused: {e}"))
         return False
@@ -131,7 +139,7 @@ def _write_if_changed(
     if dest.is_file() and dest.read_text(encoding="utf-8") == content:
         return True
     if not dry_run:
-        safe_write.write(dest.parent, dest, content)
+        safe_write.write(repo_root, dest, content)
     written.append(Written(rel))
     return True
 
@@ -361,9 +369,16 @@ def main(argv: list[str] | None = None) -> None:
     if args.diff:
         written = _print_diffs(root, written, prefix)
     _report(written, orphans, dry_run=dry_run, pruned=args.prune, repo_root=root)
-    refused = [w.outcome.removeprefix("refused: ") for w in written
-               if getattr(w, "outcome", "").startswith("refused: ") and w.outcome != REFUSED]
-    for why in refused:   # a path the safe-write rule refused (REFUSED, a link out, stays a report line)
+    _exit_on_rule_refusals(written)
+
+
+def _exit_on_rule_refusals(written: list[str]) -> None:
+    """``error: <why>`` on stderr for each path the safe-write rule refused, then exit 1 if there was one.
+
+    ``REFUSED`` (``AGENTS.md`` or ``CLAUDE.md`` linked out) stays a report line.
+    """
+    refused = [why for w in written if (why := rule_refusal(getattr(w, "outcome", "")))]
+    for why in refused:
         print(f"error: {why}", file=sys.stderr)
     if refused:
         raise SystemExit(1)
