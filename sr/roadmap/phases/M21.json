@@ -184,7 +184,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.17_writers-refuse-links-out_9a8c1f33-60ef-461f-8980-e2c3f7558e2d.md",
       "sibling_order": 15,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Writers refuse a symlinked target that leads out of the directory they own: init's generated files, review refusal and packet",
       "touch_zones": [
         "specy_road/managed_block.py",
