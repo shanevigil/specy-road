@@ -71,7 +71,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.30_review-policy-pinned-at-claim_aa063cac-70c3-41a9-8f3c-4c671184d333.md",
       "sibling_order": 28,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A leaf's review policy is pinned at claim: the gate and finish refuse a roster, policy or review-switch change made on the integration branch after it until a human accepts it",
       "touch_zones": [
         "specy_road/review_policy_pin.py",

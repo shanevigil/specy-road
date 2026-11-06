@@ -115,7 +115,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.27` review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer `filings-take-the-review-lock` — task — **Complete**
   - `M21.28` finish-this-task refuses an invalid configuration before any bookkeeping write and never leaves a half-mutated tree `finish-validates-before-bookkeeping` — task — **Complete**
   - `M21.29` worker terminate also ends processes the harness started in their own session `terminate-ends-escaped-descendants` — task — **Complete**
-  - `M21.30` A leaf's review policy is pinned at claim: the gate and finish refuse a roster, policy or review-switch change made on the integration branch after it until a human accepts it `review-policy-pinned-at-claim` — task — **Not Started**
+  - `M21.30` A leaf's review policy is pinned at claim: the gate and finish refuse a roster, policy or review-switch change made on the integration branch after it until a human accepts it `review-policy-pinned-at-claim` — task — **Complete**
   - `M21.31` review record files only under the caller's own model: a filing from another harness or worker is refused, and a hand-filed record needs an attestation and counts only when signed or the policy allows it `review-record-files-only-as-the-caller` — task — **Not Started**
   - `M21.32` session end ends only your own session: another agent's live record needs --force from a terminal, and the guard's refusal names the rule `session-end-only-your-own` — task — **Not Started**
   - `M21.33` The brainstorm skill makes `specy-road brainstorm start` the first tool call, alone in its turn, in every harness's shipped copy `brainstorm-start-is-the-first-call-alone` — task — **Complete**
@@ -271,7 +271,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M21.30` on `feature/rm-review-policy-pinned-at-claim` since 2026-11-05
 - `M21.35` on `feature/rm-refused-review-gets-one-repair-turn` since 2026-11-06
 - `M21.36` on `feature/rm-verify-normalizes-real-page-text` since 2026-11-06
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
