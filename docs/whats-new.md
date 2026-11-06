@@ -16,20 +16,24 @@ fixes and internal work, see the [CHANGELOG](../CHANGELOG.md).
 
 *Release candidate `v0.3.1-rc4`, 2026-11-06 (TestPyPI).*
 
-0.3.1 makes specy-road a coordinator for several coding agents at once. You
-keep one roadmap; specy-road decides which model should implement, which
-should review, and whether a leaf may finish — and it can launch executors
-and reviewers on Claude Code, Codex or Cursor in their own worktrees and keep
-track of them while you work. rc3 adds the evidence the gate reads for
-itself (test integrity, tests at risk, red-green, land checks), reviewers
-that run like workers, and the worktree-first worker loop that rc2 field use
-asked for. rc4 stabilises it for adopters: a fresh project passes its own
-checks, you can restructure the outline from the CLI without renumbering the
-rest of the roadmap, landings recover from inherited conflicts, and workers
-and reviewers launch with explicit permissions and authentication, reviewers
-read-only. Upgrade if more than one agent (or more than one vendor) touches
-your repo, or if you want independent review before work lands. The review
-gate is a **breaking change**: read *Upgrading* first.
+0.3.1 adds an orchestration harness to specy-road. With it you can put a
+crew of frontier coding models to work on your roadmap, such as Claude, Codex
+and Cursor, each running through its own CLI harness in its own worktree. You
+choose which models implement and which review. specy-road launches them,
+keeps track of them while you work, and holds each leaf until the reviews you
+asked for approve it.
+
+rc3 added the evidence the review gate checks for itself (test integrity,
+tests at risk, red-green runs and land checks), reviewers that run like
+workers, and the worktree-first worker loop that early users asked for. rc4
+makes it steadier: a fresh project passes its own checks, you can restructure
+the outline from the CLI without renumbering the rest of the roadmap,
+landings recover from inherited conflicts, and workers and reviewers launch
+with explicit permissions and authentication, with reviewers read-only.
+
+It's worth upgrading if more than one agent or vendor works in your repo, or
+if you want independent review before work lands. The review gate is a
+**breaking change**, so read *Upgrading* first.
 
 ### Highlights
 
@@ -104,8 +108,9 @@ fails.
 ### Models, roster and prompts
 
 `init project` scaffolds model profiles, a roster and `harness-facts.yaml`.
-`orchestrate plan` staffs every ready leaf (strong reviewers for high-risk
-zones, routing preferences from the decisions ledger); `prompt` writes the
+`orchestrate plan` suggests a model for each ready leaf, which you can
+accept or change (strong reviewers for high-risk zones, routing preferences
+from the decisions ledger); `prompt` writes the
 role prompt with the model's rules, the project's review lessons and
 per-role effort applied; `refresh-profiles --capture` classifies a harness
 upgrade before you trust it. `models roster` writes roster entries for the
