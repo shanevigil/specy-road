@@ -115,15 +115,3 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: brainstorm-start-is-the-first-call-alone
-    node_id: M21.33
-    branch: feature/rm-brainstorm-start-is-the-first-call-alone
-    touch_zones:
-      - specy_road/templates/specyrd/commands/specyrd-brainstorm.md
-      - suggested_prompts/brainstorm-roadmap.md
-      - tests/test_brainstorm_skill_first_call.py
-      - CHANGELOG.md
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-06T05:51:40+00:00'

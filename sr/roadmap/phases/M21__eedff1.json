@@ -172,7 +172,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.33_brainstorm-start-is-the-first-call-alone_e9746b02-d2ba-406b-b477-ec1711b86247.md",
       "sibling_order": 31,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The brainstorm skill makes `specy-road brainstorm start` the first tool call, alone in its turn, in every harness's shipped copy",
       "touch_zones": [
         "specy_road/templates/specyrd/commands/specyrd-brainstorm.md",
