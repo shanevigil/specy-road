@@ -298,7 +298,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.21_review-delegate-validates-reviewer-command_b03ccc6f-ed0f-478c-8632-6f7dca8b3cc1.md",
       "sibling_order": 19,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review delegate validates the reviewer command as prompt --channel cli does, and the model check splits on newlines only",
       "touch_zones": [
         "specy_road/review_delegate_harness.py",
