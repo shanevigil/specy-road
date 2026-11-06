@@ -56,7 +56,7 @@ pydantic-core==2.46.0
     # via pydantic
 pygments==2.20.0
     # via pytest
-pytest==9.1.1
+pytest==9.2.0
     # via
     #   pytest-xdist
     #   specy-road
