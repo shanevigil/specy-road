@@ -135,10 +135,15 @@ specy-road upgrade --prune        # write, delete stubs this version dropped, va
 `upgrade` runs `refresh-schemas`, `refresh-profiles`, a copy of each shipped doc
 the `.specyrd/AGENTS.md` load order names that you lack, and `refresh-stubs`, in that
 order, then `validate` and `digest --check`, and ends with what is left for you:
-review the diff, commit the new untracked files, and run `specy-road digest` if
-the digest is missing or out of date (not `specy-road sync`, which also
-fast-forwards your integration branch from the remote). It exits non-zero only
-when `validate` fails. Each refresh is also a command of its own; all three are
+review the diff and commit the new untracked files. When `validate` passes it
+first writes `roadmap-context.md` if it is missing or out of date and
+`roadmap.md` if it is tracked and out of date, one `wrote` line each (`would
+write` in a dry run), and refuses a path that is a symlink out of the project;
+after a refusal, or when `validate` fails, it says to run `specy-road digest`
+instead (not `specy-road sync`, which also fast-forwards your integration
+branch from the remote). `--dry-run` runs its git calls in the temporary copy
+with `GIT_DIR` and the related variables removed, so it is safe inside a git
+hook. It exits non-zero only when `validate` fails. Each refresh is also a command of its own; all three are
 idempotent, take `--dry-run`, and never touch the roadmap, planning sheets, or
 anything outside a managed block.
 
@@ -150,9 +155,11 @@ current CLI legitimately produces (for example `type: gate` nodes, or the
 is reported as such, because it is an untracked file to add. The command
 touches `schemas/` and nothing else.
 
-**`refresh-profiles` — `model-profiles/`.** Copies the profiles this version
-ships that you lack, and never overwrites one you have (`--force PATH` takes
-the toolkit's copy of one profile).
+**`refresh-profiles` — `model-profiles/`.** By default copies the missing
+profiles that a roster entry in `roadmap/orchestration.yaml` names;
+`--profiles all` copies every missing profile this version ships, and `--only`
+adds one. It never overwrites one you have (`--force PATH` takes the toolkit's
+copy of one profile).
 
 **`refresh-stubs` — the skills from `specyrd init`, and the managed blocks.**
 One skill per command under `.agents/skills/<name>/SKILL.md`, read natively by

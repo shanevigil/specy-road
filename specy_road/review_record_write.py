@@ -35,6 +35,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -51,10 +52,11 @@ from specy_road.review_answer import (FILLED_BY_SPECY_ROAD, Rerun, drop_nulls, e
                                       output_schema, stream_lines)
 from specy_road.review_files import render_front_matter, review_path
 from specy_road.review_model_check import Check, check_note, check_run, rostered
+from specy_road.review_record_rules import NOTES_RULES_LINES
 from specy_road.integrity_removals import target_unplanned_removals
+from specy_road.review_lock import ReviewRunBusy, review_run_lock  # re-exported: the per-leaf lock (file limit)
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
 from specy_road.review_write_check import (  # re-exported: the post-run write check lives there (file limit)
-    LOCK_NAME,
     OUTPUT_SCHEMA_NAME,
     Snapshot,
     append_log,
@@ -128,32 +130,20 @@ def schema_lines() -> list[str]:
             "nothing before or after it (anything else is a rerun request). `commit` is the "
             "packet's **Commit under review**, quoted; `notes` holds your Markdown notes. A field the schema does not "
             "require may be left out or `null`.", "",
+            *NOTES_RULES_LINES,   # M21.35: read right before the answer is written
             "```json", json.dumps(output_schema(), indent=2), "```", ""]
 
 
-class ReviewRunBusy(Exception):
-    def __init__(self, node_id: str) -> None:
-        super().__init__(f"another reviewer run of {node_id} is in progress; run its reviewers one after another")
-
-
-@contextlib.contextmanager
-def review_run_lock(reviews: Path) -> Iterator[None]:
-    """One reviewer run per leaf at a time: the hand-off directory is shared, so a second run's files would read
-    as the first run's writes. Raises :class:`ReviewRunBusy` at once rather than wait for a whole review."""
-    reviews.mkdir(parents=True, exist_ok=True)
-    with (reviews / LOCK_NAME).open("a+") as f:
-        try:
-            import fcntl   # POSIX; Windows has msvcrt
-            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except ImportError:
-            import msvcrt
-            try:
-                msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
-            except OSError:
-                raise ReviewRunBusy(reviews.name) from None
-        except OSError:
-            raise ReviewRunBusy(reviews.name) from None
-        yield
+def repair_prompt(refusal: str) -> str:
+    """A refused answer's repair turn (``review delegate``, M21.35): ``refusal``, ``review record``'s whole output,
+    in a fence longer than any backtick run in it, the notes rules, and the request for the whole corrected object."""
+    fence = "`" * max(3, 1 + max((len(m) for m in re.findall(r"`+", refusal)), default=0))
+    return "\n".join(["## Your answer was refused", "",
+                      "`review record` refused the JSON object you sent and filed nothing. Its output:", "",
+                      fence, refusal, fence, "",
+                      "Fix every line it names, by the rules below.", "", *NOTES_RULES_LINES,
+                      "Send the whole corrected JSON object as your final message, exactly the one object the "
+                      "review prompt's last section describes, with nothing before or after it.", ""])
 
 
 def reviewer_env(env: dict[str, str]) -> dict[str, str]:
@@ -219,6 +209,7 @@ class Outcome:
     reason: str = ""
     path: Path | None = None
     exit: int | None = 0
+    refusal: str = ""   # ``review record``'s whole output when it refused the answer (M21.35's repair turn)
 
 
 def close_review_run(repo_root: Path, t: ReviewTarget, model: str, run: dict[str, Any], filed: Outcome, *,
@@ -276,7 +267,7 @@ def file_review(root: Path, node_id: str, model: str, reviews: Path, *, answer: 
     replace_file(notes, render_front_matter(record, "\n" + answer["notes"].strip() + "\n"))   # never through a link
     rc, said = _review_record(root, node_id, model, record["verdict"], notes, ref, launch_mode, sign_key)
     if rc != 0:
-        return Outcome("rerun", f"rerun requested: review record refused the output: {said[-400:]}")
+        return Outcome("rerun", f"rerun requested: review record refused the output: {said[-400:]}", refusal=said)
     return Outcome("recorded", "", review_path(root, node_id, model))
 
 

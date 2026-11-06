@@ -138,7 +138,7 @@ def test_a_model_with_no_api_id_is_refused_before_launch_on_every_command(tmp_pa
     repo, _ = _repo(tmp_path, entry, api_id="unknown")
     assert _prompt(repo, "--role", "reviewer", "--channel", "cli", "--run") == 1
     assert started == [] and not list(rf.reviews_dir(repo, "M1.1").glob("RUN-*"))
-    assert "resolves to no API model id" in capsys.readouterr().err
+    assert NO_MODEL in capsys.readouterr().err
     assert _prompt(repo, "--role", "reviewer", "--channel", "cli") == 1   # the dry run refuses it the same way
 
 
@@ -184,6 +184,42 @@ def test_a_custom_reviewer_command_with_a_bypass_flag_is_refused(tmp_path: Path,
     assert _prompt(repo, "--role", "reviewer", "--channel", "cli", "--run") == 1
     assert started == [] and not list(rf.reviews_dir(repo, "M1.1").glob("RUN-*"))
     assert f"passes {flag}," in capsys.readouterr().err
+
+
+NO_MODEL = "resolves to no API model id"
+REFUSED_REVIEWERS = [   # M21.21: (roster entry lines, profile api_id, reason) refused alike by every entry point
+    ("    harness: cursor\n    channels: {cli: 'agent --force {prompt}'}\n", None, "passes --force, which lets it"),
+    ("    harness: claude-code\n    channels: {cli: 'claude -p --yolo {prompt}'}\n", None, "passes --yolo, which"),
+    ("    harness: claude-code\n    channels:\n      cli: |-\n        agent -p --for\\\n        ce {prompt}\n",
+     None, "passes --force, which lets it write"),   # a YAML literal block keeps the line continuation
+    ("", None, "a generic reviewer needs a roster channels.cli; the profile's access.cli is never run for a reviewer"),
+    ("    harness: claude-code\n", "unknown", NO_MODEL),                        # no model to pass the harness
+    ("    harness: claude-code\n    routing: dynamic\n", "unknown", NO_MODEL),   # ... whatever the routing
+]
+
+
+@pytest.mark.parametrize("entry, api_id, reason", REFUSED_REVIEWERS)
+@pytest.mark.parametrize("how", ["prompt", "delegate", "delegate --resume"])
+def test_every_reviewer_entry_point_refuses_the_same_reviewer_command(tmp_path: Path, capsys, started: list,
+                                                                     entry: str, api_id: str | None, reason: str,
+                                                                     how: str) -> None:
+    from specy_road.review_delegate import run_path   # noqa: PLC0415
+
+    repo, _ = _repo(tmp_path, entry + "    preflight: touch PREFLIGHT-RAN\n", api_id=api_id)
+    run = run_path(repo, "M1.1", "opus")
+    if how == "delegate --resume":   # a resumable run, which the refusal leaves as it was
+        run.write_text(json.dumps({"node_id": "M1.1", "model": "opus", "harness": "claude-code", "state": "incomplete",
+                                   "commit": git(repo, "rev-parse", "HEAD"), "session_id": "s"}))
+        run.with_suffix(".log").write_text("seeded log\n")
+    seeded = {p: p.read_bytes() for p in rf.reviews_dir(repo, "M1.1").glob("RUN-*")}
+    if how == "prompt":
+        assert _prompt(repo, "--role", "reviewer", "--channel", "cli", "--run") == 1
+    else:
+        assert run_main(review_cli, "review", "delegate", "M1.1", "--model", "opus", *how.split()[1:],
+                        "--repo-root", str(repo)) == 1
+    assert reason in capsys.readouterr().err
+    assert started == [] and not (repo / "PREFLIGHT-RAN").exists()
+    assert {p: p.read_bytes() for p in rf.reviews_dir(repo, "M1.1").glob("RUN-*")} == seeded
 
 
 # --- A3: the reviewer runs in the leaf's own worktree ---------------------------------------------------------------
@@ -261,6 +297,7 @@ def test_reported_models_read_the_first_init_event_and_every_result() -> None:
     (['{"type": "system", "subtype": "init", "model": "claude-opus-5-5"}',
       '{"type": "result", "model": "gpt-5.6-sol"}'], ("gpt-5.6-sol", "mismatch")),   # a matching init hides nothing
     ([], (None, "unreported")),
+    ('{"type": "result", "model": "gpt-5.6-sol", "note": "a\u2028b"}\n', ("gpt-5.6-sol", "mismatch")),   # \n only
 ])
 def test_check_run_flags_any_reported_model_that_is_not_the_rostered_one(lines: list[str], want: tuple) -> None:
     assert check_run(lines, {"id": "opus"}, load_profile(OPUS)) == want
@@ -269,12 +306,14 @@ def test_check_run_flags_any_reported_model_that_is_not_the_rostered_one(lines: 
 @pytest.mark.parametrize("init, result", [
     ("gpt-5.6-sol", {}),                       # reported by the init event
     (None, {"model": "gpt-5.6-sol"}),          # reported only by the result event
+    (None, {"model": "gpt-5.6-sol", "note": "a\u2028b"}),   # M21.21: an unescaped U+2028 does not hide it
 ])
 def test_a_mismatched_model_is_filed_flagged_and_excluded_from_the_gate(tmp_path: Path, monkeypatch, capsys,
                                                                         init: str | None, result: dict) -> None:
     repo, leaf = _repo(tmp_path, leaf=True)
     head = git(repo, "rev-parse", "feature/rm-thing")
-    fake_reviewer_run(monkeypatch, _result(review_output(head, model="opus"), init, **result))
+    lines = [line.replace("\\u2028", "\u2028") for line in _result(review_output(head, model="opus"), init, **result)]
+    fake_reviewer_run(monkeypatch, lines)
     assert _prompt(repo, "--role", "reviewer", "--channel", "cli", "--run") == 0
     assert f"warning: {MISMATCH_REASON}" in capsys.readouterr().err
     rec = rf.load_review(rf.review_path(repo, "M1.1", "opus"), ["A1", "A2"])

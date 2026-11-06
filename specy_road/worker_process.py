@@ -210,6 +210,9 @@ def kill_group(rec: WorkerRecord, repo_root: Path | None = None, *, grace: float
     its recorded start time. Membership alone is not identity: once the
     group is gone its id can be a new session leader's (pre-release review),
     and the verified process must be in the recorded group now (re-review N3).
+    The group's descendants outside it (a command in a session of its own)
+    are listed before the first signal and ended after the group, each only
+    while its start time still matches (D6).
     """
     if wrapper_alive(rec, repo_root) and not wrapper_verified(rec, repo_root):
         raise WorkerError(f"pid {rec.pid} cannot be verified as {rec.worker_id}'s wrapper (ps unavailable or "
@@ -221,6 +224,15 @@ def kill_group(rec: WorkerRecord, repo_root: Path | None = None, *, grace: float
                           f"(by start time) is alive in process group {rec.pgid}, so that group may be another "
                           f"program's now; refusing to signal it. Check `ps -A -o pid,pgid,lstart,command`, kill what "
                           f"in group {rec.pgid} is this worker's by hand, then run `worker terminate {rec.worker_id}` again")
+    escaped = _escaped_descendants(pgid)   # before the first signal, while their parent links still hold
+    _end_group(rec, pgid, grace)
+    if escaped is None:
+        raise WorkerError(f"{rec.worker_id}: process group {pgid} is gone, but `ps -A -o pid=,ppid=,pgid=,lstart=` "
+                          "could not list its descendants outside the group; check for them by hand")
+    _end_escaped(rec, escaped, grace)
+
+
+def _end_group(rec: WorkerRecord, pgid: int, grace: float) -> None:
     for sig, wait in ((signal.SIGTERM, grace), (signal.SIGKILL, 2.0)):
         try:
             os.killpg(pgid, sig)
@@ -235,6 +247,85 @@ def kill_group(rec: WorkerRecord, repo_root: Path | None = None, *, grace: float
             time.sleep(0.1)
     if _group_members(pgid):
         raise WorkerError(f"{rec.worker_id}: process group {pgid} is still alive after SIGKILL")
+
+
+def _process_table() -> list[tuple[int, int, int, str]] | None:
+    """``(pid, ppid, pgid, lstart)`` of every process; ``None`` when ``ps`` fails, times out or a line does not parse.
+
+    ``lstart`` is the rest of the line, stripped, as :func:`start_token` reads it.
+    """
+    try:
+        r = subprocess.run(["ps", "-A", "-ww", "-o", "pid=,ppid=,pgid=,lstart="], capture_output=True, text=True,
+                           check=False, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if r.returncode != 0:
+        return None
+    rows = []
+    for line in r.stdout.splitlines():
+        parts = line.split(None, 3)
+        if not parts:
+            continue
+        if len(parts) != 4 or not all(p.isdigit() for p in parts[:3]):
+            return None
+        rows.append((int(parts[0]), int(parts[1]), int(parts[2]), parts[3].strip()))
+    return rows
+
+
+def _escaped_descendants(pgid: int) -> dict[int, str] | None:
+    """Every transitive descendant (by parent pid) of the group's members that is outside the group, with its start.
+
+    A harness's tool can start a command in a session of its own (Cursor's shell
+    tool does), so ``killpg`` never reaches it (D6). ``None`` when ``ps`` cannot say.
+    """
+    rows = _process_table()
+    if rows is None:
+        return None
+    children: dict[int, list[int]] = {}
+    for pid, ppid, _, _ in rows:
+        children.setdefault(ppid, []).append(pid)
+    info = {pid: (pg, start) for pid, _, pg, start in rows}
+    todo = [pid for pid, (pg, _) in info.items() if pg == pgid]
+    seen, out = set(todo), {}
+    while todo:
+        for child in children.get(todo.pop(), []):
+            if child not in seen:
+                seen.add(child)
+                todo.append(child)
+                if info[child][0] != pgid:
+                    out[child] = info[child][1]
+    return out
+
+
+def _still_running(rec: WorkerRecord, procs: dict[int, str]) -> list[int]:
+    """The recorded pids still listed with their recorded start time: a changed start is a reused pid, so gone."""
+    rows = _process_table()
+    if rows is None:
+        raise WorkerError(f"{rec.worker_id}: cannot recheck pid(s) {', '.join(map(str, sorted(procs)))} outside "
+                          "its process group: `ps -A -o pid=,ppid=,pgid=,lstart=` failed")
+    return sorted(pid for pid, _, _, start in rows if procs.get(pid) == start)
+
+
+def _end_escaped(rec: WorkerRecord, procs: dict[int, str], grace: float) -> None:
+    """SIGTERM the recorded descendants still running, then SIGKILL after ``grace``; raise naming any survivor."""
+    for sig, wait in ((signal.SIGTERM, grace), (signal.SIGKILL, 2.0)):
+        live = _still_running(rec, procs)
+        if not live:
+            return
+        for pid in live:
+            try:
+                os.kill(pid, sig)
+            except ProcessLookupError:
+                pass
+            except OSError as e:
+                raise WorkerError(f"{rec.worker_id}: cannot signal pid {pid} outside its process group: {e}") from None
+        deadline = time.monotonic() + wait
+        while time.monotonic() < deadline and _still_running(rec, procs):
+            time.sleep(0.1)
+    live = _still_running(rec, procs)
+    if live:
+        raise WorkerError(f"{rec.worker_id}: pid(s) {', '.join(map(str, live))} outside its process group "
+                          "are still alive after SIGKILL")
 
 
 # --- READY fingerprint (B3) and the checked-out branch (B12) ---------------

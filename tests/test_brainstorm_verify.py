@@ -135,6 +135,48 @@ def test_check_source_states(monkeypatch) -> None:
     assert bv.check_source({"url": "https://localhost/ok", "quote": "x"}, fetch) == "blocked"
 
 
+_FOLDED = {"'": "\u2018\u2019\u201a\u2032", '"': "\u201c\u201d\u201e\u2033",
+           "-": "\u2010\u2011\u2012\u2013\u2014\u2015\u2212", " ": "\u00a0\u202f\u2009"}
+_SAME_WORDS = [
+    ("restudying<sup>[43]</sup> while helping", "restudying while helping"),
+    ("effect.<sup>[44][45][46]</sup> It", "effect. It"),
+    ("restudying [43] while", "restudying while"),
+    ("word[a] next", "word next"),
+    ("word[A] next", "word next"),
+    ("word[note 1] next", "word next"),
+    ("word[citation needed] next", "word next"),
+    ("word[Citation Needed] next", "word next"),
+    ("children\u2019s education records", "children's education records"),
+    ("\u201ctesting effect\u201d", '"testing effect"'),
+    ("1990\u20132000 \u2014 a decade", "1990-2000 - a decade"),
+    ("26&nbsp;%", "26 %"),
+    ("retriev&shy;al practice", "retrieval practice"),
+    *[(f"a{ch}b", f"a{ascii_ch}b") for ascii_ch, chars in _FOLDED.items() for ch in chars],
+    *[(f"retriev{ch}al practice", "retrieval practice") for ch in "\u00ad\u200b\u200c\u200d\u2060\ufeff"],
+]
+
+
+@pytest.mark.parametrize(("variant", "plain"), _SAME_WORDS)
+def test_check_source_matches_page_text_variants_both_ways(monkeypatch, variant: str, plain: str) -> None:
+    monkeypatch.setattr(bv, "_is_off_host", lambda host: host != "example.com")
+    for page, quote in ((variant, plain), (plain, variant)):
+        source = {"url": "https://example.com/p", "quote": quote}
+        assert bv.check_source(source, lambda url, page=page: (200, page)) == "matched"
+
+
+@pytest.mark.parametrize(("page", "quote"), [("children\u2019s records", "children's files"),
+                                             ("restudying[43] while", "[43]")])
+def test_check_source_still_needs_the_same_words(monkeypatch, page: str, quote: str) -> None:
+    monkeypatch.setattr(bv, "_is_off_host", lambda host: host != "example.com")
+    source = {"url": "https://example.com/p", "quote": quote}
+    assert bv.check_source(source, lambda url: (200, page)) == "not-found"
+
+
+def test_repo_quotes_do_not_get_the_page_folds() -> None:
+    assert not bv.quote_in_file("children\u2019s records", "children's records", None)
+    assert not bv.quote_in_file("restudying[43] while", "restudying while", None)
+
+
 def test_verify_asks_before_fetching_and_records_states(repo: Path, monkeypatch) -> None:
     _start(repo)
     _cli(repo, "add-idea", "--title", "One")

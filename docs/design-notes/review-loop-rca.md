@@ -208,10 +208,15 @@ project:
   as one transaction that rolls back on any failure.
 - **Audit trail and gate.** RCA record → decision entry → follow-up leaf. The
   gate stops counting a block only when a shape-valid marker names its
-  reviewer and commit, its decision is closed (the ledger is read only then),
-  and its items still qualify; a malformed marker resolves nothing and is
-  reported; another reviewer's block, or the same reviewer's
-  on a later commit, still counts.
+  reviewer and commit and is in effect (`deferral_in_effect`, the one check
+  the gate, the next step and the rework's governing design use): the RCA it
+  names is valid, of round and items equal to the marker's; its decision is
+  closed, on the leaf, and worded as `review defer` records it, naming each
+  item's reviewer, full commit, finding, category, acceptance id and input
+  class (the ledger is read only then); and its items still qualify. A marker
+  citing another decision, or rewritten after `review defer`, resolves
+  nothing; a malformed marker resolves nothing and is reported; another
+  reviewer's block, or the same reviewer's on a later commit, still counts.
 
 ## Deferred
 

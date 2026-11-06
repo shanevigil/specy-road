@@ -38,7 +38,8 @@ def committed_yaml(repo_root: Path, rev: str, rel: str) -> dict[str, Any]:
     text = git_stdout(["show", f"{rev}:./{rel}"], repo_root)   # ./ = relative to the project root, not the git root
     try:
         data = yaml.safe_load(text) if text else None
-    except (yaml.YAMLError, ValueError):
+    # the tuple is review_policy_pin.UNREADABLE (M21.30): an unreadable file is never a traceback
+    except (OSError, ValueError, TypeError, AttributeError, RecursionError, yaml.YAMLError):
         return {}
     return data if isinstance(data, dict) else {}
 

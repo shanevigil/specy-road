@@ -31,6 +31,7 @@ DEFAULT_POLICY: dict[str, Any] = {
     "reviewers_distinct_families": False,
     "reviewer_fresh_session": True,
     "signed_reviews": False,
+    "count_human_filed_reviews": False,
     "reviewer_reruns_required": False,
     "max_workers": 2,
     "escalate_same_acceptance_blocks": 3,
@@ -237,7 +238,8 @@ def parse_orchestration_text(text: str, repo_root: Path | None = None,
     (:func:`validate_orchestration_dict`). Returns (data, parse_or_schema_error)."""
     try:
         raw = yaml.safe_load(text)
-    except (yaml.YAMLError, ValueError) as e:   # ValueError: an impossible date such as 2026-00-00
+    # ValueError: an impossible date such as 2026-00-00; the tuple is review_policy_pin.UNREADABLE (M21.30)
+    except (OSError, ValueError, TypeError, AttributeError, RecursionError, yaml.YAMLError) as e:
         return None, f"YAML error in {ORCHESTRATION_REL}: {e}"
     if not isinstance(raw, dict):
         return None, f"{ORCHESTRATION_REL}: must be a mapping"

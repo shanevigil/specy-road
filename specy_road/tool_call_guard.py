@@ -383,7 +383,9 @@ def decide(repo_root: Path, command: str, *, agent: str | None, always: bool = F
         return Verdict(ALLOW, f"(would deny with another live session: {reason})", command)
     who = f"live sessions: {', '.join(others)}" if others else "guard runs with --always"
     return Verdict(DENY, f"refused in a shared checkout ({who}) — {reason}. "
-                         "See the shared-checkout rules in AGENTS.md; `specy-road session list` shows who is here.", command)
+                         "See the shared-checkout rules in AGENTS.md; `specy-road session list` shows who is here. "
+                         "Do not end, edit or delete another session's record to get past this; ask its owner "
+                         "or a human.", command)
 
 
 from specy_road.tool_call_guard_adapters import ADAPTERS, Adapter  # noqa: E402,F401 — re-exported for session_cli
