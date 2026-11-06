@@ -306,7 +306,12 @@ def _scratch_root(root: Path) -> Iterator[Path]:
     The rehearsal runs the same commands as a real apply, so it needs somewhere
     to write. What a batch writes (``_batch_paths``) is copied; schemas,
     constraints and the source tree (touch-zone checks read it) are symlinked; ``.git`` is left out so nothing can reach the real index.
+    Links in the copied trees that point into the repo are rebased onto the
+    copy (:func:`_rebase_graph_symlinks`), so no rehearsal reads or writes a
+    live file and every rehearsal sees the layout a real run writes.
     """
+    from specy_road.bundled_scripts.roadmap_crud_delete import _rebase_graph_symlinks
+
     copied = {p.name for p in _batch_paths(root)}
     with tempfile.TemporaryDirectory(prefix="specy-road-apply-") as tmp:
         scratch = Path(tmp)
@@ -324,6 +329,7 @@ def _scratch_root(root: Path) -> Iterator[Path]:
                 shutil.copytree(entry, dst, symlinks=True)
             else:
                 shutil.copy2(entry, dst)
+        _rebase_graph_symlinks(scratch, root.resolve())
         yield scratch
 
 

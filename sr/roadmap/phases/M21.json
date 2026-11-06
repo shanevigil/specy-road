@@ -156,7 +156,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.16_upgrade-scratch-git-and-regen_8177b36c-9fac-49f6-9017-a21798bb3630.md",
       "sibling_order": 14,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "upgrade --dry-run never touches the real repo under GIT_DIR, and a real upgrade regenerates drifted generated files",
       "touch_zones": [
         "specy_road/bundled_scripts/upgrade.py",
@@ -245,7 +245,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.19_apply-dry-run-rebases-links_e9e59d66-067b-4ba5-93e1-76f417ad1b21.md",
       "sibling_order": 17,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "apply --dry-run rehearses on a scratch copy whose links are rebased, so no rehearsal can move or change a live file",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_dependency_ops.py",
@@ -273,7 +273,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.20_gui-publish-regenerates-and-needs-a-remote_4e3b3bad-ced1-4ae6-ae94-cabefd11ec19.md",
       "sibling_order": 18,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "PM GUI Publish regenerates roadmap.md and roadmap-context.md before committing, and refuses before committing when no remote is set",
       "touch_zones": [
         "specy_road/pm_publish.py",
@@ -298,7 +298,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.21_review-delegate-validates-reviewer-command_b03ccc6f-ed0f-478c-8632-6f7dca8b3cc1.md",
       "sibling_order": 19,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review delegate validates the reviewer command as prompt --channel cli does, and the model check splits on newlines only",
       "touch_zones": [
         "specy_road/review_delegate_harness.py",
@@ -385,7 +385,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.24_claude-reviewer-schema-and-error_4b5ad55d-b776-4380-b12b-1fedd636c687.md",
       "sibling_order": 22,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review delegate runs a Claude Code reviewer: the inline --json-schema carries no $schema, and a failed run names the harness's error",
       "touch_zones": [
         "specy_road/worker_adapter_claude.py",
@@ -417,7 +417,10 @@
         "specy_road/review_answer.py",
         "tests/test_review_answer.py",
         "docs/orchestration-reviewer-output.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_review_record_write.py",
+        "tests/test_review_record_write_closure.py",
+        "tests/test_review_delegate.py"
       ],
       "type": "task"
     },
@@ -437,7 +440,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.26_gate-excludes-ready-authors_cec33876-599c-4516-abe7-3ec445eb8a2a.md",
       "sibling_order": 24,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model",
       "touch_zones": [
         "specy_road/review_gate.py",
