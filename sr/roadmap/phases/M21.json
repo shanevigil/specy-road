@@ -327,7 +327,7 @@
       ],
       "planning_dir": "planning/M21.22_rc4-small-code-fixes_2f2d9e86-82cc-4f64-8926-2e57a9749d38.md",
       "sibling_order": 20,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Small rc4 code fixes: adapter docstring, dead outline writers, pickup hint ignored, land: local wording, unused upgrade helper",
       "touch_zones": [
         "specy_road/worker_adapters.py",
