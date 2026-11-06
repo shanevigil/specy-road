@@ -121,12 +121,6 @@ def work_template_ship_plan(project_root: Path) -> tuple[list[str], list[str]]:
     return to_copy, refused
 
 
-def missing_work_template_rels(existence_root: Path) -> list[str]:
-    """Project-relative paths of referenced work templates the tree lacks and can receive."""
-    to_copy, _refused = work_template_ship_plan(existence_root)
-    return to_copy
-
-
 def work_template_skip_message(rel: str) -> str:
     """Same wording ``copy_missing_docs`` uses for an out-of-repo symlink."""
     return f"skipped {rel} (a symlink leads outside the repository)"
