@@ -269,6 +269,7 @@ Do not pick these up.
 - `M21.24` on `feature/rm-claude-reviewer-schema-and-error` since 2026-11-05
 - `M21.27` on `feature/rm-filings-take-the-review-lock` since 2026-11-05
 - `M21.28` on `feature/rm-finish-validates-before-bookkeeping` since 2026-11-05
+- `M21.29` on `feature/rm-terminate-ends-escaped-descendants` since 2026-11-05
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
