@@ -104,3 +104,18 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: writers-refuse-links-out
+    node_id: M21.17
+    branch: feature/rm-writers-refuse-links-out
+    touch_zones:
+      - specy_road/managed_block.py
+      - specy_road/generated_files.py
+      - specy_road/init_project.py
+      - specy_road/review_rejected.py
+      - specy_road/review_delegate_packet.py
+      - tests/test_writers_refuse_links_out.py
+      - CHANGELOG.md
+      - specy_road/finish_land_deterministic.py
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
