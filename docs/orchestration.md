@@ -335,7 +335,7 @@ merge, a review, a verifier's experiments — was invisible to every other agent
 ```bash
 specy-road session start --path src/api docs/api.md --note "rate limits"   # or repeat --path
 specy-road session touch            # renew; records expire after 4 hours by default
-specy-road session end [<id>]       # <id>: retire a record of yours left by a closed terminal
+specy-road session end [<id>]       # yours, or an expired <id>; another agent's live one needs --force from a terminal
 specy-road session list [--all]
 specy-road session check            # exit 1 if staged paths overlap another live session
 specy-road session guard --command "git stash"   # exit 2 with the reason when another session is live
@@ -361,7 +361,7 @@ decision (Claude Code gets context only; Codex nothing), so the harness's own pr
 Records are `work/.sessions/<agent-id>.yaml` (gitignored, main worktree): branch, worktree, paths, expiry. The id is
 `$SPECY_ROAD_AGENT_ID`, else `<user>-s<POSIX session id>`, shared by every command from one terminal or harness process, so
 `start`, `touch`, `end` and the hook name one record; `--agent` names it; `touch` keeps the paths. A crashed record ages
-out; one that will not load counts as live to the guard until fixed or deleted. A record keeps the `$USER` that started it, so `session end <id>` retires a record of yours before it expires (a closed terminal's still counts as a live peer to the guard) and refuses one another user started. `handoff status` lists live sessions first,
+out; one that will not load counts as live to the guard until fixed or deleted. `session end` removes only the caller's own record (`$SPECY_ROAD_AGENT_ID`, else the derived id) or an expired one: `<id>` and `--agent` pick the target, never the caller. Another agent's live record is refused (it is kept, exit 1) unless a human passes `--force` from a terminal (stdin a TTY), so a closed terminal's record counts as a live peer to the guard until it expires; with no record for the caller's id, `end` names the id `session start` printed and ends nothing. A record keeps the `$USER` that started it, and one another user started is always refused. `handoff status` lists live sessions first,
 `do-next-available-task` warns on touch-zone overlap, `grind-session --plan` and `orchestrate plan` never put two ready leaves sharing a zone in one parallel batch, and `session check` refuses a commit on another live session's paths.
 
 ## Working in one shared checkout

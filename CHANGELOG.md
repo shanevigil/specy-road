@@ -23,6 +23,16 @@ body. Keep section bodies focused; link to PRs for detail.
   approve-notes rules in operational form (one observation per line, each
   with `not a defect because <reason>` or a `required_changes` entry); the
   rule itself is unchanged.
+- **Security:** `specy-road session end` ends only your own session. The
+  caller is always `SPECY_ROAD_AGENT_ID` or the derived id; a positional id or
+  `--agent` only picks the target. Another agent's live record is kept and the
+  command exits 1 naming the rule, unless a human passes `--force` with stdin a
+  TTY; an expired record is still removed. `end` with no id no longer falls
+  back to "your only live session" or "the only one on this worktree and
+  branch": with no record under your id it names the id `session start`
+  printed and ends nothing. The session guard's refusal now says not to end,
+  edit or delete another session's record to get past it, and the agent rules
+  say never to end, edit or delete another agent's session record (CR3).
 - **Security:** a leaf's review policy is pinned at claim. Pickup's
   registration commit (`--local` too) keeps its subject and gains a
   `Review-policy: sha256:<hex> at <commit>` trailer: the digest of the roster,

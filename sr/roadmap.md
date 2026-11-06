@@ -178,7 +178,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.29` | worker terminate also ends processes the harness started in their own session | task | — | Complete |
 | `M21.30` | A leaf's review policy is pinned at claim: the gate and finish refuse a roster, policy or review-switch change made on the integration branch after it until a human accepts it | task | — | Complete |
 | `M21.31` | review record files only under the caller's own model: a filing from another harness or worker is refused, and a hand-filed record needs an attestation and counts only when signed or the policy allows it | task | — | Not Started |
-| `M21.32` | session end ends only your own session: another agent's live record needs --force from a terminal, and the guard's refusal names the rule | task | — | Not Started |
+| `M21.32` | session end ends only your own session: another agent's live record needs --force from a terminal, and the guard's refusal names the rule | task | — | Complete |
 | `M21.33` | The brainstorm skill makes `specy-road brainstorm start` the first tool call, alone in its turn, in every harness's shipped copy | task | — | Complete |
 | `M21.34` | Context regression CR2 asks for a README section the todo app supports, and passes a README-only commit on the agent's own worktree branch | task | — | Complete |
 | `M21.35` | review delegate gives a refused reviewer answer one repair turn with the refusal text, and the reviewer prompt ends with the notes rules | task | — | Complete |

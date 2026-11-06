@@ -150,7 +150,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.32_session-end-only-your-own_218a29f0-6309-4fa6-b767-1c8a74e17046.md",
       "sibling_order": 30,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "session end ends only your own session: another agent's live record needs --force from a terminal, and the guard's refusal names the rule",
       "touch_zones": [
         "specy_road/bundled_scripts/session_cli.py",
