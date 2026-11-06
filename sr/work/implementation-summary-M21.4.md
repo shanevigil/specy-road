@@ -32,6 +32,11 @@ Branch `feature/rm-remove-node` (base `fcb4a96e…`; fix rounds through `d59bd7d
 
 Merge-induced: `specy_road/cli.py` went to 401/400 lines after the merge (WIP brought it to 400). Put `"remove-node"` on the same line as `"archive-node"` in `_CRUD_COMMANDS`; nothing else removed.
 
+## Coordinator round (on `013a0525`)
+
+- **R1 (Sol):** already addressed in `013a0525`: `remove_roadmap_node` checks every blocker on the live graph before any planning-sheet or chunk resolution, in both modes; the public CLI case `claimed-sheet-outside-repo` (claimed M99.2 whose sheet symlink escapes the repo) asserts dry-run and real removal both exit 1 naming the claim, tree unchanged. No further code change this round.
+- **R2 (Sol, environmental):** the GUI results for A3 are the ones specy-road recorded in `READY-claude-opus-5.5.md` for this commit, from the `--run` of `tests/test_gui_outline_contract.py tests/test_gui_app.py tests/test_gui_app_mutations.py tests/test_gui_app_routes_nodes_errors.py tests/test_gui_archive_routes.py tests/test_gui_node_write_slot.py`, run outside the reviewer sandbox.
+
 ## Touch zones (final list)
 
 Brief zones; `tests/test_roadmap_crud.py` / `tests/test_generate_brief.py` for registry helper only.
