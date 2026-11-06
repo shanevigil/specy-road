@@ -1,6 +1,6 @@
 # Implementation summary: M21.3 `rewrite-id-refs`
 
-Implementation commit: `bf244bd2` on `feature/rm-rewrite-id-refs`.
+Implementation commit: `bf244bd2` on `feature/rm-rewrite-id-refs`. Fix round 1 merged `origin/WIP/improvements-0-3-1` (merge `1f4851ca`, no conflicts) and changed no code (see Fix round 1).
 
 ## What changed
 
@@ -33,16 +33,37 @@ Implementation commit: `bf244bd2` on `feature/rm-rewrite-id-refs`.
 
 ## Final touch zones
 
-The listed zones plus the new `specy_road/bundled_scripts/roadmap_move_id_forms.py`. `validate_self_heal.py` imports `planning_rename` but is unchanged, because its function is untouched.
+The listed zones plus `specy_road/bundled_scripts/roadmap_move_id_forms.py` (since added to the zones, `bc8c9b8c`). `validate_self_heal.py` imports `planning_rename` but is unchanged, because its function is untouched.
 
 ## Not done / notes
 
 - `rename-refs` does not check milestone locks: it edits prose only, not structure. The move commands keep their existing lock checks.
 - `/outline/reorder` takes no `rewrite_refs`, because the acceptance names only move, indent, outdent and group.
 
+## Fix round 1 (gpt-6.1-sol-low block at e7775e16)
+
+- **Finding:** pytest refused to start because `tests/fixtures/specy_road_dogfood/.specyrd/` held ignored files, so the PM GUI, importer and M21.1 contract tests went unverified.
+- **Class:** a verifier that writes ignored runtime state into `tests/fixtures/`, after which the fixture guard (`tests/fixture_guard.py`) refuses every later pytest run in that checkout.
+- **Cause:** the round-0 READY ran `specy-road digest --check --repo-root tests/fixtures/specy_road_dogfood` last. That command writes `.specyrd/cache/` into the fixture, so the tree the reviewer got was dirty. This leaf's code and tests don't write there (see Probes).
+- **Fix:**
+  - The new READY runs only the targeted pytest, `ruff check specy_road tests scripts` and `specy-road file-limits`, none of which touch the fixture.
+  - The fixture was cleaned with the guard's own `git clean -fdX tests/fixtures`, and it was clean before and after the targeted run.
+  - Stopping `digest` from writing its cache into a `--repo-root` fixture would need a change in `digest_cli.py` or the history cache. That is outside this leaf's zones and acceptance, so it is not done here.
+
+## Probes
+
+- `git status --porcelain --ignored -- tests/fixtures` after `specy-road validate --repo-root <fixture>`: clean.
+- The same after `specy-road export --check --repo-root <fixture>`: clean.
+- The same after `specy-road digest --check --repo-root <fixture>`: `.specyrd/` left behind. This is the source, and it is excluded from the new READY.
+- `tests/test_rename_refs.py` and `tests/move_node_helpers.py` write only under `tmp_path`, and `run_cli` always passes `--repo-root tmp`; no path reaches `tests/fixtures`.
+- Fixture status before and after the targeted pytest run: clean both times.
+- Targeted pytest over 62 files (every test importing a changed module or `move_node_helpers`, plus `tests/test_gui_app*.py` and `tests/test_roadmap_gui_*.py`, and the unchanged `tests/test_gui_outline_contract.py`): 930 passed.
+- `tests/test_gui_outline_contract.py` has no diff against the merge base.
+- `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
+
 ## Verification
 
-- `pytest -n 4`: 5378 passed.
+- Round 0: `pytest -n 4`: 5378 passed. Round 1: targeted run, 930 passed (see Probes).
 - `specy-road file-limits` (sr/ config and `--repo-root .`): OK.
 - Dogfood fixture `validate`, `export --check` and `digest --check`: OK.
 - `ruff check` on changed files: clean.
@@ -71,3 +92,4 @@ The listed zones plus the new `specy_road/bundled_scripts/roadmap_move_id_forms.
   - `test_a_failed_move_rewrites_nothing`: a validation failure leaves the tree byte-identical. Uses the same `run_validate_raise` monkeypatch as the existing rollback test.
   - `test_gui_rewrite_refs_is_opt_in`: four GUI routes × true/false/omitted.
 - Mocks: only the `run_validate_raise` monkeypatch above.
+- Fix round 1: none (no code, test or guard added).
