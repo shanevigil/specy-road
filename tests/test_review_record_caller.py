@@ -105,15 +105,14 @@ def test_a_worker_id_that_does_not_resolve_is_refused_without_a_traceback(
     assert _tree(repo) == before
 
 
-@pytest.mark.parametrize("attest", ["", "   ", "me\nbecause", "me\n", "me\rbecause", "me\u2028because",
-                                    "me\x00because", os.fsdecode(b"me \xff")])
+@pytest.mark.parametrize("attest", ["", "   ", "\t", "me\nbecause", "me\n", "me\rbecause", "me\u2028because"])
 def test_an_attestation_must_be_one_non_empty_line(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys,
                                                    attest: str) -> None:
     repo = make_review_repo(tmp_path, orchestration=_roster())
     _env(monkeypatch, {})
     before = _tree(repo)
     assert _record(repo, OPUS, "--human-filed", attest) == 1
-    assert "--human-filed takes one printable, non-empty line" in capsys.readouterr().err
+    assert "--human-filed takes one non-blank line" in capsys.readouterr().err
     assert _tree(repo) == before
 
 
@@ -136,13 +135,15 @@ def test_the_workers_own_model_files(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert handoff_status_node(repo, capsys)["policy_met"]
 
 
+@pytest.mark.parametrize("attest", ["  savigil, notes pasted from a claude.ai chat ", "Alice\tpasted independent review",
+                                    "Zoë \x07 by hand", os.fsdecode(b"me \xff, by hand")])
 @pytest.mark.parametrize("count_human", [False, True])
 def test_a_hand_filed_record_counts_only_under_the_policy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys,
-                                                         count_human: bool) -> None:
+                                                         count_human: bool, attest: str) -> None:
     repo = make_review_repo(tmp_path, orchestration=_roster(count_human=count_human))
     _env(monkeypatch, {})
-    assert _record(repo, OPUS, "--human-filed", "  savigil, notes pasted from a claude.ai chat ") == 0
-    assert _filed(repo, OPUS)["human_filed"] == "savigil, notes pasted from a claude.ai chat"
+    assert _record(repo, OPUS, "--human-filed", attest) == 0   # any one non-blank line, as A2 says
+    assert _filed(repo, OPUS)["human_filed"] == attest.strip()
     st = handoff_status_node(repo, capsys)
     assert st["policy_met"] is count_human
     said = "filed by hand (human_filed) and unsigned; policy.count_human_filed_reviews is off"

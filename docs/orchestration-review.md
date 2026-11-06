@@ -217,8 +217,8 @@ writes anything, it identifies the caller from the environment, never from anyth
   matches none. A refusal reads "`<M>` is a `<harness>` roster entry and this command runs under `<caller>`; file a
   review only under your own model id (AGENTS.md, Review roles); nothing was written".
 - **Unidentified** (no marker, or two or more): a human filing from a plain terminal, for example pasted notes, adds
-  `--human-filed "<who and why>"`: one non-blank, printable line (no line break of any kind, no control
-  character, no undecodable byte), stored as `human_filed` and covered by a signature. The gate
+  `--human-filed "<who and why>"`: one non-blank line (no line break of any kind; anything else on the line, a tab
+  included, is kept), stored stripped as `human_filed` and covered by a signature. The gate
   counts such a record only when its signature verifies against the roster `public_key`, or when
   `policy.count_human_filed_reviews: true` (default false) on the integration branch; otherwise it is listed as
   "filed by hand (human_filed) and unsigned; policy.count_human_filed_reviews is off". An identified matching caller

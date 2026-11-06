@@ -57,14 +57,14 @@ def caller(repo_root: Path, env: Mapping[str, str] | None = None) -> tuple[str, 
 
 
 def _attestation_problem(text: str | None) -> str | None:
-    """One rule for ``--human-filed``: non-blank, a single line by :meth:`str.splitlines` (so no ``\\n``, ``\\r``,
-    U+2028 or other break), and printable (no control character, and no lone surrogate from undecodable argv)."""
+    """One rule for ``--human-filed`` (A2): not blank, and one line by :meth:`str.splitlines` (no ``\\n``, ``\\r``,
+    U+2028 or other break). Anything else on the line, a tab or a control character included, is kept."""
     if text is None:
         return ("this command runs under no identified harness (no SPECY_ROAD_WORKER_ID, and not exactly one of "
                 + ", ".join(var for _, var, _ in HARNESS_MARKERS)
                 + "); a human filing by hand passes --human-filed '<who and why>'")
-    if not text.strip() or text.splitlines() != [text] or not text.isprintable():
-        return "--human-filed takes one printable, non-empty line saying who files this record and why"
+    if not text.strip() or text.splitlines() != [text]:
+        return "--human-filed takes one non-blank line saying who files this record and why"
     return None
 
 

@@ -358,7 +358,7 @@ def build_parser() -> argparse.ArgumentParser:
     rec.add_argument("--sign-key", metavar="PATH", help="Sign the record with this OpenSSH private key (ssh-keygen -Y sign)")
     rec.add_argument("--launch-mode", choices=REVIEW_LAUNCH_MODES, help="How your harness was started; stored on the record")
     rec.add_argument("--human-filed", metavar="WHO_AND_WHY",
-                     help="Required when no harness or worker is identified (a human filing by hand): one printable line saying "
+                     help="Required when no harness or worker is identified (a human filing by hand): one non-blank line saying "
                           "who files this and why; stored as human_filed, which counts only signed or under "
                           "policy.count_human_filed_reviews")
     add_repo_root_arg(rec)
