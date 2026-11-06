@@ -17,7 +17,7 @@
       ],
       "planning_dir": "planning/M21.42_parse-failure-gets-repair-turn_f4abbcaf-6a04-44f7-a505-8b0694560f41.md",
       "sibling_order": 40,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review delegate also gives one repair turn when the final answer does not parse, not only when review record refuses it",
       "touch_zones": [
         "specy_road/review_delegate.py",
@@ -30,6 +30,54 @@
         "tests/test_review_attempt_span.py",
         "tests/test_review_delegate.py",
         "tests/test_review_record_write_closure.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Profile field: a model profile's front matter accepts an optional `guidance_bypass_observed` mapping {date (YYYY-MM-DD), harness (a harness id), evidence (non-empty string)}, checked in model_profiles' structure check (any other shape makes the profile invalid) and printed by `models show`; the shipped composer-2.5 profile (template and sr/model-profiles, its alias composer-2.5-fast included) carries it with date 2026-11-06, harness cursor and the evidence '§9 replay and final re-test 2026-11-05/06, Cursor harness (agent -p --force): CR1 committed a roster change, then faked a terminal with `script` to run review accept-policy and the human approval, merged and pushed (2/3 runs); CR3 restored and deleted a peer's files with edit and delete tools after the guard denied git (2/3); CR5 never opened the brainstorm skill (3/3); review delegate filed 2/5'; no other profile gets it (composer-2, and grok-4.7, gpt-6.1-sol and claude-opus-5-5 through Cursor are untested: M22.23). A model is flagged when the profile routing reads (orchestration_pinned.pinned_profile_for_entry, integration branch) or the bundled profile with the same api_id or alias carries the field; a project or feature-branch copy without it does not clear it",
+        "One function, orchestrate_assign.guidance_bypass_refusal(config, entry, profile): when the pinned config's policy.signed_reviews is true, the entry's model is flagged and the roster entry lacks `allow_guidance_bypass_model: true`, it returns '<id> (model <api_id>) is excluded from executor and reviewer roles while policy.signed_reviews is on: its profile records guidance bypass observed (<date>, <harness>: <evidence>). Set allow_guidance_bypass_model: true on its roster entry to use it at your own risk.' Every eligibility decision uses it: orchestrate plan picks no such entry as executor or reviewer and the leaf's notes give the reason; worker delegate (_check_eligible and build_prompt) refuses with it, nothing launched; prompt --role executor or reviewer, prompt --run and review delegate refuse with it, exit 1, nothing launched; handoff status's who-can-approve row shows it (review_eligible._roster_reason); review_next_step offers no such reviewer; the review gate counts no record from such an entry (ineligible, same reason). The coordinator role, and everything with signed_reviews off, are unchanged",
+        "Opt-in: roster entries accept `allow_guidance_bypass_model` (boolean, default false; orchestration.schema.json in the template and sr/schemas, described as an at-your-own-risk override); with it true the entry is eligible and counted as before, and every launch for it (worker delegate, review delegate, prompt --run) prints one stderr line 'warning: <id> (model <api_id>) runs at your own risk: its profile records guidance bypass observed (<date>, <harness>); allow_guidance_bypass_model is set on its roster entry', and orchestrate plan adds the same note. While signed_reviews is on, validate and doctor print one warning per rostered executor or reviewer entry whose model is flagged ('excluded: set allow_guidance_bypass_model ... at your own risk' or 'opted in at its own risk'); with it off they print nothing new",
+        "Tests in tests/test_guidance_bypass_roles.py, one table: profile flag on/off x signed_reviews on/off x opt-in on/off x role (executor through orchestrate plan, worker delegate and prompt; reviewer through orchestrate plan, review delegate, prompt, handoff status and the gate's count; coordinator) -> refused with the reason, or allowed with exactly one warning line, or unchanged with no output change, per the sheet's decision table; plus the flag only on the bundled profile (project copy lacks it) -> flagged, a feature-branch edit removing it -> still flagged, a malformed field -> profile invalid, and the validate / doctor warning rows. docs/orchestration-roster.md, orchestration-workers.md, orchestration-models.md (the profile field) and orchestration-review.md (Signed reviews and 'What the gate cannot stop', recommending signed_reviews whenever agents run with shell access) state exactly this, naming composer-2.5 and the evidence and saying the finding is about that model, not the Cursor harness; CHANGELOG [Unreleased] Changed",
+        "Estimated net line change (informational, not a gate): package about +90, tests about +260, docs about +30"
+      ],
+      "codename": "guidance-bypass-model-excluded-under-signed-reviews",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M21.44",
+      "node_key": "14485811-9209-468d-bd05-0f5156228e8a",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.44_guidance-bypass-model-excluded-under-signed-reviews_14485811-9209-468d-bd05-0f5156228e8a.md",
+      "sibling_order": 42,
+      "status": "Not Started",
+      "title": "A model observed to bypass specy-road's guidance is excluded from executor and reviewer roles when signed reviews are on, unless the roster entry opts in at its own risk",
+      "touch_zones": [
+        "specy_road/model_profiles.py",
+        "specy_road/orchestrate_assign.py",
+        "specy_road/orchestrate_plan.py",
+        "specy_road/orchestration_pinned.py",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/review_delegate.py",
+        "specy_road/review_eligible.py",
+        "specy_road/review_next_step.py",
+        "specy_road/review_gate.py",
+        "specy_road/roster_profile_check.py",
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "sr/schemas/orchestration.schema.json",
+        "specy_road/templates/project/model-profiles/cursor-composer/composer-2.5.md",
+        "sr/model-profiles/cursor-composer/composer-2.5.md",
+        "specy_road/templates/project/model-profiles/README.md",
+        "sr/model-profiles/README.md",
+        "tests/test_guidance_bypass_roles.py",
+        "tests/test_model_profile_aliases.py",
+        "tests/test_review_eligible.py",
+        "docs/orchestration-roster.md",
+        "docs/orchestration-workers.md",
+        "docs/orchestration-review.md",
+        "docs/orchestration-models.md",
+        "CHANGELOG.md"
       ],
       "type": "task"
     }

@@ -90,7 +90,8 @@
       "dependencies": [
         "01db66ad-a91c-48e3-953e-4083f5f14a13",
         "7b52d543-e78c-4e74-bcd1-24d5a8b3034b",
-        "c840cf76-95c4-4688-a587-3bc06824fad5"
+        "c840cf76-95c4-4688-a587-3bc06824fad5",
+        "467b60ed-37a1-4220-ba8a-9507471e9dcc"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.6.1",
@@ -144,7 +145,8 @@
         "e08a12a0-17fd-4251-b596-5a46e1e9335d",
         "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf",
         "f533afb6-f6fb-4394-9beb-d8a5c49ed95d",
-        "f8ad690d-5f67-4493-bd07-62324d09cdb2"
+        "f8ad690d-5f67-4493-bd07-62324d09cdb2",
+        "c6f05a10-ac3d-4297-b8ca-e9e82076ad1d"
       ],
       "id": "M16.8.8",
       "node_key": "15c488ad-2531-4d82-a3a9-363e626a3872",
@@ -290,6 +292,36 @@
       "title": "Gate: 0.3.1 tagged",
       "touch_zones": [],
       "type": "gate"
+    },
+    {
+      "acceptance": [
+        "scripts/ruff_quality_baseline.json records, per file under specy_road, scripts and tests, the number of ruff findings per rule family — C901 (waivers ignored: counted with `--ignore-noqa`), PL, B, SIM, RET, N, and D102/D103 (docstrings on public methods and functions) — counted at pickup by scripts/ruff_quality_baseline.py with `ruff check --select <family> --output-format json`; tests/test_ruff_quality_baseline.py fails when a file's count in a family rises or a file outside the baseline has a finding; `python scripts/ruff_quality_baseline.py --shrink` lowers entries and never raises one",
+        "For a move or fold a leaf records as old path -> new path, `python scripts/ruff_quality_baseline.py --transfer OLD NEW` moves OLD's entries onto NEW, summed per family; the per-family totals never rise; outside recorded moves every file keeps its own shrink-only check. No code is fixed in this leaf",
+        "The families are selected only by the baseline script: pyproject.toml's ruff selection and today's `ruff check` CI gate are unchanged, and no tool other than ruff is added (mypy, radon and duplication detectors are out of scope for M16)",
+        "`python scripts/lean_metrics.py --check` (M16.1.7) prints each family's total and its delta from the baseline commit, and docs/release-runbook.md's checklist records those totals, the width total and M16.2.6's import-cycle count for each release",
+        "Estimated net line change (informational, not a gate): package 0; scripts and tests about +80 plus the generated quality baseline file"
+      ],
+      "codename": "ruff-quality-family-baseline",
+      "dependencies": [
+        "fce532e1-9ed0-4da1-9f16-2465c6e73df0",
+        "c840cf76-95c4-4688-a587-3bc06824fad5"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.1.11",
+      "node_key": "467b60ed-37a1-4220-ba8a-9507471e9dcc",
+      "parent_id": "M16.1",
+      "planning_dir": "planning/M16.1.11_ruff-quality-family-baseline_467b60ed-37a1-4220-ba8a-9507471e9dcc.md",
+      "sibling_order": 10,
+      "status": "Not Started",
+      "title": "Ruff quality rule families with per-file shrink-only baselines and per-release totals",
+      "touch_zones": [
+        "scripts/ruff_quality_baseline.py",
+        "scripts/ruff_quality_baseline.json",
+        "tests/test_ruff_quality_baseline.py",
+        "scripts/lean_metrics.py",
+        "docs/release-runbook.md"
+      ],
+      "type": "task"
     }
   ]
 }

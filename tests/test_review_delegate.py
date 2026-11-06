@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import script_subprocess_env
-from tests.review_delegate_helpers import (CAPACITY, delegate_repo, delegate_roster, fake_calls, launches,
+from tests.review_delegate_helpers import (CAPACITY, delegate_repo, delegate_roster, fake_calls, fake_prompts, launches,
                                            set_steps, verdict_step)
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_output
 from tests.test_models_and_prompt import run_main
@@ -82,7 +82,9 @@ def test_a_retry_never_files_an_earlier_attempts_answer(tmp_path: Path) -> None:
     first = {"say": json.dumps(verdict_step(repo)["answer"]), "error": CAPACITY, "exit": 1}
     set_steps(repo, spec, first, {"raw": "not a verdict"})
     run = delegate(repo, "M1.1", "opus", retries=1, backoff=0, sleep=lambda _s: None)
-    assert [a["capacity"] for a in run["attempts"]] == [True, False] and run["outcome"] == "rerun"
+    assert [a["capacity"] for a in run["attempts"]] == [True, False, False] and run["outcome"] == "rerun"
+    assert [a.get("repair", False) for a in run["attempts"]] == [False, False, True]   # M21.42: one repair launch
+    assert run["refusal_kind"] == "parse" and run["refusal"] in fake_prompts(spec)[-1]
     assert not (reviews_dir(repo, "M1.1") / "REVIEW-opus.md").exists()
 
 
@@ -142,16 +144,21 @@ def test_a_clean_exit_without_a_record_is_incomplete(tmp_path: Path) -> None:
     set_steps(repo, spec, {})
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
     assert run["state"] == "incomplete" and run["outcome"] == "rerun"
-    assert run["reason"] == "rerun requested: the final message holds no JSON object"
-    assert len(run["attempts"]) == 1                                  # not a capacity error: no retry
+    no_json = "rerun requested: the final message holds no JSON object"
+    assert run["reason"] == f"{no_json}; after the repair turn, {no_json}"   # M21.42: both reasons
+    assert [a.get("repair", False) for a in run["attempts"]] == [False, True]   # one repair launch, no capacity retry
+    assert run["refusal_kind"] == "parse" and run["refusal"] in fake_prompts(spec)[1]
     assert not (reviews_dir(repo, "M1.1") / "REVIEW-opus.md").exists()
 
 
 def test_resume_continues_the_recorded_session(tmp_path: Path, capsys) -> None:
     repo, spec = delegate_repo(tmp_path)
-    set_steps(repo, spec, {}, verdict_step(repo))
+    set_steps(repo, spec, {}, {}, verdict_step(repo))   # M21.42: no JSON twice (the turn and its one repair)
     assert _delegate(repo) == 1
-    sid = load_run(repo, "M1.1", "opus")["session_id"]
+    first = load_run(repo, "M1.1", "opus")
+    assert [a.get("repair", False) for a in first["attempts"]] == [False, True]
+    assert first["refusal_kind"] == "parse" and first["refusal"] in fake_prompts(spec)[1]
+    sid = first["session_id"]
     assert _delegate(repo, "--resume") == 0
     assert any(c[c.index("--resume") + 1] == sid for c in launches(fake_calls(spec), "--resume"))
     commit_file(repo, "src/a.py", "print('moved')\n", "moved")
