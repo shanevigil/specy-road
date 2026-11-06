@@ -21,10 +21,11 @@ Install with the sha256-checked wheel recipe in
 The release candidates exist to find and fix problems while specy-road is used
 on real projects; rc4 fixes what testing rc3 turned up. Work on the roadmap
 continued in parallel, and the features that landed during this cycle are
-included in this build. Existing adopters run `specy-road upgrade` (then
-`specy-road refresh-schemas` for the new optional keys) and read *Upgrading*
+included in this build. Existing adopters run `specy-road upgrade` (it
+refreshes the schemas and regenerates a drifted digest) and read *Upgrading*
 in [`docs/whats-new.md`](docs/whats-new.md#specy-road-031): `move-node`,
-`refresh-profiles`, the escalation rules and reviewer runs change behaviour.
+`refresh-profiles`, the escalation rules, reviewer runs, review filing,
+the review policy pin and `session end` change behaviour.
 
 ### Fixed since rc3 (found in real-world testing)
 
@@ -55,6 +56,27 @@ in [`docs/whats-new.md`](docs/whats-new.md#specy-road-031): `move-node`,
   record leaves a trace.
 - **Dependency cycles through group dependencies are caught.** `validate` and
   `add-dependency` refuse a cycle made through an inherited group dependency.
+- **`upgrade` is isolated and finishes the job.** It never reaches the
+  caller's repository from its scratch copy and regenerates a drifted digest.
+- **Writers refuse symlinks out of the repo.**
+- **Review deferrals are bound to the decision that recorded them.**
+- **`apply --dry-run` never touches live files.**
+- **GUI Publish regenerates the generated files and refuses without a remote.**
+- **`review delegate` works on Claude Code and Cursor:** schema accepted, answer
+  read after prose, one repair turn for a refused answer.
+- **The gate never counts a review from a model that wrote a READY.**
+- **Review filings take the leaf's lock and are made only as the caller;**
+  hand-filed reviews count only when signed or with
+  `policy.count_human_filed_reviews`.
+- **The review policy is pinned at claim;** a human runs
+  `specy-road review accept-policy` to accept a change.
+- **`session end` ends only your own session.**
+- **`finish-this-task` validates before bookkeeping** and never leaves a
+  half-mutated tree.
+- **`worker terminate` ends descendants that escaped its process group.**
+- **`brainstorm verify` normalizes quotes** (citation markers, typographic
+  punctuation).
+- **Brainstorm skill: `brainstorm start` is the single first call.**
 
 ### Also in this build (roadmap work that continued alongside testing)
 

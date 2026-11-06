@@ -12,8 +12,6 @@ fixes and internal work, see the [CHANGELOG](../CHANGELOG.md).
 
 ## specy-road 0.3.1
 
-<!-- DRAFT (rc4): wording awaiting maintainer approval, release-runbook step 2.5a. Remove this comment once approved. -->
-
 *Release candidate `v0.3.1-rc4`, 2026-11-06 (TestPyPI).*
 
 0.3.1 adds an orchestration harness to specy-road. With it you can put a
@@ -219,10 +217,25 @@ says when one is due.
   - `validate` refuses a dependency cycle through inherited group
     dependencies; `remove-dependency` on a dependency the node does not list
     exits 1; explicit codenames over 64 characters are refused.
-  - Run `specy-road upgrade`, then `specy-road refresh-schemas` to use the new
-    optional keys (`max_fix_rounds`, `escalate_when_converging`, the quality
-    keys, `garden_cadence_days`, `cursor_force`, `harness_bin`,
-    `env_setup.link`, the `nested_repos` and `git-workflow.yaml` preferences).
+  - `review record` files only under the caller's own model. A review you
+    file by hand from a terminal needs `--human-filed "<who and why>"`, and the
+    gate counts it only when it is signed or the integration branch sets
+    `policy.count_human_filed_reviews: true`
+    ([who may file](orchestration-review.md#who-may-file-a-review-record)).
+  - A leaf's review policy is pinned when it is claimed. If the roster or
+    review policy changes on the integration branch after the claim, the gate
+    stays shut until a human runs `specy-road review accept-policy <ID>` in a
+    terminal, or the leaf is re-claimed
+    ([policy pin](orchestration-review.md#review-policy-pinned-at-claim)).
+  - `session end` ends only your own session; ending another agent's live
+    session needs `--force` from a terminal.
+  - PM GUI Publish refuses when the repository has no git remote; add one
+    first.
+  - Run `specy-road upgrade`. It refreshes the schemas (for the new optional
+    keys such as `max_fix_rounds`, `escalate_when_converging`,
+    `count_human_filed_reviews`, `cursor_force` and `harness_bin`) and
+    regenerates a drifted `roadmap-context.md` (and a tracked `roadmap.md`),
+    so `digest --check` passes without a separate step.
     See [Upgrading](upgrading.md).
 
 ### Removed
@@ -239,6 +252,14 @@ says when one is due.
   example retarget `origin/HEAD`) can change what the gate reads. Nothing
   yet stops an executor from changing the files that steer harnesses and
   specy-road unnoticed; that guard is planned for rc5.
+- The review policy pin, the `POLICY-ACCEPTED.yaml` acceptance file, READY
+  authorship and the caller check on `review record` are honour-system: an
+  agent that edits those files or sets a harness marker can get past them.
+  `signed_reviews` is the strong check.
+- `worker terminate` cannot reach a process the harness started that was
+  already re-parented to init before terminate ran.
+- The brainstorm skill's "start is the single first call" is wording only;
+  the CLI does not enforce it.
 - The guard errs towards refusing: `echo git stash` is refused while
   another session is live.
 - A landing that has reached only the local integration branch keeps its
