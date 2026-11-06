@@ -245,7 +245,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.19_apply-dry-run-rebases-links_e9e59d66-067b-4ba5-93e1-76f417ad1b21.md",
       "sibling_order": 17,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "apply --dry-run rehearses on a scratch copy whose links are rebased, so no rehearsal can move or change a live file",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_dependency_ops.py",
