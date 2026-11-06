@@ -175,7 +175,7 @@ def test_the_output_schema_is_the_record_schema_less_what_specy_road_fills() -> 
     schema = output_schema()
     assert set(schema["properties"]) == set(record["properties"]) - {
         "family", "independence", "notes_sha256", "signature", "launch_mode", "sibling_heads", "harness_model",
-        "model_mismatch"} | {"notes"}
+        "model_mismatch", "human_filed"} | {"notes"}
     assert schema["required"] == [*record["required"], "notes"] and schema["additionalProperties"] is False
 
 
