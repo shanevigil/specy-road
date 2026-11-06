@@ -2,11 +2,12 @@
   "nodes": [
     {
       "acceptance": [
-        "finish-this-task runs validate before its first bookkeeping write (status -> Complete); on failure it prints validate's own error lines and 'finish-this-task: nothing was changed', exits 1 with no Python traceback, and git status --porcelain, the index and HEAD are as before",
-        "A validate, export or digest failure (or any exception) after the bookkeeping writes and before the bookkeeping commit restores the chunk, rolled-up ancestor and registry files it wrote, prints the failing command and 'nothing was committed; fix it and run finish-this-task again', and exits 1 with no traceback",
-        "tests/test_finish_config_preflight.py: require_implementation_review_before_finish false with policy.reviewers_required 1 (the rc4 configuration) -> exit 1, message names the fix, no 'Traceback' in stderr, porcelain and registry entry unchanged; an export failure injected after the status write -> files restored, exit 1, no traceback; existing finish tests pass unchanged",
+        "finish-this-task runs validate (output captured) after its branch, override and context checks and before its first write (PR-body snapshot, status -> Complete); on failure it prints validate's own error lines and 'finish-this-task: nothing was changed', exits 1 with no Python traceback, and worktree bytes, the index and HEAD are as before",
+        "Before its first bookkeeping write, finish snapshots the worktree bytes (or absence) and index entry of every path it may create, overwrite, move or remove before the bookkeeping commit: the chunk, rolled-up ancestors, registry, roadmap.md, roadmap-context.md, the PR-body file and the work artifacts cleanup removes (reusing finish_bookkeeping_undo's path list and state helpers where they fit)",
+        "A non-zero validate, export or digest exit, or an OSError or subprocess.SubprocessError during those commands, the bookkeeping writes, cleanup, staging or the commit, puts every snapshotted path's bytes and index entry back (never restoring from HEAD, so pre-existing staged or unstaged edits survive), prints the failing command or path and 'nothing was committed; fix it and run finish-this-task again', reports a failed restore explicitly, and exits 1 with no traceback",
+        "tests/test_finish_config_preflight.py through finish's public entry: the rc4 configuration (require_implementation_review_before_finish false, policy.reviewers_required 1) -> exit 1, message names the fix, registry entry unchanged; injected rows for a later validate refusal, a digest refusal after export rewrote roadmap.md, an OSError on the registry write and a commit refusal; one row starts with distinct staged and unstaged bytes on a bookkeeping path; each row asserts worktree bytes, index blobs and HEAD equal the pre-run state and no 'Traceback' in stderr; existing finish tests pass unchanged",
         "CHANGELOG [Unreleased] Fixed. Out of scope: the gate-agreement rule, the merge-landing undo after the commit (M15.40), landing modules (M22.10)",
-        "Estimated net line change (informational, not a gate): package about +25, tests about +90"
+        "Estimated net line change (informational, not a gate): package about +60, tests about +150"
       ],
       "codename": "finish-validates-before-bookkeeping",
       "dependencies": [],
@@ -20,17 +21,18 @@
       "touch_zones": [
         "specy_road/bundled_scripts/finish_task.py",
         "tests/test_finish_config_preflight.py",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/finish_bookkeeping_undo.py"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "kill_group, after verifying the group and before its first signal, reads ps once and records every transitive descendant (by parent pid) of the group's members that is outside the group, with its start time",
-        "After the group is gone, each recorded descendant still alive with the same start time gets SIGTERM, then SIGKILL after the grace; a pid whose start time differs is never signalled; a survivor raises WorkerError naming its pid, so terminate does not report terminated",
-        "tests/test_worker_terminate_descendants.py (POSIX): a fake harness whose child calls os.setsid() and sleeps; worker terminate leaves neither the group nor that grandchild alive; a grandchild ignoring SIGTERM is SIGKILLed; a reused pid (start time changed) is not signalled; existing terminate and orphan tests pass unchanged",
-        "CHANGELOG [Unreleased] Fixed. Out of scope: processes already re-parented to init before terminate ran, killing by cwd, Windows, worker interrupt",
-        "Estimated net line change (informational, not a gate): package about +35, tests about +90"
+        "kill_group, after verifying the group and before its first signal, reads ps -A -o pid=,ppid=,pgid=,lstart= once (lstart parsed as the rest of the line, compared as start_token compares it) and records every transitive descendant (by parent pid) of the group's members that is outside the group, with its start time",
+        "After the group is gone, each recorded descendant still alive with the same start time gets SIGTERM, then SIGKILL after the grace; a pid authoritatively absent or whose start time differs is gone and never signalled; a survivor, or a failed, timed-out or unparsable descendant inventory or recheck, raises WorkerError naming the pid or the failure (the group itself is still signalled as today), so terminate does not report terminated",
+        "tests/test_worker_terminate_descendants.py (POSIX), through public worker terminate / kill_group only: a fake harness whose child calls os.setsid(), writes a ready file and sleeps, terminate run only once that file exists; neither the group nor that grandchild is left alive; a grandchild ignoring SIGTERM is SIGKILLed with an explicit short grace; with patched ps/os.kill seams a changed start time is neither signalled nor a survivor, an unreadable inventory and a same-start survivor each raise WorkerError; spawned processes are killed in finally; existing terminate and orphan tests pass unchanged",
+        "docs/orchestration-workers.md 'Processes outside the group' says terminate snapshots descendants before the first signal and also ends those outside the group, but cannot see a process already re-parented before that snapshot; CHANGELOG [Unreleased] Fixed. Out of scope: processes already re-parented to init before terminate ran, killing by cwd, Windows, worker interrupt",
+        "Estimated net line change (informational, not a gate): package about +40, tests about +130, docs about +3"
       ],
       "codename": "terminate-ends-escaped-descendants",
       "dependencies": [],
@@ -44,7 +46,8 @@
       "touch_zones": [
         "specy_road/worker_process.py",
         "tests/test_worker_terminate_descendants.py",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "docs/orchestration-workers.md"
       ],
       "type": "task"
     }
