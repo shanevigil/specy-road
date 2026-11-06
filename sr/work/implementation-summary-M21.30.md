@@ -1,0 +1,70 @@
+# Implementation summary: M21.30 — review policy pinned at claim
+
+## What changed
+
+- **A1 claim pin.** `do_next_task._finalize_pickup` builds the registration message with
+  `review_policy_pin.pinned_message`, which appends (after a blank line, subject unchanged)
+  `Review-policy: sha256:<hex> at <HEAD>` via the new `registration_pickup_commit.with_policy_trailer`.
+  `policy_digest(root, ref)` hashes `json.dumps({roster, substitutions, policy, require_implementation_review_before_finish},
+  sort_keys=True, separators=(",", ":"), default=str)` as committed at the ref (missing key = null, no defaults, no
+  local overlay). A present but unparsable policy file exits 1 before `register_claim` (no registry write). Same
+  message for `--local`. A repo with no commit at HEAD gets no trailer (nothing committed to pin).
+- **A2 gate and finish.** `pin_of` reads the trailer of the newest commit reachable from the commit under review whose
+  subject starts with `chore(rm-<codename>): register as in-progress`; no trailer → `None` (judged as today); a
+  trailer present but unparsable (or naming an unknown commit) → gate problem. `pin_problem` compares with the digest at
+  `policy_source` and honours a valid acceptance. `GateResult.policy_pin` is read by `passed` and listed in
+  `problems()`, so handoff status, review list and `mark-implementation-reviewed --yes` refuse with no extra wiring.
+  `change_lines` gives one line per roster add/remove (with entry), per changed property of a retained entry (sorted,
+  including `public_key`), `substitutions changed`, `policy.<key> a -> b`, and the review switch; a fallback line
+  covers order-only / missing-vs-empty differences. `finish_task._impl_review_or_exit` calls `pin_holds_or_exit`
+  before `review_required`, so turning the switch off after the claim still refuses before any bookkeeping.
+- **A3 accept-policy.** `specy-road review accept-policy <ID> [--ref]` (parser registered in review_cli.py, logic in
+  the pin module): refuses without a TTY ("a human accepts a review policy change in a terminal; nothing was
+  written"), prints the change lines, asks for the node id typed back, and writes
+  `work/reviews/<ID>/POLICY-ACCEPTED.yaml` (node_id, pinned_sha256, accepted_sha256, user, at) under the leaf's
+  review filing lock (as `review record` takes it, M21.27). Read back against the new
+  `specy_road/schemas/policy-acceptance.schema.json`; malformed, schema-invalid or other-node files are gate problems
+  (noted in the message), and an acceptance counts only for the exact pinned and accepted digests.
+- **Beyond the brief (coordinator-approved to keep):** `review_gate.human_approval_completes` returns False while
+  `policy_pin` is set, so the interactive human approval does not write a REVIEW-human.md that the gate would then
+  refuse.
+- **A5 docs.** Review rule in `agents-rules.md` and the managed block (provenance comments extended);
+  `docs/orchestration-review.md` section "Review policy pinned at claim" (honour-system like READY; M22.5 the broader
+  guard); CHANGELOG [Unreleased] Fixed, **Security** entry.
+- **Budgets.** Per coordinator decision, `tests/test_enforced_rules_pointers.py` (added to zones) raises
+  `_STUB_BYTES` 2063 → 2205 and `_RULES_BYTES` 9107 → 9289, exactly the new sizes, with a comment citing M21.30 and
+  the maintainer approval; line counts unchanged.
+
+## Final touch zones
+
+As listed in the brief plus `tests/test_enforced_rules_pointers.py`. No other path changed.
+
+## Verification
+
+- `pytest -n 4` targeted (pin, pickup, rules budgets, AGENTS block, file limits, gate, mark-reviewed, delegate,
+  ready-author, gate agreement): 153 passed. Full suite `pytest -n 4`: 5714 passed.
+- `ruff check` on changed Python: clean. `specy-road file-limits`: OK (review_gate.py 404, orchestration-review.md
+  430, under the 1,000 cap).
+
+## Added
+
+- `specy_road/review_policy_pin.py`: `policy_parts`/`policy_digest` — the A1 digest, one helper for any ref.
+- `_yaml_at` + `PolicyUnreadable` — strict read (committed_yaml returns `{}` on a parse error, which must never hash as empty).
+- `pinned_message` — the pickup call site's trailer; exits 1 on an unparsable policy before any registry write.
+- `pinned_message` no-HEAD guard — a repo with no commit has nothing to pin (keeps existing pickup tests exact).
+- `pin_of` — trailer lookup on the newest registration commit (startswith, so the CI-skip suffix matches).
+- `change_lines` (+ fallback line) — A2's per-change lines; fallback so a digest change is never reported with no line.
+- `read_acceptance`/`acceptance_path` — A3 file read with schema check; invalid is a problem, never an acceptance.
+- `_pin_state`, `pin_problem` — shared by the gate, finish and accept-policy.
+- `pin_holds_or_exit` — finish's one call (exit 1, message on stderr).
+- `cmd_accept_policy`, `add_parser`, `_user` — the A3 command; `_user` names the git user (fallback: login name).
+- `registration_pickup_commit.with_policy_trailer` — trailer after a blank line, subject unchanged.
+- `specy_road/schemas/policy-acceptance.schema.json` — A3 schema.
+- `GateResult.policy_pin` field, `passed`/`problems()` reading it, and the `human_approval_completes` guard.
+- `tests/test_review_policy_pin.py`: claim-pins test; gate table (unchanged, CR1 roles, public_key, quoted dates,
+  unparsable policy); CR1 mark-reviewed/finish write-nothing; switch-off finish; accept-policy TTY/no-TTY/wrong id;
+  acceptance table (malformed, schema-invalid, other node, both digest mismatches, second edit); trailer table
+  (unpinned, unparsable); review delegate on a pinned claim. Mocks: `sys.stdin.isatty` and `builtins.input` only.
+- `tests/test_do_next_task_pickup.py`: existing CI-skip-free pickup test parametrized over no commit / pinned /
+  unparsable policy (exact trailer through `_finalize_pickup`; exit 1 with no git calls and the registry unchanged).
+- `tests/test_enforced_rules_pointers.py`: two budget constants raised with comments (maintainer-approved).
