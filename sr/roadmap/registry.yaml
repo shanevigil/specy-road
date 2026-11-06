@@ -118,3 +118,15 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
+  - codename: notes-rules-name-every-clause-break
+    node_id: M21.41
+    branch: feature/rm-notes-rules-name-every-clause-break
+    touch_zones:
+      - specy_road/review_record_rules.py
+      - specy_road/rework_rca.py
+      - tests/test_review_record_rules.py
+      - tests/test_brainstorm_verify.py
+      - CHANGELOG.md
+    started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending
