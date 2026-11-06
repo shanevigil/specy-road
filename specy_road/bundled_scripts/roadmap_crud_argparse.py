@@ -315,20 +315,28 @@ def _p_remove_dependency(sub: argparse._SubParsersAction) -> None:
 def _p_apply(sub: argparse._SubParsersAction) -> None:
     sp = sub.add_parser(
         "apply",
-        help="Run a YAML file of add-node / edit-node / add-dependency changes as one batch",
+        help=(
+            "Run a YAML file of add-node / edit-node / add-dependency / move-node / "
+            "group-nodes / indent / outdent / remove-node / archive changes as one batch"
+        ),
         description=link_toolkit_docs(
             "Apply a change file in order, all or nothing: if any change is "
             "refused, every file the batch touched is restored. Each entry is "
             "op: plus the subcommand's long options (node: and dependency: for "
-            "the positionals, set: {field: value} for edit-node). See "
-            "docs/roadmap-authoring.md."
+            "the positionals, set: {field: value} for edit-node; node:, nodes:, "
+            "to_parent:, into_new:, title:, type:, id:, fill_gaps: and "
+            "rewrite_refs: for the restructure ops). The final graph is "
+            "validated once. See docs/roadmap-authoring.md."
         ),
     )
     sp.add_argument("changes_file", metavar="CHANGES.yaml")
     sp.add_argument(
         "--dry-run",
         action="store_true",
-        help="Rehearse on a scratch copy and print the resulting waves; write nothing",
+        help=(
+            "Rehearse on a scratch copy and print the old -> new id map and the "
+            "resulting waves; write nothing"
+        ),
     )
     sp.set_defaults(func=cmd_apply)
 

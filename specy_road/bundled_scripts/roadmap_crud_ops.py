@@ -6,7 +6,7 @@ import contextlib
 import io
 import json
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 from specy_road.bundled_scripts.roadmap_chunk_utils import (
@@ -84,8 +84,23 @@ def _archived_node_keys_quiet(root: Path) -> set[str]:
         return set()
 
 
+_VALIDATION_DEFERRED: list[bool] = []  # non-empty inside deferred_validation
+
+
+@contextlib.contextmanager
+def deferred_validation() -> Iterator[None]:
+    """Skip :func:`run_validate_raise` in the block: ``apply`` validates its final graph once."""
+    _VALIDATION_DEFERRED.append(True)
+    try:
+        yield
+    finally:
+        _VALIDATION_DEFERRED.pop()
+
+
 def run_validate_raise(root: Path) -> None:
     """Run roadmap + registry validation; raise ``ValueError`` with errors on failure."""
+    if _VALIDATION_DEFERRED:  # inside deferred_validation, whose caller validates once
+        return
     err = io.StringIO()
     out = io.StringIO()
     failed = False
