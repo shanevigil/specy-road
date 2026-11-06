@@ -33,10 +33,8 @@ class _Harness:
             self.api_id = harness_model(entry, prof.api_id)
         else:
             self.api_id = harness_model(entry)   # no profile: the roster id, as worker delegate passes
-        if not chore:   # M21.21: refused as `prompt --channel cli` refuses it, before preflight and the RUN record;
-            # no model at all is refused later unless routing: dynamic accepts the harness's default
-            checked = entry if self.api_id else {**entry, "harness_model": "-"}
-            _, _, err = reviewer_command(prof, checked, self.api_id or "")
+        if not chore:   # M21.21: refused as `prompt --channel cli` refuses it (no model too, whatever the routing),
+            _, _, err = reviewer_command(prof, entry, self.api_id or "")   # before preflight and the RUN record
             if err:
                 raise HarnessSetupError(err)
         elif not self.cli and self.harness == "generic" and prof is not None:

@@ -17,8 +17,9 @@ body. Keep section bodies focused; link to PRs for detail.
   `prompt --channel cli` does, before the preflight and before any run record
   or log: a roster `channels.cli` that passes a bypass flag (`--force`,
   `--yolo`, one split by a line continuation) is refused with the same reason,
-  and a `generic` entry with no `channels.cli` no longer falls back to the
-  profile's `access.cli`. A chore reviewer's launch is unchanged.
+  a `generic` entry with no `channels.cli` no longer falls back to the
+  profile's `access.cli`, and an entry that resolves to no API model id is
+  refused even with `routing: dynamic`. A chore reviewer's launch is unchanged.
 - The reviewer model check splits the harness log on `\n` only, as JSON Lines
   does, so a `result` event whose string carries an unescaped U+2028 or U+2029
   can no longer hide a model mismatch.
