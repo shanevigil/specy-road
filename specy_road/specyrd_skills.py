@@ -25,10 +25,10 @@ import shutil
 from importlib import resources
 from pathlib import Path
 
-from specy_road import __version__
+from specy_road import __version__, safe_write
 from specy_road.agent_guide_block import AGENT_GUIDE, GUIDE_AGENTS
 from specy_road.doc_links import link_toolkit_docs
-from specy_road.managed_block import CREATED, REFUSED, UNCHANGED, UPDATED, resolves_outside
+from specy_road.managed_block import CREATED, UNCHANGED, UPDATED
 
 SKILLS_REL = Path(".agents/skills")
 #: Packs that read ``.agents/skills`` through a symlink elsewhere.
@@ -69,7 +69,11 @@ def link_rel(agent: str, name: str) -> Path | None:
 
 
 def link_target(agent: str, name: str) -> str:
-    """The symlink's relative target, from its own directory to the skill folder."""
+    """The symlink's relative target in the default layout (neither skills directory an alias).
+
+    :func:`ensure_link` computes it from the real locations instead, which is
+    the same text in this layout.
+    """
     up = [".."] * len(LINK_DEST[agent].parts)
     return os.path.join(*up, *(SKILLS_REL / stem(name)).parts)
 
@@ -89,13 +93,54 @@ def is_link_path(rel: str) -> bool:
     return any(Path(rel).parent == d for d in LINK_DEST.values())
 
 
+#: The agent skills directories: each may itself be a symlink to a real directory in the repository.
+SKILLS_DIRS = (SKILLS_REL, *LINK_DEST.values())
+
+
+def skill_path(repo_root: Path, rel: str | Path, expected: str | None = safe_write.FILE) -> Path:
+    """Where ``rel`` is written under the skills-link rule; raises ``SafeWriteError`` naming a refused path.
+
+    The one exception to the safe-write rule's ancestor clause (maintainer,
+    2026-11-06): when ``rel`` is under an agent skills directory
+    (:data:`SKILLS_DIRS`) and that directory is a symlink, that single
+    component is swapped for the link's target, taken from the link's own
+    directory, which must be a real directory in the repository. A chained
+    link (the target, or a directory above it, is a link), a dangling one and
+    one leaving the repository are refused. The rule then applies from
+    ``repo_root`` to the result (``expected`` is the final kind, ``None`` for a
+    skill link itself), so any other link on the path is refused.
+    """
+    rel = Path(rel)
+    for skills in SKILLS_DIRS:
+        link = repo_root / skills
+        if rel.parts[: len(skills.parts)] == skills.parts and link.is_symlink():
+            safe_write.check(repo_root, link, None)   # the directories above the skills link are real
+            text = os.readlink(link)
+            base = Path(os.path.normpath(link.parent / text))
+            if safe_write.refused(repo_root, link.parent / text, safe_write.DIRECTORY) or not base.is_dir():
+                raise safe_write.SafeWriteError(
+                    f"{link} is a symlink (to {text}), not a link to a real directory in the repository")
+            return safe_write.check(repo_root, base.joinpath(*rel.parts[len(skills.parts):]), expected)
+    return safe_write.check(repo_root, repo_root / rel, expected)
+
+
+def check_install_paths(repo_root: Path, rel_dest: Path, files_to_install: tuple[str, ...], *, agent: str) -> None:
+    """Raise ``SafeWriteError`` for the first stub, canonical skill file or skill link :func:`install_stubs` would
+    write that the skills-link rule refuses, so ``specyrd init`` can stop before it writes anything."""
+    skills = agent in SKILL_AGENTS
+    for name in files_to_install:
+        skill_path(repo_root, skill_rel(name) if skills else rel_dest / name)
+        if skills and link_rel(agent, name) is not None:
+            skill_path(repo_root, link_rel(agent, name), None)
+
+
 def ensure_link(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     repo_root: Path, agent: str, name: str, *, dry_run: bool = False, repair: bool = True, owned: bool = False,
 ) -> str:
     """Create or repair the symlink for ``name``; copy the skill when symlinks fail.
 
     Returns ``created`` / ``updated`` / ``unchanged`` / ``copied`` / ``skipped (not ours)``,
-    or ``REFUSED`` when the link's directory is a symlink out of the repository.
+    or ``refused: <why>`` when the skills-link rule (:func:`skill_path`) refuses the link's path.
     ``repair`` is permission to replace what is at the path (``--force``, or a
     refresh); ``owned`` is whether the manifest records the path as the kit's.
     Replacement authority comes from the manifest: with no record, whatever is
@@ -105,14 +150,15 @@ def ensure_link(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """
     rel = link_rel(agent, name)
     assert rel is not None
-    link = repo_root / rel
-    if resolves_outside(repo_root, link.parent):
-        return REFUSED
-    target = link_target(agent, name)
-    canonical = (repo_root / SKILLS_REL / stem(name)).resolve()
+    try:   # both by the skills-link rule: either skills directory may be an in-repo alias at another depth
+        link = skill_path(repo_root, rel, None)
+        canonical = skill_path(repo_root, SKILLS_REL / stem(name), None)
+    except safe_write.SafeWriteError as e:
+        return f"refused: {e}"
+    target = os.path.relpath(canonical, link.parent)   # from where the link really lands, not its logical depth
     if link.is_symlink() and os.readlink(link) == target:
         return UNCHANGED
-    if link.exists() and link.resolve() == canonical:
+    if link.exists() and link.resolve() == canonical.resolve():
         return UNCHANGED   # e.g. `.claude/skills` is itself a link to `.agents/skills`
     if link.is_dir() and not link.is_symlink():
         # Only a copy this tool made (one SKILL.md) is ours to replace, and only
@@ -127,7 +173,7 @@ def ensure_link(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
         return SKIPPED   # a user's own symlink or file at the managed name
     if dry_run:
         return outcome
-    link.parent.mkdir(parents=True, exist_ok=True)
+    safe_write.mkdirs(repo_root, link.parent)
     if link.is_symlink() or link.is_file():
         link.unlink()
     elif link.is_dir():
@@ -135,8 +181,7 @@ def ensure_link(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     try:
         os.symlink(target, link, target_is_directory=True)
     except OSError:
-        link.mkdir(parents=True, exist_ok=True)
-        (link / "SKILL.md").write_text(render_skill(name), encoding="utf-8")
+        safe_write.write(repo_root, link / "SKILL.md", render_skill(name))
         return COPIED
     return outcome
 
@@ -188,17 +233,15 @@ def install_stubs(
     it — the installer must not expose content it declined to own. ``force``
     rewrites what the manifest owns; with no record it may replace only a file
     that is verbatim a stub this toolkit generated, and otherwise refuses and
-    names the path.
+    names the path. Paths follow the skills-link rule (:func:`skill_path`);
+    ``specyrd init`` checks them all with :func:`check_install_paths` first.
     """
     skills = agent in SKILL_AGENTS
     owned = owned or set()
     for name in files_to_install:
         rel_file = skill_rel(name) if skills else rel_dest / name
-        dest_file = repo_root / rel_file
+        dest_file = skill_path(repo_root, rel_file)
         ours = str(rel_file) in owned
-        if resolves_outside(repo_root, dest_file):
-            skipped.append(f"{rel_file} ({REFUSED})")
-            continue
         if dest_file.is_file() and not (force and (ours or _is_generated(dest_file, name, skills=skills))):
             skipped.append(str(rel_file) if not force else f"{rel_file} (not ours: no manifest record and not a specyrd stub; --force refused)")
             if skills and not ours:
@@ -206,8 +249,7 @@ def install_stubs(
         else:
             content = render_skill(name) if skills else _read_template(name)
             if not dry_run:
-                dest_file.parent.mkdir(parents=True, exist_ok=True)
-                dest_file.write_text(content, encoding="utf-8")
+                safe_write.write(repo_root, dest_file, content)
             written.append(str(rel_file))
         if skills and link_rel(agent, name) is not None:
             outcome = ensure_link(repo_root, agent, name, dry_run=dry_run, repair=force, owned=str(link_rel(agent, name)) in owned)
@@ -277,15 +319,14 @@ def mirrored_copies(repo_root: Path, names: tuple[str, ...], managed: set[str]) 
     Only names whose canonical ``.agents/skills/<name>/SKILL.md`` exists count,
     and a path the manifest records (a ``generic`` pack pointed at
     ``.cursor/commands``) is the pack's, not a copy. A mirror directory that
-    resolves to ``.agents/skills`` or out of the repository is skipped: deleting
-    through it would delete the canonical skill or someone else's file.
+    is a symlink (or under one) is skipped, as the safe-write rule would refuse
+    deleting through it: it could reach the canonical skill or someone else's file.
     """
     disposable: list[str] = []
     kept: list[str] = []
-    skills_dir = (repo_root / SKILLS_REL).resolve()
     for mirror_dir in MIRROR_DIRS:
         where = repo_root / mirror_dir
-        if not where.is_dir() or where.resolve() == skills_dir or resolves_outside(repo_root, where):
+        if not where.is_dir() or safe_write.refused(repo_root, where, safe_write.DIRECTORY):
             continue
         for name in names:
             rel, canonical = _mirror_rel(mirror_dir, name), repo_root / SKILLS_REL / stem(name)

@@ -28,6 +28,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from specy_road import safe_write
 from specy_road.ignore_report import scratch_git_env
 
 State = tuple | None   # ("file", size, mtime_ns, mode) | ("link", text) | ("dir",) | ("other",) | None (absent)
@@ -56,7 +57,7 @@ class Entry:
 
     ``path`` is how the refresh names it (checkout-relative, or absolute outside
     the checkout); ``target`` is the real path it lands on, links followed;
-    ``action`` is ``write`` / ``link`` / ``mkdir`` / ``remove``, or ``refuse`` /
+    ``action`` is ``write`` / ``link`` / ``mkdir`` / ``remove``, or ``refuse`` / ``error`` /
     ``skip`` / ``fail`` for a path the refresh leaves as it is; ``data`` is the
     final bytes of a ``write``, ``link`` the final text of a ``link``; ``before``
     is the target's state when the plan was made.
@@ -94,42 +95,52 @@ class Plan:
 
 
 class Mirror:
-    """The checkout under ``dest/repo``, without ``.git`` or ``skip``; link targets outside it under ``dest/outside``."""
+    """The filesystem as the checkout sees it, under ``dest/outside``: the checkout at ``outside/<its absolute path>``.
+
+    The checkout is copied without ``.git`` or ``skip``, and every link keeps
+    its own text, one hop: a relative text verbatim, an absolute one with
+    ``outside`` put in front. So a chain, a target under a linked directory, or
+    a ``..`` that climbs out and back resolves in the mirror exactly as in the
+    checkout. Content the copy lacks (a target out of the checkout, or under
+    ``skip``) is copied to its real path's place, and a link whose text names
+    that place another way reaches it through one more link, which only a path
+    already outside the checkout can cross.
+
+    Invariant: ``safe_write`` and the skills-link rule see the same link shapes
+    here as in the checkout, so ``upgrade``, ``upgrade --dry-run`` and
+    ``refresh-stubs`` give the same verdict for the same checkout.
+    """
 
     def __init__(self, checkout: Path, dest: Path, skip: Path) -> None:
         self.checkout, self.skip = checkout.resolve(), skip.resolve()
-        self.repo, self.outside = dest.resolve() / "repo", dest.resolve() / "outside"
+        self.outside = dest.resolve() / "outside"
+        self.repo = self.to_sandbox(self.checkout)
         self.states: dict[str, State] = {}
         self._links: list[tuple[Path, Path]] = []
         self._hardlinks: dict[tuple[int, int], Path] = {}   # (dev, ino) -> first sandbox path for this inode
 
     def to_sandbox(self, real: Path) -> Path:
-        if real.is_relative_to(self.checkout):
-            return self.repo / real.relative_to(self.checkout)
         return self.outside / real.relative_to(real.anchor)
 
     def to_real(self, path: Path) -> Path:
-        if path.is_relative_to(self.repo):
-            return self.checkout / path.relative_to(self.repo)
         return Path("/") / path.relative_to(self.outside)
+
+    def real_text(self, text: str) -> str:
+        """``text`` with the mirror's paths given as the real ones (``outside/x`` is ``/x``)."""
+        return text.replace(str(self.outside), "")
 
     def build(self) -> Mirror:
         self._hardlinks.clear()
         self.outside.mkdir(parents=True)
         self._copy_dir(self.checkout, self.repo)
-        made: list[tuple[Path, Path, Path]] = []
-        while self._links:
-            src, dst = self._links.pop()
-            text, real = os.readlink(src), Path(os.path.realpath(src))
-            mapped = self.to_sandbox(real)
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            os.symlink(mapped if os.path.isabs(text) else text, dst)
-            made.append((src, dst, mapped))
-            self._ensure(real, mapped)
-        for _src, dst, mapped in made:   # a relative text that resolves elsewhere here gets the mapped target
-            if os.path.realpath(dst) != str(mapped):
-                dst.unlink()
-                os.symlink(mapped, dst)
+        while self._links:   # every link of a round first, so content never lands where a link belongs
+            batch, self._links = self._links, []
+            for src, dst in batch:
+                text = os.readlink(src)
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                os.symlink(self.to_sandbox(Path(text)) if os.path.isabs(text) else text, dst)   # its own text, one hop
+            for src, _dst in batch:
+                self._ensure(Path(os.path.realpath(src)), self.to_sandbox(src.parent / os.readlink(src)))
         subprocess.run(["git", "init", "-q", str(self.repo)], check=False, capture_output=True, env=scratch_git_env())
         return self
 
@@ -173,23 +184,33 @@ class Mirror:
             dst.chmod(src.stat().st_mode & 0o777)
 
     def _ensure(self, real: Path, mapped: Path) -> None:
-        """Give a link target the mirror lacks (outside the checkout, or under ``skip``) its content."""
+        """Give a link's target (``mapped``, as its text names it) content when the mirror lacks it.
+
+        The content goes to the real path's place; ``mapped`` naming it another
+        way gets a link there.
+        """
         if os.path.lexists(mapped) or ".git" in real.parts or not real.exists():
             return
-        if real.is_dir():
-            self._copy_dir(real, mapped)
-        else:
-            self._copy_file(real, mapped)
+        home = self._place(real)
+        if not os.path.lexists(mapped):   # the text names the place another way (a ``..``, an alias)
+            mapped.parent.mkdir(parents=True, exist_ok=True)
+            os.symlink(home, mapped)
+
+    def _place(self, real: Path) -> Path:
+        """``real``'s place in the mirror, with its content copied there when missing."""
+        home = self.to_sandbox(real)
+        if not os.path.lexists(home):
+            (self._copy_dir if real.is_dir() else self._copy_file)(real, home)
+        return home
 
     def snapshot(self) -> dict[Path, State]:
         out: dict[Path, State] = {}
-        for top in (self.repo, self.outside):
-            for dirpath, dirs, names in os.walk(top):
-                if Path(dirpath) == self.repo:
-                    dirs[:] = [d for d in dirs if d != ".git"]
-                for name in dirs + names:
-                    path = Path(dirpath) / name
-                    out[path] = state(path)
+        for dirpath, dirs, names in os.walk(self.outside):
+            if Path(dirpath) == self.repo:
+                dirs[:] = [d for d in dirs if d != ".git"]
+            for name in dirs + names:
+                path = Path(dirpath) / name
+                out[path] = state(path)
         return out
 
 
@@ -217,10 +238,18 @@ def _diff(mirror: Mirror, before: dict[Path, State], after: dict[Path, State], s
     return entries
 
 
+def _named_in_checkout(e: OSError, real: Callable[[str], str]) -> OSError:
+    """``e`` naming the checkout's paths, not the mirror's: a ``SafeWriteError``'s are in its message, another's in its filename."""
+    if isinstance(e, safe_write.SafeWriteError):
+        return safe_write.SafeWriteError(real(str(e)))
+    e.filename = e.filename and real(str(e.filename))
+    return e
+
+
 def make_plan(checkout: Path, project: Path, refresh: Callable[[Path, Path], dict[str, str]]) -> Plan:
     """Run ``refresh(project, checkout)`` once, on a mirror; the plan is what it wrote and what it declined.
 
-    ``refresh`` returns ``{checkout-relative path: refuse | skip | fail}``.
+    ``refresh`` returns ``{checkout-relative path: refuse | error | skip | fail}``.
     Its output is printed with the mirror's paths given as the checkout's.
     """
     checkout = checkout.resolve()
@@ -228,15 +257,15 @@ def make_plan(checkout: Path, project: Path, refresh: Callable[[Path, Path], dic
         mirror = Mirror(checkout, Path(tmp), project / "work").build()
         before = mirror.snapshot()
         out, err = io.StringIO(), io.StringIO()
+        real = mirror.real_text
         try:
             with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
                 declined = refresh(mirror.to_sandbox(project.resolve()), mirror.repo)
-        except OSError as e:   # name the checkout's path, not the mirror's
-            e.filename = e.filename and str(e.filename).replace(str(mirror.repo), str(checkout))
-            raise
+        except OSError as e:
+            raise _named_in_checkout(e, real)
         finally:
             for buf, stream in ((out, sys.stdout), (err, sys.stderr)):
-                stream.write(buf.getvalue().replace(str(mirror.repo), str(checkout)))
+                stream.write(real(buf.getvalue()))
                 stream.flush()
         entries = _diff(mirror, before, mirror.snapshot(), mirror.states)
         for rel, action in sorted(declined.items()):
@@ -258,8 +287,27 @@ def _replaces(e: Entry) -> bool:
                                  or (e.action == "mkdir" and kind != "dir"))
 
 
+def check_changes(plan: Plan) -> None:
+    """Raise ``SafeWriteError`` naming each change whose real target is not under the checkout by real directories.
+
+    A refresh that wrote through a link out of the checkout made its change at
+    the link's target, which this names; so a refresher that bypasses the rule
+    still never reaches outside. Declined entries are not changes: their
+    refresher already refused and reported them.
+    """
+    found = [why for e in plan.changes() if (why := safe_write.refused(plan.checkout, e.target, None))]
+    if found:
+        raise safe_write.SafeWriteError(f"{'; '.join(found)}; nothing was written")
+
+
 def apply_plan(plan: Plan, locate: Callable[[Path], Path] = lambda p: p) -> None:
-    """Make every change in ``plan`` at ``locate(real path)``: removals deepest first, then directories, then the rest."""
+    """Make every change in ``plan`` at ``locate(real path)``: removals deepest first, then directories, then the rest.
+
+    Every change's real target is checked by the safe-write rule first; any
+    refusal raises ``SafeWriteError`` naming each path, and nothing is applied
+    (neither to the checkout nor to ``locate``'s copy).
+    """
+    check_changes(plan)
     changes = plan.changes()
     for e in sorted((e for e in changes if _replaces(e)), key=lambda e: -len(e.target.parts)):
         where = locate(e.target)

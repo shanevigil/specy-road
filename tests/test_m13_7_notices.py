@@ -68,29 +68,6 @@ def test_a_reverse_symlinked_skills_dir_reports_each_skill_once_and_runs_agree(t
     assert dry == real and len(dry) == len({ln.split("/")[2] for ln in dry})
 
 
-def _outward_and_back_repo(tmp_path: Path) -> Path:
-    """``.agents/skills`` links outside the repo; the skill folder there links back inside."""
-    repo, outside = tmp_path / "repo", tmp_path / "outside"
-    (repo / "real" / "brief").mkdir(parents=True)
-    outside.mkdir()
-    (repo / ".agents").mkdir()
-    (repo / ".agents" / "skills").symlink_to(outside)
-    (outside / "specyrd-brief").symlink_to(repo / "real" / "brief")
-    (repo / ".specyrd").mkdir()
-    (repo / ".specyrd" / "manifest.json").write_text(
-        json.dumps({"agents": {"codex": [".agents/skills/specyrd-brief/SKILL.md"]}}), encoding="utf-8")
-    return repo
-
-
-@pytest.mark.parametrize("dry_run", [True, False])
-def test_a_link_out_of_the_repo_and_back_names_its_target_absolutely(tmp_path: Path, capsys, dry_run: bool) -> None:
-    repo = _outward_and_back_repo(tmp_path)
-    main(["--repo-root", str(repo), *(["--dry-run"] if dry_run else [])])
-    verb = "would write" if dry_run else "wrote"
-    brief = [ln for ln in capsys.readouterr().out.splitlines() if "brief/SKILL.md" in ln]
-    assert brief == [f"{verb} real/brief/SKILL.md (.agents/skills → {(tmp_path / 'outside').resolve().as_posix()})"]
-
-
 def test_the_report_folds_two_names_for_one_file_into_its_real_path(tmp_path: Path, capsys) -> None:
     repo = _linked_skills_repo(tmp_path)
     written = [Written(".agents/skills/x/SKILL.md"), Written(".claude/skills/x/SKILL.md"),
@@ -155,14 +132,27 @@ def test_a_generic_dir_with_parentheses_or_odd_characters_is_reported_whole(
         assert f"{verb} {rel_dir}/{name}" in out
 
 
-@pytest.mark.parametrize("dry_run", [True, False])
-def test_a_symlinked_generic_dir_with_parentheses_reports_its_real_path(tmp_path: Path, capsys, dry_run: bool) -> None:
+def _generic_linked_parent(tmp_path: Path) -> tuple[Path, Path]:
+    """A stub under a linked directory that is not an agent skills directory."""
     repo = _generic_repo(tmp_path, "docs/team (commands)", link_to="actual")
-    main(["--repo-root", str(repo), *(["--dry-run"] if dry_run else [])])
-    verb = "would write" if dry_run else "wrote"
-    out = capsys.readouterr().out.splitlines()
-    for name in ("specyrd-validate.md", "specyrd-brief.md"):
-        assert f"{verb} actual/{name} (docs/team (commands) → actual)" in out
+    return repo, repo / "docs" / "team (commands)"
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_a_stub_under_a_linked_directory_that_is_not_a_skills_directory_is_refused(
+        tmp_path: Path, capsys, dry_run: bool) -> None:
+    """M21.37: only an agent skills directory may be a link; skills-link shapes are in test_setup_writers_refuse_links."""
+    repo, link = _generic_linked_parent(tmp_path)
+    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+
+    with pytest.raises(SystemExit) as e:
+        main(["--repo-root", str(repo), *(["--dry-run"] if dry_run else [])])
+
+    err = capsys.readouterr().err
+    assert e.value.code == 1 and f"error: {link} is a symlink" in err, err
+    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file() and ".specyrd" not in p.parts
+            and p.name not in (".gitignore", ".cursorindexingignore", "AGENTS.md")} == {
+        p: b for p, b in before.items() if ".specyrd" not in p.parts}
 
 
 def test_diff_shows_stubs_under_a_parenthesised_dir(tmp_path: Path, capsys) -> None:

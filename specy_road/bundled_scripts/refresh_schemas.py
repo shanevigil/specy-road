@@ -16,10 +16,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import sys
 from pathlib import Path
 
+from specy_road import safe_write
 from specy_road.init_project import project_template_root
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
@@ -108,21 +108,27 @@ def warn_if_schemas_stale(repo_root: Path) -> None:
 
 
 def refresh_schemas(repo_root: Path, *, dry_run: bool = False) -> list[str]:
-    """Copy bundled schemas over the consumer's. Returns repo-relative paths written."""
+    """Copy bundled schemas over the consumer's. Returns repo-relative paths written.
+
+    Every destination is checked by the safe-write rule before any is read or
+    written, dry run included: a symlink at one or at ``schemas/`` raises
+    ``SafeWriteError`` with nothing written.
+    """
     src_dir = bundled_schemas_dir()
     if not src_dir.is_dir():
         raise ValueError(f"missing bundled schemas at {src_dir}")
     dst_dir = repo_root / SCHEMAS_DIRNAME
+    sources = sorted(src_dir.glob("*.json"))
+    safe_write.check_all(repo_root, (dst_dir / src.name for src in sources))
     written: list[str] = []
-    for src in sorted(src_dir.glob("*.json")):
+    for src in sources:
         dst = dst_dir / src.name
         rel = f"{SCHEMAS_DIRNAME}/{src.name}"
         if dst.is_file() and _load_comparable(dst) == _load_comparable(src):
             if src.read_text(encoding="utf-8") == dst.read_text(encoding="utf-8"):
                 continue
         if not dry_run:
-            dst_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dst)
+            safe_write.copy(repo_root, src, dst)
         written.append(rel)
     return written
 
@@ -144,7 +150,7 @@ def main(argv: list[str] | None = None) -> None:
     new = {f"{SCHEMAS_DIRNAME}/{name}" for name in missing_schema_names(root)}
     try:
         written = refresh_schemas(root, dry_run=args.dry_run)
-    except ValueError as e:
+    except (ValueError, safe_write.SafeWriteError) as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
     if not written:

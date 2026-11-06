@@ -14,12 +14,14 @@ believe it.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
+from specy_road import safe_write
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.generated_files import gitignore_resolution_hint
-from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, git_root, resolve_repo_root
 from specy_road.cli_entry import run_forwarded_cli
 
 
@@ -33,6 +35,22 @@ def _print_gitignore_hint(root: Path, name: str) -> None:
     hint = gitignore_resolution_hint(root, name)
     if hint:
         print(f"  {hint}", file=sys.stderr)
+
+
+def _write_output(root: Path, output: str, out: Path, body: str) -> None:
+    """Write the digest to ``out``: by the safe-write rule from the checkout, unless ``output`` is absolute and outside it.
+
+    The default, a relative ``-o``, or an absolute one at or under the checkout
+    (compared lexically with the resolved checkout, which includes the checkout
+    itself) go through the rule as given, so a ``..`` above the checkout is
+    refused. An explicit absolute path outside the checkout is the person's own.
+    """
+    checkout = git_root(root) or root   # both resolved
+    if Path(output).is_absolute() and not Path(os.path.normpath(out)).is_relative_to(checkout):
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(body, encoding="utf-8")
+        return
+    safe_write.write(checkout, out, body)
 
 
 def cmd_digest(ns: argparse.Namespace) -> int:
@@ -63,8 +81,8 @@ def cmd_digest(ns: argparse.Namespace) -> int:
         print(f"OK: {ns.output} matches the roadmap.")
         return 0
 
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(body, encoding="utf-8")
+    with safe_write.exit_on_refusal():
+        _write_output(root, ns.output, out, body)
     print(f"Wrote {out} ({len(body.encode('utf-8'))} bytes)")
     return 0
 
@@ -87,7 +105,9 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_OUTPUT,
         metavar="FILE",
         help=f"Where to write it, repo-relative (default: {DEFAULT_OUTPUT}). "
-        "Use - for stdout.",
+        "Use - for stdout. A relative path, or an absolute one at or under the checkout (compared "
+        "lexically with the resolved checkout), refuses any symlink on the way; an absolute path outside the checkout "
+        "is written as given.",
     )
     p.add_argument(
         "--check",

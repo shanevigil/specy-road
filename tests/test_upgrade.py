@@ -68,8 +68,8 @@ def test_no_roster_upgrade_writes_only_the_readme_and_names_profiles_all_on_ever
 
 DIGEST, INDEX = "roadmap-context.md", "roadmap.md"
 WROTE_DIGEST, WROTE_INDEX = "wrote roadmap-context.md (specy-road digest)", "wrote roadmap.md (specy-road export)"
-REFUSED_DIGEST = "refused roadmap-context.md (a symlink leads outside the project)"
-REFUSED_INDEX = "refused roadmap.md (a symlink leads outside the project)"
+REFUSED_DIGEST = "refused roadmap-context.md ("   # then the safe-write refusal naming the path
+REFUSED_INDEX = "refused roadmap.md ("
 NEXT_DIGEST = "Run specy-road digest (and specy-road export if roadmap.md is tracked), then commit them. Not specy-road sync"
 
 
@@ -123,6 +123,12 @@ def _tracked_index_link_to_outside_file(root: Path, outside: Path) -> None:
     git(root, "add", INDEX)
 
 
+def _digest_link_in(root: Path, outside: Path) -> None:
+    """M21.37: an in-repo link is refused too, and a refusal fails the run even when validate passes."""
+    (root / "mine.md").write_text("mine\n", encoding="utf-8")
+    (root / DIGEST).symlink_to("mine.md")
+
+
 def _non_utf8_digest(root: Path, outside: Path) -> None:
     (root / DIGEST).write_bytes(b"\xff\xfe\x00")
 
@@ -140,12 +146,13 @@ def _state(path: Path) -> object:
                  id="untracked-roadmap-md"),
     pytest.param(_invalid_graph, False, set(), ["OK: roadmap-context.md matches the roadmap.", NEXT_DIGEST], [WROTE_DIGEST, "== generated files"], 1,
                  id="invalid-graph"),
-    pytest.param(_dangling_link_out, False, set(), [REFUSED_DIGEST, NEXT_DIGEST], [WROTE_DIGEST], 0,
+    pytest.param(_dangling_link_out, False, set(), [REFUSED_DIGEST, NEXT_DIGEST], [WROTE_DIGEST], 1,
                  id="dangling-link-out"),
-    pytest.param(_link_to_outside_file, False, set(), [REFUSED_DIGEST, NEXT_DIGEST], [WROTE_DIGEST], 0,
+    pytest.param(_link_to_outside_file, False, set(), [REFUSED_DIGEST, NEXT_DIGEST], [WROTE_DIGEST], 1,
                  id="link-to-outside-file"),
     pytest.param(_tracked_index_link_to_outside_file, False, {DIGEST}, [WROTE_DIGEST, REFUSED_INDEX, NEXT_DIGEST],
-                 [WROTE_INDEX], 0, id="tracked-roadmap-md-link-to-outside-file"),
+                 [WROTE_INDEX], 1, id="tracked-roadmap-md-link-to-outside-file"),
+    pytest.param(_digest_link_in, True, set(), [REFUSED_DIGEST], [WROTE_DIGEST], 1, id="dry-run-in-repo-link"),
     pytest.param(_non_utf8_digest, False, {DIGEST}, [WROTE_DIGEST], [NEXT_DIGEST], 0, id="non-utf8-digest"),
     pytest.param(_hand_drifted_digest, True, set(), ["would write roadmap-context.md (specy-road digest)"],
                  [WROTE_DIGEST], 0, id="dry-run-drifted-digest"),
@@ -154,7 +161,8 @@ def test_upgrade_regenerates_the_drifted_generated_files(
     tmp_path: Path, capsys, setup, dry_run: bool, rendered: set[str], said: list[str], unsaid: list[str],
     exit_code: int,
 ) -> None:
-    """M21.16 A3: validate passed → the drifted digest and a tracked roadmap.md are written, never through a link out."""
+    """M21.16 A3: validate passed → the drifted digest and a tracked roadmap.md are written, never through a link
+    (M21.37: any link is refused, and a refusal exits 1)."""
     root, outside = old_repo(tmp_path / "repo"), tmp_path / "outside"
     outside.mkdir()
     if setup:
