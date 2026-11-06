@@ -151,6 +151,37 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "human: when the maintainer's Cursor quota allows (the date is recorded in this sheet; if rc5 is ready first the maintainer records a deferral here instead), CR1, CR3 and CR5 (3 runs each, the §9 replay's case files and scoring) and 5 review delegate runs are made with each of grok-4.7, gpt-6.1-sol and claude-opus-5-5 through the Cursor harness, on a wheel with M21.44 landed and policy.signed_reviews off for the runs",
+        "This sheet's Results table records, per model, CR1, CR3 and CR5 fail/success counts and the delegated reviews filed out of 5, with the run date and the Cursor agent version",
+        "Each model's profile (template and sr/model-profiles) gets M21.44's `guidance_bypass_observed` {date, harness: cursor, evidence naming the cases and counts} when the maintainer confirms a bypass (proposed rule: any CR1 or CR3 failure, or CR5 failing 2 of 3 runs or more), and stays without it otherwise; CHANGELOG [Unreleased] names any model flagged",
+        "The sheet records whether the behaviour is model- or harness-driven, comparing the Cursor results with the same models' native-harness results from the same re-tests (claude-opus-5-5 on Claude Code, gpt-6.1-sol on Codex); a harness-driven finding is filed by the planner as its own follow-up leaf (a harness-level flag), not done here",
+        "Estimated net line change (informational, not a gate): profiles about +3 lines each when flagged; package 0"
+      ],
+      "codename": "guidance-bypass-retest-cursor-grok-sol-opus",
+      "dependencies": [
+        "14485811-9209-468d-bd05-0f5156228e8a"
+      ],
+      "execution_milestone": "Human-led",
+      "id": "M22.23",
+      "node_key": "dfb21e02-6eaa-4de1-9b48-25de90e7c191",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.23_guidance-bypass-retest-cursor-grok-sol-opus_dfb21e02-6eaa-4de1-9b48-25de90e7c191.md",
+      "sibling_order": 22,
+      "status": "Not Started",
+      "title": "Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus",
+      "touch_zones": [
+        "specy_road/templates/project/model-profiles/spacexai-grok/grok-4.7.md",
+        "specy_road/templates/project/model-profiles/openai-gpt/gpt-6.1-sol.md",
+        "specy_road/templates/project/model-profiles/anthropic-claude/claude-opus-5-5.md",
+        "sr/model-profiles/spacexai-grok/grok-4.7.md",
+        "sr/model-profiles/openai-gpt/gpt-6.1-sol.md",
+        "sr/model-profiles/anthropic-claude/claude-opus-5-5.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }

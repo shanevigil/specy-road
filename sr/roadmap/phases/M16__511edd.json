@@ -433,7 +433,8 @@
       "codename": "delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step",
       "dependencies": [
         "fce532e1-9ed0-4da1-9f16-2465c6e73df0",
-        "c840cf76-95c4-4688-a587-3bc06824fad5"
+        "c840cf76-95c4-4688-a587-3bc06824fad5",
+        "467b60ed-37a1-4220-ba8a-9507471e9dcc"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.2.1",

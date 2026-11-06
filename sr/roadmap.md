@@ -17,9 +17,10 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.1.5` | AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer | task | Agentic-led | Not Started |
 | `M16.1.6` | Review-policy evidence: how often each optional review policy changed a gate outcome | task | Mixed | Not Started |
 | `M16.1.7` | Baseline metrics, a coverage floor in CI, and the M16 working rules written down | task | Agentic-led | Not Started |
-| `M16.1.8` | Ruff quality rule families and the 100-character width with shrink-only baselines, and the consumer file-limit default decided | task | Agentic-led | Not Started |
+| `M16.1.8` | A 100-character line-width rule with a shrink-only baseline, and the consumer file-limit default decided | task | Agentic-led | Not Started |
 | `M16.1.9` | Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold | task | Agentic-led | Not Started |
 | `M16.1.10` | Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold | task | Agentic-led | Not Started |
+| `M16.1.11` | Ruff quality rule families with per-file shrink-only baselines and per-release totals | task | Agentic-led | Not Started |
 | `M16.2` | Mechanical clean-up, layering and the in-process CLI | milestone | — | Not Started |
 | `M16.2.1` | Delete dead and unwired code from a decided list, and add vulture as an advisory CI step | task | Agentic-led | Not Started |
 | `M16.2.2` | Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers | task | Agentic-led | Not Started |
@@ -87,7 +88,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.8.9` | Gate: ready to tag 0.3.1 | gate | Human-led | Not Started |
 | `M16.8.10` | Gate: 0.3.1 tagged | gate | Human-led | Not Started |
 | `M17` | 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 | phase | Human-led | Not Started |
-| `M17.1` | Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 | gate | Human-led | Not Started |
+| `M17.1` | Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 | gate | Human-led | Complete |
 | `M17.2` | PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock | task | Agentic-led | Not Started |
 | `M17.3` | PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags | task | Agentic-led | Not Started |
 | `M17.4` | PM GUI: per-leaf orchestration detail shows worktrees with dirty and ahead/behind, the READY commit, review verdicts with fresh-for-head, and the gate state | task | Agentic-led | Not Started |
@@ -96,6 +97,10 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M17.7` | PM GUI server: GET /api/orchestration serves the snapshot read-only, with contract tests tying the server fixture and the GUI mock together | task | Agentic-led | Not Started |
 | `M17.8` | PM GUI orchestration view: docs/pm-gui.md and pm-workflow.md sections, the API table row, the CHANGELOG entry and a live check against the real route | task | Agentic-led | Not Started |
 | `M17.9` | GUI acceptance on the agentic sandbox: a scripted browser run of the orchestration view against a built wheel and a seeded fixture repo, with a checklist and recorded results | task | Human-led | Not Started |
+| `M17.10` | Gate: maintainer approves using the agentic sandbox for M17.9's GUI acceptance run | gate | Human-led | Not Started |
+| `M17.11` | PM GUI: view and edit a node's acceptance criteria in the node edit dialog, through the existing PATCH and edit-node semantics | task | Agentic-led | Not Started |
+| `M17.12` | PM GUI: a group-siblings outline action that calls the existing POST /api/outline/group | task | Agentic-led | Not Started |
+| `M17.13` | PM GUI: a row click selects at once, so a toolbar action right after it acts on that row | task | Agentic-led | Not Started |
 | `M18` | Orchestration and review-loop features (after 0.3.1) | phase | — | Not Started |
 | `M18.1` | Reviewers check that code is well-formed and that fixes do not degrade it | task | — | Not Started |
 | `M18.2` | Harness-facts records for the Copilot CLI and Antigravity agy | task | Agentic-led | Not Started |
@@ -190,6 +195,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.41` | The notes rules name every clause break the checker uses; rework docstring and verify tests fixed | task | — | Complete |
 | `M21.42` | review delegate also gives one repair turn when the final answer does not parse, not only when review record refuses it | task | — | Not Started |
 | `M21.43` | digest refuses cleanly when the roadmap manifest is missing, like export --check | task | — | Not Started |
+| `M21.44` | A model observed to bypass specy-road's guidance is excluded from executor and reviewer roles when signed reviews are on, unless the roster entry opts in at its own risk | task | Agentic-led | Not Started |
 | `M22` | rc5 fixes: defects found while preparing rc5 | phase | — | Not Started |
 | `M22.1` | group-nodes accepts a new parent id held by one of the nodes it groups | task | — | Not Started |
 | `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Not Started |
@@ -213,5 +219,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.20` | worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging | task | — | Not Started |
 | `M22.21` | Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback, descriptor-anchored writes | task | — | Not Started |
 | `M22.22` | Sandbox polish: planning-sheet save keeps untouched Markdown, one GUI extra name, no self-warning in upgrade, export drift hint, Escape closes modals | task | — | Not Started |
+| `M22.23` | Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus | task | Human-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

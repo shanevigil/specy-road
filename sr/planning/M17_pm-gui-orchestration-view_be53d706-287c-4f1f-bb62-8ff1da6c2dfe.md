@@ -23,10 +23,11 @@ Milestone numbers are not release order; dependencies are. (Maintainer ruling, 2
 - **Read-only first.** No mutating action in 0.3.1 unless the maintainer names one at M17.1; it would then be its own leaf calling the CLI's existing command.
 - **Docs.** This phase owns docs/pm-gui.md's existing sections (M16.6.1 only appends brainstorm and LLM-review sections).
 - **Testing on the sandbox.** M17.9 runs a scripted browser test on an agentic-sandbox VM (MCP tools claim_workspace, vm_start, sbvm_exec, sbvm_run_browser_test, sbvm_screenshot) against a built wheel and a seeded fixture repo. The coordinator runs it, not CI and not a worker, and asks the maintainer before using the sandbox.
+- **Sign-off (2026-11-06).** M17.1 is complete: read-only plus copy-CLI buttons; a 15 s poll only while the drawer is open; holds are the hold list plus open gates. The 0.3.1 GUI also gains acceptance editing (M17.11), a group-siblings action (M17.12) and the selection-lag fix (M17.13); they edit the roadmap through existing routes and change no orchestration state. The sandbox run (M17.9) waits on gate M17.10.
 
 ## Tasks / checklist
 
-- [ ] M17.1 — Gate: maintainer signs off the information design and the read-only scope
+- [x] M17.1 — Gate: maintainer signs off the information design and the read-only scope (2026-11-06)
 - [ ] M17.2 — Snapshot types, mock snapshot and view model (frontend, after M17.1)
 - [ ] M17.3 — Orchestration drawer: workers per leaf (frontend)
 - [ ] M17.4 — Leaf detail: worktrees, READY, reviews, gate state (frontend)
@@ -35,6 +36,10 @@ Milestone numbers are not release order; dependencies are. (Maintainer ruling, 2
 - [ ] M17.7 — `GET /api/orchestration` and contract tests (backend, after M16.3.7)
 - [ ] M17.8 — Docs, CHANGELOG and live wiring
 - [ ] M17.9 — GUI acceptance on the agentic sandbox (coordinator)
+- [ ] M17.10 — Gate: sandbox use approved for M17.9 (maintainer; M17.1 question 7)
+- [ ] M17.11 — Acceptance editing in the node edit dialog (M17.1 questions 9 and 11)
+- [ ] M17.12 — Group-siblings outline action calling /api/outline/group (question 9)
+- [ ] M17.13 — Row click selects at once: the ~225 ms selection lag fixed (question 10)
 
 ## Plan review (2026-11-05)
 
@@ -52,7 +57,7 @@ Critiques: sr/work/plan-reviews/m17-plan/critique-grok.md (G1-G26) and critique-
 | Sandbox leaf | G21, G22, G24, R14, R15 | G21 deferred to question 7; the rest accepted or adapted |
 | Alignment | G25, G26, R16 | Accepted: M16 phase, M16.8 and M16.3.1 sheets now say M17 is 0.3.1, parallel with M16 |
 
-Open product questions (1-8) are listed in M17.1's sheet with the default each leaf assumes.
+Open product questions (1-8) are listed in M17.1's sheet with the default each leaf assumes. All eleven were answered on 2026-11-06 (M17.1's Sign-off section); the leaves follow the answers.
 
 ## References
 
