@@ -29,6 +29,14 @@ body. Keep section bodies focused; link to PRs for detail.
   approve-notes rules in operational form (one observation per line, each
   with `not a defect because <reason>` or a `required_changes` entry); the
   rule itself is unchanged.
+- `specy-road review delegate` also gives one repair turn to an answer that
+  does not parse (a fenced object, text after it, no object, an unfinished or
+  schema-invalid object, a missing final message), when the last attempt
+  exited 0 with no capacity error. The turn carries specy-road's reading of the
+  final message and asks for the whole JSON object alone. `RUN-<model>.json`
+  records `refusal_kind` (`parse` or `record`), `--resume` sends the repair
+  prompt for the stored kind, and a second failure of either kind leaves the run
+  incomplete, naming both.
 - **Security:** `specy-road session end` ends only your own session. The
   caller is always `SPECY_ROAD_AGENT_ID` or the derived id; a positional id or
   `--agent` only picks the target. Another agent's live record is kept and the

@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_delegate_helpers import CAPACITY, delegate_repo, set_steps, verdict_step
+from tests.review_delegate_helpers import CAPACITY, delegate_repo, fake_prompts, set_steps, verdict_step
 from tests.test_models_and_prompt import run_main
 from tests.test_review_record_write import GENERIC
 
@@ -120,7 +120,9 @@ def test_two_real_attempts_each_have_their_own_span_and_only_the_last_is_read(tm
     set_steps(repo, spec, {"say": valid, "error": CAPACITY, "exit": 1},
               {"preamble": [MARKERS[0]], "lines": [TRUNCATED], "raw": "not a verdict"})
     run = delegate(repo, "M1.1", "opus", retries=1, backoff=0, sleep=lambda _s: None)
-    first, second = run["attempts"]
+    first, second, repair = run["attempts"]   # M21.42: the malformed attempt 2 gets exactly one repair launch
+    assert repair.get("repair") and not second.get("repair") and run["refusal_kind"] == "parse"
+    assert run["refusal"] in fake_prompts(spec)[-1]
     assert first["log_start"] <= first["log_end"] < second["log_start"] <= second["log_end"]
     log = rf.reviews_dir(repo, "M1.1") / "RUN-opus.log"
     one = run_text(log, first["log_start"], first["log_end"], first["log_sha256"])
@@ -128,4 +130,4 @@ def test_two_real_attempts_each_have_their_own_span_and_only_the_last_is_read(tm
     assert '"type": "assistant"' in one and "overloaded_error" in one                  # attempt 1, verdict said
     assert '"type": "assistant"' not in two and MARKERS[0] in two and TRUNCATED in two  # attempt 2 alone
     assert run["outcome"] == "rerun" and not rf.review_path(repo, "M1.1", "opus").exists()
-    assert load_run(repo, "M1.1", "opus")["attempts"][-1]["log_end"] == second["log_end"]   # kept in the record
+    assert load_run(repo, "M1.1", "opus")["attempts"][1]["log_end"] == second["log_end"]   # kept in the record

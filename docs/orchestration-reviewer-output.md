@@ -88,6 +88,17 @@ specy-road decides the outcome:
   attempts `repair: true`; a second refusal leaves the run incomplete, naming
   both. `--resume` of an incomplete run that kept a `refusal` at the commit
   under review sends that repair prompt instead of the continue prompt.
+  An answer that does not parse (an empty or missing final message, no JSON
+  object, a fenced object or text after it, an unfinished or too deeply nested
+  object, a stray or cut-off event line, a null result, or a schema-invalid
+  object) gets the same one repair turn when the last attempt exited 0 with no
+  capacity error: the reason is given as specy-road's reading of the final
+  message, with a request for the whole object and nothing else, without the
+  notes rules. `refusal_kind` records `parse` or `record` (missing is
+  `record`), and `--resume` sends the repair prompt of the stored kind. A
+  second failure of either kind leaves the run incomplete, naming both; there
+  is never a third turn. A capacity failure, a non-zero exit, an unreadable run
+  log, a write (still a review failure) and a chore reviewer get no repair turn.
 - **recorded** — specy-road writes the notes to `notes-<model>.md` and `review record` files
   `REVIEW-<model>.md` from them, with the launch mode, family and `history/`
   copy an interactive filing gets. Under `policy.signed_reviews`, pass the
