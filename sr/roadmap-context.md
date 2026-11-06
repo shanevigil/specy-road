@@ -128,6 +128,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.40` upgrade's scratch git drops every GIT_ variable, runs no hook, and times out `upgrade-scratch-git-env-sterile` — task — **Not Started**
   - `M21.41` The notes rules name every clause break the checker uses; rework docstring and verify tests fixed `notes-rules-name-every-clause-break` — task — **Not Started**
   - `M21.42` review delegate also gives one repair turn when the final answer does not parse, not only when review record refuses it `parse-failure-gets-repair-turn` — task — **Not Started**
+  - `M21.43` digest refuses cleanly when the roadmap manifest is missing, like export --check `digest-check-no-manifest-clean-error` — task — **Not Started**
 - `M22` rc5 fixes: defects found while preparing rc5 `rc5-fixes` — phase — **Not Started**
   - `M22.1` group-nodes accepts a new parent id held by one of the nodes it groups `group-into-member-id` — task — **Not Started**
   - `M22.2` A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet `move-rewrites-sheet-zones` — task — **Not Started**
@@ -150,6 +151,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.19` Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names `review-inputs-identity-and-unreadable` — task — **Not Started**
   - `M22.20` worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging `terminate-and-finish-rollback-robustness` — task — **Not Started**
   - `M22.21` Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback, descriptor-anchored writes `preview-rollback-fidelity` — task — **Not Started**
+  - `M22.22` Sandbox polish: planning-sheet save keeps untouched Markdown, one GUI extra name, no self-warning in upgrade, export drift hint, Escape closes modals `sandbox-rc4-final-polish` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Not Started**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**

@@ -104,6 +104,53 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "Planning-sheet save (F4): the PM GUI saves an unedited planning sheet byte-identical (a list item's two-space continuation indent kept, no trailing blank line added), and editing one block leaves the other blocks' source lines unchanged; Escape closes the front-most edit or Publish modal, and only that one, including with focus in the editor (F9); the Markdown editor configures the link extension once, so no duplicate-extension warning (F9). Vitest (node environment) through pure helpers: an unedited round trip is byte-identical, an Intent edit changes only its lines, the Escape decision for one and two stacked modals, unique extension names. npm ci, lint, test and build pass; specy_road/pm_gantt_static/ rebuilt",
+        "One GUI extra name (F5): --help, gui's missing-dependency errors, init gui --install-gui's pip command and help, review_node.py's and update_specy_road.py's messages, and the install lines in README.md, docs/install-and-usage.md, docs/pm-gui.md, docs/pm-workflow.md and docs/contributor-guide.md name specy-road[gui], never gui-next; pyproject.toml keeps the gui-next extra as an alias (no packaging change); tests/test_cli_help_text.py asserts --help has no 'gui-next'",
+        "upgrade prints no 'run `specy-road upgrade`' version-skew warning about itself (cli skips the check for upgrade as for doctor; validate and other commands still warn) (F7); export --check's drift line reads 'drift: <path> no longer matches the roadmap. Run: specy-road export' (F8). Tests in tests/test_doctor_version_skew.py (upgrade with an older AGENTS.md block -> no warning line) and tests/test_export_roadmap_md.py (drift -> the hint, exit 1). CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +25, gui about +60, tests about +60, docs about +8"
+      ],
+      "codename": "sandbox-rc4-final-polish",
+      "dependencies": [
+        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313",
+        "74c3d924-fc2e-4170-a786-caed84beca86"
+      ],
+      "id": "M22.22",
+      "node_key": "7a0ccfaf-aa9e-45f5-8438-19693d6c622d",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.22_sandbox-rc4-final-polish_7a0ccfaf-aa9e-45f5-8438-19693d6c622d.md",
+      "sibling_order": 21,
+      "status": "Not Started",
+      "title": "Sandbox polish: planning-sheet save keeps untouched Markdown, one GUI extra name, no self-warning in upgrade, export drift hint, Escape closes modals",
+      "touch_zones": [
+        "gui/pm-gantt/src/components/MarkdownWorkspace.tsx",
+        "gui/pm-gantt/src/components/ModalFrame.tsx",
+        "gui/pm-gantt/src/components/EditModal.tsx",
+        "gui/pm-gantt/src/components/PublishRoadmapModal.tsx",
+        "gui/pm-gantt/src/planningSectionUtils.ts",
+        "gui/pm-gantt/src/planningSectionUtils.test.ts",
+        "gui/pm-gantt/src/markdownWorkspace.test.ts",
+        "specy_road/pm_gantt_static/",
+        "specy_road/cli_usage.py",
+        "specy_road/cli.py",
+        "specy_road/cli_init.py",
+        "specy_road/cli_init_argparse.py",
+        "specy_road/bundled_scripts/review_node.py",
+        "specy_road/bundled_scripts/update_specy_road.py",
+        "specy_road/bundled_scripts/export_roadmap_md.py",
+        "tests/test_cli_help_text.py",
+        "tests/test_doctor_version_skew.py",
+        "tests/test_export_roadmap_md.py",
+        "README.md",
+        "docs/install-and-usage.md",
+        "docs/pm-gui.md",
+        "docs/pm-workflow.md",
+        "docs/contributor-guide.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }

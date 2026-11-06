@@ -12,6 +12,7 @@ Holds every rc4 fix filed after the maintainer's 2026-11-05 rule that new work n
 - rc4 context-regression fixes (§9 replay 2026-11-05, Cursor guidance regressions and two case-design problems): M21.30 review policy pinned at claim (CR1, security), M21.31 review record files only as the caller (CR1, security), M21.32 session end only your own (CR3, security), M21.33 brainstorm start first and alone (CR5), M21.34 CR2 case fits the todo app.
 - rc4 re-test fixes (review delegate and §6 brainstorm re-test 2026-11-06): M21.35 a refused reviewer answer gets one repair turn with the refusal text, and the prompt ends with the notes rules (D15); M21.36 brainstorm verify normalizes real page text (D16). D15c, D16b, D17 and D18 are rc5 fixes (M22.16, M22.17).
 - rc4 final review fixes (§3.2 2026-11-06, sr/work/release-reviews/rc4-final/): M21.37 one safe-write rule plus the setup and upgrade writers (prior-F2 class); M21.38 review writers and the review lock; M21.39 Publish, finish land and reviews copy, pickup hint; M21.40 upgrade scratch git drops every GIT_ variable (F1 remainder); M21.41 notes rules name every clause break, small code and test fixes; M21.42 parse failures get the repair turn (final harness re-test). Deferred items are rc5 fixes (M22.19 to M22.21).
+- rc4 final sandbox rehearsal (2026-11-06, sr/work/sandbox-feedback/2026-11-06-rc4-final-2c45d7e8.md): M21.43 digest refuses cleanly with no roadmap manifest (F3). The other non-blocking findings are M22.22 (rc5).
 
 ## Release map
 
