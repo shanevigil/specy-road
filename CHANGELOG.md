@@ -55,6 +55,19 @@ body. Keep section bodies focused; link to PRs for detail.
   `validate` no longer reports the starter's `my-executor` placeholder, and an
   unmatched roster id is offered a closest profile only when a name of that
   profile has a similarity ratio of at least 0.6.
+- Security: a review deferral now counts only when its marker is bound to the
+  decision `review defer` recorded for it. Before, a hand-written
+  `DEFERRAL-*.yaml` citing any closed decision on the leaf removed a counted
+  block, and `handoff status` and `worker delegate --rework` called a deferral
+  applied when its marker file merely existed. Now the gate, the next step and
+  the rework's governing design all ask one check (`deferral_in_effect`): the
+  RCA the marker names is valid, recommends `defer_findings` at the marker's
+  round and defers exactly its items; the decision is closed, on the leaf and
+  worded as `review defer` words it, and its answer now names each item's
+  reviewer, full commit, finding, category, acceptance id and input class; the
+  items still qualify. A marker that fails any of these resolves nothing, and
+  `handoff status` names why. Deferrals recorded in the old answer format stop
+  counting (the block stays); run `review defer` again on a fresh record.
 
 ### Added
 
