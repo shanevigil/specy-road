@@ -28,13 +28,21 @@ Two things had to be true before a CLI could be put over it, and only one was:
   ``edit-node`` and never fixed here. This module stages the whole move through
   :class:`AtomicWritePlan` instead, so a move that fails to validate leaves the
   working tree byte-for-byte as it was.
+
+Every form is a call of :func:`move_nodes`: one move for ``move-node``,
+``indent`` and ``outdent``, one per listed sibling for ``group-nodes`` (those
+three commands live in ``roadmap_outline_group``). A batch stages one plan and
+validates once, however many nodes it moves.
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
 from specy_road.bundled_scripts.roadmap_crud_ops import (
@@ -55,6 +63,7 @@ from specy_road.bundled_scripts.roadmap_outline_ops import (
     _detach_reindex_old_parent,
     _validate_reparent_target,
     ordered_sibling_ids,
+    print_id_map,
 )
 from specy_road.bundled_scripts.roadmap_outline_renumber import (
     assign_subtree_ids_inplace,
@@ -69,7 +78,21 @@ from specy_road.bundled_scripts.sync_planning_artifacts import (
 )
 from specy_road.runtime_paths import add_repo_root_arg
 
+if TYPE_CHECKING:
+    from specy_road.bundled_scripts.roadmap_outline_group import NewParent
+
 ROOT_SENTINELS = ("", "null", "~", "none")
+
+
+@dataclass(frozen=True)
+class NodeMove:
+    """One re-parenting in a :func:`move_nodes` batch; see :func:`move_node`."""
+
+    node_key: str
+    new_parent_id: str | None
+    new_index: int | None = None
+    new_id: str | None = None
+    fill_gaps: bool = False
 
 
 def stage_id_rewrite(
@@ -79,12 +102,13 @@ def stage_id_rewrite(
     old_to_new: dict[str, str],
     *,
     claims_in_map_only: bool,
+    new_parent: NewParent | None = None,
 ) -> None:
     """Stage ``nodes`` plus the zone, sheet and claim rewrites an id map implies; commit.
 
-    ``scope`` is every node a rewrite may touch. Shared by ``move_node`` and the
+    ``scope`` is every node a rewrite may touch. Shared by ``move_nodes`` and the
     PM GUI's ``reorder_siblings``; nothing reaches disk until the whole
-    prospective graph validates.
+    prospective graph validates. ``new_parent`` joins the same plan.
     """
     renamed = {o: n for o, n in old_to_new.items() if o != n}
     _rewrite_touch_zones(scope, renamed)
@@ -92,6 +116,8 @@ def stage_id_rewrite(
 
     plan = AtomicWritePlan(root)
     _stage_merged_nodes(plan, root, nodes)
+    if new_parent is not None:
+        new_parent.stage(plan, nodes)
     _stage_planning_moves(plan, root, sheet_moves)
     _stage_registry_ids(plan, root, renamed, claims_in_map_only=claims_in_map_only)
     plan.commit(lambda: run_validate_raise(root))
@@ -124,6 +150,91 @@ def _moved_node_id(
     return new_id
 
 
+def _apply_move(
+    nodes: list[dict], move: NodeMove, *, renumber_outline: bool
+) -> dict[str, str]:
+    """Apply ``move`` to ``nodes`` in memory; return the subtree's ``old -> new`` map.
+
+    With ``renumber_outline`` no id changes here, so the map is empty: the
+    batch renumbers everything once at the end.
+    """
+    _refuse_id_form_combinations(
+        {
+            "--id (new_id)": move.new_id is not None,
+            "--fill-gaps (fill_gaps)": move.fill_gaps,
+            "--renumber-outline (renumber_outline)": renumber_outline,
+        }
+    )
+    by_key = {n["node_key"]: n for n in nodes if isinstance(n.get("node_key"), str)}
+    if move.node_key not in by_key:
+        raise ValueError(f"unknown node_key {move.node_key!r}")
+    by_id = {n["id"]: n for n in nodes}
+    moved = by_key[move.node_key]
+    old_id = moved["id"]
+    parent_id = move.new_parent_id
+    _validate_reparent_target(by_id, old_id, parent_id, moved_type=moved.get("type"))
+    new_index = move.new_index
+    if new_index is None:
+        siblings = [
+            i for i in ordered_sibling_ids(nodes, parent_id, by_id) if i != old_id
+        ]
+        new_index = len(siblings)
+
+    _detach_reindex_old_parent(nodes, by_id, moved.get("parent_id"), old_id)
+    _attach_at_index(nodes, by_id, moved, old_id, parent_id, new_index)
+    if renumber_outline:
+        return {}
+    target = _moved_node_id(
+        nodes, move.node_key, old_id, parent_id, move.new_id, move.fill_gaps
+    )
+    return assign_subtree_ids_inplace(nodes, move.node_key, target)
+
+
+def move_nodes(
+    root: Path,
+    moves: Sequence[NodeMove],
+    *,
+    renumber_outline: bool = False,
+    new_parent: NewParent | None = None,
+) -> dict[str, str]:
+    """Apply ``moves`` in order as one transaction. Returns the ``old -> new`` id map.
+
+    Every move runs in memory; every chunk, sheet and registry rewrite is staged
+    in one ``AtomicWritePlan`` and the graph validates once, so nothing reaches
+    disk unless the whole batch is good. A later move's ``new_parent_id`` is the
+    id after the earlier moves. ``new_parent`` is created before the first move,
+    so moves can name it; it is not in the map, which covers moved nodes only.
+    """
+    nodes = list(load_roadmap(root)["nodes"])
+    first_id = {n["node_key"]: n["id"] for n in nodes}
+    if new_parent is not None:
+        new_parent.insert(nodes)
+    moved_keys: set[str] = set()
+    for move in moves:
+        new_ids = set(
+            _apply_move(nodes, move, renumber_outline=renumber_outline).values()
+        )
+        moved_keys |= {n["node_key"] for n in nodes if n["id"] in new_ids}
+    # ``scope`` is every node a rewrite may touch. A subtree move scopes it to
+    # the subtree, so no node, sheet or claim outside it changes, even where
+    # its text names a moved id.
+    if renumber_outline:
+        old_to_new = renumber_display_ids_inplace(nodes)
+        scope = nodes
+    else:
+        scope = [n for n in nodes if n["node_key"] in moved_keys]
+        old_to_new = {first_id[n["node_key"]]: n["id"] for n in scope}
+    stage_id_rewrite(
+        root,
+        nodes,
+        scope,
+        old_to_new,
+        claims_in_map_only=not renumber_outline,
+        new_parent=new_parent,
+    )
+    return old_to_new
+
+
 def move_node(
     root: Path,
     node_key: str,
@@ -144,50 +255,8 @@ def move_node(
     shape. At most one of the three id forms may be given. Nothing reaches disk until the
     whole prospective graph validates.
     """
-    _refuse_id_form_combinations(
-        {
-            "--id (new_id)": new_id is not None,
-            "--fill-gaps (fill_gaps)": fill_gaps,
-            "--renumber-outline (renumber_outline)": renumber_outline,
-        }
-    )
-    nodes = list(load_roadmap(root)["nodes"])
-    by_key = {n["node_key"]: n for n in nodes if isinstance(n.get("node_key"), str)}
-    if node_key not in by_key:
-        raise ValueError(f"unknown node_key {node_key!r}")
-    by_id = {n["id"]: n for n in nodes}
-    moved = by_key[node_key]
-    old_id = moved["id"]
-    _validate_reparent_target(
-        by_id, old_id, new_parent_id, moved_type=moved.get("type")
-    )
-    if new_index is None:
-        siblings = [
-            i
-            for i in ordered_sibling_ids(nodes, new_parent_id, by_id)
-            if i != old_id
-        ]
-        new_index = len(siblings)
-
-    _detach_reindex_old_parent(nodes, by_id, moved.get("parent_id"), old_id)
-    _attach_at_index(nodes, by_id, moved, old_id, new_parent_id, new_index)
-    # ``scope`` is every node a rewrite may touch. A subtree move scopes it to
-    # the subtree, so no node, sheet or claim outside it changes, even where
-    # its text names a moved id.
-    if renumber_outline:
-        old_to_new = renumber_display_ids_inplace(nodes)
-        scope = nodes
-    else:
-        target = _moved_node_id(
-            nodes, node_key, old_id, new_parent_id, new_id, fill_gaps
-        )
-        old_to_new = assign_subtree_ids_inplace(nodes, node_key, target)
-        new_ids = set(old_to_new.values())
-        scope = [n for n in nodes if n["id"] in new_ids]
-    stage_id_rewrite(
-        root, nodes, scope, old_to_new, claims_in_map_only=not renumber_outline
-    )
-    return old_to_new
+    move = NodeMove(node_key, new_parent_id, new_index, new_id, fill_gaps)
+    return move_nodes(root, [move], renumber_outline=renumber_outline)
 
 
 def _resolve_parent(raw: str, by_id: dict[str, dict], self_id: str) -> str | None:
@@ -237,18 +306,13 @@ def cmd_move(args: argparse.Namespace) -> None:
     new_parent = old_to_new.get(parent_id, parent_id)
     where = f"under {new_parent}" if parent_id else "to the roadmap root"
     print(f"[ok] moved {old_to_new.get(node_id, node_id)} {where}")
-    renamed = {o: n for o, n in old_to_new.items() if o != n}
-    if not renamed:
-        return
-    print("\nDisplay ids changed (an id is a position, not an identity):")
-    for old, new in sorted(renamed.items()):
-        print(f"  {old} -> {new}")
-    print(
-        "\nPlanning sheets, touch-zone path segments equal to an old id, and "
-        "roadmap/registry.yaml were updated to match (only for the renumbered "
-        "nodes and their claims unless --renumber-outline was given). "
-        "Any feature/rm-* branch keeps its codename; only ids moved."
-    )
+    if print_id_map(old_to_new):
+        print(
+            "\nPlanning sheets, touch-zone path segments equal to an old id, and "
+            "roadmap/registry.yaml were updated to match (only for the renumbered "
+            "nodes and their claims unless --renumber-outline was given). "
+            "Any feature/rm-* branch keeps its codename; only ids moved."
+        )
 
 
 def build_parser() -> argparse.ArgumentParser:

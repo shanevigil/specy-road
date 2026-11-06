@@ -3,7 +3,8 @@
 Pins the bodies the bundled UI relies on (string ``"true"`` on move, reorder,
 delete and add; boolean ``true`` plus ``changed`` on indent/outdent) and that
 every form renumbers only the node it moves unless the request passes
-``renumber_outline: true`` (M21.1).
+``renumber_outline: true`` (M21.1). ``/outline/group`` answers ``"true"`` plus
+``id_map`` (M21.2).
 """
 
 from __future__ import annotations
@@ -14,13 +15,18 @@ import pytest
 from starlette.testclient import TestClient
 
 from tests.move_node_helpers import (
+    NK_A,
     NK_A1,
     NK_A2,
+    NK_A21,
     NK_A22,
     NK_A24,
     NK_A3,
     NK_B4,
     ids_by_key,
+    lock_milestone,
+    nodes_by_key,
+    tree_bytes,
     unchanged_except,
     wide_fixture,
 )
@@ -40,10 +46,14 @@ def client(repo: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(create_app())
 
 
-def _post(client: TestClient, url: str, body: dict | None = None):
+def _post(client: TestClient, url: str, body: dict | list | bytes | None = None):
+    """``bytes`` are sent as-is under ``Content-Type: application/json``."""
     fp = client.get("/api/roadmap").json()["fingerprint"]
     kw: dict = {"headers": {"X-PM-Gui-Fingerprint": str(fp)}}
-    if body is not None:
+    if isinstance(body, bytes):
+        kw["headers"]["Content-Type"] = "application/json"
+        kw["content"] = body
+    elif body is not None:
         kw["json"] = body
     return client.post(url, **kw)
 
@@ -104,6 +114,83 @@ def test_outline_move_refusals_are_400_with_a_string_detail(
     assert r.status_code == 400
     assert isinstance(r.json()["detail"], str)
     assert ids_by_key(repo) == before
+
+
+def test_outline_group_returns_the_id_map(client: TestClient, repo: Path) -> None:
+    before = ids_by_key(repo)
+    body = {"into_new": "M1.4", "title": "Grouped", "node_ids": ["M1.3", "M1.2"]}
+
+    r = _post(client, "/api/outline/group", body)
+
+    assert r.status_code == 200, r.text
+    assert r.json() == {
+        "ok": "true",
+        "id_map": {
+            "M1.3": "M1.4.1",
+            "M1.2": "M1.4.2",
+            "M1.2.1": "M1.4.2.1",
+            "M1.2.2": "M1.4.2.2",
+            "M1.2.4": "M1.4.2.4",
+        },
+    }
+    after = ids_by_key(repo)
+    moved = {NK_A3, NK_A2, NK_A21, NK_A22, NK_A24}
+    new_key = (set(after) - set(before)).pop()
+    assert after[new_key] == "M1.4"
+    assert nodes_by_key(repo)[new_key]["type"] == "milestone"
+    del after[new_key]
+    assert unchanged_except(before, after, moved)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"into_new": "M1.4", "title": "G", "node_ids": ["M9"]},
+        {"into_new": "M1.4", "title": "G", "node_ids": []},
+        {"into_new": "M1.4", "title": "G", "node_ids": ["M1.1", "M1.1"]},
+        {"into_new": "M1.4", "title": "G", "node_ids": ["M1.1", "M2.1"]},
+        {"into_new": "M1.3", "title": "G", "node_ids": ["M1.1"]},
+        {"into_new": "M1.4", "title": "", "node_ids": ["M1.1"]},
+        {"into_new": "M1.4", "title": "G", "node_ids": ["M1.1"], "type": "gate"},
+        {"into_new": "M1.4", "title": "G", "node_ids": ["M1.1"], "type": "epic"},
+        None,
+        {},
+        [],
+        {"into_new": "M1.4", "node_ids": ["M1.1"]},
+        {"into_new": "M1.4", "title": "G", "node_ids": "M1.1"},
+        b"{",
+        b"not json",
+    ],
+    ids=[
+        "unknown", "empty", "duplicate", "not-siblings", "taken", "empty-title",
+        "gate-parent", "unknown-type", "no-body", "empty-body", "list-body",
+        "missing-title", "ids-not-a-list", "truncated-json", "not-json",
+    ],
+)
+def test_outline_group_refusals_are_400_with_a_string_detail(
+    client: TestClient, repo: Path, body: dict | list | bytes | None
+) -> None:
+    before = tree_bytes(repo)
+
+    r = _post(client, "/api/outline/group", body)
+
+    assert r.status_code == 400
+    assert isinstance(r.json()["detail"], str)
+    assert tree_bytes(repo) == before
+
+
+def test_outline_group_under_a_locked_milestone_is_a_400_refusal(
+    client: TestClient, repo: Path
+) -> None:
+    lock_milestone(repo, NK_A)
+    before = tree_bytes(repo)
+    body = {"into_new": "M1.4", "title": "G", "node_ids": ["M1.1"]}
+
+    r = _post(client, "/api/outline/group", body)
+
+    assert r.status_code == 400
+    assert "active milestone execution" in r.json()["detail"]
+    assert tree_bytes(repo) == before
 
 
 def test_outline_reorder_changes_sibling_order_only(client: TestClient, repo: Path) -> None:
