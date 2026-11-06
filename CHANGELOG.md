@@ -23,6 +23,30 @@ body. Keep section bodies focused; link to PRs for detail.
   approve-notes rules in operational form (one observation per line, each
   with `not a defect because <reason>` or a `required_changes` entry); the
   rule itself is unchanged.
+- **Security:** a leaf's review policy is pinned at claim. Pickup's
+  registration commit (`--local` too) keeps its subject and gains a
+  `Review-policy: sha256:<hex> at <commit>` trailer: the digest of the roster,
+  substitutions and policy in `roadmap/orchestration.yaml` and the review switch
+  in `roadmap/git-workflow.yaml` at the integration branch commit claimed from.
+  A policy file that does not parse refuses the claim before any registry
+  write. When the integration branch's policy differs, the gate is not met
+  (`mark-implementation-reviewed --yes` refuses) and `finish-this-task` refuses
+  before any bookkeeping, before it reads the review switch, with one line per
+  change, until a human runs `specy-road review accept-policy <NODE_ID>` in a
+  terminal (`work/reviews/<NODE_ID>/POLICY-ACCEPTED.yaml`, checked against the
+  new `policy-acceptance.schema.json`) or the leaf is re-claimed. A claim made
+  before this change has no trailer and is judged as before. Pin and acceptance
+  are honour-system, like READY files. The agent rules now say an executor
+  never edits these files or the roster to get past the gate, and never files a
+  review under any model id but its own.
+- `brainstorm verify` finds a quote on a fetched page across the ways an
+  agent's copy differs from the HTML: bracketed citation markers (`[43]`,
+  `[44][45][46]`, `[a]`, `[note 1]`, `[citation needed]`) are removed,
+  typographic quotes, apostrophes, primes, dashes and non-breaking spaces fold
+  to their ASCII form, and soft hyphens and zero-width characters are deleted,
+  in the page and the quote alike. A match still needs the same words in the
+  same order, a quote that is only a marker stays `not-found`, and repo
+  sources are still compared with whitespace collapsed only.
 - `finish-this-task` runs `validate` before its first bookkeeping write, so an
   invalid configuration (for example `policy.reviewers_required: 1` with
   `require_implementation_review_before_finish: false`) is refused with

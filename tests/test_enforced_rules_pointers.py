@@ -105,10 +105,12 @@ _BEFORE_LINES, _BEFORE_BYTES = 52, 7679
 #: The ``AGENTS.md`` stub that replaced the full section on 2026-11-04 (it was 52 lines, 7,797 bytes then).
 #: Codex reads only this, so a rule added to it needs the maintainer's approval and raises these.
 #: 17 / 2,063 since the review restored the discard and abort-after-finish rules (2026-11-04).
-_STUB_LINES, _STUB_BYTES = 17, 2063
+#: 17 / 2,205 since M21.30 added the CR1 review-policy rule (maintainer-approved, 2026-11-05).
+_STUB_LINES, _STUB_BYTES = 17, 2205
 #: ``.specyrd/AGENTS.md`` when it was created (2026-11-04): the old section plus the non-Claude part of the
 #: old ``CLAUDE.md`` block. Claude Code imports it whole; Codex never reads it.
-_RULES_LINES, _RULES_BYTES = 68, 9107
+#: 68 / 9,289 since M21.30 added the CR1 review-policy rule (maintainer-approved, 2026-11-05).
+_RULES_LINES, _RULES_BYTES = 68, 9289
 
 
 def test_the_meter_reports_a_shorter_section_than_before(tmp_path: Path, monkeypatch) -> None:

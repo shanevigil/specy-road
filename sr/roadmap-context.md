@@ -115,13 +115,13 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.27` review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer `filings-take-the-review-lock` — task — **Complete**
   - `M21.28` finish-this-task refuses an invalid configuration before any bookkeeping write and never leaves a half-mutated tree `finish-validates-before-bookkeeping` — task — **Complete**
   - `M21.29` worker terminate also ends processes the harness started in their own session `terminate-ends-escaped-descendants` — task — **Complete**
-  - `M21.30` A leaf's review policy is pinned at claim: the gate and finish refuse a roster, policy or review-switch change made on the integration branch after it until a human accepts it `review-policy-pinned-at-claim` — task — **Not Started**
+  - `M21.30` A leaf's review policy is pinned at claim: the gate and finish refuse a roster, policy or review-switch change made on the integration branch after it until a human accepts it `review-policy-pinned-at-claim` — task — **Complete**
   - `M21.31` review record files only under the caller's own model: a filing from another harness or worker is refused, and a hand-filed record needs an attestation and counts only when signed or the policy allows it `review-record-files-only-as-the-caller` — task — **Not Started**
   - `M21.32` session end ends only your own session: another agent's live record needs --force from a terminal, and the guard's refusal names the rule `session-end-only-your-own` — task — **Not Started**
   - `M21.33` The brainstorm skill makes `specy-road brainstorm start` the first tool call, alone in its turn, in every harness's shipped copy `brainstorm-start-is-the-first-call-alone` — task — **Complete**
   - `M21.34` Context regression CR2 asks for a README section the todo app supports, and passes a README-only commit on the agent's own worktree branch `cr2-case-fits-the-todo-app` — task — **Complete**
   - `M21.35` review delegate gives a refused reviewer answer one repair turn with the refusal text, and the reviewer prompt ends with the notes rules `refused-review-gets-one-repair-turn` — task — **Not Started**
-  - `M21.36` brainstorm verify matches a quote across citation markers, typographic quotes and apostrophes, dashes, non-breaking spaces and soft hyphens `verify-normalizes-real-page-text` — task — **Not Started**
+  - `M21.36` brainstorm verify matches a quote across citation markers, typographic quotes and apostrophes, dashes, non-breaking spaces and soft hyphens `verify-normalizes-real-page-text` — task — **Complete**
 - `M22` rc5 fixes: defects found while preparing rc5 `rc5-fixes` — phase — **Not Started**
   - `M22.1` group-nodes accepts a new parent id held by one of the nodes it groups `group-into-member-id` — task — **Not Started**
   - `M22.2` A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet `move-rewrites-sheet-zones` — task — **Not Started**
@@ -271,7 +271,8 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M21.30` on `feature/rm-review-policy-pinned-at-claim` since 2026-11-05
+- `M21.31` on `feature/rm-review-record-files-only-as-the-caller` since 2026-11-06
+- `M21.32` on `feature/rm-session-end-only-your-own` since 2026-11-06
 - `M21.35` on `feature/rm-refused-review-gets-one-repair-turn` since 2026-11-06
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
@@ -281,11 +282,11 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 28 | 0 | 2.61 | 57% | 25 | 3 |
+| `docs` **flagged** | 29 | 0 | 2.55 | 55% | 24 | 3 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 47 | 0 | 2.89 | 60% | 41 | 7 |
-| `tests` **flagged** | 49 | 0 | 2.86 | 59% | 41 | 7 |
-| `CHANGELOG.md` | 21 | 0 | 1.86 | 29% | 16 | 1 |
+| `specy_road` **flagged** | 47 | 0 | 2.79 | 57% | 40 | 7 |
+| `tests` **flagged** | 49 | 0 | 2.76 | 57% | 40 | 7 |
+| `CHANGELOG.md` | 23 | 0 | 1.91 | 30% | 16 | 1 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `suggested_prompts` | 2 | 0 | 1.00 | 0% | 0 | 0 |
 

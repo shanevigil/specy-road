@@ -71,7 +71,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.30_review-policy-pinned-at-claim_aa063cac-70c3-41a9-8f3c-4c671184d333.md",
       "sibling_order": 28,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A leaf's review policy is pinned at claim: the gate and finish refuse a roster, policy or review-switch change made on the integration branch after it until a human accepts it",
       "touch_zones": [
         "specy_road/review_policy_pin.py",
@@ -87,7 +87,9 @@
         "CHANGELOG.md",
         "specy_road/bundled_scripts/do_next_task.py",
         "tests/test_do_next_task_pickup.py",
-        "tests/test_enforced_rules_pointers.py"
+        "tests/test_enforced_rules_pointers.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/review_policy_ref.py"
       ],
       "type": "task"
     },
@@ -123,7 +125,9 @@
         "tests/test_review_record_caller.py",
         "docs/orchestration-review.md",
         "CHANGELOG.md",
-        "specy_road/bundled_scripts/role_prompt_rca.py"
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "tests/conftest.py",
+        "specy_road/review_answer.py"
       ],
       "type": "task"
     },
@@ -248,7 +252,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.36_verify-normalizes-real-page-text_e08489cb-8a8e-497f-8a0e-79c5eb67f39d.md",
       "sibling_order": 34,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "brainstorm verify matches a quote across citation markers, typographic quotes and apostrophes, dashes, non-breaking spaces and soft hyphens",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_verify.py",
