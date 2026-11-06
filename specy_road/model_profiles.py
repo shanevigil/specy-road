@@ -35,6 +35,10 @@ _REQUIRED = ("profile_schema", "family", "model", "api_id", "version_rank", "res
 #: ``access.launch_mode``: ``full`` lets the harness discover its hooks, skills, MCP servers and
 #: CLAUDE.md; ``bare`` (Claude Code's ``--bare``) skips them. Absent means ``full``.
 LAUNCH_MODES = ("full", "bare")
+#: ``guidance_bypass_observed``: a model seen going around specy-road's guidance (M21.44); its keys and harnesses.
+GUIDANCE_BYPASS_KEY = "guidance_bypass_observed"
+GUIDANCE_BYPASS_FIELDS = ("date", "harness", "evidence")
+GUIDANCE_BYPASS_HARNESSES = ("claude-code", "codex", "cursor", "generic")
 #: The executor id in the template's ``roadmap/orchestration.yaml``, there to be replaced.
 STARTER_PLACEHOLDER_ID = "my-executor"
 #: The least ``SequenceMatcher`` ratio at which a profile's name counts as like a roster id.
@@ -201,7 +205,24 @@ def _structure_errors(data: dict[str, Any], name: str) -> list[str]:  # noqa: C9
         out.append("`cost_usd_per_mtok` must be a mapping")
     if "researched" in data and _as_date(data["researched"]) is None:
         out.append(f"`researched` is not a calendar date (YYYY-MM-DD): {data['researched']!r}")
+    if GUIDANCE_BYPASS_KEY in data and (why := _guidance_bypass_error(data[GUIDANCE_BYPASS_KEY])):
+        out.append(f"`{GUIDANCE_BYPASS_KEY}` {why}")
     return out
+
+
+def _guidance_bypass_error(raw: Any) -> str | None:
+    """Why ``guidance_bypass_observed`` is not ``{date: YYYY-MM-DD, harness: <harness id>, evidence: <text>}``."""
+    if not isinstance(raw, dict) or set(raw) != set(GUIDANCE_BYPASS_FIELDS):
+        return f"must be a mapping with exactly {', '.join(GUIDANCE_BYPASS_FIELDS)}"
+    day = raw["date"]
+    if not (type(day) is date or isinstance(day, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", day)) \
+            or _as_date(day) is None:
+        return f"date is not a calendar date (YYYY-MM-DD): {day!r}"
+    if raw["harness"] not in GUIDANCE_BYPASS_HARNESSES:
+        return f"harness must be one of {', '.join(GUIDANCE_BYPASS_HARNESSES)}, not {raw['harness']!r}"
+    if not isinstance(raw["evidence"], str) or not raw["evidence"].strip():
+        return "evidence must be a non-blank string"
+    return None
 
 
 def parse_profile(path: Path, text: str) -> Profile:

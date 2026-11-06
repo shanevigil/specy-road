@@ -48,7 +48,8 @@ from typing import Any
 from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, load_chore
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text
-from specy_road.orchestration_pinned import pinned_config
+from specy_road.orchestrate_assign import guidance_bypass_refusal, guidance_bypass_warning
+from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_delegate_harness import HarnessSetupError, _Harness
 from specy_road.review_delegate_packet import ensure_packet
 from specy_road.review_eligible import writers
@@ -101,6 +102,16 @@ def _entry(repo_root: Path, model: str) -> dict[str, Any]:
     if entry is None:
         raise DelegateError(f"{model!r} is not in the roster (roadmap/orchestration.yaml)")
     return entry
+
+
+def _guidance_check(repo_root: Path, entry: dict[str, Any]) -> None:
+    """:func:`guidance_bypass_refusal` as a :class:`DelegateError`; the opted-in warning, once per launch, on stderr."""
+    config, err = pinned_config(repo_root)
+    prof = pinned_profile_for_entry(repo_root, entry)
+    if why := f"orchestration config: {err}" if err else guidance_bypass_refusal(config, entry, prof, repo_root):
+        raise DelegateError(why)
+    if note := guidance_bypass_warning(config, entry, prof, repo_root):
+        print(note, file=sys.stderr)
 
 
 def _preflight(entry: dict[str, Any], cwd: Path) -> None:
@@ -341,6 +352,7 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
         if wrote := writers(repo_root, t.node["id"], (t.entry or {}).get("branch")).get(model):   # before any write
             raise DelegateError(f"{model} wrote {wrote[0]} on {node_id}; the executor never reviews its own leaf")
     entry = _entry(repo_root, model)
+    _guidance_check(repo_root, entry)   # M21.44: before the harness, the prompt and _start (fresh, resume, chore)
     cwd = (worktree or Path(git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root)).resolve()
     try:
         h = _Harness(repo_root, entry, node_id, cwd, chore=chore is not None)

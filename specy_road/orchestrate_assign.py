@@ -10,12 +10,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from specy_road.model_profiles import Profile
-from specy_road.orchestration_config import active_substitutions
+from specy_road.orchestration_config import active_substitutions, harness_model, roster_entry
+from specy_road.orchestration_pinned import guidance_flags, pinned_config, pinned_profile_for_entry
+from specy_road.roster_local import GUIDANCE_OPT_IN
 from specy_road.review_strong import applicable_items, item_label
 from specy_road.review_tally import quality_review
+from specy_road.worker_models import command_model
 
 DEFAULT_SENSITIVITY = "public"
 ANY = "any"
@@ -98,11 +102,104 @@ def unavailable_prompt_error(model: str, entry: dict[str, Any]) -> str:
     return f"{model!r} is unavailable ({unavailability_reason(entry) or 'availability'})"
 
 
+def _launch_models(entry: dict[str, Any], profile: Profile | None) -> list[str]:
+    """Every model the entry can launch: the routed profile's ``api_id`` (or the alias it matched), the id a default
+    command passes (:func:`harness_model`: ``harness_model``, else that ``api_id``, else the roster id), and the literal
+    ``--model`` / ``-m`` of ``channels.cli`` / ``cli_resume`` (read, never run)."""
+    channels = entry.get("channels") if isinstance(entry.get("channels"), dict) else {}
+    names = [profile.api_id, str(profile.data.get("api_id") or "")] if profile is not None else []
+    names += [harness_model(entry, profile.api_id if profile is not None else None) or "",
+              *(command_model(str(channels[k])) or "" for k in ("cli", "cli_resume") if channels.get(k))]
+    return [n for n in dict.fromkeys(names) if n]
+
+
+def _guidance_hit(config: dict[str, Any], entry: dict[str, Any], profile: Profile | None,
+                  repo_root: Path | None) -> tuple[str, dict[str, Any] | None, str | None] | None:
+    """``(model, record, error)`` when ``policy.signed_reviews`` is on and a model the entry can launch is flagged
+    (:func:`~specy_road.orchestration_pinned.guidance_flags`), or the flags cannot be read (``error``); else ``None``."""
+    if not (config.get("policy") or {}).get("signed_reviews") or entry.get("family") == "human":
+        return None
+    names = _launch_models(entry, profile)
+    if not names:
+        return None
+    flags, err = guidance_flags(repo_root) if repo_root is not None else ({}, "no repository to read profiles from")
+    if err:
+        return names[0], None, err
+    return next(((n, flags[n], None) for n in names if n in flags), None)
+
+
+def _opted_in(config: dict[str, Any], entry: dict[str, Any]) -> bool:
+    """The roster entry with this id sets the opt-in (``roster_add`` entries cannot: :mod:`specy_road.roster_local`)."""
+    return (roster_entry(config, str(entry.get("id"))) or {}).get(GUIDANCE_OPT_IN) is True
+
+
+def guidance_bypass_refusal(config: dict[str, Any], entry: dict[str, Any], profile: Profile | None,
+                            repo_root: Path | None = None) -> str | None:
+    """Why ``entry`` may not take the executor or reviewer role (``rca`` is a reviewer's; never the coordinator's):
+    ``policy.signed_reviews`` is on, a model it launches has a profile recording guidance bypass, and its roster
+    entry does not set :data:`GUIDANCE_OPT_IN`. ``None`` otherwise, and for an entry with no model (a human).
+    ``repo_root``: where the integration branch's profiles are read (M21.44)."""
+    hit = _guidance_hit(config, entry, profile, repo_root)
+    if hit is None:
+        return None
+    model, record, err = hit
+    head = f"{entry.get('id')} (model {model})"
+    if err:
+        return (f"{head} cannot be checked for recorded guidance bypass while policy.signed_reviews is on: {err}; "
+                "nothing is launched or counted until the integration branch's model profiles can be read")
+    if _opted_in(config, entry):
+        return None
+    return (f"{head} is excluded from executor and reviewer roles while policy.signed_reviews is on: its profile "
+            f"records guidance bypass observed ({record.get('date')}, {record.get('harness')}: "
+            f"{str(record.get('evidence') or '').strip()}). Set {GUIDANCE_OPT_IN}: true on its roster entry to use "
+            "it at your own risk.")
+
+
+def guidance_problem(repo_root: Path, config: dict[str, Any], entry: dict[str, Any]) -> str | None:
+    """:func:`guidance_bypass_refusal` for a roster entry, its profile read from the integration branch (M21.44): the
+    gate, ``handoff status`` and its next step. The profile is resolved only while ``signed_reviews`` is on."""
+    if not entry or not config["policy"].get("signed_reviews"):
+        return None
+    return guidance_bypass_refusal(config, entry, pinned_profile_for_entry(repo_root, entry), repo_root)
+
+
+def guidance_bypass_warning(config: dict[str, Any], entry: dict[str, Any], profile: Profile | None,
+                            repo_root: Path | None = None) -> str | None:
+    """The line an executor or reviewer launch prints, once, for an opted-in flagged entry; else ``None``."""
+    hit = _guidance_hit(config, entry, profile, repo_root)
+    if hit is None or hit[2] or not _opted_in(config, entry):
+        return None
+    model, record, _err = hit
+    return (f"warning: {entry.get('id')} (model {model}) opted in at its own risk: its profile records guidance "
+            f"bypass observed ({record.get('date')}, {record.get('harness')})")
+
+
+def guidance_bypass_lines(repo_root: Path) -> list[str]:
+    """``validate`` / ``doctor``: one warning per executor or reviewer entry of the pinned roster that a model it
+    launches is flagged for, while signed reviews are on. An unreadable roster is left to the other checks."""
+    config, err = pinned_config(repo_root)
+    if err or not (config.get("policy") or {}).get("signed_reviews"):
+        return []
+    out = []
+    for entry in config.get("roster") or []:
+        if not {"executor", "reviewer"} & set(entry.get("roles") or []):
+            continue
+        hit = _guidance_hit(config, entry, pinned_profile_for_entry(repo_root, entry), repo_root)
+        if hit is None or hit[2]:
+            continue
+        head = f"warning: {entry.get('id')} (model {hit[0]})"
+        out.append(f"{head} opted in at its own risk" if _opted_in(config, entry) else
+                   f"{head} is excluded: set {GUIDANCE_OPT_IN}: true on its roster entry to use it at your own risk")
+    return out
+
+
 @dataclass
 class Candidate:
     entry: dict[str, Any]
     profile: Profile | None
     local: bool = False   # added by this clone's roster_add (roster_local), not committed
+    guidance_refusal: str | None = None   # guidance_bypass_refusal: kept out of the executor and reviewer pools
+    guidance_warning: str | None = None   # guidance_bypass_warning: an opted-in flagged entry, noted when picked
 
     @property
     def id(self) -> str:
@@ -188,9 +285,22 @@ def _valid(pool: list[Candidate], a: Assignment) -> list[Candidate]:
     return [c for c in pool if c not in bad]
 
 
+def _guidance_pool(pool: list[Candidate], a: Assignment) -> list[Candidate]:
+    """The pool without entries :func:`guidance_bypass_refusal` excludes, each reason noted once."""
+    for c in pool:
+        if c.guidance_refusal and f"skipped: {c.guidance_refusal}" not in a.notes:
+            a.notes.append(f"skipped: {c.guidance_refusal}")
+    return [c for c in pool if not c.guidance_refusal]
+
+
+def _guidance_note(c: Candidate) -> str:
+    return f"; {c.guidance_warning.removeprefix('warning: ')}" if c.guidance_warning else ""
+
+
 def _pick_executor(cands: list[Candidate], a: Assignment, today: date | None, drift: str | None = None,
                    spread_index: int | None = None) -> None:
-    pool = [c for c in cands if "executor" in (c.entry.get("roles") or []) and _usable(c, a.sensitivity, today)]
+    pool = _guidance_pool([c for c in cands if "executor" in (c.entry.get("roles") or [])
+                           and _usable(c, a.sensitivity, today)], a)
     if a.eligibility != ANY:
         pool = [c for c in pool if str(c.entry.get("class") or "") == a.eligibility]
     valid = _valid(pool, a)
@@ -211,7 +321,8 @@ def _pick_executor(cands: list[Candidate], a: Assignment, today: date | None, dr
     a.executor = pick.id
     tags = [f"{k} {pick.entry[k]}" for k in ("class", "billing_route") if pick.entry.get(k)]
     how = "cheapest capable" if spread_index is None else f"round-robin (--spread) over {len(capable)} capable"
-    a.notes.append(f"executor: {how} — " + pick.describe("executor") + (f" [{', '.join(tags)}]" if tags else ""))
+    a.notes.append(f"executor: {how} — " + pick.describe("executor") + (f" [{', '.join(tags)}]" if tags else "")
+                   + _guidance_note(pick))
 
 
 def _pick_reviewers(cands: list[Candidate], a: Assignment, config: dict[str, Any], today: date | None) -> None:
@@ -219,9 +330,9 @@ def _pick_reviewers(cands: list[Candidate], a: Assignment, config: dict[str, Any
     required = int(policy["reviewers_required"])
     distinct = bool(policy["reviewers_distinct_families"])
     substitutes = {s.get("use") for s in active_substitutions(config, a.node_id, today)}
-    pool = _valid([c for c in cands
-                   if ("reviewer" in (c.entry.get("roles") or []) or c.id in substitutes)
-                   and _usable(c, a.sensitivity, today) and c.id != a.executor], a)
+    pool = _valid(_guidance_pool([c for c in cands
+                                  if ("reviewer" in (c.entry.get("roles") or []) or c.id in substitutes)
+                                  and _usable(c, a.sensitivity, today) and c.id != a.executor], a), a)
     pool.sort(key=lambda c: (-c.score("reviewer"), c.cost if c.cost is not None else float("inf")))
     _pick_strong(pool, a, substitutes)
     seen = {c.family for c in pool if c.id in a.reviewers}
@@ -236,7 +347,8 @@ def _pick_reviewers(cands: list[Candidate], a: Assignment, config: dict[str, Any
             continue
         a.reviewers.append(c.id)
         seen.add(c.family)
-        a.notes.append("reviewer: " + c.describe("reviewer") + (" [substitute]" if c.id in substitutes else ""))
+        a.notes.append("reviewer: " + c.describe("reviewer") + (" [substitute]" if c.id in substitutes else "")
+                       + _guidance_note(c))
     if count() < required:
         unit = "distinct-family reviewers" if distinct else "reviewers"
         a.problems.append(f"need {required} {unit} that may process {a.sensitivity!r} "
@@ -256,7 +368,7 @@ def _pick_strong(pool: list[Candidate], a: Assignment, substitutes: set[Any]) ->
             c = next(c for c in pool if c.id == s["can_satisfy"][0])
             a.reviewers.append(c.id)
             a.notes.append("reviewer: " + c.describe("reviewer") + (" [substitute]" if c.id in substitutes else "")
-                           + f" [strong review: {s['item']}]")
+                           + f" [strong review: {s['item']}]" + _guidance_note(c))
 
 
 def _pick_coordinator(cands: list[Candidate], a: Assignment, today: date | None) -> None:

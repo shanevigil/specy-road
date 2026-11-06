@@ -4,7 +4,8 @@ The local file is gitignored and already overlays availability (``roster:``). ``
 entries that planning and delegation on this clone use after the pinned roster's: an added id that the
 pinned roster already has is refused (a local entry never overrides a committed one), and so is an entry
 with a command to run (``channels.cli``, or a profile whose ``access.cli`` is set) unless the same file
-sets ``allow_local_cli: true``. Nothing here is shared with other clones, and the review gate reads only
+sets ``allow_local_cli: true``. An entry may never set ``allow_guidance_bypass_model`` (M21.44): that opt-in
+counts only on the committed roster. Nothing here is shared with other clones, and the review gate reads only
 the committed roster.
 """
 
@@ -27,6 +28,8 @@ from specy_road.orchestration_config import (
 
 ROSTER_ADD_KEY = "roster_add"
 ALLOW_LOCAL_CLI_KEY = "allow_local_cli"
+#: Roster key: use a model whose profile records guidance bypass anyway, at the developer's own risk (M21.44).
+GUIDANCE_OPT_IN = "allow_guidance_bypass_model"
 
 
 def load_local_roster(repo_root: Path) -> tuple[list[dict[str, Any]], bool, str | None]:
@@ -73,6 +76,9 @@ def merge_local_roster(repo_root: Path, config: dict[str, Any],
         if rid in committed:
             return (f"{where}/{i}: {rid!r} is already a roster entry; a local entry never overrides one "
                     "(set its availability under roster: instead, or pick another id)")
+        if GUIDANCE_OPT_IN in entry:
+            return (f"{where}/{i}: {rid!r} sets {GUIDANCE_OPT_IN}, which counts only on the committed roster "
+                    "(roadmap/orchestration.yaml on the integration branch); remove it here")
         if allow:
             continue
         if (entry.get("channels") or {}).get("cli"):

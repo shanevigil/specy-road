@@ -23,8 +23,11 @@ from typing import Any, NamedTuple
 
 from specy_road.git_subprocess import git_stdout, git_text
 from specy_road.model_profiles import (
+    GUIDANCE_BYPASS_KEY,
     PROFILES_REL,
     Profile,
+    bundled_profiles_root,
+    list_profiles,
     parse_profile,
     profile_for_entry,
     profile_rel_problem,
@@ -283,3 +286,45 @@ def pinned_profile_for_entry(repo_root: Path, entry: dict[str, Any], *, worktree
     sha = full_sha(repo_root, ref) or ref
     return _integration_profile_for_entry(repo_root, entry, rel, ref, sha)
 
+
+def _flags_of(profiles: list[Profile] | tuple[Profile, ...]) -> dict[str, dict[str, Any]]:
+    """``api_id`` and each alias -> the ``guidance_bypass_observed`` value of every profile that sets one, whatever
+    its shape: a malformed record still flags (the profile is invalid besides), it never clears."""
+    out: dict[str, dict[str, Any]] = {}
+    for p in profiles:
+        if p.data.get(GUIDANCE_BYPASS_KEY) is None:
+            continue
+        record = p.data[GUIDANCE_BYPASS_KEY] if isinstance(p.data[GUIDANCE_BYPASS_KEY], dict) else {}
+        aliases = p.data.get("aliases") if isinstance(p.data.get("aliases"), list) else []
+        for name in (p.data.get("api_id"), *aliases):
+            if name:
+                out.setdefault(str(name), record)
+    return out
+
+
+@cache
+def _bundled_flags() -> dict[str, dict[str, Any]]:
+    return _flags_of(list_profiles(bundled_profiles_root()))
+
+
+@cache
+def _committed_flags(root: str, sha: str) -> dict[str, dict[str, Any]]:
+    repo_root = Path(root)
+    texts = ((path, _blob(repo_root, sha, path)) for path in _committed_profile_paths(root, sha))
+    return _flags_of([parse_profile(repo_root / path, text) for path, text in texts if text is not None])
+
+
+def guidance_flags(repo_root: Path) -> tuple[dict[str, dict[str, Any]], str | None]:
+    """``(flags, error)``: model name (``api_id`` or alias) -> ``guidance_bypass_observed`` (M21.44), from the bundled
+    profiles and every profile blob committed on the integration branch, read whatever the working tree holds, so
+    neither drift nor a feature-branch copy clears a flag (outside git, the working tree's profiles). ``error``: the
+    branch could not be resolved, which refuses eligibility rather than reading as no flag."""
+    flags = dict(_bundled_flags())
+    ref, err = policy_source(repo_root)
+    if err:
+        return flags, err
+    if ref is None:
+        theirs = _flags_of(list_profiles(repo_root))
+    else:
+        theirs = _committed_flags(str(repo_root), full_sha(repo_root, ref) or ref)
+    return {**theirs, **flags}, None

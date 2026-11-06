@@ -30,6 +30,10 @@ Rules, in the order they apply:
   score.
 * **Independence (§3.2).** The executor's model is not offered as its own
   reviewer, and with ``reviewers_distinct_families`` one reviewer per family.
+* **Guidance bypass (M21.44).** With ``policy.signed_reviews`` on, an entry
+  whose model a profile records as bypassing the guidance stays out of the
+  executor and reviewer pools (a note says why) unless its roster entry sets
+  ``allow_guidance_bypass_model: true``; the coordinator pool is unaffected.
 * **Strong review.** Each ``policy.strong_review`` item the leaf's touch zones
   meet (:mod:`specy_road.review_strong`) is listed with the reviewers that can
   satisfy it, and its best-ranked one is picked first, whatever its family;
@@ -68,6 +72,9 @@ from specy_road.orchestrate_assign import (  # noqa: F401 — re-exported: calle
     _pause_active,
     assign_leaf,
     entry_may_process,
+    guidance_bypass_refusal,
+    guidance_bypass_warning,
+    guidance_problem,
     is_available,
     may_handle,
     node_eligibility,
@@ -138,6 +145,9 @@ def build_orchestration_plan(root: Path, *, under: str | None = None, today: dat
     local = local_roster_ids(root)
     cands = [Candidate(e, pinned_profile_for_entry(root, e, worktree=roster_from_worktree), e.get("id") in local)
              for e in config.get("roster") or []]
+    for c in cands:   # M21.44: kept out of the executor and reviewer pools, never the coordinator's
+        c.guidance_refusal = guidance_bypass_refusal(config, c.entry, c.profile, root)
+        c.guidance_warning = guidance_bypass_warning(config, c.entry, c.profile, root)
     ref, drift = (WORKTREE_REF, None) if roster_from_worktree else roster_source(root)
     prefix = project_prefix(root)
     flagged = flagged_areas(root, config["policy"])

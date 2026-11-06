@@ -80,6 +80,8 @@ from specy_road.model_profiles import ROLES, Profile
 from specy_road.orchestrate_plan import (
     ANY,
     entry_may_process,
+    guidance_bypass_refusal,
+    guidance_bypass_warning,
     is_available,
     may_handle,
     node_eligibility,
@@ -194,24 +196,35 @@ def reviewer_lines(root: Path, node_id: str, model: str, t: ReviewTarget, ref: s
             + escalated_note(loop, node_id) + (READ_BACK_LINES if read_back else PASTED_LINES)), packet, ""
 
 
+def role_check(root: Path, node_id: str, role: str, model: str) -> tuple[dict, dict, str | None]:
+    """``(config, roster entry, error)``: the pinned roster has ``model`` in the role's need (``rca`` is a reviewer's),
+    available, and not excluded as a guidance-bypass model (M21.44: executor and reviewer needs only)."""
+    config, err = pinned_config(root)
+    if err:
+        return config, {}, f"orchestration config: {err}"
+    entry = next((e for e in config.get("roster") or [] if e.get("id") == model), None)
+    if entry is None:
+        return config, {}, f"{model!r} is not in the roster (roadmap/orchestration.yaml)"
+    need = "reviewer" if role == "rca" else role
+    substitute = need == "reviewer" and substitute_for(config, node_id, model) is not None
+    if need not in (entry.get("roles") or []) and not substitute:
+        return config, entry, f"{model!r} does not have the {need} role in the roster"
+    if not is_available(entry):
+        return config, entry, unavailable_prompt_error(model, entry)
+    if need != "coordinator":
+        return config, entry, guidance_bypass_refusal(config, entry, pinned_profile_for_entry(root, entry), root)
+    return config, entry, None
+
+
 def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
                  ref: str | None = None, context_feedback: bool = False, read_back: bool = True,
                  force_reason: str | None = None) -> tuple[str, Profile | None, str | None]:
     """``(text, profile, error)``; ``ref`` names the branch or commit under review, as ``review-packet --ref``;
     ``context_feedback`` adds the pilot's three-line block to an executor prompt; ``read_back``: :func:`reviewer_lines`;
     ``force_reason`` starts an ``rca`` prompt although the loop is not escalated (:func:`review_rca.rca_trigger`)."""
-    config, err = pinned_config(root)
+    config, entry, err = role_check(root, node_id, role, model)
     if err:
-        return "", None, f"orchestration config: {err}"
-    entry = next((e for e in config.get("roster") or [] if e.get("id") == model), None)
-    if entry is None:
-        return "", None, f"{model!r} is not in the roster (roadmap/orchestration.yaml)"
-    need = "reviewer" if role == "rca" else role
-    substitute = need == "reviewer" and substitute_for(config, node_id, model) is not None
-    if need not in (entry.get("roles") or []) and not substitute:
-        return "", None, f"{model!r} does not have the {need} role in the roster"
-    if not is_available(entry):
-        return "", None, unavailable_prompt_error(model, entry)
+        return "", None, err
     try:
         t = resolve_target(root, node_id, ref)
     except ReviewTargetError as e:
@@ -380,6 +393,8 @@ def _run(ns: argparse.Namespace, root: Path) -> None:
         print(f"note: no profile for {ns.model!r}; the prompt has no model notes (see `specy-road models list`)", file=sys.stderr)
     if ns.channel != "cli":
         raise SystemExit(0)
+    if ns.run and ns.role != "coordinator" and (note := guidance_bypass_warning(config, entry, prof, root)):
+        print(note, file=sys.stderr)   # M21.44: once, at the launch
     if ns.role != "reviewer":
         if not ns.run:
             raise SystemExit(show_cli(prof, out, entry_cli, entry.get("harness"), ns.role))

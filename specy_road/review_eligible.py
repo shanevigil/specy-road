@@ -13,6 +13,7 @@ READY files as ``review_rca.rca_parties`` does:
 * same family as an approval already counted, under ``reviewers_distinct_families`` (not when its approval would
   satisfy an unmet ``policy.strong_review`` item, which counts whatever the family);
 * ``signed_reviews`` is on and its roster entry has no ``public_key``;
+* ``signed_reviews`` is on and its model's profile records guidance bypass, with no opt-in (M21.44);
 * unavailable — ``available: false`` or a ``paused_until`` / ``unavailable_until`` still in force
   (skipped when that model's approval already counts at this commit).
 
@@ -29,6 +30,7 @@ from typing import Any
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.orchestrate_plan import (
     entry_may_process,
+    guidance_problem,
     is_available,
     may_handle,
     node_sensitivity,
@@ -88,7 +90,7 @@ def _rejected(repo_root: Path, gate: Any) -> dict[str, str]:
     return out
 
 
-def _roster_reason(config: dict[str, Any], node: dict[str, Any], model: str,
+def _roster_reason(repo_root: Path, config: dict[str, Any], node: dict[str, Any], model: str,
                    counting: set[str] | frozenset[str] = frozenset()) -> str | None:
     """Why the roster itself keeps ``model`` from reviewing ``node``, else ``None``."""
     entry = next(e for e in config["roster"] if e.get("id") == model)
@@ -98,6 +100,8 @@ def _roster_reason(config: dict[str, Any], node: dict[str, Any], model: str,
         return f"{node['id']} is {node_sensitivity(node)!r}; it may process only {entry_may_process(entry)}"
     if config["policy"].get("signed_reviews") and not entry.get("public_key"):
         return "policy requires signed reviews and its roster entry has no public_key"
+    if why := guidance_problem(repo_root, config, entry):
+        return why
     if model not in counting and not is_available(entry):
         return f"unavailable ({unavailability_reason(entry) or 'availability'})"
     return None
@@ -133,7 +137,7 @@ def reviewer_eligibility(repo_root: Path, node: dict[str, Any], gate: Any, branc
     for entry in config["roster"]:
         model, family = entry["id"], entry.get("family")
         # Every exclusion first: an author or a second same-family approval never reads as counting.
-        why = (_roster_reason(config, node, model, counting=counting) or authors.get(model, ("", None))[1] or rejected.get(model)
+        why = (_roster_reason(repo_root, config, node, model, counting=counting) or authors.get(model, ("", None))[1] or rejected.get(model)
                or (None if _meets_strong(gate, model) else _same_family(gate, model, family)))
         ok = "its approval counts" if model in counting else _eligible_text(gate, node["id"], model)
         if why is None and model in counting and not is_available(entry):

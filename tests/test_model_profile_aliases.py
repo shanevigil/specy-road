@@ -132,3 +132,13 @@ def test_shipped_profiles_alias_every_cursor_id_that_extends_their_api_id() -> N
             missing.append(cid)
     assert missing == []
     assert mp.closest_profile("claude-opus-5.5", profiles).path.name == "claude-opus-5-5.md"
+
+
+def test_only_composer_2_5_records_guidance_bypass() -> None:
+    """M21.44: the shipped composer-2.5 profile records the §9 finding; no other does (composer-2 included)."""
+    flagged = {p.path.name: p.data["guidance_bypass_observed"] for p in mp.list_profiles(TEMPLATE_PROFILES.parent)
+               if "guidance_bypass_observed" in p.data}
+    assert list(flagged) == ["composer-2.5.md"]
+    record = flagged["composer-2.5.md"]
+    assert (str(record["date"]), record["harness"]) == ("2026-11-06", "cursor")
+    assert all(case in record["evidence"] for case in ("CR1", "CR3", "CR5", "2 of 5"))
