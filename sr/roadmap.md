@@ -166,7 +166,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.17` | Writers refuse a symlinked target that leads out of the directory they own: init's generated files, review refusal and packet | task | — | Complete |
 | `M21.18` | A review deferral counts only when its marker is bound to the decision review defer recorded for it and its RCA | task | — | Complete |
 | `M21.19` | apply --dry-run rehearses on a scratch copy whose links are rebased, so no rehearsal can move or change a live file | task | — | Complete |
-| `M21.20` | PM GUI Publish regenerates roadmap.md and roadmap-context.md before committing, and refuses before committing when no remote is set | task | — | Not Started |
+| `M21.20` | PM GUI Publish regenerates roadmap.md and roadmap-context.md before committing, and refuses before committing when no remote is set | task | — | Complete |
 | `M21.21` | review delegate validates the reviewer command as prompt --channel cli does, and the model check splits on newlines only | task | — | Complete |
 | `M21.22` | Small rc4 code fixes: adapter docstring, dead outline writers, pickup hint ignored, land: local wording, unused upgrade helper | task | — | Complete |
 | `M21.23` | rc4 doc corrections on WIP: refresh-profiles default, no private roster ids, exact managed-block markers, reviewer mode, file-cap CHANGELOG entry | task | — | Complete |

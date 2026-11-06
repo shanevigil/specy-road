@@ -273,7 +273,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.20_gui-publish-regenerates-and-needs-a-remote_4e3b3bad-ced1-4ae6-ae94-cabefd11ec19.md",
       "sibling_order": 18,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "PM GUI Publish regenerates roadmap.md and roadmap-context.md before committing, and refuses before committing when no remote is set",
       "touch_zones": [
         "specy_road/pm_publish.py",

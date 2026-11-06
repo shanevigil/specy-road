@@ -105,17 +105,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: gui-publish-regenerates-and-needs-a-remote
-    node_id: M21.20
-    branch: feature/rm-gui-publish-regenerates-and-needs-a-remote
-    touch_zones:
-      - specy_road/pm_publish.py
-      - tests/test_pm_publish.py
-      - docs/pm-gui.md
-      - CHANGELOG.md
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
   - codename: claude-reviewer-schema-and-error
     node_id: M21.24
     branch: feature/rm-claude-reviewer-schema-and-error

@@ -105,7 +105,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.17` Writers refuse a symlinked target that leads out of the directory they own: init's generated files, review refusal and packet `writers-refuse-links-out` — task — **Complete**
   - `M21.18` A review deferral counts only when its marker is bound to the decision review defer recorded for it and its RCA `deferral-bound-to-its-decision` — task — **Complete**
   - `M21.19` apply --dry-run rehearses on a scratch copy whose links are rebased, so no rehearsal can move or change a live file `apply-dry-run-rebases-links` — task — **Complete**
-  - `M21.20` PM GUI Publish regenerates roadmap.md and roadmap-context.md before committing, and refuses before committing when no remote is set `gui-publish-regenerates-and-needs-a-remote` — task — **Not Started**
+  - `M21.20` PM GUI Publish regenerates roadmap.md and roadmap-context.md before committing, and refuses before committing when no remote is set `gui-publish-regenerates-and-needs-a-remote` — task — **Complete**
   - `M21.21` review delegate validates the reviewer command as prompt --channel cli does, and the model check splits on newlines only `review-delegate-validates-reviewer-command` — task — **Complete**
   - `M21.22` Small rc4 code fixes: adapter docstring, dead outline writers, pickup hint ignored, land: local wording, unused upgrade helper `rc4-small-code-fixes` — task — **Complete**
   - `M21.23` rc4 doc corrections on WIP: refresh-profiles default, no private roster ids, exact managed-block markers, reviewer mode, file-cap CHANGELOG entry `rc4-docs-corrections` — task — **Complete**
@@ -263,7 +263,6 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.16` on `feature/rm-upgrade-scratch-git-and-regen` since 2026-11-05
-- `M21.20` on `feature/rm-gui-publish-regenerates-and-needs-a-remote` since 2026-11-05
 - `M21.24` on `feature/rm-claude-reviewer-schema-and-error` since 2026-11-05
 - `M21.27` on `feature/rm-filings-take-the-review-lock` since 2026-11-05
 - `M21.28` on `feature/rm-finish-validates-before-bookkeeping` since 2026-11-05
@@ -276,11 +275,11 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 28 | 4 | 4.33 | 75% | 32 | 4 |
+| `docs` **flagged** | 28 | 3 | 4.20 | 72% | 33 | 4 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 48 | 6 | 3.86 | 69% | 48 | 7 |
-| `tests` **flagged** | 49 | 6 | 3.84 | 70% | 48 | 7 |
-| `CHANGELOG.md` | 12 | 0 | 1.83 | 25% | 14 | 0 |
+| `specy_road` **flagged** | 48 | 5 | 3.79 | 67% | 49 | 7 |
+| `tests` **flagged** | 49 | 5 | 3.77 | 68% | 49 | 7 |
+| `CHANGELOG.md` | 13 | 0 | 1.77 | 23% | 15 | 0 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 0 | 1.00 | 0% | 0 | 0 |

@@ -23,6 +23,14 @@ body. Keep section bodies focused; link to PRs for detail.
 - The reviewer model check splits the harness log on `\n` only, as JSON Lines
   does, so a `result` event whose string carries an unescaped U+2028 or U+2029
   can no longer hide a model mismatch.
+- PM GUI Publish regenerates `roadmap.md` and `roadmap-context.md` before
+  committing, so the pushed commit passes `export --check` and
+  `digest --check`. A graph that does not validate, or a generated file that
+  is a link out of the project, is refused with `400` naming the cause before
+  anything is staged. With no git remote configured, Publish no longer commits
+  locally and then fails the push with git's raw error: `/api/publish/status`
+  reports `blocked_reason: "no_remote"` and `POST /api/publish` returns `400`
+  saying how to add one.
 - Security: no writer follows a symlink out of the directory it owns.
   `init project` treats a dangling `roadmap.md` or `roadmap-context.md` link
   as present (skipped without `--force`), and with `--force` lists a link out
