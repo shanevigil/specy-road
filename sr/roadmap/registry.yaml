@@ -125,3 +125,14 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
+  - codename: verify-normalizes-real-page-text
+    node_id: M21.36
+    branch: feature/rm-verify-normalizes-real-page-text
+    touch_zones:
+      - specy_road/bundled_scripts/brainstorm_verify.py
+      - tests/test_brainstorm_verify.py
+      - docs/brainstorming.md
+      - CHANGELOG.md
+    started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending
