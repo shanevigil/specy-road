@@ -228,6 +228,44 @@ WIP merge: already up to date. Fix commit: see the commit after `b25f3c86` (`fix
 - Complexity against `e3246433`: `ensure_link` is no higher; it is the same branches with one more call inside the existing `try`.
 - Full suite: 6003 passed. `ruff check specy_road tests scripts`: pass. `specy-road file-limits`: pass.
 
+## Fix round 6 (coordinator; review `gpt-6.1-sol-low` at `591a4781`)
+
+WIP merge: already up to date. Fix commit: `75fe2a5e` (the summary commit follows it). The maintainer's skills-link decision stands; this round only makes every entry point apply it to the same link shape.
+
+- **The class: the upgrade mirror showed a link in a different shape from the checkout.**
+  - `Mirror.build` rewrote an absolute link text to `to_sandbox(realpath(src))`, and rewrote a relative one that resolved elsewhere to its resolved target.
+  - So `skill_path` and `safe_write` saw a single hop in the mirror where the checkout had a chain, a target under a linked directory, or a `..` that climbs out and back in.
+  - The result: `upgrade` and `--dry-run` accepted what `refresh-stubs` refused.
+- **Design change, removing the class rather than patching the instance.** The mirror now lays out the filesystem as the checkout sees it: the checkout sits at `outside/<its absolute path>` (`repo = to_sandbox(checkout)`).
+  - **Link text:** every link keeps its own text, one hop: a relative text verbatim, an absolute one with `outside/` in front. A chain, a linked ancestor or a lexical climb resolves in the mirror exactly as in the checkout. The old realpath fix-up loop is gone.
+  - **Content:** content the copy lacks (a target out of the checkout, or under `skip`) is copied to its real path's place (`_place`). A link text naming that place another way reaches it through one more link, and only a path already outside the checkout can cross it. The verdict for such a path is "outside", which does not depend on its shape.
+  - **Ordering:** all links of a round are created before any content is placed, so `mkdir` never makes a real directory where a link belongs. That was a latent bug the new table exposed.
+  - **Simplifications:** `to_sandbox`, `to_real` and `real_text` are one prefix each now. `snapshot` walks `outside` once.
+  - **Invariant:** stated in `Mirror`'s docstring: `upgrade`, `upgrade --dry-run` and `refresh-stubs` give the same verdict for the same checkout.
+- **Tests: one table, the single place for skills-link shapes.** `test_every_entry_point_gives_the_same_skills_link_verdict` covers 7 shapes × {`.agents/skills`, `.claude/skills`} × {`refresh-stubs`, `upgrade`, `upgrade --dry-run`} = 42 rows.
+  - Shapes: relative in-repo and absolute in-repo (allowed); relative chained, absolute chained, absolute under a linked ancestor, outward, and dangling (refused).
+  - Refused rows: `error: <link> is a symlink (to <text>), not a link to a real directory in the repository` (the same line from all three entry points), exit 1, no traceback, and the bytes and link texts of the real skills directory and of `outside` unchanged.
+  - Allowed rows: exit 0. After a real run the stale canonical skill is refreshed and every `.claude/skills` link resolves to its canonical skill from where it lands (the real directory is at depth 3).
+  - The rows that fail on `591a4781` are all 8 upgrade / `--dry-run` rows for absolute chained and absolute under a linked ancestor, for both directories.
+  - Folded into the table and removed: round 5's `test_skill_links_resolve_through_a_skills_directory_alias_at_another_depth`, and the outward, chained and dangling rows of `test_m13_7_notices`. Its refusal test keeps only the non-skills linked directory, renamed `test_a_stub_under_a_linked_directory_that_is_not_a_skills_directory_is_refused`.
+
+### Probes (fix round 6)
+
+- Every place the mirror maps a path, checked for a link hidden from `safe_write` or `skill_path`:
+  - `build` link text: fixed (own text, one hop).
+  - `_ensure` content: placed at its real path's place, reached only from a lexically different name. For an in-checkout name the mirror's own links make `lexists` true, so no extra link is added inside the checkout's tree.
+  - `to_real` and `_diff`: lexical over the mirror walk, which does not follow links. Unchanged in meaning.
+  - `check_changes`: targets from `_diff`. Unchanged.
+  - `apply_plan(plan, copy.to_sandbox)` (dry run): same prefix mapping.
+- Limit: a link whose text goes through a link **under `skip`** (`work/`, not mirrored). The mirror makes that path from directories plus one link, so the link under `work/` is not reproduced. No writer in the refresh writes under `work/`. Stated here as the bound.
+- Limit: a skills link into `.git`. `_ensure` does not copy git internals, so the mirror's link dangles (refused) where the checkout's target is a real directory. Not a write path anyone uses; recorded as the second bound.
+- Verdict and line identical across the three entry points: the table asserts the same `error:` line, because `real_text` maps `outside/` back.
+- Earlier mirror users still pass:
+  - `test_upgrade_preview` (Sol F1 schema through an external alias of the checkout; a git-less copy), `test_upgrade_plan_parity` (hard links, `CLAUDE.md` alias, `AGENTS.md` linked outside, nested project), `test_upgrade_parity` and `test_upgrade_work_templates`;
+  - full suite: 6037 passed.
+- Complexity against `e3246433`: no changed function higher. `Mirror.build` is the same count. `_ensure` is 3 (the content copy is `_place`).
+- `ruff check specy_road tests scripts`: pass. `specy-road file-limits`: pass.
+
 ## Touch zones
 
 All edits are inside the listed zones. No file outside them needed changing, and no new module beyond `specy_road/safe_write.py` (already listed). `specy-road file-limits` passes.
@@ -285,4 +323,5 @@ All edits are inside the listed zones. No file outside them needed changing, and
   - `upgrade_plan`: `check_changes`, `Mirror.real_text`, `_named_in_checkout`.
   - Tests: in `test_m13_7_notices`, `test_only_an_in_repo_skills_directory_link_is_written_through` replaces the two tests whose expectations the decision reverses. The `test_prerelease_files` refresh and specyrd rows expect exit 1. The `test_upgrade_plan_parity` canonical-skill row and `test_sol_f2` expect exit 1 and the refusal line. The digest checkout test now goes through `main`.
 - Fix round 5: in `ensure_link`, the relocated-link `relpath` target (R1). Test: `test_skill_links_resolve_through_a_skills_directory_alias_at_another_depth` (2 rows).
+- Fix round 6: `upgrade_plan.Mirror` layout (`repo = to_sandbox(checkout)`), round-based link creation, `_ensure` and `_place` (the class). Test: `test_every_entry_point_gives_the_same_skills_link_verdict` (42 rows, the single shape table); removed the round-5 alias test and the m13_7 skills-shape rows it covers.
 - Mocks: `os.chmod` (monkeypatch, restored) in the swap test; `sys.argv` for `export_roadmap_md.main`. No call counts or order are asserted.
