@@ -87,6 +87,49 @@ Merged `origin/WIP/improvements-0-3-1` first (`825298ac`). Fix commit: `2337de03
   - `upgrade_plan.apply_plan` `rmdir`/`unlink`: targets are checked by the rule first.
 - Full suite after the fixes: 5980 passed. `ruff check specy_road tests scripts` and `specy-road file-limits`: pass.
 
+## Fix round 2 (review `gpt-6.1-sol-low` at `d1911074`)
+
+Merged `origin/WIP/improvements-0-3-1` first (no conflicts). Fix commit: `cfcb4760`.
+
+- **R3: a lexical `..` that climbs above the root and comes back in. Fixed in the primitive.**
+  - `safe_write._locate` no longer normalizes first. A new `_below` applies `.` and `..` in order from the root anchor (as given, normalized, or resolved), and any `..` that climbs above it is refused, whatever follows. The rule is stated in `_locate`'s docstring.
+  - `digest` now hands its `-o` to the rule as given, not normalized.
+  - Tests: `test_dot_dot_out_of_the_root_is_refused` gains `../root/back` and `a/../../root/back`.
+- **R2: a refusal that still exits 0. Fixed for every reachable instance in the zones.**
+  - `upgrade._check` returns the failing next step: validate errors, or a refused generated file. `run_upgrade` and `_dry_run` exit 1 on either. The module docstring and the dry-run message now state the exit rule.
+  - The same class appeared in two more places:
+    - `init project --force` used to report a linked generated file as `skipped (...)` with exit 0. `_scaffold` now checks the generated files (with `--force`, which rewrites them) before any write, so it exits 1.
+    - `specyrd init` reported a linked ignore file as a `refused:` outcome with exit 0. New `agent_ignores.check_ignore_files` is used by both `init project` and `specyrd init` (`_refuse_unsafe_paths`) before anything is written.
+  - The dead refused-branch in `_write_generated` is removed.
+  - Tests: `test_upgrade.py` rows for dangling, outward and tracked-index links now expect exit 1; a new `dry-run-in-repo-link` row; the `test_writers_refuse_links_out.py` `init --force` rows expect `error:` and exit 1; the specyrd row is renamed `test_specyrd_init_refuses_a_linked_manifest_or_ignore_file`, with a `gitignore-in-repo-link` row.
+  - The new rows fail against `d1911074` (9 failures) and pass now.
+- **R1: still not done.** The touch zones are unchanged after the merge, and the contradicting files are unchanged too:
+  - `tests/test_prerelease_files.py`: refresh rows assert exit 0 and the old text;
+  - `tests/test_m13_7_notices.py`: writes through an in-repo symlinked skills directory;
+  - `specy_road/specyrd_skills.py`: `specyrd init` writes the same files on `resolves_outside`.
+  - Also pinned outside the zones: `tests/test_upgrade_plan_parity.py::test_dry_run_copy_and_real_checkout_end_byte_identical[canonical-skill-linked-outside]` asserts `dry == real == 0` for a canonical skill linked outside. That is the same exit-0-on-refusal class (R2) for upgrade's per-file declined stub entries.
+
+  Both need those paths added to the zones, plus the maintainer decision to drop the M13.7 symlinked-skills-directory layout. With that, the change is: `safe_write.write(repo_root, ...)` in `refresh_stubs._write_if_changed`; drop the `resolves_outside` branch and the `REFUSED` exception in `main`; treat a declined `refuse` entry as exit 1 in `run_upgrade`; update those expectations.
+
+## Probes (fix round 2)
+
+- R3, paths normalized before the rule could see a `..`: searched every changed caller.
+  - `digest_cli`: fixed; it passes `out` as given.
+  - `archive_restore`: `root / rel` raw; `chunk-out` and `..` rows refused.
+  - `init_project`, `refresh_schemas`, `refresh_stubs`, `specyrd_init`, `generated_files`, `do_next_task_register`, `export_roadmap_md`: build `root / name` from fixed names; no normalization.
+  - `upgrade_plan.refused_changes`: targets are `realpath` results (no `..` left), checked against the resolved checkout.
+- R3, the primitive's anchors: a root given relative, with `..` in it, or through a link still matches a path spelled from it, because the anchors are absolute-as-given, normalized and resolved. Existing suites that call it with such roots pass (full suite 5997 passed).
+- R2, a refusal that leaves exit 0, command by command:
+  - `upgrade` real and `--dry-run`: fixed.
+  - `init project --force`: fixed.
+  - `specyrd init` ignore file: fixed.
+  - `refresh-stubs`: exit 1 for a rule refusal; the outward `REFUSED` case is R1, blocked.
+  - `upgrade` declined stub entries: blocked by `test_upgrade_plan_parity`.
+  - `export`, `digest`, `refresh-schemas`: exit 1 already.
+  - `archive_cli` restore: `ValueError`, exit 1.
+  - `regenerate_generated_files`, called from archive/GUI/finish outside the zones: prints and returns the refused names; its callers' exit codes are outside the zones. Not changed.
+- Full suite: 5997 passed. `ruff check specy_road tests scripts`: pass. `specy-road file-limits`: pass.
+
 ## Touch zones
 
 All edits are inside the listed zones. No file outside them needed changing, and no new module beyond `specy_road/safe_write.py` (already listed). `specy-road file-limits` passes.
@@ -131,4 +174,11 @@ All edits are inside the listed zones. No file outside them needed changing, and
   - `digest_cli`: checkout containment via `git_root` and `is_relative_to` (R2).
   - `refresh_schemas`: a separate check pass before the copy pass (R3 class).
   - Tests: `test_digest_checks_an_absolute_output_against_the_checkout` (2 rows); deep rows in `test_archive_restore_refuses_before_the_first_change` and the `_unpack_linked` layout; `test_restoring_the_last_record_keeps_an_unrelated_linked_directory`; the stale-earlier-schema setup in `test_schema_refresh_and_upgrade_refuse_a_linked_schema`.
+- Fix round 2:
+  - `safe_write._below`: the in-order `..` rule (R3).
+  - `agent_ignores.check_ignore_files`: one pre-check of the ignore files for `init project` and `specyrd init` (R2 class).
+  - `specyrd_init._refuse_unsafe_paths`: replaces `_refuse_unsafe_manifest` (R2 class).
+  - `init_project._scaffold`: the generated-file check under `--force` (R2 class).
+  - `upgrade._check`: returns the failing step (R2).
+  - Tests: re-entry cases in `test_dot_dot_out_of_the_root_is_refused`; the `dry-run-in-repo-link` row and the exit-1 rows in `test_upgrade.py`; the `gitignore-in-repo-link` row; the `init --force` expectation.
 - Mocks: `os.chmod` (monkeypatch, restored) in the swap test; `sys.argv` for `export_roadmap_md.main`. No call counts or order are asserted.
