@@ -220,7 +220,8 @@
         "A roster or roster_add entry with family human and any model launch configuration gets no exemption, or is refused at the configuration boundary; a person with no launch configuration keeps it",
         "Model discovery reads a profile's access.cli through command_model, committed copies included, across worker delegate and the executor prompt path",
         "The committed-profile scan reads NUL-delimited ls-tree -z output, so a flagged profile at a path git would quote is found",
-        "Public CLI rows cover each case. docs state the bounded rule: the exclusion covers declared configuration, not a model hidden in a custom command. Source: rc4 delta review F1-F3, sr/work/release-reviews/rc4-delta/logs/sol.out"
+        "Public CLI rows cover each case. docs state the bounded rule: the exclusion covers declared configuration, not a model hidden in a custom command. Source: rc4 delta review F1-F3, sr/work/release-reviews/rc4-delta/logs/sol.out",
+        "With signed reviews on, an entry whose channels.cli or cli_resume has a model flag command_model cannot read is refused (fail closed), and launch names compare through model_names.normalise. Source: rc4 delta review, Grok FAIL 2, sr/work/release-reviews/rc4-delta/grok.md"
       ],
       "codename": "guidance-exclusion-closes-three-bypasses",
       "dependencies": [],
@@ -244,7 +245,8 @@
       "acceptance": [
         "A real upgrade's planning-mirror refresh runs with the same isolated config as the dry run, and caller config is restored before real-checkout operations",
         "Git calls upgrade makes in the project, including file_limits_engine.git_ignored_paths, use the GIT_-stripped environment and a timeout, so a core.fsmonitor set through GIT_CONFIG_COUNT does not run; config in the caller's own files still applies there",
-        "A configuration probe covers real upgrade and dry run. Source: rc4 delta review W1, W2 and the sandbox re-test, sr/work/sandbox-feedback/2026-11-06-rc4-retest-89c7942d.md"
+        "A configuration probe covers real upgrade and dry run. Source: rc4 delta review W1, W2 and the sandbox re-test, sr/work/sandbox-feedback/2026-11-06-rc4-retest-89c7942d.md",
+        "A real upgrade with GIT_DIR, GIT_WORK_TREE or GIT_CONFIG_COUNT set runs its plan inside scratch_environ and validates with GIT_ dropped, so it writes nothing to the repository those variables name and raises no traceback; tests cover dry_run=False; upgrade --help states exit 2 for a failed git call. Source: rc4 delta review, Grok FAIL 1 and WARNING 1"
       ],
       "codename": "upgrade-git-calls-share-one-environment",
       "dependencies": [],
