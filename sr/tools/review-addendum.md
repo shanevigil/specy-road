@@ -11,3 +11,8 @@ record it refuses costs a whole rerun. Before you send the final message, check 
 Write ONE observation per line. A list joined by commas ("no X, Y or Z were added") counts as several observations, each needing its
 own reason: split such a list into separate lines, each ending with its own "not a defect because <reason>".
 Keep the notes short: fewer lines, fewer refusals. Evidence goes in commands_rerun, not in free prose.
+Sandboxed test runs: FastAPI TestClient suites (tests/test_gui_*.py, tests/test_roadmap_gui_*.py,
+tests/test_gui_outline_contract.py) stall in some reviewer sandboxes. When the leaf's READY file records those suites run
+by `specy-road ready --run` at the reviewed commit with exit 0, that recorded run is the verification: cite it in
+commands_rerun. Your own rerun timing out is an environment limit, not a defect; do not block on it. Block only if the
+recorded run is missing, not at this commit, or not exit 0, or if you find a product cause.
