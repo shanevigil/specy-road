@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-import subprocess
+import shlex
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -11,6 +11,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from specy_road import review_lock
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.finish_implementation_check import base_ref
 from specy_road.git_changed_paths import diff_paths
@@ -20,7 +21,9 @@ from specy_road.orchestration_config import effective_config, roster_entry
 from specy_road.review_files import (
     HUMAN, READY_PREFIX, load_ready, render_front_matter, review_path, reviews_dir, write_review,
 )
+from specy_road.sibling_repos import sibling_heads_field
 from specy_road.toolkit_version import stamp_review_toolkit_version
+from specy_road.ready_run_checks import prepare_live_runs, run_argv, run_check
 from specy_road.review_policy_ref import policy_source
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
 from specy_road.review_target import ReviewTargetError, full_sha, resolve_target
@@ -32,7 +35,9 @@ def write_human_approval(repo_root: Path, node: dict[str, Any], commit: str, sig
 
     A signature is verified against the roster's ``human`` ``public_key``
     before anything is written: a wrong key raises :class:`SigningError` and
-    leaves no record behind, as ``review record --sign-key`` does.
+    leaves no record behind, as ``review record --sign-key`` does. While a reviewer run on the leaf holds its
+    hand-off directory past :data:`~specy_road.review_lock.FILING_WAIT`, raises
+    :class:`~specy_road.review_lock.ReviewRunBusy` and writes nothing.
     """
     body = "Approved interactively with `specy-road mark-implementation-reviewed`.\n"
     data = {
@@ -62,8 +67,8 @@ def write_human_approval(repo_root: Path, node: dict[str, Any], commit: str, sig
             raise SigningError(f"the signature does not verify against the roster public_key for "
                                f"{HUMAN!r} ({why}); wrong key?")
     path = review_path(repo_root, node["id"], HUMAN)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(render_front_matter(data, body), encoding="utf-8")
+    with review_lock.review_run_lock(path.parent, wait=review_lock.FILING_WAIT):
+        path.write_text(render_front_matter(data, body), encoding="utf-8")
     return path
 
 
@@ -162,23 +167,40 @@ def ready_body(red_green: list[tuple[str, int]], note: str | None) -> str:
     return "\n".join(out)
 
 
-#: How many lines of a ``--run`` command's output the READY keeps as its ``tail``.
-READY_TAIL_LINES = 20
-
-
-def run_check(cmd: str) -> dict[str, Any]:
-    """Run ``cmd`` in a shell from the current directory, as the executor would: ``{cmd, exit, tail}``."""
-    r = subprocess.run(cmd, shell=True, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                       text=True, errors="replace", check=False)
-    tail = "\n".join((r.stdout or "").rstrip().splitlines()[-READY_TAIL_LINES:])
-    return {"cmd": cmd, "exit": r.returncode, "tail": tail or "(no output)"}
-
-
 def _ready_errors(text: str, node_id: str, t: Any) -> list[str]:
     """The same checks ``handoff status`` makes, on ``text`` before anything is written."""
     with tempfile.TemporaryDirectory() as td:
         (Path(td) / "READY.md").write_text(text, encoding="utf-8")
         return load_ready(Path(td) / "READY.md", node_id, (t.entry or {}).get("branch"), acceptance_ids(t.node)).errors
+
+
+_RED_GREEN_HINT = ("Fix it, or, if it is a check meant to fail without the fix, pass it as --red-green "
+                   "instead of --verify or --run")
+
+
+def _live_run_rows(runs: list[str], argv_runs: list[list[str]]) -> tuple[list[dict[str, Any]], str | None]:
+    """Run ``--run`` and ``--run-argv`` verifiers; return new rows or a refusal message."""
+    rows: list[dict[str, Any]] = []
+    for cmd in runs:
+        print(f"running: {cmd}", file=sys.stderr)
+        v = run_check(cmd)
+        if v["exit"] != 0:
+            return rows, (f"failing verifier: `{cmd}` exited {v['exit']}; its last lines:\n{v['tail']}\n"
+                          f"{_RED_GREEN_HINT}")
+        if w := v.get("warning"):
+            print(f"warning: {w}", file=sys.stderr)
+        rows.append(v)
+    for argv in argv_runs:
+        cmd = shlex.join(argv)
+        print(f"running: {cmd}", file=sys.stderr)
+        v = run_argv(argv)
+        if v["exit"] != 0:
+            return rows, (f"failing verifier: `{cmd}` exited {v['exit']}; its last lines:\n{v['tail']}\n"
+                          f"{_RED_GREEN_HINT}")
+        if w := v.get("warning"):
+            print(f"warning: {w}", file=sys.stderr)
+        rows.append(v)
+    return rows, None
 
 
 def cmd_ready(ns: argparse.Namespace) -> int:
@@ -187,15 +209,17 @@ def cmd_ready(ns: argparse.Namespace) -> int:
     ``--run`` commands run last, after every cheap refusal, so a wrong branch never costs a test run.
     """
     root = resolve_repo_root(ns)
-    runs = [c.strip() for c in getattr(ns, "run", None) or []]
+    raw_runs = getattr(ns, "run", None) or []
+    run_argv_specs = getattr(ns, "run_argv", None) or []
     try:
         verify = [{"cmd": cmd, "exit": code} for cmd, code in (parse_check(s) for s in ns.verify)]
         red_green = [parse_check(s) for s in ns.red_green]
         t = resolve_target(root, ns.node_id, "HEAD")
     except (ValueError, ReviewTargetError) as e:
         return _refuse(str(e))
-    if not all(runs):
-        return _refuse("--run needs a command")
+    runs, argv_runs, live_err = prepare_live_runs(raw_runs, run_argv_specs)
+    if live_err:
+        return _refuse(live_err)
     if failing := [f"`{v['cmd']}` exited {v['exit']}" for v in verify if v["exit"] != 0]:
         return _refuse(f"failing verifier: {'; '.join(failing)}. {_RED_GREEN_HINT}")
     branch = git_text(["branch", "--show-current"], root)
@@ -205,28 +229,21 @@ def cmd_ready(ns: argparse.Namespace) -> int:
     if changed is None:
         return _refuse(f"git cannot list the paths changed in {t.base[:12]}...{t.commit[:12]}")
     data = {"node_id": ns.node_id, "agent": ns.model, "branch": branch, "commit": t.commit, "base": t.base,
-            "changed_paths": changed, "verify": verify}
+            "changed_paths": changed, "verify": verify, **sibling_heads_field(root)}
     body = ready_body(red_green, ns.note)
     if errs := _ready_errors(render_front_matter(data, body), ns.node_id, t):
         return _refuse("; ".join(errs))
-    for cmd in runs:
-        print(f"running: {cmd}", file=sys.stderr)
-        v = run_check(cmd)
-        if v["exit"] != 0:
-            return _refuse(f"failing verifier: `{cmd}` exited {v['exit']}; its last lines:\n{v['tail']}\n"
-                           f"{_RED_GREEN_HINT}")
-        verify.append(v)
-    text = render_front_matter(data, body)
+    live, refuse = _live_run_rows(runs, argv_runs)
+    if refuse:
+        return _refuse(refuse)
+    verify.extend(live)
+    text = render_front_matter({**data, "verify": verify}, body)
     if errs := _ready_errors(text, ns.node_id, t):
         return _refuse("; ".join(errs))
     dest = reviews_dir(root, ns.node_id) / f"{READY_PREFIX}{ns.model}.md"
     write_review(dest, text)
     print(f"Wrote {dest} at {t.commit[:12]}")
     return 0
-
-
-_RED_GREEN_HINT = ("Fix it, or, if it is a check meant to fail without the fix, pass it as --red-green "
-                   "instead of --verify or --run")
 
 
 def _refuse(msg: str) -> int:
@@ -242,6 +259,11 @@ def add_ready_parser(sub: argparse._SubParsersAction) -> None:
                    help="Run this verifier or test now from the current directory and record its exit and the "
                         "last lines of its output, which the review packet shows (repeatable); a non-zero exit "
                         "is refused")
+    r.add_argument("--run-argv", action="append", default=[], metavar="JSON",
+                   help="Like --run but runs a JSON array of strings without a shell (repeatable); invalid JSON "
+                        "or a value that is not a non-empty JSON array of strings whose first element is non-empty "
+                        "(e.g. not-json, [], {}, [1], [\"\"]) is refused before anything runs; later elements may "
+                        'be empty or whitespace; e.g. ["echo", "ok"] or ["echo", ""] is accepted')
     r.add_argument("--verify", action="append", default=[], metavar="CMD=EXIT",
                    help="A verifier or test you ran and its exit, without its output (repeatable); "
                         "a non-zero exit is refused")

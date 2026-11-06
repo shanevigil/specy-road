@@ -9,12 +9,14 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
+from specy_road.bundled_scripts.effective_dependency_checks import cycle_check, effective_cycle_check
 from specy_road.bundled_scripts.planning_artifacts import collect_planning_artifact_errors
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
-from specy_road.model_profiles import roster_profile_gaps
+from specy_road.roster_profile_check import report_roster_profiles
 from specy_road.review_gate import review_required
 from specy_road.review_gate_agreement import gate_config_mismatch
 from specy_road.runtime_paths import default_user_repo_root, git_root
+from specy_road.workflow_prefs import warn_summary_rule
 
 from specy_road.bundled_scripts.brief_acceptance import warn_acceptance_merged, warn_acceptance_missing, warn_unauthored
 from specy_road.bundled_scripts.planning_sheet_bootstrap import unauthored_leaves
@@ -97,35 +99,6 @@ def validate_dependency_ids(
             msg = f"roadmap: node {nid} depends on missing node_key {dep}"
             print(msg, file=sys.stderr)
             raise SystemExit(1)
-
-
-def cycle_check(nodes: list[dict]) -> None:
-    """DFS cycle detection on dependency edges."""
-    by_key = {n["node_key"]: n for n in nodes}
-    visited: set[str] = set()
-    stack: set[str] = set()
-
-    def visit(nk: str) -> None:
-        if nk in stack:
-            n = by_key.get(nk, {})
-            msg = (
-                f"roadmap: dependency cycle involving "
-                f"{n.get('id', nk)}"
-            )
-            print(msg, file=sys.stderr)
-            raise SystemExit(1)
-        if nk in visited:
-            return
-        stack.add(nk)
-        for dep in by_key[nk].get("dependencies") or []:
-            if dep in by_key:
-                visit(dep)
-        stack.remove(nk)
-        visited.add(nk)
-
-    for nk in by_key:
-        if nk not in visited:
-            visit(nk)
 
 
 def validate_parents(nodes: list[dict]) -> None:
@@ -339,8 +312,7 @@ def warn_authoring_gaps(
 
 
 def run_validation(
-    roadmap: dict,
-    registry: dict,
+    roadmap: dict, registry: dict,
     no_overlap_warn: bool,
     *,
     repo_root: Path | None = None,
@@ -363,6 +335,7 @@ def run_validation(
     validate_gates(nodes)
     validate_dependency_ids(nodes, r)
     cycle_check(nodes)
+    effective_cycle_check(nodes)
     validate_unique_titles(nodes)
     validate_unique_title_slugs(nodes)
     validate_codenames(nodes)
@@ -384,16 +357,16 @@ def run_validation(
         raise SystemExit(1)
 
     warn_stale_parent_status(nodes)
-    for launchable, msg in roster_profile_gaps(r):   # unlaunchable: a stdout notice --strict does not count
-        print(f"{'warning' if launchable else 'notice'}: {msg}", file=sys.stderr if launchable else sys.stdout)
+    report_roster_profiles(r)   # unmatched ids, and profile: values that do not resolve
     warn_touch_zones_match_nothing(nodes, r, git_root=git_root(r) or r)
-    warn_untracked_zones(nodes, r)
+    warn_untracked_zones(nodes, r, claims=registry.get("entries") or [], show_all=show_all)
+    warn_summary_rule(r, nodes)   # implementation_summary: commit against a .gitignore that ignores summaries (M15.22)
     warn_authoring_gaps(nodes, r, gate, show_all=show_all, strict_authoring=strict_authoring)
     warn_acceptance_merged(nodes)
     warn_registry_touch_zone_overlap(
         registry.get("entries") or [],
         no_overlap_warn=no_overlap_warn,
-        overlap_scope=overlap_scope,
+        overlap_scope=overlap_scope, repo_root=r,
     )
 
     print("OK: roadmap and registry validate.")

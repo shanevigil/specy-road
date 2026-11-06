@@ -1,37 +1,14 @@
-"""Outline move/reorder: update parent_id + sibling_order, renumber display ids, persist chunks."""
+"""Outline move/reorder: update parent_id + sibling_order, renumber display ids (subtree-only by default), persist chunks."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, roadmap_dir, write_json_chunk
-from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
 from specy_road.bundled_scripts.roadmap_gui_tree import indent_parent_id, outdent_parent_id
 from specy_road.bundled_scripts.roadmap_layout import sibling_sort_key
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_outline_renumber import can_indent_to_parent, renumber_display_ids_inplace
-from specy_road.bundled_scripts.sync_planning_artifacts import sync_planning_artifacts
-from specy_road.registry_yaml import registry_path
 from specy_road.node_kinds import allows_children, is_gate, parent_type_allowed
-from specy_road.bundled_scripts.roadmap_chunk_utils import manifest_includes
-
-
-def persist_merged_nodes(root: Path, merged: list[dict]) -> None:
-    """Write merged node list back to JSON chunks (match by ``node_key``, preserve chunk order)."""
-    by_key = {n["node_key"]: n for n in merged}
-    base = roadmap_dir(root)
-    for rel in manifest_includes(root):
-        path = (base / rel).resolve()
-        if not path.is_file() or path.suffix.lower() != ".json":
-            continue
-        chunk_nodes = load_json_chunk(path)
-        out = []
-        for old in chunk_nodes:
-            k = old.get("node_key")
-            if not isinstance(k, str) or k not in by_key:
-                raise ValueError(f"chunk {rel}: unknown node_key {k!r}")
-            out.append(by_key[k])
-        write_json_chunk(path, out)
 
 
 def ordered_sibling_ids(
@@ -52,8 +29,18 @@ def reorder_siblings(
     root: Path,
     parent_id: str | None,
     ordered_child_ids: list[str],
+    *,
+    renumber_outline: bool = False,
 ) -> None:
-    """Set sibling_order for children of parent_id and renumber all display ids."""
+    """Set ``sibling_order`` for the children of ``parent_id``; no id changes.
+
+    Outline order is ``sibling_order``-driven (``sibling_sort_key``), so a
+    reorder needs no renumber. ``renumber_outline=True`` also renumbers every
+    display id from the new shape. Either way the write is staged through one
+    ``AtomicWritePlan`` and validated before anything reaches disk.
+    """
+    from specy_road.bundled_scripts.roadmap_move_node import stage_id_rewrite
+
     nodes = list(load_roadmap(root)["nodes"])
     by_id = {n["id"]: n for n in nodes}
     cur = _siblings(nodes, parent_id, by_id)
@@ -61,11 +48,14 @@ def reorder_siblings(
         raise ValueError("ordered_child_ids must match current children of parent_id")
     for i, nid in enumerate(ordered_child_ids):
         by_id[nid]["sibling_order"] = i
-    old_to_new = renumber_display_ids_inplace(nodes)
-    sync_planning_artifacts(root, nodes)
-    persist_merged_nodes(root, nodes)
-    sync_registry_node_ids(root, old_to_new)
-    run_validate_raise(root)
+    old_to_new = renumber_display_ids_inplace(nodes) if renumber_outline else {}
+    stage_id_rewrite(
+        root,
+        nodes,
+        nodes if renumber_outline else [],
+        old_to_new,
+        claims_in_map_only=False,
+    )
 
 
 def _validate_reparent_target(
@@ -141,31 +131,74 @@ def move_node_outline(
     node_key: str,
     new_parent_id: str | None,
     new_index: int,
-) -> None:
+    *,
+    new_id: str | None = None,
+    fill_gaps: bool = False,
+    renumber_outline: bool = False,
+    rewrite_refs: bool = False,
+) -> dict[str, str]:
     """
     Reparent ``node_key`` under ``new_parent_id`` (None = root) at sibling index ``new_index``.
-    Renumbers display ids for the whole roadmap. Subtree moves with the node.
+    Subtree moves with the node. Renumbers only the moved subtree, like the
+    ``move-node`` CLI (``new_id`` / ``fill_gaps`` choose the moved node's id);
+    ``renumber_outline=True`` renumbers display ids for the whole roadmap.
 
     Atomic: the chunk rewrites, planning-sheet renames and registry update are
     staged together and validated before any of them reaches disk. This used to
     persist all three and validate afterwards, so a rejected move left the
     roadmap unloadable — the same defect ``edit-node`` was fixed for in
-    ``v0.1.4``. See ``bundled_scripts/roadmap_move_node.py``.
+    ``v0.1.4``. See ``bundled_scripts/roadmap_move_node.py``. Returns the
+    ``old -> new`` id map. ``rewrite_refs`` also rewrites the map's ids in
+    every node's planning sheet, title and acceptance (``rename-refs``).
     """
     from specy_road.bundled_scripts.roadmap_move_node import move_node
 
-    move_node(root, node_key, new_parent_id, new_index)
+    return move_node(
+        root,
+        node_key,
+        new_parent_id,
+        new_index,
+        renumber_outline=renumber_outline,
+        new_id=new_id,
+        fill_gaps=fill_gaps,
+        rewrite_refs=rewrite_refs,
+    )
 
 
-def apply_indent(repo_root: Path, node_id: str) -> bool:
-    """Nest under the sibling above (same parent). Returns False if no-op."""
+def print_id_map(old_to_new: dict[str, str]) -> bool:
+    """Print the ids that changed; return whether any did."""
+    renamed = {o: n for o, n in old_to_new.items() if o != n}
+    if not renamed:
+        return False
+    print("\nDisplay ids changed (an id is a position, not an identity):")
+    for old, new in sorted(renamed.items()):
+        print(f"  {old} -> {new}")
+    return True
+
+
+def _load_with_node(repo_root: Path, node_id: str) -> tuple[list[dict], dict[str, dict]]:
+    """Load the graph for indent/outdent; an unknown ``node_id`` is a ``ValueError``."""
     nodes = list(load_roadmap(repo_root)["nodes"])
     by_id = {n["id"]: n for n in nodes}
+    if node_id not in by_id:
+        raise ValueError(f"unknown node id {node_id!r}")
+    return nodes, by_id
+
+
+def apply_indent(
+    repo_root: Path,
+    node_id: str,
+    *,
+    renumber_outline: bool = False,
+    rewrite_refs: bool = False,
+) -> dict[str, str] | None:
+    """Nest under the sibling above (same parent). Returns the id map, None if no-op."""
+    nodes, by_id = _load_with_node(repo_root, node_id)
     new_parent = indent_parent_id(by_id, node_id)
     if new_parent is None:
-        return False
+        return None
     if not can_indent_to_parent(nodes, by_id, node_id, new_parent):
-        return False
+        return None
     nk = by_id[node_id]["node_key"]
     sibs = [
         n["id"]
@@ -173,56 +206,40 @@ def apply_indent(repo_root: Path, node_id: str) -> bool:
         if (n.get("parent_id") or None) == new_parent and n["id"] != node_id
     ]
     sibs.sort(key=lambda x: sibling_sort_key(x, by_id))
-    move_node_outline(repo_root, nk, new_parent, len(sibs))
-    return True
+    return move_node_outline(
+        repo_root,
+        nk,
+        new_parent,
+        len(sibs),
+        renumber_outline=renumber_outline,
+        rewrite_refs=rewrite_refs,
+    )
 
 
-def apply_outdent(repo_root: Path, node_id: str) -> bool:
-    """Become sibling after former parent. Returns False if no-op."""
-    nodes = list(load_roadmap(repo_root)["nodes"])
-    by_id = {n["id"]: n for n in nodes}
+def apply_outdent(
+    repo_root: Path,
+    node_id: str,
+    *,
+    renumber_outline: bool = False,
+    rewrite_refs: bool = False,
+) -> dict[str, str] | None:
+    """Become sibling after former parent. Returns the id map, None if no-op."""
+    nodes, by_id = _load_with_node(repo_root, node_id)
     target = outdent_parent_id(by_id, node_id)
     if target is None:
-        return False
+        return None
     n = by_id[node_id]
     parent_of = n.get("parent_id")
     if not parent_of:
-        return False
+        return None
     new_parent_id = None if target == "" else target
     gp_sibs = ordered_sibling_ids(nodes, new_parent_id, by_id)
     pi = gp_sibs.index(parent_of)
-    move_node_outline(repo_root, n["node_key"], new_parent_id, pi + 1)
-    return True
-
-
-def sync_registry_node_ids(root: Path, old_to_new: dict[str, str]) -> None:
-    """Update roadmap/registry.yaml entry ``node_id`` when display ids change."""
-    reg_path = registry_path(root)
-    if not reg_path.is_file():
-        return
-    if not old_to_new:
-        return
-    # Minimal approach: replace exact node_id lines (quoted values avoided; YAML simple case)
-    import yaml
-
-    data = yaml.safe_load(reg_path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
-        return
-    entries = data.get("entries")
-    if not isinstance(entries, list):
-        return
-    changed = False
-    for e in entries:
-        if not isinstance(e, dict):
-            continue
-        nid = e.get("node_id")
-        if isinstance(nid, str) and nid in old_to_new:
-            e["node_id"] = old_to_new[nid]
-            changed = True
-    if changed:
-        reg_path.write_text(
-            yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False),
-            encoding="utf-8",
-        )
-
-
+    return move_node_outline(
+        repo_root,
+        n["node_key"],
+        new_parent_id,
+        pi + 1,
+        renumber_outline=renumber_outline,
+        rewrite_refs=rewrite_refs,
+    )

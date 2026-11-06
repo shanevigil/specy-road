@@ -36,6 +36,7 @@ DEFAULT_OUTPUT = "roadmap-context.md"
 # unbounded section is summarised rather than listed.
 _MAX_DROPPED_DEPS = 25
 _MAX_ARCHIVES = 40
+_MAX_AREAS = 30
 
 
 def _load_nodes(root: Path) -> list[dict[str, Any]]:
@@ -243,6 +244,39 @@ def _section_claims(root: Path) -> list[str]:
     return [*out, ""]
 
 
+def _section_quality(root: Path, nodes: list[dict[str, Any]]) -> list[str]:
+    """Which areas keep costing extra review, from the ``Review-tally`` trailers in tracked history only."""
+    from specy_road.review_tally import area_quality, quality_policy
+
+    try:
+        policy = quality_policy(root)   # as committed at HEAD: a local overlay never changes this section
+        areas = area_quality(root, nodes)
+    except Exception:  # noqa: BLE001 - history is context, never fatal
+        return []
+    if not areas:
+        return []
+    threshold = float(policy["quality_threshold"])
+    out = [
+        "## Quality by area",
+        "",
+        f"Review cost of the last {int(policy['quality_window'])} completed leaves, per touch-zone area, "
+        "from the `Review-tally` trailers on their gate commits. Block rate is the share of tallied leaves "
+        f"with at least one blocking round; areas above {threshold:.0%} are **flagged** and listed first. "
+        "Plan tighter acceptance there.",
+        "",
+        "| Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for a in areas[:_MAX_AREAS]:
+        mean = "—" if a.mean_rounds is None else f"{a.mean_rounds:.2f}"
+        rate = "—" if a.block_rate is None else f"{a.block_rate:.0%}"
+        flag = " **flagged**" if a.flagged else ""
+        out.append(f"| `{a.area}`{flag} | {a.leaves} | {a.no_tally} | {mean} | {rate} | {a.integrity} | {a.rca} |")
+    if len(areas) > _MAX_AREAS:
+        out.append(f"\n_…and {len(areas) - _MAX_AREAS} more areas._")
+    return [*out, "", "Leaves with no tally landed before tallies were recorded; they are left out of the rates.", ""]
+
+
 def _section_footer() -> list[str]:
     return [
         "## Reaching the detail behind this",
@@ -278,6 +312,7 @@ def render_digest(root: Path) -> str:
         _section_dropped_dependencies(root, nodes),
         _section_archived(root),
         _section_claims(root),
+        _section_quality(root, nodes),
         _section_footer(),
     ]
     body = "\n".join("\n".join(part) for part in parts if part)

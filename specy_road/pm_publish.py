@@ -7,6 +7,10 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.digest import DEFAULT_OUTPUT as ROADMAP_CONTEXT
+from specy_road.generated_files import (
+    refused_generated_files,
+    regenerate_generated_files,
+)
 from specy_road.git_subprocess import (
     current_branch_name,
     git_ok,
@@ -25,6 +29,11 @@ PUBLISH_PATHSPECS: tuple[str, ...] = (
 )
 
 _MAX_MESSAGE_LEN = 500
+
+NO_REMOTE_DETAIL = (
+    "No git remote is configured, so Publish cannot push. Add one "
+    "(git remote add origin <url>), push the branch once with -u, then publish again."
+)
 
 
 def _norm_rel(path: str) -> str:
@@ -100,6 +109,21 @@ def _upstream_ref(repo_root: Path) -> str | None:
     return (out or "").strip()
 
 
+def _push_remote_missing(repo_root: Path, branch: str | None) -> bool:
+    """True when ``git push`` has no remote: none configured, or the configured one is gone."""
+    remotes = set(_git_lines(repo_root, ["remote"]))
+    if not remotes:
+        return True
+    keys = ["remote.pushDefault"]
+    if branch:
+        keys = [f"branch.{branch}.pushRemote", *keys, f"branch.{branch}.remote"]
+    for key in keys:
+        named = _git_lines(repo_root, ["config", "--get", key])
+        if named:
+            return named[0] not in remotes and named[0] != "."
+    return False
+
+
 def classify_publish_status(repo_root: Path) -> PublishStatus:
     """Inspect git state; determine if scoped publish is allowed."""
     if not is_git_worktree(repo_root):
@@ -153,6 +177,18 @@ def classify_publish_status(repo_root: Path) -> PublishStatus:
             upstream=upstream,
             scope_paths=sorted(in_scope),
             out_of_scope_paths=out_scope[:50],
+        )
+
+    if _push_remote_missing(repo_root, branch):
+        return PublishStatus(
+            can_publish=False,
+            scope_dirty=bool(in_scope),
+            blocked=True,
+            blocked_reason="no_remote",
+            detail=NO_REMOTE_DETAIL,
+            current_branch=branch,
+            upstream=upstream,
+            scope_paths=sorted(in_scope),
         )
 
     scope_dirty = bool(in_scope)
@@ -222,9 +258,25 @@ def _raise_push_failure(
     raise RuntimeError(hint[:2000])
 
 
+def _regenerate_for_publish(repo_root: Path) -> None:
+    """Validate the graph, then re-render ``roadmap.md`` and ``roadmap-context.md``.
+
+    Raises ``ValueError`` before writing anything when the graph does not load or
+    validate, or when a generated file is a link out of the project (M21.17).
+    """
+    # Imported here: roadmap_crud_ops pulls in the whole roadmap toolchain.
+    from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
+
+    run_validate_raise(repo_root)
+    refused = refused_generated_files(repo_root)
+    if refused:
+        raise ValueError("; ".join(refused.values()))
+    regenerate_generated_files(repo_root)
+
+
 def publish_roadmap(repo_root: Path, message: str) -> dict[str, Any]:
     """
-    Stage publish-scope paths, commit, push to upstream.
+    Regenerate the generated files, stage publish-scope paths, commit, push to upstream.
 
     Returns a dict with ``ok``, ``commit_sha`` (short), etc., or raises ``ValueError``
     / ``RuntimeError`` with a message suitable for API ``detail``.
@@ -243,6 +295,8 @@ def publish_roadmap(repo_root: Path, message: str) -> dict[str, Any]:
         raise ValueError(
             "Detached HEAD or no branch checked out. Check out a branch before publishing.",
         )
+
+    _regenerate_for_publish(repo_root)
 
     # Stage only in-scope files (avoid ``git add planning/`` when that dir is missing).
     files = scope_changed_files(repo_root)

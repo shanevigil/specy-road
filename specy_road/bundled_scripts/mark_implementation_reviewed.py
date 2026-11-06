@@ -8,7 +8,7 @@ an interactive approval files ``REVIEW-human.md`` and closes the gate in one
 step. ``--yes`` never creates a review: it only commits an approval the
 recorded reviews already earned, so an unattended coordinator cannot approve
 its own work. The approving reviews are written as ``Reviewed-by`` trailers on
-the registry commit.
+the registry commit, followed by the leaf's ``Review-tally`` (``review_tally``).
 
 With a milestone id it closes that milestone's full review instead: the same gate
 at the integration tip, then the milestone and the stale ancestors above it are
@@ -34,13 +34,15 @@ from specy_road.review_gate import (
     trial_merge_or_exit,
     write_human_approval,
 )
+from specy_road.review_tally import tally_trailers
 from specy_road.review_target import is_milestone, milestone_close_problem, resolve_target_or_exit
+from specy_road.review_lock import ReviewRunBusy, filing_busy
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_ancestor_rollup import complete_reviewed_milestone
 from specy_road.generated_files import GENERATED_COMMITTED, unstageable_generated_files
 from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.bundled_scripts.repo_ops import current_branch, git_run, working_tree_clean
+from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch, git_run
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
 #: so the name exists at import. Resolving the real root here would make
@@ -232,8 +234,9 @@ def _gate_or_human_approval(
             raise SystemExit(0)
         try:
             written = write_human_approval(ROOT, node, gate.commit, sign_key)
-        except SigningError as e:
-            print(f"error: could not sign: {e}", file=sys.stderr)
+        except (SigningError, ReviewRunBusy) as e:   # a reviewer run holds the hand-off directory: nothing written
+            why = f"could not sign: {e}" if isinstance(e, SigningError) else filing_busy(node["id"])
+            print(f"error: {why}", file=sys.stderr)
             raise SystemExit(1) from None
         # From a linked worktree the review lands in the main worktree.
         print(f"[ok] wrote {written.relative_to(ROOT) if written.is_relative_to(ROOT) else written}")
@@ -315,10 +318,7 @@ def _close_milestone(args: argparse.Namespace, node_id: str) -> None:
     print(f"Milestone full review — [{node_id}] at {target.ref}\n")
     gate = _gate_or_human_approval(args, node, branch=None, summary_text="", walkthrough=None,
                                    commit=target.commit)
-    if not working_tree_clean(ROOT, except_work=True):
-        print("error: working tree is not clean (commit, stash, or discard changes outside work/ first).",
-              file=sys.stderr)
-        raise SystemExit(1)
+    assert_working_tree_clean(ROOT, except_work=True)
     changed = complete_reviewed_milestone(ROOT, node_id)   # the checks above make its ValueError unreachable
     if not changed:
         print(f"{node_id} is already Complete; nothing to commit.")
@@ -386,14 +386,8 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     # work/ changes stay where they are: the registry commit names its one path.
-    if not working_tree_clean(ROOT, except_work=True):
-        print(
-            "error: working tree is not clean (commit, stash, or "
-            "discard changes outside work/ first).",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-    _commit_registry_approved(codename, reg, commit_trailers(gate))
+    assert_working_tree_clean(ROOT, except_work=True)
+    _commit_registry_approved(codename, reg, commit_trailers(gate) + tally_trailers(ROOT, gate))
 
 
 if __name__ == "__main__":

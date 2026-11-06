@@ -13,13 +13,16 @@ from typing import Any
 
 from specy_road import worker_ops as ops
 from specy_road.bundled_scripts.role_prompt_rework import rework_check
-from specy_road.bundled_scripts.worker_cli_render import (_line, _row, _sync_event_lines, sync_worker_header,
-                                                       timeline, timeline_lines, usage, usage_lines)
+from specy_road.bundled_scripts.worker_cli_args import FixRound
+from specy_road.bundled_scripts.worker_cli_render import (_line, _row, timeline, timeline_lines, usage,
+                                                       usage_json_payload, usage_lines)
+from specy_road.bundled_scripts.worker_cli_sync import add_sync_parser, cmd_sync as _cmd_sync
+from specy_road.orphaned_claims import append_claim_hint
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload
 from specy_road.worker_adapters import ADAPTERS, Unsupported
 from specy_road.worker_hook import HOOKS
-from specy_road.worker_orphans import add_terminate, list_view, with_orphans
+from specy_road.worker_orphans import add_terminate, list_view
 from specy_road.worker_outbox import lookup_op
 from specy_road.worker_reconcile import reconcile_lines, sync_marks
 from specy_road.worker_runner import log_path
@@ -31,10 +34,8 @@ from specy_road.worker_state import (
     begin_op,
     complete_op,
     events_since,
-    flag_stamp,
     list_records,
     load_record,
-    wait_for_event,
 )
 
 
@@ -87,7 +88,8 @@ def cmd_delegate(ns: argparse.Namespace) -> int:
         if ns.rework:   # before delegate, which would return an active worker rather than replace it
             rework_check(root, ns.node_id)
         rec, created = ops.delegate(root, ns.node_id, ns.model, harness=ns.harness,
-                                    worktree=Path(ns.worktree) if ns.worktree else None, offline=ns.offline)
+                                    worktree=Path(ns.worktree) if ns.worktree else None, offline=ns.offline,
+                                    rework=ns.rework)
         state.update(worker_id=rec.worker_id, created=created, state=rec.state, worktree=rec.worktree,
                      harness=rec.harness, model=rec.model, pid=rec.pid)
         return dict(state)
@@ -128,32 +130,7 @@ def cmd_events(ns: argparse.Namespace) -> int:
 
 
 def cmd_sync(ns: argparse.Namespace) -> int:
-    root = resolve_repo_root(ns)
-    timed_out = False
-    if ns.wait:
-        since = flag_stamp(root)   # before the check: an event landing between the two still ends the wait
-        try:
-            timed_out = not ops.sync(root) and not wait_for_event(root, ns.timeout, since)
-        except KeyboardInterrupt:
-            print("worker sync: interrupted; nothing acknowledged", file=sys.stderr)
-            return 130
-    delta = ops.sync(root, ack=ns.ack)
-    lines = []
-    for w in delta:
-        rec = load_record(root, w["worker_id"])
-        w["worktree"] = rec.worktree
-        lines += sync_worker_header(w, rec.queued_message)
-        lines += [f"  ! gap: event(s) #{a}" + (f"–#{b}" if b > a else "") + " missing from the log (lost or unreadable)"
-                  for a, b in w["gaps"]]
-        # The whole log, not the delta: the final message may have been acked before the exit event.
-        history = [e.to_dict() for e in events_since(root, w["worker_id"])]
-        lines += [line for e in w["events"] for line in _sync_event_lines(history, e)]
-    if not lines:
-        lines = ["No new worker events."]
-    elif not ns.ack:
-        lines.append("(re-run with --ack once handled)")
-    rc = _emit(ns, *with_orphans(root, {"workers": delta, "acked": ns.ack}, lines))   # orphans, events or not
-    return 2 if timed_out and not delta else rc
+    return _cmd_sync(ns, emit=_emit)
 
 
 def _mutate(ns: argparse.Namespace, kind: str, fn, render, inputs: dict[str, Any] | None = None) -> int:
@@ -179,17 +156,29 @@ def cmd_message(ns: argparse.Namespace) -> int:
             raise WorkerError(f"cannot read --file {ns.file}: {e}") from None
         return _replay(ns, ns.op_id, old)
     return _mutate(ns, "message", lambda root: _row(ops.message(root, ns.worker_id, text, offline=ns.offline,
-                                                                 no_queue=ns.no_queue)),
+                                                                 no_queue=ns.no_queue, fix_round=ns.fix_round)),
                    lambda o: ([f"{o['worker_id']}: message queued for the next turn"]
                               if o.get("queued_message") else
                               [f"{o['worker_id']}: message sent; resumed (pid {o['pid']})"]),
                    inputs={"text": text, **({"offline": True} if ns.offline else {}),
-                           **({"no_queue": True} if ns.no_queue else {})})
+                           **({"no_queue": True} if ns.no_queue else {}), **({"fix_round": True} if ns.fix_round else {})})
+
+
+def _resume_op_inputs(ns: argparse.Namespace) -> dict[str, Any] | None:
+    inputs: dict[str, Any] = {}
+    if getattr(ns, "ready_only", False):
+        inputs["ready_only"] = True
+    if ns.offline:
+        inputs["offline"] = True
+    return inputs or None
 
 
 def cmd_resume(ns: argparse.Namespace) -> int:
-    return _mutate(ns, "resume", lambda root: _row(ops.resume(root, ns.worker_id, offline=ns.offline)),
-                   lambda o: [f"{o['worker_id']}: resumed (pid {o['pid']})"])
+    return _mutate(ns, "resume",
+                   lambda root: _row(ops.resume(root, ns.worker_id, offline=ns.offline,
+                                              ready_only=getattr(ns, "ready_only", False))),
+                   lambda o: [f"{o['worker_id']}: resumed (pid {o['pid']})"],
+                   inputs=_resume_op_inputs(ns))
 
 
 def cmd_interrupt(ns: argparse.Namespace) -> int:
@@ -270,7 +259,8 @@ def cmd_timeline(ns: argparse.Namespace) -> int:
 def cmd_usage(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     data = usage([(r, [e.to_dict() for e in events_since(root, r.worker_id)]) for r in _records_for(root, ns.target)])
-    return _emit(ns, data, usage_lines(data))
+    payload = usage_json_payload(data, root) if ns.json else data
+    return _emit(ns, payload, usage_lines(data, root))
 
 
 def cmd_hook(ns: argparse.Namespace) -> int:
@@ -328,21 +318,18 @@ def build_parser() -> argparse.ArgumentParser:
     sp = ws.add_parser("events", help="A worker's events after a sequence number"); _w(sp, op=False)
     sp.add_argument("--since", type=int, default=0, metavar="N"); sp.set_defaults(func=cmd_events)
 
-    sp = ws.add_parser("sync", help="Every worker's events since the last --ack; call at the start of each turn")
-    sp.add_argument("--ack", action="store_true", help="Mark the returned events handled")
-    sp.add_argument("--wait", action="store_true", help="Block until a worker writes an event (exit 2 on --timeout)")
-    sp.add_argument("--timeout", type=float, default=600, metavar="SECONDS", help="With --wait (default 600)")
-    sp.add_argument("--json", action="store_true")
-    add_repo_root_arg(sp)
-    sp.set_defaults(func=cmd_sync)
+    add_sync_parser(ws, cmd_sync, add_repo_root_arg)
 
     sp = ws.add_parser("message", help="Send a follow-up prompt (resumes the native session)"); _w(sp)
     g = sp.add_mutually_exclusive_group(required=True)
     g.add_argument("--file", metavar="PATH"); g.add_argument("--text", metavar="TEXT")
+    sp.add_argument("--fix-round", action=FixRound, group=g, help="Send the blocking findings and the class-audit block, then any text")
     sp.add_argument("--no-queue", action="store_true",
                     help="Refuse while a turn is still running instead of queueing for the next turn")
     _offline_arg(sp); sp.set_defaults(func=cmd_message)
     sp = ws.add_parser("resume", help="Resume a stopped worker with a continue prompt"); _w(sp); _offline_arg(sp)
+    sp.add_argument("--ready-only", action="store_true",
+                    help="Resume with a short prompt to write READY for HEAD only (after READY missing)")
     sp.set_defaults(func=cmd_resume)
     sp = ws.add_parser("interrupt", help="Stop the current turn (declared unsupported by the CLI adapters)"); _w(sp, op=False)
     sp.set_defaults(func=cmd_interrupt)
@@ -376,17 +363,34 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _failure_code(exc: BaseException) -> int | None:
+    """The status a worker failure already has, or None when this command does not own that error."""
+    if isinstance(exc, Unsupported):
+        return 2
+    if isinstance(exc, (WorkerError, LeaseError)):
+        return 1
+    return None
+
+
+def _report_failure(ns: argparse.Namespace, exc: BaseException, code: int) -> None:
+    """Print ``exc`` and stop. Every claimed ``delegate`` failure, of any type, names how to resolve the claim."""
+    text = str(exc)
+    if getattr(ns, "worker_cmd", None) == "delegate":
+        text = append_claim_hint(resolve_repo_root(ns), getattr(ns, "node_id", None), text)
+    print(f"error: {text}", file=sys.stderr)
+    raise SystemExit(code) from None
+
+
 def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     ns = build_parser().parse_args(argv)
     try:
         raise SystemExit(ns.func(ns))
-    except Unsupported as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(2) from None
-    except (WorkerError, LeaseError) as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1) from None
+    except Exception as e:
+        code = _failure_code(e)
+        if code is None and getattr(ns, "worker_cmd", None) != "delegate":
+            raise
+        _report_failure(ns, e, 1 if code is None else code)
 
 
 if __name__ == "__main__":

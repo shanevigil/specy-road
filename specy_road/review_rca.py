@@ -6,7 +6,8 @@ record at that commit (the latest per model) marks ``A<n>: fail``. A leaf is
 escalated when the last ``escalate_same_acceptance_blocks`` rounds all block on
 one acceptance id; when one reviewer family (from the roster) blocked that many
 of the rounds it reviewed in a row, whatever ids or models it named; or after
-``escalate_review_rounds`` rounds. A coordinator may also force an analysis with
+``escalate_review_rounds`` rounds. The last two rules wait while the loop converges
+(:mod:`specy_road.review_trend`) unless ``policy.escalate_when_converging``. A coordinator may also force an analysis with
 a reason (:func:`forced_escalation`). An ``RCA-*.md`` record resolves every
 round up to its ``trigger.round``, so counting restarts after each analysis.
 Thresholds come from the gate's policy (the integration branch). Design:
@@ -17,7 +18,7 @@ from __future__ import annotations
 
 import json
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
@@ -28,6 +29,7 @@ from specy_road.orchestration_config import (
     is_rostered_reviewer,
     substitute_for,
 )
+from specy_road.review_deferral import load_markers
 from specy_road.review_files import (
     RCA_PREFIX,
     ReviewFile,
@@ -38,10 +40,11 @@ from specy_road.review_files import (
 )
 from specy_road.review_policy_ref import policy_source
 from specy_road.review_target import ReviewTarget, full_sha
+from specy_road.review_trend import converging, trend_status
 
 CLASSES = ("specification", "implementation", "test", "reviewer", "environment", "hard_problem")
 ACTIONS = ("amend_criterion", "split_leaf", "continue_with_class_fix", "restart_executor_fresh",
-           "fix_tests", "change_or_reprompt_reviewer", "fix_environment", "escalate_human")
+           "fix_tests", "change_or_reprompt_reviewer", "fix_environment", "escalate_human", "defer_findings")
 
 
 @dataclass
@@ -95,9 +98,15 @@ class LoopState:
     rcas: list[ReviewFile]
     escalation: Escalation | None
     resolved: int = 0   # rounds an RCA record already covers
+    marker_problems: list[str] = field(default_factory=list)   # malformed DEFERRAL-*.yaml (review_deferral)
+    converging: bool = False            # review_trend.converging over the rounds since the last RCA
+    deferred_converging: bool = False   # a same_family/review_rounds escalation waits because of it
+
+    def findings_trend(self) -> dict[str, Any]:
+        return trend_status(self.rounds, self.converging, self.deferred_converging)
 
     def problems(self) -> list[str]:
-        return [f"{r.path.name}: invalid — {'; '.join(r.errors)}" for r in self.rcas if not r.ok]
+        return [f"{r.path.name}: invalid — {'; '.join(r.errors)}" for r in self.rcas if not r.ok] + self.marker_problems
 
 
 def review_rounds(repo_root: Path, node_id: str) -> list[Round]:
@@ -185,6 +194,8 @@ def escalation(rounds: list[Round], policy: dict[str, Any], resolved: int = 0,
         ids = set.intersection(*(r.failed for r in window[-same:]))
         if ids:
             return Escalation("same_acceptance", len(rounds), sorted(ids, key=_id_key), same)
+    if not policy.get("escalate_when_converging", False) and converging(window, same):
+        return None   # same_family and review_rounds wait while the loop converges
     fam = _family_streak(window, family or (lambda m: m), same)
     if fam is not None:
         return Escalation("same_family", len(rounds), [], same, family=fam)
@@ -211,7 +222,11 @@ def loop_state(repo_root: Path, node_id: str) -> LoopState:
         r.errors.extend(_rca_semantic_errors(repo_root, node_id, r.data, rounds, policy, config, resolved))
         if r.ok:
             resolved = max(resolved, int(r.data["trigger"]["round"]))
-    return LoopState(rounds, rcas, escalation(rounds, policy, resolved, _family(config)), resolved)
+    esc = escalation(rounds, policy, resolved, _family(config))
+    conv = converging(rounds[resolved:], int(policy["escalate_same_acceptance_blocks"]))
+    deferred = esc is None and conv and escalation(
+        rounds, {**policy, "escalate_when_converging": True}, resolved, _family(config)) is not None
+    return LoopState(rounds, rcas, esc, resolved, load_markers(repo_root, node_id)[1], conv, deferred)
 
 
 def escalated_note(loop: LoopState, node_id: str) -> list[str]:
@@ -278,7 +293,11 @@ def _skeleton(node_id: str, model: str, esc: Escalation) -> list[str]:
         "  proposed_text: <bounded rewrite>",
         "  finding_disposition:",
         "    - {finding: <round/reviewer: text>, label: in_scope_must_fix|out_of_scope_now|already_resolved, "
-        "justification: <one line>}",
+        "justification: <one line>, input_class: <short label, optional>}",
+        "deferred_findings:   # required when recommended_action.type is defer_findings",
+        "  - {finding: <round/reviewer: text>, reviewer: <roster id>, commit: <sha it blocked>, "
+        "category: correctness|regression|boundary|test_integrity, acceptance_id: A#, input_class: <short label>, "
+        "follow_up_title: <follow-up leaf title>, follow_up_acceptance: <one acceptance line>}",
         "---",
         "<your reasoning: evidence for and against each class, and the counterfactuals>",
         "```",
@@ -312,7 +331,12 @@ def rca_preamble(repo_root: Path, node_id: str, model: str, esc: Escalation) -> 
         "class is `specification`, write a bounded rewrite of the criterion: what is in and out of scope, "
         "every term defined operationally, no wider than the original; then label every past blocking finding "
         "on it. A rewrite is a proposal for a human: set `requires_human_approval: true` and never edit the "
-        "roadmap.",
+        "roadmap. `defer_findings` proposes moving blocking findings to a follow-up leaf (a human applies it "
+        f"with `specy-road review defer {node_id} --rca <record>`). List a finding under `deferred_findings` "
+        "only when its input class (a short label you write, such as `CRLF line endings`) matches no input "
+        "class an earlier RCA record or applied deferral of this leaf named (compared lower-cased, whitespace "
+        "collapsed), and it is not a `correctness` finding on an acceptance id an earlier round marked `pass`; "
+        "anything else stays a must-fix in this leaf.",
         f"5. Write the record to `{out}` (gitignored; open the absolute path) in this shape, validated against "
         "specy-road's `rca-record` schema, then run "
         f"`specy-road handoff status {node_id}`: a valid record clears the escalation (a forced one restarts "
@@ -357,3 +381,4 @@ def rca_evidence(repo_root: Path, t: ReviewTarget, loop: LoopState) -> list[str]
         out += [f"**Diff: {label}**", ""] + _diff(repo_root, prev, rnd.commit)
         prev = rnd.commit
     return out
+

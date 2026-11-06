@@ -202,3 +202,29 @@ def test_reviewer_prompt_and_handoff_status_name_the_sign_key(tmp_path: Path, ca
     else:
         assert f"{record}`." in text and "--sign-key" not in text
         assert "can approve (file with `specy-road review record`)" in status and "--sign-key" not in status
+
+
+def test_a_launched_reviewers_verdict_is_filed_signed_with_the_callers_key(tmp_path: Path) -> None:
+    from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
+    from tests.test_models_and_prompt import run_main
+    from specy_road.review_delegate import delegate
+
+    key, pub = _key(tmp_path, "opus")
+    roster = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+              f"  - {{id: opus, family: anthropic, roles: [reviewer], harness: claude-code, public_key: \"{pub}\", "
+              "channels: {cli: '{fake} {prompt} {session_flag}'}}\n"
+              "policy: {reviewers_required: 1, signed_reviews: true}\n")
+    repo, spec = delegate_repo(tmp_path, roster)
+    set_steps(repo, spec, verdict_step(repo))
+    head = git(repo, "rev-parse", "HEAD")
+    run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)                 # no key: refused, never filed unsigned
+    assert run["outcome"] == "rerun" and "policy.signed_reviews is on: pass --sign-key" in run["reason"]
+    assert not review_path(repo, "M1.1", "opus").exists()
+    with pytest.raises(SystemExit) as e:
+        review_cli.main(["review", "delegate", "M1.1", "--model", "opus", "--sign-key", str(key),
+                         "--repo-root", str(repo)])
+    assert e.value.code == 0 and evaluate_gate(repo, NODE, head).passed      # the signature verifies
+    review_path(repo, "M1.1", "opus").unlink()
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
+                    "--sign-key", str(key), "--repo-root", str(repo)) == 0
+    assert evaluate_gate(repo, NODE, head).passed

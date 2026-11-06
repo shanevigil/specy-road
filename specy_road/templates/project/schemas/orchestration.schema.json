@@ -32,6 +32,9 @@
         "profile": { "type": "string", "minLength": 1, "description": "Repo-relative path to this model's profile (model-profiles/<family>/<api_id>.md)." },
         "harness": { "enum": ["claude-code", "codex", "cursor", "generic"], "description": "Which vendor harness `specy-road worker delegate` runs this model on (generic runs the profile's access.cli). Distinct from the model: a Claude model under Cursor's agent is a cursor worker." },
         "harness_model": { "$ref": "#/$defs/id", "description": "Model id the harness CLI expects when it differs from id (e.g. claude-opus-5-5 for id claude-opus-5.5); the default commands pass it as --model / -m, before the profile's api_id and the id." },
+        "allow_guidance_bypass_model": { "type": "boolean", "description": "Default false. At your own risk: with policy.signed_reviews on, keep this entry eligible as executor and reviewer although a model it launches has a profile recording guidance_bypass_observed (otherwise it is excluded from both roles). Honoured only in the committed roadmap/orchestration.yaml on the integration branch; a roster_add entry in orchestration.local.yaml may not set it. Every executor or reviewer launch of the entry prints a warning. See docs/orchestration-roster.md." },
+        "harness_bin": { "type": "string", "minLength": 1, "description": "Path (or PATH name) of the harness binary the default commands run (claude, codex or agent). Unset: PATH, then the harness's install directories (~/.local/bin; ~/.claude/local for claude); not found is refused before launch, naming where it looked. See docs/orchestration-harness-launch.md." },
+        "cursor_force": { "type": "boolean", "description": "cursor harness only, default false. The default launch and resume commands pass --trust --sandbox enabled (Cursor's sandbox confines shell commands); true passes --trust --force instead, which force-allows every command not explicitly denied. orchestrate plan and doctor warn once per entry that sets it. A channels.cli / cli_resume keeps its own flags. See docs/orchestration-workers.md." },
         "routing": { "enum": ["fixed", "dynamic"], "description": "fixed (the default): the harness runs the model it is told. dynamic: the harness may route among models itself (cascades, Auto, its own critic), so under policy.reviewers_distinct_families this entry's approvals do not count unless pinned is true. A cursor entry told no model or auto is dynamic whatever this says." },
         "pinned": { "type": "boolean", "description": "Set by the maintainer after checking the harness honours the requested model: a dynamic entry's approvals then count toward distinct families. Default false." },
         "billing_route": { "type": "string", "minLength": 1, "description": "Label for whose quota a worker on this entry draws (e.g. claude_subscription, chatgpt_oauth, api_key). Recorded on the worker; never used to authenticate." },
@@ -86,6 +89,10 @@
           "type": "boolean",
           "description": "When true, a review record counts only if it carries a signature that verifies against its roster entry's public_key. Default false."
         },
+        "count_human_filed_reviews": {
+          "type": "boolean",
+          "description": "When true, an unsigned review record filed by hand (human_filed: `review record --human-filed` from a caller with no harness marker or worker id) counts toward the gate. When false, such a record counts only when its signature verifies. Default false."
+        },
         "reviewer_reruns_required": {
           "type": "boolean",
           "description": "When true, an approving review record counts only if its commands_rerun lists at least one command the reviewer re-ran. A human's interactive approval is exempt; a block is never affected. Default false."
@@ -104,6 +111,15 @@
           "type": "integer",
           "minimum": 1,
           "description": "A leaf's review loop is escalated for root-cause analysis after this many review rounds since its last analysis. Default 5."
+        },
+        "escalate_when_converging": {
+          "type": "boolean",
+          "description": "When false (the default), a converging loop (over the last escalate_same_acceptance_blocks rounds the blocking-finding count never rose and fell at least once, and the latest round fails no acceptance id) is not escalated by the same_family or review_rounds rule; `handoff status` says 'converging; escalation deferred'. same_acceptance, forced analyses and max_fix_rounds still apply. True restores the earlier behaviour, which escalated regardless of trend; projects that relied on it must set true. Default false."
+        },
+        "max_fix_rounds": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Fix-round budget: after this many blocking review rounds on one leaf, `handoff status` reports fix_round_budget_spent and names the command that resolves it (a root-cause analysis, then `specy-road review defer` for a defer_findings record). Unset (the default): no budget."
         },
         "stall_after_seconds": {
           "type": "integer",
@@ -126,9 +142,34 @@
           "type": "boolean",
           "description": "When true, reviewer_fresh_session is waived for a record naming delta_from: the reviewer that approved delta_from may be resumed in that same session to review the delta since and file fresh_session: false. Such an approval still counts only under the delta_review rules; a resumed full review, and any other record with fresh_session: false, is still refused. Default false."
         },
+        "quality_window": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "How many of the most recently landed leaves (finish merges, in first-parent order) the digest's \"Quality by area\" section and quality_routing count. Default 50."
+        },
+        "quality_area_depth": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "How many leading path components of a touch zone (relative to the project root) name its area in \"Quality by area\". Default 1 (the top-level directory)."
+        },
+        "quality_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "An area whose block rate (share of its tallied leaves with at least one blocking review round) exceeds this is flagged: listed first in the digest's \"Quality by area\" section, and routed under quality_routing. Default 0.5."
+        },
+        "quality_routing": {
+          "type": "boolean",
+          "description": "When true, orchestrate plan asks for one reviewer from the strong set (every require_one_of in strong_review) on each ready leaf whose touch zones fall in a flagged area. Advisory: the review gate does not require it. Default false."
+        },
         "red_green": {
           "type": "boolean",
           "description": "When true, every Python test function the leaf adds or changes must fail at the merge base (with the head's changed test files overlaid) and pass at head, or pass on both when the node's planned_test_changes on the integration branch lists it as `preserve: <path>::<name>`; `specy-road review red-green` records the outcomes in work/reviews/<NODE_ID>/RED-GREEN.md and the review gate reads them for the commit under review. Default false."
+        },
+        "garden_cadence_days": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "When set, `specy-road validate` warns that gardening is due once more than this many days have passed since `specy-road chore garden` last ran (recorded in work/chores/.garden.json), or when it never has. Unset: no warning."
         },
         "ratchet_paths": {
           "type": "array",

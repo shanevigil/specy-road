@@ -17,28 +17,12 @@ from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import review_cli, worker_cli, worker_cli_render as wcr
 
-# The fake harness and its repo live in worker_repo_helpers; the old private name
-# stays for the modules that import it from here.
-from tests.worker_repo_helpers import FAKE, make_worker_repo as _repo, worker_roster  # noqa: F401
-
-
-def run_worker_cli(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        worker_cli.main(list(args))
-    return e.value.code or 0
-
-
-def wait_for_worker(repo: Path, wid: str, timeout: float = 10) -> ws.WorkerRecord:
-    for _ in range(int(timeout * 10)):
-        rec = ws.load_record(repo, wid)
-        if rec.pid is None:
-            return rec
-        time.sleep(0.1)
-    raise AssertionError("worker did not finish")
+from tests.worker_cli_helpers import run_worker_cli, wait_for_worker
+from tests.worker_repo_helpers import FAKE, make_worker_repo, run_fake_harness_turn, worker_roster  # noqa: F401
 
 
 def test_delegate_returns_at_once_and_is_idempotent(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--json", "--repo-root", str(repo)) == 0
     out = json.loads(capsys.readouterr().out)
     assert out["created"] and out["worker_id"] == "w-0001" and out["harness"] == "claude-code"
@@ -52,7 +36,7 @@ def test_delegate_returns_at_once_and_is_idempotent(tmp_path: Path, capsys) -> N
 
 
 def test_delegate_refusals(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "sol", "--repo-root", str(repo)) == 1
     assert "executor role" in capsys.readouterr().err
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "nobody", "--repo-root", str(repo)) == 1
@@ -75,7 +59,7 @@ def test_delegate_refusals(tmp_path: Path, capsys) -> None:
 
 
 def test_op_id_makes_a_retry_answer_from_the_first_result(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--op-id", "op-1", "--json", "--repo-root", str(repo)) == 0
     first = json.loads(capsys.readouterr().out)
     wait_for_worker(repo, first["worker_id"])
@@ -84,7 +68,7 @@ def test_op_id_makes_a_retry_answer_from_the_first_result(tmp_path: Path, capsys
 
 
 def test_sync_delta_and_ack(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0
     assert "No new worker events" in capsys.readouterr().out
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
@@ -100,7 +84,7 @@ def test_sync_delta_and_ack(tmp_path: Path, capsys) -> None:
 
 
 def test_sync_wait_ends_on_an_event_or_times_out_with_exit_2(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.set_state(repo, rec, "idle", pid=None)   # no wrapper to sweep: only the thread below writes events
     assert run_worker_cli("worker", "sync", "--wait", "--ack", "--repo-root", str(repo)) == 0   # `started` is unacked: no wait
@@ -112,7 +96,7 @@ def test_sync_wait_ends_on_an_event_or_times_out_with_exit_2(tmp_path: Path, cap
 
 
 def test_message_resume_lease_and_interrupt(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
     rec = wait_for_worker(repo, "w-0001")
     assert run_worker_cli("worker", "interrupt", "w-0001", "--repo-root", str(repo)) == 2
@@ -131,7 +115,7 @@ def test_message_resume_lease_and_interrupt(tmp_path: Path, capsys) -> None:
 
 
 def test_handoff_reclaim_round_trip_and_hook_evidence(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
     rec = wait_for_worker(repo, "w-0001")
     sid = rec.provider_session_id
@@ -178,7 +162,7 @@ def test_hook_print_config_names_the_harness(capsys) -> None:
 
 
 def test_reconcile_flags_a_touch_zone_breach(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
     rec = wait_for_worker(repo, "w-0001")
     ws.take_checkpoint(repo, rec)
@@ -204,7 +188,7 @@ def test_reconcile_flags_a_touch_zone_breach(tmp_path: Path, capsys) -> None:
 
 
 def test_terminate_a_live_worker(tmp_path: Path) -> None:
-    repo, script = _repo(tmp_path)
+    repo, script = make_worker_repo(tmp_path)
     spec = tmp_path / "slow.json"
     spec.write_text(json.dumps({"lines": [{"type": "system", "subtype": "init", "session_id": "slow"}], "sleep": 30}))
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
@@ -224,7 +208,7 @@ def test_terminate_a_live_worker(tmp_path: Path) -> None:
 
 
 def test_adopt_open_list_status_and_handoff_status(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     assert run_worker_cli("worker", "adopt", "--node", "M1.1", "--harness", "codex", "--session", "11111111-2222-4333-8444-555555555555", "--json", "--repo-root", str(repo)) == 0
     d = json.loads(capsys.readouterr().out)
     assert d["lease"]["holder"] == "native" and d["provider_session_id"] == "11111111-2222-4333-8444-555555555555"
@@ -248,7 +232,7 @@ def test_adopt_open_list_status_and_handoff_status(tmp_path: Path, capsys) -> No
 
 def test_launch_events_ack_time_and_timeline(tmp_path: Path, capsys) -> None:
     """A1: launched and first_output bracket the harness; A2: the ack is timed; A3: timeline per turn."""
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
     wait_for_worker(repo, "w-0001")
     evs = ws.events_since(repo, "w-0001")
@@ -314,26 +298,17 @@ def test_timeline_arithmetic_and_unknown_phases() -> None:
     assert set(t["phases"].values()) == {None} and all(line.endswith("unknown") for line in wcr.timeline_lines(t)[1:])
 
 
-def _turn(repo: Path, script: Path, rec: ws.WorkerRecord, lines: list[dict], *, exit_code: int = 0) -> None:
-    """One turn of the fake harness through the wrapper, printing ``lines``."""
-    from specy_road import worker_runner as wr
-    from specy_road.worker_adapters import Launch
-    spec = script.parent / f"turn-{rec.worker_id}-{ws.load_record(repo, rec.worker_id).last_event_seq}.json"
-    spec.write_text(json.dumps({"lines": lines, "exit": exit_code}))
-    wr.run(repo, rec.worker_id, Launch([sys.executable, str(script), str(spec)]))
-
-
 def test_usage_events_per_turn_and_the_usage_command(tmp_path: Path, capsys) -> None:
     """M10.2 A2/A3: one usage event per turn end, Claude's running cost as a delta; `worker usage` per attempt and node."""
-    repo, script = _repo(tmp_path)
+    repo, script = make_worker_repo(tmp_path)
     rec = json.loads((Path(__file__).parent / "fixtures/worker_usage/turn_end_lines.json").read_text())   # real, sanitized
     init, first, resumed = rec["claude-code"]["lines"]   # one session: the resumed turn reports the session's whole total
     claude = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
-    _turn(repo, script, claude, [init, first])
-    _turn(repo, script, claude, [init, resumed])
+    run_fake_harness_turn(repo, script, claude, [init, first])
+    run_fake_harness_turn(repo, script, claude, [init, resumed])
     codex = ws.create_record(repo, "M1.1", "codex", "sol", repo)
-    _turn(repo, script, codex, rec["codex"]["lines"])
-    _turn(repo, script, codex, [{"type": "turn.failed", "error": {"message": "quota"}}], exit_code=1)   # constructed
+    run_fake_harness_turn(repo, script, codex, rec["codex"]["lines"])
+    run_fake_harness_turn(repo, script, codex, [{"type": "turn.failed", "error": {"message": "quota"}}], exit_code=1)   # constructed
     cu = [e.detail for e in ws.events_since(repo, claude.worker_id) if e.type == "usage"]
     assert [u["cost_usd"] for u in cu] == [1.0474079, 0.162736] and [u["session_cost_usd"] for u in cu] == [1.0474079, 1.2101441]
     assert cu[1] == {"input_tokens": 380001, "cached_input_tokens": 376181, "output_tokens": 2849, "reasoning_tokens": 123,

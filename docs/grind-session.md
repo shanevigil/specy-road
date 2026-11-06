@@ -81,7 +81,7 @@ names the valid ones, and `--fields` is accepted only with `--plan --json`.
 - **`parallel_batches`** — per wave, the ready+unclaimed leaves you can dispatch
   **in parallel right now**, in the order pickup will claim them (the same order
   as `ready`). `waves` stay sorted by id, because they are the dependency layering you read rather than a dispatch order.
-  No set holds two leaves sharing a touch zone (the same path, or one a directory prefix of the other): the later one moves to the next set, and `zone_overlaps` (`node_id`, `waits_for`, `zones`) names the overlap; dispatch it once `waits_for` lands.
+  No set holds two leaves sharing a touch zone (the same path, or one a directory prefix of the other): the later one moves to the next set, and `zone_overlaps` (`node_id`, `waits_for`, `zones`) names the overlap; dispatch it once `waits_for` lands. A *shared zone* named as a zone overlaps nothing (`grind.shared_zones` in `roadmap/git-workflow.yaml`, default `[planning/, shared/]`, `[]` for none; validate's registry overlap warning uses the same rule), but two leaves naming the same file under it still do; `shared_zones_ignored` (printed once) names those the split ignored.
 - **`gated`** / **`gates_open`** — leaves stuck behind an open human gate, and
   the gate ids that need a PM decision.
 
@@ -156,7 +156,7 @@ dispatched until `M10.5` completes.
   ],
   "active": [], "closed": ["M10.1", "M10.2"], "gated": [], "gates_open": [], "needs_codename": [], "unauthored": [],
   "waves": [{"index": 0, "node_ids": ["M10.3", "M10.4"]}, {"index": 1, "node_ids": ["M10.5"]}, {"index": 2, "node_ids": ["M11.1"]}],
-  "parallel_batches": [["M10.3", "M10.4"]], "zone_overlaps": [],
+  "parallel_batches": [["M10.3", "M10.4"]], "zone_overlaps": [], "shared_zones_ignored": ["planning/"],
   "totals": {"ready": 2, "blocked": 2, "active": 0, "closed": 2, "gated": 0, "gates_open": 0, "needs_codename": 0, "waves": 3}
 }
 ```
@@ -405,9 +405,9 @@ For an unattended loop to keep cycling:
 - **Implementation review gate.** If `roadmap/git-workflow.yaml` sets
   `require_implementation_review_before_finish: true`, `finish-this-task` requires
   a recorded review, and `mark-implementation-reviewed --yes` no longer approves
-  on its own: it needs review records that satisfy `roadmap/orchestration.yaml`
-  (the gate trusts each record's self-attested `authored_fix` / `is_coordinator`
-  flags, so run the reviewer as a separate session).
+  on its own: it needs review records that satisfy `roadmap/orchestration.yaml` (the gate trusts
+  each record's self-attested `authored_fix` / `is_coordinator` flags and excludes, by model id, any model
+  that wrote a READY on the leaf; READY authorship is cooperative attestation too, so run the reviewer as a separate session).
   For a fully autonomous loop either set the flag to `false`, or have a
   `--pre-finish-cmd` run an independent reviewer, file its verdict with
   `specy-road review record`, then run `specy-road mark-implementation-reviewed

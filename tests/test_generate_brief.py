@@ -26,10 +26,10 @@ def test_render_brief_m02_contains_title() -> None:
 
 
 def test_render_brief_shows_registry_claim_next_to_status(tmp_path: Path) -> None:
-    from tests.test_roadmap_crud import _write_registry_claim, crud_fixture_repo
+    from tests.test_roadmap_crud import crud_fixture_repo, write_registry_claim
 
     crud_fixture_repo(tmp_path)
-    _write_registry_claim(tmp_path, "M99.1", "one", "feature/rm-one", "Pat Example")
+    write_registry_claim(tmp_path, "M99.1", "one", "feature/rm-one", "Pat Example")
     nodes = gb.load_nodes(tmp_path)
     by_id = gb.index(nodes)
     text = gb.render_brief("M99.1", by_id, repo_root=tmp_path, include_history=False)

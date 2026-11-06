@@ -31,14 +31,20 @@ DEFAULT_POLICY: dict[str, Any] = {
     "reviewers_distinct_families": False,
     "reviewer_fresh_session": True,
     "signed_reviews": False,
+    "count_human_filed_reviews": False,
     "reviewer_reruns_required": False,
     "max_workers": 2,
     "escalate_same_acceptance_blocks": 3,
     "escalate_review_rounds": 5,
+    "escalate_when_converging": False,
     "stall_after_seconds": 600,
     "milestone_full_review": True,
     "delta_review": True,
     "reviewer_resumed_delta": False,
+    "quality_window": 50,
+    "quality_area_depth": 1,
+    "quality_threshold": 0.5,
+    "quality_routing": False,
 }
 DEFAULT_CONFIG: dict[str, Any] = {
     "version": 1,
@@ -232,7 +238,8 @@ def parse_orchestration_text(text: str, repo_root: Path | None = None,
     (:func:`validate_orchestration_dict`). Returns (data, parse_or_schema_error)."""
     try:
         raw = yaml.safe_load(text)
-    except (yaml.YAMLError, ValueError) as e:   # ValueError: an impossible date such as 2026-00-00
+    # ValueError: an impossible date such as 2026-00-00; the tuple is review_policy_pin.UNREADABLE (M21.30)
+    except (OSError, ValueError, TypeError, AttributeError, RecursionError, yaml.YAMLError) as e:
         return None, f"YAML error in {ORCHESTRATION_REL}: {e}"
     if not isinstance(raw, dict):
         return None, f"{ORCHESTRATION_REL}: must be a mapping"
@@ -310,36 +317,7 @@ def harness_model_warnings(config: dict[str, Any]) -> list[str]:
             if e.get("harness") == "claude-code" and "." in str(e.get("id")) and not e.get("harness_model")]
 
 
-def entry_routing(repo_root: Path, entry: dict[str, Any]) -> str:
-    """``dynamic`` when the entry declares ``routing: dynamic``, or runs on ``cursor`` told no model or ``auto``
-    (fresh Cursor CLI installs route Auto): its ``channels.cli``'s ``--model`` when that is one simple command
-    (``worker_models.command_model``; a list or pipeline is unknown), else :func:`harness_model` with the committed
-    profile's ``api_id``, as ``review delegate`` passes it. Else ``fixed``."""
-    if entry.get("routing") == "dynamic":
-        return "dynamic"
-    if entry.get("harness") != "cursor":
-        return "fixed"
-    cli = (entry.get("channels") or {}).get("cli")
-    if cli:
-        from specy_road.worker_models import command_model  # noqa: PLC0415 — worker modules load late
-        model = command_model(cli)
-    else:
-        from specy_road.orchestration_pinned import pinned_profile_for_entry  # noqa: PLC0415 — it imports this module
-        prof = pinned_profile_for_entry(repo_root, entry)
-        model = harness_model(entry, prof.api_id if prof is not None and prof.ok else "")
-    return "dynamic" if model is None or model.strip().lower() == "auto" else "fixed"
-
-
-def routing_problem(repo_root: Path, config: dict[str, Any], data: dict[str, Any]) -> str | None:
-    """Why an approval does not count under ``reviewers_distinct_families``: its entry's harness routes models
-    dynamically (:func:`entry_routing`) and the entry is not ``pinned``, so the family behind it is not known."""
-    entry = roster_entry(config, data["model"]) or {}
-    if (data.get("verdict") != "approve" or not config["policy"].get("reviewers_distinct_families")
-            or entry.get("pinned") or entry_routing(repo_root, entry) == "fixed"):
-        return None
-    return (f"{data['model']!r} runs on a harness that routes models dynamically (routing: dynamic, or cursor with "
-            "no model or auto), so its family is not known; it counts toward distinct families only once its roster "
-            "entry sets pinned: true")
+from specy_road.orchestration_routing import entry_launch_model, entry_routing, routing_problem  # noqa: E402
 
 
 def family_of(config: dict[str, Any], model_id: str) -> str | None:

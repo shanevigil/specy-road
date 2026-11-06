@@ -55,10 +55,32 @@
       "properties": {
         "type": {
           "enum": ["amend_criterion", "split_leaf", "continue_with_class_fix", "restart_executor_fresh",
-                   "fix_tests", "change_or_reprompt_reviewer", "fix_environment", "escalate_human"]
+                   "fix_tests", "change_or_reprompt_reviewer", "fix_environment", "escalate_human",
+                   "defer_findings"]
         },
         "instructions": { "type": "string", "minLength": 1 },
         "requires_human_approval": { "type": "boolean" }
+      }
+    },
+    "deferred_findings": {
+      "type": "array",
+      "minItems": 1,
+      "description": "recommended_action.type defer_findings only: blocking findings proposed for a follow-up leaf. A finding qualifies only when its input_class matches no input class an earlier RCA record or applied deferral of the leaf named (lower-cased, whitespace collapsed) and it is not a correctness finding on an acceptance id an earlier round marked pass; a human applies the list with `specy-road review defer`.",
+      "items": {
+        "type": "object",
+        "required": ["finding", "reviewer", "commit", "category", "acceptance_id", "input_class",
+                     "follow_up_title", "follow_up_acceptance"],
+        "additionalProperties": false,
+        "properties": {
+          "finding": { "type": "string", "minLength": 1, "description": "Round and reviewer, then the finding's text, as finding_disposition cites it." },
+          "reviewer": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$", "description": "Roster id of the reviewer that blocked on it." },
+          "commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$", "description": "The commit that reviewer blocked." },
+          "category": { "enum": ["correctness", "regression", "boundary", "test_integrity"] },
+          "acceptance_id": { "$ref": "#/$defs/acceptanceId" },
+          "input_class": { "$ref": "#/$defs/inputClass" },
+          "follow_up_title": { "type": "string", "minLength": 1 },
+          "follow_up_acceptance": { "type": "string", "minLength": 1 }
+        }
       }
     },
     "criterion_rewrite": {
@@ -78,13 +100,20 @@
             "properties": {
               "finding": { "type": "string", "minLength": 1 },
               "label": { "enum": ["in_scope_must_fix", "out_of_scope_now", "already_resolved"] },
-              "justification": { "type": "string" }
+              "justification": { "type": "string" },
+              "input_class": { "$ref": "#/$defs/inputClass" }
             }
           }
         }
       }
     }
   },
+  "allOf": [
+    {
+      "if": { "required": ["recommended_action"], "properties": { "recommended_action": { "required": ["type"], "properties": { "type": { "const": "defer_findings" } } } } },
+      "then": { "required": ["deferred_findings"] }
+    }
+  ],
   "if": {
     "required": ["classification"],
     "properties": { "classification": { "required": ["primary"], "properties": { "primary": { "const": "specification" } } } }
@@ -92,6 +121,7 @@
   "then": { "required": ["criterion_rewrite"] },
   "$defs": {
     "acceptanceId": { "type": "string", "pattern": "^A[1-9][0-9]*$" },
+    "inputClass": { "type": "string", "minLength": 1, "description": "Short free-text label for the kind of input a finding is about (e.g. CRLF line endings); written by the analyst, never inferred." },
     "rcaClass": { "enum": ["specification", "implementation", "test", "reviewer", "environment", "hard_problem"] }
   }
 }

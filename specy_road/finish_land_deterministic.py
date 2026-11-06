@@ -23,18 +23,30 @@ therefore one computed from integration's own content:
 
 -- independent of the feature branch's necessarily-stale copy -- with the two
 generated files re-rendered from the merged graph.
+
+A conflict in the roadmap graph itself resolves to integration's version only
+when the branch merely inherited it (:mod:`specy_road.finish_land_roadmap_graph`).
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
 from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
+from specy_road.finish_land_roadmap_graph import (
+    GraphResolveError,
+    branch_roadmap_edits,
+    own_roadmap_edit_refusal,
+    resolve_graph,
+    split_conflicts,
+)
 from specy_road.generated_files import (
     GENERATED_COMMITTED,
     gitignore_resolution_hint,
+    refused_generated_files,
     unstageable_generated_files,
 )
 from specy_road.git_subprocess import git_code, git_ok
@@ -81,6 +93,16 @@ def merge_in_progress(repo: Path) -> bool:
     """
     code, _ = git_code(["rev-parse", "-q", "--verify", "MERGE_HEAD"], repo)
     return code == 0
+
+
+def _resolve_graph(
+    repo: Path, codename: str | None, paths: Sequence[str], bookkeeping: str | None
+) -> list[str]:
+    """:func:`resolve_graph`, its failure reported as this module's error. Paths to stage."""
+    try:
+        return resolve_graph(repo, codename, paths, bookkeeping)
+    except GraphResolveError as exc:
+        raise DeterministicResolveError(str(exc)) from exc
 
 
 def _has_roadmap_graph(repo: Path) -> bool:
@@ -142,6 +164,9 @@ def _regenerate_generated_files(repo: Path) -> list[str]:
     """
     if not _has_roadmap_graph(repo):
         return []
+    links_out = refused_generated_files(repo)   # both checked before either is written
+    if links_out:
+        raise DeterministicResolveError("; ".join(links_out.values()))
     try:
         reexport_roadmap_md(repo)
         (repo / DEFAULT_OUTPUT).write_text(render_digest(repo), encoding="utf-8")
@@ -163,16 +188,26 @@ def _regenerate_generated_files(repo: Path) -> list[str]:
 
 
 def resolve_deterministic_paths(
-    repo: Path, *, codename: str | None, other_ref: str = "MERGE_HEAD"
+    repo: Path,
+    *,
+    codename: str | None,
+    other_ref: str = "MERGE_HEAD",
+    graph_paths: Sequence[str] = (),
+    bookkeeping: str | None = None,
 ) -> list[str]:
     """Resolve all three paths in the staged merge. Returns paths to stage.
+
+    ``graph_paths`` are conflicted roadmap graph files the branch only
+    inherited (:func:`branch_roadmap_edits`): they take HEAD's version first,
+    and ``bookkeeping``'s Complete status is applied to it again, so the
+    rendered files below see the merged graph.
 
     Registry first, then the derived files: ``render_digest`` reads the
     registry from the **worktree** to list claims still in flight, so the
     digest must be rendered after the row is gone. Reordering these two lines
     silently reintroduces the drift.
     """
-    staged: list[str] = []
+    staged = _resolve_graph(repo, codename, graph_paths, bookkeeping)
     rel = _resolve_registry(repo, codename, other_ref)
     if rel is not None:
         staged.append(rel)
@@ -236,7 +271,10 @@ def reconcile_or_rollback(repo: Path, pre_sha: str) -> str | None:
     return None
 
 
-def _commit_message(feature_branch: str, integration_branch: str, codename: str | None) -> list[str]:
+def _commit_message(
+    feature_branch: str, integration_branch: str, codename: str | None,
+    graph: Sequence[str] = (),
+) -> list[str]:
     """Subject and body for the resolved merge commit."""
     subject = f"Merge branch '{feature_branch}' into {integration_branch}"
     minus = f" minus rm-{codename}" if codename else ""
@@ -246,8 +284,40 @@ def _commit_message(feature_branch: str, integration_branch: str, codename: str 
         "These three files are keyed or generated, not mergeable: a line-based "
         "3-way merge can retain a row both lanes removed."
     )
-    return ["-m", subject, "-m", body]
+    return ["-m", subject, "-m", body, *_graph_note(feature_branch, integration_branch, graph)]
 
+
+def _graph_note(feature_branch: str, integration_branch: str, graph: Sequence[str]) -> list[str]:
+    """A commit-message paragraph naming the graph files resolved; ``[]`` when none were."""
+    if not graph:
+        return []
+    return ["-m", (
+        f"{', '.join(graph)} resolved to {integration_branch}: {feature_branch} "
+        "only inherited its changes there, and finish's Complete status was applied again."
+    )]
+
+
+def resolvable_conflict(
+    repo: Path, git_output: str, *, codename: str | None,
+    branch: str, integration_branch: str,
+) -> tuple[list[str], str | None, str | None]:
+    """Classify a conflicted merge or pick: ``(graph paths, bookkeeping sha, problem)``.
+
+    ``problem`` is ``None`` when every conflict is one this module resolves;
+    otherwise it is the failure detail -- git's own output for a conflict
+    outside the bookkeeping, or the refusal naming the graph files the branch
+    edited itself -- and the caller must abort.
+    """
+    unmerged = unmerged_paths(repo)
+    graph, stray = split_conflicts(repo, unmerged, DETERMINISTIC_PATHS)
+    if not unmerged or stray:
+        # Either not a content conflict at all, or a real one in the
+        # source. Both are the caller's existing hard failure.
+        return [], None, git_output
+    own, bookkeeping = branch_roadmap_edits(repo, graph, codename=codename)
+    if own:
+        return [], None, own_roadmap_edit_refusal(own, branch, integration_branch)
+    return graph, bookkeeping, None
 
 def merge_feature_deterministically(
     repo: Path,
@@ -271,25 +341,28 @@ def merge_feature_deterministically(
     if not ok:
         return False, f"could not read {integration_branch} HEAD before merging"
 
+    graph: list[str] = []
+    bookkeeping: str | None = None
     code, out = git_code(["merge", "--no-commit", "--no-ff", feature_branch], repo)
     if code != 0:
-        unmerged = unmerged_paths(repo)
-        prefix = project_prefix(repo)   # git names conflicted paths from the repository root
-        stray = [p for p in unmerged if p not in [prefix + d for d in DETERMINISTIC_PATHS]]
-        if not unmerged or stray:
-            # Either not a content conflict at all, or a real one in the
-            # source. Both are the caller's existing hard failure.
-            return _failed(repo, integration_branch, feature_branch, out)
+        graph, bookkeeping, problem = resolvable_conflict(
+            repo, out, codename=codename,
+            branch=feature_branch, integration_branch=integration_branch,
+        )
+        if problem is not None:
+            return _failed(repo, integration_branch, feature_branch, problem)
         print(
             "[ok] resolving generated bookkeeping conflict in "
-            f"{', '.join(unmerged)} from {integration_branch}"
+            f"{', '.join(unmerged_paths(repo))} from {integration_branch}"
         )
 
     if not merge_in_progress(repo):
         return True, ""  # already up to date; its bookkeeping is already here
 
     try:
-        staged = resolve_deterministic_paths(repo, codename=codename)
+        staged = resolve_deterministic_paths(
+            repo, codename=codename, graph_paths=graph, bookkeeping=bookkeeping
+        )
     except DeterministicResolveError as exc:
         return _failed(repo, integration_branch, feature_branch, str(exc))
 
@@ -302,7 +375,7 @@ def merge_feature_deterministically(
             )
 
     code, out = git_code(
-        ["commit", *_commit_message(feature_branch, integration_branch, codename)],
+        ["commit", *_commit_message(feature_branch, integration_branch, codename, graph)],
         repo,
     )
     if code != 0:

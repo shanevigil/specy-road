@@ -36,6 +36,8 @@ SESSION_ARTIFACT_GLOBS = (
     "work/brief-*.md",
     "work/prompt-*.md",
     "work/implementation-summary-*.md",
+    # finish-this-task archive (``finish_work_artifacts.archived_implementation_summary_rel``).
+    "work/done/implementation-summary-*.md",
     "work/pr-body-*.md",
     "work/.on-complete-*.yaml",
     "work/.milestone-session.yaml",

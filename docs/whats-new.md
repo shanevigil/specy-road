@@ -12,49 +12,62 @@ fixes and internal work, see the [CHANGELOG](../CHANGELOG.md).
 
 ## specy-road 0.3.1
 
-*Release candidate `v0.3.1-rc3`, 2026-11-04 (TestPyPI).*
+*Release candidate `v0.3.1-rc4`, 2026-11-06 (TestPyPI).*
 
-0.3.1 makes specy-road a coordinator for several coding agents at once. You
-keep one roadmap; specy-road decides which model should implement, which
-should review, and whether a leaf may finish — and it can launch executors
-and reviewers on Claude Code, Codex or Cursor in their own worktrees and keep
-track of them while you work. rc3 adds the evidence the gate reads for
-itself (test integrity, tests at risk, red-green, land checks), reviewers
-that run like workers, and the worktree-first worker loop that rc2 field use
-asked for. Upgrade if more than one agent (or more than one vendor) touches
-your repo, or if you want independent review before work lands. The review
-gate is a **breaking change**: read *Upgrading* first.
+0.3.1 adds an orchestration harness to specy-road. With it you can put a
+crew of frontier coding models to work on your roadmap, such as Claude, Codex
+and Cursor, each running through its own CLI harness in its own worktree. You
+choose which models implement and which review. specy-road launches them,
+keeps track of them while you work, and holds each leaf until the reviews you
+asked for approve it.
+
+The release candidates exist to find and fix problems while specy-road is used
+on real projects. rc3 and rc4 fixed what that testing turned up: a fresh
+project now passes its own checks, landings recover from inherited conflicts,
+and workers and reviewers launch with explicit permissions and authentication.
+Work on the roadmap continued alongside the testing, and what landed is
+included in this build, such as the test evidence the review gate checks for
+itself, reviewers that run like workers in read-only mode, and commands to
+restructure the outline without renumbering the rest of the roadmap.
+
+It's worth upgrading if more than one agent or vendor works in your repo, or
+if you want independent review before work lands. The review gate is a
+**breaking change**, so read *Upgrading* first.
 
 ### Highlights
 
-- **A review gate before finish.** A leaf finishes only when reviews from
-  the models your policy names approve the exact commit under review, and a
-  milestone gets one full review of its combined change.
-  [Read more](orchestration-review.md)
-- **Evidence, not claims.** `integrity`, `impact`, `review red-green` and
-  `review check-pre-existing` tell the gate what a leaf did to the tests, and
-  `land_check_cmd` runs on the merge commit before anything is pushed.
-  [Read more](orchestration-review.md#test-integrity-in-the-review-packet)
-- **Workers on other harnesses, in their own worktrees.** `worker delegate`
-  runs a leaf's executor on Claude Code, Codex or Cursor; `review delegate`
-  does the same for a reviewer; `worker sync --wait` tells you when either
-  has something to say. [Read more](orchestration-workers.md)
-- **Harness facts, not folklore.** Model profiles and executor commands are
-  rendered from a sourced `harness-facts.yaml`, guard hooks ship per harness,
-  and every profile lists what to switch off.
-  [Read more](orchestration-models.md#harness-facts-what-refresh-profiles-renders)
-- **Safer shared checkouts.** A pre-tool-call guard, a repository lock around
-  pickup and finish, and overlap warnings that name the other worktree.
-  [Read more](orchestration.md#working-in-one-shared-checkout)
-- **Brainstorm v2 with structured promote.** Rounds, panel shards,
-  quote-checked evidence (web pages or your own files), decisions as
-  first-class outcomes, and promote plans that land ideas where you intend.
+- **A review gate before finish.** You choose which models must review a leaf.
+  The leaf finishes only when they approve the exact commit under review, and
+  a milestone gets one full review of its combined change. [Read
+  more](orchestration-review.md)
+- **Test evidence for reviewers.** `integrity`, `impact` and `review
+  red-green` show what a leaf did to the tests, `review check-pre-existing`
+  separates old failures from new ones, and `land_check_cmd` runs your checks
+  on the merge commit before anything is pushed. [Read
+  more](orchestration-review.md#test-integrity-in-the-review-packet)
+- **Hand a leaf to an agent.** `worker delegate` starts an executor on Claude
+  Code, Codex or Cursor in the leaf's own worktree, and `review delegate`
+  starts a reviewer the same way. `worker sync --wait` tells you when either
+  one needs you. [Read more](orchestration-workers.md)
+- **Shared checkouts stay safe.** Guard hooks for each harness and a
+  repository lock stop agents from tripping over each other during pickup and
+  finish. Model profiles and launch commands come from one sourced file,
+  `harness-facts.yaml`. [Read
+  more](orchestration-models.md#harness-facts-what-refresh-profiles-renders)
+- **Restructure the outline without renumbering everything.** `move-node`,
+  `indent`, `outdent` and `group-nodes` change only the ids of what you move.
+  `remove-node` deletes a node that never started, `rename-refs` updates notes
+  that cite old ids, and `apply` runs a batch of these as one checked change.
+  [Read more](roadmap-authoring.md#batch-edits-apply)
+- **Brainstorm v2.** Run several rounds of ideas with a panel of models, check
+  every quoted source against its page or your own files, record decisions,
+  and promote the ideas you keep into the roadmap exactly where you want them.
   [Read more](brainstorming.md)
-- **One set of agent rules everywhere.** specy-road's rules live in
-  `.specyrd/AGENTS.md`; `AGENTS.md` keeps a short stub with the rules that
-  prevent damage, `CLAUDE.md` imports the rules file, your team's additions go
-  in `.specyrd/AGENTS.team.md`, and a context meter counts what each harness
-  injects. [Read more](optional-ai-tooling-patterns.md)
+- **One set of agent rules for every harness.** specy-road's rules now live in
+  `.specyrd/AGENTS.md`. Your `AGENTS.md` keeps a short stub with the safety
+  rules, `CLAUDE.md` imports the full set, your team's own rules go in
+  `.specyrd/AGENTS.team.md`, and a context meter shows how much each harness
+  loads. [Read more](optional-ai-tooling-patterns.md)
 
 ### Review gate and hand-offs
 
@@ -68,23 +81,43 @@ criterion without weakening a test records `blocked_on` instead.
 
     specy-road review-packet M1.2 && specy-road integrity M1.2; specy-road handoff status M1.2
 
+### Restructuring the outline
+
+A move changes only the moved subtree's ids, so ids cited in sheets and notes
+stay true; `--id` or `--fill-gaps` picks the new id, and
+`--renumber-outline` keeps the old whole-tree renumber. `group-nodes` puts
+siblings under a new parent in one transaction, `remove-node` names every
+blocker before it deletes anything, and `validate` refuses a dependency cycle
+made through an inherited group dependency.
+
+    specy-road group-nodes --into-new M3.5 --title "Export" M3.1 M3.2 --rewrite-refs
+
 ### Workers
 
 Pick a leaf up into its own worktree, delegate it, keep working, and check in
 when you like. Failed and stalled workers resume, follow-ups queue behind a
 running turn, `worker timeline` and `worker usage` show where the time and
-tokens went, and `chore` runs worker work that has no roadmap leaf.
+tokens went, and `chore` runs worker work that has no roadmap leaf. Cursor
+workers run sandboxed without `--force` unless the roster sets
+`cursor_force`; Claude Code workers and reviewers check authentication before
+launch, so a subscription login works; `finish-this-task` resolves roadmap
+conflicts a branch only inherited and undoes its bookkeeping when a landing
+fails.
 
     specy-road do-next-available-task --worktree && specy-road worker delegate M1.2 --model claude-opus-5.5
 
 ### Models, roster and prompts
 
 `init project` scaffolds model profiles, a roster and `harness-facts.yaml`.
-`orchestrate plan` staffs every ready leaf (strong reviewers for high-risk
-zones, routing preferences from the decisions ledger); `prompt` writes the
+`orchestrate plan` suggests a model for each ready leaf, which you can
+accept or change (strong reviewers for high-risk zones, routing preferences
+from the decisions ledger); `prompt` writes the
 role prompt with the model's rules, the project's review lessons and
 per-role effort applied; `refresh-profiles --capture` classifies a harness
-upgrade before you trust it.
+upgrade before you trust it. `models roster` writes roster entries for the
+models you name, and `orchestrate plan --roster-from-worktree` tries a roster
+before it lands. `policy.max_fix_rounds` and `review defer` move findings of a
+new input class to a follow-up leaf instead of another fix round.
 
     specy-road orchestrate plan
 
@@ -165,6 +198,46 @@ says when one is due.
   --install-orchestration-hooks` for the per-harness guard hooks. See
   [Upgrading from 0.2.x](install-and-usage.md#upgrading-from-02x).
 
+- **From rc3 to rc4:**
+  - `move-node` changes only the moved subtree's ids; pass
+    `--renumber-outline` for the old whole-outline renumber.
+  - `refresh-profiles` (and so `upgrade`) adds only the profiles your roster
+    names; `--profiles all` adds every bundled one.
+  - Reviewer runs are read-only: a reviewer that writes files (caches, build
+    output, its own `REVIEW-*.md`) now fails, and a custom reviewer command
+    must print the review record as JSON
+    ([reviewer output](orchestration-reviewer-output.md)). A reviewer entry
+    with no resolvable model needs `harness_model` or `routing: dynamic`.
+  - Converging review loops are no longer escalated to root-cause analysis;
+    `policy.escalate_when_converging: true` restores that.
+  - Cursor workers no longer get `--force`. Where Cursor's sandbox cannot
+    start (Ubuntu 24.04's AppArmor default), fix the host or set
+    `cursor_force: true` on the roster entry
+    ([Cursor permissions](orchestration-workers.md)).
+  - `validate` refuses a dependency cycle through inherited group
+    dependencies; `remove-dependency` on a dependency the node does not list
+    exits 1; explicit codenames over 64 characters are refused.
+  - `review record` files only under the caller's own model. A review you
+    file by hand from a terminal needs `--human-filed "<who and why>"`, and the
+    gate counts it only when it is signed or the integration branch sets
+    `policy.count_human_filed_reviews: true`
+    ([who may file](orchestration-review.md#who-may-file-a-review-record)).
+  - A leaf's review policy is pinned when it is claimed. If the roster or
+    review policy changes on the integration branch after the claim, the gate
+    stays shut until a human runs `specy-road review accept-policy <ID>` in a
+    terminal, or the leaf is re-claimed
+    ([policy pin](orchestration-review.md#review-policy-pinned-at-claim)).
+  - `session end` ends only your own session; ending another agent's live
+    session needs `--force` from a terminal.
+  - PM GUI Publish refuses when the repository has no git remote; add one
+    first.
+  - Run `specy-road upgrade`. It refreshes the schemas (for the new optional
+    keys such as `max_fix_rounds`, `escalate_when_converging`,
+    `count_human_filed_reviews`, `cursor_force` and `harness_bin`) and
+    regenerates a drifted `roadmap-context.md` (and a tracked `roadmap.md`),
+    so `digest --check` passes without a separate step.
+    See [Upgrading](upgrading.md).
+
 ### Removed
 
 - The generic copy-paste prompts (`cleanup_prompts.md`,
@@ -174,11 +247,37 @@ says when one is due.
 
 ### Known limitations in this release candidate
 
+- **Symlinks out of the repository.** Several writers still follow a symlink out of the repository,
+  including `refresh-schemas`, `upgrade` and the review commands. Only the
+  generated files and a few review files are protected so far. Don't run
+  specy-road on a checkout where an untrusted agent or process could plant
+  symlinks. A full fix is planned before 0.3.1 final.
+- **The composer-2.5 exclusion** is a default guard, not containment.
+  It misses a local `roster_add` entry with `family: human`, a profile whose
+  `access.cli` runs the model, a flagged profile at a path git quotes, such as a
+  non-ASCII filename, and a `--model` value that is not a literal word. Fixes are
+  planned for rc5.
+- **`upgrade` is not fully isolated from the caller's git config.**
+  In a real run its planning steps read global and system config, and git calls
+  in the project itself can run a `core.fsmonitor` command set through
+  `GIT_CONFIG_COUNT`. Fixes are planned for rc5.
+- **Don't run `specy-road upgrade` from a git hook or with `GIT_DIR` or
+  `GIT_WORK_TREE` set.** A real run follows them, can write files into that other
+  repository, and may stop with a traceback. `--dry-run` is not affected. A fix is
+  planned for rc5.
 - The review gate is cooperative attestation unless you require signed
   reviews: someone who can run commands in the clone that finishes (for
-  example retarget `origin/HEAD`) can change what the gate reads. Reviewer
-  runs are not yet read-only with specy-road writing the record from
-  structured output; that is deferred.
+  example retarget `origin/HEAD`) can change what the gate reads. Nothing
+  yet stops an executor from changing the files that steer harnesses and
+  specy-road unnoticed; that guard is planned for rc5.
+- The review policy pin, the `POLICY-ACCEPTED.yaml` acceptance file, READY
+  authorship and the caller check on `review record` are honour-system: an
+  agent that edits those files or sets a harness marker can get past them.
+  `signed_reviews` is the strong check.
+- `worker terminate` cannot reach a process the harness started that was
+  already re-parented to init before terminate ran.
+- The brainstorm skill's "start is the single first call" is wording only;
+  the CLI does not enforce it.
 - The guard errs towards refusing: `echo git stash` is refused while
   another session is live.
 - A landing that has reached only the local integration branch keeps its
@@ -187,4 +286,4 @@ says when one is due.
   result until the server restarts; stopping `specy-road gui` can leave its
   server process on the port.
 
-Full list of changes: [CHANGELOG](../CHANGELOG.md#v031-rc3---2026-11-04).
+Full list of changes: [CHANGELOG](../CHANGELOG.md#v031-rc4---2026-11-06).

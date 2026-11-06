@@ -77,6 +77,36 @@ Counting restarts after each analysis: an RCA record resolves every round up
 to the round it names, so a leaf that keeps stalling after a fix escalates
 again only after another 3 (same criterion) or 5 (total) rounds.
 
+### Converging loops are not escalated by round count
+
+Counting rounds does not tell a stuck loop from one that is finishing. In
+one reported run the blocking findings per round fell 13, 2, 2, 1, 0, every
+acceptance item passed from round 2, and round 4 blocked only on a private
+test import, yet the loop was escalated ("openai reviewers blocked the last 3
+rounds") and an RCA was recommended. So the trend is now a signal
+(`specy_road/review_trend.py`):
+
+- **Findings per round:** every item in the four finding categories
+  (correctness, regression, boundary, test_integrity) of each blocking record
+  at that round, summed across records; plus the acceptance ids it fails.
+  There is no severity weighting.
+- **Converging:** over the last `escalate_same_acceptance_blocks` rounds since
+  the last analysis, the count never rose, fell at least once, and the latest
+  round fails no acceptance id. Fewer than that many rounds since the last
+  analysis (or a threshold of 1, or a round whose count is unknown) is not
+  enough evidence, so the loop is not converging and nothing is deferred:
+  with `escalate_review_rounds: 2`, counts 5, 1 still escalate at round 2.
+- **Effect:** while converging, the `same_family` and `review_rounds` rules
+  do not escalate; `same_acceptance` (which cannot fire while acceptance
+  passes), a forced analysis and the fix-round budget (`max_fix_rounds`)
+  still apply. `handoff status` prints `findings by round: 13, 2, 2, 1, 0;
+  acceptance all pass since round 2`, adds `converging; escalation deferred`
+  when a rule was held back, and `--json` carries the per-round list under
+  `findings_trend`.
+- **Default change:** `policy.escalate_when_converging` defaults to false,
+  which changes behaviour for existing projects; set it to true to escalate
+  regardless of trend, as before. A flat or rising series still escalates.
+
 ## Adopted: protocol
 
 1. **Detect.** `handoff status` and `review list` compute the triggers from
@@ -111,6 +141,7 @@ again only after another 3 (same criterion) or 5 (total) rounds.
 | reviewer | `change_or_reprompt_reviewer` |
 | environment | `fix_environment` (rebase, regenerate the packet, fix touch zones or the base) |
 | hard_problem | `escalate_human` |
+| any, when findings name new input classes | `defer_findings` (below) |
 
 ## Adopted: the record
 
@@ -129,7 +160,63 @@ A trimmed form of the Claude report's Part F (`specy_road/schemas/rca-record.sch
 - `criterion_rewrite`, required when the primary class is `specification`:
   `acceptance_id`, `original_text`, `proposed_text`, and a disposition
   (`in_scope_must_fix` | `out_of_scope_now` | `already_resolved`) for each
-  past finding on that criterion.
+  past finding on that criterion, each with an optional `input_class`;
+- `deferred_findings`, required when the action is `defer_findings`: per
+  finding its `reviewer`, `commit`, `category`, `acceptance_id`,
+  `input_class`, `follow_up_title` and `follow_up_acceptance`.
+
+## Adopted: the fix-round budget and deferral
+
+A loop whose reviewers find a *new* input class every round (deferred leaf
+M8.3 ran five blocking rounds from one reviewer that way) only stopped when a
+maintainer stopped it by hand. That call is now a recorded step, opt-in per
+project:
+
+- **Budget.** `policy.max_fix_rounds` (unset: no budget, nothing changes)
+  counts the leaf's blocking rounds. Once spent while a review still blocks,
+  `handoff status` reports `fix_round_budget_spent`; the next step comes from
+  an ordered state table (`specy_road/review_next_step.py`) keyed on the
+  budget, the covering RCA (none, non-defer, unapplied or applied deferral),
+  remaining blocks and an available independent analyst or executor. Each row
+  yields a command that runs as printed, `blocked` with a human decision, or
+  none; later leaves add rows there.
+- **Input class.** A short free-text label the analyst writes per finding; it
+  is stored, never inferred. Two match when equal after lower-casing and
+  collapsing whitespace; there is no fuzzy or semantic matching.
+- **The rule.** A finding may be deferred only when its input class matches
+  none an RCA record or applied deferral from an earlier round named
+  (`deferred_findings` or a disposition's `input_class`), and it is not a
+  `correctness` finding on an acceptance id an earlier round marked `pass`. A
+  class seen before means the loop is circling, and a regression on a passing
+  criterion is this leaf's to fix; neither leaves the leaf. An item's round
+  is its blocking commit's, no later than the round the RCA covers, and only
+  what was named before that round is evidence.
+- **One rule.** `qualify_deferral` holds every rule (round, new input class,
+  binding, coverage, protected criteria) and is the only place they live:
+  `review defer` calls it before writing, and the gate calls it again on each
+  marker every evaluation. Each item binds one to one to a finding of the
+  blocking record (same category and text); every finding is bound and every
+  failed id named. A record does not tie findings to criteria, so a block with
+  a correctness finding that fails an id an earlier round passed is never
+  deferred.
+- **Applying it.** `specy-road review defer <ID> --rca <record>` is
+  human-only (an interactive terminal, no `--yes`). It refuses the whole record
+  when any item breaks the rule; otherwise it adds the follow-up leaf beside
+  the leaf through the `add-node` write, records a closed `decision` in
+  `roadmap/decisions.yaml` naming every deferred finding, the follow-up leaf
+  and the approver, and writes `DEFERRAL-<round>.yaml` beside the record, all
+  as one transaction that rolls back on any failure.
+- **Audit trail and gate.** RCA record → decision entry → follow-up leaf. The
+  gate stops counting a block only when a shape-valid marker names its
+  reviewer and commit and is in effect (`deferral_in_effect`, the one check
+  the gate, the next step and the rework's governing design use): the RCA it
+  names is valid, of round and items equal to the marker's; its decision is
+  closed, on the leaf, and worded as `review defer` records it, naming each
+  item's reviewer, full commit, finding, category, acceptance id and input
+  class (the ledger is read only then); and its items still qualify. A marker
+  citing another decision, or rewritten after `review defer`, resolves
+  nothing; a malformed marker resolves nothing and is reported; another
+  reviewer's block, or the same reviewer's on a later commit, still counts.
 
 ## Deferred
 

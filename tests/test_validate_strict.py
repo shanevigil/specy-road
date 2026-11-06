@@ -49,7 +49,8 @@ def test_strict_fails_a_validation_that_warned(tmp_path: Path, spoil, warning: s
     spoil(root)
 
     assert _validate(root).returncode == 0
-    r = _validate(root, "--strict")
+    assert _validate(root, "--strict").returncode == 1   # an unchanged context warning folds, and still counts
+    r = _validate(root, "--strict", "--context")         # --context: in full
 
     assert r.returncode == 1
     assert warning in r.stderr

@@ -11,6 +11,7 @@ import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
 from tests.test_worker_adapters import CODEX_TURN, CURSOR_RESULT, RECORDED
+from tests.worker_repo_helpers import reset_cursor_adapter_via_init
 
 from specy_road import worker_adapters as wa
 from specy_road import worker_state as ws
@@ -51,7 +52,7 @@ policy: {}
 """
 
 
-def _priced_repo(tmp_path: Path, roster: str, profiles: tuple[str, ...]) -> Path:
+def priced_repo(tmp_path: Path, roster: str, profiles: tuple[str, ...]) -> Path:
     repo = make_review_repo(tmp_path, orchestration=roster)
     for rel in profiles:
         dest = repo / "model-profiles" / rel
@@ -64,11 +65,11 @@ def _priced_repo(tmp_path: Path, roster: str, profiles: tuple[str, ...]) -> Path
 
 
 def _cursor_repo(tmp_path: Path) -> Path:
-    return _priced_repo(tmp_path, CURSOR_ROSTER, ("cursor-composer/composer-2.5.md", "cursor-composer/composer-2.md"))
+    return priced_repo(tmp_path, CURSOR_ROSTER, ("cursor-composer/composer-2.5.md", "cursor-composer/composer-2.md"))
 
 
 def _codex_repo(tmp_path: Path) -> Path:
-    return _priced_repo(tmp_path, CODEX_ROSTER, ("openai-gpt/gpt-6.1-sol.md",))
+    return priced_repo(tmp_path, CODEX_ROSTER, ("openai-gpt/gpt-6.1-sol.md",))
 
 
 def _cursor_workspace(tmp_path: Path, layout: str) -> tuple[Path, Path]:
@@ -129,6 +130,7 @@ def test_cursor_parse_events_estimates_cost_for_cached_input(tmp_path: Path, lay
     api_id = _api_id_for(project, "priced")
     assert api_id == "composer-2.5" and api_id != "priced"
     cu = wa.adapter_for("cursor")
+    reset_cursor_adapter_via_init(cu)
     launch = cu.launch(_prompt(tmp_path), workspace, api_id, None)
     assert launch.argv[launch.argv.index("--model") + 1] == api_id
     assert Path(launch.argv[launch.argv.index("--workspace") + 1]).resolve() == workspace
@@ -141,6 +143,7 @@ def test_cursor_resume_parse_events_estimates_cost_for_cached_input(tmp_path: Pa
     repo = _cursor_repo(tmp_path)
     api_id = _api_id_for(repo, "priced")
     cu = wa.adapter_for("cursor")
+    reset_cursor_adapter_via_init(cu)
     resumed = cu.resume("c1", _prompt(tmp_path), repo, api_id, None)
     assert resumed.argv[resumed.argv.index("--model") + 1] == api_id
     usage = cu.parse_events(json.dumps(CURSOR_RESULT), resumed)[0].usage
@@ -168,6 +171,7 @@ def test_cursor_parse_events_leaves_cost_null_when_profile_has_no_price(tmp_path
     repo = _cursor_repo(tmp_path)
     api_id = _api_id_for(repo, "unpriced")
     cu = wa.adapter_for("cursor")
+    reset_cursor_adapter_via_init(cu)
     launch = cu.launch(_prompt(tmp_path), repo, api_id, None)
     usage = cu.parse_events(json.dumps(CURSOR_RESULT), launch)[0].usage
     assert usage["cost_usd"] is None and usage["cost_is_estimate"] is None

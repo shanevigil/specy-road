@@ -17,6 +17,7 @@ from specy_road.bundled_scripts.roadmap_crud_dependency_ops import (
 from specy_road.bundled_scripts.roadmap_edit_fields import LIST_KEYS, ROADMAP_NODE_STATUSES
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
+from specy_road.bundled_scripts.roadmap_crud_delete import cmd_remove_node
 from specy_road.bundled_scripts.roadmap_crud_ops import (
     cmd_add,
     cmd_archive,
@@ -27,6 +28,7 @@ from specy_road.bundled_scripts.roadmap_crud_ops import (
     repo_root,
     unknown_node_msg,
 )
+from specy_road.doc_links import link_toolkit_docs
 from specy_road.runtime_paths import add_repo_root_arg
 
 
@@ -116,6 +118,14 @@ def _p_add(sub: argparse._SubParsersAction) -> None:
         default=[],
         help="One acceptance criterion; repeat for each ('|' is not a separator).",
     )
+    sp.add_argument(
+        "--planned-test-change",
+        dest="planned_test_change",
+        action="append",
+        default=[],
+        help="One approved test removal or weakening, as `specy-road integrity` prints it "
+             "(removed-test: tests/test_x.py::test_old); repeat for each.",
+    )
     sp.add_argument("--sensitivity", default=None, help="Data-sensitivity class (default public); see roadmap/orchestration.yaml may_process")
     sp.add_argument("--executor-eligibility", dest="executor_eligibility", default=None, help="any (default) or a roster class tag such as senior")
     sp.add_argument(
@@ -202,7 +212,7 @@ def _p_edit(sub: argparse._SubParsersAction) -> None:
         metavar="KEY=VALUE",
         help=(
             "Field to set; repeatable. List fields (acceptance, risks, touch_zones, "
-            "dependencies) take one --set per item: --set acceptance='Saves offline' "
+            "dependencies, planned_test_changes) take one --set per item: --set acceptance='Saves offline' "
             "--set acceptance='Syncs on reconnect'. touch_zones also splits on commas; "
             "'|' is not a separator. An empty value (acceptance=) removes the field."
         ),
@@ -214,7 +224,7 @@ def _p_edit(sub: argparse._SubParsersAction) -> None:
             metavar="KEY=ENTRY",
             help=(
                 f"{verb} one entry of a list field (acceptance, risks, touch_zones, "
-                "dependencies) and keep the rest; repeatable. Not combined with --set "
+                "dependencies, planned_test_changes) and keep the rest; repeatable. Not combined with --set "
                 "of the same field. dependencies takes a node_key or a display id."
             ),
         )
@@ -305,20 +315,28 @@ def _p_remove_dependency(sub: argparse._SubParsersAction) -> None:
 def _p_apply(sub: argparse._SubParsersAction) -> None:
     sp = sub.add_parser(
         "apply",
-        help="Run a YAML file of add-node / edit-node / add-dependency changes as one batch",
-        description=(
+        help=(
+            "Run a YAML file of add-node / edit-node / add-dependency / move-node / "
+            "group-nodes / indent / outdent / remove-node / archive changes as one batch"
+        ),
+        description=link_toolkit_docs(
             "Apply a change file in order, all or nothing: if any change is "
             "refused, every file the batch touched is restored. Each entry is "
             "op: plus the subcommand's long options (node: and dependency: for "
-            "the positionals, set: {field: value} for edit-node). See "
-            "docs/roadmap-authoring.md."
+            "the positionals, set: {field: value} for edit-node; node:, nodes:, "
+            "to_parent:, into_new:, title:, type:, id:, fill_gaps: and "
+            "rewrite_refs: for the restructure ops). The final graph is "
+            "validated once. See docs/roadmap-authoring.md."
         ),
     )
     sp.add_argument("changes_file", metavar="CHANGES.yaml")
     sp.add_argument(
         "--dry-run",
         action="store_true",
-        help="Rehearse on a scratch copy and print the resulting waves; write nothing",
+        help=(
+            "Rehearse on a scratch copy and print the old -> new id map and the "
+            "resulting waves; write nothing"
+        ),
     )
     sp.set_defaults(func=cmd_apply)
 
@@ -335,6 +353,26 @@ def _p_archive(sub: argparse._SubParsersAction) -> None:
         help="Remove node from chunk (fails if parent/dependency refs exist)",
     )
     sp.set_defaults(func=cmd_archive)
+
+
+def _p_remove_node(sub: argparse._SubParsersAction) -> None:
+    sp = sub.add_parser(
+        "remove-node",
+        help=(
+            "Remove a never-started leaf and its planning sheet when nothing "
+            "blocks it (status, registry claim, children, dependents)."
+        ),
+    )
+    sp.add_argument("node_id", metavar="NODE_ID")
+    sp.add_argument(
+        "--dry-run",
+        action="store_true",
+        help=(
+            "Rehearse on a scratch copy (same commit and validate as real removal); "
+            "the live repo is not written"
+        ),
+    )
+    sp.set_defaults(func=cmd_remove_node)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -354,4 +392,5 @@ def build_parser() -> argparse.ArgumentParser:
     _p_remove_dependency(sub)
     _p_apply(sub)
     _p_archive(sub)
+    _p_remove_node(sub)
     return p

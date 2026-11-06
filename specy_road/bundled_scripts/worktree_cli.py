@@ -3,7 +3,8 @@
 
 The checks are :func:`specy_road.worktree_prune.plan_prune`'s: the leaf's branch
 merged into the integration branch, and nothing uncommitted, untracked, stashed
-or held by no branch, in the worktree or in a ``nested_repos`` repository in it.
+or held by no branch, in the worktree or in a ``nested_repos`` repository in it,
+and no other repository's worktree or checkout inside it.
 """
 
 from __future__ import annotations
@@ -62,7 +63,10 @@ def build_parser() -> argparse.ArgumentParser:
             "it has no uncommitted changes, untracked non-ignored files, or stashes whose subject does not name another branch. Each nested_repos "
             "repository in it must also hold no uncommitted changes, stashes, or commits that no "
             "branch or remote-tracking ref of the main checkout's copy holds (a full clone's own "
-            "branches and remote-tracking refs included). Lists each ignored file removal deletes, "
+            "branches and remote-tracking refs included). Any other directory in it holding a .git (another "
+            "repository's linked worktree, checkout or submodule) or a bare repository, found by walking "
+            "the filesystem, refuses, as does a directory that walk cannot read, naming its repository, branch and the commits "
+            "its upstream lacks. Lists each ignored file removal deletes, "
             "including those inside ignored directories; removes only with --yes."
         ),
     )

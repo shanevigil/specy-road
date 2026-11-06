@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -11,14 +12,13 @@ from pathlib import Path
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_land_integration import integration_worktree
 from specy_road.git_workflow_config import resolve_integration_defaults
-from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.registry_yaml import read_registry, registry_path, write_registry
 from specy_road.on_complete_session import (
     on_complete_session_path,
     remove_on_complete_session,
 )
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
+from specy_road.bundled_scripts.abort_task_pickup_own_commit import only_own_registration_ahead
 from specy_road.bundled_scripts.repo_ops import current_branch, git_capture, git_run
 from specy_road.repo_lock import pickup_finish_lock
 
@@ -241,43 +241,6 @@ def _exit_if_unpushed_commits_without_force(
     raise SystemExit(1)
 
 
-def _registers_only(commit: str, codename: str) -> bool:
-    """True when ``commit``'s registry is its parent's plus this claim's row, nothing else.
-
-    Compared parsed: pickup rewrites the file, dropping comments and restyling.
-    """
-    empty = {"version": 1, "entries": []}
-    after = read_registry_at_ref(ROOT, commit, 30.0) or empty
-    before = read_registry_at_ref(ROOT, f"{commit}^", 30.0) or empty
-    entries = after.get("entries") or []
-    rest = [e for e in entries if not (isinstance(e, dict) and e.get("codename") == codename)]
-    return len(entries) - len(rest) == 1 and (
-        {**after, "entries": rest} == {**before, "entries": before.get("entries") or []}
-    )
-
-
-def _only_own_registration_ahead(remote: str, base: str, codename: str, ref: str) -> bool:
-    """True when the one commit on ``ref`` missing from ``remote/base`` is this claim's registration.
-
-    That is a ``--local`` pickup: the claim never reached the remote, so there is
-    nothing to deregister there. The commit must carry the registration subject,
-    change only the registry, and change it only by adding this claim's row, as
-    pickup's commit does, so abort never resets away a commit amended to carry
-    other work.
-    """
-    ahead = git_capture(ROOT, "rev-list", f"{remote}/{base}..{ref}").split()
-    if len(ahead) != 1:
-        return False
-    subject = git_capture(ROOT, "log", "-1", "--format=%s", ahead[0])
-    paths = git_capture(ROOT, "diff-tree", "--no-commit-id", "--name-only", "-r", ahead[0]).splitlines()
-    own = registration_commit_message(codename, include_ci_skip=False)
-    return (
-        subject.startswith(own)
-        and paths == [registry_path(ROOT).relative_to(ROOT).as_posix()]
-        and _registers_only(ahead[0], codename)
-    )
-
-
 def _drop_local_registration(remote: str, base: str, branch: str) -> None:
     _checkout_base(base)
     # --keep, not --hard: --hard silently overwrites an untracked file at a path
@@ -291,6 +254,8 @@ def _drop_local_registration(remote: str, base: str, branch: str) -> None:
 
 
 def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None:
+    from specy_road.bundled_scripts.do_next_task_register import regenerated_tracked_paths
+
     reg = read_registry(registry_path(ROOT))
     entries = reg.get("entries") or []
     if not next((e for e in entries if e.get("codename") == codename), None):
@@ -307,20 +272,28 @@ def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None
     reg["entries"] = [e for e in entries if e.get("codename") != codename]
     _save_registry(reg)
     rel_reg = str(registry_path(ROOT).relative_to(ROOT))
-    git_run(ROOT, "add", rel_reg)
-    git_run(ROOT, "commit", "-m", f"chore(rm-{codename}): abort task pickup")
+    paths = [rel_reg, *regenerated_tracked_paths(ROOT)]
+    git_run(ROOT, "add", *paths)
+    git_run(ROOT, "commit", "-m", f"chore(rm-{codename}): abort task pickup", "--", *paths)
     print(f"-> git push {remote} {base}")
     git_run(ROOT, "push", remote, base)
 
 
-def _exit_if_base_checked_out_elsewhere(base: str, branch: str) -> None:
-    """Abort moves this checkout to ``base``; git refuses while another worktree holds it."""
+def _exit_if_base_checked_out_elsewhere(base: str, branch: str, node_id: str) -> None:
+    """Abort moves this checkout to ``base``; git refuses while another worktree holds it.
+
+    The hint's ``--force`` is what lets git remove the worktree at all: pickup
+    leaves its brief there untracked, and tracked changes were refused already.
+    """
     holder = integration_worktree(ROOT, base)
     if holder is None:
         return
+    wt = shlex.quote(git_capture(ROOT, "rev-parse", "--show-toplevel").strip())
     print(f"error: '{base}' is checked out in {holder}, and abort-task-pickup needs it here.", file=sys.stderr)
     print("  For a delegated leaf: `specy-road worker terminate <W>`; then, in that checkout:", file=sys.stderr)
-    print(f"  `git worktree remove {ROOT}`, `git checkout {branch}`, and `specy-road abort-task-pickup`.",
+    print(f"  `git -C {wt} status --short` lists what removing this worktree discards: pickup's untracked "
+          f"work/brief-{node_id}.md, and --force discards any other untracked file there too.", file=sys.stderr)
+    print(f"  `git worktree remove --force {wt}`, `git checkout {branch}`, and `specy-road abort-task-pickup`.",
           file=sys.stderr)
     raise SystemExit(1)
 
@@ -351,11 +324,12 @@ def _abort_locked(args) -> None:
     )
     node_id = entry["node_id"]
     _assert_no_tracked_changes(base)
-    _exit_if_base_checked_out_elsewhere(base, branch)
+    _exit_if_base_checked_out_elsewhere(base, branch, node_id)
 
     git_run(ROOT, "fetch", remote)
     local_claim = all(
-        _only_own_registration_ahead(remote, base, codename, ref) for ref in ("HEAD", base)
+        only_own_registration_ahead(ROOT, remote, base, codename, ref, capture=git_capture)
+        for ref in ("HEAD", base)
     )
     if local_claim:
         _drop_local_registration(remote, base, branch)

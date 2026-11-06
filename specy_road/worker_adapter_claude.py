@@ -13,7 +13,9 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.claude_config import claude_projects_dir
-from specy_road.worker_adapter_base import STDIN_INSTRUCTION, Adapter, Capabilities, Launch, Parsed, _bare, _model_flag
+from specy_road.reviewer_auth import WORKER_FULL_FLAGS, bare_settings_argv, worker_environment
+from specy_road.worker_adapter_base import (REVIEWER_DISALLOWED, REVIEWER_NO_WRITES, REVIEWER_TOOLS, STDIN_INSTRUCTION,
+                                         Adapter, Capabilities, Launch, Parsed, _model_flag)
 from specy_road.worker_adapter_parsers import _init_detail, _json, _snip, _text, limit_detail, usage_fields
 
 #: The executor's tools, listed rather than left to the mode: since 2.1.302 ``claude -p`` silently denies a tool
@@ -25,6 +27,14 @@ EXECUTOR_TOOLS = "Read,Edit,Write,Glob,Grep,Bash"
 EXECUTOR_PERMISSIONS = ("--allowedTools", EXECUTOR_TOOLS, "--permission-prompts", "none", "--permission-mode", "acceptEdits")
 
 
+def _worker_mode(launch_mode: str) -> list[str]:
+    """A worker's mode flags, never ``claude -p``'s default (M15.36): ``--bare`` (and the user-settings path when
+    only an ``apiKeyHelper`` authenticates it), else every setting source named, so the subscription login is read."""
+    if launch_mode == "bare":
+        return ["--bare", *bare_settings_argv(worker_environment())]
+    return list(WORKER_FULL_FLAGS)
+
+
 class ClaudeCode(Adapter):
     harness = "claude-code"
     caps = Capabilities(resume=True, interrupt=False, steer=False, handoff=True, events=True,
@@ -33,39 +43,59 @@ class ClaudeCode(Adapter):
 
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
-               effort: str | None = None) -> Launch:
+               effort: str | None = None, harness_bin: str | None = None) -> Launch:
         sid = str(uuid.uuid4())
         custom = self._custom(cli, prompt_path, effort=effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return replace(custom, launch_mode=launch_mode)   # left as written; only the check uses the mode
-        return Launch(["claude", "-p", *_bare(launch_mode), "--output-format", "stream-json", "--verbose",
+        return Launch([self._program(harness_bin), "-p", *_worker_mode(launch_mode), "--output-format", "stream-json", "--verbose",
                        "--session-id", sid, *_model_flag("--model", model), *self.effort_flag(effort),
                        *self._add_dir(worktree, repo_root, node_id), *EXECUTOR_PERMISSIONS, STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=sid, launch_mode=launch_mode)
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full",
-               effort: str | None = None) -> Launch:
+               effort: str | None = None, harness_bin: str | None = None) -> Launch:
         custom = self._custom(cli, prompt_path, session_id, effort, node_id=node_id, repo_root=repo_root)
         if custom:
             return replace(custom, launch_mode=launch_mode)
         # A resumed session does not keep the launch's --model: pass it again, as the launch did.
-        return Launch(["claude", "-p", *_bare(launch_mode), "--resume", session_id, "--output-format", "stream-json",
+        return Launch([self._program(harness_bin), "-p", *_worker_mode(launch_mode), "--resume", session_id, "--output-format", "stream-json",
                        "--verbose", *_model_flag("--model", model), *self.effort_flag(effort),
                        *self._add_dir(worktree, repo_root, node_id), *EXECUTOR_PERMISSIONS, STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=session_id, launch_mode=launch_mode)
 
     def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,
-                        session: tuple[str, bool] | None = None) -> Launch:
-        """A fresh-session reviewer's turn: ``--bare``, so the branch under review runs none of its hooks and
-        connects none of its MCP servers, and ``--add-dir`` for the hand-off directory. The instruction goes
+                        session: tuple[str, bool] | None = None, *, schema: Path | None = None,
+                        output: Path | None = None, mode: str = "bare",
+                        harness_bin: str | None = None) -> Launch:
+        """A fresh-session reviewer's turn. ``mode="bare"`` (the default) passes ``--bare``. ``mode="explicit"``
+        passes ``--setting-sources user`` and ``--strict-mcp-config`` (help.txt) and never ``--bare`` or
+        ``--mcp-config``. Bare mode with only an ``apiKeyHelper`` also passes ``--settings`` and that file's path
+        (:func:`~specy_road.reviewer_auth.bare_settings_argv`), never the helper command. ``harness_bin`` is the
+        roster entry's binary (:meth:`Adapter._program`). Either way the branch under review runs none of its
+        hooks and connects none of its MCP servers, and ``--add-dir`` names the hand-off directory. The instruction goes
         right after ``-p``: ``--add-dir`` takes several values and would swallow it. ``session`` is
-        ``(id, resume)`` for ``review delegate``: the session flag, and stream-json so the id can be read back."""
+        ``(id, resume)`` for ``review delegate``: the session flag, and stream-json so the id can be read back.
+        Read-only (A2): no file-writing tool is allowed or approved (``Write``, ``Edit`` and ``NotebookEdit`` are
+        denied, and no permission mode approves edits); bare mode fires no hook, so ``--disallowedTools`` denies
+        commits, pushes and ``gh`` too (A4). ``--add-dir`` lets it read the hand-off directory. ``schema`` (the review output schema file) goes inline as
+        ``--json-schema``, less its top-level ``$schema`` (Claude Code 2.1.318 rejects the draft 2020-12 reference; the file keeps it). ``output`` is unused:
+        the result event carries the final answer."""
         tracked = [*self.session_flag(*session), "--output-format", "stream-json", "--verbose"] if session else []
-        return Launch(["claude", "-p", STDIN_INSTRUCTION, "--bare", *tracked, *_model_flag("--model", model),
-                       *self.effort_flag(effort), "--permission-mode", "acceptEdits",
-                       "--allowedTools", "Read,Edit,Bash", "--add-dir", str(reviews)],
-                      stdin=_text(prompt_path), session_id=session[0] if session else None, launch_mode="bare")
+        body = json.loads(schema.read_text(encoding="utf-8")) if schema else {}
+        structured = ["--json-schema", json.dumps({k: v for k, v in body.items() if k != "$schema"})] if schema else []
+        # explicit reads the subscription login from user settings and still loads no project settings or MCP.
+        # bare with only an apiKeyHelper passes the settings file's path, never the helper command.
+        auth = (["--setting-sources", "user", "--strict-mcp-config"] if mode == "explicit"
+                else ["--bare", *bare_settings_argv()])
+        return Launch([self._program(harness_bin), "-p", STDIN_INSTRUCTION, *auth, *tracked,
+                       *_model_flag("--model", model),
+                       *self.effort_flag(effort), "--allowedTools", REVIEWER_TOOLS,
+                       "--disallowedTools", *REVIEWER_NO_WRITES, *REVIEWER_DISALLOWED, *structured,
+                       "--add-dir", str(reviews)],
+                      stdin=_text(prompt_path), session_id=session[0] if session else None,
+                      launch_mode="explicit" if mode == "explicit" else "bare")
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)
@@ -98,7 +128,8 @@ class ClaudeCode(Adapter):
     def parse_events(self, line: str, launch: Launch) -> list[Parsed]:
         out = [*super().parse_events(line, launch), *self._turn_signals(_json(line))]
         inferred = (out[0].detail or {}).get("inferred_mode") if out and out[0].type == "started" else None
-        if inferred and inferred != launch.launch_mode:
+        # explicit is a reviewer mode (M15.2), not a profile launch_mode the tool list can infer
+        if inferred and launch.launch_mode in ("bare", "full") and inferred != launch.launch_mode:
             out.append(Parsed("error", f"claude started in {inferred} mode but the profile's launch_mode is "
                                        f"{launch.launch_mode}", out[0].session_id,
                               {"inferred_mode": inferred, "launch_mode": launch.launch_mode}))

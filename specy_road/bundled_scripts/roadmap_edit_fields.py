@@ -9,11 +9,13 @@ from typing import Any
 
 from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, planning_filename_for_node
 
+from specy_road.bundled_scripts.roadmap_edit_list_fields import PLANNED_TEST_CHANGES, set_planned_test_changes
 from specy_road.bundled_scripts.roadmap_node_keys import NODE_KEY_PATTERN
 
 ID_PATTERN = re.compile(r"^M[0-9]+(\.[0-9]+)*$")
 CODENAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
+from specy_road.bundled_scripts.roadmap_codename_cap import CODENAME_MAX_CHARS, cap_codename_slug, codename_length_error, derived_codename_from_title  # noqa: E402
 
 def title_to_codename(title: str, *, max_words: int | None = None) -> str:
     """
@@ -54,6 +56,7 @@ EDIT_WHITELIST = frozenset({
     "touch_zones",
     "acceptance",
     "risks",
+    PLANNED_TEST_CHANGES,
     "decision.status",
     "decision.decided_date",
     "decision.adr_ref",
@@ -93,7 +96,7 @@ def _nonempty_lines(raw: str) -> list[str]:
 
 
 #: Keys whose value is a list: repeating ``--set key=…`` appends one item each.
-LIST_KEYS = ("acceptance", "risks", "touch_zones", "dependencies")
+LIST_KEYS = ("acceptance", "risks", "touch_zones", "dependencies", PLANNED_TEST_CHANGES)
 
 
 def merge_set_pairs(pairs: list[tuple[str, str]]) -> list[tuple[str, str]]:
@@ -183,7 +186,8 @@ def codename_was_derived(codename: str | None, old_title: str | None) -> bool:
     """
     if not codename:
         return True
-    return codename == title_to_codename(old_title or "")
+    uncapped = title_to_codename(old_title or "")
+    return codename == uncapped or codename == cap_codename_slug(uncapped)
 
 
 def maybe_sync_codename_from_title(
@@ -207,7 +211,7 @@ def maybe_sync_codename_from_title(
     kebab slug, a derived codename is cleared (the filename uses ``unnamed``).
     """
     old = node.get("codename")
-    new_tc = title_to_codename(str(node.get("title") or ""))
+    new_tc = derived_codename_from_title(str(node.get("title") or ""))
     if not force and not codename_was_derived(old, old_title):
         if notify is not None and new_tc and new_tc != old:
             notify(
@@ -232,10 +236,13 @@ def _maybe_resync_planning_dir_after_edit(node: dict, dotted_key: str) -> None:
 def _set_codename(node: dict, raw_val: str) -> None:
     if raw_val.lower() in ("null", "~", ""):
         node["codename"] = None
-    elif not CODENAME_PATTERN.match(raw_val.strip()):
-        raise ValueError(f"invalid codename: {raw_val!r}")
     else:
-        node["codename"] = raw_val.strip()
+        val = raw_val.strip()
+        if err := codename_length_error(val):
+            raise ValueError(err)
+        if not CODENAME_PATTERN.match(val):
+            raise ValueError(f"invalid codename: {raw_val!r}")
+        node["codename"] = val
 
 
 def _set_exec_milestone(node: dict, raw_val: str) -> None:
@@ -363,6 +370,9 @@ def apply_set(
             f"{dotted_key} value looks like a JSON list; it is read as text, one item per line, "
             f"not parsed. Give one --set {dotted_key}=… per item."
         )
+    if dotted_key == PLANNED_TEST_CHANGES:
+        set_planned_test_changes(node, raw_val)
+        return
     if len(parts) == 1:
         key = parts[0]
         old_title = str(node.get("title") or "")

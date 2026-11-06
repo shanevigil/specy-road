@@ -137,8 +137,7 @@ def test_models_show_prints_fields_and_section(tmp_path: Path, capsys) -> None:
 
 def test_models_show_prints_a_bad_launch_mode_and_delegate_reads_a_good_one(tmp_path: Path, capsys,
                                                                             monkeypatch) -> None:
-    from specy_road import worker_ops as ops  # noqa: PLC0415 — only this test needs the worker side
-    from specy_road import worker_state as ws  # noqa: PLC0415
+    from specy_road import worker_ops as ops, worker_state as ws  # noqa: PLC0415 — only this test needs the worker side
     repo = make_profile_repo(tmp_path)
     launches = []
     monkeypatch.setattr(ops, "spawn", lambda root, rec, launch, **kw: launches.append(launch))
@@ -149,6 +148,7 @@ def test_models_show_prints_a_bad_launch_mode_and_delegate_reads_a_good_one(tmp_
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
     prof_path.write_text(prof_path.read_text().replace("launch_mode: full", "launch_mode: bare", 1))
     commit_profile(repo)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")   # M15.36: forced bare needs a key
     ops.message(repo, rec.worker_id, "go on")   # the resume reads the pinned profile again
     assert launches[1].launch_mode == "bare" and launches[1].argv[:4] == ["claude", "-p", "--bare", "--resume"]
     prof_path.write_text(prof_path.read_text().replace("launch_mode: bare", "launch_mode: lean", 1))
@@ -296,7 +296,7 @@ def test_prompt_cli_channel_runs_profile_cli(tmp_path: Path, capsys, monkeypatch
     assert text != prof_path.read_text()
     prof_path.write_text(text)
     commit_profile(repo)
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli", "--run",
                 "--repo-root", str(repo)) == 0
     captured = capsys.readouterr()
     assert "running: cat " in captured.err
@@ -307,7 +307,7 @@ def test_prompt_cli_channel_refuses_without_placeholder(tmp_path: Path, capsys) 
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
     prof_path.write_text(prof_path.read_text().replace(shipped_anthropic_opus_cli_yaml_line(), "  cli: echo hi"))
     commit_profile(repo)
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli", "--run",
                 "--repo-root", str(repo)) == 1
     assert "no {prompt} (the prompt file path) or <prompt>" in capsys.readouterr().err
 
@@ -319,7 +319,7 @@ def test_prompt_cli_channel_accepts_the_profiles_prompt_form(tmp_path: Path, cap
     prof_path.write_text(prof_path.read_text().replace(shipped_anthropic_opus_cli_yaml_line(),
                                                        '  cli: printf %s "<prompt>" | wc -c'))
     commit_profile(repo)
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli", "--run",
                 "--repo-root", str(repo)) == 0
     out, err = capfd.readouterr()
     sent = (repo / "work" / "prompt-M1.1-executor-opus.md").read_bytes()
@@ -334,19 +334,19 @@ def test_refresh_profiles_adds_missing_and_keeps_edited(tmp_path: Path, capsys) 
 
     repo = tmp_path / "r"
     repo.mkdir()
-    added, kept = rp.refresh_profiles(repo)
+    added, kept = rp.refresh_profiles(repo, profiles="all")
     assert len(added) == sum(p.name != "README.md" for p in TEMPLATE_PROFILES.rglob("*.md")) + 1 and kept == []  # every shipped profile + README
     mine = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
     mine.write_text("---\nprofile_schema: 2\n---\nmy edits\n")
-    written, kept = rp.refresh_profiles(repo)
+    written, kept = rp.refresh_profiles(repo, profiles="all")
     assert written == [] and len(kept) == len(added)
     assert mine.read_text().endswith("my edits\n")
-    assert run_main(rp, "--force", "model-profiles/anthropic-claude/claude-opus-5-5.md", "--repo-root", str(repo)) == 0
+    assert run_main(rp, "--force", "model-profiles/anthropic-claude/claude-opus-5-5.md", "--profiles=all", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
     assert "wrote model-profiles/anthropic-claude/claude-opus-5-5.md\n" in out
     assert f"kept {len(added) - 2} existing profile(s) and the README;" in out   # 1 written + the rest + README = len(added)
     assert "my edits" not in mine.read_text()
-    assert run_main(rp, "--repo-root", str(repo)) == 0
+    assert run_main(rp, "--profiles", "all", "--repo-root", str(repo)) == 0
     assert "already has every profile" in capsys.readouterr().out
 
 

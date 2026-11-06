@@ -22,6 +22,8 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
+from specy_road.orphaned_claims import stays_claimed
+
 EXIT_OK = 0
 EXIT_GENERIC = 1
 EXIT_NO_LEAVES = 2
@@ -74,10 +76,7 @@ class EventEmitter:
         if event == "resumed":
             return f"{prefix}: {node} -> {fields.get('branch')}"
         if event == "hook_failed":
-            return (
-                f"{prefix}: phase={fields.get('phase')} "
-                f"node={node} rc={fields.get('rc')}"
-            )
+            return _human_hook_failed(prefix, node, fields)
         if event == "stopped":
             return f"{prefix}: {fields.get('reason')}" + (f" at {node}" if node else "")
         if event == "plan":
@@ -100,6 +99,14 @@ class EventEmitter:
                 f"{fields.get('attempt')} of {fields.get('max_retries')})."
             )
         return f"{prefix}: {fields}"
+
+
+def _human_hook_failed(prefix: str, node, fields: dict) -> str:
+    """A failed phase. Implement leaves the leaf claimed, so that line names the two commands."""
+    line = f"{prefix}: phase={fields.get('phase')} node={node} rc={fields.get('rc')}"
+    if fields.get("phase") == "implement" and node:
+        line += f"; {stays_claimed(str(node))}"
+    return line
 
 
 def _human_in_flight(prefix: str, node, fields: dict) -> str:

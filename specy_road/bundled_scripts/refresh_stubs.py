@@ -35,7 +35,7 @@ from pathlib import Path
 
 from specy_road import __version__
 from specy_road.agent_guide_block import AGENT_GUIDE, apply_agent_guide_block
-from specy_road.agents_md_block import AGENTS_FILES, apply_agents_and_report, apply_agents_files, print_migration
+from specy_road.agents_md_block import AGENTS_FILES, agents_block_mode, apply_agents_and_report, apply_agents_files, print_migration
 from specy_road.agent_ignores import CURSOR_INDEXING_IGNORE, GITIGNORE, apply_agent_ignores, apply_and_report
 from specy_road.runtime_paths import (
     add_repo_root_arg,
@@ -44,6 +44,12 @@ from specy_road.runtime_paths import (
     project_root,
     recorded_project_root,
 )
+from specy_road.bundled_scripts.refresh_stubs_report import (  # noqa: F401 — _old_command_stub, NEXT_STEP re-exported
+    NEXT_STEP,
+    old_command_stub as _old_command_stub,
+    report as _report,
+)
+from specy_road.written_entry import Written
 from specy_road.managed_block import CREATED, REFUSED, UNCHANGED, UPDATED, resolves_outside
 from specy_road.specyrd_skills import SKIPPED, ensure_link, is_link_path, mirrored_copies, render_skill, skill_rel
 from specy_road.specyrd_init import (
@@ -58,7 +64,6 @@ from specy_road.specyrd_init import (
 )
 
 MANIFEST_REL = Path(".specyrd") / "manifest.json"
-NEXT_STEP = "Next: specy-road validate (specy-road upgrade runs the whole sequence)."
 README_REL = ".specyrd/README.md"
 
 
@@ -103,27 +108,27 @@ def _write_if_changed(
     if is_link_path(rel):
         outcome = ensure_link(repo_root, agent, f"{Path(rel).name}.md", dry_run=dry_run, repair=owned, owned=owned)
         if outcome == SKIPPED:
-            written.append(f"{rel} ({outcome})")
+            written.append(Written(rel, outcome))
             return False
         if outcome != UNCHANGED:
-            written.append(f"{rel} ({outcome})")
+            written.append(Written(rel, outcome))
         return True
     content = _content_for(rel)
     if content is None:
         return True
     dest = repo_root / rel
     if resolves_outside(repo_root, dest):
-        written.append(f"{rel} ({REFUSED})")
+        written.append(Written(rel, REFUSED))
         return False
     if not owned and dest.exists():
-        written.append(f"{rel} (skipped (not ours))")
+        written.append(Written(rel, "skipped (not ours)"))
         return False
     if dest.is_file() and dest.read_text(encoding="utf-8") == content:
         return True
     if not dry_run:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(content, encoding="utf-8")
-    written.append(rel)
+    written.append(Written(rel))
     return True
 
 
@@ -140,7 +145,7 @@ def _refresh_pack(
     declined: set[str] = set()
     for rel in current:
         if is_link_path(rel) and str(skill_rel(f"{Path(rel).name}.md")) in declined:
-            written.append(f"{rel} ({SKIPPED})")
+            written.append(Written(rel, SKIPPED))
             continue
         owned = rel in all_recorded or rel.startswith(".specyrd/")
         if _write_if_changed(repo_root, rel, dry_run=dry_run, written=written, agent=agent, owned=owned):
@@ -148,11 +153,6 @@ def _refresh_pack(
         else:
             declined.add(rel)
     return ours
-
-
-def _old_command_stub(rel: str) -> bool:
-    """A pre-0.3.0 harness command stub (not a `generic` pack's own commands dir)."""
-    return rel.startswith((".cursor/commands/", ".claude/commands/"))
 
 
 def _orphans(recorded: list[str], current: list[str], repo_root: Path) -> list[str]:
@@ -228,7 +228,7 @@ def refresh_stubs(
     if (repo_root / AGENT_GUIDE).is_file():
         outcome = apply_agent_guide_block(repo_root, prefix, dry_run=dry_run)
         if outcome != UNCHANGED:
-            written.append(f"{AGENT_GUIDE} ({outcome})")
+            written.append(Written(AGENT_GUIDE, outcome))
     apply_and_report(repo_root, prefix, written, dry_run=dry_run)
     apply_agents_and_report(repo_root / prefix if prefix else repo_root, written, dry_run=dry_run, prefix=prefix)
 
@@ -287,28 +287,8 @@ def _resolve_root(explicit: Path | None) -> Path:
     return (git_root(start) or start).resolve()
 
 
-def _report_orphans(orphans: list[str], *, dry_run: bool, pruned: bool) -> None:
-    if pruned:
-        verb = "would remove" if dry_run else "removed"
-        print("")
-        for rel in orphans:
-            print(f"{verb} {rel} (no longer installed)")
-        return
-    print("\nNo longer installed for this role (or a .cursor/.codex copy of a skill), left on disk for you to remove:")
-    for rel in orphans:
-        print(f"  {rel}")
-    if any(_old_command_stub(rel) for rel in orphans):
-        print(
-            "\nThe */commands/ files are the pre-0.3.0 command stubs. The same commands are now\n"
-            "skills under .agents/skills/ (one file read by Cursor, Codex, and Claude Code), so\n"
-            "delete the old stubs to avoid two /specyrd-… entries:\n  rm "
-            + " ".join(rel for rel in orphans if _old_command_stub(rel))
-        )
-    print("Rerun with --prune to delete every path listed above.")
-
-
-def _block_previews(repo_root: Path, prefix: str, tmp: Path) -> dict[str, str]:
-    """Each managed-block file as a refresh would leave it, keyed by its report line; built under ``tmp``."""
+def _block_previews(repo_root: Path, prefix: str, tmp: Path) -> dict[str, tuple[str, str]]:
+    """``{report line: (path, text)}`` for each managed-block file as a refresh would leave it; built under ``tmp``."""
     rels = [AGENT_GUIDE, CURSOR_INDEXING_IGNORE, GITIGNORE, *(f"{prefix}{r}" for r in AGENTS_FILES)]
     for rel in (r for r in rels if (repo_root / r).is_file()):
         (tmp / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -316,8 +296,8 @@ def _block_previews(repo_root: Path, prefix: str, tmp: Path) -> dict[str, str]:
     (tmp / prefix).mkdir(parents=True, exist_ok=True)
     apply_agent_guide_block(tmp, prefix)
     apply_agent_ignores(tmp, prefix)
-    apply_agents_files(tmp / prefix)
-    return {f"{rel} ({o})": (tmp / rel).read_text(encoding="utf-8")
+    apply_agents_files(tmp / prefix, mode=agents_block_mode(repo_root / prefix))   # the setting is not copied to tmp
+    return {f"{rel} ({o})": (rel, (tmp / rel).read_text(encoding="utf-8"))
             for rel in rels if (tmp / rel).is_file() for o in (CREATED, UPDATED)}
 
 
@@ -327,9 +307,10 @@ def _print_diffs(repo_root: Path, written: list[str], prefix: str) -> list[str]:
     with tempfile.TemporaryDirectory() as tmp:
         blocks = _block_previews(repo_root, prefix, Path(tmp))
         for entry in written:
-            rel, sep, _ = entry.partition(" (")
-            new = blocks.get(entry) if sep else _content_for(rel)
-            if new is None:
+            rel, new = blocks.get(entry, (None, None))   # matched whole: a path is never parsed out of a line
+            if rel is None and isinstance(entry, Written) and not entry.outcome:
+                rel, new = entry.path, _content_for(entry.path)
+            if rel is None or new is None:
                 rest.append(entry)
                 continue
             old = (repo_root / rel).read_text(encoding="utf-8") if (repo_root / rel).is_file() else None
@@ -337,29 +318,6 @@ def _print_diffs(repo_root: Path, written: list[str], prefix: str) -> list[str]:
                 (old or "").splitlines(keepends=True), new.splitlines(keepends=True),
                 fromfile="/dev/null" if old is None else f"a/{rel}", tofile=f"b/{rel}"))
     return rest
-
-
-def _report(written: list[str], orphans: list[str], *, dry_run: bool, pruned: bool = False,
-            footer: bool = True) -> None:
-    verb = "would write" if dry_run else "wrote"
-    old_stubs = [rel for rel in orphans if _old_command_stub(rel)]
-    if dry_run and old_stubs:
-        skills = len({Path(rel).stem for rel in old_stubs})
-        print(f"migration: {len(old_stubs)} command stubs (*/commands/) become {skills} skills under .agents/skills/")
-    for rel in written:
-        print(f"{verb} {rel}")
-    if orphans:
-        _report_orphans(orphans, dry_run=dry_run, pruned=pruned)
-    if not footer:
-        return
-    if dry_run:
-        print("\n(dry-run; no files written)")
-        return
-    print(
-        "\nStubs and managed blocks only. Your roadmap, planning sheets and "
-        "anything outside a managed block were not touched."
-        f"\n{NEXT_STEP}"
-    )
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -393,7 +351,7 @@ def main(argv: list[str] | None = None) -> None:
         return
     if args.diff:
         written = _print_diffs(root, written, prefix)
-    _report(written, orphans, dry_run=dry_run, pruned=args.prune)
+    _report(written, orphans, dry_run=dry_run, pruned=args.prune, repo_root=root)
 
 
 if __name__ == "__main__":

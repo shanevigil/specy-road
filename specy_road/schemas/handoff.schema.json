@@ -27,10 +27,12 @@
         "properties": {
           "cmd": { "type": "string", "minLength": 1 },
           "exit": { "type": "integer" },
-          "tail": { "type": "string" }
+          "tail": { "type": "string" },
+          "warning": { "type": "string", "description": "A tail line suggesting a command failed though exit was 0." }
         }
       }
     },
+    "sibling_heads": { "$ref": "#/$defs/siblingHeads", "description": "HEAD of each sibling repository (a git repository under the project root that the root repository does not track and nested_repos does not configure) at `specy-road ready`, by project-relative path." },
     "blocked_on": {
       "type": "array",
       "description": "Acceptance criteria the executor could not meet without weakening tests or raising a baseline or cap.",
@@ -47,6 +49,7 @@
   },
   "$defs": {
     "sha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+    "siblingHeads": { "type": "object", "propertyNames": { "minLength": 1 }, "additionalProperties": { "$ref": "#/$defs/sha" } },
     "acceptanceId": { "type": "string", "pattern": "^A[1-9][0-9]*$" }
   }
 }

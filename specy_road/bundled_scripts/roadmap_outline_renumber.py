@@ -1,7 +1,17 @@
-"""Full-tree id renumbering from parent_id + sibling_order (display ids; node_key stable)."""
+"""Display-id renumbering (node_key stable).
+
+Two forms: :func:`renumber_display_ids_inplace` rewrites every id from the
+tree shape (``move-node --renumber-outline``, or a PM GUI request with
+``renumber_outline: true``), and :func:`assign_subtree_ids_inplace` renumbers
+only a moved subtree (``move-node``'s and the PM GUI's default), so no other
+node's id changes. The moved node's own id comes from
+:func:`next_free_child_id`, :func:`lowest_free_child_id` (``--fill-gaps``) or
+a caller's choice checked by :func:`check_chosen_child_id` (``--id``).
+"""
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 
 from specy_road.bundled_scripts.roadmap_layout import sibling_sort_key
@@ -114,4 +124,130 @@ def renumber_display_ids_inplace(nodes: list[dict]) -> dict[str, str]:
             else:
                 pk = p["node_key"]
                 n["parent_id"] = key_to_new_id[pk]
+    return old_to_new
+
+
+def _numeric_last_segment(nid: str, prefix: str) -> int | None:
+    """``k`` when ``nid`` is ``<prefix><k>`` with an integer ``k``, else None."""
+    if not nid.startswith(prefix):
+        return None
+    rest = nid[len(prefix):]
+    return int(rest) if rest.isdigit() else None
+
+
+def _first_child_number(nodes: list[dict], parent_id: str | None) -> int:
+    """The number a parent's children start at: 1, or 0 at the root when ``M0`` exists.
+
+    The one root-base rule for every allocator here. It reads the whole graph
+    before any caller leaves the moved node out, so moving ``M0`` itself does
+    not change the project's base.
+    """
+    return 0 if parent_id is None and any(n["id"] == "M0" for n in nodes) else 1
+
+
+def next_free_child_id(
+    nodes: list[dict], parent_id: str | None, *, exclude_key: str | None = None
+) -> str:
+    """One past the highest numbered child of ``parent_id`` (``None`` = root).
+
+    Gaps are left alone, so no existing sibling's id changes. ``exclude_key``
+    leaves the node being moved out of the count, so moving the last child of
+    a parent back under it keeps its number; with no other child the first
+    number is used (:func:`_first_child_number`).
+    """
+    prefix = "M" if parent_id is None else f"{parent_id}."
+    taken = [
+        _numeric_last_segment(n["id"], prefix)
+        for n in nodes
+        if (n.get("parent_id") or None) == parent_id
+        and n.get("node_key") != exclude_key
+    ]
+    first = _first_child_number(nodes, parent_id)
+    highest = max((k for k in taken if k is not None), default=first - 1)
+    return f"{prefix}{highest + 1}"
+
+
+DISPLAY_ID_RE = re.compile(r"^M[0-9]+(\.[0-9]+)*$")
+
+
+def subtree_ids(nodes: list[dict], root_id: str) -> set[str]:
+    """``root_id`` and every id below it, following ``parent_id`` links."""
+    out = {root_id}
+    grew = True
+    while grew:
+        grew = False
+        for n in nodes:
+            if n.get("parent_id") in out and n["id"] not in out:
+                out.add(n["id"])
+                grew = True
+    return out
+
+
+def lowest_free_child_id(
+    nodes: list[dict], parent_id: str | None, *, ignore_ids: set[str]
+) -> str:
+    """The smallest unused child id of ``parent_id`` (``None`` = root).
+
+    Starts at :func:`_first_child_number` (1; 0 at the root when ``M0``
+    exists, decided before anything is ignored). Ids in ``ignore_ids`` (the
+    moved subtree) count as free, so moving ``M0`` at the root keeps ``M0``.
+    """
+    prefix = "M" if parent_id is None else f"{parent_id}."
+    k = _first_child_number(nodes, parent_id)
+    taken = {n["id"] for n in nodes if n["id"] not in ignore_ids}
+    while f"{prefix}{k}" in taken:
+        k += 1
+    return f"{prefix}{k}"
+
+
+def check_chosen_child_id(
+    nodes: list[dict], parent_id: str | None, new_id: str, *, ignore_ids: set[str]
+) -> None:
+    """Raise ``ValueError`` unless ``new_id`` is a free direct child id of ``parent_id``.
+
+    Well-formed means :data:`DISPLAY_ID_RE`; a direct child is ``parent_id``
+    plus exactly one numeric segment (``Mk`` at the root); free means no node
+    outside ``ignore_ids`` (the moved subtree) has it.
+    """
+    if not DISPLAY_ID_RE.match(new_id):
+        raise ValueError(
+            f"id {new_id!r} is malformed (expected {DISPLAY_ID_RE.pattern})"
+        )
+    if (new_id.rpartition(".")[0] or None) != parent_id:
+        where = "the roadmap root (Mk)" if parent_id is None else f"{parent_id} ({parent_id}.k)"
+        raise ValueError(f"id {new_id!r} is not a direct child id of {where}")
+    if any(n["id"] == new_id for n in nodes if n["id"] not in ignore_ids):
+        raise ValueError(f"id {new_id!r} is already taken by another node")
+
+
+def assign_subtree_ids_inplace(
+    nodes: list[dict], moved_key: str, new_id: str
+) -> dict[str, str]:
+    """Give the node ``moved_key`` the id ``new_id`` and renumber its subtree only.
+
+    Each descendant keeps its own last id segment under its parent's new id
+    (``M1.2.3`` moved to ``M4.7`` becomes ``M4.7.3``), so gaps inside the
+    subtree survive. Every other node keeps its ``id`` and ``parent_id``; the
+    moved node's ``parent_id`` is whatever the caller already set. Returns
+    ``old_id -> new_id`` for the subtree only.
+    """
+    moved = next(n for n in nodes if n.get("node_key") == moved_key)
+    children: dict[str, list[dict]] = defaultdict(list)
+    for n in nodes:
+        if n is not moved and isinstance(n.get("parent_id"), str):
+            children[n["parent_id"]].append(n)
+
+    # (node, new id, new parent id); collected before anything is rewritten.
+    renames: list[tuple[dict, str, str | None]] = []
+
+    def visit(node: dict, nid: str, parent: str | None) -> None:
+        renames.append((node, nid, parent))
+        for child in children.get(node["id"], []):
+            visit(child, f"{nid}.{child['id'].rsplit('.', 1)[-1]}", nid)
+
+    visit(moved, new_id, moved.get("parent_id"))
+    old_to_new = {node["id"]: nid for node, nid, _parent in renames}
+    for node, nid, parent in renames:
+        node["id"] = nid
+        node["parent_id"] = parent
     return old_to_new

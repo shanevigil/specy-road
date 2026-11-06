@@ -17,6 +17,12 @@ from specy_road.bundled_scripts.registration_pickup_commit import (
     REGISTRATION_COMMIT_CI_SKIP_SUFFIX,
     registration_commit_message,
 )
+from specy_road.review_policy_pin import policy_digest
+
+
+def _git_log(root: Path) -> str:
+    return subprocess.run(["git", "log", "--format=%H %s"], cwd=root, check=True, capture_output=True,
+                          text=True).stdout
 
 
 def _pickup_test_node() -> dict:
@@ -273,14 +279,26 @@ def test_registration_commit_message_ci_skip_toggle() -> None:
     )
 
 
-def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+@pytest.mark.parametrize("orchestration", [None, "version: 1\nroster: []\n", "roster: [\n"],
+                         ids=["no commit to pin", "pinned", "policy does not parse"])
+def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, tmp_path, orchestration) -> None:
+    """The subject is unchanged; a committed policy adds the pin trailer (M21.30), and one that does not parse
+    refuses the claim before any registry write. With a committed policy git runs for real, and the claim is read
+    back from git."""
     _git_init(tmp_path)
+    if orchestration is not None:
+        (tmp_path / "roadmap").mkdir(parents=True)
+        (tmp_path / "roadmap" / "orchestration.yaml").write_text(orchestration, encoding="utf-8")
+        for key, value in (("user.name", "T"), ("user.email", "t@e")):
+            subprocess.run(["git", "config", key, value], cwd=tmp_path, check=True)
+        subprocess.run(["git", "add", "roadmap"], cwd=tmp_path, check=True)
+        subprocess.run(["git", "commit", "-qm", "policy"], cwd=tmp_path, check=True)
     calls: list[list[str]] = []
 
     def fake_git(_root, *args: str) -> None:
         calls.append(list(args))
 
-    (tmp_path / "roadmap").mkdir(parents=True)
+    (tmp_path / "roadmap").mkdir(parents=True, exist_ok=True)
     (tmp_path / "roadmap" / "registry.yaml").write_text(
         "version: 1\nentries: []\n",
         encoding="utf-8",
@@ -292,7 +310,8 @@ def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, t
     monkeypatch.setattr(dnt, "sync_integration_branch", lambda *_a, **_k: None)
     monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _b: None)
     monkeypatch.setattr(dnt, "_push_integration_branch", lambda _r, _b: None)
-    monkeypatch.setattr(dnt, "git_run", fake_git)
+    if orchestration is None:   # no commit to read back: the message is checked as handed to git
+        monkeypatch.setattr(dnt, "git_run", fake_git)
     monkeypatch.setattr(dnt, "prompt_on_complete", lambda _root, _cli: "pr")
     monkeypatch.setattr(dnt, "merge_request_requires_manual_approval", lambda _r: False)
     monkeypatch.setattr(
@@ -310,13 +329,24 @@ def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, t
     (tmp_path / "work").mkdir(parents=True)
     (tmp_path / "work" / "brief-M9.1.md").write_text("x", encoding="utf-8")
 
-    dnt.main(
-        [
-            "--no-ci-skip-in-message",
-            "--repo-root",
-            str(tmp_path),
-        ],
-    )
+    argv = ["--no-ci-skip-in-message", "--repo-root", str(tmp_path)]
+    claimed_at = _git_log(tmp_path).split(" ")[0] if orchestration is not None else None
+    if orchestration == "roster: [\n":
+        log_before = _git_log(tmp_path)
+        with pytest.raises(SystemExit) as e:
+            dnt.main(argv)
+        assert e.value.code == 1
+        assert (tmp_path / "roadmap" / "registry.yaml").read_text() == "version: 1\nentries: []\n"
+        assert _git_log(tmp_path) == log_before and "register as in-progress" not in log_before
+        return
+    dnt.main(argv)
 
-    assert calls[1][0] == "commit"
-    assert calls[1][2] == "chore(rm-pickup-git): register as in-progress"
+    subject = "chore(rm-pickup-git): register as in-progress"
+    if orchestration is None:
+        assert calls[1][0] == "commit"
+        assert calls[1][2] == subject
+    else:
+        claim = subprocess.run(["git", "log", "-1", "--format=%B", f"--grep={subject}", "--fixed-strings"],
+                               cwd=tmp_path, check=True, capture_output=True, text=True).stdout.strip()
+        trailer = f"Review-policy: sha256:{policy_digest(tmp_path, claimed_at)[0]} at {claimed_at}"
+        assert claim == f"{subject}\n\n{trailer}"

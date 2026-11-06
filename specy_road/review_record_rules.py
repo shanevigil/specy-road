@@ -5,7 +5,8 @@ tests, reading loose acceptance text in the leaf's favour, and naming real defec
 "advisory" or "non-blocking", or describing a crash, lost data or refused valid input, while approving.
 :data:`PROBE_RULES_LINES` goes into every reviewer prompt; :func:`check_record` is the record check for
 ``specy-road review record``, which also refuses an approve with a findings entry, or notes that name a
-defect or describe a concrete failure, with neither a ``required_changes`` entry nor a :data:`NOT_A_DEFECT` line.
+defect or describe a concrete failure, with neither a ``required_changes`` entry nor a :data:`NOT_A_DEFECT` line,
+and an approve with no ``acceptance`` entry for an unplanned test removal (:mod:`specy_road.integrity_removals`).
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.integrity_removals import REQUIRED_HEADING, missing_removal_entries, target_unplanned_removals
 from specy_road.review_files import HUMAN, load_review
 from specy_road.review_target import ReviewTarget, milestone_open_problem, same_commit
 
@@ -30,16 +32,31 @@ PROBE_RULES_LINES = [
     "3. Fail an acceptance item whose observed behaviour differs from its text, even when the difference looks "
     "minor; do not read a loose criterion in the leaf's favour.",
     "4. List every defect your notes or findings describe under `required_changes` (and block), or explain on "
-    f"that same line why it is not one, starting `{NOT_A_DEFECT}`. On an approve, `review record` treats every "
-    "`findings` entry and every observation line of the notes as a possible defect, whatever its wording, and "
-    f"refuses the record unless that line says `{NOT_A_DEFECT} <reason>`, the phrase standing on its own and "
-    "outside backticks, with the reason after it. An observation line is any line of two "
-    "words or more outside code spans, other than a heading, a `>` quote, fenced code, a table separator row or "
-    "horizontal rule, or a bare acceptance result such as `A1: pass`; so write each observation with its reason "
-    "on the same line, and quote text or test output in backticks, a `>` line or fenced code. One explanation "
-    "covers one observation, the sentence or clause it ends or the one just before it, and that text may not join a "
-    "second observation with a comma or a conjunction: give each observation its own, and keep each reason to one "
-    "clause that names no defect itself.",
+    f"that same line why it is not one, starting `{NOT_A_DEFECT}`. The last section before the schema says how "
+    "to write each other line so `review record` accepts it.",
+    "",
+]
+# Rule 4 in operational form (M21.35): the last section before the schema (review_record_write.schema_lines) and a
+# refused answer's repair turn (repair_prompt). The check itself is clause_problem / note_problem, unchanged.
+NOTES_RULES_LINES = [
+    "### How `review record` checks your notes",
+    "",
+    "specy-road files your review from your final message in one shot; `review record` refuses an approve that "
+    "breaks these rules, and a refused answer is a rerun. Before you send it, check every line:",
+    "",
+    "- Write one observation per line.",
+    "- On an approve, every `findings` entry, and every notes line of two words or more other than a heading, a bare "
+    "acceptance result (`A1: pass` with no words after it), a `>` quote, fenced code or a table separator, either "
+    "matches a `required_changes` entry (and then the verdict is block) or carries, on that same line, "
+    f"'{NOT_A_DEFECT} <reason>'. Write that phrase as plain text outside backticks, and let the reason name no "
+    "defect.",
+    "- `A1: pass` followed by more words is an observation, so it needs that phrase too.",
+    "- Each clause, split on '. ', '! ', '? ', '; ' or a conjunction (and, but, while, whereas, although, though, "
+    "yet, plus), is checked on its own: give each observation its own line and its own reason.",
+    "- A comma list (\"no X, Y or Z were added\") is several observations: split it into separate lines, each with "
+    "its own reason.",
+    "- Evidence (commands and their results) goes in `commands_rerun`, not in the notes; fewer notes lines mean "
+    "fewer refusals. Quote code or test output in backticks, a `>` line or fenced code.",
     "",
 ]
 # Executors once deleted unrelated docstrings and messages to stay under a line cap; reviewers caught it a round late.
@@ -144,19 +161,50 @@ _CONTINUES = re.compile(r"(?:so|which|that|because|since|as|causing|meaning|thus
                         r"at|of|after|before|e\.g\.|i\.e\.)\b", re.I)
 
 
+# Quoted text, which names rather than joins: a conjunction inside a double-quoted, single-quoted or backtick span is
+# not a split point ("compares 'base and HEAD'"). A single quote opens and closes only beside a non-word character,
+# so an apostrophe ("user's") is not one.
+_QUOTED = re.compile(r"`[^`]*`|\"[^\"\n]*\"|(?<!\w)'[^'\n]*'(?!\w)")
+
+
+def _parts(text: str) -> list[tuple[str, str]]:
+    """``(joining word, part)`` for each non-empty part of ``text`` split by :data:`_PARTS`, outside quoted spans;
+    the first part's joining word is empty and a comma's is ``,``."""
+    spans = [m.span() for m in _QUOTED.finditer(text)]
+    out, start, joiner = [], 0, ""
+    for m in _PARTS.finditer(text):
+        if any(a <= m.start() < b for a, b in spans):
+            continue
+        out.append((joiner, text[start:m.start()].strip()))
+        joiner, start = m.group().strip() or ",", m.end()
+    out.append((joiner, text[start:].strip()))
+    return [(j, part) for j, part in out if part]
+
+
 def _second_observation(text: str) -> str | None:
-    """Why ``text``, which one explanation covers, holds more than one observation, or ``None``. A part counts when
-    it names a defect, or has three words or more and does not carry on the part before it."""
-    found = []
-    for i, part in enumerate(p.strip() for p in _PARTS.split(text) if p.strip()):
-        word = _named_defect(part)
+    """Why ``text``, which one explanation covers, holds more than one observation, or ``None``. It can only when
+    some joined part names a defect: parts that name none are one observation, whatever joins them. Then a part
+    counts when it names a defect, or has three words or more and does not carry on the part before it, and the
+    first part counts from two words when a comma or "and" part names a defect ("X fails and Y crashes"). The
+    answer names the word that joins the second observation to the first and quotes both parts."""
+    parts = [(joiner, part, _named_defect(part)) for joiner, part in _parts(text)]
+    if not any(word for _joiner, _part, word in parts):
+        return None
+    listed = any(word and joiner.lower() in (",", "and") for joiner, _part, word in parts)
+    found = []   # (why, joining word, part)
+    for i, (joiner, part, word) in enumerate(parts):
         if word:
-            found.append(f'says "{word}"')
-        elif len(_WORD.findall(part)) >= 3 and (i == 0 or not _CONTINUES.match(part)):
-            found.append("is an observation")
+            found.append((f'says "{word}"', joiner, part))
+        elif i == 0 and len(_WORD.findall(part)) >= (2 if listed else 3):
+            found.append(("is an observation", joiner, part))
+        elif i and len(_WORD.findall(part)) >= 3 and not _CONTINUES.match(part):
+            found.append(("is an observation", joiner, part))
     if len(found) < 2:
         return None
-    return next((f for f in found if f.startswith("says")), found[1])
+    why = next(f[0] for f in found if f[0].startswith("says"))
+    (_, _, first), (_, joiner, second) = (f[:2] + (f[2].rstrip(".;:!? "),) for f in found[:2])
+    gap = "" if joiner == "," else " "
+    return f'{why}, two observations joined by "{joiner}": "{first}"{gap}{joiner} "{second}"'
 
 
 def clause_problem(text: str) -> str | None:
@@ -199,18 +247,15 @@ def note_problem(line: str) -> str | None:
     return clause_problem(text)
 
 
-def unexplained_defects(data: dict[str, Any], body: str) -> list[str]:
-    """``<where> says "<word>"`` for each findings entry and notes line that names a defect without a
-    :data:`NOT_A_DEFECT` line; fenced code in the notes is skipped. A word list cannot catch every way of
-    describing a defect, so every findings entry (``<where> is a finding``) and every observation line of the
-    notes (``<where> is an observation``, :func:`note_problem`) without that line counts, whatever its wording.
-    Each explanation covers one observation (:func:`clause_problem`)."""
+def offending_lines(data: dict[str, Any], body: str) -> list[tuple[str, str]]:
+    """``(where and why, text)`` for each findings entry and notes line :func:`unexplained_defects` names, with
+    the entry's or line's own text."""
     out = []
     for key, items in (data.get("findings") or {}).items():
         for i, item in enumerate(items or []):
             why = clause_problem(str(item)) or (None if explained(str(item)) else "is a finding")
             if why:
-                out.append(f"findings.{key}[{i}] " + why.replace("is an observation", "is a finding"))
+                out.append((f"findings.{key}[{i}] " + why.replace("is an observation", "is a finding"), str(item)))
     fenced = False
     for n, line in enumerate(body.splitlines(), 1):
         if line.lstrip().startswith(("```", "~~~")):
@@ -218,21 +263,36 @@ def unexplained_defects(data: dict[str, Any], body: str) -> list[str]:
             continue
         why = None if fenced else note_problem(line)
         if why:
-            out.append(f"notes line {n} {why}")
+            out.append((f"notes line {n} {why}", line))
     return out
 
 
+def unexplained_defects(data: dict[str, Any], body: str) -> list[str]:
+    """``<where> says "<word>"`` for each findings entry and notes line that names a defect without a
+    :data:`NOT_A_DEFECT` line; fenced code in the notes is skipped. A word list cannot catch every way of
+    describing a defect, so every findings entry (``<where> is a finding``) and every observation line of the
+    notes (``<where> is an observation``, :func:`note_problem`) without that line counts, whatever its wording.
+    Each explanation covers one observation (:func:`clause_problem`)."""
+    return [where for where, _text in offending_lines(data, body)]
+
+
+# The rule an approve's refusal states, in one sentence.
+NOT_A_DEFECT_RULE = (f"each line below has no required_changes entry and no '{NOT_A_DEFECT}' line, and on an "
+                     "approve every findings entry and every observation line of the notes needs that line: say on "
+                     f"it why it is not a defect ('{NOT_A_DEFECT} <reason>', one explanation per observation), or "
+                     "list the defect under required_changes and block.")
+
+
 def approve_defect_problem(data: dict[str, Any], body: str) -> str | None:
-    """Why an approve may not be filed as written, or ``None``."""
+    """Why an approve may not be filed as written, or ``None``: the rule in one sentence, then each offending line
+    with its number (or findings entry) and text."""
     if data.get("verdict") != "approve":
         return None
-    named = unexplained_defects(data, body)
+    named = offending_lines(data, body)
     if not named:
         return None
-    return (f"verdict: approve, but {'; '.join(named)} with no required_changes entry and no "
-            f"'{NOT_A_DEFECT}' line: list each defect under required_changes and block, or say on that line "
-            f"why it is not one ('{NOT_A_DEFECT} <reason>'); on an approve every findings entry and every "
-            "observation line of the notes needs that line")
+    return (f"verdict: approve refused: {NOT_A_DEFECT_RULE}\n"
+            + "\n".join(f"  {where}: {text.strip()}" for where, text in named))
 
 
 def check_record(ns: argparse.Namespace, root: Path, t: ReviewTarget) -> tuple[dict | None, str | None]:
@@ -248,7 +308,21 @@ def check_record(ns: argparse.Namespace, root: Path, t: ReviewTarget) -> tuple[d
     if not same_commit(root, rec.data["commit"], t.commit):
         return None, (f"the record reviews {rec.data['commit']}, but the commit under review is "
                       f"{t.commit} ({t.ref}). Re-review the current commit.")
-    why = approve_defect_problem(rec.data, rec.body)
+    why = approve_defect_problem(rec.data, rec.body) or unplanned_removal_problem(root, t, rec.data)
     if why:
         return None, f"{ns.file}: {why}"
     return {"data": rec.data, "body": rec.body}, None
+
+
+def unplanned_removal_problem(root: Path, t: ReviewTarget, data: dict[str, Any]) -> str | None:
+    """Why an approve has no acceptance entry for an unplanned test removal, or ``None``; ``policy.integrity_gate``
+    plays no part."""
+    if data.get("verdict") != "approve":
+        return None
+    missing = missing_removal_entries(data.get("acceptance") or {}, target_unplanned_removals(root, t))
+    if not missing:
+        return None
+    keys = ", ".join(f'"{line}": pass' for line in missing)
+    return (f"verdict: approve without the packet's '{REQUIRED_HEADING}' entries: {'; '.join(missing)} "
+            f"(not in {t.node_id}'s planned_test_changes). Add {keys} to acceptance if the acceptance and the "
+            "diff justify each, or block with a required_changes entry")

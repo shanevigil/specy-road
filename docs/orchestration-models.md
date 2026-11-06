@@ -20,9 +20,11 @@ entry points at its profile with `profile:`, and names
 the `harness` (`claude-code`, `codex`, `cursor`, `generic`) that
 `specy-road worker delegate` launches it on — a Claude model under Cursor's
 agent is a `cursor` worker ([orchestration-workers.md](orchestration-workers.md)). A repo scaffolded
-by an older version gets them with `specy-road refresh-profiles`, which adds
-what is missing and never overwrites your edited copies (`--only` matches a
-front-matter `api_id` or file stem, and adds every matching missing profile).
+by an older version gets them with `specy-road refresh-profiles`, which by
+default adds the missing profiles a roster entry in `roadmap/orchestration.yaml`
+names (`--profiles all` adds every missing shipped profile) and never
+overwrites your edited copies (`--only` matches a front-matter `api_id` or file
+stem, and adds every matching missing profile).
 The facts come
 from model-run research no human has verified, so read the README's provenance
 section before copying a CLI line into production.
@@ -37,6 +39,26 @@ of them resolves to that profile, its notes included in `prompt`:
 api_id: claude-opus-5-5
 aliases: [claude-opus-5-5-high, claude-opus-5-5-max]   # harness ids for this model
 ```
+
+### Guidance bypass observed
+
+A profile can record that its model was seen going around specy-road's guidance:
+
+```yaml
+guidance_bypass_observed:
+  date: 2026-11-06        # YYYY-MM-DD, a real date
+  harness: cursor         # claude-code | codex | cursor | generic: where it was observed
+  evidence: >-            # non-blank: what was seen, in how many runs
+    CR1: faked a terminal with `script` to run the human approval, merged and pushed (2 of 3 runs). …
+```
+
+Any other shape (null, a list, a missing or extra key, an impossible date, another harness, blank or
+non-string evidence) makes the profile invalid. `models show` prints the date, harness and evidence
+(`--json`: under `front_matter`). The shipped **composer-2.5** profile carries it (its alias
+`composer-2.5-fast` too), from the 2026-11-05/06 replay through Cursor; the finding is about that model,
+not the Cursor harness, and `composer-2` is not flagged. While `policy.signed_reviews` is on, an entry
+that launches a flagged model is excluded from the executor and reviewer roles unless it opts in:
+[orchestration-roster.md](orchestration-roster.md#models-observed-to-bypass-the-guidance-allow_guidance_bypass_model).
 
 A profile's `access.launch_mode` pins how much of its harness a Claude Code
 worker gets: `full` (the default when absent) or `bare`. Any other value makes
@@ -56,6 +78,21 @@ access:
   Bare mode never reads OAuth credentials or the keychain, so the worker needs
   `ANTHROPIC_API_KEY` (or an `apiKeyHelper`) instead of your subscription
   login; Bedrock, Google Cloud and Foundry credentials still work.
+
+A `claude-code` reviewer does not follow that worker `launch_mode` unless the
+profile sets `bare`, which forces the reviewer to bare as well. Otherwise
+specy-road chooses bare only when the reviewer's environment has
+`ANTHROPIC_API_KEY` or the user settings bare mode reads define `apiKeyHelper`,
+and explicit mode otherwise (`--setting-sources user --strict-mcp-config`, no
+`--mcp-config`). Explicit mode reads the subscription login and still loads no
+repository hooks, project settings or MCP servers. A roster `billing_route`
+of `claude_subscription` is that case: the reviewer runs in explicit mode.
+`channels.cli` is still needed when that reviewer should run a command other
+than this default. With
+bare forced and no key or `apiKeyHelper`, `review delegate` and
+`prompt --channel cli` refuse before launch, and `orchestrate plan` prints one
+`reviewer auth:` notice for that roster entry.
+[orchestration-reviewer-output.md](orchestration-reviewer-output.md) has the argv.
 
 A roster `channels.cli` is run as written: the mode adds no flag to it.
 
@@ -109,16 +146,16 @@ the alias is what `worker delegate` passes the harness as the model, since it is
 the id the harness lists; otherwise the profile's `api_id` is, as before.
 An entry's `harness_model` overrides both: it is the id the harness CLI expects
 when the roster `id` is not one (`claude --model` takes `claude-opus-5-5`, not
-`claude-opus-5.5`), and the default commands pass it as `--model` / `-m` on
+a label like `opus-main`), and the default commands pass it as `--model` / `-m` on
 launch and on resume alike. With no profile and no `harness_model`, the roster
-`id` itself is passed. `validate` warns about a `claude-code` entry whose `id`
+`id` itself is passed (on `worker delegate`, `review delegate`, and `prompt --channel cli --run`). `validate` warns about a `claude-code` entry whose `id`
 has a dot and no `harness_model`. When a worker exits non-zero before its
 first stream event, its `error` event quotes the harness's last error line from
 `work/.workers/<id>.log` (an HTTP 404 for an unknown model, say), not only the
 log's name.
 
 ```yaml
-  - id: claude-opus-5.5
+  - id: opus-main
     family: anthropic
     roles: [executor]
     harness: claude-code
@@ -129,6 +166,9 @@ log's name.
   profile, coordinator/executor/reviewer scores, and staleness; roster ids that
   match no profile are listed separately; profiles no entry uses are listed so
   you can roster them.
+- `specy-road models roster --executor <profile-id> --reviewer <profile-id> [--write]`
+  — roster entries filled from the shipped profiles, in the form `validate`
+  accepts; see [orchestration-roster.md](orchestration-roster.md).
 - `specy-road models show <id> [--section <name>]` — one profile's machine
   fields and a body section (default: Prompting rules).
 - `specy-road models stale [--max-age-days N]` — profiles researched too long
@@ -187,7 +227,7 @@ fields say so:
 
 | Key | Meaning |
 |---|---|
-| `routing` | `fixed` (the default): the harness runs the model it is told. `dynamic`: it may choose among models itself. A `cursor` entry told no model (no `harness_model`, a profile `api_id` of `unknown` or no profile, or a `channels.cli` without `--model`) or `auto` is `dynamic` whatever this says. A `channels.cli`'s `--model` is read only when it is one simple command (redirections such as `2>&1` allowed) and its value is literal (model-id characters, bare or quoted); in a list or pipeline (`;`, `&&`, `\|`, a newline, a subshell or `$(…)`) the flag may belong to another program, and a value the shell expands (`"${MODEL:-auto}"`, `$MODEL`, a glob, `~`) or an empty one is not the text written, so the model counts as unknown. |
+| `routing` | `fixed` (the default): the harness runs the model it is told. `dynamic`: it may choose among models itself. Any entry whose resolved launch model is none (no `harness_model`, a profile `api_id` of `unknown`, or no profile on a harness that needs an id) is `dynamic` whatever this says, as is a `cursor` entry told `auto`. A `cursor` entry told no model through `channels.cli` (no `--model` in one simple command) follows the same rule. A `channels.cli`'s `--model` is read only when it is one simple command (redirections such as `2>&1` allowed) and its value is literal (model-id characters, bare or quoted); in a list or pipeline (`;`, `&&`, `\|`, a newline, a subshell or `$(…)`) the flag may belong to another program, and a value the shell expands (`"${MODEL:-auto}"`, `$MODEL`, a glob, `~`) or an empty one is not the text written, so the model counts as unknown. |
 | `pinned` | `true` once the maintainer has checked that the harness honours the requested model (for Cursor: a model id that is not `auto`, with Auto turned off). Default `false`. |
 
 Under `policy.reviewers_distinct_families`, an approval from a `dynamic` entry that is not `pinned` does not
@@ -259,7 +299,9 @@ which counts as drift. Examples are a folded or literal `cli`, a flow
 `access: { … }`, or another indentation. `--render` names each such profile and
 exits 1; fix it by hand or take the toolkit's copy with `--force`.
 
-A plain `refresh-profiles` still copies only missing files, and also prints
+A plain `refresh-profiles` still copies only missing files (by default the
+ones a roster entry names; `--profiles all` for every shipped one, `--only` for
+one), and also prints
 any drift without failing. To re-render the shipped copies after editing the
 fixture, run `--render --repo-root specy_road/templates/project` from a
 toolkit checkout.
@@ -311,7 +353,7 @@ only that family.
 ## Planning assignments: `orchestrate plan`
 
 ```bash
-specy-road orchestrate plan [PARENT] [--json] [--today YYYY-MM-DD]
+specy-road orchestrate plan [PARENT] [--spread] [--json] [--today YYYY-MM-DD]
 ```
 
 For each ready leaf, in the same dependency batches `grind-session --plan`
@@ -331,17 +373,27 @@ order:
   skipped through that date; `roadmap/orchestration.local.yaml` can set the first
   two for this working tree only ([orchestration.md](orchestration.md#roadmaporchestrationyaml),
   "Local availability overlay"). A substitution says who stands in meanwhile.
+  The same file can add entries for this clone under `roster_add`, labelled
+  `[local]` ([orchestration-roster.md](orchestration-roster.md#local-roster-entries-roster_add)).
 - **Cost.** Among capable executors (profile executor score 3 or more, or no
-  profile) the cheapest list price wins. Reviewers rank by reviewer score,
-  then cost; the coordinator by coordinator score.
+  profile) the cheapest list price wins; `--spread` instead takes them
+  round-robin by leaf order ([orchestration-roster.md](orchestration-roster.md)).
+  Reviewers rank by reviewer score, then cost; the coordinator by coordinator
+  score, and with no rostered coordinator the plan prints `coordinator: this session`.
 - **Independence.** The executor's model is never offered as its own
   reviewer, and with `reviewers_distinct_families` one reviewer per family.
   An executor with `subagent_family_lock` is told in its prompt which family
   it may spawn.
 
+`--roster-from-worktree` plans with the working tree's roster as a dry run that
+nothing may launch from, and `models list` names the ref it read and any
+uncommitted roster changes ([orchestration-roster.md](orchestration-roster.md)).
+
 Exit 1 when any ready leaf cannot be staffed, with the reason under `!`, so a
 coordinator script stops before dispatching. A roster entry whose profile is
-invalid is reported and assigned no role, since `prompt` would refuse it. Set a
+invalid is reported and assigned no role, since `prompt` would refuse it; a
+`profile:` that names no file reads `invalid profile: <value>, accepted form
+<form>`, and the `may_process` hint that only follows from that drop is left out. Set a
 leaf's `sensitivity` and `executor_eligibility` with `specy-road edit-node <ID> --set sensitivity=restricted`
 or on `add-node`; both default to `public` and `any`. Repos scaffolded before
 0.3.0 run `specy-road refresh-schemas` once so `validate` accepts the fields.

@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
+
+from tests.review_delegate_helpers import fake_reviewer_run
+from tests.review_repo_helpers import claude_code_reviewer_repo
 
 from specy_road import review_files as rf
 
@@ -219,63 +223,22 @@ def test_review_record_stores_launch_mode_and_status_prints_it(tmp_path: Path, c
                          "--file", str(notes), "--launch-mode", "trusted"])
 
 
-def _claude_code_reviewer_repo(tmp_path: Path, channels: str = "") -> Path:
-    from tests.test_models_and_prompt import commit_profile, make_profile_repo
-
-    repo = make_profile_repo(tmp_path)
-    roster = repo / "roadmap" / "orchestration.yaml"
-    roster.write_text(roster.read_text().replace(
-        "    roles: [coordinator, executor, reviewer]\n",
-        f"    roles: [coordinator, executor, reviewer]\n    harness: claude-code\n{channels}"))
-    commit_profile(repo)
-    d = rf.reviews_dir(repo, "M1.1")
-    d.mkdir(parents=True)
-    (d / rf.PACKET_NAME).write_text("# Review packet: `M1.1`\n")
-    return repo
-
-
-def _fake_run(monkeypatch) -> list[dict]:
-    import subprocess as real_sp
-    from types import SimpleNamespace
-
-    from specy_road.bundled_scripts import role_prompt, role_prompt_stream
-
-    calls: list[dict] = []
-
-    def run(cmd, **kw):
-        calls.append({"cmd": cmd, **kw})
-        return SimpleNamespace(returncode=0, stdout="", stderr="")
-
-    def popen(cmd, **kw):
-        rec = {"cmd": cmd, **kw, "input": ""}
-
-        class Stdin:
-            def write(self, s):
-                rec["input"] += s
-                return len(s)
-
-            def close(self):
-                pass
-
-        stdin = Stdin() if kw.get("stdin") not in (None, real_sp.DEVNULL) else None
-        calls.append(rec)
-        return SimpleNamespace(stdin=stdin, stdout=iter(()), wait=lambda: 0)
-
-    fake = SimpleNamespace(run=run, Popen=popen, PIPE=real_sp.PIPE, STDOUT=real_sp.STDOUT, DEVNULL=real_sp.DEVNULL)
-    for module in (role_prompt, role_prompt_stream):   # the streaming run moved out for the file limit (M11.62)
-        monkeypatch.setattr(module, "subprocess", fake)
-    return calls
-
-
 def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, capsys, monkeypatch) -> None:
     from specy_road.bundled_scripts import role_prompt
+    from specy_road.worker_adapters import STDIN_INSTRUCTION
+    from tests.review_repo_helpers import git, review_output
     from tests.test_models_and_prompt import run_main
 
-    repo = _claude_code_reviewer_repo(tmp_path)
-    calls = _fake_run(monkeypatch)
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
+    repo = claude_code_reviewer_repo(tmp_path)
+    secret = "sk-ant-m15-2-do-not-print"
+    monkeypatch.setenv("ANTHROPIC_API_KEY", secret)   # bare only with a key; isolate from the developer environment
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "empty-claude-config"))
+    answer = review_output(git(repo, "rev-parse", "HEAD"), model="opus")
+    calls = fake_reviewer_run(monkeypatch, [json.dumps({"type": "result", "subtype": "success", "result": "done",
+                                                "structured_output": answer})])
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
                     "--repo-root", str(repo)) == 0
-    (call,) = calls
+    call = next(c for c in calls if list(c["cmd"][:2]) == ["claude", "-p"])   # the reviewer launch, by its argv
     argv = call["cmd"]
     assert argv[:2] == ["claude", "-p"] and "--bare" in argv
     assert argv[argv.index("--add-dir") + 1] == str(rf.reviews_dir(repo, "M1.1"))
@@ -283,28 +246,51 @@ def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, cap
     assert argv[argv.index("--model") + 1] == "claude-opus-5-5" and argv[argv.index("--effort") + 1] == level
     # Nothing re-enables the repository's settings, hooks or MCP servers that --bare turns off.
     assert not {"--settings", "--setting-sources", "--mcp-config", "--plugin-dir"} & set(argv)
+    # M8.3 A2/A4: no file-writing tool; bare fires no hook, so the deny list sits beside the allowed tools; argv pinned.
+    schema = json.loads(argv[argv.index("--json-schema") + 1])
+    assert schema["title"] == "specy-road reviewer output" and "notes" in schema["required"]
+    assert argv == ["claude", "-p", STDIN_INSTRUCTION, "--bare", "--session-id", argv[5], "--output-format",
+                    "stream-json", "--verbose", "--model", "claude-opus-5-5", "--effort", level,
+                    "--allowedTools", "Read,Glob,Grep,Bash", "--disallowedTools", "Write", "Edit", "NotebookEdit",
+                    "Bash(git commit *)", "Bash(git push *)", "Bash(gh *)",
+                    "--json-schema", argv[argv.index("--json-schema") + 1],
+                    "--add-dir", str(rf.reviews_dir(repo, "M1.1"))]
     prompt = repo / "work" / "prompt-M1.1-reviewer-opus.md"
     assert call["input"] == prompt.read_text() and call["cwd"] == repo
-    err = capsys.readouterr().err
-    assert "--bare" in err and "ANTHROPIC_API_KEY" in err
+    assert "**specy-road files your record.**" in call["input"]
+    captured = capsys.readouterr()
+    err = captured.err
+    assert "--bare" in err and "ANTHROPIC_API_KEY" in err and "recorded: " in err
+    assert secret not in err and secret not in captured.out
+    assert secret not in " ".join(call["cmd"]) and secret not in (call.get("input") or "")
+    run = json.loads((rf.reviews_dir(repo, "M1.1") / "RUN-opus.json").read_text())
+    assert run["launch_mode"] == "bare" and secret not in json.dumps(run)
+    log = (rf.reviews_dir(repo, "M1.1") / "RUN-opus.log").read_text()
+    assert secret not in log
+    # M8.3 A1: specy-road filed the record from the structured output, launch mode included.
+    rec = rf.load_review(rf.review_path(repo, "M1.1", "opus"), ["A1", "A2"])
+    assert rec.ok and rec.data["launch_mode"] == "bare" and rec.data["family"] == "anthropic"
+    assert "## Findings" in rec.body and len(rf.list_review_history(repo, "M1.1")) == 1
 
 
 def test_claude_code_reviewer_with_channels_cli_runs_it_as_written(tmp_path: Path, capsys, monkeypatch) -> None:
     from specy_road.bundled_scripts import role_prompt
     from tests.test_models_and_prompt import run_main
 
-    repo = _claude_code_reviewer_repo(tmp_path, '    channels: {cli: "cat {prompt} | head -1"}\n')
-    calls = _fake_run(monkeypatch)
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli",
-                    "--repo-root", str(repo)) == 0
-    assert calls[0]["cmd"].startswith("cat ") and "--bare" not in calls[0]["cmd"]
-    assert "ANTHROPIC_API_KEY" not in capsys.readouterr().err
+    repo = claude_code_reviewer_repo(tmp_path, '    channels: {cli: "cat {prompt} | head -1"}\n')
+    calls = fake_reviewer_run(monkeypatch)
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
+                    "--repo-root", str(repo)) == 1   # M8.3: captured, and `cat | head` prints no verdict
+    call = next(c for c in calls if list(c["cmd"][:2]) == ["sh", "-c"])     # the reviewer launch, by its argv
+    assert call["cmd"][2].startswith("cat ") and "--bare" not in call["cmd"][2]
+    err = capsys.readouterr().err
+    assert "ANTHROPIC_API_KEY" not in err and "rerun: rerun requested" in err
 
 
 def test_reviewer_prompt_asks_for_launch_mode(tmp_path: Path) -> None:
     from specy_road.bundled_scripts import role_prompt
 
-    repo = _claude_code_reviewer_repo(tmp_path)
+    repo = claude_code_reviewer_repo(tmp_path)
     text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="reviewer", model="opus")
     assert err is None and "Add `--launch-mode full|bare|explicit` to that `review record` command" in text
     assert "--launch-mode" not in role_prompt.build_prompt(repo, "M1.1", role="executor", model="opus")[0]

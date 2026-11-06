@@ -114,7 +114,7 @@ def test_sync_wait_ctrl_c_exits_130_without_a_traceback(tmp_path: Path, capsys, 
 
     def interrupted(*_a):
         raise KeyboardInterrupt
-    monkeypatch.setattr(worker_cli, "wait_for_event", interrupted)
+    monkeypatch.setattr("specy_road.bundled_scripts.worker_cli_sync.wait_for_sync", interrupted)
     with pytest.raises(SystemExit) as e:
         worker_cli.main(["worker", "sync", "--wait", "--repo-root", str(repo)])
     assert e.value.code == 130

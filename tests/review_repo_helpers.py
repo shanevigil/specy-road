@@ -14,7 +14,7 @@ from pathlib import Path
 
 import yaml
 
-from tests.helpers import DOGFOOD
+from tests.helpers import DOGFOOD, REPO
 
 #: Git-root file changed on the nested-outside layout shape (outside ``sr/``).
 OUTSIDE_ROOT_FILE = "README.md"
@@ -215,6 +215,27 @@ def make_review_repo(tmp_path: Path, *, orchestration: str | None = None) -> Pat
     return root
 
 
+def delegate_layout(tmp_path: Path, monkeypatch) -> tuple[Path, Path, Path]:
+    """Coordinator checkout on ``dev``; the leaf in a linked worktree; a bare origin."""
+    monkeypatch.setenv("PYTHONPATH", str(REPO))   # finish runs validate/export/digest as subprocesses
+    repo = make_review_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    commit_file(repo, "roadmap/git-workflow.yaml",
+                "version: 1\nintegration_branch: dev\nremote: origin\non_complete: merge\n", "merge mode")
+    commit_file(repo, ".gitignore", "work/reviews/\n.specyrd/cache/\n", "as init project scaffolds")
+    git(repo, "checkout", "-q", "feature/rm-thing")
+    git(repo, "merge", "-q", "--no-edit", "dev")
+    git(repo, "checkout", "-q", "dev")
+    bare = tmp_path / "remote.git"
+    git(tmp_path, "clone", "-q", "--bare", str(repo), str(bare))
+    git(repo, "remote", "add", "origin", str(bare))
+    git(repo, "fetch", "-q", "origin")
+    git(repo, "remote", "set-head", "origin", "dev")   # as clone does; fetch does it only from git 2.48
+    leaf = tmp_path / "leaf"
+    git(repo, "worktree", "add", "-q", str(leaf), "feature/rm-thing")
+    return repo, leaf, bare
+
+
 def review_text(commit: str, *, model: str = "human", verdict: str = "approve",
                 fresh: bool = True, a1: str = "pass", **extra) -> str:
     data = {
@@ -228,8 +249,34 @@ def review_text(commit: str, *, model: str = "human", verdict: str = "approve",
     return "---\n" + yaml.safe_dump(data, sort_keys=False) + "---\nnotes\n"
 
 
+def review_output(commit: str, *, model: str, verdict: str = "approve", a1: str = "pass") -> dict:
+    """A reviewer's final JSON (``review_record_write.output_schema``): the record fields plus ``notes``."""
+    data = yaml.safe_load(review_text(commit, model=model, verdict=verdict, a1=a1).split("---\n")[1])
+    return {**data, "commands_rerun": ["pytest -q"], "notes": "## Findings\n\nnone"}
+
+
 def shipped_anthropic_opus_cli_yaml_line() -> str:
     """The shipped ``access.cli`` YAML line for claude-opus-5-5 (project template)."""
     path = Path(__file__).resolve().parent.parent / "specy_road" / "templates" / "project" / "model-profiles"
     text = (path / "anthropic-claude" / "claude-opus-5-5.md").read_text(encoding="utf-8")
     return next(line for line in text.splitlines() if line.startswith("  cli: "))
+
+
+def claude_code_reviewer_repo(tmp_path: Path, channels: str = "") -> Path:
+    """A profile repo whose opus entry is a claude-code reviewer, with a review packet already filed.
+
+    ``channels`` is extra roster YAML inserted after ``harness: claude-code`` (a ``channels.cli`` line).
+    """
+    from specy_road import review_files as rf
+    from tests.test_models_and_prompt import commit_profile, make_profile_repo
+
+    repo = make_profile_repo(tmp_path)
+    roster = repo / "roadmap" / "orchestration.yaml"
+    roster.write_text(roster.read_text().replace(
+        "    roles: [coordinator, executor, reviewer]\n",
+        f"    roles: [coordinator, executor, reviewer]\n    harness: claude-code\n{channels}"))
+    commit_profile(repo)
+    d = rf.reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True)
+    (d / rf.PACKET_NAME).write_text("# Review packet: `M1.1`\n")
+    return repo

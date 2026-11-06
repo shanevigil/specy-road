@@ -17,7 +17,6 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import (
     write_json_chunk,
 )
 from specy_road.bundled_scripts.roadmap_edit_fields import (
-    title_to_codename,
     update_planning_dir_to_canonical,
 )
 from specy_road.bundled_scripts.planning_rename import rename_planning_file_if_path_changed
@@ -27,32 +26,15 @@ from specy_road.bundled_scripts.planning_rename import rename_planning_file_if_p
 _DEPRECATED_FIELDS: tuple[str, ...] = ("execution_subtask", "agentic_checklist")
 
 
-def _codename_collision_suffix(node_key: str) -> str:
-    """Return a short suffix from the UUID tail for collision disambiguation."""
-    # UUIDs use `-` separators; grab the last 4 hex characters of the last group.
-    tail = (node_key or "").replace("-", "")
-    return (tail[-4:] or "x").lower()
-
-
 def _derive_codename(title: str, node_key: str, existing: set[str]) -> str | None:
     """
     Derive a valid kebab-case codename from ``title``. If it collides with
     ``existing``, append ``-<4 hex>``; if still colliding, extend to 6 hex.
     Returns None if the title yields no valid slug.
     """
-    slug = title_to_codename(title)
-    if not slug:
-        return None
-    if slug not in existing:
-        return slug
-    suffix = _codename_collision_suffix(node_key)
-    cand = f"{slug}-{suffix}"
-    if cand not in existing:
-        return cand
-    tail_long = (node_key or "").replace("-", "")
-    long_suffix = (tail_long[-6:] or "xx").lower()
-    cand = f"{slug}-{long_suffix}"
-    return cand
+    from specy_road.bundled_scripts.roadmap_crud_prepare import derive_codename_with_collision_suffix
+
+    return derive_codename_with_collision_suffix(title, node_key, existing)
 
 
 def _logs_append(logs: list[str], msg: str) -> None:

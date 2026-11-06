@@ -165,7 +165,7 @@ def test_executor_prompt_states_the_family_lock(tmp_path: Path) -> None:
 def test_preflight_runs_before_the_cli_channel(tmp_path: Path, capsys) -> None:
     repo = plan_repo(tmp_path, roster=ROSTER.replace('    preflight: "true"\n', '    preflight: "false"\n'), ready=False)
     with pytest.raises(SystemExit) as e:
-        role_prompt.main(["M1.1", "--model", "local", "--role", "executor", "--channel", "cli", "--repo-root", str(repo)])
+        role_prompt.main(["M1.1", "--model", "local", "--role", "executor", "--channel", "cli", "--run", "--repo-root", str(repo)])
     assert e.value.code == 1
     assert "preflight failed" in capsys.readouterr().err
 

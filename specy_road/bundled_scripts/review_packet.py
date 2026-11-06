@@ -10,6 +10,8 @@ Writes ``work/reviews/<NODE_ID>/PACKET.md`` (and ``-o``'s path too) with, in ord
 4. every changed path since the merge base (with the integration branch, or
    ``--base``), with paths outside the touch zones called out: the claim row's
    zones plus the node's as committed at the reviewed commit;
+   then ``## Test integrity`` (``specy-road integrity``), and ``## Required check: unplanned test
+   removal`` for a removed or weakened test not in ``planned_test_changes`` (``review_packet_observed``);
 5. the Python test files that import a changed module (``specy-road impact``);
 6. ``git diff <base>...<ref>``, with a warning when it is empty, then each ``nested_repos`` repository's; past
    ``--max-diff-lines`` (default 1500) or ``--max-diff-bytes`` (default 200000)
@@ -39,12 +41,14 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.review_packet_nested import nested_diff_section
+from specy_road.bundled_scripts.review_packet_observed import (
+    computed_note as _computed, integrity_sections, test_integrity_section,
+)
 from specy_road.bundled_scripts.review_packet_uncommitted_refs import uncommitted_refs_section
 from specy_road.finish_implementation_check import in_zones
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_stdout, git_text, head_sha
 from specy_road.impact import impact_for_diff, section_lines
-from specy_road.integrity import compare_integrity
 from specy_road.review_files import PACKET_NAME, ReviewFile, latest_ready, reviews_dir
 from specy_road.review_gate import FULL_MARK
 from specy_road.review_gate_ready import policy_source_line, trial_merge_lines
@@ -87,10 +91,6 @@ RENDERED = "_Rendered from the roadmap at the working tree._"
 BOOKKEEPING_MARK = "  _← toolkit bookkeeping; any edit beyond this node's claim and approval is under review_"
 BOOKKEEPING_NOTE = (f"_`{REGISTRY_REL}` is in this diff. Expected there: this node's claim row (pickup) and its "
                     "approval stamp (`mark-implementation-reviewed`). Any other edit in that file is under review._")
-
-
-def _computed(t: ReviewTarget) -> str:
-    return f"_Computed by review-packet from git (`{t.base}...{t.commit}`)._"
 
 
 def _tail(text: str, n: int = TAIL_LINES) -> str:
@@ -170,14 +170,6 @@ def changed_paths_section(root: Path, t: ReviewTarget) -> tuple[list[str], list[
         lines += ["**This branch edits review policy.** The gate ignores it (policy is read "
                   "from the integration branch); block unless the leaf is about policy.", ""]
     return paths, lines
-
-
-def test_integrity_section(root: Path, t: ReviewTarget) -> list[str]:
-    """Deterministic ``## Test integrity`` block for the review packet."""
-    if not t.base or not t.commit:
-        return ["## Test integrity", "", "_(cannot compute: no merge base or no commit)_", ""]
-    findings = [f.line() for f in compare_integrity(root, t.base, t.commit)]
-    return ["## Test integrity", "", _computed(t), "", *(findings or ["_none_"]), ""]
 
 
 def tests_at_risk_section(root: Path, t: ReviewTarget) -> list[str]:
@@ -309,6 +301,8 @@ def _ready_verify(root: Path, t: ReviewTarget) -> list[str]:
     for v in entries:
         mark = "  **← verifier failed**" if v["exit"] != 0 else ""
         out.append(f"### `{v['cmd']}` → exit {v['exit']}{mark}")
+        if w := v.get("warning"):
+            out.append(f"**Warning:** {w}")
         out += [""] + _fence(v.get("tail") or "(no output recorded)")
     return out
 
@@ -356,7 +350,7 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
         _summary(root, t),
         uncommitted_refs_section(root, t, brief, t.node, by_id, _computed(t)),
         changed,
-        test_integrity_section(root, t),
+        integrity_sections(root, t),
         tests_at_risk_section(root, t),
         _diff(root, t, paths, max_diff_lines, max_diff_bytes, f"DIFF-{prior.data['model']}.patch" if prior else DIFF_NAME) + nested_diff_section(root, t, max_diff_lines, max_diff_bytes),
         ["## Verifier output", ""] + _ready_verify(root, t) + _run_verify(root, verify_cmds, t),

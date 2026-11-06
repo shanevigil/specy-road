@@ -227,3 +227,27 @@ def test_registered_subcommand_in_a_span_does_not_abort_validate(tmp_path: Path,
     (tmp_path / "AGENTS.md").write_text("Use the specy-road `init` command.\n", encoding="utf-8")
     warn_unregistered_commands(tmp_path)
     assert capsys.readouterr().err == ""
+
+
+def test_validate_and_garden_share_the_scanner_and_only_garden_reads_docs(tmp_path: Path, capsys) -> None:
+    """M12.3: ``chore garden`` runs validate's scanner over ``docs/**/*.md`` too; validate's file set is unchanged."""
+    from specy_road.bundled_scripts.chore_garden import stale_command_findings  # noqa: PLC0415
+    from specy_road.bundled_scripts.validate_stale_commands import agent_files, file_unregistered_commands  # noqa: PLC0415
+
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    root = tmp_path / "sr"
+    (root / "docs" / "deep").mkdir(parents=True)
+    (root / "docs" / "deep" / "guide.md").write_text("Run `specy-road pm-sync` nightly.\n", encoding="utf-8")
+    (tmp_path / "CLAUDE.md").write_text("Run `specy-road backfill-activity` weekly.\n", encoding="utf-8")
+    assert agent_files(root) == [root.resolve() / n for n in ("AGENTS.md", "CLAUDE.md")] + [
+        tmp_path.resolve() / n for n in ("AGENTS.md", "CLAUDE.md")] + [root.resolve() / ".specyrd" / "AGENTS.team.md"]
+    assert file_unregistered_commands(root / "docs" / "deep" / "guide.md") == [(1, "specy-road pm-sync")]
+    assert file_unregistered_commands(root / "missing.md") == []
+    warn_unregistered_commands(root)
+    assert "guide.md" not in capsys.readouterr().err                     # validate does not read docs/
+    assert [f.text() for f in stale_command_findings(root)] == [
+        f"stale-command: sr/docs/deep/guide.md:1: `specy-road pm-sync` is not a command in specy-road "
+        f"{__version__}; use `specy-road sync`",
+        f"stale-command: CLAUDE.md:1: `specy-road backfill-activity` is not a command in specy-road "
+        f"{__version__}; it was removed and nothing replaces it",
+    ]

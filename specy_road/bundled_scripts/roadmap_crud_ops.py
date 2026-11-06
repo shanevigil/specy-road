@@ -6,7 +6,7 @@ import contextlib
 import io
 import json
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 from specy_road.bundled_scripts.roadmap_chunk_utils import (
@@ -31,7 +31,9 @@ from specy_road.bundled_scripts.roadmap_crud_chunk_report import (
     print_node_chunk_write_report,
     repo_rel,
 )
+from specy_road.bundled_scripts.roadmap_codename_cap import codename_length_error
 from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_PATTERN, ID_PATTERN, apply_set, merge_set_pairs
+from specy_road.bundled_scripts.roadmap_edit_list_fields import planned_test_change_items
 from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
 from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
 from specy_road.bundled_scripts.roadmap_gui_lib import registry_by_node_id
@@ -39,6 +41,7 @@ from specy_road.bundled_scripts.roadmap_load import load_roadmap, validate_roadm
 from specy_road.bundled_scripts.touch_zone_tracked import warn_written_zones
 from specy_road.bundled_scripts.validate_registry_overlap import authoring_overlap_for_node
 from specy_road.bundled_scripts.validate_roadmap import validate_at
+from specy_road.finish_ancestor_rollup import UNRESOLVABLE_HOLD, held_milestones
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.runtime_paths import default_user_repo_root
@@ -81,8 +84,23 @@ def _archived_node_keys_quiet(root: Path) -> set[str]:
         return set()
 
 
+_VALIDATION_DEFERRED: list[bool] = []  # non-empty inside deferred_validation
+
+
+@contextlib.contextmanager
+def deferred_validation() -> Iterator[None]:
+    """Skip :func:`run_validate_raise` in the block: ``apply`` validates its final graph once."""
+    _VALIDATION_DEFERRED.append(True)
+    try:
+        yield
+    finally:
+        _VALIDATION_DEFERRED.pop()
+
+
 def run_validate_raise(root: Path) -> None:
     """Run roadmap + registry validation; raise ``ValueError`` with errors on failure."""
+    if _VALIDATION_DEFERRED:  # inside deferred_validation, whose caller validates once
+        return
     err = io.StringIO()
     out = io.StringIO()
     failed = False
@@ -127,13 +145,17 @@ def cmd_list(args: object) -> None:
             ch = chunk_map.get(n["id"])
             claim = leaf_claim_entry(n["id"], leaf_ids=leaf_ids, by_reg=by_reg)
             rows.append((n, rollup, ch.relative_to(root).as_posix() if ch else None, claim))
+    # An unresolvable hold leaves the rollup Complete (demote_pending_milestone_rollups), so it is not marked.
+    held = {k: v for k, v in held_milestones(root, nodes).items() if not v.startswith(UNRESOLVABLE_HOLD)}
     if getattr(args, "as_json", False):
-        payload = [list_nodes_json_row(n, rel, claim) for n, _, rel, claim in rows]
+        payload = [{**list_nodes_json_row(n, rel, claim), **({"review_hold": held[n["id"]]} if n["id"] in held else {})}
+                   for n, _, rel, claim in rows]
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return
     print(f"{'ID':12}  {'TYPE':10}  {'STATUS':12}  {'ROLLUP':12}  TITLE  [CHUNK]")
     for n, rollup, rel, claim in rows:
         status = list_nodes_status_label(n, claim)
+        rollup += " (review hold)" if n["id"] in held else ""
         print(f"{n['id']:12}  {n.get('type', ''):10}  {status:12}  "
               f"{rollup:12}  {str(n.get('title', ''))[:60]}  [{rel or '(unknown)'}]")
 
@@ -192,9 +214,13 @@ def cmd_add(args: object) -> None:
     # scope expansion; same guard as cmd_edit. Root phases (None) pass through.
     if isinstance(parent_val, str) and parent_val.strip():
         _refuse_if_milestone_locked(root, parent_val)
-    if args.codename and not CODENAME_PATTERN.match(args.codename):
-        print(f"error: invalid codename: {args.codename!r}", file=sys.stderr)
-        raise SystemExit(1)
+    if args.codename:
+        if err := codename_length_error(args.codename):
+            print(f"error: {err}", file=sys.stderr)
+            raise SystemExit(1)
+        if not CODENAME_PATTERN.match(args.codename):
+            print(f"error: invalid codename: {args.codename!r}", file=sys.stderr)
+            raise SystemExit(1)
 
     node_key = new_node_key()
 
@@ -210,6 +236,7 @@ def cmd_add(args: object) -> None:
         "touch_zones": list(args.touch_zone or []),
         "dependencies": list(args.dependency or []),
         "acceptance": [a.strip() for a in getattr(args, "acceptance", None) or [] if a.strip()] or None,
+        "planned_test_changes": planned_test_change_items(getattr(args, "planned_test_change", None) or []) or None,
         "parallel_tracks": args.parallel_tracks,
         "sensitivity": getattr(args, "sensitivity", None), "executor_eligibility": getattr(args, "executor_eligibility", None),
         # Unset sorts as 0 and jumped the pickup queue; append instead.
@@ -233,7 +260,7 @@ def cmd_add(args: object) -> None:
             extra_paths=heal_paths,
         )
         chunk_path = append_node_to_chunk(root, getattr(args, "chunk", None), node)
-    except ValueError as e:
+    except (ValueError, OSError) as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
     assert chunk_path.relative_to(root).as_posix() in report.written
@@ -377,7 +404,7 @@ def cmd_edit(args: object) -> None:
             sync_codename=bool(getattr(args, "sync_codename", False)),
             notify=lambda msg: print(f"[note] {msg}", file=sys.stderr),
         )
-    except ValueError as e:
+    except (ValueError, OSError) as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from None
     print_node_chunk_write_report(report, verb="updated")
@@ -415,5 +442,9 @@ def cmd_set_gate_status(args: object) -> None:
 from specy_road.bundled_scripts.roadmap_crud_delete import (  # noqa: E402,F401
     can_hard_remove,
     cmd_archive,
+    cmd_remove_node,
     delete_roadmap_node_hard,
+    rehearsal_root,
+    remove_node_blockers,
+    remove_roadmap_node,
 )

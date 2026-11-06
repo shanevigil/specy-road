@@ -13,7 +13,14 @@ from tests.test_review_cli import ONE_AI
 
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.review_files import PACKET_NAME, review_path, reviews_dir
-from specy_road.review_record_rules import clause_problem, defect_word, explained, note_problem, unexplained_defects
+from specy_road.review_record_rules import (
+    NOTES_RULES_LINES,
+    clause_problem,
+    defect_word,
+    explained,
+    note_problem,
+    unexplained_defects,
+)
 
 
 def test_reviewer_prompt_carries_the_four_probe_rules(tmp_path: Path) -> None:
@@ -168,7 +175,32 @@ def test_record_refuses_an_approve_whose_notes_carry_an_unclassified_observation
     assert not (reviews_dir(repo, "M1.1") / "history").exists()
 
 
+# Every clause break the notes rules name: a second clause beside a reasoned one is refused, and accepted once it
+# has its own reason. The '! ' row is "Ship it! The suite passed, ...", refused by a break the rules once left out.
+SEPARATORS = (". ", "! ", "? ", "; ")
+CONJUNCTIONS = ("and", "but", "while", "whereas", "although", "though", "yet", "plus")
+SUITE_REASONED = "The suite passed, not a defect because it ran every test."
+COLD_REASONED = "the cache is cold, not a defect because the fallback warms it."
+CLAUSE_BREAK_ROWS = [
+    *[(f"Ship it{s}{SUITE_REASONED}", "is an observation") for s in SEPARATORS],
+    *[(f"Ship it, not a defect because the diff is ready{s}{SUITE_REASONED}", None) for s in SEPARATORS],
+    *[(f"The lock crashes {c} {COLD_REASONED}",
+       f'says "crashes", two observations joined by "{c}": "The lock crashes" {c} "the cache is cold"')
+      for c in CONJUNCTIONS],
+    *[(f"The lock crashes, not a defect because no caller reaches it {c} {COLD_REASONED}", None)
+      for c in CONJUNCTIONS],
+]
+
+
+def test_notes_rules_name_every_clause_break() -> None:
+    line = next(text for text in NOTES_RULES_LINES if text.startswith("- Each clause"))
+    assert all(f"'{s}'" in line for s in SEPARATORS)
+    assert f"({', '.join(CONJUNCTIONS)})" in line
+    assert any(text.startswith("- A comma list") for text in NOTES_RULES_LINES)
+
+
 @pytest.mark.parametrize("line, why", [
+    *CLAUSE_BREAK_ROWS,
     (MALFORMED_WORDING, "is an observation"),
     ("The cache key ignores the branch name.", "is an observation"),
     ("No defect found.", "is an observation"),
@@ -182,6 +214,14 @@ def test_record_refuses_an_approve_whose_notes_carry_an_unclassified_observation
     ("## Acceptance", None),
     ("> The parser accepts malformed input.", None),
     ("`pytest -q` -> 41", None),
+    ("No internal imports, mock assertions or defensive branches were added; not a defect because the change uses "
+     "the existing exclusion mechanism.", None),
+    ("The test drives the CLI and checks both the pass case and the fail case, which is not a defect because it is "
+     "the exact scenario A2 describes.", None),
+    ("X fails and Y crashes; not a defect because the fallback handles both.",
+     'says "crashes", two observations joined by "and": "X fails" and "Y crashes"'),
+    ("X fails, Y crashes; not a defect because the fallback handles both.",
+     'says "crashes", two observations joined by ",": "X fails", "Y crashes"'),
 ])
 def test_note_problem(line: str, why: str | None) -> None:
     assert note_problem(line) == why
@@ -279,14 +319,33 @@ def test_record_refuses_an_approve_whose_explained_finding_joins_a_second_defect
     assert not (reviews_dir(repo, "M1.1") / "history").exists()
 
 
+JOIN_ROWS = [(f"{a}{j}{b}, not a defect because both are expected.",
+              f'says "crashes", two observations joined by "{j.strip()}": "{a}"{j}"{b}"'
+              if "crashes" in a + b else None)
+             for j in (", ", " and ", " but ", " while ", " whereas ", " although ", " though ", " yet ", " plus ")
+             for a, b in (("The cache is cold", "the lock is held"), ("The cache is cold", "the lock crashes"),
+                          ("The lock crashes", "the cache is cold"))]
+
+
 @pytest.mark.parametrize("text, why", [
-    (CONJUNCTION_WORDING, 'says "valid input crashes"'),
+    *CLAUSE_BREAK_ROWS,
+    *JOIN_ROWS,
+    ("Changed paths are tests/test_worker_queue_message.py plus sr/work/implementation-summary-M21.8.md, not a defect "
+     "because the summary is the leaf hand-off.", None),
+    ("The cache is cold, the lock is held plus the queue is empty, not a defect because all three are expected.", None),
+    (CONJUNCTION_WORDING, 'says "valid input crashes", two observations joined by "and": '
+     '"The cache miss is expected" and "valid input crashes"'),
     ("The cache miss is expected and valid input crashes; not a defect because the fallback handles it.",
-     'says "valid input crashes"'),
+     'says "valid input crashes", two observations joined by "and": "The cache miss is expected" and '
+     '"valid input crashes"'),
     ("The cache miss is expected, valid input crashes, not a defect because the fallback handles it.",
-     'says "valid input crashes"'),
+     'says "valid input crashes", two observations joined by ",": "The cache miss is expected", '
+     '"valid input crashes"'),
     ("The cache miss is expected and the cache key ignores the branch name, not a defect because it is handled.",
-     "is an observation"),
+     None),
+    ("The cache key ignores the branch and valid input crashes, not a defect because it is handled.",
+     'says "valid input crashes", two observations joined by "and": "The cache key ignores the branch" and '
+     '"valid input crashes"'),
     ("x y; not a defect because the fallback handles it, so the message is lost.", 'says "is lost" in its reason'),
     ("The parser accepts malformed input, so invalid configuration reaches execution. Not a defect because the "
      "parser is outside this leaf.", None),

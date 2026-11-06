@@ -21,6 +21,7 @@ roster:
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_files import load_review, review_path, reviews_dir
+from specy_road.review_rejected import rejected_path
 
 
 def _run(*args: str) -> int:
@@ -137,13 +138,15 @@ def test_record_refuses_mismatched_flags_and_invalid_notes(tmp_path: Path, capsy
 
 def test_record_refuses_unrostered_models_and_human(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    reviews = reviews_dir(repo, "M1.1")
     assert _run("review", "record", "M1.1", "--model", "sol", "--verdict", "approve",
                 "--file", str(_notes(repo, "sol")), "--repo-root", str(repo)) == 1
     assert "not in the roster" in capsys.readouterr().err
+    assert not rejected_path(reviews, "sol").exists()
     assert _run("review", "record", "M1.1", "--model", "human", "--verdict", "approve",
                 "--file", str(_notes(repo, "human")), "--repo-root", str(repo)) == 1
     assert "interactive approve" in capsys.readouterr().err
-    assert not reviews_dir(repo, "M1.1").exists()
+    assert rejected_path(reviews, "human").is_file()
 
 
 def test_counted_reviews_outrank_a_stale_ready_file(tmp_path: Path, capsys) -> None:

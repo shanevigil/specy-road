@@ -82,6 +82,17 @@ def resolves_outside(root: Path, path: Path) -> bool:
     return not path.resolve().is_relative_to(root.resolve())
 
 
+def refused_link(root: Path, path: Path, *, any_link: bool = False) -> str | None:
+    """The one-line refusal for writing ``path``, or ``None`` when it may be written.
+
+    Refused when :func:`resolves_outside` ``root``, or with ``any_link`` when
+    ``path`` is a symlink at all (the review hand-off directory follows none).
+    """
+    if resolves_outside(root, path) or (any_link and path.is_symlink()):
+        return f"{REFUSED}: {path}"
+    return None
+
+
 def render_block(
     lines: list[str], *, note: str = "", style: MarkerStyle = HASH
 ) -> str:

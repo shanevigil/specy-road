@@ -51,6 +51,41 @@ it as an `error:` and exits 1, both naming the two settings and the fix: set
 for you; whether a project reviews is its own decision, and a project that does
 not can delete `roadmap/orchestration.yaml`.
 
+## Review policy pinned at claim
+
+The policy that judges a leaf is the one in force when it was claimed. Pickup's
+`chore(rm-<codename>): register as in-progress` commit carries a trailer
+`Review-policy: sha256:<hex> at <commit>`: the digest of `roster`,
+`substitutions` and `policy` in `roadmap/orchestration.yaml` and
+`require_implementation_review_before_finish` in `roadmap/git-workflow.yaml`,
+as committed at the integration branch commit the claim was made on (no
+toolkit defaults, no `orchestration.local.yaml` overlay). A policy file that is
+present but does not parse refuses the claim before any registry write; so does
+a `roster` that is not a list of mappings or a `policy` that is not a mapping,
+and at the gate and finish either is a problem, never a pass.
+
+When the policy on the integration branch differs from the pin, the gate is
+not met (`handoff status`, `review list`, `mark-implementation-reviewed`) and
+`finish-this-task` refuses before any bookkeeping — before it reads the review
+switch, so turning `require_implementation_review_before_finish` off after
+the claim does not skip review. The problem lists each change on its own line (a roster entry
+added or removed, every changed property of a kept entry including
+`public_key`, `substitutions changed`, each `policy.<key>`, the review
+switch). A human accepts it with `specy-road review accept-policy <NODE_ID>`,
+which needs a terminal, prints the changes, asks for the node id typed back and
+writes `work/reviews/<NODE_ID>/POLICY-ACCEPTED.yaml`
+(`schemas/policy-acceptance.schema.json`); or the leaf is claimed again. An
+acceptance counts only for its node and the two digests it names, so a later
+change needs a new one; an invalid file is a gate problem, never an
+acceptance. A trailer that does not parse is a gate problem; a registration
+commit with no trailer (a claim made before this rule) is judged as before.
+
+Like READY files, the pin and the acceptance are honour-system: an agent set on
+forging them can (another commit with the registration subject, a hand-written
+acceptance). The rule stops the CR1 regression, an executor that rosters a
+reviewer or turns the gate off on the integration branch after its claim;
+M22.5's steering guard is the broader protection.
+
 ## What a reviewer probes
 
 An evaluation of reviewer effectiveness on the 0.3.1 line found that the approving reviewer had usually seen the issues the second reviewer blocked on, and excused them: it re-ran only the executor's own tests, read loose acceptance text in the leaf's favour, and filed real defects as "advisory" or "non-blocking". So every reviewer prompt (`specy-road prompt --role reviewer`, and `review delegate`) tells the reviewer to:
@@ -68,7 +103,7 @@ An evaluation of reviewer effectiveness on the 0.3.1 line found that the approvi
 - a table separator row or horizontal rule;
 - a bare acceptance result such as `- **A1:** pass` or `| A1 | pass |`.
 
-One explanation covers one observation. A line or findings entry is split into clauses at `.`, `!`, `?` or `;` before whitespace (not after "e.g.", "i.e.", "etc.", "vs." or "cf."). A marker covers the clause it ends ("x, not a defect because y"), or, when it opens its clause, the one clause just before it ("x; not a defect because y", "x. Not a defect because y"). Any other clause on the line that names a defect or is an observation fails on its own: "The cache miss is expected; not a defect because the fallback handles it. Separately, valid input crashes." is refused as `says "valid input crashes"`. The text one explanation covers may not join a second observation to the first. It is split at commas and at "and", "but", "while", "whereas", "although", "though", "yet" and "plus", and more than one part may not be an observation. A part counts when it names a defect, or when it has three words or more and does not open with a word that carries on the same observation ("so", "which", "because", "rather", "when", …). So "The cache miss is expected and valid input crashes, not a defect because the fallback handles the cache miss." is refused as `says "valid input crashes"`, while "The parser accepts malformed input, so invalid configuration reaches execution." and "The lock and the registry are both held" each count as one observation. A reason that itself names a defect ("…because the fallback handles it, and valid input crashes") is refused as `says "…" in its reason`. Keep each reason to one clause.
+One explanation covers one observation. A line or findings entry is split into clauses at `.`, `!`, `?` or `;` before whitespace (not after "e.g.", "i.e.", "etc.", "vs." or "cf."). A marker covers the clause it ends ("x, not a defect because y"), or, when it opens its clause, the one clause just before it ("x; not a defect because y", "x. Not a defect because y"). Any other clause on the line that names a defect or is an observation fails on its own: "The cache miss is expected; not a defect because the fallback handles it. Separately, valid input crashes." is refused as `says "valid input crashes"`. The text one explanation covers may join a second observation to the first only when no joined part names a defect. It is split at commas and at "and", "but", "while", "whereas", "although", "though", "yet" and "plus". Parts that name no defect are one observation however they are joined. When one part names a defect, more than one part may not be an observation: a part counts when it names a defect, or when it has three words or more and does not open with a word that carries on the same observation ("so", "which", "because", "rather", "when", …). So "The cache miss is expected and valid input crashes, not a defect because the fallback handles the cache miss." is refused as `says "valid input crashes"`, while "The parser accepts malformed input, so invalid configuration reaches execution." and "Changed paths are the touch zones plus the implementation summary" each count as one observation. A reason that itself names a defect ("…because the fallback handles it, and valid input crashes") is refused as `says "…" in its reason`. Keep each reason to one clause.
 
 So approve notes look like this:
 
@@ -169,6 +204,32 @@ commits an approval only when the recorded reviews already satisfy the policy,
 and without a TTY and without `--yes` the command refuses, as in 0.2.x. A
 coordinator that can satisfy the gate alone is no gate.
 
+## Who may file a review record
+
+`specy-road review record --model <M>` files only under the caller's own model. Before it takes the review lock or
+writes anything, it identifies the caller from the environment, never from anything the caller types:
+
+- **A worker.** `SPECY_ROAD_WORKER_ID` set (specy-road sets it for the harness it launches) must name a readable
+  worker record; one that cannot be read, decoded, parsed or validated exits 1 with no traceback. The record's model must be `M`; it wins over any harness marker the worker inherited.
+- **A harness.** Exactly one of these markers, confirmed against the harness versions of the 2026-11-05 replay:
+  Claude Code `CLAUDECODE=1` (2.1.318), Codex `CODEX_THREAD_ID` set (codex-cli 0.166.0), Cursor `CURSOR_AGENT=1`
+  (agent 2026.11.05). `M`'s roster entry must run on that `harness`; an entry with no `harness`, or `generic`,
+  matches none. A refusal reads "`<M>` is a `<harness>` roster entry and this command runs under `<caller>`; file a
+  review only under your own model id (AGENTS.md, Review roles); nothing was written".
+- **Unidentified** (no marker, or two or more): a human filing from a plain terminal, for example pasted notes, adds
+  `--human-filed "<who and why>"`: one non-blank line (no line break of any kind; anything else on the line, a tab
+  included, is kept), stored stripped as `human_filed` and covered by a signature. The gate
+  counts such a record only when its signature verifies against the roster `public_key`, or when
+  `policy.count_human_filed_reviews: true` (default false) on the integration branch; otherwise it is listed as
+  "filed by hand (human_filed) and unsigned; policy.count_human_filed_reviews is off". An identified matching caller
+  that passes the flag gets a note, and nothing is stored.
+
+`review delegate` and `prompt --channel cli --run` file through the run itself and are not checked, whatever harness
+the coordinator runs in. The paste-channel reviewer prompt keeps the plain `review record` line and says a human
+filing from a terminal adds `--human-filed`. Like READY, the check is cooperative: a caller that sets a marker or
+writes a worker record can pass it, and two models on one harness are not told apart; `signed_reviews` is the strong
+check.
+
 ## Signed reviews
 
 A review record is a file, so without more, any agent that can write under
@@ -200,6 +261,17 @@ The boundary is the key: run each reviewer with a private key the executor's
 process does not hold. Still self-attested: the session flags inside a signed record
 (the key proves who signed, not how they worked) and presence files, which stay advisory.
 
+**A model observed to bypass the guidance (M21.44).** With `signed_reviews: true`, a roster entry
+whose model has a profile recording `guidance_bypass_observed` ([orchestration-models.md](orchestration-models.md#guidance-bypass-observed))
+is excluded from the executor and reviewer roles (`rca` included; the coordinator role is not affected):
+`orchestrate plan` picks another entry and says why, `worker delegate`, `review delegate` and `prompt`
+refuse it before any preflight or harness, `handoff status` lists it as excluded and never offers it as
+the next step, and the gate does not count its records, signed or not. The shipped flag is on
+**composer-2.5** (and its alias `composer-2.5-fast`): the finding is about that model, not about the
+Cursor harness. Setting `allow_guidance_bypass_model: true` on its committed roster entry lets it back
+in at your own risk ([orchestration-roster.md](orchestration-roster.md)); each executor or reviewer
+launch then warns. With `signed_reviews` off nothing changes.
+
 **What the gate cannot stop.** Without `signed_reviews`, an agent with shell access can
 impersonate an approval: the 2026-11-04 context-regression replay saw one executor drive the
 interactive human menu with `expect`, one call the toolkit's own record writer from `python -c`,
@@ -210,7 +282,11 @@ own bar, not a process that can commit and push to that branch. For an unattende
 turn `policy.signed_reviews` on and keep the human's and each reviewer's private key outside the
 executor's reach (another user, a hardware key or an agent the executor cannot reach), and protect
 the integration branch on the host (pushes through a reviewed PR, a code owner on
-`roadmap/orchestration.yaml`), so the executor cannot roster a key of its own. Triage:
+`roadmap/orchestration.yaml`), so the executor cannot roster a key of its own; that code owner also
+guards `allow_guidance_bypass_model`, which an executor with push rights could otherwise set. The
+2026-11-05/06 replay saw **composer-2.5** fake a terminal with `script` to run `review accept-policy` and
+the human approval, then merge and push: turn `signed_reviews` on whenever agents run with shell access,
+which also keeps such a model out of the executor and reviewer roles (above). Triage:
 [design-notes/context-regressions-2026-11-04-triage.md](design-notes/context-regressions-2026-11-04-triage.md).
 
 `specy-road handoff status [<NODE_ID>] [--json]` shows each node's state:
@@ -224,12 +300,21 @@ the integration branch on the host (pushes through a reviewed PR, a code owner o
 | `approved` | The policy is met. Run `mark-implementation-reviewed`. |
 | `stale` | The branch moved past the READY commit. |
 | `escalated` | The review loop is not converging (see below) and no RCA record covers it; the trigger is named. |
+| `fix_round_budget_spent` | `policy.max_fix_rounds` is set, the leaf has spent that many blocking rounds and a counted review still blocks; the next command is named ([below](#fix-round-budget-and-deferral)). |
 | `complete_no_claim` | The node is Complete and its claim is released; its records are listed, not evaluated (`--ref` evaluates them). |
 | `leaves_open` | A milestone with a leaf not yet Complete at the integration tip; its full review has not started (below). |
 | `awaiting_full_review` | A milestone whose leaves are all finished waits for its full review at the integration tip (below); `approved` once the gate is met there. |
 | `unclaimed`, `error` | No open claim names a commit, so the gate cannot be evaluated and the records are only listed (pass `--ref`); `error`: the node or `--ref` does not resolve. |
 
-Below each node it lists every problem to fix. Given one `<NODE_ID>`, the exit status is for a polling script: `0` the policy is met (`approved`) or the node is `complete_no_claim`; `1` it is not met (`waiting`, `in-review`, `blocked`, `executor_blocked`, `stale`, `escalated`); `2` it cannot be determined (`unclaimed`, `error`, or `--ref` without a node). The sweep with no `<NODE_ID>` only reports and exits 0. **Review-loop escalation:** a round is one reviewed commit in `history/`; when the last `escalate_same_acceptance_blocks` rounds all block on one acceptance id (`same_acceptance`), when one reviewer family (from the roster) blocked that many of the rounds it reviewed in a row, whatever acceptance ids or models of that family it named (`same_family`; an approval from the family resets its count), or after `escalate_review_rounds` rounds (`review_rounds`), an unapproved leaf is `escalated` with its trigger named (`review list` prints it too, and reviewer prompts say so). `specy-road prompt <NODE_ID> --role rca --model <id>` (a rostered reviewer that neither implemented nor reviewed the leaf) then builds a root-cause prompt from the brief, every round's records side by side and the diffs between them. A coordinator can start one on a leaf that is not escalated with `--force --reason '<why>'` (rule `forced`; it needs a review round since the last analysis, and an active escalation wins over it); the reason is in the prompt and in the record's `trigger.reason`; the analyst writes `RCA-<round>.md` beside the reviews with a classification (specification, implementation, test, reviewer, environment, hard problem), cited evidence, the cheapest corrective action and, for a specification cause, a proposed acceptance rewrite for a human to approve. A valid record resolves the trigger and counting restarts; an invalid one is listed as a problem. Design: [design-notes/review-loop-rca.md](design-notes/review-loop-rca.md).
+Below each node it lists every problem to fix. Given one `<NODE_ID>`, the exit status is for a polling script: `0` the policy is met (`approved`) or the node is `complete_no_claim`; `1` it is not met (`waiting`, `in-review`, `blocked`, `executor_blocked`, `stale`, `escalated`, `fix_round_budget_spent`); `2` it cannot be determined (`unclaimed`, `error`, or `--ref` without a node). The sweep with no `<NODE_ID>` only reports and exits 0. **Review-loop escalation:** a round is one reviewed commit in `history/`; when the last `escalate_same_acceptance_blocks` rounds all block on one acceptance id (`same_acceptance`), when one reviewer family (from the roster) blocked that many of the rounds it reviewed in a row, whatever acceptance ids or models of that family it named (`same_family`; an approval from the family resets its count), or after `escalate_review_rounds` rounds (`review_rounds`), an unapproved leaf is `escalated` with its trigger named (`review list` prints it too, and reviewer prompts say so). `specy-road prompt <NODE_ID> --role rca --model <id>` (a rostered reviewer that neither implemented nor reviewed the leaf) then builds a root-cause prompt from the brief, every round's records side by side and the diffs between them. A coordinator can start one on a leaf that is not escalated with `--force --reason '<why>'` (rule `forced`; it needs a review round since the last analysis, and an active escalation wins over it); the reason is in the prompt and in the record's `trigger.reason`; the analyst writes `RCA-<round>.md` beside the reviews with a classification (specification, implementation, test, reviewer, environment, hard problem), cited evidence, the cheapest corrective action and, for a specification cause, a proposed acceptance rewrite for a human to approve. A valid record resolves the trigger and counting restarts; an invalid one is listed as a problem. Design: [design-notes/review-loop-rca.md](design-notes/review-loop-rca.md).
+
+## Fix-round budget and deferral
+
+`policy.max_fix_rounds` (an integer of at least 1 in `roadmap/orchestration.yaml`, read from the integration branch like the rest of the policy) caps the blocking rounds one leaf may spend; a round counts when any record at that commit blocks. Leave it unset and nothing changes: no budget, no new status field. While the leaf has spent that many and any counted review still blocks (including after a deferral resolved another reviewer's block), `handoff status` reports `fix_round_budget_spent` (exit 1). `--json` carries `fix_round_budget`: `max_fix_rounds`, `blocking_rounds`, `spent`, `state` (a row of the next-step table in `specy_road/review_next_step.py`), `step` (`command`, `blocked` or `none`), `next` and `next_why`. A `command` runs as printed: a forced root-cause analysis by an available rostered reviewer that is not a party while no RCA record covers the latest round; `review defer` for a covering `defer_findings` record it would accept; once that is applied, an executor prompt for the remaining blocks; for another recommended action, an executor prompt for the latest READY's agent (`continue_with_class_fix`, `restart_executor_fresh`, `fix_tests`, `fix_environment`), or `review-packet` and then a reviewer prompt for an available blocking reviewer (`change_or_reprompt_reviewer`). `blocked` means no agent command would succeed (no available independent analyst or executor, a deferral `review defer` would refuse, or an action only a human takes): `next_why` starts `blocked:` and `next` is a `specy-road decisions add` that records it for a human. `none`: the budget is not spent, or nothing blocks.
+
+An RCA record of type `defer_findings` lists `deferred_findings`: each blocking finding with its `reviewer`, `commit`, `category`, `acceptance_id`, an `input_class` (a short label the analyst writes, such as `CRLF line endings`), and a proposed `follow_up_title` and `follow_up_acceptance`. Two input classes match when they are equal lower-cased with whitespace collapsed; nothing is inferred or fuzzily matched. An item's round is the round of the commit its reviewer blocked, which must be no later than the round the RCA covers (`trigger.round`). A finding can never be deferred when its input class matches one an RCA record or applied deferral named before that round (its `deferred_findings` or a `finding_disposition` `input_class`; later records are not evidence), or when it is a `correctness` finding on an acceptance id an earlier round marked `pass`. Each item binds to one finding of that blocking record: the same category and text (the item's `finding` may prefix `<round>/<reviewer>: `), one to one. Every finding of the block must be bound and every acceptance id it fails named by an item; and because a record does not tie findings to criteria, a block with any `correctness` finding that also fails an id an earlier round passed is never deferred. Otherwise, or when a normalised follow-up title or acceptance line is empty, `review defer` refuses the whole record, names the record, round or field at fault, and writes nothing.
+
+`specy-road review defer` is human-only, as the human approval in `mark-implementation-reviewed` is: it refuses unless run in an interactive terminal, has no `--yes`, and shows the findings before asking. On `y` it adds one `Not Started` task per distinct follow-up title beside the leaf (the `add-node` write, so the milestone lock and validation apply; the leaf, the decision and the marker are one transaction: any failure, including the marker write, rolls `roadmap/`, `planning/` and the marker back), writes a `decision` entry in `roadmap/decisions.yaml` and closes it with an answer naming each deferred finding, the follow-up leaf and the approver (git `user.name` / `user.email`), and writes `DEFERRAL-<round>.yaml` beside the RCA record (gitignored, like the reviews). The audit trail is RCA record → decision entry → follow-up leaf; commit `roadmap/` afterwards. The gate then lists the deferring reviewer's block at that commit as `deferred by <decision id>` instead of counting it, only while the marker names that reviewer and commit and is in effect (`deferral_in_effect` in `specy_road/review_deferral.py`, the one check the gate, `handoff status`'s next step and `worker delegate --rework`'s governing design all use): the RCA record it names is valid, recommends `defer_findings` at the marker's round and defers exactly the marker's items (same reviewer, finding, category, acceptance id and input class, commits naming the same commit); the decision it names is closed, on this leaf, of kind `decision`, and worded as `review defer` records it (`why_now` starting `<RCA file> recommends defer_findings`, an answer starting `Deferred by`, naming `from <RCA file>:` and each item's reviewer, full commit, finding, category, acceptance id and input class; `decisions.yaml` is read only when such a marker exists); and every item still passes the one qualification rule `review defer` applied (`qualify_deferral`, re-run on each evaluation: the marker is a cache, not an authority). A marker citing an unrelated decision, or rewritten after `review defer` (to another item, reviewer or commit), resolves nothing, and `handoff status` names why in its refusal text. A marker is shape-checked where it is read; a malformed one resolves nothing and `handoff status` names it on one line. Every other block still counts, including another reviewer's on the same commit, and a new commit needs a new review as always.
 
 ## Milestone full review
 
@@ -240,7 +325,13 @@ Leaf reviews are leaf-sized, so a regression that only shows across two leaves o
 - **The records.** Reviewers file `specy-road review record <MILESTONE_ID> --model <id> --verdict approve|block --file <notes.md>` against that commit, with an empty `acceptance` map (a milestone has no acceptance ids of its own). The gate is the leaf gate at that commit, so `reviewers_required` and `reviewers_distinct_families` apply unchanged, and a new commit on the integration branch makes the records stale as for a leaf.
 - **The release.** `specy-road mark-implementation-reviewed <MILESTONE_ID>` must run on the integration branch checkout with `HEAD` at the commit under review (the remote-tracking tip when there is one): before it reads a record, prompts, or writes anything it refuses on another branch, on a local integration branch behind or ahead of that tip (pull or push first), or while a leaf is not Complete there. It then evaluates the gate at that commit (the interactive human approval and `--yes` behave as for a leaf) and on success sets the milestone and the stale ancestors above it Complete, regenerates the exported files, and commits them as `roadmap: <MILESTONE_ID> full review approved; status -> Complete` with the `Reviewed-by` trailers. That authored Complete is the recorded closure: later integration commits, including the closure commit itself, do not reopen the hold, so `load_roadmap` keeps `rollup_status` Complete. `handoff status <MILESTONE_ID>` shows `leaves_open` (exit 1) while a leaf is not Complete at the tip, `awaiting_full_review` (exit 1) until the gate is met, `approved` with the release command once it is, and `complete_no_claim` afterwards; `review list <MILESTONE_ID>` prints the same next step under the gate line.
 
-With `milestone_full_review: false` the last leaf's finish sets the milestone Complete at once, as before, and the computed rollup is Complete as soon as every leaf is.
+With `milestone_full_review: false` the last leaf's finish sets the milestone Complete at once, as before, and the computed rollup is Complete as soon as every leaf is. **Seeing a hold:** while a milestone whose leaves are all Complete is held, `specy-road validate` (and so `upgrade`, which runs it) prints one non-fatal notice per held milestone on stdout, which `--strict` does not count; `why-blocked <MILESTONE_ID>` prints the same notice, `list-nodes` shows its ROLLUP as `In Progress (review hold)`, and `list-nodes --json` adds `review_hold: <reason>` to its row. Recording it Complete closes it without a full review; turning the policy off releases every held milestone. A hold whose review target cannot be resolved (no git, no integration branch) does not change the rollup, so it gets a one-line notice in `validate` and `why-blocked` and no mark in `list-nodes`.
+```text
+milestone review: notice — M2 is held at In Progress: every leaf is Complete but its full review is not approved at refs/heads/dev (…) (policy.milestone_full_review). Ways out:
+  1. Review it: specy-road review-packet M2; each reviewer: specy-road review record M2 --model <id> --verdict approve|block --file <notes.md>; then specy-road mark-implementation-reviewed M2
+  2. Record it Complete: specy-road edit-node M2 --set status=Complete
+  3. Turn the hold off: set policy.milestone_full_review: false in roadmap/orchestration.yaml
+```
 
 ## The hand-off directory in a worktree
 
@@ -277,16 +368,13 @@ faster.
 roster entry with `harness: claude-code` and no `channels.cli`, therefore runs
 
 ```text
-claude -p "<instruction>" --bare --model <api_id> [--effort <level>] --permission-mode acceptEdits \
-  --allowedTools Read,Edit,Bash --add-dir <work/reviews/NODE_ID> < <prompt file>
+claude -p "<instruction>" --bare --session-id <uuid> --output-format stream-json --verbose --model <api_id> \
+  [--effort <level>] --allowedTools Read,Glob,Grep,Bash --disallowedTools Write Edit NotebookEdit \
+  "Bash(git commit *)" "Bash(git push *)" "Bash(gh *)" --json-schema '<schema>' --add-dir <work/reviews/NODE_ID> < <prompt>
 ```
 
-`--add-dir` lets the reviewer write its notes into the hand-off directory, which
-is in the main checkout even when the reviewer runs in a worktree. Bare mode
-never reads OAuth credentials or the keychain, so it needs `ANTHROPIC_API_KEY`
-(or an `apiKeyHelper`) instead of a subscription login; the command prints a
-note saying so. A `channels.cli` is run as written, and other harnesses use
-their profile's `access.cli` as before.
+`--add-dir` lets it read the hand-off directory; it writes nothing. Bare mode needs `ANTHROPIC_API_KEY` (or an `apiKeyHelper`), not a subscription login (the command says so), and fires no hook, so `--disallowedTools` denies commits, pushes and `gh`. A `codex` or `cursor` entry without `channels.cli` runs its adapter's read-only reviewer command; a `channels.cli` or another harness's `access.cli` runs as written, captured and filed like the default ones.
+The final message is one JSON object, which specy-road files; a post-run tripwire (not a security boundary) fails the review when `git status` or the hand-off directory changes, and malformed output is a rerun request: [orchestration-reviewer-output.md](orchestration-reviewer-output.md) has the rules, scope and turn table.
 
 The reviewer prompt asks the reviewer to say how it was started:
 `specy-road review record … --launch-mode full|bare|explicit` stores
@@ -307,10 +395,10 @@ bare`) and in `--json` as each review's `launch_mode`.
 `specy-road review delegate <NODE_ID> --model <roster id>` runs one rostered reviewer the way `worker delegate` runs an executor, but waits for it: a reviewer has one turn to take, and the command's answer is whether it filed a record.
 
 1. It builds the reviewer prompt (`specy-road prompt --role reviewer`, so the packet must exist: run `review-packet` first) and writes it to `work/prompt-<NODE_ID>-reviewer-<model>.md`. The model needs the reviewer role or an active substitution, as for `review record`.
-2. It runs the roster entry's `preflight`, then launches the entry's harness in this checkout's git root (`--worktree` names another). A `claude-code` entry without `channels.cli` runs bare, as above, with `--session-id <uuid>` and `--output-format stream-json` added; any other entry runs its `channels.cli` (with `{session}` or `{session_flag}` for a session id) or its harness's default command, which for Codex is `codex exec` with a `workspace-write` sandbox: the hand-off directory must lie inside it, so run a Codex reviewer from the main checkout.
+2. It runs the roster entry's `preflight`, then launches the entry's harness in this checkout's git root (`--worktree` names another). A `claude-code` entry without `channels.cli` runs bare or explicit, as [orchestration-reviewer-output.md](orchestration-reviewer-output.md) describes (bare with `ANTHROPIC_API_KEY` or `apiKeyHelper`, explicit with a subscription login), with `--session-id <uuid>` and `--output-format stream-json` added; a `codex` or `cursor` entry without `channels.cli` runs its read-only reviewer command (above); any other entry runs its `channels.cli` (with `{session}` or `{session_flag}` for a session id).
 3. It records the run in `work/reviews/<NODE_ID>/RUN-<model>.json`: the commit under review, the harness's native session id, one entry per attempt (exit, whether it was a capacity error, the error text) and the final `state`. Raw output goes to `RUN-<model>.log` beside it.
 4. When an attempt fails with a provider capacity or rate-limit error (`429`, `529`, `overloaded`, `rate limit`, `usage limit`, `quota`, `RESOURCE_EXHAUSTED`, …), it waits `--backoff` seconds (default 30, doubled each time) and tries again, at most `--retries` times (default 3). A retry resumes the session the harness reported, with a short continue prompt; when none was reported, it launches afresh. Any other failure is not retried.
-5. The run is `complete` when a valid `REVIEW-<model>.md` for the commit under review exists afterwards, and the command exits 0; otherwise it is `incomplete`, with the reason (the capacity error after the last attempt, the harness's exit, no record filed, an invalid record, or a record for another commit), and the command exits 1. Exit 2: the harness cannot resume.
+5. It files the record from the run's final JSON (above) and stores the outcome as `outcome`: `recorded`, `rerun` or `review_failure`. The run is `complete` when a valid `REVIEW-<model>.md` for the commit under review exists afterwards, and the command exits 0; otherwise it is `incomplete`, with the reason (the capacity error after the last attempt, the harness's exit, a review failure, a rerun request, an invalid record, or a record for another commit), and the command exits 1. Exit 2: the harness cannot resume.
 
 `--resume` continues the recorded session with the continue prompt instead of starting a fresh one. It is refused when the run file has no session, names another harness, or was for another commit: a session that reviewed an earlier commit starts a fresh review instead. `--json` prints the run record.
 
@@ -382,4 +470,4 @@ policy:
 
 Each item's `zones` are touch-zone paths or directory prefixes, and `require_one_of` names roster ids (`specy-road validate` refuses an id the roster does not have). An item applies to a leaf when one of the leaf's touch zones (its claim row's, the node's in the checkout running the command, and the node's as committed at the commit under review, so a zone the feature branch adds counts when the gate runs from the integration checkout) meets one of the item's zones: the same path, one a directory prefix of the other, or a glob zone matching the other; in a nested project either may be written from the git root or the project root. While an applicable item has no counted approval at the commit under review from a model it lists, the gate is not met, on top of `reviewers_required`: `handoff status`, `mark-implementation-reviewed` and `finish-this-task` name it as `strong_review[<n>] (zones: …): … need a counting approval from one of …, have none`. Only an approval the gate already counts satisfies an item, so a stale, ineligible or blocking record does not, and a substitute does only when its own id is listed. The interactive human approval closes the gate only when every unmet item lists `human`. While an item is unmet, each `handoff status` row that can still approve says whether its approval would satisfy it.
 
-`specy-road orchestrate plan` lists, under each ready leaf, every item its touch zones meet as `strong review strong_review[<n>] (zones: …): one approval from …; can satisfy it: …`, where the reviewers that can satisfy it are the listed models that are rostered reviewers (or active substitutes), available, allowed the leaf's sensitivity, and not its executor. It picks the best-ranked of them first, whatever its family, and the rest of the reviewers as usual; an item none of them can satisfy makes the leaf unstaffable (exit 1). The `--json` form carries the same as `strong_review` on each assignment.
+`specy-road orchestrate plan` lists, under each ready leaf, every item its touch zones meet as `strong review strong_review[<n>] (zones: …): one approval from …; can satisfy it: …`, where the reviewers that can satisfy it are the listed models that are rostered reviewers (or active substitutes), available, allowed the leaf's sensitivity, and not its executor. It picks the best-ranked of them first, whatever its family, and the rest of the reviewers as usual; an item none of them can satisfy makes the leaf unstaffable (exit 1). The `--json` form carries the same as `strong_review` on each assignment. Per-area quality scores (`Review-tally` trailers, the digest's "Quality by area" section) and opt-in `policy.quality_routing`: [orchestration-quality.md](orchestration-quality.md).

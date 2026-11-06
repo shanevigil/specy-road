@@ -11,7 +11,8 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git
-from tests.test_worker_cli import _repo, run_worker_cli, wait_for_worker
+from tests.test_worker_cli import run_worker_cli, wait_for_worker
+from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
@@ -25,7 +26,7 @@ def _failed(repo: Path, session: str | None = "sid-1", node: str = "M1.1") -> ws
 
 
 def test_message_resumes_a_failed_worker_with_a_session_id(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = _failed(repo)
     assert run_worker_cli("worker", "message", rec.worker_id, "--text", "finish the one file", "--repo-root", str(repo)) == 0
     assert "message sent; resumed" in capsys.readouterr().out
@@ -36,7 +37,7 @@ def test_message_resumes_a_failed_worker_with_a_session_id(tmp_path: Path, capsy
 
 
 def test_a_failed_worker_without_a_session_id_is_still_refused(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = _failed(repo, session=None)
     assert run_worker_cli("worker", "message", rec.worker_id, "--text", "x", "--repo-root", str(repo)) == 1
     assert "is failed, session none; delegate again instead" in capsys.readouterr().err
@@ -46,7 +47,7 @@ def test_a_failed_worker_without_a_session_id_is_still_refused(tmp_path: Path, c
 
 
 def test_an_unreadable_integration_ref_is_a_worker_error_for_a_failed_worker(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = _failed(repo)
     git(repo, "branch", "-D", "dev")   # the roster and policy are read from the integration branch
     for send in (lambda: ops.message(repo, rec.worker_id, "x"), lambda: ops.resume(repo, rec.worker_id)):
@@ -56,7 +57,7 @@ def test_an_unreadable_integration_ref_is_a_worker_error_for_a_failed_worker(tmp
 
 
 def test_a_stalled_worker_whose_process_ended_resumes(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
     ws.set_state(repo, rec, "running", pid=None)   # a harness stopped by hand: no wrapper, no harness left
@@ -68,7 +69,7 @@ def test_a_stalled_worker_whose_process_ended_resumes(tmp_path: Path) -> None:
 
 
 def test_a_stalled_worker_that_is_still_alive_says_how_to_resume(tmp_path: Path, monkeypatch) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
     ws.set_state(repo, rec, "running", pid=None)
@@ -82,7 +83,7 @@ def test_a_stalled_worker_that_is_still_alive_says_how_to_resume(tmp_path: Path,
 
 
 def test_the_reopened_turn_counts_against_max_workers(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path, max_workers=1)
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
     rec = _failed(repo)
     other = ws.create_record(repo, "M1.2", "generic", "x", repo)   # an idle worker on another leaf holds the one slot
     ws.set_state(repo, other, "idle", pid=None)
@@ -95,7 +96,7 @@ def test_the_reopened_turn_counts_against_max_workers(tmp_path: Path, capsys) ->
 
 
 def test_a_leaf_already_held_by_another_worker_is_not_reopened(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = _failed(repo)
     newer = ws.create_record(repo, "M1.1", "generic", "x", repo)   # the leaf was delegated again
     ws.set_state(repo, newer, "idle", pid=None)

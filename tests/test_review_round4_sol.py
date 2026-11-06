@@ -29,7 +29,8 @@ import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
 from tests.test_review_signing import _key, _roster
-from tests.test_worker_cli import _repo, wait_for_worker
+from tests.test_worker_cli import wait_for_worker
+from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import session_presence as sp
 from specy_road import tool_call_guard as tg
@@ -56,7 +57,7 @@ def _wrapper_cmdline(monkeypatch, worker_id: str = "w-0001") -> None:
 # --- B1 -----------------------------------------------------------------------
 
 def test_a_completed_worker_still_owns_its_leaf(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path, max_workers=4)
+    repo, _ = make_worker_repo(tmp_path, max_workers=4)
     rec, _c = ops.delegate(repo, "M1.1", "opus")
     wait_for_worker(repo, rec.worker_id)
     ws.set_state(repo, rec, "completed", pid=None)
@@ -70,7 +71,7 @@ def test_a_completed_worker_still_owns_its_leaf(tmp_path: Path) -> None:
 # --- B2 -----------------------------------------------------------------------
 
 def test_concurrent_messages_launch_one_turn(tmp_path: Path, monkeypatch) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
     ws.set_state(repo, rec, "idle", pid=None)
@@ -284,7 +285,7 @@ def test_a_wrong_key_is_an_error_not_a_written_record(tmp_path: Path, capsys) ->
 # --- F5, F8, F16 ----------------------------------------------------------------
 
 def test_a_dead_wrapper_frees_the_leaf(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path, max_workers=4)
+    repo, _ = make_worker_repo(tmp_path, max_workers=4)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.set_state(repo, rec, "running", pid=999999)
     again, created = ops.delegate(repo, "M1.1", "opus")
@@ -294,7 +295,7 @@ def test_a_dead_wrapper_frees_the_leaf(tmp_path: Path) -> None:
 
 
 def test_a_spawn_failure_marks_the_record_failed(tmp_path: Path, monkeypatch) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
 
     def boom(*a, **k):
         raise OSError("no fork for you")

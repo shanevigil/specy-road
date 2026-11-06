@@ -35,9 +35,11 @@ promotes them.
 
 ## Phase 1 — open the session
 
-Run this **before reading anything else** — not `roadmap-context.md`, not the
-roadmap, not `planning/`, even if AGENTS.md says to read the digest first.
-From the repository root:
+Run this **before reading anything else**, even if AGENTS.md says to read the
+digest first. Make `specy-road brainstorm start` your next tool call, alone in
+its tool-call batch, with no parallel read or search (not roadmap-context.md,
+roadmap/, planning/ or anything else); after it returns, read the prompt file it
+names and continue. From the repository root:
 
 ```bash
 specy-road brainstorm start --topic "[TOPIC]" --under [ANCHOR] --count 30

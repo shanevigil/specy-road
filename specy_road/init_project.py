@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sys
 from dataclasses import dataclass
@@ -11,6 +12,7 @@ from pathlib import Path
 from specy_road import __version__
 from specy_road.agent_ignores import apply_and_report
 from specy_road.agents_md_block import apply_agents_files
+from specy_road.generated_files import GENERATED_COMMITTED, refused_generated_files, regenerate_generated_files
 from specy_road.harness_instruction_files import AGENTS_MD
 from specy_road.managed_block import CREATED, UNCHANGED, UPDATED
 from specy_road.model_profiles import PROFILES_REL, load_profile
@@ -191,6 +193,24 @@ def _copy_templates(
     return written, skipped
 
 
+def _write_generated(
+    dst: Path, prefix: str, written: list[str], skipped: list[str], *, dry_run: bool, force: bool,
+) -> None:
+    """Render ``roadmap.md`` and ``roadmap-context.md`` from the scaffold graph, so ``export --check``
+    and ``digest --check`` pass on a new project. Rendering writes both, so a file already there
+    without ``--force`` (a hand-written ``roadmap.md``) skips both, as a template file is skipped.
+    """
+    present = [name for name in GENERATED_COMMITTED if os.path.lexists(dst / name)]   # a dangling link counts
+    if present and not force:
+        skipped.extend(f"{prefix}{name}" for name in present)
+        return
+    refused = refused_generated_files(dst)   # a link out of the project is never written through
+    if not dry_run:
+        regenerate_generated_files(dst)
+    written.extend(f"{prefix}{name}" for name in GENERATED_COMMITTED if name not in refused)
+    skipped.extend(f"{prefix}{name} ({why})" for name, why in refused.items())
+
+
 def _profile_selection(profiles: str) -> InitProfilesSelection:
     """Parse and check ``--profiles``; raises ``ValueError`` naming what is wrong."""
     selection = parse_init_profiles_spec(profiles)
@@ -211,8 +231,9 @@ def run_init_project(
 
     Every path the run creates or changes is reported once, with the same
     text under ``--dry-run`` as for real: the template files, ``AGENTS.md``,
-    both ignore files' managed blocks and ``.specyrd/manifest.json``. Paths are
-    relative to the git root (``sr/roadmap/...`` in the nested layout).
+    both ignore files' managed blocks, ``.specyrd/manifest.json`` and the two
+    generated files. Paths are relative to the git root (``sr/roadmap/...`` in
+    the nested layout).
     """
     dst = project_root(target) if target else project_root()
     src = project_template_root()
@@ -249,6 +270,7 @@ def run_init_project(
     apply_and_report(root, prefix, written, dry_run=dry_run, gitignore_seed=seed)
     if top is not None:
         _record_layout(top, prefix, written, dry_run=dry_run)
+    _write_generated(dst, prefix, written, skipped, dry_run=dry_run, force=force)
 
     verb = "would write" if dry_run else "wrote"
     for entry in written:

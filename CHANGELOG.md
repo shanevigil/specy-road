@@ -11,6 +11,869 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.3.1-rc4] - 2026-11-06
+
+Fourth prerelease for v0.3.1. Routed to TestPyPI by release-publish.yml.
+Install with the sha256-checked wheel recipe in
+[`docs/install-release-candidates.md`](docs/install-release-candidates.md)
+(never TestPyPI as an index); wheel sha256 `<from A.3 step 4>`.
+
+The release candidates exist to find and fix problems while specy-road is used
+on real projects; rc4 fixes what testing rc3 turned up. Work on the roadmap
+continued in parallel, and the features that landed during this cycle are
+included in this build. Existing adopters run `specy-road upgrade` (it
+refreshes the schemas and regenerates a drifted digest) and read *Upgrading*
+in [`docs/whats-new.md`](docs/whats-new.md#specy-road-031): `move-node`,
+`refresh-profiles`, the escalation rules, reviewer runs, review filing,
+the review policy pin and `session end` change behaviour.
+
+### Fixed since rc3 (found in real-world testing)
+
+- **A new project passes its own checks.** `init project` writes `roadmap.md`
+  and `roadmap-context.md`, so `export --check` and `digest --check` pass on a
+  fresh scaffold; `doctor` works in a repository with no remote; help text
+  names only commands a pip install has.
+- **Landing recovers on its own.** `finish-this-task` resolves roadmap chunk
+  conflicts the branch only inherited and undoes its bookkeeping commit when a
+  landing fails, and a failed roadmap write restores every file.
+  `reconcile-branch` clears the generated-file conflicts parallel PR-mode
+  leaves get.
+- **Workers and reviewers launch explicitly.** Cursor workers run sandboxed
+  without `--force` unless the roster opts in with `cursor_force`. Claude Code
+  workers and reviewers set their mode explicitly and check authentication
+  before launch, so a subscription login works. A delegated reviewer always
+  runs a named model, `prompt --channel cli` launches nothing without `--run`,
+  and harness binaries off `PATH` and large prompts no longer fail a launch.
+- **Rosters and installs you can check.** `models roster` writes roster
+  entries, `orchestrate plan --roster-from-worktree` tries one before it
+  lands, `refresh-profiles` installs only rostered profiles, and `doctor` says
+  which install is running.
+- **The review loop knows when to stop.** `policy.max_fix_rounds` and `review
+  defer` move findings of a new input class to a follow-up leaf, converging
+  loops are not escalated, fix rounds ask for a whole-class audit, and
+  unplanned test removals need a reviewer check. `review record` refuses
+  joined observations only when a joined part names a defect, and a refused
+  record leaves a trace.
+- **Dependency cycles through group dependencies are caught.** `validate` and
+  `add-dependency` refuse a cycle made through an inherited group dependency.
+- **`upgrade --dry-run` is isolated, and `upgrade` finishes the job.** A dry run
+  never reaches the caller's repository from its scratch copy, and `upgrade`
+  regenerates a drifted digest. A real run is not yet isolated the same way: see
+  *Known issue* below.
+- **The generated files and a few review files refuse symlinks out of the
+  repo.** Other writers do not yet: see *Known issue* below.
+- **composer-2.5 is kept out of executor and reviewer roles under
+  `signed_reviews`,** after it was seen bypassing specy-road's guidance.
+- **Review deferrals are bound to the decision that recorded them.**
+- **`apply --dry-run` never touches live files.**
+- **GUI Publish regenerates the generated files and refuses without a remote.**
+- **`review delegate` works on Claude Code and Cursor:** schema accepted, answer
+  read after prose, one repair turn for a refused answer.
+- **The gate never counts a review from a model that wrote a READY.**
+- **Review filings take the leaf's lock and are made only as the caller;**
+  hand-filed reviews count only when signed or with
+  `policy.count_human_filed_reviews`.
+- **The review policy is pinned at claim;** a human runs
+  `specy-road review accept-policy` to accept a change.
+- **`session end` ends only your own session.**
+- **`finish-this-task` validates before bookkeeping** and never leaves a
+  half-mutated tree.
+- **`worker terminate` ends descendants that escaped its process group.**
+- **`brainstorm verify` normalizes quotes** (citation markers, typographic
+  punctuation).
+- **Brainstorm skill: `brainstorm start` is the single first call.**
+
+### Also in this build (roadmap work that continued alongside testing)
+
+- **Restructure the outline without renumbering everything.** `move-node`
+  changes only the moved subtree's ids (`--id`, `--fill-gaps`,
+  `--renumber-outline`). New commands: `indent`, `outdent`, `group-nodes`,
+  `remove-node` and `rename-refs`; `apply` runs the same operations as one
+  validated batch.
+- **Reviewer runs are read-only.** The reviewer returns structured output,
+  specy-road files the review record, and review usage is visible per round.
+
+### Added
+
+Roadmap restructuring
+
+- `specy-road indent <ID>`, `outdent <ID>` and
+  `group-nodes --into-new NEW_ID --title T [--type milestone] ID...` re-level
+  the outline from the CLI and print the `old -> new` map. Only the moved
+  subtree's ids change. With nothing to do, indent and outdent exit 1 with
+  `no previous sibling` or `already at root` and write nothing.
+  `group-nodes` creates a parent (with codename and planning sheet) at the
+  earliest listed sibling's position and moves the listed siblings under it as
+  `NEW_ID.1`..`NEW_ID.N` in argument order, as one transaction validated once;
+  the ids must be distinct siblings and `NEW_ID` a free child id of their
+  parent. The PM UI's `POST /api/outline/group` runs the same operation and
+  answers 400 with a string `detail` for any refused input.
+- `specy-road rename-refs '<{"OLD": "NEW"}>' [--dry-run]` rewrites display-id
+  references in live nodes' planning sheets, titles and acceptance in one pass,
+  so swaps and chains are safe, and prints a count for each place it changed.
+  Fenced code blocks and `<!-- historical -->…<!-- /historical -->` spans are
+  left as written. `move-node`, `indent`, `outdent` and `group-nodes` take
+  `--rewrite-refs` to do the same for the ids they change, in the same
+  transaction (the PM UI's requests take `rewrite_refs`, default false).
+  Without the flag a move rewrites no prose and prints how to do it. `docs/`,
+  `CHANGELOG.md`, `work/`, `roadmap.md` and git history are never rewritten.
+- `specy-road remove-node <NODE_ID> [--dry-run]` deletes a never-started node
+  and its planning sheet. It refuses, listing every blocker, when the node is
+  not `Not Started`, has a registry claim, has children or dependents, or when
+  any path it would touch resolves outside the repository. `--dry-run`
+  rehearses the removal on a scratch copy and writes nothing.
+  `archive-node --hard-remove` and the PM UI's delete use the same checks.
+- `specy-road apply` accepts `move-node`, `group-nodes`, `indent`, `outdent`,
+  `remove-node` and `archive` entries alongside `add-node`, `edit-node` and
+  `add-dependency`, for example
+  `{op: move-node, node: M2.4, to_parent: M3, fill_gaps: true}` or
+  `{op: group-nodes, nodes: [M3.1, M3.2], into_new: M3.5, title: Export}`.
+  Every entry is checked against its own command's options before anything
+  runs, and an unknown field refuses the file (`change N: not a valid <op>: no
+  field '<key>'`). Each entry sees the graph the earlier ones left, so name a
+  moved node by its new id. The final graph is validated once; a refusal
+  restores `roadmap/` (registry and archive included), the planning sheets and
+  the regenerated `roadmap.md` / `roadmap-context.md`. `--dry-run` also prints
+  one `old -> new` line per existing node whose id the batch changes.
+- `specy-road author-approach <ID> [<ID>...]` prints a prompt to write a
+  leaf's `## Approach` from its title, acceptance, touch zones and ancestor
+  intents, ending with a `git commit --only <sheet>`; `-o` writes it to
+  `work/prompt-approach-<ID>.md`. `brainstorm promote` now puts its "Not
+  written yet" placeholder under `## Approach` instead of `## Intent` (the old
+  placeholder is still detected). Every pickup skip reason for an unwritten
+  Approach names the command, and `grind-session --plan` and `orchestrate
+  plan` print one `needs Approach …` line listing those leaves.
+- `specy-road reconcile-branch [NODE_ID] [--base BRANCH] [--remote NAME]`, run
+  in a PR-mode leaf's worktree, clears the conflicts on
+  `roadmap/registry.yaml`, `roadmap.md` and `roadmap-context.md` that every
+  other open PR gets once one PR merges: it fetches and merges the
+  integration branch, takes its registry (minus this leaf's row once
+  finished), renders the two generated files again, commits and pushes. A
+  conflict on any other path aborts the merge, names the paths and exits 1.
+  Pickup's registration commit now also carries the regenerated
+  `roadmap-context.md` (and `roadmap.md`), so `digest --check` passes right
+  after pickup. See `docs/git-workflow-parallel-prs.md`.
+
+Review loop
+
+- `policy.max_fix_rounds` in `roadmap/orchestration.yaml` (integer, unset by
+  default) caps the blocking review rounds a leaf may spend. Once the budget
+  is spent and a counted review still blocks, `handoff status` reports
+  `fix_round_budget_spent` (exit 1) and prints one runnable next step: a
+  forced RCA prompt, `review defer`, an executor or reviewer prompt matching
+  the RCA's action, or a `specy-road decisions add` for a human. RCA records
+  accept the action `defer_findings` with a `deferred_findings` list. The new
+  `specy-road review defer <NODE_ID> --rca <file>` asks for confirmation at a
+  terminal, adds a follow-up task per title next to the leaf, records a closed
+  decision and writes `work/reviews/<NODE_ID>/DEFERRAL-<round>.yaml`; the
+  review gate then stops counting the blocks it covers. It refuses partial
+  coverage, an input class already deferred in an earlier round, and a
+  correctness finding on an acceptance id that passed earlier.
+- `worker message --fix-round` sends a `## Fix round` message built from the
+  current blocking findings, plus an instruction to audit each finding's
+  class (`--text` / `--file` are optional with it; it refuses when no review
+  blocks). A rework prompt with blocking reviews carries the same instruction:
+  name the kind of input or state that failed, check everywhere it can reach,
+  prefer a design change that removes it, and list what was checked under
+  `## Probes` in the implementation summary.
+- `planned_test_changes` can be edited after pickup: `edit-node` takes it with
+  `--set`, `--add` and `--remove`, and `add-node` takes a repeatable
+  `--planned-test-change`. When a leaf or milestone removes or weakens a test
+  that no `planned_test_changes` lists (removed test or test file, new skip,
+  lost assert), `review-packet` adds `## Required check: unplanned test
+  removal`, whether or not `policy.integrity_gate` is on, and `review record`
+  refuses an approve that does not record one `pass` acceptance entry per
+  listed line, keyed by that line. A list on the integration branch or on the
+  node at the reviewed commit counts, and a milestone's list includes its
+  leaves' lists. `docs/acceptance-evidence.md` explains how to authorize a test
+  change after pickup.
+- When `review record` (or `review delegate` filing) refuses a rostered
+  model's record, it writes `work/reviews/<NODE_ID>/REJECTED-<model>.md` with
+  the commit, the time and the refusal text; a later successful filing clears
+  it. `handoff status` and `review list` show `record refused <age> ago:
+  <first line>` for the commit under review, and their JSON carries a
+  `refused` map. `review list` gains `--json`.
+- `specy-road review usage <ID> [--json]` lists every `review delegate` run of
+  a leaf, earlier rounds included: model, harness, round, commit, state, turns
+  and usage, then a total. `review delegate` keeps each earlier round's
+  `RUN-<model>.json`, log and notes under `work/reviews/<ID>/history/` instead
+  of appending to one log. `worker usage` prints `executors`, `reviewers` and a
+  combined `total` line for a node with delegated reviewer runs (also in
+  `--json`). Usage a harness did not report shows `?`, not 0.
+- `mark-implementation-reviewed` adds a `Review-tally:` trailer to each leaf's
+  gate commit (rounds, blocks, approvals, integrity findings, RCA escalations,
+  findings per category). `roadmap-context.md` gains a **Quality by area**
+  section built only from those trailers in tracked history, so every checkout
+  and CI get the same output: per touch-zone area of the last
+  `policy.quality_window` landed leaves, leaves landed, leaves without a tally,
+  mean rounds, block rate, integrity findings and RCA escalations. Areas above
+  `policy.quality_threshold` are flagged and listed first;
+  `policy.quality_area_depth` sets how many path components name an area. With
+  `policy.quality_routing: true` (default false), `orchestrate plan` asks for
+  one strong-set reviewer on ready leaves in a flagged area. See
+  `docs/orchestration-quality.md`.
+- A milestone held by `policy.milestone_full_review` (all leaves Complete, no
+  passing full review) is now reported: `validate` (and so `upgrade`) prints a
+  notice naming the three ways out (the review commands,
+  `edit-node <ID> --set status=Complete`, or
+  `policy.milestone_full_review: false`), `why-blocked` adds the same notice
+  (`review_hold` in `--json`), and `list-nodes` shows
+  `In Progress (review hold)`. The notice does not count under
+  `validate --strict`.
+- `specy-road ready --run` flags a command that exits 0 but whose output shows
+  a failure ("command not found", "No such file or directory", "Permission
+  denied", "cannot open"): the READY is still written, with a `warning` on the
+  verifier row and in the review packet. A new `--run-argv '<JSON array>'`
+  runs a verifier without a shell. Every `--run` and `--run-argv` is checked
+  before any of them runs; a blank command or one containing a NUL byte
+  refuses the whole command, and a verifier that cannot start is recorded as
+  exit 126 or 127 and refuses the READY instead of crashing.
+
+Workers, rosters and installs
+
+- `specy-road models roster --executor ID --reviewer ID --coordinator ID`
+  (each repeatable; a profile file name, `api_id` or alias) prints ready-made
+  roster entries; `--write` appends them to `roadmap/orchestration.yaml` and
+  keeps its comments. An unknown id is refused with the nearest matches.
+  `validate` warns on a malformed or missing roster `profile:` path, and
+  `orchestrate plan` reports such an entry as `invalid profile: …`. With no
+  coordinator rostered, the plan says `coordinator: this session`.
+  `orchestrate plan --spread` spreads leaves round-robin across the capable
+  entries. See `docs/orchestration-roster.md`.
+- `orchestrate plan --roster-from-worktree` plans from the uncommitted
+  `roadmap/orchestration.yaml` under a `DRY RUN` banner (with `--json` the
+  banner goes to stderr and the JSON has `roster_ref: "worktree"`); nothing may
+  launch from that plan. `models list` starts with the roster file and the ref
+  it was read from, and lists `uncommitted roster changes`. A new `roster_add`
+  list in `roadmap/orchestration.local.yaml` adds roster entries for this
+  clone only; an id already in the roster is refused, and so is a CLI-channel
+  entry unless the same file sets `allow_local_cli: true`. Local entries do not
+  count toward the review gate.
+- `specy-road worker sync --wait --until completion` (or a comma list of
+  `completion`, `error`, `intervention`) waits until one of those events
+  arrives, so tool-use output no longer ends the wait. Runs of `(tool use)`
+  output lines show as one line (`#5-#10 output: 6 tool uses`; `--verbose`
+  shows each). When a completion reports `READY file missing`, sync suggests
+  `specy-road worker resume W --ready-only`, which runs one turn with a short
+  prompt to write READY for HEAD only. `worker delegate --rework` treats a
+  `completed` worker as ended instead of refusing.
+- `env_setup.link` in `roadmap/git-workflow.yaml` symlinks paths such as
+  `.venv` or `node_modules` from the main checkout into each new worktree
+  (steps run copy, then link, then cmd). The link is bounded to both trees and
+  added to the shared `info/exclude`; `doctor` lists links and reports a
+  missing source. In a linked worktree, a command whose
+  `SPECY_ROAD_REPO_ROOT` names another worktree of the same repository now
+  uses the worktree you are in (before, `ready` run there wrote READY against
+  the main checkout); `worker delegate`, `message` and `resume` set the
+  variable to the worker's own worktree. See `docs/orchestration-worktrees.md`.
+- A `nested_repos` object entry in `roadmap/git-workflow.yaml` accepts `land`,
+  `base` and `refuse_behind_remote`, for repositories that hold local-only
+  commits or must not be pushed without approval. `land: local` makes
+  merge-mode finish merge onto the local integration branch and push nothing;
+  `land: manual` lands nothing, prints `git -C <repo> merge --no-ff <branch>`
+  and exits 1 until you merge (default `push`). `base: local` takes new
+  worktrees and the merge base used by `worker reconcile`, the implementation
+  gate and `review-packet` from the local integration branch (default
+  `remote`). `refuse_behind_remote: true` refuses a local branch that its
+  remote branch is ahead of. The defaults keep today's behaviour.
+- Four optional preferences for repositories with stricter rules; leaving them
+  out keeps today's behaviour (see `docs/git-workflow-preferences.md`):
+  `decisions add --local` writes the gitignored `roadmap/decisions.local.yaml`,
+  which `decisions list` and `orchestrate plan` merge over
+  `roadmap/decisions.yaml` by id (local entries win; `list` shows
+  `(local)`/`(shared)`, `"source"` in `--json`); `pr_body_footer` in
+  `roadmap/git-workflow.yaml` is appended to the PR body `finish-this-task`
+  writes; `implementation_summary: commit | local` chooses whether executor
+  prompts say to commit the summary (an ignore rule in `.gitignore` wins and
+  `validate` names it); and `land: push | local` makes merge mode merge into
+  the local integration branch without fetching or pushing (with `local`,
+  `--delete-branch` leaves the remote branch alone).
+- `specy-road chore garden` reports drift, one line per finding:
+  `stale-command` (unregistered commands in docs and agent files),
+  `advisory-rule` (rules marked `enforced: advisory`) and `ratchet-grew`
+  (ratchet baselines that grew since the newest tag). It exits 0; `--json`
+  gives the same report. `--open-chores --under <PARENT>` adds at most one
+  chore leaf per finding class under that node, and none while one is still
+  open; it never edits code or docs. The optional `policy.garden_cadence_days`
+  makes `validate` warn when gardening is due. See "Gardening" in
+  `docs/orchestration-chores.md`.
+- `specy-road doctor` starts with an "Install" section listing every
+  `specy-road` / `specyrd` on `PATH` in order, marking the running one, and
+  warns when the first `specy-road` on `PATH` is not the running install. Every
+  command now warns on stderr when the managed block in `AGENTS.md` or
+  `CLAUDE.md` was written by a different specy-road version, and names
+  `specy-road upgrade`.
+- Setting `"agents_block": "minimal"` in the git root's
+  `.specyrd/manifest.json` makes `refresh-stubs` and `upgrade` write a 3-line
+  `AGENTS.md` section that only points at `.specyrd/AGENTS.md` and the two
+  addenda; the default (`full`) still repeats the floor rules for agents that
+  read only `AGENTS.md`. When either command first creates
+  `.specyrd/AGENTS.md`, it prints that file's headings and a `rules:` line for
+  each matching heading in your own `AGENTS.md`, so you can drop the stale
+  copy; it edits nothing outside the managed section. Each `validate`
+  `context:` line now ends with the harness's total lines and bytes, and names
+  a file Claude Code imports twice (counted once).
+
+### Changed
+
+- **Security:** a model observed to bypass specy-road's guidance is excluded from the executor and reviewer roles
+  while `policy.signed_reviews` is on. A profile may record `guidance_bypass_observed: {date, harness,
+  evidence}` (any other shape makes it invalid; `models show` prints it); the shipped **composer-2.5** profile does,
+  alias `composer-2.5-fast` included, from the 2026-11-05/06 replay (CR1, CR3, CR5, 2 of 5 delegated reviews): a
+  finding about that model, not the Cursor harness. An entry launching a model flagged on the integration branch or
+  in the bundled profiles is skipped by `orchestrate plan`, refused by `worker delegate`, `review delegate` and
+  `prompt` (chores, resume and `message` included, before any preflight or harness), shown as excluded and never
+  offered by `handoff status`, and its records do not count at the gate. The roster key
+  `allow_guidance_bypass_model: true` (committed roster only; a `roster_add` entry is refused) lets it back in at the
+  developer's own risk, with a warning on every executor or reviewer launch; `validate` and `doctor` warn for each
+  flagged entry. The coordinator role, and everything with `signed_reviews` off, are unchanged.
+- The `specyrd-brainstorm` skill (description and first paragraph, in every
+  harness's rendered copy) and `suggested_prompts/brainstorm-roadmap.md` Phase 1
+  say to make `specy-road brainstorm start` the next tool call after reading the
+  skill, alone in its tool-call batch with no parallel read or search, then read
+  the prompt file it names. The old "not even in the same step" wording, which
+  Cursor read as the turn, is gone. Wording only; the CLI does not enforce it.
+- The toolkit's file cap (`constraints/file-limits.yaml`) went from 400 to
+  1000 lines per file, with a 750-line hard alert that warns and fails only
+  under `specy-road file-limits --strict-hard-alerts`. The per-file overrides
+  that existed only to sit above 400 lines were dropped; the
+  `set_gate_status_fixture` function override and the 1100-line override for
+  the verbatim orchestration proposal stay.
+- Cursor workers launch and resume with `--trust --sandbox enabled` instead of
+  `--force --trust`: `--force` force-allowed every command not explicitly
+  denied. A roster entry opts back in with `cursor_force: true` (boolean,
+  default `false`, `cursor` entries only), which passes `--trust --force` on
+  launch and resume. `orchestrate plan` and `doctor` warn once per entry that
+  sets it, and per `cursor` entry whose `channels.cli` or `cli_resume` passes
+  `--force`, `-f` or `--yolo`, read as the shell splits the command (so
+  `--force; true` counts); a custom command keeps its own flags. A Cursor
+  worker's `launched` event records the permission flags passed
+  (`detail.permissions`). Where Cursor's sandbox cannot start (Ubuntu 24.04's
+  AppArmor user-namespace restriction), the worker exits 1 at launch: fix the
+  host or set `cursor_force` (docs/orchestration-workers.md, Cursor
+  permissions).
+
+- `specy-road file-limits` now counts functions in `.tsx` files, so the same
+  tree can report different function counts under 0.3.1 than under 0.2.x, and
+  a local run can disagree with CI pinned to an older version.
+
+- `specy-road move-node` changes only the moved subtree's ids. The node takes
+  the next free id under its new parent (gaps are left as they are), or a
+  chosen free id with `--id NEW_ID`, or the lowest unused child number with
+  `--fill-gaps`; its descendants keep their own last segment
+  (`M1.2.4` -> `M2.5.4`), and every other node keeps its id. Planning sheets,
+  registry claims and touch zones are rewritten only for the renumbered ids,
+  in one atomic write. Pass `--renumber-outline` for the old whole-outline
+  renumber. The PM UI's drag, indent and outdent likewise change only the
+  moved subtree's ids, a sibling reorder changes no id, and add keeps every
+  existing id; send `renumber_outline: true` to renumber the whole tree.
+  `POST /api/outline/move` takes `new_id` and `fill_gaps`, and
+  `POST /api/nodes/add` takes `new_id`. An unknown node on indent, outdent or
+  add now returns 400 (before: 200, 500 and 404).
+- `archive-node --hard-remove` and the PM UI's delete now also refuse a node
+  that is not `Not Started` or that is claimed (before, only children or
+  dependents blocked them), and refuse to write through a symlink that leaves
+  the repository.
+- Reviewer runs started by `review delegate` or `prompt --channel cli` are
+  read-only. The reviewer returns its record as structured JSON
+  (`--json-schema` for Claude Code, `--output-schema` with
+  `sandbox_mode=read-only` for Codex, `--mode ask` without `--force` for
+  Cursor), and specy-road files it through `review record`. Antigravity
+  (`agy`) gets `--json-schema`, `--output-format json`, `--sandbox` and
+  `--print-timeout 30m`, and a permission-skipping flag is refused. Any file
+  the reviewer changes other than its `notes-<model>.md`, or a moved ref,
+  fails the run and nothing is filed; missing or invalid output asks for a
+  rerun. A second reviewer run on the same leaf is refused while one is
+  running. Custom `channels.cli` reviewer commands go through the same capture
+  and check. See `docs/orchestration-reviewer-output.md`.
+- A Claude Code reviewer (`review delegate`, `prompt --channel cli`) launches
+  `--bare` only when its environment has `ANTHROPIC_API_KEY` or the user
+  settings define `apiKeyHelper`. Otherwise it runs in explicit mode
+  (`--setting-sources user --strict-mcp-config`), so a subscription login
+  works. Profile `access.launch_mode: bare` or roster `launch_mode: bare`
+  forces bare mode; a forced bare launch with neither credential is refused
+  before it starts, naming the fixes. The RUN record and the filed REVIEW
+  carry `launch_mode`, and `orchestrate plan` prints a `reviewer auth:` notice
+  for each such reviewer (text and `--json`). The key's value is never
+  printed.
+- Claude Code workers no longer rely on `claude -p`'s default mode: a worker
+  launches and resumes with `--setting-sources user,project,local`, so it keeps
+  its hooks, project settings and subscription login even if `-p` becomes bare
+  by default. A profile with `access.launch_mode: bare` passes `--bare` (plus
+  `--settings` when only an `apiKeyHelper` authenticates). When bare is forced
+  and neither `ANTHROPIC_API_KEY` nor an `apiKeyHelper` is available,
+  `worker delegate`, `worker message` and `worker resume` refuse with a
+  `worker auth:` line before writing any worker state. A `channels.cli`
+  command is still run as written.
+- A review loop whose blocking findings are falling is no longer escalated to
+  root-cause analysis by the `same_family` or `review_rounds` rules (the count
+  never rose and fell at least once over the last
+  `escalate_same_acceptance_blocks` rounds, and the latest round fails no
+  acceptance id). `same_acceptance`, forced analyses and `max_fix_rounds` still
+  apply. `handoff status` prints the trend (`findings by round: 13, 2, 2, 1, 0;
+  acceptance all pass since round 2`) and `converging; escalation deferred`
+  when a rule was held back (`findings_trend` in `--json`). Set the new
+  `policy.escalate_when_converging: true` to restore the old behaviour.
+- A rework prompt for a leaf with an accepted root-cause analysis opens
+  `## Rework` with a `### Governing design: RCA-<n>.md` block: the recommended
+  action, any proposed criterion and the findings marked `in_scope_must_fix`,
+  and a note that a review fix contradicting it is overruled. Each review
+  heading says whether it was filed before or after that RCA. An RCA that
+  cannot be carried is named in the prompt, and `worker delegate --rework`
+  refuses naming the file instead of crashing.
+- The executor prompt has a **Tests:** block with the three lean test rules,
+  and the reviewer's excess checklist quotes the same sentences, so the two
+  prompts cannot drift apart.
+- `specy-road refresh-profiles` (and so `upgrade`) adds only the bundled model
+  profiles that a `roadmap/orchestration.yaml` roster entry names, by id,
+  alias or `profile:` path; `--profiles all` restores the old behaviour, and
+  `--only` and `--force` paths still win. Existing profile files are not
+  deleted. A roster id that differs from a bundled api id only in punctuation
+  or a vendor or effort prefix or suffix gets a hint naming the `profile:`
+  line to add.
+- `specy-road upgrade` starts with the version and project it is writing
+  (`previewing what specy-road <v> would write: …` under `--dry-run`) and the
+  install report. `--dry-run` applies the same write plan to a temporary copy,
+  runs `validate` and `digest --check` there, and exits with validate's code;
+  your checkout is still not written. After a real run, upgrade names any file
+  it pushed over its `file-limits` cap, separately from files that were
+  already over, and lists other worktrees sharing the install that still need
+  `specy-road upgrade`. A new scaffold's `constraints/file-limits.yaml`
+  excludes `AGENTS.md` and `CLAUDE.md`.
+- Two leaves whose touch zones meet only through a shared zone (default
+  `planning/` and `shared/`) are no longer split into separate batches by
+  `grind-session --plan` and `orchestrate plan`, and `validate` no longer warns
+  about the overlap; two leaves naming the same file or subdirectory under a
+  shared zone still overlap. Set the list with `grind.shared_zones` in
+  `roadmap/git-workflow.yaml` (`[]` turns the rule off); the plan prints the
+  shared zones it ignored (`shared_zones_ignored` in `--json`).
+- `validate` is quieter: the untracked touch-zone notice names at most 10
+  nodes, claimed or In Progress first, and counts the rest by status
+  (`validate --all` lists them all); context-size warnings unchanged since the
+  last run fold into one line, `context: N warnings unchanged (validate
+  --context shows them)` (`--strict` still fails on them); it notes
+  `.gitignore` patterns repeated above the managed block without editing the
+  file; and when an ignore rule matches tracked files, it prints the
+  `git rm --cached -- ...` command. The managed `.gitignore` comment says
+  `.specyrd/manifest.json`, when present, stays tracked.
+- `refresh-stubs` lists a file written through a symlinked directory once, by
+  its real path, with `(<link> → <target>)`, and a dry run and a real run print
+  the same lines. When `.gitignore`'s managed block gains a rule, the files it
+  matches are listed (at most 20): tracked ones stay tracked, untracked ones
+  are now hidden from `git status`. `session end` says `ended your only live
+  session <A> here (this shell's id <B> has no record)`.
+
+### Fixed
+
+- **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
+  copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
+  longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.
+  Upgrade's git calls time out after 60 s, except the ignored-file check. A failed `git init`, `add` or `commit` in a temporary copy, the plan's
+  included (so a real run too), prints `error: git <command> failed in the temporary copy (<reason>)` and exits 2
+  without writing or validating, and so does a failed
+  `ls-files` on `roadmap.md` (in a real run it names the checkout), before a generated file is written.
+  `GIT_CEILING_DIRECTORIES` no longer hides a tracked `roadmap.md`.
+- `specy-road digest`, `digest --check` and `digest -o -` with no roadmap manifest print the one line
+  `no roadmap manifest: expected <root>/roadmap/manifest.json` on stderr and exit 1, writing nothing, the same as
+  `export --check`, instead of a traceback.
+- The notes rules in the reviewer and repair-turn prompts name every clause break `review record` checks: `'. '`,
+  `'! '`, `'? '`, `'; '` and all eight conjunctions (and, but, while, whereas, although, though, yet, plus). The
+  check itself is unchanged. The `rework_rca` docstring now names `review_deferral.rca_deferral`, and two brainstorm
+  verify tests patch `socket.getaddrinfo` instead of a private helper.
+- **Security:** `review record` files only under the caller's own model (CR1). A worker
+  (`SPECY_ROAD_WORKER_ID`) files only as its model, and a harness (`CLAUDECODE`, `CODEX_THREAD_ID`,
+  `CURSOR_AGENT`) only for a roster entry on that harness; anything else exits 1 before any write. An
+  unidentified caller must attest with `--human-filed "<who and why>"`, and the gate counts that record only
+  when signed or under the new `policy.count_human_filed_reviews` (default false). `review delegate` and
+  `prompt --channel cli --run` are unchanged. See docs/orchestration-review.md (Who may file a review record).
+- `specy-road review delegate` no longer loses a review to one refused
+  answer: when `review record` refuses it, the reviewer gets one repair turn
+  carrying `review record`'s whole output and the notes rules, checked for
+  writes and model like the first. A second refusal leaves the run incomplete,
+  naming both; `RUN-<model>.json` keeps the first as `refusal`, and `--resume`
+  of that incomplete run sends the repair prompt instead of the continue
+  prompt. The reviewer prompt now ends, right before the JSON schema, with the
+  approve-notes rules in operational form (one observation per line, each
+  with `not a defect because <reason>` or a `required_changes` entry); the
+  rule itself is unchanged.
+- `specy-road review delegate` also gives one repair turn to an answer that
+  does not parse (a fenced object, text after it, no object, an unfinished or
+  schema-invalid object, a missing final message), when the last attempt
+  exited 0 with no capacity error. The turn carries specy-road's reading of the
+  final message and asks for the whole JSON object alone. `RUN-<model>.json`
+  records `refusal_kind` (`parse` or `record`), `--resume` sends the repair
+  prompt for the stored kind, and a second failure of either kind leaves the run
+  incomplete, naming both. A refused answer, like an unparseable one, gets the
+  repair turn only after a clean exit: a non-zero exit or a capacity failure
+  gets none.
+- **Security:** `specy-road session end` ends only your own session. The
+  caller is always `SPECY_ROAD_AGENT_ID` or the derived id; a positional id or
+  `--agent` only picks the target. Another agent's live record is kept and the
+  command exits 1 naming the rule, unless a human passes `--force` with stdin a
+  TTY; an expired record is still removed. `end` with no id no longer falls
+  back to "your only live session" or "the only one on this worktree and
+  branch": with no record under your id it names the id `session start`
+  printed and ends nothing. The session guard's refusal now says not to end,
+  edit or delete another session's record to get past it, and the agent rules
+  say never to end, edit or delete another agent's session record (CR3).
+- **Security:** a leaf's review policy is pinned at claim. Pickup's
+  registration commit (`--local` too) keeps its subject and gains a
+  `Review-policy: sha256:<hex> at <commit>` trailer: the digest of the roster,
+  substitutions and policy in `roadmap/orchestration.yaml` and the review switch
+  in `roadmap/git-workflow.yaml` at the integration branch commit claimed from.
+  A policy file that does not parse refuses the claim before any registry
+  write. When the integration branch's policy differs, the gate is not met
+  (`mark-implementation-reviewed --yes` refuses) and `finish-this-task` refuses
+  before any bookkeeping, before it reads the review switch, with one line per
+  change, until a human runs `specy-road review accept-policy <NODE_ID>` in a
+  terminal (`work/reviews/<NODE_ID>/POLICY-ACCEPTED.yaml`, checked against the
+  new `policy-acceptance.schema.json`) or the leaf is re-claimed. A claim made
+  before this change has no trailer and is judged as before. Pin and acceptance
+  are honour-system, like READY files. The agent rules now say an executor
+  never edits these files or the roster to get past the gate, and never files a
+  review under any model id but its own.
+- `brainstorm verify` finds a quote on a fetched page across the ways an
+  agent's copy differs from the HTML: bracketed citation markers (`[43]`,
+  `[44][45][46]`, `[a]`, `[note 1]`, `[citation needed]`) are removed,
+  typographic quotes, apostrophes, primes, dashes and non-breaking spaces fold
+  to their ASCII form, and soft hyphens and zero-width characters are deleted,
+  in the page and the quote alike. A match still needs the same words in the
+  same order, a quote that is only a marker stays `not-found`, and repo
+  sources are still compared with whitespace collapsed only.
+- `finish-this-task` runs `validate` before its first bookkeeping write, so an
+  invalid configuration (for example `policy.reviewers_required: 1` with
+  `require_implementation_review_before_finish: false`) is refused with
+  validate's own error and `finish-this-task: nothing was changed`, instead of
+  leaving the chunk and registry modified behind a Python traceback. A later
+  failure before the bookkeeping commit (a refused validate, export or digest,
+  an `OSError` on a write, a refused `git add` or `git commit`) puts back the
+  bytes and index entries of every path finish could have touched, never from
+  HEAD, so your own staged and unstaged edits survive. It names the failing
+  command or path, reports any path it could not restore, and exits 1 with
+  `nothing was committed; fix it and run finish-this-task again`. Before
+  any of that, finish refuses with nothing changed when a path it writes
+  into (a roadmap chunk, the registry, `roadmap.md`, `roadmap-context.md`,
+  the PR-body file, or a summary's archive or reviews copy) is a symlink, a
+  directory, a FIFO, a socket or a device, naming the path and what it is.
+- `specy-road review delegate` and `prompt --channel cli` read a reviewer's
+  answer when narration precedes it: for a text final message (Cursor's or
+  Claude Code's `result` text, Codex's `agent_message` or `-o` file) the answer
+  is the last top-level JSON object, which must end the message and still pass
+  the review output schema. Text after it, an unfinished object, excessive
+  nesting or no object is a rerun request naming the cause; an earlier valid
+  object is never used instead. The `generic` / `agy` envelope path is
+  unchanged.
+- `review record` and the human approval of `mark-implementation-reviewed` take
+  the leaf's review lock: they wait up to 10 seconds for another filing and
+  refuse, writing nothing, while a `review delegate` or `prompt --channel cli
+  --run` on the same leaf is running, so another filing no longer voids that
+  reviewer's run as a review failure.
+- **Security:** the review gate no longer counts a record from a model that
+  filed a READY on the leaf (the executor or a fix author), whatever the
+  record's `authored_fix`, verdict or signature; it is listed as ineligible
+  with "the executor never reviews its own leaf", and `specy-road review
+  delegate --model <that model>` is refused before any packet, lock or run
+  record. The exclusion is by model id: another model of the same family still
+  counts. READY authorship is cooperative attestation (an unsigned file).
+- `specy-road review delegate` checks a roadmap reviewer's command as
+  `prompt --channel cli` does, before the preflight and before any run record
+  or log: a roster `channels.cli` that passes a bypass flag (`--force`,
+  `--yolo`, one split by a line continuation) is refused with the same reason,
+  a `generic` entry with no `channels.cli` no longer falls back to the
+  profile's `access.cli`, and an entry that resolves to no API model id is
+  refused even with `routing: dynamic`. A chore reviewer's launch is unchanged.
+- The reviewer model check splits the harness log on `\n` only, as JSON Lines
+  does, so a `result` event whose string carries an unescaped U+2028 or U+2029
+  can no longer hide a model mismatch.
+- PM GUI Publish regenerates `roadmap.md` and `roadmap-context.md` before
+  committing, so the pushed commit passes `export --check` and
+  `digest --check`. A graph that does not validate, or a generated file that
+  is a link out of the project, is refused with `400` naming the cause before
+  anything is staged. With no git remote configured, Publish no longer commits
+  locally and then fails the push with git's raw error: `/api/publish/status`
+  reports `blocked_reason: "no_remote"` and `POST /api/publish` returns `400`
+  saying how to add one.
+- `specy-road upgrade --dry-run` no longer commits into the caller's
+  repository when `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`,
+  `GIT_COMMON_DIR` or `GIT_OBJECT_DIRECTORY` is set (inside a git hook, for
+  example): every git call in its temporary copy, and the copy's `validate`,
+  runs without them, and a copy whose own `.git` was not created fails without
+  validating.
+- `specy-road upgrade` now regenerates what `digest --check` would fail on:
+  when `validate` passes it writes `roadmap-context.md` when missing or drifted
+  (a finished leaf's "Quality by area" section, for example) and `roadmap.md`
+  when it is tracked and drifted, prints a `wrote` line for each (`would write`
+  with `--dry-run`), and refuses a path that is a symlink out of the project.
+  An untracked `roadmap.md` is left alone; an invalid graph regenerates nothing
+  and keeps the `specy-road digest` next step.
+- `review delegate` and `prompt --role reviewer --channel cli --run` on a
+  Claude Code reviewer pass the inline `--json-schema` without its top-level
+  `$schema` (Claude Code 2.1.318 rejected the draft 2020-12 reference, so every
+  such review failed); `review-output.schema.json` keeps `$schema` for Codex
+  and agy. A failed reviewer turn with no parsed error now names the last
+  non-blank line of its log span (cut to 200 characters) in both the reason
+  and `attempts[].error`, instead of `no error text`.
+- `worker terminate` also ends what the harness started in a session of its own
+  (Cursor's shell tool runs each command that way, so a `sleep` it was running
+  kept going after "terminated"). Before the first signal it lists the group's
+  descendants outside the group with their start times, and after the group is
+  gone ends each one still running with the same start time (SIGTERM, then
+  SIGKILL). A survivor, or a `ps` listing that fails, makes terminate fail
+  naming it instead of reporting terminated. A process already re-parented to
+  init before terminate ran is still out of reach.
+- Security: `roadmap.md`, `roadmap-context.md` and some review files are no
+  longer written through a symlink out of the directory that owns them. Other
+  writers still can be: see *Known issue* under Deferred past 0.3.1rc4.
+  `init project` treats a dangling `roadmap.md` or `roadmap-context.md` link
+  as present (skipped without `--force`), and with `--force` lists a link out
+  of the project as skipped with the reason instead of writing its target.
+  Regenerating the two files (archive, GUI) skips such a link with a stderr
+  line, and `finish-this-task` aborts the land naming it. `REJECTED-<model>.md`
+  and `PACKET.md` are never written through a symlink at the file itself (a
+  symlinked hand-off directory is still followed): `review record`
+  keeps its own error, and `review delegate` exits 1 before launching.
+- The pickup footer's one-time `grind-session` hint no longer dirties the
+  working tree: its marker under `.specyrd/cache/` is written through the
+  cache's own `.gitignore` of `*`, so a checkout whose `.gitignore` lacks
+  `.specyrd/cache/` stays clean for the next pickup or
+  `mark-implementation-reviewed`.
+- The `on_complete` description in `git-workflow.schema.json` and step 7 of the
+  `specyrd-finish` stub no longer say `merge` / `auto` always push: they land
+  per `land` (`push` pushes; `local` fetches and pushes nothing).
+- `apply --dry-run` no longer moves or changes a live file. Its scratch copy
+  now rebases links in the copied graph trees onto the copy, as `remove-node
+  --dry-run` already did, so an `archive` entry whose planning sheet is an
+  absolute link into the repo moves the copy's sheet, not the live one, and an
+  in-repo absolute chunk-directory link rehearses as the real apply runs.
+  `archive` (and an `apply` `archive` entry) refuses, before writing or moving
+  anything, a planning sheet, archive chunk, archive index or stored-sheet path
+  that resolves outside the repo, naming the path, and archiving a sheet
+  reached through a link removes the link it would leave dangling.
+- Security: a review deferral now counts only when its marker is bound to the
+  decision `review defer` recorded for it. Before, a hand-written
+  `DEFERRAL-*.yaml` citing any closed decision on the leaf removed a counted
+  block, and `handoff status` and `worker delegate --rework` called a deferral
+  applied when its marker file merely existed. Now the gate, the next step and
+  the rework's governing design all ask one check (`deferral_in_effect`): the
+  RCA the marker names is valid, recommends `defer_findings` at the marker's
+  round and defers exactly its items; the decision is closed, on the leaf and
+  worded as `review defer` words it, and its answer now names each item's
+  reviewer, full commit, finding, category, acceptance id and input class; the
+  items still qualify. A marker that fails any of these resolves nothing, and
+  `handoff status` names why. Deferrals recorded in the old answer format stop
+  counting (the block stays); run `review defer` again on a fresh record.
+- Doc corrections: `refresh-profiles` is described as copying by default only
+  the missing profiles a roster entry names (`--profiles all` copies every
+  missing one, `--only` adds one); the Cursor sandbox note no longer cites a
+  private roster or decision; the bootstrap prompt gives the exact managed-block
+  markers (`<!-- >>> specy-road managed block — do not edit inside <<< -->` and
+  `<!-- >>> end specy-road managed block <<< -->`); and `review delegate`'s
+  launch step says a `claude-code` reviewer runs bare or explicit, not always
+  bare.
+- `specy-road doctor` no longer fails in a repo with no remote. When the
+  resolved remote (`--remote`, `SPECY_ROAD_REMOTE`, `roadmap/git-workflow.yaml`,
+  else `origin`) is not configured, it says so in one line, skips the fetch and
+  the branch, worktree and registry sections, and still reports the install,
+  checkout, stashes and orphaned claims; `--fix` removes only the stashes it
+  listed. A configured remote whose fetch fails still exits 1.
+
+- A new project passes its own checks: `init project` also writes `roadmap.md`
+  and `roadmap-context.md` from the scaffold graph (a `--dry-run` lists them; an
+  existing one without `--force` is left alone and neither is written), so
+  `export --check` and `digest --check` no longer exit 1 on a fresh scaffold.
+  `validate` no longer reports the starter's `my-executor` placeholder, and an
+  unmatched roster id is offered a closest profile only when a name of that
+  profile has a similarity ratio of at least 0.6.
+
+- Help text names only what a pip install has: `specy-road --help` points
+  add-node and scaffold-planning at `specy-road <cmd> -h` instead of
+  `python specy_road/bundled_scripts/...` paths, and the `gui` line names
+  `specy-road init gui --install-gui` (the old `init --install-gui` was refused
+  by the init parser). Every bundled subcommand's `usage:` line reads
+  `specy-road <cmd>` rather than its module file name, and help that cited a
+  `docs/*.md` file a pip install lacks now links the published copy.
+
+- `specy-road prompt --channel cli` no longer launches anything by itself: it
+  writes the prompt and prints the command it would run, and starts a process
+  (the roster's `preflight` included) only with the new `--run`, for every
+  role. A reviewer run takes its command from the roster entry only (never the
+  profile's `access.cli`), refuses a model with no API id and a `channels.cli`
+  passing `--force`, `--yolo` or `--dangerously-skip-permissions`, and runs in
+  the leaf's own worktree (`--worktree PATH` overrides), refusing when there is
+  none. The filed record carries `harness_model`, the model the harness
+  reported; when it is not the rostered model it also carries
+  `model_mismatch`, and the gate does not count it ("harness ran a different
+  model").
+
+- `review record` refuses a covered clause for joined observations only when a
+  joined part names a defect. Neutral parts joined by "plus", "but", "while" or
+  the like no longer cost a reviewer turn, and a defect part followed by a
+  neutral part is now refused after a comma or "and" as after any other joiner.
+
+- `finish-this-task`'s landing merge no longer stops on a conflict in
+  `roadmap/manifest.json` or a roadmap chunk that the branch only inherited
+  (through merges from the integration branch). It takes the integration
+  branch's version, sets the finished node to Complete again by `node_key`,
+  recomputes its ancestors and continues; the merge message names the files
+  it resolved. When the branch did edit a conflicted graph file, finish aborts
+  the merge, undoes its bookkeeping commit and says to run
+  `git merge <integration>` on the branch, resolve, commit and re-run finish.
+- `finish-this-task` in merge mode: when landing fails (rejected push, land
+  check failure or crash), finish undoes its bookkeeping commit. The feature
+  branch goes back to its earlier tip and the brief, prompt, implementation
+  summary and worker logs come back, so a plain `specy-road finish-this-task`
+  re-run starts clean; if the undo itself fails, the message gives the exact
+  `git reset --keep` to run. Output now ends with the outcome: the
+  `error: could not land merge to <branch>: <reason>` line comes after the
+  land check's output, and on success `[ok] ...` is the last line.
+- A roadmap write that fails part-way (an unwritable `planning/`, a file name
+  the OS refuses) restores every chunk, the manifest and the planning sheets
+  byte for byte and removes its temp files. This covers `add-node`,
+  `edit-node`, move, remove, brainstorm promote and GUI add; `add-node` and
+  `edit-node` print one `error:` line and exit 1 instead of a traceback.
+- `validate` refuses dependency cycles that exist only through inherited
+  dependencies (a node waits on its ancestors' dependencies) or through group
+  rollup (a group completes when its children do); before, such a roadmap
+  validated and then deadlocked scheduling. It reports `roadmap: dependency
+  cycle: A -> B -> ... -> A`, with one line naming where each derived edge
+  comes from, or `roadmap: inherited self-edge <id> via <ancestor>`.
+  `add-dependency`, `set-dependencies`, `edit-node`, `apply` and the PM UI
+  refuse such an edge and write nothing. `add-dependency` also reports
+  `N descendant leaves now wait on <id>: ...` when a dependency on a group
+  holds up leaves that were not waiting before.
+- A codename derived from a long title is capped at 64 characters, counting
+  any collision suffix, so the planning file name fits the filesystem.
+  `add-node --codename` and `edit-node --set codename=...` refuse a value
+  longer than 64 characters with one `error:` line, and nothing is written.
+- `review delegate` launched a reviewer without a model, so the harness ran its
+  own default, whenever the roster entry had no profile. It now resolves the
+  model as worker launches do (the entry's `harness_model`, else the profile's
+  `api_id`, else the roster id); when none resolves and the entry is not
+  `routing: dynamic`, it refuses before writing a run record. The run record
+  keeps `requested_model` and `reported_model`; a filed review carries
+  `harness_model`, and a mismatch is marked `model_mismatch` and not counted by
+  the gate.
+- An approval no longer carries forward when another git repository sits
+  inside the project (untracked or ignored by the root repository) and
+  `nested_repos` does not configure it, because specy-road cannot see changes
+  made there. `handoff ready` and `review record` record those repositories'
+  commits as `sibling_heads`, and a review whose sibling repos have since moved
+  or are dirty counts as stale. The `policy:` line in `review record` and
+  `handoff status` names each counted review as `<model>@<commit>` and says why
+  a carry was refused. `validate` warns once, naming any such repositories.
+- Review packet and record friction: `review delegate` builds the review packet
+  when `PACKET.md` is missing or was built for another commit, and says so.
+  `review-packet` no longer warns about paths git ignores or globs that match
+  nothing (one count line instead), a glob that matches a committed file counts
+  as present, and `.git` and paths under it are never listed as uncommitted
+  references. An `approve` refused for an unexplained defect states the rule
+  in one sentence and quotes each offending `notes` line or `findings` entry
+  with its location; a joined-observation refusal names the joining word and
+  quotes both parts, and separators inside quotes or backticks no longer split
+  a line. A failed reviewer run followed by a valid `REVIEW-<model>.md` at the
+  same commit shows as `superseded` in `review list` and `handoff status`, and
+  is not counted as a reviewer failure.
+- Harness launches no longer fail on large prompts or on a harness binary that
+  is not on `PATH`. Cursor gets a one-line instruction naming the prompt file
+  instead of the prompt text as an argument. A custom `channels.cli` or
+  `access.cli` whose `"<prompt>"` would exceed the 128 KiB argument limit is
+  refused before launch, pointing to `{prompt}`. The `claude`, `codex` and
+  `agent` binaries are found through the new optional roster key
+  `harness_bin`, then `PATH`, then the installers' directories
+  (`~/.local/bin`, `~/.claude/local`); a missing binary is refused with the
+  directories searched (`docs/orchestration-harness-launch.md`).
+- A completed, failed or terminated worker no longer takes a
+  `policy.max_workers` slot. `handoff status` (text, and `orphaned_claims` in
+  JSON) and `doctor` list registry claims with no live worker, no live session
+  on the branch and no valid READY at the tip, with their age (`doctor --fix`
+  does not release them). When `worker delegate` fails after claiming a leaf,
+  or grind-session's implement hook fails, the error says the leaf stays
+  claimed and names `specy-road worker delegate <ID>` and
+  `specy-road abort-task-pickup`.
+- `specy-road doctor --fix` no longer removes a worktree or branch still in
+  use: a branch held by an unfinished worker, an open claim or an open
+  milestone rollup is listed as `live: worker <W> (<state>)`,
+  `live: claimed by <node>` or `live: open rollup of <id>`, `so --fix leaves
+  it`. A branch with no commits of its own is reported as `no commits yet`
+  instead of merged, and is also left alone.
+- `specy-road worktree prune` no longer deletes another repository's linked
+  worktree or clone that sits inside a leaf worktree. It refuses instead,
+  naming the directory, its branch and the commits its upstream lacks (first
+  20), with the next step. Configured `nested_repos` are still exempt, but not
+  repositories nested inside them. Paths with spaces or non-ASCII names are
+  read correctly.
+- Cursor worker usage sums the token counts when a turn has more than one
+  usage line, and `specy-road worker usage` marks `possible undercount`
+  (`possible_undercount` in `--json`) on a turn of 20 minutes or more that
+  averages under 300 output tokens a minute. A Cursor worker whose roster id
+  differs from the model name Cursor reports (for example
+  `cursor-grok-4.6-high` vs `Grok 4.6 High`) is priced from its roster entry's
+  profile instead of showing `$?` and is no longer flagged as running a
+  different model; on a real mismatch, a cost estimated from the roster is
+  dropped (shown as `?`).
+- `remove-dependency` accepts a display id, node_key or archived key, like
+  `add-dependency`. A dependency the node does not list now exits 1 (it used to
+  exit 0 with `[ok]`) and prints the node's actual dependencies plus
+  `specy-road list-dependencies <ID>`. A refusal for an unclean working tree
+  (`do-next-available-task`, sync, `mark-implementation-reviewed`) lists up to
+  20 dirty paths and how to commit, stash or restore them. When
+  `abort-task-pickup` is blocked by a worktree on the base branch, it prints
+  the `git -C <wt> status --short` and `git worktree remove --force <wt>`
+  commands to run.
+- `session end` and `session touch` from a shell whose derived id has no
+  record act on your one live session for this worktree and branch, including
+  from a subdirectory; before, they refused or picked the wrong session when
+  several worktrees had live sessions. `session start` prints the recorded id
+  before the export line.
+- `specy-road upgrade` adds the `work/*.template.md` files that prompts and
+  command stubs refer to when they are missing (its refresh skipped `work/`).
+  A path that resolves outside the repository is reported as skipped, the same
+  in `--dry-run` and a real run.
+- `file-limits` no longer measures archived implementation summaries
+  (`work/done/implementation-summary-*.md`), so `finish-this-task` no longer
+  fails when a long summary is archived under the template's `**/*.md` cap.
+
+### Docs
+
+- Installing a release candidate moved to `docs/install-release-candidates.md`:
+  pip, uv pip, pipx and uv tool from the sha256-checked wheel, and the direct
+  `test-files.pythonhosted.org` URL form. The recipe no longer puts TestPyPI
+  and PyPI on one command line, where a squatted dependency name on TestPyPI
+  could win: it downloads the exact wheel with `--no-deps`, checks its sha256,
+  installs it, then pulls dependencies from PyPI only. The install docs name
+  every extra (`[gui]`, `[gui-next]`, `[review]`) and gain a "Which install is
+  running" section.
+- New `docs/upgrading.md`: where `AGENTS.md` text goes after the rules split,
+  how to preview a version you have not installed (`upgrade --dry-run` from a
+  scratch venv), and how to tell which install (`pip`, `pipx`, `uv tool`) is
+  running.
+- `docs/roadmap-authoring.md` said the first commit on the feature branch
+  registers the work; pickup commits the registration on the integration
+  branch first (and pushes it unless `--local`), then branches.
+
+### Deferred past 0.3.1rc4
+
+- **Known issue:** several writers still follow a symlink out of the repository,
+  including `refresh-schemas`, `upgrade` and the review commands. Only the
+  generated files and a few review files are protected so far. Don't run
+  specy-road on a checkout where an untrusted agent or process could plant
+  symlinks. A full fix is planned before 0.3.1 final.
+- **Known issue:** the composer-2.5 exclusion is a default guard, not containment.
+  It misses a local `roster_add` entry with `family: human`, a profile whose
+  `access.cli` runs the model, a flagged profile at a path git quotes, such as a
+  non-ASCII filename, and a `--model` value that is not a literal word. Fixes are
+  planned for rc5.
+- **Known issue:** `upgrade` is not fully isolated from the caller's git config.
+  In a real run its planning steps read global and system config, and git calls
+  in the project itself can run a `core.fsmonitor` command set through
+  `GIT_CONFIG_COUNT`. Fixes are planned for rc5.
+- **Known issue:** don't run `specy-road upgrade` from a git hook or with `GIT_DIR`
+  or `GIT_WORK_TREE` set. A real run follows them, can write files into that other
+  repository, and may stop with a traceback. `--dry-run` is not affected. A fix is
+  planned for rc5.
+- The steering guard (executors cannot change the files that steer harnesses
+  and specy-road unnoticed) moves to rc5; its branch is not in this release.
+
 ## [v0.3.1-rc3] - 2026-11-04
 
 Third prerelease for v0.3.1. Routed to TestPyPI by release-publish.yml.

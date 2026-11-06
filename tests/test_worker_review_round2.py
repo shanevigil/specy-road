@@ -23,7 +23,8 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_worker_cli import run_worker_cli, _repo, wait_for_worker
+from tests.test_worker_cli import run_worker_cli, wait_for_worker
+from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import session_presence as sp
 from specy_road import tool_call_guard as tg
@@ -56,7 +57,7 @@ def test_the_session_id_chosen_up_front_is_on_disk_after_spawn(tmp_path: Path) -
 
 
 def test_a_completed_worker_takes_a_review_block_as_a_message(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
     ws.set_state(repo, rec, "completed", pid=None)
@@ -69,7 +70,7 @@ def test_a_completed_worker_takes_a_review_block_as_a_message(tmp_path: Path) ->
 
 
 def test_a_ready_from_the_previous_turn_does_not_complete_the_next(tmp_path: Path) -> None:
-    repo, script = _repo(tmp_path)
+    repo, script = make_worker_repo(tmp_path)
     d = reviews_root(repo) / "M1.1"
     d.mkdir(parents=True)
     head = git(repo, "rev-parse", "HEAD")
@@ -90,7 +91,7 @@ def test_a_ready_from_the_previous_turn_does_not_complete_the_next(tmp_path: Pat
 
 
 def test_delegate_into_a_linked_worktree_carries_the_brief(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     (repo / "work").mkdir(exist_ok=True)
     (repo / "work" / "brief-M1.1.md").write_text("# Brief\n")
     git(repo, "checkout", "-q", "dev")
@@ -145,7 +146,7 @@ def test_malformed_hook_stdin_denies() -> None:
 
 
 def test_an_op_id_is_bound_to_its_target(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path, max_workers=4)
+    repo, _ = make_worker_repo(tmp_path, max_workers=4)
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--op-id", "op-1", "--repo-root", str(repo)) == 0
     wait_for_worker(repo, "w-0001")
     assert run_worker_cli("worker", "delegate", "M9.9", "--model", "opus", "--op-id", "op-1", "--repo-root", str(repo)) != 0
@@ -185,7 +186,7 @@ def test_adopt_refuses_a_second_worker_on_the_leaf(tmp_path: Path) -> None:
 
 
 def test_reconcile_counts_an_unbuildable_prompt_as_a_contract_change(tmp_path: Path) -> None:
-    repo, _ = _repo(tmp_path)
+    repo, _ = make_worker_repo(tmp_path)
     rec, _c = ops.delegate(repo, "M1.1", "opus")
     wait_for_worker(repo, rec.worker_id)
     orch = repo / "roadmap" / "orchestration.yaml"

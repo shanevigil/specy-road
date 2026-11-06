@@ -66,13 +66,33 @@ def _move_planning_sheets(root: Path, plan: ArchivePlan) -> list[dict[str, str]]
     dest_dir = archive_planning_dir(root, plan.archive_id)
     moved: list[dict[str, str]] = []
     for move in planning_moves(plan):
-        src = (root / move["origin"]).resolve()
+        origin = root / move["origin"]
+        src = origin.resolve()
         if not src.is_file():
             continue
         dest_dir.mkdir(parents=True, exist_ok=True)
         shutil.move(str(src), str((root / move["stored"]).resolve()))
+        if origin.is_symlink():  # left dangling, it would read as an orphan sheet
+            origin.unlink()
         moved.append(move)
     return moved
+
+
+def _refuse_links_out(root: Path, plan: ArchivePlan) -> None:
+    """Refuse a sheet source or an archive output that resolves outside ``root``.
+
+    Runs before anything is written or moved: a link out points at someone
+    else's file (or, in a rehearsal, at the live repo), so it is never followed.
+    """
+    from specy_road.archive_plan import planning_moves
+    from specy_road.managed_block import resolves_outside
+
+    rels = [f"roadmap/archive/chunks/{plan.archive_id}.json", "roadmap/archive/index.json"]
+    for move in planning_moves(plan):
+        rels += [move["origin"], move["stored"]]
+    for rel in rels:
+        if resolves_outside(root, root / rel):
+            raise ValueError(f"refusing to archive: {rel} resolves outside {root}")
 
 
 def apply_archive(root: Path, plan: ArchivePlan) -> dict[str, Any]:
@@ -85,6 +105,7 @@ def apply_archive(root: Path, plan: ArchivePlan) -> dict[str, Any]:
     from specy_road.bundled_scripts.roadmap_chunk_utils import write_json_chunk
     from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
 
+    _refuse_links_out(root, plan)
     chunks_dir = archive_chunks_dir(root)
     chunks_dir.mkdir(parents=True, exist_ok=True)
     chunk_path = chunks_dir / f"{plan.archive_id}.json"

@@ -1,7 +1,9 @@
 """Held workers whose leaf is over: they free their ``max_workers`` slot and show as orphaned (M11.57).
 
-An ``idle``, ``completed`` or ``paused_by_limit`` worker keeps its leaf and its slot, so a review ``block`` (or the
-usage limit's reset) can resume it for a fix round. Once its leaf is over, no fix round can come: it no longer counts against ``policy.max_workers``,
+An ``idle`` or ``paused_by_limit`` worker keeps its leaf and its slot, so a review ``block`` (or the
+usage limit's reset) can resume it for a fix round. A ``completed`` worker keeps the leaf (a block can still
+resume it) but does not take a slot; ``failed`` and ``terminated`` never do (M15.26). Once an idle or paused
+worker's leaf is over, no fix round can come: it no longer counts against ``policy.max_workers``,
 ``worker list`` / ``sync`` show it orphaned, and ``worker terminate --orphaned`` ends it. ``finish-this-task``
 ends the finished leaf's own idle and completed workers.
 
@@ -41,8 +43,11 @@ from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worker_state import WorkerRecord, list_records, workers_lock
 
-#: Not running, still owning the leaf: what a leaf that is over releases.
+#: Not running, still owning the leaf: what a leaf that is over releases. ``completed`` is here so a finished
+#: leaf's worker still shows as orphaned and ``finish`` can end it; it does not take a slot (see ``SLOT_STATES``).
 HELD_STATES = frozenset({"idle", "completed", "paused_by_limit"})   # paused_by_limit: worker_turn_check (M8.2)
+#: What ``policy.max_workers`` counts. ``completed``, ``failed`` and ``terminated`` never do, whatever the leaf.
+SLOT_STATES = frozenset({"starting", "running", "idle", "paused_by_limit"})
 RUNNING_STATES = frozenset({"starting", "running"})
 _HINT = "(`specy-road worker terminate --orphaned` ends them)"
 _REF_TIMEOUT = 30.0   # one ``git show`` of a registry blob, as finish reads one
@@ -110,9 +115,10 @@ def _cause(rec: WorkerRecord, leaves: _Leaves) -> str | None:
 
 
 def holding_slots(repo_root: Path, records: Iterable[WorkerRecord]) -> list[WorkerRecord]:
-    """The active ``records`` that count toward ``policy.max_workers``: all but held workers whose leaf is over."""
+    """Records that count toward ``policy.max_workers``: :data:`SLOT_STATES`, except an idle or paused worker
+    whose leaf is over. ``completed``, ``failed`` and ``terminated`` never count."""
     leaves = _Leaves(repo_root)
-    return [r for r in records if r.active and not _cause(r, leaves)]
+    return [r for r in records if r.state in SLOT_STATES and not _cause(r, leaves)]
 
 
 def orphans(repo_root: Path, records: Iterable[WorkerRecord] | None = None) -> dict[str, str]:
@@ -124,12 +130,14 @@ def orphans(repo_root: Path, records: Iterable[WorkerRecord] | None = None) -> d
 
 
 def slot_breakdown(held: list[WorkerRecord]) -> str:
-    """``2 running: w-0002, w-0003; 1 completed: w-0001`` and what frees a slot, for the ``max_workers`` refusal."""
+    """``2 running: w-0002, w-0003; 1 idle: w-0001`` and what frees a slot, for the ``max_workers`` refusal.
+    Only :data:`SLOT_STATES` are listed; a finished record passed in is omitted."""
+    counted = [r for r in held if r.state in SLOT_STATES]
     groups: dict[str, list[str]] = {}
-    for r in held:
+    for r in counted:
         groups.setdefault("running" if r.state in RUNNING_STATES else r.state, []).append(r.worker_id)
     parts = [f"{len(ids)} {state}: {', '.join(ids)}" for state, ids in sorted(groups.items(), key=lambda kv: kv[0] != "running")]
-    idle = [r.worker_id for r in held if r.state in HELD_STATES]
+    idle = [r.worker_id for r in counted if r.state in HELD_STATES]
     if not idle:
         return "; ".join([*parts, "wait for one to finish or raise the limit"])
     which = idle[0] if len(idle) == 1 else "<id>"

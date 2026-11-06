@@ -19,16 +19,44 @@ class PatchBody(BaseModel):
 class ReorderBody(BaseModel):
     parent_id: str | None = None
     ordered_child_ids: list[str]
+    # Opt-in whole-outline renumber; by default a reorder changes no id.
+    renumber_outline: bool = False
 
 
 class MoveOutlineBody(BaseModel):
     node_key: str
     new_parent_id: str | None = None
     new_index: int = Field(0, ge=0)
+    # Optional, as `move-node --id / --fill-gaps / --renumber-outline`; by
+    # default only the moved subtree is renumbered.
+    new_id: str | None = None
+    fill_gaps: bool = False
+    renumber_outline: bool = False
+    # Opt-in, as `--rewrite-refs`: also rewrite the moved ids in prose.
+    rewrite_refs: bool = False
+
+
+class GroupOutlineBody(BaseModel):
+    """`group-nodes`: an unknown ``type`` is refused by validation (400), like the rest."""
+
+    into_new: str
+    title: str
+    node_ids: list[str]
+    type: str = "milestone"
+    rewrite_refs: bool = False
+
+
+class OutlineShiftBody(BaseModel):
+    """Optional body for indent / outdent; an omitted body means the defaults."""
+
+    renumber_outline: bool = False
+    rewrite_refs: bool = False
 
 
 class AddNodeBody(BaseModel):
     reference_node_id: str
+    # A free direct child id of the reference row's parent; default: next free.
+    new_id: str | None = None
     position: str = Field(..., pattern="^(above|below)$")
     title: str = Field(..., min_length=1)
     type: str = Field(

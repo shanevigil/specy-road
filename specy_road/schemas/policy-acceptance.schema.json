@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specy-road/schemas/policy-acceptance.schema.json",
+  "title": "Review policy acceptance (work/reviews/<NODE_ID>/POLICY-ACCEPTED.yaml)",
+  "description": "A human's acceptance, with `specy-road review accept-policy`, of a review policy change made on the integration branch after the leaf was claimed. It counts only for the pinned and accepted digests it names.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["node_id", "pinned_sha256", "accepted_sha256", "user", "at"],
+  "properties": {
+    "node_id": {"type": "string", "minLength": 1},
+    "pinned_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "accepted_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "user": {"type": "string", "minLength": 1},
+    "at": {"type": "string", "minLength": 1}
+  }
+}

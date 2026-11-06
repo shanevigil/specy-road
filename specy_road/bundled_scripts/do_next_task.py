@@ -28,7 +28,6 @@ from specy_road.bundled_scripts.do_next_task_pickup_helpers import (
     refuse_linked_worktree,
     branch_fns,
     worktree_work_dir,
-    register_and_commit as _do_register_and_commit,
     write_brief as _do_write_brief,
     write_session_and_prompt as _do_write_session_and_prompt,
 )
@@ -37,6 +36,7 @@ from specy_road.bundled_scripts.do_next_task_leaf_guards import (
     drop_unauthored,
     exit_no_actionable_leaves as _exit_no_actionable_leaves,
 )
+from specy_road.bundled_scripts.do_next_task_register import register_claim
 from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.do_next_task_virtual_complete import (
@@ -45,6 +45,7 @@ from specy_road.bundled_scripts.do_next_task_virtual_complete import (
 from specy_road.bundled_scripts.do_next_finished_unmerged import finished_unmerged_ids
 from specy_road.bundled_scripts.do_next_task_held_claim import refuse_second_claim, validate_or_exit
 from specy_road.registry_yaml import read_registry, registry_path
+from specy_road.review_policy_pin import pinned_message
 from specy_road.do_next_milestone_pickup import (
     exit_no_leaves_under_parent as _exit_no_leaves_under_parent,
     resolve_milestone_parent_filter as _resolve_milestone_parent_filter,
@@ -189,27 +190,6 @@ def _assert_current_branch_equals(base: str) -> None:
         raise SystemExit(1)
 
 
-def _register_and_commit(
-    node: dict,
-    branch: str,
-    reg: dict,
-    commit_message: str,
-    *,
-    impl_review_gate: bool,
-    owner: str | None = None,
-) -> None:
-    _do_register_and_commit(
-        registry_path=registry_path(ROOT),
-        git_runner=lambda *a: git_run(ROOT, *a),
-        node=node,
-        branch=branch,
-        reg=reg,
-        commit_message=commit_message,
-        impl_review_gate=impl_review_gate,
-        owner=owner,
-    )
-
-
 def _push_integration_branch(remote: str, base: str) -> None:
     git_run(ROOT, "push", remote, base)
 
@@ -258,16 +238,17 @@ def _finalize_pickup(
 
     brief_path = _write_brief(node, nodes)
     reg = read_registry(registry_path(ROOT))
-    commit_msg = registration_commit_message(
+    commit_msg = pinned_message(ROOT, registration_commit_message(   # review policy pinned at claim (M21.30)
         codename,
         include_ci_skip=include_ci_skip,
-    )
-    _register_and_commit(
-        node, branch, reg, commit_msg,
+    ))
+    register_claim(
+        ROOT, node, branch, reg, commit_msg,
+        git_runner=lambda *a: git_run(ROOT, *a),
         impl_review_gate=require_implementation_review_before_finish(ROOT),
         owner=owner,
     )
-    print("registered in roadmap/registry.yaml on integration branch (committed)")
+    print("registered in roadmap/registry.yaml on integration branch (committed with the regenerated digest)")
 
     _push_and_branch_with_self_heal(
         worktree, base, push_registry=push_registry, remote=remote,

@@ -158,14 +158,25 @@ def _snip(s: str, n: int = 200) -> str:
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
+#: What :func:`loads_untrusted` returns for text it cannot read.
+UNREADABLE: Any = object()
+
+
+def loads_untrusted(text: str) -> Any:
+    """``text`` parsed as JSON, or :data:`UNREADABLE`; never raises. Harness and reviewer output is untrusted input:
+    besides malformed JSON (``ValueError``, a huge integer included), nesting deep enough to exhaust the decoder's
+    recursion (``RecursionError``) or anything else the decoder raises is an unreadable line, not a crash."""
+    try:
+        return json.loads(text)
+    except Exception:   # total by design: ValueError, RecursionError, MemoryError, …
+        return UNREADABLE
+
+
 def _json(line: str) -> dict[str, Any] | None:
     line = line.strip()
     if not line.startswith("{"):
         return None
-    try:
-        d = json.loads(line)
-    except ValueError:
-        return None
+    d = loads_untrusted(line)
     return d if isinstance(d, dict) else None
 
 
@@ -192,6 +203,9 @@ def _init_detail(d: dict[str, Any]) -> dict[str, Any]:
 
 
 #: The ``usage`` event's detail, in this order; a field the harness did not report is ``None``, never 0.
+#: Set by :func:`apply_roster_price_estimate` on the cost it filled; read and dropped by ``worker_models.usage_event``.
+ROSTER_PRICED = "cost_from_roster"
+
 USAGE_FIELDS = ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_tokens", "cost_usd",
                 "cost_is_estimate", "num_turns", "harness_version")
 
@@ -285,23 +299,19 @@ def apply_roster_price_estimate(usage: dict[str, Any], model_id: str, repo_root:
     """Fill ``cost_usd`` and ``cost_is_estimate`` from the pinned roster profile when the harness reported none.
 
     ``model_id`` is what production puts on argv (``Profile.api_id`` or an alias), not necessarily
-    the roster ``id``. Each entry's pinned profile is matched with :meth:`Profile.for_id`.
+    the roster ``id``. The entry and its pinned profile come from :func:`specy_road.model_names.roster_match`.
     """
     if usage.get("cost_usd") is not None or not model_id:
         return usage
-    from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry  # noqa: PLC0415
+    from specy_road.model_names import roster_match  # noqa: PLC0415
 
-    config, err = pinned_config(repo_root)
-    if err:
-        return usage
-    prof = next((m for e in config.get("roster") or []
-                 if (p := pinned_profile_for_entry(repo_root, e)) and p.ok and (m := p.for_id(model_id))), None)
+    prof = roster_match(repo_root, model_id)[1]   # also an entry whose id or harness_model is model_id (M15.19)
     if not prof:
         return usage
     cost = estimate_usage_cost(usage, mtok_rates(prof.data))
     if cost is None:
         return usage
-    return {**usage, "cost_usd": cost, "cost_is_estimate": True}
+    return {**usage, "cost_usd": cost, "cost_is_estimate": True, ROSTER_PRICED: True}
 
 
 def usage_fields(u: Any, *, cost: Any = None, num_turns: Any = None, estimate: bool | None = None) -> dict[str, Any]:

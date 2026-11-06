@@ -13,7 +13,7 @@ import pytest
 from tests.review_repo_helpers import make_review_repo, shipped_anthropic_opus_cli_yaml_line
 from tests.test_models_and_prompt import commit_profile, make_profile_repo, run_main
 from tests.test_worker_cli import run_worker_cli
-
+from tests.worker_repo_helpers import reset_cursor_adapter_via_init
 from specy_road import worker_adapters as wa
 from specy_road import worker_ops as ops
 from specy_road import worker_reconcile as wrc
@@ -45,10 +45,10 @@ def test_default_commands_follow_the_documented_cli_flags(tmp_path: Path) -> Non
     p = tmp_path / "p.md"
     p.write_text("do the thing")
     c = wa.adapter_for("claude-code").launch(p, tmp_path, "claude-opus-5-5", None)
-    assert c.argv[:2] == ["claude", "-p"] and "--session-id" in c.argv and c.session_id in c.argv
-    assert c.argv[-1] == wa.STDIN_INSTRUCTION and c.stdin == "do the thing" and "stream-json" in c.argv
+    assert c.argv[:4] == ["claude", "-p", "--setting-sources", "user,project,local"] and c.session_id in c.argv
+    assert c.argv[-1] == wa.STDIN_INSTRUCTION and c.stdin == "do the thing" and {"stream-json", "--session-id"} <= {*c.argv}
     r = wa.adapter_for("claude-code").resume("sid", p, tmp_path, "m", None)
-    assert r.argv[2:4] == ["--resume", "sid"] and r.stdin == "do the thing"
+    assert r.argv[2:6] == ["--setting-sources", "user,project,local", "--resume", "sid"] and r.stdin == "do the thing"
     x = wa.adapter_for("codex").launch(p, tmp_path, "gpt-6.1-sol", None)
     assert x.argv[:3] == ["codex", "exec", "--json"] and x.argv[-1] == "-" and x.stdin == "do the thing"
     xr = wa.adapter_for("codex").resume("t1", p, tmp_path, "m", None)
@@ -59,10 +59,10 @@ def test_default_commands_follow_the_documented_cli_flags(tmp_path: Path) -> Non
         assert "--ask-for-approval" not in argv and "--sandbox" not in argv
     assert "-C" not in xr.argv
     u = wa.adapter_for("cursor").launch(p, tmp_path, "composer-2.5", None)
-    assert u.argv[:2] == ["agent", "-p"] and "--force" in u.argv and "--workspace" in u.argv
+    assert u.argv[:2] == ["agent", "-p"] and "--workspace" in u.argv
     # a new worktree is an untrusted workspace: without --trust (or --force) `agent -p` exits 1
     ur = wa.adapter_for("cursor").resume("c1", p, tmp_path, "m", None)
-    assert "--trust" in u.argv and "--trust" in ur.argv
+    assert "--trust" in u.argv and "--trust" in ur.argv and "--force" not in u.argv + ur.argv   # sandboxed by default
     assert wa.adapter_for("claude-code").human_resume("sid", tmp_path) == ["claude", "--resume", "sid"]
     assert wa.adapter_for("codex").human_resume("t1", tmp_path) == ["codex", "resume", "t1"]
     assert wa.adapter_for("cursor").human_resume("c1", tmp_path) == ["agent", "--resume", "c1"]
@@ -124,7 +124,7 @@ CLAUDE_RESULT, CODEX_TURN, CURSOR_RESULT = (RECORDED[h]["lines"][i] for h, i in 
 
 
 def test_each_adapter_reports_turn_usage_in_one_shape() -> None:
-    cc, cx, cu = (wa.adapter_for(h) for h in ("claude-code", "codex", "cursor"))
+    cc, cx, cu = (wa.adapter_for(h) for h in ("claude-code", "codex", "cursor")); reset_cursor_adapter_via_init(cu)
     assert cc.parse(json.dumps(CLAUDE_RESULT)).usage == {"input_tokens": 38 + 67090 + 1224204, "cached_input_tokens": 1224204,
         "output_tokens": 13258, "reasoning_tokens": 4703, "cost_usd": 1.0474079, "cost_is_estimate": True, "num_turns": 19,
         "harness_version": None, "session_cost_usd": 1.0474079}   # input counts cache reads and writes; the wrapper takes the delta
@@ -369,13 +369,13 @@ def test_prompt_cli_channel_substitutes_the_roles_effort_or_notes_its_absence(tm
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
     prof_path.write_text(prof_path.read_text().replace(shipped_anthropic_opus_cli_yaml_line(), "  cli: echo {effort} {prompt}"))
     commit_profile(repo)
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli", "--run",
                 "--repo-root", str(repo)) == 0
     out, err = capfd.readouterr()
     assert out.splitlines()[-1].startswith("--effort low ") and "takes no effort" not in err
     prof_path.write_text(prof_path.read_text().replace("  cli: echo {effort} {prompt}", "  cli: echo {prompt}"))
     commit_profile(repo)
-    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli",
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli", "--run",
                 "--repo-root", str(repo)) == 0
     out, err = capfd.readouterr()
     assert "--effort" not in out.splitlines()[-1] and err.count("takes no effort") == 1 and "effort low" in err
