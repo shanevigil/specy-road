@@ -8,37 +8,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 
 | ID | Title | Type | Gate | Status |
 |----|-------|------|------|--------|
-| `M15` | rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction | phase | — | Not Started |
-| `M15.1` | RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command | task | Agentic-led | Complete |
-| `M15.2` | A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch | task | Agentic-led | Complete |
-| `M15.3` | prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged | task | Agentic-led | Complete |
-| `M15.4` | Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current | task | Agentic-led | Complete |
-| `M15.6` | The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes | task | Agentic-led | Complete |
-| `M15.8` | A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it | task | Agentic-led | Complete |
-| `M15.9` | Harness launches survive large prompts and a harness binary off PATH, for every role | task | Agentic-led | Complete |
-| `M15.10` | Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff | task | Agentic-led | Complete |
-| `M15.11` | A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors | task | Agentic-led | Complete |
-| `M15.12` | Shared documentation zones do not serialize grind-session batches | task | Agentic-led | Complete |
-| `M15.13` | Worker loop friction: sync waits for the events that matter, tool-use noise collapses, rework after a completed worker, a READY-only resume, a quieter pickup | task | Agentic-led | Complete |
-| `M15.15` | upgrade ships the work/ templates every prompt references, and the .specyrd README matches upgrade's steps | task | Agentic-led | Complete |
-| `M15.17` | Review friction: delegate builds a missing packet, the packet skips ignored evidence and numbers suppressions correctly, refusals quote the line, and superseded failed runs say so | task | Agentic-led | Complete |
-| `M15.18` | planned_test_changes can be edited after pickup, and an unplanned test removal is a required reviewer check | task | Agentic-led | Complete |
-| `M15.19` | Cursor worker cost is estimated when the harness reports a display name for the rostered model | task | Agentic-led | Complete |
-| `M15.21` | Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments | task | Agentic-led | Complete |
-| `M15.22` | Project preferences the workflow respects: local decisions, a PR body footer, the summary commit rule, and local landing for the root repository | task | Agentic-led | Complete |
-| `M15.24` | ready does not record false evidence: a passing run whose output shows a failed command is flagged, and --run-argv runs a command without a shell | task | Agentic-led | Complete |
-| `M15.26` | A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim | task | Agentic-led | Complete |
-| `M15.27` | worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length | task | Agentic-led | Complete |
-| `M15.31` | A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported | task | Agentic-led | Not Started |
-| `M15.32` | An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure | task | Agentic-led | Complete |
-| `M15.33` | A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed | task | Agentic-led | Complete |
-| `M15.34` | The executor prompt states the test rules that the reviewer's excess checklist enforces | task | Agentic-led | Complete |
-| `M15.35` | The review packet never lists .git or a path under it as an uncommitted reference | task | Agentic-led | Complete |
-| `M15.36` | Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode | task | Agentic-led | Complete |
-| `M15.37` | Review notes: a part joined by a comma or 'and' is a second observation only when it names a defect | task | Agentic-led | Complete |
-| `M15.38` | add-node caps a title-derived codename at 64 characters so the planning file name fits | task | Agentic-led | Complete |
-| `M15.39` | A roadmap write that fails part-way restores every file it changed | task | Agentic-led | Complete |
-| `M15.40` | finish-this-task: a failed merge landing reports after the land check output and undoes its bookkeeping commit | task | Agentic-led | Complete |
 | `M16` | lean core: harden and optimize code and docs, all delivered functionality kept | phase | — | Not Started |
 | `M16.0` | Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs | task | Agentic-led | Not Started |
 | `M16.1` | Parity harness: a review-gate decision table covering every review policy | task | Agentic-led | Not Started |
