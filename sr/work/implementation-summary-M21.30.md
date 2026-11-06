@@ -35,12 +35,40 @@
   `_STUB_BYTES` 2063 → 2205 and `_RULES_BYTES` 9107 → 9289, exactly the new sizes, with a comment citing M21.30 and
   the maintainer approval; line counts unchanged.
 
+## Fix round 1 (review at b7ec601a, gpt-6.1-sol-low)
+
+- **R1 — class: a validation skipped by an early return (an invalid acceptance file ignored whenever the policy
+  matches the pin).** Design change, not a patch: `pin_problem` now reads `POLICY-ACCEPTED.yaml` first, and one rule
+  applies: an existing but invalid file (malformed, schema-invalid, another node) is a gate problem whatever the pin
+  and the policy say. The message tells the human to delete it and re-run `review accept-policy` if the policy
+  changed. The old in-message "(invalid…)" note branch is gone, so the function has no extra branch. A valid file
+  still counts only for its two digests. Acceptance table gains the three invalid shapes with the policy unchanged.
+- **R2 — class: a test asserting a call list instead of effects.** The `calls == []` assertion is removed; the
+  unparsable-policy pickup case now asserts exit 1, the registry bytes unchanged, and the real `git log` unchanged
+  with no registration subject.
+
+## Probes
+
+- Invalid acceptance + policy unchanged (malformed / schema-invalid / other node): gate problem; without the fix
+  these three rows fail (red-green, 3 failed), with it they pass.
+- Invalid acceptance + policy changed: gate problem (same rule, message now the invalid-file one).
+- Valid acceptance whose digests no longer match (pinned, accepted, second edit): still the "policy changed" problem.
+- Other validations behind an early return: `pin_of` parses the trailer before any digest comparison, so an
+  unparsable trailer is a problem whether or not the policy changed; `policy_digest` raises on an unparsable policy
+  file at the ref before the comparison. Unpinned (legacy) claims skip the digest by design (judged as today).
+- `accept-policy` on an invalid file with the policy changed: overwrites it with a valid record (the existing write
+  path); with the policy unchanged it writes nothing and the gate message names the file to delete.
+- Other call-list assertions added by this leaf: none in tests/test_review_policy_pin.py; the pickup test's
+  commit-message checks (`calls[1][2]`) follow the existing test's own pattern for the message pickup builds, the
+  behaviour under test, with git faked.
+
 ## Final touch zones
 
 As listed in the brief plus `tests/test_enforced_rules_pointers.py`. No other path changed.
 
 ## Verification
 
+- Fix round 1: targeted 156 passed; `ruff check specy_road tests scripts` clean; file-limits OK.
 - `pytest -n 4` targeted (pin, pickup, rules budgets, AGENTS block, file limits, gate, mark-reviewed, delegate,
   ready-author, gate agreement): 153 passed. Full suite `pytest -n 4`: 5714 passed.
 - `ruff check` on changed Python: clean. `specy-road file-limits`: OK (review_gate.py 404, orchestration-review.md
@@ -55,6 +83,7 @@ As listed in the brief plus `tests/test_enforced_rules_pointers.py`. No other pa
 - `pin_of` — trailer lookup on the newest registration commit (startswith, so the CI-skip suffix matches).
 - `change_lines` (+ fallback line) — A2's per-change lines; fallback so a digest change is never reported with no line.
 - `read_acceptance`/`acceptance_path` — A3 file read with schema check; invalid is a problem, never an acceptance.
+- `pin_problem` invalid-acceptance rule (fix round 1, R1) — checked first, so no pin state skips it.
 - `_pin_state`, `pin_problem` — shared by the gate, finish and accept-policy.
 - `pin_holds_or_exit` — finish's one call (exit 1, message on stderr).
 - `cmd_accept_policy`, `add_parser`, `_user` — the A3 command; `_user` names the git user (fallback: login name).
@@ -66,5 +95,7 @@ As listed in the brief plus `tests/test_enforced_rules_pointers.py`. No other pa
   acceptance table (malformed, schema-invalid, other node, both digest mismatches, second edit); trailer table
   (unpinned, unparsable); review delegate on a pinned claim. Mocks: `sys.stdin.isatty` and `builtins.input` only.
 - `tests/test_do_next_task_pickup.py`: existing CI-skip-free pickup test parametrized over no commit / pinned /
-  unparsable policy (exact trailer through `_finalize_pickup`; exit 1 with no git calls and the registry unchanged).
+  unparsable policy (exact trailer through `_finalize_pickup`; exit 1 with the registry and `git log` unchanged —
+  fix round 1, R2; helper `_git_log` reads the real log).
+- Acceptance table rows (fix round 1, R1): malformed, schema-invalid and other-node files with the policy unchanged.
 - `tests/test_enforced_rules_pointers.py`: two budget constants raised with comments (maintainer-approved).
