@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
+from tests.helpers import script_subprocess_env
 from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
 from tests.test_worker_cli import run_worker_cli, wait_for_worker
 from tests.worker_repo_helpers import FAKE, make_worker_repo, worker_roster
@@ -145,3 +147,11 @@ def test_custom_cli_model_is_requested_and_sync_flags_a_mismatch(tmp_path: Path,
     out = capsys.readouterr().out
     assert ("model mismatch: told claude-sonnet-5-5, harness reported fake" in out) is (requested == "claude-sonnet-5-5")
     assert "decoy" not in out and "SR_UNSET_MODEL" not in out
+
+
+def test_orchestration_routing_imports_cleanly_before_orchestration_config() -> None:
+    """M15.31 fix round 2: a fresh process must import routing without a config↔routing cycle."""
+    code = ("from specy_road.orchestration_routing import entry_launch_model, entry_routing, routing_problem; "
+            "assert entry_routing.__name__ == 'entry_routing'")
+    done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=script_subprocess_env())
+    assert done.returncode == 0, done.stderr or done.stdout

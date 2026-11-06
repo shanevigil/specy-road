@@ -1,15 +1,18 @@
-"""Whether a roster entry's harness gets a fixed model id or routes dynamically (M11.33, M15.31)."""
+"""Whether a roster entry's harness gets a fixed model id or routes dynamically (M11.33, M15.31).
+
+Imports from :mod:`specy_road.orchestration_config` are local to each function so this module can load before
+``orchestration_config`` finishes re-exporting it (no import cycle).
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
 
-from specy_road.orchestration_config import harness_model, roster_entry
-
 
 def entry_launch_model(repo_root: Path, entry: dict[str, Any]) -> str | None:
     """The model id ``review delegate`` passes the harness, or ``None`` when the harness would use its default."""
+    from specy_road.orchestration_config import harness_model  # noqa: PLC0415 — break cycle with config re-export
     from specy_road.orchestration_pinned import pinned_profile_for_entry  # noqa: PLC0415 — it imports orchestration_config
 
     prof = pinned_profile_for_entry(repo_root, entry)
@@ -42,6 +45,8 @@ def entry_routing(repo_root: Path, entry: dict[str, Any]) -> str:
 def routing_problem(repo_root: Path, config: dict[str, Any], data: dict[str, Any]) -> str | None:
     """Why an approval does not count under ``reviewers_distinct_families``: its entry's harness routes models
     dynamically (:func:`entry_routing`) and the entry is not ``pinned``, so the family behind it is not known."""
+    from specy_road.orchestration_config import roster_entry  # noqa: PLC0415 — break cycle with config re-export
+
     entry = roster_entry(config, data["model"]) or {}
     if (data.get("verdict") != "approve" or not config["policy"].get("reviewers_distinct_families")
             or entry.get("pinned") or entry_routing(repo_root, entry) == "fixed"):
