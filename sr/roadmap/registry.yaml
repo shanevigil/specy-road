@@ -129,6 +129,8 @@ entries:
       - specy_road/orchestration_config.py
       - docs/orchestration-models.md
       - tests/
+      - specy_road/orchestration_routing.py
+      - specy_road/review_delegate_harness.py
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
