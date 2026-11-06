@@ -116,10 +116,10 @@ def _rebase_graph_symlinks(scratch: Path, live: Path) -> None:
     ``copytree(..., symlinks=True)`` keeps links resolving into the live repo, so
     rehearsal would read (and could write) live files, or reject them as outside
     ``roadmap/``. Each link, file or directory, into a live copied tree is
-    re-pointed at the same path in the scratch copy, so the layout matches what
-    real removal sees. Other links are kept: they resolve outside the scratch
-    root, which every chunk lookup, sheet lookup and write rejects, just as live
-    removal refuses (or fails validation on) them.
+    re-pointed at the same path in the scratch copy, so the layout matches what a
+    real run sees. Other links are kept: they resolve outside the scratch
+    root, which every chunk lookup, sheet lookup and write rejects, just as a live
+    run refuses (or fails validation on) them.
     """
     scratch = scratch.resolve()
     tops = {
@@ -146,15 +146,13 @@ def _rebase_graph_symlinks(scratch: Path, live: Path) -> None:
 def rehearsal_root(root: Path) -> Iterator[Path]:
     """Throwaway project root for ``--dry-run``: graph trees copied, the rest linked.
 
-    Built by ``apply --dry-run``'s scratch root (same copy/link rule). The live
-    ``root`` is never written. Symlinks in the copied trees that point into the
-    repo are rebased onto the scratch copy so rehearsal matches real removal on
-    the same layout (see :func:`_rebase_graph_symlinks`).
+    ``apply --dry-run``'s scratch root (same copy/link rule, links into the
+    repo's copied trees rebased onto the scratch copy), so rehearsal matches
+    real removal on the same layout. The live ``root`` is never written.
     """
     from specy_road.bundled_scripts.roadmap_crud_dependency_ops import _scratch_root
 
     with _scratch_root(root) as scratch:
-        _rebase_graph_symlinks(scratch, root.resolve())
         yield scratch
 
 

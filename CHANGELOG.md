@@ -13,6 +13,16 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `apply --dry-run` no longer moves or changes a live file. Its scratch copy
+  now rebases links in the copied graph trees onto the copy, as `remove-node
+  --dry-run` already did, so an `archive` entry whose planning sheet is an
+  absolute link into the repo moves the copy's sheet, not the live one, and an
+  in-repo absolute chunk-directory link rehearses as the real apply runs.
+  `archive` (and an `apply` `archive` entry) refuses, before writing or moving
+  anything, a planning sheet, archive chunk, archive index or stored-sheet path
+  that resolves outside the repo, naming the path, and archiving a sheet
+  reached through a link removes the link it would leave dangling.
+
 - `specy-road doctor` no longer fails in a repo with no remote. When the
   resolved remote (`--remote`, `SPECY_ROAD_REMOTE`, `roadmap/git-workflow.yaml`,
   else `origin`) is not configured, it says so in one line, skips the fetch and

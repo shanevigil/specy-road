@@ -245,7 +245,7 @@ def test_a_regroup_applies_in_one_run_with_one_validation(
     ]
 
 
-def test_a_refused_entry_after_an_archive_restores_everything(repo: Path) -> None:
+def _complete_m99_1(repo: Path) -> None:
     from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
     from specy_road.generated_files import regenerate_generated_files
 
@@ -253,19 +253,95 @@ def test_a_refused_entry_after_an_archive_restores_everything(repo: Path) -> Non
     write_json_chunk(chunk, [{**n, "status": "Complete"} if n["id"] == "M99.1" else n
                              for n in load_json_chunk(chunk)])
     regenerate_generated_files(repo)
+
+
+ARCHIVE = "- {op: archive, node: M99.1}\n"
+
+
+@pytest.mark.parametrize("flags", [(), ("--dry-run",)], ids=["real", "dry-run"])
+def test_a_refused_entry_after_an_archive_restores_everything(repo: Path, flags: tuple[str, ...]) -> None:
+    _complete_m99_1(repo)
     before = _tree(repo)
-    archive = "- {op: archive, node: M99.1}\n"
-    r = _apply(repo, archive + "- {op: edit-node, node: M404, set: {title: X}}\n")
+    r = _apply(repo, ARCHIVE + "- {op: edit-node, node: M404, set: {title: X}}\n", *flags)
     assert r.returncode == 1
     assert "change 2 (edit-node) failed; no change in the batch was applied" in r.stderr
     # roadmap.md, roadmap-context.md, the archive ledger and the moved sheet.
     assert _tree(repo) == before
     assert not (repo / "roadmap" / "archive").exists()
     # The same archive alone does apply, regenerating both files.
-    assert _apply(repo, archive).returncode == 0
+    assert _apply(repo, ARCHIVE).returncode == 0
     after = _tree(repo)
     assert after["roadmap.md"] != before["roadmap.md"]
     assert after["roadmap-context.md"] != before["roadmap-context.md"]
+
+
+def _sheet_m99_1(repo: Path) -> Path:
+    return next((repo / "planning").glob("M99.1_*.md"))
+
+
+def test_dry_run_archive_of_an_in_repo_sheet_link_leaves_the_live_sheet(repo: Path) -> None:
+    """The scratch copy's link is rebased, so the rehearsal moves its own copy."""
+    _complete_m99_1(repo)
+    sheet = _sheet_m99_1(repo)
+    target = repo / "roadmap" / "store" / sheet.name
+    target.parent.mkdir()
+    sheet.rename(target)
+    sheet.symlink_to(target.resolve())
+    before = _tree(repo)
+    r = _apply(repo, ARCHIVE, "--dry-run")
+    assert r.returncode == 0, r.stderr
+    assert _tree(repo) == before
+    assert sheet.is_symlink() and target.is_file()
+
+
+def _sheet_links_out(repo: Path) -> tuple[Path, str]:
+    sheet = _sheet_m99_1(repo)
+    outside = repo.parent / "outside"
+    outside.mkdir()
+    sheet.rename(outside / sheet.name)
+    sheet.symlink_to(outside / sheet.name)
+    return outside, f"planning/{sheet.name}"
+
+
+def _archive_dir_links_out(repo: Path) -> tuple[Path, str]:
+    outside = repo.parent / "outside"
+    outside.mkdir()
+    (repo / "roadmap" / "archive").symlink_to(outside, target_is_directory=True)
+    return outside, "roadmap/archive/"
+
+
+@pytest.mark.parametrize("layout", [_sheet_links_out, _archive_dir_links_out],
+                         ids=["sheet-links-out", "archive-dir-links-out"])
+def test_dry_run_archive_through_a_link_out_is_refused(tmp_path: Path, layout) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    crud_fixture_repo(repo)
+    _complete_m99_1(repo)
+    outside, named = layout(repo)
+    before, outside_before = _tree(repo), _tree(outside)
+    r = _apply(repo, ARCHIVE, "--dry-run")
+    assert r.returncode == 1
+    assert named in r.stderr and "resolves outside" in r.stderr
+    assert _tree(repo) == before
+    assert _tree(outside) == outside_before
+    assert sorted(p.name for p in outside.iterdir()) == sorted(outside_before)
+
+
+@pytest.mark.parametrize("dry_run", [True, False], ids=["dry-run", "real"])
+def test_apply_through_an_in_repo_absolute_chunk_dir_link(repo: Path, dry_run: bool) -> None:
+    """The remove-node ``in-repo-abs-dir-link`` layout: rehearsal and real apply agree."""
+    phases, storage = repo / "roadmap" / "phases", repo / "roadmap" / "storage"
+    phases.rename(storage)
+    phases.symlink_to(storage.resolve(), target_is_directory=True)
+    before = _tree(repo)
+    edit = "- {op: edit-node, node: M99.2, set: {title: Renamed}}\n"
+    r = _apply(repo, edit, *(["--dry-run"] if dry_run else []))
+    assert r.returncode == 0, r.stderr
+    if dry_run:
+        assert _tree(repo) == before
+    else:
+        assert phases.is_symlink()
+        assert b'"Renamed"' in (storage / "T.json").read_bytes()
 
 
 def test_an_empty_change_file_is_refused(repo: Path) -> None:
