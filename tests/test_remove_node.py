@@ -227,26 +227,56 @@ def test_refused_remove_node_on_blockers_preserves_tree(tmp_path: Path) -> None:
     assert _tree_bytes(tmp_path) == before
 
 
-def test_dry_run_succeeds_when_manifest_chunk_is_an_in_repo_symlink(tmp_path: Path) -> None:
-    crud_fixture_repo(tmp_path)
-    chunk = tmp_path / "roadmap" / "phases" / "T.json"
-    storage = tmp_path / "roadmap" / "T-storage.json"
+def _link_chunk_file(repo: Path) -> None:
+    chunk = repo / "roadmap" / "phases" / "T.json"
+    storage = repo / "roadmap" / "T-storage.json"
     storage.write_bytes(chunk.read_bytes())
     chunk.unlink()
     chunk.symlink_to(storage.resolve())
+
+
+def _link_chunk_dir(repo: Path) -> None:
+    phases = repo / "roadmap" / "phases"
+    phases.rename(repo / "roadmap" / "storage")
+    phases.symlink_to((repo / "roadmap" / "storage").resolve(), target_is_directory=True)
+
+
+def _link_planning_sheet_outside_graph(repo: Path) -> None:
+    sheet = repo / "planning" / "M99.2_two_10000000-0000-4000-8000-000000009903.md"
+    kept = repo / "docs" / sheet.name
+    kept.parent.mkdir()
+    kept.write_bytes(sheet.read_bytes())
+    sheet.unlink()
+    sheet.symlink_to(kept.resolve())
+
+
+@pytest.mark.parametrize(
+    ("link_layout", "exit_code"),
+    [
+        (_link_chunk_file, 0),
+        (_link_chunk_dir, 0),
+        (_link_planning_sheet_outside_graph, 1),
+    ],
+    ids=["absolute-chunk-file", "absolute-chunk-dir", "planning-sheet-outside-graph"],
+)
+def test_dry_run_agrees_with_removal_on_in_repo_symlinks(
+    tmp_path: Path, link_layout, exit_code: int
+) -> None:
+    crud_fixture_repo(tmp_path)
+    link_layout(tmp_path)
     before = _tree_bytes(tmp_path)
-    r = run_crud(
-        tmp_path,
-        "--repo-root",
-        str(tmp_path),
-        "remove-node",
-        "M99.2",
-        "--dry-run",
-    )
-    assert r.returncode == 0, r.stderr + r.stdout
-    assert "would remove node M99.2" in r.stdout
+    argv = ["--repo-root", str(tmp_path), "remove-node", "M99.2"]
+    r = run_crud(tmp_path, *argv, "--dry-run")
+    assert r.returncode == exit_code, r.stderr + r.stdout
+    assert ("would remove node M99.2" in r.stdout) == (exit_code == 0)
     assert _tree_bytes(tmp_path) == before
     assert any(n["id"] == "M99.2" for n in load_roadmap(tmp_path)["nodes"])
+    r = run_crud(tmp_path, *argv)
+    assert r.returncode == exit_code, r.stderr + r.stdout
+    removed = not any(n["id"] == "M99.2" for n in load_roadmap(tmp_path)["nodes"])
+    assert removed == (exit_code == 0)
+    if exit_code:
+        assert _tree_bytes(tmp_path) == before
 
 
 def test_archive_hard_remove_refuses_registry_claim(tmp_path: Path) -> None:
