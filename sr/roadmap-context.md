@@ -118,7 +118,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.30` A leaf's review policy is pinned at claim: the gate and finish refuse a roster, policy or review-switch change made on the integration branch after it until a human accepts it `review-policy-pinned-at-claim` — task — **Not Started**
   - `M21.31` review record files only under the caller's own model: a filing from another harness or worker is refused, and a hand-filed record needs an attestation and counts only when signed or the policy allows it `review-record-files-only-as-the-caller` — task — **Not Started**
   - `M21.32` session end ends only your own session: another agent's live record needs --force from a terminal, and the guard's refusal names the rule `session-end-only-your-own` — task — **Not Started**
-  - `M21.33` The brainstorm skill makes `specy-road brainstorm start` the first tool call, alone in its turn, in every harness's shipped copy `brainstorm-start-is-the-first-call-alone` — task — **Not Started**
+  - `M21.33` The brainstorm skill makes `specy-road brainstorm start` the first tool call, alone in its turn, in every harness's shipped copy `brainstorm-start-is-the-first-call-alone` — task — **Complete**
   - `M21.34` Context regression CR2 asks for a README section the todo app supports, and passes a README-only commit on the agent's own worktree branch `cr2-case-fits-the-todo-app` — task — **Complete**
 - `M22` rc5 fixes: defects found while preparing rc5 `rc5-fixes` — phase — **Not Started**
   - `M22.1` group-nodes accepts a new parent id held by one of the nodes it groups `group-into-member-id` — task — **Not Started**
@@ -268,7 +268,6 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.28` on `feature/rm-finish-validates-before-bookkeeping` since 2026-11-05
-- `M21.33` on `feature/rm-brainstorm-start-is-the-first-call-alone` since 2026-11-05
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
@@ -277,13 +276,13 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 30 | 0 | 3.60 | 60% | 34 | 4 |
+| `docs` **flagged** | 29 | 0 | 2.66 | 59% | 28 | 3 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 47 | 0 | 3.51 | 62% | 50 | 7 |
-| `tests` **flagged** | 49 | 0 | 3.45 | 61% | 50 | 7 |
-| `CHANGELOG.md` | 19 | 0 | 1.74 | 26% | 16 | 0 |
+| `specy_road` **flagged** | 47 | 0 | 2.87 | 60% | 44 | 6 |
+| `tests` **flagged** | 49 | 0 | 2.84 | 59% | 44 | 6 |
+| `CHANGELOG.md` | 20 | 0 | 1.70 | 25% | 16 | 0 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
-| `suggested_prompts` | 1 | 0 | 1.00 | 0% | 0 | 0 |
+| `suggested_prompts` | 2 | 0 | 1.00 | 0% | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

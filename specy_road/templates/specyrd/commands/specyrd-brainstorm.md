@@ -1,9 +1,13 @@
 ---
-description: "Use when a PM asks to brainstorm or expand roadmap ideas under a node: diverge in rounds, converge, source evidence, then the human triages and promotes. Run `specy-road brainstorm start` first, before reading roadmap-context.md, roadmap/ or planning/ (not even in the same step as this skill). Not a design-elicitation or requirements skill."
+description: "Use when a PM asks to brainstorm or expand roadmap ideas under a node: diverge in rounds, converge, source evidence, then the human triages and promotes. Run `specy-road brainstorm start` first, before reading roadmap-context.md, roadmap/ or planning/. After reading this skill, make `specy-road brainstorm start` your next tool call, alone in its tool-call batch, with no parallel read or search (not roadmap-context.md, roadmap/, planning/ or anything else); after it returns, read the prompt file it names and continue. Not a design-elicitation or requirements skill."
 ---
 
 Run `start` **before reading anything else**: not `roadmap-context.md`, not the
 roadmap, not `planning/`, even where AGENTS.md says to read the digest first.
+After reading this skill, make `specy-road brainstorm start`
+your next tool call, alone in its tool-call batch, with no parallel read or
+search (not roadmap-context.md, roadmap/, planning/ or anything else); after it
+returns, read the prompt file it names and continue.
 What you read before round 1 anchors every idea in it.
 
 ```bash
