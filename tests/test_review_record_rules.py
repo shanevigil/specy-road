@@ -13,7 +13,14 @@ from tests.test_review_cli import ONE_AI
 
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.review_files import PACKET_NAME, review_path, reviews_dir
-from specy_road.review_record_rules import clause_problem, defect_word, explained, note_problem, unexplained_defects
+from specy_road.review_record_rules import (
+    NOTES_RULES_LINES,
+    clause_problem,
+    defect_word,
+    explained,
+    note_problem,
+    unexplained_defects,
+)
 
 
 def test_reviewer_prompt_carries_the_four_probe_rules(tmp_path: Path) -> None:
@@ -168,7 +175,32 @@ def test_record_refuses_an_approve_whose_notes_carry_an_unclassified_observation
     assert not (reviews_dir(repo, "M1.1") / "history").exists()
 
 
+# Every clause break the notes rules name: a second clause beside a reasoned one is refused, and accepted once it
+# has its own reason. The '! ' row is "Ship it! The suite passed, ...", refused by a break the rules once left out.
+SEPARATORS = (". ", "! ", "? ", "; ")
+CONJUNCTIONS = ("and", "but", "while", "whereas", "although", "though", "yet", "plus")
+SUITE_REASONED = "The suite passed, not a defect because it ran every test."
+COLD_REASONED = "the cache is cold, not a defect because the fallback warms it."
+CLAUSE_BREAK_ROWS = [
+    *[(f"Ship it{s}{SUITE_REASONED}", "is an observation") for s in SEPARATORS],
+    *[(f"Ship it, not a defect because the diff is ready{s}{SUITE_REASONED}", None) for s in SEPARATORS],
+    *[(f"The lock crashes {c} {COLD_REASONED}",
+       f'says "crashes", two observations joined by "{c}": "The lock crashes" {c} "the cache is cold"')
+      for c in CONJUNCTIONS],
+    *[(f"The lock crashes, not a defect because no caller reaches it {c} {COLD_REASONED}", None)
+      for c in CONJUNCTIONS],
+]
+
+
+def test_notes_rules_name_every_clause_break() -> None:
+    line = next(text for text in NOTES_RULES_LINES if text.startswith("- Each clause"))
+    assert all(f"'{s}'" in line for s in SEPARATORS)
+    assert f"({', '.join(CONJUNCTIONS)})" in line
+    assert any(text.startswith("- A comma list") for text in NOTES_RULES_LINES)
+
+
 @pytest.mark.parametrize("line, why", [
+    *CLAUSE_BREAK_ROWS,
     (MALFORMED_WORDING, "is an observation"),
     ("The cache key ignores the branch name.", "is an observation"),
     ("No defect found.", "is an observation"),
@@ -296,6 +328,7 @@ JOIN_ROWS = [(f"{a}{j}{b}, not a defect because both are expected.",
 
 
 @pytest.mark.parametrize("text, why", [
+    *CLAUSE_BREAK_ROWS,
     *JOIN_ROWS,
     ("Changed paths are tests/test_worker_queue_message.py plus sr/work/implementation-summary-M21.8.md, not a defect "
      "because the summary is the leaf hand-off.", None),

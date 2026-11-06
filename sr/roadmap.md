@@ -187,7 +187,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.38` | Review writers and the review lock refuse any symlink on the path from the project root | task | — | Not Started |
 | `M21.39` | Publish, finish's land and reviews copy, and the pickup hint refuse any symlink on the path | task | — | Not Started |
 | `M21.40` | upgrade's scratch git drops every GIT_ variable, runs no hook, and times out | task | — | Not Started |
-| `M21.41` | The notes rules name every clause break the checker uses; rework docstring and verify tests fixed | task | — | Not Started |
+| `M21.41` | The notes rules name every clause break the checker uses; rework docstring and verify tests fixed | task | — | Complete |
 | `M21.42` | review delegate also gives one repair turn when the final answer does not parse, not only when review record refuses it | task | — | Not Started |
 | `M21.43` | digest refuses cleanly when the roadmap manifest is missing, like export --check | task | — | Not Started |
 | `M22` | rc5 fixes: defects found while preparing rc5 | phase | — | Not Started |
