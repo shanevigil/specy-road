@@ -245,6 +245,27 @@ def test_pickup_regenerates_only_tracked_files_and_refuses_a_link(tmp_path: Path
     assert _tree(repo, outside) == before
 
 
+@pytest.mark.parametrize("alias", [".claude/skills", ".agents/skills"])
+def test_skill_links_resolve_through_a_skills_directory_alias_at_another_depth(tmp_path: Path, alias: str) -> None:
+    """The skills-link rule: a link made in a relocated directory points at the canonical skill from where it lands."""
+    repo, _outside_dir = _inited(tmp_path)
+    real = repo / "tools" / "deep" / "skills"   # depth 3, not the alias's 2
+    real.mkdir(parents=True)
+    (repo / alias).parent.mkdir(parents=True, exist_ok=True)
+    (repo / alias).symlink_to(Path("..") / "tools" / "deep" / "skills")
+
+    run_init(target=repo, agent="claude-code", dry_run=False, force=False, ai_commands_dir=None)
+    (repo / ".claude" / "skills" / "specyrd-brief").unlink()   # refresh-stubs must remake it the same way
+    refresh_stubs.main(["--repo-root", str(repo)])
+
+    links = sorted((repo / ".claude" / "skills").iterdir())
+    assert links and (repo / alias).is_symlink()
+    for link in links:
+        assert link.is_symlink(), link
+        assert link.resolve() == (repo / ".agents" / "skills" / link.name).resolve()
+        assert (link / "SKILL.md").is_file()
+
+
 def test_refresh_stubs_refuses_a_linked_stub_and_still_makes_the_skill_links(tmp_path: Path, capsys) -> None:
     repo, outside = _inited(tmp_path)
     run_init(target=repo, agent="claude-code", dry_run=False, force=False, ai_commands_dir=None)

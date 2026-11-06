@@ -69,7 +69,11 @@ def link_rel(agent: str, name: str) -> Path | None:
 
 
 def link_target(agent: str, name: str) -> str:
-    """The symlink's relative target, from its own directory to the skill folder."""
+    """The symlink's relative target in the default layout (neither skills directory an alias).
+
+    :func:`ensure_link` computes it from the real locations instead, which is
+    the same text in this layout.
+    """
     up = [".."] * len(LINK_DEST[agent].parts)
     return os.path.join(*up, *(SKILLS_REL / stem(name)).parts)
 
@@ -146,15 +150,15 @@ def ensure_link(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """
     rel = link_rel(agent, name)
     assert rel is not None
-    try:
+    try:   # both by the skills-link rule: either skills directory may be an in-repo alias at another depth
         link = skill_path(repo_root, rel, None)
+        canonical = skill_path(repo_root, SKILLS_REL / stem(name), None)
     except safe_write.SafeWriteError as e:
         return f"refused: {e}"
-    target = link_target(agent, name)
-    canonical = (repo_root / SKILLS_REL / stem(name)).resolve()
+    target = os.path.relpath(canonical, link.parent)   # from where the link really lands, not its logical depth
     if link.is_symlink() and os.readlink(link) == target:
         return UNCHANGED
-    if link.exists() and link.resolve() == canonical:
+    if link.exists() and link.resolve() == canonical.resolve():
         return UNCHANGED   # e.g. `.claude/skills` is itself a link to `.agents/skills`
     if link.is_dir() and not link.is_symlink():
         # Only a copy this tool made (one SKILL.md) is ours to replace, and only
