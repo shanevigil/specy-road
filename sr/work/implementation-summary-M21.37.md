@@ -159,6 +159,51 @@ The code change is then:
 - the same rule in `specyrd_skills` for the canonical skill files;
 - those tests' expectations updated.
 
+## Fix round 4 (maintainer decisions 2026-11-06; review `gpt-6.1-sol-low` at `512fee21`)
+
+Merged `origin/WIP/improvements-0-3-1` (`163ca582` and after). That merge added `specy_road/specyrd_skills.py`, `tests/test_prerelease_files.py`, `tests/test_m13_7_notices.py` and `tests/test_upgrade_plan_parity.py` to the zones and amended A1, A2, A3 and A5. Fix commit: `7ca2adff`.
+
+**Superseded:** Sol's "remove the exception" (R1) is superseded by the maintainer's decision, **for the in-repo skills-directory link only**. Everything else in R1 and R2 is implemented.
+
+- **R1, the class: a writer that resolves away a linked ancestor (`dest.parent` as root, `resolves_outside`).** One helper, `specyrd_skills.skill_path(repo_root, rel, expected)`, implements the skills-link rule.
+  - When `rel` is under `.agents/skills` or `.claude/skills` and that directory is a symlink, the single component is swapped for its target. The target must be a real directory inside the repository, reached in one hop.
+  - The safe-write rule then applies from `repo_root` to the result.
+  - Refused: a chained link (the target is a link or under one), a dangling one, one leaving the repository, and any other link on the path.
+  - Users: `refresh_stubs._write_if_changed` (the file branch; the `resolves_outside` branch is gone), `specyrd_skills.install_stubs` and `specyrd_skills.ensure_link` (their `resolves_outside` checks are gone), and `specyrd_init` via `check_install_paths` before anything is written.
+  - `mirrored_copies` skips a mirror directory the rule refuses, instead of using `resolves_outside`.
+  - `specyrd_skills` no longer imports `resolves_outside`.
+- **R2, the class: a refusal that leaves exit 0.** One predicate, `managed_block.rule_refusal(outcome)`: a `refused: <why>` outcome of the rule is an error, while `REFUSED` (the `resolves_outside` writers) is not.
+  - `refresh-stubs` (`_exit_on_rule_refusals`) prints `error: <why>` and exits 1.
+  - `upgrade` (`_declined`) prints `error: <why>` and records the entry as action `error`. Like any declined entry it applies nothing, and the rest of the plan applies. `_check` makes the real run and `--dry-run` exit 1 when the plan has an `error` entry.
+  - `specyrd init` exits 1 before writing, through its check of the install paths.
+  - Report lines, as decided: `agents_md_block` / `agent_guide_block` (`REFUSED`), `upgrade_templates`, `refresh_profiles`, and shipped docs.
+  - `copy_missing_docs` is now on the rule (`refused_link`, `safe_write.copy`) and keeps its `skipped` report line. The digest read guard uses `refused_link`. `upgrade.py` no longer imports `resolves_outside`.
+- **Mirror paths.** `make_plan` now maps the mirror's `outside/` paths back in the printed output too, so a refusal reads the same in the dry run and the real run. It does this through `Mirror.real_text` and `_named_in_checkout`.
+- **Docs.**
+  - `docs/install-and-usage.md` names the skills-link exception and the declined entries that stay report lines.
+  - CHANGELOG records the stub and skill-file behaviour change.
+  - Module docstrings updated: `refresh_stubs` (new paragraph), `upgrade` (the exit rule), `upgrade_plan.Entry` (action `error`), `specyrd_skills.ensure_link` and `install_stubs`, `safe_write.check_all` and `exit_on_refusal`.
+- **Maintainer refactor rule (no function more complex than at the merge base `e3246433`):** checked with ruff C901 at `max-complexity=0`, base against now, for every changed module. None is higher. Earlier rounds had pushed 12 functions over, all now back at or below their base:
+  - `refresh_stubs.main` 7 → 5;
+  - in `upgrade`: `_check` 4 → 3, `_report_stubs_declined` 5 → 4, `run_upgrade` 7 → 5;
+  - `refresh_schemas` 7 → 6, `export._write_export` 5 → 4, `digest.cmd_digest` 7 → 5, `init._copy_templates` 6 → 5, `_prune_empty_archive` 7 → 4;
+  - in `managed_block`: `_write` 6 → 4, `apply_managed_block` 6 → 5;
+  - in `upgrade_plan`: `apply_plan` 9 → 8, `make_plan` 5 → 4.
+
+  Tools: `safe_write.check_all` and `exit_on_refusal`, `upgrade_plan.check_changes` (replaces `refused_changes`), and small extractions. There is no `noqa: C901`. New functions are at most 6 (`safe_write._below`, `mkdirs`).
+
+### Probes (fix round 4)
+
+- `resolves_outside` left in the leaf's writers, by `grep`: only `managed_block` (defines it), `agents_md_block`, `agent_guide_block` (through `managed_block` non-strict), `upgrade_templates` and `refresh_profiles._contained`, as A1 allows. None in `specyrd_skills`, `refresh_stubs` or `upgrade`.
+- In-repo skills-directory link, both directions (`.agents/skills → .claude/skills` and back): `test_m13_7_notices` layouts still write (dry and real).
+- A stub under a linked parent that is not a skills directory (generic pack): error, exit 1, nothing written through it (`generic-dir-linked`, dry and real).
+- Skills link that is chained, dangling, or outward (outward and back in): error naming the link, exit 1 (`test_only_an_in_repo_skills_directory_link_is_written_through`, 8 rows).
+- refresh-stubs and specyrd init with a stub, skill file or `.claude/skills` linked out (`test_prerelease_files`): exit 1 with `error: <path> is a symlink`. `AGENTS.md` linked out (init) stays a report line with exit 0.
+- upgrade real and `--dry-run` with a canonical skill linked outside (`test_upgrade_plan_parity`): both exit 1. The rest of the plan applies, and the trees match between dry and real. The manifest drops the skill in both. The refusal line is identical in both, now that `outside/` is mapped back.
+- `rule_refusal` against `REFUSED`: the `agents-md-linked-outside` parity row still exits 0. The `CLAUDE.md` alias rows are unchanged.
+- An ignore file refused for a link (strict managed block) under upgrade is a `refused:` outcome, so it is an `error`. That is the same class, and ignore files are not on the maintainer's report-line list.
+- Full suite: 6001 passed. `ruff check specy_road tests scripts`: pass. `specy-road file-limits`: pass.
+
 ## Touch zones
 
 All edits are inside the listed zones. No file outside them needed changing, and no new module beyond `specy_road/safe_write.py` (already listed). `specy-road file-limits` passes.
@@ -210,4 +255,9 @@ All edits are inside the listed zones. No file outside them needed changing, and
   - `init_project._scaffold`: the generated-file check under `--force` (R2 class).
   - `upgrade._check`: returns the failing step (R2).
   - Tests: re-entry cases in `test_dot_dot_out_of_the_root_is_refused`; the `dry-run-in-repo-link` row and the exit-1 rows in `test_upgrade.py`; the `gitignore-in-repo-link` row; the `init --force` expectation.
+- Fix round 4:
+  - Helpers: `specyrd_skills.skill_path`, `SKILLS_DIRS` and `check_install_paths` (the skills-link rule); `managed_block.rule_refusal` (the R2 predicate); `safe_write.refused`, `check_all` and `exit_on_refusal` (consolidation).
+  - Extractions to stay within the complexity rule: `upgrade._declined`, `refresh_stubs._exit_on_rule_refusals`, `digest_cli._write_output`, and `managed_block._read`, `_plain_write` and `_strict_write`.
+  - `upgrade_plan`: `check_changes`, `Mirror.real_text`, `_named_in_checkout`.
+  - Tests: in `test_m13_7_notices`, `test_only_an_in_repo_skills_directory_link_is_written_through` replaces the two tests whose expectations the decision reverses. The `test_prerelease_files` refresh and specyrd rows expect exit 1. The `test_upgrade_plan_parity` canonical-skill row and `test_sol_f2` expect exit 1 and the refusal line. The digest checkout test now goes through `main`.
 - Mocks: `os.chmod` (monkeypatch, restored) in the swap test; `sys.argv` for `export_roadmap_md.main`. No call counts or order are asserted.
