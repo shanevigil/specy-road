@@ -19,6 +19,7 @@ import pytest
 
 from specy_road.on_complete_pickup import print_orchestration_hint
 from tests.helpers import DOGFOOD, REPO, script_subprocess_env
+
 THEIRS = b"someone else's file\n"
 
 
