@@ -62,12 +62,44 @@
   commit-message checks (`calls[1][2]`) follow the existing test's own pattern for the message pickup builds, the
   behaviour under test, with git faked.
 
+## Fix round 2 (review at e7f7f381, gpt-6.1-sol-low)
+
+- **R1 — class: committed policy of the wrong shape reaching code that assumes structure.** One bounded rule, in
+  the one reader every path uses (`policy_parts`, docstring): `roster` is null or a list of mappings and `policy` is
+  null or a mapping; anything else raises `PolicyUnreadable`. `substitutions` and the review switch are hashed and
+  compared as written (their change lines need no structure). `_pin_state` now also computes the change lines, so
+  every read of committed policy sits inside one `PolicyUnreadable` boundary for the gate, finish and accept-policy
+  (accept-policy used to call `change_lines` outside its try). The `isinstance(e, dict)` filters in `change_lines`
+  are gone, now that the rule guarantees mappings. At claim the same rule refuses pickup (exit 1, no registry write).
+  Limit (documented): roster entries are keyed by `id`; duplicate ids collapse in the change lines, but the digest
+  still differs and the fallback line names it.
+- **R2 — class: a multi-change diagnostic flattened onto one line.** The problem is now a header line, one indented
+  line per change, and the accept-policy hint on its own line, in the gate (`problems()`), `mark-implementation-
+  reviewed`, handoff/review list and finish. accept-policy already printed one line per change.
+- **R3 — class: asserting a position in a mocked git call list.** With a committed policy, the pickup test now runs
+  real git and reads the registration commit back (`git log --grep` on the subject): subject, blank line, trailer
+  with the digest at the commit claimed from. The no-commit case keeps the pre-existing test's own assertion as it
+  was before this leaf.
+
+## Probes (fix round 2)
+
+- `policy: 1` committed after the claim: gate problem "policy is not a mapping" (was AttributeError); red-green 1 failed before.
+- `roster: [1]` committed after the claim: gate problem "roster is not a list of mappings"; red-green failed before.
+- Same shapes at claim time: `pinned_message` exits 1 before `register_claim` (same `PolicyUnreadable` path as a parse error).
+- Same shapes through `review accept-policy`: caught by its `PolicyUnreadable` handler (change lines now inside `_pin_state`), "nothing was written".
+- Same shapes through finish: `pin_holds_or_exit` → `pin_problem` → one boundary; exit 1, no traceback.
+- `substitutions` and the review switch of any shape: only `_encode`d and compared, no structural access — no crash path.
+- Whole file not a mapping or not parsing: already `PolicyUnreadable` in `_yaml_at` (round 0 rows still pass).
+- Two changes at once (roles + `policy.reviewers_required`): each on its own line in the gate problem; red-green failed before.
+- Other call-position asserts added by this leaf: the pinned pickup case now reads git; tests/test_review_policy_pin.py has none.
+
 ## Final touch zones
 
 As listed in the brief plus `tests/test_enforced_rules_pointers.py`. No other path changed.
 
 ## Verification
 
+- Fix round 2: targeted 159 passed; `ruff check specy_road tests scripts` clean; file-limits OK.
 - Fix round 1: targeted 156 passed; `ruff check specy_road tests scripts` clean; file-limits OK.
 - `pytest -n 4` targeted (pin, pickup, rules budgets, AGENTS block, file limits, gate, mark-reviewed, delegate,
   ready-author, gate agreement): 153 passed. Full suite `pytest -n 4`: 5714 passed.
@@ -80,6 +112,7 @@ As listed in the brief plus `tests/test_enforced_rules_pointers.py`. No other pa
 - `_yaml_at` + `PolicyUnreadable` — strict read (committed_yaml returns `{}` on a parse error, which must never hash as empty).
 - `pinned_message` — the pickup call site's trailer; exits 1 on an unparsable policy before any registry write.
 - `pinned_message` no-HEAD guard — a repo with no commit has nothing to pin (keeps existing pickup tests exact).
+- `policy_parts` shape rule (fix round 2, R1) — roster a list of mappings, policy a mapping, else `PolicyUnreadable`.
 - `pin_of` — trailer lookup on the newest registration commit (startswith, so the CI-skip suffix matches).
 - `change_lines` (+ fallback line) — A2's per-change lines; fallback so a digest change is never reported with no line.
 - `read_acceptance`/`acceptance_path` — A3 file read with schema check; invalid is a problem, never an acceptance.
@@ -97,5 +130,7 @@ As listed in the brief plus `tests/test_enforced_rules_pointers.py`. No other pa
 - `tests/test_do_next_task_pickup.py`: existing CI-skip-free pickup test parametrized over no commit / pinned /
   unparsable policy (exact trailer through `_finalize_pickup`; exit 1 with the registry and `git log` unchanged —
   fix round 1, R2; helper `_git_log` reads the real log).
+- Gate table rows (fix round 2): policy not a mapping, roster not a list of mappings, one line per change.
+- Pickup test pinned case runs real git and reads the claim commit back (fix round 2, R3).
 - Acceptance table rows (fix round 1, R1): malformed, schema-invalid and other-node files with the policy unchanged.
 - `tests/test_enforced_rules_pointers.py`: two budget constants raised with comments (maintainer-approved).
