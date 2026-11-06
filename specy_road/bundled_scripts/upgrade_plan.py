@@ -28,6 +28,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from specy_road.ignore_report import scratch_git_env
+
 State = tuple | None   # ("file", size, mtime_ns, mode) | ("link", text) | ("dir",) | ("other",) | None (absent)
 
 
@@ -128,7 +130,7 @@ class Mirror:
             if os.path.realpath(dst) != str(mapped):
                 dst.unlink()
                 os.symlink(mapped, dst)
-        subprocess.run(["git", "init", "-q", str(self.repo)], check=False, capture_output=True)
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=False, capture_output=True, env=scratch_git_env())
         return self
 
     def _copy_dir(self, src: Path, dst: Path) -> None:

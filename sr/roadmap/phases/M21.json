@@ -156,7 +156,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.16_upgrade-scratch-git-and-regen_8177b36c-9fac-49f6-9017-a21798bb3630.md",
       "sibling_order": 14,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "upgrade --dry-run never touches the real repo under GIT_DIR, and a real upgrade regenerates drifted generated files",
       "touch_zones": [
         "specy_road/bundled_scripts/upgrade.py",
@@ -385,7 +385,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.24_claude-reviewer-schema-and-error_4b5ad55d-b776-4380-b12b-1fedd636c687.md",
       "sibling_order": 22,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review delegate runs a Claude Code reviewer: the inline --json-schema carries no $schema, and a failed run names the harness's error",
       "touch_zones": [
         "specy_road/worker_adapter_claude.py",
@@ -417,7 +417,10 @@
         "specy_road/review_answer.py",
         "tests/test_review_answer.py",
         "docs/orchestration-reviewer-output.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_review_record_write.py",
+        "tests/test_review_record_write_closure.py",
+        "tests/test_review_delegate.py"
       ],
       "type": "task"
     },

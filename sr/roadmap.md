@@ -162,7 +162,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.13` | move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit | task | Agentic-led | Complete |
 | `M21.14` | finish resolves roadmap chunk conflicts the branch only inherited | task | Agentic-led | Complete |
 | `M21.15` | Cursor workers launch sandboxed without --force unless the roster opts in | task | Agentic-led | Complete |
-| `M21.16` | upgrade --dry-run never touches the real repo under GIT_DIR, and a real upgrade regenerates drifted generated files | task | — | Not Started |
+| `M21.16` | upgrade --dry-run never touches the real repo under GIT_DIR, and a real upgrade regenerates drifted generated files | task | — | Complete |
 | `M21.17` | Writers refuse a symlinked target that leads out of the directory they own: init's generated files, review refusal and packet | task | — | Complete |
 | `M21.18` | A review deferral counts only when its marker is bound to the decision review defer recorded for it and its RCA | task | — | Complete |
 | `M21.19` | apply --dry-run rehearses on a scratch copy whose links are rebased, so no rehearsal can move or change a live file | task | — | Complete |
@@ -170,7 +170,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.21` | review delegate validates the reviewer command as prompt --channel cli does, and the model check splits on newlines only | task | — | Complete |
 | `M21.22` | Small rc4 code fixes: adapter docstring, dead outline writers, pickup hint ignored, land: local wording, unused upgrade helper | task | — | Complete |
 | `M21.23` | rc4 doc corrections on WIP: refresh-profiles default, no private roster ids, exact managed-block markers, reviewer mode, file-cap CHANGELOG entry | task | — | Complete |
-| `M21.24` | review delegate runs a Claude Code reviewer: the inline --json-schema carries no $schema, and a failed run names the harness's error | task | — | Not Started |
+| `M21.24` | review delegate runs a Claude Code reviewer: the inline --json-schema carries no $schema, and a failed run names the harness's error | task | — | Complete |
 | `M21.25` | review delegate reads a reviewer's answer when narration precedes its final JSON object | task | — | Not Started |
 | `M21.26` | The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model | task | — | Not Started |
 | `M21.27` | review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer | task | — | Not Started |
