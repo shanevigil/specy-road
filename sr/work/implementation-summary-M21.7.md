@@ -188,6 +188,26 @@ The 16 table rows:
 - harness file, hook and env bin: unreadable, dangling link, link loop.
 - git config include: unreadable, link loop.
 
+## Fix round 6 (coordinator; Sol R1)
+
+The coordinator merged WIP into the branch before this round (1b7c23db).
+
+- **R1, class: a git-read steering value compared after text decoding, so not byte-exact.** `blobs()` hashed `git cat-file` output that `git_subprocess.run` had decoded as text with newlines normalized. An LF→CRLF-only policy commit on the local integration branch therefore left the value unchanged.
+
+  Now one `git ls-tree -z --full-tree refs/heads/<integration_branch> -- <the three policy paths>` reads each file's blob object id: from the object store, byte-exact, with no hook run and no text decoding. The value is `blob:<oid>`. A missing branch (`show-ref --verify` fails) gives `absent`; a tree git cannot list gives the round-5 unreadable value, so a `check_error`. This is still git asked after the git-half gate (`rest_changes` with `git_ok`), as before. It is one git call where there were three.
+
+## Probes (round 6)
+
+- The new `CASES` row `policy_blob_crlf_only_from_second_worktree` (dev's `roadmap/git-workflow.yaml` with every LF turned CRLF and nothing else, committed from the second worktree with no fetch), run against the round-5 `steering_paths.py` in a scratch worktree: it fails there and passes now. Through the existing table it asserts exactly one `steering_file` finding, class `policy_blob`, path `dev:roadmap/git-workflow.yaml`, with before ≠ after.
+- Every other comparison in the change, for decoded or normalized input:
+  - In-tree, review, hook and env_bin files: `_value` hashes raw bytes, streamed.
+  - git config: the raw-byte digest is compared; the decode is only for parsing the watched keys and includes.
+  - `.git` and `commondir` are decoded only to locate directories.
+  - The porcelain `_content` hashes bytes.
+  - Registry rows are compared as parsed `entries` items, a semantic comparison by A1's definition ("entries items whose node_id is another leaf"). A CRLF-only edit to `registry.yaml` changes no row.
+- The existing `policy_blob_from_second_worktree` row and the clean turn (no policy change) are still exactly as before: `blob:<oid>` is stable when nothing changes.
+- `scripts/check_clones.py`: 9 current, 9 baselined, 0 new. Targeted tests: 204 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
+
 ## Added
 
 - `specy_road/steering_paths.py`: the list, `Scope` and snapshots per class, `changes`, `SteeringWatch` with `git_changes`, `rest_changes` and `without_steering_paths`, and `config_values`, a no-git config reader. Required by A1 and A2.
@@ -204,4 +224,5 @@ The 16 table rows:
 - Fix round 3: `git_config_text.git_reads` (git, at turn start only) and `Scope.git_known` (R1); `steering_paths._resolved`, which never raises; the CRLF line in `parse_config`. Tests: the `crlf_continuation` shape in `HOOKS_CONFIGS`, and the fsmonitor test parametrized over `snapshot` (`taken` / `unavailable`; the latter makes the public `steering_paths.file_snapshot` raise with monkeypatch, R2).
 - Fix round 4: no new helper. `_value` now carries the link-resolution rule and `_env_bin`'s copy of it was removed. Test: the `unchanged_symlink_written_through` shape in `HOOKS_CONFIGS`, with `DEFAULT_HOOKS` naming the two shapes where git uses the default directory.
 - Fix round 5: `steering_paths.guarded`, `unreadable`, `_error`, `_walk`, `_list`, `parse_bytes`, `_digest`, `_config_file`, `_git_top`, `_registry_rows`, `Scope.problems`, `ERROR` and `MAX_PARSE_BYTES` (the one rule). `read_chain` gained a `read` parameter and returns exceptions. `worker_turn_check.steering_error` and `SteeringWatch.link_errors`. Test: the 16-row table (`UNREADABLE_ROWS`, with `_unreadable_as` and `_where` helpers).
+- Fix round 6: no new helper. `blobs` reads blob ids. Test: the `policy_blob_crlf_only_from_second_worktree` `CASES` row, with `_commit_policy_from_second(crlf_only=True)`.
 - `tests/test_finish_work_cleanup._config_on_dev`: keeps the changed test under the 80-line function cap, which the fixture fix above would otherwise have exceeded.
