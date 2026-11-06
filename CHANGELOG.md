@@ -13,6 +13,13 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `review delegate` and `prompt --role reviewer --channel cli --run` on a
+  Claude Code reviewer pass the inline `--json-schema` without its top-level
+  `$schema` (Claude Code 2.1.318 rejected the draft 2020-12 reference, so every
+  such review failed); `review-output.schema.json` keeps `$schema` for Codex
+  and agy. A failed reviewer turn with no parsed error now names the last
+  non-blank line of its log span (cut to 200 characters) in both the reason
+  and `attempts[].error`, instead of `no error text`.
 - Security: no writer follows a symlink out of the directory it owns.
   `init project` treats a dangling `roadmap.md` or `roadmap-context.md` link
   as present (skipped without `--force`), and with `--force` lists a link out
