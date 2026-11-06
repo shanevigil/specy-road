@@ -211,7 +211,7 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 | `decision` | Architecture decision block (see below). |
 | `notes` | Free-form prose; rendered in exported markdown Notes section. |
 
-**Dropped status:** `Cancelled` is no longer a valid `status`. To retire a feature, remove the node (for example `specy-road archive-node <id> --hard-remove` after team agreement) or set an appropriate status such as **Complete** / **Blocked** with notes.
+**Dropped status:** `Cancelled` is no longer a valid `status`. To retire a feature, remove the node with `specy-road remove-node <id>` (or `archive-node <id> --hard-remove` after team agreement) or set an appropriate status such as **Complete** / **Blocked** with notes.
 
 **Retiring finished work is a different operation.** To get completed milestones out of the working tree without deleting anything, use `specy-road archive <id>` — it moves the subtree into `roadmap/archive/`, drops its chunk from `manifest.json`'s `includes`, and restores byte-for-byte on demand. Live nodes may keep depending on archived work; see [Archiving](archiving.md).
 
@@ -379,7 +379,7 @@ specy-road export --check
 
 ## Tooling
 
-PMs may use **`specy-road` CRUD commands** (`list-nodes`, `show-node`, `add-node`, `edit-node`, `archive-node`, `apply`) to change chunk files; see [PM workflow](pm-workflow.md#get-the-latest-roadmap-import--sync). The dashboard and `finish-this-task` update **JSON** chunks in place.
+PMs may use **`specy-road` CRUD commands** (`list-nodes`, `show-node`, `add-node`, `edit-node`, `remove-node`, `archive-node`, `apply`) to change chunk files; see [PM workflow](pm-workflow.md#get-the-latest-roadmap-import--sync). The dashboard and `finish-this-task` update **JSON** chunks in place.
 
 ### Batch edits (`apply`)
 

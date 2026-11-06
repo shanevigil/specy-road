@@ -87,7 +87,7 @@ _CRUD_COMMANDS = (
     "add-node",
     "edit-node",
     "set-gate-status",
-    "archive-node",
+    "archive-node", "remove-node",
     "list-dependencies",
     "set-dependencies",
     "add-dependency",

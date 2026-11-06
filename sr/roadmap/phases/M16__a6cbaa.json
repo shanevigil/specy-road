@@ -333,7 +333,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.4_remove-node_f8ad690d-5f67-4493-bd07-62324d09cdb2.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "remove-node deletes an empty never-started node and names every blocker otherwise",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_delete.py",
