@@ -9,9 +9,10 @@ output (``review delegate`` and ``prompt --channel cli`` pass the log after the 
   (a truncated event, stray text) is a rerun request. A row with an ``end`` type requires it inside the final turn;
 * its **last terminal message** is the answer, and the only one: a final turn with none, or whose last one carries
   no answer (``null``, an error result), is a rerun request. An earlier answer is never used instead;
-* that message must be **one complete JSON object**: its whole text (surrounding whitespace aside) parses as one
-  object, or the harness's own structured output is one. Empty text, prose, a code fence, a second object, a
-  nested or partial object, or anything else is a rerun request; nothing is salvaged from inside it;
+* that message must **end with one complete JSON object**, or the harness's own structured output is one. For a
+  text message, text before the last top-level object is ignored and only whitespace may follow it (M21.25):
+  empty text, no object, text after the object (a code fence's closing line included), an unfinished object,
+  excessive nesting, or anything else is a rerun request; an object nested in another value is never the answer;
 * the object must pass :func:`output_schema` (``null`` optional fields removed first), else a rerun request.
 
 An output with none of the row's event types is the ``generic`` row's: the whole output is the one terminal
@@ -22,6 +23,7 @@ message (a ``channels.cli`` wrapper, Antigravity's ``agy --output-format json`` 
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cache
@@ -196,13 +198,44 @@ def _final_answer(adapter: Adapter, text: str, output: Path | None) -> dict[str,
     return _answer(saved if saved.strip() else body, envelope=False)
 
 
+_OPENER = re.compile(r"[{\[]")
+
+
+def _last_object(text: str) -> dict[str, Any] | Rerun:
+    """A text message's answer: the last top-level JSON object, followed only by whitespace. The text is scanned left
+    to right for complete JSON values, each value's interior skipped (a nested object is never the answer); a ``{``
+    or ``[`` that starts no value is prose, one whose decode fails only because the text ends is refused. Nesting
+    too deep for the decoder is refused, as :func:`loads_untrusted` refuses it."""
+    decoder, i, last, end = json.JSONDecoder(), 0, None, 0
+    while (m := _OPENER.search(text, i)) is not None:
+        try:
+            value, i = decoder.raw_decode(text, m.start())
+        except RecursionError:
+            return Rerun(RERUN + "the final message nests JSON too deeply to read")
+        except json.JSONDecodeError as e:
+            if e.pos >= len(text) or e.msg.startswith("Unterminated string"):
+                return Rerun(RERUN + "the final message ends inside an unfinished JSON object")
+            i = m.start() + 1
+            continue
+        if isinstance(value, dict):
+            last, end = value, i
+    if last is None:
+        return Rerun(RERUN + "the final message holds no JSON object")
+    if text[end:].strip():
+        return Rerun(RERUN + "the final message does not end with a JSON object")
+    return last
+
+
 def _answer(body: Any, *, envelope: bool) -> dict[str, Any] | Rerun:
     """``body`` checked as the answer: one complete JSON object (``envelope``: an ``agy`` / ``--output-format json``
-    envelope's ``structured_output``) that passes :func:`output_schema`."""
+    envelope's ``structured_output``; else a text message's last object, :func:`_last_object`) that passes
+    :func:`output_schema`."""
     if isinstance(body, str):
         if not body.strip():
             return Rerun(RERUN + "the final message is empty")
-        body = _object(body)
+        body = _object(body) if envelope else _last_object(body)
+        if isinstance(body, Rerun):
+            return body
         if body is None:
             return Rerun(RERUN + "the final message is not one complete JSON object")
         if envelope and "structured_output" in body:
