@@ -23,13 +23,14 @@ choose which models implement and which review. specy-road launches them,
 keeps track of them while you work, and holds each leaf until the reviews you
 asked for approve it.
 
-rc3 added the evidence the review gate checks for itself (test integrity,
-tests at risk, red-green runs and land checks), reviewers that run like
-workers, and the worktree-first worker loop that early users asked for. rc4
-makes it steadier: a fresh project passes its own checks, you can restructure
-the outline from the CLI without renumbering the rest of the roadmap,
-landings recover from inherited conflicts, and workers and reviewers launch
-with explicit permissions and authentication, with reviewers read-only.
+The release candidates exist to find and fix problems while specy-road is used
+on real projects. rc3 and rc4 fixed what that testing turned up: a fresh
+project now passes its own checks, landings recover from inherited conflicts,
+and workers and reviewers launch with explicit permissions and authentication.
+Work on the roadmap continued alongside the testing, and what landed is
+included in this build, such as the test evidence the review gate checks for
+itself, reviewers that run like workers in read-only mode, and commands to
+restructure the outline without renumbering the rest of the roadmap.
 
 It's worth upgrading if more than one agent or vendor works in your repo, or
 if you want independent review before work lands. The review gate is a

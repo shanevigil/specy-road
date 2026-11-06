@@ -18,51 +18,53 @@ Install with the sha256-checked wheel recipe in
 [`docs/install-release-candidates.md`](docs/install-release-candidates.md)
 (never TestPyPI as an index); wheel sha256 `<from A.3 step 4>`.
 
-Stabilises rc3 for adopters: a fresh project passes its own checks, the
-outline can be restructured from the CLI without renumbering the rest of the
-roadmap, landings recover from inherited conflicts and failed pushes, workers
-and reviewers launch with explicit permissions and authentication, and
-reviewer runs are read-only. Existing adopters run `specy-road upgrade`
-(then `specy-road refresh-schemas` for the new optional keys) and read
-*Upgrading* in [`docs/whats-new.md`](docs/whats-new.md#specy-road-031):
-`move-node`, `refresh-profiles`, the escalation rules and reviewer runs change
-behaviour.
+The release candidates exist to find and fix problems while specy-road is used
+on real projects; rc4 fixes what testing rc3 turned up. Work on the roadmap
+continued in parallel, and the features that landed during this cycle are
+included in this build. Existing adopters run `specy-road upgrade` (then
+`specy-road refresh-schemas` for the new optional keys) and read *Upgrading*
+in [`docs/whats-new.md`](docs/whats-new.md#specy-road-031): `move-node`,
+`refresh-profiles`, the escalation rules and reviewer runs change behaviour.
 
-### Headline changes vs v0.3.1-rc3
+### Fixed since rc3 (found in real-world testing)
 
 - **A new project passes its own checks.** `init project` writes `roadmap.md`
   and `roadmap-context.md`, so `export --check` and `digest --check` pass on a
   fresh scaffold; `doctor` works in a repository with no remote; help text
   names only commands a pip install has.
-- **Restructure the outline without renumbering everything.** `move-node`
-  changes only the moved subtree's ids (`--id`, `--fill-gaps`,
-  `--renumber-outline`); new `indent`, `outdent`, `group-nodes`,
-  `remove-node` and `rename-refs`; `apply` accepts the same restructure
-  operations in one validated transaction; `validate` catches cycles made
-  through inherited group dependencies.
 - **Landing recovers on its own.** `finish-this-task` resolves roadmap chunk
-  conflicts the branch only inherited, undoes its bookkeeping commit when a
-  landing fails, and a failed roadmap write restores every file;
+  conflicts the branch only inherited and undoes its bookkeeping commit when a
+  landing fails, and a failed roadmap write restores every file.
   `reconcile-branch` clears the generated-file conflicts parallel PR-mode
   leaves get.
 - **Workers and reviewers launch explicitly.** Cursor workers run sandboxed
-  without `--force` unless the roster opts in with `cursor_force`; Claude Code
+  without `--force` unless the roster opts in with `cursor_force`. Claude Code
   workers and reviewers set their mode explicitly and check authentication
-  before launch, so a subscription login works; a delegated reviewer always
-  runs a named model; `prompt --channel cli` launches nothing without `--run`;
-  harness binaries off `PATH` and large prompts no longer fail a launch.
-- **Reviewer runs are read-only.** The reviewer returns structured output and
-  specy-road files the review record; a refused record leaves a trace; review
-  usage is visible per round; `review record` refuses joined observations only
-  when a joined part names a defect.
-- **The review loop knows when to stop.** `policy.max_fix_rounds` and
-  `review defer` move new-input-class findings to a follow-up leaf; converging
-  loops are not escalated; fix rounds ask for a whole-class audit; unplanned
-  test removals need a reviewer check.
+  before launch, so a subscription login works. A delegated reviewer always
+  runs a named model, `prompt --channel cli` launches nothing without `--run`,
+  and harness binaries off `PATH` and large prompts no longer fail a launch.
 - **Rosters and installs you can check.** `models roster` writes roster
-  entries, `orchestrate plan --roster-from-worktree` tries one before it lands,
-  `refresh-profiles` installs only rostered profiles, and `doctor` says which
-  install is running.
+  entries, `orchestrate plan --roster-from-worktree` tries one before it
+  lands, `refresh-profiles` installs only rostered profiles, and `doctor` says
+  which install is running.
+- **The review loop knows when to stop.** `policy.max_fix_rounds` and `review
+  defer` move findings of a new input class to a follow-up leaf, converging
+  loops are not escalated, fix rounds ask for a whole-class audit, and
+  unplanned test removals need a reviewer check. `review record` refuses
+  joined observations only when a joined part names a defect, and a refused
+  record leaves a trace.
+- **Dependency cycles through group dependencies are caught.** `validate` and
+  `add-dependency` refuse a cycle made through an inherited group dependency.
+
+### Also in this build (roadmap work that continued alongside testing)
+
+- **Restructure the outline without renumbering everything.** `move-node`
+  changes only the moved subtree's ids (`--id`, `--fill-gaps`,
+  `--renumber-outline`). New commands: `indent`, `outdent`, `group-nodes`,
+  `remove-node` and `rename-refs`; `apply` runs the same operations as one
+  validated batch.
+- **Reviewer runs are read-only.** The reviewer returns structured output,
+  specy-road files the review record, and review usage is visible per round.
 
 ### Added
 
