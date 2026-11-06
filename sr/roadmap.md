@@ -194,7 +194,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.40` | upgrade's scratch git drops every GIT_ variable, runs no hook, and times out | task | — | Not Started |
 | `M21.41` | The notes rules name every clause break the checker uses; rework docstring and verify tests fixed | task | — | Complete |
 | `M21.42` | review delegate also gives one repair turn when the final answer does not parse, not only when review record refuses it | task | — | Complete |
-| `M21.43` | digest refuses cleanly when the roadmap manifest is missing, like export --check | task | — | Not Started |
+| `M21.43` | digest refuses cleanly when the roadmap manifest is missing, like export --check | task | — | Complete |
 | `M21.44` | A model observed to bypass specy-road's guidance is excluded from executor and reviewer roles when signed reviews are on, unless the roster entry opts in at its own risk | task | Agentic-led | Not Started |
 | `M22` | rc5 fixes: defects found while preparing rc5 | phase | — | Not Started |
 | `M22.1` | group-nodes accepts a new parent id held by one of the nodes it groups | task | — | Not Started |
