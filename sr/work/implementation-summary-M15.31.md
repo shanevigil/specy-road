@@ -33,7 +33,7 @@ specy-road file-limits
 - `requested_model` / `reported_model` on RUN dict — A3 audit fields.
 - `model_check` passed to `file_review` in `delegate()` — A3 record + gate exclusion.
 - `tests/test_review_delegate.py` — four tests for A1–A3 (no-profile argv, refusal, dynamic launch, mismatch + `review list`).
-- `tests/test_dynamic_routing_reviewers.py` — A4 unit test for claude-code `api_id: unknown`; relaxed gate problem assertion for no-model entries.
+- `tests/test_dynamic_routing_reviewers.py` — A4 unit test for claude-code `api_id: unknown`; relaxed gate problem assertion for no-model entries; fresh-process routing import regression (fix round 2).
 - Docs paragraph and routing table row in `docs/orchestration-models.md` — review delegate + any-harness dynamic routing.
 
 ## Probes
@@ -41,9 +41,15 @@ specy-road file-limits
 - `review_delegate_harness.py` vs pre-split `review_delegate.py` `_Harness` (parent of 44f67d0a): all six launch-path comments restored; no other `_Harness` lines lost comments.
 - `review_delegate.py` after the split: launch-path logic lives only in the harness module; inline comments on `_attempts`, `delegate`, and `_close` unchanged from merge base.
 - `orchestration_routing.py` / `orchestration_config.py`: new routing code, not a move from an commented block; no launch-path comments applicable.
+- `orchestration_config` ↔ `orchestration_routing` import order (fix round 2): module-level imports removed from routing; fresh-process `python -c` import of routing alone succeeds.
+- `review_delegate_harness.py` ↔ `review_delegate.py`: harness imports config helpers only inside functions except the cycle-safe `HarnessSetupError` path; no config re-import of harness at module level.
 - `docs/orchestration-models.md` and tests/: no module-split comment class; spot-checked for duplicated launch-path prose — none added.
 - `ruff check` on `delegate` vs merge base `8f684959`: complexity back within limit after extracting `_delegate_locked`.
 
 ## Fix round 1 (grok-4.7-low)
 
 Restored launch-path comments in `review_delegate_harness.py` when `_Harness` moved for file-limits (chore default command, harness_bin, Codex `-o` output, RUN log, symlink replacement, custom-command resume, structured-output flags).
+
+## Fix round 2 (gpt-6.1-sol-low)
+
+Lazy-import `harness_model` and `roster_entry` inside `orchestration_routing` so importing routing before `orchestration_config` finishes re-exporting it does not raise `ImportError`.
