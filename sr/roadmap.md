@@ -175,7 +175,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.26` | The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model | task | — | Complete |
 | `M21.27` | review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer | task | — | Not Started |
 | `M21.28` | finish-this-task refuses an invalid configuration before any bookkeeping write and never leaves a half-mutated tree | task | — | Not Started |
-| `M21.29` | worker terminate also ends processes the harness started in their own session | task | — | Not Started |
+| `M21.29` | worker terminate also ends processes the harness started in their own session | task | — | Complete |
 | `M21.30` | A leaf's review policy is pinned at claim: the gate and finish refuse a roster, policy or review-switch change made on the integration branch after it until a human accepts it | task | — | Not Started |
 | `M21.31` | review record files only under the caller's own model: a filing from another harness or worker is refused, and a hand-filed record needs an attestation and counts only when signed or the policy allows it | task | — | Not Started |
 | `M21.32` | session end ends only your own session: another agent's live record needs --force from a terminal, and the guard's refusal names the rule | task | — | Not Started |

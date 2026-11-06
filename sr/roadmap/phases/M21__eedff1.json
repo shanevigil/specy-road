@@ -41,7 +41,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.29_terminate-ends-escaped-descendants_b5ff0d94-fd70-4f7e-92de-5e67baf71f1d.md",
       "sibling_order": 27,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "worker terminate also ends processes the harness started in their own session",
       "touch_zones": [
         "specy_road/worker_process.py",

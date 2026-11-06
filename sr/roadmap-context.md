@@ -114,7 +114,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.26` The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model `gate-excludes-ready-authors` — task — **Complete**
   - `M21.27` review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer `filings-take-the-review-lock` — task — **Not Started**
   - `M21.28` finish-this-task refuses an invalid configuration before any bookkeeping write and never leaves a half-mutated tree `finish-validates-before-bookkeeping` — task — **Not Started**
-  - `M21.29` worker terminate also ends processes the harness started in their own session `terminate-ends-escaped-descendants` — task — **Not Started**
+  - `M21.29` worker terminate also ends processes the harness started in their own session `terminate-ends-escaped-descendants` — task — **Complete**
   - `M21.30` A leaf's review policy is pinned at claim: the gate and finish refuse a roster, policy or review-switch change made on the integration branch after it until a human accepts it `review-policy-pinned-at-claim` — task — **Not Started**
   - `M21.31` review record files only under the caller's own model: a filing from another harness or worker is refused, and a hand-filed record needs an attestation and counts only when signed or the policy allows it `review-record-files-only-as-the-caller` — task — **Not Started**
   - `M21.32` session end ends only your own session: another agent's live record needs --force from a terminal, and the guard's refusal names the rule `session-end-only-your-own` — task — **Not Started**
@@ -270,7 +270,6 @@ Do not pick these up.
 - `M21.25` on `feature/rm-reviewer-answer-after-prose` since 2026-11-05
 - `M21.27` on `feature/rm-filings-take-the-review-lock` since 2026-11-05
 - `M21.28` on `feature/rm-finish-validates-before-bookkeeping` since 2026-11-05
-- `M21.29` on `feature/rm-terminate-ends-escaped-descendants` since 2026-11-05
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
@@ -279,11 +278,11 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 29 | 1 | 3.93 | 68% | 34 | 4 |
+| `docs` **flagged** | 30 | 1 | 3.83 | 66% | 34 | 4 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 48 | 2 | 3.65 | 65% | 50 | 7 |
-| `tests` **flagged** | 49 | 2 | 3.64 | 66% | 50 | 7 |
-| `CHANGELOG.md` | 16 | 0 | 1.75 | 25% | 16 | 0 |
+| `specy_road` **flagged** | 48 | 1 | 3.60 | 64% | 50 | 7 |
+| `tests` **flagged** | 49 | 1 | 3.58 | 65% | 50 | 7 |
+| `CHANGELOG.md` | 17 | 0 | 1.71 | 24% | 16 | 0 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 0 | 1.00 | 0% | 0 | 0 |
