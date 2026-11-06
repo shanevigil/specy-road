@@ -208,6 +208,22 @@ The coordinator merged WIP into the branch before this round (1b7c23db).
 - The existing `policy_blob_from_second_worktree` row and the clean turn (no policy change) are still exactly as before: `blob:<oid>` is stable when nothing changes.
 - `scripts/check_clones.py`: 9 current, 9 baselined, 0 new. Targeted tests: 204 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
 
+## Fix round 6, correction (coordinator: A2 value format)
+
+A2 requires `steering_file` before and after values to be SHA-256 hex digests. Round 6 had recorded `blob:<oid>`. Byte-exact detection is kept, and the value now has the right format:
+- `blobs()` still asks `git ls-tree -z --full-tree` which blob each policy file is at the local integration branch tip.
+- `_blob_sha` then reads that blob's raw bytes with `git cat-file blob <oid>` through `subprocess.run` in bytes mode (`git_subprocess.run` decodes text), with no decoding or newline normalization, and hashes them with `hashlib.sha256`.
+- A blob git cannot give is unreadable under the round-5 rule.
+
+To keep `steering_paths.py` at 395 lines after the new helper, the git-config key semantics (`GIT_CONFIG_KEYS`, `_watched`, `watched_values`) moved to `git_config_text.py`, beside the parser. The docs' `policy_blob` row now states the value.
+
+## Probes (round 6 correction)
+
+- The extended per-class test, which now asserts the `policy_blob` value format (64 lowercase hex characters, or `absent` for the roster file that is new on `dev`; both sides hex for the CRLF row), run against the committed round-6 code (0b28fc26, `blob:<oid>`): both `policy_blob` rows fail there and pass now. The LF→CRLF row still yields exactly one `policy_blob` finding.
+- Other `steering_file` values against A2's format: files are SHA-256 (streamed); links are `link:<text>`, plus `@<sha256>` for a regular-file target; git config is a SHA-256 followed by the changed watched keys; registry rows are the SHA-256 of the row's JSON. A1/A2's list (sha256, `link:<target>`, `absent`, git_config values) covers these; `@<sha256>` was added in round 4 for write-through detection.
+- No remaining user of `GIT_CONFIG_KEYS` or `watched_values` outside the two modules (grep).
+- Targeted tests: 204 passed. `scripts/check_clones.py`: 9 current, 9 baselined, 0 new. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
+
 ## Added
 
 - `specy_road/steering_paths.py`: the list, `Scope` and snapshots per class, `changes`, `SteeringWatch` with `git_changes`, `rest_changes` and `without_steering_paths`, and `config_values`, a no-git config reader. Required by A1 and A2.
@@ -224,5 +240,5 @@ The coordinator merged WIP into the branch before this round (1b7c23db).
 - Fix round 3: `git_config_text.git_reads` (git, at turn start only) and `Scope.git_known` (R1); `steering_paths._resolved`, which never raises; the CRLF line in `parse_config`. Tests: the `crlf_continuation` shape in `HOOKS_CONFIGS`, and the fsmonitor test parametrized over `snapshot` (`taken` / `unavailable`; the latter makes the public `steering_paths.file_snapshot` raise with monkeypatch, R2).
 - Fix round 4: no new helper. `_value` now carries the link-resolution rule and `_env_bin`'s copy of it was removed. Test: the `unchanged_symlink_written_through` shape in `HOOKS_CONFIGS`, with `DEFAULT_HOOKS` naming the two shapes where git uses the default directory.
 - Fix round 5: `steering_paths.guarded`, `unreadable`, `_error`, `_walk`, `_list`, `parse_bytes`, `_digest`, `_config_file`, `_git_top`, `_registry_rows`, `Scope.problems`, `ERROR` and `MAX_PARSE_BYTES` (the one rule). `read_chain` gained a `read` parameter and returns exceptions. `worker_turn_check.steering_error` and `SteeringWatch.link_errors`. Test: the 16-row table (`UNREADABLE_ROWS`, with `_unreadable_as` and `_where` helpers).
-- Fix round 6: no new helper. `blobs` reads blob ids. Test: the `policy_blob_crlf_only_from_second_worktree` `CASES` row, with `_commit_policy_from_second(crlf_only=True)`.
+- Fix round 6: `blobs` finds blobs with `ls-tree`; the correction adds `steering_paths._blob_sha` (SHA-256 of a blob's raw bytes) and moves `GIT_CONFIG_KEYS`, `_watched` and `watched_values` to `git_config_text.py` (file cap). Test: the `policy_blob_crlf_only_from_second_worktree` `CASES` row, with `_commit_policy_from_second(crlf_only=True)`.
 - `tests/test_finish_work_cleanup._config_on_dev`: keeps the changed test under the 80-line function cap, which the fixture fix above would otherwise have exceeded.
