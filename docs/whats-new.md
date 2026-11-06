@@ -37,36 +37,38 @@ if you want independent review before work lands. The review gate is a
 
 ### Highlights
 
-- **A review gate before finish.** A leaf finishes only when reviews from
-  the models your policy names approve the exact commit under review, and a
-  milestone gets one full review of its combined change.
-  [Read more](orchestration-review.md)
-- **Evidence, not claims.** `integrity`, `impact`, `review red-green` and
-  `review check-pre-existing` tell the gate what a leaf did to the tests, and
-  `land_check_cmd` runs on the merge commit before anything is pushed.
-  [Read more](orchestration-review.md#test-integrity-in-the-review-packet)
-- **Workers on other harnesses, in their own worktrees.** `worker delegate`
-  runs a leaf's executor on Claude Code, Codex or Cursor; `review delegate`
-  does the same for a reviewer; `worker sync --wait` tells you when either
-  has something to say. [Read more](orchestration-workers.md)
-- **Harness facts and safer shared checkouts.** Model profiles and executor
-  commands are rendered from a sourced `harness-facts.yaml`, guard hooks ship
-  per harness, and a repository lock guards pickup and finish.
-  [Read more](orchestration-models.md#harness-facts-what-refresh-profiles-renders)
+- **A review gate before finish.** You choose which models must review a leaf.
+  The leaf finishes only when they approve the exact commit under review, and
+  a milestone gets one full review of its combined change. [Read
+  more](orchestration-review.md)
+- **Test evidence for reviewers.** `integrity`, `impact` and `review
+  red-green` show what a leaf did to the tests, `review check-pre-existing`
+  separates old failures from new ones, and `land_check_cmd` runs your checks
+  on the merge commit before anything is pushed. [Read
+  more](orchestration-review.md#test-integrity-in-the-review-packet)
+- **Hand a leaf to an agent.** `worker delegate` starts an executor on Claude
+  Code, Codex or Cursor in the leaf's own worktree, and `review delegate`
+  starts a reviewer the same way. `worker sync --wait` tells you when either
+  one needs you. [Read more](orchestration-workers.md)
+- **Shared checkouts stay safe.** Guard hooks for each harness and a
+  repository lock stop agents from tripping over each other during pickup and
+  finish. Model profiles and launch commands come from one sourced file,
+  `harness-facts.yaml`. [Read
+  more](orchestration-models.md#harness-facts-what-refresh-profiles-renders)
 - **Restructure the outline without renumbering everything.** `move-node`,
-  `indent`, `outdent` and `group-nodes` change only the moved subtree's ids,
-  `remove-node` deletes a never-started node, `rename-refs` fixes prose that
-  cites old ids, and `apply` runs all of them as one validated batch.
+  `indent`, `outdent` and `group-nodes` change only the ids of what you move.
+  `remove-node` deletes a node that never started, `rename-refs` updates notes
+  that cite old ids, and `apply` runs a batch of these as one checked change.
   [Read more](roadmap-authoring.md#batch-edits-apply)
-- **Brainstorm v2 with structured promote.** Rounds, panel shards,
-  quote-checked evidence (web pages or your own files), decisions as
-  first-class outcomes, and promote plans that land ideas where you intend.
+- **Brainstorm v2.** Run several rounds of ideas with a panel of models, check
+  every quoted source against its page or your own files, record decisions,
+  and promote the ideas you keep into the roadmap exactly where you want them.
   [Read more](brainstorming.md)
-- **One set of agent rules everywhere.** specy-road's rules live in
-  `.specyrd/AGENTS.md`; `AGENTS.md` keeps a short stub with the rules that
-  prevent damage, `CLAUDE.md` imports the rules file, your team's additions go
-  in `.specyrd/AGENTS.team.md`, and a context meter counts what each harness
-  injects. [Read more](optional-ai-tooling-patterns.md)
+- **One set of agent rules for every harness.** specy-road's rules now live in
+  `.specyrd/AGENTS.md`. Your `AGENTS.md` keeps a short stub with the safety
+  rules, `CLAUDE.md` imports the full set, your team's own rules go in
+  `.specyrd/AGENTS.team.md`, and a context meter shows how much each harness
+  loads. [Read more](optional-ai-tooling-patterns.md)
 
 ### Review gate and hand-offs
 
