@@ -107,6 +107,7 @@ entries:
       - CHANGELOG.md
       - specy_road/bundled_scripts/do_next_task.py
       - tests/test_do_next_task_pickup.py
+      - tests/test_enforced_rules_pointers.py
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
