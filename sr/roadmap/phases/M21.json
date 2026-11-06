@@ -165,7 +165,8 @@
         "tests/test_upgrade_preview.py",
         "tests/test_upgrade.py",
         "docs/install-and-usage.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/upgrade_generated.py"
       ],
       "type": "task"
     },
