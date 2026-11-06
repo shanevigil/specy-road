@@ -43,6 +43,24 @@ Merge-induced: `specy_road/cli.py` went to 401/400 lines after the merge (WIP br
 - **Fix:** `rehearsal_root` now builds its scratch root with `_scratch_root` (imported locally, to avoid the `roadmap_crud_ops` import cycle; `roadmap_crud_dependency_ops.py` unchanged, clone baseline unchanged), then calls `_rebase_graph_symlinks`. The underscore import is the one the coordinator asked for (product-to-product, no test touches it). `_scratch_root` copies `roadmap/`, `planning/` and every planning sheet's top folder, so `_rebase_graph_symlinks` now rebases links in whichever top-level folders the scratch root holds as real directories, instead of a fixed `roadmap`/`planning` pair. Dropped the now-unused `shutil`, `tempfile` and `_GRAPH_TOPS`.
 - **Probes:** `python scripts/check_clones.py`: 9 current, 9 baselined, 0 new. `tests/test_lean_gates.py` + remove-node/CLI-help/crud tests: 163 passed. GUI six-file set: 99 passed. Tests importing `roadmap_crud_dependency_ops` / `apply`: 31 passed (rehearsal shares their helper, unchanged). `ruff`, `file-limits`: OK. All four symlink-layout cases of `test_dry_run_agrees_with_removal_on_in_repo_symlinks` still pass.
 
+## Coordinator class round: live path containment (on `30d4107f`)
+
+- **Finding (Sol R1, third dry-run symlink case):** with `planning/` an absolute link to a sibling directory, dry-run exited 0 (the scratch root copied the linked tree in, so the sheet looked internal) while real removal exited 1 (`escapes repository root`).
+- **Class:** the scratch rehearsal loses the live tree's path-containment rules. Any path the removal touches that escapes the live repo can look internal once it has been copied into the scratch root.
+- **One rule (docstrings of `remove_node_blockers` and `remove_roadmap_node`):** every path the removal reads or writes (`roadmap/`, `planning/`, `roadmap/manifest.json`, the registry, every manifest include, the node's planning sheet), resolved against the **live** repo, must stay inside it. Any that escapes is a blocker, `path <rel> resolves outside the repository: <resolved>`. It is appended to the full blocker list, so it is checked before any write or scratch copy, in both modes and for `archive-node --hard-remove` / GUI DELETE (same function). The rehearsal only ever operates on validated paths. New helper `_paths_escaping_repo`.
+- **Behaviour change (real mode):** a removal through an escaping `roadmap/` link used to succeed and write outside the repo. It is now refused with exit 1 and nothing written.
+- **Tests:** the per-case symlink tests are replaced by one table-driven public CLI test, `test_remove_node_symlink_layouts`. Rows: `planning/` escaping, `roadmap/` escaping, an absolute in-repo directory link, and a claimed node whose sheet link escapes. Each row runs in dry-run and real mode and asserts the exit code, blocker output (including the claim alongside the escape) and byte preservation of repo plus outside tree, or removal for the eligible real row. The earlier absolute-chunk-file and planning-sheet-to-in-repo-docs cases were dropped as directed.
+- **Probes:**
+  - Red-green: on `30d4107f`'s module the six escaping rows fail and the two in-repo rows pass.
+  - `python scripts/check_clones.py`: 0 new.
+  - `tests/test_lean_gates.py` + remove-node/CLI-help/crud tests: 167 passed.
+  - GUI six-file set: 99 passed.
+  - Importers of the changed modules (including `roadmap_crud_dependency_ops`) + brief: 778 passed.
+  - `ruff`, `file-limits`: OK.
+  - Missing `planning/` or sheet: skipped by the existence check, so it is not a blocker.
+  - Dangling escaping link: flagged, because non-strict resolve gives its target.
+- **R2:** environmental; the GUI results are the ones specy-road recorded in READY (same `--run` as last round).
+
 ## Touch zones (final list)
 
 Brief zones; `tests/test_roadmap_crud.py` / `tests/test_generate_brief.py` for registry helper only.
@@ -115,6 +133,8 @@ Fix round 5 test additions:
 - No new helpers or branches in product code; the blocker check moved from `_commit_remove` to the top of `remove_roadmap_node`, and dry-run's sheet pre-resolution was removed.
 
 Clone-gate round: no helpers, branches or tests added; `rehearsal_root`'s own copy loop was removed in favour of `roadmap_crud_dependency_ops._scratch_root`.
+
+Class round: `_paths_escaping_repo` (containment rule, R1 class); `test_remove_node_symlink_layouts` with layout helpers `_move_out_and_link`, `_planning_dir_escapes`, `_roadmap_dir_escapes`, `_in_repo_absolute_dir_link`, `_claimed_sheet_escapes` (replaces `test_dry_run_agrees_with_removal_on_in_repo_symlinks` and its helpers).
 
 ### Mocks
 - none

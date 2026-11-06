@@ -227,81 +227,74 @@ def test_refused_remove_node_on_blockers_preserves_tree(tmp_path: Path) -> None:
     assert _tree_bytes(tmp_path) == before
 
 
-def _link_chunk_file(repo: Path) -> None:
-    chunk = repo / "roadmap" / "phases" / "T.json"
-    storage = repo / "roadmap" / "T-storage.json"
-    storage.write_bytes(chunk.read_bytes())
-    chunk.unlink()
-    chunk.symlink_to(storage.resolve())
+_SHEET_M99_2 = "M99.2_two_10000000-0000-4000-8000-000000009903.md"
+_CLAIM = "registry claim codename 'two', branch 'feature/rm-two'"
 
 
-def _link_chunk_dir(repo: Path) -> None:
+def _move_out_and_link(repo: Path, rel: str) -> None:
+    """Move ``repo/rel`` beside the repo and leave an absolute link in its place."""
+    inside = repo / rel
+    outside = repo.parent / "outside" / inside.name
+    outside.parent.mkdir(exist_ok=True)
+    inside.rename(outside)
+    inside.symlink_to(outside, target_is_directory=outside.is_dir())
+
+
+def _planning_dir_escapes(repo: Path) -> None:
+    _move_out_and_link(repo, "planning")
+
+
+def _roadmap_dir_escapes(repo: Path) -> None:
+    _move_out_and_link(repo, "roadmap")
+
+
+def _in_repo_absolute_dir_link(repo: Path) -> None:
     phases = repo / "roadmap" / "phases"
     phases.rename(repo / "roadmap" / "storage")
     phases.symlink_to((repo / "roadmap" / "storage").resolve(), target_is_directory=True)
 
 
-_SHEET_M99_2 = "M99.2_two_10000000-0000-4000-8000-000000009903.md"
-
-
-def _link_sheet_to(repo: Path, target: Path) -> None:
-    sheet = repo / "planning" / _SHEET_M99_2
-    target.parent.mkdir(exist_ok=True)
-    target.write_bytes(sheet.read_bytes())
-    sheet.unlink()
-    sheet.symlink_to(target.resolve())
-
-
-def _link_planning_sheet_outside_graph(repo: Path) -> None:
-    _link_sheet_to(repo, repo / "docs" / _SHEET_M99_2)
-
-
-def _claim_and_link_sheet_outside_repo(repo: Path) -> None:
+def _claimed_sheet_escapes(repo: Path) -> None:
     write_registry_claim(repo, "M99.2", "two", "feature/rm-two", "Pat")
-    _link_sheet_to(repo, repo.parent / "outside" / _SHEET_M99_2)
+    _move_out_and_link(repo, f"planning/{_SHEET_M99_2}")
 
 
+@pytest.mark.parametrize("dry_run", [True, False], ids=["dry-run", "real"])
 @pytest.mark.parametrize(
-    ("link_layout", "exit_code", "stderr_needle"),
+    ("layout", "exit_code", "needles"),
     [
-        (_link_chunk_file, 0, ""),
-        (_link_chunk_dir, 0, ""),
-        (_link_planning_sheet_outside_graph, 1, ""),
+        (_planning_dir_escapes, 1, ["path planning resolves outside the repository"]),
+        (_roadmap_dir_escapes, 1, ["path roadmap resolves outside the repository"]),
+        (_in_repo_absolute_dir_link, 0, []),
         (
-            _claim_and_link_sheet_outside_repo,
+            _claimed_sheet_escapes,
             1,
-            "registry claim codename 'two', branch 'feature/rm-two'",
+            [_CLAIM, f"path planning/{_SHEET_M99_2} resolves outside the repository"],
         ),
     ],
-    ids=[
-        "absolute-chunk-file",
-        "absolute-chunk-dir",
-        "planning-sheet-outside-graph",
-        "claimed-sheet-outside-repo",
-    ],
+    ids=["planning-dir-escapes", "roadmap-dir-escapes", "in-repo-abs-dir-link", "claimed-sheet-escapes"],
 )
-def test_dry_run_agrees_with_removal_on_in_repo_symlinks(
-    tmp_path: Path, link_layout, exit_code: int, stderr_needle: str
+def test_remove_node_symlink_layouts(
+    tmp_path: Path, layout, exit_code: int, needles: list[str], dry_run: bool
 ) -> None:
+    """Every path removal touches must stay inside the live repo; both modes agree."""
     repo = tmp_path / "repo"
     repo.mkdir()
     crud_fixture_repo(repo)
-    link_layout(repo)
-    before = _tree_bytes(repo)
-    argv = ["--repo-root", str(repo), "remove-node", "M99.2"]
-    r = run_crud(repo, *argv, "--dry-run")
-    assert r.returncode == exit_code, r.stderr + r.stdout
-    assert stderr_needle in r.stderr
-    assert ("would remove node M99.2" in r.stdout) == (exit_code == 0)
-    assert _tree_bytes(repo) == before
-    assert any(n["id"] == "M99.2" for n in load_roadmap(repo)["nodes"])
+    layout(repo)
+    before = _tree_bytes(tmp_path)
+    argv = ["--repo-root", str(repo), "remove-node", "M99.2", *(["--dry-run"] if dry_run else [])]
     r = run_crud(repo, *argv)
     assert r.returncode == exit_code, r.stderr + r.stdout
-    assert stderr_needle in r.stderr
-    removed = not any(n["id"] == "M99.2" for n in load_roadmap(repo)["nodes"])
-    assert removed == (exit_code == 0)
-    if exit_code:
-        assert _tree_bytes(repo) == before
+    for needle in needles:
+        assert needle in r.stderr
+    still_there = any(n["id"] == "M99.2" for n in load_roadmap(repo)["nodes"])
+    if exit_code or dry_run:
+        assert _tree_bytes(tmp_path) == before
+        assert still_there
+    else:
+        assert not still_there
+    assert ("would remove node M99.2" in r.stdout) == (dry_run and not exit_code)
 
 
 def test_archive_hard_remove_refuses_registry_claim(tmp_path: Path) -> None:

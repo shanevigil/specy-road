@@ -22,14 +22,39 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
 from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
-from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load_json_chunk
+from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load_json_chunk, manifest_includes
 from specy_road.bundled_scripts.roadmap_gui_lib import registry_by_node_id
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.registry_yaml import read_registry, registry_path
 
 
+def _paths_escaping_repo(root: Path, planning_dir: object) -> list[str]:
+    """Paths a removal reads or writes that resolve outside the live repository."""
+    rels = ["roadmap", "planning", "roadmap/manifest.json", registry_path(root).relative_to(root).as_posix()]
+    rels += [f"roadmap/{inc}" for inc in manifest_includes(root) if isinstance(inc, str)]
+    if isinstance(planning_dir, str) and planning_dir.strip():
+        with contextlib.suppress(ValueError):
+            rels.append(normalize_planning_dir(planning_dir.strip()))
+    live = root.resolve()
+    out: list[str] = []
+    for rel in rels:
+        path = root / rel
+        resolved = path.resolve()
+        if (path.exists() or path.is_symlink()) and live != resolved and live not in resolved.parents:
+            out.append(f"path {rel} resolves outside the repository: {resolved.as_posix()}")
+    return out
+
+
 def remove_node_blockers(root: Path, node_id: str) -> list[str]:
-    """Every reason ``node_id`` cannot be removed with ``remove-node`` / hard-remove."""
+    """Every reason ``node_id`` cannot be removed with ``remove-node`` / hard-remove.
+
+    One containment rule covers every layout: each path the removal reads or
+    writes (``roadmap/`` and ``planning/``, the manifest, the registry, every
+    included chunk and the node's planning sheet), resolved against the **live**
+    repository, must stay inside it; any that escapes is a blocker. Checked
+    before any write or dry-run scratch copy, so the rehearsal only ever works on
+    already-validated paths.
+    """
     nodes = load_roadmap(root)["nodes"]
     target = next((n for n in nodes if n.get("id") == node_id), None)
     if target is None:
@@ -50,7 +75,7 @@ def remove_node_blockers(root: Path, node_id: str) -> list[str]:
             blockers.append(f"child node {n['id']} has parent_id {node_id!r}")
         if target_key and target_key in (n.get("dependencies") or []):
             blockers.append(f"node {n['id']} depends on node_key of {node_id!r}")
-    return blockers
+    return blockers + _paths_escaping_repo(root, target.get("planning_dir"))
 
 
 def can_hard_remove(root: Path, node_id: str) -> tuple[bool, str]:
@@ -163,8 +188,10 @@ def remove_roadmap_node(root: Path, node_id: str, *, dry_run: bool = False) -> N
     """Remove a never-started leaf and its planning sheet when nothing blocks it.
 
     Eligibility is checked first, on the live graph with no self-heal pass,
-    before any chunk or planning-sheet path is resolved or anything is copied,
-    so every blocker is reported in both modes whatever the layout. Real removal
+    before anything is written or copied, so every blocker is reported in both
+    modes whatever the layout. That includes the containment rule: every path the
+    removal reads or writes must resolve inside the live repository (see
+    :func:`remove_node_blockers`); the rehearsal only ever sees validated paths. Real removal
     commits through :class:`~specy_road.bundled_scripts.roadmap_chunk_atomic.AtomicWritePlan`.
     ``--dry-run`` rehearses the same commit on :func:`rehearsal_root` so the live
     tree is not written or unlinked; graph-tree symlinks into the repo are rebased
