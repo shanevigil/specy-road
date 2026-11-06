@@ -44,6 +44,7 @@ from specy_road.git_subprocess import git_text
 from specy_road.orchestration_pinned import pinned_config
 from specy_road.review_delegate_harness import HarnessSetupError, _Harness
 from specy_road.review_delegate_packet import ensure_packet
+from specy_road.review_eligible import writers
 from specy_road.review_files import reviews_dir
 from specy_road.review_answer import stream_lines
 from specy_road.review_model_check import check_note, check_run, rostered
@@ -260,6 +261,8 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
             t = resolve_target(repo_root, node_id, ref)
         except ReviewTargetError as e:
             raise DelegateError(str(e)) from None
+        if wrote := writers(repo_root, t.node["id"], (t.entry or {}).get("branch")).get(model):   # before any write
+            raise DelegateError(f"{model} wrote {wrote[0]} on {node_id}; the executor never reviews its own leaf")
     entry = _entry(repo_root, model)
     cwd = (worktree or Path(git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root)).resolve()
     try:

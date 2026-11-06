@@ -13,6 +13,13 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- **Security:** the review gate no longer counts a record from a model that
+  filed a READY on the leaf (the executor or a fix author), whatever the
+  record's `authored_fix`, verdict or signature; it is listed as ineligible
+  with "the executor never reviews its own leaf", and `specy-road review
+  delegate --model <that model>` is refused before any packet, lock or run
+  record. The exclusion is by model id: another model of the same family still
+  counts. READY authorship is cooperative attestation (an unsigned file).
 - `specy-road review delegate` checks a roadmap reviewer's command as
   `prompt --channel cli` does, before the preflight and before any run record
   or log: a roster `channels.cli` that passes a bypass flag (`--force`,

@@ -7,7 +7,7 @@ reports. A review record counts only when all of these hold:
   including a result for every acceptance id in the brief);
 * its ``commit`` is the commit under review — any later commit makes it stale,
   which is how "a substantive fix restarts both reviews" needs no extra state;
-* it is for this node, and no other record from the same model already counts;
+* it is for this node, its model wrote no READY on the leaf, and no other record from that model already counts;
 * its model is rostered with the ``reviewer`` role, or is the substitute in an active substitution covering this
   node — its family always comes from the roster, never from the file, and under ``reviewers_distinct_families``
   an approval counts only from an entry whose routing is fixed or pinned (:func:`routing_problem`);
@@ -16,12 +16,11 @@ reports. A review record counts only when all of these hold:
 * it attests a fresh session when policy requires one (``reviewer_resumed_delta`` waives
   that for an approval naming ``delta_from``: :mod:`specy_road.review_resumed_delta`).
 
-Policy is read from ``roadmap/orchestration.yaml`` **as committed on the
-integration branch** (its remote-tracking ref when present), and the gate is on
-when either that branch or the working tree turns it on: a feature branch
-cannot lower its own bar. Which branch that is comes from the committed
-``git-workflow.yaml`` on the remote's default branch (at HEAD only in a repo
-with no remote), and a branch that cannot be found fails closed (:func:`policy_source`).
+Policy is read from ``roadmap/orchestration.yaml`` **as committed on the integration branch** (its remote-tracking
+ref when present), and the gate is on when either that branch or the working tree turns it on: a feature branch
+cannot lower its own bar. Which branch that is comes from the committed ``git-workflow.yaml`` on the remote's
+default branch (at HEAD only in a repo with no remote), and a branch that cannot be found fails closed
+(:func:`policy_source`).
 
 The gate passes when no counted record blocks and the counted approvals reach ``reviewers_required`` — counted by
 distinct family when ``reviewers_distinct_families`` is set. With ``policy.integrity_gate`` on, each test-integrity
@@ -56,6 +55,7 @@ from specy_road.review_gate_ready import (  # noqa: F401 — public names re-exp
 from specy_road.review_signing import (  # noqa: F401 — SigningError re-exported
     SigningError, notes_problem, verify)
 from specy_road.review_deferral import apply_deferrals
+from specy_road.review_eligible import reviews_to_judge
 from specy_road.review_model_check import model_mismatch_problem
 from specy_road.review_bookkeeping import CARRY_NOTE, count_at_later_commit, only_planning_or_review_bookkeeping_since
 from specy_road.review_files import (HUMAN, PACKET_NAME, ReviewFile, executor_blocked_gate_problems, latest_ready,
@@ -318,7 +318,7 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
     result = GateResult(node_id=node["id"], commit=full_sha(repo_root, commit),
                         required=int(policy["reviewers_required"]),
                         distinct_families=bool(policy["reviewers_distinct_families"]), config_error=err, config=config)
-    for review in list_reviews(repo_root, node["id"], acceptance_ids(node)):
+    for review in reviews_to_judge(repo_root, node, branch, result.ineligible):   # READY authors never count
         if review.ok and review.data.get("node_id") != node["id"]:
             review.errors.append(f"node_id is {review.data.get('node_id')!r}, not {node['id']!r}")
         if not review.ok:
