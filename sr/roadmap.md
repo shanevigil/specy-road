@@ -9,77 +9,85 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | ID | Title | Type | Gate | Status |
 |----|-------|------|------|--------|
 | `M16` | lean core: harden and optimize code and docs, all delivered functionality kept | phase | — | Not Started |
-| `M16.0` | Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs | task | Agentic-led | Not Started |
-| `M16.1` | Parity harness: a review-gate decision table covering every review policy | task | Agentic-led | Not Started |
-| `M16.2` | Baseline metrics, a coverage floor in CI, and the M16 working rules written down | task | Agentic-led | Not Started |
-| `M16.3` | Delete dead and unwired code from a decided list, and add vulture as an advisory CI step | task | Agentic-led | Not Started |
-| `M16.4` | Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers | task | Agentic-led | Not Started |
-| `M16.5` | One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready | task | Agentic-led | Not Started |
-| `M16.6` | The 29 package-imported library modules move out of bundled_scripts | task | Agentic-led | Not Started |
-| `M16.7` | Commands run in the CLI's process: no python -m re-launch, no cwd globals | task | Agentic-led | Not Started |
-| `M16.8` | Ruff quality rule families and the 100-character width with shrink-only baselines, and the consumer file-limit default decided | task | Agentic-led | Not Started |
-| `M16.9` | Fold the cap-driven splits in pickup and finish into their parents | task | Agentic-led | Not Started |
-| `M16.10` | One LLM client module replaces the provider code inside review_node | task | Agentic-led | Not Started |
-| `M16.11` | doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases | task | Agentic-led | Not Started |
-| `M16.12` | upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update | task | Agentic-led | Not Started |
-| `M16.13` | review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session | task | Agentic-led | Not Started |
-| `M16.14` | One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points | task | Agentic-led | Not Started |
-| `M16.15` | Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI | task | Agentic-led | Not Started |
-| `M16.16` | Worker runtime moves into orchestration/workers with import-path edits only | task | Agentic-led | Not Started |
-| `M16.17` | Roster, model profiles, harness facts, orchestrate and role prompts move into orchestration | task | Agentic-led | Not Started |
-| `M16.18` | Shared-checkout guard and session presence move into orchestration | task | Agentic-led | Not Started |
-| `M16.19` | Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings | task | Agentic-led | Not Started |
-| `M16.20` | Review-policy evidence: how often each optional review policy changed a gate outcome | task | Mixed | Not Started |
-| `M16.21` | Fold the review gate and escalation fragments, and mark the policies the evidence did not keep as deprecated | task | Agentic-led | Not Started |
-| `M16.22` | Post-fix refactor gate: ready and the review packet report any complexity growth, and policy can block on it | task | Agentic-led | Not Started |
-| `M16.23` | Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them | task | Agentic-led | Not Started |
-| `M16.24` | Tests: files move into unit, flows, cli, gui and repo lanes, moves only | task | Agentic-led | Not Started |
-| `M16.25` | Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it | task | Agentic-led | Not Started |
-| `M16.26` | Tests: public seams replace private-name patches, and no test sleeps on the wall clock | task | Agentic-led | Not Started |
-| `M16.27` | Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold | task | Agentic-led | Not Started |
-| `M16.28` | Tests: a CLI smoke lane of at most 50 subprocess items, everything else in process, suite time halved | task | Agentic-led | Not Started |
-| `M16.29` | Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions | task | Agentic-led | Not Started |
-| `M16.30` | AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer | task | Agentic-led | Not Started |
-| `M16.31` | Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra | task | Agentic-led | Not Started |
-| `M16.32` | suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout | task | Agentic-led | Not Started |
-| `M16.33` | rc5 close: lean metrics measured against the baseline | task | Mixed | Not Started |
-| `M16.34` | Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf | task | Human-led | Not Started |
-| `M16.35` | Git queries and registry I/O go through one helper each | task | Agentic-led | Not Started |
-| `M16.36` | A shrink-only layering gate records the import cycles and package-to-entry-point imports | task | Agentic-led | Not Started |
-| `M16.37` | Break the 45-module import cycle through the graph loader, the brief and validate | task | Agentic-led | Not Started |
-| `M16.38` | Break the 25-module import cycle between roadmap CRUD, worker ops and the chore CLI | task | Agentic-led | Not Started |
-| `M16.39` | Every command exposes build_parser(), imports lazily and shares the common argument helpers | task | Agentic-led | Not Started |
-| `M16.40` | One SpecyError base for the 15 error classes, printed and turned into an exit code once | task | Agentic-led | Not Started |
-| `M16.41` | Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one | task | Agentic-led | Not Started |
-| `M16.42` | Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed | task | Agentic-led | Not Started |
-| `M16.43` | The brainstorm CLI becomes two modules and the three managed-block writers share one engine | task | Agentic-led | Not Started |
-| `M16.44` | Fold the remaining single-importer siblings from the code report's misc list | task | Agentic-led | Not Started |
-| `M16.45` | milestone and planning command groups, and archive --hard-remove replaces archive-node | task | Agentic-led | Not Started |
-| `M16.46` | worker_ops parts and the worker siblings fold into their parents, and the module-class swap goes | task | Agentic-led | Not Started |
-| `M16.47` | One check_assignment decides eligibility for every launch and for the gate | task | Agentic-led | Not Started |
-| `M16.48` | The guard classifier becomes three rule tables with every verdict unchanged | task | Agentic-led | Not Started |
-| `M16.49` | Chore, decision and lesson records share internal adapters and keep their files byte for byte | task | Agentic-led | Not Started |
-| `M16.50` | Grind settings move under grind: in git-workflow.yaml, migrated by upgrade | task | Agentic-led | Not Started |
-| `M16.51` | The review packet fragments fold into review_packet | task | Agentic-led | Not Started |
-| `M16.52` | checks: entries scoped to touch zones block a merge when they fail (held M15.23's purpose) | task | Agentic-led | Not Started |
-| `M16.53` | Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold | task | Agentic-led | Not Started |
-| `M16.54` | Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support | task | Agentic-led | Not Started |
-| `M16.55` | Tests: per-leaf and per-round test files fold into the file for the module or flow they test | task | Agentic-led | Not Started |
-| `M16.56` | Tests: apply the dedupe worklist for review gate | task | Agentic-led | Not Started |
-| `M16.57` | Tests: apply the dedupe worklist for worker | task | Agentic-led | Not Started |
-| `M16.58` | Tests: apply the dedupe worklist for pickup and finish | task | Agentic-led | Not Started |
-| `M16.59` | Tests: apply the dedupe worklist for the rest | task | Agentic-led | Not Started |
-| `M16.60` | Tests: five named properties replace the single-input tests they cover | task | Agentic-led | Not Started |
-| `M16.61` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |
-| `M16.62` | After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims | task | Agentic-led | Not Started |
-| `M16.63` | Roster entries split into core fields and a typed run: block, read in both forms | task | Agentic-led | Not Started |
-| `M16.64` | upgrade migrates rosters to core fields plus run: | task | Agentic-led | Not Started |
-| `M16.65` | End-to-end pass on the toolkit and a feedback-and-fix round before 0.3.1 | task | Human-led | Not Started |
-| `M16.66` | Gate: ready to tag 0.3.1 | gate | Human-led | Not Started |
-| `M16.67` | move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit | task | Agentic-led | Complete |
-| `M16.68` | finish resolves roadmap chunk conflicts the branch only inherited | task | Agentic-led | Complete |
-| `M16.69` | Cursor workers launch sandboxed without --force unless the roster opts in | task | Agentic-led | Complete |
-| `M16.70` | Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships | task | — | Not Started |
+| `M16.1` | Freeze, rules, parity harness and baselines | milestone | — | Not Started |
+| `M16.1.1` | Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs | task | Agentic-led | Not Started |
+| `M16.1.2` | Parity harness: a review-gate decision table covering every review policy | task | Agentic-led | Not Started |
+| `M16.1.3` | Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf | task | Human-led | Not Started |
+| `M16.1.4` | Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions | task | Agentic-led | Not Started |
+| `M16.1.5` | AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer | task | Agentic-led | Not Started |
+| `M16.1.6` | Review-policy evidence: how often each optional review policy changed a gate outcome | task | Mixed | Not Started |
+| `M16.1.7` | Baseline metrics, a coverage floor in CI, and the M16 working rules written down | task | Agentic-led | Not Started |
+| `M16.1.8` | Ruff quality rule families and the 100-character width with shrink-only baselines, and the consumer file-limit default decided | task | Agentic-led | Not Started |
+| `M16.1.9` | Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold | task | Agentic-led | Not Started |
+| `M16.1.10` | Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold | task | Agentic-led | Not Started |
+| `M16.2` | Mechanical clean-up, layering and the in-process CLI | milestone | — | Not Started |
+| `M16.2.1` | Delete dead and unwired code from a decided list, and add vulture as an advisory CI step | task | Agentic-led | Not Started |
+| `M16.2.2` | Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers | task | Agentic-led | Not Started |
+| `M16.2.3` | Git queries and registry I/O go through one helper each | task | Agentic-led | Not Started |
+| `M16.2.4` | One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready | task | Agentic-led | Not Started |
+| `M16.2.5` | The 29 package-imported library modules move out of bundled_scripts | task | Agentic-led | Not Started |
+| `M16.2.6` | A shrink-only layering gate records the import cycles and package-to-entry-point imports | task | Agentic-led | Not Started |
+| `M16.2.7` | Break the 45-module import cycle through the graph loader, the brief and validate | task | Agentic-led | Not Started |
+| `M16.2.8` | Break the 25-module import cycle between roadmap CRUD, worker ops and the chore CLI | task | Agentic-led | Not Started |
+| `M16.2.9` | Commands run in the CLI's process: no python -m re-launch, no cwd globals | task | Agentic-led | Not Started |
+| `M16.2.10` | Every command exposes build_parser(), imports lazily and shares the common argument helpers | task | Agentic-led | Not Started |
+| `M16.2.11` | One SpecyError base for the 15 error classes, printed and turned into an exit code once | task | Agentic-led | Not Started |
+| `M16.3` | Orchestration state model and the cap-driven folds | milestone | — | Not Started |
+| `M16.3.1` | Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI | task | Agentic-led | Not Started |
+| `M16.3.2` | Fold the cap-driven splits in pickup and finish into their parents | task | Agentic-led | Not Started |
+| `M16.3.3` | Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one | task | Agentic-led | Not Started |
+| `M16.3.4` | One LLM client module replaces the provider code inside review_node | task | Agentic-led | Not Started |
+| `M16.3.5` | The brainstorm CLI becomes two modules and the three managed-block writers share one engine | task | Agentic-led | Not Started |
+| `M16.3.6` | Fold the remaining single-importer siblings from the code report's misc list | task | Agentic-led | Not Started |
+| `M16.3.7` | Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed | task | Agentic-led | Not Started |
+| `M16.4` | One command surface and one checks: config (aliases kept for rc5) | milestone | — | Not Started |
+| `M16.4.1` | doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases | task | Agentic-led | Not Started |
+| `M16.4.2` | upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update | task | Agentic-led | Not Started |
+| `M16.4.3` | review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session | task | Agentic-led | Not Started |
+| `M16.4.4` | milestone and planning command groups, and archive --hard-remove replaces archive-node | task | Agentic-led | Not Started |
+| `M16.4.5` | One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points | task | Agentic-led | Not Started |
+| `M16.4.6` | checks: entries scoped to touch zones block a merge when they fail (held M15.23's purpose) | task | Agentic-led | Not Started |
+| `M16.5` | Orchestration subpackage, roster split and review-gate folds | milestone | — | Not Started |
+| `M16.5.1` | Worker runtime moves into orchestration/workers with import-path edits only | task | Agentic-led | Not Started |
+| `M16.5.2` | worker_ops parts and the worker siblings fold into their parents, and the module-class swap goes | task | Agentic-led | Not Started |
+| `M16.5.3` | Roster, model profiles, harness facts, orchestrate and role prompts move into orchestration | task | Agentic-led | Not Started |
+| `M16.5.4` | One check_assignment decides eligibility for every launch and for the gate | task | Agentic-led | Not Started |
+| `M16.5.5` | Roster entries split into core fields and a typed run: block, read in both forms | task | Agentic-led | Not Started |
+| `M16.5.6` | upgrade migrates rosters to core fields plus run: | task | Agentic-led | Not Started |
+| `M16.5.7` | Shared-checkout guard and session presence move into orchestration | task | Agentic-led | Not Started |
+| `M16.5.8` | The guard classifier becomes three rule tables with every verdict unchanged | task | Agentic-led | Not Started |
+| `M16.5.9` | Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings | task | Agentic-led | Not Started |
+| `M16.5.10` | Chore, decision and lesson records share internal adapters and keep their files byte for byte | task | Agentic-led | Not Started |
+| `M16.5.11` | Grind settings move under grind: in git-workflow.yaml, migrated by upgrade | task | Agentic-led | Not Started |
+| `M16.5.12` | Fold the review gate and escalation fragments, and mark the policies the evidence did not keep as deprecated | task | Agentic-led | Not Started |
+| `M16.5.13` | The review packet fragments fold into review_packet | task | Agentic-led | Not Started |
+| `M16.5.14` | Post-fix refactor gate: ready and the review packet report any complexity growth, and policy can block on it | task | Agentic-led | Not Started |
+| `M16.6` | Docs and tests reorganised by topic | milestone | — | Not Started |
+| `M16.6.1` | Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra | task | Agentic-led | Not Started |
+| `M16.6.2` | suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout | task | Agentic-led | Not Started |
+| `M16.6.3` | Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them | task | Agentic-led | Not Started |
+| `M16.6.4` | Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support | task | Agentic-led | Not Started |
+| `M16.6.5` | Tests: files move into unit, flows, cli, gui and repo lanes, moves only | task | Agentic-led | Not Started |
+| `M16.6.6` | Tests: per-leaf and per-round test files fold into the file for the module or flow they test | task | Agentic-led | Not Started |
+| `M16.7` | Test dedupe, public seams, properties and the smoke lane | milestone | — | Not Started |
+| `M16.7.1` | Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it | task | Agentic-led | Not Started |
+| `M16.7.2` | Tests: apply the dedupe worklist for review gate | task | Agentic-led | Not Started |
+| `M16.7.3` | Tests: apply the dedupe worklist for worker | task | Agentic-led | Not Started |
+| `M16.7.4` | Tests: apply the dedupe worklist for pickup and finish | task | Agentic-led | Not Started |
+| `M16.7.5` | Tests: apply the dedupe worklist for the rest | task | Agentic-led | Not Started |
+| `M16.7.6` | Tests: public seams replace private-name patches, and no test sleeps on the wall clock | task | Agentic-led | Not Started |
+| `M16.7.7` | Tests: five named properties replace the single-input tests they cover | task | Agentic-led | Not Started |
+| `M16.7.8` | Tests: a CLI smoke lane of at most 50 subprocess items, everything else in process, suite time halved | task | Agentic-led | Not Started |
+| `M16.8` | rc5 close, alias window, end-to-end pass and the 0.3.1 tag | milestone | — | Not Started |
+| `M16.8.1` | rc5 close: lean metrics measured against the baseline | task | Mixed | Not Started |
+| `M16.8.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |
+| `M16.8.3` | After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims | task | Agentic-led | Not Started |
+| `M16.8.4` | End-to-end pass on the toolkit and a feedback-and-fix round before 0.3.1 | task | Human-led | Not Started |
+| `M16.8.5` | move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit | task | Agentic-led | Complete |
+| `M16.8.6` | finish resolves roadmap chunk conflicts the branch only inherited | task | Agentic-led | Complete |
+| `M16.8.7` | Cursor workers launch sandboxed without --force unless the roster opts in | task | Agentic-led | Complete |
+| `M16.8.8` | Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships | task | — | Not Started |
+| `M16.8.9` | Gate: ready to tag 0.3.1 | gate | Human-led | Not Started |
 | `M17` | 0.3.2: PM GUI shows orchestration and worktree state | phase | Human-led | Not Started |
 | `M17.1` | 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface | gate | Human-led | Not Started |
 | `M18` | Orchestration and review-loop features (after 0.3.1) | phase | — | Not Started |
@@ -129,6 +137,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M19.16` | validate notices sheet acceptance that drifted from the node, and gate dependencies the gate never names | task | Agentic-led | Not Started |
 | `M19.17` | validate notices governance files that require a field validate strips, and names the replacement | task | Agentic-led | Not Started |
 | `M19.18` | A ratified scope boundary in the decisions ledger, with validate and digest notices for phases beyond it | task | Agentic-led | Not Started |
+| `M19.19` | Roadmap guide and template recommend one fixes milestone per release and themed milestones | task | — | Not Started |
 | `M20` | Agent safety and governance posture (after 0.3.1) | phase | — | Not Started |
 | `M20.1` | Posture advisor: plan the M20 leaves from the research | task | Human-led | Not Started |
 | `M20.2` | Probe each reviewer harness for instruction-file leakage into fresh sessions | task | Agentic-led | Not Started |
@@ -145,5 +154,10 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.10` | doctor works in a repo with no remote | task | — | Complete |
 | `M21.11` | Help text names installed commands | task | — | Complete |
 | `M21.12` | A review record is refused for joined observations only when one of them names a defect | task | — | Complete |
+| `M22` | rc5 fixes: defects found while preparing rc5 | phase | — | Not Started |
+| `M22.1` | group-nodes accepts a new parent id held by one of the nodes it groups | task | — | Not Started |
+| `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Not Started |
+| `M22.3` | Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node | task | — | Not Started |
+| `M22.4` | New planning sheets no longer write the node's display id into their body | task | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

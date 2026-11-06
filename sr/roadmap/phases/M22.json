@@ -1,0 +1,136 @@
+{
+  "nodes": [
+    {
+      "codename": "rc5-fixes",
+      "dependencies": [],
+      "id": "M22",
+      "node_key": "8bd87465-78a7-41ee-b934-79f6bbec766c",
+      "planning_dir": "planning/M22_rc5-fixes_8bd87465-78a7-41ee-b934-79f6bbec766c.md",
+      "sibling_order": 15,
+      "status": "Not Started",
+      "title": "rc5 fixes: defects found while preparing rc5",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "acceptance": [
+        "group-nodes --into-new NEW_ID accepts a NEW_ID that one of the listed nodes itself holds: the free-id check ignores the listed nodes' ids. A NEW_ID held by any other node (a descendant of a listed node included), malformed, or not a direct child id of the common parent is refused with today's message, exit 1, nothing written. Final ids are assigned by node_key on the final group topology (members move under a transient parent id that cannot collide, then the new parent and its whole subtree take their final ids in one step), so no destination collides with a descendant of a member not yet moved; the transient id never reaches disk, a sheet path, the printed map or a message; roadmap_outline_ops.py and roadmap_outline_renumber.py are unchanged and plain move-node behaves as today",
+        "tests/test_outline_group_cli.py: siblings M1.1, M1.2 (with child M1.2.1 and a registry claim on M1.2) and M1.3 grouped --into-new M1.2 give M1.1 -> M1.2.1, M1.2 -> M1.2.2, M1.2.1 -> M1.2.2.1 and M1.3 -> M1.2.3; the printed map omits the new parent; every renamed sheet holds its own node's text, the claim's node_id is M1.2.2, the graph validates once, and the same run with --rewrite-refs rewrites prose through that map. --into-new M1.2.1 (a descendant's id) is refused with the direct-child message. A refused case leaves the tree byte-for-byte unchanged",
+        "POST /api/outline/group reaches this through group_nodes with unchanged request and response shapes; tests/test_gui_outline_contract.py gains one case for this input and its existing cases and the PM GUI Python API tests (tests/test_gui_app*.py, tests/test_roadmap_gui_*.py) pass unchanged",
+        "group-nodes --into-new help and the group-nodes rule in docs/roadmap-authoring.md say NEW_ID may be an id one of the listed nodes holds; CHANGELOG [Unreleased] Fixed entry. Out of scope: move-node, indent and outdent, apply (M21.5), a GUI control",
+        "Estimated net line change (informational, not a gate): package about +35, tests about +60, docs about +3"
+      ],
+      "codename": "group-into-member-id",
+      "dependencies": [],
+      "id": "M22.1",
+      "node_key": "8b9893d1-675f-4d25-9d6a-a1f13e9f3f67",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.1_group-into-member-id_8b9893d1-675f-4d25-9d6a-a1f13e9f3f67.md",
+      "sibling_order": 1,
+      "status": "Not Started",
+      "title": "group-nodes accepts a new parent id held by one of the nodes it groups",
+      "touch_zones": [
+        "specy_road/bundled_scripts/roadmap_outline_group.py",
+        "specy_road/bundled_scripts/roadmap_move_node.py",
+        "tests/test_outline_group_cli.py",
+        "tests/test_gui_outline_contract.py",
+        "docs/roadmap-authoring.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "In the transaction that renames a planning sheet (move-node, indent, outdent, group-nodes, the PM GUI move, indent, outdent, group, and reorder with renumber_outline: true), a touch zone equal to that sheet's old path is rewritten to its new path, in the project-relative form (planning/<sheet>) and in the checkout-relative form (<project root>/planning/<sheet>, e.g. sr/planning/...) alike, on the nodes and registry claims the move already rewrites (the move's scope). The existing whole-id-segment rewrites in that scope are preserved (the exact sheet-path rewrite is additional); all other zones remain unchanged",
+        "validate prints one stdout notice line for each literal (non-glob) zone on a live node of any status that names a .md file directly under the planning dir, in either form, that does not exist in the working tree, naming the node, the zone and, when the zone's trailing _<node_key>.md matches a node, that node's current planning_dir. Staged or unstaged makes no difference. The notice never changes the exit code, also under --strict; existing zone diagnostics keep their stream and behaviour. A zone naming an existing sheet, a glob zone, or any other missing path keeps today's handling",
+        "Tests: a move of a node whose zones name its own sheet in both forms plus a docs/<old id>/ zone (and a claim with the same zones) rewrites all of them, and validate prints no stale-sheet notice before or after git add of the rename (existing tracked-file notices may appear before staging); one table of hand-made zones over both forms, Not Started/In Progress/Complete and staged/unstaged gives the notice only for an absent literal sheet path, never for an existing sheet or a planning/*.md glob, and validate --strict still exits 0; a Not Started node with a missing non-sheet zone gets no new notice and empty stderr for that zone. The GUI outline contract test and the PM GUI Python API tests pass unchanged (shapes unchanged; the GUI paths share stage_id_rewrite)",
+        "docs/roadmap-authoring.md (move-node rewrite list and the touch_zones row) states both; CHANGELOG [Unreleased] Fixed entry. Out of scope: rewriting zones on nodes outside the move's scope (the notice reports them), prose (M21.3), decisions (M22.3)",
+        "Estimated net line change (informational, not a gate): package about +50, tests about +80, docs about +4"
+      ],
+      "codename": "move-rewrites-sheet-zones",
+      "dependencies": [
+        "8b9893d1-675f-4d25-9d6a-a1f13e9f3f67"
+      ],
+      "id": "M22.2",
+      "node_key": "d4ee1c66-2780-4b43-b7bd-b9afb89ce0ab",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.2_move-rewrites-sheet-zones_d4ee1c66-2780-4b43-b7bd-b9afb89ce0ab.md",
+      "sibling_order": 2,
+      "status": "Not Started",
+      "title": "A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet",
+      "touch_zones": [
+        "specy_road/bundled_scripts/roadmap_id_rewrite_staging.py",
+        "specy_road/bundled_scripts/roadmap_move_node.py",
+        "specy_road/bundled_scripts/validate_touch_zones.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py",
+        "tests/test_move_node_subtree.py",
+        "tests/test_validate_touch_zones.py",
+        "docs/roadmap-authoring.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Every id-changing move (move-node, indent, outdent, group-nodes, --renumber-outline and the PM GUI move, indent, outdent, group, and reorder with renumber_outline: true) rewrites, in the tracked roadmap/decisions.yaml, the node field of every entry (any kind and status) whose node equals an old id in the move's old -> new map, in the same AtomicWritePlan as the chunk, sheet and registry rewrites, always (not only with --rewrite-refs); each id is looked up once, so chains and swaps stay correct; the file is written only when an entry changed. The ledger is read with safe YAML and checked against the existing decisions schema before any entry is inspected: an unparsable or schema-invalid existing ledger refuses an id-changing move with a ValueError naming it (CLI exit 1, GUI 400 string detail) before any write; a refused move leaves the ledger byte-for-byte unchanged; an absent ledger stays absent",
+        "validate prints one stdout notice (exit code unchanged, also under --strict) listing each open decision or human-action entry (open_questions) and each active preference (active_preferences) in the tracked ledger whose node is a non-empty string naming no live node; entries without node, closed entries and expired preferences are not listed; no ledger, or an unreadable or schema-invalid one, adds nothing beyond today's output",
+        "Tests: a move with the ledger holding an open entry, a closed entry and a preference on moved ids, plus one on an unmoved id, rewrites exactly the moved ones; a swap via --renumber-outline; a move refused by validation, and moves over an invalid-YAML ledger and a sequence-root ledger, each leave the tree byte-for-byte unchanged; one notice table lists an orphan open decision, open human-action and active preference once each and stays silent for a closed entry, an expired preference, a preference without node and a live-node reference, using fixed dates far from expiry or the now parameter, on stdout under --strict. The GUI outline contract test and the PM GUI Python API tests pass unchanged",
+        "docs/roadmap-authoring.md (move-node rewrite list) and docs/orchestration.md (ledger section) state that moves rewrite node and what validate checks; CHANGELOG [Unreleased] Fixed entry. Out of scope: decisions.local.yaml, storing node_key in the ledger, schema changes, rewriting ids inside summary or answer text",
+        "Estimated net line change (informational, not a gate): package about +50, tests about +80, docs about +4"
+      ],
+      "codename": "decisions-follow-moves",
+      "dependencies": [
+        "d4ee1c66-2780-4b43-b7bd-b9afb89ce0ab"
+      ],
+      "id": "M22.3",
+      "node_key": "12d3e989-fce1-4dc5-8994-b865fcbafc24",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.3_decisions-follow-moves_12d3e989-fce1-4dc5-8994-b865fcbafc24.md",
+      "sibling_order": 3,
+      "status": "Not Started",
+      "title": "Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node",
+      "touch_zones": [
+        "specy_road/bundled_scripts/roadmap_id_rewrite_staging.py",
+        "specy_road/bundled_scripts/roadmap_move_node.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py",
+        "specy_road/decisions.py",
+        "tests/test_move_node_subtree.py",
+        "tests/test_decisions.py",
+        "docs/roadmap-authoring.md",
+        "docs/orchestration.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The feature and gate sheet templates' References line 'Roadmap chunk for `{{NODE_ID}}`' no longer contains the display id (for example 'Roadmap chunk: the node this sheet's file name names'); a sheet scaffolded by add-node, scaffold-planning, group-nodes, brainstorm promote or the PM GUI add contains no display id anywhere in its body, and the template's own rule (do not repeat id or node_key in the body) holds",
+        "Tests: group-nodes --into-new M1.9 then move-node M1.9 --id M1.4 leaves a group sheet whose text names neither M1.9 nor M1.4; scaffold-planning for a task and for a gate produces a body without the node id; the three id-presence assertions in tests/test_planning_sheet_bootstrap.py (test_render_feature_sheet_template_substitutes_node_id, test_render_planning_sheet_template_gate_sections, test_ensure_planning_sheet_creates_file_and_sets_planning_dir) become absence assertions keeping their placeholder, path and section checks; tests/test_brainstorm_promote_judgement.py's references assertion points at the new line; the other template tests pass unchanged",
+        "planning_sheet_bootstrap keeps its public functions and signatures (render_planning_sheet_template still takes node_id); CHANGELOG [Unreleased] Fixed entry. Out of scope: rewriting existing sheets (they keep their line; --rewrite-refs or rename-refs fix them), the planning README, any validator",
+        "Estimated net line change (informational, not a gate): templates about 0, package about -2, tests about +25"
+      ],
+      "codename": "sheet-body-without-display-id",
+      "dependencies": [
+        "8b9893d1-675f-4d25-9d6a-a1f13e9f3f67"
+      ],
+      "id": "M22.4",
+      "node_key": "2fd5c912-b8d0-40f4-bf90-7e70a09e6aa1",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.4_sheet-body-without-display-id_2fd5c912-b8d0-40f4-bf90-7e70a09e6aa1.md",
+      "sibling_order": 4,
+      "status": "Not Started",
+      "title": "New planning sheets no longer write the node's display id into their body",
+      "touch_zones": [
+        "specy_road/templates/planning-node/feature-sheet.md.template",
+        "specy_road/templates/planning-node/gate-sheet.md.template",
+        "specy_road/bundled_scripts/planning_sheet_bootstrap.py",
+        "tests/test_planning_sheet_bootstrap.py",
+        "tests/test_outline_group_cli.py",
+        "tests/test_brainstorm_promote_judgement.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    }
+  ]
+}
