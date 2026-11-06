@@ -36,18 +36,38 @@
   `UnicodeDecodeError`). The rule is now one clause: `caller` turns *any* failure to load the record named by
   `SPECY_ROAD_WORKER_ID` into `CallerError` (exit 1, no traceback, nothing written), so no shape of a bad record
   can reach a traceback. Docstring and docs state it.
-- **Class: `--human-filed` text that is not one clean line.** The same audit found U+2028, NUL and an undecodable
-  argv byte (a lone surrogate) accepted. One rule replaces the `\n`/`\r` test: non-blank, `text.splitlines() ==
-  [text]`, and `text.isprintable()`. Limit: a tab is refused too (not printable). Docs and `--help` say "printable".
+- **Class: `--human-filed` text that is not one line.** The same audit found U+2028 accepted. One rule replaces the
+  `\n`/`\r` test: non-blank and `text.splitlines() == [text]`. (Round 1 also added `isprintable()`; round 2 removed
+  it, below.)
 - **A4 delegate row** now uses a codex roster entry, as the brief's table says.
 
+## Fix round 2 (block by gpt-6.1-sol-low at c849d629)
+
+- **Class: the attestation rule refusing text A2 allows.** Round 1's `isprintable()` clause went beyond A2 ("one
+  non-empty, non-whitespace line") and refused a tab, any control character and an undecodable argv byte. The rule is
+  now exactly A2 and nothing more: not blank, and one line by `str.splitlines` (no `\n`, `\r`, U+2028 or other
+  break). Everything else on the line is kept; the stored value is stripped. Docstring, `--help`, docs and the refusal
+  message ("one non-blank line") say the same. Rows: tab, BEL with non-ASCII, and an undecodable byte are filed and
+  counted under the policy; a lone tab is refused as blank.
+
 ## Probes
+
+Round 2:
+
+- `--human-filed 'Alice<TAB>pasted independent review'` (CLI subprocess, `count_human_filed_reviews` on): exit 0, record valid, gate met (test row; red at c849d629).
+- BEL with non-ASCII (`Zoë \x07 by hand`), an undecodable argv byte (`me \xff`), surrounding whitespace: each exit 0, record re-reads valid, gate met (rows for the first three; surrounding whitespace was already a row).
+- NUL in an attestation: not reachable from the CLI (the OS refuses NUL in argv, `ValueError: embedded null byte` before specy-road runs); no row.
+- A lone tab or spaces: refused as blank (rows).
+- The other places the over-strict class could sit: `review-record.schema.json`'s `human_filed` pattern (`^[^\r\n]*\S[^\r\n]*$`) accepts tab and control characters, so it doesn't refuse more than the rule does. The worker-record and marker checks have no text-shape rule. `--help` and docs had the "printable" wording, now removed.
+
+Round 1:
+
 
 - Worker record with bytes `\xff\xfe` (CLI subprocess): before, a `UnicodeDecodeError` traceback; now exit 1, message, review tree unchanged (test row).
 - Worker record YAML with an unhashable complex key: exit 1, no traceback (already wrapped by `load_record`; test row added).
 - Worker record that is a self-referencing YAML alias, and one that is a directory: exit 1, no traceback (probe only).
 - Invalid id `../w-1`, missing record, non-mapping record: exit 1 (existing rows).
-- `--human-filed` with U+2028, NUL or an undecodable argv byte: before, accepted and filed; now exit 1, nothing written (test rows; red at the previous `review_caller.py`, 4 rows, green now).
+- `--human-filed` with U+2028: before, accepted and filed; now exit 1, nothing written (row). (Round 1 also refused NUL and an undecodable byte; round 2 accepts them again, per A2.)
 - `--human-filed` "me\n", "me\r…", empty, whitespace: exit 1 (rows).
 - `orchestration.yaml` with invalid UTF-8 at the integration branch, under a harness marker: no traceback; the caller check skips the unreadable config and the existing "not in the roster" refusal applies.
 - Other undecodable input reaching the change: markers are compared as strings (no decoding); `--model` is matched against the roster only. Nothing else.
@@ -68,7 +88,7 @@ tests` and `specy-road file-limits` pass. Merged `origin/WIP/improvements-0-3-1`
 - `specy_road/review_caller.py` `HARNESS_MARKERS`: one confirmed marker per harness (A1).
 - `review_caller.CallerError`: a `SPECY_ROAD_WORKER_ID` whose record fails to load for any reason becomes exit 1 without a traceback (A1; fix round 1 widened it from `WorkerError`).
 - `review_caller.caller`: worker id ahead of markers; two markers are unidentified (A1).
-- `review_caller._attestation_problem`: one rule for `--human-filed`: present, non-blank, one line by `splitlines`, printable (A2; fix round 1).
+- `review_caller._attestation_problem`: one rule for `--human-filed`: present, non-blank, one line by `splitlines` (A2; fix rounds 1 and 2).
 - `review_caller.refusal`: the worker / harness / unidentified checks and the ignored-flag note (A2).
 - Guard in `cmd_review_record_locked` calling `refusal` before the lock (A2).
 - `--human-filed` argument on `review record` (A2).
@@ -86,7 +106,9 @@ tests` and `specy-road file-limits` pass. Merged `origin/WIP/improvements-0-3-1`
   rows; matching harness with and without the flag; a worker's own model; hand-filed counted only with the policy;
   signed hand-filed counted; delegate of a codex reviewer from a Cursor-marked process (a `FAKE_CODEX` script on
   PATH); rendered paste prompt (A4). Fix round 1 added parametrize rows: invalid-UTF-8 and complex-key worker
-  records; trailing-newline, CR, U+2028, NUL and undecodable-byte attestations.
+  records; trailing-newline, CR and U+2028 attestations. Fix round 2 replaced the NUL and undecodable-byte refusal
+  rows with a lone-tab refusal row, and parametrized the hand-filed counting test over accepted attestations (tab,
+  BEL with non-ASCII, undecodable byte).
 - `tests/test_review_concurrent_writers.py`: the two subprocess filings pass `--human-filed` (they run unidentified).
 - `tests/test_review_record_write.py`: `human_filed` added to the filled-field list.
 - Mocks: none beyond the conftest `refusal` patch.
