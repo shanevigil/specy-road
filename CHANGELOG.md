@@ -55,6 +55,14 @@ body. Keep section bodies focused; link to PRs for detail.
   `validate` no longer reports the starter's `my-executor` placeholder, and an
   unmatched roster id is offered a closest profile only when a name of that
   profile has a similarity ratio of at least 0.6.
+- Doc corrections: `refresh-profiles` is described as copying by default only
+  the missing profiles a roster entry names (`--profiles all` copies every
+  missing one, `--only` adds one); the Cursor sandbox note no longer cites a
+  private roster or decision; the bootstrap prompt gives the exact managed-block
+  markers (`<!-- >>> specy-road managed block — do not edit inside <<< -->` and
+  `<!-- >>> end specy-road managed block <<< -->`); and `review delegate`'s
+  launch step says a `claude-code` reviewer runs bare or explicit, not always
+  bare.
 
 ### Added
 
@@ -124,6 +132,12 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- The toolkit's file cap (`constraints/file-limits.yaml`) went from 400 to
+  1000 lines per file, with a 750-line hard alert that warns and fails only
+  under `specy-road file-limits --strict-hard-alerts`. The per-file overrides
+  that existed only to sit above 400 lines were dropped; the
+  `set_gate_status_fixture` function override and the 1100-line override for
+  the verbatim orchestration proposal stay.
 - Cursor workers launch and resume with `--trust --sandbox enabled` instead of
   `--force --trust`: `--force` force-allowed every command not explicitly
   denied. A roster entry opts back in with `cursor_force: true` (boolean,
