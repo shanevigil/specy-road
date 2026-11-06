@@ -134,3 +134,19 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
+  - codename: session-end-only-your-own
+    node_id: M21.32
+    branch: feature/rm-session-end-only-your-own
+    touch_zones:
+      - specy_road/bundled_scripts/session_cli.py
+      - specy_road/session_presence.py
+      - specy_road/tool_call_guard.py
+      - tests/test_session_end_others.py
+      - tests/test_session_presence.py
+      - docs/orchestration.md
+      - specy_road/templates/specyrd/agents-rules.md
+      - specy_road/templates/specyrd/agents-md-block.md
+      - CHANGELOG.md
+    started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending
