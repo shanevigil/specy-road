@@ -269,6 +269,7 @@ Do not pick these up.
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.25` on `feature/rm-reviewer-answer-after-prose` since 2026-11-05
 - `M21.28` on `feature/rm-finish-validates-before-bookkeeping` since 2026-11-05
+- `M21.33` on `feature/rm-brainstorm-start-is-the-first-call-alone` since 2026-11-05
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
