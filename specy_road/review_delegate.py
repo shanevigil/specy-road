@@ -158,7 +158,9 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
     """Turns until one ends without a capacity error or the retries are spent; returns why it failed, if it did.
 
     A retry resumes the session the harness reported, with the continue prompt; with none reported
-    (the provider refused before the session started) it launches afresh with the full prompt.
+    (the provider refused before the session started) it launches afresh with the full prompt. An attempt launched
+    while the run holds a ``refusal`` is a repair turn's (M21.35: :func:`_repair`, or a ``--resume`` that sends the
+    stored one) and is marked ``repair: true``, capacity retries included.
     """
     reason = ""
     for n in range(retries + 1):
@@ -178,7 +180,7 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
             said = lines[-1][:200] if lines else "no error text"
         run["attempts"].append({"at": _now(), "exit": turn["exit"], "capacity": bool(cap), "error": said[:300] or None,
                                 "log_start": turn["log_start"], "log_end": turn["log_end"],   # the span run_text reads
-                                "log_sha256": turn["log_sha256"]})
+                                "log_sha256": turn["log_sha256"], **({"repair": True} if "refusal" in run else {})})
         if path.is_symlink():   # replaced below, never followed; the tripwire still reports it (review_write_check)
             h.replaced.append(path)
         save_run(path, run)
@@ -227,12 +229,8 @@ def _repair(repo_root: Path, node_id: str, model: str, reviews: Path, h: _Harnes
     run["refusal"] = first.refusal
     prompts = _repair_prompts(repo_root, node_id, model, text, first.refusal)
     session = check_session_id(h.harness, run["session_id"]) if h.can_resume and run["session_id"] else None
-    n = len(run["attempts"])
     before = snapshot(cwd, reviews, model)
-    reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
-    for a in run["attempts"][n:]:
-        a["repair"] = True
-    save_run(path, run)
+    reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)   # marked repair: run["refusal"]
     filed = _file(repo_root, node_id, model, reviews, h, run, before, cwd, ref, sign_key, answer)
     if filed.state != "recorded":   # the first refusal stays in the reason, whatever ended the repair turn
         filed = replace(filed, reason=f"{first.reason}; after the repair turn, {filed.reason}")

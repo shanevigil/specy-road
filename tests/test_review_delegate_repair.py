@@ -127,8 +127,11 @@ def test_resume_sends_a_stored_refusal_only_on_an_incomplete_run(tmp_path: Path,
     assert _delegate(repo)["state"] == "incomplete"                   # refused twice: the refusal is kept
     path = run_path(repo, "M1.1", "opus")
     save_run(path, {**load_run(repo, "M1.1", "opus"), **stored})
-    set_steps(repo, spec, verdict_step(repo))
+    calls = len(fake_prompts(spec))   # the fake picks its step by launch count: the resume hits capacity, then files
+    set_steps(repo, spec, *[{"error": CAPACITY, "exit": 1}] * (calls + 1), verdict_step(repo))
     assert run_review_delegate(repo, "--resume") == 0
-    sent = fake_prompts(spec)
-    assert len(sent) == 3 and _carries_refusal(sent[-1]) is repairs   # the two refused turns, then the resume
-    assert (sent[-1] == RESUME_PROMPT) is not repairs
+    sent = fake_prompts(spec)[calls:]
+    assert len(sent) == 2 and all(_carries_refusal(p) is repairs for p in sent)   # the retry carries it too
+    assert all((p == RESUME_PROMPT) is not repairs for p in sent)
+    run = load_run(repo, "M1.1", "opus")
+    assert run["state"] == "complete" and _repairs(run) == [repairs, repairs]
