@@ -12,6 +12,7 @@ from pathlib import Path
 import yaml
 
 from specy_road.bundled_scripts.planning_artifacts import resolve_planning_path
+from specy_road.bundled_scripts.planning_rename import stage_prose_refs
 from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
 from specy_road.bundled_scripts.roadmap_chunk_utils import (
     load_json_chunk,
@@ -39,13 +40,21 @@ def _stage_merged_nodes(plan: AtomicWritePlan, root: Path, merged: list[dict]) -
 
 
 def _stage_planning_moves(
-    plan: AtomicWritePlan, root: Path, moves: list[tuple[str, str, str]]
+    plan: AtomicWritePlan,
+    root: Path,
+    moves: list[tuple[str, str, str]],
+    nodes: list[dict] | None = None,
+    prose_map: dict[str, str] | None = None,
 ) -> None:
     """Stage the sheet renames a renumber implies.
 
     Every source is read before anything is staged for deletion, because a
     renumber routinely produces chains (``M1.3`` -> ``M1.2`` -> ``M1.1``) and a
     naive rename-at-a-time would consume a file another move still needs.
+
+    Given ``prose_map`` (``--rewrite-refs``), it then rewrites those ids in
+    every one of ``nodes``' sheets (over the staged renames), titles and
+    acceptance; call it before the chunks are staged, since it edits ``nodes``.
     """
     payloads: dict[Path, str] = {}
     sources: list[Path] = []
@@ -62,6 +71,8 @@ def _stage_planning_moves(
     for src in sources:
         if src not in payloads:
             plan.stage_delete(src)
+    if prose_map is not None and nodes is not None:
+        stage_prose_refs(plan, root, nodes, prose_map)
 
 
 def _rewrite_touch_zones(items: list, renamed: dict[str, str]) -> bool:

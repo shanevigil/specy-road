@@ -44,6 +44,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from specy_road.bundled_scripts import planning_rename
 from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
 from specy_road.bundled_scripts.roadmap_crud_ops import (
     _refuse_if_milestone_locked,
@@ -65,13 +66,13 @@ from specy_road.bundled_scripts.roadmap_outline_ops import (
     ordered_sibling_ids,
     print_id_map,
 )
+from specy_road.bundled_scripts.roadmap_move_id_forms import (
+    _moved_node_id,
+    _refuse_id_form_combinations,
+)
 from specy_road.bundled_scripts.roadmap_outline_renumber import (
     assign_subtree_ids_inplace,
-    check_chosen_child_id,
-    lowest_free_child_id,
-    next_free_child_id,
     renumber_display_ids_inplace,
-    subtree_ids,
 )
 from specy_road.bundled_scripts.sync_planning_artifacts import (
     plan_planning_artifact_moves,
@@ -103,51 +104,26 @@ def stage_id_rewrite(
     *,
     claims_in_map_only: bool,
     new_parent: NewParent | None = None,
+    rewrite_refs: bool = False,
 ) -> None:
     """Stage ``nodes`` plus the zone, sheet and claim rewrites an id map implies; commit.
 
     ``scope`` is every node a rewrite may touch. Shared by ``move_nodes`` and the
     PM GUI's ``reorder_siblings``; nothing reaches disk until the whole
     prospective graph validates. ``new_parent`` joins the same plan.
+    ``rewrite_refs`` also rewrites the map's ids in prose (``rename-refs``).
     """
     renamed = {o: n for o, n in old_to_new.items() if o != n}
     _rewrite_touch_zones(scope, renamed)
     sheet_moves = plan_planning_artifact_moves(scope)
 
     plan = AtomicWritePlan(root)
+    _stage_planning_moves(plan, root, sheet_moves, nodes, renamed if rewrite_refs else None)
     _stage_merged_nodes(plan, root, nodes)
     if new_parent is not None:
         new_parent.stage(plan, nodes)
-    _stage_planning_moves(plan, root, sheet_moves)
     _stage_registry_ids(plan, root, renamed, claims_in_map_only=claims_in_map_only)
     plan.commit(lambda: run_validate_raise(root))
-
-
-def _refuse_id_form_combinations(forms: dict[str, bool]) -> None:
-    """One rule: a move picks at most one id form (chosen id, lowest gap, whole outline)."""
-    given = [name for name, on in forms.items() if on]
-    if len(given) > 1:
-        raise ValueError(
-            f"{' and '.join(given)} are mutually exclusive: pick at most one id form"
-        )
-
-
-def _moved_node_id(
-    nodes: list[dict],
-    node_key: str,
-    old_id: str,
-    parent_id: str | None,
-    new_id: str | None,
-    fill_gaps: bool,
-) -> str:
-    """The id the moved node takes under a subtree-only move."""
-    if new_id is None and not fill_gaps:
-        return next_free_child_id(nodes, parent_id, exclude_key=node_key)
-    ignore = subtree_ids(nodes, old_id)
-    if fill_gaps:
-        return lowest_free_child_id(nodes, parent_id, ignore_ids=ignore)
-    check_chosen_child_id(nodes, parent_id, new_id, ignore_ids=ignore)
-    return new_id
 
 
 def _apply_move(
@@ -196,6 +172,7 @@ def move_nodes(
     *,
     renumber_outline: bool = False,
     new_parent: NewParent | None = None,
+    rewrite_refs: bool = False,
 ) -> dict[str, str]:
     """Apply ``moves`` in order as one transaction. Returns the ``old -> new`` id map.
 
@@ -204,6 +181,7 @@ def move_nodes(
     disk unless the whole batch is good. A later move's ``new_parent_id`` is the
     id after the earlier moves. ``new_parent`` is created before the first move,
     so moves can name it; it is not in the map, which covers moved nodes only.
+    ``rewrite_refs`` rewrites the map's ids in prose too (``stage_id_rewrite``).
     """
     nodes = list(load_roadmap(root)["nodes"])
     first_id = {n["node_key"]: n["id"] for n in nodes}
@@ -231,6 +209,7 @@ def move_nodes(
         old_to_new,
         claims_in_map_only=not renumber_outline,
         new_parent=new_parent,
+        rewrite_refs=rewrite_refs,
     )
     return old_to_new
 
@@ -244,6 +223,7 @@ def move_node(
     renumber_outline: bool = False,
     new_id: str | None = None,
     fill_gaps: bool = False,
+    rewrite_refs: bool = False,
 ) -> dict[str, str]:
     """Re-parent ``node_key`` and renumber. Returns the ``old -> new`` id map.
 
@@ -253,10 +233,10 @@ def move_node(
     parent), the lowest free child id with ``fill_gaps``, else one past the
     highest. ``renumber_outline=True`` renumbers every display id from the tree
     shape. At most one of the three id forms may be given. Nothing reaches disk until the
-    whole prospective graph validates.
+    whole prospective graph validates; ``rewrite_refs`` as in ``move_nodes``.
     """
     move = NodeMove(node_key, new_parent_id, new_index, new_id, fill_gaps)
-    return move_nodes(root, [move], renumber_outline=renumber_outline)
+    return move_nodes(root, [move], renumber_outline=renumber_outline, rewrite_refs=rewrite_refs)
 
 
 def _resolve_parent(raw: str, by_id: dict[str, dict], self_id: str) -> str | None:
@@ -298,6 +278,7 @@ def cmd_move(args: argparse.Namespace) -> None:
             renumber_outline=args.renumber_outline,
             new_id=args.new_id,
             fill_gaps=args.fill_gaps,
+            rewrite_refs=args.rewrite_refs,
         )
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
@@ -313,6 +294,7 @@ def cmd_move(args: argparse.Namespace) -> None:
             "nodes and their claims unless --renumber-outline was given). "
             "Any feature/rm-* branch keeps its codename; only ids moved."
         )
+        planning_rename.print_rewrite_refs_note(args.rewrite_refs)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -369,6 +351,7 @@ def build_parser() -> argparse.ArgumentParser:
             "highest. Not with --id or --renumber-outline."
         ),
     )
+    planning_rename.add_rewrite_refs_arg(p)
     p.add_argument(
         "--index",
         type=int,

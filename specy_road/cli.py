@@ -52,7 +52,7 @@ _SCRIPTS = {
     "review-node": "review_node.py",
     "scaffold-planning": "scaffold_planning.py",
     "author-approach": "author_approach.py",
-    "move-node": "roadmap_move_node.py",
+    "move-node": "roadmap_move_node.py", "rename-refs": "planning_rename.py",
     "doctor": "doctor.py",
 }
 

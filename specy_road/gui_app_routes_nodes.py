@@ -247,6 +247,7 @@ def _api_outline_move(
             new_id=body.new_id,
             fill_gaps=body.fill_gaps,
             renumber_outline=body.renumber_outline,
+            rewrite_refs=body.rewrite_refs,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -270,7 +271,12 @@ def _api_outline_group(
     try:
         body = GroupOutlineBody.model_validate_json(raw)
         id_map = group_nodes(
-            root, body.into_new, body.title, body.node_ids, node_type=body.type
+            root,
+            body.into_new,
+            body.title,
+            body.node_ids,
+            node_type=body.type,
+            rewrite_refs=body.rewrite_refs,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -284,9 +290,14 @@ def _api_indent(
 ) -> dict[str, Any]:
     root = get_repo_root()
     _pm_milestone_lock_guard(root, node_id)
-    renumber = body.renumber_outline if body is not None else False
+    body = body or OutlineShiftBody()
     try:
-        id_map = apply_indent(root, node_id, renumber_outline=renumber)
+        id_map = apply_indent(
+            root,
+            node_id,
+            renumber_outline=body.renumber_outline,
+            rewrite_refs=body.rewrite_refs,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {"ok": True, "changed": id_map is not None}
@@ -299,9 +310,14 @@ def _api_outdent(
 ) -> dict[str, Any]:
     root = get_repo_root()
     _pm_milestone_lock_guard(root, node_id)
-    renumber = body.renumber_outline if body is not None else False
+    body = body or OutlineShiftBody()
     try:
-        id_map = apply_outdent(root, node_id, renumber_outline=renumber)
+        id_map = apply_outdent(
+            root,
+            node_id,
+            renumber_outline=body.renumber_outline,
+            rewrite_refs=body.rewrite_refs,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {"ok": True, "changed": id_map is not None}
