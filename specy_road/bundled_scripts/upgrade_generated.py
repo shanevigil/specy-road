@@ -23,9 +23,9 @@ class GitFailed(Exception):
     """A git call upgrade depends on failed; ``run_upgrade`` prints it and returns 2."""
 
 
-def checked(r: git_subprocess.GitResult, command: str, where: str = COPY) -> None:
-    """Raise :class:`GitFailed` unless ``r`` succeeded."""
-    if not r.ok:
+def checked(r: git_subprocess.GitResult, command: str, where: str = COPY, ok: tuple[int, ...] = (0,)) -> None:
+    """Raise :class:`GitFailed` unless ``r`` exited with a code in ``ok``: every git call upgrade depends on ends here."""
+    if r.code not in ok:
         lines = r.message.splitlines()
         reason = "timed out" if r.failure == "timeout" else lines[-1] if lines else f"exit {r.code}"
         raise GitFailed(f"git {command} failed in {where} ({reason})")
@@ -50,7 +50,7 @@ def scratch_environ(tmp: Path):
         os.environ.update(saved)
 
 
-def regenerate(project: Path, tracked_in: Path, verb: str, caller_env: dict[str, str] | None = None) -> bool:
+def regenerate(project: Path, tracked_in: Path, verb: str, caller_env: dict[str, str]) -> bool:
     """Write each drifted generated file into ``project``: the digest, and ``roadmap.md`` if ``tracked_in`` tracks it.
 
     ``tracked_in`` is the checkout's project: a dry run renders and writes into its
@@ -59,14 +59,13 @@ def regenerate(project: Path, tracked_in: Path, verb: str, caller_env: dict[str,
     file that is not UTF-8 is drifted, not an error. Returns whether a path was refused.
 
     The question goes to the caller's checkout, under their own config (``caller_env``,
-    or this process's without ``GIT_`` variables), with only the command-running
+    their environment without ``GIT_`` variables), with only the command-running
     ``core.fsmonitor`` off. Exit 1 is untracked; any other failure raises
     :class:`GitFailed` before a file is written.
     """
     r = git_subprocess.run(["-c", "core.fsmonitor=false", "ls-files", "--error-unmatch", "roadmap.md"], tracked_in,
-                           env=scratch_git_env() if caller_env is None else caller_env)
-    if r.code != 1:
-        checked(r, "ls-files", "the checkout" if project == tracked_in else COPY)
+                           env=caller_env)
+    checked(r, "ls-files", "the checkout" if project == tracked_in else COPY, ok=(0, 1))
     tracked = r.ok
     files = [(DEFAULT_OUTPUT, render_digest(project), "specy-road digest")]
     if tracked:

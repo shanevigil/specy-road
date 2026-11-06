@@ -35,8 +35,9 @@ the checkout is never written, and the generated files it would write are
 listed as ``would write``. Every git call in the copy runs with every ``GIT_``
 variable of the caller's removed and no global or system git config, no hook
 and a timeout, so it never reaches the checkout's repository or runs a command
-the caller's config names; a failed ``git init``, ``add`` or ``commit`` there
-stops the dry run with exit 2, nothing validated. A generated file whose path leads out of the project is refused, and ``digest``
+the caller's config names. A failed ``git init``, ``add`` or ``commit`` in either
+temporary copy, the plan's included, stops the run with exit 2: nothing is
+written or validated. A generated file whose path leads out of the project is refused, and ``digest``
 stays a next step, as it does when ``validate`` fails (nothing is regenerated
 from an invalid graph). The exit code is ``validate``'s. Read validate's
 notices for what the new version reports (held milestones among them).
@@ -66,6 +67,7 @@ from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.digest import DEFAULT_OUTPUT
 from specy_road.file_limits_engine import build_overlay_match_sets, collect_tracked_files, line_count, resolve_limits
 from specy_road.git_subprocess import git_text
+from specy_road.ignore_report import scratch_git_env
 from specy_road.init_project import project_template_root
 from specy_road.managed_block import resolves_outside
 from specy_road.runtime_paths import add_repo_root_arg, git_root, project_root, source_scan_root
@@ -194,7 +196,7 @@ def _refresh(
 
 
 def _check(
-    project: Path, tracked_in: Path, verb: str, caller_env: dict[str, str] | None = None,
+    project: Path, tracked_in: Path, verb: str, caller_env: dict[str, str],
 ) -> tuple[bool, bool]:
     """``(validate passed, generated files done)``; each step prints its own detail.
 
@@ -293,11 +295,11 @@ def _commit_copy(copy: Mirror) -> None:
     non-zero on a checkout the real run handles. ``--allow-empty``: a copy git
     ignores whole has nothing to commit, and that is no failure.
     """
-    if copy.init.ok and not (copy.repo / ".git").is_dir():
+    if not (copy.repo / ".git").is_dir():
         raise GitFailed("git init failed in the temporary copy (no .git was created)")
-    checked(copy.init, "init")
     hooks = ["-c", f"core.hooksPath={copy.hooks}"]
-    skipped = [f":(exclude,literal){rel}" for rel in copy.unreadable]
+    skipped = [f":(exclude,literal){p.relative_to(copy.repo).as_posix()}"
+               for p in copy.unreadable if p.is_relative_to(copy.repo)]
     checked(git_subprocess.run([*hooks, "add", "-A", "--ignore-errors", "--", ".", *skipped], copy.repo), "add")
     checked(git_subprocess.run(
         [*hooks, "-c", "user.name=specy-road", "-c", "user.email=upgrade@specy-road.invalid",
@@ -351,6 +353,15 @@ def _print_other_worktrees(checkout: Path) -> None:
 
 
 def run_upgrade(repo_root: Path | None, *, dry_run: bool = False, prune: bool = False) -> int:
+    """The upgrade's exit code; a git call it depends on failing prints why and is 2."""
+    try:
+        return _upgrade(repo_root, dry_run=dry_run, prune=prune)
+    except GitFailed as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+
+
+def _upgrade(repo_root: Path | None, *, dry_run: bool, prune: bool) -> int:
     project = project_root(repo_root)
     checkout = _resolve_root(repo_root)
     if dry_run:
@@ -358,14 +369,10 @@ def run_upgrade(repo_root: Path | None, *, dry_run: bool = False, prune: bool = 
     else:
         print(f"specy-road {__version__} upgrade: {project}")
     print_install_report()
-    try:
-        if dry_run:
-            return _dry_run(project, checkout, prune=prune)
-        _apply(project, checkout, prune=prune)
-        valid, digest_ok = _check(project, project, "wrote")
-    except GitFailed as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 2
+    if dry_run:
+        return _dry_run(project, checkout, prune=prune)
+    _apply(project, checkout, prune=prune)
+    valid, digest_ok = _check(project, project, "wrote", scratch_git_env())
     _section("next")
     steps = list(CHECKLIST)
     if not digest_ok:

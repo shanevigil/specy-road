@@ -16,8 +16,9 @@ body. Keep section bodies focused; link to PRs for detail.
 - **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
   copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
   longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.
-  Upgrade's git calls time out after 60 s. A failed `git init`, `add` or `commit` in the copy prints
-  `error: git <command> failed in the temporary copy (<reason>)` and exits 2 without validating, and so does a failed
+  Upgrade's git calls time out after 60 s. A failed `git init`, `add` or `commit` in a temporary copy, the plan's
+  included (so a real run too), prints `error: git <command> failed in the temporary copy (<reason>)` and exits 2
+  without writing or validating, and so does a failed
   `ls-files` on `roadmap.md` (in a real run it names the checkout), before a generated file is written.
   `GIT_CEILING_DIRECTORIES` no longer hides a tracked `roadmap.md`.
 - `specy-road digest`, `digest --check` and `digest -o -` with no roadmap manifest print the one line

@@ -386,30 +386,43 @@ FAILURES = {
 }
 
 
-def _stub_git(monkeypatch: pytest.MonkeyPatch, word: str, result: GitResult) -> None:
-    """``git_subprocess.run`` answers ``result`` for the git calls with ``word`` in their arguments."""
+def _stub_git(monkeypatch: pytest.MonkeyPatch, word: str, result: GitResult, nth: int = 1) -> None:
+    """``git_subprocess.run`` answers ``result`` for the ``nth`` git call with ``word`` in its arguments, and no other."""
     run = git_subprocess.run
-    monkeypatch.setattr(git_subprocess, "run",
-                        lambda args, cwd, **kw: result if word in args else run(args, cwd, **kw))
+    seen = iter(range(1, 100))
+
+    def stub(args: list[str], cwd: Path, **kw: object) -> GitResult:
+        return result if word in args and next(seen) == nth else run(args, cwd, **kw)
+
+    monkeypatch.setattr(git_subprocess, "run", stub)
 
 
 @pytest.mark.parametrize("failure", sorted(FAILURES))
-@pytest.mark.parametrize("command", ["init", "add", "commit"])
-def test_a_failed_scratch_git_call_stops_the_dry_run(
-    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch, command: str, failure: str
+@pytest.mark.parametrize("command, nth, dry_run", [
+    pytest.param("init", 1, True, id="plan-mirror-init-dry"),
+    pytest.param("init", 1, False, id="plan-mirror-init-real"),
+    pytest.param("init", 2, True, id="validation-mirror-init"),
+    pytest.param("add", 1, True, id="add"),
+    pytest.param("commit", 1, True, id="commit"),
+])
+def test_a_failed_scratch_git_call_stops_the_run(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch, command: str, nth: int, dry_run: bool, failure: str
 ) -> None:
+    """The plan's mirror and the dry run's copy are two inits: either failing alone stops everything."""
     root = old_repo(tmp_path)
+    files = _snapshot(root)
     result, reason = FAILURES[failure]
-    _stub_git(monkeypatch, command, result)
+    _stub_git(monkeypatch, command, result, nth)
     applied: list[object] = []
     validated: list[Path] = []
     monkeypatch.setattr(upgrade, "apply_plan", lambda *a: applied.append(a))
     monkeypatch.setattr(upgrade, "validate_at", validated.append)
 
-    assert run_upgrade(root, dry_run=True) == 2
+    assert run_upgrade(root, dry_run=dry_run) == 2
 
     assert f"error: git {command} failed in the temporary copy ({reason})" in capsys.readouterr().err
     assert not applied and not validated
+    assert _snapshot(root) == files
 
 
 @pytest.mark.parametrize("failure", ["exit-128", "timeout"])
