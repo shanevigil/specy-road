@@ -172,7 +172,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.23` | rc4 doc corrections on WIP: refresh-profiles default, no private roster ids, exact managed-block markers, reviewer mode, file-cap CHANGELOG entry | task | — | Complete |
 | `M21.24` | review delegate runs a Claude Code reviewer: the inline --json-schema carries no $schema, and a failed run names the harness's error | task | — | Not Started |
 | `M21.25` | review delegate reads a reviewer's answer when narration precedes its final JSON object | task | — | Not Started |
-| `M21.26` | The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model | task | — | Not Started |
+| `M21.26` | The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model | task | — | Complete |
 | `M21.27` | review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer | task | — | Not Started |
 | `M21.28` | finish-this-task refuses an invalid configuration before any bookkeeping write and never leaves a half-mutated tree | task | — | Not Started |
 | `M21.29` | worker terminate also ends processes the harness started in their own session | task | — | Not Started |

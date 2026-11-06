@@ -111,7 +111,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.23` rc4 doc corrections on WIP: refresh-profiles default, no private roster ids, exact managed-block markers, reviewer mode, file-cap CHANGELOG entry `rc4-docs-corrections` — task — **Complete**
   - `M21.24` review delegate runs a Claude Code reviewer: the inline --json-schema carries no $schema, and a failed run names the harness's error `claude-reviewer-schema-and-error` — task — **Not Started**
   - `M21.25` review delegate reads a reviewer's answer when narration precedes its final JSON object `reviewer-answer-after-prose` — task — **Not Started**
-  - `M21.26` The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model `gate-excludes-ready-authors` — task — **Not Started**
+  - `M21.26` The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model `gate-excludes-ready-authors` — task — **Complete**
   - `M21.27` review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer `filings-take-the-review-lock` — task — **Not Started**
   - `M21.28` finish-this-task refuses an invalid configuration before any bookkeeping write and never leaves a half-mutated tree `finish-validates-before-bookkeeping` — task — **Not Started**
   - `M21.29` worker terminate also ends processes the harness started in their own session `terminate-ends-escaped-descendants` — task — **Not Started**
@@ -265,7 +265,6 @@ Do not pick these up.
 - `M21.16` on `feature/rm-upgrade-scratch-git-and-regen` since 2026-11-05
 - `M21.24` on `feature/rm-claude-reviewer-schema-and-error` since 2026-11-05
 - `M21.25` on `feature/rm-reviewer-answer-after-prose` since 2026-11-05
-- `M21.26` on `feature/rm-gate-excludes-ready-authors` since 2026-11-05
 - `M21.27` on `feature/rm-filings-take-the-review-lock` since 2026-11-05
 - `M21.28` on `feature/rm-finish-validates-before-bookkeeping` since 2026-11-05
 - `M21.29` on `feature/rm-terminate-ends-escaped-descendants` since 2026-11-05
