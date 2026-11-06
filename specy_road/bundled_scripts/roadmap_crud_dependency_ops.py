@@ -1,7 +1,8 @@
 """Roadmap dependency CRUD for the CLI (same edit path as the PM GUI patch).
 
 Also ``apply``: a file of ``add-node`` / ``edit-node`` / ``add-dependency``
-changes run as one batch. It lives here because a batch is mostly dependency
+changes, and the restructure commands (``move-node``, ``group-nodes``,
+``indent``, ``outdent``, ``remove-node``, ``archive``), run as one batch. It lives here because a batch is mostly dependency
 wiring between nodes it creates, which is why dependencies accept display ids.
 """
 
@@ -15,10 +16,15 @@ import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
-import yaml
-
 from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path
-from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs, repo_root, unknown_node_msg
+from specy_road.bundled_scripts.roadmap_crud_ops import (
+    deferred_validation,
+    edit_node_set_pairs,
+    repo_root,
+    run_validate_raise,
+    unknown_node_msg,
+)
+from specy_road.bundled_scripts.roadmap_apply_entries import id_map_lines, parse_change_file
 from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir
 from specy_road.bundled_scripts.effective_dependency_checks import newly_waiting_suffix
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
@@ -191,92 +197,37 @@ def cmd_remove_dependency(args: object) -> None:
 # apply: a change file as one batch
 # ---------------------------------------------------------------------------
 
-APPLY_OPS = ("add-node", "edit-node", "add-dependency")
-# Node field names read naturally in a change file; the CLI flags are singular.
-_OPTION_ALIASES = {"dependencies": "dependency", "touch_zones": "touch-zone"}
-
-
-def _option_argv(key: str, value: object) -> list[str]:
-    flag = "--" + _OPTION_ALIASES.get(key, key).replace("_", "-")
-    if isinstance(value, bool):
-        return [flag] if value else []
-    if value is None:
-        # ``parent_id: null`` is a phase root; any other null leaves the option unset.
-        return [flag, "null"] if flag == "--parent-id" else []
-    items = value if isinstance(value, list) else [value]
-    return [part for item in items for part in (flag, str(item))]
-
-
-def _entry_argv(entry: object) -> list[str]:
-    """The command line one change-file entry stands for."""
-    if not isinstance(entry, dict) or entry.get("op") not in APPLY_OPS:
-        raise ValueError(f"each change needs op: one of {', '.join(APPLY_OPS)}")
-    rest = {k: v for k, v in entry.items() if k != "op"}
-    argv = [entry["op"]]
-    if argv[0] != "add-node":
-        positional = ["node"] + (["dependency"] if argv[0] == "add-dependency" else [])
-        for key in positional:
-            if rest.get(key) in (None, ""):
-                raise ValueError(f"{argv[0]} needs {key}:")
-            argv.append(str(rest.pop(key)))
-    if argv[0] == "edit-node":
-        sets = rest.pop("set", None)
-        if not isinstance(sets, dict) or not sets:
-            raise ValueError("edit-node needs set: a mapping of field: value")
-        for k, v in sets.items():
-            for item in v if isinstance(v, list) else [v]:
-                argv += ["--set", f"{k}={'' if item is None else item}"]
-    for k, v in rest.items():
-        argv += _option_argv(k, v)
-    return argv
-
-
-def parse_change_file(root: Path, path: Path) -> list[object]:
-    """Parse every entry before anything runs, so a malformed one changes nothing.
-
-    Each entry goes through the real subcommand parser: an option the command
-    does not take, a bad ``type``, a missing ``title`` are refused here.
-    """
-    from specy_road.bundled_scripts.roadmap_crud_argparse import build_parser
-
-    try:
-        doc = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except (OSError, yaml.YAMLError) as e:
-        raise ValueError(f"cannot read {path}: {e}") from None
-    entries = doc.get("changes") if isinstance(doc, dict) else doc
-    if not isinstance(entries, list) or not entries:
-        raise ValueError(f"{path}: expected a list of changes (or changes: [...])")
-    parser = build_parser()
-    out: list[object] = []
-    for i, entry in enumerate(entries, 1):
-        try:
-            argv = _entry_argv(entry)
-            out.append(parser.parse_args(["--repo-root", str(root), *argv]))
-        except ValueError as e:
-            raise ValueError(f"change {i}: {e}") from None
-        except SystemExit:
-            raise ValueError(f"change {i}: not a valid {argv[0]} (usage above)") from None
-    return out
-
-
 def _run_changes(changes: list[object], root: Path) -> str:
-    """Run each change's command in order; the first refusal stops the batch.
+    """Run each change's command in order, then validate the final graph once.
 
-    Returns the commands' ``[ok]`` lines, held back until every change has run:
-    printed as they happened, a refused batch would still list ``[ok]`` for
-    changes it then rolled back. Errors go to stderr and are not held.
+    The first refusal stops the batch. Per-command validation is deferred
+    (``deferred_validation``): an intermediate graph may be invalid, only the
+    last one has to validate. Returns the commands' ``[ok]`` lines, held back
+    until the batch validates: printed as they happened, a refused batch would
+    still list ``[ok]`` for changes it then rolled back. Errors go to stderr
+    and are not held.
     """
     out = io.StringIO()
-    with contextlib.redirect_stdout(out):
+    with contextlib.redirect_stdout(out), deferred_validation():
         for i, ns in enumerate(changes, 1):
             ns.repo_root = root
             try:
-                ns.func(ns)
+                code = ns.func(ns)  # archive returns its exit code; the rest exit
             except SystemExit as e:
-                if e.code not in (0, None):
-                    raise ValueError(
-                        f"change {i} ({ns.cmd}) failed; no change in the batch was applied"
-                    ) from None
+                code = e.code
+            except ValueError as e:
+                print(f"error: {e}", file=sys.stderr)
+                code = 1
+            if code not in (0, None):
+                raise ValueError(
+                    f"change {i} ({ns.apply_op}) failed; no change in the batch was applied"
+                )
+    try:
+        run_validate_raise(root)
+    except ValueError as e:
+        raise ValueError(
+            f"the batch's resulting roadmap does not validate; no change in the batch was applied\n{e}"
+        ) from None
     return out.getvalue()
 
 
@@ -291,6 +242,14 @@ def _graph_paths(root: Path) -> list[Path]:
     return [root / t for t in sorted(tops)]
 
 
+def _batch_paths(root: Path) -> list[Path]:
+    """What a batch can write: the graph paths, plus ``roadmap.md`` and the
+    digest that ``archive`` regenerates."""
+    from specy_road.generated_files import GENERATED_COMMITTED
+
+    return _graph_paths(root) + [root / name for name in GENERATED_COMMITTED]
+
+
 def _files_under(paths: list[Path]) -> list[Path]:
     out: list[Path] = []
     for p in paths:
@@ -301,8 +260,16 @@ def _files_under(paths: list[Path]) -> list[Path]:
     return out
 
 
-def _restore(paths: list[Path], before: dict[Path, bytes]) -> None:
-    """Put ``paths`` back byte-for-byte: drop new files, rewrite changed ones."""
+def _dirs_under(paths: list[Path]) -> set[Path]:
+    return {d for p in paths if p.is_dir() for d in [p, *p.rglob("*")] if d.is_dir()}
+
+
+def _restore(paths: list[Path], before: dict[Path, bytes], dirs: set[Path]) -> None:
+    """Put ``paths`` back byte-for-byte: drop new files, rewrite changed ones.
+
+    Folders the batch created (``roadmap/archive/`` on a first archive) go too,
+    once emptied; ``dirs`` are the ones that were there before.
+    """
     for f in _files_under(paths):
         if f not in before:
             f.unlink()
@@ -310,20 +277,25 @@ def _restore(paths: list[Path], before: dict[Path, bytes]) -> None:
         if not f.is_file() or f.read_bytes() != data:
             f.parent.mkdir(parents=True, exist_ok=True)
             f.write_bytes(data)
+    for d in sorted(_dirs_under(paths) - dirs, key=lambda d: len(d.parts), reverse=True):
+        if not any(d.iterdir()):
+            d.rmdir()
 
 
 def _apply_in_place(changes: list[object], root: Path) -> str:
     """Run the batch all or nothing.
 
     Each command commits its own transaction, so the batch holds a snapshot of
-    everything they can write and restores it if any one refuses.
+    everything they can write and restores it if any one refuses or the final
+    graph does not validate.
     """
-    paths = _graph_paths(root)
+    paths = _batch_paths(root)
     before = {f: f.read_bytes() for f in _files_under(paths)}
+    dirs = _dirs_under(paths)
     try:
         return _run_changes(changes, root)
     except BaseException:
-        _restore(paths, before)
+        _restore(paths, before, dirs)
         raise
 
 
@@ -332,10 +304,10 @@ def _scratch_root(root: Path) -> Iterator[Path]:
     """A throwaway root to rehearse in: graph files copied, the rest linked.
 
     The rehearsal runs the same commands as a real apply, so it needs somewhere
-    to write. Schemas, constraints and the source tree (touch-zone checks read
-    it) are symlinked; ``.git`` is left out so nothing can reach the real index.
+    to write. What a batch writes (``_batch_paths``) is copied; schemas,
+    constraints and the source tree (touch-zone checks read it) are symlinked; ``.git`` is left out so nothing can reach the real index.
     """
-    copied = {p.name for p in _graph_paths(root)}
+    copied = {p.name for p in _batch_paths(root)}
     with tempfile.TemporaryDirectory(prefix="specy-road-apply-") as tmp:
         scratch = Path(tmp)
         for entry in root.iterdir():
@@ -379,11 +351,13 @@ def cmd_apply(args: object) -> None:
     root = repo_root(args)
     path = Path(args.changes_file)
     try:
-        changes = parse_change_file(root, path)
+        changes = parse_change_file(path)
         if args.dry_run:
+            before = load_roadmap(root)["nodes"]
             with _scratch_root(root) as scratch:
                 log = _run_changes(changes, scratch)
-                preview = wave_preview(scratch)
+                preview = id_map_lines(before, load_roadmap(scratch)["nodes"])
+                preview += wave_preview(scratch)
         else:
             log = _apply_in_place(changes, root)
             preview = wave_preview(root)

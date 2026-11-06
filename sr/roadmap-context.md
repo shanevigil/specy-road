@@ -90,7 +90,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.2` CLI indent, outdent and group-nodes re-level siblings in one transaction validated once `outline-group-cli` — task — **Complete**
   - `M21.3` Opt-in rewrite of prose id references after a move, and a standalone rename-refs `rewrite-id-refs` — task — **Complete**
   - `M21.4` remove-node deletes an empty never-started node and names every blocker otherwise `remove-node` — task — **Complete**
-  - `M21.5` apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once `apply-restructure-ops` — task — **Not Started**
+  - `M21.5` apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once `apply-restructure-ops` — task — **Complete**
   - `M21.6` validate and add-dependency catch cycles made through inherited group dependencies `inherited-dep-cycles` — task — **Complete**
   - `M21.7` Executors cannot change the files that steer harnesses and specy-road unnoticed `steering-file-guard` — task — **Not Started**
   - `M21.8` The queued-message worker test waits for the idle state, not just the second completion event `queue-message-test-waits-for-idle` — task — **Complete**
@@ -228,7 +228,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M21.5` on `feature/rm-apply-restructure-ops` since 2026-11-05
 - `M21.7` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
@@ -237,10 +236,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 29 | 8 | 4.76 | 81% | 31 | 4 |
+| `docs` **flagged** | 29 | 7 | 4.64 | 82% | 31 | 4 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 49 | 13 | 4.28 | 75% | 40 | 7 |
-| `tests` **flagged** | 50 | 13 | 4.24 | 76% | 40 | 7 |
+| `specy_road` **flagged** | 49 | 12 | 4.22 | 76% | 40 | 7 |
+| `tests` **flagged** | 50 | 12 | 4.18 | 76% | 40 | 7 |
 | `CHANGELOG.md` | 6 | 0 | 2.50 | 33% | 6 | 0 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |

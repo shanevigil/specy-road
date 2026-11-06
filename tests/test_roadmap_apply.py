@@ -160,6 +160,19 @@ def test_a_dependency_cycle_is_refused_as_a_whole(repo: Path) -> None:
         ("- op: edit-node\n  node: M99.1\n", "change 2: edit-node needs set:"),
         ("- op: add-node\n  id: M99.3\n  type: task\n  title: T\n  parent_id: M99\n  colour: red\n",
          "change 2: not a valid add-node"),
+        # A value that adds no argv (false, null, []) is still a field to check.
+        *[(f"- op: add-node\n  id: M99.3\n  type: task\n  title: T\n  parent_id: M99\n  colour: {v}\n",
+           "change 2: not a valid add-node: no field 'colour'") for v in ("false", "null", "[]")],
+        ("- op: edit-node\n  node: M99.1\n  set: {title: X}\n  colour: false\n",
+         "change 2: not a valid edit-node: no field 'colour'"),
+        # move-node's parser takes --index, but a change file does not.
+        ("- op: move-node\n  node: M99.1\n  to_parent: M99\n  index: 0\n",
+         "change 2: not a valid move-node: no field 'index'"),
+        # to_parent is a restructure field, but not one indent takes.
+        ("- op: indent\n  node: M99.2\n  to_parent: false\n",
+         "change 2: not a valid indent: no field 'to_parent'"),
+        ("- op: group-nodes\n  into_new: M99.5\n  title: G\n", "change 2: group-nodes needs nodes:"),
+        ("- op: archive\n  node: M99.1\n  deep: false\n", "change 2: not a valid archive: no field 'deep'"),
     ],
 )
 def test_a_malformed_entry_is_refused_before_anything_runs(
@@ -172,6 +185,87 @@ def test_a_malformed_entry_is_refused_before_anything_runs(
     assert r.returncode == 1
     assert message in r.stderr
     assert _tree(repo) == before
+
+
+# Group two siblings, then three moves, a removal and a dependency. M99.3 and
+# M99.4 are created first, so they have no pre-batch id to report.
+REGROUP = """\
+changes:
+  - {op: add-node, id: M99.3, type: task, title: Three, parent_id: M99}
+  - {op: add-node, id: M99.4, type: task, title: Four, parent_id: M99}
+  - {op: group-nodes, nodes: [M99.1, M99.2], into_new: M99.5, title: Core}
+  - {op: move-node, node: M99.3, to_parent: M99.5}
+  - {op: indent, node: M99.4}
+  - {op: outdent, node: M99.5.3}
+  - {op: remove-node, node: M99.5.4}
+  - {op: add-dependency, node: M99.6, dependency: M99.5.2}
+"""
+
+
+def test_dry_run_prints_the_composed_id_map_before_the_waves(repo: Path) -> None:
+    before = _tree(repo)
+    r = _apply(repo, REGROUP, "--dry-run")
+    assert r.returncode == 0, r.stderr
+    tail = r.stdout[r.stdout.index("Display ids changed (old -> new):"):]
+    assert tail.splitlines()[1:4] == [
+        "  M99.1 -> M99.5.1",
+        "  M99.2 -> M99.5.2",
+        "Waves (a leaf starts once its own dependencies are Complete):",
+    ]
+    assert "Blocked: M99.6 waiting on M99.5.2" in tail
+    assert _tree(repo) == before
+
+
+def test_a_regroup_applies_in_one_run_with_one_validation(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from specy_road.bundled_scripts import roadmap_crud_ops
+    from specy_road.bundled_scripts.roadmap_crud_argparse import build_parser
+
+    validations: list[Path] = []
+    real = roadmap_crud_ops.validate_at
+
+    def counting(root: Path, **kwargs: object) -> None:
+        validations.append(root)
+        real(root, **kwargs)
+
+    monkeypatch.setattr(roadmap_crud_ops, "validate_at", counting)
+    (repo / "changes.yaml").write_text(REGROUP, encoding="utf-8")
+    ns = build_parser().parse_args(["--repo-root", str(repo), "apply", str(repo / "changes.yaml")])
+    ns.func(ns)
+    assert "[ok] applied 8 change(s)" in capsys.readouterr().out
+    assert len(validations) == 1
+    assert _node(repo, "M99.5")["title"] == "Core"
+    assert _node(repo, "M99.5.1")["node_key"] == NK991
+    three = _node(repo, "M99.6")
+    assert three["title"] == "Three" and three["dependencies"] == [NK992]
+    assert _crud(repo, "show-node", "M99.5.3").returncode == 1
+    assert sorted(p.name.split("_")[0] for p in (repo / "planning").glob("M99*")) == [
+        "M99", "M99.5", "M99.5.1", "M99.5.2", "M99.6",
+    ]
+
+
+def test_a_refused_entry_after_an_archive_restores_everything(repo: Path) -> None:
+    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
+    from specy_road.generated_files import regenerate_generated_files
+
+    chunk = repo / "roadmap" / "phases" / "T.json"
+    write_json_chunk(chunk, [{**n, "status": "Complete"} if n["id"] == "M99.1" else n
+                             for n in load_json_chunk(chunk)])
+    regenerate_generated_files(repo)
+    before = _tree(repo)
+    archive = "- {op: archive, node: M99.1}\n"
+    r = _apply(repo, archive + "- {op: edit-node, node: M404, set: {title: X}}\n")
+    assert r.returncode == 1
+    assert "change 2 (edit-node) failed; no change in the batch was applied" in r.stderr
+    # roadmap.md, roadmap-context.md, the archive ledger and the moved sheet.
+    assert _tree(repo) == before
+    assert not (repo / "roadmap" / "archive").exists()
+    # The same archive alone does apply, regenerating both files.
+    assert _apply(repo, archive).returncode == 0
+    after = _tree(repo)
+    assert after["roadmap.md"] != before["roadmap.md"]
+    assert after["roadmap-context.md"] != before["roadmap-context.md"]
 
 
 def test_an_empty_change_file_is_refused(repo: Path) -> None:
