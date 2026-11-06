@@ -14,7 +14,7 @@
     },
     {
       "acceptance": [
-        "tests/parity/ reads the command set from the CLI's own tables (`cli._known_commands()`, each command's subcommands and the `specyrd` parser) and compares it with the golden set under tests/parity/golden/ in both directions after applying the additions, aliases and removals that rows of tests/parity/command_map.yaml authorise; any other difference fails the test naming the command, subcommand or alias; one documented environment variable regenerates the goldens. The inventory records, per command and subcommand, its subparser path, its option strings and whether it passes the remaining arguments through (argparse.REMAINDER or a bare --)",
+        "tests/parity/ reads top-level command names through `cli.registered_agent_command_names()` and subcommand and option metadata through public parser builders or public help output until M16.2.10 supplies the builders, adding no private specy_road reference and no constraints/test-private-imports-baseline.txt entry, and compares that set with the golden set under tests/parity/golden/ in both directions after applying the additions, aliases and removals that rows of tests/parity/command_map.yaml authorise; any other difference fails the test naming the command, subcommand or alias; one documented environment variable regenerates the goldens. The inventory records, per command and subcommand, its subparser path, its option strings and whether it passes the remaining arguments through (argparse.REMAINDER or a bare --)",
         "Each name in that set has a golden `--help` transcript; tests/parity/command_map.yaml exists with no rows, and a test fails when a transcript differs from its golden unless the name is a row of that map (later leaves add rows: old invocation, new invocation, allowed difference)",
         "An end-to-end test drives a temp repo through init project, add-node, scaffold-planning, pickup, ready, two review records, the gate check and finish, once with on_complete: merge and once with on_complete: pr (offline, no hosting service). After each step it asserts the exit code, registry rows, node status and git state that today's pickup and finish tests already pin; the merge run ends at exit 0 with the leaf Complete, its registry row gone and the feature branch merged into the integration branch; the pr run's end state (exit code, node status, registry row, branches) is recorded at pickup from today's behaviour; neither run makes a network call",
         "`upgrade --dry-run` on a fixture shaped like a 0.3.1rc3 consumer repo, and validate, export --check and digest --check on the dogfood fixture, match golden outputs with paths and timestamps normalised; digest goldens leave out sections derived from git history (such as 'Quality by area'), so the goldens do not depend on the branch",
@@ -191,7 +191,8 @@
         "tests/",
         "scripts/line_width_baseline.json",
         "scripts/ruff_quality_baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
@@ -316,13 +317,14 @@
         "specy_road/finish_land_local.py",
         "scripts/ruff_quality_baseline.json",
         "constraints/import-layers-baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "The Azure, OpenAI and Anthropic client code in review_node moves to specy_road/llm_client.py under public names; review_node, brainstorm_chat, roadmap_gui_remote, the GUI route modules and llm_throughput import those names, and no module imports an underscore name from review_node",
+        "The Azure, OpenAI and Anthropic client code in review_node moves to specy_road/llm_client.py under public names; review_node, brainstorm_chat, roadmap_gui_remote, the GUI route modules and llm_throughput import those names, and no module imports an underscore name from review_node; llm_client gains no caller outside principle 4's exceptions (review-node and the GUI's providers, which include brainstorm_chat's brainstorm-panel chat; llm_throughput is the rate limiter, not a caller)",
         "brainstorm_chat's own `_complete_anthropic` and `complete_chat` copies are removed; llm_client exposes a client factory tests can replace without patching private names",
         "review_node's override is removed from constraints/file-limits.yaml",
         "Parity harness unchanged, review-node and brainstorm transcripts included",
@@ -348,7 +350,8 @@
         "specy_road/gui_app_routes_*.py",
         "specy_road/bundled_scripts/llm_throughput.py",
         "constraints/file-limits.yaml",
-        "tests/"
+        "tests/",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },

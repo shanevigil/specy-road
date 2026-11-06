@@ -349,7 +349,8 @@
         "specy_road/session_file_io.py",
         "scripts/ruff_quality_baseline.json",
         "constraints/import-layers-baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
@@ -379,7 +380,8 @@
         "specy_road/agent_guide_block.py",
         "specy_road/managed_block.py",
         "scripts/line_width_baseline.json",
-        "tests/"
+        "tests/",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
@@ -420,7 +422,8 @@
         "specy_road/reconcile_branch.py",
         "specy_road/bundled_scripts/reconcile_branch_cli.py",
         "scripts/line_width_baseline.json",
-        "tests/"
+        "tests/",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
@@ -453,7 +456,8 @@
         "specy_road/",
         "scripts/ruff_quality_baseline.json",
         "constraints/import-layers-baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     }

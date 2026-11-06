@@ -96,7 +96,8 @@
         "specy_road/bundled_scripts/worker_cli*.py",
         "scripts/line_width_baseline.json",
         "tests/parity/workers/",
-        "tests/"
+        "tests/",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
@@ -210,7 +211,8 @@
         "specy_road/bundled_scripts/review_packet*.py",
         "specy_road/review_packet*.py",
         "scripts/line_width_baseline.json",
-        "tests/"
+        "tests/",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
@@ -424,7 +426,7 @@
       "acceptance": [
         "Apply each row of this sheet's checklist (D1-D6, decided before pickup): a delete row removes that code, a 'delete with tests' row also removes the tests that exist only to call it, and a keep row leaves that code; keeps are limited to the D5 and D6 names and the two callback parameters D2 retains (_IndentedDumper.increase_indent's `indentless`, which PyYAML passes by keyword, and FixRound.__call__'s `option_string`, which argparse passes positionally), both whitelisted for vulture",
         "behaviour_changes.py is kept: triage round 1 removed M13.14 but kept M13.8's catalogue for held M13.11; its docstring stops naming M13.14 as its consumer and the vulture whitelist lists it",
-        "CI runs vulture at 60% confidence over specy_road and scripts with a whitelist for routes, fixtures and entry points, as a non-blocking step",
+        "CI runs vulture at 60% confidence over specy_road and scripts with a whitelist for routes, fixtures and entry points, as a non-blocking step; vulture is added to the `dev` extra with an exact pin, requirements-ci.txt is regenerated with pip-compile and `pip-audit -r requirements-ci.txt` is clean, as docs/supply-chain-security.md requires, and it is never in project.dependencies",
         "Parity harness unchanged; the removed tests equal this leaf's planned_test_changes",
         "Estimated net line change (informational, not a gate): package about -400, tests about -150"
       ],
@@ -465,7 +467,10 @@
         "tests/",
         "specy_road/bundled_scripts/worker_cli_args.py",
         "scripts/line_width_baseline.json",
-        "scripts/ruff_quality_baseline.json"
+        "scripts/ruff_quality_baseline.json",
+        "pyproject.toml",
+        "requirements-ci.in",
+        "requirements-ci.txt"
       ],
       "type": "task"
     }

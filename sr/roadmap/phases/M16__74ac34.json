@@ -53,7 +53,7 @@
         "Before any reader switches, tests/parity/orchestration_state/ holds one fixture repo per row: a fresh manual executor claim with no worker, a claim with a live worker, a worker that exited clean, a worker that exited failed, a claim abandoned under M15.26's delivered rule, a claim with a review record and no worker, a worker with no leaf (chore), one leaf with two worktrees, and an unreadable worker state file; each row records `worker list`, `orchestrate plan --json` and doctor output and cleanup eligibility at pickup",
         "`orchestration.state.snapshot(repo_root)` is read-only and returns exactly the fields listed in tests/fixtures/orchestration_snapshot_v1.json: `schema: 1`; per leaf key the claim (codename, branch, registered_at), workers (id, harness, model, status, pid_alive, started_at, ended_at), worktrees (path, branch, dirty) and reviews (model, verdict, commit, fresh_for_head); leafless workers; and status from the vocabulary and truth table in this sheet; the truth table, committed in this leaf's first commit before any package change, fixes the status for simultaneous workers, manual presence, a READY tip and unreadable inputs, and an unreadable source sets only its own fields to `unknown` without dropping readable ones",
         "`worker list`, `orchestrate plan` and doctor's claim checks read the snapshot, and every row gives the same output and cleanup eligibility as at pickup; M15.26's delivered reporting and slot rules hold for every row, manual claims included, and the snapshot's status adds no exemption",
-        "The layering gate fails when the review gate, a CLI entry point or a gui_app module adds an import of an orchestration module other than `specy_road.orchestration`; imports present at pickup are baselined and may only shrink; when a later leaf moves one of those consumers, its baseline entries follow the recorded module rename (M16.2.6's rule) instead of counting as new imports",
+        "The layering gate fails when the review gate, a CLI entry point or a gui_app module adds an import of an orchestration module other than `specy_road.orchestration`; imports present at pickup are baselined and may only shrink; when a later leaf moves one of those consumers, its baseline entries follow the recorded module rename (M16.2.6's rule) instead of counting as new imports. Before the first module lands in specy_road/orchestration/, constraints/file-limits.yaml's applies_to_globs gains `specy_road/orchestration/**/*.py`, so the 1,000-line file cap, the 80-line function cap and the 750-line warning cover every later move into it",
         "docs/orchestration.md documents the snapshot fields as the read-only interface for other consumers (the PM GUI work is phase M17); writes stay in today's modules; no GUI change",
         "Estimated net line change (informational, not a gate): package about -100"
       ],
@@ -83,7 +83,8 @@
         "docs/orchestration.md",
         "tests/fixtures/orchestration_snapshot_v1.json",
         "tests/parity/orchestration_state/",
-        "tests/"
+        "tests/",
+        "constraints/file-limits.yaml"
       ],
       "type": "task"
     },
@@ -116,7 +117,8 @@
         "scripts/line_width_baseline.json",
         "scripts/ruff_quality_baseline.json",
         "constraints/import-layers-baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
@@ -153,7 +155,8 @@
         "specy_road/",
         "scripts/ruff_quality_baseline.json",
         "constraints/import-layers-baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
@@ -186,7 +189,8 @@
         "specy_road/",
         "scripts/ruff_quality_baseline.json",
         "constraints/import-layers-baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
@@ -253,7 +257,8 @@
         "specy_road/",
         "scripts/ruff_quality_baseline.json",
         "constraints/import-layers-baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
@@ -461,7 +466,7 @@
     {
       "acceptance": [
         "purpose.md says specy-road governs a repository's plan, its multi-agent execution (workers, roster, review delegation, grind) and its review trail, and states the not-list in this sheet word for word",
-        "principles.md is split into product invariants and engineering rules for this repo; 'no daemon', 'leave model choice to the team' and 'does not reinvent agent tooling' are reworded to what the product does (the PM GUI server and detached workers are explicit; model profiles are data the team chooses from)",
+        "principles.md is split into product invariants and engineering rules for this repo; principle 5 keeps 'no daemon and no MCP server' and names the PM GUI as a local server the user starts and detached workers as processes a command launches, neither a coordination daemon nor an MCP server; 'leave model choice to the team' and 'does not reinvent agent tooling' are reworded to what the product does (model profiles are data the team chooses from)",
         "docs/philosophy-and-scope.md shrinks to what is opinionated and what is not, linking purpose.md; AGENTS.md and docs/toolkit-development.md no longer say the toolkit roadmap is 'intentionally not defined': they say it lives under sr/ on the WIP line and is not in the tree on main",
         "Estimated net line change (informational, not a gate): docs about -150"
       ],
