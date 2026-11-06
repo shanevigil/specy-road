@@ -101,7 +101,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.13` move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit `move-node-keeps-other-ids` — task — **Complete**
   - `M21.14` finish resolves roadmap chunk conflicts the branch only inherited `finish-resolves-inherited-roadmap-conflicts` — task — **Complete**
   - `M21.15` Cursor workers launch sandboxed without --force unless the roster opts in `cursor-workers-no-force-by-default` — task — **Complete**
-  - `M21.16` upgrade --dry-run never touches the real repo under GIT_DIR, and a real upgrade regenerates drifted generated files `upgrade-scratch-git-and-regen` — task — **Not Started**
+  - `M21.16` upgrade --dry-run never touches the real repo under GIT_DIR, and a real upgrade regenerates drifted generated files `upgrade-scratch-git-and-regen` — task — **Complete**
   - `M21.17` Writers refuse a symlinked target that leads out of the directory they own: init's generated files, review refusal and packet `writers-refuse-links-out` — task — **Complete**
   - `M21.18` A review deferral counts only when its marker is bound to the decision review defer recorded for it and its RCA `deferral-bound-to-its-decision` — task — **Complete**
   - `M21.19` apply --dry-run rehearses on a scratch copy whose links are rebased, so no rehearsal can move or change a live file `apply-dry-run-rebases-links` — task — **Complete**
@@ -262,7 +262,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M21.16` on `feature/rm-upgrade-scratch-git-and-regen` since 2026-11-05
 - `M21.20` on `feature/rm-gui-publish-regenerates-and-needs-a-remote` since 2026-11-05
 - `M21.21` on `feature/rm-review-delegate-validates-reviewer-command` since 2026-11-05
 - `M21.24` on `feature/rm-claude-reviewer-schema-and-error` since 2026-11-05
@@ -277,14 +276,13 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 28 | 4 | 4.33 | 75% | 32 | 4 |
+| `docs` **flagged** | 29 | 7 | 4.64 | 82% | 31 | 4 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 48 | 7 | 3.90 | 68% | 43 | 7 |
-| `tests` **flagged** | 49 | 7 | 3.88 | 69% | 43 | 7 |
-| `CHANGELOG.md` | 11 | 0 | 1.82 | 18% | 9 | 0 |
+| `specy_road` **flagged** | 49 | 12 | 4.22 | 76% | 40 | 7 |
+| `tests` **flagged** | 50 | 12 | 4.18 | 76% | 40 | 7 |
+| `CHANGELOG.md` | 6 | 0 | 2.50 | 33% | 6 | 0 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
-| `suggested_prompts` | 1 | 0 | 1.00 | 0% | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
