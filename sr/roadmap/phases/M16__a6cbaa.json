@@ -311,7 +311,8 @@
         "docs/roadmap-authoring.md",
         "tests/",
         "specy_road/bundled_scripts/roadmap_outline_group.py",
-        "specy_road/bundled_scripts/roadmap_id_rewrite_staging.py"
+        "specy_road/bundled_scripts/roadmap_id_rewrite_staging.py",
+        "specy_road/bundled_scripts/roadmap_move_id_forms.py"
       ],
       "type": "task"
     },

@@ -120,6 +120,7 @@ entries:
       - tests/
       - specy_road/bundled_scripts/roadmap_outline_group.py
       - specy_road/bundled_scripts/roadmap_id_rewrite_staging.py
+      - specy_road/bundled_scripts/roadmap_move_id_forms.py
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
