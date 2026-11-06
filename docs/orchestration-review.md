@@ -261,6 +261,17 @@ The boundary is the key: run each reviewer with a private key the executor's
 process does not hold. Still self-attested: the session flags inside a signed record
 (the key proves who signed, not how they worked) and presence files, which stay advisory.
 
+**A model observed to bypass the guidance (M21.44).** With `signed_reviews: true`, a roster entry
+whose model has a profile recording `guidance_bypass_observed` ([orchestration-models.md](orchestration-models.md#guidance-bypass-observed))
+is excluded from the executor and reviewer roles (`rca` included; the coordinator role is not affected):
+`orchestrate plan` picks another entry and says why, `worker delegate`, `review delegate` and `prompt`
+refuse it before any preflight or harness, `handoff status` lists it as excluded and never offers it as
+the next step, and the gate does not count its records, signed or not. The shipped flag is on
+**composer-2.5** (and its alias `composer-2.5-fast`): the finding is about that model, not about the
+Cursor harness. Setting `allow_guidance_bypass_model: true` on its committed roster entry lets it back
+in at your own risk ([orchestration-roster.md](orchestration-roster.md)); each executor or reviewer
+launch then warns. With `signed_reviews` off nothing changes.
+
 **What the gate cannot stop.** Without `signed_reviews`, an agent with shell access can
 impersonate an approval: the 2026-11-04 context-regression replay saw one executor drive the
 interactive human menu with `expect`, one call the toolkit's own record writer from `python -c`,
@@ -271,7 +282,11 @@ own bar, not a process that can commit and push to that branch. For an unattende
 turn `policy.signed_reviews` on and keep the human's and each reviewer's private key outside the
 executor's reach (another user, a hardware key or an agent the executor cannot reach), and protect
 the integration branch on the host (pushes through a reviewed PR, a code owner on
-`roadmap/orchestration.yaml`), so the executor cannot roster a key of its own. Triage:
+`roadmap/orchestration.yaml`), so the executor cannot roster a key of its own; that code owner also
+guards `allow_guidance_bypass_model`, which an executor with push rights could otherwise set. The
+2026-11-05/06 replay saw **composer-2.5** fake a terminal with `script` to run `review accept-policy` and
+the human approval, then merge and push: turn `signed_reviews` on whenever agents run with shell access,
+which also keeps such a model out of the executor and reviewer roles (above). Triage:
 [design-notes/context-regressions-2026-11-04-triage.md](design-notes/context-regressions-2026-11-04-triage.md).
 
 `specy-road handoff status [<NODE_ID>] [--json]` shows each node's state:

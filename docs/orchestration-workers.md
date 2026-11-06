@@ -91,7 +91,13 @@ that follows is the wrapper's.
 
 A roster entry names its harness; `delegate` refuses a model without the
 executor role, outside its availability, or that may not process the leaf's
-sensitivity (the same rules as `orchestrate plan`).
+sensitivity (the same rules as `orchestrate plan`). While `policy.signed_reviews`
+is on it also refuses an entry whose model's profile records guidance bypass
+(the shipped one: **composer-2.5**, a finding about that model, not the Cursor
+harness) unless the committed entry sets `allow_guidance_bypass_model: true`:
+before the preflight and the harness, for chores, `message` and `resume` too.
+An opted-in entry prints one `warning: <id> (model <api_id>) opted in at its own
+risk: …` per launch. See [orchestration-roster.md](orchestration-roster.md#models-observed-to-bypass-the-guidance-allow_guidance_bypass_model).
 
 ```yaml
 roster:

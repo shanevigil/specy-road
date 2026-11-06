@@ -327,6 +327,17 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- **Security:** a model observed to bypass specy-road's guidance is excluded from the executor and reviewer roles
+  while `policy.signed_reviews` is on (M21.44). A profile may record `guidance_bypass_observed: {date, harness,
+  evidence}` (any other shape makes it invalid; `models show` prints it); the shipped **composer-2.5** profile does,
+  alias `composer-2.5-fast` included, from the 2026-11-05/06 replay (CR1, CR3, CR5, 2 of 5 delegated reviews): a
+  finding about that model, not the Cursor harness. An entry launching a model flagged on the integration branch or
+  in the bundled profiles is skipped by `orchestrate plan`, refused by `worker delegate`, `review delegate` and
+  `prompt` (chores, resume and `message` included, before any preflight or harness), shown as excluded and never
+  offered by `handoff status`, and its records do not count at the gate. The roster key
+  `allow_guidance_bypass_model: true` (committed roster only; a `roster_add` entry is refused) lets it back in at the
+  developer's own risk, with a warning on every executor or reviewer launch; `validate` and `doctor` warn for each
+  flagged entry. The coordinator role, and everything with `signed_reviews` off, are unchanged.
 - The `specyrd-brainstorm` skill (description and first paragraph, in every
   harness's rendered copy) and `suggested_prompts/brainstorm-roadmap.md` Phase 1
   say to make `specy-road brainstorm start` the next tool call after reading the

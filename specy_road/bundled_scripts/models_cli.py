@@ -22,6 +22,7 @@ from typing import Any
 
 from specy_road.model_profiles import (
     DEFAULT_MAX_AGE_DAYS,
+    GUIDANCE_BYPASS_KEY,
     ROLES,
     Profile,
     display_rel,
@@ -148,8 +149,10 @@ def cmd_show(ns: argparse.Namespace) -> int:
     for role in ROLES:
         fit = (prof.data.get("role_fit") or {}).get(role) or {}
         print(f"- {role}: {fit.get('score', '?')} — {fit.get('reason', '')}")
-    for reason in prof.stale_reasons():
-        print(f"- stale: {reason}")
+    bypass = [b for b in [prof.data.get(GUIDANCE_BYPASS_KEY)] if isinstance(b, dict)]   # M21.44
+    for line in [f"- stale: {reason}" for reason in prof.stale_reasons()] + [
+            f"- guidance bypass observed: {b.get('date')}, {b.get('harness')}: {b.get('evidence')}" for b in bypass]:
+        print(line)
     section = ns.section or "Prompting rules"
     print(f"\n## {section}")
     print("\n".join(prof.sections.get(section, ["_(no such section)_"])))

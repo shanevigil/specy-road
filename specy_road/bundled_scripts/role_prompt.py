@@ -80,6 +80,8 @@ from specy_road.model_profiles import ROLES, Profile
 from specy_road.orchestrate_plan import (
     ANY,
     entry_may_process,
+    guidance_bypass_refusal,
+    guidance_bypass_warning,
     is_available,
     may_handle,
     node_eligibility,
@@ -194,43 +196,79 @@ def reviewer_lines(root: Path, node_id: str, model: str, t: ReviewTarget, ref: s
             + escalated_note(loop, node_id) + (READ_BACK_LINES if read_back else PASTED_LINES)), packet, ""
 
 
-def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
+def role_check(root: Path, node_id: str, role: str, model: str) -> tuple[dict, dict, str | None]:
+    """``(config, roster entry, error)``: the pinned roster has ``model`` in the role's need (``rca`` is a reviewer's),
+    available, and not excluded as a guidance-bypass model (M21.44: executor and reviewer needs only)."""
+    config, err = pinned_config(root)
+    if err:
+        return config, {}, f"orchestration config: {err}"
+    entry = next((e for e in config.get("roster") or [] if e.get("id") == model), None)
+    if entry is None:
+        return config, {}, f"{model!r} is not in the roster (roadmap/orchestration.yaml)"
+    need = "reviewer" if role == "rca" else role
+    substitute = need == "reviewer" and substitute_for(config, node_id, model) is not None
+    if need not in (entry.get("roles") or []) and not substitute:
+        return config, entry, f"{model!r} does not have the {need} role in the roster"
+    if not is_available(entry):
+        return config, entry, unavailable_prompt_error(model, entry)
+    if need != "coordinator":
+        return config, entry, guidance_bypass_refusal(config, entry, pinned_profile_for_entry(root, entry), root)
+    return config, entry, None
+
+
+def _target_node(root: Path, node_id: str, role: str, ref: str | None):
+    """``(target, nodes, node, error)``; a coordinator's leaf need not be claimed yet (its prompt picks it up)."""
+    try:
+        t = resolve_target(root, node_id, ref)
+    except ReviewTargetError as e:
+        if role != "coordinator":
+            return None, [], None, str(e)
+        t = None   # the coordinator's prompt is what picks the leaf up
+    nodes = t.nodes if t else load_roadmap(root)["nodes"]
+    node = t.node if t else next((n for n in nodes if n.get("id") == node_id), None)
+    return t, nodes, node, None if node is not None else f"unknown node id: {node_id}"
+
+
+def _leaf_check(node_id: str, model: str, entry: dict, node: dict, executor: bool) -> str | None:
+    """Why ``entry`` may not take this leaf: an executor's class, then the leaf's sensitivity."""
+    need = node_eligibility(node)
+    if executor and need != ANY and str(entry.get("class") or "") != need:
+        return (f"{node_id} needs executor class {need!r}; {model!r} is "
+                f"{entry.get('class') or 'unclassed'} (`specy-road orchestrate plan`)")
+    if not may_handle(entry, node_sensitivity(node)):
+        return (f"{node_id} is {node_sensitivity(node)!r} and {model!r} may process only "
+                f"{entry_may_process(entry)}; route it to a model that may (`specy-road orchestrate plan`)")
+    return None
+
+
+def _role_lines(root: Path, node_id: str, role: str, model: str, entry: dict, t, prof: Profile | None, loop,
+                zones: list[str], context_feedback: bool, review: tuple) -> tuple[list[str], str | None, str | None]:
+    """``(lines, packet, error)``: the role's own preamble; ``review`` is ``(ref, read_back, config)``."""
+    if role == "executor":
+        lines = executor_preamble(node_id, model, zones, entry.get("subagent_family_lock"),
+                                  reviews_dir(root, node_id), project_prefix(root))
+        lines += FILE_LIMIT_LINES + rework_lines(root, node_id, t)
+        lines += [SUBAGENT_LINE, ""] if has_subagents(prof) else []
+        return lines + (CONTEXT_FEEDBACK_LINES if context_feedback else []), None, None
+    if role == "reviewer":
+        preamble, packet, err = reviewer_lines(root, node_id, model, t, review[0], loop, review[1], review[2])
+        return preamble, packet, err if packet is None else None
+    if role == "rca":
+        return rca_preamble(root, node_id, model, loop.escalation) + [DATA_LINE, ""], None, None
+    return coordinator_preamble(node_id) + coordinator_decision_lines(), None, None
+
+
+def build_prompt(root: Path, node_id: str, *, role: str, model: str,
                  ref: str | None = None, context_feedback: bool = False, read_back: bool = True,
                  force_reason: str | None = None) -> tuple[str, Profile | None, str | None]:
     """``(text, profile, error)``; ``ref`` names the branch or commit under review, as ``review-packet --ref``;
     ``context_feedback`` adds the pilot's three-line block to an executor prompt; ``read_back``: :func:`reviewer_lines`;
     ``force_reason`` starts an ``rca`` prompt although the loop is not escalated (:func:`review_rca.rca_trigger`)."""
-    config, err = pinned_config(root)
+    config, entry, err = role_check(root, node_id, role, model)
+    t, nodes, node, err = (None, [], None, err) if err else _target_node(root, node_id, role, ref)
+    err = err or _leaf_check(node_id, model, entry, node, executor=bool(t) and role == "executor")
     if err:
-        return "", None, f"orchestration config: {err}"
-    entry = next((e for e in config.get("roster") or [] if e.get("id") == model), None)
-    if entry is None:
-        return "", None, f"{model!r} is not in the roster (roadmap/orchestration.yaml)"
-    need = "reviewer" if role == "rca" else role
-    substitute = need == "reviewer" and substitute_for(config, node_id, model) is not None
-    if need not in (entry.get("roles") or []) and not substitute:
-        return "", None, f"{model!r} does not have the {need} role in the roster"
-    if not is_available(entry):
-        return "", None, unavailable_prompt_error(model, entry)
-    try:
-        t = resolve_target(root, node_id, ref)
-    except ReviewTargetError as e:
-        if role != "coordinator":
-            return "", None, str(e)
-        t = None   # the coordinator's prompt is what picks the leaf up
-    nodes = t.nodes if t else load_roadmap(root)["nodes"]
-    node = t.node if t else next((n for n in nodes if n.get("id") == node_id), None)
-    if node is None:
-        return "", None, f"unknown node id: {node_id}"
-    if t and role == "executor":
-        need = node_eligibility(t.node)
-        if need != ANY and str(entry.get("class") or "") != need:
-            return "", None, (f"{node_id} needs executor class {need!r}; {model!r} is "
-                              f"{entry.get('class') or 'unclassed'} (`specy-road orchestrate plan`)")
-    if not may_handle(entry, node_sensitivity(node)):
-        return "", None, (f"{node_id} is {node_sensitivity(node)!r} and {model!r} may process only "
-                          f"{entry_may_process(entry)}; route it to a model that may "
-                          "(`specy-road orchestrate plan`)")
+        return "", None, err
     prof = pinned_profile_for_entry(root, entry)
     if prof is not None and not prof.ok:
         return "", prof, f"profile for {model!r}: " + "; ".join(prof.errors)
@@ -238,41 +276,23 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
     loop = loop_state(root, node_id) if role in ("reviewer", "rca") else None
     if role == "rca":
         loop.escalation, err = rca_trigger(root, node_id, model, loop, force_reason)
-        if err:
-            return "", prof, err
     title = "Root-cause analysis" if role == "rca" else role.title()
     lines = [f"# {title} prompt: `{node_id}` for `{model}`", ""]
-    if t and t.commit:   # the AGENTS.md rule: a prompt names its commit, or the agent stops to ask
-        lines += [f"base: {t.commit}", ""]
-    prefix = project_prefix(root)
-    if t:
-        lines += precondition(role, node_id, t, reviews_dir(root, node_id) / PACKET_NAME, prefix,
+    # the AGENTS.md rule: a prompt names its commit, or the agent stops to ask
+    lines += [f"base: {t.commit}", ""] if t and t.commit else []
+    if t and not err:
+        lines += precondition(role, node_id, t, reviews_dir(root, node_id) / PACKET_NAME, project_prefix(root),
                               forced=role == "rca" and loop.escalation.rule == "forced")
-    if role == "executor":
-        lines += executor_preamble(node_id, model, zones, entry.get("subagent_family_lock"),
-                                   reviews_dir(root, node_id), prefix)
-        lines += FILE_LIMIT_LINES + rework_lines(root, node_id, t)
-        if has_subagents(prof):
-            lines += [SUBAGENT_LINE, ""]
-        if context_feedback:
-            lines += CONTEXT_FEEDBACK_LINES
-    elif role == "reviewer":
-        preamble, packet, err = reviewer_lines(root, node_id, model, t, ref, loop, read_back, config)
-        if packet is None:
-            return "", prof, err
-        lines += preamble
-    elif role == "rca":
-        lines += rca_preamble(root, node_id, model, loop.escalation) + [DATA_LINE, ""]
-    else:
-        lines += coordinator_preamble(node_id)
-        lines += coordinator_decision_lines()
-    lines += profile_lines(prof, role, zones)
+    body, packet, err = (None, None, err) if err else _role_lines(root, node_id, role, model, entry, t, prof, loop,
+                                                                   zones, context_feedback, (ref, read_back, config))
+    if err:
+        return "", prof, err
+    lines += body + profile_lines(prof, role, zones)
     if role == "reviewer":
         lines += ["---", "", packet.rstrip(), "", "---", ""] + schema_lines()
     else:
         lines += ["---", "", render_brief(node_id, index(nodes), repo_root=root, include_history=False).rstrip(), ""]
-    if role == "rca":
-        lines += rca_evidence(root, t, loop)
+    lines += rca_evidence(root, t, loop) if role == "rca" else []
     return "\n".join(lines) + "\n", prof, None
 
 
@@ -359,6 +379,12 @@ def main(argv: list[str] | None = None) -> None:
         _run(ns, root)
 
 
+def _launch_warning(ns: argparse.Namespace, config: dict, entry: dict, prof: Profile | None, root: Path) -> None:
+    """M21.44: an opted-in guidance-bypass model's warning, once, when ``--run`` launches an executor or reviewer."""
+    if ns.run and ns.role != "coordinator" and (note := guidance_bypass_warning(config, entry, prof, root)):
+        print(note, file=sys.stderr)
+
+
 def _run(ns: argparse.Namespace, root: Path) -> None:
     """:func:`main` after its arguments: write the prompt and, with ``--channel cli``, show its command, or with
     ``--run`` as well, run it."""
@@ -380,6 +406,7 @@ def _run(ns: argparse.Namespace, root: Path) -> None:
         print(f"note: no profile for {ns.model!r}; the prompt has no model notes (see `specy-road models list`)", file=sys.stderr)
     if ns.channel != "cli":
         raise SystemExit(0)
+    _launch_warning(ns, config, entry, prof, root)
     if ns.role != "reviewer":
         if not ns.run:
             raise SystemExit(show_cli(prof, out, entry_cli, entry.get("harness"), ns.role))
