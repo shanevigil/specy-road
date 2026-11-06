@@ -153,3 +153,14 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: reviewer-answer-after-prose
+    node_id: M21.25
+    branch: feature/rm-reviewer-answer-after-prose
+    touch_zones:
+      - specy_road/review_answer.py
+      - tests/test_review_answer.py
+      - docs/orchestration-reviewer-output.md
+      - CHANGELOG.md
+    started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
