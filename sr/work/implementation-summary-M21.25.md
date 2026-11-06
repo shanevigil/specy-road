@@ -45,6 +45,19 @@ The reviewer prompt's "exactly one JSON object" instruction and `review record`'
 - No branch was added: the unfinished condition was replaced by one condition, and the opener set grew by one
   character.
 
+## Fix round 2 (gpt-6.1-sol-low block at 548e419b)
+
+- Class: "judging a cut from the error tail without the decoder's context". `_CUT_TOKEN` looked only at the
+  text from the error position, so `Use {1` (tail `1`) and `{"x": 1.e` (tail `.e`) counted as cuts, although no
+  JSON continues them. Design change: `_CUT_TOKEN` is removed and the decoder itself judges a cut. `_FILLS` lists
+  the completions of one cut-off token: nothing, the rest of each literal prefix, a digit for a number, a
+  closing quote, and the rest of an escape. `_cut_short` decodes the text plus each fill from the opener. The
+  value was cut short when one of them makes the decoder run out of text instead of failing inside it. Every
+  prefix of a JSON token has a fill in the list, and no fill closes a container. So this is exact for JSON's
+  grammar: a valid prefix is refused as unfinished, and anything else is prose. The round 1 limit (`{1`) is gone.
+- Remaining edge: Python's decoder accepts `NaN`/`Infinity`, so `{"x": NaN` at the end is refused as unfinished
+  rather than read as prose. It is still a refusal.
+
 ## Final touch zones
 
 specy_road/review_answer.py, tests/test_review_answer.py, docs/orchestration-reviewer-output.md, CHANGELOG.md,
@@ -60,9 +73,10 @@ tests/test_review_record_write.py, tests/test_review_record_write_closure.py, te
 - `review_answer._last_object`: the text-message answer rule (A1/A2).
 - `review_answer._OPENER` regex: finds the next value opener (`{`, `[`, `"`) in one linear search (fix round 1
   added `"` so string interiors are skipped).
-- `review_answer._CUT_TOKEN` regex (fix round 1): the bounded "failed only because the text ends" rule.
+- `review_answer._FILLS` and `_cut_short` (fix round 2, replacing round 1's `_CUT_TOKEN` regex): the decoder judges
+  whether a value was cut short by the end of the text.
 - Branch in `_last_object`, `except RecursionError`: the excessive-nesting refusal (A2).
-- Branch in `_last_object`, a non-string opener whose error tail matches `_CUT_TOKEN`: the unfinished-object
+- Branch in `_last_object`, a non-string opener that `_cut_short` reports: the unfinished-object
   refusal (A1/A2).
 - Branch in `_answer`, `isinstance(body, Rerun)`: passes `_last_object`'s refusal through.
 - `import re` in review_answer.py: for `_OPENER`.
@@ -72,6 +86,8 @@ tests/test_review_record_write.py, tests/test_review_record_write_closure.py, te
   `SCHEMA` (test_review_record_write.py): the new reasons.
 - Branch `why is None` in `test_malformed_output_is_a_rerun_request_never_a_verdict`: the prose-before row now
   files, so it asserts a recorded review.
+- `TEXT_SHAPES` rows (fix round 2): `Use {1` holds no object, and four prefixes no JSON continues after a valid
+  answer do not end with an object.
 - `TEXT_SHAPES` rows (fix round 1): a cut inside each token kind, alone and after a valid object; a bad
   `\u` escape is not a cut; `json.dumps("{}")` holds no object; quoted braces in prose, then the object, files.
 - Mocks: none.
@@ -89,7 +105,19 @@ tests/test_review_record_write.py, tests/test_review_record_write_closure.py, te
 - Prose with an unclosed quote on its own line, then the answer: files (a raw newline ends no JSON string).
 - Prose quote on the same line as the answer: refused, "holds no JSON object" (documented limit, never a wrong
   answer).
-- `Use {1` at the end: unfinished (documented limit of the one-token rule).
+- Round 2, `Use {1`: holds no JSON object (was unfinished).
+- Round 2, a valid answer, then `Use {1`, `{"x": 1.e`, `{"x": tru ` (space after the cut) or `[1 2`: does not
+  end with a JSON object (table rows on all four text paths).
+- Round 2, impossible prefixes `{"x": 01`, `{"x": "\uZZ`, `{"x": "a\q`, `{"x", `, `[,`, `{"a" : }`: holds no
+  JSON object.
+- Round 2, genuine cuts kept: `{"x": t`/`tru`/`nu`/`fals`/`-`/`1.`/`1e+`, `{"x": "a\`, `{"x": "\u1`, `{"x"`,
+  `{"x":`, `[1,`, `{"x": [tru`, `{"a":{"b":"c"`, a lone `{` after the answer, the answer cut inside a long
+  string: all "ends inside an unfinished JSON object".
+- Round 2, the rc4 narration shape and `see {below}` prose before the answer: the answer files.
+- Round 2, cost: `_cut_short` only runs for a failed `{`/`[` decode. Its 17 filled texts are built once per
+  message, so a prose brace costs 17 decodes that fail at the same early position, with no per-opener copy.
+- Round 2, other places the class could reach: none. `_last_object` is the only scanner, and the envelope path
+  and per-line events still use `loads_untrusted` whole-text parsing.
 - Answer cut inside one of its strings: unfinished. Answer plus trailing whitespace: files.
 - Other places this class can reach: the generic/envelope path (`_object` -> `loads_untrusted`, whole-text
   parse, no scanning), still "is not one complete JSON object" for prose then an object; per-line event
