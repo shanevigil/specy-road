@@ -265,6 +265,7 @@ Do not pick these up.
 - `M21.16` on `feature/rm-upgrade-scratch-git-and-regen` since 2026-11-05
 - `M21.18` on `feature/rm-deferral-bound-to-its-decision` since 2026-11-05
 - `M21.19` on `feature/rm-apply-dry-run-rebases-links` since 2026-11-05
+- `M21.20` on `feature/rm-gui-publish-regenerates-and-needs-a-remote` since 2026-11-05
 - `M21.21` on `feature/rm-review-delegate-validates-reviewer-command` since 2026-11-05
 - `M21.22` on `feature/rm-rc4-small-code-fixes` since 2026-11-05
 - `M21.23` on `feature/rm-rc4-docs-corrections` since 2026-11-05
