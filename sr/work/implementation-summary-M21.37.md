@@ -130,6 +130,35 @@ Merged `origin/WIP/improvements-0-3-1` first (no conflicts). Fix commit: `cfcb47
   - `regenerate_generated_files`, called from archive/GUI/finish outside the zones: prints and returns the refused names; its callers' exit codes are outside the zones. Not changed.
 - Full suite: 5997 passed. `ruff check specy_road tests scripts`: pass. `specy-road file-limits`: pass.
 
+## Fix round 3 (review `gpt-6.1-sol-low` at `512fee21`): stopped, needs paths outside the touch zones
+
+Merged `origin/WIP/improvements-0-3-1` (no conflicts). The merge did not change the touch zones or the contradicting tests. No code change this round. Both required changes are the open R1 from rounds 1 and 2:
+
+- **R1: stub writes from `repo_root`, refusing linked ancestors.** `tests/test_m13_7_notices.py::test_a_symlinked_skills_dir_reports_each_skill_once_with_the_link` and `::test_a_reverse_symlinked_skills_dir_reports_each_skill_once_and_runs_agree` require writing `SKILL.md` through an in-repo symlinked `.agents/skills` or `.claude/skills` directory. `specy_road/specyrd_skills.py` (`specyrd init`) writes the same files on `resolves_outside`.
+- **R2: refresh-stubs and upgrade exit 1 on an outward stub refusal.**
+  - `tests/test_prerelease_files.py::test_managed_writes_refuse_a_symlink_out_of_the_repo` (the `refresh` rows) asserts `returncode == 0` and the old `refused: a symlink leads outside the repository` text.
+  - `tests/test_upgrade_plan_parity.py::test_dry_run_copy_and_real_checkout_end_byte_identical[canonical-skill-linked-outside]` asserts `dry == real == 0`.
+  - A3's acceptance text also says "declined entries are not changes and keep their refresher's per-file refusal". Turning upgrade's declined stub entries into exit 1 needs that text amended, and I may not edit acceptance.
+
+### Probes (fix round 3)
+
+- Touch zones after the merge: unchanged; none of the four paths above is listed.
+- `tests/test_upgrade_plan_parity.py:143` (`assert dry == real == 0`): still present.
+- `tests/test_prerelease_files.py:81` (`returncode == 0`): still present.
+- `tests/test_m13_7_notices.py:38` and `:61`: still present.
+
+### Needed to proceed
+
+1. Add `tests/test_prerelease_files.py`, `tests/test_m13_7_notices.py`, `tests/test_upgrade_plan_parity.py` and `specy_road/specyrd_skills.py` to M21.37's touch zones.
+2. Get a maintainer decision to drop the M13.7 symlinked-skills-directory layout.
+3. Amend A3's "declined entries keep their refresher's per-file refusal".
+
+The code change is then:
+- `safe_write.write(repo_root, ...)` in `refresh_stubs._write_if_changed`, with the `resolves_outside` branch and `main`'s `REFUSED` exception removed;
+- `run_upgrade` and `_dry_run` exit 1 when the plan has a `refuse` entry;
+- the same rule in `specyrd_skills` for the canonical skill files;
+- those tests' expectations updated.
+
 ## Touch zones
 
 All edits are inside the listed zones. No file outside them needed changing, and no new module beyond `specy_road/safe_write.py` (already listed). `specy-road file-limits` passes.
