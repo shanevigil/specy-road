@@ -28,10 +28,22 @@ specy-road file-limits
 - `specy_road/review_delegate_harness.py` — `_Harness` and `HarnessSetupError`; keeps `review_delegate.py` under the line cap.
 - `specy_road/orchestration_routing.py` — `entry_launch_model`, `entry_routing`, `routing_problem`; keeps `orchestration_config.py` under the line cap.
 - `_no_model_refusal` in `review_delegate.py` — exact A2 CLI sentence.
-- `_model_check` in `review_delegate.py` — shared M15.3 check + stderr note for delegate filing.
+- `_delegate_locked` in `review_delegate.py` — locked turn body extracted so `delegate()` stays at merge-base ruff complexity.
 - Refusal branch in `delegate()` before `save_run` — A2, no RUN when model is none and not dynamic.
 - `requested_model` / `reported_model` on RUN dict — A3 audit fields.
 - `model_check` passed to `file_review` in `delegate()` — A3 record + gate exclusion.
 - `tests/test_review_delegate.py` — four tests for A1–A3 (no-profile argv, refusal, dynamic launch, mismatch + `review list`).
 - `tests/test_dynamic_routing_reviewers.py` — A4 unit test for claude-code `api_id: unknown`; relaxed gate problem assertion for no-model entries.
 - Docs paragraph and routing table row in `docs/orchestration-models.md` — review delegate + any-harness dynamic routing.
+
+## Probes
+
+- `review_delegate_harness.py` vs pre-split `review_delegate.py` `_Harness` (parent of 44f67d0a): all six launch-path comments restored; no other `_Harness` lines lost comments.
+- `review_delegate.py` after the split: launch-path logic lives only in the harness module; inline comments on `_attempts`, `delegate`, and `_close` unchanged from merge base.
+- `orchestration_routing.py` / `orchestration_config.py`: new routing code, not a move from an commented block; no launch-path comments applicable.
+- `docs/orchestration-models.md` and tests/: no module-split comment class; spot-checked for duplicated launch-path prose — none added.
+- `ruff check` on `delegate` vs merge base `8f684959`: complexity back within limit after extracting `_delegate_locked`.
+
+## Fix round 1 (grok-4.7-low)
+
+Restored launch-path comments in `review_delegate_harness.py` when `_Harness` moved for file-limits (chore default command, harness_bin, Codex `-o` output, RUN log, symlink replacement, custom-command resume, structured-output flags).
