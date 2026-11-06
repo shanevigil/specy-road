@@ -13,6 +13,17 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `finish-this-task` runs `validate` before its first bookkeeping write, so an
+  invalid configuration (for example `policy.reviewers_required: 1` with
+  `require_implementation_review_before_finish: false`) is refused with
+  validate's own error and `finish-this-task: nothing was changed`, instead of
+  leaving the chunk and registry modified behind a Python traceback. A later
+  failure before the bookkeeping commit (a refused validate, export or digest,
+  an `OSError` on a write, a refused `git add` or `git commit`) puts back the
+  bytes and index entries of every path finish could have touched, never from
+  HEAD, so your own staged and unstaged edits survive. It names the failing
+  command or path, reports any path it could not restore, and exits 1 with
+  `nothing was committed; fix it and run finish-this-task again`.
 - Security: no writer follows a symlink out of the directory it owns.
   `init project` treats a dangling `roadmap.md` or `roadmap-context.md` link
   as present (skipped without `--force`), and with `--force` lists a link out
