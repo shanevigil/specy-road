@@ -395,9 +395,7 @@
         "Estimated net line change (informational, not a gate): package about +35, tests about +130, docs about +3"
       ],
       "codename": "upgrade-scratch-git-env-sterile",
-      "dependencies": [
-        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313"
-      ],
+      "dependencies": [],
       "id": "M21.40",
       "node_key": "74c3d924-fc2e-4170-a786-caed84beca86",
       "parent_id": "M21",
