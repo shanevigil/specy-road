@@ -52,12 +52,14 @@ def review_record_caller_matches(request: pytest.FixtureRequest, monkeypatch: py
     """Every in-process ``review record`` runs as a matching identified caller, whatever harness runs the suite.
 
     The caller check (:mod:`specy_road.review_caller`) reads the harness's environment markers, which differ
-    between a developer's harness and CI; tests marked ``real_review_caller`` exercise it.
+    between a developer's harness and CI, so they are cleared: a subprocess filing sees no harness, as in CI. Tests
+    marked ``real_review_caller`` exercise the check.
     """
-    if request.node.get_closest_marker("real_review_caller"):
-        return
     from specy_road import review_caller
-    monkeypatch.setattr(review_caller, "refusal", lambda repo_root, ns: None)
+    for _harness, var, _value in review_caller.HARNESS_MARKERS:
+        monkeypatch.delenv(var, raising=False)
+    if not request.node.get_closest_marker("real_review_caller"):
+        monkeypatch.setattr(review_caller, "refusal", lambda repo_root, ns: None)
 
 
 @pytest.fixture(autouse=True)
