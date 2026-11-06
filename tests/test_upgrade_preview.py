@@ -308,8 +308,13 @@ def test_git_config_count_runs_no_command_in_a_dry_run(
 def test_the_callers_global_git_config_never_reaches_the_copy(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, config_file: str
 ) -> None:
-    """Dropping GIT_CONFIG_GLOBAL alone only sends git to the default files, validate's git calls included."""
-    root = _committed(old_repo(tmp_path / "project"))
+    """Dropping GIT_CONFIG_GLOBAL alone only sends git to the default files, validate's git calls included.
+
+    A .gitignore the refresh rewrites also sends the plan's ignore note to git, in the plan's mirror.
+    """
+    root = old_repo(tmp_path / "project")
+    (root / ".gitignore").write_text("*.log\n", encoding="utf-8")
+    _committed(root)
     marker = tmp_path / "marker"
     config = _marker_config(tmp_path, marker)
     home = tmp_path / "home"
