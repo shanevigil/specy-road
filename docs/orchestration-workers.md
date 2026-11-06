@@ -285,15 +285,14 @@ with members but neither identity is refused (a group id can be reused):
 kill this worker's processes in it by hand, then run `terminate` again. On an adopted (`native`) record it closes the record and
 says the session was not signalled.
 
-**Processes outside the group.** The recorded group covers the wrapper, the
-harness and what the harness forks directly, not what it puts in a group of
-its own. Claude Code runs each Bash-tool command in its own process group: on
-SIGTERM (what `terminate` sends first) claude stops those commands itself, but
-after a SIGKILL — `terminate`'s escalation after 5 s, `kill -9` of the harness
-or the group, a crash — whatever the tool was running (a test suite, a server)
-keeps running with ppid 1, and no `worker` command sees it. Stop workers with
-`terminate` rather than `kill -9`; after any SIGKILL, list what still runs in
-the worker's worktree (`lsof -d cwd | grep <worktree>`) and kill it by hand.
+**Processes outside the group.** The recorded group covers the wrapper, the harness and what the harness forks directly, not what it
+puts in a group or session of its own (Claude Code's Bash tool, Cursor's shell tool). `terminate` snapshots the group's descendants
+before its first signal and also ends those outside the group once the group is gone (SIGTERM, then SIGKILL; each only while its
+start time still matches, so a reused pid is never signalled); a survivor, or a failed `ps` listing, makes it fail instead of
+reporting terminated. It cannot see a process already re-parented before that snapshot: after a `kill -9` of the harness or the
+group, or a crash, what the tool was running (a test suite, a server) keeps running with ppid 1. Stop workers with `terminate`
+rather than `kill -9`; after any SIGKILL, list what still runs in the worker's worktree (`lsof -d cwd | grep <worktree>`) and kill
+it by hand.
 
 `reclaim` always returns the worker to `idle`, even one that was
 `completed`: the coordinator re-verifies READY against the branch after a

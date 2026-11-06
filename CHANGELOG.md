@@ -13,6 +13,14 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `worker terminate` also ends what the harness started in a session of its own
+  (Cursor's shell tool runs each command that way, so a `sleep` it was running
+  kept going after "terminated"). Before the first signal it lists the group's
+  descendants outside the group with their start times, and after the group is
+  gone ends each one still running with the same start time (SIGTERM, then
+  SIGKILL). A survivor, or a `ps` listing that fails, makes terminate fail
+  naming it instead of reporting terminated. A process already re-parented to
+  init before terminate ran is still out of reach.
 - Security: no writer follows a symlink out of the directory it owns.
   `init project` treats a dangling `roadmap.md` or `roadmap-context.md` link
   as present (skipped without `--force`), and with `--force` lists a link out
