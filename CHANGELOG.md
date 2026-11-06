@@ -466,7 +466,7 @@ Workers, rosters and installs
 - **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
   copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
   longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.
-  Upgrade's git calls time out after 60 s. A failed `git init`, `add` or `commit` in a temporary copy, the plan's
+  Upgrade's git calls time out after 60 s, except the ignored-file check. A failed `git init`, `add` or `commit` in a temporary copy, the plan's
   included (so a real run too), prints `error: git <command> failed in the temporary copy (<reason>)` and exits 2
   without writing or validating, and so does a failed
   `ls-files` on `roadmap.md` (in a real run it names the checkout), before a generated file is written.
@@ -627,7 +627,8 @@ Workers, rosters and installs
   of the project as skipped with the reason instead of writing its target.
   Regenerating the two files (archive, GUI) skips such a link with a stderr
   line, and `finish-this-task` aborts the land naming it. `REJECTED-<model>.md`
-  and `PACKET.md` are never written through any symlink: `review record`
+  and `PACKET.md` are never written through a symlink at the file itself (a
+  symlinked hand-off directory is still followed): `review record`
   keeps its own error, and `review delegate` exits 1 before launching.
 - The pickup footer's one-time `grind-session` hint no longer dirties the
   working tree: its marker under `.specyrd/cache/` is written through the
@@ -855,6 +856,14 @@ Workers, rosters and installs
   generated files and a few review files are protected so far. Don't run
   specy-road on a checkout where an untrusted agent or process could plant
   symlinks. A full fix is planned before 0.3.1 final.
+- **Known issue:** the composer-2.5 exclusion is a default guard, not containment.
+  It misses a local `roster_add` entry with `family: human`, a profile whose
+  `access.cli` runs the model, and a flagged profile at a path git quotes, such
+  as a non-ASCII filename. Fixes are planned for rc5.
+- **Known issue:** `upgrade` is not fully isolated from the caller's git config.
+  In a real run its planning steps read global and system config, and git calls
+  in the project itself can run a `core.fsmonitor` command set through
+  `GIT_CONFIG_COUNT`. Fixes are planned for rc5.
 - The steering guard (executors cannot change the files that steer harnesses
   and specy-road unnoticed) moves to rc5; its branch is not in this release.
 
