@@ -13,7 +13,7 @@ import pytest
 import yaml
 
 from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
+from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
 from tests.test_review_gate import TWO_FAMILIES
 
 from specy_road.bundled_scripts import finish_task, mark_implementation_reviewed, review_cli
@@ -41,9 +41,11 @@ def _claim(repo: Path, message: str | None = None) -> None:
     git(repo, "rebase", "-q", "dev")
 
 
-def _on_dev(repo: Path, rel: str, text: str, *, merge: bool = False) -> None:
+def _on_dev(repo: Path, rel: str, content: str | bytes, *, merge: bool = False) -> None:
     git(repo, "checkout", "-q", "dev")
-    commit_file(repo, rel, text, f"chore: edit {rel}")
+    (repo / rel).write_bytes(content if isinstance(content, bytes) else content.encode("utf-8"))
+    git(repo, "add", rel)
+    git(repo, "commit", "-qm", f"chore: edit {rel}")
     git(repo, "checkout", "-q", "feature/rm-thing")
     if merge:
         git(repo, "rebase", "-q", "dev")
@@ -104,6 +106,9 @@ GATE_CASES = [
     ("quoted dates hash equal", TWO_FAMILIES,
      (ORCH, TWO_FAMILIES.replace("2026-01-01", "'2026-01-01'").replace("2026-12-31", "'2026-12-31'")), None),
     ("policy file no longer parses", TWO_FAMILIES, (ORCH, "roster: [\n"), "cannot be checked"),
+    ("impossible unquoted date", TWO_FAMILIES, (ORCH, TWO_FAMILIES.replace("2026-12-31", "2026-99-99")),
+     "cannot be checked"),
+    ("policy is not utf-8", TWO_FAMILIES, (ORCH, TWO_FAMILIES.encode("utf-8") + b"# \xff\xfe\n"), "cannot be checked"),
     ("policy is not a mapping", TWO_FAMILIES, (ORCH, "version: 1\npolicy: 1\n"), "policy is not a mapping"),
     ("roster is not a list of mappings", TWO_FAMILIES, (ORCH, "version: 1\nroster: [1]\n"),
      "roster is not a list of mappings"),
@@ -177,6 +182,9 @@ ACCEPTANCE_CASES = [
     ("schema-invalid, policy unchanged", False, lambda d: {**d, "extra": 1}, _INVALID),
     ("another node", True, lambda d: {**d, "node_id": "M9.9"}, _INVALID),
     ("another node, policy unchanged", False, lambda d: {**d, "node_id": "M9.9"}, _INVALID),
+    ("impossible unquoted date", True, lambda d: yaml.safe_dump({**d, "at": "X"}).replace("at: X", "at: 2026-99-99"),
+     _INVALID),
+    ("not utf-8", True, lambda d: yaml.safe_dump(d).encode("utf-8") + b"# \xff\xfe\n", _INVALID),
     ("pinned digest mismatch", True, lambda d: _bad_digest(d, "pinned_sha256"), _CHANGED),
     ("accepted digest mismatch", True, lambda d: _bad_digest(d, "accepted_sha256"), _CHANGED),
     ("second edit after acceptance", True, None, _CHANGED),
@@ -198,7 +206,8 @@ def test_an_acceptance_counts_only_for_its_node_and_digests(tmp_path: Path, monk
         _on_dev(repo, ORCH, CR1_ROSTER.replace("reviewers_required: 2", "reviewers_required: 1"))
     else:
         new = change(yaml.safe_load(acceptance.read_text()))
-        acceptance.write_text(new if isinstance(new, str) else yaml.safe_dump(new))
+        new = new if isinstance(new, (str, bytes)) else yaml.safe_dump(new)
+        acceptance.write_bytes(new if isinstance(new, bytes) else new.encode("utf-8"))
     gate = _gate(repo)
     assert not gate.passed and problem in gate.policy_pin
     before = _tree(repo)

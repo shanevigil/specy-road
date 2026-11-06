@@ -50,14 +50,34 @@ class PolicyUnreadable(ValueError):
     """A policy file is present but does not parse, or a pin trailer is present but does not parse."""
 
 
+def load_yaml(raw: bytes | str) -> Any:
+    """The one parse rule for every YAML input here (committed policy, ``POLICY-ACCEPTED.yaml``): UTF-8, then
+    ``yaml.safe_load``. Any error in either step — ``yaml.YAMLError``; ``ValueError``, which covers
+    ``UnicodeDecodeError`` and an impossible unquoted date; ``RecursionError`` on deep nesting — raises
+    :class:`PolicyUnreadable`, so an unreadable input is a problem, never a crash and never empty."""
+    try:
+        return yaml.safe_load(raw.decode("utf-8") if isinstance(raw, bytes) else raw)
+    except (yaml.YAMLError, ValueError, RecursionError) as e:
+        raise PolicyUnreadable(f"does not parse: {(str(e).splitlines() or [type(e).__name__])[0]}") from e
+
+
+def _git_read(root: Path, args: list[str]) -> str | None:
+    """git's output; ``None`` only when git ran and exited non-zero (a path or commit that is not there). Output git
+    could not deliver or decode (``GitResult.failure``) raises :class:`PolicyUnreadable`: never read as absent."""
+    r = run(args, root)
+    if r.failure:
+        raise PolicyUnreadable(f"`git {' '.join(args)}` output cannot be read ({r.failure}: {r.message})")
+    return r.out if r.ok else None
+
+
 def _yaml_at(root: Path, ref: str, rel: str) -> dict[str, Any]:
-    r = run(["show", f"{ref}:./{rel}"], root)
-    if not r.ok:
+    text = _git_read(root, ["show", f"{ref}:./{rel}"])
+    if text is None:
         return {}   # not committed there: every key is null
     try:
-        data = yaml.safe_load(r.out)
-    except yaml.YAMLError as e:
-        raise PolicyUnreadable(f"{rel} at {ref} does not parse: {str(e).splitlines()[0]}") from e
+        data = load_yaml(text)
+    except PolicyUnreadable as e:
+        raise PolicyUnreadable(f"{rel} at {ref} {e}") from e
     if data is not None and not isinstance(data, dict):
         raise PolicyUnreadable(f"{rel} at {ref} is not a mapping")
     return data or {}
@@ -111,10 +131,10 @@ def pin_of(root: Path, codename: str, tip: str) -> tuple[str, str] | None:
     present but does not parse.
     """
     subject = f"chore(rm-{codename}): {REGISTER_SUBJECT}"
-    log = git_text(["log", "--format=%H %s", f"--grep={REGISTER_SUBJECT}", "--fixed-strings", tip], root) or ""
+    log = _git_read(root, ["log", "--format=%H %s", f"--grep={REGISTER_SUBJECT}", "--fixed-strings", tip]) or ""
     sha = next((s for s, _, subj in (line.partition(" ") for line in log.splitlines())
                 if subj.startswith(subject)), None)
-    body = sha and git_text(["log", "-1", "--format=%B", sha], root) or ""
+    body = sha and _git_read(root, ["log", "-1", "--format=%B", sha]) or ""
     lines = [ln.strip() for ln in body.splitlines() if ln.strip().startswith(TRAILER_KEY)]
     if not lines:
         return None
@@ -161,9 +181,9 @@ def read_acceptance(root: Path, node_id: str) -> tuple[dict[str, Any] | None, st
     if not path.is_file():
         return None, None
     try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except (OSError, yaml.YAMLError) as e:
-        return None, f"{ACCEPTANCE_NAME} does not parse: {str(e).splitlines()[0]}"
+        data = load_yaml(path.read_bytes())
+    except (OSError, PolicyUnreadable) as e:
+        return None, f"{ACCEPTANCE_NAME} {e}"
     errors = sorted(Draft202012Validator(json.loads(_SCHEMA.read_text(encoding="utf-8"))).iter_errors(data),
                     key=str)
     if errors:
