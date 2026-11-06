@@ -68,8 +68,8 @@ def test_no_roster_upgrade_writes_only_the_readme_and_names_profiles_all_on_ever
 
 DIGEST, INDEX = "roadmap-context.md", "roadmap.md"
 WROTE_DIGEST, WROTE_INDEX = "wrote roadmap-context.md (specy-road digest)", "wrote roadmap.md (specy-road export)"
-REFUSED_DIGEST = "refused roadmap-context.md (a symlink leads outside the project)"
-REFUSED_INDEX = "refused roadmap.md (a symlink leads outside the project)"
+REFUSED_DIGEST = "refused roadmap-context.md ("   # then the safe-write refusal naming the path
+REFUSED_INDEX = "refused roadmap.md ("
 NEXT_DIGEST = "Run specy-road digest (and specy-road export if roadmap.md is tracked), then commit them. Not specy-road sync"
 
 

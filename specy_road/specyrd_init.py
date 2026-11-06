@@ -10,7 +10,7 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
-from specy_road import __version__
+from specy_road import __version__, safe_write
 from specy_road.agent_guide_block import AGENT_GUIDE, GUIDE_AGENTS, apply_guide_and_report  # noqa: F401 — re-exported
 from specy_road.agent_ignores import apply_and_report
 from specy_road.agents_md_block import apply_agents_and_report
@@ -189,10 +189,17 @@ def _load_manifest(repo_root: Path) -> dict[str, Any]:
 
 
 def _save_manifest(repo_root: Path, data: dict[str, Any]) -> None:
-    path = repo_root / ".specyrd" / "manifest.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
     data["specyrd_version"] = __version__
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    safe_write.write(repo_root, repo_root / ".specyrd" / "manifest.json", json.dumps(data, indent=2) + "\n")
+
+
+def _refuse_unsafe_manifest(repo_root: Path) -> None:
+    """Exit 1 naming ``.specyrd/manifest.json`` when the safe-write rule refuses it, before anything is written."""
+    try:
+        safe_write.check(repo_root, repo_root / ".specyrd" / "manifest.json")
+    except safe_write.SafeWriteError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
 
 
 def _validate_generic_commands_dir(repo_root: Path, rel: Path) -> Path:
@@ -294,6 +301,7 @@ def run_init(
         rel_dest = AGENT_REL_DEST[agent]
         assert rel_dest is not None
     repo_root = resolve_repo_root(target)
+    _refuse_unsafe_manifest(repo_root)
     if agent == "generic":
         rel_dest = _validate_generic_commands_dir(repo_root, rel_dest)
     written: list[str] = []

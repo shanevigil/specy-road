@@ -14,9 +14,11 @@ believe it.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
+from specy_road import safe_write
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.generated_files import gitignore_resolution_hint
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -63,8 +65,16 @@ def cmd_digest(ns: argparse.Namespace) -> int:
         print(f"OK: {ns.output} matches the roadmap.")
         return 0
 
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(body, encoding="utf-8")
+    inside = os.path.normpath(out).startswith(os.path.join(os.path.normpath(root), ""))
+    if inside or not Path(ns.output).is_absolute():
+        try:   # the default, a relative -o, or an absolute one in the checkout: the safe-write rule
+            safe_write.write(root, out, body)
+        except safe_write.SafeWriteError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
+    else:   # an explicit absolute -o out of the checkout is the person's own choice
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(body, encoding="utf-8")
     print(f"Wrote {out} ({len(body.encode('utf-8'))} bytes)")
     return 0
 

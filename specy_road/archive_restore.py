@@ -17,7 +17,10 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+from specy_road import safe_write
 from specy_road.archive_index import (
+    ARCHIVE_DIRNAME,
+    INDEX_FILENAME,
     archive_planning_dir,
     find_record,
     load_archive_index,
@@ -64,6 +67,30 @@ def _group_placements(
         fallback = f"phases/{record['archive_id']}.json"
         grouped[fallback].extend((len(nodes) + i, n) for i, n in enumerate(orphans))
     return dict(grouped)
+
+
+def _preflight(root: Path, archive_id: str, chunk_rel: str, record: dict[str, Any],
+               grouped: dict[str, list[tuple[int, dict]]]) -> None:
+    """Check every path the restore touches by the safe-write rule, lexically from ``root``, before any mutation.
+
+    The archived chunk (unlinked at the end), each target chunk, every planning
+    sheet's ``stored`` and ``origin``, the manifest, the ledger and the
+    archive's planning directory. A refusal raises ``ValueError`` (what the
+    archive commands report) naming the path, so nothing has been written,
+    moved or unlinked.
+    """
+    archive = Path("roadmap", ARCHIVE_DIRNAME)
+    files = [chunk_rel, *(Path("roadmap", rel) for rel in grouped), Path("roadmap", "manifest.json"),
+             archive / INDEX_FILENAME]
+    for move in record.get("planning") or []:
+        if isinstance(move, dict):
+            files += [str(move.get("stored", "")), str(move.get("origin", ""))]
+    try:
+        for rel in files:
+            safe_write.check(root, root / rel)
+        safe_write.check(root, root / archive / "planning" / archive_id, safe_write.DIRECTORY)
+    except safe_write.SafeWriteError as e:
+        raise ValueError(f"restore refused, nothing was changed: {e}") from e
 
 
 def _restore_planning_sheets(root: Path, record: dict[str, Any]) -> None:
@@ -170,9 +197,11 @@ def restore_archive(root: Path, archive_id: str) -> dict[str, Any]:
             "missing. The archive index and roadmap/archive/ are out of sync."
         )
 
+    _preflight(root, archive_id, chunk_rel, record, {})   # the source, before it is read
     src = (root / chunk_rel).resolve()
     nodes = load_json_chunk(src)
     grouped = _group_placements(record, nodes)
+    _preflight(root, archive_id, chunk_rel, record, grouped)
     _sync_includes(root, _write_back(root, grouped))
     _restore_planning_sheets(root, record)
 

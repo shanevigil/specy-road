@@ -138,12 +138,23 @@ order, then `validate` and `digest --check`, and ends with what is left for you:
 review the diff and commit the new untracked files. When `validate` passes it
 first writes `roadmap-context.md` if it is missing or out of date and
 `roadmap.md` if it is tracked and out of date, one `wrote` line each (`would
-write` in a dry run), and refuses a path that is a symlink out of the project;
+write` in a dry run), and refuses a path with any symlink on it (in the project or out of it);
 after a refusal, or when `validate` fails, it says to run `specy-road digest`
 instead (not `specy-road sync`, which also fast-forwards your integration
 branch from the remote). `--dry-run` runs its git calls in the temporary copy
 with `GIT_DIR` and the related variables removed, so it is safe inside a git
-hook. It exits non-zero only when `validate` fails. Each refresh is also a command of its own; all three are
+hook. It exits non-zero when `validate` fails, and also, even when `validate`
+passes, when a write is refused: before its first write, `upgrade` checks every
+path it would change, and one that leads out of the checkout, or a schema, stub
+directory or other path with any symlink on it, prints `error: <path> is a
+symlink (to <target>), not <kind>` and writes nothing (`--dry-run` included).
+`init project`, `refresh-schemas`, `refresh-stubs`, `specyrd init`, `export` and
+`digest` refuse the same way and exit 1: any symlink on the path they write,
+pointing out of the project or inside it, dangling or not, is refused rather than
+followed (`refresh-stubs` still reports a stub linked out of the repository as
+`refused` and goes on, as `upgrade` does) (`AGENTS.md` and `CLAUDE.md` still may link to each other, and the skill
+links under `.claude/skills/` are made on purpose). An explicit absolute
+`digest -o` outside the checkout is written as given. Each refresh is also a command of its own; all three are
 idempotent, take `--dry-run`, and never touch the roadmap, planning sheets, or
 anything outside a managed block.
 

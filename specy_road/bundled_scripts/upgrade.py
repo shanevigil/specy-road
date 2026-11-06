@@ -69,6 +69,7 @@ from specy_road.git_subprocess import git_text
 from specy_road.ignore_report import scratch_git_env
 from specy_road.init_project import project_template_root
 from specy_road.managed_block import resolves_outside
+from specy_road.safe_write import SafeWriteError
 from specy_road.runtime_paths import add_repo_root_arg, git_root, project_root, source_scan_root
 from specy_road.upgrade_templates import (
     copy_missing_work_templates,
@@ -347,9 +348,13 @@ def run_upgrade(repo_root: Path | None, *, dry_run: bool = False, prune: bool = 
     else:
         print(f"specy-road {__version__} upgrade: {project}")
     print_install_report()
-    if dry_run:
-        return _dry_run(project, checkout, prune=prune)
-    _apply(project, checkout, prune=prune)
+    try:
+        if dry_run:
+            return _dry_run(project, checkout, prune=prune)
+        _apply(project, checkout, prune=prune)
+    except SafeWriteError as e:   # refused before the first write: nothing was applied
+        print(f"error: {e}", file=sys.stderr)
+        return 1
     valid, digest_ok = _check(project, project, "wrote")
     _section("next")
     steps = list(CHECKLIST)
@@ -382,7 +387,7 @@ def main(argv: list[str] | None = None) -> None:
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     try:
         code = run_upgrade(args.repo_root, dry_run=args.dry_run, prune=args.prune)
-    except ValueError as e:
+    except (ValueError, SafeWriteError) as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
     raise SystemExit(code)

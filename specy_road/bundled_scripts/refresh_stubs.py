@@ -33,7 +33,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from specy_road import __version__
+from specy_road import __version__, safe_write
 from specy_road.agent_guide_block import AGENT_GUIDE, apply_agent_guide_block
 from specy_road.agents_md_block import AGENTS_FILES, agents_block_mode, apply_agents_and_report, apply_agents_files, print_migration
 from specy_road.agent_ignores import CURSOR_INDEXING_IGNORE, GITIGNORE, apply_agent_ignores, apply_and_report
@@ -117,8 +117,13 @@ def _write_if_changed(
     if content is None:
         return True
     dest = repo_root / rel
-    if resolves_outside(repo_root, dest):
+    if resolves_outside(repo_root, dest):   # a link out stays a report line; an in-repo skills-dir link is kept
         written.append(Written(rel, REFUSED))
+        return False
+    try:   # the safe-write rule from the stub's own directory: a link at the stub itself is refused
+        safe_write.check(dest.parent, dest)
+    except safe_write.SafeWriteError as e:
+        written.append(Written(rel, f"refused: {e}"))
         return False
     if not owned and dest.exists():
         written.append(Written(rel, "skipped (not ours)"))
@@ -126,8 +131,7 @@ def _write_if_changed(
     if dest.is_file() and dest.read_text(encoding="utf-8") == content:
         return True
     if not dry_run:
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(content, encoding="utf-8")
+        safe_write.write(dest.parent, dest, content)
     written.append(Written(rel))
     return True
 
@@ -171,17 +175,22 @@ def _on_disk(path: Path) -> bool:
 
 
 def _prune(repo_root: Path, orphans: list[str]) -> None:
-    """Delete the orphans, then any directory they leave empty (never ``repo_root``)."""
+    """Delete the orphans, then any directory they leave empty (never ``repo_root``).
+
+    By the safe-write rule: an orphan under a symlinked directory is refused
+    (``SafeWriteError``) before anything is deleted, an orphan that is itself a
+    symlink is removed as an entry, and the empty-parent cleanup stops at a
+    linked directory without listing it.
+    """
     for rel in orphans:
-        path = repo_root / rel
+        safe_write.check(repo_root, repo_root / rel, None)
+    for rel in orphans:
+        path = safe_write.check(repo_root, repo_root / rel, None)
         if path.is_dir() and not path.is_symlink():
             shutil.rmtree(path)
         else:
-            path.unlink(missing_ok=True)
-        parent = path.parent
-        while parent != repo_root and parent.is_dir() and not any(parent.iterdir()):
-            parent.rmdir()
-            parent = parent.parent
+            safe_write.remove(repo_root, path)
+        safe_write.prune_empty(repo_root, path.parent)
 
 
 def _prefix(repo_root: Path, project: Path | None) -> str:
@@ -337,7 +346,7 @@ def main(argv: list[str] | None = None) -> None:
     print_migration(root / prefix, prefix)
     try:
         written, orphans = refresh_stubs(root, dry_run=dry_run, project=project_root(args.repo_root), prune=args.prune)
-    except ValueError as e:
+    except (ValueError, safe_write.SafeWriteError) as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
     if not _load_manifest(root).get("agents"):
@@ -352,6 +361,12 @@ def main(argv: list[str] | None = None) -> None:
     if args.diff:
         written = _print_diffs(root, written, prefix)
     _report(written, orphans, dry_run=dry_run, pruned=args.prune, repo_root=root)
+    refused = [w.outcome.removeprefix("refused: ") for w in written
+               if getattr(w, "outcome", "").startswith("refused: ") and w.outcome != REFUSED]
+    for why in refused:   # a path the safe-write rule refused (REFUSED, a link out, stays a report line)
+        print(f"error: {why}", file=sys.stderr)
+    if refused:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

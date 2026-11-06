@@ -28,6 +28,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from specy_road import safe_write
 from specy_road.ignore_report import scratch_git_env
 
 State = tuple | None   # ("file", size, mtime_ns, mode) | ("link", text) | ("dir",) | ("other",) | None (absent)
@@ -231,6 +232,9 @@ def make_plan(checkout: Path, project: Path, refresh: Callable[[Path, Path], dic
         try:
             with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
                 declined = refresh(mirror.to_sandbox(project.resolve()), mirror.repo)
+        except safe_write.SafeWriteError as e:   # name the checkout's paths, not the mirror's
+            raise safe_write.SafeWriteError(str(e).replace(str(mirror.repo), str(checkout))
+                                            .replace(str(mirror.outside), "")) from None
         except OSError as e:   # name the checkout's path, not the mirror's
             e.filename = e.filename and str(e.filename).replace(str(mirror.repo), str(checkout))
             raise
@@ -258,8 +262,33 @@ def _replaces(e: Entry) -> bool:
                                  or (e.action == "mkdir" and kind != "dir"))
 
 
+def refused_changes(plan: Plan) -> list[str]:
+    """The safe-write refusal for each change whose real target is not under the checkout by real directories.
+
+    A refresh that wrote through a link out of the checkout made its change at
+    the link's target, which this names; so a refresher that bypasses the rule
+    still never reaches outside. Declined entries are not changes: their
+    refresher already refused and reported them.
+    """
+    found: list[str] = []
+    for e in plan.changes():
+        try:
+            safe_write.check(plan.checkout, e.target, None)
+        except safe_write.SafeWriteError as err:
+            found.append(str(err))
+    return found
+
+
 def apply_plan(plan: Plan, locate: Callable[[Path], Path] = lambda p: p) -> None:
-    """Make every change in ``plan`` at ``locate(real path)``: removals deepest first, then directories, then the rest."""
+    """Make every change in ``plan`` at ``locate(real path)``: removals deepest first, then directories, then the rest.
+
+    Every change's real target is checked by the safe-write rule first; any
+    refusal raises ``SafeWriteError`` naming each path, and nothing is applied
+    (neither to the checkout nor to ``locate``'s copy).
+    """
+    refused = refused_changes(plan)
+    if refused:
+        raise safe_write.SafeWriteError(f"{'; '.join(refused)}; nothing was written")
     changes = plan.changes()
     for e in sorted((e for e in changes if _replaces(e)), key=lambda e: -len(e.target.parts)):
         where = locate(e.target)

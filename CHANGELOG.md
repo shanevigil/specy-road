@@ -13,6 +13,21 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- **Security:** one safe-write rule for the setup and upgrade writers
+  (`specy_road/safe_write.py`): before any mkdir, write or delete, every
+  directory from the project root down must be a real directory and the file a
+  regular one, so any symlink on the path is refused, dangling, out of the
+  project or **inside it**. `init project`, `refresh-schemas`, `specyrd init`
+  (`.specyrd/manifest.json`), `export`, `digest` (default and relative `-o`),
+  pickup's regeneration, `refresh-stubs` (a stub linked inside the project; one
+  linked out stays a `refused` report line), `--prune` (an orphan under a linked
+  directory), `.gitignore` and `.cursorindexingignore` (a `refused:` outcome),
+  and `restore-archive` (every path checked before its first change) refuse it,
+  naming `<path> is a symlink (to <target>), not <kind>`; the commands exit 1. `upgrade` checks every change before its first one, so a schema linked out
+  of the checkout no longer overwrites the outside file; it exits 1 on a
+  refusal even when `validate` passes. Behaviour change: an in-repo symlink at
+  `roadmap.md` or `roadmap-context.md` was written through and is now refused.
+  `AGENTS.md`/`CLAUDE.md` aliases and the `.claude/skills/` links are unchanged.
 - **Security:** `review record` files only under the caller's own model (CR1). A worker
   (`SPECY_ROAD_WORKER_ID`) files only as its model, and a harness (`CLAUDECODE`, `CODEX_THREAD_ID`,
   `CURSOR_AGENT`) only for a roster entry on that harness; anything else exits 1 before any write. An

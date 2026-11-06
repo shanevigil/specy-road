@@ -1,7 +1,8 @@
-"""M21.17: no writer follows a symlink out of the directory it owns; the review hand-off writers follow none."""
+"""M21.17: no writer follows a symlink out of the directory it owns; M21.37: none follows any symlink."""
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 from typing import Callable
@@ -16,7 +17,6 @@ from tests.test_review_cli import ONE_AI
 from specy_road.finish_land_deterministic import DeterministicResolveError, resolve_deterministic_paths
 from specy_road.generated_files import regenerate_generated_files
 from specy_road.init_project import run_init_project
-from specy_road.managed_block import REFUSED
 from specy_road.review_delegate_packet import ensure_packet
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_rejected import rejected_path, write_rejected
@@ -90,12 +90,18 @@ def _packet(tmp_path: Path):
     return reviews, PACKET_NAME, run
 
 
+def _refusal(path: Path) -> str:
+    """The safe-write rule's sentence for a symlink at ``path``."""
+    return f"{path} is a symlink (to {os.readlink(path)}), not a regular file"
+
+
 # writer -> (setup, writes regular file and in-root link target, refuses every link)
+# M21.37: the generated files are on the safe-write rule, so an in-repo link is refused too.
 WRITERS = {
     "init": (_init(False), None, None),
-    "init --force": (_init(True), True, False),
-    "regenerate_generated_files": (_inited(regenerate_generated_files), True, False),
-    "finish": (_inited(_finish), True, False),
+    "init --force": (_init(True), True, True),
+    "regenerate_generated_files": (_inited(regenerate_generated_files), True, True),
+    "finish": (_inited(_finish), True, True),
     "write_rejected": (_rejected, True, True),
     "ensure_packet": (_packet, True, True),
 }
@@ -131,7 +137,7 @@ def test_writer_refuses_a_link_out_of_its_root(tmp_path: Path, capsys, writer: s
         return
     if layout != "dangling_out":
         assert watched.read_bytes() == OLD
-    named = f"{REFUSED}: {path}"
+    named = _refusal(path)
     if writer in ("finish", "ensure_packet"):
         assert isinstance(result, Exception) and named in str(result)
     elif writer == "regenerate_generated_files":
@@ -152,7 +158,7 @@ def test_review_delegate_refuses_a_linked_packet_before_launching(tmp_path: Path
 
     assert run_review_cli("review", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) != 0
 
-    assert f"{REFUSED}: {packet}" in capsys.readouterr().err
+    assert _refusal(packet) in capsys.readouterr().err
     assert not spec.with_name("calls.json").exists()   # no harness started
     assert not (reviews_dir(repo, "M1.1") / "RUN-opus.json").exists()
     assert not (tmp_path / "elsewhere.md").exists()
@@ -180,4 +186,4 @@ def test_a_refused_marker_leaves_the_record_refusal_unchanged(tmp_path: Path, ca
     assert code == 1 and "Advisory" in err
     assert marker.is_symlink() is linked
     assert theirs.read_bytes() == OLD
-    assert (f"{REFUSED}: {marker}" in err) is linked
+    assert (f"{marker} is a symlink (to {theirs})" in err) is linked
