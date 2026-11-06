@@ -411,8 +411,9 @@ push. A `claim_workspace` that returns `holder_secret` tells you it does.
 Without one, none of the holder or lease rules below apply yet.
 
 - **Keep the holder secret.** The first `claim_workspace` returns
-  `holder_secret` once. Keep it for the whole run, one per workspace and
-  role, and out of reports and guest commands. Pass `client_label` so other
+  `holder_secret` once. Save it outside the agent's context as soon as it
+  arrives, one per workspace and role, so a killed run can still release, and
+  keep it out of reports and guest commands. Pass `client_label` so other
   clients can see who holds the pin.
 - **Do not share by accident.** Re-claim only with your own secret. `pin_held`
   means someone else holds that workspace, so record the holders and use
@@ -442,12 +443,14 @@ Without one, none of the holder or lease rules below apply yet.
   believe is yours, when you have not just released it, can mean the lease ran
   out: treat that guest's work as lost and redo the step on a new claim. If
   your own release raised an error, repeat the same release to finish it.
-- **A killed run.** Look for its secret in the run's transcript first, since
-  it arrives as a tool result, and treat that transcript as sensitive until
-  the pin ends. Without the secret, the pin ends only when the lease runs out
-  or an operator reclaims it. Joining does not help, because releasing only
-  detaches the joined holder. Successful calls that name the slot renew the
-  lease, so leave it alone while waiting.
+- **A killed run.** Look for its saved secret first, then in the run's
+  transcript, since it arrives as a tool result, and treat that transcript as
+  sensitive until the pin ends. With the secret, carry on or release as normal.
+  Without it, `join=true` gets you back to the guest with its work intact,
+  unless a reset has started, but cleanup is out of reach: the dead holder stays
+  recorded, so your release only detaches. The pin then ends only when the
+  lease runs out or an operator reclaims it. Successful calls that name the
+  slot renew the lease, so stop calling it once you are done.
 - **Older pins.** Pins from before holders have none, need no secret and never
   expire, so a release wipes them unchecked. Name the slots a run must leave
   alone.
