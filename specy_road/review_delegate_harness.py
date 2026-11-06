@@ -37,20 +37,22 @@ class _Harness:
         self.effort = prof.effort("reviewer") if prof is not None else None
         self.mode = prof.launch_mode() if prof is not None else "full"
         self.repo_root, self.node_id, self.cwd, self.model = repo_root, node_id, cwd, str(entry.get("id"))
+        # The adapter's own read-only reviewer command. A chore reviewer writes its verdict file itself (chore_cli),
+        # so it keeps the launch it had before M8.3: Claude Code's bare reviewer command, else the adapter's own.
         self.chore = chore
         self.default = self.harness != "generic" and not self.cli and (not chore or isinstance(self.adapter, ClaudeCode))
         self.auth_error: str | None = None
         self.note: str | None = None
-        self.harness_bin = entry.get("harness_bin")
+        self.harness_bin = entry.get("harness_bin")   # resolved by the adapter whenever a default command is built
         if self.default and isinstance(self.adapter, ClaudeCode):
             profile_mode = prof.launch_mode() if prof is not None else None
             self.launch_mode, self.auth_error, self.note = claude_default_reviewer(entry, profile_mode)
         else:
             self.launch_mode = self.mode
         self.can_resume = self.adapter.caps.resume
-        self.output: Path | None = None
-        self.log = Path()
-        self.replaced: list[Path] = []
+        self.output: Path | None = None   # answer_scratch's file: where a fresh Codex turn writes its answer (-o)
+        self.log = Path()   # the run's transcript, RUN-<model>.log
+        self.replaced: list[Path] = []   # a symlink at the run record, replaced by specy-road's own update
 
     def launch(self, prompt: Path, session: str | None) -> Launch:
         """A fresh turn, or a resume of ``session`` (an id the harness reported)."""
@@ -63,7 +65,8 @@ class _Harness:
                                                 session=(sid, session is not None) if sid else None,
                                                 **structured, **extra, harness_bin=self.harness_bin)
         kw = {"node_id": self.node_id, "repo_root": self.repo_root, "launch_mode": self.mode, "effort": self.effort,
-              "harness_bin": self.harness_bin}
+              "harness_bin": self.harness_bin}   # a custom command without {session} resumes with the default
+        # A custom command gets its program's structured-output flags (Antigravity `agy`: --json-schema).
         cli = (reviewer_cli(self.cli, reviews_dir(self.repo_root, self.node_id) / OUTPUT_SCHEMA_NAME)
                if self.cli and not self.chore else self.cli)
         if session is not None:

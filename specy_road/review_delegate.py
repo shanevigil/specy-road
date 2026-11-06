@@ -193,6 +193,55 @@ def _close(repo_root: Path, t: ReviewTarget, model: str, run: dict[str, Any], pa
                      tail=tail)
 
 
+def _delegate_locked(repo_root: Path, t: ReviewTarget, node_id: str, model: str, entry: dict[str, Any], h: _Harness,
+                     path: Path, reviews: Path, cwd: Path, chore: bool, ref: str | None, resume: bool,
+                     retries: int, backoff: float, sleep: Callable[[float], None], sign_key: Path | None,
+                     answer: Path) -> dict[str, Any]:
+    h.output = None if chore else answer
+    if not chore and not resume:   # M15.17: a missing or other-commit packet is built, not refused
+        ensure_packet(repo_root, t, ref)
+    text, session = _start(repo_root, t, model, ref, h, resume)
+    _preflight(entry, cwd)   # M8.3: after the lock, before the RUN record is saved
+    if h.note:   # bare mode and the subscription login, same sentence prompt prints
+        print(h.note, file=sys.stderr)
+    if h.api_id is None and entry.get("routing") != "dynamic":
+        raise DelegateError(_no_model_refusal(model, h.harness))
+    prompts = (_prompt_file(repo_root, node_id, model, text),
+               _prompt_file(repo_root, node_id, model, CHORE_RESUME_PROMPT if chore else RESUME_PROMPT, "-resume"))
+    archive_round(repo_root, node_id, model)   # M14.6: the previous round's RUN json, log and notes, kept in history/
+    run = {"node_id": node_id, "model": model, "harness": h.harness, "ref": t.ref, "commit": t.commit,
+           "state": "running", "session_id": session, "resumed": resume, "source": "review-delegate",
+           "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
+           "launch_mode": h.launch_mode, "requested_model": h.api_id, "reported_model": None,
+           "log": str(path.with_suffix(".log"))}
+    save_run(path, run)
+    h.log = log = path.with_suffix(".log")
+    try:
+        # M8.3's read-only check and filing are for roadmap reviews; a chore reviewer files its own verdict file.
+        if not chore:
+            write_schema(repo_root, reviews, ref)   # before the snapshot: the reviewer must not change it
+        before = snapshot(cwd, reviews, model) if not chore else None
+        reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
+        model_check = None
+        if before is not None:
+            attempt = run["attempts"][-1] if run["attempts"] else {}
+            reported, model_check = _model_check(repo_root, model, log, attempt)
+            run["reported_model"] = reported
+        filed = None if before is None else file_review(
+            repo_root, node_id, model, reviews, answer=final_answer(
+                h.adapter, attempt_text(log, run["attempts"][-1] if run["attempts"] else {}), answer),
+            before=before, after=snapshot(cwd, reviews, model, before).with_symlinks(h.replaced), ref=ref,
+            launch_mode=h.launch_mode, sign_key=sign_key, model_check=model_check)
+        _close(repo_root, t, model, run, path, reason, filed)
+    except BaseException as e:   # an interrupt or a launch refusal still closes the record
+        close_review_run(repo_root, t, model, run, Outcome("rerun", f"interrupted: {e or type(e).__name__}", exit=None))
+        raise
+    finally:
+        run["ended_at"] = _now()
+        save_run(path, run)
+    return run
+
+
 def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = None, resume: bool = False,
              retries: int = DEFAULT_RETRIES, backoff: float = DEFAULT_BACKOFF, worktree: Path | None = None,
              sleep: Callable[[float], None] = time.sleep, sign_key: Path | None = None) -> dict[str, Any]:
@@ -226,49 +275,8 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
     except ReviewRunBusy as e:
         raise DelegateError(str(e)) from None
     with lock, answer_scratch(model) as answer:
-        h.output = None if chore else answer
-        if chore is None and not resume:   # M15.17: a missing or other-commit packet is built, not refused
-            ensure_packet(repo_root, t, ref)
-        text, session = _start(repo_root, t, model, ref, h, resume)
-        _preflight(entry, cwd)   # M8.3: after the lock, before the RUN record is saved
-        if h.note:   # bare mode and the subscription login, same sentence prompt prints
-            print(h.note, file=sys.stderr)
-        if h.api_id is None and entry.get("routing") != "dynamic":
-            raise DelegateError(_no_model_refusal(model, h.harness))
-        prompts = (_prompt_file(repo_root, node_id, model, text),
-                   _prompt_file(repo_root, node_id, model, CHORE_RESUME_PROMPT if chore else RESUME_PROMPT, "-resume"))
-        archive_round(repo_root, node_id, model)   # M14.6: the previous round's RUN json, log and notes, kept in history/
-        run = {"node_id": node_id, "model": model, "harness": h.harness, "ref": t.ref, "commit": t.commit,
-               "state": "running", "session_id": session, "resumed": resume, "source": "review-delegate",
-               "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
-               "launch_mode": h.launch_mode, "requested_model": h.api_id, "reported_model": None,
-               "log": str(path.with_suffix(".log"))}
-        save_run(path, run)
-        h.log = log = path.with_suffix(".log")
-        try:
-            # M8.3's read-only check and filing are for roadmap reviews; a chore reviewer files its own verdict file.
-            if chore is None:
-                write_schema(repo_root, reviews, ref)   # before the snapshot: the reviewer must not change it
-            before = snapshot(cwd, reviews, model) if chore is None else None
-            reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
-            model_check = None
-            if before is not None:
-                attempt = run["attempts"][-1] if run["attempts"] else {}
-                reported, model_check = _model_check(repo_root, model, log, attempt)
-                run["reported_model"] = reported
-            filed = None if before is None else file_review(
-                repo_root, node_id, model, reviews, answer=final_answer(
-                    h.adapter, attempt_text(log, run["attempts"][-1] if run["attempts"] else {}), answer),
-                before=before, after=snapshot(cwd, reviews, model, before).with_symlinks(h.replaced), ref=ref,
-                launch_mode=h.launch_mode, sign_key=sign_key, model_check=model_check)
-            _close(repo_root, t, model, run, path, reason, filed)
-        except BaseException as e:   # an interrupt or a launch refusal still closes the record
-            close_review_run(repo_root, t, model, run, Outcome("rerun", f"interrupted: {e or type(e).__name__}", exit=None))
-            raise
-        finally:
-            run["ended_at"] = _now()
-            save_run(path, run)
-    return run
+        return _delegate_locked(repo_root, t, node_id, model, entry, h, path, reviews, cwd, chore is not None, ref,
+                                resume, retries, backoff, sleep, sign_key, answer)
 
 
 def run_states(repo_root: Path, node_id: str, commit: str | None) -> list[dict[str, Any]]:
