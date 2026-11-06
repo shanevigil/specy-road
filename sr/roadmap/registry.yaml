@@ -122,6 +122,8 @@ entries:
       - specy_road/bundled_scripts/role_prompt_rca.py
       - tests/conftest.py
       - specy_road/review_answer.py
+      - tests/test_review_concurrent_writers.py
+      - tests/test_review_record_write.py
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
