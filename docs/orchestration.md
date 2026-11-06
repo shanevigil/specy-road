@@ -300,7 +300,7 @@ requires distinct families, it relabels every counted record `independence: same
 
 ## The review gate
 
-How records count, `Reviewed-by` trailers, signed reviews, `handoff status`, and review-loop escalation: [orchestration-review.md](orchestration-review.md).
+How records count, `Reviewed-by` trailers, signed reviews, `handoff status`, and review-loop escalation: [orchestration-review.md](orchestration-review.md). The gate never counts a record, approval or block, signed or not, from a model id that filed a valid `READY-<agent>.md` on the leaf (the executor or a fix author), and `review delegate` refuses that model before it writes anything. Another model of the same family still counts, judged against the other reviewers by `reviewers_distinct_families`. A READY is an unsigned file its writer creates, so this check is cooperative attestation, not enforcement, unless signing keys are out of the executor's reach.
 
 ## Unattended loops
 

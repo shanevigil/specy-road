@@ -21,6 +21,13 @@ body. Keep section bodies focused; link to PRs for detail.
   nesting or no object is a rerun request naming the cause; an earlier valid
   object is never used instead. The `generic` / `agy` envelope path is
   unchanged.
+- **Security:** the review gate no longer counts a record from a model that
+  filed a READY on the leaf (the executor or a fix author), whatever the
+  record's `authored_fix`, verdict or signature; it is listed as ineligible
+  with "the executor never reviews its own leaf", and `specy-road review
+  delegate --model <that model>` is refused before any packet, lock or run
+  record. The exclusion is by model id: another model of the same family still
+  counts. READY authorship is cooperative attestation (an unsigned file).
 - `specy-road review delegate` checks a roadmap reviewer's command as
   `prompt --channel cli` does, before the preflight and before any run record
   or log: a roster `channels.cli` that passes a bypass flag (`--force`,
@@ -59,6 +66,14 @@ body. Keep section bodies focused; link to PRs for detail.
   and agy. A failed reviewer turn with no parsed error now names the last
   non-blank line of its log span (cut to 200 characters) in both the reason
   and `attempts[].error`, instead of `no error text`.
+- `worker terminate` also ends what the harness started in a session of its own
+  (Cursor's shell tool runs each command that way, so a `sleep` it was running
+  kept going after "terminated"). Before the first signal it lists the group's
+  descendants outside the group with their start times, and after the group is
+  gone ends each one still running with the same start time (SIGTERM, then
+  SIGKILL). A survivor, or a `ps` listing that fails, makes terminate fail
+  naming it instead of reporting terminated. A process already re-parented to
+  init before terminate ran is still out of reach.
 - Security: no writer follows a symlink out of the directory it owns.
   `init project` treats a dangling `roadmap.md` or `roadmap-context.md` link
   as present (skipped without `--force`), and with `--force` lists a link out

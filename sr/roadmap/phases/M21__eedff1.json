@@ -41,13 +41,163 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.29_terminate-ends-escaped-descendants_b5ff0d94-fd70-4f7e-92de-5e67baf71f1d.md",
       "sibling_order": 27,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "worker terminate also ends processes the harness started in their own session",
       "touch_zones": [
         "specy_road/worker_process.py",
         "tests/test_worker_terminate_descendants.py",
         "CHANGELOG.md",
         "docs/orchestration-workers.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Pickup's registration commit (--local too) carries a trailer `Review-policy: sha256:<hex> at <commit>`: the sha256 of canonical JSON of roadmap/orchestration.yaml's roster, substitutions and policy plus roadmap/git-workflow.yaml's require_implementation_review_before_finish, as committed at the integration branch HEAD the claim is made on; one helper in specy_road/review_policy_pin.py computes it for any ref (no toolkit defaults, no local availability overlay)",
+        "evaluate_gate, for a leaf whose newest registration commit reachable from the commit under review has the trailer, adds a problem (gate not passed) when the digest at the policy_source ref differs and no valid acceptance matches: 'review policy changed on <ref> since <ID> was claimed (<commit12>): <one line per change: roster <id> added|removed|roles|family|harness a -> b, substitutions changed, policy.<key> a -> b, require_implementation_review_before_finish a -> b>; a human accepts it with `specy-road review accept-policy <ID>` in a terminal, or re-claims the leaf'. finish-this-task checks the pin before review_required, so turning the review switch off after the claim does not skip review; a registration commit without the trailer is judged as today",
+        "`specy-road review accept-policy <ID>` runs only with stdin a TTY (otherwise exit 1, 'a human accepts a review policy change in a terminal; nothing was written'), prints the change lines, asks for the node id typed back, and writes work/reviews/<ID>/POLICY-ACCEPTED.yaml (node_id, pinned_sha256, accepted_sha256, user, at) checked against the new specy_road/schemas/policy-acceptance.schema.json on read; an invalid file is a gate problem, never an acceptance, and a later change needs a new acceptance",
+        "tests/test_review_policy_pin.py runs the CR1 sequence as a table: claim pins (trailer equals the digest at HEAD); unchanged policy -> gate as today; a roster entry gains the reviewer role on the integration branch after the claim -> not passed with the roles line, and mark-implementation-reviewed --yes and finish-this-task exit 1 writing nothing; the review switch turned off after the claim -> finish-this-task exits 1 before any bookkeeping; accept-policy without a TTY writes nothing, with a (patched) TTY the gate passes; an unpinned claim and a normal review delegate flow are unaffected",
+        "agents-rules.md Review roles and the managed block's Review rule (each with its provenance comment): an executor never edits roadmap/orchestration.yaml, roadmap/git-workflow.yaml or the roster to get past the review gate, and never files a review under any model id but its own; docs/orchestration-review.md gains 'Review policy pinned at claim' (cooperative like READY; M22.5 is the broader steering guard); CHANGELOG [Unreleased] Fixed (security)",
+        "Estimated net line change (informational, not a gate): package about +120, tests about +200, docs about +20"
+      ],
+      "codename": "review-policy-pinned-at-claim",
+      "dependencies": [
+        "2f0e89a6-4b5f-4efd-9320-c0438d82ee5a",
+        "cec33876-599c-4516-abe7-3ec445eb8a2a",
+        "eedff108-5960-4cf3-9c3d-f5666291763f"
+      ],
+      "id": "M21.30",
+      "node_key": "aa063cac-70c3-41a9-8f3c-4c671184d333",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.30_review-policy-pinned-at-claim_aa063cac-70c3-41a9-8f3c-4c671184d333.md",
+      "sibling_order": 28,
+      "status": "Not Started",
+      "title": "A leaf's review policy is pinned at claim: the gate and finish refuse a roster, policy or review-switch change made on the integration branch after it until a human accepts it",
+      "touch_zones": [
+        "specy_road/review_policy_pin.py",
+        "specy_road/bundled_scripts/registration_pickup_commit.py",
+        "specy_road/review_gate.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/schemas/policy-acceptance.schema.json",
+        "tests/test_review_policy_pin.py",
+        "docs/orchestration-review.md",
+        "specy_road/templates/specyrd/agents-rules.md",
+        "specy_road/templates/specyrd/agents-md-block.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy_road/review_caller.py identifies the caller of the review record argparse handler only (not cmd_review_record, so review delegate and prompt --channel cli --run file through file_review as today whatever harness the coordinator runs in): SPECY_ROAD_WORKER_ID naming a worker record -> that worker's model; else one environment marker per harness in one table (each confirmed against the harness versions of the §9 replay 2026-11-05 and listed in docs; an unconfirmed harness is left out) -> that harness; else unidentified",
+        "Before any write, lock or REJECTED file, the handler refuses (exit 1, nothing written) --model M when the caller is a worker whose model is not M, or a harness that is not M's roster entry harness (an entry with no harness or generic matches none): '<M> is a <harness> roster entry and this command runs under <caller>; file a review only under your own model id (AGENTS.md, Review roles); nothing was written'. An unidentified caller must pass --human-filed '<who and why>' (one non-empty line, stored as human_filed before signing; review-record.schema.json gains it), else exit 1 naming the flag",
+        "evaluate_gate counts a record with human_filed only when its signature verifies against the roster entry's public_key or policy.count_human_filed_reviews (orchestration.schema.json and DEFAULT_POLICY, default false) is true on the integration branch; otherwise it is in ineligible with 'filed by hand (human_filed) and unsigned; policy.count_human_filed_reviews is off'. The paste-channel reviewer prompt's review record line adds --human-filed",
+        "tests/test_review_record_caller.py as a table: Cursor marker filing claude-opus-5-5 (claude-code entry) and gpt-6.1-sol (codex entry) -> exit 1, nothing written (CR1 r1, r3); worker composer-2.5 filing gpt-6.1-sol -> exit 1; Claude Code marker filing claude-opus-5-5 -> filed and counted; no marker and no flag -> exit 1 naming --human-filed; with it -> filed, ineligible by default, counted when signed or with the policy on; review delegate run from a process with the Cursor marker files the codex reviewer's record and it counts",
+        "docs/orchestration-review.md (who may file review record, --human-filed, the policy key, the paste flow) and CHANGELOG [Unreleased] Fixed (security). Out of scope: two models on one harness (M21.26 excludes READY authors; signed_reviews is the strong check)",
+        "Estimated net line change (informational, not a gate): package about +90, tests about +180, docs about +12"
+      ],
+      "codename": "review-record-files-only-as-the-caller",
+      "dependencies": [
+        "aa063cac-70c3-41a9-8f3c-4c671184d333"
+      ],
+      "id": "M21.31",
+      "node_key": "5e6b33e5-b2a5-4d7b-86ab-336efd7d2960",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.31_review-record-files-only-as-the-caller_5e6b33e5-b2a5-4d7b-86ab-336efd7d2960.md",
+      "sibling_order": 29,
+      "status": "Not Started",
+      "title": "review record files only under the caller's own model: a filing from another harness or worker is refused, and a hand-filed record needs an attestation and counts only when signed or the policy allows it",
+      "touch_zones": [
+        "specy_road/review_caller.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_rejected.py",
+        "specy_road/review_gate.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/schemas/review-record.schema.json",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "tests/test_review_record_caller.py",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "`session end <id>` removes a record only when <id> is the caller's (SPECY_ROAD_AGENT_ID or the derived id) or the record has expired; for another agent's live record it exits 1, keeps the file and says 'session <id> is live until <expires> and is not yours (you are <me>); never end or override another agent's session (AGENTS.md, Shared checkouts): ask its owner, or wait for it to expire'; --force ends it only with stdin a TTY (otherwise exit 1, nothing removed); the other-user refusal stays",
+        "`session end` with no id ends only the caller's own record: the 'your only live session' and 'only one on this worktree and branch' fallbacks are removed, and with no own record it says the record is under the id `session start` printed (export SPECY_ROAD_AGENT_ID=<id>), lists no other sessions and exits 0. The session guard's deny reason adds 'Do not end, edit or delete another session's record to get past this; ask its owner or a human.'",
+        "tests/test_session_end_others.py runs the CR3 sequence as a table: peer live (session start --agent peer) -> session end peer from another id exits 1 with peer.yaml unchanged; the guard's denial of git restore names the rule; session end with no own record leaves peer.yaml; an expired peer is removed; the caller's own id is ended; --force without a TTY is refused and with a (patched) TTY ends it. tests/test_session_presence.py fallback tests follow the new rule",
+        "agents-rules.md 'Shared checkouts' and the managed block's 'Shared checkout' rule (with provenance comments): never end, edit or delete another agent's session record or override its work; docs/orchestration.md Presence (the session end line and the retire paragraph); CHANGELOG [Unreleased] Fixed (security)",
+        "Estimated net line change (informational, not a gate): package about -10, tests about +110, docs about +6"
+      ],
+      "codename": "session-end-only-your-own",
+      "dependencies": [
+        "aa063cac-70c3-41a9-8f3c-4c671184d333"
+      ],
+      "id": "M21.32",
+      "node_key": "218a29f0-6309-4fa6-b767-1c8a74e17046",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.32_session-end-only-your-own_218a29f0-6309-4fa6-b767-1c8a74e17046.md",
+      "sibling_order": 30,
+      "status": "Not Started",
+      "title": "session end ends only your own session: another agent's live record needs --force from a terminal, and the guard's refusal names the rule",
+      "touch_zones": [
+        "specy_road/bundled_scripts/session_cli.py",
+        "specy_road/session_presence.py",
+        "specy_road/tool_call_guard.py",
+        "tests/test_session_end_others.py",
+        "tests/test_session_presence.py",
+        "docs/orchestration.md",
+        "specy_road/templates/specyrd/agents-rules.md",
+        "specy_road/templates/specyrd/agents-md-block.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specyrd-brainstorm.md's description and first body paragraph say: your first tool call after reading this skill is `specy-road brainstorm start`; issue no other tool call in that turn, including in parallel (no read or search of roadmap-context.md, roadmap/, planning/ or anything else); the 'not even in the same step' wording is gone and the description stays within 1024 characters",
+        "suggested_prompts/brainstorm-roadmap.md Phase 1 states the same rule",
+        "tests/test_brainstorm_skill_first_call.py renders the skill with specyrd init for claude-code, codex and cursor and asserts the sentence in the description and body of each shipped specyrd-brainstorm SKILL.md (.claude/skills and .agents/skills); no CLI enforcement in rc4; CHANGELOG [Unreleased] Changed",
+        "Estimated net line change (informational, not a gate): templates about +2, tests about +35, docs about +2"
+      ],
+      "codename": "brainstorm-start-is-the-first-call-alone",
+      "dependencies": [],
+      "id": "M21.33",
+      "node_key": "e9746b02-d2ba-406b-b477-ec1711b86247",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.33_brainstorm-start-is-the-first-call-alone_e9746b02-d2ba-406b-b477-ec1711b86247.md",
+      "sibling_order": 31,
+      "status": "Not Started",
+      "title": "The brainstorm skill makes `specy-road brainstorm start` the first tool call, alone in its turn, in every harness's shipped copy",
+      "touch_zones": [
+        "specy_road/templates/specyrd/commands/specyrd-brainstorm.md",
+        "suggested_prompts/brainstorm-roadmap.md",
+        "tests/test_brainstorm_skill_first_call.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "CR2's prompt asks for a short 'Running the tests' README section with the command that runs the tests, a task the todo app supports; app, setup, harnesses and runs are unchanged",
+        "CR2's first pass item reads the commits the session made on any branch (git log --all --name-only since the session start, and git worktree list) and expects exactly one, touching README.md only, on the checkout's branch or on the branch of a worktree the session added; the second item (peer files untouched) and the AGENTS 'Shared checkouts' rule are unchanged",
+        "docs/context-regressions.yaml still has at most ten cases and passes tests/test_context_regressions.py (its schema changes only if the new item needs it)",
+        "Estimated net line change (informational, not a gate): docs about +3"
+      ],
+      "codename": "cr2-case-fits-the-todo-app",
+      "dependencies": [],
+      "id": "M21.34",
+      "node_key": "49318c9b-27ad-4cc9-a948-e01d2c01b921",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.34_cr2-case-fits-the-todo-app_49318c9b-27ad-4cc9-a948-e01d2c01b921.md",
+      "sibling_order": 32,
+      "status": "Not Started",
+      "title": "Context regression CR2 asks for a README section the todo app supports, and passes a README-only commit on the agent's own worktree branch",
+      "touch_zones": [
+        "docs/context-regressions.yaml",
+        "tests/test_context_regressions.py"
       ],
       "type": "task"
     }

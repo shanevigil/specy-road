@@ -10,7 +10,9 @@
       ],
       "codename": "agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer",
       "dependencies": [
-        "42e6f078-5c8e-4ac2-b6bc-519cdac7c399"
+        "218a29f0-6309-4fa6-b767-1c8a74e17046",
+        "42e6f078-5c8e-4ac2-b6bc-519cdac7c399",
+        "49318c9b-27ad-4cc9-a948-e01d2c01b921"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.1.5",

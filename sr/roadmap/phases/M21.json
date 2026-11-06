@@ -440,7 +440,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.26_gate-excludes-ready-authors_cec33876-599c-4516-abe7-3ec445eb8a2a.md",
       "sibling_order": 24,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model",
       "touch_zones": [
         "specy_road/review_gate.py",
@@ -477,7 +477,10 @@
         "tests/test_review_concurrent_writers.py",
         "docs/orchestration.md",
         "CHANGELOG.md",
-        "specy_road/bundled_scripts/mark_implementation_reviewed.py"
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "specy_road/review_lock.py",
+        "tests/test_review_file_case.py",
+        "tests/test_review_rejected_m15_33.py"
       ],
       "type": "task"
     }
