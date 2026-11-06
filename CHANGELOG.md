@@ -56,8 +56,10 @@ the review policy pin and `session end` change behaviour.
   record leaves a trace.
 - **Dependency cycles through group dependencies are caught.** `validate` and
   `add-dependency` refuse a cycle made through an inherited group dependency.
-- **`upgrade` is isolated and finishes the job.** It never reaches the
-  caller's repository from its scratch copy and regenerates a drifted digest.
+- **`upgrade --dry-run` is isolated, and `upgrade` finishes the job.** A dry run
+  never reaches the caller's repository from its scratch copy, and `upgrade`
+  regenerates a drifted digest. A real run is not yet isolated the same way: see
+  *Known issue* below.
 - **The generated files and a few review files refuse symlinks out of the
   repo.** Other writers do not yet: see *Known issue* below.
 - **composer-2.5 is kept out of executor and reviewer roles under
@@ -858,12 +860,17 @@ Workers, rosters and installs
   symlinks. A full fix is planned before 0.3.1 final.
 - **Known issue:** the composer-2.5 exclusion is a default guard, not containment.
   It misses a local `roster_add` entry with `family: human`, a profile whose
-  `access.cli` runs the model, and a flagged profile at a path git quotes, such
-  as a non-ASCII filename. Fixes are planned for rc5.
+  `access.cli` runs the model, a flagged profile at a path git quotes, such as a
+  non-ASCII filename, and a `--model` value that is not a literal word. Fixes are
+  planned for rc5.
 - **Known issue:** `upgrade` is not fully isolated from the caller's git config.
   In a real run its planning steps read global and system config, and git calls
   in the project itself can run a `core.fsmonitor` command set through
   `GIT_CONFIG_COUNT`. Fixes are planned for rc5.
+- **Known issue:** don't run `specy-road upgrade` from a git hook or with `GIT_DIR`
+  or `GIT_WORK_TREE` set. A real run follows them, can write files into that other
+  repository, and may stop with a traceback. `--dry-run` is not affected. A fix is
+  planned for rc5.
 - The steering guard (executors cannot change the files that steer harnesses
   and specy-road unnoticed) moves to rc5; its branch is not in this release.
 

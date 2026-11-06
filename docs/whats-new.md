@@ -254,12 +254,17 @@ says when one is due.
   symlinks. A full fix is planned before 0.3.1 final.
 - **The composer-2.5 exclusion** is a default guard, not containment.
   It misses a local `roster_add` entry with `family: human`, a profile whose
-  `access.cli` runs the model, and a flagged profile at a path git quotes, such
-  as a non-ASCII filename. Fixes are planned for rc5.
+  `access.cli` runs the model, a flagged profile at a path git quotes, such as a
+  non-ASCII filename, and a `--model` value that is not a literal word. Fixes are
+  planned for rc5.
 - **`upgrade` is not fully isolated from the caller's git config.**
   In a real run its planning steps read global and system config, and git calls
   in the project itself can run a `core.fsmonitor` command set through
   `GIT_CONFIG_COUNT`. Fixes are planned for rc5.
+- **Don't run `specy-road upgrade` from a git hook or with `GIT_DIR` or
+  `GIT_WORK_TREE` set.** A real run follows them, can write files into that other
+  repository, and may stop with a traceback. `--dry-run` is not affected. A fix is
+  planned for rc5.
 - The review gate is cooperative attestation unless you require signed
   reviews: someone who can run commands in the clone that finishes (for
   example retarget `origin/HEAD`) can change what the gate reads. Nothing
