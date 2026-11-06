@@ -147,14 +147,13 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M20` | Agent safety and governance posture (after 0.3.1) | phase | — | Not Started |
 | `M20.1` | Posture advisor: plan the M20 leaves from the research | task | Human-led | Not Started |
 | `M20.2` | Probe each reviewer harness for instruction-file leakage into fresh sessions | task | Agentic-led | Not Started |
-| `M21` | rc4 stabilization: fixes filed after the themed-milestone rule | phase | — | Not Started |
+| `M21` | rc4 stabilization: fixes filed after the themed-milestone rule | phase | — | In Progress |
 | `M21.1` | move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree | task | Agentic-led | Complete |
 | `M21.2` | CLI indent, outdent and group-nodes re-level siblings in one transaction validated once | task | Agentic-led | Complete |
 | `M21.3` | Opt-in rewrite of prose id references after a move, and a standalone rename-refs | task | Agentic-led | Complete |
 | `M21.4` | remove-node deletes an empty never-started node and names every blocker otherwise | task | Agentic-led | Complete |
 | `M21.5` | apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once | task | Agentic-led | Complete |
 | `M21.6` | validate and add-dependency catch cycles made through inherited group dependencies | task | Agentic-led | Complete |
-| `M21.7` | Executors cannot change the files that steer harnesses and specy-road unnoticed | task | Agentic-led | Not Started |
 | `M21.8` | The queued-message worker test waits for the idle state, not just the second completion event | task | — | Complete |
 | `M21.9` | A freshly initialized project passes its own checks | task | — | Complete |
 | `M21.10` | doctor works in a repo with no remote | task | — | Complete |
@@ -168,5 +167,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Not Started |
 | `M22.3` | Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node | task | — | Not Started |
 | `M22.4` | New planning sheets no longer write the node's display id into their body | task | — | Not Started |
+| `M22.5` | Executors cannot change the files that steer harnesses and specy-road unnoticed | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

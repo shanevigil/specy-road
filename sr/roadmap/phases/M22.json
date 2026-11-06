@@ -26,7 +26,7 @@
       "node_key": "8b9893d1-675f-4d25-9d6a-a1f13e9f3f67",
       "parent_id": "M22",
       "planning_dir": "planning/M22.1_group-into-member-id_8b9893d1-675f-4d25-9d6a-a1f13e9f3f67.md",
-      "sibling_order": 1,
+      "sibling_order": 0,
       "status": "Not Started",
       "title": "group-nodes accepts a new parent id held by one of the nodes it groups",
       "touch_zones": [
@@ -55,7 +55,7 @@
       "node_key": "d4ee1c66-2780-4b43-b7bd-b9afb89ce0ab",
       "parent_id": "M22",
       "planning_dir": "planning/M22.2_move-rewrites-sheet-zones_d4ee1c66-2780-4b43-b7bd-b9afb89ce0ab.md",
-      "sibling_order": 2,
+      "sibling_order": 1,
       "status": "Not Started",
       "title": "A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet",
       "touch_zones": [
@@ -86,7 +86,7 @@
       "node_key": "12d3e989-fce1-4dc5-8994-b865fcbafc24",
       "parent_id": "M22",
       "planning_dir": "planning/M22.3_decisions-follow-moves_12d3e989-fce1-4dc5-8994-b865fcbafc24.md",
-      "sibling_order": 3,
+      "sibling_order": 2,
       "status": "Not Started",
       "title": "Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node",
       "touch_zones": [
@@ -118,7 +118,7 @@
       "node_key": "2fd5c912-b8d0-40f4-bf90-7e70a09e6aa1",
       "parent_id": "M22",
       "planning_dir": "planning/M22.4_sheet-body-without-display-id_2fd5c912-b8d0-40f4-bf90-7e70a09e6aa1.md",
-      "sibling_order": 4,
+      "sibling_order": 3,
       "status": "Not Started",
       "title": "New planning sheets no longer write the node's display id into their body",
       "touch_zones": [

@@ -24,7 +24,7 @@
       "node_key": "9a94e9ff-94d7-4166-bb4a-fbe6ba5d6daf",
       "parent_id": "M21",
       "planning_dir": "planning/M21.8_queue-message-test-waits-for-idle_9a94e9ff-94d7-4166-bb4a-fbe6ba5d6daf.md",
-      "sibling_order": 7,
+      "sibling_order": 6,
       "status": "Complete",
       "title": "The queued-message worker test waits for the idle state, not just the second completion event",
       "touch_zones": [
@@ -48,7 +48,7 @@
       "node_key": "3b906ab5-caac-4289-a629-606ea454e3b0",
       "parent_id": "M21",
       "planning_dir": "planning/M21.9_init-passes-own-checks_3b906ab5-caac-4289-a629-606ea454e3b0.md",
-      "sibling_order": 8,
+      "sibling_order": 7,
       "status": "Complete",
       "title": "A freshly initialized project passes its own checks",
       "touch_zones": [
@@ -78,7 +78,7 @@
       "node_key": "95346d66-4499-45c1-8a19-2de0cbdbef8a",
       "parent_id": "M21",
       "planning_dir": "planning/M21.10_doctor-without-a-remote_95346d66-4499-45c1-8a19-2de0cbdbef8a.md",
-      "sibling_order": 9,
+      "sibling_order": 8,
       "status": "Complete",
       "title": "doctor works in a repo with no remote",
       "touch_zones": [
@@ -102,7 +102,7 @@
       "node_key": "5bdbdc68-29a1-4d02-b8b3-f6c05849cc3a",
       "parent_id": "M21",
       "planning_dir": "planning/M21.11_help-names-installed-commands_5bdbdc68-29a1-4d02-b8b3-f6c05849cc3a.md",
-      "sibling_order": 10,
+      "sibling_order": 9,
       "status": "Complete",
       "title": "Help text names installed commands",
       "touch_zones": [
@@ -128,7 +128,7 @@
       "node_key": "50155a9c-8f7d-47e7-9fe3-ff77461243ac",
       "parent_id": "M21",
       "planning_dir": "planning/M21.12_joined-observations-need-a-defect_50155a9c-8f7d-47e7-9fe3-ff77461243ac.md",
-      "sibling_order": 11,
+      "sibling_order": 10,
       "status": "Complete",
       "title": "A review record is refused for joined observations only when one of them names a defect",
       "touch_zones": [

@@ -151,7 +151,7 @@
       "node_key": "4830d6a5-8004-46b8-b748-e7194f614aa2",
       "parent_id": "M21",
       "planning_dir": "planning/M21.13_move-node-keeps-other-ids_4830d6a5-8004-46b8-b748-e7194f614aa2.md",
-      "sibling_order": 12,
+      "sibling_order": 11,
       "status": "Complete",
       "title": "move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit",
       "touch_zones": [
@@ -175,7 +175,7 @@
       "node_key": "f0e9d130-9b74-479d-a401-ccee402e63a4",
       "parent_id": "M21",
       "planning_dir": "planning/M21.14_finish-resolves-inherited-roadmap-conflicts_f0e9d130-9b74-479d-a401-ccee402e63a4.md",
-      "sibling_order": 13,
+      "sibling_order": 12,
       "status": "Complete",
       "title": "finish resolves roadmap chunk conflicts the branch only inherited",
       "touch_zones": [
@@ -200,7 +200,7 @@
       "node_key": "3d08dc0a-5e36-45e6-9c64-2afb0bf110c5",
       "parent_id": "M21",
       "planning_dir": "planning/M21.15_cursor-workers-no-force-by-default_3d08dc0a-5e36-45e6-9c64-2afb0bf110c5.md",
-      "sibling_order": 14,
+      "sibling_order": 13,
       "status": "Complete",
       "title": "Cursor workers launch sandboxed without --force unless the roster opts in",
       "touch_zones": [
@@ -417,11 +417,11 @@
       "codename": "steering-file-guard",
       "dependencies": [],
       "execution_milestone": "Agentic-led",
-      "id": "M21.7",
+      "id": "M22.5",
       "node_key": "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf",
-      "parent_id": "M21",
-      "planning_dir": "planning/M21.7_steering-file-guard_ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf.md",
-      "sibling_order": 6,
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.5_steering-file-guard_ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf.md",
+      "sibling_order": 4,
       "status": "Not Started",
       "title": "Executors cannot change the files that steer harnesses and specy-road unnoticed",
       "touch_zones": [

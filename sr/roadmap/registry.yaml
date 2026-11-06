@@ -1,92 +1,92 @@
 version: 1
 entries:
-  - codename: zones-missing-what-acceptance-needs-flagged
-    node_id: M18.13
-    branch: feature/rm-zones-missing-what-acceptance-needs-flagged
-    touch_zones:
-      - specy_road/zone_coverage.py
-      - specy_road/orchestrate_plan.py
-      - specy_road/bundled_scripts/brief_call_sites.py
-      - tests/
-      - specy_road/bundled_scripts/session_plan_git.py
-      - specy_road/bundled_scripts/session_plan.py
-      - specy_road/bundled_scripts/session_plan_render.py
-      - specy_road/bundled_scripts/orchestrate_cli.py
-      - specy_road/orchestrate_assign.py
-    started: '2026-11-04'
-    owner: savigil
-    implementation_review: pending
-  - codename: file-limits-baseline-and-upgrade-report
-    node_id: M19.10
-    branch: feature/rm-file-limits-baseline-and-upgrade-report
-    touch_zones:
-      - specy_road/file_limits_engine.py
-      - specy_road/file_limits_baseline.py
-      - specy_road/bundled_scripts/validate_file_limits.py
-      - specy_road/bundled_scripts/upgrade.py
-      - docs/file-limits.md
-      - tests/
-      - specy_road/file_limits_baseline_yaml.py
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
-  - codename: the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first
-    node_id: M19.6
-    branch: feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first
-    touch_zones:
-      - specy_road/worktree_cleanup.py
-      - specy_road/bundled_scripts/worktree_cli.py
-      - specy_road/worktree_prune.py
-      - specy_road/bundled_scripts/grind_session_cleanup.py
-      - specy_road/orchestration_config.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - specy_road/templates/specyrd/commands/specyrd-orchestrate.md
-      - docs/orchestration-chores.md
-      - tests/
-      - specy_road/session_presence.py
-      - specy_road/bundled_scripts/grind_session.py
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
-  - codename: stash-changes-attributed-to-the-owning-branch
-    node_id: M18.14
-    branch: feature/rm-stash-changes-attributed-to-the-owning-branch
-    touch_zones:
-      - specy_road/worker_turn_check.py
-      - specy_road/worker_turn_stash.py
-      - tests/
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
-  - codename: notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice
-    node_id: M19.7
-    branch: feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice
-    touch_zones:
-      - specy_road/agent_text_report.py
-      - specy_road/templates/specyrd/agents-rules.md
-      - tests/
-      - specy_road/agents_md_block.py
-      - specy_road/bundled_scripts/upgrade.py
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
-  - codename: steering-file-guard
-    node_id: M21.7
-    branch: feature/rm-steering-file-guard
-    touch_zones:
-      - specy_road/steering_paths.py
-      - specy_road/worker_turn_check.py
-      - specy_road/worker_reconcile.py
-      - specy_road/worker_adapter_claude.py
-      - specy_road/bundled_scripts/finish_task.py
-      - docs/orchestration-workers.md
-      - docs/orchestration-harness-launch.md
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/schemas/worker-record.schema.json
-      - specy_road/steering_gate.py
-      - docs/orchestration-steering-files.md
-      - specy_road/git_config_text.py
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
+- codename: zones-missing-what-acceptance-needs-flagged
+  node_id: M18.13
+  branch: feature/rm-zones-missing-what-acceptance-needs-flagged
+  touch_zones:
+  - specy_road/zone_coverage.py
+  - specy_road/orchestrate_plan.py
+  - specy_road/bundled_scripts/brief_call_sites.py
+  - tests/
+  - specy_road/bundled_scripts/session_plan_git.py
+  - specy_road/bundled_scripts/session_plan.py
+  - specy_road/bundled_scripts/session_plan_render.py
+  - specy_road/bundled_scripts/orchestrate_cli.py
+  - specy_road/orchestrate_assign.py
+  started: '2026-11-04'
+  owner: savigil
+  implementation_review: pending
+- codename: file-limits-baseline-and-upgrade-report
+  node_id: M19.10
+  branch: feature/rm-file-limits-baseline-and-upgrade-report
+  touch_zones:
+  - specy_road/file_limits_engine.py
+  - specy_road/file_limits_baseline.py
+  - specy_road/bundled_scripts/validate_file_limits.py
+  - specy_road/bundled_scripts/upgrade.py
+  - docs/file-limits.md
+  - tests/
+  - specy_road/file_limits_baseline_yaml.py
+  started: '2026-11-05'
+  owner: savigil
+  implementation_review: pending
+- codename: the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first
+  node_id: M19.6
+  branch: feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first
+  touch_zones:
+  - specy_road/worktree_cleanup.py
+  - specy_road/bundled_scripts/worktree_cli.py
+  - specy_road/worktree_prune.py
+  - specy_road/bundled_scripts/grind_session_cleanup.py
+  - specy_road/orchestration_config.py
+  - specy_road/templates/project/schemas/orchestration.schema.json
+  - specy_road/templates/specyrd/commands/specyrd-orchestrate.md
+  - docs/orchestration-chores.md
+  - tests/
+  - specy_road/session_presence.py
+  - specy_road/bundled_scripts/grind_session.py
+  started: '2026-11-05'
+  owner: savigil
+  implementation_review: pending
+- codename: stash-changes-attributed-to-the-owning-branch
+  node_id: M18.14
+  branch: feature/rm-stash-changes-attributed-to-the-owning-branch
+  touch_zones:
+  - specy_road/worker_turn_check.py
+  - specy_road/worker_turn_stash.py
+  - tests/
+  started: '2026-11-05'
+  owner: savigil
+  implementation_review: pending
+- codename: notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice
+  node_id: M19.7
+  branch: feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice
+  touch_zones:
+  - specy_road/agent_text_report.py
+  - specy_road/templates/specyrd/agents-rules.md
+  - tests/
+  - specy_road/agents_md_block.py
+  - specy_road/bundled_scripts/upgrade.py
+  started: '2026-11-05'
+  owner: savigil
+  implementation_review: pending
+- codename: steering-file-guard
+  node_id: M22.5
+  branch: feature/rm-steering-file-guard
+  touch_zones:
+  - specy_road/steering_paths.py
+  - specy_road/worker_turn_check.py
+  - specy_road/worker_reconcile.py
+  - specy_road/worker_adapter_claude.py
+  - specy_road/bundled_scripts/finish_task.py
+  - docs/orchestration-workers.md
+  - docs/orchestration-harness-launch.md
+  - docs/orchestration-review.md
+  - tests/
+  - specy_road/schemas/worker-record.schema.json
+  - specy_road/steering_gate.py
+  - docs/orchestration-steering-files.md
+  - specy_road/git_config_text.py
+  started: '2026-11-05'
+  owner: savigil
+  implementation_review: pending
