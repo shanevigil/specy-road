@@ -25,7 +25,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.2.2` Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers `shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers` — task — **Not Started**
     - `M16.2.3` Git queries and registry I/O go through one helper each `git-queries-and-registry-i-o-go-through-one-helper-each` — task — **Not Started**
     - `M16.2.4` One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready `one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready` — task — **Not Started**
-    - `M16.2.5` The 29 package-imported library modules move out of bundled_scripts `the-29-package-imported-library-modules-move-out-of-bundled-scripts` — task — **Not Started**
+    - `M16.2.5` Library modules imported by the package move out of bundled_scripts `library-modules-imported-by-the-package-move-out-of-bundled` — task — **Not Started**
     - `M16.2.6` A shrink-only layering gate records the import cycles and package-to-entry-point imports `a-shrink-only-layering-gate-records-the-import-cycles-and-package-to-entry-point-imports` — task — **Not Started**
     - `M16.2.7` Break the 45-module import cycle through the graph loader, the brief and validate `break-the-45-module-import-cycle-through-the-graph-loader-the-brief-and-validate` — task — **Not Started**
     - `M16.2.8` Break the 25-module import cycle between roadmap CRUD, worker ops and the chore CLI `break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli` — task — **Not Started**
@@ -77,7 +77,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.7.5` Tests: apply the dedupe worklist for the rest `tests-apply-the-dedupe-worklist-for-the-rest` — task — **Not Started**
     - `M16.7.6` Tests: public seams replace private-name patches, and no test sleeps on the wall clock `tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock` — task — **Not Started**
     - `M16.7.7` Tests: five named properties replace the single-input tests they cover `tests-five-named-properties-replace-the-single-input-tests-they-cover` — task — **Not Started**
-    - `M16.7.8` Tests: a CLI smoke lane of at most 50 subprocess items, everything else in process, suite time halved `tests-a-cli-smoke-lane-of-at-most-50-subprocess-items-everything-else-in-process-suite-time-halved` — task — **Not Started**
+    - `M16.7.8` Tests: a CLI smoke lane and in-process CLI tests, held to the effectiveness measures the maintainer chooses `tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the` — task — **Not Started**
   - `M16.8` rc5 close, alias window, end-to-end pass and the 0.3.1 tag `rc5-close-alias-window-end-to-end-pass-and-the-0-3-1-tag` — milestone — **Not Started**
     - `M16.8.1` rc5 close: lean metrics measured against the baseline `rc5-close-lean-metrics-measured-against-the-baseline` — task — **Not Started**
     - `M16.8.2` Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window `gate-the-release-that-shipped-the-m16-aliases-is-out-and-the-maintainer-closes-the-alias-window` — gate — **Not Started**
@@ -178,7 +178,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M16.12` stopped depending on `M16.2.9 Commands run in the CLI's process: no python -m re-launch, no cwd globals`
 - 2026-11-05 `M16.12` stopped depending on `M16.3.4 One LLM client module replaces the provider code inside review_node`
 - 2026-11-05 `M16.15` stopped depending on `M16.1.2 Parity harness: a review-gate decision table covering every review policy`
-- 2026-11-05 `M16.15` stopped depending on `M16.2.5 The 29 package-imported library modules move out of bundled_scripts`
+- 2026-11-05 `M16.15` stopped depending on `M16.2.5 Library modules imported by the package move out of bundled_scripts`
 - 2026-11-05 `M16.15` stopped depending on `M16.2.4 One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready`
 - 2026-11-05 `M16.33` stopped depending on `M16.4.2 upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update`
 - 2026-11-05 `M16.33` stopped depending on `M16.4.3 review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session`
@@ -190,7 +190,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M16.33` stopped depending on `M16.5.12 Fold the review gate and escalation fragments, and mark the policies the evidence did not keep as deprecated`
 - 2026-11-05 `M16.33` stopped depending on `M16.5.1 Worker runtime moves into orchestration/workers with import-path edits only`
 - 2026-11-05 `M16.33` stopped depending on `M16.5.9 Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings`
-- 2026-11-05 `M16.9` stopped depending on `M16.2.5 The 29 package-imported library modules move out of bundled_scripts`
+- 2026-11-05 `M16.9` stopped depending on `M16.2.5 Library modules imported by the package move out of bundled_scripts`
 - 2026-11-05 `M16.13` stopped depending on `M16.4.1 doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases`
 - 2026-11-05 `M16.3` stopped depending on `M16.1.1 Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs`
 - 2026-11-05 `M16.11` stopped depending on `M16.2.9 Commands run in the CLI's process: no python -m re-launch, no cwd globals`

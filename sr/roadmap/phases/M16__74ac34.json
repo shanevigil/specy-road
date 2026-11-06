@@ -430,13 +430,15 @@
     },
     {
       "acceptance": [
+        "human: the maintainer has chosen the suite's effectiveness measures (e.g. coverage floor, mutation score on named core modules, regression-catch evidence) from the research item sr/research/agentic-unit-testing.md, recorded in this sheet",
         "At most 50 collected test items start `specy-road`, `specyrd` or `python -m specy_road` in a subprocess, counted per item by a test hook; git commands and worker child processes are not counted, and real worker-process and race tests stay as they are",
-        "All other CLI tests call `main(argv)` in process through tests/support run_cli",
+        "All other CLI tests call `main(argv)` in process through tests/support run_cli, so coverage contexts and mutation runs see the code each test exercises without subprocess capture",
         "Repo-consistency tests still run in CI (in a separate job if moved)",
-        "The median of three full-suite runs with the M16.1.7 settings, on the machine M16.1.7 recorded, is at most half the M16.1.7 baseline time and is recorded in the summary; suite time is never a CI failure; 35 s is printed by lean_metrics and not gated; coverage stays at or above fail_under",
+        "Each effectiveness measure the A1 decision names is measured at this leaf's merge base and at its head with the same settings; both values are recorded in the summary, and the head value is not below the merge-base value nor below any threshold the decision sets; coverage stays at or above fail_under",
+        "Full-suite wall time (median of three runs with the M16.1.7 settings) is recorded in the summary for information only; it is never an acceptance threshold, a review finding or a CI failure (maintainer, 2026-11-05)",
         "Estimated net line change (informational, not a gate): tests about -500"
       ],
-      "codename": "tests-a-cli-smoke-lane-of-at-most-50-subprocess-items-everything-else-in-process-suite-time-halved",
+      "codename": "tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the",
       "dependencies": [
         "e99367d9-1efa-4aec-850b-bd88121d9757"
       ],
@@ -444,14 +446,15 @@
       "id": "M16.7.8",
       "node_key": "79115c79-0035-4781-9d38-d5a3b117631d",
       "parent_id": "M16.7",
-      "planning_dir": "planning/M16.7.8_tests-a-cli-smoke-lane-of-at-most-50-subprocess-items-everything-else-in-process-suite-time-halved_79115c79-0035-4781-9d38-d5a3b117631d.md",
+      "planning_dir": "planning/M16.7.8_tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the_79115c79-0035-4781-9d38-d5a3b117631d.md",
       "sibling_order": 7,
       "status": "Not Started",
-      "title": "Tests: a CLI smoke lane of at most 50 subprocess items, everything else in process, suite time halved",
+      "title": "Tests: a CLI smoke lane and in-process CLI tests, held to the effectiveness measures the maintainer chooses",
       "touch_zones": [
         "tests/",
         "pyproject.toml",
-        ".github/workflows/validate.yml"
+        ".github/workflows/validate.yml",
+        "sr/planning/M16.7.8_tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the_79115c79-0035-4781-9d38-d5a3b117631d.md"
       ],
       "type": "task"
     },

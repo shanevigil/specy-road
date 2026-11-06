@@ -168,12 +168,12 @@
     },
     {
       "acceptance": [
-        "Before any move, this sheet lists the modules under specy_road/bundled_scripts that a specy_road module outside bundled_scripts imports at pickup, excluding every module named by cli.py's `_SCRIPTS` or `_FORWARDED` and excluding review_node.py (M16.3.4); exactly those move to the specy_road package with `git mv`, and no other module moves (the title's 29 is the code report's count; the list is this rule's result, 39 on 2026-11-05)",
+        "Before any move, this sheet lists the modules under specy_road/bundled_scripts that a specy_road module outside bundled_scripts imports at pickup, excluding every module named by cli.py's `_SCRIPTS` or `_FORWARDED` and excluding review_node.py (M16.3.4); exactly those move to the specy_road package with `git mv`, and no other module moves (the code report counted 29; this rule gave 39 on 2026-11-05)",
         "A moved module keeps a one-line re-export at its old path only if a console entry point, a shipped template or a documented `python specy_road/bundled_scripts/...` command names that path; each kept re-export is listed in this sheet for M16.8.3",
         "Imports are updated and nothing else changes; entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json are rewritten for the new paths only (M16.1.8's transfer rule); parity harness, full suite and `scripts/check_test_private_imports.py` green",
         "Estimated net line change (informational, not a gate): package about -40"
       ],
-      "codename": "the-29-package-imported-library-modules-move-out-of-bundled-scripts",
+      "codename": "library-modules-imported-by-the-package-move-out-of-bundled",
       "dependencies": [
         "34598a66-ab29-4a34-aea5-919d3970cbce"
       ],
@@ -181,10 +181,10 @@
       "id": "M16.2.5",
       "node_key": "8ae7a813-4e43-4590-9f7d-d20b1691dbce",
       "parent_id": "M16.2",
-      "planning_dir": "planning/M16.2.5_the-29-package-imported-library-modules-move-out-of-bundled-scripts_8ae7a813-4e43-4590-9f7d-d20b1691dbce.md",
+      "planning_dir": "planning/M16.2.5_library-modules-imported-by-the-package-move-out-of-bundled_8ae7a813-4e43-4590-9f7d-d20b1691dbce.md",
       "sibling_order": 4,
       "status": "Not Started",
-      "title": "The 29 package-imported library modules move out of bundled_scripts",
+      "title": "Library modules imported by the package move out of bundled_scripts",
       "touch_zones": [
         "specy_road/bundled_scripts/",
         "specy_road/",

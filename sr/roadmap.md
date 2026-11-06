@@ -25,7 +25,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.2.2` | Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers | task | Agentic-led | Not Started |
 | `M16.2.3` | Git queries and registry I/O go through one helper each | task | Agentic-led | Not Started |
 | `M16.2.4` | One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready | task | Agentic-led | Not Started |
-| `M16.2.5` | The 29 package-imported library modules move out of bundled_scripts | task | Agentic-led | Not Started |
+| `M16.2.5` | Library modules imported by the package move out of bundled_scripts | task | Agentic-led | Not Started |
 | `M16.2.6` | A shrink-only layering gate records the import cycles and package-to-entry-point imports | task | Agentic-led | Not Started |
 | `M16.2.7` | Break the 45-module import cycle through the graph loader, the brief and validate | task | Agentic-led | Not Started |
 | `M16.2.8` | Break the 25-module import cycle between roadmap CRUD, worker ops and the chore CLI | task | Agentic-led | Not Started |
@@ -77,7 +77,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.7.5` | Tests: apply the dedupe worklist for the rest | task | Agentic-led | Not Started |
 | `M16.7.6` | Tests: public seams replace private-name patches, and no test sleeps on the wall clock | task | Agentic-led | Not Started |
 | `M16.7.7` | Tests: five named properties replace the single-input tests they cover | task | Agentic-led | Not Started |
-| `M16.7.8` | Tests: a CLI smoke lane of at most 50 subprocess items, everything else in process, suite time halved | task | Agentic-led | Not Started |
+| `M16.7.8` | Tests: a CLI smoke lane and in-process CLI tests, held to the effectiveness measures the maintainer chooses | task | Agentic-led | Not Started |
 | `M16.8` | rc5 close, alias window, end-to-end pass and the 0.3.1 tag | milestone | — | Not Started |
 | `M16.8.1` | rc5 close: lean metrics measured against the baseline | task | Mixed | Not Started |
 | `M16.8.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |

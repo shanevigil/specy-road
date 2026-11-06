@@ -61,9 +61,9 @@
     {
       "acceptance": [
         "`lean_metrics --check` prints package, test and docs lines and files, the C901 and long-line counts, and the command and alias counts against the M16.1.7 baseline, beside the sum of the leaves' informational estimates; none of the line numbers fails the check",
-        "The canonical command count is at most 56 and the alias count is printed; coverage is at or above fail_under; M16.7.8's suite-time result holds",
+        "The canonical command count is at most 56 and the alias count is printed; coverage is at or above fail_under; each effectiveness measure recorded in M16.7.8's sheet is at or above the value or threshold recorded there; suite time is printed for information only and never fails this leaf",
         "This sheet lists, for M16.8.3, every deprecated form still accepted at rc5 with the notice it prints: the tests/parity/command_map.yaml rows, the old checks keys and the review-before-finish switch (M16.4.5), the four grind_session_* keys (M16.5.11), the version-1 roster form (M16.5.5), the `[gui-next]` extra (M16.6.1) and the re-exports kept by M16.2.5; each has its CHANGELOG [Unreleased] entry",
-        "The M16.1.7 baseline stays as committed; the rc5 measurements are committed as a separate end-state section of constraints/lean-baseline.json that names the baseline commit, and the summary states the source lines, command count, test count and suite time reached",
+        "The M16.1.7 baseline stays as committed; the rc5 measurements are committed as a separate end-state section of constraints/lean-baseline.json that names the baseline commit, and the summary states the source lines, command count, test count and effectiveness measures reached, with suite time as an informational figure",
         "Estimated net line change (informational, not a gate): package 0"
       ],
       "codename": "rc5-close-lean-metrics-measured-against-the-baseline",
