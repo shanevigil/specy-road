@@ -7,8 +7,15 @@ ID=$1; WT=$2
 S=$ROOT/sr/tools/specy-road; LOG=$ROOT/work/grind-logs; mkdir -p "$LOG"
 cd "$ROOT" || exit 2
 # One reviewer turn; since M8.3 a refused one-shot record ("rerun requested") gets one automatic retry.
+# A landing rewrites the checkout the reviewer's tooling imports from; an ImportError mid-run is that race, not
+# the leaf: wait for the coordinator's git lock (held for the whole landing) and run the reviewer once more.
+LOCK=$ROOT/sr/work/orchestrator-2026-11-04/git.lock
 review_once() { $S prompt "$ID" --role reviewer --model "$1" --channel cli --run --repo-root "$PWD" > "$2" 2>&1
-  if grep -q "rerun requested" "$2"; then echo "--- retry after a refused record ---" >> "$2"
+  if grep -qE "cannot import name|ImportError|ModuleNotFoundError" "$2"; then
+    echo "--- retry after an import error (a landing was rewriting the checkout) ---" >> "$2"
+    [ -e "$LOCK" ] && flock "$LOCK" true; sleep 10
+    $S prompt "$ID" --role reviewer --model "$1" --channel cli --run --repo-root "$PWD" >> "$2" 2>&1
+  elif grep -q "rerun requested" "$2"; then echo "--- retry after a refused record ---" >> "$2"
     $S prompt "$ID" --role reviewer --model "$1" --channel cli --run --repo-root "$PWD" >> "$2" 2>&1; fi; }
 # Real conflicts only: finish-this-task resolves the generated bookkeeping files itself.
 real_conflicts() { git -C "$1" merge-tree --write-tree --name-only origin/WIP/improvements-0-3-1 HEAD 2>/dev/null | sed -n '2,/^$/p' | grep -v -E '^$|^sr/roadmap/registry\.yaml$|^sr/roadmap-context\.md$|^sr/roadmap\.md$'; }
