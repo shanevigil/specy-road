@@ -21,6 +21,11 @@ body. Keep section bodies focused; link to PRs for detail.
   nesting or no object is a rerun request naming the cause; an earlier valid
   object is never used instead. The `generic` / `agy` envelope path is
   unchanged.
+- `review record` and the human approval of `mark-implementation-reviewed` take
+  the leaf's review lock: they wait up to 10 seconds for another filing and
+  refuse, writing nothing, while a `review delegate` or `prompt --channel cli
+  --run` on the same leaf is running, so another filing no longer voids that
+  reviewer's run as a review failure.
 - **Security:** the review gate no longer counts a record from a model that
   filed a READY on the leaf (the executor or a fix author), whatever the
   record's `authored_fix`, verdict or signature; it is listed as ineligible
