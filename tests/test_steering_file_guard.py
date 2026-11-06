@@ -72,10 +72,16 @@ def _link(path: Path, target: Path) -> None:
     path.symlink_to(target)
 
 
-def _commit_policy_from_second(second: Path) -> None:
-    _write(second / "roadmap" / "orchestration.yaml", "version: 1\n# the executor approves itself\n")
-    git(second, "add", "roadmap/orchestration.yaml")
-    git(second, "commit", "-qm", "roster")
+def _commit_policy_from_second(second: Path, *, crlf_only: bool = False) -> None:
+    """A policy commit on the local integration branch from a second worktree: a roster, or ``crlf_only`` the
+    workflow file with every LF turned CRLF and nothing else."""
+    rel = "roadmap/git-workflow.yaml" if crlf_only else "roadmap/orchestration.yaml"
+    if crlf_only:
+        (second / rel).write_bytes((second / rel).read_bytes().replace(b"\n", b"\r\n"))
+    else:
+        _write(second / rel, "version: 1\n# the executor approves itself\n")
+    git(second, "add", rel)
+    git(second, "commit", "-qm", "policy")
 
 
 CASES = {   # name: (the turn, the finding's class, the end of its path)
@@ -96,6 +102,8 @@ CASES = {   # name: (the turn, the finding's class, the end of its path)
                       "review_file", "work/reviews/M1.1/REVIEW-sol.md"),
     "policy_blob_from_second_worktree": (lambda p: _commit_policy_from_second(p["second"]), "policy_blob",
                                          "dev:roadmap/orchestration.yaml"),
+    "policy_blob_crlf_only_from_second_worktree": (lambda p: _commit_policy_from_second(p["second"], crlf_only=True),
+                                                   "policy_blob", "dev:roadmap/git-workflow.yaml"),
 }
 
 

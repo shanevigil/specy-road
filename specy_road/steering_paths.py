@@ -372,11 +372,19 @@ def _env_bin(snap: Snapshot, scope: Scope) -> None:
 
 
 def blobs(snap: Snapshot, scope: Scope) -> None:
-    """The policy files as committed at the local integration branch tip (no fetch)."""
-    for rel in POLICY_FILES if scope.integration_branch else ():
-        r = run(["cat-file", "blob", f"refs/heads/{scope.integration_branch}:{scope.prefix}{rel}"], scope.m_top)
+    """The policy files as committed at the local integration branch tip (no fetch), byte-exact: each one's blob
+    object id from ``git ls-tree`` (the object store, no hook, no text decoding), so a newline-only commit shows.
+    No such branch: ``absent``; a tree git cannot list: unreadable (the one rule)."""
+    if not scope.integration_branch:
+        return
+    ref, paths = f"refs/heads/{scope.integration_branch}", [f"{scope.prefix}{rel}" for rel in POLICY_FILES]
+    r = run(["ls-tree", "-z", "--full-tree", ref, "--", *paths], scope.m_top)
+    oids = {rec.split("\t", 1)[1]: rec.split()[2] for rec in (r.out if r.ok else "").split("\0") if "\t" in rec}
+    missing = not r.ok and not run(["show-ref", "--verify", "--quiet", ref], scope.m_top).ok
+    for rel, path in zip(POLICY_FILES, paths):
         name = f"{scope.integration_branch}:{rel}"
-        snap[f"blob:{name}"] = Entry(name, "policy_blob", _sha(r.out.encode()) if r.ok else ABSENT)
+        value = (f"blob:{oids[path]}" if path in oids else ABSENT) if missing or r.ok else f"{ERROR}git ls-tree {ref}: {r.message}"
+        snap[f"blob:{name}"] = Entry(name, "policy_blob", value)
 
 
 def file_snapshot(scope: Scope) -> Snapshot:
