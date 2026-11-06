@@ -440,7 +440,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.26_gate-excludes-ready-authors_cec33876-599c-4516-abe7-3ec445eb8a2a.md",
       "sibling_order": 24,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model",
       "touch_zones": [
         "specy_road/review_gate.py",
