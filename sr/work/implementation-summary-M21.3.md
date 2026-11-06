@@ -1,6 +1,6 @@
 # Implementation summary: M21.3 `rewrite-id-refs`
 
-Implementation commit: `bf244bd2` on `feature/rm-rewrite-id-refs`. Fix round 1 merged `origin/WIP/improvements-0-3-1` (merge `1f4851ca`, no conflicts) and changed no code (see Fix round 1).
+Implementation commit: `bf244bd2` on `feature/rm-rewrite-id-refs`. Fix round 1 merged `origin/WIP/improvements-0-3-1` (merge `1f4851ca`, no conflicts) and changed no code (see Fix round 1). Fix round 2 found WIP already merged and changed no code (see Fix round 2).
 
 ## What changed
 
@@ -50,6 +50,15 @@ The listed zones plus `specy_road/bundled_scripts/roadmap_move_id_forms.py` (sin
   - The fixture was cleaned with the guard's own `git clean -fdX tests/fixtures`, and it was clean before and after the targeted run.
   - Stopping `digest` from writing its cache into a `--repo-root` fixture would need a change in `digest_cli.py` or the history cache. That is outside this leaf's zones and acceptance, so it is not done here.
 
+## Fix round 2 (gpt-6.1-sol-low block at 015687c9)
+
+- **Finding:** in the reviewer's Codex session, the GUI tests stalled inside Starlette `TestClient` (AnyIO `start_task_soon` waiting, event-loop thread in `selector.select`) before any request reached repository code, so A3 went unverified.
+- **Class:** any cross-thread asyncio wakeup inside the Codex Linux sandbox. That sandbox rejects `send()` on an AF_UNIX `socketpair` with `EPERM`. asyncio's `call_soon_threadsafe` wakes its loop by writing to exactly such a self-pipe and silently ignores that error, so the loop thread never wakes. Every `TestClient` request goes through an AnyIO blocking portal and therefore hangs. This is the same stall the Codex reviews of M21.1, M21.2, M16.67 and M15.13 recorded; M21.1's and M21.2's also reproduced it with a minimal app containing no repository code.
+- **Fix:** none in code. Neither the leaf's code nor its tests can remove a sandbox syscall denial, and the A3 gate files (`tests/test_gui_app*.py`, `tests/test_roadmap_gui_*.py`, the unchanged `tests/test_gui_outline_contract.py`) must run as they are. They were run on the host, where `TestClient` requests complete, and their output is recorded in READY. A conftest workaround for the sandbox would be outside this leaf's acceptance, so it is not added.
+- **Reproduce:**
+  - `codex sandbox -- python -I x.py`, where `x.py` sends one byte across `socket.socketpair()`, fails with `[Errno 1] Operation not permitted`.
+  - The same command with a one-route Starlette app and `TestClient(app).get("/")` hangs.
+
 ## Probes
 
 - `git status --porcelain --ignored -- tests/fixtures` after `specy-road validate --repo-root <fixture>`: clean.
@@ -60,6 +69,15 @@ The listed zones plus `specy_road/bundled_scripts/roadmap_move_id_forms.py` (sin
 - Targeted pytest over 62 files (every test importing a changed module or `move_node_helpers`, plus `tests/test_gui_app*.py` and `tests/test_roadmap_gui_*.py`, and the unchanged `tests/test_gui_outline_contract.py`): 930 passed.
 - `tests/test_gui_outline_contract.py` has no diff against the merge base.
 - `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
+
+- Round 2: serial `tests/test_rename_refs.py tests/test_gui_outline_contract.py` with `faulthandler_timeout=60` on the host: 76 passed in 10 s, no stall.
+- Round 2: minimal Starlette app (no repository code) with `TestClient.get("/")`: host returns `{'ok': True}`; under `codex sandbox --` it hangs (killed by `timeout 20`, exit 124).
+- Round 2: plain `asyncio.run_coroutine_threadsafe` onto a loop running in another thread: under `codex sandbox --` it raises `TimeoutError` after 5 s; on the host it completes.
+- Round 2: `socket.socketpair()` then `send(b"x")`: under `codex sandbox --` it fails with `EPERM`; on the host it works. This is the root cause.
+- Round 2: earlier Codex reviews (M21.1, M21.2, M16.67, M15.13) report the same TestClient stall; M21.1 and M21.2 reproduced it with a minimal app, and M15.13 reproduced it on its base snapshot.
+- Round 2: the A3 gate run serially on the host (`tests/test_gui_app*.py`, `tests/test_roadmap_gui_*.py`, `tests/test_gui_outline_contract.py`, `tests/test_rename_refs.py`): 184 passed.
+- Round 2: the 62-file targeted run (`-n 4`): 930 passed. Fixture ignored-file status was clean before and after.
+- Round 2: `tests/test_gui_outline_contract.py` has no diff against the WIP merge base `275ca876`.
 
 ## Verification
 
@@ -93,3 +111,4 @@ The listed zones plus `specy_road/bundled_scripts/roadmap_move_id_forms.py` (sin
   - `test_gui_rewrite_refs_is_opt_in`: four GUI routes × true/false/omitted.
 - Mocks: only the `run_validate_raise` monkeypatch above.
 - Fix round 1: none (no code, test or guard added).
+- Fix round 2: none (no code, test or guard added).
