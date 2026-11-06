@@ -213,7 +213,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.18_deferral-bound-to-its-decision_b4270bb8-dc2f-401d-827a-5bcaad32c07e.md",
       "sibling_order": 16,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A review deferral counts only when its marker is bound to the decision review defer recorded for it and its RCA",
       "touch_zones": [
         "specy_road/review_deferral.py",

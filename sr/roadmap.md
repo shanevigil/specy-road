@@ -164,7 +164,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.15` | Cursor workers launch sandboxed without --force unless the roster opts in | task | Agentic-led | Complete |
 | `M21.16` | upgrade --dry-run never touches the real repo under GIT_DIR, and a real upgrade regenerates drifted generated files | task | — | Not Started |
 | `M21.17` | Writers refuse a symlinked target that leads out of the directory they own: init's generated files, review refusal and packet | task | — | Not Started |
-| `M21.18` | A review deferral counts only when its marker is bound to the decision review defer recorded for it and its RCA | task | — | Not Started |
+| `M21.18` | A review deferral counts only when its marker is bound to the decision review defer recorded for it and its RCA | task | — | Complete |
 | `M21.19` | apply --dry-run rehearses on a scratch copy whose links are rebased, so no rehearsal can move or change a live file | task | — | Not Started |
 | `M21.20` | PM GUI Publish regenerates roadmap.md and roadmap-context.md before committing, and refuses before committing when no remote is set | task | — | Not Started |
 | `M21.21` | review delegate validates the reviewer command as prompt --channel cli does, and the model check splits on newlines only | task | — | Not Started |
