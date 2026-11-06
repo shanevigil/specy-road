@@ -18,6 +18,51 @@ body. Keep section bodies focused; link to PRs for detail.
   refuse, writing nothing, while a `review delegate` or `prompt --channel cli
   --run` on the same leaf is running, so another filing no longer voids that
   reviewer's run as a review failure.
+- **Security:** the review gate no longer counts a record from a model that
+  filed a READY on the leaf (the executor or a fix author), whatever the
+  record's `authored_fix`, verdict or signature; it is listed as ineligible
+  with "the executor never reviews its own leaf", and `specy-road review
+  delegate --model <that model>` is refused before any packet, lock or run
+  record. The exclusion is by model id: another model of the same family still
+  counts. READY authorship is cooperative attestation (an unsigned file).
+- `specy-road review delegate` checks a roadmap reviewer's command as
+  `prompt --channel cli` does, before the preflight and before any run record
+  or log: a roster `channels.cli` that passes a bypass flag (`--force`,
+  `--yolo`, one split by a line continuation) is refused with the same reason,
+  a `generic` entry with no `channels.cli` no longer falls back to the
+  profile's `access.cli`, and an entry that resolves to no API model id is
+  refused even with `routing: dynamic`. A chore reviewer's launch is unchanged.
+- The reviewer model check splits the harness log on `\n` only, as JSON Lines
+  does, so a `result` event whose string carries an unescaped U+2028 or U+2029
+  can no longer hide a model mismatch.
+- PM GUI Publish regenerates `roadmap.md` and `roadmap-context.md` before
+  committing, so the pushed commit passes `export --check` and
+  `digest --check`. A graph that does not validate, or a generated file that
+  is a link out of the project, is refused with `400` naming the cause before
+  anything is staged. With no git remote configured, Publish no longer commits
+  locally and then fails the push with git's raw error: `/api/publish/status`
+  reports `blocked_reason: "no_remote"` and `POST /api/publish` returns `400`
+  saying how to add one.
+- `specy-road upgrade --dry-run` no longer commits into the caller's
+  repository when `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`,
+  `GIT_COMMON_DIR` or `GIT_OBJECT_DIRECTORY` is set (inside a git hook, for
+  example): every git call in its temporary copy, and the copy's `validate`,
+  runs without them, and a copy whose own `.git` was not created fails without
+  validating.
+- `specy-road upgrade` now regenerates what `digest --check` would fail on:
+  when `validate` passes it writes `roadmap-context.md` when missing or drifted
+  (a finished leaf's "Quality by area" section, for example) and `roadmap.md`
+  when it is tracked and drifted, prints a `wrote` line for each (`would write`
+  with `--dry-run`), and refuses a path that is a symlink out of the project.
+  An untracked `roadmap.md` is left alone; an invalid graph regenerates nothing
+  and keeps the `specy-road digest` next step.
+- `review delegate` and `prompt --role reviewer --channel cli --run` on a
+  Claude Code reviewer pass the inline `--json-schema` without its top-level
+  `$schema` (Claude Code 2.1.318 rejected the draft 2020-12 reference, so every
+  such review failed); `review-output.schema.json` keeps `$schema` for Codex
+  and agy. A failed reviewer turn with no parsed error now names the last
+  non-blank line of its log span (cut to 200 characters) in both the reason
+  and `attempts[].error`, instead of `no error text`.
 - Security: no writer follows a symlink out of the directory it owns.
   `init project` treats a dangling `roadmap.md` or `roadmap-context.md` link
   as present (skipped without `--force`), and with `--force` lists a link out
@@ -34,6 +79,16 @@ body. Keep section bodies focused; link to PRs for detail.
 - The `on_complete` description in `git-workflow.schema.json` and step 7 of the
   `specyrd-finish` stub no longer say `merge` / `auto` always push: they land
   per `land` (`push` pushes; `local` fetches and pushes nothing).
+- `apply --dry-run` no longer moves or changes a live file. Its scratch copy
+  now rebases links in the copied graph trees onto the copy, as `remove-node
+  --dry-run` already did, so an `archive` entry whose planning sheet is an
+  absolute link into the repo moves the copy's sheet, not the live one, and an
+  in-repo absolute chunk-directory link rehearses as the real apply runs.
+  `archive` (and an `apply` `archive` entry) refuses, before writing or moving
+  anything, a planning sheet, archive chunk, archive index or stored-sheet path
+  that resolves outside the repo, naming the path, and archiving a sheet
+  reached through a link removes the link it would leave dangling.
+
 - `specy-road doctor` no longer fails in a repo with no remote. When the
   resolved remote (`--remote`, `SPECY_ROAD_REMOTE`, `roadmap/git-workflow.yaml`,
   else `origin`) is not configured, it says so in one line, skips the fetch and

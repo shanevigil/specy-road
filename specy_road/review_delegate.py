@@ -44,6 +44,7 @@ from specy_road.git_subprocess import git_text
 from specy_road.orchestration_pinned import pinned_config
 from specy_road.review_delegate_harness import HarnessSetupError, _Harness
 from specy_road.review_delegate_packet import ensure_packet
+from specy_road.review_eligible import writers
 from specy_road.review_files import reviews_dir
 from specy_road.review_answer import stream_lines
 from specy_road.review_model_check import check_note, check_run, rostered
@@ -157,6 +158,9 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
         failed = turn["exit"] != 0 or bool(turn["errors"])
         cap = turn_capacity_error(turn["errors"], turn["tail"]) if failed else None
         said = cap or next(iter(turn["errors"]), "")
+        if failed and not said:   # no parsed error: the last non-blank line of this turn's log span (the harness's own)
+            lines = [ln.strip() for ln in attempt_text(h.log, turn).splitlines() if ln.strip()]
+            said = lines[-1][:200] if lines else "no error text"
         run["attempts"].append({"at": _now(), "exit": turn["exit"], "capacity": bool(cap), "error": said[:300] or None,
                                 "log_start": turn["log_start"], "log_end": turn["log_end"],   # the span run_text reads
                                 "log_sha256": turn["log_sha256"]})
@@ -164,7 +168,7 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
             h.replaced.append(path)
         save_run(path, run)
         if not cap:
-            return f"harness exited {turn['exit']}: {said[:200] or 'no error text'}" if failed else ""
+            return f"harness exited {turn['exit']}: {said[:200]}" if failed else ""
         reason = f"capacity error after {n + 1} attempt(s): {cap[:200]}"
         if n < retries:
             sleep(backoff * 2 ** n)
@@ -260,6 +264,8 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
             t = resolve_target(repo_root, node_id, ref)
         except ReviewTargetError as e:
             raise DelegateError(str(e)) from None
+        if wrote := writers(repo_root, t.node["id"], (t.entry or {}).get("branch")).get(model):   # before any write
+            raise DelegateError(f"{model} wrote {wrote[0]} on {node_id}; the executor never reviews its own leaf")
     entry = _entry(repo_root, model)
     cwd = (worktree or Path(git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root)).resolve()
     try:

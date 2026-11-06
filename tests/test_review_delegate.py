@@ -16,9 +16,8 @@ import pytest
 from tests.helpers import script_subprocess_env
 from tests.review_delegate_helpers import (CAPACITY, delegate_repo, delegate_roster, fake_calls, launches,
                                            set_steps, verdict_step)
-from tests.review_delegate_helpers import FAKE
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_output
-from tests.test_models_and_prompt import OPUS, commit_profile, make_profile_repo, run_main
+from tests.test_models_and_prompt import run_main
 
 from specy_road.bundled_scripts import review_cli, role_prompt, role_prompt_cli
 from specy_road.review_delegate import DelegateError, capacity_error, delegate, load_run
@@ -174,8 +173,35 @@ def test_refusals(tmp_path: Path, capsys) -> None:
     repo, _spec = delegate_repo(tmp_path)
     assert _run("review", "delegate", "M1.1", "--model", "nobody", "--repo-root", str(repo)) == 1
     assert "not in the roster" in capsys.readouterr().err
+    # M21.21: a generic entry with no channels.cli is refused as `prompt --channel cli` refuses it, before --resume
+    assert _run("review", "delegate", "M1.1", "--model", "plain", "--resume", "--repo-root", str(repo)) == 1
+    assert "a generic reviewer needs a roster channels.cli" in capsys.readouterr().err
+    (tmp_path / "gen").mkdir()
+    repo, _spec = delegate_repo(tmp_path / "gen", delegate_roster("{fake} {prompt}").replace(
+        "{id: plain, family: openai, roles: [reviewer]}", "{id: plain, family: openai, roles: [reviewer], "
+        "channels: {cli: 'true {prompt}'}}"))
     assert _run("review", "delegate", "M1.1", "--model", "plain", "--resume", "--repo-root", str(repo)) == 2
     assert "unsupported by generic: resume" in capsys.readouterr().err
+
+def test_a_chore_reviewer_keeps_its_launch_that_a_leaf_reviewer_is_refused(tmp_path: Path) -> None:
+    """M21.21: the prompt launcher's reviewer checks are for roadmap reviews; a chore reviewer's launch is unchanged."""
+    from specy_road.bundled_scripts import chore_cli   # noqa: PLC0415
+    from tests.worker_repo_helpers import FAKE as WORKER_FAKE, worker_roster   # noqa: PLC0415
+
+    script = tmp_path / "fake.py"
+    script.write_text(WORKER_FAKE)
+    repo = make_review_repo(tmp_path, orchestration=worker_roster(f"{sys.executable} {script} {{prompt}} --force"))
+    (repo / ".gitignore").write_text("work/\n")
+    git(repo, "add", ".gitignore")
+    git(repo, "commit", "-qm", "ignore work")
+    with pytest.raises(DelegateError, match="passes --force, which lets it write"):
+        delegate(repo, "M1.1", "opus", sleep=lambda s: None)
+    with pytest.raises(SystemExit) as e:
+        chore_cli.main(["chore", "start", "fix-env", "--task", "Repair", "--zone", "src", "--review",
+                        "--repo-root", str(repo)])
+    assert not e.value.code
+    run = delegate(repo, "fix-env", "opus", sleep=lambda s: None)
+    assert run["attempts"] and run["attempts"][0].get("exit") == 0
 
 
 @pytest.mark.parametrize("flag,value", [("--retries", "-1"), ("--retries", "1.5"), ("--backoff", "-1"),
@@ -324,39 +350,6 @@ print(json.dumps({{"type": "result", "subtype": "success", "result": ans, "sessi
     assert delegate(repo, "M1.1", "label-reviewer", retries=0, backoff=0)["state"] == "complete"
     argv = json.loads(calls.read_text().splitlines()[0])
     assert argv[argv.index("--model") + 1] == "label-reviewer"
-
-
-def _unknown_api_delegate_repo(tmp_path: Path, extra: str = "") -> tuple[Path, Path]:
-    script, spec = tmp_path / "fake.py", tmp_path / "spec.json"
-    script.write_text(FAKE)
-    fake = f"{sys.executable} {script} {spec} {{prompt}} {{session_flag}}"
-    repo = make_profile_repo(tmp_path)
-    roster = repo / "roadmap" / "orchestration.yaml"
-    roster.write_text(roster.read_text().replace(
-        "    roles: [coordinator, executor, reviewer]",
-        f"    roles: [coordinator, executor, reviewer]\n    harness: claude-code\n    channels: {{cli: '{fake}'}}\n"
-        f"{extra}"))
-    prof = repo / "model-profiles" / "anthropic-claude" / OPUS.name
-    prof.write_text(prof.read_text().replace("api_id: claude-opus-5-5", "api_id: unknown"))
-    commit_profile(repo)
-    reviews_dir(repo, "M1.1").mkdir(parents=True, exist_ok=True)
-    (reviews_dir(repo, "M1.1") / "PACKET.md").write_text("# Review packet\n\n**Commit under review:** HEAD\n")
-    return repo, spec
-
-
-def test_delegate_refuses_when_no_model_would_be_passed_and_opens_no_run_record(tmp_path: Path, capsys) -> None:
-    repo, spec = _unknown_api_delegate_repo(tmp_path)
-    assert _delegate(repo) == 1
-    err = capsys.readouterr().err
-    assert "opus: no model would be passed to claude-code" in err and "routing: dynamic" in err
-    assert load_run(repo, "M1.1", "opus") is None and not spec.with_name("calls.json").exists()
-
-
-def test_delegate_launches_when_routing_dynamic_accepts_the_harness_default(tmp_path: Path) -> None:
-    repo, spec = _unknown_api_delegate_repo(tmp_path, extra="    routing: dynamic\n")
-    set_steps(repo, spec, verdict_step(repo))
-    run = delegate(repo, "M1.1", "opus", retries=0, backoff=0)
-    assert run["state"] == "complete" and run["requested_model"] is None
 
 
 def test_delegate_records_model_mismatch_and_the_gate_excludes_the_approval(tmp_path: Path, capsys) -> None:
