@@ -122,3 +122,22 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
+  - codename: ops-writers-refuse-links
+    node_id: M21.39
+    branch: feature/rm-ops-writers-refuse-links
+    touch_zones:
+      - specy_road/pm_publish.py
+      - specy_road/finish_land_deterministic.py
+      - specy_road/finish_bookkeeping_undo.py
+      - specy_road/finish_work_artifacts.py
+      - specy_road/history_cache.py
+      - specy_road/on_complete_pickup.py
+      - specy_road/bundled_scripts/brainstorm_session.py
+      - tests/test_ops_writers_refuse_links.py
+      - tests/test_pm_publish.py
+      - tests/test_finish_config_preflight.py
+      - docs/dev-workflow.md
+      - CHANGELOG.md
+    started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending
