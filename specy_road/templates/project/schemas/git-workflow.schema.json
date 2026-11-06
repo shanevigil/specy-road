@@ -52,7 +52,7 @@
     "on_complete": {
       "type": "string",
       "enum": ["auto", "merge", "pr"],
-      "description": "How finish-this-task lands work: pr = open a PR/MR (default); merge = merge feature branch into integration locally and push; auto = try merge+push first, then suggest PR/MR on failure."
+      "description": "How finish-this-task lands work: pr = open a PR/MR (default); merge = merge the feature branch into the integration branch and land it per land (push, the default, pushes; local fetches and pushes nothing); auto = try that merge first, then suggest PR/MR on failure."
     },
     "land": {
       "enum": ["push", "local"],

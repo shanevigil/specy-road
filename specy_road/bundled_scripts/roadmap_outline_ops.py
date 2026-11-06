@@ -4,32 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, roadmap_dir, write_json_chunk
 from specy_road.bundled_scripts.roadmap_gui_tree import indent_parent_id, outdent_parent_id
 from specy_road.bundled_scripts.roadmap_layout import sibling_sort_key
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_outline_renumber import can_indent_to_parent, renumber_display_ids_inplace
-from specy_road.registry_yaml import registry_path
 from specy_road.node_kinds import allows_children, is_gate, parent_type_allowed
-from specy_road.bundled_scripts.roadmap_chunk_utils import manifest_includes
-
-
-def persist_merged_nodes(root: Path, merged: list[dict]) -> None:
-    """Write merged node list back to JSON chunks (match by ``node_key``, preserve chunk order)."""
-    by_key = {n["node_key"]: n for n in merged}
-    base = roadmap_dir(root)
-    for rel in manifest_includes(root):
-        path = (base / rel).resolve()
-        if not path.is_file() or path.suffix.lower() != ".json":
-            continue
-        chunk_nodes = load_json_chunk(path)
-        out = []
-        for old in chunk_nodes:
-            k = old.get("node_key")
-            if not isinstance(k, str) or k not in by_key:
-                raise ValueError(f"chunk {rel}: unknown node_key {k!r}")
-            out.append(by_key[k])
-        write_json_chunk(path, out)
 
 
 def ordered_sibling_ids(
@@ -264,36 +243,3 @@ def apply_outdent(
         renumber_outline=renumber_outline,
         rewrite_refs=rewrite_refs,
     )
-
-
-def sync_registry_node_ids(root: Path, old_to_new: dict[str, str]) -> None:
-    """Update roadmap/registry.yaml entry ``node_id`` when display ids change."""
-    reg_path = registry_path(root)
-    if not reg_path.is_file():
-        return
-    if not old_to_new:
-        return
-    # Minimal approach: replace exact node_id lines (quoted values avoided; YAML simple case)
-    import yaml
-
-    data = yaml.safe_load(reg_path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
-        return
-    entries = data.get("entries")
-    if not isinstance(entries, list):
-        return
-    changed = False
-    for e in entries:
-        if not isinstance(e, dict):
-            continue
-        nid = e.get("node_id")
-        if isinstance(nid, str) and nid in old_to_new:
-            e["node_id"] = old_to_new[nid]
-            changed = True
-    if changed:
-        reg_path.write_text(
-            yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False),
-            encoding="utf-8",
-        )
-
-

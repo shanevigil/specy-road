@@ -23,7 +23,7 @@ from specy_road.registry_yaml import registry_path
 
 
 def _stage_merged_nodes(plan: AtomicWritePlan, root: Path, merged: list[dict]) -> None:
-    """Stage every chunk rewritten by the move, matching ``persist_merged_nodes``."""
+    """Stage every chunk rewritten by the move (match by ``node_key``, preserve chunk order)."""
     by_key = {n["node_key"]: n for n in merged}
     base = roadmap_dir(root)
     for rel in manifest_includes(root):

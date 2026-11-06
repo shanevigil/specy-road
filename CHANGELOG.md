@@ -21,6 +21,14 @@ body. Keep section bodies focused; link to PRs for detail.
   line, and `finish-this-task` aborts the land naming it. `REJECTED-<model>.md`
   and `PACKET.md` are never written through any symlink: `review record`
   keeps its own error, and `review delegate` exits 1 before launching.
+- The pickup footer's one-time `grind-session` hint no longer dirties the
+  working tree: its marker under `.specyrd/cache/` is written through the
+  cache's own `.gitignore` of `*`, so a checkout whose `.gitignore` lacks
+  `.specyrd/cache/` stays clean for the next pickup or
+  `mark-implementation-reviewed`.
+- The `on_complete` description in `git-workflow.schema.json` and step 7 of the
+  `specyrd-finish` stub no longer say `merge` / `auto` always push: they land
+  per `land` (`push` pushes; `local` fetches and pushes nothing).
 - `specy-road doctor` no longer fails in a repo with no remote. When the
   resolved remote (`--remote`, `SPECY_ROAD_REMOTE`, `roadmap/git-workflow.yaml`,
   else `origin`) is not configured, it says so in one line, skips the fetch and

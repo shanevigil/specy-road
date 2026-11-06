@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from specy_road.git_workflow_config import ON_COMPLETE_MODES, resolve_on_complete
+from specy_road.history_cache import ensure_cache_dir
 from specy_road.on_complete_session import on_complete_session_path
 
 
@@ -111,7 +112,7 @@ def print_orchestration_hint(repo_root: Path | None = None) -> None:
         marker = _orchestration_hint_marker(repo_root)
         if marker.is_file():
             return
-        marker.parent.mkdir(parents=True, exist_ok=True)
+        ensure_cache_dir(marker.parent)
         marker.write_text("shown\n", encoding="utf-8")
     print()
     print("Running more than one leaf? specy-road grind-session drives this loop:")

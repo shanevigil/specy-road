@@ -168,7 +168,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.19` | apply --dry-run rehearses on a scratch copy whose links are rebased, so no rehearsal can move or change a live file | task | — | Not Started |
 | `M21.20` | PM GUI Publish regenerates roadmap.md and roadmap-context.md before committing, and refuses before committing when no remote is set | task | — | Not Started |
 | `M21.21` | review delegate validates the reviewer command as prompt --channel cli does, and the model check splits on newlines only | task | — | Not Started |
-| `M21.22` | Small rc4 code fixes: adapter docstring, dead outline writers, pickup hint ignored, land: local wording, unused upgrade helper | task | — | Not Started |
+| `M21.22` | Small rc4 code fixes: adapter docstring, dead outline writers, pickup hint ignored, land: local wording, unused upgrade helper | task | — | Complete |
 | `M21.23` | rc4 doc corrections on WIP: refresh-profiles default, no private roster ids, exact managed-block markers, reviewer mode, file-cap CHANGELOG entry | task | — | Not Started |
 | `M21.24` | review delegate runs a Claude Code reviewer: the inline --json-schema carries no $schema, and a failed run names the harness's error | task | — | Not Started |
 | `M21.25` | review delegate reads a reviewer's answer when narration precedes its final JSON object | task | — | Not Started |

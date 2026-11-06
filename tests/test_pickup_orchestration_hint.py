@@ -7,6 +7,7 @@ hand-rolled sub-agent orchestration and never adopted the hook.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -76,3 +77,21 @@ def test_the_footer_drops_the_hint_inside_a_loop(monkeypatch, tmp_path, capsys):
     out = capsys.readouterr().out
     assert "finish-this-task" in out
     assert "grind-session" not in out
+
+
+def test_the_hint_marker_leaves_the_tree_clean(tmp_path, capsys):
+    """A repo whose .gitignore lacks .specyrd/cache/ stays clean, and the hint shows once."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / ".gitignore").write_text("*.pyc\n", encoding="utf-8")
+    git = ["git", "-C", str(tmp_path), "-c", "user.name=t", "-c", "user.email=t@t"]
+    subprocess.run([*git, "add", ".gitignore"], check=True)
+    subprocess.run([*git, "commit", "-q", "-m", "init"], check=True)
+
+    print_orchestration_hint(tmp_path)
+    assert "grind-session" in capsys.readouterr().out
+    status = subprocess.run([*git, "status", "--porcelain", "--untracked-files=all"],
+                            check=True, capture_output=True, text=True).stdout
+    assert status == ""
+
+    print_orchestration_hint(tmp_path)
+    assert capsys.readouterr().out == ""

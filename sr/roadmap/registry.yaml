@@ -146,23 +146,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: rc4-small-code-fixes
-    node_id: M21.22
-    branch: feature/rm-rc4-small-code-fixes
-    touch_zones:
-      - specy_road/worker_adapters.py
-      - specy_road/bundled_scripts/roadmap_outline_ops.py
-      - specy_road/bundled_scripts/roadmap_id_rewrite_staging.py
-      - tests/test_roadmap_outline_registry.py
-      - specy_road/on_complete_pickup.py
-      - tests/test_pickup_orchestration_hint.py
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - specy_road/templates/specyrd/commands/specyrd-finish.md
-      - specy_road/upgrade_templates.py
-      - CHANGELOG.md
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
   - codename: rc4-docs-corrections
     node_id: M21.23
     branch: feature/rm-rc4-docs-corrections
