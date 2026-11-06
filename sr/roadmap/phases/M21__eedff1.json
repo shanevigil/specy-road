@@ -430,7 +430,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.41_notes-rules-name-every-clause-break_1a086436-279e-481f-bbd1-e222b218c1e6.md",
       "sibling_order": 39,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The notes rules name every clause break the checker uses; rework docstring and verify tests fixed",
       "touch_zones": [
         "specy_road/review_record_rules.py",
