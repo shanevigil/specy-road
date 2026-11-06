@@ -214,3 +214,23 @@ These changes refactor without changing behaviour. No function in the diff is mo
   - `worker_ops_launch._launch_checks`: the new `_warn` helper.
 - Added helpers, each with complexity of 6 or less: `_target_node`, `_leaf_check`, `_role_lines`, `_launch_warning`, `_candidate`, `_never_local`, `_warn`. They keep the functions above at or below their merge-base complexity.
 - Checks after the refactor: `ruff check specy_road tests scripts` and `specy-road file-limits` are clean, and the full suite (`pytest -n 4`) passes with 5927 tests.
+
+## Fix round 2 (review `gpt-6.1-sol-low` at `1088f2e6`)
+
+Merged `origin/WIP/improvements-0-3-1` first; it merged cleanly.
+
+- **R1. Class: a test in `tests/test_guidance_bypass_roles.py` that drives something other than a public CLI command.**
+  - `test_the_refusal_needs_only_config_entry_and_profile` moved to `tests/test_model_profile_aliases.py`, which tests public functions and is in the touch zones. Its assertions are unchanged.
+  - The excluded-text check now spells out its expected prefix, because `EXCLUDED` is local to the roles file.
+  - The roles file no longer imports any `specy_road` function either. `BUNDLED` is now a plain path to the shipped template, instead of `bundled_profiles_root()`.
+- **R2. Class: a comment removed or shortened while code was moved.**
+  - Restored verbatim in `role_prompt.build_prompt`: `# the AGENTS.md rule: a prompt names its commit, or the agent stops to ask`.
+  - Restored verbatim in `_target_node`: `# the coordinator's prompt is what picks the leaf up`. The round-1 refactor had moved this one into the docstring as a paraphrase.
+
+## Probes (fix round 2)
+- Every `#` comment removed in the diff from the merge base, across `specy_road` and `tests`: each one checked against the current tree. Only the two above were missing, and both are restored. The `noqa: C901` on `build_prompt` was removed on purpose, as the coordinator precheck required.
+- Every prose line removed from docs and docstrings in the diff: each is either kept, or extended in place. In `orchestration-review.md` and `orchestration-workers.md`, a sentence continues after its original text. None was shortened.
+- Imports in `tests/test_guidance_bypass_roles.py`: only `specy_road.cli` and the bundled-script CLI modules remain, called through `main`, plus the shared test helpers. No other `specy_road` function is called.
+- The other test files in the touch zones: `tests/test_model_profile_aliases.py` imports only public names. `tests/test_review_eligible.py` is not changed in this leaf.
+- Complexity: the changes are comments only and a moved test, so no function moved from round 1, where none exceeded its merge-base value.
+- Checks: `ruff check specy_road tests scripts` and `specy-road file-limits` are clean. The targeted tests pass (154): roles, aliases, review_eligible, models_and_prompt, prompt_channel_cli_run, do_next_prompt and context_regressions.

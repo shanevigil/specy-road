@@ -223,7 +223,7 @@ def _target_node(root: Path, node_id: str, role: str, ref: str | None):
     except ReviewTargetError as e:
         if role != "coordinator":
             return None, [], None, str(e)
-        t = None
+        t = None   # the coordinator's prompt is what picks the leaf up
     nodes = t.nodes if t else load_roadmap(root)["nodes"]
     node = t.node if t else next((n for n in nodes if n.get("id") == node_id), None)
     return t, nodes, node, None if node is not None else f"unknown node id: {node_id}"
@@ -278,7 +278,8 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,
         loop.escalation, err = rca_trigger(root, node_id, model, loop, force_reason)
     title = "Root-cause analysis" if role == "rca" else role.title()
     lines = [f"# {title} prompt: `{node_id}` for `{model}`", ""]
-    lines += [f"base: {t.commit}", ""] if t and t.commit else []   # the AGENTS.md rule: a prompt names its commit
+    # the AGENTS.md rule: a prompt names its commit, or the agent stops to ask
+    lines += [f"base: {t.commit}", ""] if t and t.commit else []
     if t and not err:
         lines += precondition(role, node_id, t, reviews_dir(root, node_id) / PACKET_NAME, project_prefix(root),
                               forced=role == "rca" and loop.escalation.rule == "forced")

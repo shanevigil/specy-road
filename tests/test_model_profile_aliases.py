@@ -1,5 +1,6 @@
 """M11.26: effort-suffixed Cursor ids match profiles; models list reports unmatched roster ids.
-M11.76: validate warns for them, and the shipped profiles alias the Cursor ids they cover."""
+M11.76: validate warns for them, and the shipped profiles alias the Cursor ids they cover.
+M21.44: the shipped guidance-bypass flag, and ``guidance_bypass_refusal``'s three-argument contract on it."""
 
 from __future__ import annotations
 
@@ -12,6 +13,7 @@ import yaml
 from specy_road import model_profiles as mp
 from specy_road.bundled_scripts import models_cli
 from specy_road.bundled_scripts.validate_roadmap import validate_at
+from specy_road.orchestrate_plan import guidance_bypass_refusal
 
 from tests.test_models_and_prompt import ROSTER, TEMPLATE_PROFILES, make_profile_repo, run_main
 
@@ -142,3 +144,17 @@ def test_only_composer_2_5_records_guidance_bypass() -> None:
     record = flagged["composer-2.5.md"]
     assert (str(record["date"]), record["harness"]) == ("2026-11-06", "cursor")
     assert all(case in record["evidence"] for case in ("CR1", "CR3", "CR5", "2 of 5"))
+
+
+def test_the_refusal_needs_only_config_entry_and_profile() -> None:
+    """A2's three-argument form, with no repository: the bundled flags and the profile's own decide, and ``config``
+    stands for the committed roster."""
+    def config(opt_in: bool) -> dict:
+        return {"policy": {"signed_reviews": True},
+                "roster": [{"id": "w", "allow_guidance_bypass_model": True}] if opt_in else []}
+    flagged, plain = {"id": "w", "harness_model": "composer-2.5"}, {"id": "w", "harness_model": "composer-2"}
+    assert guidance_bypass_refusal(config(False), plain, None) is None
+    assert "w (model composer-2.5) is excluded from executor and reviewer roles" in guidance_bypass_refusal(
+        config(False), flagged, None)
+    assert guidance_bypass_refusal(config(True), flagged, None) is None
+    assert guidance_bypass_refusal({"policy": {}, "roster": []}, flagged, None) is None

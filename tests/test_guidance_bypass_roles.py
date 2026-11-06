@@ -1,7 +1,7 @@
 """M21.44: a model whose profile records guidance bypass (composer-2.5) is kept out of the executor and reviewer roles
 while ``policy.signed_reviews`` is on, unless its committed roster entry sets ``allow_guidance_bypass_model: true``.
 
-Public CLI only (plus the three-argument contract of ``guidance_bypass_refusal`` A2 names): ``orchestrate plan``, ``worker delegate``, ``review delegate``, ``prompt``, ``handoff status``,
+Public CLI only: ``orchestrate plan``, ``worker delegate``, ``review delegate``, ``prompt``, ``handoff status``,
 ``review record``, ``validate``, ``doctor`` and ``models show``, on temp repos whose roster and profiles are committed
 on the integration branch (``dev``). A fake harness touches ``HARNESS-RAN`` and the roster ``preflight`` touches
 ``PREFLIGHT-RAN``, so a refusal is shown to have launched nothing.
@@ -24,10 +24,8 @@ from tests.worker_cli_helpers import run_worker_cli, wait_for_worker
 
 from specy_road import cli
 from specy_road.bundled_scripts import chore_cli, models_cli, orchestrate_cli, role_prompt
-from specy_road.model_profiles import bundled_profiles_root
-from specy_road.orchestrate_plan import guidance_bypass_refusal
 
-BUNDLED = bundled_profiles_root() / "model-profiles" / "cursor-composer"
+BUNDLED = REPO / "specy_road" / "templates" / "project" / "model-profiles" / "cursor-composer"   # the shipped set
 COMPOSER = "model-profiles/cursor-composer/composer-2.5.md"
 EXCLUDED = ("is excluded from executor and reviewer roles while policy.signed_reviews is on: its profile records "
             "guidance bypass observed (2026-11-06, cursor: ")
@@ -277,19 +275,6 @@ def test_an_unreadable_integration_branch_profile_refuses(tmp_path: Path, capfd)
     assert prompt(repo, "executor", model="sol") == 1
     err = capfd.readouterr().err
     assert f"cannot read {COMPOSER} on the integration branch" in err and launched(tmp_path) == (False, False)
-
-
-def test_the_refusal_needs_only_config_entry_and_profile() -> None:
-    """A2's three-argument form, with no repository: the bundled flags and the profile's own decide, and ``config``
-    stands for the committed roster."""
-    def config(opt_in: bool) -> dict:
-        return {"policy": {"signed_reviews": True},
-                "roster": [{"id": "w", "allow_guidance_bypass_model": True}] if opt_in else []}
-    flagged, plain = {"id": "w", "harness_model": "composer-2.5"}, {"id": "w", "harness_model": "composer-2"}
-    assert guidance_bypass_refusal(config(False), plain, None) is None
-    assert EXCLUDED in guidance_bypass_refusal(config(False), flagged, None)
-    assert guidance_bypass_refusal(config(True), flagged, None) is None
-    assert guidance_bypass_refusal({"policy": {}, "roster": []}, flagged, None) is None
 
 
 def test_composer_2_is_not_flagged(tmp_path: Path, capfd) -> None:
