@@ -256,6 +256,7 @@ Do not pick these up.
 - `M21.17` on `feature/rm-writers-refuse-links-out` since 2026-11-05
 - `M21.18` on `feature/rm-deferral-bound-to-its-decision` since 2026-11-05
 - `M21.19` on `feature/rm-apply-dry-run-rebases-links` since 2026-11-05
+- `M21.21` on `feature/rm-review-delegate-validates-reviewer-command` since 2026-11-05
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
