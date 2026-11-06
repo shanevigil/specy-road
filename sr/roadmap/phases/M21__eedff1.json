@@ -16,7 +16,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.28_finish-validates-before-bookkeeping_eedff108-5960-4cf3-9c3d-f5666291763f.md",
       "sibling_order": 26,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "finish-this-task refuses an invalid configuration before any bookkeeping write and never leaves a half-mutated tree",
       "touch_zones": [
         "specy_road/bundled_scripts/finish_task.py",
