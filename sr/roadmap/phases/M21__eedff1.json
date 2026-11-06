@@ -196,7 +196,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.34_cr2-case-fits-the-todo-app_49318c9b-27ad-4cc9-a948-e01d2c01b921.md",
       "sibling_order": 32,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Context regression CR2 asks for a README section the todo app supports, and passes a README-only commit on the agent's own worktree branch",
       "touch_zones": [
         "docs/context-regressions.yaml",
