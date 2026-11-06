@@ -32,17 +32,31 @@ PROBE_RULES_LINES = [
     "3. Fail an acceptance item whose observed behaviour differs from its text, even when the difference looks "
     "minor; do not read a loose criterion in the leaf's favour.",
     "4. List every defect your notes or findings describe under `required_changes` (and block), or explain on "
-    f"that same line why it is not one, starting `{NOT_A_DEFECT}`. On an approve, `review record` treats every "
-    "`findings` entry and every observation line of the notes as a possible defect, whatever its wording, and "
-    f"refuses the record unless that line says `{NOT_A_DEFECT} <reason>`, the phrase standing on its own and "
-    "outside backticks, with the reason after it. An observation line is any line of two "
-    "words or more outside code spans, other than a heading, a `>` quote, fenced code, a table separator row or "
-    "horizontal rule, or a bare acceptance result such as `A1: pass`; so write each observation with its reason "
-    "on the same line, and quote text or test output in backticks, a `>` line or fenced code. One explanation "
-    "covers one observation, the sentence or clause it ends or the one just before it, and that text may join a "
-    "second observation, with a comma or a conjunction such as `and`, `but` or `while`, only when no joined part "
-    "names a defect: parts that name none are one observation however they are joined. Give each observation its "
-    "own explanation, and keep each reason to one clause that names no defect itself.",
+    f"that same line why it is not one, starting `{NOT_A_DEFECT}`. The last section before the schema says how "
+    "to write each other line so `review record` accepts it.",
+    "",
+]
+# Rule 4 in operational form (M21.35): the last section before the schema (review_record_write.schema_lines) and a
+# refused answer's repair turn (repair_prompt). The check itself is clause_problem / note_problem, unchanged.
+NOTES_RULES_LINES = [
+    "### How `review record` checks your notes",
+    "",
+    "specy-road files your review from your final message in one shot; `review record` refuses an approve that "
+    "breaks these rules, and a refused answer is a rerun. Before you send it, check every line:",
+    "",
+    "- Write one observation per line.",
+    "- On an approve, every `findings` entry, and every notes line of two words or more other than a heading, a bare "
+    "acceptance result (`A1: pass` with no words after it), a `>` quote, fenced code or a table separator, either "
+    "matches a `required_changes` entry (and then the verdict is block) or carries, on that same line, "
+    f"'{NOT_A_DEFECT} <reason>'. Write that phrase as plain text outside backticks, and let the reason name no "
+    "defect.",
+    "- `A1: pass` followed by more words is an observation, so it needs that phrase too.",
+    "- Each clause, split on '. ', '; ' or a conjunction (and, but, while), is checked on its own: give each "
+    "observation its own line and its own reason.",
+    "- A comma list (\"no X, Y or Z were added\") is several observations: split it into separate lines, each with "
+    "its own reason.",
+    "- Evidence (commands and their results) goes in `commands_rerun`, not in the notes; fewer notes lines mean "
+    "fewer refusals. Quote code or test output in backticks, a `>` line or fenced code.",
     "",
 ]
 # Executors once deleted unrelated docstrings and messages to stay under a line cap; reviewers caught it a round late.

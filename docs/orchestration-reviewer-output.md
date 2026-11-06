@@ -79,6 +79,15 @@ specy-road decides the outcome:
   never found by searching the log: the `[review delegate]` / `[review prompt]`
   lines are for people and are not parsed, so a harness that prints one moves
   nothing. A span whose bytes changed during the run reads as no output.
+  When `review record` refuses the answer, `review delegate` (not a chore
+  reviewer) gives the reviewer one repair turn: the session's resume, or one
+  fresh launch with the full prompt on a harness that cannot resume, with
+  `review record`'s whole output and the notes rules, through every capacity
+  retry. It is checked like the first turn (write check, model check). The
+  run record keeps the first refusal as `refusal` and marks the repair
+  attempts `repair: true`; a second refusal leaves the run incomplete, naming
+  both. `--resume` of an incomplete run that kept a `refusal` at the commit
+  under review sends that repair prompt instead of the continue prompt.
 - **recorded** — specy-road writes the notes to `notes-<model>.md` and `review record` files
   `REVIEW-<model>.md` from them, with the launch mode, family and `history/`
   copy an interactive filing gets. Under `policy.signed_reviews`, pass the

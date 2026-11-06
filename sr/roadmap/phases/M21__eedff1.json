@@ -228,7 +228,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.35_refused-review-gets-one-repair-turn_ef56f4ea-a868-4a22-b5a4-f6bccf890779.md",
       "sibling_order": 33,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review delegate gives a refused reviewer answer one repair turn with the refusal text, and the reviewer prompt ends with the notes rules",
       "touch_zones": [
         "specy_road/review_delegate.py",
