@@ -385,7 +385,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.24_claude-reviewer-schema-and-error_4b5ad55d-b776-4380-b12b-1fedd636c687.md",
       "sibling_order": 22,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review delegate runs a Claude Code reviewer: the inline --json-schema carries no $schema, and a failed run names the harness's error",
       "touch_zones": [
         "specy_road/worker_adapter_claude.py",

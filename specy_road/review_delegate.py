@@ -157,6 +157,9 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
         failed = turn["exit"] != 0 or bool(turn["errors"])
         cap = turn_capacity_error(turn["errors"], turn["tail"]) if failed else None
         said = cap or next(iter(turn["errors"]), "")
+        if failed and not said:   # no parsed error: the last non-blank line of this turn's log span (the harness's own)
+            lines = [ln.strip() for ln in attempt_text(h.log, turn).splitlines() if ln.strip()]
+            said = lines[-1][:200] if lines else "no error text"
         run["attempts"].append({"at": _now(), "exit": turn["exit"], "capacity": bool(cap), "error": said[:300] or None,
                                 "log_start": turn["log_start"], "log_end": turn["log_end"],   # the span run_text reads
                                 "log_sha256": turn["log_sha256"]})
@@ -164,7 +167,7 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
             h.replaced.append(path)
         save_run(path, run)
         if not cap:
-            return f"harness exited {turn['exit']}: {said[:200] or 'no error text'}" if failed else ""
+            return f"harness exited {turn['exit']}: {said[:200]}" if failed else ""
         reason = f"capacity error after {n + 1} attempt(s): {cap[:200]}"
         if n < retries:
             sleep(backoff * 2 ** n)

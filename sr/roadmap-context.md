@@ -109,7 +109,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.21` review delegate validates the reviewer command as prompt --channel cli does, and the model check splits on newlines only `review-delegate-validates-reviewer-command` — task — **Complete**
   - `M21.22` Small rc4 code fixes: adapter docstring, dead outline writers, pickup hint ignored, land: local wording, unused upgrade helper `rc4-small-code-fixes` — task — **Complete**
   - `M21.23` rc4 doc corrections on WIP: refresh-profiles default, no private roster ids, exact managed-block markers, reviewer mode, file-cap CHANGELOG entry `rc4-docs-corrections` — task — **Complete**
-  - `M21.24` review delegate runs a Claude Code reviewer: the inline --json-schema carries no $schema, and a failed run names the harness's error `claude-reviewer-schema-and-error` — task — **Not Started**
+  - `M21.24` review delegate runs a Claude Code reviewer: the inline --json-schema carries no $schema, and a failed run names the harness's error `claude-reviewer-schema-and-error` — task — **Complete**
   - `M21.25` review delegate reads a reviewer's answer when narration precedes its final JSON object `reviewer-answer-after-prose` — task — **Not Started**
   - `M21.26` The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model `gate-excludes-ready-authors` — task — **Not Started**
   - `M21.27` review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer `filings-take-the-review-lock` — task — **Not Started**
@@ -262,7 +262,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M21.24` on `feature/rm-claude-reviewer-schema-and-error` since 2026-11-05
 - `M21.25` on `feature/rm-reviewer-answer-after-prose` since 2026-11-05
 - `M21.26` on `feature/rm-gate-excludes-ready-authors` since 2026-11-05
 - `M21.27` on `feature/rm-filings-take-the-review-lock` since 2026-11-05
@@ -276,11 +275,11 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 29 | 3 | 4.15 | 73% | 34 | 4 |
+| `docs` **flagged** | 29 | 2 | 4.04 | 70% | 34 | 4 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 48 | 4 | 3.77 | 68% | 50 | 7 |
-| `tests` **flagged** | 49 | 4 | 3.76 | 69% | 50 | 7 |
-| `CHANGELOG.md` | 14 | 0 | 1.86 | 29% | 16 | 0 |
+| `specy_road` **flagged** | 48 | 3 | 3.71 | 67% | 50 | 7 |
+| `tests` **flagged** | 49 | 3 | 3.70 | 67% | 50 | 7 |
+| `CHANGELOG.md` | 15 | 0 | 1.80 | 27% | 16 | 0 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 0 | 1.00 | 0% | 0 | 0 |
