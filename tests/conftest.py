@@ -43,6 +43,23 @@ def repo_root_env_never_leaks_in(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
 
 
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line("markers", "real_review_caller: run `review record`'s caller check (M21.31) for real")
+
+
+@pytest.fixture(autouse=True)
+def review_record_caller_matches(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every in-process ``review record`` runs as a matching identified caller, whatever harness runs the suite.
+
+    The caller check (:mod:`specy_road.review_caller`) reads the harness's environment markers, which differ
+    between a developer's harness and CI; tests marked ``real_review_caller`` exercise it.
+    """
+    if request.node.get_closest_marker("real_review_caller"):
+        return
+    from specy_road import review_caller
+    monkeypatch.setattr(review_caller, "refusal", lambda repo_root, ns: None)
+
+
 @pytest.fixture(autouse=True)
 def gui_settings_never_touch_the_real_home(
     tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch

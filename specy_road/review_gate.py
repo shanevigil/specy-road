@@ -164,7 +164,8 @@ def _signature_problem(config: dict[str, Any], model: str, review: ReviewFile) -
     """Why a record's signature keeps it from counting, else ``None``.
 
     A present signature is always verified (tampering is caught even with the
-    policy off); a missing one matters only when ``signed_reviews`` is on.
+    policy off); a missing one matters only when ``signed_reviews`` is on, or the
+    record is ``human_filed`` and ``count_human_filed_reviews`` is off (M21.31).
     """
     sig = review.data.get("signature")
     entry = roster_entry(config, model) or {}
@@ -176,6 +177,8 @@ def _signature_problem(config: dict[str, Any], model: str, review: ReviewFile) -
         return None if ok else f"signature does not verify for {model!r}: {reason}"
     if config["policy"].get("signed_reviews"):
         return "policy requires signed reviews (signature missing); file it with `review record --sign-key`"
+    if review.data.get("human_filed") and not config["policy"].get("count_human_filed_reviews"):
+        return "filed by hand (human_filed) and unsigned; policy.count_human_filed_reviews is off"
     return None
 
 

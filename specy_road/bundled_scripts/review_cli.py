@@ -39,7 +39,7 @@ from specy_road.review_files import (
     review_path, reviews_dir, reviews_root, round_span, write_review,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, trial_merge
-from specy_road import review_lock
+from specy_road import review_caller, review_lock
 from specy_road.review_lock import ReviewRunBusy, filing_busy
 from specy_road.review_rejected import run_review_record
 from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states, gate_policy_summary
@@ -273,6 +273,8 @@ def cmd_review_record_locked(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     if not any(n.get("id") == ns.node_id for n in load_roadmap(root)["nodes"]):   # before any mkdir or lock file
         return _fail(f"unknown node id: {ns.node_id}")
+    if why := review_caller.refusal(root, ns):   # before the lock: a refused caller writes nothing (M21.31)
+        return _fail(why)
     try:
         with review_lock.review_run_lock(reviews_dir(root, ns.node_id), wait=review_lock.FILING_WAIT):
             return cmd_review_record(ns)
@@ -355,6 +357,10 @@ def build_parser() -> argparse.ArgumentParser:
     rec.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
     rec.add_argument("--sign-key", metavar="PATH", help="Sign the record with this OpenSSH private key (ssh-keygen -Y sign)")
     rec.add_argument("--launch-mode", choices=REVIEW_LAUNCH_MODES, help="How your harness was started; stored on the record")
+    rec.add_argument("--human-filed", metavar="WHO_AND_WHY",
+                     help="Required when no harness or worker is identified (a human filing by hand): one line saying "
+                          "who files this and why; stored as human_filed, which counts only signed or under "
+                          "policy.count_human_filed_reviews")
     add_repo_root_arg(rec)
     rec.set_defaults(func=cmd_review_record_locked)
     for name, about, fn in (("list", "Print a node's filed review records and the gate evaluation; writes nothing", cmd_review_list),

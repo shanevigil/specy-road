@@ -31,6 +31,7 @@ DEFAULT_POLICY: dict[str, Any] = {
     "reviewers_distinct_families": False,
     "reviewer_fresh_session": True,
     "signed_reviews": False,
+    "count_human_filed_reviews": False,
     "reviewer_reruns_required": False,
     "max_workers": 2,
     "escalate_same_acceptance_blocks": 3,
