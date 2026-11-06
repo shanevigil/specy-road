@@ -102,13 +102,19 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.14` finish resolves roadmap chunk conflicts the branch only inherited `finish-resolves-inherited-roadmap-conflicts` — task — **Complete**
   - `M21.15` Cursor workers launch sandboxed without --force unless the roster opts in `cursor-workers-no-force-by-default` — task — **Complete**
   - `M21.16` upgrade --dry-run never touches the real repo under GIT_DIR, and a real upgrade regenerates drifted generated files `upgrade-scratch-git-and-regen` — task — **Not Started**
-  - `M21.17` Writers refuse a symlinked target that leads out of the directory they own: init's generated files, review refusal and packet `writers-refuse-links-out` — task — **Not Started**
+  - `M21.17` Writers refuse a symlinked target that leads out of the directory they own: init's generated files, review refusal and packet `writers-refuse-links-out` — task — **Complete**
   - `M21.18` A review deferral counts only when its marker is bound to the decision review defer recorded for it and its RCA `deferral-bound-to-its-decision` — task — **Not Started**
   - `M21.19` apply --dry-run rehearses on a scratch copy whose links are rebased, so no rehearsal can move or change a live file `apply-dry-run-rebases-links` — task — **Not Started**
   - `M21.20` PM GUI Publish regenerates roadmap.md and roadmap-context.md before committing, and refuses before committing when no remote is set `gui-publish-regenerates-and-needs-a-remote` — task — **Not Started**
   - `M21.21` review delegate validates the reviewer command as prompt --channel cli does, and the model check splits on newlines only `review-delegate-validates-reviewer-command` — task — **Not Started**
   - `M21.22` Small rc4 code fixes: adapter docstring, dead outline writers, pickup hint ignored, land: local wording, unused upgrade helper `rc4-small-code-fixes` — task — **Not Started**
   - `M21.23` rc4 doc corrections on WIP: refresh-profiles default, no private roster ids, exact managed-block markers, reviewer mode, file-cap CHANGELOG entry `rc4-docs-corrections` — task — **Not Started**
+  - `M21.24` review delegate runs a Claude Code reviewer: the inline --json-schema carries no $schema, and a failed run names the harness's error `claude-reviewer-schema-and-error` — task — **Not Started**
+  - `M21.25` review delegate reads a reviewer's answer when narration precedes its final JSON object `reviewer-answer-after-prose` — task — **Not Started**
+  - `M21.26` The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model `gate-excludes-ready-authors` — task — **Not Started**
+  - `M21.27` review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer `filings-take-the-review-lock` — task — **Not Started**
+  - `M21.28` finish-this-task refuses an invalid configuration before any bookkeeping write and never leaves a half-mutated tree `finish-validates-before-bookkeeping` — task — **Not Started**
+  - `M21.29` worker terminate also ends processes the harness started in their own session `terminate-ends-escaped-descendants` — task — **Not Started**
 - `M22` rc5 fixes: defects found while preparing rc5 `rc5-fixes` — phase — **Not Started**
   - `M22.1` group-nodes accepts a new parent id held by one of the nodes it groups `group-into-member-id` — task — **Not Started**
   - `M22.2` A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet `move-rewrites-sheet-zones` — task — **Not Started**
@@ -121,6 +127,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.9` Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME `local-roster-and-codex-reviewer-isolation` — task — **Not Started**
   - `M22.10` reconcile-branch keeps a local-only claim, and a checkout failure after a successful landing does not undo the bookkeeping `finish-keeps-local-claim-and-landing` — task — **Not Started**
   - `M22.11` Reports say what happened: a failed review tally is visible, rename-refs keeps tilde and longer fences, upgrade's ignore notices describe the checkout `reports-say-what-happened` — task — **Not Started**
+  - `M22.12` The review gate finds the integration branch when refs/remotes/<remote>/HEAD is missing, without trusting the branch under review `gate-without-remote-head` — task — **Not Started**
+  - `M22.13` Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone `worker-cost-and-stale-presence` — task — **Not Started**
+  - `M22.14` Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch `deps-ids-briefs-and-landed-branch` — task — **Not Started**
+  - `M22.15` The agentic sandbox runbook states rc4's real results: checks after init, the second claim, tamper outcomes, where staleness shows `sandbox-runbook-rc4-drift` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Not Started**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**
@@ -196,6 +206,12 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-05 `M17.5` stopped depending on `M17.3 PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags`
+- 2026-11-05 `M19` stopped depending on `M16.8.9 Gate: ready to tag 0.3.1`
+- 2026-11-05 `M18` stopped depending on `M16.8.9 Gate: ready to tag 0.3.1`
+- 2026-11-05 `M20` stopped depending on `M16.8.9 Gate: ready to tag 0.3.1`
+- 2026-11-05 `M17.1` stopped depending on `M16.3.1 Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI`
+- 2026-11-05 `M17.1` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
 - 2026-11-05 `M16.60` stopped depending on `M16.6.1 Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra`
 - 2026-11-05 `M15.30` stopped depending on `2535829e-6a0d-40e3-aa42-9b0506bb9fe9` (no longer live)
 - 2026-11-05 `M16.18` stopped depending on `M16.5.4 One check_assignment decides eligibility for every launch and for the gate`
@@ -215,13 +231,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M16.33` stopped depending on `M16.5.1 Worker runtime moves into orchestration/workers with import-path edits only`
 - 2026-11-05 `M16.33` stopped depending on `M16.5.9 Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings`
 - 2026-11-05 `M16.9` stopped depending on `M16.2.5 Library modules imported by the package move out of bundled_scripts`
-- 2026-11-05 `M16.13` stopped depending on `M16.4.1 doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases`
-- 2026-11-05 `M16.3` stopped depending on `M16.1.1 Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs`
-- 2026-11-05 `M16.11` stopped depending on `M16.2.9 Commands run in the CLI's process: no python -m re-launch, no cwd globals`
-- 2026-11-05 `M16.18` stopped depending on `M16.3.1 Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI`
-- 2026-11-05 `M16.32` stopped depending on `M16.4.3 review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session`
-- 2026-11-05 `M16.32` stopped depending on `M16.1.5 AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer`
-- _…and 35 earlier — `specy-road history --json`_
+- _…and 41 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -253,10 +263,12 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.16` on `feature/rm-upgrade-scratch-git-and-regen` since 2026-11-05
-- `M21.17` on `feature/rm-writers-refuse-links-out` since 2026-11-05
 - `M21.18` on `feature/rm-deferral-bound-to-its-decision` since 2026-11-05
 - `M21.19` on `feature/rm-apply-dry-run-rebases-links` since 2026-11-05
+- `M21.20` on `feature/rm-gui-publish-regenerates-and-needs-a-remote` since 2026-11-05
 - `M21.21` on `feature/rm-review-delegate-validates-reviewer-command` since 2026-11-05
+- `M21.22` on `feature/rm-rc4-small-code-fixes` since 2026-11-05
+- `M21.23` on `feature/rm-rc4-docs-corrections` since 2026-11-05
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
@@ -267,9 +279,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | --- | --- | --- | --- | --- | --- | --- |
 | `docs` **flagged** | 29 | 7 | 4.64 | 82% | 31 | 4 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 49 | 12 | 4.22 | 76% | 40 | 7 |
-| `tests` **flagged** | 50 | 12 | 4.18 | 76% | 40 | 7 |
-| `CHANGELOG.md` | 6 | 0 | 2.50 | 33% | 6 | 0 |
+| `specy_road` **flagged** | 49 | 11 | 4.13 | 74% | 40 | 7 |
+| `tests` **flagged** | 50 | 11 | 4.10 | 74% | 40 | 7 |
+| `CHANGELOG.md` | 7 | 0 | 2.29 | 29% | 6 | 0 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 

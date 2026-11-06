@@ -22,6 +22,14 @@ body. Keep section bodies focused; link to PRs for detail.
 - The reviewer model check splits the harness log on `\n` only, as JSON Lines
   does, so a `result` event whose string carries an unescaped U+2028 or U+2029
   can no longer hide a model mismatch.
+- Security: no writer follows a symlink out of the directory it owns.
+  `init project` treats a dangling `roadmap.md` or `roadmap-context.md` link
+  as present (skipped without `--force`), and with `--force` lists a link out
+  of the project as skipped with the reason instead of writing its target.
+  Regenerating the two files (archive, GUI) skips such a link with a stderr
+  line, and `finish-this-task` aborts the land naming it. `REJECTED-<model>.md`
+  and `PACKET.md` are never written through any symlink: `review record`
+  keeps its own error, and `review delegate` exits 1 before launching.
 - `specy-road doctor` no longer fails in a repo with no remote. When the
   resolved remote (`--remote`, `SPECY_ROAD_REMOTE`, `roadmap/git-workflow.yaml`,
   else `origin`) is not configured, it says so in one line, skips the fetch and
